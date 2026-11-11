@@ -93,6 +93,23 @@ Princípios inegociáveis:
     APARECE no fim de um formulário longo depois de um clique (a pergunta antes
     de gravar) rola até ficar à vista e leva o foco (`PerguntaDaVenda`).
     Prova: `e2e/vendas-pergunta-no-celular.spec.ts`.
+- **O botão flutuante do Copilot não cobre o fim da página** (A4 da 10ª no
+  celular; A38 da 12ª no computador, 2026-11-11: cobria o valor da última linha
+  do "Fechar e pagar"): com o botão na tela, o `main` ganha embaixo a altura
+  dele e a folga (`body:has(.copilot-botao…) main` em `globals.css`), fora do
+  inbox, onde ele sobe. Prova: `e2e/financeiro-atritos-da-12.spec.ts` ("A38").
+- **A grade de cartões não deixa um sozinho na linha nem estica os vizinhos**
+  (A37 da 12ª: no Financeiro da rede, o "A pagar" caía sozinho numa segunda
+  linha, e o "Resultado líquido", com a conta embaixo, esticava os outros): os
+  cartões do período numa `.kpi-grid` (4) e os do em aberto numa `.rg-3`, com
+  `alignItems: 'start'`.
+- **Tabela com coluna de ações cabe no cartão** (A36 da 12ª: a 1440 px, as
+  Movimentações da rede passavam do cartão e cortavam "Remarcar vencimento" e
+  "Estornar"): o texto longo (descrição, nome) QUEBRA — até duas linhas, com
+  `-webkit-line-clamp` —, nunca `nowrap`, que faz dele a largura mínima da
+  coluna; e o limite de largura mora num `span` de dentro, porque o `maxWidth`
+  de um `td` a tabela ignora. Prova: `e2e/financeiro-atritos-da-12.spec.ts`
+  ("A36"), medido depois de um estorno (a linha mais longa).
 - **A ação que fecha o trabalho de uma tela longa fica à vista no celular**
   (D1 da 10ª): a barra presa no rodapé, com o `safe-area`, abaixo da topbar e
   do Copilot na ordem das camadas, e um espaço no fim da página — como a

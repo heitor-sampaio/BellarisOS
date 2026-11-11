@@ -215,6 +215,8 @@ interface Props {
    * mandar o cliente para a recepção. O mesmo critério de "Confirmar pagamento".
    */
   podeReceber?:          boolean
+  /** A35 da 12ª: quem recebe e não estorna — a quem pedir o estorno (os nomes de quemDesfazNoCaixa). */
+  quemEstorna?:          string[] | null
   /** O pagamento combinado no contrato do procedimento (o recebimento já vem com o meio). */
   pagamentoCombinado?:   { metodo: string | null; rotulo: string } | null
   /**
@@ -1232,7 +1234,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, quemEstorna = null, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
 }: Props) {
   const router   = useRouter()
@@ -2313,6 +2315,13 @@ export function AppointmentSession({
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
                         <FileText size={12} aria-hidden /> Recibo
                       </a>
+                    )}
+                    {/* A35 da 12ª: a recepção não estorna, e a página não dizia a quem pedir (a ficha dizia). */}
+                    {quemEstorna && (
+                      <span data-quem-estorna style={{ display: 'block', width: '100%', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                        Estornar este pagamento é de quem tem o Financeiro em Gerenciar
+                        {quemEstorna.length > 0 ? `: ${quemEstorna.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+                      </span>
                     )}
                   </p>
                 ) : isPartOfPlan ? (

@@ -54,6 +54,8 @@ interface BranchStat {
   /** "Reforça", item 4: os concluídos sem pagamento da unidade. */
   concluidosSemPagamento?: { n: number; valor: number }
   aPagar:      number
+  /** A43 da 12ª: todo o a pagar em aberto da unidade, de qualquer vencimento. */
+  aPagarEmAberto?: number
   /** O próximo vencimento depois do período (A34): "R$ 300,00 em 05/11". */
   proximoAReceber?: ProximoVencimento | null
   proximoAPagar?:   ProximoVencimento | null
@@ -107,6 +109,10 @@ interface AdminTx {
   no_caixa?:    number | null
   fornecedor?:  string | null
   nota_fiscal?: string | null
+  /** A44 da 12ª: a bandeira, o desconto em reais e a profissional — para o CSV da contadora. */
+  cartao_bandeira?:   string | null
+  desconto_valor?:    number | null
+  profissional_nome?: string | null
 }
 
 interface Props {
@@ -129,6 +135,10 @@ interface Props {
   /** "Reforça", item 4: os atendimentos concluídos sem pagamento da rede, separados dos lançamentos. */
   totalConcluidosSemPagamento?: { n: number; valor: number }
   totalAPagar:      number
+  /** A43 da 12ª: todo o a pagar em aberto da rede, de qualquer vencimento (getAPagarEmAberto). */
+  totalAPagarEmAberto?: number
+  /** A43 da 12ª: a lista é todo o a pagar em aberto (`?aberto=a-pagar`). */
+  soAPagar?:        boolean
   /**
    * F2c: o cartão em N vezes que a OPERADORA ainda deposita (a cliente já
    * pagou tudo) — o total das ativas e cada unidade (lib/metrics/operadora).
@@ -262,7 +272,7 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalMovimentacoes,
+  totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, soAPagar = false, totalMovimentacoes,
   aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
@@ -344,6 +354,7 @@ export function AdminFinancialView({
   const vencidas = statDaUnidade ? statDaUnidade.vencidas : totalVencidas
   const concluidosSemPagamento = statDaUnidade ? statDaUnidade.concluidosSemPagamento : totalConcluidosSemPagamento
   const aPagar      = statDaUnidade ? statDaUnidade.aPagar      : totalAPagar
+  const aPagarEmAberto = statDaUnidade ? statDaUnidade.aPagarEmAberto ?? 0 : totalAPagarEmAberto
   const proximoAReceber = statDaUnidade ? statDaUnidade.proximoAReceber ?? null : totalProximoAReceber
   const proximoAPagar   = statDaUnidade ? statDaUnidade.proximoAPagar ?? null   : totalProximoAPagar
   const SEM_OPERADORA: AReceberDaOperadora = { aReceber: 0, aReceberBruto: 0, recebido: 0, emAberto: 0, emAbertoBruto: 0, proximo: null }
@@ -437,8 +448,10 @@ export function AdminFinancialView({
         </div>
       </div>
 
-      {/* KPI Cards consolidados */}
-      <div className="kpi-grid-auto" style={{ gap: 14 }}>
+      {/* KPI Cards consolidados — A37 da 12ª: o resultado do período numa linha (sem esticar
+          os vizinhos do "Resultado líquido", que tem a conta embaixo) e o em aberto noutra,
+          os três juntos (o "A pagar" ficava sozinho numa segunda linha). */}
+      <div className="kpi-grid" style={{ gap: 14, alignItems: 'start' }}>
         <KpiCard
           label={statDaUnidade ? 'Receita da unidade' : 'Receita total'}
           value={fmtBRL(revenue)}
@@ -467,13 +480,15 @@ export function AdminFinancialView({
           value={fmtBRL(commissions)}
           icon={<Users size={16} color="var(--brand)" />}
         />
+      </div>
+      <div className="rg-3" style={{ gap: 14, alignItems: 'start' }}>
         {/* A receber e a pagar (2026-10-21): a unidade mostrava, a rede não. */}
         <KpiCard
           chave="a-receber"
           label="A receber da cliente"
           value={fmtBRL(aReceber)}
           nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
-            hrefDaBaixa={`/admin/financeiro?aberto=todos${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`}
+            hrefDaBaixa={`/admin/financeiro?aberto=todos${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`} podeDarBaixa={canPay}
             vencidas={vencidas} hrefDasVencidas={`/admin/financeiro?aberto=vencidas${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`} />}
           icon={<Clock size={16} color="var(--brand)" />}
         />
@@ -497,7 +512,8 @@ export function AdminFinancialView({
           chave="a-pagar"
           label="A pagar"
           value={fmtBRL(aPagar)}
-          nota={<NotaDoVencimento valor={aPagar} proximo={proximoAPagar} />}
+          nota={<NotaDoVencimento valor={aPagar} proximo={proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
+            hrefDaBaixa={`/admin/financeiro?aberto=a-pagar${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`} />}
           icon={<Clock size={16} color="var(--brand)" />}
         />
       </div>
@@ -607,9 +623,13 @@ export function AdminFinancialView({
       {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
       {soOEmAberto && (
         <p data-so-o-em-aberto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px' }}>
-          {soAsVencidas
-            ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês. Para dar baixa, use “Pagar” na linha.'
-            : 'Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive. Para dar baixa, use “Pagar” na linha.'}{' '}
+          {soAPagar
+            ? 'Todas as contas a pagar em aberto, de qualquer vencimento.'
+            : soAsVencidas
+            ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
+            : 'Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive.'}{' '}
+          {/* A42 da 12ª: a contadora, que só vê, lia "use Pagar na linha" sem botão nenhum. */}
+          {canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) ou o Financeiro em Gerenciar.'}{' '}
           <a href={`/admin/financeiro?period=${period}#movimentacoes`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Voltar ao período</a>
         </p>
       )}
@@ -625,7 +645,7 @@ export function AdminFinancialView({
           {/* A44 da 8ª: o CSV de todas as movimentações do recorte (a tela mostra as 100 primeiras). */}
           <button type="button" className="btn-secondary" disabled={visibleTxs.length === 0} style={{ marginLeft: 'auto' }}
             onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(
-              visibleTxs.map(t => linhaDoLancamento(t, branches.find(b => b.id === t.branch_id)?.name ?? null)), { comUnidade: !umaUnidade }))}>
+              visibleTxs.map(t => linhaDoLancamento(t, branches.find(b => b.id === t.branch_id)?.name ?? null))))}>
             <Download size={14} aria-hidden /> Exportar CSV
           </button>
 
@@ -653,7 +673,9 @@ export function AdminFinancialView({
           <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Data', 'Descrição', 'Cliente', 'Unidade', 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
+                {/* A36 da 12ª: a 1440 px a linha cortava "Remarcar vencimento" e "Estornar" —
+                    a coluna Unidade sai na clínica de uma unidade, e as ações quebram a linha. */}
+                {['Data', 'Descrição', 'Cliente', ...(umaUnidade ? [] : ['Unidade']), 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
                   <th key={h} style={{
                     padding: '10px 16px', textAlign: h === 'Valor' ? 'right' : 'left',
                     fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
@@ -686,8 +708,11 @@ export function AdminFinancialView({
                         ? `Vence ${new Date(t.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
                         : new Date(t.data_de_referencia ?? t.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                     </td>
-                    <td data-label="" style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)', maxWidth: 280 }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                    {/* A36 da 12ª: a 1440 px a tabela passava do cartão e cortava as ações. A descrição
+                        quebra em até duas linhas (o nowrap fazia dela a largura mínima da coluna), e o
+                        limite mora no span — o maxWidth do td a tabela ignora. */}
+                    <td data-label="" style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)' }}>
+                      <span title={t.description || undefined} style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxWidth: 280, overflowWrap: 'anywhere' }}>
                         {t.description || '—'}
                       </span>
                       {/* A52: o contra-lançamento diz o que é — não é despesa, anula a receita.
@@ -701,10 +726,10 @@ export function AdminFinancialView({
                         <span data-motivo-do-estorno style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Motivo: {t.estorno_motivo}</span>
                       )}
                     </td>
-                    <td data-label="Cliente" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: t.clienteNome ? 'var(--text)' : 'var(--text-faint)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t.clienteNome ?? '—'}
+                    <td data-label="Cliente" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: t.clienteNome ? 'var(--text)' : 'var(--text-faint)' }}>
+                      <span style={{ display: 'block', maxWidth: 200 }}>{t.clienteNome ?? '—'}</span>
                     </td>
-                    <td data-label="Unidade" data-par style={{ padding: '11px 16px' }}>
+                    {!umaUnidade && <td data-label="Unidade" data-par style={{ padding: '11px 16px' }}>
                       <span style={{
                         fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-field-token)',
                         background: 'var(--bg-app)', color: 'var(--text-muted)',
@@ -712,7 +737,7 @@ export function AdminFinancialView({
                       }}>
                         {t.branchName}
                       </span>
-                    </td>
+                    </td>}
                     <td data-label="Método" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                       {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes)
                         // A23 da 10ª: o R$ 0 pago todo com o voucher ou os pontos diz isso.
@@ -761,8 +786,8 @@ export function AdminFinancialView({
                     </td>
 
                     {/* Receber e estornar sem sair do portal da rede. */}
-                    <td data-label="" style={{ padding: '11px 16px' }}>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <td data-label="" style={{ padding: '11px 16px', width: 1 }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap', minWidth: 120 }}>
                         {!t.is_paid && !estornada && canPay && (
                           <button type="button" onClick={() => t.type === 'INCOME' && (temBandeira(t.payment_method) || !t.payment_method)
                             ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method ?? null, valor: Number(t.amount) })

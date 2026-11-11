@@ -54,6 +54,7 @@ import { avisoDoMenor, ehMenorDeIdade, linhaDoResponsavel, type ResponsavelLegal
 import { documentoDoAcesso } from '@/lib/clients/documento-do-acesso'
 import { SituacaoDoEmAberto } from '@/components/shared/situacao-do-em-aberto'
 import { RemarcarVencimento } from '@/components/shared/remarcar-vencimento'
+import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
@@ -171,6 +172,10 @@ export interface ProfileTransaction {
   saida?:        boolean
   /** O número da parcela do crediário (a ordem da ficha — D7 da 10ª). */
   parcela?:      number | null
+  /** A32 da 12ª: o estorno pela ficha abre a janela certa — a venda de produto, a do crédito na clínica, o atendimento. */
+  vendaDeProduto?: boolean
+  vendaDeCredito?: boolean
+  doAtendimento?:  boolean
 }
 
 export interface ProfileInternalCredit {
@@ -330,6 +335,10 @@ interface Props {
   quemDesfaz?:           string[] | null
   /** A22 da 10ª: quem remarca o vencimento (o Financeiro em Gerenciar, sem "só os meus") o faz aqui também. */
   podeRemarcar?:         boolean
+  /** A32 da 12ª: o estorno também na ficha (o Financeiro em Gerenciar). */
+  podeEstornar?:         boolean
+  /** A35 da 12ª: a recepção recebe a parcela em aberto na ficha (Recebimentos). */
+  podeReceberParcela?:   boolean
   /** A43 da 8ª: o que ela pagou com crédito na clínica (não é receita: o LTV não conta). */
   pagoComCredito?:       number
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
@@ -1263,6 +1272,8 @@ function FinanceiroTab({
   quemDesfaz = null,
   pagoComCredito = 0,
   podeRemarcar = false,
+  podeEstornar = false,
+  podeReceberParcela = false,
 }: {
   transactions:    ProfileTransaction[]
   internalCredits: ProfileInternalCredit[]
@@ -1285,6 +1296,10 @@ function FinanceiroTab({
   pagoComCredito?: number
   /** A22 da 10ª: "Remarcar vencimento" também na parcela da ficha. */
   podeRemarcar?:   boolean
+  /** A32 da 12ª: "Estornar" na linha paga. */
+  podeEstornar?:   boolean
+  /** A35 da 12ª: "Receber" na parcela em aberto. */
+  podeReceberParcela?: boolean
 }) {
   const [showGrantForm, setShowGrantForm] = useState(false)
 
@@ -1423,6 +1438,10 @@ function FinanceiroTab({
                         {podeRemarcar && !t.isPaid && !t.estornada && !t.estorno && !t.saida && (
                           <RemarcarVencimento lancamento={{ id: t.id, descricao: t.description, valor: t.amount, vencimento: t.dueDate }} />
                         )}
+                        {/* A32 e A35 da 12ª: estornar e receber sem sair da ficha (no celular, era a página de 20 mil px). */}
+                        <AcoesDoLancamentoDaFicha slug={slug} podeEstornar={podeEstornar} podeReceber={podeReceberParcela}
+                          lancamento={{ id: t.id, descricao: t.description, valor: t.amount, pago: t.isPaid, estornada: t.estornada, estorno: t.estorno, saida: t.saida,
+                            metodo: t.paymentMethod, vendaDeProduto: t.vendaDeProduto, vendaDeCredito: t.vendaDeCredito, doAtendimento: t.doAtendimento }} />
                         {/* r2-ven-13: o recibo do pago (PDF), onde a recepção procura. Quem só vê
                             o dela não tira recibo (a rota pede quem recebe ou vê a unidade inteira). */}
                         {t.isPaid && !t.estornada && !t.estorno && !t.saida && !soOsProprios && (
@@ -1516,7 +1535,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
+  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -2334,6 +2353,8 @@ export function ClientProfile({
           quemDesfaz={quemDesfaz}
           pagoComCredito={pagoComCredito}
           podeRemarcar={podeRemarcar}
+          podeEstornar={podeEstornar}
+          podeReceberParcela={podeReceberParcela}
         />
       )}
 

@@ -9,7 +9,7 @@ import { diaDoFechamento, janelaDoDia, diaAindaAberto } from '@/lib/financeiro/f
 import { normalizarHorario } from '@/lib/agenda/horario'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FechamentoDoDiaTela, type FechamentoFeito } from '@/components/shared/fechamento-do-dia-tela'
-import { getEstornosDoDia, getFechamentoPorQuemRecebeu, type MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
+import { getEstornosDoDia, getFechamentoPorQuemRecebeu, getFechamentoPorBandeira, type MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
 
 /**
  * O fechamento do dia, o corpo dos dois portais (2026-10-21, decisão do
@@ -28,7 +28,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
 }) {
   const dia = diaDoFechamento(diaPedido)
   const janela = janelaDoDia(dia)!
-  const [resumo, aReceber, feitos, emAberto, unidade, operadora, estornos, porQuemRecebeu] = await Promise.all([
+  const [resumo, aReceber, feitos, emAberto, unidade, operadora, estornos, porQuemRecebeu, bandeiras] = await Promise.all([
     getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to, dia }),
     // Os concluídos a receber da unidade, de qualquer dia (D5, 2026-10-27):
     // o que ficou sem pagamento ontem continua aqui até alguém receber.
@@ -50,6 +50,8 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
     getEstornosDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to }),
     // A40 da 11ª: com duas recepcionistas, cada uma precisa saber o que entrega.
     getFechamentoPorQuemRecebeu({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to }),
+    // A44 da 12ª: o cartão do dia por bandeira (a contadora concilia com a operadora assim).
+    getFechamentoPorBandeira({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to }),
   ])
   // Quem informou o fundo de troco do dia (ven-03), para a tela dizer.
   const fundo = resumo.fundoDeTroco != null
@@ -91,6 +93,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
         podeFechar={podeReceber(ctx)}
         estornos={estornos}
         porQuemRecebeu={porQuemRecebeu}
+        bandeiras={bandeiras}
         daRede={daRede}
         ehHoje={dia === diaDoFechamento(undefined)}
         aReceber={aReceber}

@@ -1,4 +1,4 @@
-import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { rotuloDaForma, nomeDaBandeira } from '@/lib/financeiro/formas'
 
 /**
  * O CSV das movimentações do Financeiro (A44 da 8ª simulação, 2026-11-06: a
@@ -42,6 +42,15 @@ export interface LinhaDoCsv {
    * estorno nem estornado.
    */
   noCaixa?:    number | null
+  /**
+   * A44 da 12ª simulação (2026-11-11): o que a Ivone, a contadora, precisava
+   * para conciliar com a operadora e fechar o mês — a bandeira do cartão, o
+   * desconto da venda (em reais), quem atendeu ou vendeu (a profissional) e a
+   * unidade (sempre, também na clínica de uma só).
+   */
+  bandeira?:     string | null
+  desconto?:     number | null
+  profissional?: string | null
 }
 
 const SITUACAO: Record<LinhaDoCsv['situacao'], string> = { PAGO: 'Pago', EM_ABERTO: 'Em aberto', ESTORNADO: 'Estornado' }
@@ -56,18 +65,23 @@ const dia = (iso: string | null | undefined) => iso
   ? new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso))
   : ''
 
-export function csvDosLancamentos(linhas: LinhaDoCsv[], opcoes: { comUnidade?: boolean } = {}): string {
-  const cabecalho = ['Data', 'Descrição', 'Cliente', ...(opcoes.comUnidade ? ['Unidade'] : []), 'Categoria', 'Tipo', 'Forma', 'Situação', 'Valor', 'Conta no caixa',
-    'Taxa da maquininha', 'Líquido', 'Vencimento', 'Pago em', 'Fornecedor', 'Nota fiscal']
+// A44 da 12ª: a Unidade sai sempre (também na clínica de uma unidade), e o
+// fornecedor e a nota dizem no cabeçalho que são opcionais (saíam vazios sem dizer).
+export function csvDosLancamentos(linhas: LinhaDoCsv[]): string {
+  const cabecalho = ['Data', 'Descrição', 'Cliente', 'Unidade', 'Profissional', 'Categoria', 'Tipo', 'Forma', 'Bandeira', 'Situação', 'Valor', 'Conta no caixa',
+    'Desconto', 'Taxa da maquininha', 'Líquido', 'Vencimento', 'Pago em', 'Fornecedor (se informado)', 'Nota fiscal (se informada)']
   const corpo = linhas.map(l => {
     const sinal = l.tipo === 'EXPENSE' ? -1 : 1
     const conta = l.noCaixa !== undefined ? l.noCaixa != null : l.situacao === 'PAGO' && !l.estorno
     const centavos = l.noCaixa != null ? Math.round(l.noCaixa * 100) : Math.round(l.valor * 100) * sinal
     return [
-      dia(l.data), l.descricao, l.cliente ?? '', ...(opcoes.comUnidade ? [l.unidade ?? ''] : []), l.categoria ?? '',
+      dia(l.data), l.descricao, l.cliente ?? '', l.unidade ?? '', l.profissional ?? '', l.categoria ?? '',
       l.estorno ? 'Estorno' : l.tipo === 'EXPENSE' ? 'Despesa' : 'Receita',
-      l.forma ? rotuloDaForma(l.forma, l.vezes) : '', SITUACAO[l.situacao],
+      l.forma ? rotuloDaForma(l.forma, l.vezes) : '',
+      (l.forma === 'CREDIT_CARD' || l.forma === 'DEBIT_CARD') && l.bandeira ? nomeDaBandeira(l.bandeira) : '',
+      SITUACAO[l.situacao],
       (centavos / 100).toFixed(2).replace('.', ','), conta ? 'Sim' : 'Não',
+      l.desconto && l.desconto > 0 ? reais(l.desconto) : '',
       reais(l.taxa), reais(l.liquido), dia(l.vencimento), l.situacao === 'EM_ABERTO' ? '' : dia(l.pagoEm),
       l.fornecedor ?? '', l.nota ?? '',
     ].map(v => campo(String(v)))
@@ -93,16 +107,18 @@ export function baixarCsv(nome: string, csv: string) {
 /** Um lançamento da lista do Financeiro (os dois portais) na linha do CSV. */
 export function linhaDoLancamento(t: {
   data_de_referencia?: string | null; created_at: string; description: string; category: string | null; type: string
-  payment_method: string | null; cartao_vezes?: number | null; is_paid: boolean; notes: string | null; amount: number | string
+  payment_method: string | null; cartao_vezes?: number | null; cartao_bandeira?: string | null; is_paid: boolean; notes: string | null; amount: number | string
   cliente?: { name: string } | null
   due_date?: string | null; paid_at?: string | null; fornecedor?: string | null; nota_fiscal?: string | null
   taxa?: number | null; liquido?: number | null; no_caixa?: number | null
+  desconto_valor?: number | null; profissional_nome?: string | null; unidade_nome?: string | null
 }, unidade?: string | null): LinhaDoCsv {
   return {
     data: t.data_de_referencia ?? t.created_at, descricao: t.description, cliente: t.cliente?.name ?? null,
     categoria: t.category, tipo: t.type, forma: t.payment_method, vezes: t.cartao_vezes ?? null,
     situacao: t.notes === 'Estornada' ? 'ESTORNADO' : t.is_paid ? 'PAGO' : 'EM_ABERTO',
-    valor: Number(t.amount), estorno: t.category === 'Estorno', unidade: unidade ?? null,
+    valor: Number(t.amount), estorno: t.category === 'Estorno', unidade: unidade ?? t.unidade_nome ?? null,
+    bandeira: t.cartao_bandeira ?? null, desconto: t.desconto_valor ?? null, profissional: t.profissional_nome ?? null,
     taxa: t.taxa ?? null, liquido: t.liquido ?? null, vencimento: t.due_date ?? null, pagoEm: t.paid_at ?? null,
     fornecedor: t.fornecedor ?? null, nota: t.nota_fiscal ?? null,
     ...(t.no_caixa !== undefined ? { noCaixa: t.no_caixa } : {}),

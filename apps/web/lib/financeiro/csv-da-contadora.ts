@@ -1,4 +1,4 @@
-import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
+import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 
 /**
  * O DRE e o Fechamento do dia em CSV (A31 da 10ª simulação, 2026-11-10: a
@@ -64,7 +64,20 @@ export interface FechamentoParaCsv {
   estornos: { descricao: string; forma: string | null; vezes: number | null; valor: number; motivo: string | null; pagoEm?: string | null; mesmoDia?: boolean }[]
   /** A40 e A44 da 11ª: as entradas de cada pessoa que recebeu, por forma (o CSV só trazia as formas). */
   porQuemRecebeu?: { pessoa: string | null; nome: string | null; formas: { forma: string; entradas: number; lancamentos: number }[]; total: { entradas: number; lancamentos: number } }[]
+  /** A44 da 12ª: cada bandeira do cartão (a Ivone concilia com a operadora por bandeira). */
+  bandeiras?: { forma: string; bandeira: string | null; entradas: number; saidas: number }[]
+  /** A47 da 12ª: o último fechamento do dia, ou nulo — "Ainda não fechado". */
+  fechado?: { quem: string | null; quando: string; diferenca: number } | null
 }
+
+const hora = (iso: string) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+
+/** A47 da 12ª: "Ainda não fechado" ou "Fechado por Cláudia em 11/11/2026 às 01:51" — a tela e o CSV dizem o mesmo. */
+export function situacaoDoFechamento(f: { quem: string | null; quando: string } | null | undefined): string {
+  return f ? `Fechado por ${f.quem ?? '—'} em ${dia(f.quando)} às ${hora(f.quando)}` : 'Ainda não fechado'
+}
+
+const diferencaEmTexto = (v: number) => v === 0 ? 'Bateu' : `${v < 0 ? 'Faltou' : 'Sobrou'} ${reais(Math.abs(v))}`
 
 /** O Fechamento do dia: as formas, o total, o dinheiro esperado e os estornos do dia. */
 export function csvDoFechamento(f: FechamentoParaCsv): string {
@@ -74,6 +87,13 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
     ...f.formas.map(l => [rotuloDaFormaDoFechamento(l.forma), reais(l.entradas), reais(l.saidas), reais(l.saldo), String(l.lancamentos)]),
     ['Total do dia', reais(f.total.entradas), reais(f.total.saidas), reais(f.total.saldo), String(f.total.lancamentos)],
     ['Dinheiro em espécie esperado', reais(f.esperadoDinheiro)],
+    ...(f.fechado !== undefined ? [['Situação do dia', situacaoDoFechamento(f.fechado), ...(f.fechado ? [diferencaEmTexto(f.fechado.diferenca)] : [])]] : []),
+    ...(f.bandeiras?.length ? [
+      [],
+      ['Cartão por bandeira'],
+      ['Forma e bandeira', 'Entradas', 'Saídas', 'Saldo'],
+      ...f.bandeiras.map(b => [`${rotuloDaFormaDoFechamento(b.forma)} · ${nomeDaBandeira(b.bandeira)}`, reais(b.entradas), reais(b.saidas), reais(b.entradas - b.saidas)]),
+    ] : []),
     [],
     ['Estornos do dia'],
     ['Descrição', 'Forma', 'Valor', 'Motivo', 'Pagamento de', 'Nas saídas do dia'],

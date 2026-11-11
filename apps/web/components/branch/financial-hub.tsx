@@ -91,6 +91,10 @@ interface Props {
   soOEmAberto?:     boolean
   /** D13 da 9ª: a lista é só das VENCIDAS (`?aberto=vencidas`). */
   soAsVencidas?:    boolean
+  /** A43 da 12ª: a lista é todo o a pagar em aberto (`?aberto=a-pagar`). */
+  soAPagar?:        boolean
+  /** A43 da 12ª: todo o a pagar em aberto da unidade, de qualquer vencimento. */
+  aPagarEmAberto?:  number
   /** D13 da 9ª: o a receber da cliente que já venceu (getAReceberVencido). */
   vencidas?:        AReceberVencido
   /** A44 da 8ª: o nome do CSV das movimentações (o recorte da lista). */
@@ -522,7 +526,7 @@ export function FinancialHub({
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
-  transactions, soOEmAberto = false, soAsVencidas = false, vencidas, nomeDoCsv, serie, emAberto, aPagarAnterior,
+  transactions, soOEmAberto = false, soAsVencidas = false, soAPagar = false, aPagarEmAberto = 0, vencidas, nomeDoCsv, serie, emAberto, aPagarAnterior,
   commissions,
   canReverse,
   canWrite,
@@ -708,7 +712,7 @@ export function FinancialHub({
         <KpiCardFull
           chave="a-receber"
           nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
-            hrefDaBaixa={`/${slug}/financeiro?aberto=todos#lancamentos`}
+            hrefDaBaixa={`/${slug}/financeiro?aberto=todos#lancamentos`} podeDarBaixa={canPay}
             vencidas={vencidas} hrefDasVencidas={`/${slug}/financeiro?aberto=vencidas#lancamentos`} />}
           label="A receber da cliente"
           curr={pendingIncome} prev={prevPendingIncome}
@@ -736,7 +740,8 @@ export function FinancialHub({
         />
         <KpiCardFull
           chave="a-pagar"
-          nota={<NotaDoVencimento valor={pendingExpense} proximo={emAberto.proximoAPagar} />}
+          nota={<NotaDoVencimento valor={pendingExpense} proximo={emAberto.proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
+            hrefDaBaixa={`/${slug}/financeiro?aberto=a-pagar#lancamentos`} />}
           label="A Pagar"
           curr={pendingExpense} prev={prevPendingExpense}
           icon={<Clock size={13} style={{ color: 'var(--warning)' }} />}
@@ -843,9 +848,13 @@ export function FinancialHub({
         {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
         {soOEmAberto && (
           <p data-so-o-em-aberto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', marginBottom: 12 }}>
-            {soAsVencidas
-              ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês. Para dar baixa, use “Pagar” na linha.'
-              : 'Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive. Para dar baixa, use “Pagar” na linha.'}{' '}
+            {soAPagar
+              ? 'Todas as contas a pagar em aberto, de qualquer vencimento.'
+              : soAsVencidas
+              ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
+              : 'Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive.'}{' '}
+            {/* A42 da 12ª: quem só vê o financeiro não tem o "Pagar" na linha. */}
+            {canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) no cargo.'}{' '}
             <a href={`/${slug}/financeiro?period=${period}#lancamentos`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Voltar ao período</a>
           </p>
         )}

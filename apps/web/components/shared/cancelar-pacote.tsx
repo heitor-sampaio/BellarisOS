@@ -140,7 +140,8 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
                 {doPlano
                   ? <>O valor das restantes é o preço de cada sessão no plano ({formatBRL(previa.preco)} no total, com o desconto); a feita vale o dela, sem multa.</>
                   : <>O valor das restantes é a parte de cada uma no preço do pacote ({formatBRL(previa.preco)}, com o desconto).</>}
-                Usado: {formatBRL(previa.usado)}.
+                {/* A34 da 12ª: "sem multa.Usado" — as duas frases colavam. */}
+                {' '}Usado: {formatBRL(previa.usado)}.
               </p>
               <div style={linha}><span>Pago</span><span style={valor}>{formatBRL(previa.pago)}</span></div>
               {previa.aReceber > 0 && (

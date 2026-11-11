@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
+import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 import { documentosDoAgendamento, pagamentoCombinadoDoAtendimento } from '@/lib/documentos/leitura'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
@@ -648,6 +649,8 @@ export async function SessaoDeAtendimento({
         pacoteDeFora={!!(sessaoDePacote as { client_packages?: { de_fora?: boolean | null } | null } | null)?.client_packages?.de_fora}
         isPrePago={!!unidadePrePaga}
         podeReceber={podeReceber(ctx)}
+        // A35 da 12ª: quem recebe e não estorna lê, no pagamento confirmado, a quem pedir.
+        quemEstorna={podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? await quemDesfazNoCaixa(ctx.tenantId!, branchId) : null}
         pagamentoCombinado={canPayment ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, appointment.id) : null}
         abrirRecebimento={abrirRecebimento}
         planoEmAberto={planoEmAberto}

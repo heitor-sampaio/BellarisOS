@@ -103,6 +103,8 @@ test('D5 e D4: cancelar relê o plano na hora, e o cancelado é só leitura, com
     await p.locator('[data-cancelar-plano]').click()
     const dlg = p.getByRole('dialog', { name: 'Cancelar plano' })
     await expect(dlg.locator('[data-conta-do-cancelamento]')).toBeVisible()
+    // A34 da 12ª: "sem multa.Usado" — a frase colava na outra.
+    await expect(dlg.locator('[data-conta-do-cancelamento]')).toContainText('sem multa. Usado:')
     await dlg.getByLabel('Motivo do cancelamento *').fill('Mudou de cidade')
     await dlg.getByRole('radio', { name: /Crédito na clínica/ }).check()
     await dlg.getByRole('button', { name: 'Cancelar plano' }).click()

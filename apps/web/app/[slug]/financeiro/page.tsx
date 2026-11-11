@@ -9,7 +9,8 @@ import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { dayKeyTZ } from '@/lib/datetime'
 import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
-import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar, getEmAberto, getTicketMedio, getResultadoDoEstoque, getAReceberEmAberto } from '@/lib/metrics'
+import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar, getEmAberto, getTicketMedio, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto } from '@/lib/metrics'
+import { extrasDoCsv, type LancamentoParaOCsv } from '@/lib/financeiro/extras-do-csv'
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
@@ -36,7 +37,9 @@ export default async function FinancialPage({
   /** A38 da 8ª: a lista de todo o a receber em aberto, de qualquer vencimento. */
   // D13 da 9ª: ou só as VENCIDAS (o vencimento antes de hoje), de qualquer mês.
   const soAsVencidas = sp.aberto === 'vencidas'
-  const soOEmAberto = sp.aberto === 'todos' || soAsVencidas
+  // A43 da 12ª: ou todo o A PAGAR em aberto, de qualquer vencimento (a despesa).
+  const soAPagar = sp.aberto === 'a-pagar'
+  const soOEmAberto = sp.aberto === 'todos' || soAsVencidas || soAPagar
   // Janela no fuso do negócio e período anterior de mesma duração decorrida.
   const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
     resolvePeriod(period, sp.from, sp.to)
@@ -101,7 +104,7 @@ export default async function FinancialPage({
   function doPeriodo(de: number, ate: number) {
     return supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, cartao_vezes, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno')
+    .select('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno')
     .eq('branch_id', unidadeId)
     .or(soOEmAberto ? 'notes.is.null,notes.neq.Estornada' : 'is_paid.eq.true,amount.neq.0')
     // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
@@ -111,7 +114,7 @@ export default async function FinancialPage({
     // "agora" (o relógio do Postgres está à frente do do app).
     .gte(soOEmAberto ? 'amount' : 'data_de_referencia', soOEmAberto ? 0.01 : start.toISOString())
     .lte('data_de_referencia', soOEmAberto ? '9999-12-31' : fimDoPeriodo.toISOString())
-    .in('type', soOEmAberto ? ['INCOME'] : ['INCOME', 'EXPENSE'])
+    .in('type', soAPagar ? ['EXPENSE'] : soOEmAberto ? ['INCOME'] : ['INCOME', 'EXPENSE'])
     .in('is_paid', soOEmAberto ? [false] : [true, false])
     .order('data_de_referencia', { ascending: soOEmAberto }).order('id')
     .range(de, ate)
@@ -127,9 +130,13 @@ export default async function FinancialPage({
   // O desconto embaixo do valor (fin-01).
   const descontos = await descontosDosLancamentos(lancamentos ?? [])
   // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
-  const [semDinheiro, taxas] = await Promise.all([
+  // A44 da 12ª: o desconto em reais e a profissional de cada lançamento, para o CSV;
+  // A43: todo o a pagar em aberto da unidade.
+  const [semDinheiro, taxas, extras, aPagarEmAberto] = await Promise.all([
     pagosSemDinheiro((lancamentos ?? []) as LancamentoSemDinheiro[]),
     getTaxaDosLancamentos(ctx.tenantId!, (lancamentos ?? []).map(t => t.id as string)),
+    extrasDoCsv(ctx.tenantId!, (lancamentos ?? []) as unknown as LancamentoParaOCsv[]),
+    getAPagarEmAberto({ tenantId: ctx.tenantId!, branchIds: [unidadeId] }),
   ])
   const transactions = (lancamentos ?? []).map(({ client_id, ...t }) => ({
     ...t,
@@ -142,6 +149,9 @@ export default async function FinancialPage({
     liquido: taxas[t.id as string]?.liquido ?? null,
     // D9 e A45 da 12ª: o que ele conta no caixa (do banco; nulo = não conta).
     no_caixa: taxas[t.id as string]?.noCaixa ?? null,
+    desconto_valor: extras[t.id as string]?.desconto ?? null,
+    profissional_nome: extras[t.id as string]?.profissional ?? null,
+    unidade_nome: branch.name as string,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
     vencida: !t.is_paid && situacaoDoVencimento(t.due_date as string | null) === 'VENCIDA',
     cliente: client_id && nomes.clientes[client_id] ? { name: nomes.clientes[client_id] } : null,
@@ -219,6 +229,8 @@ export default async function FinancialPage({
         transactions={transactions as unknown as Props['transactions']}
         soOEmAberto={soOEmAberto}
         soAsVencidas={soAsVencidas}
+        soAPagar={soAPagar}
+        aPagarEmAberto={aPagarEmAberto.total}
         vencidas={vencidas.total}
         nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start), dayKeyTZ(fimDoPeriodo))}
         serie={serie}

@@ -8,9 +8,9 @@ import { fecharODia, informarFundoDeTroco } from '@/actions/fechamento'
 import { SegSelect } from '@/components/shared/seg-select'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
-import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa } from '@/lib/metrics/fechamento-extra'
+import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
-import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
+import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
 import { parseDinheiro } from '@estetica-os/utils'
 import { csvDoFechamento } from '@/lib/financeiro/csv-da-contadora'
@@ -45,7 +45,7 @@ export interface OperadoraNoFechamento {
   link:     string | null
 }
 
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, operadora = null, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null, estornos = null, porQuemRecebeu = [], daRede = null, ehHoje = true }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, operadora = null, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null, estornos = null, porQuemRecebeu = [], daRede = null, ehHoje = true, bandeiras = [] }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -78,6 +78,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   daRede?: { unidades: MovimentoDaUnidade[]; total: { entradas: number; saidas: number; lancamentos: number } } | null
   /** O dia aberto é hoje (A48: o "a receber" é sempre o de hoje, de qualquer dia). */
   ehHoje?: boolean
+  /** A44 da 12ª: as linhas de cartão por bandeira (do banco). */
+  bandeiras?: CartaoPorBandeira[]
 }) {
   const router = useRouter()
   const [contado, setContado] = useState('')
@@ -172,6 +174,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           formas: resumo.formas, total: resumo.total, esperadoDinheiro: resumo.esperadoDinheiro,
           estornos: estornos?.itens ?? [],
           porQuemRecebeu,
+          bandeiras,
+          fechado: ultimo ? { quem: ultimo.quem, quando: ultimo.quando, diferenca: ultimo.diferenca } : null,
         }))}>
           Exportar CSV
         </button>
@@ -194,7 +198,16 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                 const total = l.forma === 'TOTAL'
                 return (
                   <tr key={l.forma} data-forma={l.forma} style={{ borderTop: total ? '1px solid var(--border)' : '1px solid var(--hairline)', background: total ? 'var(--bg-app)' : undefined }}>
-                    <td data-label="" style={{ padding: '11px 16px', fontWeight: total ? 800 : 700, color: 'var(--text)' }}>{total ? 'Total do dia' : rotuloDaFormaDoFechamento(l.forma)}</td>
+                    <td data-label="" style={{ padding: '11px 16px', fontWeight: total ? 800 : 700, color: 'var(--text)' }}>
+                      {total ? 'Total do dia' : rotuloDaFormaDoFechamento(l.forma)}
+                      {/* A44 da 12ª: o cartão por bandeira — a Ivone concilia com a operadora assim. */}
+                      {!total && bandeiras.some(b => b.forma === l.forma) && (
+                        <span data-bandeiras-da-forma style={{ display: 'block', fontSize: 'var(--text-xs-sz)', fontWeight: 500, color: 'var(--text-muted)' }}>
+                          {bandeiras.filter(b => b.forma === l.forma)
+                            .map(b => `${nomeDaBandeira(b.bandeira)} ${brl(b.entradas)}${b.saidas > 0 ? ` (saídas ${brl(b.saidas)})` : ''}`).join(' · ')}
+                        </span>
+                      )}
+                    </td>
                     <td data-label="Entradas" data-par style={{ padding: '11px 16px', textAlign: 'right', color: 'var(--success)', fontWeight: 700 }}>{brl(l.entradas)}</td>
                     <td data-label="Saídas" data-par style={{ padding: '11px 16px', textAlign: 'right', color: 'var(--text-muted)' }}>{brl(l.saidas)}</td>
                     <td data-label="Saldo" data-par style={{ padding: '11px 16px', textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl(l.saldo)}</td>
@@ -296,6 +309,13 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
 
         <FundoDeTroco unidadeId={unidadeId} dia={dia} valor={resumo.fundoDeTroco} informado={fundoInformado} podeInformar={podeFechar} />
 
+        {/* A47 da 12ª: o dia que ninguém fechou diz isso (a Ivone não sabia se faltava fechar). */}
+        {!ultimo && (
+          <p data-ainda-nao-fechado style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <Clock size={14} aria-hidden="true" />
+            Ainda não fechado: ninguém fechou este dia.
+          </p>
+        )}
         {ultimo && (
           <p style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             <CheckCircle2 size={14} style={{ color: 'var(--success)' }} />

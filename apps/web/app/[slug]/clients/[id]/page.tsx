@@ -521,6 +521,9 @@ export default async function ClientProfilePage({
       podeVerPlanos={can(ctx, 'agenda', 'VIEW')}
       podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
       podeRemarcar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
+      // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela (Recebimentos) na ficha.
+      podeEstornar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
+      podeReceberParcela={ctx.permissions.cashier === 'MANAGE'}
       quemDesfaz={podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? await quemDesfazNoCaixa(ctx.tenantId!, branch.id as string) : null}
       pagoComCredito={await getPagoComCreditoDoCliente(ctx.tenantId!, id)}
       isNetworkWide={ctx.branchId === null}

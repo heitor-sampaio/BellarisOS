@@ -133,9 +133,11 @@ test('A31: o CSV de lançamentos tem a taxa, o líquido, o vencimento, o pagamen
     const [cabecalho, ...linhas] = csv.replace(/^﻿/, '').split('\r\n')
     expect(cabecalho).toContain('Taxa da maquininha;Líquido')
     expect(cabecalho).toContain('Vencimento;Pago em')
-    expect(cabecalho).toContain('Fornecedor;Nota fiscal')
+    // A44 da 12ª: o fornecedor e a nota dizem que são opcionais.
+    expect(cabecalho).toContain('Fornecedor (se informado);Nota fiscal (se informada)')
     const limpeza = linhas.find(l => l.includes('Limpeza de pele'))!
-    expect(limpeza).toContain('1000,00;20,00;980,00')
+    // Valor; Conta no caixa; Desconto (vazio); Taxa; Líquido (A45 e A44 da 12ª).
+    expect(limpeza).toContain('1000,00;Sim;;20,00;980,00')
     expect(linhas.find(l => l.includes('Folha de novembro'))).toContain('Imobiliária Centro;NF-77')
   })
 })

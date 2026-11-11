@@ -245,6 +245,23 @@ export async function getTicketMedio(args: Args): Promise<{ total: TicketMedio; 
 }
 
 /**
+ * A43 da 12ª simulação (a Ivone): todo o A PAGAR em aberto, de qualquer
+ * vencimento — o espelho de `getAReceberEmAberto` para a despesa
+ * (`metrics_a_pagar_em_aberto`). O cartão "A pagar" diz o número e leva à lista.
+ */
+export async function getAPagarEmAberto(args: { tenantId: string; branchIds?: string[] | null }): Promise<{ total: number; porUnidade: Record<string, number> }> {
+  const { data, error } = await createAdminClient().rpc('metrics_a_pagar_em_aberto', {
+    p_tenant: args.tenantId, p_branch_ids: args.branchIds ?? null,
+  })
+  logRpcError('metrics_a_pagar_em_aberto', error)
+  const linhas = (data as Record<string, unknown>[] | null) ?? []
+  return {
+    total: n(linhas.find(r => r.branch_id == null)?.valor),
+    porUnidade: Object.fromEntries(linhas.filter(r => r.branch_id != null).map(r => [String(r.branch_id), n(r.valor)])),
+  }
+}
+
+/**
  * "Em aberto, todos os vencimentos" (D-14, decisão do Heitor de 2026-10-29):
  * TODO o a receber em aberto, de qualquer vencimento — o conjunto do "A
  * receber" de `metrics_em_aberto`, sem a janela (`metrics_a_receber_em_aberto`).

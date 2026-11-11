@@ -15,7 +15,7 @@ const diaCurto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
  * Os números vêm de `getEmAberto` e `getAReceberEmAberto` (lib/metrics); aqui
  * só se escreve.
  */
-export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas, bruto }: {
+export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas, bruto, podeDarBaixa = true, despesa = false }: {
   valor: number
   proximo: ProximoVencimento | null
   /** Todo o em aberto, de qualquer vencimento (só no "A receber"). */
@@ -39,6 +39,13 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
    * o bruto vai ao lado, do período e de todo o em aberto.
    */
   bruto?: { periodo: number; emAberto: number }
+  /**
+   * A42 da 12ª: quem só VÊ o financeiro (a contadora) não tem o "Pagar" na
+   * linha — o link diz "Ver a lista", não "Ver e dar baixa".
+   */
+  podeDarBaixa?: boolean
+  /** A43 da 12ª: o "A pagar" (a despesa em aberto): "Ver e pagar". */
+  despesa?: boolean
 }) {
   return (
     <span>
@@ -60,7 +67,7 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
           Em aberto, todos os vencimentos: <strong>{formatBRL(emAbertoTotal)}{bruto ? ' líquido' : ''}</strong>
           {bruto && <> ({formatBRL(bruto.emAberto)} bruto)</>}
           {hrefDaBaixa && emAbertoTotal > 0 && (
-            <> · <a href={hrefDaBaixa} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>Ver e dar baixa</a></>
+            <> · <a href={hrefDaBaixa} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>{podeDarBaixa ? (despesa ? 'Ver e pagar' : 'Ver e dar baixa') : 'Ver a lista'}</a></>
           )}
         </span>
       )}

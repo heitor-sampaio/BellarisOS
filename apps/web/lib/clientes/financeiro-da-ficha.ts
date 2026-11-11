@@ -39,6 +39,7 @@ type Linha = {
   cartao_vezes: number | null; cartao_bandeira: string | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null
   notes: string | null; category: string | null; appointment_id: string | null; parcela_numero: number | null
   product_sale_id: string | null
+  credito_vendido_id: string | null
   appointment: { scheduled_at: string; professional_id: string | null; procedures: { name: string } | null } | null
 }
 
@@ -54,7 +55,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   const [linhas, totaisRaw, aReceber, creditos] = await Promise.all([
     lerTodas<unknown>((de, ate) => {
       let q = admin.from('financial_transactions')
-        .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, product_sale_id,
+        .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, product_sale_id, credito_vendido_id,
           branches!inner(tenant_id),
           appointment:appointments!financial_transactions_appointment_id_fkey${meu ? '!inner' : ''}(scheduled_at, professional_id, procedures(name))`)
         .eq('client_id', clientId).eq('branches.tenant_id', ctx.tenantId!)
@@ -98,6 +99,10 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     estorno:       l.category === 'Estorno',
     saida:         l.type === 'EXPENSE',
     parcela:       l.parcela_numero,
+    // A32 da 12ª: o estorno pela ficha abre a janela certa.
+    vendaDeProduto: !!l.product_sale_id,
+    vendaDeCredito: !!l.credito_vendido_id,
+    doAtendimento:  !!l.appointment_id,
   })))
 
   return {

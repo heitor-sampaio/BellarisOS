@@ -849,6 +849,13 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     As saídas e os estornos ficam no total da unidade. O CSV do Fechamento traz
     a seção "Por quem recebeu" (A44 da 11ª: só trazia as formas). Prova:
     `e2e/financeiro-atritos-da-11.spec.ts` ("A40"), `tests/csv-da-contadora.test.ts`.
+  - **O dia que ninguém fechou diz "Ainda não fechado"** (A47 da 12ª
+    simulação, 2026-11-11; princípio 3: a Ivone não sabia se o dia faltava
+    fechar): "Ainda não fechado: ninguém fechou este dia."
+    (`[data-ainda-nao-fechado]`), para quem fecha e para quem só vê; o CSV do
+    Fechamento traz "Situação do dia" ("Ainda não fechado" ou "Fechado por
+    Cláudia em 11/11/2026 às 01:51; Bateu", `situacaoDoFechamento`). Prova:
+    `e2e/financeiro-atritos-da-12.spec.ts` ("A47").
   - Prova: `e2e/fechamento-do-dia.spec.ts`.
 - **O atendimento CONCLUÍDO a receber tem porta e lista** (D5 da simulação
   de 2026-10-27, decisões do Heitor). A conta é UMA, no banco
@@ -998,6 +1005,16 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   abre a lista com TODO o a receber em aberto, de qualquer vencimento
   (`?aberto=todos`, `[data-so-o-em-aberto]`, nos dois financeiros), com o
   "Pagar" na linha e "Voltar ao período". O período da lista não mudou.
+  **A quem só vê, "Ver a lista"** (A42 da 12ª simulação, 2026-11-11; princípio
+  3: a Ivone, contadora, lia "Ver e dar baixa" e "use “Pagar” na linha" sem
+  botão nenhum): sem a baixa (`canPay`), o link é "Ver a lista" e a faixa diz
+  "Dar baixa é de quem tem Recebimentos (o caixa)…" (`NotaDoVencimento
+  podeDarBaixa`). **E o a PAGAR também** (A43 da 12ª): o cartão "A pagar" diz
+  "Em aberto, todos os vencimentos: R$ 5.200,00 · Ver e pagar" (ou "Ver a
+  lista") — `metrics_a_pagar_em_aberto` → `getAPagarEmAberto` (migration
+  `20261111006103`), o espelho do a receber —, que abre a lista de toda conta a
+  pagar em aberto, de qualquer mês (`?aberto=a-pagar`, nos dois financeiros).
+  Prova: `e2e/financeiro-atritos-da-12.spec.ts` ("A42 e A43").
 - **A parcela VENCIDA tem nome, filtro e aviso** (D13 da 9ª simulação,
   2026-11-07; decidido pelo princípio 3): a 1ª parcela da Mariana venceu em
   05/11 e era "Pendente", igual à que vai vencer, no Financeiro, na ficha, no
@@ -1070,6 +1087,19 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   somar só os "Sim" dá o caixa do período. A taxa e o líquido seguem a mesma
   régua (a taxa do estornado no dia dele, a do estorno negativa no dele). Prova:
   `e2e/financeiro-dinheiro-da-12.spec.ts` ("A45"), `tests/financeiro-csv-dos-lancamentos.test.ts`.
+  **E tem a bandeira, o desconto, a profissional e a unidade** (A44 da 12ª;
+  princípio 3: a Ivone concilia com a operadora por bandeira e fecha o mês com
+  o desconto e quem atendeu): as colunas Unidade (sempre, também na clínica de
+  uma só), Profissional (quem atendeu; na venda, quem vendeu — a coluna
+  Profissional das Vendas), Bandeira (do cartão) e Desconto (em reais: o do
+  avulso no lançamento; o da venda UMA vez, no lançamento do motivo ou no
+  primeiro dela — `extrasDoCsv`, `lib/financeiro/extras-do-csv.ts`), e o
+  fornecedor e a nota dizem "(se informado)". O Fechamento do dia divide o
+  cartão por bandeira ("Cartão de crédito 6x — Visa R$ 630,00 · Mastercard R$
+  600,00", `[data-bandeiras-da-forma]`, `metrics_fechamento_por_bandeira` →
+  `getFechamentoPorBandeira`, migration `20261111006103`; o mesmo conjunto do
+  resumo), e o CSV dele ganha "Cartão por bandeira". Prova:
+  `e2e/financeiro-atritos-da-12.spec.ts` ("A44"), `tests/atritos-da-12-f61.test.ts`.
 - **Os cartões dizem a base** (A24 da 10ª simulação; princípio 3: Faturamento
   − Despesas ≠ Lucro, e pagar as comissões subia as Despesas sem mexer no
   lucro): o cartão das despesas é "Despesas pagas (caixa)" no Financeiro da
@@ -1856,7 +1886,20 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   o Financeiro em Gerenciar: Lúcia, Fernanda." (`[data-quem-desfaz]`) e o cartão
   do pacote, "Cancelar o pacote é de…" — os nomes de `quemDesfazNoCaixa`
   (`lib/equipe/quem-desfaz.ts`: ativos, ao alcance da unidade, e a Admin da
-  rede).
+  rede). **E a tela do atendimento pago também** (A35 da 12ª simulação,
+  2026-11-11: a Heloísa procurou ali): embaixo do "Pagamento confirmado",
+  "Estornar este pagamento é de quem tem o Financeiro em Gerenciar: …"
+  (`[data-quem-estorna]`).
+- **Estornar e receber na própria ficha** (A32 e A35 da 12ª; princípio 3: a
+  Helena, no celular, só achava o estorno em Financeiro → Lançamentos, uma
+  página de 20 mil px; a parcela do crediário na ficha não tinha ação): na aba
+  Financeiro da ficha, o lançamento pago tem "Estornar" para quem estorna (o
+  Financeiro em Gerenciar, sem "só os meus") — a MESMA janela dos financeiros
+  (`ConfirmarEstorno`, com os pontos que saem; a venda de crédito abre a dela) —
+  e a parcela em aberto tem "Receber" para quem recebe (Recebimentos), que
+  pergunta a forma (`ReceberNoCartao`) — `AcoesDoLancamentoDaFicha`
+  (`components/shared/acoes-do-lancamento-da-ficha.tsx`). As actions conferem
+  tudo de novo. Prova: `e2e/financeiro-atritos-da-12.spec.ts` ("A32", "A35").
 - **A venda concluída avisa** (A46 da 8ª): o "Vender" (produto, procedimento e
   pacote) fechava a janela calado; agora "Venda registrada: 2× Sérum —
   R$ 200,00. O recibo fica na aba Financeiro da ficha." (`avisoDaVenda`).
@@ -2052,4 +2095,6 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Somar ENTRADAS a partir de metrics_receitas_pagas sem separar o estorno de outro dia (estorno_de, linha negativa): é saída, não entrada negativa
 ❌ Pôr o estorno de uma DESPESA nos "Estornos do dia" ou com o sinal de devolução à cliente: o dinheiro voltou ao caixa (D3 da 12ª)
 ❌ Somar o "caixa da lista" (ou a coluna do CSV) por uma regra própria: é o no_caixa de metrics_caixa_dos_lancamentos (D9 e A45 da 12ª)
+❌ Pôr o desconto de uma venda em cada parcela do CSV (ele sai UMA vez por venda — extrasDoCsv, A44 da 12ª)
+❌ Dizer "Ver e dar baixa" ou "use Pagar na linha" a quem não tem a baixa (a contadora só vê — A42 da 12ª)
 ```

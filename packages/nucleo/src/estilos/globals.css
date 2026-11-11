@@ -2451,6 +2451,13 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .copilot-botao:hover { background: var(--brand-deep); }
 /* No inbox, o botão sobe: embaixo, à direita, mora o Enviar da conversa. */
 .copilot-botao[data-subir="sim"] { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+/* A38 da 12ª simulação: no computador, o botão cobria o fim da página — o valor
+   da última linha do "Fechar e pagar" e parte do botão dele. Com o botão na
+   tela, o conteúdo ganha embaixo a altura dele e a folga (20 + 46 + 20 px), como
+   no celular (A4 da 10ª, abaixo) — fora do inbox, onde ele já sobe. */
+body:has(.copilot-botao:not([data-subir="sim"])) main {
+  padding-bottom: calc(var(--content-pad-y) + 86px + env(safe-area-inset-bottom, 0px)) !important;
+}
 
 .copilot-painel {
   position: fixed; z-index: var(--z-copilot);

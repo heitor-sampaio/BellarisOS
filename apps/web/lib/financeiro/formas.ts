@@ -39,6 +39,11 @@ const BANDEIRA: Record<string, string> = {
   VISA: 'Visa', MASTERCARD: 'Mastercard', ELO: 'Elo', AMEX: 'Amex', HIPERCARD: 'Hipercard', OUTRAS: 'Outras',
 }
 
+/** "Visa" — ou "Bandeira não informada" (A44 da 12ª: o Fechamento e o CSV por bandeira). */
+export function nomeDaBandeira(bandeira: string | null | undefined): string {
+  return bandeira ? BANDEIRA[bandeira] ?? bandeira : 'Bandeira não informada'
+}
+
 /**
  * A linha do Fechamento do dia (`metrics_fechamento_do_dia`): a chave é a
  * forma, com as vezes do crédito (`CREDIT_CARD:3`). Sem forma, o que os
