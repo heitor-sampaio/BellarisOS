@@ -5,13 +5,15 @@ import { ler, lerTodas } from '@/lib/db'
 import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { textoDoRetorno } from '@/lib/crm/retorno'
+import { FUSOS } from '@/lib/unidades/fuso'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * Os lembretes do CRM (9ª simulação, 2026-11-07), no sino de quem tem o lead.
  * Princípio 6 — nada se move sozinho: só AVISA; o card fica onde está.
  *
  * - A42: o dia do retorno combinado (`leads.retornar_em`) chegou → "Retorno de
- *   hoje: X" (a partir das 7h de Brasília: o cron é de hora em hora, e o aviso
+ *   hoje: X" (a partir das 7h da clínica, F62: o cron é de hora em hora, e o aviso
  *   à meia-noite tocaria o celular de madrugada) ou, passado o dia sem aviso,
  *   "Retorno atrasado: X (10/11)". Uma vez por dia marcado
  *   (`retorno_avisado_em`; trocar a data o zera).
@@ -54,7 +56,14 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
   const agora = new Date()
-  const hoje  = dayKeyTZ(agora)
+  // O "hoje" e as 7h são do relógio da CLÍNICA (F62): o fuso comum das
+  // unidades da rede (sem fuso, o de Brasília). O banco lê até o dia mais
+  // adiantado dos fusos; cada retorno se confere no relógio da rede dele.
+  const hojeMaisAdiante = FUSOS.map(f => dayKeyTZ(agora, f.valor)).sort().at(-1)!
+  const relogioDaRede = async (tenantId: string) => {
+    const fuso = await fusoDaRede(tenantId)
+    return { hoje: dayKeyTZ(agora, fuso), cedo: partsInTZ(agora, fuso).hour < HORA_DO_RETORNO }
+  }
   const bloqueadas = new Map<string, boolean>()
   const bloqueada = async (tenantId: string) => {
     if (!bloqueadas.has(tenantId)) bloqueadas.set(tenantId, await redeEstaBloqueada(tenantId))
@@ -65,15 +74,11 @@ export async function GET(req: NextRequest) {
 
   try {
     // --- A42: os retornos -------------------------------------------------
-    const cedo = partsInTZ(agora).hour < HORA_DO_RETORNO
-    const pendentes = await lerTodas((de, ate) => {
-      let q = admin.from('leads')
-        .select('id, tenant_id, name, owner_id, retornar_em, retornar_obs, crm_stages(outcome)')
-        .not('retornar_em', 'is', null).is('retorno_avisado_em', null).not('owner_id', 'is', null)
-      // Antes das 7h, só o atrasado (o de hoje espera a manhã).
-      q = cedo ? q.lt('retornar_em', hoje) : q.lte('retornar_em', hoje)
-      return q.order('retornar_em').order('id').range(de, ate)
-    }, 'ler os retornos do dia') as unknown as {
+    const pendentes = await lerTodas((de, ate) => admin.from('leads')
+      .select('id, tenant_id, name, owner_id, retornar_em, retornar_obs, crm_stages(outcome)')
+      .not('retornar_em', 'is', null).is('retorno_avisado_em', null).not('owner_id', 'is', null)
+      .lte('retornar_em', hojeMaisAdiante)
+      .order('retornar_em').order('id').range(de, ate), 'ler os retornos do dia') as unknown as {
       id: string; tenant_id: string; name: string; owner_id: string; retornar_em: string; retornar_obs: string | null
       crm_stages: { outcome: string | null } | null
     }[]
@@ -82,6 +87,9 @@ export async function GET(req: NextRequest) {
     for (const l of abertos) {
       const dono = donosDosRetornos.get(l.owner_id)
       if (!dono?.is_active || await bloqueada(l.tenant_id)) continue
+      // Antes das 7h da clínica, só o atrasado (o de hoje espera a manhã).
+      const { hoje, cedo } = await relogioDaRede(l.tenant_id)
+      if (cedo ? l.retornar_em >= hoje : l.retornar_em > hoje) continue
       const meu = await ler(admin.from('leads').update({ retorno_avisado_em: agora.toISOString() })
         .eq('id', l.id).is('retorno_avisado_em', null).eq('retornar_em', l.retornar_em).select('id'), 'reivindicar o retorno')
       if (!meu?.length) continue

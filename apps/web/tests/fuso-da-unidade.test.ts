@@ -121,3 +121,28 @@ describe('a agenda e o agendar no fuso da unidade (F62, fatia 2)', () => {
     expect(foraDoHorarioDaUnidade(ate20, '2026-11-14T23:00:00.000Z', 60)).toBe(true)
   })
 })
+
+describe('o cron no fuso da clínica (F62, fatia 5)', () => {
+  it('as 09:00 e o aniversário da campanha são os do relógio dela', async () => {
+    const { relogioDaCampanha } = await import('@/lib/notifications/relogio-da-campanha')
+    // 12:30 UTC = 09:30 em Brasília, 08:30 em Manaus: a campanha de Manaus ainda espera as 09:00.
+    expect(relogioDaCampanha(new Date('2026-11-11T12:30:00.000Z'), 'America/Manaus').hora).toBe(8)
+    expect(relogioDaCampanha(new Date('2026-11-11T12:30:00.000Z')).hora).toBe(9)
+    // 03:30 UTC do dia 12 = 00:30 do 12 em Brasília, 23:30 do 11 em Manaus: ainda é o aniversário de 11/11 lá.
+    const manaus = relogioDaCampanha(new Date('2026-11-12T03:30:00.000Z'), 'America/Manaus')
+    expect(manaus.hoje).toEqual({ month: 11, day: 11 })
+    expect(manaus.inicioDoDia.toISOString()).toBe('2026-11-11T04:00:00.000Z')
+    expect(manaus.mesmoDia(new Date('2026-11-11T05:00:00.000Z'), new Date('2026-11-12T03:30:00.000Z'))).toBe(true)
+    expect(relogioDaCampanha(new Date('2026-11-12T03:30:00.000Z')).hoje).toEqual({ month: 11, day: 12 })
+  })
+})
+
+describe('a mensagem da automação no fuso da unidade (F62, fatia 5)', () => {
+  it('"seu horário é 14/11/2026 às 09:00" no relógio de Manaus', async () => {
+    const { interpolarTexto } = await import('@/lib/automacoes/variaveis')
+    const ctx = { agendamento: { inicio: '2026-11-14T13:00:00.000Z' } }
+    // Sem fuso, o de Brasília: como era.
+    expect(interpolarTexto('às {{agendamento.inicio}}', ctx)).toBe('às 14/11/2026 às 10:00')
+    expect(interpolarTexto('às {{agendamento.inicio}}', ctx, 'America/Manaus')).toBe('às 14/11/2026 às 09:00')
+  })
+})

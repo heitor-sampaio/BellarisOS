@@ -5,7 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { gravar, ler, lerTodas } from '@/lib/db'
-import { partsInTZ, startOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'
+import { relogioDaCampanha } from '@/lib/notifications/relogio-da-campanha'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { nomeParaSaudar } from '@/lib/saudacao'
@@ -34,12 +35,11 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
   const now   = new Date()
-  const hoje  = partsInTZ(now)
-  const today = { month: hoje.month, day: hoje.day }
-  // D8 da 11ª: os gatilhos do DIA saem a partir das 09:00 de Brasília
-  // (`jaEhHoraDeDisparar`). `?hora=` é a costura do teste (só com o segredo).
+  // D8 da 11ª: os gatilhos do DIA saem a partir das 09:00 — do relógio da
+  // CLÍNICA (F62; sem fuso, o de Brasília): `relogioDaCampanha`, por campanha.
+  // `?hora=` é a costura do teste (só com o segredo).
   const horaPedida = Number(req.nextUrl.searchParams.get('hora'))
-  const hora = Number.isInteger(horaPedida) && horaPedida >= 0 && horaPedida <= 23 && req.nextUrl.searchParams.has('hora') ? horaPedida : hoje.hour
+  const horaDoTeste = Number.isInteger(horaPedida) && horaPedida >= 0 && horaPedida <= 23 && req.nextUrl.searchParams.has('hora') ? horaPedida : null
 
   // Fetch all active automated campaigns + scheduled ones due now
   const { data: campaigns, error } = await admin
@@ -62,6 +62,12 @@ export async function GET(req: NextRequest) {
     if (await redeEstaBloqueada(camp.tenant_id)) { results.push({ id: camp.id, type: camp.type, sent: 0, skipped: true }); continue }
     // Campanhas fora do PLANO da rede: nada sai, e a campanha espera (como a da rede bloqueada).
     if (!(await redeTemRecurso(camp.tenant_id, 'campanhas'))) { results.push({ id: camp.id, type: camp.type, sent: 0, skipped: true }); continue }
+
+    // O relógio da clínica (F62): a campanha é da rede — o fuso comum das unidades.
+    const fuso = await fusoDaRede(camp.tenant_id)
+    const relogio = relogioDaCampanha(now, fuso)
+    const today = relogio.hoje
+    const hora = horaDoTeste ?? relogio.hora
 
     // -- SCHEDULED --------------------------------------------
     if (camp.type === 'SCHEDULED') {
@@ -90,7 +96,7 @@ export async function GET(req: NextRequest) {
 
     // -- BIRTHDAY ---------------------------------------------
     if (camp.trigger_type === 'BIRTHDAY') {
-      const sent = await processBirthdayCampaign(camp, today, admin)
+      const sent = await processBirthdayCampaign(camp, today, relogio.inicioDoDia, admin)
       await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
@@ -107,7 +113,7 @@ export async function GET(req: NextRequest) {
         results.push({ id: camp.id, type: 'ANNUAL_DATE', sent: 0, skipped: true }); continue
       }
       // Check if already ran today
-      if (camp.last_run_at && isSameDay(new Date(camp.last_run_at), now)) {
+      if (camp.last_run_at && relogio.mesmoDia(new Date(camp.last_run_at), now)) {
         results.push({ id: camp.id, type: 'ANNUAL_DATE', sent: 0, skipped: true }); continue
       }
 
@@ -125,8 +131,8 @@ export async function GET(req: NextRequest) {
       const cfg = camp.trigger_config as { days?: number } | null
       if (!cfg?.days) continue
 
-      const targetDate = addDaysTZ(now, -cfg.days)
-      const sent = await processVisitCampaign(camp, targetDate, admin)
+      const targetDate = relogio.daquiA(-cfg.days)
+      const sent = await processVisitCampaign(camp, targetDate, relogio.inicioDoDia, fuso, admin)
       await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
@@ -140,8 +146,8 @@ export async function GET(req: NextRequest) {
       const cfg = camp.trigger_config as { days?: number } | null
       if (!cfg?.days) continue
 
-      const targetDate = addDaysTZ(now, cfg.days)
-      const sent = await processExpiryCampaign(camp, targetDate, admin)
+      const targetDate = relogio.daquiA(cfg.days)
+      const sent = await processExpiryCampaign(camp, targetDate, relogio.inicioDoDia, fuso, admin)
       await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
@@ -157,7 +163,7 @@ export async function GET(req: NextRequest) {
 
       const windowStart = new Date(now.getTime() + hours * 3_600_000)
       const windowEnd   = new Date(windowStart.getTime() + 3_600_000) // janela de 1h
-      const sent = await processAppointmentReminderCampaign(camp, windowStart, windowEnd, admin)
+      const sent = await processAppointmentReminderCampaign(camp, windowStart, windowEnd, relogio.inicioDoDia, admin)
       await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
@@ -175,6 +181,8 @@ export async function GET(req: NextRequest) {
 async function processBirthdayCampaign(
   camp: NotificationCampaign,
   today: { month: number; day: number },
+  /** O começo do dia no relógio da clínica (um disparo por dia). */
+  todayStart: Date,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
   // A escolha (as aniversariantes do público, no banco) é a do "Quem receberia
@@ -184,7 +192,6 @@ async function processBirthdayCampaign(
   if (!birthdayClients.length) return 0
 
   // Idempotency: exclude clients already dispatched today
-  const todayStart = startOfDayTZ(new Date())
 
   const existing = await lerTodas((de, ate) => admin
     .from('campaign_dispatches')
@@ -205,13 +212,14 @@ async function processBirthdayCampaign(
 async function processVisitCampaign(
   camp: NotificationCampaign,
   targetDate: Date,
+  todayStart: Date,
+  fuso: string,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
-  const clients = await concluiramNoDia(admin, camp, targetDate)
+  const clients = await concluiramNoDia(admin, camp, targetDate, fuso)
   if (!clients.length) return 0
 
   // Idempotency
-  const todayStart = startOfDayTZ(new Date())
   const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
@@ -229,12 +237,13 @@ async function processVisitCampaign(
 async function processExpiryCampaign(
   camp: NotificationCampaign,
   targetDate: Date,
+  todayStart: Date,
+  fuso: string,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
-  const clients = await pacotesVencendoNoDia(admin, camp, targetDate)
+  const clients = await pacotesVencendoNoDia(admin, camp, targetDate, fuso)
   if (!clients.length) return 0
 
-  const todayStart = startOfDayTZ(new Date())
   const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
@@ -253,6 +262,7 @@ async function processAppointmentReminderCampaign(
   camp: NotificationCampaign,
   windowStart: Date,
   windowEnd: Date,
+  todayStart: Date,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
   // Um por cliente por execução do cron, do público (lib/notifications/gatilho-de-hoje).
@@ -260,7 +270,6 @@ async function processAppointmentReminderCampaign(
   if (!clients.length) return 0
 
   // Idempotência: não enviar mais de um lembrete desta campanha ao mesmo cliente hoje
-  const todayStart = startOfDayTZ(new Date())
   const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
@@ -425,7 +434,3 @@ async function sendFcmBatch(
   )
 }
 
-/** Mesmo dia no fuso da clínica — o do processo não entra na conta. */
-function isSameDay(a: Date, b: Date): boolean {
-  return dayKeyTZ(a) === dayKeyTZ(b)
-}

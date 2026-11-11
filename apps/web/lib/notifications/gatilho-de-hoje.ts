@@ -3,6 +3,7 @@ import { ler } from '@/lib/db'
 import { lerPublico, contarPublicoComAparelho } from '@/lib/clientes/publico'
 import { filtrosDaCampanha } from '@/lib/notifications/filtros-da-campanha'
 import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ } from '@/lib/datetime'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import type { AudienceRules, TriggerType } from '@/actions/notification-campaigns'
 
 /**
@@ -56,27 +57,27 @@ export async function aniversariantes(camp: CampanhaDoGatilho, hoje: { month: nu
 }
 
 /** Quem concluiu um atendimento no dia de `alvo` (o "N dias depois da visita"), do público. */
-export async function concluiramNoDia(admin: Admin, camp: CampanhaDoGatilho, alvo: Date): Promise<Destinatario[]> {
+export async function concluiramNoDia(admin: Admin, camp: CampanhaDoGatilho, alvo: Date, fuso?: string): Promise<Destinatario[]> {
   const appts = await ler(admin
     .from('appointments')
     .select('client_id, clients!inner(id, name), branches!inner(tenant_id)')
     .eq('branches.tenant_id', camp.tenant_id)
     .eq('status', 'COMPLETED')
-    .gte('completed_at', startOfDayTZ(alvo).toISOString())
-    .lte('completed_at', endOfDayTZ(alvo).toISOString()), 'carregar os agendamentos')
+    .gte('completed_at', startOfDayTZ(alvo, fuso).toISOString())
+    .lte('completed_at', endOfDayTZ(alvo, fuso).toISOString()), 'carregar os agendamentos')
   return doPublico(camp, semRepetir((appts ?? []) as unknown as { client_id: string; clients: { name: string } | null }[]))
 }
 
 /** Quem tem pacote (não cancelado) vencendo no dia de `alvo`, do público. */
-export async function pacotesVencendoNoDia(admin: Admin, camp: CampanhaDoGatilho, alvo: Date): Promise<Destinatario[]> {
+export async function pacotesVencendoNoDia(admin: Admin, camp: CampanhaDoGatilho, alvo: Date, fuso?: string): Promise<Destinatario[]> {
   const pkgs = await ler(admin
     .from('client_packages')
     .select('client_id, clients!inner(id, name, tenant_id)')
     .eq('clients.tenant_id', camp.tenant_id)
     // O pacote cancelado (F2b) não vence: não há o que lembrar.
     .is('cancelado_em', null)
-    .gte('expires_at', startOfDayTZ(alvo).toISOString())
-    .lte('expires_at', endOfDayTZ(alvo).toISOString()), 'carregar os pacotes do cliente')
+    .gte('expires_at', startOfDayTZ(alvo, fuso).toISOString())
+    .lte('expires_at', endOfDayTZ(alvo, fuso).toISOString()), 'carregar os pacotes do cliente')
   return doPublico(camp, semRepetir((pkgs ?? []) as unknown as { client_id: string; clients: { name: string } | null }[]))
 }
 
@@ -104,7 +105,9 @@ export async function agendadosNaJanela(admin: Admin, camp: CampanhaDoGatilho, i
 export async function quemReceberiaHoje(camp: CampanhaDoGatilho, agora = new Date()): Promise<{ hoje: number; comAparelho: number; texto: string } | null> {
   const admin = createAdminClient()
   const cfg = (camp.trigger_config ?? {}) as { days?: number; hours?: number; month?: number; day?: number }
-  const p = partsInTZ(agora)
+  // O relógio da clínica (F62), o mesmo do cron.
+  const fuso = await fusoDaRede(camp.tenant_id)
+  const p = partsInTZ(agora, fuso)
   let quem: Destinatario[]
   let ninguem: string
   let alguem: (n: number) => string
@@ -115,19 +118,19 @@ export async function quemReceberiaHoje(camp: CampanhaDoGatilho, agora = new Dat
       alguem = n => `${n} ${n === 1 ? 'aniversariante' : 'aniversariantes'} hoje`
       break
     case 'DAYS_AFTER_VISIT':
-      quem = cfg.days ? await concluiramNoDia(admin, camp, addDaysTZ(agora, -cfg.days)) : []
+      quem = cfg.days ? await concluiramNoDia(admin, camp, addDaysTZ(agora, -cfg.days, fuso), fuso) : []
       ninguem = `Hoje ninguém do público fez ${cfg.days ?? '?'} dias de um atendimento concluído: a campanha não sai para ninguém hoje.`
       alguem = n => `${n} ${n === 1 ? 'cliente fez' : 'clientes fizeram'} ${cfg.days} dias de um atendimento concluído hoje`
       break
     case 'DAYS_BEFORE_EXPIRY':
-      quem = cfg.days ? await pacotesVencendoNoDia(admin, camp, addDaysTZ(agora, cfg.days)) : []
+      quem = cfg.days ? await pacotesVencendoNoDia(admin, camp, addDaysTZ(agora, cfg.days, fuso), fuso) : []
       ninguem = `Hoje ninguém do público tem pacote vencendo daqui a ${cfg.days ?? '?'} dias: a campanha não sai para ninguém hoje.`
       alguem = n => `${n} ${n === 1 ? 'cliente tem' : 'clientes têm'} pacote vencendo daqui a ${cfg.days} dias`
       break
     case 'BEFORE_APPOINTMENT': {
       const horas = cfg.hours ?? 24
       const inicio = new Date(agora.getTime() + horas * 3_600_000)
-      const fim = new Date(endOfDayTZ(agora).getTime() + 1 + horas * 3_600_000)
+      const fim = new Date(endOfDayTZ(agora, fuso).getTime() + 1 + horas * 3_600_000)
       quem = await agendadosNaJanela(admin, camp, inicio, fim)
       ninguem = `Até o fim de hoje, ninguém do público tem agendamento ${horas} horas depois: nenhum lembrete sai hoje.`
       alguem = n => `${n} ${n === 1 ? 'lembrete sai' : 'lembretes saem'} até o fim de hoje`

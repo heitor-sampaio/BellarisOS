@@ -13,6 +13,7 @@ import {
   type ContextoDaExecucao, type EventoDoGatilho,
 } from './contexto'
 import { interpolarTexto, caminhosDoTexto } from './variaveis'
+import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { notificarEquipe, anotarNaLinhaDoTempo } from './acoes'
 import {
   moverDeEtapa, marcarDesfecho, mudarTagDoCliente, definirResponsavel,
@@ -345,6 +346,18 @@ function guardarSaida(
  * **não compila**. É a guarda que evita a automação que a tela deixa montar e
  * o motor ignora em silêncio.
  */
+/**
+ * O fuso das datas de uma mensagem (F62): o da unidade do agendamento, do
+ * evento ou da cliente; sem unidade, o comum da rede.
+ */
+async function fusoDaMensagem(tenantId: string, contexto: ContextoDaExecucao, evento: EventoDoGatilho): Promise<string> {
+  const unidade = (contexto.agendamento as { unidadeId?: string | null } | null | undefined)?.unidadeId
+    ?? evento.branchId
+    ?? (contexto.cliente as { unidadeId?: string | null } | null | undefined)?.unidadeId
+    ?? null
+  return unidade ? fusoDaUnidade(tenantId, unidade) : fusoDaRede(tenantId)
+}
+
 async function rodarNo(
   no: NoDoGrafo,
   contexto: ContextoDaExecucao,
@@ -403,8 +416,8 @@ async function rodarNo(
       const r = await notificarEquipe(run.tenant_id, {
         alvo:   cfg.alvo,
         alvoId: cfg.alvoId ?? null,
-        titulo: interpolarTexto(cfg.titulo ?? '', contexto),
-        corpo:  interpolarTexto(cfg.corpo ?? '', contexto),
+        titulo: interpolarTexto(cfg.titulo ?? '', contexto, await fusoDaMensagem(run.tenant_id, contexto, evento)),
+        corpo:  interpolarTexto(cfg.corpo ?? '', contexto, await fusoDaMensagem(run.tenant_id, contexto, evento)),
         automacao: automacao.nome,
       })
       return { resumo: r }
@@ -416,7 +429,7 @@ async function rodarNo(
         ...caminhosDoTexto(cfg.texto ?? ''), 'lead',
       ])
       const r = await anotarNaLinhaDoTempo(run.tenant_id, contexto, {
-        texto:     interpolarTexto(cfg.texto ?? '', contexto),
+        texto:     interpolarTexto(cfg.texto ?? '', contexto, await fusoDaMensagem(run.tenant_id, contexto, evento)),
         automacao: automacao.nome,
       })
       return { resumo: r }
@@ -446,7 +459,7 @@ async function rodarNo(
 
       const r = await mandarMensagem(atorDaAutomacao(run, automacao), contexto, {
         canal: cfg.canal,
-        texto: interpolarTexto(cfg.texto ?? '', contexto),
+        texto: interpolarTexto(cfg.texto ?? '', contexto, await fusoDaMensagem(run.tenant_id, contexto, evento)),
         templateId: cfg.templateId ?? null,
       })
       return { resumo: r.resumo, esperarAte: r.esperarAte }

@@ -35,33 +35,34 @@ export function caminhosDoTexto(texto: string): string[] {
  * frase ficar um pouco torta. Quem quiser garantir que o nome existe põe uma
  * condição antes — que é justamente para isso que o IF serve.
  */
-export function interpolarTexto(texto: string, contexto: Record<string, unknown>): string {
+export function interpolarTexto(texto: string, contexto: Record<string, unknown>, fuso?: string): string {
   return (texto ?? '').replace(RE_VARIAVEL, (_, dentro: string) => {
     const v = valorDoCampo(contexto, dentro)
     if (v === null || v === undefined) return ''
-    if (v instanceof Date) return formatarData(v.toISOString())
+    if (v instanceof Date) return formatarData(v.toISOString(), fuso)
     if (Array.isArray(v)) return v.join(', ')
     if (typeof v === 'object') return ''
     // Data em ISO vira data legível: ninguém quer ler
     // "2026-09-24T14:30:00.000Z" numa mensagem de lembrete.
-    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) return formatarData(v)
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) return formatarData(v, fuso)
     return String(v)
   })
 }
 
 /**
- * "24/09/2026 às 11:30" — no fuso do negócio.
+ * "24/09/2026 às 11:30" — no fuso da UNIDADE (F62: o lembrete das 09:00 de
+ * Manaus diz 09:00); sem ele, o de Brasília.
  *
  * O `às` no lugar da vírgula do `toLocaleString` porque isto vai dentro de uma
  * frase escrita para o cliente ("seu horário é 24/09/2026, 11:30" soa como
  * planilha), e o fuso é explícito porque o container roda em UTC: sem ele, o
  * lembrete das 11h chegaria dizendo 14h.
  */
-function formatarData(iso: string): string {
+function formatarData(iso: string, fuso = 'America/Sao_Paulo'): string {
   const d = new Date(iso)
-  const dia  = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const dia  = d.toLocaleDateString('pt-BR', { timeZone: fuso })
   const hora = d.toLocaleTimeString('pt-BR', {
-    timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
+    timeZone: fuso, hour: '2-digit', minute: '2-digit',
   })
   return `${dia} às ${hora}`
 }
