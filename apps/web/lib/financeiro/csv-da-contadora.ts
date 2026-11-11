@@ -57,7 +57,11 @@ export interface FechamentoParaCsv {
   formas:   { forma: string; entradas: number; saidas: number; saldo: number; lancamentos: number }[]
   total:    { entradas: number; saidas: number; saldo: number; lancamentos: number }
   esperadoDinheiro: number
-  estornos: { descricao: string; forma: string | null; vezes: number | null; valor: number; motivo: string | null }[]
+  /**
+   * O que voltou às clientes no dia (D3 da 12ª: sem o estorno de despesa), com o
+   * dia do pagamento estornado (D2: o de outro dia é saída deste).
+   */
+  estornos: { descricao: string; forma: string | null; vezes: number | null; valor: number; motivo: string | null; pagoEm?: string | null; mesmoDia?: boolean }[]
   /** A40 e A44 da 11ª: as entradas de cada pessoa que recebeu, por forma (o CSV só trazia as formas). */
   porQuemRecebeu?: { pessoa: string | null; nome: string | null; formas: { forma: string; entradas: number; lancamentos: number }[]; total: { entradas: number; lancamentos: number } }[]
 }
@@ -72,8 +76,11 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
     ['Dinheiro em espécie esperado', reais(f.esperadoDinheiro)],
     [],
     ['Estornos do dia'],
-    ['Descrição', 'Forma', 'Valor', 'Motivo'],
-    ...f.estornos.map(e => [e.descricao, e.forma ? rotuloDaForma(e.forma, e.vezes) : '', reais(-e.valor), e.motivo ?? '']),
+    ['Descrição', 'Forma', 'Valor', 'Motivo', 'Pagamento de', 'Nas saídas do dia'],
+    ...f.estornos.map(e => [
+      e.descricao, e.forma ? rotuloDaForma(e.forma, e.vezes) : '', reais(-e.valor), e.motivo ?? '',
+      e.pagoEm ? dia(e.pagoEm) : '', e.mesmoDia === false ? 'Sim' : e.mesmoDia ? 'Não (o pagamento é do mesmo dia)' : '',
+    ]),
     ...(f.porQuemRecebeu?.length ? [
       [],
       ['Por quem recebeu'],

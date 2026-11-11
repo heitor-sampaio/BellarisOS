@@ -25,13 +25,15 @@ describe('A31: o CSV da contadora', () => {
       dia: '2026-11-10', unidade: 'Tulipa Centro',
       formas: [{ forma: 'PIX', entradas: 1000, saidas: 14000, saldo: -13000, lancamentos: 2 }],
       total: { entradas: 1000, saidas: 14000, saldo: -13000, lancamentos: 2 }, esperadoDinheiro: 0,
-      estornos: [{ descricao: 'Estorno: Sérum', forma: 'CASH', vezes: null, valor: 397, motivo: 'devolveu' }],
+      estornos: [{ descricao: 'Estorno: Sérum', forma: 'CASH', vezes: null, valor: 397, motivo: 'devolveu', pagoEm: '2026-11-09T15:00:00Z', mesmoDia: false }],
     })
     const l = csv.slice(1).split('\r\n')
     expect(l[1]).toBe('Forma;Entradas;Saídas;Saldo;Lançamentos')
     expect(l[2]).toBe('Pix;1000,00;14000,00;-13000,00;2')
     expect(l[3]).toBe('Total do dia;1000,00;14000,00;-13000,00;2')
-    expect(l).toContain('Estorno: Sérum;Dinheiro;-397,00;devolveu')
+    // D2 da 12ª: o dia do pagamento estornado, e se o estorno está nas saídas do dia.
+    expect(l).toContain('Descrição;Forma;Valor;Motivo;Pagamento de;Nas saídas do dia')
+    expect(l).toContain('Estorno: Sérum;Dinheiro;-397,00;devolveu;09/11/2026;Sim')
   })
 })
 

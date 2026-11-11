@@ -103,6 +103,8 @@ interface AdminTx {
   /** A31 da 10ª: a taxa e o líquido da receita paga (do banco), o fornecedor e a nota — para o CSV. */
   taxa?:        number | null
   liquido?:     number | null
+  /** D9 e A45 da 12ª: o que ele conta no caixa, com o sinal (do banco; nulo = não conta). */
+  no_caixa?:    number | null
   fornecedor?:  string | null
   nota_fiscal?: string | null
 }
@@ -688,9 +690,11 @@ export function AdminFinancialView({
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                         {t.description || '—'}
                       </span>
-                      {/* A52: o contra-lançamento diz o que é — não é despesa, anula a receita. */}
-                      {t.category === 'Estorno' && (
-                        <span data-anula-a-receita style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Anula a receita estornada</span>
+                      {/* A52: o contra-lançamento diz o que é — não é despesa, anula a receita.
+                          D3 da 12ª: o de uma DESPESA (a entrada) anula a despesa. */}
+                      {t.category === 'Estorno' && (t.type === 'INCOME'
+                        ? <span data-anula-a-despesa style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Anula a despesa estornada</span>
+                        : <span data-anula-a-receita style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Anula a receita estornada</span>
                       )}
                       <VencimentoRemarcado historico={t.vencimentos_anteriores} />
                       {t.estorno_motivo && (

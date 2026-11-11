@@ -15,24 +15,32 @@ export interface EstornoDoDia {
   vezes:     number | null
   valor:     number
   motivo:    string | null
+  /** O dia do pagamento estornado (D2 da 12ª); nulo no estorno sem ligação ao pagamento. */
+  pagoEm:    string | null
+  /** O pagamento é deste mesmo dia: um anula o outro, e ele já está fora das entradas. */
+  mesmoDia:  boolean
 }
 
 /**
- * A42: os estornos FEITOS no dia na unidade — o contra-lançamento
- * (`category = 'Estorno'`, pago no dia). Pela regra única, a venda estornada e
- * o estorno saem das entradas e das saídas, e o resumo do dia não mostrava que
- * o dinheiro voltou à cliente ("Saídas R$ 0"). A lista e o total são do banco
- * (`metrics_estornos_do_dia`).
+ * A42 da 8ª + D2 e D3 da 12ª: o que voltou às CLIENTES no dia, na unidade — o
+ * estorno de uma receita (o de uma despesa não é devolução à cliente: o dinheiro
+ * voltou ao caixa, e entra nas entradas). Cada um diz o dia do pagamento: do
+ * mesmo dia, um anula o outro (o pagamento já está fora das entradas); de outro
+ * dia, é a SAÍDA deste (princípio 5 — o pagamento fica no dia dele). A lista e
+ * os totais são do banco (`metrics_estornos_das_clientes_do_dia`).
  */
-export async function getEstornosDoDia(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<{ itens: EstornoDoDia[]; total: number }> {
-  const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_estornos_do_dia', {
+export async function getEstornosDoDia(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<{ itens: EstornoDoDia[]; total: number; deOutrosDias: number }> {
+  const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_estornos_das_clientes_do_dia', {
     p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
-  }).range(de, ate), 'carregar os estornos do dia') as { id: string; descricao: string | null; forma: string | null; vezes: number | null; valor: number | string; motivo: string | null; total: number | string }[]
+  }).range(de, ate), 'carregar os estornos do dia') as {
+    id: string; descricao: string | null; forma: string | null; vezes: number | null; valor: number | string; motivo: string | null
+    pago_em: string | null; mesmo_dia: boolean; total: number | string; total_de_outros_dias: number | string
+  }[]
   const itens = (linhas ?? []).map(t => ({
     id: t.id, descricao: String(t.descricao ?? 'Estorno'), forma: t.forma ?? null, vezes: t.vezes ?? null,
-    valor: Number(t.valor ?? 0), motivo: t.motivo ?? null,
+    valor: Number(t.valor ?? 0), motivo: t.motivo ?? null, pagoEm: t.pago_em ?? null, mesmoDia: Boolean(t.mesmo_dia),
   }))
-  return { itens, total: Number(linhas?.[0]?.total ?? 0) }
+  return { itens, total: Number(linhas?.[0]?.total ?? 0), deOutrosDias: Number(linhas?.[0]?.total_de_outros_dias ?? 0) }
 }
 
 /** O que não traz receita nas execuções, por nome (A47 e A43 da 8ª). */

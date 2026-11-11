@@ -61,6 +61,8 @@ export interface Transaction {
   /** A31 da 10ª: a taxa da maquininha e o líquido da receita paga (do banco), o fornecedor e a nota — para o CSV. */
   taxa?:        number | null
   liquido?:     number | null
+  /** D9 e A45 da 12ª: o que ele conta no caixa, com o sinal (do banco; nulo = não conta). */
+  no_caixa?:    number | null
   fornecedor?:  string | null
   nota_fiscal?: string | null
 }
@@ -322,9 +324,11 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                             <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isReversed ? 'var(--text-muted)' : 'var(--text)', lineHeight: 1.3 }}>
                               {tx.description}
                             </p>
-                            {/* A52: o contra-lançamento diz o que é — não é despesa, anula a receita. */}
-                            {tx.category === 'Estorno' && (
-                              <p data-anula-a-receita style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 1 }}>Anula a receita estornada</p>
+                            {/* A52: o contra-lançamento diz o que é — não é despesa, anula a receita.
+                                D3 da 12ª: o de uma DESPESA (a entrada) anula a despesa. */}
+                            {tx.category === 'Estorno' && (tx.type === 'INCOME'
+                              ? <p data-anula-a-despesa style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 1 }}>Anula a despesa estornada</p>
+                              : <p data-anula-a-receita style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 1 }}>Anula a receita estornada</p>
                             )}
                             {tx.estorno_motivo && (
                               <p data-motivo-do-estorno style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 1 }}>Motivo: {tx.estorno_motivo}</p>

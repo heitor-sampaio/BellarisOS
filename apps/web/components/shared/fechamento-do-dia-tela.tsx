@@ -24,6 +24,7 @@ export interface FechamentoFeito {
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+const diaCurto = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
 const diaLongo = (dia: string) => new Date(`${dia}T12:00:00-03:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' })
 
 /** "Faltou R$ 5,00" / "Sobrou…" / "Bateu" — a diferença vem do banco. */
@@ -70,7 +71,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   /** Quem informou o fundo de troco do dia, e quando (ven-03). */
   fundoInformado?: { quem: string | null; quando: string } | null
   /** A42 da 8ª: o que foi estornado no dia (do banco; o total, de lib/metrics). */
-  estornos?: { itens: EstornoDoDia[]; total: number } | null
+  estornos?: { itens: EstornoDoDia[]; total: number; deOutrosDias?: number } | null
   /** A40 da 11ª: as entradas do dia de cada pessoa que recebeu, por forma (do banco). */
   porQuemRecebeu?: RecebidoPorPessoa[]
   /** A45 da 8ª: o dia de cada unidade e o da clínica (o portal da rede). */
@@ -235,22 +236,27 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
         </div>
       )}
 
-      {/* A42 da 8ª: o estorno do dia — a venda e o estorno saem das entradas e
-          das saídas pela regra única, e o resumo não mostrava o que voltou. */}
+      {/* A42 da 8ª: o estorno do dia. D2 da 12ª (princípio 5): o pagamento fica
+          no dia dele, e o estorno de um pagamento de OUTRO dia é saída deste. D3:
+          só o que voltou às clientes — o estorno de despesa voltou ao caixa. */}
       {estornos && estornos.itens.length > 0 && (
         <div data-estornos-do-dia className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
             Estornos do dia · {brl(estornos.total)}
           </p>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            O que voltou às clientes neste dia. O pagamento estornado e o estorno ficam fora das entradas e das saídas acima — um anula o outro.
-            No estorno parcial, o pagamento passa a valer o que ficou (o Financeiro diz quanto foi pago e quanto voltou), e as entradas já mostram esse valor.
+            O que voltou às clientes neste dia. O estorno de um pagamento de outro dia é saída deste dia, na forma dele — o pagamento continua no dia em que entrou.
+            O de um pagamento deste mesmo dia já está fora das entradas: um anula o outro.
+            {(estornos.deOutrosDias ?? 0) > 0 && <> Nas saídas acima: {brl(estornos.deOutrosDias ?? 0)} de pagamentos de outros dias.</>}
           </p>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {estornos.itens.map(e => (
-              <li key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'var(--text-sm-sz)' }}>
+              <li key={e.id} data-estorno-do-dia data-de-outro-dia={e.mesmoDia ? undefined : 'true'} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'var(--text-sm-sz)' }}>
                 <span style={{ color: 'var(--text)', minWidth: 0, overflowWrap: 'anywhere' }}>
                   {e.descricao}{e.forma ? ` · ${rotuloDaForma(e.forma, e.vezes)}` : ''}
+                  <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                    {e.mesmoDia ? 'Pagamento deste dia: já fora das entradas.' : e.pagoEm ? `Pagamento de ${diaCurto(e.pagoEm)}: sai nas saídas deste dia.` : null}
+                  </span>
                   {e.motivo && <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Motivo: {e.motivo}</span>}
                 </span>
                 <span style={{ color: 'var(--danger)', fontWeight: 700, whiteSpace: 'nowrap' }}>− {brl(e.valor)}</span>

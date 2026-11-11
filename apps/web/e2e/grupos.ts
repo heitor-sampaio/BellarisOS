@@ -36,6 +36,8 @@ export const ISOLADOS = [
   'estoque-defeitos-da-12.spec.ts',
   'plano-defeitos-da-12.spec.ts',
   'campanha-defeitos-da-12.spec.ts',
+  // A F59 (o dinheiro da 12ª: o estorno no dia em que o dinheiro sai).
+  'financeiro-dinheiro-da-12.spec.ts',
   'vendas-unidade-da-venda.spec.ts',
   // A F35 (a migração: o pacote de fora, as colunas da importação, as aniversariantes).
   'pacote-de-fora.spec.ts',
