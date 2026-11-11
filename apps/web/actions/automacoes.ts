@@ -16,6 +16,7 @@ import { modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ler, tentar } from '@/lib/db'
 import { buscarClientes } from '@/lib/automacoes/tempo'
+import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * As automações, pela tela.
@@ -850,6 +851,6 @@ export async function contarBuscaDeClientes(cfg: unknown): Promise<{ quantas: nu
     aniversarioHoje: c.aniversarioHoje === true,
     tags, unidadeId: unidade,
     limite: Number.isFinite(limite) && limite > 0 ? Math.min(Math.floor(limite), 500) : 200,
-  })
+  }, unidade ? await fusoDaUnidade(ctx.tenantId, unidade) : await fusoDaRede(ctx.tenantId))
   return { quantas: clientes.length, truncado }
 }

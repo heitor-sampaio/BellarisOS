@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dayKeyTZ } from '@/lib/datetime'
+import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { ler } from '@/lib/db'
 
 /**
@@ -170,7 +171,8 @@ export async function hidratar(
         unidadeId: data.branch_id,
         // Pré-calculado porque "é aniversário hoje?" é a condição mais pedida
         // e ninguém deveria precisar escrever data em regra de automação.
-        aniversarioHoje: ehAniversarioHoje(data.birth_date as string | null),
+        aniversarioHoje: ehAniversarioHoje(data.birth_date as string | null, new Date(),
+          data.branch_id ? await fusoDaUnidade(tenantId, data.branch_id as string) : await fusoDaRede(tenantId)),
       }
       return contexto
     }
@@ -270,10 +272,13 @@ export async function hidratar(
   }
 }
 
-/** Compara dia e mês no fuso do negócio — `new Date()` cru erraria por um dia. */
-function ehAniversarioHoje(nascimento: string | null): boolean {
+/**
+ * Compara dia e mês no fuso da unidade da cliente (F62b; sem ela, o comum da
+ * rede) — `new Date()` cru erraria por um dia. O nascimento é data sem hora.
+ */
+export function ehAniversarioHoje(nascimento: string | null, agora: Date = new Date(), fuso?: string): boolean {
   if (!nascimento) return false
-  const hoje = dayKeyTZ(new Date())            // 'YYYY-MM-DD'
+  const hoje = dayKeyTZ(agora, fuso)            // 'YYYY-MM-DD'
   return hoje.slice(5) === String(nascimento).slice(5, 10)
 }
 

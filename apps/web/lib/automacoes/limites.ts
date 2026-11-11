@@ -40,12 +40,15 @@ export function limitesDe(bruto: unknown): LimitesDaAutomacao {
 export function noSilencio(
   limites: LimitesDaAutomacao,
   agora = new Date(),
+  // O relógio da CLIENTE (F62b): o da unidade do agendamento, do evento ou
+  // dela; sem fuso, o de Brasília.
+  fuso?: string,
 ): { dentro: boolean; liberaEm?: Date } {
   const de  = limites.silencioDe
   const ate = limites.silencioAte
   if (!de || !ate) return { dentro: false }
 
-  const p = partsInTZ(agora)
+  const p = partsInTZ(agora, fuso)
   const minutosAgora = p.hour * 60 + p.minute
   const minutosDe  = emMinutos(de)
   const minutosAte = emMinutos(ate)
@@ -87,11 +90,13 @@ function minutosAte1(agora: number, alvo: number): number {
 export async function falouHojeCom(
   automationId: string,
   clienteId: string,
+  fuso?: string,
 ): Promise<number> {
   // Início do dia no fuso do NEGÓCIO. `new Date().setHours(0,0,0,0)` usaria o
   // fuso do processo, que no container é UTC — e às 21h de Brasília já seria
   // "amanhã", zerando o teto justamente no horário de pico.
-  const inicio = startOfDayTZ(new Date())
+  // O dia é o da unidade (F62b).
+  const inicio = startOfDayTZ(new Date(), fuso)
 
   const { data, error } = await createAdminClient()
     .from('automation_runs')
@@ -122,8 +127,9 @@ export async function podeFalarCom(
   clienteId: string | null,
   limites: LimitesDaAutomacao,
   agora = new Date(),
+  fuso?: string,
 ): Promise<Veredito> {
-  const silencio = noSilencio(limites, agora)
+  const silencio = noSilencio(limites, agora, fuso)
   if (silencio.dentro) {
     return {
       liberado: false,
@@ -134,7 +140,7 @@ export async function podeFalarCom(
 
   const teto = limites.tetoPorClienteDia
   if (teto && clienteId) {
-    const jaFalou = await falouHojeCom(automationId, clienteId)
+    const jaFalou = await falouHojeCom(automationId, clienteId, fuso)
     // `>=` e não `>`: o teto é quantas vezes PODE, e a execução atual ainda
     // não contou.
     if (jaFalou >= teto) {

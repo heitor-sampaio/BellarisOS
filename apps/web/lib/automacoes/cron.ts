@@ -4,6 +4,7 @@ import type { GrafoDeAutomacao, ConfigGatilhoAgenda } from '@estetica-os/types'
 import { executarRun } from './executar'
 import { estaNaHora } from './tempo'
 import { partsInTZ } from '@/lib/datetime'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { gravar } from '@/lib/db'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
@@ -147,7 +148,9 @@ async function dispararAgendas(): Promise<number> {
     if (!gatilho) continue
 
     const cfg = gatilho.config as ConfigGatilhoAgenda
-    if (!estaNaHora(cfg, a.ultimo_disparo_agenda as string | null)) continue
+    // O relógio da clínica (F62b): o fuso comum das unidades.
+    const fuso = await fusoDaRede(a.tenant_id as string)
+    if (!estaNaHora(cfg, a.ultimo_disparo_agenda as string | null, new Date(), fuso)) continue
     if (await redeEstaBloqueada(a.tenant_id as string)) continue
     // Automações fora do PLANO da rede: o gatilho de tempo não dispara.
     if (!(await redeTemRecurso(a.tenant_id as string, 'automacoes'))) continue
@@ -192,7 +195,7 @@ async function dispararAgendas(): Promise<number> {
         // Gatilho de intervalo não tem horário configurado — o que ele tem é a
         // hora em que de fato saiu. Deixar `hora` vazia faria a variável sair
         // em branco no meio da mensagem, sem nada explicando.
-        contexto:      { agenda: { hora: cfg.hora ?? horaAgora(), quando: new Date().toISOString() } },
+        contexto:      { agenda: { hora: cfg.hora ?? horaAgora(fuso), quando: new Date().toISOString() } },
       })
       .select('id')
       .single()
@@ -206,8 +209,8 @@ async function dispararAgendas(): Promise<number> {
   return disparadas
 }
 
-/** 'HH:MM' no fuso do negócio, para o gatilho que não tem horário marcado. */
-function horaAgora(): string {
-  const p = partsInTZ(new Date())
+/** 'HH:MM' no fuso da clínica, para o gatilho que não tem horário marcado. */
+function horaAgora(fuso?: string): string {
+  const p = partsInTZ(new Date(), fuso)
   return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
 }

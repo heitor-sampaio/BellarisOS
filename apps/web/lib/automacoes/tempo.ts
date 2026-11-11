@@ -79,12 +79,15 @@ export function estaNaHora(
   cfg: ConfigGatilhoAgenda,
   ultimoDisparo: string | null,
   agora = new Date(),
+  // A automação é da CLÍNICA (D-2): o relógio é o fuso comum das unidades
+  // (`fusoDaRede`, F62b); sem fuso, o de Brasília.
+  fuso?: string,
 ): boolean {
   if (cfg.frequencia === 'minutos' || cfg.frequencia === 'horas') {
     return passouOIntervalo(cfg, ultimoDisparo, agora)
   }
 
-  const p = partsInTZ(agora)
+  const p = partsInTZ(agora, fuso)
   const alvo = emMinutos(cfg.hora)
   if (alvo === null) return false
 
@@ -105,8 +108,8 @@ export function estaNaHora(
   // semanal e mensal, o mesmo dia também resolve — dois disparos no mesmo dia
   // é exatamente o que se quer evitar.
   if (ultimoDisparo) {
-    const ultimo = startOfDayTZ(new Date(ultimoDisparo)).getTime()
-    if (ultimo === startOfDayTZ(agora).getTime()) return false
+    const ultimo = startOfDayTZ(new Date(ultimoDisparo), fuso).getTime()
+    if (ultimo === startOfDayTZ(agora, fuso).getTime()) return false
   }
 
   return true
@@ -168,12 +171,15 @@ export interface ClienteEncontrado {
 export async function buscarClientes(
   tenantId: string,
   cfg: ConfigBuscarClientes,
+  // O dia do "aniversário hoje" (F62b): o da unidade da busca, senão o comum
+  // da rede — quem chama resolve; sem fuso, o de Brasília.
+  fuso?: string,
 ): Promise<{ clientes: ClienteEncontrado[]; truncado: boolean }> {
   const limite = Math.min(cfg.limite ?? 200, 500)
   // Dia e mês no fuso do NEGÓCIO. Comparar com `getMonth()` cru usaria o fuso
   // do processo (UTC no container) e erraria por um dia quem faz aniversário
   // na virada.
-  const hoje = partsInTZ(new Date())
+  const hoje = partsInTZ(new Date(), fuso)
 
   // Todos os filtros NO BANCO, e o teto DEPOIS deles (2026-10-22). Antes o
   // teto vinha primeiro — 501 clientes quaisquer — e o aniversário e o "sem

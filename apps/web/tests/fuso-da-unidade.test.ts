@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   noFuso, dayKeyTZ, startOfDayTZ, instanteNoFuso, horaNoFuso, BUSINESS_TZ, naParede, daParede,
 } from '@/lib/datetime'
@@ -163,5 +163,66 @@ describe('as datas do documento no fuso da unidade (F62, fatia 6)', () => {
     // Sem fuso, o de Brasília: como era.
     const brasilia = valoresDoDocumento(dados())
     expect([brasilia['data.hoje'], brasilia['agendamento.hora']]).toEqual(['12 de novembro de 2026', '10:00'])
+  })
+})
+
+/**
+ * F62b — o que ficou no relógio de Brasília. A Acácia é de Manaus (UTC−4):
+ * às 20:30 dela (21:30 em Brasília) o silêncio noturno das 21:00 ainda não
+ * começou, e às 23:30 de 11/11 dela (00:30 de 12/11 em Brasília) ainda é o
+ * aniversário de 11/11.
+ */
+describe('as automações no fuso da unidade (F62b)', () => {
+  const limites = { silencioDe: '21:00', silencioAte: '08:00' }
+
+  it('o silêncio noturno é o do relógio da cliente', async () => {
+    const { noSilencio } = await import('@/lib/automacoes/limites')
+    // 00:30Z de 12/11 = 21:30 em Brasília = 20:30 em Manaus.
+    const noite = new Date('2026-11-12T00:30:00.000Z')
+    expect(noSilencio(limites, noite).dentro, 'Brasília: já é silêncio').toBe(true)
+    expect(noSilencio(limites, noite, 'America/Manaus').dentro, 'Manaus: ainda não').toBe(false)
+    // 11:30Z = 08:30 em Brasília = 07:30 em Manaus: libera às 08:00 dela (12:00Z).
+    const cedo = new Date('2026-11-12T11:30:00.000Z')
+    expect(noSilencio(limites, cedo).dentro).toBe(false)
+    const manaus = noSilencio(limites, cedo, 'America/Manaus')
+    expect(manaus.dentro).toBe(true)
+    expect(manaus.liberaEm?.toISOString()).toBe('2026-11-12T12:00:00.000Z')
+  })
+
+  it('o gatilho "todo dia às 09:00" é às 09:00 da clínica', async () => {
+    const { estaNaHora } = await import('@/lib/automacoes/tempo')
+    const cfg = { frequencia: 'diaria' as const, hora: '09:00' }
+    // 12:30Z = 09:30 em Brasília = 08:30 em Manaus.
+    expect(estaNaHora(cfg, null, new Date('2026-11-12T12:30:00.000Z'))).toBe(true)
+    expect(estaNaHora(cfg, null, new Date('2026-11-12T12:30:00.000Z'), 'America/Manaus')).toBe(false)
+    expect(estaNaHora(cfg, null, new Date('2026-11-12T13:05:00.000Z'), 'America/Manaus')).toBe(true)
+    // "Todo dia às 23:00": às 23:30 de 11/11 em Manaus (00:30 do 12 em Brasília) é a hora dele lá;
+    // disparado às 23:10 de 10/11 (outro dia lá), sai; às 23:10 de 11/11, já saiu hoje.
+    const tarde = { frequencia: 'diaria' as const, hora: '23:00' }
+    expect(estaNaHora(tarde, '2026-11-11T03:10:00.000Z', new Date('2026-11-12T03:30:00.000Z'), 'America/Manaus')).toBe(true)
+    expect(estaNaHora(tarde, '2026-11-12T03:10:00.000Z', new Date('2026-11-12T03:30:00.000Z'), 'America/Manaus')).toBe(false)
+  })
+
+  it('o "faz aniversário hoje" do contexto é o dia da unidade', async () => {
+    const { ehAniversarioHoje } = await import('@/lib/automacoes/contexto')
+    const noite = new Date('2026-11-12T03:30:00.000Z')
+    expect(ehAniversarioHoje('1990-11-11T00:00:00+00:00', noite)).toBe(false)
+    expect(ehAniversarioHoje('1990-11-11T00:00:00+00:00', noite, 'America/Manaus')).toBe(true)
+  })
+
+  it('a busca "aniversariantes de hoje" pede o dia da clínica', async () => {
+    const publico = await import('@/lib/clientes/publico')
+    const espiao = vi.spyOn(publico, 'lerPublicoAte').mockResolvedValue([])
+    const { buscarClientes } = await import('@/lib/automacoes/tempo')
+    vi.useFakeTimers({ now: new Date('2026-11-12T03:30:00.000Z'), toFake: ['Date'] })
+    try {
+      await buscarClientes('rede', { aniversarioHoje: true }, 'America/Manaus')
+      expect(espiao.mock.calls.at(-1)?.[1]?.aniversario).toEqual({ mes: 11, dia: 11 })
+      await buscarClientes('rede', { aniversarioHoje: true })
+      expect(espiao.mock.calls.at(-1)?.[1]?.aniversario).toEqual({ mes: 11, dia: 12 })
+    } finally {
+      vi.useRealTimers()
+      espiao.mockRestore()
+    }
   })
 })

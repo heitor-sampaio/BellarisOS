@@ -448,6 +448,9 @@ async function rodarNo(
         automacao.id,
         (contexto.cliente as { id?: string } | null)?.id ?? null,
         limitesDe(automacao.limites),
+        new Date(),
+        // O silêncio e o "hoje" do teto no relógio da cliente (F62b).
+        await fusoDaMensagem(run.tenant_id, contexto, evento),
       )
       if (!veredito.liberado) {
         // Silêncio noturno ESPERA; teto recusa. Descartar a mensagem por causa
@@ -518,7 +521,8 @@ async function rodarNo(
 
     case NODES.BUSCAR_CLIENTES: {
       const cfg = no.config as ConfigBuscarClientes
-      const { clientes, truncado } = await buscarClientes(run.tenant_id, cfg)
+      const { clientes, truncado } = await buscarClientes(run.tenant_id, cfg,
+        cfg.unidadeId ? await fusoDaUnidade(run.tenant_id, cfg.unidadeId) : await fusoDaRede(run.tenant_id))
 
       const proximo = ligacaoSaindo(automacao.grafo, no.id)
       if (!proximo) return { parar: true, resumo: { encontrados: clientes.length, motivo: 'Nada ligado depois da busca.' } }
