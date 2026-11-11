@@ -109,6 +109,12 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     e o teto valem sobre o que sobra); `loyalty_discount` soma os dois.
   - Produto: ENTREGUE na ficha (`entregar_voucher_produto`), com uma embalagem
     saindo do estoque da unidade (MANUAL_ADJUSTMENT, lote pelo gatilho).
+    **O brinde pode não ser produto** (A7 da 12ª simulação, 2026-11-11;
+    princípio 1: a "Máscara de LED cortesia" da Helena virou um produto do
+    estoque): "Nenhum — brinde ou serviço fora do estoque" no catálogo; a
+    recompensa é o nome, e o "Entregar brinde" só marca o voucher como usado
+    (migration `20261111006003`, que relaxa `loyalty_rewards_por_tipo`).
+    Prova: `tests/fidelidade-brinde-sem-estoque.test.ts`.
   - Cancelar voucher não usado devolve os pontos; vencido (derivado de
     `expires_at`) não vale e não devolve; estorno do pagamento o reativa.
   - **O formulário diz quanto os pontos valem e de onde vem o procedimento**

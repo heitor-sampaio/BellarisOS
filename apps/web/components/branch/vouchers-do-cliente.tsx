@@ -160,7 +160,7 @@ export function VouchersDoCliente({
                     {v.type === 'PRODUTO' && (
                       <button type="button" className="btn-primary" disabled={ocupado || !unidade} title={unidade ? undefined : 'Escolha a unidade da entrega'}
                         onClick={() => depois(() => entregarVoucherProduto({ voucherId: v.id, branchId: unidade }))}>
-                        {ocupado ? <Loader2 size={13} className="animate-spin" /> : null} Entregar produto
+                        {ocupado ? <Loader2 size={13} className="animate-spin" /> : null} {v.product_id ? 'Entregar produto' : 'Entregar brinde'}
                       </button>
                     )}
                     <button type="button" className="btn-ghost" onClick={() => { setCancelando(v.id); setMotivo('') }}>

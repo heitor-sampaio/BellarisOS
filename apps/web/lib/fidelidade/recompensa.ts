@@ -20,7 +20,7 @@ export const EntradaDaRecompensa = z.object({
 }).superRefine((r, ctx) => {
   const falta = (campo: string, mensagem: string) => ctx.addIssue({ code: 'custom', path: [campo], message: mensagem })
   if (r.type === 'PROCEDIMENTO' && !r.procedure_id) falta('procedure_id', 'Escolha o procedimento.')
-  if (r.type === 'PRODUTO' && !r.product_id)        falta('product_id', 'Escolha o produto.')
+  // A7 da 12ª (princípio 1): o brinde pode não ser produto do estoque — só o nome.
   if (r.type === 'DESCONTO_VALOR' && !(Number(r.discount_value) > 0)) falta('discount_value', 'Informe o valor do desconto.')
   if (r.type === 'DESCONTO_PERCENTUAL' && !(Number(r.discount_value) > 0 && Number(r.discount_value) <= 100)) {
     falta('discount_value', 'O desconto em % vai de 0,01 a 100.')

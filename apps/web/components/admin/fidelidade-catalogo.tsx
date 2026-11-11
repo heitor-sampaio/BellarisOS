@@ -185,9 +185,15 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, valorDoPo
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {rotulo('Produto')}
             <select name="produto" className="filtro-select" value={prod} onChange={e => setProd(e.target.value)}>
-              <option value="">Escolha…</option>
+              {/* A7 da 12ª: o brinde ou serviço fora do estoque ("Máscara de LED cortesia"). */}
+              <option value="">Nenhum — brinde ou serviço fora do estoque</option>
               {produtos.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
+            <span data-brinde-sem-estoque style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              {prod
+                ? 'Na entrega, uma embalagem sai do estoque da unidade.'
+                : 'Sem produto, a recompensa é o que o nome diz: na entrega, o voucher é marcado como usado e o estoque não muda.'}
+            </span>
           </label>
         )}
         {(tipo === 'DESCONTO_VALOR' || tipo === 'DESCONTO_PERCENTUAL') && (

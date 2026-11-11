@@ -307,9 +307,22 @@ export async function entregarVoucherProduto(entrada: { voucherId: string; branc
   if (!alvo) return { error: 'Voucher não encontrado.' }
   const { ctx, voucher } = alvo
   if (!alcancaUnidade(ctx, entrada.branchId)) return { error: 'Unidade não encontrada.' }
-  if (voucher.type !== 'PRODUTO' || !voucher.product_id) return { error: 'Este voucher não é de produto.' }
+  if (voucher.type !== 'PRODUTO') return { error: 'Este voucher não é de produto.' }
 
   const admin = createAdminClient()
+  // A7 da 12ª: o brinde sem produto (texto livre) só marca o voucher — o banco não mexe no estoque.
+  if (!voucher.product_id) {
+    try {
+      await gravar(admin.rpc('entregar_voucher_produto', {
+        p_tenant: ctx.tenantId!, p_voucher: entrada.voucherId, p_unidade: entrada.branchId,
+        p_ator: ctx.internalUserId ?? 'sistema', p_dados: {},
+      }), 'entregar o brinde do voucher')
+    } catch (e) {
+      return { error: mensagemDoErro(e) }
+    }
+    revalidatePath(`/admin/clients/${voucher.client_id}`)
+    return {}
+  }
   const prod = await ler(admin.from('products').select('name, unit, units_per_package, consumption_unit')
     .eq('id', voucher.product_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto')
   if (!prod) return { error: 'Produto não encontrado.' }
