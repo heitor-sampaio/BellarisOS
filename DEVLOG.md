@@ -10415,7 +10415,20 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   - As datas dos documentos e do PDF assinado.
 - Na rede com fusos diferentes, a janela sai no fuso comum; sem fuso comum, no de Brasília. A campanha automática, que é da rede, roda no fuso comum das unidades.
 - Regra em `docs/regras/indicadores.md`. Prova: `e2e/fuso-da-unidade.spec.ts` (11 testes) e `tests/fuso-da-unidade.test.ts`; Vitest 2122/2122; vizinhos: agenda (43), Fechamento (10), indicadores e financeiro (56), automações (14), documentos (27). Mexeu nos dois layouts, na topbar, em `lib/datetime.ts`, em `packages/utils/src/format.ts`, em `lib/appointments/core.ts` e nas `metrics_*`: vale completa.
-- **Em aberto, ainda no relógio de Brasília (a F62b):**
+- **F62b FEITA (11/11, 5d249192…4a7562f5, push; migration 20261111006203): o que ficou no relógio de Brasília passou ao fuso da unidade.** A frente mapeou todo fuso fixo no código e no banco antes de corrigir.
+  - Itens corrigidos:
+    - as automações (o silêncio noturno, o gatilho de horário, o "aniversário hoje") e o bônus de aniversário da fidelidade;
+    - o início adiantado e o atraso na sessão de atendimento;
+    - o Copilot ("Agora: 23:30 (horário de Manaus…)", e "às 9h" vira 09:00 de Manaus);
+    - os indicadores com o dia sem hora: `metrics_by_branch`, os de reativar, a faixa etária, as últimas visitas e o público;
+    - a busca e o FEFO: o lote vence no fim do dia da unidade;
+    - cerca de 50 componentes: a ficha, o Financeiro, as comissões, o CRM, o inbox e o portal;
+    - o recibo, os dois CSV e a LGPD (o prazo tinha um dia a mais).
+  - Exemplo: em Manaus às 23:30 de 10/03, a linha do Financeiro dizia "11/03, 00:30" e agora diz "10/03, 23:30".
+  - O que é da rede sem unidade usa o fuso da rede, o `/admin` também, e cada registro usa a sua unidade. Os componentes passam `timeZone` sempre.
+  - Prova: `e2e/fuso-da-unidade.spec.ts` (17 testes) e 47 vizinhos; Vitest 2138/2138; typecheck limpo. Vale completa: mexeu na agenda, no lançamento, nas vendas, no FEFO e no portal.
+  - **Sobra:** a validade do PACOTE é uma âncora de fim do dia de Brasília, gravada e lida juntas (`pacotes/trazer`, `pacote_cancelar_devolvendo`). Em Manaus, a última hora do último dia conta como vencida, e a correção muda a escrita e o SQL juntos. Vai na próxima frente do ciclo.
+- **O que a F62b tinha recebido, ainda no relógio de Brasília (feito, acima):**
   - Telas e formatação: a ficha, a sessão de atendimento, a tabela do financeiro e as comissões; parcelas, vencimentos, recibo e o CSV de lançamentos; fidelidade e vouchers; o quadro do CRM; as telas do portal; `inicio-adiantado.ts`; o Copilot.
   - Automações: o silêncio noturno (`limites.ts`), as automações por horário (`tempo.ts`, `cron.ts`) e o "aniversário hoje" do contexto; no cron `fidelidade`, o bônus de aniversário.
   - Indicadores fora da migration: `metrics_by_branch`, `clientes_para_reativar` (e `_rede`), `metrics_faixa_etaria`, `ultimas_visitas` e `clientes_do_publico`.
