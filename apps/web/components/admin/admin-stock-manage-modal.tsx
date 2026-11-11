@@ -42,6 +42,8 @@ type ProductInfo = {
   unitsPerPackage?: number | null
   /** O fornecedor do cadastro: a Entrada já o sugere (A37 da 10ª). */
   supplier?:        string | null
+  /** O mínimo do cadastro do produto: vale na unidade que ainda não tem linha (D11 da 12ª). */
+  minimoDoCadastro?: number | null
 }
 
 type AllBranch = { id: string; name: string }
@@ -729,7 +731,9 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
   const [values,  setValues]  = useState<Record<string, string>>(() =>
     Object.fromEntries(allBranches.map(b => [
       b.id,
-      String(stockMap[b.id]?.minStock ?? 0),
+      // D11 da 12ª: sem a linha da unidade (nada entrou ainda), o mínimo é o do
+      // cadastro — o mesmo que a linha herda ao nascer (D2 da 11ª). Era 0.
+      String(stockMap[b.id]?.minStock ?? product.minimoDoCadastro ?? 0),
     ])),
   )
   const [saving,  setSaving]  = useState<Record<string, boolean>>({})
@@ -784,6 +788,11 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
                   ? saldoNaPrateleira(Number(bs.currentRendimento), Number(product.unitsPerPackage), product.unit, product.consumptionUnit)
                   : `${currentStock.toLocaleString('pt-BR')} ${product.unit}`}
               </p>
+              {!bs && (product.minimoDoCadastro ?? 0) > 0 && (
+                <p data-minimo-do-cadastro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
+                  Ainda sem estoque nesta unidade: vale o mínimo do cadastro do produto ({product.minimoDoCadastro!.toLocaleString('pt-BR')} {product.unit}).
+                </p>
+              )}
             </div>
 
             {/* Input */}

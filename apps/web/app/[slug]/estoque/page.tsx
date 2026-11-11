@@ -24,6 +24,7 @@ type ProdutoLido = {
   cost_price: number | string | null; sale_price: number | string | null
   consumption_unit: string | null; units_per_package: number | string | null; is_active: boolean
   uso: string | null
+  min_stock: number | string | null
   branch_product_stock: {
     current_stock: number; min_stock: number; current_rendimento: number | null
     branches: { id: string; name: string; slug: string } | null
@@ -65,7 +66,7 @@ export default async function BranchStockPage({
       .from('products')
       .select(`
         id, name, sku, barcode, category, category_id, unit, supplier,
-        cost_price, sale_price, consumption_unit, units_per_package, is_active, uso,
+        cost_price, sale_price, consumption_unit, units_per_package, is_active, uso, min_stock,
         branch_product_stock(
           current_stock, min_stock, current_rendimento,
           branches(id, name, slug)
@@ -115,6 +116,8 @@ export default async function BranchStockPage({
       unit:             p.unit,
       supplier:         p.supplier,
       costPrice:        Number(p.cost_price ?? 0),
+      // D11 da 12ª: sem a linha da unidade, a aba "Estoque mínimo" mostra este.
+      minimoDoCadastro: p.min_stock != null ? Number(p.min_stock) : null,
       salePrice:        p.sale_price != null ? Number(p.sale_price) : null,
       uso:              p.uso,
       consumptionUnit:  p.consumption_unit,

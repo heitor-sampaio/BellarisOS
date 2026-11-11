@@ -2120,6 +2120,13 @@ const procedures = await ler(
     mínimo 3. O gatilho (`on_stock_below_min`, migration `20261110005402`)
     ignora o marcador e decide pelo saldo de verdade. Prova:
     `e2e/estoque-defeitos-da-11.spec.ts` ("D2").
+    **E antes da linha nascer, a tela mostra o do cadastro** (D11 da 12ª
+    simulação, 2026-11-11; princípio 3: o Sérum com mínimo 3 e sem estoque
+    inicial aparecia 0 na aba "Estoque mínimo", e salvar dali gravava 0). Sem a
+    linha da unidade, a aba vem com `products.min_stock` e diz "Ainda sem estoque
+    nesta unidade: vale o mínimo do cadastro do produto (3 frasco)."
+    (`[data-minimo-do-cadastro]`, `minimoDoCadastro` das duas telas de estoque).
+    Prova: `e2e/estoque-defeitos-da-12.spec.ts`.
   - **Salvar o mínimo tem nome e confirma** (A41 da 10ª): "Salvar mínimo" e
     "Mínimo salvo" (`[data-minimo-salvo]`) — era um ícone. Prova: ("A41").
   - **O mínimo e o lote vencendo avisam** (A39 da 10ª): o dashboard da

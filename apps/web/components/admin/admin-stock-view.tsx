@@ -55,6 +55,8 @@ type ProductStock = {
   uso?:             string | null
   consumptionUnit:  string | null
   unitsPerPackage:  number | null
+  /** O mínimo do cadastro do produto (D11 da 12ª): vale na unidade que ainda não tem linha. */
+  minimoDoCadastro?: number | null
   totalStock:       number
   totalRendimento:  number | null  // soma de current_rendimento das filiais; null se produto sem consumptionUnit
   /** O valor do produto nas unidades da linha, do banco (saldo em consumo × custo de consumo). */
