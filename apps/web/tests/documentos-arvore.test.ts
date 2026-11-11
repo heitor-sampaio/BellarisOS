@@ -190,18 +190,19 @@ describe('A9 da 9ª: a variável digitada no texto', () => {
 // Renata corrigiu o termo em três idas. Princípio 3: a tela diz de uma vez
 // tudo o que impede salvar.
 describe('A6 da 11ª: as variáveis erradas, todas de uma vez', () => {
+  // (Era {{paciente.nome}}: desde a A15 da 12ª, "paciente" é a cliente — `nomeDaVariavel`.)
   it('a mal escrita, a que não existe e a de outro tipo saem na MESMA mensagem', () => {
-    const entrada = doc(p(txt('Eu, {{paciente.nome}}, em {{data}}, com {{ Nome }} às {{agendamento.hora}}.')))
+    const entrada = doc(p(txt('Eu, {{pessoa.nome}}, em {{data}}, com {{ Nome }} às {{agendamento.hora}}.')))
     const r = validarDocumentoDoEditor(entrada, 'TERMO', null)
     expect(r.erro).toBeTruthy()
     expect(r.erro).toContain('{{data}}')
     expect(r.erro).toContain('{{ Nome }}')
-    expect(r.erro).toContain('{{paciente.nome}}')
+    expect(r.erro).toContain('{{pessoa.nome}}')
     expect(r.erro).toContain('Hora do atendimento')
   })
   it('só uma errada continua com a mensagem de sempre', () => {
-    expect(validarDocumentoDoEditor(doc(p(txt('Eu, {{paciente.nome}}.'))), 'TERMO', null).erro)
-      .toBe('Variável que não existe: {{paciente.nome}}.')
+    expect(validarDocumentoDoEditor(doc(p(txt('Eu, {{pessoa.nome}}.'))), 'TERMO', null).erro)
+      .toBe('Variável que não existe: {{pessoa.nome}}.')
   })
 })
 
@@ -236,9 +237,9 @@ describe('A7 da 11ª: o número digitado no item da lista numerada', () => {
 // O termo também a tem: a profissional do atendimento em que é colhido (no
 // plano, a do plano).
 describe('A5 da 11ª: o termo tem a variável da profissional', () => {
-  it('{{profissional.nome}} é aceita no termo e segue no contrato; o contrato de plano não a tem', () => {
+  it('{{profissional.nome}} é aceita no termo e segue no contrato (e, desde a A14 da 12ª, no contrato de plano)', () => {
     expect(validarDocumentoDoEditor(doc(p(txt('Profissional responsável: {{profissional.nome}}'))), 'TERMO', null).erro).toBeUndefined()
     expect(validarDocumentoDoEditor(doc(p(txt('Profissional: {{profissional.nome}}'))), 'CONTRATO', null).erro).toBeUndefined()
-    expect(validarDocumentoDoEditor(doc(p(txt('Profissional: {{profissional.nome}}'))), 'CONTRATO_PLANO', null).erro).toBeTruthy()
+    expect(validarDocumentoDoEditor(doc(p(txt('Profissional: {{profissional.nome}}'))), 'CONTRATO_PLANO', null).erro).toBeUndefined()
   })
 })

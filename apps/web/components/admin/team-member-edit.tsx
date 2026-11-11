@@ -26,6 +26,8 @@ export interface EditableMember {
   atendeEm?:        string[]
   /** O horário de atendimento (nulo = segue a unidade). */
   horario?:         unknown
+  /** O registro no conselho (CRM, COREN…), opcional — A13 da 12ª. */
+  registroConselho?: string | null
 }
 
 interface Props {
@@ -222,6 +224,13 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                     aparece para agendar. Um não muda o outro: mudou a unidade, confira também onde ela atende.
                   </span>
                 )}
+
+                {/* A13 da 12ª (princípio 1): o CRM/COREN, opcional — a variável do registro nos documentos. */}
+                <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <label className="overline" htmlFor={`tme-registro-${member.id}`}>Registro no conselho (opcional)</label>
+                  <input id={`tme-registro-${member.id}`} name="registro_conselho" type="text" maxLength={60} className="field"
+                    defaultValue={member.registroConselho ?? ''} placeholder="Ex.: CRM-SC 12345, COREN-SC 123456" />
+                </div>
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span className="field-label">Horário de atendimento</span>

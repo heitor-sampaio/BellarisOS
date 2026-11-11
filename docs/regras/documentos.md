@@ -475,6 +475,40 @@ DEVLOG ("Termos e contratos").
     `garantirRenderizado` a passa ao documento que acabou de montar, sem gravar;
     `ResumoDeDocumento.vazias`).
   - Prova: `e2e/documentos-defeitos-da-12.spec.ts`, `tests/defeitos-da-12.test.ts` ("D6").
+- **Os atritos dos termos da 12ª simulação** (2026-11-11; princípios 1, 2 e 3):
+  - **O registro no conselho** (A13; princípio 1): "Registro no conselho
+    (opcional)" no cadastro da pessoa da equipe (Adicionar membro e o lápis,
+    nos dois portais; `users.registro_conselho`, migration `20261111006002`,
+    só o servidor grava — `createTeamMember`/`updateTeamMember`), e a
+    variável `profissional.registro` (OPCIONAL, em todo tipo: "vazia sem o
+    registro no cadastro da profissional"), da mesma profissional de
+    `profissional.nome` (`dadosDoDocumento`).
+  - **A profissional no contrato de PLANO** (A14): `profissional.nome` vale em
+    todo tipo — no contrato de plano, a profissional do plano
+    (`treatment_plans.professional_id`), como no termo do plano (A5 da 11ª).
+  - **"{{paciente.x}}" é a cliente, e o colado vira variável na hora** (A15;
+    princípio 2: o texto veio de outro sistema): o grupo "paciente" é apelido de
+    "cliente" (`nomeDaVariavel`, no conversor — a porta única —, e no editor).
+    Colado ou digitado, "{{grupo.campo}}" vira o chip ali mesmo (as regras de
+    colar e de digitar do nó `variavel`); antes só virava ao salvar.
+  - **Sem o "Lugar da assinatura", a tela diz** (A15): o Ctrl+A/Delete o apagava
+    calado. O editor diz "Sem o “Lugar da assinatura”: a assinatura da cliente vai
+    no fim do documento…" (`[data-sem-assinatura]`) — a tela e o PDF já a
+    punham no fim. Não bloqueia (princípio 2).
+  - **O editor abre o que vai ser salvo** (A16): o "1. 1. Objeto" e o "8."
+    vazio. `normalizarListasDoEditor` (`editor/converter.ts`, a regra do
+    `semONumeroDigitado` da A7 da 11ª, mais o item vazio que sai) roda ao abrir
+    o modelo no editor e ao gravar o JSON; o conversor também deixa o item vazio
+    fora do documento.
+  - **O Agendar diz o que falta no cadastro para o termo** (A17; a F55, A9 da
+    11ª, levou o aviso à janela do agendamento, não ao Agendar): escolhidos a
+    cliente e o procedimento, "“Termo do peeling” pede no cadastro: Data de
+    nascimento · sem isso, não se inicia o atendimento." com "Completar o
+    cadastro" (`[data-aviso-falta-no-cadastro]`, `faltaNoCadastroAoAgendar`,
+    `actions/documentos-da-janela.ts`: as variáveis do cadastro, obrigatórias,
+    da versão atual dos modelos ligados ao procedimento — a régua da montagem,
+    `variavelObrigatoria` + `valoresDoDocumento`). Só aviso.
+  - Prova: `e2e/documentos-atritos-da-12.spec.ts`, `tests/documentos-atritos-da-12.test.ts`.
 - O que os canais têm em comum mora em `lib/documentos/assinar.ts` (IP,
   assinante, o evento e o PDF depois de assinar), fora de `actions/`.
 - O export da LGPD traz os termos e contratos na parte GERAL (sem dado
@@ -500,4 +534,5 @@ DEVLOG ("Termos e contratos").
 ❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)
 ❌ Pôr nas dependências do efeito que relê o passo do checkout um objeto que vem do servidor (cada refresh traz um novo, e a tela volta ao Pagamento — F46)
 ❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir
+❌ Abrir no editor (ou gravar) o JSON do modelo sem normalizarListasDoEditor: a edição mostraria o que o documento não diz (A16 da 12ª)
 ```

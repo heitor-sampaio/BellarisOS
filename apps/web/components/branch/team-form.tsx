@@ -80,6 +80,13 @@ export function TeamForm({ branchId, slug, roles, unidade = null, unidadesDoAten
                 <input id="tm-email" name="email" type="email" required className="field" placeholder="ana@bellaris.com" />
               </div>
 
+              {/* A13 da 12ª (princípio 1): o CRM/COREN, opcional. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <label className="overline" htmlFor="tm-registro">Registro no conselho (opcional)</label>
+                <input id="tm-registro" name="registro_conselho" type="text" maxLength={60} className="field" placeholder="Ex.: CRM-SC 12345, COREN-SC 123456" />
+                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Sai nos termos e contratos pela variável do registro da profissional.</span>
+              </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <label className="overline" htmlFor="tm-role">Cargo</label>
                 <select id="tm-role" name="roleId" required className="field" defaultValue="">

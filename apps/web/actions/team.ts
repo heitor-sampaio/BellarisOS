@@ -96,6 +96,17 @@ async function assertBranchInTenant(
   return unidade ? { ok: true } : { error: 'Unidade inválida.' }
 }
 
+/**
+ * O registro no conselho (A13 da 12ª, princípio 1): opcional, texto curto. Sem
+ * o campo no formulário (chamador antigo), não muda (`undefined`); vazio, nulo.
+ */
+function registroDoFormulario(formData: FormData): string | null | undefined {
+  const bruto = formData.get('registro_conselho')
+  if (typeof bruto !== 'string') return undefined
+  const limpo = bruto.trim().replace(/\s+/g, ' ').slice(0, 60)
+  return limpo || null
+}
+
 export async function createTeamMember(
   _prevState: { error: string } | { success: boolean } | undefined,
   formData: FormData,
@@ -118,6 +129,7 @@ export async function createTeamMember(
   const pedidoDoAtende   = atendeDoFormulario(formData)
   let   providesServices = pedidoDoAtende ? pedidoDoAtende.length > 0 : formData.get('providesServices') === 'on'
   const redirectPath     = (formData.get('redirectPath') as string) ?? '/admin/team'
+  const registroConselho = registroDoFormulario(formData)
   // O percentual padrão de comissão de quem atende (A10): só quem gere o financeiro grava.
   const comissaoTexto    = ((formData.get('comissao_padrao') as string | null) ?? '').trim()
   let   comissaoPadrao   = providesServices && comissaoTexto ? parseDinheiro(comissaoTexto) : null
@@ -191,6 +203,7 @@ export async function createTeamMember(
         role_id:           roleId,
         provides_services: providesServices,
         ...(atendeEm ? { atende_em: atendeEm } : {}),
+        ...(registroConselho !== undefined ? { registro_conselho: registroConselho } : {}),
       }).select('id').single()
       return insertError || !data ? null : data as { id: string }
     }, r => r === null)
@@ -248,6 +261,7 @@ export async function updateTeamMember(
   const pedidoDoAtende   = atendeDoFormulario(formData)
   const providesServices = formData.get('providesServices') === 'on'
   const redirectPath     = (formData.get('redirectPath') as string) ?? '/admin/team'
+  const registroConselho = registroDoFormulario(formData)
   // O horário de atendimento (2026-10-21): vazio = segue a unidade.
   const horarioBruto     = formData.get('horario')
   let horario: Horario | null | undefined = undefined
@@ -364,6 +378,7 @@ export async function updateTeamMember(
       // Com a lista, o gatilho do banco acerta `provides_services` (= atende em alguma).
       ...(atendeEm ? { atende_em: atendeEm } : { provides_services: providesServices }),
       ...(horario !== undefined ? { horario } : {}),
+      ...(registroConselho !== undefined ? { registro_conselho: registroConselho } : {}),
     })
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)

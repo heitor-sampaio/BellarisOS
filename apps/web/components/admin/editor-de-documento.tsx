@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { ArrowLeft, FileUp, FileText, ExternalLink } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { marcacaoParaEditor } from '@/lib/documentos/editor/da-marcacao'
-import type { DocumentoDoEditor } from '@/lib/documentos/editor/converter'
+import { normalizarListasDoEditor, type DocumentoDoEditor, type NoPM } from '@/lib/documentos/editor/converter'
 import { ROTULO_DO_TIPO, validarDocumentoDoEditor, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { salvarModeloDoEditor, salvarModeloDeArquivo, linkDoArquivoDoModelo } from '@/actions/modelos-de-documento'
 
@@ -223,6 +223,12 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
           <EditorRico key={chave} inicial={inicial} tipo={tipo} imagens={imagens}
             onChange={d => { setDocumento(d); setAlterado(true) }} />
           {validacao?.erro && <p role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{validacao.erro}</p>}
+          {/* A15 da 12ª (princípio 3): sem o lugar, a assinatura não some — vai no fim; a tela diz. Não bloqueia (princípio 2). */}
+          {!temLugarDaAssinatura(documento.corpo) && (
+            <p data-sem-assinatura role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              Sem o “Lugar da assinatura”: a assinatura da cliente vai no fim do documento. Para pôr em outro lugar, use o botão “Lugar da assinatura” da barra.
+            </p>
+          )}
         </div>
       ) : (
         <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -292,8 +298,18 @@ function Campo({ rotulo, dica, children }: { rotulo: string; dica?: string; chil
   )
 }
 
-/** O que o editor abre: o JSON salvo, a marcação antiga convertida, ou o exemplo do tipo. */
+/**
+ * O que o editor abre: o JSON salvo, a marcação antiga convertida, ou o exemplo
+ * do tipo — já com as listas como vão ser salvas (A16 da 12ª: o "1. 1. Objeto"
+ * e o "8." vazio que o conversor tira ao salvar não aparecem na edição).
+ */
 function documentoInicial(existente: ModeloEmEdicao | null, tipo: TipoDeModelo): DocumentoDoEditor {
-  if (existente?.documento) return existente.documento as DocumentoDoEditor
-  return marcacaoParaEditor(existente?.texto ?? TEXTO_INICIAL[tipo])
+  if (existente?.documento) return normalizarListasDoEditor(existente.documento as DocumentoDoEditor)
+  return normalizarListasDoEditor(marcacaoParaEditor(existente?.texto ?? TEXTO_INICIAL[tipo]))
+}
+
+/** O corpo tem o "Lugar da assinatura"? (A15 da 12ª: o Ctrl+A/Delete o apagava calado.) */
+function temLugarDaAssinatura(no: NoPM | null | undefined): boolean {
+  if (!no) return false
+  return no.type === 'assinatura' || (no.content ?? []).some(temLugarDaAssinatura)
 }

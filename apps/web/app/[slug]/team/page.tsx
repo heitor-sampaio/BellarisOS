@@ -65,7 +65,7 @@ export default async function TeamPage({
   const [todosOsMembros, tenantRoles, daRedeQueAtendem, unidadesDaRede] = await Promise.all([
     ler(supabase
       .from('users')
-      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario, sem_comissao_de_proposito, comissao_venda_pct')
+      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario, sem_comissao_de_proposito, comissao_venda_pct, registro_conselho')
       .eq('branch_id', branchId)
       .order('name'), 'carregar a equipe'),
     ler(supabase
@@ -241,6 +241,7 @@ export default async function TeamPage({
                           branchId:         branchId,
                           providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
                           atendeEm: ((m as { atende_em?: string[] | null }).atende_em ?? []) as string[],
+                          registroConselho: (m as { registro_conselho?: string | null }).registro_conselho ?? null,
                         }}
                         branches={[{ id: branchId, name: branch?.name ?? 'Esta unidade', horario: branch?.horario }]}
                         unidadesDoAtende={unidadesDoAtende}

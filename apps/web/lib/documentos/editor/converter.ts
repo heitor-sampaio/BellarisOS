@@ -43,6 +43,18 @@ export const LIMITES = {
 } as const
 
 const RE_VARIAVEL = /^[a-z_]+(?:\.[a-z_]+)+$/
+
+/**
+ * A15 da 12ª simulação (princípio 2): o texto que veio de outro sistema chama a
+ * cliente de "paciente" — "{{paciente.nome}}" é "{{cliente.nome}}". O grupo é o
+ * apelido; o campo segue o catálogo (`lib/documentos/variaveis.ts`).
+ */
+const APELIDOS_DO_GRUPO: Record<string, string> = { paciente: 'cliente' }
+export function nomeDaVariavel(nome: string): string {
+  const ponto = nome.indexOf('.')
+  const grupo = ponto > 0 ? nome.slice(0, ponto) : ''
+  return APELIDOS_DO_GRUPO[grupo] ? APELIDOS_DO_GRUPO[grupo] + nome.slice(ponto) : nome
+}
 const RE_SHA256 = /^[0-9a-f]{64}$/
 
 class ErroDoDocumento extends Error {}
@@ -160,7 +172,7 @@ function trechosDe(nos: NoPM[] | undefined, ctx: Contexto): TrechoDeModelo[] {
             continue
           }
           pushTexto(texto.slice(desde, m.index), estilo)
-          saida.push({ variavel: nome, ...estilo })
+          saida.push({ variavel: nomeDaVariavel(nome), ...estilo })
           desde = m.index! + m[0].length
         }
         pushTexto(texto.slice(desde), estilo)
@@ -172,7 +184,7 @@ function trechosDe(nos: NoPM[] | undefined, ctx: Contexto): TrechoDeModelo[] {
       case 'variavel': {
         const nome = n.attrs?.nome
         if (typeof nome !== 'string' || !RE_VARIAVEL.test(nome)) throw new ErroDoDocumento('Há uma variável com nome inválido no texto.')
-        saida.push({ variavel: nome, ...estiloDasMarcas(n.marks) })
+        saida.push({ variavel: nomeDaVariavel(nome), ...estiloDasMarcas(n.marks) })
         break
       }
       default:
@@ -272,6 +284,52 @@ function semONumeroDigitado(itens: Bloco<TrechoDeModelo>[], numero: number): Blo
   return [{ ...primeiro, trechos }, ...itens.slice(1)]
 }
 
+/** O item de lista sem nada dentro: nenhum texto, variável, imagem ou outro bloco que não seja parágrafo vazio. */
+function itemVazio(item: NoPM): boolean {
+  if (item.type !== 'listItem') return false
+  return (item.content ?? []).every(b => b.type === 'paragraph' && !(b.content ?? []).some(n => n.type !== 'text' || (n.text ?? '').trim() !== ''))
+}
+
+/**
+ * A16 da 12ª simulação (princípio 3): o editor abre o que vai ser salvo. A
+ * correção do "1. 1. Objeto" (A7 da 11ª) valia no conversor — ao salvar e ao
+ * montar —, e a tela de edição mostrava o número duplicado e o item vazio.
+ * Aplicada ao JSON do editor (ao abrir e ao gravar), com a MESMA regra de
+ * `semONumeroDigitado`: o item da lista NUMERADA perde o número digitado igual
+ * ao dele, e o item vazio sai. O resto fica como está.
+ */
+export function normalizarListasDoEditor<T extends DocumentoDoEditor>(d: T): T {
+  const no = (n: NoPM): NoPM => {
+    if (!n.content) return n
+    let content = n.content.map(no)
+    if (n.type === 'orderedList' || n.type === 'bulletList') {
+      const semVazios = content.filter(item => !itemVazio(item))
+      // A lista inteira vazia fica (com um item) — o editor não a apaga sozinho.
+      content = semVazios.length ? semVazios : content.slice(0, 1)
+    }
+    if (n.type === 'orderedList') {
+      const inicio = Number(n.attrs?.start ?? 1)
+      const base = Number.isInteger(inicio) && inicio > 0 ? inicio : 1
+      content = content.map((item, i) => semONumeroNoItem(item, base + i))
+    }
+    return { ...n, content }
+  }
+  const parte = (p: NoPM | null | undefined) => (p ? no(p) : p)
+  return { ...d, corpo: parte(d.corpo) as NoPM, ...(d.cabecalho !== undefined ? { cabecalho: parte(d.cabecalho) } : {}), ...(d.rodape !== undefined ? { rodape: parte(d.rodape) } : {}) }
+}
+
+function semONumeroNoItem(item: NoPM, numero: number): NoPM {
+  const primeiro = item.content?.[0]
+  if (item.type !== 'listItem' || !primeiro || primeiro.type !== 'paragraph') return item
+  const t = primeiro.content?.[0]
+  if (!t || t.type !== 'text' || typeof t.text !== 'string') return item
+  const m = /^\s*(\d{1,4})[.)]\s+/.exec(t.text)
+  if (!m || Number(m[1]) !== numero) return item
+  const resto = t.text.slice(m[0].length)
+  const conteudo = resto ? [{ ...t, text: resto }, ...primeiro.content!.slice(1)] : primeiro.content!.slice(1)
+  return { ...item, content: [{ ...primeiro, content: conteudo }, ...item.content!.slice(1)] }
+}
+
 function blocos(nos: NoPM[] | undefined, onde: Onde, ctx: Contexto): Bloco<TrechoDeModelo>[] {
   const saida: Bloco<TrechoDeModelo>[] = []
   for (const n of nos ?? []) {
@@ -286,7 +344,8 @@ function blocos(nos: NoPM[] | undefined, onde: Onde, ctx: Contexto): Bloco<Trech
         saida.push({
           tipo: 'lista', ordenada: n.type === 'orderedList',
           ...(n.type === 'orderedList' && Number.isInteger(inicio) && inicio > 1 && inicio < 10_000 ? { inicio } : {}),
-          itens: (n.content ?? []).map((item, i) => {
+          // A16 da 12ª: o item vazio (o "8." sozinho no fim) não vai ao documento.
+          itens: (n.content ?? []).filter(item => !itemVazio(item)).map((item, i) => {
             if (item.type !== 'listItem') throw new ErroDoDocumento('Há um elemento inválido numa lista.')
             const doItem = blocos(item.content, 'lista', ctx)
             return n.type === 'orderedList'

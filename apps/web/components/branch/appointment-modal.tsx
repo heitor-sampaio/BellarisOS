@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, getSchedulingDaySlots } from '@/actions/appointments'
+import { faltaNoCadastroAoAgendar, type FaltaNoCadastroDoTermo } from '@/actions/documentos-da-janela'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import { gradeDoCheckout } from '@/lib/checkout/grade-de-horarios'
 import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
@@ -353,6 +354,23 @@ export function AppointmentModal({
   }, [chaveDoPlano, selectedClient?.id, procedimentoDoAgendamento])
   const avisoDoPlanoAgora = avisoDoPlano && avisoDoPlano.chave === chaveDoPlano ? avisoDoPlano : null
 
+  // -- O que falta no cadastro para os termos do procedimento (A17 da 12ª) ---
+  // O termo do Peeling só dizia "Faltam dados: Data de nascimento" depois de
+  // agendado. Só aviso: o agendamento segue (princípio 2). A sessão de plano
+  // não emite o termo do avulso (o plano tem os dele).
+  const chaveDaFalta = selectedClient?.id && procedimentoDoAgendamento && credito?.tipo !== 'PLANO'
+    ? `${selectedClient.id}|${procedimentoDoAgendamento}` : ''
+  const [faltaNoCadastro, setFaltaNoCadastro] = useState<{ chave: string; termos: FaltaNoCadastroDoTermo[]; podeCompletar: boolean } | null>(null)
+  useEffect(() => {
+    if (!chaveDaFalta || !selectedClient?.id) return
+    let vivo = true
+    faltaNoCadastroAoAgendar(selectedClient.id, procedimentoDoAgendamento)
+      .then(r => { if (vivo) setFaltaNoCadastro(r ? { chave: chaveDaFalta, ...r } : null) })
+      .catch(() => { /* sem aviso */ })
+    return () => { vivo = false }
+  }, [chaveDaFalta, selectedClient?.id, procedimentoDoAgendamento])
+  const faltaNoCadastroAgora = faltaNoCadastro && faltaNoCadastro.chave === chaveDaFalta ? faltaNoCadastro : null
+
   // -- Avisos do horário (J-30, 2026-10-30) ----------------------------------
   // Antes de confirmar: o encaixe fora do horário da profissional e o choque
   // com outro atendimento dela. É aviso — o encaixe é permitido (§9.1), e o
@@ -663,6 +681,21 @@ export function AppointmentModal({
                   <Link href={rotaNoPortal(pathname, dados.slug, `/planejamentos/${avisoDoPlanoAgora.planId}`)} style={{ color: 'var(--brand)', fontWeight: 700 }}>
                     Abrir o plano
                   </Link>
+                </span>
+              </p>
+            )}
+            {faltaNoCadastroAgora && selectedClient && (
+              <p data-aviso-falta-no-cadastro role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4 }}>
+                <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden />
+                <span>
+                  {faltaNoCadastroAgora.termos.map(t => `“${t.titulo}” pede no cadastro: ${t.faltando.join(', ')}${t.bloqueia ? ' · sem isso, não se inicia o atendimento' : ''}.`).join(' ')}
+                  {faltaNoCadastroAgora.podeCompletar && (
+                    <>{' '}
+                      <Link href={rotaNoPortal(pathname, dados.slug, `/clients/${selectedClient.id}?aba=dados`)} style={{ color: 'var(--brand)', fontWeight: 700 }}>
+                        Completar o cadastro
+                      </Link>
+                    </>
+                  )}
                 </span>
               </p>
             )}

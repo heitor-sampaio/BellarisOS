@@ -21,7 +21,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro, ErroDeBanco } from '@/lib/db'
 import { ensurePrivateBucket, getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
 import { validarDocumentoDoEditor, TIPOS_DE_MODELO, type TipoDeModelo } from '@/lib/documentos/variaveis'
-import type { DocumentoDoEditor } from '@/lib/documentos/editor/converter'
+import { normalizarListasDoEditor, type DocumentoDoEditor } from '@/lib/documentos/editor/converter'
 import { medidasDaImagem } from '@/lib/documentos/editor/medidas-da-imagem'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 
@@ -132,11 +132,13 @@ export async function salvarModeloDoEditor(input: Configuracao & { documento: un
 
     const bruto = (input.documento ?? {}) as Partial<DocumentoDoEditor>
     // Só as três partes: nada que venha a mais do navegador vai para o banco.
-    const documento: DocumentoDoEditor = {
+    // A16 da 12ª: grava as listas como o documento as mostra (sem o número
+    // digitado igual ao do item e sem o item vazio) — a edição abre o mesmo.
+    const documento: DocumentoDoEditor = normalizarListasDoEditor({
       corpo: bruto.corpo as DocumentoDoEditor['corpo'],
       ...(bruto.cabecalho ? { cabecalho: bruto.cabecalho } : {}),
       ...(bruto.rodape ? { rodape: bruto.rodape } : {}),
-    }
+    })
     const validacao = validarDocumentoDoEditor(documento, input.tipo, ctx.tenantId!)
     if (validacao.erro) return { error: validacao.erro }
 

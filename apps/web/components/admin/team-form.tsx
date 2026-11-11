@@ -102,6 +102,12 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                   <label className="overline" htmlFor="tm-email">E-mail</label>
                   <input id="tm-email" name="email" type="email" required className="field" placeholder="ana@bellaris.com" />
                 </div>
+                {/* A13 da 12ª (princípio 1): o CRM/COREN, opcional. */}
+                <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <label className="overline" htmlFor="tm-registro">Registro no conselho (opcional)</label>
+                  <input id="tm-registro" name="registro_conselho" type="text" maxLength={60} className="field" placeholder="Ex.: CRM-SC 12345, COREN-SC 123456" />
+                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Sai nos termos e contratos pela variável do registro da profissional.</span>
+                </div>
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <label className="overline" htmlFor="tm-role">Cargo</label>

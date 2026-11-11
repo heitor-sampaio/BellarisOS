@@ -1,6 +1,6 @@
 'use client'
 
-import { Extension, Node, mergeAttributes } from '@tiptap/core'
+import { Extension, Node, mergeAttributes, nodeInputRule, nodePasteRule } from '@tiptap/core'
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { TextStyleKit } from '@tiptap/extension-text-style'
@@ -8,6 +8,17 @@ import TextAlign from '@tiptap/extension-text-align'
 import Highlight from '@tiptap/extension-highlight'
 import { TableKit } from '@tiptap/extension-table'
 import { ENTRELINHAS_BASE, FATOR_DE_LINHA } from '@/lib/documentos/arvore'
+import { nomeDaVariavel } from '@/lib/documentos/editor/converter'
+
+/**
+ * A15 da 12ª simulação: o "{{paciente.nome}}" COLADO ficava texto na tela (o
+ * conversor só o trocava ao salvar). Colado ou digitado, "{{grupo.campo}}" vira
+ * o chip da variável ali mesmo — com o apelido resolvido ("paciente" é a
+ * cliente, `nomeDaVariavel`). Chaves que não formam variável ficam texto, e o
+ * salvar diz quais.
+ */
+const RE_VARIAVEL_COLADA = /\{\{\s*([a-z_]+(?:\.[a-z_]+)+)\s*\}\}/g
+const RE_VARIAVEL_DIGITADA = /\{\{\s*([a-z_]+(?:\.[a-z_]+)+)\s*\}\}$/
 
 /**
  * As extensões do editor de termos e contratos (Tiptap).
@@ -45,6 +56,12 @@ const Variavel = Node.create<{ rotulo: (nome: string) => string }>({
       this.options.rotulo(node.attrs.nome as string)]
   },
   renderText: ({ node }) => `{{${node.attrs.nome}}}`,
+  addPasteRules() {
+    return [nodePasteRule({ find: RE_VARIAVEL_COLADA, type: this.type, getAttributes: m => ({ nome: nomeDaVariavel(m[1]!) }) })]
+  },
+  addInputRules() {
+    return [nodeInputRule({ find: RE_VARIAVEL_DIGITADA, type: this.type, getAttributes: m => ({ nome: nomeDaVariavel(m[1]!) }) })]
+  },
   addCommands: () => ({
     // O chip leva o estilo de onde o cursor está (negrito ligado, a fonte do
     // trecho): é assim que um texto digitado ali sairia.

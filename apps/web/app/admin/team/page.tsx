@@ -68,7 +68,7 @@ export default async function AdminTeamPage({
     ler((() => {
       let query = supabase
         .from('users')
-        .select('id, name, email, role_id, is_active, branch_id, provides_services, atende_em, horario, sem_comissao_de_proposito, comissao_venda_pct, branches(name)')
+        .select('id, name, email, role_id, is_active, branch_id, provides_services, atende_em, horario, sem_comissao_de_proposito, comissao_venda_pct, registro_conselho, branches(name)')
         .eq('tenant_id', ctx.tenantId!)
 
       if (branch) query = query.eq('branch_id', branch)
@@ -306,6 +306,7 @@ export default async function AdminTeamPage({
                           branchId:         m.branch_id ?? null,
                           providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
                           atendeEm: ((m as { atende_em?: string[] | null }).atende_em ?? []) as string[],
+                          registroConselho: (m as { registro_conselho?: string | null }).registro_conselho ?? null,
                         }}
                         branches={branches ?? []}
                         editaveisDoAtende={ctx.branchId === null ? null : [ctx.branchId]}

@@ -94,7 +94,10 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'agendamento.data':      { grupo: 'Atendimento', rotulo: 'Data do atendimento', tipos: SO_CONTRATO, exemplo: '02/10/2026' },
   'agendamento.hora':      { grupo: 'Atendimento', rotulo: 'Hora do atendimento', tipos: SO_CONTRATO, exemplo: '14:30' },
   // No termo também (A5 da 11ª): a profissional do atendimento em que é colhido; no plano, a do plano.
-  'profissional.nome':     { grupo: 'Atendimento', rotulo: 'Profissional que atende', tipos: DO_PROCEDIMENTO, exemplo: 'Dra. Helena Prado' },
+  // E no contrato de plano (A14 da 12ª): a profissional do plano (`treatment_plans.professional_id`).
+  'profissional.nome':     { grupo: 'Atendimento', rotulo: 'Profissional que atende', tipos: TODOS, exemplo: 'Dra. Helena Prado' },
+  // A13 da 12ª (princípio 1): o registro no conselho (CRM, COREN…), opcional no cadastro da pessoa.
+  'profissional.registro': { grupo: 'Atendimento', rotulo: 'Registro no conselho da profissional (CRM, COREN…)', tipos: TODOS, exemplo: 'CRM-SC 12345', opcional: true, vaziaQuando: 'sem o registro no cadastro da profissional (Equipe)' },
 
   'procedimentos.lista':   { grupo: 'Plano',       rotulo: 'Procedimentos do plano (sessões e valor)', tipos: SO_PLANO, exemplo: 'Toxina botulínica — 2 sessões — R$ 2.400,00' },
   'plano.total':           { grupo: 'Plano',       rotulo: 'Valor total do plano', tipos: SO_PLANO, exemplo: 'R$ 4.800,00' },

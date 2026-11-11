@@ -122,6 +122,7 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
       : Promise.resolve(null),
   ])
   let profissional: string | null = null
+  let profissionalRegistro: string | null = null
   // A5 da 11ª: no termo do plano (sem agendamento), a profissional é a do plano.
   let profissionalId = (agendamento?.professional_id as string | null | undefined) ?? null
   if (!profissionalId && doc.treatment_plan_id && !doc.appointment_id) {
@@ -130,8 +131,9 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
     profissionalId = (plano?.professional_id as string | null) ?? null
   }
   if (profissionalId) {
-    const u = await ler(admin.from('users').select('name').eq('id', profissionalId).eq('tenant_id', doc.tenant_id).maybeSingle(), 'buscar o profissional')
+    const u = await ler(admin.from('users').select('name, registro_conselho').eq('id', profissionalId).eq('tenant_id', doc.tenant_id).maybeSingle(), 'buscar o profissional')
     profissional = (u?.name as string) ?? null
+    profissionalRegistro = (u?.registro_conselho as string | null) ?? null
   }
   const doPlano = doc.treatment_plan_id && !doc.appointment_id ? await dadosDoPlano(doc) : null
   // O total do plano é o que o cliente paga: o subtotal menos o desconto.
@@ -156,6 +158,7 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
       ? { scheduled_at: agendamento.scheduled_at as string, price: agendamento.price as number, profissional }
       : null,
     profissional,
+    profissionalRegistro,
   }
 }
 
