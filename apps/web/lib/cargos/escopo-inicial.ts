@@ -2,23 +2,22 @@ import type { AppModule, PermissionLevel, PermissionScope } from '@/lib/permissi
 
 /**
  * O escopo com que um módulo aparece na matriz do cargo (Configurações →
- * Cargos). Módulo já ligado carrega o que foi escolhido. Módulo em "Sem
- * acesso" nasce em OWN quando for habilitado: o valor gravado ali é `ALL` por
- * default do banco, nunca uma escolha de alguém — e a opção mais permissiva
- * não deve vencer por omissão nos dados sensíveis (agenda, prontuário,
- * financeiro).
+ * Cargos). `null` = SEM ESCOLHA: a tela pede ao ligar o módulo.
  *
- * **O CRM nasce em "Todos"** (A5 da 9ª simulação, 2026-11-07; decidido pelo
- * princípio 1, padrão sensato): o cargo "Comercial" ligado em Gerenciar
- * nascia em "Só os próprios leads", e o funil da Tatiane ficava vazio dos
- * leads com outro responsável. O funil é o trabalho do time; "só os meus" é a
- * escolha da clínica para distribuir leads (a SDR) — e o "só os meus"
- * GUARDADO do CRM desligado volta ao religar (D6, 2026-10-29).
+ * - Módulo já ligado carrega o que foi escolhido.
+ * - Módulo desligado com "só os meus" guardado devolve o "só os meus" ao
+ *   religar (revisão do Heitor, 2026-10-29, D6).
+ * - O resto nasce SEM ESCOLHA (A2 da 12ª simulação, 2026-11-11; princípio 3):
+ *   o `ALL` gravado num módulo desligado é o default do banco, nunca uma
+ *   escolha, e o OWN que a tela pré-marcava (desde a A5 da 9ª, o CRM em
+ *   "Todos") fez a Contadora ser salva com "Só as próprias comissões" por
+ *   engano. Como o gatilho da campanha (D8 da 11ª), quem liga o módulo diz o
+ *   que o cargo enxerga.
  */
 export function escopoInicial(
-  modulo: AppModule, p: { level: PermissionLevel; scope: PermissionScope } | undefined,
-): PermissionScope {
+  _modulo: AppModule, p: { level: PermissionLevel; scope: PermissionScope } | undefined,
+): PermissionScope | null {
   if (p && p.level !== 'NONE') return p.scope
-  if (modulo === 'crm') return p?.scope === 'OWN' ? 'OWN' : 'ALL'
-  return 'OWN'
+  if (p?.scope === 'OWN') return 'OWN'
+  return null
 }

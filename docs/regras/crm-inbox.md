@@ -948,15 +948,18 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
     `_leadId`). Os dois portões exigem `crm: VIEW`: `clients: MANAGE` não é
     passe para mexer em card nem em conversa.
 
-**O CRM ligado num cargo nasce em "Todos"** (A5 da 9ª simulação, 2026-11-07;
-decidido pelo princípio 1, padrão sensato): na matriz de Cargos, ligar o CRM
-num cargo que não o tinha nascia em "Só os próprios leads", e o funil da
-Comercial ficava sem os leads de outro responsável. O funil é o trabalho do
-time; "só os meus" é a escolha da clínica para distribuir leads (a SDR), a um
-clique. Os outros escopáveis (agenda, prontuário, financeiro — dado sensível)
-seguem nascendo em "só os meus"; o já ligado mantém o escolhido, e o "só os
-meus" guardado do CRM desligado volta ao religar (D6). `escopoInicial`
-(`lib/cargos/escopo-inicial.ts`). Prova: `tests/cargo-escopo-inicial.test.ts`.
+**O alcance do módulo ligado num cargo nasce SEM ESCOLHA** (A2 da 12ª
+simulação, 2026-11-11; princípio 3 — substitui a A5 da 9ª, que fazia o CRM
+nascer em "Todos" e os outros escopáveis em "só os meus"): na matriz de
+Cargos, o alcance (CRM, agenda, prontuário, financeiro, relatórios) só aparece
+com o módulo ligado, e ligado ele vem sem nenhum dos dois marcado ("Escolha o
+que este cargo enxerga aqui."). Salvar sem escolher não grava um padrão
+escondido: a tela diz o que falta (`[data-falta-escolher]`) e a action recusa
+("Escolha o que o cargo enxerga em …"). O já ligado mantém o escolhido, e o
+"só os meus" guardado do módulo desligado volta ao religar (D6). O Relatórios
+em "Ver" pede ao menos um relatório antes de salvar. `escopoInicial`
+(`lib/cargos/escopo-inicial.ts`). Prova: `tests/cargo-escopo-inicial.test.ts`,
+`e2e/configuracoes-atritos-da-12.spec.ts` ("A2").
 
 **O RESPONSÁVEL da oportunidade** (`leads.owner_id`, 2026-10-09). Na tela e no
 histórico é sempre "Responsável", nunca "Dono" (decisão do Heitor: o mesmo

@@ -21,7 +21,7 @@ import { OPCOES_DE_CAIXAS, type CaixasDoCargo } from '@/lib/inbox/visibilidade'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
 import type {
-  AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ReportTab,
+  AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ResolvedScopes, ReportTab,
 } from '@estetica-os/types'
 
 export interface EditorRole {
@@ -52,13 +52,14 @@ interface RolesEditorProps {
 }
 
 type Levels = Record<AppModule, PermissionLevel>
-type Scopes = Record<AppModule, PermissionScope>
+/** `null` = sem escolha ainda (A2 da 12ª): a tela pede ao ligar o módulo. */
+type Scopes = Record<AppModule, PermissionScope | null>
 
 function buildLevels(perms: Partial<Record<AppModule, RoleModulePermission>>): Levels {
   return Object.fromEntries(ALL_MODULES.map(m => [m, perms[m]?.level ?? 'NONE'])) as Levels
 }
 
-/** Escopo inicial de cada módulo: `escopoInicial` (lib/cargos) — o CRM ligado nasce em "Todos" (A5 da 9ª). */
+/** Escopo inicial de cada módulo: `escopoInicial` (lib/cargos) — sem escolha até alguém escolher (A2 da 12ª). */
 function buildScopes(perms: Partial<Record<AppModule, RoleModulePermission>>): Scopes {
   return Object.fromEntries(ALL_MODULES.map(m => [m, escopoInicial(m, perms[m])])) as Scopes
 }
@@ -444,6 +445,8 @@ function PermissionMatrix({
     caixas: role.inboxCaixas,
   }))
   const [dismissed, setDismissed] = useState(false)
+  // A2 da 12ª: o que falta escolher, dito ao tentar salvar (não um padrão escondido).
+  const [faltas, setFaltas] = useState<string[]>([])
 
   const dirty = useMemo(
     () => ALL_MODULES.some(m =>
@@ -472,26 +475,50 @@ function PermissionMatrix({
   function setLevel(module: AppModule, v: PermissionLevel) {
     setLevels(prev => ({ ...prev, [module]: v }))
     setDismissed(true)
+    setFaltas([])
   }
   function setScope(module: AppModule, v: PermissionScope) {
     setScopes(prev => ({ ...prev, [module]: v }))
     setDismissed(true)
+    setFaltas([])
   }
   function toggleReportTab(t: ReportTab) {
     setReportTabs(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
     setDismissed(true)
+    setFaltas([])
+  }
+
+  // O que o cargo ligou e ainda não escolheu: o alcance de cada módulo
+  // escopável, e as abas do Relatórios em "Ver" (A2 da 12ª, princípio 3).
+  function oQueFalta(): string[] {
+    const falta: string[] = ALL_MODULES
+      .filter(m => !foraDoPlano.includes(m) && isScoped(m) && levels[m] !== 'NONE' && !scopes[m])
+      .map(m => `o que enxerga em ${MODULE_LABELS[m]}`)
+    if (!foraDoPlano.includes('reports') && levels.reports !== 'NONE' && reportTabs.length === 0) {
+      falta.push('ao menos um relatório em Relatórios (ou deixe Relatórios em "Sem acesso")')
+    }
+    return falta
   }
 
   const nothingGranted = ALL_MODULES.every(m => levels[m] === 'NONE')
   const showSuccess    = !!state?.success && !dismissed
 
   return (
-    <form action={action} className="card">
+    <form
+      action={action}
+      className="card"
+      onSubmit={e => {
+        const falta = oQueFalta()
+        setFaltas(falta)
+        if (falta.length > 0) e.preventDefault()
+      }}
+    >
       <input type="hidden" name="roleId" value={role.id} />
       {ALL_MODULES.map(m => (
         <React.Fragment key={m}>
           <input type="hidden" name={`level:${m}`} value={levels[m]} />
-          {isScoped(m) && <input type="hidden" name={`scope:${m}`} value={scopes[m]} />}
+          {/* Sem escolha, nada vai: o servidor guarda o que já estava (D6). */}
+          {isScoped(m) && scopes[m] && <input type="hidden" name={`scope:${m}`} value={scopes[m]!} />}
         </React.Fragment>
       ))}
       {/* Aba marcada vira `report:<aba>=on`, como um checkbox — a action só
@@ -557,6 +584,16 @@ function PermissionMatrix({
 
       <MenuPreview levels={levels} scopes={scopes} reportTabs={reportTabs} />
 
+      {faltas.length > 0 && (
+        <div data-falta-escolher role="alert" style={{
+          color: 'var(--warning)', background: 'var(--warning-soft)',
+          borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
+          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', marginTop: 16,
+        }}>
+          <Fala>{`Antes de salvar, escolha ${faltas.join('; ')}.`}</Fala>
+        </div>
+      )}
+
       {state?.error && (
         <p style={{
           color: 'var(--warning)', background: 'var(--warning-soft)',
@@ -596,7 +633,7 @@ function ModuleRow({
 }: {
   module: AppModule
   level: PermissionLevel
-  scope: PermissionScope
+  scope: PermissionScope | null
   last: boolean
   reportTabs: ReportTab[]
   caixas: CaixasDoCargo
@@ -668,10 +705,11 @@ function ModuleRow({
         />
       </div>
 
-      {/* Alcance sempre presente nos módulos escopáveis — esmaecido enquanto não
-          há acesso. Antes ele aparecia só depois do clique, empurrando a linha. */}
-      {scoped && (
-        <div style={{ marginTop: 10, opacity: enabled ? 1 : 0.45 }}>
+      {/* O alcance aparece com o módulo ligado, e nasce sem escolha (A2 da 12ª):
+          esmaecido e pré-marcado com o módulo em "Sem acesso", ele era salvo
+          sem ninguém ter escolhido. */}
+      {scoped && enabled && (
+        <div style={{ marginTop: 10 }}>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap',
           }}>
@@ -683,6 +721,14 @@ function ModuleRow({
               onChange={onScope}
             />
           </div>
+          {!scope && (
+            <p data-alcance-sem-escolha style={{
+              fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)',
+              marginTop: 5, textAlign: 'right', lineHeight: 'var(--leading-snug)',
+            }}>
+              Escolha o que este cargo enxerga aqui.
+            </p>
+          )}
           {enabled && scope === 'OWN' && SCOPE_NOTE[module as ScopedModule] && (
             <p style={{
               fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 5,
@@ -808,8 +854,10 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
   const gerencia = (m: AppModule) => permissions[m] === 'MANAGE'
   const comAbas = (abas: Parameters<typeof rotuloDasAbasAlcancadas>[0]) => (rotulo: string) =>
     rotulo === 'Configurações' ? (rotuloDasAbasAlcancadas(abas, gerencia) ?? rotulo) : rotulo
-  const network = menuLabelsFor(ADMIN_MENU, permissions, scopes).map(comAbas(ABAS_DA_REDE))
-  const branch  = menuLabelsFor(BRANCH_MENU, permissions, scopes).map(comAbas(ABAS_DA_UNIDADE))
+  // Sem escolha ainda, a prévia lê "todos" (salvar pede a escolha antes).
+  const escopos = Object.fromEntries(ALL_MODULES.map(m => [m, scopes[m] ?? 'ALL'])) as ResolvedScopes
+  const network = menuLabelsFor(ADMIN_MENU, permissions, escopos).map(comAbas(ABAS_DA_REDE))
+  const branch  = menuLabelsFor(BRANCH_MENU, permissions, escopos).map(comAbas(ABAS_DA_UNIDADE))
 
   return (
     <div style={{
@@ -907,7 +955,7 @@ function SegmentedLevel({ options, value, onChange }: {
 
 function SegmentedScope({ module, value, disabled, onChange }: {
   module: ScopedModule
-  value: PermissionScope
+  value: PermissionScope | null
   disabled: boolean
   onChange: (v: PermissionScope) => void
 }) {
@@ -919,6 +967,7 @@ function SegmentedScope({ module, value, disabled, onChange }: {
           key={s}
           type="button"
           disabled={disabled}
+          aria-pressed={value === s}
           onClick={() => onChange(s)}
           style={{ ...segItem(value === s), padding: '4px 10px', fontSize: 'var(--text-2xs)' }}
         >

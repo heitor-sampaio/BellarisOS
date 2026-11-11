@@ -680,6 +680,13 @@ um muro que não depende de cada trava do código.
   liberar. `private.cargos_modelo_semear` (migration `20261104002101`); as
   redes que já existiam não mudam sozinhas (princípio 6), só as `[e2e]`.
   Prova: `e2e/permissoes-gerente-modelo.spec.ts`.
+- **A Recepcionista modelo nasce vendo as próprias comissões** (A3 da 12ª
+  simulação, 2026-11-11; princípio 1): a recepção que vende é o caso comum, e
+  a dona da Margarida criou um cargo "Recepção com vendas" à mão. O modelo
+  traz o Financeiro em "Ver, só as próprias" — o "Minhas comissões", sem o
+  financeiro da clínica (migration `20261111006001`). Só a rede nova; os
+  cargos já gravados não mudam (princípio 6). Prova:
+  `e2e/configuracoes-atritos-da-12.spec.ts` ("A3").
 - Prova: `e2e/permissoes-gerente-de-unidade.spec.ts` (a action direta de cada
   área recusada para a gerente, com a dona como controle; a aba Unidade; as
   telas).
