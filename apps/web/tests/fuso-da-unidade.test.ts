@@ -266,3 +266,40 @@ describe('o início adiantado no relógio da unidade (F62b)', () => {
     expect(atrasoDoInicio('2026-11-14T13:00:00.000Z', '2026-11-14T13:57:00.000Z')).toBe('57 min depois do horário marcado (10:00)')
   })
 })
+
+describe('o Copilot no relógio da unidade (F62b)', () => {
+  // Manaus é UTC−4: 09:00 de lá = 13:00 UTC = 10:00 de Brasília.
+  it('o dia, o instante e o "quando" são os da unidade; sem fuso, os de Brasília', async () => {
+    const { janelaDoDia, instanteDe, quandoLegivel, hojeNoFuso, horaAgoraNoFuso } = await import('@/lib/copilot/ferramentas/datas')
+    expect(janelaDoDia('2026-11-14', 'America/Manaus').inicio.toISOString()).toBe('2026-11-14T04:00:00.000Z')
+    expect(janelaDoDia('2026-11-14', 'America/Manaus').fim.toISOString()).toBe('2026-11-15T03:59:59.999Z')
+    expect(janelaDoDia('2026-11-14').inicio.toISOString()).toBe('2026-11-14T03:00:00.000Z')
+    // "Agende às 14:30" na unidade de Manaus é 14:30 DE LÁ (era 13:30 de lá).
+    expect(instanteDe('2026-11-14', '14:30', 'America/Manaus').toISOString()).toBe('2026-11-14T18:30:00.000Z')
+    expect(instanteDe('2026-11-14', '14:30').toISOString()).toBe('2026-11-14T17:30:00.000Z')
+    expect(quandoLegivel('2026-11-14T13:00:00.000Z', 'America/Manaus')).toMatch(/14\/11 às 09:00$/)
+    expect(quandoLegivel('2026-11-14T13:00:00.000Z')).toMatch(/14\/11 às 10:00$/)
+    // 23:30 de 13/11 em Manaus = 00:30 de 14/11 em Brasília.
+    const agora = new Date('2026-11-14T03:30:00.000Z')
+    expect(hojeNoFuso('America/Manaus', agora)).toBe('2026-11-13')
+    expect(hojeNoFuso(undefined, agora)).toBe('2026-11-14')
+    expect(horaAgoraNoFuso('America/Manaus', agora)).toBe('23:30')
+  })
+
+  it('o "Agora" do prompt diz a hora e o dia da unidade, e o nome do fuso', async () => {
+    const { agoraLegivel } = await import('@/lib/copilot/ferramentas/datas')
+    const agora = new Date('2026-11-14T03:30:00.000Z')
+    const manaus = agoraLegivel(agora, 'America/Manaus')
+    expect(manaus).toMatch(/13 de novembro de 2026, 23:30 \(horário de Manaus; hoje em ISO: 2026-11-13\)$/)
+    expect(agoraLegivel(agora)).toMatch(/14 de novembro de 2026, 00:30 \(horário de Brasília; hoje em ISO: 2026-11-14\)$/)
+  })
+
+  it('os clientes novos contam o "cliente desde" pelo dia da unidade', async () => {
+    const { filtroDosClientesNovos, ehClienteNova } = await import('@/lib/copilot/clientes-novos')
+    const desde = new Date('2026-11-14T03:30:00.000Z') // 13/11 em Manaus, 14/11 em Brasília
+    expect(filtroDosClientesNovos(desde, 'America/Manaus')).toContain('cliente_desde.gte.2026-11-13')
+    expect(filtroDosClientesNovos(desde)).toContain('cliente_desde.gte.2026-11-14')
+    expect(ehClienteNova({ clienteDesde: '2026-11-13', createdAt: null }, desde, 'America/Manaus')).toBe(true)
+    expect(ehClienteNova({ clienteDesde: '2026-11-13', createdAt: null }, desde)).toBe(false)
+  })
+})

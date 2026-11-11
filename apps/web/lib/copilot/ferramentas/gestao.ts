@@ -6,7 +6,7 @@ import { addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { rotaOportunidade } from '@/lib/rotas'
 import { loteVencido } from '@/lib/estoque/validade'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, UUID, dinheiro, hojeEmBrasilia, idsDasUnidades, janelaDoDia, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { DATA, UUID, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 
 /**
  * As leituras de FINANCEIRO, ESTOQUE e OPORTUNIDADES.
@@ -41,10 +41,12 @@ export const lancamentos: FerramentaDeLeitura<{
     const situacao = args.situacao ?? 'em_aberto'
     const campoDaData = situacao === 'pagos' ? 'paid_at' : 'due_date'
 
-    // Vencimento e pagamento pelo DIA de Brasília, como a tela mostra (o
-    // vencimento é gravado ao meio-dia de Brasília — vencimentoDoDia).
-    const hoje = hojeEmBrasilia()
-    const diaDe = (iso: string | null) => (iso ? dayKeyTZ(iso) : null)
+    // Vencimento e pagamento pelo DIA da unidade (F62b), como a tela mostra.
+    // O vencimento é gravado ao meio-dia de Brasília (vencimentoDoDia): o mesmo
+    // dia em qualquer fuso do Brasil. O pagamento é um instante: o dia da unidade dele.
+    const fuso = await fusoDe(c, u.unidade?.id ?? (unidades.length === 1 ? unidades[0] : null))
+    const hoje = hojeNoFuso(fuso)
+    const diaDe = (iso: string | null, tz: string = fuso) => (iso ? dayKeyTZ(iso, tz) : null)
 
     let q = c.admin.from('financial_transactions')
       .select('id, type, category, description, amount, payment_method, due_date, paid_at, is_paid, client_id, branch_id, parcela_numero, parcela_total, notes')
@@ -55,10 +57,10 @@ export const lancamentos: FerramentaDeLeitura<{
       .limit(50)
     if (args.tipo) q = q.eq('type', args.tipo === 'receita' ? 'INCOME' : 'EXPENSE')
     if (situacao === 'em_aberto') q = q.eq('is_paid', false)
-    if (situacao === 'vencidos') q = q.eq('is_paid', false).lt('due_date', janelaDoDia(hoje).inicio.toISOString())
+    if (situacao === 'vencidos') q = q.eq('is_paid', false).lt('due_date', janelaDoDia(hoje, fuso).inicio.toISOString())
     if (situacao === 'pagos') q = q.eq('is_paid', true)
-    if (args.de) q = q.gte(campoDaData, janelaDoDia(args.de).inicio.toISOString())
-    if (args.ate) q = q.lte(campoDaData, janelaDoDia(args.ate).fim.toISOString())
+    if (args.de) q = q.gte(campoDaData, janelaDoDia(args.de, fuso).inicio.toISOString())
+    if (args.ate) q = q.lte(campoDaData, janelaDoDia(args.ate, fuso).fim.toISOString())
     if (args.cliente) q = q.eq('client_id', args.cliente)
 
     const linhas = (await ler(q, 'ler os lançamentos') as {
@@ -66,9 +68,10 @@ export const lancamentos: FerramentaDeLeitura<{
       due_date: string | null; paid_at: string | null; is_paid: boolean; client_id: string | null; branch_id: string
       parcela_numero: number | null; parcela_total: number | null; notes: string | null
     }[] | null) ?? []
-    const [clientes, filiais] = await Promise.all([
+    const [clientes, filiais, fusos] = await Promise.all([
       nomesPorId(c, 'clients', linhas.map(l => l.client_id)),
       nomesPorId(c, 'branches', linhas.map(l => l.branch_id)),
+      fusosPorUnidade(c, linhas.map(l => l.branch_id)),
     ])
     return {
       dados: {
@@ -76,7 +79,7 @@ export const lancamentos: FerramentaDeLeitura<{
         lancamentos: linhas.map(l => ({
           id: l.id, tipo: l.type === 'INCOME' ? 'receita' : 'despesa',
           descricao: l.description ?? l.category, categoria: l.category, valor: dinheiro(l.amount),
-          vencimento: diaDe(l.due_date), pagoEm: diaDe(l.paid_at),
+          vencimento: diaDe(l.due_date), pagoEm: diaDe(l.paid_at, fusos.get(l.branch_id) ?? fuso),
           situacao: l.notes === 'Estornada' ? 'estornado'
             : l.is_paid ? 'pago'
             : (l.due_date && diaDe(l.due_date)! < hoje ? 'vencido' : 'em aberto'),
@@ -115,7 +118,9 @@ export const estoque: FerramentaDeLeitura<{
 
     if (filtro === 'vencendo') {
       // A validade é um DIA, gravado à meia-noite UTC (D1 da 7ª): até o fim daquele dia.
-      const ateODia = dayKeyTZ(addDaysTZ(new Date(), args.dias ?? 30))
+      // "Daqui a N dias" a partir do dia da unidade (F62b); a validade é um dia.
+      const fusoDoLote = await fusoDe(c, unidades.length === 1 ? unidades[0] : null)
+      const ateODia = dayKeyTZ(addDaysTZ(new Date(), args.dias ?? 30, fusoDoLote), fusoDoLote)
       const ate = `${ateODia}T23:59:59.999Z`
       const lotes = (await ler(c.admin.from('product_batches')
         .select('batch_number, expires_at, quantity, branch_id, products!inner(name, unit, tenant_id)')

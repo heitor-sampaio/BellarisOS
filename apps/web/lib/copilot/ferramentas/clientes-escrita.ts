@@ -11,7 +11,7 @@ import { isUnitTag } from '@estetica-os/utils'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, hojeEmBrasilia, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
+import { DATA, fusoDe, hojeNoFuso, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
 import { documentoDoCadastroDoCopilot } from '@/lib/copilot/ferramentas/documento-do-cadastro'
 import { documentoEstrangeiroRepetido } from '@/lib/clients/documento'
 
@@ -49,7 +49,8 @@ async function conferirComplemento(c: ContextoDaFerramenta, x: Complemento, clie
     const dup = await ler(q.limit(1), 'conferir o e-mail') as { id: string; name: string }[] | null
     if (dup?.length) return `E-mail já cadastrado para ${dup[0]!.name}.`
   }
-  if (x.nascimento && (x.nascimento > hojeEmBrasilia() || x.nascimento < '1900-01-01')) return 'Data de nascimento inválida.'
+  // O "hoje" do portal (F62b): às 23:30 de Manaus ainda não é amanhã.
+  if (x.nascimento && (x.nascimento > hojeNoFuso(await fusoDe(c)) || x.nascimento < '1900-01-01')) return 'Data de nascimento inválida.'
   return null
 }
 

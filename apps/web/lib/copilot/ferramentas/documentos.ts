@@ -7,7 +7,8 @@ import {
 } from '@/lib/documentos/situacao'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { profissionalDoRecorte } from '@/lib/clientes/atendida-por'
-import { DATA, quandoLegivel, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
+import { DATA, fusosPorUnidade, quandoLegivel, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * A tela de DOCUMENTOS (2026-10-14) como leitura: os termos e contratos
@@ -48,9 +49,11 @@ export const documentos: FerramentaDeLeitura<{
     if ('erro' in u) return { dados: { erro: u.erro } }
     // Como a tela: quem tem unidade fixa vê a dela; a rede, todas (null) ou a escolhida.
     const branchIds = c.ctx.branchId ? [c.ctx.branchId] : u.unidade ? [u.unidade.id] : null
+    // O período no fuso do recorte (F62b), como a tela de Documentos.
+    const fuso = await fusoDoRecorte(c.ctx.tenantId, branchIds)
     const periodo = args.periodo === 'custom' || (args.de && args.ate)
-      ? resolvePeriod('custom', args.de, args.ate)
-      : resolvePeriod(args.periodo ?? 'month')
+      ? resolvePeriod('custom', args.de, args.ate, new Date(), fuso)
+      : resolvePeriod(args.periodo ?? 'month', undefined, undefined, new Date(), fuso)
     // Como a tela: com o prontuário "só os meus", só as clientes que ela atende.
     const recorte = {
       tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo,
@@ -65,10 +68,11 @@ export const documentos: FerramentaDeLeitura<{
       }),
       getResumoDosDocumentos(recorte),
     ])
+    const fusos = await fusosPorUnidade(c, lista.linhas.slice(0, 30).map(d => d.branchId))
     const itens = lista.linhas.slice(0, 30).map(d => ({
       titulo: d.titulo, tipo: ROTULO_DO_TIPO_DE_DOCUMENTO[d.tipo], situacao: ROTULO_DA_SITUACAO[d.situacao],
       cliente: d.cliente, procedimento: d.procedimento,
-      atendimento: d.agendamentoEm ? quandoLegivel(d.agendamentoEm) : null,
+      atendimento: d.agendamentoEm ? quandoLegivel(d.agendamentoEm, (d.branchId && fusos.get(d.branchId)) || fuso) : null,
       emitidoEm: d.criadoEm.slice(0, 10),
       ...(d.faltando.length ? { faltaNoCadastro: d.faltando } : {}),
       ...(d.envio ? { enviadoPor: ROTULO_DO_ENVIO[d.envio] ?? d.envio } : {}),

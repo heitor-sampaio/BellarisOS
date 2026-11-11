@@ -14,7 +14,7 @@ import { filtroDosClientesNovos } from '@/lib/copilot/clientes-novos'
 import { diaDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
-  BUSINESS_TZ, STATUS_DO_AGENDAMENTO, dinheiro, hojeEmBrasilia, nomesPorId, quandoLegivel, resolverCliente, resolverUnidade, rota, unidadesDaRede,
+  STATUS_DO_AGENDAMENTO, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, nomesPorId, quandoLegivel, resolverCliente, resolverUnidade, rota, unidadesDaRede,
 } from '@/lib/copilot/ferramentas/comum'
 
 /**
@@ -30,11 +30,11 @@ function cpfMascarado(doc: string | null): string | null {
   return d.length === 11 ? `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**` : null
 }
 
-/** A idade hoje, no dia de Brasília (o nascimento é gravado como meia-noite UTC). */
-function idade(nascimento: string | null): number | null {
+/** A idade hoje, no dia do fuso (F62b; o nascimento é um DIA, gravado como meia-noite UTC). */
+function idade(nascimento: string | null, fuso: string): number | null {
   if (!nascimento) return null
   const [na, nm, nd] = nascimento.slice(0, 10).split('-').map(Number)
-  const [ha, hm, hd] = hojeEmBrasilia().split('-').map(Number)
+  const [ha, hm, hd] = hojeNoFuso(fuso).split('-').map(Number)
   let a = ha! - na!
   if (hm! < nm! || (hm === nm && hd! < nd!)) a--
   return a
@@ -86,12 +86,15 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
     ])
     type Ag = { id: string; scheduled_at: string; status: string; procedure_id: string; professional_id: string | null; branch_id: string }
     const ags = [...((proximos ?? []) as Ag[]), ...((ultimos ?? []) as Ag[])]
-    const [procs, profs] = await Promise.all([
+    const [procs, profs, fusos, fusoDoPortal] = await Promise.all([
       nomesPorId(c, 'procedures', ags.map(a => a.procedure_id)),
       nomesPorId(c, 'users', ags.map(a => a.professional_id)),
+      fusosPorUnidade(c, ags.map(a => a.branch_id)),
+      fusoDe(c),
     ])
+    // Cada agendamento na hora da unidade dele (F62b).
     const fmt = (a: Ag) => ({
-      id: a.id, quando: quandoLegivel(a.scheduled_at), procedimento: procs.get(a.procedure_id) ?? '—',
+      id: a.id, quando: quandoLegivel(a.scheduled_at, fusos.get(a.branch_id) ?? fusoDoPortal), procedimento: procs.get(a.procedure_id) ?? '—',
       profissional: a.professional_id ? (profs.get(a.professional_id) ?? '—') : '—',
       status: STATUS_DO_AGENDAMENTO[a.status] ?? a.status, href: rota(c, `/agenda/${a.id}`),
     })
@@ -104,7 +107,7 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
     return {
       dados: {
         id: ficha.id, nome: ficha.name, telefone: ficha.phone, email: ficha.email,
-        cpf: cpfMascarado(ficha.document), nascimento: ficha.birth_date?.slice(0, 10) ?? null, idade: idade(ficha.birth_date),
+        cpf: cpfMascarado(ficha.document), nascimento: ficha.birth_date?.slice(0, 10) ?? null, idade: idade(ficha.birth_date, fusoDoPortal),
         genero: ficha.gender, cidade: ficha.city, ativo: ficha.is_active,
         unidades: (ficha.tags ?? []).filter(t => nomesDeUnidade.has(t)),
         tags: (ficha.tags ?? []).filter(t => !nomesDeUnidade.has(t)),
@@ -148,6 +151,8 @@ export const clientes: FerramentaDeLeitura<{
     // a tag "Unidade: …" (importação, dado antigo) sumiria de toda lista.
     const variasUnidades = (await unidadesDaRede(c)).length > 1
     const tagDaUnidade = u.unidade && variasUnidades ? unitTag(u.unidade.name) : null
+    // O "hoje" das listas (o mês do aniversário, os N dias): o da unidade, senão o do portal (F62b).
+    const fuso = await fusoDe(c, u.unidade?.id)
 
     if (args.filtro === 'sem_visita') {
       // A MESMA regra do "Reativar clientes" do dashboard (r3-f13-10, o Heitor:
@@ -155,7 +160,7 @@ export const clientes: FerramentaDeLeitura<{
       // as clientes ativas, com ou sem a tag; com várias, a unidade pedida (pela
       // tag) ou a clínica inteira — sem visita em nenhuma unidade. E, como lá,
       // com a agenda "só os meus", as dela.
-      const desde = addDaysTZ(new Date(), -(args.dias ?? 90))
+      const desde = addDaysTZ(new Date(), -(args.dias ?? 90), fuso)
       const r = await getClientesParaReativarDoRecorte({
         tenantId: tenant, unidade: u.unidade ? { id: u.unidade.id, name: u.unidade.name } : null,
         desde, limite: 50, professionalId: recorteDosModulos(c.ctx).agenda,
@@ -168,12 +173,12 @@ export const clientes: FerramentaDeLeitura<{
     } else if (args.filtro === 'novos') {
       // Sobra da F49 (10ª): pela regra do dashboard — coalesce(cliente_desde,
       // created_at) —, não pelo cadastro: a importada de 2021 não é nova.
-      const desde = addDaysTZ(new Date(), -(args.dias ?? 30))
+      const desde = addDaysTZ(new Date(), -(args.dias ?? 30), fuso)
       let q = c.admin.from('clients').select('id, name, phone, created_at, cliente_desde').eq('tenant_id', tenant).eq('is_active', true)
-        .or(filtroDosClientesNovos(desde)).order('created_at', { ascending: false }).limit(50)
+        .or(filtroDosClientesNovos(desde, fuso)).order('created_at', { ascending: false }).limit(50)
       if (tagDaUnidade) q = q.contains('tags', [tagDaUnidade])
       lista = ((await ler(q, 'ler os clientes novos')) as (Lin & { created_at: string; cliente_desde: string | null })[] | null ?? [])
-        .map(x => ({ id: x.id, name: x.name, phone: x.phone, detalhe: `desde ${diaDeClienteDesde({ clienteDesde: x.cliente_desde, createdAt: x.created_at })}` }))
+        .map(x => ({ id: x.id, name: x.name, phone: x.phone, detalhe: `desde ${diaDeClienteDesde({ clienteDesde: x.cliente_desde, createdAt: x.created_at }, fuso)}` }))
     } else if (args.filtro === 'tag') {
       if (!args.tag) return { dados: { erro: 'Qual tag?' } }
       // O vocabulário da rede (Configurações → Tags): "VIP" e "vip" são a
@@ -185,7 +190,7 @@ export const clientes: FerramentaDeLeitura<{
         return { dados: { erro: `A tag "${args.tag}" não existe na rede. Tags: ${vocabulario.join(', ') || 'nenhuma'}.` } }
       }
     } else {
-      const mes = args.mes ?? Number(new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TZ, month: '2-digit' }).format(new Date()))
+      const mes = args.mes ?? Number(hojeNoFuso(fuso).slice(5, 7))
       // No banco (copilot_aniversariantes): ler a rede toda cortaria em mil linhas.
       const achados = (await ler(c.admin.rpc('copilot_aniversariantes', { p_tenant: tenant, p_mes: mes, p_limite: 50, p_tag: tagDaUnidade }), 'ler os aniversariantes') as
         { id: string; name: string; phone: string | null; dia: number }[] | null) ?? []

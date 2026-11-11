@@ -8,6 +8,7 @@ import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-mod
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 import { resumoDoFunil, resultadoDoPeriodo } from '@/lib/metrics/resultado'
 
@@ -74,9 +75,11 @@ export const indicadores: FerramentaDeLeitura<{
       return { dados: { erro: 'erro' in exigida ? exigida.erro : 'Escolha uma unidade.' } }
     }
     const branchIds = await idsDasUnidades(c, u.unidade)
+    // O período no fuso do recorte (F62b), como o dashboard e os Relatórios.
+    const fuso = await fusoDoRecorte(c.ctx.tenantId, branchIds)
     const periodo = args.periodo === 'custom' || (args.de && args.ate)
-      ? resolvePeriod('custom', args.de, args.ate)
-      : resolvePeriod(args.periodo ?? 'month')
+      ? resolvePeriod('custom', args.de, args.ate, new Date(), fuso)
+      : resolvePeriod(args.periodo ?? 'month', undefined, undefined, new Date(), fuso)
     // Como o dashboard e os Relatórios: até AGORA, contra o anterior equivalente.
     // Cada número no escopo do SEU módulo (2026-10-29, lib/metrics/escopo): a
     // agenda e as clientes pela agenda, o dinheiro pelo financeiro, o funil

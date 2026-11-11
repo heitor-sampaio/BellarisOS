@@ -5,7 +5,7 @@ import { computeAvailableSlots } from '@/lib/appointments/core'
 import { ler } from '@/lib/db'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
-  BUSINESS_TZ, DATA, UUID, STATUS_DO_AGENDAMENTO, hojeEmBrasilia, idsDasUnidades, janelaDoDia, nomesPorId,
+  DATA, UUID, STATUS_DO_AGENDAMENTO, fusoDe, fusosPorUnidade, hojeNoFuso, horaAgoraNoFuso, idsDasUnidades, janelaDoDia, nomesPorId,
   quandoLegivel,
   resolverProcedimento, resolverProfissional, resolverUnidade, rota,
 } from '@/lib/copilot/ferramentas/comum'
@@ -33,16 +33,18 @@ export const agendamentos: FerramentaDeLeitura<{
     cliente: UUID.optional().describe('Id do cliente (use buscar antes).'),
   }),
   async executar(c, args) {
-    const de = args.de ?? hojeEmBrasilia()
-    const ate = args.ate ?? de
-    if (ate < de) return { dados: { erro: '"ate" antes de "de".' } }
-    const dias = (janelaDoDia(ate).fim.getTime() - janelaDoDia(de).inicio.getTime()) / 86_400_000
-    if (dias > 31.5) return { dados: { erro: 'Período de no máximo 31 dias.' } }
-
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
     const unidades = await idsDasUnidades(c, u.unidade)
     if (!unidades.length) return { dados: { agendamentos: [] } }
+    // O dia é o da unidade (F62b): o de Manaus vai de 04:00 a 03:59 UTC.
+    const fuso = await fusoDe(c, u.unidade?.id ?? (unidades.length === 1 ? unidades[0] : null))
+
+    const de = args.de ?? hojeNoFuso(fuso)
+    const ate = args.ate ?? de
+    if (ate < de) return { dados: { erro: '"ate" antes de "de".' } }
+    const dias = (janelaDoDia(ate, fuso).fim.getTime() - janelaDoDia(de, fuso).inicio.getTime()) / 86_400_000
+    if (dias > 31.5) return { dados: { erro: 'Período de no máximo 31 dias.' } }
 
     let profissionalId = ownerFilter(c.ctx, 'agenda')
     if (args.profissional) {
@@ -55,8 +57,8 @@ export const agendamentos: FerramentaDeLeitura<{
     let q = c.admin.from('appointments')
       .select('id, scheduled_at, duration_min, status, branch_id, client_id, procedure_id, professional_id')
       .in('branch_id', unidades)
-      .gte('scheduled_at', janelaDoDia(de).inicio.toISOString())
-      .lte('scheduled_at', janelaDoDia(ate).fim.toISOString())
+      .gte('scheduled_at', janelaDoDia(de, fuso).inicio.toISOString())
+      .lte('scheduled_at', janelaDoDia(ate, fuso).fim.toISOString())
       .order('scheduled_at').limit(80)
     if (profissionalId) q = q.eq('professional_id', profissionalId)
     if (args.cliente) q = q.eq('client_id', args.cliente)
@@ -67,15 +69,17 @@ export const agendamentos: FerramentaDeLeitura<{
       branch_id: string; client_id: string; procedure_id: string; professional_id: string | null
     }[] | null) ?? []
 
-    const [clientes, procs, profs, filiais] = await Promise.all([
+    const [clientes, procs, profs, filiais, fusos] = await Promise.all([
       nomesPorId(c, 'clients', linhas.map(l => l.client_id)),
       nomesPorId(c, 'procedures', linhas.map(l => l.procedure_id)),
       nomesPorId(c, 'users', linhas.map(l => l.professional_id)),
       nomesPorId(c, 'branches', linhas.map(l => l.branch_id)),
+      fusosPorUnidade(c, linhas.map(l => l.branch_id)),
     ])
     const lista = linhas.map(l => ({
       id: l.id,
-      quando: quandoLegivel(l.scheduled_at),
+      // A hora de cada agendamento no relógio da unidade dele.
+      quando: quandoLegivel(l.scheduled_at, fusos.get(l.branch_id) ?? fuso),
       duracaoMin: l.duration_min,
       cliente: clientes.get(l.client_id) ?? '—',
       clienteId: l.client_id,
@@ -88,7 +92,7 @@ export const agendamentos: FerramentaDeLeitura<{
     return {
       dados: { periodo: de === ate ? de : `${de} a ${ate}`, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
       cartao: lista.length ? {
-        tipo: 'links', titulo: `Agenda · ${de === ate ? quandoLegivel(janelaDoDia(de).inicio).split(' às')[0] : `${de} a ${ate}`}`,
+        tipo: 'links', titulo: `Agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : `${de} a ${ate}`}`,
         itens: lista.slice(0, 12).map(a => ({ texto: `${a.quando.split(' às ')[1] ?? a.quando} · ${a.cliente}`, detalhe: `${a.procedimento} · ${a.profissional} · ${a.status}`, href: a.href })),
       } : undefined,
     }
@@ -128,16 +132,18 @@ export const horariosLivres: FerramentaDeLeitura<{ data: string; profissional: s
       procedimento = pr.name
     }
     let livres = await computeAvailableSlots(c.admin, unidadeId, p.id, args.data, duracao)
-    // Hoje: o que já passou não é livre.
-    if (args.data === hojeEmBrasilia()) {
-      const agora = new Intl.DateTimeFormat('pt-BR', { timeZone: BUSINESS_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date())
+    // Hoje: o que já passou não é livre — no relógio da unidade (F62b), como os horários.
+    const fuso = await fusoDe(c, unidadeId)
+    const hoje = hojeNoFuso(fuso)
+    if (args.data === hoje) {
+      const agora = horaAgoraNoFuso(fuso)
       livres = livres.filter(h => h > agora)
     }
-    if (args.data < hojeEmBrasilia()) livres = []
+    if (args.data < hoje) livres = []
     return {
       dados: { data: args.data, profissional: p.name, profissionalId: p.id, unidadeId, procedimento, duracaoMin: duracao, livres },
       cartao: livres.length ? {
-        tipo: 'links', titulo: `Livres · ${p.name} · ${quandoLegivel(janelaDoDia(args.data).inicio).split(' às')[0]}`,
+        tipo: 'links', titulo: `Livres · ${p.name} · ${quandoLegivel(janelaDoDia(args.data, fuso).inicio, fuso).split(' às')[0]}`,
         itens: [{ texto: livres.slice(0, 24).join('  ·  ') }],
       } : undefined,
     }

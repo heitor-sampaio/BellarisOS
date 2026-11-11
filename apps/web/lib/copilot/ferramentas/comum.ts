@@ -3,16 +3,18 @@ import { z } from 'zod/v4'
 import { alcancaUnidade } from '@/lib/auth'
 import { getCachedNetworkBranches, filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
-import { zonedToUtc, BUSINESS_TZ } from '@/lib/datetime'
+import { BUSINESS_TZ } from '@/lib/datetime'
+import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 export { BUSINESS_TZ }
+export { partesDaData, janelaDoDia, instanteDe, hojeNoFuso, horaAgoraNoFuso, quandoLegivel } from '@/lib/copilot/ferramentas/datas'
 import { rotaNoPortal } from '@/lib/rotas'
 import type { ContextoDaFerramenta } from '@/lib/copilot/ferramentas/tipos'
 import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 /**
  * O que as ferramentas do Copilot dividem: a unidade (sempre dentro da
- * abrangência da pessoa), as datas no fuso de Brasília e os links no portal
- * em que a pessoa está.
+ * abrangência da pessoa), as datas no fuso da unidade (F62b — `fusoDe`) e os
+ * links no portal em que a pessoa está.
  */
 
 export const UUID = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'id inválido')
@@ -59,34 +61,30 @@ export async function idsDasUnidades(c: ContextoDaFerramenta, unidade: Unidade |
   return (await unidadesDaRede(c)).map(u => u.id)
 }
 
-export function partesDaData(iso: string): [number, number, number] {
-  const [a, m, d] = iso.split('-').map(Number)
-  return [a!, m!, d!]
+/**
+ * O relógio do portal em que a pessoa está (F62b) — o mesmo do FusoProvider
+ * da tela: a unidade fixa dela; no portal de uma unidade, o dela; no da rede,
+ * o fuso comum (`fusoDaRede`: com fusos diferentes, Brasília).
+ */
+export async function fusoDoPortal(c: ContextoDaFerramenta): Promise<string> {
+  const tenant = c.ctx.tenantId
+  if (c.ctx.branchId) return fusoDaUnidade(tenant, c.ctx.branchId)
+  if (c.slugDoPortal) {
+    const u = (await getCachedNetworkBranches(tenant!) as (Unidade & { slug?: string })[] ?? []).find(b => b.slug === c.slugDoPortal)
+    if (u) return fusoDaUnidade(tenant, u.id)
+  }
+  return fusoDaRede(tenant)
 }
 
-/** O dia inteiro (00:00 a 23:59:59.999) em Brasília, em UTC. */
-export function janelaDoDia(iso: string): { inicio: Date; fim: Date } {
-  const [a, m, d] = partesDaData(iso)
-  return { inicio: zonedToUtc(a, m, d), fim: zonedToUtc(a, m, d, 23, 59, 59, 999) }
+/** O fuso de que a ferramenta fala: o da unidade (a escolhida, a do registro); sem ela, o do portal. */
+export async function fusoDe(c: ContextoDaFerramenta, unidadeId?: string | null): Promise<string> {
+  return unidadeId ? fusoDaUnidade(c.ctx.tenantId, unidadeId) : fusoDoPortal(c)
 }
 
-/** Um instante de parede ("2026-10-09" + "14:30") em Brasília, em UTC. */
-export function instanteDe(data: string, hora: string): Date {
-  const [a, m, d] = partesDaData(data)
-  const [h, min] = hora.split(':').map(Number)
-  return zonedToUtc(a, m, d, h!, min!)
-}
-
-export function hojeEmBrasilia(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-}
-
-/** "qui., 09/10 às 14:30" — o horário legível para o modelo e para o cartão. */
-export function quandoLegivel(iso: string | Date): string {
-  const d = typeof iso === 'string' ? new Date(iso) : iso
-  const dia = new Intl.DateTimeFormat('pt-BR', { timeZone: BUSINESS_TZ, weekday: 'short', day: '2-digit', month: '2-digit' }).format(d)
-  const hora = new Intl.DateTimeFormat('pt-BR', { timeZone: BUSINESS_TZ, hour: '2-digit', minute: '2-digit' }).format(d)
-  return `${dia} às ${hora}`
+/** O fuso de cada unidade da lista — o "quando" de cada linha é o da unidade dela. */
+export async function fusosPorUnidade(c: ContextoDaFerramenta, ids: readonly (string | null | undefined)[]): Promise<Map<string, string>> {
+  const unicos = [...new Set(ids.filter((x): x is string => !!x))]
+  return new Map(await Promise.all(unicos.map(async id => [id, await fusoDaUnidade(c.ctx.tenantId, id)] as const)))
 }
 
 export function dinheiro(v: number | null | undefined): string {

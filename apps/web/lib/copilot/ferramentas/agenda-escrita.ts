@@ -14,7 +14,7 @@ import { escolhasDaFichaQueJaExiste } from '@/lib/copilot/ferramentas/clientes-e
 import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import {
-  DATA, HORA, UUID, dinheiro, instanteDe, quandoLegivel, resolverCliente, resolverProcedimento,
+  DATA, HORA, UUID, dinheiro, fusoDe, instanteDe, quandoLegivel, resolverCliente, resolverProcedimento,
   resolverProfissional, resolverUnidade, rota, nomesPorId, STATUS_DO_AGENDAMENTO,
 } from '@/lib/copilot/ferramentas/comum'
 
@@ -30,9 +30,9 @@ import {
  * Copilot não oferece nem marca o horário bloqueado: a recusa diz o bloqueio
  * e que o encaixe nele é pela agenda (onde a equipe é avisada e encaixa).
  */
-async function recusaDoBloqueado(c: ContextoDaFerramenta, a: { professionalId: string; nome: string; inicio: Date; duracaoMin: number }): Promise<string | null> {
+async function recusaDoBloqueado(c: ContextoDaFerramenta, a: { professionalId: string; nome: string; inicio: Date; duracaoMin: number; fuso: string }): Promise<string | null> {
   const [b] = await bloqueiosQueBatem(c.admin, { professionalId: a.professionalId, inicio: a.inicio, fim: new Date(a.inicio.getTime() + a.duracaoMin * 60_000) })
-  return b ? `${a.nome} está com o horário bloqueado ${trechoDoBloqueio(b)} (${b.motivo}). Escolha outro horário — o encaixe num horário bloqueado é pela agenda.` : null
+  return b ? `${a.nome} está com o horário bloqueado ${trechoDoBloqueio(b, a.fuso)} (${b.motivo}). Escolha outro horário — o encaixe num horário bloqueado é pela agenda.` : null
 }
 
 /** O profissional está livre? A mesma conferência da tela (horarioOcupado, no núcleo). */
@@ -60,7 +60,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'agenda'),
-  descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id); data (AAAA-MM-DD) e hora (HH:MM, Brasília). Confira os horários livres antes. O cliente é avisado da confirmação.',
+  descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id); data (AAAA-MM-DD) e hora (HH:MM, no horário da unidade). Confira os horários livres antes. O cliente é avisado da confirmação.',
   parametros: z.object({
     cliente: z.string().min(2).max(120).optional(),
     clienteNovo: z.object({ nome: z.string().min(2).max(120), telefone: z.string().min(8).max(24) }).optional(),
@@ -104,14 +104,16 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       if (jaExiste) clienteNovo = { ...clienteNovo, jaExisteId: jaExiste.id }
     }
 
-    const inicio = instanteDe(a.data, a.hora)
+    // "14:30" é 14:30 NA UNIDADE (F62b): em Manaus, 18:30 UTC — não 14:30 de Brasília.
+    const fuso = await fusoDe(c, unidade.id)
+    const inicio = instanteDe(a.data, a.hora, fuso)
     if (inicio.getTime() < Date.now() - 5 * 60_000) return { erro: 'Esse horário já passou.' }
     const recusa = await conferirPecasDoAgendamento(c.admin, c.ctx, { branchId: unidade.id, professionalId: prof.id, clientId, roomId: null })
     if (recusa) return { erro: recusa }
     if (!(await livre(c, { professionalId: prof.id, inicio, duracaoMin: proc.duration_min || 60 }))) {
       return { erro: `${prof.name} já tem agendamento nesse horário. Veja os horários livres.` }
     }
-    const bloqueado = await recusaDoBloqueado(c, { professionalId: prof.id, nome: prof.name, inicio, duracaoMin: proc.duration_min || 60 })
+    const bloqueado = await recusaDoBloqueado(c, { professionalId: prof.id, nome: prof.name, inicio, duracaoMin: proc.duration_min || 60, fuso })
     if (bloqueado) return { erro: bloqueado }
 
     return {
@@ -121,7 +123,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
           { rotulo: 'Cliente', valor: nomeDoCliente },
           { rotulo: 'Procedimento', valor: `${proc.name} · ${proc.duration_min} min` },
           { rotulo: 'Profissional', valor: prof.name },
-          { rotulo: 'Quando', valor: quandoLegivel(inicio) },
+          { rotulo: 'Quando', valor: quandoLegivel(inicio, fuso) },
           { rotulo: 'Unidade', valor: unidade.name },
           { rotulo: 'Valor', valor: dinheiro(proc.price) },
           ...(a.observacao ? [{ rotulo: 'Observação', valor: a.observacao }] : []),
@@ -158,7 +160,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     if ('error' in r) return { erro: r.error }
     revalidarAgendamento(c.ctx, r.id)
     notifyNewAppointment(r.id, c.ctx.internalUserId)
-    return { mensagem: `Agendado para ${quandoLegivel(p.scheduledAt)}.`, href: rota(c, `/agenda/${r.id}`), rotuloDoLink: 'Ver agendamento' }
+    return { mensagem: `Agendado para ${quandoLegivel(p.scheduledAt, await fusoDe(c, p.branchId))}.`, href: rota(c, `/agenda/${r.id}`), rotuloDoLink: 'Ver agendamento' }
   },
 }
 
@@ -185,7 +187,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'agenda'),
-  descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (Brasília) e, opcionalmente, outro profissional. O cliente é avisado do novo horário.',
+  descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (no horário da unidade dele) e, opcionalmente, outro profissional. O cliente é avisado do novo horário.',
   parametros: z.object({ agendamento: UUID, data: DATA, hora: HORA, profissional: z.string().max(80).optional() }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
@@ -199,13 +201,15 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
       professionalId = p.id
       nomeDoProfissional = p.name
     }
-    const inicio = instanteDe(a.data, a.hora)
+    // A data e a hora no relógio da unidade do agendamento (F62b).
+    const fuso = await fusoDe(c, ag.branch_id)
+    const inicio = instanteDe(a.data, a.hora, fuso)
     if (inicio.getTime() < Date.now() - 5 * 60_000) return { erro: 'Esse horário já passou.' }
     const quem = professionalId ?? ag.professional_id
     if (quem && !(await livre(c, { professionalId: quem, inicio, duracaoMin: ag.duration_min || 60, excluir: ag.id }))) {
       return { erro: `${nomeDoProfissional} já tem agendamento nesse horário.` }
     }
-    const bloqueado = quem ? await recusaDoBloqueado(c, { professionalId: quem, nome: nomeDoProfissional, inicio, duracaoMin: ag.duration_min || 60 }) : null
+    const bloqueado = quem ? await recusaDoBloqueado(c, { professionalId: quem, nome: nomeDoProfissional, inicio, duracaoMin: ag.duration_min || 60, fuso }) : null
     if (bloqueado) return { erro: bloqueado }
     return {
       resumo: {
@@ -213,8 +217,8 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
         linhas: [
           { rotulo: 'Cliente', valor: ag.cliente },
           { rotulo: 'Procedimento', valor: ag.procedimento },
-          { rotulo: 'De', valor: quandoLegivel(ag.scheduled_at) },
-          { rotulo: 'Para', valor: quandoLegivel(inicio) },
+          { rotulo: 'De', valor: quandoLegivel(ag.scheduled_at, fuso) },
+          { rotulo: 'Para', valor: quandoLegivel(inicio, fuso) },
           { rotulo: 'Profissional', valor: nomeDoProfissional },
         ],
         aviso: 'O cliente recebe o aviso do novo horário.',
@@ -227,7 +231,8 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
     if ('error' in r) return { erro: r.error }
     revalidarAgendamento(c.ctx, p.appointmentId)
     notifyRescheduledAppointment(p.appointmentId, c.ctx.internalUserId)
-    return { mensagem: `Remarcado para ${quandoLegivel(p.scheduledAt)}.`, href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
+    const daUnidade = await ler(c.admin.from('appointments').select('branch_id').eq('id', p.appointmentId).maybeSingle(), 'ler a unidade do agendamento') as { branch_id: string | null } | null
+    return { mensagem: `Remarcado para ${quandoLegivel(p.scheduledAt, await fusoDe(c, daUnidade?.branch_id))}.`, href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
   },
 }
 
@@ -248,7 +253,7 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
         linhas: [
           { rotulo: 'Cliente', valor: ag.cliente },
           { rotulo: 'Procedimento', valor: ag.procedimento },
-          { rotulo: 'Quando', valor: quandoLegivel(ag.scheduled_at) },
+          { rotulo: 'Quando', valor: quandoLegivel(ag.scheduled_at, await fusoDe(c, ag.branch_id)) },
           { rotulo: 'Motivo', valor: a.motivo },
         ],
         aviso: 'O cliente recebe o aviso do cancelamento.',
@@ -282,7 +287,7 @@ export const confirmarAgendamento: FerramentaDeEscrita<{ agendamento: string }, 
         linhas: [
           { rotulo: 'Cliente', valor: ag.cliente },
           { rotulo: 'Procedimento', valor: ag.procedimento },
-          { rotulo: 'Quando', valor: quandoLegivel(ag.scheduled_at) },
+          { rotulo: 'Quando', valor: quandoLegivel(ag.scheduled_at, await fusoDe(c, ag.branch_id)) },
         ],
       },
       payload: { appointmentId: ag.id },
@@ -313,7 +318,7 @@ export const fazerCheckIn: FerramentaDeEscrita<{ agendamento: string }, { appoin
         linhas: [
           { rotulo: 'Cliente', valor: ag.cliente },
           { rotulo: 'Procedimento', valor: ag.procedimento },
-          { rotulo: 'Quando', valor: quandoLegivel(ag.scheduled_at) },
+          { rotulo: 'Quando', valor: quandoLegivel(ag.scheduled_at, await fusoDe(c, ag.branch_id)) },
         ],
       },
       payload: { appointmentId: ag.id },

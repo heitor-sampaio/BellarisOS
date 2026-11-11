@@ -10,6 +10,7 @@ import { copilotConfigurado, perguntarAoModelo, ErroDoModelo, type AoGastar, typ
 import { contextoDoCopilot, executarChamada, ferramentasDoCargo, paraOModelo } from '@/lib/copilot/executor'
 import { conversaDaPessoa, criarConversa, gravarMensagem, historicoParaOModelo, type ConteudoDoUsuario } from '@/lib/copilot/conversa'
 import { instrucoesDoCopilot } from '@/lib/copilot/prompt'
+import { fusoDoPortal } from '@/lib/copilot/ferramentas/comum'
 import { cotaEsgotada, registrarUso } from '@/lib/copilot/cota'
 import { lerAnexos, paraOModelo as conteudoDosAnexos, transcrever, ErroDeAnexo, type AnexoLido } from '@/lib/copilot/anexos'
 import { TEXTO_MAXIMO, type Cartao, type EventoDoCopilot } from '@/lib/copilot/tipos'
@@ -146,7 +147,9 @@ export async function POST(req: NextRequest) {
             ? ler(admin.from('branches').select('name').eq('id', ctx.branchId).maybeSingle(), 'ler a unidade') as Promise<{ name: string } | null>
             : Promise.resolve(null),
         ])
-        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, pagina, slugDoPortal })
+        // O relógio do portal (F62b): o "Agora" e o "amanhã" são os da unidade.
+        const fuso = await fusoDoPortal({ ctx, admin, pagina, slugDoPortal })
+        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, pagina, slugDoPortal, fuso })
         const disponiveis = ferramentasDoCargo(ctx)
         const ferramentas = paraOModelo(disponiveis)
         const cf = { ctx, admin, pagina, slugDoPortal, conversaId: conversa.id }

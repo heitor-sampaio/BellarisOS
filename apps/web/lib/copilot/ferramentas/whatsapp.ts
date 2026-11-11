@@ -4,7 +4,7 @@ import { ler } from '@/lib/db'
 import { getCobrancaDoWhatsapp } from '@/lib/metrics/whatsapp'
 import { ROTULO_DA_CATEGORIA, TABELA_DA_META, type CategoriaDeCobranca } from '@/lib/whatsapp/cobranca'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
-import { dinheiro, quandoLegivel, rota } from '@/lib/copilot/ferramentas/comum'
+import { dinheiro, fusoDe, quandoLegivel, rota } from '@/lib/copilot/ferramentas/comum'
 
 /**
  * O que a META cobra da clínica (2026-10-15): o mês de cada número oficial —
@@ -24,6 +24,8 @@ export const cobrancaDoWhatsapp: FerramentaDeLeitura<Record<string, never>> = {
       { id: string; label: string | null; phone_e164: string | null }[] | null) ?? []
     if (!numeros.length) return { dados: { numeros: [], aviso: 'A clínica não tem número do WhatsApp oficial: o WhatsApp Web (não oficial) não é cobrado pela Meta.' } }
     const cobranca = await getCobrancaDoWhatsapp(c.ctx.tenantId!)
+    // O mês é o da cobrança da Meta (Brasília, de propósito); o instante da recusa, no relógio do portal (F62b).
+    const fusoDoPortal = await fusoDe(c)
     return {
       dados: {
         mes: 'o mês atual (horário de Brasília)',
@@ -36,7 +38,7 @@ export const cobrancaDoWhatsapp: FerramentaDeLeitura<Record<string, never>> = {
             estimativa: dinheiro(x?.estimativa ?? 0),
             respostasGratisUsadas: `${Math.min(cat('service').entregues, TABELA_DA_META.respostasGratisPorMes)} de ${TABELA_DA_META.respostasGratisPorMes}`,
             pagamentoRecusado: !!x?.pagamentoRecusadoEm,
-            ...(x?.pagamentoRecusadoEm ? { recusadoEm: quandoLegivel(x.pagamentoRecusadoEm), oQueFazer: 'Cadastrar um cartão na conta do WhatsApp da clínica, no Gerenciador do WhatsApp da Meta (Faturamento), e enviar de novo.' } : {}),
+            ...(x?.pagamentoRecusadoEm ? { recusadoEm: quandoLegivel(x.pagamentoRecusadoEm, fusoDoPortal), oQueFazer: 'Cadastrar um cartão na conta do WhatsApp da clínica, no Gerenciador do WhatsApp da Meta (Faturamento), e enviar de novo.' } : {}),
           }
         }),
         nota: `Estimativa pela tabela de preços da Meta no Brasil (vigente desde ${TABELA_DA_META.vigencia.split('-').reverse().join('/')}); a fatura de verdade é a da Meta.`,

@@ -2,6 +2,8 @@ import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
 import { paginasDaBusca } from '@/lib/busca/paginas'
 import { ABAS_DE_CONFIGURACAO } from '@/lib/configuracoes/abas'
+import { agoraLegivel } from '@/lib/copilot/ferramentas/datas'
+import { nomeDoFuso } from '@/lib/unidades/fuso'
 
 /**
  * As instruções do Copilot — quem ele é, o que sabe da pessoa e da tela, e as
@@ -9,16 +11,6 @@ import { ABAS_DE_CONFIGURACAO } from '@/lib/configuracoes/abas'
  * cartão). O modelo recebe isto a cada volta.
  */
 
-const FUSO = 'America/Sao_Paulo'
-
-function agoraLegivel(agora = new Date()): string {
-  const data = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: FUSO, weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
-  }).format(agora)
-  const hora = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit' }).format(agora)
-  const iso = new Intl.DateTimeFormat('en-CA', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit' }).format(agora)
-  return `${data}, ${hora} (horário de Brasília; hoje em ISO: ${iso})`
-}
 
 /** O que a tela aberta diz ao modelo ("a ficha do cliente <id>"). */
 export function contextoDaPagina(pagina: string): string | null {
@@ -62,6 +54,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   unidade: string | null
   pagina: string
   slugDoPortal: string | null
+  /** O relógio do portal em que a pessoa está (F62b: `fusoDoPortal`); sem ele, Brasília. */
+  fuso?: string
 }): string {
   const quem = [
     `Você fala com ${ctx.userName.replace(/ \(via Copilot\)$/, '') || 'um membro da equipe'}`,
@@ -79,7 +73,7 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     'Você ajuda a equipe a consultar e a operar o sistema conversando: agenda, clientes e as tags deles, procedimentos, financeiro, estoque, oportunidades, documentos, o que a Meta cobra no WhatsApp e indicadores.',
     '',
     `${quem}. ${abrangencia}`,
-    `Agora: ${agoraLegivel()}.`,
+    `Agora: ${agoraLegivel(new Date(), extras.fuso)}.`,
     pagina ?? '',
     '',
     'Como trabalhar:',
@@ -88,7 +82,7 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- As ferramentas que você recebe são exatamente as que o cargo desta pessoa permite. Se ela pedir algo para o qual não há ferramenta, diga que o cargo dela não libera isso (ou que você ainda não faz isso) e indique a tela do sistema.',
     '- Para gravar qualquer coisa (cadastrar, agendar, remarcar, cancelar, lançar, mover), chame a ferramenta de gravação: ela NÃO grava, só prepara um cartão com Confirmar/Cancelar. Depois diga em uma frase o que vai ser feito e peça a confirmação no cartão. Nunca diga que já fez antes da confirmação.',
     '- Antes de gravar, resolva as dúvidas: se houver mais de um cliente com o nome, ou faltar horário, profissional ou procedimento, pergunte (ou mostre as opções) em vez de chutar.',
-    '- Datas e horários são no horário de Brasília. "Amanhã", "sexta", "semana que vem" são relativos à data de hoje acima. Ao chamar ferramentas, use datas ISO (AAAA-MM-DD) e horas HH:MM.',
+    `- Datas e horários são no ${nomeDoFuso(extras.fuso)} (o da unidade; numa unidade de outro fuso, as ferramentas já dizem e recebem a hora de lá). "Amanhã", "sexta", "semana que vem" são relativos à data de hoje acima. Ao chamar ferramentas, use datas ISO (AAAA-MM-DD) e horas HH:MM.`,
     '- Valores em reais no formato R$ 1.240,00.',
     '- Quando a ferramenta devolver um "href", você pode linkar no texto em Markdown: [Maria Souza](/admin/clients/...). Use só os links que vieram das ferramentas ou da lista de telas abaixo.',
     '- O que você não faz por ferramenta (importar uma planilha de contatos, criar ou renomear tags, configurar comissões, conectar o WhatsApp, emitir ou colher assinatura de documento…), explique em uma frase e indique a tela, com o link da lista abaixo.',
