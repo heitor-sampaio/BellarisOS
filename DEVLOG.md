@@ -10364,7 +10364,7 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
 - A2: o alcance do cargo novo nasce sem escolha; A7/A13: brinde sem estoque e o registro no conselho opcional; A40: o brinde em Perdas pelo custo; A51: o remarcar "Sem preferência" diz com quem ficou.
 
 **Para o Heitor:** o fuso da clínica fora de Brasília (a Acácia é de Manaus, UTC−4: o 00:00 da tela é 23:00 na parede, e o "hoje", o Fechamento e as campanhas das 09:00 seguem Brasília). Recomendação: o fuso por unidade, escolhido pelo estado do CEP, com Brasília como padrão.
-- **Decidido pelo Heitor (2026-11-11): "Fuso horario oficial de brasilia".** O sistema inteiro segue no horário de Brasília, para todas as clínicas; sem fuso por unidade. Pelo princípio 3, o horário de funcionamento da unidade diz "Horários no horário de Brasília" (F60).
+- **Decidido pelo Heitor (2026-11-11): "Não, deixa a clinica configurar o seu fuso"** (logo depois de "Fuso horario oficial de brasilia", que ele trocou). O fuso é configuração da unidade, com Brasília como padrão e a sugestão pelo estado do CEP no setup; toda janela de dia e hora da unidade usa o fuso dela (F62).
 
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
