@@ -77,6 +77,10 @@ export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, po
             </p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', marginTop: 4 }}>{semRegra.map(p => p.nome).join(', ')}.</p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>Sem regra, o atendimento é concluído sem gerar comissão.</p>
+            {/* A46 da 12ª: a dona que atende pesava aqui como pendência, sem dizer como sair. */}
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
+              Se é de propósito (como a dona que atende), toque em “É de propósito” na linha da pessoa, na Equipe: ela sai deste aviso.
+            </p>
           </div>
         ) : quantosAtendem === 0 ? (
           // A12: "todos têm comissão" sem ninguém que atende parecia tudo em ordem.
