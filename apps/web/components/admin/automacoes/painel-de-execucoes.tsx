@@ -12,6 +12,7 @@ import {
 } from '@/actions/automacoes'
 import { ROTULOS } from '@/lib/automacoes/validar'
 import type { TipoDeNo } from '@estetica-os/types'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * O histórico de execuções — e o ensaio.
@@ -34,15 +35,16 @@ const ICONE_STATUS: Record<string, { icone: React.ReactNode; cor: string; rotulo
   parado:    { icone: <CircleSlash size={13} />,  cor: 'var(--text-muted)', rotulo: 'Interrompida' },
 }
 
-const quando = (iso: string) =>
+const quando = (iso: string, fuso = 'America/Sao_Paulo') =>
   new Date(iso).toLocaleString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: fuso,
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
 
 export function PainelDeExecucoes({
   automacaoId, podeEditar, onFechar,
 }: { automacaoId: string; podeEditar: boolean; onFechar: () => void }) {
+  const fuso = useFuso()
   const [execucoes, setExecucoes] = useState<ExecucaoNaLista[]>([])
   const [ensaios, setEnsaios]     = useState(false)
   const [aberta, setAberta]       = useState<string | null>(null)
@@ -182,7 +184,7 @@ export function PainelDeExecucoes({
                     {ex.simulacao && <span className="chip chip-muted">ensaio</span>}
                   </div>
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 3 }}>
-                    {quando(ex.criadaEm)}{ex.sobre ? ` · ${ex.sobre}` : ''}
+                    {quando(ex.criadaEm, fuso)}{ex.sobre ? ` · ${ex.sobre}` : ''}
                   </p>
                   {ex.erro && (
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', marginTop: 3, lineHeight: 1.45 }}>

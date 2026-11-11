@@ -346,6 +346,17 @@ test.describe('os indicadores da unidade', () => {
     })
   })
 
+  // F62b: a tabela dizia "00:30" do dia seguinte (o relógio do navegador, aqui o de Brasília).
+  test('a linha do lançamento diz o dia e a hora de Manaus', async ({ browser }) => {
+    await como(browser, financeiro!, async p => {
+      await p.goto(`/${slugI}/financeiro?period=custom&from=${ONTEM}&to=${ONTEM}`)
+      const linha = p.locator('tr[data-lancamento]', { hasText: `Noite de Manaus ${marca}` })
+      const [, mes, dia] = ONTEM.split('-')
+      await expect(linha.locator('td[data-label="Data"]')).toContainText(`${dia}/${mes}`)
+      await expect(linha.locator('td[data-label="Data"]')).toContainText('23:30')
+    })
+  })
+
   test('a barra do gráfico é a do dia de Manaus', async () => {
     const { data, error } = await db().rpc('metrics_series', {
       p_tenant: unidade!.tenantId, p_branch_ids: [unidade!.branchId],

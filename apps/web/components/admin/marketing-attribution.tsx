@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useFuso } from '@/components/shared/fuso'
 
 interface AttributedLead {
   id: string
@@ -42,6 +43,7 @@ function truncate(s: string | null, n = 16) {
 }
 
 export function MarketingAttribution({ leads }: { leads: AttributedLead[] }) {
+  const fuso = useFuso()
   const [filter, setFilter] = useState<'all' | 'meta' | 'google'>('all')
 
   const filtered = leads.filter(l => {
@@ -131,7 +133,7 @@ export function MarketingAttribution({ leads }: { leads: AttributedLead[] }) {
                     {truncate(lead.fbclid) ?? truncate(lead.gclid) ?? '—'}
                   </td>
                   <td style={{ ...cellStyle, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    {new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                    {new Date(lead.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                   </td>
                   <td style={cellStyle}>
                     {lead.client_id ? (

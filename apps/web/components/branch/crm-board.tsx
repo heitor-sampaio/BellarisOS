@@ -27,6 +27,7 @@ import { TagBadge } from '@/components/shared/tag-badge'
 import { FunnelSelect } from '@/components/shared/funnel-select'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { useFuso } from '@/components/shared/fuso'
 
 // --- Filtros e ordenação -----------------------------------------
 const SEM_DONO = '__sem_dono__'
@@ -524,6 +525,7 @@ function LeadCard({
   desfechos?: { ganho: CRMStage | null; perdido: CRMStage | null } | null
   onMoverPara?: (leadId: string, etapaId: string) => void
 }) {
+  const fuso = useFuso()
   const [convertOpen, setConvertOpen] = useState(false)
   const [moving,     startMoving]  = useTransition()
   const router     = useRouter()
@@ -589,7 +591,7 @@ function LeadCard({
   const wasDragging = useRef(false)
 
   // D12 da 12ª: pelo dia de Brasília, não por 24 h corridas.
-  const ageLabel  = idadeDoLead(lead.created_at, nowMs ?? new Date())
+  const ageLabel  = idadeDoLead(lead.created_at, nowMs ?? new Date(), fuso)
 
   // --- Métricas de atendimento -----------------------------------
   // Cliente aguardando resposta (prioridade máxima de sinal).
@@ -964,7 +966,7 @@ function LeadCard({
             sozinho (crm-05, princípio 6): quem move é a pessoa, no botão. */}
         {/* A42 da 9ª: o lembrete de retorno — o dia combinado; hoje e atrasado em destaque. */}
         {lead.retornar_em && (() => {
-          const r = textoDoRetorno(lead.retornar_em, nowMs != null ? dayKeyTZ(new Date(nowMs)) : '0000-00-00')
+          const r = textoDoRetorno(lead.retornar_em, nowMs != null ? dayKeyTZ(new Date(nowMs), fuso) : '0000-00-00')
           return (
             <p data-retornar-em title={lead.retornar_obs ?? undefined} style={{
               marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 700,
@@ -976,7 +978,7 @@ function LeadCard({
         })()}
         {lead.proximo_agendamento && (
           <p data-agendado-em style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--info)' }}>
-            <CalendarClock size={11} /> Agendado {quandoNoCard(lead.proximo_agendamento)}
+            <CalendarClock size={11} /> Agendado {quandoNoCard(lead.proximo_agendamento, fuso)}
           </p>
         )}
         {lead.compra && (
@@ -1065,10 +1067,10 @@ function LeadCard({
 }
 
 /** "06/11 10:30" no fuso da clínica — o mesmo no servidor e no navegador. */
-function quandoNoCard(iso: string): string {
+function quandoNoCard(iso: string, fuso = 'America/Sao_Paulo'): string {
   const d = new Date(iso)
-  const dia = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
-  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+  const dia = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: fuso })
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso })
   return `${dia} ${hora}`
 }
 
@@ -1092,6 +1094,8 @@ export function CRMBoard({
   procedures, branchId, branchName, slug, networkMode, branches, leadAberto, motivos = [], podeCadastrarCliente = false,
   podeAgendar = false, podeMover = false,
 }: CRMBoardProps) {
+  // O dia da criação no relógio da unidade (F62b).
+  const fuso = useFuso()
   // A18/A19 da 7ª simulação: as etapas de desfecho do funil aberto — o botão
   // "Mover para Fechado" da compra, o menu do card e o lugar de soltar no arraste.
   const desfechos = podeMover
@@ -1187,7 +1191,7 @@ export function CRMBoard({
       // O dia da criação no fuso do negócio: o servidor roda em UTC, e um lead
       // das 22h cairia no dia seguinte.
       result = result.filter(l => {
-        const dia = dayKeyTZ(l.created_at)
+        const dia = dayKeyTZ(l.created_at, fuso)
         return dia >= filters.periodoDe && dia <= filters.periodoAte
       })
     } else if (filters.period !== 'all') {
@@ -1203,7 +1207,7 @@ export function CRMBoard({
       if (sort === 'name_desc') return b.name.localeCompare(a.name, 'pt-BR')
       return 0
     })
-  }, [leads, filters, sort, nowMs, montadoEm])
+  }, [leads, filters, sort, nowMs, montadoEm, fuso])
 
   function handleLeadCreated(lead: Lead) {
     // A resposta da action já pode ter trazido a lista nova do servidor, com o

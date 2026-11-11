@@ -7,9 +7,11 @@ import {
 import { formatDurationLong, secondsSince } from '@estetica-os/utils'
 import { getLeadEvents, getContactEvents, getClientEvents } from '@/actions/lead-events'
 import type { LeadEvent } from '@/lib/lead-events'
+import { useFuso } from '@/components/shared/fuso'
 
-const DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit', month: '2-digit', year: 'numeric',
+// No relógio da unidade (F62b): montado com o fuso da tela.
+const dataHoraNoFuso = (fuso: string) => new Intl.DateTimeFormat('pt-BR', {
+  timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric',
   hour: '2-digit', minute: '2-digit',
 })
 
@@ -120,6 +122,8 @@ export function LeadTimeline({
   conversationId?: string
   refreshKey?: number
 }) {
+  const fuso = useFuso()
+  const DATA_HORA = dataHoraNoFuso(fuso)
   // A resposta fica guardada com a CHAVE da busca que a pediu. Enquanto a da
   // chave atual não chega, a lista é "carregando" — derivado, em vez de zerar
   // eventos e erro dentro do efeito a cada troca.

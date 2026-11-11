@@ -28,14 +28,14 @@ const juntar = (partes: (string | null | undefined)[]): string | null => {
   return ok.length > 0 ? ok.join(' · ') : null
 }
 
-/** "qua, 08/10 às 14:30", no fuso da clínica. */
-export function quandoLegivel(iso: string): string {
+/** "qua, 08/10 às 14:30", no fuso da clínica (F62b: o do recorte da busca). */
+export function quandoLegivel(iso: string, fuso = 'America/Sao_Paulo'): string {
   const d = new Date(iso)
   const dia = new Intl.DateTimeFormat('pt-BR', {
-    weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo',
+    weekday: 'short', day: '2-digit', month: '2-digit', timeZone: fuso,
   }).format(d).replace('.', '')
   const hora = new Intl.DateTimeFormat('pt-BR', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+    hour: '2-digit', minute: '2-digit', timeZone: fuso,
   }).format(d)
   return `${dia} às ${hora}`
 }
@@ -46,7 +46,7 @@ const DESFECHO: Record<string, string> = { WON: 'ganha', LOST: 'perdida' }
  * Uma linha do banco → um resultado com o texto pronto para a tela. Tipo que o
  * banco devolver e a tela não conhecer fica de fora (não vira um item mudo).
  */
-export function resultadoDaLinha(l: LinhaDaBusca): ResultadoDaBusca | null {
+export function resultadoDaLinha(l: LinhaDaBusca, fuso?: string): ResultadoDaBusca | null {
   if (!TIPOS_DO_BANCO.has(l.tipo)) return null
   const tipo = l.tipo as TipoDoServidor
   const x = l.extra ?? {}
@@ -76,7 +76,7 @@ export function resultadoDaLinha(l: LinhaDaBusca): ResultadoDaBusca | null {
       return {
         tipo, id: l.id, titulo,
         subtitulo: juntar([
-          quando ? quandoLegivel(quando) : null,
+          quando ? quandoLegivel(quando, fuso) : null,
           texto(l.subtitulo),
           texto(x.profissional),
           texto(x.unidade),

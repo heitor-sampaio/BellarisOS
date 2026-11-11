@@ -35,6 +35,7 @@ import {
   resultadoDoPeriodo, variacaoDaMargemPp, variacaoPercentual, mediaPorExecucao, participacaoPct, taxaDeConclusao, taxaDeRetencao, giroDoEstoque, statusDosAgendamentos, maisRealizado, consumoComPerdas,
   type EstoqueNoResultado,
 } from '@/lib/metrics/resultado'
+import { useFuso } from '@/components/shared/fuso'
 
 // -- Types ---------------------------------------------------------------------
 type Tab = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -579,6 +580,7 @@ const PLURAL_DO_TIPO = {
  * rodapé é o do resumo, no mesmo recorte da lista.
  */
 function TabVendas(p: ReportsBiProps) {
+  const fuso = useFuso()
   const router = useRouter()
   const searchParams = useSearchParams()
   const v = p.vendas
@@ -667,7 +669,7 @@ function TabVendas(p: ReportsBiProps) {
                 {v.linhas.map((l, i) => (
                   <tr key={`${l.tipo}-${l.id}`} data-venda={l.tipo}
                     style={{ borderBottom: i < v.linhas.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
-                    <td data-label="Data" data-par style={{ ...td(), whiteSpace: 'nowrap' }}>{new Date(l.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
+                    <td data-label="Data" data-par style={{ ...td(), whiteSpace: 'nowrap' }}>{new Date(l.data).toLocaleDateString('pt-BR', { timeZone: fuso })}</td>
                     <td data-label="Tipo" data-par style={td()}><Badge label={ROTULO_DO_TIPO[l.tipo]} color={l.tipo === 'PROCEDIMENTO' ? 'gray' : l.tipo === 'PLANO' ? 'green' : 'blue'} /></td>
                     <td data-label="" style={{ ...td(), fontWeight: 600, minWidth: 180 }}>{descricaoDaVenda(l)}</td>
                     <td data-label="Cliente" style={td()}>{l.cliente ?? '—'}</td>
@@ -796,6 +798,7 @@ function TabAgenda(p: ReportsBiProps) {
 // TAB: CLIENTES
 // -----------------------------------------------------------------------------
 function TabClientes(p: ReportsBiProps) {
+  const fuso = useFuso()
   const { relatorio: r, core, corePrev, retention, newClientsSeries } = p
   const c = r.clientes
 
@@ -820,7 +823,7 @@ function TabClientes(p: ReportsBiProps) {
   // negócio.
   const acquisitionData = newClientsSeries.map(pt => ({
     label: new Date(pt.bucket).toLocaleDateString('pt-BR', {
-      day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo',
+      day: '2-digit', month: '2-digit', timeZone: fuso,
     }),
     value: pt.count,
   }))

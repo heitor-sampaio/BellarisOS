@@ -17,6 +17,7 @@ import { RespostasDaAnamnese } from '@/components/branch/anamnese-geral'
 import { quemRespondeu } from '@/lib/anamnese-geral'
 import { situacaoDaExecucao } from '@/lib/plano-de-tratamento/situacao'
 import { usadasAntesDoSistema } from '@/lib/pacotes/de-fora'
+import { useFuso } from '@/components/shared/fuso'
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -252,6 +253,7 @@ interface Props {
 // -- Modal principal -----------------------------------------------------------
 
 export function TreatmentFileModal({ client, activePackage, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, onClose, onCancelarPacote, onCancelarPlano }: Props) {
+  const fuso = useFuso()
   const [details,      setDetails]      = useState<TreatmentFileDetails | null>(null)
   // Nasce carregando quando há plano: a busca inicial sai no efeito abaixo.
   const [loading,      setLoading]      = useState(!!activePackage.planId)
@@ -506,7 +508,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                   <Divider />
                   <div>
                     <SectionTitle>Anamnese</SectionTitle>
-                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginBottom: 10 }}>{quemRespondeu(details.anamnesis)}</p>
+                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginBottom: 10 }}>{quemRespondeu(details.anamnesis, fuso)}</p>
                     <RespostasDaAnamnese rows={details.anamnesis.ficha.rows} respostas={details.anamnesis.respostas} />
                   </div>
                 </>

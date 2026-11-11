@@ -9,6 +9,7 @@ import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 import { textoDaBase } from '@/lib/comissoes/base-efetiva'
 import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda } from '@/lib/comissoes/extrato-texto'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Financeiro → Comissões (os dois portais). Por profissional e unidade: o que
@@ -31,8 +32,10 @@ const METODOS = [
   { key: 'DEBIT_CARD', label: 'Débito' }, { key: 'CREDIT_CARD', label: 'Crédito' },
 ]
 
-const data = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'
-const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+// O dia e a hora do lançamento no relógio da unidade (F62b). O período do
+// fechamento (inicio/fim) é o da comissão, da rede: fica em Brasília de propósito.
+const data = (iso: string | null, fuso = 'America/Sao_Paulo') => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso }) : '—'
+const hora = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })
 
 export interface PropsDaTela {
   titulo:        string
@@ -55,6 +58,7 @@ export interface PropsDaTela {
 
 export function FinanceiroComissoes(p: PropsDaTela) {
   const router = useRouter()
+  const fuso = useFuso()
   const [aberto, setAberto] = useState<string | null>(null)
 
   function navegar(periodo: string, unidade = p.unidadeAtual ?? '') {
@@ -68,7 +72,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
     const unidade = new Map(p.resumo.map(r => [r.branchId, r.branchName]))
     // D3 da 10ª, A17 e A44 da 11ª: o CSV mora em lib/comissoes/extrato-texto (a base efetiva,
     // a regra com a origem e o que não sai da base vazio).
-    const csv = csvDoExtrato(p.extrato, nome, unidade)
+    const csv = csvDoExtrato(p.extrato, nome, unidade, fuso)
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')
     a.href = url
@@ -202,6 +206,7 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
   /** Os lançamentos a pagar desta pessoa nesta unidade (os de antes do período inclusive). */
   lancamentos: LancamentoDoExtrato[]
 }) {
+  const fuso = useFuso()
   const router = useRouter()
   const [confirmando, setConfirmando] = useState(false)
   const [metodo, setMetodo] = useState('PIX')
@@ -259,13 +264,13 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
               <li key={l.id} style={{ borderBottom: '1px solid var(--hairline)' }}>
                 <label style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', cursor: 'pointer' }}>
                   <input type="checkbox" checked={!desmarcados.has(l.id)} onChange={() => alternar(l.id)} disabled={pendente}
-                    aria-label={`${tituloDoLancamento(l)}${l.cliente ? ` · ${l.cliente}` : ''} · ${data(l.releasedAt)} · ${formatBRL(l.amount)}`} />
+                    aria-label={`${tituloDoLancamento(l)}${l.cliente ? ` · ${l.cliente}` : ''} · ${data(l.releasedAt, fuso)} · ${formatBRL(l.amount)}`} />
                   <span style={{ flex: '1 1 auto', minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
                       {tituloDoLancamento(l)}{l.cliente ? ` · ${l.cliente}` : ''}
                     </span>
                     <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      {data(l.releasedAt)} · {TIPO[l.kind]}{l.motivo ? ` — ${l.motivo}` : ''}{l.origem ? ` · ${origemDe(l)}` : ''}
+                      {data(l.releasedAt, fuso)} · {TIPO[l.kind]}{l.motivo ? ` — ${l.motivo}` : ''}{l.origem ? ` · ${origemDe(l)}` : ''}
                     </span>
                   </span>
                   <strong style={{ fontSize: 'var(--text-sm-sz)', whiteSpace: 'nowrap', color: l.amount < 0 ? 'var(--danger)' : 'var(--text)' }}>
@@ -304,6 +309,7 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
 }
 
 function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string }) {
+  const fuso = useFuso()
   if (!linhas.length) {
     return <p style={{ padding: '0 16px 14px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Sem lançamentos no período.</p>
   }
@@ -318,14 +324,14 @@ function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string
               {tituloDoLancamento(l)}{l.cliente ? ` · ${l.cliente}` : ''}
             </p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-              {data(l.releasedAt)} · {l.kind === 'AGUARDANDO' ? (l.motivo ?? SITUACAO.AGUARDANDO) : `${TIPO[l.kind]}${l.motivo ? ` — ${l.motivo}` : ''}`}
+              {data(l.releasedAt, fuso)} · {l.kind === 'AGUARDANDO' ? (l.motivo ?? SITUACAO.AGUARDANDO) : `${TIPO[l.kind]}${l.motivo ? ` — ${l.motivo}` : ''}`}
               {l.origem && !ehDeVenda(l) ? ` · ${origemDe(l)}` : ''}
               {/* D3 da 10ª: a base EFETIVA (a que a conta usou) e o caminho do preço até ela; A17 da 11ª: de onde veio a regra. */}
               {l.preco != null ? ` · ${textoDaBase(base(l), l)} · ${regraDoLancamento(l, nome)}` : ''}
             </p>
           </div>
           {/* A21 da 10ª: com o pagamento parcial, cada lançamento diz se foi pago (e quando) ou se ficou a pagar. */}
-          <span className={CHIP[l.status]}>{l.status === 'AGUARDANDO' ? 'Aguardando' : l.status === 'PAID' && l.pagoEm ? `Paga em ${data(l.pagoEm)}` : SITUACAO[l.status]}</span>
+          <span className={CHIP[l.status]}>{l.status === 'AGUARDANDO' ? 'Aguardando' : l.status === 'PAID' && l.pagoEm ? `Paga em ${data(l.pagoEm, fuso)}` : SITUACAO[l.status]}</span>
           {l.kind === 'AGUARDANDO' ? (
             <span style={{ minWidth: 90, textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
               previsto {formatBRL(l.previsto ?? 0)}
@@ -343,6 +349,7 @@ function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string
 
 /** Um fechamento da lista; quem fecha também estorna (com motivo). */
 function LinhaDeFechamento({ f, podeEstornar }: { f: Fechamento; podeEstornar: boolean }) {
+  const fuso = useFuso()
   const router = useRouter()
   const [aberto, setAberto] = useState(false)
   const [motivo, setMotivo] = useState('')
@@ -364,7 +371,7 @@ function LinhaDeFechamento({ f, podeEstornar }: { f: Fechamento; podeEstornar: b
       <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)' }}>
         <span style={{ color: 'var(--text)' }}>{f.professionalName} · {f.branchName}</span>
         {/* A32 da 10ª: "de 10/11 a 10/11" não dizia que era até a hora do pagamento. */}
-        <span style={{ color: 'var(--text-muted)' }}>lançamentos de {data(f.inicio)} até {data(f.fim)}{f.fim ? ` às ${hora(f.fim)}` : ''}, pago em {data(f.paidAt)}</span>
+        <span style={{ color: 'var(--text-muted)' }}>lançamentos de {data(f.inicio)} até {data(f.fim)}{f.fim ? ` às ${hora(f.fim)}` : ''}, pago em {data(f.paidAt, fuso)}</span>
         <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {f.estornadoAt && <span className="chip chip-muted">Estornado</span>}
           <strong style={{ color: 'var(--text)', textDecoration: f.estornadoAt ? 'line-through' : undefined }}>{formatBRL(f.total)}</strong>
@@ -375,7 +382,7 @@ function LinhaDeFechamento({ f, podeEstornar }: { f: Fechamento; podeEstornar: b
       </div>
       {f.estornadoAt && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          Estornado em {data(f.estornadoAt)}{f.estornoMotivo ? ` — ${f.estornoMotivo}` : ''}. Os lançamentos voltaram para “a pagar”.
+          Estornado em {data(f.estornadoAt, fuso)}{f.estornoMotivo ? ` — ${f.estornoMotivo}` : ''}. Os lançamentos voltaram para “a pagar”.
         </p>
       )}
       {aberto && (

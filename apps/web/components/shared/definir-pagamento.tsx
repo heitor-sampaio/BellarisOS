@@ -6,6 +6,7 @@ import { definirPagamentoDoContrato } from '@/actions/documentos'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Definir o pagamento de um contrato do procedimento, antes de o cliente
@@ -23,8 +24,9 @@ export function DefinirPagamento({ documentoId, atual, descontoAtual, total, aoT
   total?:      number | null
   aoTerminar:  () => void
 }) {
+  const fuso = useFuso()
   const router = useRouter()
-  const [estado, setEstado] = useState(() => estadoDoPagamento(atual, 'NADA_AGORA'))
+  const [estado, setEstado] = useState(() => estadoDoPagamento(atual, 'NADA_AGORA', fuso))
   const [desconto, setDesconto] = useState(() => estadoDoDesconto(descontoAtual))
   const recusa = total != null ? contaDoDesconto(total, desconto).recusa : null
   // O que se paga (com o desconto): a entrada acima dele é recusada (ven-02).

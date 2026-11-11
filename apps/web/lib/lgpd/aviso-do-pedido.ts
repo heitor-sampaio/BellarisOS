@@ -4,6 +4,7 @@ import { notifyUser } from '@/lib/notifications/notify'
 import { ler } from '@/lib/db'
 import { adminsDaRede } from '@/lib/equipe/admin-da-rede'
 import { prazoDeResposta } from '@/lib/lgpd/prazo'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -43,10 +44,11 @@ export async function avisarPedidoDaCliente(pedidoId: string): Promise<void> {
     if (!pedido) return
     const nome = pedido.clients?.name ?? 'Uma cliente'
     const ids = await quemResponde(admin, pedido.tenant_id)
+    const fuso = await fusoDaRede(pedido.tenant_id)
     await Promise.allSettled(ids.map(id => notifyUser(admin, id, {
       type: 'lgpd.pedido',
       title: `Pedido de dados (LGPD): ${nome}`,
-      body: `${nome} pediu os dados dela pelo app${pedido.include_medical ? ', com o prontuário (a parte do prontuário espera a liberação da clínica)' : ''}. Responder até ${prazoDeResposta(pedido.requested_at, true)} (15 dias do pedido), em Configurações → LGPD.`,
+      body: `${nome} pediu os dados dela pelo app${pedido.include_medical ? ', com o prontuário (a parte do prontuário espera a liberação da clínica)' : ''}. Responder até ${prazoDeResposta(pedido.requested_at, true, fuso)} (15 dias do pedido), em Configurações → LGPD.`,
       data: { pedidoId, caminho: CAMINHO_DA_ABA_LGPD },
     })))
   } catch (e) {
@@ -65,10 +67,12 @@ export async function pedidoLgpdEmAberto(tenantId: string, clientId: string): Pr
     .eq('tenant_id', tenantId).eq('client_id', clientId).eq('type', 'export').neq('requested_via', 'equipe')
     .order('requested_at', { ascending: false }).limit(5), 'ler o pedido de dados da cliente') as
     { requested_at: string; status: string; include_medical: boolean; medical_status: string }[] | null
+  // O prazo no fuso da clínica (F62b).
+  const fuso = await fusoDaRede(tenantId)
   const aberto = (linhas ?? []).find(r => ['pending', 'processing'].includes(r.status) || (r.include_medical && r.medical_status === 'pending'))
-  if (aberto) return { pedidoEm: aberto.requested_at, prazo: prazoDeResposta(aberto.requested_at, true), aberto: true }
+  if (aberto) return { pedidoEm: aberto.requested_at, prazo: prazoDeResposta(aberto.requested_at, true, fuso), aberto: true }
   const recente = (linhas ?? []).find(r => Date.now() - new Date(r.requested_at).getTime() < 30 * 86_400_000)
-  return recente ? { pedidoEm: recente.requested_at, prazo: prazoDeResposta(recente.requested_at, true), aberto: false } : null
+  return recente ? { pedidoEm: recente.requested_at, prazo: prazoDeResposta(recente.requested_at, true, fuso), aberto: false } : null
 }
 
 /** O aviso da ficha (A49): o pedido em aberto e, a quem responde, o caminho da aba. */

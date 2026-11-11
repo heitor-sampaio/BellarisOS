@@ -7,6 +7,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import {
   exportacaoDaFicha, exportarDadosPelaEquipe, baixarExportacaoPelaEquipe, type ExportacaoDaFicha,
 } from '@/actions/lgpd'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * "Exportar dados (LGPD)" na ficha (A21 da 6ª simulação): a equipe gera o
@@ -19,6 +20,7 @@ export function ExportarLgpdDaFicha({ clientId, podeIncluirProntuario, onFechar 
   podeIncluirProntuario: boolean
   onFechar: () => void
 }) {
+  const fuso = useFuso()
   const [pacote, setPacote]   = useState<ExportacaoDaFicha | null>(null)
   const [carregou, setCarregou] = useState(false)
   const [links, setLinks]     = useState<{ pdf?: string; json?: string } | null>(null)
@@ -80,9 +82,9 @@ export function ExportarLgpdDaFicha({ clientId, podeIncluirProntuario, onFechar 
                   : pacote.status === 'completed' ? 'Pronto' : 'Não foi gerado'}
               </p>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                Pedido em {formatDateTime(pacote.requestedAt)}{pacote.pedidoPor ? ` por ${pacote.pedidoPor}` : ''}
+                Pedido em {formatDateTime(pacote.requestedAt, fuso)}{pacote.pedidoPor ? ` por ${pacote.pedidoPor}` : ''}
                 {pacote.incluiProntuario ? ' · com o prontuário' : ' · sem o prontuário'}
-                {pacote.expiresAt ? ` · disponível até ${formatDateTime(pacote.expiresAt)}` : ''}
+                {pacote.expiresAt ? ` · disponível até ${formatDateTime(pacote.expiresAt, fuso)}` : ''}
               </p>
               {pacote.erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{pacote.erro}</p>}
               {links && (

@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDia } from '@estetica-os/utils'
 import { dataDeClienteDesde } from '@/lib/clientes/cliente-desde'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { textoDoProntuarioForaDoPacote, prontuarioNaSolicitacao, type SituacaoDoProntuario } from '@/lib/lgpd/situacao-do-prontuario'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
@@ -30,8 +31,11 @@ export const EXPORT_TTL_DAYS = 30
 
 type Json = Record<string, unknown>
 
-const fmtDate     = (v: string | null | undefined) => (v ? formatDate(v) : '—')
-const fmtDateTime = (v: string | null | undefined) => (v ? formatDateTime(v) : '—')
+// As datas no fuso da clínica (F62b): montadas dentro de buildClientExport, com o dela.
+const formatadores = (fuso: string) => ({
+  fmtDate:     (v: string | null | undefined) => (v ? formatDate(v, fuso) : '—'),
+  fmtDateTime: (v: string | null | undefined) => (v ? formatDateTime(v, fuso) : '—'),
+})
 const fmtMoney    = (v: unknown) => formatBRL(Number(v ?? 0))
 
 const ORIGEM_DO_AGENDAMENTO: Record<string, string> = {
@@ -146,6 +150,9 @@ export async function buildClientExport(
   if (clientErr || !client) {
     throw new Error(`Cliente não encontrado: ${clientErr?.message ?? clientId}`)
   }
+  // A ficha é da CLÍNICA (H5): o dia e a hora no fuso da rede.
+  const fuso = await fusoDaRede(client.tenant_id as string)
+  const { fmtDate, fmtDateTime } = formatadores(fuso)
 
   // Num pedido de LGPD, entregar dados incompletos em silêncio é pior do que
   // falhar: o titular receberia um pacote que parece completo e não é. Por isso
@@ -409,7 +416,7 @@ export async function buildClientExport(
         ['Endereço', [client.address, client.address_number, client.address_complement, client.neighborhood, client.city, client.state, client.zip_code].filter(Boolean).join(', ') || '—'],
         ['Unidade de cadastro', unit(client.branch_id)],
         // D6 da 10ª: o da planilha importada (cliente_desde), senão o cadastro; com os dois, o cadastro também.
-        ['Cliente desde', dataDeClienteDesde({ clienteDesde: client.cliente_desde, createdAt: client.created_at }) ?? '—'],
+        ['Cliente desde', dataDeClienteDesde({ clienteDesde: client.cliente_desde, createdAt: client.created_at }, fuso) ?? '—'],
         ...(client.cliente_desde ? [['Cadastro no sistema', fmtDate(client.created_at)] as [string, string]] : []),
         ['Conta no aplicativo', client.app_account_created_at ? `criada em ${fmtDate(client.app_account_created_at)}` : 'não possui'],
       ],
@@ -492,7 +499,7 @@ export async function buildClientExport(
     {
       title: `Comunicações recebidas (${(notifications ?? []).length})`,
       emptyLabel: 'Nenhuma comunicação registrada.',
-      lines: (notifications ?? []).slice(0, 50).map(n => linhaDaComunicacao(n as { created_at: string; title: string | null })),
+      lines: (notifications ?? []).slice(0, 50).map(n => linhaDaComunicacao(n as { created_at: string; title: string | null }, fuso)),
     },
   ]
 
@@ -545,7 +552,7 @@ export async function buildClientExport(
 
   const pdf = buildPdf({
     title:    'Relatório de dados pessoais',
-    subtitle: `${client.name} · gerado em ${formatDateTime(new Date())}`,
+    subtitle: `${client.name} · gerado em ${formatDateTime(new Date(), fuso)}`,
     sections,
     footer:   'BellarisOS — documento gerado automaticamente a pedido do titular.',
   })

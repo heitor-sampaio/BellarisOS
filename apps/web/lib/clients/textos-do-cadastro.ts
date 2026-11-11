@@ -66,14 +66,14 @@ export function avisoDaUnidadeDeCadastro(variasUnidades: boolean): string | null
  * confirmado) daqui para a frente; o próximo com dia e hora em Brasília.
  */
 export function avisoDosAgendamentosAoArquivar(
-  agendamentos: { scheduledAt: string; status: string }[], agora: Date = new Date(),
+  agendamentos: { scheduledAt: string; status: string }[], agora: Date = new Date(), fuso = 'America/Sao_Paulo',
 ): string | null {
   const marcados = agendamentos
     .filter(a => (a.status === 'SCHEDULED' || a.status === 'CONFIRMED') && new Date(a.scheduledAt) >= agora)
     .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))
   if (!marcados.length) return null
   const quando = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   }).format(new Date(marcados[0]!.scheduledAt)).replace(', ', ' às ')
   const n = marcados.length
   return n === 1

@@ -8,6 +8,7 @@ import { rotuloDaSituacao } from '@/lib/redes/situacao'
 import { nomeDoPlanoNaTela } from '@/lib/redes/texto-do-plano'
 import { useFala } from '@/components/shared/uma-unidade'
 import { O_QUE_A_CLIENTE_AVALIA, ROTULO_DO_QUE_AVALIA } from '@/lib/avaliacao/notas'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Configurações → Geral: os dados da própria rede.
@@ -29,6 +30,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
   /** O endereço do app da cliente, por unidade ativa (A4) — inteiro, para mandar. */
   appDaCliente?: { unidade: string; url: string }[]
 }) {
+  const fuso = useFuso()
   const [estado, enviar, enviando] = useActionState(atualizarDadosDaRede, undefined)
   const [salvo, setSalvo] = useState(false)
 
@@ -134,7 +136,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
         <SoLeitura rotulo="Plano" valor={nomeDoPlanoNaTela(rede.planName, rede.planStatus)}
           porque={`${rotuloDaSituacao(rede.planStatus)}. ${naRede ? 'Veja faturas e pagamento na aba Assinatura.' : fala('A assinatura fica com quem administra a rede.')}`} />
         <SoLeitura rotulo={fala('Rede criada em')}
-          valor={new Date(rede.criadaEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} />
+          valor={new Date(rede.criadaEm).toLocaleDateString('pt-BR', { timeZone: fuso })} />
       </div>
 
       {erro && (

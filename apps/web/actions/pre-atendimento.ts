@@ -20,6 +20,7 @@ import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
 import { mensagemDoLink } from '@/lib/saudacao'
 import { cifrarSegredos, decifrarSegredos, chaveDoAmbiente } from '@/lib/integracoes/cofre'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * O pré-atendimento pela equipe (2026-10-20, decisões do Heitor): a ficha
@@ -196,10 +197,11 @@ export async function completarNascimentoDaCliente(appointmentId: string, nascim
     if (typeof nascimento !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(nascimento) || Number.isNaN(new Date(`${nascimento}T12:00:00Z`).getTime())) {
       return { error: 'Informe a data de nascimento.' }
     }
-    if (nascimento > dayKeyTZ(new Date())) return { error: 'A data de nascimento não pode ser no futuro.' }
     if (nascimento < '1900-01-01') return { error: 'Confira o ano da data de nascimento.' }
     const ap = await agendamentoAoAlcance(ctx, appointmentId)
     if (!ap?.client_id) return { error: 'Agendamento não encontrado.' }
+    // O "hoje" da unidade do agendamento (F62b).
+    if (nascimento > dayKeyTZ(new Date(), await fusoDaUnidade(ctx.tenantId, ap.branch_id))) return { error: 'A data de nascimento não pode ser no futuro.' }
     const admin = createAdminClient()
     const gravada = await gravar(admin.from('clients').update({ birth_date: nascimento })
       .eq('id', ap.client_id).eq('tenant_id', ctx.tenantId!).is('birth_date', null).select('id'), 'gravar o nascimento da cliente')

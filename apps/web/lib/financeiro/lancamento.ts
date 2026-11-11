@@ -56,10 +56,11 @@ export interface NovoLancamento {
 }
 
 /** O `paid_at` do lançamento pago no dia escolhido. */
-export function pagoNoDia(pagoEm: string | null | undefined, agora = new Date()): string | { error: string } {
+export function pagoNoDia(pagoEm: string | null | undefined, agora = new Date(), fuso?: string): string | { error: string } {
   if (!pagoEm) return agora.toISOString()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(pagoEm)) return { error: 'Data do pagamento inválida.' }
-  const hoje = dayKeyTZ(agora)
+  // O "hoje" da unidade (F62b); o dia passado é uma DATA, âncora ao meio-dia.
+  const hoje = dayKeyTZ(agora, fuso)
   if (pagoEm > hoje) return { error: 'A data do pagamento não pode ser no futuro.' }
   return pagoEm === hoje ? agora.toISOString() : vencimentoDoDia(pagoEm)!
 }

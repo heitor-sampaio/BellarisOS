@@ -67,6 +67,6 @@ export function linhaDoPlano(p: PlanoParaOTitular, fmtDia: (v: string) => string
 }
 
 /** A comunicação no PDF com o dia E a hora (no fuso do negócio). */
-export function linhaDaComunicacao(n: { created_at: string; title: string | null }): string {
-  return `${formatDateTime(n.created_at)} — ${String(n.title ?? '')}`
+export function linhaDaComunicacao(n: { created_at: string; title: string | null }, fuso?: string): string {
+  return `${formatDateTime(n.created_at, fuso)} — ${String(n.title ?? '')}`
 }

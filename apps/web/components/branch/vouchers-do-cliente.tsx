@@ -8,6 +8,7 @@ import { formatarPontos, faltamPontos } from '@/lib/fidelidade/formato'
 import { ROTULO_DO_TIPO, descricaoDoVoucher, situacaoDoVoucher, type TipoDeRecompensa } from '@/lib/fidelidade/voucher'
 import type { Recompensa, VoucherDoCliente } from '@/lib/fidelidade/leitura'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Recompensas e vouchers na ficha do cliente.
@@ -37,6 +38,7 @@ export function VouchersDoCliente({
   unidades?:     { id: string; name: string }[]
   onMudouSaldo:  () => void
 }) {
+  const fuso = useFuso()
   const [unidadeEscolhida, setUnidadeEscolhida] = useState('')
   const perguntaAUnidade = !unidadeDaFicha && unidades.length > 1
   const unidade = unidadeDaFicha || (unidades.length === 1 ? unidades[0]!.id : unidadeEscolhida)
@@ -147,9 +149,9 @@ export function VouchersDoCliente({
                     <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{descricaoDoVoucher(v)}</p>
                     <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                       {situacao === 'ATIVO' || situacao === 'VENCIDO'
-                        ? `Válido até ${new Date(v.expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+                        ? `Válido até ${new Date(v.expires_at).toLocaleDateString('pt-BR', { timeZone: fuso })}`
                         : situacao === 'USADO' && v.used_at
-                          ? `Usado em ${new Date(v.used_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+                          ? `Usado em ${new Date(v.used_at).toLocaleDateString('pt-BR', { timeZone: fuso })}`
                           : v.cancel_reason ? `Cancelado: ${v.cancel_reason}` : ''}
                     </p>
                   </div>

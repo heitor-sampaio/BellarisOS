@@ -20,6 +20,7 @@ import { RemarcarVencimento, VencimentoRemarcado, type RemarcacaoDoVencimento } 
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { resultadoDaLista } from '@/lib/metrics/resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
+import { useFuso } from '@/components/shared/fuso'
 
 export interface Transaction {
   id:             string
@@ -90,9 +91,9 @@ const PM_COLORS: Record<string, { bg: string; color: string }> = {
 function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
-function fmtDatetime(iso: string) {
+function fmtDatetime(iso: string, fuso = 'America/Sao_Paulo') {
   return new Date(iso).toLocaleString('pt-BR', {
-    day: '2-digit', month: '2-digit',
+    timeZone: fuso, day: '2-digit', month: '2-digit',
     hour: '2-digit', minute: '2-digit',
   })
 }
@@ -101,6 +102,7 @@ type FilterType = 'all' | 'INCOME' | 'EXPENSE'
 type SortDir    = 'asc' | 'desc'
 
 export function FinancialTable({ transactions, slug, canReverse, canPay, podeRemarcar = false, nomeDoCsv = 'lancamentos.csv' }: Props) {
+  const fuso = useFuso()
   const [search,     setSearch]     = useState('')
   const [filterType, setFilterType] = useState<FilterType>('all')
   const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all')
@@ -244,7 +246,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
 
         {/* A44 da 8ª: o CSV do que está na lista (os filtros valem), para a contadora. */}
         <button type="button" className="btn-secondary" disabled={filtered.length === 0}
-          onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(filtered.map(t => linhaDoLancamento(t))))}>
+          onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(filtered.map(t => linhaDoLancamento(t)), fuso))}>
           <Download size={14} aria-hidden /> Exportar CSV
         </button>
 
@@ -303,7 +305,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                           </p>
                         ) : (
                           <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
-                            {fmtDatetime(tx.is_paid && tx.paid_at ? tx.paid_at : tx.created_at)}
+                            {fmtDatetime(tx.is_paid && tx.paid_at ? tx.paid_at : tx.created_at, fuso)}
                           </p>
                         )}
                       </td>

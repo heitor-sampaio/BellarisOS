@@ -13,6 +13,7 @@ import {
   enviarLinkPelaConversa,
   type LinkDeAssinatura,
 } from '@/actions/documentos'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Os termos e contratos do cliente — na aba Documentos da ficha, acima dos
@@ -47,9 +48,10 @@ const ICONE = { TERMO: FileSignature, CONTRATO: FileText, CONTRATO_PLANO: Scroll
 const CANAL = { CLINICA: 'na clínica', PORTAL: 'pelo portal', LINK: 'por link', PAPEL: 'no papel' } as const
 
 function Situacao({ item }: { item: ItemDeTermo }) {
+  const fuso = useFuso()
   switch (item.status) {
     case 'ASSINADO':
-      return <span className="chip chip-success">Assinado{item.assinadoEm ? ` em ${formatDate(item.assinadoEm)}` : ''}{item.canal ? ` · ${CANAL[item.canal]}` : ''}</span>
+      return <span className="chip chip-success">Assinado{item.assinadoEm ? ` em ${formatDate(item.assinadoEm, fuso)}` : ''}{item.canal ? ` · ${CANAL[item.canal]}` : ''}</span>
     case 'INCOMPLETO':
       return <span className="chip chip-warning">Faltam dados</span>
     case 'DISPENSADO':
@@ -83,6 +85,7 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
    */
   temAcessoAoApp?: boolean
 }) {
+  const fuso = useFuso()
   const pathname = usePathname()
   const router = useRouter()
   const [dispensando, setDispensando] = useState<string | null>(null)
@@ -210,9 +213,9 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                   {[
                     item.procedimento,
-                    item.agendamentoEm ? `atendimento de ${formatDate(item.agendamentoEm)} às ${formatTime(item.agendamentoEm)}` : null,
+                    item.agendamentoEm ? `atendimento de ${formatDate(item.agendamentoEm, fuso)} às ${formatTime(item.agendamentoEm, fuso)}` : null,
                     item.status === 'ASSINADO' && item.codigo ? `código ${item.codigo}` : null,
-                  ].filter(Boolean).join(' · ') || `emitido em ${formatDate(item.criadoEm)}`}
+                  ].filter(Boolean).join(' · ') || `emitido em ${formatDate(item.criadoEm, fuso)}`}
                 </p>
               </div>
               <Situacao item={item} />
@@ -265,7 +268,7 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
             {link?.id === item.id && (
               <div data-link-de-assinatura style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  Link de uso único, vale até {formatDate(link.dados.expiraEm)} às {formatTime(link.dados.expiraEm)}. O cliente confirma {link.dados.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
+                  Link de uso único, vale até {formatDate(link.dados.expiraEm, fuso)} às {formatTime(link.dados.expiraEm, fuso)}. O cliente confirma {link.dados.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
                   Ele só aparece agora: se perder, gere outro.
                 </p>
                 <input className="field" readOnly value={link.dados.url} aria-label="Link de assinatura" onFocus={e => e.currentTarget.select()} style={{ fontSize: 'var(--text-xs-sz)' }} />
@@ -287,7 +290,7 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
             )}
             {item.linkAte && link?.id !== item.id && item.status === 'PENDENTE' && (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span>Link de assinatura enviado · vale até {formatDate(item.linkAte)} às {formatTime(item.linkAte)}</span>
+                <span>Link de assinatura enviado · vale até {formatDate(item.linkAte, fuso)} às {formatTime(item.linkAte, fuso)}</span>
                 {podeColher && (
                   <button type="button" className="btn-ghost" disabled={ocupado} onClick={() => revogarLink(item.id)}
                     style={{ padding: '2px 8px', fontSize: 'var(--text-xs-sz)' }}>

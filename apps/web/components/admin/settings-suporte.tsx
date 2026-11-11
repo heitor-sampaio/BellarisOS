@@ -8,19 +8,21 @@ import {
 } from '@/actions/suporte-autorizacao'
 import { HORAS_DE_AUTORIZACAO, HORAS_PADRAO, ROTULO_DAS_HORAS, type HorasDeAutorizacao } from '@/lib/suporte/regras'
 import type { DadosDaAbaSuporte } from '@/lib/suporte/painel-da-clinica'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Configurações → Suporte: a clínica decide se (e por quanto tempo) o suporte
  * do BellarisOS pode entrar na conta de alguém dela, e vê tudo o que ele fez.
  */
-const quando = (iso: string) =>
-  new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(iso))
+const quando = (iso: string, fuso = 'America/Sao_Paulo') =>
+  new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: fuso }).format(new Date(iso))
 
 const FIM: Record<string, string> = {
   saiu: 'saiu', venceu: 'o prazo venceu', 'autorização revogada': 'autorização revogada',
 }
 
 export function SettingsSuporte({ dados, podeClinico }: { dados: DadosDaAbaSuporte; podeClinico: boolean }) {
+  const fuso = useFuso()
   const router = useRouter()
   const [membro, setMembro] = useState(dados.membros[0]?.id ?? '')
   const [horas, setHoras] = useState<HorasDeAutorizacao>(HORAS_PADRAO)
@@ -98,7 +100,7 @@ export function SettingsSuporte({ dados, podeClinico }: { dados: DadosDaAbaSupor
               {dados.autorizacoes.map(a => (
                 <tr key={a.id}>
                   <td data-label="">{a.membro}</td>
-                  <td data-label="Até" data-par>{quando(a.expiraEm)}</td>
+                  <td data-label="Até" data-par>{quando(a.expiraEm, fuso)}</td>
                   <td data-label="Prontuário" data-par>{a.clinico ? 'Incluído' : 'Fora'}</td>
                   <td data-label="Por" data-par>{a.por ?? '—'}{a.via === 'chamado' ? ' (chamado)' : ''}</td>
                   <td data-label="">
@@ -123,7 +125,7 @@ export function SettingsSuporte({ dados, podeClinico }: { dados: DadosDaAbaSupor
                 <div>
                   <strong>{s.atendente}</strong> entrou como <strong>{s.membro}</strong>
                   <span className="suporte-texto-fraco">
-                    {' · '}{quando(s.inicio)}{s.fim ? ` até ${quando(s.fim)}` : ' · em curso'}
+                    {' · '}{quando(s.inicio, fuso)}{s.fim ? ` até ${quando(s.fim, fuso)}` : ' · em curso'}
                     {s.motivoDoFim ? ` · ${FIM[s.motivoDoFim] ?? s.motivoDoFim}` : ''}
                     {' · '}{s.acessos} {s.acessos === 1 ? 'acesso' : 'acessos'}
                     {s.clinico ? ' · com prontuário' : ''}
@@ -142,7 +144,7 @@ export function SettingsSuporte({ dados, podeClinico }: { dados: DadosDaAbaSupor
                         <h4 className="overline">Telas e ações</h4>
                         <ul className="suporte-lista suporte-lista-densa">
                           {detalhe.acessos.map((a, i) => (
-                            <li key={i}><code>{a.method}</code> {a.path}{a.acao ? ' · ação' : ''} <span className="suporte-texto-fraco">{quando(a.at)}</span></li>
+                            <li key={i}><code>{a.method}</code> {a.path}{a.acao ? ' · ação' : ''} <span className="suporte-texto-fraco">{quando(a.at, fuso)}</span></li>
                           ))}
                         </ul>
                       </div>
@@ -150,7 +152,7 @@ export function SettingsSuporte({ dados, podeClinico }: { dados: DadosDaAbaSupor
                         <h4 className="overline">Fatos registrados</h4>
                         {detalhe.eventos.length === 0 ? <p className="suporte-texto-fraco">Nenhum.</p> : (
                           <ul className="suporte-lista suporte-lista-densa">
-                            {detalhe.eventos.map((e, i) => <li key={i}><code>{e.nome}</code> <span className="suporte-texto-fraco">{quando(e.em)}</span></li>)}
+                            {detalhe.eventos.map((e, i) => <li key={i}><code>{e.nome}</code> <span className="suporte-texto-fraco">{quando(e.em, fuso)}</span></li>)}
                           </ul>
                         )}
                       </div>
@@ -168,7 +170,7 @@ export function SettingsSuporte({ dados, podeClinico }: { dados: DadosDaAbaSupor
         {dados.registros.length === 0 ? <p className="suporte-vazio">Nada registrado.</p> : (
           <ul className="suporte-lista" style={{ padding: '8px 16px 16px' }}>
             {dados.registros.map(r => (
-              <li key={r.id}>{r.oQue} <span className="suporte-texto-fraco">· {r.quem} · {quando(r.em)}</span></li>
+              <li key={r.id}>{r.oQue} <span className="suporte-texto-fraco">· {r.quem} · {quando(r.em, fuso)}</span></li>
             ))}
           </ul>
         )}

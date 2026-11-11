@@ -8,6 +8,7 @@ import {
   listarEventosDeDominio, resumoDoCatalogo,
   type EventoNaLista, type LinhaDoCatalogo,
 } from '@/actions/eventos'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Painel de conferência da corrente de eventos.
@@ -43,16 +44,16 @@ const ATOR_ROTULO: Record<string, string> = {
   sistema: 'sistema',
 }
 
-function quando(iso: string): string {
+function quando(iso: string, fuso = 'America/Sao_Paulo'): string {
   return new Date(iso).toLocaleString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: fuso,
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
 }
 
-function dia(iso: string | null): string {
+function dia(iso: string | null, fuso = 'America/Sao_Paulo'): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso })
 }
 
 /** Resumo de uma linha de evento em uma frase, sem abrir o payload. */
@@ -74,6 +75,7 @@ function resumir(dados: Record<string, unknown>): string {
 export function SettingsEventos({
   linhasIniciais, eventosIniciais, fimInicial, desdeQuando, erro,
 }: Props) {
+  const fuso = useFuso()
   const [eventos, setEventos]   = useState(eventosIniciais)
   const [fim, setFim]           = useState(fimInicial)
   const [linhas, setLinhas]     = useState(linhasIniciais)
@@ -134,7 +136,7 @@ export function SettingsEventos({
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
           <Fala>Tudo que acontece na rede</Fala> vira um fato aqui, e é daqui que as automações
           vão puxar os gatilhos. A corrente guarda <strong>30 dias</strong>
-          {desdeQuando ? ` — o registro mais antigo é de ${dia(desdeQuando)}.` : '.'}
+          {desdeQuando ? ` — o registro mais antigo é de ${dia(desdeQuando, fuso)}.` : '.'}
         </p>
       </div>
 
@@ -180,7 +182,7 @@ export function SettingsEventos({
               onClick={() => { const n = filtroNome === l.nome ? '' : l.nome; setNome(n); recarregar(n, filtroOrigem) }}
               className={l.vezes === 0 ? 'chip chip-muted' : filtroNome === l.nome ? 'chip chip-brand' : 'chip chip-success'}
               style={{ cursor: 'pointer', border: 'none', opacity: l.vezes === 0 ? 0.75 : 1 }}
-              title={l.vezes === 0 ? fala('Nunca ocorreu nesta rede') : `Último em ${dia(l.ultimoEm)}`}
+              title={l.vezes === 0 ? fala('Nunca ocorreu nesta rede') : `Último em ${dia(l.ultimoEm, fuso)}`}
             >
               {l.vezes === 0 ? <CircleSlash size={11} /> : <Activity size={11} />}
               {l.nome}
@@ -271,7 +273,7 @@ export function SettingsEventos({
                         <span className="chip chip-muted">{ORIGEM_ROTULO[ev.origem] ?? ev.origem}</span>
                       </div>
                       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 3 }}>
-                        {quando(ev.ocorridoEm)} · {ev.atorNome ?? ATOR_ROTULO[ev.atorTipo] ?? ev.atorTipo}
+                        {quando(ev.ocorridoEm, fuso)} · {ev.atorNome ?? ATOR_ROTULO[ev.atorTipo] ?? ev.atorTipo}
                         {resumir(ev.dados) && ` · ${resumir(ev.dados)}`}
                       </p>
                     </div>

@@ -6,6 +6,7 @@ import { MapaInjetavel } from '@/components/branch/mapa-injetavel'
 import {
   listarPlanejamentosDoCliente, criarPlanejamentoInjetavel, type MapaNaLista,
 } from '@/actions/injectable-map'
+import { useFuso } from '@/components/shared/fuso'
 
 const FALHA_AO_CARREGAR = 'Não foi possível carregar os planejamentos de injetáveis.'
 
@@ -52,6 +53,7 @@ export function PlanejamentoInjetaveis({
    */
   abrirOAplicado?: boolean
 }) {
+  const fuso = useFuso()
   const [mapas,  setMapas]  = useState<MapaNaLista[] | null>(null)
   const [abertoLocal, setAbertoLocal] = useState<string | null>(null)
   const [criando, setCriando] = useState(false)
@@ -100,7 +102,7 @@ export function PlanejamentoInjetaveis({
     setErro(null); setCriando(true)
     // O nome nasce com a data: nomear no ato atrasa quem está com a pessoa na
     // frente, e renomear leva um clique no cabeçalho depois.
-    const nome = `Injetáveis — ${new Date().toLocaleDateString('pt-BR')}`
+    const nome = `Injetáveis — ${new Date().toLocaleDateString('pt-BR', { timeZone: fuso })}`
     // A35: a cliente com um planejamento vazio recebe ele, não um vazio a mais.
     const res = await criarPlanejamentoInjetavel({ nome, clientId, branchId: branchId || null })
       .catch(() => ({ id: undefined, error: 'Não foi possível criar o planejamento.', reaproveitado: false }))
@@ -163,7 +165,7 @@ export function PlanejamentoInjetaveis({
                 )}
               </span>
               <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', flexShrink: 0 }}>
-                {m.atualizadoEm ? new Date(m.atualizadoEm).toLocaleDateString('pt-BR') : ''}
+                {m.atualizadoEm ? new Date(m.atualizadoEm).toLocaleDateString('pt-BR', { timeZone: fuso }) : ''}
               </span>
             </button>
           ))}

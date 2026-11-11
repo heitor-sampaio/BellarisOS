@@ -6,6 +6,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { aplicacoesDoLote, lotesEsgotados, type LoteEsgotado } from '@/actions/stock'
 import type { AplicacaoDoLote } from '@/lib/estoque/aplicacoes-do-lote'
 import { validadeNaTela } from '@/lib/estoque/validade'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * "Lotes esgotados" (D15 da 9ª simulação, 2026-11-07): a linha aberta do
@@ -69,6 +70,7 @@ export function BotaoAplicadoEm({ loteId, rotulo, abrirAoMontar = false, semBota
   /** Só a janela, sem o botão (a que abre pela URL). */
   semBotao?: boolean
 }) {
+  const fuso = useFuso()
   const [aberto, setAberto] = useState(abrirAoMontar)
   const [lista, setLista] = useState<AplicacaoDoLote[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -95,7 +97,7 @@ export function BotaoAplicadoEm({ loteId, rotulo, abrirAoMontar = false, semBota
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abrirAoMontar])
 
-  const dia = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const dia = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   return (
     <>
       {!semBotao && (

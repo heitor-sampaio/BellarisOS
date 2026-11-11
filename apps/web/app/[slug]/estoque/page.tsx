@@ -238,7 +238,7 @@ export default async function BranchStockPage({
             {
               id:      'giro',
               detalhe: DETALHE_DO_GIRO as string | undefined,
-              label: `GIRO — ${now.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase()}`,
+              label: `GIRO — ${now.toLocaleDateString('pt-BR', { timeZone: fuso, month: 'short', year: '2-digit' }).toUpperCase()}`,
               value: fmtBRL(valorGiro),
               icon:  <ShoppingCart size={18} style={{ color: 'var(--brand)' }} />,
               iconBg: 'var(--brand-soft)', color: 'var(--text)',

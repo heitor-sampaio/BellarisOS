@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Star, CheckCircle2, CalendarDays, User } from 'lucide-react'
 import { confirmAndRateAppointment } from '@/actions/appointments'
+import { useFuso } from '@/components/shared/fuso'
 
 interface Props {
   appointmentId:    string
@@ -61,6 +62,7 @@ export function ConfirmAppointmentForm({
   appointmentId, slug, procedureName, professionalName, scheduledAt,
   avaliaOAtendimento = true, procedimentos = [],
 }: Props) {
+  const fuso = useFuso()
   const router = useRouter()
   // F17-3: a nota do atendimento e a de cada procedimento.
   const [notaDoAtendimento, setNotaDoAtendimento] = useState(0)
@@ -105,7 +107,7 @@ export function ConfirmAppointmentForm({
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             <CalendarDays size={12} />
-            {dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            {dt.toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: 'long' })} às {dt.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
       </div>

@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { BadgeCheck, CircleAlert } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { fusoValido } from '@/lib/unidades/fuso'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { normalizarCodigo } from '@/lib/documentos/codigo'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { MolduraDaVerificacao, FormularioDoCodigo } from '../moldura'
@@ -56,8 +58,10 @@ export default async function ResultadoDaVerificacao({ params }: { params: Promi
 
   const [rede, unidade] = await Promise.all([
     ler(admin.from('tenants').select('name').eq('id', doc.tenant_id).single(), 'buscar a rede'),
-    doc.branch_id ? ler(admin.from('branches').select('name').eq('id', doc.branch_id).maybeSingle(), 'buscar a unidade') : Promise.resolve(null),
+    doc.branch_id ? ler(admin.from('branches').select('name, fuso').eq('id', doc.branch_id).maybeSingle(), 'buscar a unidade') : Promise.resolve(null),
   ])
+  // A hora da assinatura no relógio da unidade do documento (F62b); sem ela, o da rede.
+  const fuso = unidade ? fusoValido((unidade as { fuso: string | null }).fuso) : await fusoDaRede(doc.tenant_id as string)
   const assinatura = doc.document_signatures as unknown as { channel: string; signer_name: string } | null
   const assinado = doc.status === 'ASSINADO'
 
@@ -67,7 +71,7 @@ export default async function ResultadoDaVerificacao({ params }: { params: Promi
         ok={assinado}
         titulo={assinado ? 'Documento autêntico' : SITUACAO[doc.status as string] ?? 'Documento não assinado'}
         texto={assinado
-          ? `Assinado eletronicamente em ${new Date(doc.signed_at as string).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}${assinatura ? `, ${CANAL[assinatura.channel] ?? ''}` : ''}.`
+          ? `Assinado eletronicamente em ${new Date(doc.signed_at as string).toLocaleString('pt-BR', { timeZone: fuso })}${assinatura ? `, ${CANAL[assinatura.channel] ?? ''}` : ''}.`
           : 'Este código existe, mas o documento não está valendo como assinado.'}
       />
       <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -6,6 +6,7 @@ import { UserMinus } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { deactivateTeamMember, pendenciasParaDesativar } from '@/actions/team'
 import type { PendenciasDoMembro, AgendamentoParaRepassar } from '@/lib/equipe/repasse'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * "Desativar membro?" com o REPASSE (H6, decisão do Heitor, 2026-11-01):
@@ -21,8 +22,8 @@ const SEM_RESPONSAVEL = '__sem__'
 /** "Cancelar este agendamento" (A10 da 8ª simulação): o que não se repassa também se cancela aqui. */
 export const CANCELAR = '__cancelar__'
 
-const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', {
-  timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+const quando = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleString('pt-BR', {
+  timeZone: fuso, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
 })
 
 export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: string; nome: string; redirectPath: string }) {
@@ -218,14 +219,15 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
   /** Como voltar a esta janela depois de marcar a unidade em outra pessoa. */
   deNovo?: string
 }) {
+  const fuso = useFuso()
   return (
     <div data-agendamento={a.id} style={estilo}>
       <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-        {quando(a.quando)} · {a.cliente}
+        {quando(a.quando, fuso)} · {a.cliente}
         <span style={{ color: 'var(--text-muted)' }}> · {a.procedimento}{a.unidade ? ` · ${a.unidade}` : ''}</span>
         {a.vencido && <span className="chip chip-warning" style={{ marginLeft: 6 }}>já passou, sem fechar</span>}
       </span>
-      <select className="filtro-select" aria-label={`Quem atende ${a.cliente} em ${quando(a.quando)}`} value={valor}
+      <select className="filtro-select" aria-label={`Quem atende ${a.cliente} em ${quando(a.quando, fuso)}`} value={valor}
         onChange={e => onEscolher(e.target.value)}>
         <option value="">Deixar com {nome} (sem repasse)</option>
         {a.livres.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}

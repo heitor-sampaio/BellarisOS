@@ -12,6 +12,7 @@ import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, p
 import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Importar contatos de um CSV (2026-10-13): arquivo → colunas → prévia →
@@ -541,11 +542,12 @@ function LinhasDoRelatorio({ rotulo, atributo, linhas }: {
   )
 }
 
-const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+const quando = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: fuso })
 const SITUACAO: Record<string, string> = { concluida: 'Concluída', falhou: 'Falhou', importando: 'Em andamento', pendente: 'Aguardando' }
 
 /** A6 da 8ª: as importações anteriores, com o placar e o relatório (CSV) enquanto ele vale (7 dias). */
 function ImportacoesAnteriores({ itens }: { itens: ImportacaoAnterior[] }) {
+  const fuso = useFuso()
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-labelledby="importacoes-anteriores">
       <h3 id="importacoes-anteriores" style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Importações anteriores</h3>
@@ -555,7 +557,7 @@ function ImportacoesAnteriores({ itens }: { itens: ImportacaoAnterior[] }) {
             <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
               {i.arquivo} <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>· {i.destino === 'clientes' ? 'clientes' : 'contatos do CRM'}</span>
             </span>
-            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>{SITUACAO[i.status] ?? i.status} · {quando(i.concluidaEm ?? i.criadaEm)}</span>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>{SITUACAO[i.status] ?? i.status} · {quando(i.concluidaEm ?? i.criadaEm, fuso)}</span>
           </div>
           <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
             {placar({ novas: i.novas, completadas: i.completadas, semMudanca: i.semMudanca, comAviso: i.comAviso, recusadas: i.recusadas, oportunidades: i.oportunidades })}

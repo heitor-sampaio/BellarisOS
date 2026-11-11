@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
 
   // `;` e BOM: é como o Excel brasileiro abre sem perguntar nada.
   const linhas = vendas.map(v => [
-    new Date(v.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+    new Date(v.data).toLocaleDateString('pt-BR', { timeZone: fuso }),
     ROTULO_DO_TIPO[v.tipo],
     descricaoDaVenda(v),
     v.cliente ?? '',
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
   ].map(celula).join(';'))
   const corpo = '﻿' + ['Data;Tipo;Descrição;Cliente;Profissional;Unidade;Valor', ...linhas].join('\r\n')
   // O último dia do período no fuso do negócio (J-53): o de outubro saía "…-a-2026-11-01".
-  const nome = nomeDoCsvDeVendas(periodo.from, periodo.fullTo)
+  const nome = nomeDoCsvDeVendas(periodo.from, periodo.fullTo, fuso)
   return new NextResponse(corpo, {
     headers: {
       'content-type': 'text/csv; charset=utf-8',

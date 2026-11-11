@@ -6,13 +6,14 @@ import { HandCoins } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { rotaAtendimento } from '@/lib/rotas'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
+import { useFuso } from '@/components/shared/fuso'
 
 /** A tela que recebe o atendimento, já com a janela do pagamento aberta. */
 export function rotaDoRecebimento(pathname: string, slug: string, appointmentId: string): string {
   return `${rotaAtendimento(pathname, slug, appointmentId)}?receber=1`
 }
 
-const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+const dia = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: fuso })
 
 /**
  * "Concluídos a receber" (D5 da simulação de 2026-10-27): o atendimento
@@ -28,6 +29,7 @@ export function AtendimentosAReceber({ lista, titulo = 'Concluídos a receber', 
   /** Quem recebe (cashier) vê o botão; os outros, só a lista. */
   podeReceber:     boolean
 }) {
+  const fuso = useFuso()
   const pathname = usePathname()
   if (lista.itens.length === 0) return null
   return (
@@ -53,7 +55,7 @@ export function AtendimentosAReceber({ lista, titulo = 'Concluídos a receber', 
               </p>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                 {mostrarCliente && <>{a.procedureName ?? 'Atendimento'} · </>}
-                {dia(a.scheduledAt)}{a.professionalName ? ` · ${a.professionalName}` : ''}
+                {dia(a.scheduledAt, fuso)}{a.professionalName ? ` · ${a.professionalName}` : ''}
               </p>
             </div>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>{formatBRL(a.price)}</span>

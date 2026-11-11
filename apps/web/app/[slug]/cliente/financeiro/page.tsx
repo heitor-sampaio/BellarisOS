@@ -10,6 +10,7 @@ import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
 import { notaDoEstornoParcialParaACliente } from '@/lib/financeiro/notas-do-lancamento'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
+import { fusoValido } from '@/lib/unidades/fuso'
 
 type TxRow = {
   id:             string
@@ -55,11 +56,15 @@ type LancamentoLido = {
   appointments: { procedures: { name: string } | null } | null
 }
 
-export default async function ClientFinancialPage() {
+export default async function ClientFinancialPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const ctx = await getTenantContext()
   assertClient(ctx)
 
   const admin = createAdminClient()
+  // O dia no relógio da unidade do endereço (F62b).
+  const fuso = fusoValido((await ler(admin.from('branches').select('fuso').eq('slug', slug).maybeSingle(),
+    'buscar o fuso da unidade') as { fuso: string | null } | null)?.fuso)
 
   const data = await ler(admin
     .from('financial_transactions')
@@ -178,7 +183,7 @@ export default async function ClientFinancialPage() {
                   ? textoDoVencimento(r.vencimento)
                   : r.vencimento
                   ? `Vence ${formatDia(r.vencimento)}`
-                  : new Date(r.paid_at ?? r.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                  : new Date(r.paid_at ?? r.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                 {r.forma && ` · ${r.forma}`}
               </p>
               {r.plano && (
@@ -186,12 +191,12 @@ export default async function ClientFinancialPage() {
               )}
               {r.pacoteCancelado && (
                 <p data-pacote-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
-                  Pacote cancelado em {new Date(r.pacoteCancelado).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                  Pacote cancelado em {new Date(r.pacoteCancelado).toLocaleDateString('pt-BR', { timeZone: fuso })}
                 </p>
               )}
               {r.planoCancelado && (
                 <p data-plano-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
-                  Plano cancelado em {new Date(r.planoCancelado).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                  Plano cancelado em {new Date(r.planoCancelado).toLocaleDateString('pt-BR', { timeZone: fuso })}
                 </p>
               )}
               {r.devolvidoEmParte && (

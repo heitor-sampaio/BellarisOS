@@ -992,6 +992,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
   /** O saldo mudou (a entrada desfeita): a tela de trás recarrega. */
   onAlterou?: () => void
 }) {
+  const fuso = useFuso()
   const [movs,    setMovs]    = useState<MovimentoDeEstoque[] | null>(null)
   const [erro,    setErro]    = useState<string | null>(null)
   const [recarga, setRecarga] = useState(0)
@@ -1065,11 +1066,11 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
               )}
               {m.desfeita && (
                 <p data-entrada-desfeita style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 700, marginTop: 1 }}>
-                  {m.type === 'MANUAL_ADJUSTMENT' ? 'Desfeito' : 'Desfeita'} em {new Date(m.desfeita.em).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}{m.desfeita.motivo ? ` — ${m.desfeita.motivo}` : ''}
+                  {m.type === 'MANUAL_ADJUSTMENT' ? 'Desfeito' : 'Desfeita'} em {new Date(m.desfeita.em).toLocaleDateString('pt-BR', { timeZone: fuso })}{m.desfeita.motivo ? ` — ${m.desfeita.motivo}` : ''}
                 </p>
               )}
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
-                {new Date(m.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                {new Date(m.createdAt).toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 {m.notes ? ` · ${m.notes}` : ''}
               </p>
               {(lotes || custo) && (
@@ -1139,6 +1140,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
 function DesfazerEntrada({ movimento, unidade, onFechar, onDesfeita }: {
   movimento: MovimentoDeEstoque; unidade: string; onFechar: () => void; onDesfeita: () => void
 }) {
+  const fuso = useFuso()
   const [motivo, setMotivo] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [gravando, iniciar] = useTransition()
@@ -1160,7 +1162,7 @@ function DesfazerEntrada({ movimento, unidade, onFechar, onDesfeita }: {
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Desfazer a entrada</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
           Saem {qtd} {pl(unidade, movimento.emEmbalagens ?? movimento.quantity)}{doLote}, que entraram em{' '}
-          {new Date(movimento.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Não é perda: a entrada fica no
+          {new Date(movimento.createdAt).toLocaleDateString('pt-BR', { timeZone: fuso })}. Não é perda: a entrada fica no
           histórico, marcada como desfeita, e o valor em estoque volta ao de antes dela.
         </p>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1195,6 +1197,7 @@ function DesfazerEntrada({ movimento, unidade, onFechar, onDesfeita }: {
 function DesfazerAjuste({ movimento, onFechar, onDesfeito }: {
   movimento: MovimentoDeEstoque; onFechar: () => void; onDesfeito: () => void
 }) {
+  const fuso = useFuso()
   const [motivo, setMotivo] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [gravando, iniciar] = useTransition()
@@ -1217,7 +1220,7 @@ function DesfazerAjuste({ movimento, onFechar, onDesfeito }: {
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Desfazer o ajuste</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
           {achouAMais ? `Saem ${qtd} que o ajuste pôs` : `Voltam ${qtd} que o ajuste tirou`} em{' '}
-          {new Date(movimento.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+          {new Date(movimento.createdAt).toLocaleDateString('pt-BR', { timeZone: fuso })}
           {achouAMais ? ', do lote em que entraram' : ', aos lotes de onde saíram'}. O ajuste fica no histórico,
           marcado como desfeito, e não fica em Perdas.
         </p>

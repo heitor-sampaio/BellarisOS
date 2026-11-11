@@ -2232,7 +2232,7 @@ export async function avisosDoRemarcar(appointmentId: string, scheduledAt: strin
   return {
     ...avisos,
     // A24 da 11ª: o horário novo que já passou avisa (princípio 2: não recusa).
-    passado: avisoDoHorarioPassado(scheduledAt),
+    passado: avisoDoHorarioPassado(scheduledAt, undefined, await fusoDaUnidade(ctx.tenantId, a.branch_id)),
     clienteArquivada: ficha && ficha.is_active === false
       ? `${ficha.name} está arquivada. Remarcar é permitido; para agendar de novo, reative a ficha (em "Mais ações").`
       : null,

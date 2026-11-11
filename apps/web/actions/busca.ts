@@ -15,6 +15,7 @@ import {
   resultadoDaLinha, subtituloDaConversa, type LinhaDaBusca,
 } from '@/lib/busca/formatar'
 import { telefoneLegivel } from '@/lib/busca/texto'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * A busca universal da topbar.
@@ -56,6 +57,8 @@ export async function buscarTudo(termo: string, slug: string | null): Promise<
       }
     }
     const unidade = ctx.branchId ?? unidadeDoPortal
+    // O "quando" do agendamento no fuso do recorte (F62b).
+    const fuso = await fusoDoRecorte(ctx.tenantId, unidade ? [unidade] : null)
 
     const tipos = tiposPermitidos(ctx.permissions, c => temRecurso(ctx, c as ChaveDeFuncionalidade))
     const doBanco = tipos.filter(t => t !== 'conversa' && t !== 'contato')
@@ -90,7 +93,7 @@ export async function buscarTudo(termo: string, slug: string | null): Promise<
     ])
 
     const resultados = [
-      ...(linhas ?? []).map(resultadoDaLinha).filter((r): r is ResultadoDaBusca => r !== null),
+      ...(linhas ?? []).map(l => resultadoDaLinha(l, fuso)).filter((r): r is ResultadoDaBusca => r !== null),
       ...(arquivadas ?? []).map(a => resultadoDaLinha({ ...a, tipo: 'cliente' })).filter((r): r is ResultadoDaBusca => r !== null),
       ...conversas,
       ...(pessoas ?? []).map(a => resultadoDaLinha({ ...a, tipo: 'contato' })).filter((r): r is ResultadoDaBusca => r !== null),

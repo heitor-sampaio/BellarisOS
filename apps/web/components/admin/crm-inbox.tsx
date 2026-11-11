@@ -45,6 +45,7 @@ import {
 } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { agruparPorDia } from '@/lib/inbox/dias-da-conversa'
+import { useFuso } from '@/components/shared/fuso'
 
 // --- Gesto de puxar (só no celular) ---------------------------------------------
 
@@ -977,6 +978,8 @@ export function CRMInbox({
   slug = '', initialSelectedId = null, canaisConectados = [], podeConfigurarIntegracoes = false,
   numeroDoUsuario = null, telaCheia = false,
 }: CRMInboxProps) {
+  // O dia das mensagens no relógio da unidade (F62b).
+  const fuso = useFuso()
   const [conversations, setConversations] = useState(initialConversations)
   // A assinatura do Realtime é montada uma vez só (deps `[]`), então os
   // handlers não enxergam o estado por closure — enxergam por aqui.
@@ -1574,7 +1577,7 @@ export function CRMInbox({
 
   // As mensagens por dia de Brasília (sobra da F33: era o dia em UTC, e a das
   // 23:30 caía no separador do dia seguinte).
-  const dayGroups = agruparPorDia(messages)
+  const dayGroups = agruparPorDia(messages, fuso)
 
   // Só avisa quando o canal DA CONVERSA não está conectado. Antes o aviso
   // aparecia em toda conversa que não fosse nota, mesmo com o canal ativo.

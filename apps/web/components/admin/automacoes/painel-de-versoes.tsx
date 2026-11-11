@@ -7,6 +7,7 @@ import {
   versoesDaAutomacao, lerVersao, type VersaoNaLista,
 } from '@/actions/automacoes'
 import type { GrafoDeAutomacao, LimitesDaAutomacao } from '@estetica-os/types'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * O histórico do grafo.
@@ -21,9 +22,9 @@ import type { GrafoDeAutomacao, LimitesDaAutomacao } from '@estetica-os/types'
  * clique por engano não pode trocar em silêncio um fluxo que está no ar.
  */
 
-const quando = (iso: string) =>
+const quando = (iso: string, fuso = 'America/Sao_Paulo') =>
   new Date(iso).toLocaleString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: fuso,
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
 
@@ -35,6 +36,7 @@ export function PainelDeVersoes({
   onFechar: () => void
   onRestaurar: (v: { nome: string; grafo: GrafoDeAutomacao; limites: LimitesDaAutomacao }) => void
 }) {
+  const fuso = useFuso()
   const [versoes, setVersoes] = useState<VersaoNaLista[]>([])
   const [carregando, agir]    = useTransition()
 
@@ -108,7 +110,7 @@ export function PainelDeVersoes({
                   </span>
                 )}
               </span>
-              <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>{quando(v.quando)}</span>
+              <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>{quando(v.quando, fuso)}</span>
             </div>
 
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-soft)' }}>

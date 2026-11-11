@@ -200,7 +200,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   if (temProposto && redeDoCliente) {
     await Promise.all(activePlans.filter(p => p.status === 'PROPOSED').map(async p => {
       const lista = await avulsosDoPlano(admin, redeDoCliente, p.id)
-      if (lista.length) avulsosPorPlano.set(p.id, lista.map(textoDoAvulso))
+      if (lista.length) avulsosPorPlano.set(p.id, lista.map(a => textoDoAvulso(a, fuso)))
     }))
   }
 
@@ -485,7 +485,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     </p>
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                       {v.quantity} já pago{v.quantity > 1 ? 's' : ''} · {textoDoParaAgendar(v.contagem)}
-                      {v.expires_at ? ` · válido até ${new Date(v.expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}
+                      {v.expires_at ? ` · válido até ${new Date(v.expires_at).toLocaleDateString('pt-BR', { timeZone: fuso })}` : ''}
                     </p>
                   </div>
                 </div>

@@ -10,6 +10,7 @@ import {
   situacaoDoPreAtendimento, gerarLinkDoPreAtendimento, enviarFichaPelaConversa, linkDaFichaDeNovo, completarNascimentoDaCliente,
   type SituacaoDoPreAtendimento, type LinkDoPreAtendimento,
 } from '@/actions/pre-atendimento'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * A ficha de pré-atendimento na janela do agendamento (2026-10-20): se a da
@@ -24,6 +25,7 @@ import {
  * (A49 da 6ª simulação). Quem só vê não vê o bloco.
  */
 export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }: { appointmentId: string; slug?: string; podeMandar: boolean }) {
+  const fuso = useFuso()
   const pathname = usePathname()
   const [situacao, setSituacao] = useState<SituacaoDoPreAtendimento | null>(null)
   const [link, setLink] = useState<LinkDoPreAtendimento | null>(null)
@@ -51,7 +53,7 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
     return (
       <div data-pre-atendimento-do-agendamento className="pre-atendimento-agendamento">
         <span className="chip chip-success">
-          Ficha de saúde respondida{situacao.respondidoEm ? ` em ${formatDate(situacao.respondidoEm)}` : ''}
+          Ficha de saúde respondida{situacao.respondidoEm ? ` em ${formatDate(situacao.respondidoEm, fuso)}` : ''}
         </span>
       </div>
     )
@@ -161,7 +163,7 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
       {situacao.linkValidoAte && !link && !enviado && (
         <div className="pre-atendimento-agendamento-link">
           <p className="pre-atendimento-agendamento-texto">
-            Já há um link valendo até {formatDate(situacao.linkValidoAte)} às {formatTime(situacao.linkValidoAte)}.
+            Já há um link valendo até {formatDate(situacao.linkValidoAte, fuso)} às {formatTime(situacao.linkValidoAte, fuso)}.
             {situacao.linkDeNovo ? ' Mostre-o de novo para copiar ou mandar.' : ''} Gerar outro cancela esse.
           </p>
           {podeMandar && situacao.linkDeNovo && (
@@ -176,7 +178,7 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
       {link && (
         <div className="pre-atendimento-agendamento-link">
           <p className="pre-atendimento-agendamento-texto">
-            Vale até {formatDate(link.expiraEm)} às {formatTime(link.expiraEm)}. Enquanto valer, ele se mostra de novo nesta janela (“Mostrar o link de novo”).
+            Vale até {formatDate(link.expiraEm, fuso)} às {formatTime(link.expiraEm, fuso)}. Enquanto valer, ele se mostra de novo nesta janela (“Mostrar o link de novo”).
           </p>
           <input className="field" readOnly value={link.url} aria-label="Link da ficha" onFocus={e => e.currentTarget.select()} />
           <div className="pre-atendimento-agendamento-acoes">

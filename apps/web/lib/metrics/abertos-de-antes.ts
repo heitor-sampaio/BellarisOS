@@ -20,6 +20,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ownerFilter } from '@/lib/auth'
 import { startOfDayTZ } from '@/lib/datetime'
 import { mensagemDoErro } from '@/lib/db'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 
 export const STATUS_ABERTOS_DE_ANTES = ['ARRIVED', 'IN_PROGRESS'] as const
 export const STATUS_SEM_CHEGADA = ['SCHEDULED', 'CONFIRMED'] as const
@@ -42,7 +43,8 @@ const VAZIO: GrupoDeAbertos = { total: 0, itens: [] }
 
 async function grupo(ctx: TenantContext, unidades: string[], agora: Date, status: readonly string[]): Promise<GrupoDeAbertos> {
   if (unidades.length === 0) return VAZIO
-  const hoje = startOfDayTZ(agora)
+  // O "de antes" é antes do dia de HOJE da unidade (F62b).
+  const hoje = startOfDayTZ(agora, await fusoDoRecorte(ctx.tenantId, unidades))
   const desde = new Date(hoje.getTime() - JANELA_DIAS * 86_400_000)
   let q = createAdminClient().from('appointments')
     .select('id, scheduled_at, status, clients(name), users!professional_id(name), branches!inner(tenant_id, name)', { count: 'exact' })

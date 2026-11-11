@@ -61,13 +61,15 @@ function campo(v: string) {
 
 const reais = (v: number | null | undefined) => v == null ? '' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ',')
 
-const dia = (iso: string | null | undefined) => iso
-  ? new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso))
+const dia = (iso: string | null | undefined, fuso = 'America/Sao_Paulo') => iso
+  ? new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso))
   : ''
 
 // A44 da 12ª: a Unidade sai sempre (também na clínica de uma unidade), e o
 // fornecedor e a nota dizem no cabeçalho que são opcionais (saíam vazios sem dizer).
-export function csvDosLancamentos(linhas: LinhaDoCsv[]): string {
+// F62b: a Data e o Pago em no dia da unidade (`fuso`, o da tela); o Vencimento
+// é um DIA (âncora ao meio-dia de Brasília) e fica no padrão.
+export function csvDosLancamentos(linhas: LinhaDoCsv[], fuso?: string): string {
   const cabecalho = ['Data', 'Descrição', 'Cliente', 'Unidade', 'Profissional', 'Categoria', 'Tipo', 'Forma', 'Bandeira', 'Situação', 'Valor', 'Conta no caixa',
     'Desconto', 'Taxa da maquininha', 'Líquido', 'Vencimento', 'Pago em', 'Fornecedor (se informado)', 'Nota fiscal (se informada)']
   const corpo = linhas.map(l => {
@@ -75,14 +77,14 @@ export function csvDosLancamentos(linhas: LinhaDoCsv[]): string {
     const conta = l.noCaixa !== undefined ? l.noCaixa != null : l.situacao === 'PAGO' && !l.estorno
     const centavos = l.noCaixa != null ? Math.round(l.noCaixa * 100) : Math.round(l.valor * 100) * sinal
     return [
-      dia(l.data), l.descricao, l.cliente ?? '', l.unidade ?? '', l.profissional ?? '', l.categoria ?? '',
+      dia(l.data, fuso), l.descricao, l.cliente ?? '', l.unidade ?? '', l.profissional ?? '', l.categoria ?? '',
       l.estorno ? 'Estorno' : l.tipo === 'EXPENSE' ? 'Despesa' : 'Receita',
       l.forma ? rotuloDaForma(l.forma, l.vezes) : '',
       (l.forma === 'CREDIT_CARD' || l.forma === 'DEBIT_CARD') && l.bandeira ? nomeDaBandeira(l.bandeira) : '',
       SITUACAO[l.situacao],
       (centavos / 100).toFixed(2).replace('.', ','), conta ? 'Sim' : 'Não',
       l.desconto && l.desconto > 0 ? reais(l.desconto) : '',
-      reais(l.taxa), reais(l.liquido), dia(l.vencimento), l.situacao === 'EM_ABERTO' ? '' : dia(l.pagoEm),
+      reais(l.taxa), reais(l.liquido), dia(l.vencimento), l.situacao === 'EM_ABERTO' ? '' : dia(l.pagoEm, fuso),
       l.fornecedor ?? '', l.nota ?? '',
     ].map(v => campo(String(v)))
   })

@@ -6,6 +6,7 @@ import type { PdfDoc } from '@/lib/pdf'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { descontosDosLancamentos } from '@/lib/financeiro/desconto-do-lancamento'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * O RECIBO de um pagamento (ven-06 da revisão, 2026-11-02; o Heitor: "Um
@@ -23,8 +24,9 @@ export interface LancamentoDoRecibo {
   id: string; tenantId: string; branchId: string; clientId: string | null
 }
 
-const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', {
-  timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+// No relógio da unidade que recebeu (F62b); sem ela, Brasília.
+const dataHora = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleString('pt-BR', {
+  timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
 })
 
 /** O lançamento que pode ter recibo (pago, receita, vivo), ou nulo. */
@@ -45,6 +47,7 @@ export async function lancamentoDoRecibo(id: string): Promise<LancamentoDoRecibo
 /** O recibo, pronto para `buildPdf`. */
 export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: PdfDoc; arquivo: string }> {
   const admin = createAdminClient()
+  const fuso = await fusoDaUnidade(l.tenantId, l.branchId)
   const [tx, unidade, rede, cliente] = await Promise.all([
     ler(admin.from('financial_transactions')
       .select('id, description, amount, payment_method, cartao_vezes, cartao_bandeira, paid_at, sale_discount, desconto_motivo, product_sale_id, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id')
@@ -68,7 +71,7 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
   const procedimento = (atendimento?.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento'
   const profissional = (atendimento?.users as unknown as { name?: string } | null)?.name ?? null
   const referente = atendimento
-    ? `${procedimento} — atendimento de ${dataHora(String(atendimento.scheduled_at)).replace(', ', ' às ')}${profissional ? `, com ${profissional}` : ''}`
+    ? `${procedimento} — atendimento de ${dataHora(String(atendimento.scheduled_at), fuso).replace(', ', ' às ')}${profissional ? `, com ${profissional}` : ''}`
     : String(tx.description ?? '—')
   const vezes = (tx.cartao_vezes as number | null) ?? null
   const parcelasDoCartao = tx.payment_method === 'CREDIT_CARD' && vezes && vezes > 1 ? parcelasEmTexto(Number(tx.amount), vezes) : null
@@ -87,7 +90,7 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
     ['Forma de pagamento', tx.payment_method ? rotuloDaForma(String(tx.payment_method), (tx.cartao_vezes as number | null) ?? null, { bandeira: (tx.cartao_bandeira as string | null) ?? null }) : 'Sem forma (pontos)'],
     // As vezes na maquininha: o que a cliente vê na fatura do cartão (A43).
     ...(parcelasDoCartao ? [['Parcelas no cartão', parcelasDoCartao] as [string, string]] : []),
-    ['Pago em', tx.paid_at ? dataHora(String(tx.paid_at)) : '—'],
+    ['Pago em', tx.paid_at ? dataHora(String(tx.paid_at), fuso) : '—'],
     ...(descontos[String(tx.id)] ? [['Desconto', descontos[String(tx.id)]!.replace(/^Desconto ?·? ?/, '')] as [string, string]] : []),
   ]
   const emitente: [string, string][] = [
@@ -103,7 +106,7 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
       title: 'Recibo',
       subtitle: `${String(rede.name)} — ${String(unidade.name)}`,
       sections: [{ fields: pagamento }, { title: 'Quem recebeu', fields: emitente }],
-      footer: `Emitido pelo BellarisOS em ${dataHora(new Date().toISOString())}. Este recibo não substitui a nota fiscal.`,
+      footer: `Emitido pelo BellarisOS em ${dataHora(new Date().toISOString(), fuso)}. Este recibo não substitui a nota fiscal.`,
     },
   }
 }

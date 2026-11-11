@@ -69,7 +69,7 @@ export const rotuloDaBaseDoLancamento = (l: LancamentoDoExtrato) =>
 
 const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno', AGUARDANDO: 'Aguardando' }
 const SITUACAO: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'A pagar', PAID: 'Paga', AGUARDANDO: 'Aguardando o pagamento integral' }
-const dia = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'
+const dia = (iso: string | null, fuso = 'America/Sao_Paulo') => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso }) : '—'
 const reais = (v: number | null) => v == null ? '' : v.toFixed(2).replace('.', ',')
 const campo = (v: string) => /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
 
@@ -79,11 +79,12 @@ const campo = (v: string) => /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` :
  * quem lia achava que não houve custo — o que a configuração não desconta fica
  * VAZIO; a regra diz de onde veio (A17).
  */
-export function csvDoExtrato(linhas: LancamentoDoExtrato[], nomes: Map<string, string>, unidades: Map<string, string>): string {
+export function csvDoExtrato(linhas: LancamentoDoExtrato[], nomes: Map<string, string>, unidades: Map<string, string>, fuso?: string): string {
   const tabela = [
     ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Previsto', 'Situação', 'Pago em'],
     ...linhas.map(l => [
-      dia(l.releasedAt), nomes.get(l.professionalId) ?? '', unidades.get(l.branchId) ?? '', dia(l.scheduledAt),
+      // As datas no dia da unidade (F62b).
+      dia(l.releasedAt, fuso), nomes.get(l.professionalId) ?? '', unidades.get(l.branchId) ?? '', dia(l.scheduledAt, fuso),
       l.cliente ?? '', l.procedimento ?? '', origemDoLancamento(l),
       reais(l.preco), l.preco == null ? '' : reais(l.baseDesconto),
       l.preco == null || !l.descontaTaxa ? '' : reais(l.baseTaxa),
@@ -93,7 +94,7 @@ export function csvDoExtrato(linhas: LancamentoDoExtrato[], nomes: Map<string, s
       TIPO[l.kind], l.motivo ?? '',
       l.amount.toFixed(2).replace('.', ','), l.previsto == null ? '' : l.previsto.toFixed(2).replace('.', ','), SITUACAO[l.status],
       // A21 da 10ª: com o pagamento parcial, o dia em que CADA lançamento foi pago.
-      l.pagoEm ? dia(l.pagoEm) : '',
+      l.pagoEm ? dia(l.pagoEm, fuso) : '',
     ]),
   ]
   // BOM + ponto e vírgula: é o que o Excel em pt-BR abre certo.

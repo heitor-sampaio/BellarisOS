@@ -415,6 +415,7 @@ function CategoryBars({
 // --- Commissions Card ---------------------------------------------
 
 function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
+  const fuso = useFuso()
   const totalComm = entries.reduce((s, e) => s + e.amount, 0)
   const totalPaid = entries.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
 
@@ -493,7 +494,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
                       borderBottom: ii < group.items.length - 1 ? '1px solid var(--hairline)' : 'none',
                     }}>
                       <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                        {new Date(item.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        {new Date(item.createdAt).toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit' })}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text)' }}>

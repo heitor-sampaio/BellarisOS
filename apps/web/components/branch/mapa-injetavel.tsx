@@ -18,6 +18,7 @@ import {
 } from '@/actions/injectable-map'
 import { buscarClientesParaPlano } from '@/actions/treatment-plans'
 import { rotaCliente } from '@/lib/rotas'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Um planejamento de injetáveis aberto.
@@ -41,6 +42,7 @@ export function MapaInjetavel({
   /** Avisa a lista que nome, cliente ou pontos mudaram. */
   onMudou?:       () => void
 }) {
+  const fuso = useFuso()
   const pathname = usePathname()
 
   const [plano,      setPlano]      = useState<PlanejamentoInjetavel | null>(null)
@@ -130,7 +132,7 @@ export function MapaInjetavel({
             <ChevronLeft size={14} /> Planejamento
           </button>
           <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
-            Aplicação de {new Date(vendo.appliedAt).toLocaleDateString('pt-BR')}
+            Aplicação de {new Date(vendo.appliedAt).toLocaleDateString('pt-BR', { timeZone: fuso })}
             {vendo.profissional ? ` · ${vendo.profissional}` : ''}
           </span>
         </div>
@@ -286,7 +288,7 @@ export function MapaInjetavel({
           )}
           {registrada && !msg && (
             <span data-aplicacao-registrada style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-              Aplicação registrada neste atendimento às {new Date(registrada.appliedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}: atualizar troca a registrada.
+              Aplicação registrada neste atendimento às {new Date(registrada.appliedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso })}: atualizar troca a registrada.
             </span>
           )}
 
@@ -323,7 +325,7 @@ export function MapaInjetavel({
                   border: '1px solid var(--border)', background: 'var(--surface)',
                 }}>
                 <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
-                  {new Date(a.appliedAt).toLocaleDateString('pt-BR')}
+                  {new Date(a.appliedAt).toLocaleDateString('pt-BR', { timeZone: fuso })}
                   {a.profissional ? ` · ${a.profissional}` : ''}
                 </span>
                 <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>

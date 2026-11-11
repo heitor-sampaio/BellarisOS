@@ -14,6 +14,7 @@ import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
 import { textoDaComissaoDaVenda, type RegraDeVenda } from '@/lib/comissoes/comissao-da-venda'
 import type { MembroDaVenda } from '@/components/shared/vender'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Vender um pacote (decisão do Heitor, 2026-09-30): o pacote do catálogo, e
@@ -40,12 +41,13 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   /** A equipe da unidade: a responsável sai de quem atende (com-04). */
   equipe?: MembroDaVenda[]
 }) {
+  const fuso = useFuso()
   const router = useRouter()
   const pathname = usePathname()
   // Depois da venda: a 1ª sessão, para o "Agendar a 1ª sessão agora" (A47).
   const [vendida, setVendida] = useState<{ id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null>(null)
   const [pacoteId, setPacoteId] = useState(pacotes[0]!.id)
-  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
+  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
   const pacote = pacotes.find(p => p.id === pacoteId) ?? pacotes[0]!

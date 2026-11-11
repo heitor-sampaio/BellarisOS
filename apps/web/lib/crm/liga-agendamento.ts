@@ -4,6 +4,7 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import { temRecurso } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { registrarEventoLead } from '@/lib/lead-events'
+import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -54,9 +55,11 @@ export async function oportunidadeDoAgendamento(
 export async function ligarAgendamentoAOportunidade(
   admin: Admin, ctx: TenantContext,
   o: OportunidadeDoAgendamento,
-  agendamento: { procedureId: string | null; scheduledAt: string },
+  agendamento: { procedureId: string | null; scheduledAt: string; branchId?: string | null },
 ): Promise<void> {
   try {
+    // A hora no relógio da unidade do agendamento (F62b).
+    const fuso = await lerFusoDaUnidade(admin, agendamento.branchId)
     const proc = agendamento.procedureId
       ? await ler(admin.from('procedures').select('name').eq('id', agendamento.procedureId).maybeSingle(), 'buscar o procedimento')
       : null
@@ -72,7 +75,7 @@ export async function ligarAgendamentoAOportunidade(
         para:  [
           (proc as { name: string } | null)?.name,
           new Date(agendamento.scheduledAt).toLocaleString('pt-BR', {
-            timeZone: 'America/Sao_Paulo',
+            timeZone: fuso,
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit',
           }),

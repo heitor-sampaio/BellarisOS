@@ -28,11 +28,11 @@ const SITUACAO: Record<string, { texto: string; cor: string }> = {
   DISPENSADO: { texto: 'Dispensado pela clínica', cor: 'var(--text-muted)' },
 }
 
-function LinhaDoDocumento({ slug, doc }: { slug: string; doc: ResumoDeDocumento }) {
+function LinhaDoDocumento({ slug, doc, fuso }: { slug: string; doc: ResumoDeDocumento; fuso: string }) {
   const s = SITUACAO[doc.status] ?? { texto: 'Cancelado', cor: 'var(--text-muted)' }
   const assinar = doc.status === 'PENDENTE' || doc.status === 'A_GERAR'
   const texto = doc.status === 'ASSINADO' && doc.assinadoEm
-    ? `Assinado em ${new Date(doc.assinadoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+    ? `Assinado em ${new Date(doc.assinadoEm).toLocaleDateString('pt-BR', { timeZone: fuso })}`
     : s.texto
   return (
     <div data-documento={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 10 }}>
@@ -130,7 +130,7 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
       {documentos.length > 0 && (
         <section data-documentos-do-agendamento aria-label="Documentos deste atendimento" className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>Documentos deste atendimento</p>
-          {documentos.map(d => <LinhaDoDocumento key={d.id} slug={slug} doc={d} />)}
+          {documentos.map(d => <LinhaDoDocumento key={d.id} slug={slug} doc={d} fuso={fuso} />)}
         </section>
       )}
 

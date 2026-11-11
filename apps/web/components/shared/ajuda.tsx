@@ -8,6 +8,7 @@ import { abrirChamado, responderChamado, meusChamados, verChamado } from '@/acti
 import { autorizarSuporte, revogarAutorizacaoDeSuporte } from '@/actions/suporte-autorizacao'
 import { ROTULO_DA_SITUACAO } from '@/lib/suporte/chamados-regras'
 import type { ChamadoResumo, ChamadoCompleto } from '@/lib/suporte/chamados'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * O botão "Ajuda" da topbar: abre chamado com o suporte do BellarisOS e
@@ -18,10 +19,9 @@ import type { ChamadoResumo, ChamadoCompleto } from '@/lib/suporte/chamados'
  */
 type Tela = { tipo: 'lista' } | { tipo: 'novo' } | { tipo: 'conversa'; id: string }
 
-const FORMATO = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
-})
-const quando = (iso: string) => FORMATO.format(new Date(iso))
+const quando = (iso: string, fuso = 'America/Sao_Paulo') => new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: fuso,
+}).format(new Date(iso))
 
 export function Ajuda({ internalUserId }: { internalUserId: string | null }) {
   const [aberta, setAberta] = useState(false)
@@ -80,6 +80,7 @@ function Situacao({ status }: { status: ChamadoResumo['status'] }) {
 function Lista({ onAbrir, onNovo, onFechar, onPodeClinico }: {
   onAbrir: (id: string) => void; onNovo: () => void; onFechar: () => void; onPodeClinico: (v: boolean) => void
 }) {
+  const fuso = useFuso()
   const [dados, setDados] = useState<{ chamados: ChamadoResumo[]; daRede: boolean } | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   useEffect(() => {
@@ -104,7 +105,7 @@ function Lista({ onAbrir, onNovo, onFechar, onPodeClinico }: {
               <div className="ajuda-item-texto">
                 <p className="ajuda-item-assunto">#{c.numero} · {c.assunto}</p>
                 <p className="ajuda-item-meta">
-                  {dados.daRede && c.quem ? `${c.quem} · ` : ''}{quando(c.ultimaMensagem)}
+                  {dados.daRede && c.quem ? `${c.quem} · ` : ''}{quando(c.ultimaMensagem, fuso)}
                 </p>
               </div>
               <Situacao status={c.status} />
@@ -181,6 +182,7 @@ function Novo({ podeClinico, onVoltar, onCriado }: { podeClinico: boolean; onVol
 }
 
 function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId: string | null; onVoltar: () => void }) {
+  const fuso = useFuso()
   const [dados, setDados] = useState<{ chamado: ChamadoCompleto; meu: boolean } | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [erroDoEnvio, setErroDoEnvio] = useState<string | null>(null)
@@ -233,11 +235,11 @@ function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId
 
   return (
     <>
-      <Cabecalho titulo={`#${c.numero} · ${c.assunto}`} sub={`Aberto por ${c.quem ?? '—'} em ${quando(c.criadoEm)}`} onVoltar={onVoltar} />
+      <Cabecalho titulo={`#${c.numero} · ${c.assunto}`} sub={`Aberto por ${c.quem ?? '—'} em ${quando(c.criadoEm, fuso)}`} onVoltar={onVoltar} />
       <div className="ajuda-acoes" style={{ justifyContent: 'flex-start' }}><Situacao status={c.status} /></div>
       {c.autorizacao
         ? <div className="ajuda-aviso" data-tom="ok" style={{ marginTop: 10 }}>
-            <span>Acesso do suporte autorizado até {quando(c.autorizacao.expiraEm)}{c.autorizacao.clinico ? ', com dados clínicos' : ''}.</span>
+            <span>Acesso do suporte autorizado até {quando(c.autorizacao.expiraEm, fuso)}{c.autorizacao.clinico ? ', com dados clínicos' : ''}.</span>
             {meu && <button type="button" className="btn-secondary" disabled={gravando} onClick={() => revogar(c.autorizacao!.id)}>Revogar</button>}
           </div>
         : meu && (
@@ -249,7 +251,7 @@ function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId
       <div className="chamado-conversa">
         {c.mensagens.map(m => (
           <div key={m.id} className="chamado-msg" data-autor={m.autor}>
-            <p className="chamado-msg-quem"><span>{m.nome}</span><span>{quando(m.em)}</span></p>
+            <p className="chamado-msg-quem"><span>{m.nome}</span><span>{quando(m.em, fuso)}</span></p>
             <p className="chamado-msg-corpo">{m.corpo}</p>
             {m.anexos.length > 0 && (
               <div className="chamado-anexos">

@@ -4,6 +4,7 @@ import { prazoDeResposta } from '@/lib/lgpd/prazo'
 import { useActionState, useState, useTransition } from 'react'
 import { requestDataExport, getExportDownloadUrls, type LgpdRequestRow } from '@/actions/lgpd'
 import { ShieldCheck, Download, FileText, FileJson, Loader2 } from 'lucide-react'
+import { useFuso } from '@/components/shared/fuso'
 
 interface Props {
   requests: LgpdRequestRow[]
@@ -34,14 +35,15 @@ function Chip({ label, color, bg }: { label: string; color: string; bg: string }
 }
 
 /** O prazo da clínica para responder sobre o prontuário (A60): a conta de `lib/lgpd/prazo`. */
-const prazoDaClinica = (iso: string) => prazoDeResposta(iso)
+const prazoDaClinica = (iso: string, fuso?: string) => prazoDeResposta(iso, false, fuso)
 
-function fmt(iso: string | null) {
+function fmt(iso: string | null, fuso = 'America/Sao_Paulo') {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso })
 }
 
 function DownloadRow({ request }: { request: LgpdRequestRow }) {
+  const fuso = useFuso()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -77,7 +79,7 @@ function DownloadRow({ request }: { request: LgpdRequestRow }) {
       </div>
       {request.expires_at && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
-          Disponível até {fmt(request.expires_at)}.
+          Disponível até {fmt(request.expires_at, fuso)}.
         </p>
       )}
       {error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', margin: 0 }}>{error}</p>}
@@ -86,6 +88,7 @@ function DownloadRow({ request }: { request: LgpdRequestRow }) {
 }
 
 export function DataRequestCard({ requests }: Props) {
+  const fuso = useFuso()
   const [state, action, pending] = useActionState(requestDataExport, null)
 
   const openRequest = requests.find(r => r.status === 'pending' || r.status === 'processing')
@@ -125,10 +128,10 @@ export function DataRequestCard({ requests }: Props) {
             )}
           </div>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-            Solicitado em {fmt(openRequest.requested_at)}. Estamos reunindo seus dados: costuma ficar
+            Solicitado em {fmt(openRequest.requested_at, fuso)}. Estamos reunindo seus dados: costuma ficar
             pronto em poucos minutos, e os arquivos aparecem aqui.
             {openRequest.include_medical && openRequest.medical_status === 'pending'
-              ? ` A parte do prontuário depende da liberação da clínica, que responde até ${prazoDaClinica(openRequest.requested_at)} (15 dias do pedido).`
+              ? ` A parte do prontuário depende da liberação da clínica, que responde até ${prazoDaClinica(openRequest.requested_at, fuso)} (15 dias do pedido).`
               : ''}
           </p>
         </div>
@@ -187,12 +190,12 @@ export function DataRequestCard({ requests }: Props) {
               <Chip {...MEDICAL_CHIP[latestDone.medical_status]!} />
             )}
             <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-              Solicitado em {fmt(latestDone.requested_at)}
+              Solicitado em {fmt(latestDone.requested_at, fuso)}
             </span>
           </div>
           {prontuarioEmAnalise && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-              Você já pode baixar o cadastro, os agendamentos, os pagamentos e os pontos. O prontuário depende da liberação da clínica, que responde até {prazoDaClinica(latestDone.requested_at)} (15 dias do pedido): quando ela decidir, o arquivo é refeito aqui.
+              Você já pode baixar o cadastro, os agendamentos, os pagamentos e os pontos. O prontuário depende da liberação da clínica, que responde até {prazoDaClinica(latestDone.requested_at, fuso)} (15 dias do pedido): quando ela decidir, o arquivo é refeito aqui.
             </p>
           )}
           <DownloadRow request={latestDone} />

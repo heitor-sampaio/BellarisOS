@@ -152,8 +152,8 @@ const ORIGEM: Record<OrigemDaAnamnese, string> = {
 }
 
 /** "Respondida pela cliente, no app em 18/10/2026" — para o selo da anamnese. */
-export function quemRespondeu(a: AnamneseGeral): string {
-  const quando = a.respondidoEm ? ` em ${new Date(a.respondidoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''
+export function quemRespondeu(a: AnamneseGeral, fuso = 'America/Sao_Paulo'): string {
+  const quando = a.respondidoEm ? ` em ${new Date(a.respondidoEm).toLocaleDateString('pt-BR', { timeZone: fuso })}` : ''
   return `Respondida ${ORIGEM[a.origem]}${quando}`
 }
 

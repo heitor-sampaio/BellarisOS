@@ -760,7 +760,8 @@ export async function getPlanoParaEditar(planId: string): Promise<{
       status:   data.status as string,
       notes,
       sessions,
-      cancelamento: retratoDoCancelamento(data as { cancelado_em?: string | null; cancelamento_motivo?: string | null; cancelamento?: unknown }),
+      cancelamento: retratoDoCancelamento(data as { cancelado_em?: string | null; cancelamento_motivo?: string | null; cancelamento?: unknown },
+        await fusoDaUnidade(ctx.tenantId, plan.branch_id as string)),
     },
   }
 }
@@ -1343,6 +1344,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1618,7 +1620,7 @@ async function checkoutTreatmentPlanInterno(
         inicio: new Date(sched.scheduledAt), duracaoMin: sess.mainDurationMin || 60,
       })
       if (sala.ocupada) {
-        const quando = new Date(sched.scheduledAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(', ', ' às ')
+        const quando = new Date(sched.scheduledAt).toLocaleString('pt-BR', { timeZone: await fusoDaUnidade(ctx.tenantId, sched.branchId), day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(', ', ' às ')
         avisosDaSala.push(`A ${sala.ocupada} está ocupada em ${quando}: essa sessão vai sem sala.`)
       }
       const appt = await ler(admin
@@ -2068,7 +2070,8 @@ export async function avulsosDoPlanoNoCheckout(planId: string): Promise<{ id: st
     const plano = await ler(admin.from('treatment_plans').select('branch_id, branches!branch_id(tenant_id)')
       .eq('id', planId).maybeSingle(), 'buscar o plano') as { branch_id: string; branches: { tenant_id: string } | null } | null
     if (!plano || plano.branches?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plano.branch_id)) return []
-    return (await avulsosDoPlano(admin, ctx.tenantId!, planId)).map(a => ({ id: a.id, texto: textoDoAvulso(a) }))
+    const fuso = await fusoDaUnidade(ctx.tenantId, plano.branch_id)
+    return (await avulsosDoPlano(admin, ctx.tenantId!, planId)).map(a => ({ id: a.id, texto: textoDoAvulso(a, fuso) }))
   } catch (e) {
     console.error('[checkout] avulsos do plano:', mensagemDoErro(e))
     return []

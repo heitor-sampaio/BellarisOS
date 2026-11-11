@@ -9,6 +9,7 @@ import { formatarPontos, rotuloDoLancamento, descricaoDoLancamento } from '@/lib
 import type { FidelidadeDoPerfil, LinhaDoExtrato } from '@/lib/fidelidade/leitura'
 import { VouchersDoCliente } from '@/components/branch/vouchers-do-cliente'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Fidelidade na ficha do cliente: saldo, extrato e ajuste manual.
@@ -25,6 +26,7 @@ export function FidelidadeDoCliente({
   branches:      { id: string; name: string }[]
   unidadePadrao: string
 }) {
+  const fuso = useFuso()
   const [saldo,   setSaldo]   = useState(fidelidade.saldo)
   const [linhas,  setLinhas]  = useState<LinhaDoExtrato[]>(fidelidade.extrato.linhas)
   const [temMais, setTemMais] = useState(fidelidade.extrato.temMais)
@@ -162,10 +164,10 @@ export function FidelidadeDoCliente({
                     </p>
                   )}
                   <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                    {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                    {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                     {l.branch_name && ` · ${l.branch_name}`}
                     {l.autor && ` · por ${l.autor}`}
-                    {l.expires_at && l.points > 0 && ` · vence em ${new Date(l.expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}
+                    {l.expires_at && l.points > 0 && ` · vence em ${new Date(l.expires_at).toLocaleDateString('pt-BR', { timeZone: fuso })}`}
                   </p>
                 </div>
                 <span style={{

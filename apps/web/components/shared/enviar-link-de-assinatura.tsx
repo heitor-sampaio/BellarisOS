@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Copy, Link2, MessageCircle } from 'lucide-react'
 import { formatDate, formatTime } from '@estetica-os/utils'
 import { gerarLinkDeAssinatura } from '@/actions/documentos'
+import { useFuso } from '@/components/shared/fuso'
 
 type Link = NonNullable<Awaited<ReturnType<typeof gerarLinkDeAssinatura>>['link']>
 
@@ -21,6 +22,7 @@ export function EnviarLinkDeAssinatura({ documentoId, jaEnviadoAte, compacto = f
   jaEnviadoAte?: string | null
   compacto?: boolean
 }) {
+  const fuso = useFuso()
   const [link, setLink] = useState<Link | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
@@ -49,14 +51,14 @@ export function EnviarLinkDeAssinatura({ documentoId, jaEnviadoAte, compacto = f
       )}
       {!link && jaEnviadoAte && (
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          Já há um link valendo até {formatDate(jaEnviadoAte)} às {formatTime(jaEnviadoAte)}: gerar outro cancela esse.
+          Já há um link valendo até {formatDate(jaEnviadoAte, fuso)} às {formatTime(jaEnviadoAte, fuso)}: gerar outro cancela esse.
         </span>
       )}
       {erro && <span role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)' }}>{erro}</span>}
       {link && (
         <div data-link-de-assinatura style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, borderRadius: 'var(--radius-field)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
-            Link de uso único, vale até {formatDate(link.expiraEm)} às {formatTime(link.expiraEm)}. A cliente confirma {link.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
+            Link de uso único, vale até {formatDate(link.expiraEm, fuso)} às {formatTime(link.expiraEm, fuso)}. A cliente confirma {link.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
             Ele só aparece agora: se perder, gere outro.
           </p>
           <input className="field" readOnly value={link.url} aria-label="Link de assinatura" onFocus={e => e.currentTarget.select()} style={{ fontSize: 'var(--text-xs-sz)' }} />

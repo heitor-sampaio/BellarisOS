@@ -33,6 +33,7 @@ import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 import type { ResultadoDoPeriodo } from '@/lib/metrics/resultado'
 import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
+import { useFuso } from '@/components/shared/fuso'
 
 // --- Types -------------------------------------------------------------------
 
@@ -279,6 +280,7 @@ export function AdminFinancialView({
   branchStats, umaUnidade = false, transactions, soOEmAberto = false, soAsVencidas = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
   canWrite = false, canPay = false, canReverse = false, podeDarCredito = false, clients = [],
 }: Props) {
+  const fuso = useFuso()
   const router      = useRouter()
   const [estornando, startT] = useTransition()
   // O lançamento esperando a confirmação do estorno (era um clique só, sem volta).
@@ -645,7 +647,7 @@ export function AdminFinancialView({
           {/* A44 da 8ª: o CSV de todas as movimentações do recorte (a tela mostra as 100 primeiras). */}
           <button type="button" className="btn-secondary" disabled={visibleTxs.length === 0} style={{ marginLeft: 'auto' }}
             onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(
-              visibleTxs.map(t => linhaDoLancamento(t, branches.find(b => b.id === t.branch_id)?.name ?? null))))}>
+              visibleTxs.map(t => linhaDoLancamento(t, branches.find(b => b.id === t.branch_id)?.name ?? null)), fuso))}>
             <Download size={14} aria-hidden /> Exportar CSV
           </button>
 
@@ -706,7 +708,7 @@ export function AdminFinancialView({
                     <td data-label="Data" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {!t.is_paid && t.due_date
                         ? `Vence ${new Date(t.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
-                        : new Date(t.data_de_referencia ?? t.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                        : new Date(t.data_de_referencia ?? t.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                     </td>
                     {/* A36 da 12ª: a 1440 px a tabela passava do cartão e cortava as ações. A descrição
                         quebra em até duas linhas (o nowrap fazia dela a largura mínima da coluna), e o

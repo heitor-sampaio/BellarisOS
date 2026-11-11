@@ -6,6 +6,7 @@ import { formatDia } from '@estetica-os/utils'
 import Link from 'next/link'
 import { FileText, Download, CheckCircle2, Clock3, Star, ChevronRight } from 'lucide-react'
 import type { ProcedimentoItem, PagamentoItem, DeAntesDoSistema } from '@/app/[slug]/cliente/historico/page'
+import { useFuso } from '@/components/shared/fuso'
 
 // -- Types ----------------------------------------------------------
 type ClientDoc = {
@@ -70,6 +71,7 @@ const DOC_CATEGORY: Record<string, string> = {
 
 // -- Component ------------------------------------------------------
 export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, documentos, consentimentos }: Props) {
+  const fuso = useFuso()
   const temDeAntes = !!deAntes && (deAntes.sessoes.length > 0 || !!deAntes.ultimaVisita)
   const [tab, setTab] = useState<Tab>('procedimentos')
 
@@ -148,7 +150,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                   {p.professional_name && <span>{p.professional_name}</span>}
                   {p.unidade && <span data-unidade-do-atendimento>{p.unidade}</span>}
                   <span>
-                    {new Date(p.scheduled_at).toLocaleDateString('pt-BR', {
+                    {new Date(p.scheduled_at).toLocaleDateString('pt-BR', { timeZone: fuso,
                       day: '2-digit', month: 'short', year: 'numeric',
                     })}
                   </span>
@@ -216,7 +218,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                   {/* A64: a parcela e o vencimento; o atendimento não pago, "a pagar na clínica". */}
                   {p.parcela && `${p.parcela} · `}
                   {p.paid_at
-                    ? new Date(p.paid_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+                    ? new Date(p.paid_at).toLocaleDateString('pt-BR', { timeZone: fuso })
                     : p.aPagarNaClinica
                       ? 'A pagar na clínica'
                       : p.vencida && p.vencimento ? `Vencida em ${(formatDia(p.vencimento) ?? "").slice(0, 5)}`
@@ -227,7 +229,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                 {/* A46: o pagamento de um pacote cancelado diz isso. */}
                 {p.pacoteCancelado && (
                   <p data-pacote-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                    Pacote cancelado em {new Date(p.pacoteCancelado).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                    Pacote cancelado em {new Date(p.pacoteCancelado).toLocaleDateString('pt-BR', { timeZone: fuso })}
                   </p>
                 )}
               </div>
@@ -281,7 +283,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                   {c.title}
                 </p>
                 <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                  Assinado em {new Date(c.signed_at).toLocaleDateString('pt-BR')}
+                  Assinado em {new Date(c.signed_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                   {c.signed_via && ` · ${c.signed_via}`}
                 </p>
               </div>
@@ -311,7 +313,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                     {d.name}
                   </p>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                    {DOC_CATEGORY[d.category] ?? 'Documento'} · {new Date(d.created_at).toLocaleDateString('pt-BR')}
+                    {DOC_CATEGORY[d.category] ?? 'Documento'} · {new Date(d.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                   </p>
                 </div>
                 <Download size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />

@@ -8,6 +8,7 @@ import { salvarAnamneseGeral } from '@/actions/pre-atendimento'
 import { quemRespondeu, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import { campoVisivel, type AnamnesisRow } from '@/lib/anamnesis'
 import { faltaNaAnamnese, rotulosQueFaltamNaAnamnese } from '@/lib/atendimento/obrigatorias'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * A anamnese geral da cliente (2026-10-20): as perguntas da FICHA DE
@@ -23,8 +24,9 @@ import { faltaNaAnamnese, rotulosQueFaltamNaAnamnese } from '@/lib/atendimento/o
  * cliente" com os campos em branco).
  */
 function SeloDaAnamnese({ anamnese }: { anamnese: AnamneseGeral }) {
+  const fuso = useFuso()
   return anamneseRespondida(anamnese)
-    ? <span className="anamnese-geral-selo">{quemRespondeu(anamnese)}</span>
+    ? <span className="anamnese-geral-selo">{quemRespondeu(anamnese, fuso)}</span>
     : <span className="anamnese-geral-selo anamnese-geral-selo-vazia">Ficha de saúde vazia — nenhuma pergunta respondida</span>
 }
 
@@ -173,6 +175,7 @@ export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
   /** Cada resposta mudada (o rascunho e o "Finalizar" — D3). */
   onMudou?: (respostas: Record<string, unknown>) => void
 }>(function AnamneseNaAvaliacao({ anamnese, fichaAtual, rascunho = null, onMudou }, ref) {
+  const fuso = useFuso()
   const renderer = useRef<AnamnesisFormHandle>(null)
   const colhidas = useRef<Record<string, unknown> | null>(null)
 
@@ -191,7 +194,7 @@ export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
       <div className="anamnese-geral-cabeca" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
         <h3 className="anamnese-geral-titulo">Anamnese</h3>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-          {anamnese && anamneseRespondida(anamnese) ? quemRespondeu(anamnese) : 'As perguntas da ficha de pré-atendimento da clínica'}
+          {anamnese && anamneseRespondida(anamnese) ? quemRespondeu(anamnese, fuso) : 'As perguntas da ficha de pré-atendimento da clínica'}
         </p>
         {anamnese && !anamneseRespondida(anamnese) && <SeloDaAnamnese anamnese={anamnese} />}
       </div>

@@ -14,6 +14,7 @@ import {
   ANEXOS_MAXIMOS, TEXTO_MAXIMO,
   type AnexoNaTela, type Cartao, type ConversaNaLista, type EventoDoCopilot, type MensagemNaTela,
 } from '@/lib/copilot/tipos'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * O Copilot — a secretária virtual, flutuando sobre todas as telas da equipe
@@ -84,13 +85,14 @@ async function reduzirFoto(f: File): Promise<File> {
   }
 }
 
-function quando(iso: string): string {
+function quando(iso: string, fuso = 'America/Sao_Paulo'): string {
   const d = new Date(iso)
-  const hoje = new Date()
-  const mesmoDia = d.toDateString() === hoje.toDateString()
+  // O "hoje" e a hora no relógio da unidade (F62b), não no do navegador.
+  const dia = (x: Date) => x.toLocaleDateString('en-CA', { timeZone: fuso })
+  const mesmoDia = dia(d) === dia(new Date())
   return mesmoDia
-    ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    ? d.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: 'short' })
 }
 
 /** Lê o stream SSE da rota e entrega cada evento. */
@@ -161,6 +163,7 @@ function useGravador(aoTerminar: (arquivo: File) => void) {
 }
 
 export function Copilot() {
+  const fuso = useFuso()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const pagina = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ''}`
@@ -415,7 +418,7 @@ export function Copilot() {
                 <li key={c.id}>
                   <button type="button" className="copilot-conversa" onClick={() => { setVista('chat'); setTitulo(c.titulo); void carregarConversa(c.id) }}>
                     <span>{c.titulo}</span>
-                    <small>{quando(c.atualizadaEm)}</small>
+                    <small>{quando(c.atualizadaEm, fuso)}</small>
                   </button>
                   <button type="button" className="copilot-acao-topo" aria-label={`Apagar a conversa ${c.titulo}`} onClick={() => void apagar(c.id)}>
                     <Trash2 size={14} />

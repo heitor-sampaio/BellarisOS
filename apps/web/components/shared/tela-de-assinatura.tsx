@@ -12,6 +12,7 @@ import { lerConteudo, type DocumentoResolvido } from '@/lib/documentos/arvore'
 import { assinarNaClinica, marcarAssinadoEmPapel, montarDocumentoDeNovo } from '@/actions/documentos'
 import { assinarNoPortal } from '@/actions/documentos-portal'
 import { nomeParaSaudar } from '@/lib/saudacao'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Colher a assinatura na clínica.
@@ -75,6 +76,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
   /** Quem assina fora das actions (o link público, pela rota dele). */
   assinarPorFora?: (d: { assinatura: string; hashExibido: string; aceite: string }) => Promise<{ error?: string; codigo?: string | null }>
 }) {
+  const fuso = useFuso()
   // No portal e no link é o próprio cliente na tela, sem a etapa da equipe.
   const noPortal = canal !== 'CLINICA'
   const router = useRouter()
@@ -273,7 +275,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
             <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span className="chip chip-success" style={{ alignSelf: 'flex-start' }}>Assinado</span>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-                {new Date(doc.assinatura.em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}, {CANAL[doc.assinatura.canal] ?? doc.assinatura.canal}
+                {new Date(doc.assinatura.em).toLocaleString('pt-BR', { timeZone: fuso })}, {CANAL[doc.assinatura.canal] ?? doc.assinatura.canal}
               </p>
               {doc.assinatura.conduzidoPor && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Conduzido por {doc.assinatura.conduzidoPor}</p>}
               {doc.codigo && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Código {doc.codigo}</p>}

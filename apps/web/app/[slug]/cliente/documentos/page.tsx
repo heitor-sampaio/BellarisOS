@@ -3,6 +3,9 @@ import { ChevronRight, FileSignature, FileText, ScrollText } from 'lucide-react'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { documentosNoPortal } from '@/lib/documentos/leitura'
 import { formatDate } from '@estetica-os/utils'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
+import { fusoValido } from '@/lib/unidades/fuso'
 
 /**
  * Portal do cliente → Documentos: os termos e contratos que pedem a assinatura
@@ -22,6 +25,9 @@ export default async function DocumentosDoClientePage({
   assertClient(ctx)
 
   const docs = await documentosNoPortal(ctx.clientId!)
+  // O dia da assinatura no relógio da unidade do endereço (F62b).
+  const fuso = fusoValido((await ler(createAdminClient().from('branches').select('fuso').eq('slug', slug).maybeSingle(),
+    'buscar o fuso da unidade') as { fuso: string | null } | null)?.fuso)
   const paraAssinar = docs.filter(d => d.status === 'PENDENTE' || d.status === 'A_GERAR' || d.status === 'INCOMPLETO')
   const assinados = docs.filter(d => d.status === 'ASSINADO')
   const doAgendamento = agendamento ? paraAssinar.filter(d => d.agendamentoId === agendamento) : []
@@ -45,23 +51,23 @@ export default async function DocumentosDoClientePage({
           <div className="card" style={{ padding: '16px 18px' }}>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum documento esperando a sua assinatura.</p>
           </div>
-        ) : paraAssinar.map(d => <Cartao key={d.id} slug={slug} doc={d} />)}
+        ) : paraAssinar.map(d => <Cartao key={d.id} slug={slug} doc={d} fuso={fuso} />)}
       </section>
 
       {assinados.length > 0 && (
         <section aria-label="Assinados" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p className="overline">Assinados</p>
-          {assinados.map(d => <Cartao key={d.id} slug={slug} doc={d} />)}
+          {assinados.map(d => <Cartao key={d.id} slug={slug} doc={d} fuso={fuso} />)}
         </section>
       )}
     </div>
   )
 }
 
-function Cartao({ slug, doc }: { slug: string; doc: Awaited<ReturnType<typeof documentosNoPortal>>[number] }) {
+function Cartao({ slug, doc, fuso }: { slug: string; doc: Awaited<ReturnType<typeof documentosNoPortal>>[number]; fuso: string }) {
   const Icone = doc.tipo === 'CONTRATO_PLANO' ? ScrollText : doc.tipo === 'CONTRATO' ? FileText : FileSignature
   const situacao = doc.status === 'ASSINADO'
-    ? `Assinado em ${doc.assinadoEm ? formatDate(doc.assinadoEm) : '—'}`
+    ? `Assinado em ${doc.assinadoEm ? formatDate(doc.assinadoEm, fuso) : '—'}`
     : doc.status === 'INCOMPLETO' ? 'Em preparação pela clínica' : 'Esperando a sua assinatura'
   return (
     <Link href={`/${slug}/cliente/documentos/${doc.id}`} data-documento={doc.id} className="card"

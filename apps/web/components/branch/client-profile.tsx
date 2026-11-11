@@ -58,6 +58,7 @@ import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancament
 import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
+import { useFuso } from '@/components/shared/fuso'
 
 // -- Types --------------------------------------------------------------------
 
@@ -394,8 +395,8 @@ export function faltaNoCadastro(itens: ItemDeTermo[]): { titulo: string; faltand
     .filter(i => i.faltando.length > 0)
 }
 
-const formatarDiaDaFalta = (iso: string) =>
-  new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso))
+const formatarDiaDaFalta = (iso: string, fuso = 'America/Sao_Paulo') =>
+  new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso))
 
 /**
  * O que a recepção precisa ver ao abrir a ficha, antes do resto: a menor sem
@@ -411,6 +412,7 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
   linkDosDados: string
   linkDoHistorico: string
 }) {
+  const fuso = useFuso()
   if (!menor && !faltando.length && !faltas.length && !pedidoLgpd) return null
   const ultima = [...faltas].sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt))[0]
   const linha: React.CSSProperties = {
@@ -424,7 +426,7 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
         <p data-pedido-lgpd-da-ficha role="note" style={{ ...linha, background: 'var(--info-soft)', color: 'var(--text)', border: '1px solid var(--border)' }}>
           <ShieldCheck size={15} color="var(--info)" style={{ flexShrink: 0, marginTop: 2 }} />
           <span style={{ flex: 1, minWidth: 200 }}>
-            Pedido de dados (LGPD) feito pelo app em {formatarDiaDaFalta(pedidoLgpd.pedidoEm)}: {pedidoLgpd.aberto
+            Pedido de dados (LGPD) feito pelo app em {formatarDiaDaFalta(pedidoLgpd.pedidoEm, fuso)}: {pedidoLgpd.aberto
               ? `responder até ${pedidoLgpd.prazo} (15 dias do pedido).`
               : 'o pacote já está no app dela.'}
             {!pedidoLgpd.caminho && ' Quem administra a clínica responde em Configurações → LGPD.'}
@@ -449,7 +451,7 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
         <p data-faltas-da-cliente style={{ ...linha, background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
           <XCircle size={15} color="var(--danger)" style={{ flexShrink: 0, marginTop: 2 }} />
           <span style={{ flex: 1, minWidth: 200 }}>
-            {faltas.length === 1 ? 'Não compareceu 1 vez' : `Não compareceu ${faltas.length} vezes`}: a última em {formatarDiaDaFalta(ultima.scheduledAt)} ({ultima.procedureName}).
+            {faltas.length === 1 ? 'Não compareceu 1 vez' : `Não compareceu ${faltas.length} vezes`}: a última em {formatarDiaDaFalta(ultima.scheduledAt, fuso)} ({ultima.procedureName}).
           </span>
           <Link href={linkDoHistorico} scroll={false} style={link}>Ver no Histórico</Link>
         </p>
@@ -1541,6 +1543,7 @@ export function ClientProfile({
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
+  const fuso     = useFuso()
   /*
    * `slug` é a filial DO CLIENTE, não o portal: serve às actions e ao que só
    * existe na unidade. Para onde navegar quem decide é `lib/rotas`, pelo
@@ -1598,7 +1601,7 @@ export function ClientProfile({
   const podeTrazerPacote = !!canGrantCredit && !arquivada
   const motivoDoArquivo = 'Cliente arquivada: reative em "Mais ações" para agendar ou vender.'
   // Arquivar não cancela o que ela tem marcado: a confirmação diz (A19).
-  const agendamentosAoArquivar = avisoDosAgendamentosAoArquivar(upcomingAppointments)
+  const agendamentosAoArquivar = avisoDosAgendamentosAoArquivar(upcomingAppointments, undefined, fuso)
 
   // O `?acao=reativar` sai da URL (recarregar não reabre o menu).
   const aoPedirReativar = useEffectEvent(() => {
@@ -1654,7 +1657,7 @@ export function ClientProfile({
 
   const initials = getInitials(client.name)
   // Desde quando é cliente: o da planilha importada, senão o cadastro (D6 da 10ª).
-  const since    = mesDeClienteDesde(client) ?? '—'
+  const since    = mesDeClienteDesde(client, fuso) ?? '—'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

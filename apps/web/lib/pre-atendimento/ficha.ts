@@ -5,6 +5,7 @@ import { normalizeFormSchema } from '@/lib/anamnesis'
 import { avisoDoPreAtendimento } from '@/lib/pre-atendimento/aviso'
 import { respostasDaFicha, alergiasDaAnamnese, avisoDeAlergia, type FichaDePreAtendimento, type OrigemDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
 import { notifyUser } from '@/lib/notifications/notify'
+import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -125,11 +126,12 @@ export async function anamneseDaEquipeParaGravar(admin: Admin, o: {
  */
 async function avisarAProfissional(admin: Admin, appointmentId: string, anamnese: AnamneseGeral): Promise<void> {
   try {
-    const ag = await ler(admin.from('appointments').select('professional_id, scheduled_at, clients(name)')
+    const ag = await ler(admin.from('appointments').select('professional_id, scheduled_at, branch_id, clients(name)')
       .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento da ficha') as
-      { professional_id: string | null; scheduled_at: string; clients: { name: string } | null } | null
+      { professional_id: string | null; scheduled_at: string; branch_id: string | null; clients: { name: string } | null } | null
     if (!ag?.professional_id) return
-    const quando = new Date(ag.scheduled_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    // A hora no relógio da unidade do agendamento (F62b).
+    const quando = new Date(ag.scheduled_at).toLocaleString('pt-BR', { timeZone: await lerFusoDaUnidade(admin, ag.branch_id), day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
     const alergia = alergiasDaAnamnese(anamnese)
     await notifyUser(admin, ag.professional_id, {
       type: 'pre_atendimento_respondido',

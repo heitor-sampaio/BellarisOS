@@ -11,6 +11,7 @@ import { DeleteCampaignButton } from '@/components/admin/delete-campaign-button'
 import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { quandoDispara } from '@/lib/notifications/quando-dispara'
 import { quemReceberiaHoje } from '@/lib/notifications/gatilho-de-hoje'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 export const dynamic = 'force-dynamic'
 
@@ -139,7 +140,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
         <StatCard icon={<Send size={16} />} label="Enviadas" value={campaign.total_sent.toLocaleString('pt-BR')} />
         <StatCard icon={<BookOpen size={16} />} label="Taxa de leitura" value={campaign.total_sent > 0 ? `${readRate}%` : '—'} />
         <StatCard icon={<Users size={16} />} label="Último disparo"
-          value={campaign.last_run_at ? new Date(campaign.last_run_at).toLocaleDateString('pt-BR') : '—'} />
+          value={campaign.last_run_at ? new Date(campaign.last_run_at).toLocaleDateString('pt-BR', { timeZone: await fusoDaRede(ctx.tenantId) }) : '—'} />
       </div>
 
       {/* Campaign info */}

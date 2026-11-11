@@ -97,11 +97,11 @@ export async function avulsosDoPlano(admin: Admin, tenantId: string, planId: str
   }))
 }
 
-const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', {
-  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+const quando = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleString('pt-BR', {
+  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: fuso,
 }).replace(',', ' às')
 
 /** "Bioestimulador agendado à parte em 03/11 às 16:00 (R$ 1.800,00)". */
-export function textoDoAvulso(a: AvulsoDoPlano): string {
-  return `${a.procedimento} agendado à parte em ${quando(a.scheduledAt)} (${formatBRL(a.preco)})`
+export function textoDoAvulso(a: AvulsoDoPlano, fuso?: string): string {
+  return `${a.procedimento} agendado à parte em ${quando(a.scheduledAt, fuso)} (${formatBRL(a.preco)})`
 }

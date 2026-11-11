@@ -14,19 +14,20 @@ export interface RetratoDoCancelamento {
   linhas:  string[]
 }
 
-const QUANDO = new Intl.DateTimeFormat('pt-BR', {
-  timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+// No relógio da unidade do plano (F62b); sem ela, Brasília.
+const quandoNoFuso = (fuso: string) => new Intl.DateTimeFormat('pt-BR', {
+  timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
 })
 
 const num = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100
 
 export function retratoDoCancelamento(p: {
   cancelado_em?: string | null; cancelamento_motivo?: string | null; cancelamento?: unknown
-}): RetratoDoCancelamento | null {
+}, fuso = 'America/Sao_Paulo'): RetratoDoCancelamento | null {
   if (!p.cancelado_em) return null
   const c = (p.cancelamento && typeof p.cancelamento === 'object' ? p.cancelamento : {}) as Record<string, unknown>
   const por = typeof c.por === 'string' && c.por.trim() ? `, por ${c.por.trim()}` : ''
-  const [dia, hora] = QUANDO.format(new Date(p.cancelado_em)).split(', ')
+  const [dia, hora] = quandoNoFuso(fuso).format(new Date(p.cancelado_em)).split(', ')
   const linhas: string[] = []
 
   const sessoes = Number(c.sessoes ?? 0)

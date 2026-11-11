@@ -132,8 +132,8 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   const fuso = useFuso()
   const dt = naParede(appointment.start, fuso)
   const instanteDe = useCallback((parede: string) => daParede(new Date(parede), fuso).toISOString(), [fuso])
-  const dateStr = dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
-  const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const dateStr = dt.toLocaleDateString('pt-BR', { timeZone: fuso, weekday: 'long', day: '2-digit', month: 'long' })
+  const timeStr = dt.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })
 
   // Data/hora atual no formato do input (local, não UTC).
   const pad = (n: number) => String(n).padStart(2, '0')

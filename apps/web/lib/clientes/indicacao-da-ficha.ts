@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
 import { configDaRede } from '@/lib/fidelidade/leitura'
 import { situacaoDoPremio } from '@/lib/fidelidade/indicacao'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * A indicação na ficha (decisão do Heitor, 2026-11-10): quem a indicou ("Indicada
@@ -31,13 +32,15 @@ export async function indicacaoDaFicha(
       'ler quem a cliente indicou'),
     configDaRede(tenantId, admin),
   ])
+  // A fidelidade é da rede: o dia do prêmio no fuso dela (F62b).
+  const fuso = await fusoDaRede(tenantId)
   const regra = { fidelidadeLigada: cfg.enabled, premio: cfg.indicacao_premio }
   return {
     indicadaPor:      quem ? { id: quem.id, nome: quem.name } : null,
     indicadaPorTexto: quem ? null : (raw.referred_by?.trim() || null),
     indicou: (indicadas ?? []).map(i => ({
       id: i.indicada_id, nome: i.nome,
-      premio: situacaoDoPremio({ id: i.indicada_id, nome: i.nome, premioEm: i.premio_em, estornadoEm: i.estornado_em, jaPagou: i.ja_pagou }, regra),
+      premio: situacaoDoPremio({ id: i.indicada_id, nome: i.nome, premioEm: i.premio_em, estornadoEm: i.estornado_em, jaPagou: i.ja_pagou }, regra, fuso),
     })),
   }
 }

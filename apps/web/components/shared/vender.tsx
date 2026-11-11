@@ -22,6 +22,7 @@ import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
 import { textoDaComissaoDaVenda, type RegraDeVenda } from '@/lib/comissoes/comissao-da-venda'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * "Vender" (decisão do Heitor, 2026-09-30): um botão só, e a janela pergunta
@@ -270,12 +271,13 @@ function VenderNaUnidade({ clienteId, branchId, pacotes, procedimentos, produtos
 function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
   clienteId: string; branchId: string; produtos: ProdutoAVenda[]; onFim: () => void; equipe: MembroDaVenda[]
 }) {
+  const fuso = useFuso()
   // "Quem vendeu" (com-06): nasce VAZIO (r2-ven-12); vazio, a venda pergunta.
   const [vendedorId, setVendedorId] = useState('')
   const [pergunta, setPergunta] = useState<string | null>(null)
   const router = useRouter()
   const [itens, setItens] = useState<{ prodId: string; quantidade: string }[]>(() => [{ prodId: produtos[0]!.id, quantidade: '1' }])
-  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
+  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
   const [desconto, setDesconto] = useState(SEM_DESCONTO)
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
@@ -391,12 +393,13 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
  * novo. Sem "Quem vendeu": não tem comissão de venda.
  */
 function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string; branchId: string; onFim: () => void }) {
+  const fuso = useFuso()
   const router = useRouter()
   const pathname = usePathname()
   const [valor, setValor] = useState('')
   // A20 da 11ª (decisão do Heitor): o bônus, opcional — nasce vazio (princípio 6).
   const [bonus, setBonus] = useState('')
-  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
+  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
   // A55 da 11ª: a cliente sem acesso ao app não vê o saldo pelo celular.
@@ -494,6 +497,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   clienteId: string; branchId: string; procedimentos: ProcedimentoAVenda[]; onFim: () => void; podeAgendar: boolean
   aReceber: AtendimentoAReceber[]; equipe: MembroDaVenda[]
 }) {
+  const fuso = useFuso()
   // "Quem vendeu" (com-06): nasce VAZIO (r2-ven-12); vazio, a venda pergunta.
   const [vendedorId, setVendedorId] = useState('')
   const [pergunta, setPergunta] = useState<string | null>(null)
@@ -504,7 +508,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   const [procId, setProcId] = useState(procedimentos[0]!.id)
   const [quantidade, setQuantidade] = useState('1')
   const [validade, setValidade] = useState('')
-  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA'))
+  const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
   const [desconto, setDesconto] = useState(SEM_DESCONTO)
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
@@ -581,7 +585,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
         }}>
           <AlertTriangle size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} aria-hidden />
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.45 }}>
-            Esta cliente tem {jaAtendido.procedureName ?? 'este procedimento'} de {new Date(jaAtendido.scheduledAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} concluído
+            Esta cliente tem {jaAtendido.procedureName ?? 'este procedimento'} de {new Date(jaAtendido.scheduledAt).toLocaleDateString('pt-BR', { timeZone: fuso })} concluído
             e <strong>a receber ({formatBRL(jaAtendido.price)})</strong>. Para cobrar esse atendimento, receba por ele —
             vender de novo cobraria duas vezes.{' '}
             <Link href={rotaDoRecebimento(pathname, jaAtendido.branchSlug, jaAtendido.appointmentId)} style={{ color: 'var(--brand)', fontWeight: 700 }}>

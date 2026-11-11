@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { reviewMedicalData, type LgpdAdminRow } from '@/actions/lgpd'
 import { ShieldCheck, Check, X, AlertTriangle } from 'lucide-react'
 import { prazoDeResposta, DIAS_DO_PRAZO_DA_LGPD } from '@/lib/lgpd/prazo'
+import { useFuso } from '@/components/shared/fuso'
 
 interface Props {
   requests: LgpdAdminRow[]
@@ -36,8 +37,8 @@ function Chip({ label, color, bg }: { label: string; color: string; bg: string }
   )
 }
 
-const fmt = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'
+const fmt = (iso: string | null, fuso = 'America/Sao_Paulo') =>
+  iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso }) : '—'
 
 function ReviewButtons({ requestId }: { requestId: string }) {
   const [state, action, pending] = useActionState(reviewMedicalData, null)
@@ -102,6 +103,7 @@ function ReviewButtons({ requestId }: { requestId: string }) {
 }
 
 export function SettingsLgpd({ requests, canReviewMedical }: Props) {
+  const fuso = useFuso()
   const awaiting = requests.filter(r => r.medical_status === 'pending')
 
   return (
@@ -159,20 +161,20 @@ export function SettingsLgpd({ requests, canReviewMedical }: Props) {
                   <Chip {...(STATUS[r.status] ?? STATUS.pending!)} />
                   <Chip {...(MEDICAL[r.medical_status] ?? MEDICAL.not_requested!)} />
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                    Pedido em {fmt(r.requested_at)}
-                    {r.completed_at ? ` · entregue em ${fmt(r.completed_at)}` : ''}
+                    Pedido em {fmt(r.requested_at, fuso)}
+                    {r.completed_at ? ` · entregue em ${fmt(r.completed_at, fuso)}` : ''}
                   </span>
                 </div>
                 {/* A50 da 8ª: o prazo de resposta (o mesmo que a cliente vê) e,
                     decidido o prontuário, quando — e o que vem depois. */}
                 {(r.medical_status === 'pending' || (r.status !== 'completed' && r.status !== 'failed' && r.medical_status !== 'approved' && r.medical_status !== 'denied')) && (
                   <span data-prazo-de-resposta style={{ fontSize: 'var(--text-xs-sz)', color: r.medical_status === 'pending' ? 'var(--warning)' : 'var(--text-muted)', fontWeight: 600 }}>
-                    Responder até {prazoDeResposta(r.requested_at, true)} ({DIAS_DO_PRAZO_DA_LGPD} dias do pedido)
+                    Responder até {prazoDeResposta(r.requested_at, true, fuso)} ({DIAS_DO_PRAZO_DA_LGPD} dias do pedido)
                   </span>
                 )}
                 {(r.medical_status === 'approved' || r.medical_status === 'denied') && r.medical_reviewed_at && (
                   <span data-liberado-em style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                    {r.medical_status === 'approved' ? 'Prontuário liberado' : 'Prontuário negado'} em {fmt(r.medical_reviewed_at)}
+                    {r.medical_status === 'approved' ? 'Prontuário liberado' : 'Prontuário negado'} em {fmt(r.medical_reviewed_at, fuso)}
                     {r.medical_status === 'approved' && (r.status === 'pending' || r.status === 'processing')
                       ? ' · o pacote novo, com o prontuário, fica pronto em poucos minutos' : ''}
                   </span>

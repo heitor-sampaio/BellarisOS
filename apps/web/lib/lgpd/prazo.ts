@@ -6,8 +6,8 @@
  */
 export const DIAS_DO_PRAZO_DA_LGPD = 15
 
-/** O dia-limite, no fuso do negócio: "21/11" (`comAno`: "21/11/2026"). */
-export function prazoDeResposta(pedidoEm: string, comAno = false): string {
+/** O dia-limite, no fuso da clínica (F62b; sem ele, Brasília): "21/11" (`comAno`: "21/11/2026"). */
+export function prazoDeResposta(pedidoEm: string, comAno = false, fuso = 'America/Sao_Paulo'): string {
   return new Date(new Date(pedidoEm).getTime() + DIAS_DO_PRAZO_DA_LGPD * 86_400_000)
-    .toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', ...(comAno ? { year: 'numeric' } : {}) })
+    .toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', ...(comAno ? { year: 'numeric' } : {}) })
 }

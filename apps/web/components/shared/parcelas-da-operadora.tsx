@@ -8,6 +8,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { anteciparParcelaDaOperadora, desfazerRecebimentoDaParcelaDaOperadora } from '@/actions/financial'
 import type { ParcelaDaOperadora, SituacaoDaParcela } from '@/lib/metrics/operadora'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * As parcelas do cartão em N vezes que a OPERADORA deposita, mês a mês (F2c da
@@ -49,7 +50,9 @@ function nomeDoMes(mes: string): string {
 
 /** "05/11/2026" — o dia vem do banco já no fuso da clínica ("2026-11-05"). */
 const dia = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`
-const dataSP = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+// O dia de cada parcela no relógio da unidade (F62b): a venda das 23:30 de
+// Manaus cai, N dias depois, no dia de lá.
+const dataSP = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso })
 
 const SITUACAO: Record<SituacaoDaParcela, { rotulo: string; fundo: string; cor: string; borda: string }> = {
   A_RECEBER:  { rotulo: 'A receber',  fundo: 'var(--warning-soft)', cor: 'var(--warning)',    borda: 'var(--warning-border)' },
@@ -69,6 +72,7 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
   /** O nome de cada unidade (a rede com mais de uma mostra a coluna). */
   unidades?:  Record<string, string>
 }) {
+  const fuso = useFuso()
   const router = useRouter()
   const [aMarcar, setAMarcar] = useState<ParcelaDaOperadora | null>(null)
   const [aDesfazer, setADesfazer] = useState<ParcelaDaOperadora | null>(null)
@@ -182,7 +186,7 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
                         {s.rotulo}
                       </span>
                       {(p.situacao === 'RECEBIDA' || p.situacao === 'ANTECIPADA') && p.recebidaNa && (
-                        <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 3 }}>em {dataSP(p.recebidaNa)}</p>
+                        <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 3 }}>em {dataSP(p.recebidaNa, fuso)}</p>
                       )}
                       {p.estornado > 0 && (
                         <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 3 }}>
@@ -243,7 +247,7 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Desfazer o recebimento?</h2>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
               <strong style={{ color: 'var(--text)' }}>{aDesfazer.descricao}</strong> · parcela {aDesfazer.numero}/{aDesfazer.total} ·{' '}
-              {formatBRL(aDesfazer.valor)}{aDesfazer.recebidaNa ? ` · marcada recebida em ${dataSP(aDesfazer.recebidaNa)}` : ''}
+              {formatBRL(aDesfazer.valor)}{aDesfazer.recebidaNa ? ` · marcada recebida em ${dataSP(aDesfazer.recebidaNa, fuso)}` : ''}
             </p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
               A parcela volta para a receber, com o vencimento em {dia(aDesfazer.vencimentoDia)}, e volta a contar no

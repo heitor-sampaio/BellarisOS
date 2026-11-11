@@ -9,10 +9,11 @@ import { CancelarUnidadePrePaga } from '@/components/shared/cancelar-unidade-pre
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import type { PrePagoDoCliente, UnidadePrePaga } from '@/lib/pre-pago/leitura'
 import { textoDoParaAgendar } from '@/lib/pre-pago/contagem'
+import { useFuso } from '@/components/shared/fuso'
 
 const TZ = 'America/Sao_Paulo'
-const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: TZ })
-const diaEHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+const dia = (iso: string, fuso = TZ) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso })
+const diaEHora = (iso: string, fuso = TZ) => new Date(iso).toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 
 /**
  * Os procedimentos pré-pagos do cliente, na ficha (2026-09-30): o que ele
@@ -46,6 +47,7 @@ export function ProcedimentosPagos({ vendas, podeCancelar, podeAgendar = false, 
 }
 
 function Venda({ venda: v, podeCancelar, agenda }: { venda: PrePagoDoCliente; podeCancelar: boolean; agenda: Agenda }) {
+  const fuso = useFuso()
   const [aberta, setAberta] = useState(v.disponiveis > 0)
   return (
     <div data-venda-pre-paga style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-row)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -56,8 +58,8 @@ function Venda({ venda: v, podeCancelar, agenda }: { venda: PrePagoDoCliente; po
           {textoDoParaAgendar({ paraAgendar: v.disponiveis, agendadas: v.agendadas })}
         </span>
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-          {formatBRL(v.price)}{v.desconto > 0 ? ` (desconto de ${formatBRL(v.desconto)})` : ''} · {dia(v.vendidoEm)}
-          {v.venceEm ? ` · ${v.vencida ? 'venceu' : 'vale até'} ${dia(v.venceEm)}` : ''}
+          {formatBRL(v.price)}{v.desconto > 0 ? ` (desconto de ${formatBRL(v.desconto)})` : ''} · {dia(v.vendidoEm, fuso)}
+          {v.venceEm ? ` · ${v.vencida ? 'venceu' : 'vale até'} ${dia(v.venceEm, fuso)}` : ''}
         </span>
       </button>
       {aberta && (
@@ -69,13 +71,14 @@ function Venda({ venda: v, podeCancelar, agenda }: { venda: PrePagoDoCliente; po
   )
 }
 
-function situacao(u: UnidadePrePaga): string {
+function situacao(u: UnidadePrePaga, fuso = TZ): string {
   if (u.status === 'USADA') return 'Usada'
   if (u.status === 'CANCELADA') return `Cancelada${u.canceladaPor ? ` — ${u.canceladaPor}` : ''}`
-  return u.agendamentoEm ? `Agendada para ${diaEHora(u.agendamentoEm)}` : 'Disponível'
+  return u.agendamentoEm ? `Agendada para ${diaEHora(u.agendamentoEm, fuso)}` : 'Disponível'
 }
 
 function Unidade({ unidade: u, podeCancelar, agenda }: { unidade: UnidadePrePaga; podeCancelar: boolean; agenda: Agenda }) {
+  const fuso = useFuso()
   const router = useRouter()
   const [cancelando, setCancelando] = useState(false)
   const [agendando, setAgendando] = useState(false)
@@ -87,7 +90,7 @@ function Unidade({ unidade: u, podeCancelar, agenda }: { unidade: UnidadePrePaga
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 700, color: 'var(--text)' }}>Unidade {u.numero}</span>
         <span style={{ color: 'var(--text-muted)' }}>{formatBRL(u.preco)}</span>
-        <span style={{ color: u.status === 'DISPONIVEL' ? 'var(--success)' : 'var(--text-muted)' }}>{situacao(u)}</span>
+        <span style={{ color: u.status === 'DISPONIVEL' ? 'var(--success)' : 'var(--text-muted)' }}>{situacao(u, fuso)}</span>
         {livre && !cancelando && !agendando && (
           <span style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
             {agenda.podeAgendar && (

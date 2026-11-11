@@ -7,7 +7,7 @@
 import { formatarPontos } from './formato'
 import type { PremioDeIndicacao } from './config'
 
-const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })
+const dia = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit' })
 
 /** Uma ficha que ela indicou, como `indicacoes_da_ficha` devolve. */
 export interface IndicadaNaFicha {
@@ -27,10 +27,10 @@ export interface IndicadaNaFicha {
  * fizer o primeiro pagamento" ou "sem prêmio: …". Nulo com a fidelidade ou o
  * prêmio desligados e nada dado — nenhum sinal de pontos com o programa desligado.
  */
-export function situacaoDoPremio(i: IndicadaNaFicha, regra: { fidelidadeLigada: boolean; premio: PremioDeIndicacao }): string | null {
+export function situacaoDoPremio(i: IndicadaNaFicha, regra: { fidelidadeLigada: boolean; premio: PremioDeIndicacao }, fuso?: string): string | null {
   if (!regra.fidelidadeLigada) return null
-  if (i.premioEm) return `prêmio dado em ${dia(i.premioEm)}`
-  if (i.estornadoEm) return `prêmio estornado em ${dia(i.estornadoEm)}: o pagamento dela foi estornado`
+  if (i.premioEm) return `prêmio dado em ${dia(i.premioEm, fuso)}`
+  if (i.estornadoEm) return `prêmio estornado em ${dia(i.estornadoEm, fuso)}: o pagamento dela foi estornado`
   if (regra.premio === 'DESLIGADO') return null
   if (i.jaPagou) return 'sem prêmio: ela já tinha pagado antes da indicação ou do prêmio ligado'
   return 'prêmio quando ela fizer o primeiro pagamento'

@@ -46,17 +46,18 @@ const ROTULOS: Record<FormaDoPagamento, string> = {
   NADA_AGORA: 'No atendimento', AVISTA: 'À vista', PARCELADO: 'Entrada + parcelas', A_RECEBER: 'A receber',
 }
 
-const hojeMais = (dias: number) => new Date(Date.now() + dias * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+// O dia de "hoje + N" no relógio da unidade (F62b).
+const hojeMais = (dias: number, fuso = 'America/Sao_Paulo') => new Date(Date.now() + dias * 86_400_000).toLocaleDateString('en-CA', { timeZone: fuso })
 const diaDe = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 
-export function estadoDoPagamento(atual: PagamentoDoPlano | null | undefined, padrao: FormaDoPagamento): EstadoDoPagamento {
+export function estadoDoPagamento(atual: PagamentoDoPlano | null | undefined, padrao: FormaDoPagamento, fuso?: string): EstadoDoPagamento {
   return {
     forma:    atual ? atual.forma : padrao,
     // A37 da 6ª simulação: a forma nasce VAZIA (o Pix era o padrão calado).
     metodo:   atual?.metodo ?? '',
     entrada:  atual?.forma === 'PARCELADO' ? String(atual.entrada).replace('.', ',') : '',
     parcelas: atual?.forma === 'PARCELADO' ? atual.parcelas : 3,
-    data:     atual?.forma === 'PARCELADO' ? diaDe(atual.primeiroVencimento) : hojeMais(30),
+    data:     atual?.forma === 'PARCELADO' ? diaDe(atual.primeiroVencimento) : hojeMais(30, fuso),
     vencimento: atual?.forma === 'A_RECEBER' && atual.vencimento ? diaDe(atual.vencimento) : '',
     vezes:    atual?.forma === 'AVISTA' || atual?.forma === 'PARCELADO' ? (atual.vezes ?? 1) : 1,
     bandeira: atual && atual.forma !== 'A_RECEBER' ? (atual.bandeira ?? '') : '',

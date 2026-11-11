@@ -87,6 +87,7 @@ function OutrasConversas({ threads, onAbrir }: {
   threads: ThreadDoContato[]
   onAbrir?: (id: string) => void
 }) {
+  const fuso = useFuso()
   if (threads.length === 0) return null
 
   return (
@@ -100,7 +101,7 @@ function OutrasConversas({ threads, onAbrir }: {
         // pelo Marketing" e "veio pelo Instagram" respondem a mesma pergunta.
         const onde = t.numero_label ?? CANAL[t.channel] ?? t.channel
         const quando = t.last_message_at
-          ? new Date(t.last_message_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+          ? new Date(t.last_message_at).toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit' })
           : null
 
         return (

@@ -2137,7 +2137,7 @@ export function AppointmentSession({
           }}>
             <ClipboardList size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
             <span>
-              A ficha de saúde de {nomeParaSaudar(client.name) || 'quem está sendo atendido'} está vencida (respondida em {new Date(fichaDeSaudeVencidaEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}).
+              A ficha de saúde de {nomeParaSaudar(client.name) || 'quem está sendo atendido'} está vencida (respondida em {new Date(fichaDeSaudeVencidaEm).toLocaleDateString('pt-BR', { timeZone: fuso })}).
               <span style={{ fontWeight: 600 }}> Ela continua valendo; peça a atualização.</span>
             </span>
           </div>
@@ -2202,7 +2202,7 @@ export function AppointmentSession({
                   age ? `${age} anos` : null,
                   typeof anamnesis?.respostas.skinType === 'string' ? `Pele ${anamnesis.respostas.skinType}` : null,
                   // Desde quando é CLIENTE (o cadastro) — mostrava o mês de nascimento.
-                  mesDeClienteDesde(client) ? `Cliente desde ${mesDeClienteDesde(client)}` : null,
+                  mesDeClienteDesde(client, fuso) ? `Cliente desde ${mesDeClienteDesde(client, fuso)}` : null,
                 ].filter(Boolean).join(' · ')}
               </p>
             </div>
@@ -2750,7 +2750,7 @@ export function AppointmentSession({
                         <div style={{ flex: 1, paddingBottom: 2 }}>
                           <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', marginBottom: 1 }}>{entry.description}</p>
                           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                            {entry.changedByName} · {dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            {entry.changedByName} · {dt.toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit' })} às {dt.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
                       </div>

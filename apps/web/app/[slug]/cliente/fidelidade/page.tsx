@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getTenantContext, assertClient, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { fusoValido } from '@/lib/unidades/fuso'
 import {
   configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede, pontosVencendo, saldosPorUnidade,
 } from '@/lib/fidelidade/leitura'
@@ -54,7 +55,10 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
       'buscar a unidade') as { id: string } | null
     saldoParaTrocar = porUnidade.find(u => u.branch_id === unidade?.id)?.saldo ?? 0
   }
-  const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  // O dia no relógio da unidade do endereço (F62b).
+  const fuso = fusoValido((await ler(admin.from('branches').select('fuso').eq('slug', slug).maybeSingle(),
+    'buscar o fuso da unidade') as { fuso: string | null } | null)?.fuso)
+  const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso })
   // A38 da 9ª: sem a troca pelo app, a quem ela pede (quem tem a Fidelidade em Gerenciar na unidade do endereço).
   const quemTroca = cfg.client_redeem ? [] : await (async () => {
     const u = await ler(admin.from('branches').select('id').eq('slug', slug).eq('tenant_id', cliente!.tenant_id!).maybeSingle(),
@@ -176,7 +180,7 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
                     {rotuloDoLancamento(l.kind, l.description)}
                   </p>
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                    {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                    {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                     {l.branch_name && ` · ${l.branch_name}`}
                     {l.expires_at && l.points > 0 && ` · vence em ${data(l.expires_at)}`}
                   </p>

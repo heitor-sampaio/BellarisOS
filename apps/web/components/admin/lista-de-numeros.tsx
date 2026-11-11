@@ -12,6 +12,7 @@ import {
 import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
 import { TABELA_DA_META, ROTULO_DA_CATEGORIA, type CobrancaDoNumero } from '@/lib/whatsapp/cobranca'
 import { formatBRL, maskPhone } from '@estetica-os/utils'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * As caixas de WhatsApp da rede, uma por linha.
@@ -77,8 +78,8 @@ function Campo({ rotulo, children, dica }: {
 /** Onde a clínica cadastra o cartão: a conta do WhatsApp é dela, na Meta. */
 const GERENCIADOR_DO_WHATSAPP = 'https://business.facebook.com/wa/manage/home/'
 
-const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', {
-  timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+const quando = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleString('pt-BR', {
+  timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
 })
 
 /**
@@ -88,6 +89,7 @@ const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', {
  * reais são estimados, pela tabela.
  */
 function CobrancaDoMes({ cobranca }: { cobranca: CobrancaDoNumero | null }) {
+  const fuso = useFuso()
   const porCategoria = cobranca?.porCategoria
   const cobradas = (['marketing', 'utility', 'authentication'] as const)
     .filter(c => (porCategoria?.[c].cobradas ?? 0) > 0)
@@ -107,7 +109,7 @@ function CobrancaDoMes({ cobranca }: { cobranca: CobrancaDoNumero | null }) {
           <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
           <span>
             <strong>A Meta recusou templates deste número por falta de forma de pagamento</strong>{' '}
-            (último em {quando(cobranca.pagamentoRecusadoEm)}). Cadastre um cartão na conta do
+            (último em {quando(cobranca.pagamentoRecusadoEm, fuso)}). Cadastre um cartão na conta do
             WhatsApp da clínica, no{' '}
             <a href={GERENCIADOR_DO_WHATSAPP} target="_blank" rel="noopener noreferrer"
               style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>

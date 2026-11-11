@@ -17,6 +17,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
 import { rodapeDoPlanoFechado } from '@/lib/plano-de-tratamento/textos'
 import { CancelarPlano } from '@/components/shared/cancelar-pacote'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -76,6 +77,7 @@ export function PlanejamentoTratamento({
    */
   planoNaTela?:  boolean
 }) {
+  const fuso = useFuso()
   const router   = useRouter()
 
   /**
@@ -319,7 +321,7 @@ export function PlanejamentoTratamento({
                   </p>
                 )}
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
-                  {new Date(p.criadoEm).toLocaleDateString('pt-BR')}
+                  {new Date(p.criadoEm).toLocaleDateString('pt-BR', { timeZone: fuso })}
                 </p>
               </div>
               <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>{fmtBRL(p.total)}</span>
@@ -531,6 +533,7 @@ export function PlanejamentoTratamento({
 // -- O dinheiro e as sessões do plano fechado (J-42) ---------------------------
 
 const DIA = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' })
+const diaNoFuso = (d: Date, fuso: string) => new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
 
 function rotuloDoLancamento(l: LancamentoDoPlano): string {
   if (l.parcelaNumero && l.parcelaTotal) return `Parcela ${l.parcelaNumero}/${l.parcelaTotal}`
@@ -538,19 +541,21 @@ function rotuloDoLancamento(l: LancamentoDoPlano): string {
   return 'Pagamento'
 }
 
-function situacaoDoLancamento(l: LancamentoDoPlano): { texto: string; cor: string } {
+function situacaoDoLancamento(l: LancamentoDoPlano, fuso = 'America/Sao_Paulo'): { texto: string; cor: string } {
   if (l.pago) {
-    const quando = l.pagoEm ? ` em ${DIA.format(new Date(l.pagoEm))}` : ''
+    // O pagamento é um instante: o dia da unidade (F62b). O vencimento é âncora de meio-dia (data sem hora).
+    const quando = l.pagoEm ? ` em ${diaNoFuso(new Date(l.pagoEm), fuso)}` : ''
     return { texto: `Pago${quando} · ${rotuloDaForma(l.forma, l.cartaoVezes)}`, cor: 'var(--success)' }
   }
   if (!l.vencimento) return { texto: 'A receber', cor: 'var(--warning)' }
-  const venceu = new Date(l.vencimento).getTime() <= endOfDayTZ(new Date()).getTime()
+  const venceu = new Date(l.vencimento).getTime() <= endOfDayTZ(new Date(), fuso).getTime()
   return venceu
     ? { texto: `Vencida em ${DIA.format(new Date(l.vencimento))} · cobrada no check-in`, cor: 'var(--danger)' }
     : { texto: `A vencer em ${DIA.format(new Date(l.vencimento))}`, cor: 'var(--text-muted)' }
 }
 
 function ResumoDoPlano({ planId, onCancelado }: { planId: string; onCancelado?: () => void }) {
+  const fuso = useFuso()
   const [resumo, setResumo] = useState<FinanceiroDoPlano | null>(null)
   // A28 da 9ª: a quem a recepção sem o Financeiro pede a parcela que vence depois.
   const [quemRecebe, setQuemRecebe] = useState<string[] | null>(null)
@@ -601,7 +606,7 @@ function ResumoDoPlano({ planId, onCancelado }: { planId: string; onCancelado?: 
       {resumo.lancamentos.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {resumo.lancamentos.map(l => {
-            const sit = situacaoDoLancamento(l)
+            const sit = situacaoDoLancamento(l, fuso)
             return (
               <div key={l.id} data-lancamento-do-plano style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--hairline)', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', minWidth: 96 }}>{rotuloDoLancamento(l)}</span>

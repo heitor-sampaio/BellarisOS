@@ -11,6 +11,7 @@ import {
 import { salvarFichaDoProcedimento, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import { PlanejamentoInjetaveis } from '@/components/branch/planejamento-injetaveis'
+import { useFuso } from '@/components/shared/fuso'
 
 // O planejador de injetáveis é o primeiro campo com valor estruturado — até
 // aqui tudo era escalar.
@@ -437,6 +438,7 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
 function RetratoDoPlanejamento({ valor, nome, link, products }: {
   valor: InjectableMapValue; nome: string; link: string | null; products: string[]
 }) {
+  const fuso = useFuso()
   const quando = valor.retratoEm ? new Date(valor.retratoEm) : null
   return (
     <div data-retrato-do-planejamento style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -447,7 +449,7 @@ function RetratoDoPlanejamento({ valor, nome, link, products }: {
         </span>
         {quando && !Number.isNaN(quando.getTime()) && (
           <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-            como estava em {quando.toLocaleDateString('pt-BR')}
+            como estava em {quando.toLocaleDateString('pt-BR', { timeZone: fuso })}
           </span>
         )}
         <span style={{ flex: 1 }} />

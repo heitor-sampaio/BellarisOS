@@ -6,8 +6,8 @@ import { formatDate, formatTime } from '@estetica-os/utils'
  * Princípio 2: avisar, não recusar — remarcar para trás serve para registrar
  * um atendimento que aconteceu em outro horário.
  */
-export function avisoDoHorarioPassado(scheduledAt: string, agora: Date = new Date()): string | null {
+export function avisoDoHorarioPassado(scheduledAt: string, agora: Date = new Date(), fuso?: string): string | null {
   const quando = new Date(scheduledAt)
   if (Number.isNaN(quando.getTime()) || quando.getTime() >= agora.getTime()) return null
-  return `O horário novo (${formatDate(quando.toISOString())} às ${formatTime(quando.toISOString())}) já passou: o agendamento fica no passado. Remarcar assim é permitido — confira se é o horário certo.`
+  return `O horário novo (${formatDate(quando.toISOString(), fuso)} às ${formatTime(quando.toISOString(), fuso)}) já passou: o agendamento fica no passado. Remarcar assim é permitido — confira se é o horário certo.`
 }

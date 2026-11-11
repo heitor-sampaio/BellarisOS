@@ -66,6 +66,6 @@ export function descricaoDaVenda(v: Pick<Venda, 'tipo' | 'descricao' | 'quantida
  * de outubro (31/10 23:59 em Brasília) já é 01/11 em UTC, e o arquivo de
  * outubro saía "…-a-2026-11-01".
  */
-export function nomeDoCsvDeVendas(from: Date, fullTo: Date): string {
-  return `vendas-${dayKeyTZ(from)}-a-${dayKeyTZ(fullTo)}.csv`
+export function nomeDoCsvDeVendas(from: Date, fullTo: Date, fuso?: string): string {
+  return `vendas-${dayKeyTZ(from, fuso)}-a-${dayKeyTZ(fullTo, fuso)}.csv`
 }

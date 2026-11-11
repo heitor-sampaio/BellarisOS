@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { History, Loader2, RotateCcw, FileUp, Download } from 'lucide-react'
 import { listarAcoesEmLote, repetirAcaoEmLote } from '@/actions/acoes-em-lote'
 import type { AcaoEmLote, EstadoDaAcao } from '@/lib/lotes/acoes'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Configurações → Ações em lote (2026-10-13): o que roda em segundo plano e
@@ -19,13 +20,14 @@ const SELO: Record<EstadoDaAcao, { rotulo: string; bg: string; cor: string; bord
   interrompida: { rotulo: 'Interrompida', bg: 'var(--warning-soft)', cor: 'var(--warning)',   borda: 'var(--warning)' },
 }
 
-const quando = (iso: string | null) => iso
-  ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+const quando = (iso: string | null, fuso = 'America/Sao_Paulo') => iso
+  ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: fuso })
   : null
 
 const abertas = (lista: AcaoEmLote[]) => lista.some(a => a.estado === 'aguardando' || a.estado === 'em_andamento')
 
 export function SettingsAcoesEmLote({ iniciais }: { iniciais: AcaoEmLote[] }) {
+  const fuso = useFuso()
   const [acoes, setAcoes] = useState(iniciais)
   const [erros, setErros] = useState<Record<string, string>>({})
   const [emCurso, setEmCurso] = useState<string | null>(null)
@@ -111,7 +113,7 @@ export function SettingsAcoesEmLote({ iniciais }: { iniciais: AcaoEmLote[] }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                  {a.concluidaEm ? `Terminou em ${quando(a.concluidaEm)}` : `Começou em ${quando(a.iniciadaEm ?? a.criadaEm)}`}
+                  {a.concluidaEm ? `Terminou em ${quando(a.concluidaEm, fuso)}` : `Começou em ${quando(a.iniciadaEm ?? a.criadaEm, fuso)}`}
                 </span>
                 {a.linkDosErros && (
                   <a href={a.linkDosErros} download style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>

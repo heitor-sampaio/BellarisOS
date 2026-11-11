@@ -7,6 +7,7 @@ import { archiveCampaign, pauseCampaign, activateCampaign } from '@/actions/noti
 import type { NotificationCampaign, CampaignStatus, CampaignType } from '@/actions/notification-campaigns'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { SegSelect } from '@/components/shared/seg-select'
+import { useFuso } from '@/components/shared/fuso'
 
 // -- Constants ----------------------------------------------------------
 
@@ -43,6 +44,7 @@ interface Props {
 type Filter = 'ALL' | CampaignStatus
 
 export function NotificationCampaignsList({ campaigns, totalSent, activeCount }: Props) {
+  const fuso = useFuso()
   const router = useRouter()
   const [filter, setFilter]   = useState<Filter>('ALL')
   const [isPending, startTransition] = useTransition()
@@ -92,7 +94,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
         <KpiCard
           label="Último disparo"
           value={lastCampaign?.last_run_at
-            ? new Date(lastCampaign.last_run_at).toLocaleDateString('pt-BR')
+            ? new Date(lastCampaign.last_run_at).toLocaleDateString('pt-BR', { timeZone: fuso })
             : '—'}
         />
       </div>
@@ -223,7 +225,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                       {/* Last run */}
                       <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                         {c.last_run_at
-                          ? new Date(c.last_run_at).toLocaleDateString('pt-BR')
+                          ? new Date(c.last_run_at).toLocaleDateString('pt-BR', { timeZone: fuso })
                           : '—'}
                       </td>
 

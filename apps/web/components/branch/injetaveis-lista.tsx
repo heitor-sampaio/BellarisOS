@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Search, Syringe, Plus, X, Loader2, UserPlus } from 'lucide-react'
 import { criarPlanejamentoInjetavel, type MapaNaLista } from '@/actions/injectable-map'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * A coluna da esquerda de Injetáveis: busca, "novo" e a lista de planejamentos.
@@ -24,6 +25,7 @@ export function InjetaveisLista({
   branchId: string
   podeEditar: boolean
 }) {
+  const fuso = useFuso()
   const pathname = usePathname()
   const router   = useRouter()
 
@@ -146,7 +148,7 @@ export function InjetaveisLista({
               {m.pontos} {m.pontos === 1 ? 'ponto' : 'pontos'}
               {m.produtos.length > 0 && ` · ${m.produtos.slice(0, 2).join(', ')}`}
               {m.ultimaAplicacao &&
-                ` · última aplicação em ${new Date(m.ultimaAplicacao).toLocaleDateString('pt-BR')}`}
+                ` · última aplicação em ${new Date(m.ultimaAplicacao).toLocaleDateString('pt-BR', { timeZone: fuso })}`}
             </span>
           </Link>
         ))}
@@ -169,7 +171,8 @@ function NovoPlanejamento({
   onFechar: () => void
   onCriado: (id: string) => void
 }) {
-  const [nome, setNome] = useState(`Injetáveis — ${new Date().toLocaleDateString('pt-BR')}`)
+  const fuso = useFuso()
+  const [nome, setNome] = useState(`Injetáveis — ${new Date().toLocaleDateString('pt-BR', { timeZone: fuso })}`)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 

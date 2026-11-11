@@ -10,6 +10,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { useFala } from '@/components/shared/uma-unidade'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { situacaoDoPlano, SITUACAO_DO_PLANO, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * Tela de planejamentos: lista, busca e criação.
@@ -59,6 +60,7 @@ export function PlanejamentosClient({
   /** A busca de cliente do "Novo plano" pede o cadastro (`clients: VIEW`). */
   podeBuscarCliente?: boolean
 }) {
+  const fuso = useFuso()
   const router = useRouter()
   const base = basePath.replace(/\/$/, '')
   const fala = useFala()
@@ -214,7 +216,7 @@ export function PlanejamentosClient({
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
                     {p.sessoes} {p.sessoes === 1 ? 'sessão' : 'sessões'}
                     {p.unidade ? ` · ${p.unidade}` : ''}
-                    {' · '}{new Date(p.criadoEm).toLocaleDateString('pt-BR')}
+                    {' · '}{new Date(p.criadoEm).toLocaleDateString('pt-BR', { timeZone: fuso })}
                   </p>
                 </div>
                 <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>{fmtBRL(p.total)}</span>

@@ -332,3 +332,80 @@ describe('o FEFO e os lotes vencendo no dia da unidade (F62b)', () => {
     expect(lotesVencendo(doProduto, em30)).toHaveLength(1)
   })
 })
+
+// O núcleo do lançamento importa a autorização (cookies, Next); aqui só a data.
+vi.mock('@/lib/auth', () => ({ alcancaUnidade: () => true }))
+
+describe('as telas, o recibo e os CSV no relógio da unidade (F62b)', () => {
+  // 23:30 de 10/03 em Manaus = 00:30 de 11/03 em Brasília.
+  const I = '2026-03-11T03:30:00.000Z'
+  const M = 'America/Manaus'
+
+  it('o CSV dos lançamentos e o do extrato de comissões saem no dia da unidade', async () => {
+    const { csvDosLancamentos } = await import('@/lib/financeiro/csv-dos-lancamentos')
+    const { csvDoExtrato } = await import('@/lib/comissoes/extrato-texto')
+    const linha = { data: I, descricao: 'Botox', cliente: null, categoria: null, tipo: 'INCOME', forma: null, vezes: null, situacao: 'PAGO' as const, valor: 10, pagoEm: I }
+    const corpo = (csv: string) => csv.split('\r\n')[1]!
+    expect(corpo(csvDosLancamentos([linha], M))).toMatch(/^10\/03\/2026;.*;10\/03\/2026;;$/)
+    expect(corpo(csvDosLancamentos([linha]))).toMatch(/^11\/03\/2026;/)
+    const extrato = {
+      id: 'x', professionalId: 'p', branchId: 'b', releasedAt: I, kind: 'LIBERACAO', motivo: null, amount: 10, status: 'PAID',
+      payoutId: null, appointmentId: null, scheduledAt: I, cliente: null, procedimento: null, origem: null, preco: null,
+      regraTipo: null, regraValor: null, pacote: null, descontaTaxa: false, descontaInsumos: false, previsto: null,
+      baseComPontos: null, plano: null, base: null, baseDesconto: 0, baseTaxa: 0, baseInsumos: 0, baseFator: 1, pagoEm: I,
+    } as unknown as Parameters<typeof csvDoExtrato>[0][number]
+    const ext = corpo(csvDoExtrato([extrato], new Map(), new Map(), M))
+    expect(ext.startsWith('10/03/2026;')).toBe(true)
+    expect(ext.endsWith(';10/03/2026')).toBe(true)
+    expect(corpo(csvDoExtrato([extrato], new Map(), new Map())).startsWith('11/03/2026;')).toBe(true)
+  })
+
+  it('a busca, a anamnese, o avulso do plano, o arquivar e o cancelamento do plano dizem a hora da unidade', async () => {
+    const { quandoLegivel } = await import('@/lib/busca/formatar')
+    const { quemRespondeu } = await import('@/lib/anamnese-geral')
+    const { textoDoAvulso } = await import('@/lib/checkout/plano-e-avulso')
+    const { avisoDosAgendamentosAoArquivar } = await import('@/lib/clients/textos-do-cadastro')
+    const { retratoDoCancelamento } = await import('@/lib/plano-de-tratamento/retrato-do-cancelamento')
+    expect(quandoLegivel(I, M)).toMatch(/10\/03 às 23:30$/)
+    expect(quandoLegivel(I)).toMatch(/11\/03 às 00:30$/)
+    const anamnese = { respondidoEm: I, origem: 'EQUIPE' } as unknown as Parameters<typeof quemRespondeu>[0]
+    expect(quemRespondeu(anamnese, M)).toBe('Respondida pela equipe em 10/03/2026')
+    expect(quemRespondeu(anamnese)).toBe('Respondida pela equipe em 11/03/2026')
+    expect(textoDoAvulso({ id: 'a', procedimento: 'Bio', scheduledAt: I, preco: 100 }, M)).toContain('10/03 às 23:30')
+    expect(avisoDosAgendamentosAoArquivar([{ scheduledAt: I, status: 'SCHEDULED' }], new Date('2026-03-01T12:00:00Z'), M)).toContain('(10/03 às 23:30)')
+    expect(retratoDoCancelamento({ cancelado_em: I }, M)?.quando).toBe('Cancelado em 10/03/2026 às 23:30.')
+    expect(retratoDoCancelamento({ cancelado_em: I })?.quando).toBe('Cancelado em 11/03/2026 às 00:30.')
+  })
+
+  it('o prêmio da indicação, o prazo da LGPD, o horário passado e a comunicação do pacote LGPD', async () => {
+    const { situacaoDoPremio } = await import('@/lib/fidelidade/indicacao')
+    const { prazoDeResposta } = await import('@/lib/lgpd/prazo')
+    const { avisoDoHorarioPassado } = await import('@/lib/appointments/horario-passado')
+    const { linhaDaComunicacao } = await import('@/lib/lgpd/plano')
+    const regra = { fidelidadeLigada: true, premio: 'PONTOS' as const }
+    const indicada = { id: 'i', nome: 'Ana', premioEm: I, estornadoEm: null, jaPagou: true }
+    expect(situacaoDoPremio(indicada, regra, M)).toBe('prêmio dado em 10/03')
+    expect(situacaoDoPremio(indicada, regra)).toBe('prêmio dado em 11/03')
+    // 15 dias do pedido: 25/03 em Manaus (em Brasília, 26/03 — um dia a mais de prazo que não existe).
+    expect(prazoDeResposta(I, true, M)).toBe('25/03/2026')
+    expect(prazoDeResposta(I, true)).toBe('26/03/2026')
+    expect(avisoDoHorarioPassado(I, new Date('2026-04-01T12:00:00Z'), M)).toContain('às 23:30)')
+    expect(linhaDaComunicacao({ created_at: I, title: 'Oi' }, M)).toMatch(/^10\/03\/2026.*23:30 — Oi$/)
+  })
+
+  it('o "hoje" do pagamento, o dia da conversa, a idade do lead e o nome do CSV de vendas', async () => {
+    const { pagoNoDia } = await import('@/lib/financeiro/lancamento')
+    const { agruparPorDia } = await import('@/lib/inbox/dias-da-conversa')
+    const { idadeDoLead } = await import('@/lib/crm/idade-do-lead')
+    const { nomeDoCsvDeVendas } = await import('@/lib/metrics/vendas-comum')
+    // Pago "hoje" em Manaus (10/03) é o instante de agora, não a âncora do meio-dia.
+    expect(pagoNoDia('2026-03-10', new Date(I), M)).toBe(I)
+    expect(pagoNoDia('2026-03-10', new Date(I))).not.toBe(I)
+    expect(agruparPorDia([{ created_at: I }], M)[0]!.date).toBe('2026-03-10')
+    expect(agruparPorDia([{ created_at: I }])[0]!.date).toBe('2026-03-11')
+    expect(idadeDoLead('2026-03-10T15:00:00.000Z', new Date(I), M)).toBe('hoje')
+    expect(idadeDoLead('2026-03-10T15:00:00.000Z', new Date(I))).toBe('ontem')
+    const p = resolvePeriod('month', undefined, undefined, new Date('2026-03-15T12:00:00Z'), M)
+    expect(nomeDoCsvDeVendas(p.from, p.fullTo, M)).toBe('vendas-2026-03-01-a-2026-03-31.csv')
+  })
+})

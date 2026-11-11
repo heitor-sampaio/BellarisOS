@@ -325,7 +325,7 @@ export async function createAppointmentCore(
   const agendamentoId = data.id as string
   after(async () => {
     if (oportunidade) {
-      await ligarAgendamentoAOportunidade(admin, ctx, oportunidade, { procedureId: input.procedureId, scheduledAt: input.scheduledAt })
+      await ligarAgendamentoAOportunidade(admin, ctx, oportunidade, { procedureId: input.procedureId, scheduledAt: input.scheduledAt, branchId: input.branchId })
     }
     const leadId = oportunidade?.aberta ? oportunidade.leadId : null
     await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CRIADO, agendamentoId, { ...ctx, userName },

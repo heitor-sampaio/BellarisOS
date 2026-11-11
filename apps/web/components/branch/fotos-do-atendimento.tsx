@@ -6,6 +6,7 @@ import { Camera, Plus, FileImage, Send, Smartphone, EyeOff, Loader2, X } from 'l
 import { UploadForm } from '@/components/branch/client-documents-tab'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { enviarDocumentoACliente } from '@/actions/client-documents'
+import { useFuso } from '@/components/shared/fuso'
 
 export interface FotoDoAtendimento {
   id:        string
@@ -34,10 +35,11 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
   appointmentId: string
   podeAnexar:    boolean
 }) {
+  const fuso = useFuso()
   const router = useRouter()
   const [anexando, setAnexando] = useState(false)
   const fechar = useCallback(() => { setAnexando(false); router.refresh() }, [router])
-  const hoje = new Date().toLocaleDateString('pt-BR')
+  const hoje = new Date().toLocaleDateString('pt-BR', { timeZone: fuso })
   // A foto aberta grande (A37: clicar na miniatura não fazia nada).
   const [vendo, setVendo] = useState<FotoDoAtendimento | null>(null)
   const [enviando, setEnviando] = useState<string | null>(null)
