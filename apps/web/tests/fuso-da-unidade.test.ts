@@ -226,3 +226,27 @@ describe('as automações no fuso da unidade (F62b)', () => {
     }
   })
 })
+
+describe('a rotina da fidelidade no fuso da clínica (F62b)', () => {
+  it('o bônus de aniversário pede o "hoje" de cada rede, no fuso dela', async () => {
+    const { diasDoBonusDeAniversario } = await import('@/lib/fidelidade/rotina')
+    // 03:30Z de 12/11 = 00:30 de 12/11 em Brasília = 23:30 de 11/11 em Manaus.
+    const agora = new Date('2026-11-12T03:30:00.000Z')
+    expect(diasDoBonusDeAniversario([
+      { tenantId: 'manaus', fuso: 'America/Manaus' },
+      { tenantId: 'floripa', fuso: 'America/Sao_Paulo' },
+    ], agora)).toEqual([
+      { p_tenant: 'manaus', p_hoje: '2026-11-11' },
+      { p_tenant: 'floripa', p_hoje: '2026-11-12' },
+    ])
+  })
+
+  it('o aviso "vencem até" diz o dia da unidade', async () => {
+    const { textoDoAvisoDeVencimento } = await import('@/lib/fidelidade/rotina')
+    // Vencem às 23:30 de 30/11 em Manaus (00:30 de 01/12 em Brasília).
+    expect(textoDoAvisoDeVencimento(120, '2026-12-01T03:30:00.000Z', 'America/Manaus'))
+      .toBe('120 pontos vencem até 30/11/2026. Use na próxima visita.')
+    expect(textoDoAvisoDeVencimento(120, '2026-12-01T03:30:00.000Z'))
+      .toBe('120 pontos vencem até 01/12/2026. Use na próxima visita.')
+  })
+})
