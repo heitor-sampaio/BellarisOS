@@ -10292,6 +10292,8 @@ As outras cinco foram cinco paradas curtas da instância, das 04:11 às 04:33Z: 
 - **Portal:** o remarcar "Sem preferência" diz "Com Bia (a mesma de antes)" e o próprio horário deixou de contar contra quem já o tinha (`candidatasDoDia`); o remarcar avisa o prazo de 24 h (A57 no agendar não reproduzido — já avisava); "até terça-feira, 10/11 às 14:00".
 - Mexeu em `lib/appointments/core.ts`, `lib/financeiro/lancamento.ts` (também do Copilot), `lib/vendas/equipe-da-venda.ts`, `components/shared/vender.tsx` e em funções de comissão e venda: vale a completa do fim do ciclo.
 
+**7ª completa do ciclo (run 42906474733, c7e89709, 10/11 18:35–19:33, a primeira na instância Small): 1.943 passaram, 6 falharam — nenhuma parada da instância.** **F57 FEITA (10/11, 036f6b96, def74a11, da6f054a; só specs):** as 6 eram testes que não conheciam mudanças de propósito da F56 — o Histórico na embalagem ("+5 frasco" com "500 ml" embaixo, A50), a caixa do Ajuste que virou "Confirmo que contei na prateleira." (A49, dois specs; o clique esperava o texto velho até estourar os 300 s), o dia da semana por extenso no prazo do app (A58, dois specs) e a Débora do D1 da 8ª, criada sem cargo e sem "Atende", que pela regra A42 não vende. Conferido que o "Quem vendeu" do Vender da rede usa a unidade ESCOLHIDA (`equipeDaVenda(tenant, u.id)` na página e o `branchId` da venda no servidor); o spec agora a cria como profissional do Batel e prova que ela fica fora da lista na Água Verde e vende no Batel.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
