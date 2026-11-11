@@ -30,6 +30,9 @@ export const ISOLADOS = [
   'agenda-atritos-da-7.spec.ts',
   // A F33 (os defeitos da agenda e da unidade da 8ª simulação, 2026-11-06).
   'agenda-defeitos-da-8.spec.ts',
+  // A F58 (os defeitos fora do dinheiro da 12ª simulação, 2026-11-11).
+  'agenda-defeitos-da-12.spec.ts',
+  'documentos-defeitos-da-12.spec.ts',
   'vendas-unidade-da-venda.spec.ts',
   // A F35 (a migração: o pacote de fora, as colunas da importação, as aniversariantes).
   'pacote-de-fora.spec.ts',

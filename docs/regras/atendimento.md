@@ -571,6 +571,17 @@
   vier antes (`rolagemDaGrade`). O novo agendamento sugere o próximo horário
   livre da profissional (A20, `proximoHorarioLivre`, a conta de
   `computeAvailableSlots`) quando a hora não veio de um clique na grade.
+  **E a troca nunca é calada** (D7 da 12ª simulação, 2026-11-11; princípio 3:
+  às 23:10 o modal abriu em 23:30 — o último início era 23:00 — e gravou 11/11
+  00:00 sem a Heloísa ver). A conta parte da hora que está NA TELA (`aPartirDe` =
+  a hora de abertura): se ela cabe, fica; se não cabe, o campo vai ao próximo
+  livre e a janela diz "Hoje não há mais horário livre para Gabi. O próximo é
+  amanhã, 00:00." (ou "14:00 não está livre para Gabi. O próximo horário livre
+  é 15:30." — `textoDoProximoLivre`, `lib/agenda/proximo-livre.ts`,
+  `[data-proximo-livre]`). O Confirmar espera essa conta ("Conferindo o
+  horário…"), e a hora escolhida pela pessoa (o campo, a grade, o "Usar o
+  próximo livre") não se troca mais. Prova: `e2e/agenda-defeitos-da-12.spec.ts`
+  ("D7", com o relógio às 23:30), `tests/defeitos-da-12.test.ts` ("D7").
   A linha do tempo da cliente registra confirmação e chegada (A23).
 - **Os atendimentos de dias anteriores ainda ABERTOS avisam** (J-32,
   2026-10-30): a agenda e o dashboard da unidade mostram "N atendimentos de
@@ -2645,6 +2656,7 @@ O resto do fluxo:
 ❌ Oferecer como livre (app da cliente, Copilot, CRM) um horário bloqueado — é computeAvailableSlots, que já tira o bloqueio; nem RECUSAR o encaixe da equipe no bloqueado (é aviso — princípio 2)
 ❌ Decidir na tela se um horário está livre pelo INÍCIO, ou sem os bloqueios — é ocupanteDoHorario / livresEntre (lib/agenda/horario-livre.ts), o intervalo inteiro (D5/D15 da 8ª)
 ❌ Deixar o Confirmar do agendar (ou do remarcar) gravar antes de chegar a conferência do horário escolhido (o aviso vinha depois — D9 da 8ª)
+❌ Trocar a hora que o modal mostra sem dizer (o próximo livre que pula de dia calado — D7 da 12ª): só troca a que não cabe, e com textoDoProximoLivre
 ❌ Agrupar agendamento por dia com scheduled_at.slice(0, 10) ou toISOString da meia-noite local (é o dia em UTC) — é dayKeyTZ (D4 da 8ª)
 ❌ Trocar a profissional de um agendamento (janela, arraste, remarcação) para quem não atende na unidade dele, ou sem "de quem para quem" no histórico — é recusaDeQuemNaoAtende + textoDaTroca (A22 da 8ª)
 ❌ Somar o scrollTop da grade à posição do arraste (o retângulo da coluna já anda com a rolagem — A22 da 8ª)

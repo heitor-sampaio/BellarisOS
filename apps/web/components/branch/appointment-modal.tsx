@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { dayKeyTZ } from '@/lib/datetime'
+import { textoDoProximoLivre } from '@/lib/agenda/proximo-livre'
 import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 
@@ -245,18 +246,45 @@ export function AppointmentModal({
   // próximo livre da profissional (hoje: a partir de agora). A hora que a
   // pessoa digitou ela mesma não é trocada.
   const horaEscolhida = useRef(!!defaultDate)
+  // A mesma marca em estado, para o render (D7 da 12ª): com a hora escolhida, nada a conferir nem a avisar.
+  const [horaTocada, setHoraTocada] = useState(!!defaultDate)
+  function escolherHora(valor: string) {
+    horaEscolhida.current = true
+    setHoraTocada(true)
+    setLocalDT(valor)
+  }
   // A sessão do plano dura o que a sessão dura (D5 da 9ª: a soma dos procedimentos dela).
   const duracaoMin = credito
     ? (credito.duracaoMin ?? dados.procedures.find(p => p.id === credito.procedureId)?.duration_min ?? 30)
     : (dados.procedures.find(p => p.id === procId)?.duration_min ?? 30)
+  // D7 da 12ª simulação: a Heloísa abriu às 23:10, o modal veio em 23:30 (o
+  // último início era 23:00) e o próximo livre trocou dia e hora CALADO. Agora a
+  // conta parte da hora que está NA TELA: se ela cabe, fica; se não cabe, o
+  // campo vai ao próximo livre e a janela diz que trocou. O Confirmar espera a
+  // resposta (como espera os avisos, D9 da 8ª).
+  const chaveDaAbertura = profId && unidadeId && !horaTocada ? `${unidadeId}|${profId}|${duracaoMin}|${defaultDT}` : ''
+  const [abertura, setAbertura] = useState<{ chave: string; de: string; para: string | null } | null>(null)
+  const horaNaTela = useEffectEvent(() => localDT)
   useEffect(() => {
-    if (!profId || !unidadeId || horaEscolhida.current) return
+    if (!chaveDaAbertura) return
     let vivo = true
-    proximoHorarioLivre(unidadeId, profId, duracaoMin, diaDaTela ? new Date(`${diaDaTela}T00:00:00-03:00`).toISOString() : null)
-      .then(r => { if (vivo && r && !horaEscolhida.current) setLocalDT(r) })
-      .catch(() => { /* fica a hora de antes */ })
+    const de = horaNaTela()
+    const instante = new Date(de)
+    const desde = de.length >= 16 && !Number.isNaN(instante.getTime()) ? instante.toISOString() : null
+    proximoHorarioLivre(unidadeId, profId, duracaoMin, desde)
+      .then(r => {
+        if (!vivo || horaEscolhida.current) return
+        setAbertura({ chave: chaveDaAbertura, de, para: r })
+        if (r && r !== de.slice(0, 16)) setLocalDT(r)
+      })
+      // Sem a conta, fica a hora de antes (o servidor confere ao gravar).
+      .catch(() => { if (vivo) setAbertura({ chave: chaveDaAbertura, de, para: null }) })
     return () => { vivo = false }
-  }, [profId, unidadeId, duracaoMin, diaDaTela])
+  }, [chaveDaAbertura, unidadeId, profId, duracaoMin])
+  const conferindoAAbertura = !!chaveDaAbertura && abertura?.chave !== chaveDaAbertura
+  const avisoDaTroca = abertura && abertura.chave === chaveDaAbertura && !horaTocada && abertura.para && localDT === abertura.para
+    ? textoDoProximoLivre(abertura.de, abertura.para, dados.professionals.find(p => p.id === profId)?.name ?? 'a profissional', dayKeyTZ(new Date(agora)))
+    : null
 
   // Ao mudar o defaultDate (novo clique no calendário), reseta — ajustado
   // durante o render, guardando o padrão anterior.
@@ -683,8 +711,13 @@ export function AppointmentModal({
               type="datetime-local" required className="field"
               value={localDT}
               min={minDT}
-              onChange={e => { horaEscolhida.current = true; setLocalDT(e.target.value) }}
+              onChange={e => escolherHora(e.target.value)}
             />
+            {avisoDaTroca && (
+              <p data-proximo-livre role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', marginTop: 2 }}>
+                {avisoDaTroca}
+              </p>
+            )}
             <input type="hidden" name="scheduled_at" value={scheduledAtUTC} />
             {(avisosDoMomento.length > 0 || choque) && (
               <div data-aviso-do-horario role="status" style={{
@@ -698,7 +731,7 @@ export function AppointmentModal({
                     </span>
                     {rotuloDoProximo && proximo && (
                       <button type="button" className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
-                        onClick={() => { horaEscolhida.current = true; setLocalDT(proximo) }}>
+                        onClick={() => escolherHora(proximo)}>
                         Usar o próximo livre: {rotuloDoProximo}
                       </button>
                     )}
@@ -728,7 +761,7 @@ export function AppointmentModal({
                   nomeDoProfissional={dados.professionals.find(p => p.id === profId)?.name}
                   ocupado={h => ocupanteDoHorario(new Date(`${diaEscolhido}T${h}:00-03:00`), duracaoMin, gradeDoDia.slots, gradeDoDia.bloqueios ?? [])}
                   selecionado={localDT.slice(11, 16)}
-                  onEscolher={h => { horaEscolhida.current = true; setLocalDT(`${diaEscolhido}T${h}`) }}
+                  onEscolher={h => escolherHora(`${diaEscolhido}T${h}`)}
                   carregando={false}
                   semOutroHorario
                 />
@@ -767,12 +800,12 @@ export function AppointmentModal({
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
             <button
               type="submit"
-              disabled={pending || !podeAgendar || carregandoSalas || conferindoOHorario}
+              disabled={pending || !podeAgendar || carregandoSalas || conferindoOHorario || conferindoAAbertura}
               className="btn-primary"
               style={{ opacity: podeAgendar ? 1 : 0.5 }}
             >
               <Calendar size={14} />
-              {pending ? 'Agendando…' : conferindoOHorario ? 'Conferindo o horário…' : 'Confirmar agendamento'}
+              {pending ? 'Agendando…' : conferindoOHorario || conferindoAAbertura ? 'Conferindo o horário…' : 'Confirmar agendamento'}
             </button>
           </div>
         </form>
