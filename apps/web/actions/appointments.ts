@@ -34,7 +34,9 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import type { FichaQueJaExiste } from '@/lib/clients/ja-existe'
-import { periodRef, dayKeyTZ, partsInTZ } from '@/lib/datetime'
+import { periodRef, dayKeyTZ, partsInTZ, instanteNoFuso } from '@/lib/datetime'
+import { fusoValido } from '@/lib/unidades/fuso'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
 import { semAcesso } from '@/lib/sem-acesso'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
@@ -507,7 +509,7 @@ export async function chegarEIniciar(
     // A trava do DIA vem antes da pergunta do horário (D10 da 7ª simulação):
     // numa sessão de amanhã, perguntar "Iniciar mesmo assim?" e recusar no
     // clique não servia de nada. É a mesma regra do checkinCore.
-    if (!ehODiaDoAgendamento(ag.scheduled_at)) return { error: 'A chegada só se marca no dia do agendamento.' }
+    if (!ehODiaDoAgendamento(ag.scheduled_at, new Date(), ag.fuso)) return { error: 'A chegada só se marca no dia do agendamento.' }
     // O início adiantado pergunta ANTES da chegada (A32): sem a resposta, nem
     // a chegada se marca — senão ficaria "chegou" sem ter começado.
     if (opcoes?.inicioAdiantadoConfirmado !== true) {
@@ -1790,7 +1792,7 @@ export async function createClientAppointment(params: {
     // A unidade é QUALQUER ativa da clínica da ficha, não só a de cadastro (H5).
     const branch = await ler(admin
       .from('branches')
-      .select('tenant_id')
+      .select('tenant_id, fuso')
       .eq('id', params.branchId)
       .eq('tenant_id', cliente.tenant_id as string)
       .eq('is_active', true)
@@ -1831,7 +1833,9 @@ export async function createClientAppointment(params: {
     if (Number.isNaN(inicio.getTime()) || inicio.getTime() <= Date.now()) {
       return { error: 'Escolha um horário a partir de agora.' }
     }
-    const p = partsInTZ(inicio)
+    // O dia e a hora no relógio da UNIDADE (F62): os mesmos da grade que a tela ofereceu.
+    const fuso = fusoValido((branch as { fuso?: string | null }).fuso)
+    const p = partsInTZ(inicio, fuso)
     const hora = `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
     if (p.second !== 0) return { error: 'Este horário não está mais disponível. Escolha outro.' }
 
@@ -1841,7 +1845,7 @@ export async function createClientAppointment(params: {
     // conferências de quem foi escolhida pela cliente.
     let professionalId = params.professionalId
     if (!professionalId) {
-      const candidatas = await candidatasDoDia(admin, branch.tenant_id as string, params.branchId, dayKeyTZ(inicio), duracao, params.procedureId)
+      const candidatas = await candidatasDoDia(admin, branch.tenant_id as string, params.branchId, dayKeyTZ(inicio, fuso), duracao, params.procedureId)
       professionalId = escolherQuemAtende(candidatas, hora)
       if (!professionalId) return { error: 'Este horário não está mais disponível. Escolha outro.' }
     }
@@ -1863,7 +1867,7 @@ export async function createClientAppointment(params: {
     if (!realiza(await quemRealizaOProcedimento(admin, params.procedureId), professionalId)) return { error: NAO_REALIZA }
 
     const livres = await computeAvailableSlots(
-      admin, params.branchId, professionalId, dayKeyTZ(inicio), duracao,
+      admin, params.branchId, professionalId, dayKeyTZ(inicio, fuso), duracao,
     )
     if (!livres.includes(hora)) {
       return { error: 'Este horário não está mais disponível. Escolha outro.' }
@@ -1933,15 +1937,16 @@ export async function getSchedulingDaySlots(
 
   const branch = await ler(admin
     .from('branches')
-    .select('id, horario')
+    .select('id, horario, fuso')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar a unidade')
   if (!branch || !alcancaUnidade(ctx, branchId)) return { slots: [] }
 
-  // Brazil UTC-3
-  const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
-  const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
+  // O dia no relógio da unidade (F62).
+  const fuso = fusoValido((branch as { fuso?: string | null }).fuso)
+  const dayStart = instanteNoFuso(date, '00:00', fuso).toISOString()
+  const dayEnd   = instanteNoFuso(date, '23:59:59', fuso).toISOString()
   // Desde a véspera: o atendimento da noite anterior pode atravessar a meia-noite.
   const desdeAVespera = new Date(new Date(dayStart).getTime() - 86_400_000).toISOString()
 
@@ -2088,6 +2093,8 @@ export interface DadosParaAgendar {
   professionals: { id: string; name: string }[]
   rooms:         { id: string; name: string }[]
   slug:          string
+  /** O fuso da unidade (F62): a hora escolhida é a do relógio dela. */
+  fuso?:         string
 }
 
 export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgendar> {
@@ -2100,7 +2107,7 @@ export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgend
   const admin = createAdminClient()
   const branch = await ler(admin
     .from('branches')
-    .select('id, slug')
+    .select('id, slug, fuso')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar a unidade')
@@ -2121,6 +2128,7 @@ export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgend
     professionals: (professionals as { id: string; name: string }[]).map(p => ({ id: p.id, name: p.name })),
     rooms:         (rooms as { id: string; name: string }[]).map(r => ({ id: r.id, name: r.name })),
     slug:          branch.slug as string,
+    fuso:          fusoValido((branch as { fuso?: string | null }).fuso),
   }
 }
 
@@ -2130,7 +2138,7 @@ export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgend
  * agora; sem vaga hoje (ou fechado), o primeiro livre dos dias seguintes — a
  * mesma conta da agenda (`computeAvailableSlots`: horário da unidade ∩ dela,
  * sem os ocupados). Devolve o horário como a tela o escreve (AAAA-MM-DDTHH:mm,
- * Brasília) ou `null`.
+ * no relógio da unidade — F62) ou `null`.
  */
 export async function proximoHorarioLivre(
   branchId: string, professionalId: string, durationMin: number,
@@ -2150,8 +2158,10 @@ export async function proximoHorarioLivre(
   const duracao = Number.isFinite(durationMin) && durationMin > 0 ? Math.min(Math.round(durationMin), 480) : 30
   const desde = typeof aPartirDe === 'string' && !Number.isNaN(new Date(aPartirDe).getTime()) && new Date(aPartirDe).getTime() > Date.now()
     ? new Date(aPartirDe) : null
-  const diaDeInicio = dayKeyTZ(desde ?? new Date())
-  const p = desde ? partsInTZ(desde) : null
+  // No relógio da unidade (F62): o dia e a hora que a tela escreve.
+  const fuso = await fusoDaUnidade(ctx.tenantId, branchId)
+  const diaDeInicio = dayKeyTZ(desde ?? new Date(), fuso)
+  const p = desde ? partsInTZ(desde, fuso) : null
   const horaDeInicio = p ? `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}` : null
   const achou = await procurarHorarioLivre(diaDeInicio, async data => {
     const livres = await computeAvailableSlots(admin, branchId, professionalId, data, duracao)

@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
-  noFuso, dayKeyTZ, startOfDayTZ, instanteNoFuso, horaNoFuso, BUSINESS_TZ,
+  noFuso, dayKeyTZ, startOfDayTZ, instanteNoFuso, horaNoFuso, BUSINESS_TZ, naParede, daParede,
 } from '@/lib/datetime'
+import { aPartirDeAgora } from '@/lib/checkout/grade-de-horarios'
+import { trechoDoBloqueio } from '@/lib/agenda/bloqueio'
+import { textoDoConcluido } from '@/lib/agenda/hora-real'
+import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
+import { foraDoHorarioDaUnidade } from '@/lib/agenda/horario'
 import { FUSOS, FUSO_PADRAO, fusoPeloEstado, fusoValido, nomeDoFuso, rotuloDoFuso } from '@/lib/unidades/fuso'
 import { resolvePeriod } from '@/lib/metrics/period'
 
@@ -80,5 +85,39 @@ describe('as datas no fuso da unidade', () => {
     expect(manaus.label).toBe('Hoje, 10 de novembro')
     expect(resolvePeriod('month', undefined, undefined, agora, 'America/Manaus').from.toISOString()).toBe('2026-11-01T04:00:00.000Z')
     expect(resolvePeriod('custom', '2026-11-01', '2026-11-10', agora, 'America/Manaus').to.toISOString()).toBe('2026-11-11T03:59:59.999Z')
+  })
+})
+
+describe('a agenda e o agendar no fuso da unidade (F62, fatia 2)', () => {
+  it('a grade "de parede": os campos locais são o relógio da unidade, e o instante volta inteiro', () => {
+    const instante = new Date('2026-11-14T13:00:00.000Z')          // 09:00 em Manaus
+    const parede = naParede(instante, 'America/Manaus')
+    expect([parede.getHours(), parede.getMinutes(), parede.getDate()]).toEqual([9, 0, 14])
+    expect(daParede(parede, 'America/Manaus').toISOString()).toBe(instante.toISOString())
+    expect(naParede(instante, BUSINESS_TZ).getHours()).toBe(10)
+  })
+
+  it('"a partir de agora" é a hora da unidade', () => {
+    const agora = new Date('2026-11-14T13:05:00.000Z')
+    expect(aPartirDeAgora('2026-11-14', agora, 'America/Manaus')).toBe('09:05')
+    expect(aPartirDeAgora('2026-11-14', agora)).toBe('10:05')
+  })
+
+  it('o bloqueio e a hora real dizem a hora da unidade', () => {
+    const b = { inicio: '2026-11-14T16:00:00.000Z', fim: '2026-11-14T17:00:00.000Z' }
+    expect(trechoDoBloqueio(b, 'America/Manaus')).toBe('das 12:00 às 13:00')
+    expect(trechoDoBloqueio(b)).toBe('das 13:00 às 14:00')
+    expect(textoDoConcluido('2026-11-15T03:30:00.000Z', '2026-11-15T03:50:00.000Z', 'America/Manaus')).toBe('concluído às 23:50')
+  })
+
+  it('a chegada é no dia da unidade, e o encaixe pelo relógio dela', () => {
+    // 23:30 de Manaus do dia 14 (= 00:30 do dia 15 em Brasília).
+    const agendado = '2026-11-15T03:30:00.000Z'
+    const agora = new Date('2026-11-15T03:00:00.000Z')
+    expect(ehODiaDoAgendamento(agendado, agora, 'America/Manaus')).toBe(true)
+    const ate20 = { dias: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [String(d), [{ de: '08:00', ate: '20:00' }]])) }
+    // 19:00 de Manaus (= 23:00 UTC = 20:00 em Brasília): dentro do horário dela.
+    expect(foraDoHorarioDaUnidade(ate20, '2026-11-14T23:00:00.000Z', 60, 'America/Manaus')).toBe(false)
+    expect(foraDoHorarioDaUnidade(ate20, '2026-11-14T23:00:00.000Z', 60)).toBe(true)
   })
 })

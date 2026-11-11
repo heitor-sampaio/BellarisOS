@@ -13,6 +13,7 @@ import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { getCachedBranchProfessionals, getCachedRoomsByBranch } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
+import { fusoComum, fusoValido } from '@/lib/unidades/fuso'
 
 type AgendaView = 'day' | 'week'
 
@@ -28,35 +29,11 @@ export default async function AdminAgendaPage({
 
   const admin       = createAdminClient()
   const view        = ((rawView ?? 'day') as AgendaView)
-  // "Hoje" no fuso do negócio. Com `toISOString()` o dia virava às 21h em
-  // Brasília e a agenda passava a abrir no dia seguinte.
-  const todayStr    = dayKeyTZ(new Date())
-  const selectedStr = rawDate ?? todayStr
-
-  // Meio-dia UTC como âncora do dia escolhido: longe das bordas, o parse não
-  // escorrega para o dia anterior nem para o seguinte por causa do offset.
-  const selected = new Date(selectedStr + 'T12:00:00Z')
-
-  // -- Intervalo de datas a buscar -----------------------------------
-  let startDate: Date
-  let endDate: Date
-
-  if (view === 'week') {
-    // Segunda-feira da semana do dia selecionado
-    const dow    = weekdayTZ(selected)         // 0=dom, 1=seg, ...
-    const diff   = (dow === 0 ? -6 : 1 - dow)  // shift para segunda
-    const monday = addDaysTZ(selected, diff)
-    startDate    = startOfDayTZ(monday)
-    endDate      = endOfDayTZ(addDaysTZ(monday, 6))
-  } else {
-    startDate = startOfDayTZ(selected)
-    endDate   = endOfDayTZ(selected)
-  }
 
   // -- Filiais -------------------------------------------------------
   const { data: branchesRaw, error: branchesError } = await admin
     .from('branches')
-    .select('id, name, slug, horario')
+    .select('id, name, slug, horario, fuso')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
     .order('name')
@@ -72,7 +49,7 @@ export default async function AdminAgendaPage({
     )
   }
 
-  const todasUnidadesComHorario = (branchesRaw ?? []) as { id: string; name: string; slug: string; horario: unknown }[]
+  const todasUnidadesComHorario = (branchesRaw ?? []) as { id: string; name: string; slug: string; horario: unknown; fuso: string | null }[]
   const todasUnidades = todasUnidadesComHorario.map(({ id, name, slug }) => ({ id, name, slug }))
 
   // `?unidade=` recorta a rede a uma filial — é para onde o dashboard aponta ao
@@ -84,12 +61,50 @@ export default async function AdminAgendaPage({
   // Cada coluna leva o horário DA unidade: a grade sombreia o fechado dela e
   // marca o encaixe (A26 da 6ª simulação).
   const comHorario = (b: { id: string; name: string; slug: string }) =>
-    ({ ...b, horario: normalizarHorario(todasUnidadesComHorario.find(x => x.id === b.id)?.horario) })
+    ({ ...b, horario: normalizarHorario(todasUnidadesComHorario.find(x => x.id === b.id)?.horario), fuso: fusoValido(todasUnidadesComHorario.find(x => x.id === b.id)?.fuso) })
   const branches  = (unidadeId ? todasUnidades.filter(b => b.id === unidadeId) : todasUnidades).map(comHorario)
   const branchIds = branches.map(b => b.id)
   // A grade do dia abre no horário de funcionamento: o mais cedo e o mais tarde
   // entre as unidades mostradas, estendido pelos agendamentos (D5, 2026-10-28).
   const janela = janelaDaGrade(todasUnidadesComHorario.filter(b => branchIds.includes(b.id)).map(b => normalizarHorario(b.horario)))
+
+  // O fuso da tela (F62): o das unidades mostradas, se é um só; senão, Brasília.
+  const fusosMostrados = todasUnidadesComHorario.filter(b => branchIds.includes(b.id)).map(b => fusoValido(b.fuso))
+  const fuso = fusoComum(fusosMostrados)
+  const fusosMistos = new Set(fusosMostrados).size > 1
+
+  // "Hoje" no fuso das unidades mostradas (F62: o de todas, se é um só; senão,
+  // Brasília). Com `toISOString()` o dia virava às 21h em Brasília e a agenda
+  // passava a abrir no dia seguinte.
+  const todayStr    = dayKeyTZ(new Date(), fuso)
+  const selectedStr = rawDate ?? todayStr
+
+  // Meio-dia UTC como âncora do dia escolhido: longe das bordas, o parse não
+  // escorrega para o dia anterior nem para o seguinte por causa do offset.
+  const selected = new Date(selectedStr + 'T12:00:00Z')
+
+  // -- Intervalo de datas a buscar -----------------------------------
+  let startDate: Date
+  let endDate: Date
+
+  if (view === 'week') {
+    // Segunda-feira da semana do dia selecionado
+    const dow    = weekdayTZ(selected, fuso)         // 0=dom, 1=seg, ...
+    const diff   = (dow === 0 ? -6 : 1 - dow)  // shift para segunda
+    const monday = addDaysTZ(selected, diff, fuso)
+    startDate    = startOfDayTZ(monday, fuso)
+    endDate      = endOfDayTZ(addDaysTZ(monday, 6, fuso), fuso)
+  } else {
+    startDate = startOfDayTZ(selected, fuso)
+    endDate   = endOfDayTZ(selected, fuso)
+  }
+  // Unidades em fusos diferentes (F62): o dia de cada agendamento é o da
+  // unidade dele. A busca alarga 3 h para cada lado (a maior diferença entre os
+  // fusos do Brasil) e a grade recorta pelo dia de cada unidade.
+  if (fusosMistos) {
+    startDate = new Date(startDate.getTime() - 3 * 3_600_000)
+    endDate   = new Date(endDate.getTime() + 3 * 3_600_000)
+  }
 
   if (branchIds.length === 0) {
     return (

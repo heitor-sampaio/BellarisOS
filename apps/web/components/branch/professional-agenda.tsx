@@ -25,6 +25,8 @@ import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { BotaoBloquearHorario, BlocoDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { bloqueioNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { useAgora } from '@/lib/use-agora'
+import { useFuso } from '@/components/shared/fuso'
+import { naParede, isoNaParede, fusoLocal } from '@/lib/datetime'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -84,18 +86,27 @@ interface Props {
 }
 
 export function ProfessionalAgendaView({
-  events, slug, professionalName, branchName, professionalId, branchId, janela,
-  horarioDaUnidade, horarioDaProfissional, ocupadoFora, dataInicial = null, bloqueios = [], podeBloquear = false, agendar = null,
+  events: eventosDoServidor, slug, professionalName, branchName, professionalId, branchId, janela,
+  horarioDaUnidade, horarioDaProfissional, ocupadoFora: ocupadoForaDoServidor, dataInicial = null, bloqueios: bloqueiosDoServidor = [], podeBloquear = false, agendar = null,
   comissoesHref = null,
 }: Props) {
   const [agendando, setAgendando] = useState(false)
   const router = useRouter()
-  const today  = useMemo(() => new Date(), [])
+  // F62: a grade desenha no relógio da UNIDADE (os horários "de parede",
+  // `naParede`), qualquer que seja o do navegador.
+  const fuso = useFuso()
+  const events = useMemo(() => eventosDoServidor.map(e => ({
+    ...e, start: isoNaParede(e.start, fuso)!, end: isoNaParede(e.end, fuso)!,
+    arrivedAt: isoNaParede(e.arrivedAt, fuso), completedAt: isoNaParede(e.completedAt, fuso),
+  })), [eventosDoServidor, fuso])
+  const bloqueios = useMemo(() => bloqueiosDoServidor.map(b => ({ ...b, inicio: isoNaParede(b.inicio, fuso)!, fim: isoNaParede(b.fim, fuso)! })), [bloqueiosDoServidor, fuso])
+  const ocupadoFora = useMemo(() => ocupadoForaDoServidor.map(b => ({ ...b, inicio: isoNaParede(b.inicio, fuso)! })), [ocupadoForaDoServidor, fuso])
+  const today  = useMemo(() => naParede(new Date(), fuso), [fuso])
   // A26 da 12ª: o "agora" do destaque anda com o relógio (de 30 em 30 s). A tela
   // aberta na véspera congelava o dia e a hora: às 00:3x ela ainda dizia
   // "Próximo atendimento 22:00". Antes de hidratar, a hora da abertura.
   const agoraDoRelogio = useAgora()
-  const agora = useMemo(() => (agoraDoRelogio != null ? new Date(agoraDoRelogio) : today), [agoraDoRelogio, today])
+  const agora = useMemo(() => (agoraDoRelogio != null ? naParede(new Date(agoraDoRelogio), fuso) : today), [agoraDoRelogio, today, fuso])
 
   // Realtime: atualiza a agenda ao receber qualquer mudança nos agendamentos deste profissional
   useEffect(() => {
@@ -196,7 +207,7 @@ export function ProfessionalAgendaView({
       ...ocupadoFora,
       ...todayEvents.filter(e => e.unidade && !['CANCELLED', 'NO_SHOW'].includes(e.status)).map(e => ({ inicio: e.start, minutos: e.durationMin })),
       ...blocosDosBloqueios(bloqueios),
-    ] }, agora),
+    ] }, agora, fusoLocal()),
   [todayEvents, horarioDaUnidade, horarioDaProfissional, ocupadoFora, agora, bloqueios])
 
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
@@ -245,7 +256,7 @@ export function ProfessionalAgendaView({
   // (`rolagemDaGrade`, a régua da agenda da unidade).
   const gradeRef = useRef<HTMLDivElement>(null)
   const diaDaGrade = format(selectedDate, 'yyyy-MM-dd')
-  const ehHojeNaGrade = diaDaGrade === format(new Date(), 'yyyy-MM-dd')
+  const ehHojeNaGrade = diaDaGrade === format(naParede(new Date(), fuso), 'yyyy-MM-dd')
   const primeiroDoDia = dayEvents.length
     ? Math.min(...dayEvents.map(e => { const d = parseISO(e.start); return getHours(d) * 60 + getMinutes(d) }))
     : null
@@ -255,11 +266,11 @@ export function ProfessionalAgendaView({
   useEffect(() => {
     if (!gradeRef.current) return
     gradeRef.current.scrollTop = rolagemDaGrade({
-      ehHoje: ehHojeNaGrade, horaAgora: new Date().getHours(), startHour: DAY_START, hourPx: PX_PER_HOUR,
+      ehHoje: ehHojeNaGrade, horaAgora: naParede(new Date(), fuso).getHours(), startHour: DAY_START, hourPx: PX_PER_HOUR,
       aberturaEmMin: comecoDela, primeiroEmMin: primeiroDoDia,
     })
     gradeRef.current.dataset.rolagem = 'pronta'
-  }, [diaDaGrade, ehHojeNaGrade, DAY_START, comecoDela, primeiroDoDia])
+  }, [diaDaGrade, ehHojeNaGrade, DAY_START, comecoDela, primeiroDoDia, fuso])
 
   function evTop(ev: CalendarEvent) {
     const d = parseISO(ev.start)

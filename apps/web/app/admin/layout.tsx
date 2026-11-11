@@ -14,6 +14,8 @@ import { comAviso } from '@/lib/aviso-da-url'
 import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
 import { UmaUnidadeProvider } from '@/components/shared/uma-unidade'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { FusoProvider } from '@/components/shared/fuso'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { saudacao } from '@/lib/saudacao'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -59,12 +61,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // A clínica de uma unidade não fala "rede" (D-19, F8): a régua vai às telas do navegador.
   const umaUnidade = ctx.tenantId ? await redeTemUmaUnidade(ctx.tenantId) : false
 
+  // As datas e horas da tela no fuso da rede (F62): o das unidades, se é um só.
+  const fuso = await fusoDaRede(ctx.tenantId)
+
   return (
     <UmaUnidadeProvider valor={umaUnidade}>
+    <FusoProvider fuso={fuso}>
     <SidebarProvider>
       <Suspense fallback={null}><AvisoDaUrl /></Suspense>
       <AdminSidebar permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao()} />
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
         marginTop:     'calc(var(--topbar-h) + env(safe-area-inset-top, 0px))',
@@ -84,6 +90,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <CopilotForaDoPlano emTeste={await redeEmTeste(ctx.tenantId!)} assinaturaHref="/admin/settings?tab=assinatura" />
       )}
     </SidebarProvider>
+    </FusoProvider>
     </UmaUnidadeProvider>
   )
 }

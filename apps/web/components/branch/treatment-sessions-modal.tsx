@@ -1,4 +1,6 @@
 ﻿'use client'
+import { useFuso } from '@/components/shared/fuso'
+import { instanteNoFuso } from '@/lib/datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -112,6 +114,8 @@ export function SessionScheduler({
   onSave:          (params: { branchId: string; professionalId: string; scheduledAt: string; roomId: string | null }) => Promise<{ error?: string }>
   onCancel:        () => void
 }) {
+  // A hora escolhida é a do relógio da unidade (F62).
+  const fuso = useFuso()
   const [branchId,     setBranchId]     = useState(currentBranchId)
   const [profs,        setProfs]        = useState<{ id: string; name: string }[]>([])
   // Nasce carregando quando já há filial; cada troca liga de novo no handler.
@@ -178,7 +182,7 @@ export function SessionScheduler({
   useEffect(() => {
     if (!procId || !branchId) return
     let vivo = true
-    salasParaAgendar(branchId, procId, date && time ? new Date(`${date}T${time}:00-03:00`).toISOString() : null, procDuracao)
+    salasParaAgendar(branchId, procId, date && time ? instanteNoFuso(date, time, fuso).toISOString() : null, procDuracao)
       .then(r => {
         if (!vivo) return
         setSalas(r.salas)
@@ -186,7 +190,7 @@ export function SessionScheduler({
       })
       .catch(() => { if (vivo) setSalas([]) })
     return () => { vivo = false }
-  }, [procId, procDuracao, branchId, date, time])
+  }, [procId, procDuracao, branchId, date, time, fuso])
 
   // D5 da 8ª simulação: o intervalo INTEIRO da sessão contra os agendamentos
   // dela e os bloqueios (a régua de lib/agenda/horario-livre). Só o início
@@ -194,7 +198,7 @@ export function SessionScheduler({
   // 10:30 — e o Confirmar recusava. Sem o procedimento (a unidade pré-paga, que
   // o servidor decide), o passo da grade.
   function isBooked(t: string) {
-    return ocupanteDoHorario(new Date(`${date}T${t}:00-03:00`), procedimento?.duracaoMin ?? 30, slots, bloqueios)
+    return ocupanteDoHorario(instanteNoFuso(date, t, fuso), procedimento?.duracaoMin ?? 30, slots, bloqueios)
   }
 
   async function handleSave() {
@@ -204,7 +208,7 @@ export function SessionScheduler({
     const result = await onSave({
       branchId,
       professionalId: profId,
-      scheduledAt: new Date(`${date}T${time}:00-03:00`).toISOString(),
+      scheduledAt: instanteNoFuso(date, time, fuso).toISOString(),
       roomId: roomId || null,
     })
     setSaving(false)

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths,
@@ -27,7 +27,8 @@ import { atendimentosPorExtenso } from '@/lib/agenda/grade'
 import { BotaoBloquearHorario } from '@/components/shared/bloqueio-da-agenda'
 import type { BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
-import { dayKeyTZ } from '@/lib/datetime'
+import { dayKeyTZ, naParede, daParede, isoNaParede } from '@/lib/datetime'
+import { useFuso, NotaDoFuso } from '@/components/shared/fuso'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
 
@@ -101,16 +102,17 @@ function calcKPIs(
   horariosDosProfissionais: Record<string, Horario | null>,
   ocupadoForaDosProfissionais: Record<string, BlocoOcupado[]>,
   bloqueios: BloqueioDaAgenda[] = [],
+  fuso?: string,
 ) {
   // Os DIAS do período (D3 da 8ª simulação): a semana tem os 7 — era de
   // segunda a sábado à meia-noite, e nem o sábado inteiro entrava no contador.
-  // O agendamento conta no dia dele em Brasília (`dayKeyTZ`, §13.1).
+  // O agendamento conta no dia dele no relógio da unidade (`dayKeyTZ`, §13.1, F62).
   const dias = diasDoPeriodo(view, date)
   const chaves = new Set(dias)
   const from = new Date(`${dias[0]}T12:00:00-03:00`)
   const to   = new Date(`${dias[dias.length - 1]}T12:00:00-03:00`)
 
-  const windowEvs = events.filter(e => chaves.has(dayKeyTZ(e.start)))
+  const windowEvs = events.filter(e => chaves.has(dayKeyTZ(e.start, fuso)))
 
   const totalCount   = windowEvs.filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status)).length
   const waitingCount = windowEvs.filter(e => e.status === 'SCHEDULED').length
@@ -128,10 +130,10 @@ function calcKPIs(
     ...(ocupadoForaDosProfissionais[p.id] ?? []),
     ...blocosDosBloqueios(bloqueios.filter(b => b.professionalId === p.id)),
   ])
-  const occupancy    = ocupacaoEmPct(bookedMin, horarioDaUnidade, horarios, from, to, ocupados) ?? 0
+  const occupancy    = ocupacaoEmPct(bookedMin, horarioDaUnidade, horarios, from, to, ocupados, fuso) ?? 0
   // A53 da 9ª: a base, para a tela dizer a conta (a mesma capacidade de ocupacaoEmPct).
   const base = professionals.length
-    ? baseDaOcupacao({ agendados: bookedMin, abertos: capacidadeEmMinutos(horarioDaUnidade, horarios, from, to, ocupados), profissionais: professionals.length })
+    ? baseDaOcupacao({ agendados: bookedMin, abertos: capacidadeEmMinutos(horarioDaUnidade, horarios, from, to, ocupados, fuso), profissionais: professionals.length })
     : null
 
   return { totalCount, waitingCount, occupancy, base }
@@ -161,8 +163,8 @@ function navLabel(view: ViewMode, date: Date): string {
   return format(date, "MMMM 'de' yyyy", { locale: ptBR })
 }
 
-function isCurrent(view: ViewMode, date: Date): boolean {
-  const now = new Date()
+function isCurrent(view: ViewMode, date: Date, fuso: string): boolean {
+  const now = naParede(new Date(), fuso)
   if (view === 'dia')    return isSameDay(date, now)
   if (view === 'semana') return diasDoPeriodo('semana', date).includes(format(now, 'yyyy-MM-dd'))
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
@@ -174,8 +176,9 @@ function navigate(view: ViewMode, date: Date, dir: 1 | -1): Date {
   return dir === 1 ? addMonths(date, 1) : subMonths(date, 1)
 }
 
-function todayDate(): Date {
-  return new Date()
+/** Hoje, no relógio da unidade (F62): a grade desenha no relógio local com as horas dela. */
+function todayDate(fuso: string): Date {
+  return naParede(new Date(), fuso)
 }
 
 // -- Component ----------------------------------------------------------------
@@ -186,6 +189,15 @@ export function AgendaCalendar({
   bloqueios = [], colunasDeQuemNaoAtende = [],
 }: AgendaCalendarProps) {
   const router = useRouter()
+  // F62: a grade desenha no relógio da UNIDADE, qualquer que seja o do
+  // navegador. Os horários vão às vistas "de parede" (`naParede`): os campos
+  // locais delas são o relógio da unidade; o instante volta por `daParede`.
+  const fuso = useFuso()
+  const eventosNaParede = useMemo(() => events.map(e => ({
+    ...e, start: isoNaParede(e.start, fuso)!, end: isoNaParede(e.end, fuso)!,
+    arrivedAt: isoNaParede(e.arrivedAt, fuso), completedAt: isoNaParede(e.completedAt, fuso),
+  })), [events, fuso])
+  const bloqueiosNaParede = useMemo(() => bloqueios.map(b => ({ ...b, inicio: isoNaParede(b.inicio, fuso)!, fim: isoNaParede(b.fim, fuso)! })), [bloqueios, fuso])
   // A grade (dia e semana) tem também a coluna de quem não atende mais aqui e tem agendamento (D3 da 9ª).
   const colunas = colunasDeQuemNaoAtende.length ? [...professionals, ...colunasDeQuemNaoAtende] : professionals
 
@@ -199,7 +211,7 @@ export function AgendaCalendar({
   }
 
   const [view,          setView]          = useState<ViewMode>('dia')
-  const [currentDate,   setCurrentDateState] = useState(() => dataInicial ? new Date(`${dataInicial}T12:00:00`) : new Date())
+  const [currentDate,   setCurrentDateState] = useState(() => dataInicial ? new Date(`${dataInicial}T12:00:00`) : todayDate(fuso))
   // O dia aberto vai para a URL sem nova navegação (o servidor já trouxe a
   // janela). Num EFEITO, depois de pintar: o `replaceState` é integrado ao
   // router do Next e o atualiza — dentro do updater do setState era atualizar
@@ -224,15 +236,18 @@ export function AgendaCalendar({
   // `?novo=1&cliente=`: a busca universal e a ficha abrem o modal por aqui.
   useNovoAgendamentoDaUrl(canWrite, (cliente, pedido) => { setDefaultDate(''); setClienteInicial(cliente); setPedidoInicial(pedido); setShowCreate(true) })
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  // A janela recebe o agendamento de verdade (o instante), não o da grade.
+  const abrirEvento = useCallback((ev: CalendarEvent) => setSelectedEvent(events.find(e => e.id === ev.id) ?? ev), [events])
   const [dropError,     setDropError]     = useState<string | null>(null)
 
-  const { totalCount, waitingCount, occupancy, base: baseDaOcupacaoDaTela } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais, bloqueios)
+  const { totalCount, waitingCount, occupancy, base: baseDaOcupacaoDaTela } = calcKPIs(events, professionals, view, currentDate, horarioDaUnidade, horariosDosProfissionais, ocupadoForaDosProfissionais, bloqueios, fuso)
 
   // -- Drag-and-drop ----------------------------------------------------------
   const moverAgendamento = useCallback(async (eventId: string, newStart: Date, newProfId: string) => {
     const formData = new FormData()
     formData.set('_appointmentId', eventId)
-    formData.set('scheduled_at',   newStart.toISOString())
+    // A hora solta na grade é a do relógio da unidade.
+    formData.set('scheduled_at',   daParede(newStart, fuso).toISOString())
     formData.set('professional_id', newProfId)
     formData.set('_slug',          slug)
 
@@ -244,7 +259,7 @@ export function AgendaCalendar({
     } else {
       router.refresh()
     }
-  }, [slug, router])
+  }, [slug, router, fuso])
   // Soltar na coluna de OUTRA profissional troca quem atende: pergunta antes,
   // com de quem para quem (A22 da 8ª simulação — trocava sem confirmação).
   const [arraste, setArraste] = useState<{ eventId: string; inicio: Date; profId: string; de: string; para: string } | null>(null)
@@ -315,6 +330,8 @@ export function AgendaCalendar({
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
             Agenda
           </h1>
+          {/* F62: a tela diz em que relógio está, quando não é o de Brasília. */}
+          <NotaDoFuso />
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             <span style={{ fontWeight: 700, color: 'var(--text)' }}>{totalCount}</span> {atendimentosPorExtenso(totalCount)}
             {' · '}
@@ -383,10 +400,10 @@ export function AgendaCalendar({
             >
               <ChevronRight size={16} />
             </button>
-            {!isCurrent(view, currentDate) && (
+            {!isCurrent(view, currentDate, fuso) && (
               <button
                 type="button"
-                onClick={() => setCurrentDate(todayDate())}
+                onClick={() => setCurrentDate(todayDate(fuso))}
                 style={{
                   fontSize: 'var(--text-xs-sz)', fontWeight: 700,
                   padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
@@ -432,32 +449,32 @@ export function AgendaCalendar({
             horarioDaUnidade={horarioDaUnidade}
             horariosDosProfissionais={horariosDosProfissionais}
             currentDate={currentDate}
-            events={events}
+            events={eventosNaParede}
             professionals={colunas}
             canWrite={canWrite}
-            onEventClick={setSelectedEvent}
+            onEventClick={abrirEvento}
             onSlotClick={handleSlotClick}
             onDrop={handleDrop}
-            bloqueios={bloqueios}
+            bloqueios={bloqueiosNaParede}
             salas={rooms}
           />
         )}
         {view === 'semana' && (
           <AgendaWeekView
             currentDate={currentDate}
-            events={events}
+            events={eventosNaParede}
             professionals={colunas}
             canWrite={canWrite}
-            onEventClick={setSelectedEvent}
+            onEventClick={abrirEvento}
             onSlotClick={handleSlotClick}
-            bloqueios={bloqueios}
+            bloqueios={bloqueiosNaParede}
             salas={rooms}
           />
         )}
         {view === 'mes' && (
           <AgendaMonthView
             currentDate={currentDate}
-            events={events}
+            events={eventosNaParede}
             onDayClick={handleDayClick}
           />
         )}

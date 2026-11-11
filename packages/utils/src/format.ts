@@ -5,14 +5,15 @@ export const formatBRL = (value: number) =>
 // Brasília, e sem isto o mesmo horário aparecia diferente no SSR e no cliente.
 const BUSINESS_TZ = 'America/Sao_Paulo'
 
-export const formatDate = (date: Date | string) =>
-  new Intl.DateTimeFormat('pt-BR', { timeZone: BUSINESS_TZ }).format(new Date(date))
+// O fuso é opcional (F62: o da unidade); sem ele, o horário de Brasília.
+export const formatDate = (date: Date | string, tz: string = BUSINESS_TZ) =>
+  new Intl.DateTimeFormat('pt-BR', { timeZone: tz }).format(new Date(date))
 
-export const formatDateTime = (date: Date | string) =>
-  new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: BUSINESS_TZ }).format(new Date(date))
+export const formatDateTime = (date: Date | string, tz: string = BUSINESS_TZ) =>
+  new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: tz }).format(new Date(date))
 
-export const formatTime = (date: Date | string) =>
-  new Intl.DateTimeFormat('pt-BR', { timeStyle: 'short', timeZone: BUSINESS_TZ }).format(new Date(date))
+export const formatTime = (date: Date | string, tz: string = BUSINESS_TZ) =>
+  new Intl.DateTimeFormat('pt-BR', { timeStyle: 'short', timeZone: tz }).format(new Date(date))
 
 export const formatPercent = (value: number, decimals = 1) =>
   `${value.toFixed(decimals).replace('.', ',')}%`

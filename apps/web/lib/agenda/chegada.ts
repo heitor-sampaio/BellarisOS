@@ -5,6 +5,6 @@ import { dayKeyTZ } from '@/lib/datetime'
  * 2026-10-27: a recepção marcava a chegada de amanhã, e a de ontem). A conta
  * é por dia, não por hora: a cliente que chega cedo ou atrasada ainda é a do dia.
  */
-export function ehODiaDoAgendamento(scheduledAt: string | Date, agora: Date = new Date()): boolean {
-  return dayKeyTZ(scheduledAt) === dayKeyTZ(agora)
+export function ehODiaDoAgendamento(scheduledAt: string | Date, agora: Date = new Date(), fuso?: string): boolean {
+  return dayKeyTZ(scheduledAt, fuso) === dayKeyTZ(agora, fuso)
 }

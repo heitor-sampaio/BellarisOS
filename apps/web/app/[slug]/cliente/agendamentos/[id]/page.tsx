@@ -8,6 +8,8 @@ import { ler } from '@/lib/db'
 import { formatarTelefone } from '@/lib/documentos/valores'
 import { aClinicaDoEndereco, comMensagem, linkDoWhatsapp } from '@/lib/clientes/a-clinica'
 import { AlterarAgendamento } from '@/components/client-portal/alterar-agendamento'
+import { FusoProvider } from '@/components/shared/fuso'
+import { fusoValido } from '@/lib/unidades/fuso'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { documentosDoAgendamento, type ResumoDeDocumento } from '@/lib/documentos/leitura'
@@ -58,12 +60,12 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
 
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
-    .select('id, status, scheduled_at, duration_min, cancellation_reason, branch_id, procedure_id, sem_preferencia, procedures(name), profissional:users!professional_id(name), branches!inner(name, phone, tenant_id)')
+    .select('id, status, scheduled_at, duration_min, cancellation_reason, branch_id, procedure_id, sem_preferencia, procedures(name), profissional:users!professional_id(name), branches!inner(name, phone, tenant_id, fuso)')
     .eq('id', id).eq('client_id', ctx.clientId).maybeSingle(), 'buscar o agendamento') as {
       id: string; status: string; scheduled_at: string; duration_min: number; cancellation_reason: string | null
       branch_id: string; procedure_id: string | null; sem_preferencia: boolean
       procedures: { name: string } | null; profissional: { name: string } | null
-      branches: { name: string; phone: string | null; tenant_id: string }
+      branches: { name: string; phone: string | null; tenant_id: string; fuso: string | null }
     } | null
   if (!a) notFound()
   const rede = await ler(admin.from('tenants').select('portal_prazo_alteracao_horas, phone').eq('id', a.branches.tenant_id).single(),
@@ -86,15 +88,17 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
   })()
   const telefone = (a.branches.phone || rede?.phone || '').replace(/\D/g, '')
   const quando = new Date(a.scheduled_at)
+  // O relógio da unidade do agendamento (F62).
+  const fuso = fusoValido(a.branches.fuso)
   // O WhatsApp é o conectado da unidade (por-03), com a mensagem pronta sobre
   // ESTE agendamento (A66).
   const aClinica = await aClinicaDoEndereco(slug)
   // Fora do prazo do app (A53 da 7ª), a mensagem já diz o que ela quer.
-  const quandoTexto = quando.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  const quandoTexto = quando.toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
   const whatsappParaAlterar = comMensagem(aClinica?.whatsapp ?? linkDoWhatsapp(telefone),
     `Olá! Preciso cancelar ou remarcar o meu agendamento de ${a.procedures?.name ?? 'procedimento'} em ${quandoTexto} (o prazo do app já passou).`)
   const whatsapp = comMensagem(aClinica?.whatsapp ?? linkDoWhatsapp(telefone),
-    `Olá! Quero falar sobre o meu agendamento de ${a.procedures?.name ?? 'procedimento'} em ${quando.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.`)
+    `Olá! Quero falar sobre o meu agendamento de ${a.procedures?.name ?? 'procedimento'} em ${quando.toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.`)
 
   const linha = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text-soft)' } as const
 
@@ -109,10 +113,10 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           {a.procedures?.name ?? 'Procedimento'}
         </h1>
         <span style={linha}><CalendarDays size={15} aria-hidden="true" />
-          {quando.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: 'long' })}
+          {quando.toLocaleDateString('pt-BR', { timeZone: fuso, weekday: 'long', day: '2-digit', month: 'long' })}
         </span>
         <span style={linha}><Clock3 size={15} aria-hidden="true" />
-          {quando.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })} · {a.duration_min} min
+          {quando.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })} · {a.duration_min} min
         </span>
         <span style={linha}><User size={15} aria-hidden="true" /> {a.profissional?.name ?? 'Profissional'}</span>
         <span style={linha}><MapPin size={15} aria-hidden="true" /> {a.branches.name}</span>
@@ -131,6 +135,8 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
       )}
 
       {aberto && (
+        // A remarcação no relógio da unidade DO agendamento (F62).
+        <FusoProvider fuso={fuso}>
         <AlterarAgendamento
           appointmentId={a.id}
           scheduledAt={a.scheduled_at}
@@ -143,6 +149,7 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           whatsappParaAlterar={whatsappParaAlterar}
           ligar={telefone ? `tel:+${telefone.startsWith('55') && telefone.length > 11 ? telefone : `55${telefone}`}` : null}
         />
+        </FusoProvider>
       )}
     </div>
   )

@@ -8,6 +8,9 @@ import { revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { intervalosDoDia, normalizarHorario, slotsDoDia, diaDaSemana } from '@/lib/agenda/horario'
 import { format } from 'date-fns'
+import { instanteNoFuso, naParede } from '@/lib/datetime'
+import { fusoValido } from '@/lib/unidades/fuso'
+import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { ptBR } from 'date-fns/locale'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -371,11 +374,8 @@ export async function computeAvailableSlots(
   /** Ao REMARCAR, o próprio agendamento não ocupa o horário que vai deixar (A44). */
   ignorarAgendamentoId?: string,
 ): Promise<string[]> {
-  const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
-  const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
-
   const [unidade, prof] = await Promise.all([
-    ler(admin.from('branches').select('horario').eq('id', branchId).maybeSingle(), 'buscar o horário da unidade'),
+    ler(admin.from('branches').select('horario, fuso').eq('id', branchId).maybeSingle(), 'buscar o horário da unidade'),
     ler(admin.from('users').select('horario').eq('id', professionalId).maybeSingle(), 'buscar o horário do profissional'),
   ])
   const intervalos = intervalosDoDia(
@@ -384,6 +384,10 @@ export async function computeAvailableSlots(
     diaDaSemana(date),
   )
   if (!intervalos.length) return []
+  // O dia e as horas são os do RELÓGIO da unidade (F62): o 08:00 de Manaus é 12:00 UTC.
+  const fuso = fusoValido((unidade as { fuso?: string | null } | null)?.fuso)
+  const dayStart = instanteNoFuso(date, '00:00', fuso).toISOString()
+  const dayEnd   = instanteNoFuso(date, '23:59:59', fuso).toISOString()
 
   // O profissional em QUALQUER unidade (o da rede atende em várias; o id do
   // profissional já é de uma rede só), e o que começou antes e ainda ocupa o
@@ -410,7 +414,7 @@ export async function computeAvailableSlots(
   const agora = Date.now()
 
   return slotsDoDia(intervalos, durationMin).filter((slot) => {
-    const slotStart = new Date(`${date}T${slot}:00-03:00`).getTime()
+    const slotStart = instanteNoFuso(date, slot, fuso).getTime()
     const slotEnd   = slotStart + durationMin * 60000
     if (slotStart <= agora) return false
     return !occupied.some((o) => bateNaOcupacao(slotStart, slotEnd, o.start, o.end))
@@ -442,8 +446,9 @@ export async function candidatasDoDia(
   const equipe = ((todas ?? []) as { id: string; name: string }[]).filter(p => realiza(realizam, p.id))
   if (!equipe.length) return []
 
-  const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
-  const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
+  const fuso = await lerFusoDaUnidade(admin, branchId)
+  const dayStart = instanteNoFuso(date, '00:00', fuso).toISOString()
+  const dayEnd   = instanteNoFuso(date, '23:59:59', fuso).toISOString()
   // A56 da 11ª: ao remarcar, o próprio agendamento não conta como atendimento
   // do dia de quem o tem — senão a escolha pendia para a outra (a Bruna virou
   // Carla no mesmo dia, com a Bruna livre).
@@ -478,7 +483,9 @@ export function notifyAppointmentCreated(appointmentId: string): void {
     const clientName     = (data.clients as unknown as { name?: string } | null)?.name ?? 'Cliente'
     const procedureName  = (data.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento'
     let when = ''
-    try { when = format(new Date(data.scheduled_at as string), "dd/MM 'às' HH:mm", { locale: ptBR }) } catch { /* ignore */ }
+    // No relógio da unidade (F62), não no do servidor.
+    const fuso = await lerFusoDaUnidade(admin, (data.branch_id ?? null) as string | null)
+    try { when = format(naParede(data.scheduled_at as string, fuso), "dd/MM 'às' HH:mm", { locale: ptBR }) } catch { /* ignore */ }
 
     const payload = { appointment_id: appointmentId }
     await avisarCliente(admin, clientId, {

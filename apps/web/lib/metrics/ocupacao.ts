@@ -16,13 +16,15 @@ export function ocupacaoDoDia(
   eventos: { start: string; durationMin: number; status: string }[],
   horarios: { unidade: Horario | null; profissional: Horario | null; ocupadoFora?: BlocoOcupado[] },
   dia: Date,
+  /** O fuso da unidade (F62); sem ele, o de Brasília. */
+  fuso?: string,
 ): number | null {
-  const de = startOfDayTZ(dia), ate = endOfDayTZ(dia)
+  const de = startOfDayTZ(dia, fuso), ate = endOfDayTZ(dia, fuso)
   const minutos = eventos
     .filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status))
     .filter(e => { const t = new Date(e.start).getTime(); return t >= de.getTime() && t <= ate.getTime() })
     .reduce((s, e) => s + e.durationMin, 0)
-  return ocupacaoEmPct(minutos, horarios.unidade, [horarios.profissional], de, ate, [horarios.ocupadoFora ?? []])
+  return ocupacaoEmPct(minutos, horarios.unidade, [horarios.profissional], de, ate, [horarios.ocupadoFora ?? []], fuso)
 }
 
 /**

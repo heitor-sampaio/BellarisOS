@@ -7,7 +7,8 @@ import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { eventoDesmarcado, type CalendarEvent } from './agenda-month-view'
 import { EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
-import { dayKeyTZ } from '@/lib/datetime'
+import { naParede } from '@/lib/datetime'
+import { useFuso } from '@/components/shared/fuso'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
 
 /** `foraDoAtende`: tem agendamento aqui e não atende mais aqui (D3 da 9ª) — a linha fica, marcada. */
@@ -52,7 +53,10 @@ function shortName(name: string) {
 }
 
 function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) {
-  const agora       = useAgora()
+  // A grade é "de parede" (F62): o agora também, no relógio da unidade.
+  const fuso        = useFuso()
+  const agoraReal   = useAgora()
+  const agora       = agoraReal == null ? null : naParede(new Date(agoraReal), fuso).getTime()
   const time        = format(new Date(ev.start), 'HH:mm')
   if (eventoDesmarcado(ev)) {
     return (
@@ -125,7 +129,8 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
 export function AgendaWeekView({ currentDate, events, professionals, onEventClick, onSlotClick, canWrite, bloqueios = [], salas = [] }: Props) {
   const monday   = startOfWeek(currentDate, { weekStartsOn: 1 })
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
-  const today    = new Date()
+  const fuso     = useFuso()
+  const today    = naParede(new Date(), fuso)
   const nomeDaSala = (id: string | null) => salas.find(s => s.id === id)?.name ?? 'Sala'
   const daSala = bloqueios.filter(b => b.roomId && weekDays.some(d => trechoNoDia(b, d)))
 
@@ -214,8 +219,8 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                 {/* Day cells */}
                 {weekDays.map((day, di) => {
                   const dayEvs = events.filter(
-                    // O dia do agendamento em Brasília (dayKeyTZ), não o do relógio de quem vê.
-                    e => e.professionalId === pro.id && dayKeyTZ(e.start) === format(day, 'yyyy-MM-dd'),
+                    // O dia do agendamento no relógio da unidade: a grade é "de parede" (F62).
+                    e => e.professionalId === pro.id && format(new Date(e.start), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'),
                   )
                   const isToday = isSameDay(day, today)
 

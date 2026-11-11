@@ -1,8 +1,10 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
-import { criarMembro, type MembroDeTeste } from './apoio/sessao'
+import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarRedeCriada } from './apoio/rede-criada'
+import { cartaoNaGradeDoDia } from './apoio/agenda'
+import { addDaysTZ, dayKeyTZ, instanteNoFuso } from '../lib/datetime'
 
 /**
  * F62 — o fuso da clínica (o Heitor, 2026-11-11: "Não, deixa a clinica
@@ -140,5 +142,114 @@ test.describe('o campo', () => {
       await db().from('branches').delete().eq('tenant_id', t!.id)
       expect(await apagarRedeCriada(t!.id)).toEqual([])
     }
+  })
+})
+
+/**
+ * A agenda e o agendar no fuso da unidade: a unidade de Manaus abre das 08:00
+ * às 20:00 no relógio DELA. O navegador está no horário de Brasília (a
+ * recepção pode estar em qualquer lugar): a grade, o Agendar e o app da
+ * cliente seguem a unidade, não o navegador nem o servidor.
+ */
+test.describe('a agenda e o agendar', () => {
+  const MANAUS = 'America/Manaus'
+  let unidade: OutraRede | null = null
+  let recepcao: MembroDeTeste | null = null
+  let cliente: ClienteDeTeste | null = null
+  let slugM = ''
+  let clienteDaFicha = ''
+  let ocupado = ''
+  // Daqui a 3 dias, no relógio de Manaus.
+  const DIA = dayKeyTZ(addDaysTZ(new Date(), 3, MANAUS), MANAUS)
+
+  async function naUnidade<T>(browser: Browser, quem: MembroDeTeste | ClienteDeTeste, fn: (p: Page) => Promise<T>) {
+    const ctx = await browser.newContext({ storageState: quem.estado, viewport: { width: 1440, height: 900 }, timezoneId: 'America/Sao_Paulo' })
+    try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
+  }
+
+  test.beforeAll(async () => {
+    unidade = await criarOutraRede(`fza${marca}`)
+    const b = db()
+    const expediente = [{ de: '08:00', ate: '20:00' }]
+    expect((await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', unidade.tenantId)).error).toBeNull()
+    expect((await b.from('branches').update({
+      fuso: MANAUS, horario: { dias: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, expediente])) },
+    }).eq('id', unidade.branchId)).error).toBeNull()
+    expect((await b.from('users').update({ atende_em: [unidade.branchId], provides_services: true }).eq('id', unidade.professionalId)).error).toBeNull()
+    expect((await b.from('procedures').update({ duration_min: 60, visible_on_client_app: true }).eq('id', unidade.procedureId)).error).toBeNull()
+    slugM = (await b.from('branches').select('slug').eq('id', unidade.branchId).single<{ slug: string }>()).data!.slug
+    clienteDaFicha = await unidade.criarCliente(`Cliente fuso fza${marca}`)
+    // 09:00 em Manaus = 13:00 UTC (= 10:00 em Brasília).
+    const { data, error } = await b.from('appointments').insert({
+      branch_id: unidade.branchId, client_id: clienteDaFicha, procedure_id: unidade.procedureId, professional_id: unidade.professionalId,
+      status: 'SCHEDULED', source: 'INTERNAL', duration_min: 60, price: 0, scheduled_at: instanteNoFuso(DIA, '09:00', MANAUS).toISOString(),
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    ocupado = data!.id
+    recepcao = await criarMembro(`fzr${marca}`, {
+      tenant: unidade.tenantId, branchId: unidade.branchId, rotulo: 'Recepcao',
+      permissoes: [{ modulo: 'agenda', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'MANAGE' }],
+    })
+    cliente = await clienteComSessao(`fzc${marca}`, { id: unidade.branchId, slug: slugM }, { tenant: unidade.tenantId })
+  })
+
+  test.afterAll(async () => {
+    if (unidade) await db().from('appointments').delete().eq('branch_id', unidade.branchId)
+    await cliente?.limpar()
+    await recepcao?.limpar()
+    await unidade?.limpar()
+  })
+
+  test('a grade mostra o agendamento na hora de Manaus, e diz o fuso', async ({ browser }) => {
+    await naUnidade(browser, recepcao!, async p => {
+      await p.goto(`/${slugM}/agenda?date=${DIA}`)
+      const cartao = await cartaoNaGradeDoDia(p, ocupado)
+      await expect(cartao).toContainText('09:00')
+      await expect(p.locator('[data-nota-do-fuso]').first()).toHaveText('Horário de Manaus')
+    })
+  })
+
+  test('o Agendar grava a hora escolhida no relógio de Manaus', async ({ browser }) => {
+    await naUnidade(browser, recepcao!, async p => {
+      await p.goto(`/${slugM}/agenda?date=${DIA}`)
+      await p.getByRole('button', { name: 'Agendar', exact: true }).click()
+      const janela = p.getByRole('dialog', { name: 'Novo agendamento' })
+      await janela.getByPlaceholder('Buscar cliente por nome ou telefone…').fill(`Cliente fuso fza${marca}`)
+      await janela.getByText(`Cliente fuso fza${marca}`).first().click()
+      await janela.getByLabel('Procedimento *').selectOption(unidade!.procedureId)
+      await janela.getByLabel('Profissional *').selectOption(unidade!.professionalId)
+      await janela.getByLabel('Data e hora *').fill(`${DIA}T14:00`)
+      await janela.getByRole('button', { name: 'Confirmar agendamento' }).click()
+      await expect(janela).toBeHidden({ timeout: 15_000 })
+    })
+    await expect.poll(async () => {
+      const { data } = await db().from('appointments').select('scheduled_at')
+        .eq('branch_id', unidade!.branchId).neq('id', ocupado).neq('client_id', cliente!.clientId)
+      return (data ?? []).map(a => new Date(a.scheduled_at as string).toISOString())
+    }).toEqual([instanteNoFuso(DIA, '14:00', MANAUS).toISOString()])
+  })
+
+  test('o app da cliente oferece os livres no relógio de Manaus e grava nele', async ({ browser }) => {
+    await naUnidade(browser, cliente!, async p => {
+      await p.goto(`/${slugM}/cliente/agendamentos/novo`)
+      const passo = p.getByText('Escolha a data e o horário disponível.')
+      await expect(async () => {
+        if (!(await passo.isVisible())) await p.getByRole('button', { name: new RegExp(`Proc fza${marca}`) }).click({ timeout: 2000 })
+        await expect(passo).toBeVisible({ timeout: 2000 })
+      }).toPass({ timeout: 30_000 })
+      await p.getByLabel('Data').fill(DIA)
+      const manha = p.getByRole('group', { name: 'Manhã' })
+      // O das 09:00 de Manaus está ocupado; o das 10:00, livre.
+      await expect(manha.getByRole('button', { name: '08:00', exact: true })).toBeVisible()
+      await expect(manha.getByRole('button', { name: '10:00', exact: true })).toBeVisible()
+      await expect(manha.getByRole('button', { name: '09:00', exact: true })).toHaveCount(0)
+      await manha.getByRole('button', { name: '08:00', exact: true }).click()
+      await p.getByRole('button', { name: 'Confirmar agendamento' }).click()
+      await expect(p).toHaveURL(new RegExp(`/${slugM}/cliente/(agendamentos|documentos)([?]|$)`), { timeout: 15_000 })
+    })
+    await expect.poll(async () => {
+      const { data } = await db().from('appointments').select('scheduled_at').eq('client_id', cliente!.clientId)
+      return (data ?? []).map(a => new Date(a.scheduled_at as string).toISOString())
+    }).toEqual([instanteNoFuso(DIA, '08:00', MANAUS).toISOString()])
   })
 })

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -17,7 +17,8 @@ import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import type { SeloDaFicha as EstadoDaFicha } from '@/lib/pre-atendimento/selos'
 import { contagemDaAgenda } from '@/lib/metrics/resultado'
 import { useFala } from '@/components/shared/uma-unidade'
-import { dayKeyTZ } from '@/lib/datetime'
+import { dayKeyTZ, naParede, isoNaParede, fusoLocal } from '@/lib/datetime'
+import { FusoProvider, useFuso } from '@/components/shared/fuso'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
 
 /** A dica do agendamento em aberto que passou do horário (A21 da 9ª; sobra da F43 na agenda da rede). */
@@ -26,7 +27,7 @@ const TEXTO_DO_PASSOU = 'passou do horário sem chegada nem conclusão: marque a
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
 
-interface Branch      { id: string; name: string; slug: string; /** O horário de funcionamento (A26); sem ele, a grade não sombreia. */ horario?: Horario | null }
+interface Branch      { id: string; name: string; slug: string; /** O horário de funcionamento (A26); sem ele, a grade não sombreia. */ horario?: Horario | null; /** O fuso da unidade (F62): a coluna dela desenha no relógio dela. */ fuso?: string }
 interface Appointment {
   id:              string
   /** A profissional (A25: no agendamento dela, "Marcar chegada e iniciar"). */
@@ -112,7 +113,7 @@ function desmarcado(a: { status: string }): boolean {
 /** "Chegou 9:42" no bloco — o check-in (2026-10-21). */
 function chegouEm(iso: string | null | undefined): string {
   if (!iso) return 'Chegou'
-  return `Chegou ${new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}`
+  return `Chegou ${new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fusoLocal() })}`
 }
 
 const STATUS_STYLE: Record<string, { bg: string; border: string; text: string; label: string }> = {
@@ -196,7 +197,10 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
   onHorarioVazio: ((branchId: string, quando: string) => void) | null
 }) {
   // A21 da 9ª (sobra da F43): o relógio do navegador, para marcar o que passou do horário.
-  const agora = useAgora()
+  // A grade é "de parede" (F62): o agora vai ao relógio de cada unidade.
+  const agoraReal = useAgora()
+  const fusoDaTela = useFuso()
+  const agoraNa = (f?: string) => agoraReal == null ? null : naParede(new Date(agoraReal), f ?? fusoDaTela).getTime()
   const { inicio, fim } = estenderJanela(janela, appointments.map(a => ({ start: a.scheduled_at, durationMin: apptDuration(a) })))
   const HOURS  = Array.from({ length: fim - inicio }, (_, i) => i + inicio)
   const GRID_H = HOURS.length * HOUR_H
@@ -356,8 +360,8 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                   const h   = apptHeight(a)
                   const w   = `calc(${100 / totalCols}% - 6px)`
                   const l   = `calc(${(col / totalCols) * 100}% + 3px)`
-                  const encaixe = b.horario !== undefined && !desmarcado(a) && foraDoHorarioDaUnidade(b.horario, a.scheduled_at, apptDuration(a))
-                  const passou  = passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agora)
+                  const encaixe = b.horario !== undefined && !desmarcado(a) && foraDoHorarioDaUnidade(b.horario, a.scheduled_at, apptDuration(a), fusoLocal())
+                  const passou  = passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agoraNa(b.fuso))
 
                   return (
                     // Clicar abre a folha do agendamento — confirmar, dar
@@ -402,7 +406,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                       <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {desmarcado(a)
                           ? <>{st.label}{a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}</>
-                          : <>{a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.status === 'COMPLETED' && textoDoConcluido(a.scheduled_at, a.completed_at) && <strong>{textoDoConcluido(a.scheduled_at, a.completed_at)} · </strong>}{a.users?.name ?? '—'}
+                          : <>{a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.status === 'COMPLETED' && textoDoConcluido(a.scheduled_at, a.completed_at, fusoLocal()) && <strong>{textoDoConcluido(a.scheduled_at, a.completed_at, fusoLocal())} · </strong>}{a.users?.name ?? '—'}
                             {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}> · passou do horário</span>}</>}
                       </div>
                     </button>
@@ -430,7 +434,10 @@ function WeekGrid({
   bloqueios?:  (BloqueioDaAgenda & { rotulo: string })[]
   podeDesfazer?: boolean
 }) {
-  const agora = useAgora()
+  // A grade é "de parede" (F62): o agora vai ao relógio da unidade de cada agendamento.
+  const agoraReal = useAgora()
+  const fusoDaTela = useFuso()
+  const agoraNa = (branchId: string) => agoraReal == null ? null : naParede(new Date(agoraReal), branches.find(b => b.id === branchId)?.fuso ?? fusoDaTela).getTime()
   const days = Array.from({ length: 7 }, (_, i) => addDays(mondayStr, i))
 
   const DAY_NAMES = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
@@ -442,7 +449,7 @@ function WeekGrid({
         {/* Cabeçalho dos dias */}
         {days.map((d, i) => {
           const isToday = d === todayStr
-          const dayAppts = appointments.filter(a => dayKeyTZ(a.scheduled_at) === d)
+          const dayAppts = appointments.filter(a => dayKeyTZ(a.scheduled_at, fusoLocal()) === d)
           return (
             <div
               key={d}
@@ -478,7 +485,7 @@ function WeekGrid({
 
         {/* Células com agendamentos */}
         {days.map((d, i) => {
-          const dayAppts = appointments.filter(a => dayKeyTZ(a.scheduled_at) === d)
+          const dayAppts = appointments.filter(a => dayKeyTZ(a.scheduled_at, fusoLocal()) === d)
           const isToday  = d === todayStr
 
           return (
@@ -506,12 +513,12 @@ function WeekGrid({
                 <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '8px 4px' }}>—</div>
               ) : dayAppts.map(a => {
                 const st  = STATUS_STYLE[a.status] ?? STATUS_STYLE.SCHEDULED!
-                const t   = new Date(a.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+                const t   = new Date(a.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fusoLocal() })
                 return (
                   <div
                     key={a.id}
                     data-agendamento={a.id}
-                    title={`${t} · ${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agora) ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
+                    title={`${t} · ${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}${a.cancellation_reason ? ` · ${a.cancellation_reason}` : ''}${passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agoraNa(a.branch_id)) ? ` · ${TEXTO_DO_PASSOU}` : ''}`}
                     style={{
                       opacity:      desmarcado(a) ? 0.6 : 1,
                       background:   st.bg,
@@ -536,7 +543,7 @@ function WeekGrid({
                     </div>
                     <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                       {a.status === 'ARRIVED' && <strong>{chegouEm(a.arrived_at)} · </strong>}{a.users?.name ?? '—'}
-                      {passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agora) && (
+                      {passouSemFechar({ status: a.status, start: a.scheduled_at, durationMin: apptDuration(a) }, agoraNa(a.branch_id)) && (
                         <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}> · passou do horário</span>
                       )}
                     </div>
@@ -583,6 +590,27 @@ export function AdminAgendaView({
 
   const mondayStr = getMondayOf(selectedDate)
 
+  // F62: cada unidade no relógio DELA. A grade desenha "de parede" (`naParede`:
+  // os campos locais são o relógio da unidade do agendamento), e só o que cai
+  // nos dias da tela — com unidades em fusos diferentes, a página busca 3 h a
+  // mais de cada lado.
+  const fusoDaTela = useFuso()
+  const fusoDe = (branchId: string | null | undefined) => branches.find(b => b.id === branchId)?.fuso ?? fusoDaTela
+  const diasDaTela = useMemo(() => new Set(view === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(mondayStr, i)) : [selectedDate]), [view, mondayStr, selectedDate])
+  const naGrade = useMemo(() => appointments.map(a => {
+    const f = branches.find(b => b.id === a.branch_id)?.fuso ?? fusoDaTela
+    return {
+      ...a, scheduled_at: isoNaParede(a.scheduled_at, f)!, started_at: isoNaParede(a.started_at, f),
+      completed_at: isoNaParede(a.completed_at, f), arrived_at: isoNaParede(a.arrived_at, f),
+    }
+  }).filter(a => diasDaTela.has(dayKeyTZ(a.scheduled_at, fusoLocal()))), [appointments, branches, fusoDaTela, diasDaTela])
+  const bloqueiosNaGrade = useMemo(() => bloqueios.map(bl => {
+    const f = branches.find(b => b.id === bl.branchId)?.fuso ?? fusoDaTela
+    return { ...bl, inicio: isoNaParede(bl.inicio, f)!, fim: isoNaParede(bl.fim, f)! }
+  }), [bloqueios, branches, fusoDaTela])
+  // A janela recebe o agendamento de verdade (o instante), não o da grade.
+  const abrir = (a: Appointment) => setSelecionado(appointments.find(x => x.id === a.id) ?? a)
+
   // O recorte por unidade acompanha a navegação de data e de modo: quem veio do
   // dashboard olhando uma unidade não deve perdê-la ao virar o dia.
   const navigate = (dateStr: string, v: AgendaView = view, unidade: string = unidadeId) => {
@@ -613,7 +641,7 @@ export function AdminAgendaView({
       })()
 
   // Os números do topo vêm de lib/metrics (D13): o cancelado e a falta separados.
-  const conta = contagemDaAgenda(appointments)
+  const conta = contagemDaAgenda(naGrade)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -734,12 +762,12 @@ export function AdminAgendaView({
       {view === 'day' ? (
         <DayGrid
           branches={branches}
-          appointments={appointments}
+          appointments={naGrade}
           janela={janela}
           dia={selectedDate}
-          onSelecionar={setSelecionado}
+          onSelecionar={abrir}
           onHorarioVazio={podeAgendar ? (branchId, quando) => setAgendando({ branchId, quando }) : null}
-          bloqueios={bloqueios}
+          bloqueios={bloqueiosNaGrade}
           podeDesfazer={podeAgendar}
         />
       ) : (
@@ -747,9 +775,9 @@ export function AdminAgendaView({
           mondayStr={mondayStr}
           todayStr={todayStr}
           branches={branches}
-          appointments={appointments}
+          appointments={naGrade}
           onDayClick={d => navigate(d, 'day')}
-          bloqueios={bloqueios}
+          bloqueios={bloqueiosNaGrade}
           podeDesfazer={podeAgendar}
         />
       )}
@@ -762,6 +790,8 @@ export function AdminAgendaView({
       {/* Folha do agendamento — a mesma da unidade. O slug sai da unidade do
           proprio agendamento, que a grade ja conhece. */}
       {selecionado && (
+        // A janela no relógio da unidade do agendamento (F62).
+        <FusoProvider fuso={fusoDe(selecionado.branch_id)}>
         <AppointmentSheet
           appointment={{
             id:               selecionado.id,
@@ -790,6 +820,7 @@ export function AdminAgendaView({
           meuId={meuId}
           onClose={() => { setSelecionado(null); router.refresh() }}
         />
+        </FusoProvider>
       )}
 
       {agendando && (

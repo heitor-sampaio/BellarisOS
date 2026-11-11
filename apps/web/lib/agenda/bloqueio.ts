@@ -28,33 +28,36 @@ export function bloqueioBate(b: Periodo, ini: number, fim: number): boolean {
   return ini < new Date(b.fim).getTime() && fim > new Date(b.inicio).getTime()
 }
 
-const hh = (d: Date) => { const p = partsInTZ(d); return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}` }
-const ddmm = (d: Date) => { const [, m, dia] = dayKeyTZ(d).split('-'); return `${dia}/${m}` }
-
-/** "das 12:00 às 13:00" no mesmo dia (Brasília); senão "de 10/11 às 08:00 a 20/11 às 20:00". */
-export function trechoDoBloqueio(b: Periodo): string {
+/**
+ * "das 12:00 às 13:00" no mesmo dia; senão "de 10/11 às 08:00 a 20/11 às 20:00".
+ * No relógio da unidade (F62); sem o fuso, o de Brasília.
+ */
+export function trechoDoBloqueio(b: Periodo, fuso?: string): string {
+  const hh = (d: Date) => { const p = partsInTZ(d, fuso); return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}` }
+  const dayKeyNoFuso = (d: Date) => dayKeyTZ(d, fuso)
+  const ddmm = (d: Date) => { const [, m, dia] = dayKeyNoFuso(d).split('-'); return `${dia}/${m}` }
   const ini = new Date(b.inicio), fim = new Date(b.fim)
   // O fim à meia-noite do dia seguinte ainda é "do mesmo dia" ("das 08:00 às 24:00").
   const fimNoDia = new Date(fim.getTime() - 1)
   // O "Dia inteiro" (A17 da 9ª: dizia "das 00:00 às 24:00"): de meia-noite a meia-noite.
   if (hh(ini) === '00:00' && hh(fim) === '00:00' && fim.getTime() > ini.getTime()) {
-    return dayKeyTZ(ini) === dayKeyTZ(fimNoDia)
+    return dayKeyNoFuso(ini) === dayKeyNoFuso(fimNoDia)
       ? `o dia ${ddmm(ini)} inteiro`
       : `de ${ddmm(ini)} a ${ddmm(fimNoDia)}, os dias inteiros`
   }
-  if (dayKeyTZ(ini) === dayKeyTZ(fimNoDia)) {
+  if (dayKeyNoFuso(ini) === dayKeyNoFuso(fimNoDia)) {
     const ate = hh(fim) === '00:00' && fim.getTime() > ini.getTime() ? '24:00' : hh(fim)
     return `das ${hh(ini)} às ${ate}`
   }
   return `de ${ddmm(ini)} às ${hh(ini)} a ${ddmm(fim)} às ${hh(fim)}`
 }
 
-export function avisoDoBloqueioDaProfissional(nome: string, b: Periodo & { motivo: string }): string {
-  return `Horário bloqueado para ${nome} ${trechoDoBloqueio(b)} (${b.motivo}). O encaixe é permitido.`
+export function avisoDoBloqueioDaProfissional(nome: string, b: Periodo & { motivo: string }, fuso?: string): string {
+  return `Horário bloqueado para ${nome} ${trechoDoBloqueio(b, fuso)} (${b.motivo}). O encaixe é permitido.`
 }
 
-export function avisoDoBloqueioDaSala(nome: string, b: Periodo & { motivo: string }): string {
-  return `${nome} está bloqueada ${trechoDoBloqueio(b)} (${b.motivo}). O encaixe é permitido.`
+export function avisoDoBloqueioDaSala(nome: string, b: Periodo & { motivo: string }, fuso?: string): string {
+  return `${nome} está bloqueada ${trechoDoBloqueio(b, fuso)} (${b.motivo}). O encaixe é permitido.`
 }
 
 /**

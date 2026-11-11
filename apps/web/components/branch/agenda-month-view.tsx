@@ -6,6 +6,8 @@ import {
   isSameDay, isSameMonth, format,
 } from 'date-fns'
 import type { SeloDaFicha as SeloDaFichaEstado } from '@/lib/pre-atendimento/selos'
+import { naParede } from '@/lib/datetime'
+import { useFuso } from '@/components/shared/fuso'
 
 export interface CalendarEvent {
   id:              string
@@ -78,7 +80,8 @@ function barColor(count: number): string {
 
 export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
   const days  = getMonthGrid(currentDate)
-  const today = new Date()
+  const fuso = useFuso()
+  const today = naParede(new Date(), fuso)
 
   const counts = days.map(d =>
     events.filter(e => !['CANCELLED', 'NO_SHOW'].includes(e.status) && isSameDay(new Date(e.start), d)).length,

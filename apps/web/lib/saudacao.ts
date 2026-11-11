@@ -11,8 +11,9 @@ const TITULOS = /^(dr|dra|sr|sra|srta|prof|profa)\.?$/i
  * De madrugada (00:00–04:59) a saudação é neutra, "Olá" (A55 da 7ª simulação,
  * 2026-11-05: "Boa noite" às 04h30 numa clínica 24 h); o "Bom dia" começa às 05:00.
  */
-export function saudacao(agora: Date = new Date()): 'Bom dia' | 'Boa tarde' | 'Boa noite' | 'Olá' {
-  const hora = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }).format(agora)) % 24
+export function saudacao(agora: Date = new Date(), fuso = 'America/Sao_Paulo'): 'Bom dia' | 'Boa tarde' | 'Boa noite' | 'Olá' {
+  // No fuso da unidade (F62): o "Bom dia" de Manaus começa às 05:00 de Manaus.
+  const hora = Number(new Intl.DateTimeFormat('en-GB', { timeZone: fuso, hour: '2-digit', hour12: false }).format(agora)) % 24
   if (hora < 5) return 'Olá'
   if (hora >= 5 && hora < 12) return 'Bom dia'
   if (hora >= 12 && hora < 18) return 'Boa tarde'

@@ -172,3 +172,38 @@ export function noFuso(tz: string = BUSINESS_TZ) {
     hora:         (d: Date | string) => horaNoFuso(d, tz),
   }
 }
+
+// ─── A grade do navegador ────────────────────────────────────────────────────
+
+/**
+ * Um Date cujos campos LOCAIS (getHours, format do date-fns, isSameDay) são o
+ * relógio de parede do fuso — a grade da agenda desenha no relógio do
+ * navegador, e assim ela desenha no da unidade em qualquer navegador (F62).
+ * Só para desenhar e comparar dias: o instante verdadeiro volta por `daParede`.
+ */
+export function naParede(instante: Date | string, tz: string = BUSINESS_TZ): Date {
+  const d = typeof instante === 'string' ? new Date(instante) : instante
+  if (Number.isNaN(d.getTime())) return new Date(NaN)
+  const p = partsInTZ(d, tz)
+  return new Date(p.year, p.month - 1, p.day, p.hour, p.minute, p.second, d.getMilliseconds())
+}
+
+/** O instante de um Date "de parede" (`naParede`) no fuso. */
+export function daParede(parede: Date, tz: string = BUSINESS_TZ): Date {
+  if (Number.isNaN(parede.getTime())) return new Date(NaN)
+  return zonedToUtc(parede.getFullYear(), parede.getMonth() + 1, parede.getDate(),
+    parede.getHours(), parede.getMinutes(), parede.getSeconds(), parede.getMilliseconds(), tz)
+}
+
+/** O ISO "de parede": o mesmo que `naParede`, para os campos que a grade lê como texto. */
+export const isoNaParede = (iso: string | null | undefined, tz: string = BUSINESS_TZ): string | null =>
+  iso ? naParede(iso, tz).toISOString() : (iso ?? null)
+
+/**
+ * O fuso do relógio LOCAL (o do navegador; no servidor, o do processo). Na
+ * grade "de parede" (`naParede`), é nele que as horas já estão no relógio da
+ * unidade — quem formata ali com um fuso explícito usa este.
+ */
+export function fusoLocal(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || BUSINESS_TZ
+}

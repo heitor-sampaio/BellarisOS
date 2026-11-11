@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation'
 import { CalendarClock, XCircle, MessageCircle, Phone } from 'lucide-react'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 import { limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
+import { useFuso } from '@/components/shared/fuso'
+import { instanteNoFuso } from '@/lib/datetime'
 import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar } from '@/actions/portal-agendamentos'
 
-const diaNoFuso = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(ms))
-const diaDeHoje = () => diaNoFuso(Date.now())
-const diaDeAmanha = () => diaNoFuso(Date.now() + 86_400_000)
+/** O dia no relógio da unidade (F62). */
+const diaNoFuso = (ms: number, fuso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(new Date(ms))
+const diaDeHoje = (fuso: string) => diaNoFuso(Date.now(), fuso)
+const diaDeAmanha = (fuso: string) => diaNoFuso(Date.now() + 86_400_000, fuso)
 /** "quinta-feira, 13/11" — o dia escolhido (AAAA-MM-DD), pelo meio-dia de Brasília. */
-const diaPorExtenso = (d: string) => new Date(`${d}T12:00:00-03:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+const diaPorExtenso = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'UTC' })
 
 /**
  * Cancelar ou remarcar pelo portal, até o prazo da rede (2026-10-21). Dentro
@@ -37,10 +40,12 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   telefone:      string | null
 }) {
   const router = useRouter()
+  // F62: o dia e a hora são os do relógio da UNIDADE.
+  const fuso = useFuso()
   const [abertoEm] = useState(() => Date.now())
   const podeAlterar = new Date(scheduledAt).getTime() - abertoEm >= prazoHoras * 3600_000
   // O dia e a hora em que o prazo acaba (J-61): era só "até 24 horas antes".
-  const limite = limiteParaAlterar(scheduledAt, prazoHoras)
+  const limite = limiteParaAlterar(scheduledAt, prazoHoras, fuso)
   const [modo, setModo] = useState<'nada' | 'remarcar' | 'cancelar'>('nada')
   const [dia, setDia] = useState('')
   const [slots, setSlots] = useState<string[] | null>(null)
@@ -68,7 +73,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   }, [chaveDoHorario, dia, hora, appointmentId])
   // A57 da 11ª: o horário novo dentro do prazo do app — depois de remarcar, só a clínica muda.
   const novoDentroDoPrazo = !!dia && !!hora && prazoHoras > 0
-    && new Date(`${dia}T${hora}:00-03:00`).getTime() - abertoEm < prazoHoras * 3_600_000
+    && instanteNoFuso(dia, hora, fuso).getTime() - abertoEm < prazoHoras * 3_600_000
 
   if (!podeAlterar) {
     // A53 da 7ª simulação: a regra do prazo fica; a saída diz o prazo, liga e
@@ -115,7 +120,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     if (!dia || !hora) return
     setErro(null)
     iniciar(async () => {
-      const r = await remarcarPelaCliente(appointmentId, new Date(`${dia}T${hora}:00-03:00`).toISOString(), semPreferencia)
+      const r = await remarcarPelaCliente(appointmentId, instanteNoFuso(dia, hora, fuso).toISOString(), semPreferencia)
       if ('error' in r) { setErro(r.error); return }
       // A51 da 12ª: o remarcado diz com quem ficou e quando (a Sabrina passou da Eva à Fernanda calada).
       setFeito(`Agendamento remarcado${r.quemAtende ? `: com ${r.quemAtende}` : ''}, ${diaPorExtenso(dia)} às ${hora}.`); setModo('nada'); router.refresh()
@@ -175,8 +180,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
             <input type="date" className="field" value={dia} onChange={e => escolherDia(e.target.value)} />
           </label>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" className={dia === diaDeHoje() ? 'chip-filtro is-ativo' : 'chip-filtro'} onClick={() => escolherDia(diaDeHoje())}>Hoje</button>
-            <button type="button" className={dia === diaDeAmanha() ? 'chip-filtro is-ativo' : 'chip-filtro'} onClick={() => escolherDia(diaDeAmanha())}>Amanhã</button>
+            <button type="button" className={dia === diaDeHoje(fuso) ? 'chip-filtro is-ativo' : 'chip-filtro'} onClick={() => escolherDia(diaDeHoje(fuso))}>Hoje</button>
+            <button type="button" className={dia === diaDeAmanha(fuso) ? 'chip-filtro is-ativo' : 'chip-filtro'} onClick={() => escolherDia(diaDeAmanha(fuso))}>Amanhã</button>
           </div>
           {slots && slots.length === 0 && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum horário livre neste dia.</p>

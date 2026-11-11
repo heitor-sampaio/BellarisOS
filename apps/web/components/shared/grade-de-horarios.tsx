@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Check } from 'lucide-react'
 import type { Horario } from '@/lib/agenda/horario'
 import { gradeDoCheckout, aPartirDeAgora } from '@/lib/checkout/grade-de-horarios'
+import { useFuso } from '@/components/shared/fuso'
 
 /**
  * A grade de horários de quem agenda pelo checkout do plano e pelas sessões
@@ -16,7 +17,7 @@ import { gradeDoCheckout, aPartirDeAgora } from '@/lib/checkout/grade-de-horario
  * simulação: de madrugada, oferecia 00:00–04:00).
  */
 export function GradeDeHorarios({
-  data, horarioDaUnidade, horarioDoProfissional, nomeDoProfissional, ocupado, selecionado, onEscolher, carregando, semOutroHorario = false,
+  data, horarioDaUnidade, horarioDoProfissional, nomeDoProfissional, ocupado, selecionado, onEscolher, carregando, semOutroHorario = false, fuso: fusoDado,
 }: {
   data:                  string
   horarioDaUnidade:      Horario | null
@@ -32,9 +33,12 @@ export function GradeDeHorarios({
   carregando:            boolean
   /** Sem o "Outro horário (encaixe)": o modal Agendar já tem o campo de data e hora (A58 da 8ª). */
   semOutroHorario?:      boolean
+  /** O fuso da unidade (F62); sem ele, o da tela (`useFuso`). */
+  fuso?:                 string
 }) {
+  const fusoDaTela = useFuso()
   const [agora] = useState(() => new Date())
-  const limite = aPartirDeAgora(data, agora)
+  const limite = aPartirDeAgora(data, agora, fusoDado ?? fusoDaTela)
   const [erroDoEncaixe, setErroDoEncaixe] = useState<string | null>(null)
   const grade = gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data, limite)
   const jaPassou = !!limite && grade.length === 0 && gradeDoCheckout(horarioDaUnidade, horarioDoProfissional, data).length > 0

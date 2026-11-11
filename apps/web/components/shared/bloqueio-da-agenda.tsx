@@ -8,6 +8,8 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { SegSelect } from '@/components/shared/seg-select'
 import { bloquearHorario, desfazerBloqueio } from '@/actions/agenda-bloqueios'
 import { trechoDoBloqueio, recusaDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
+import { useFuso } from '@/components/shared/fuso'
+import { naParede, daParede, fusoLocal } from '@/lib/datetime'
 
 /**
  * O bloqueio pontual da agenda (decisão 3 do Heitor, 7ª simulação): o botão
@@ -21,7 +23,10 @@ import { trechoDoBloqueio, recusaDoBloqueio, type BloqueioDaAgenda } from '@/lib
 
 interface Alvo { id: string; name: string }
 
-/** "AAAA-MM-DDTHH:MM" no relógio de quem vê, para o campo datetime-local. */
+/**
+ * "AAAA-MM-DDTHH:MM" de um Date "de parede" (F62: os campos locais são o
+ * relógio da unidade), para o campo datetime-local.
+ */
 function local(d: Date) {
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
@@ -51,12 +56,15 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
   branchId: string; profissionais: Alvo[]; salas: Alvo[]; soEu: Alvo | null; dia: Date; onFechar: () => void
 }) {
   const router = useRouter()
+  // O dia aberto e os campos estão no relógio da UNIDADE (F62); o instante sai por `daParede`.
+  const fuso = useFuso()
+  const instante = (parede: string) => daParede(new Date(parede), fuso).toISOString()
   const [para, setPara] = useState<'PROFISSIONAL' | 'SALA'>('PROFISSIONAL')
   const [profId, setProfId] = useState(soEu?.id ?? '')
   const [salaId, setSalaId] = useState('')
   // O padrão: a próxima hora cheia do dia aberto (hoje, a partir de agora), por uma hora.
   const [padrao] = useState(() => {
-    const agora = new Date()
+    const agora = naParede(new Date(), fuso)
     const base = new Date(dia)
     if (base.toDateString() === agora.toDateString()) base.setHours(agora.getHours() + 1, 0, 0, 0)
     else base.setHours(12, 0, 0, 0)
@@ -85,8 +93,8 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
     if (!alvoId) { setErro(para === 'SALA' ? 'Escolha a sala.' : 'Escolha a profissional.'); return }
     const depoisDoUltimo = (() => { const d = new Date(`${ateODia}T00:00`); d.setDate(d.getDate() + 1); return d })()
     const e = diaInteiro
-      ? { inicio: new Date(`${doDia}T00:00`).toISOString(), fim: depoisDoUltimo.toISOString(), motivo }
-      : { inicio: new Date(inicio).toISOString(), fim: new Date(fim).toISOString(), motivo }
+      ? { inicio: instante(`${doDia}T00:00`), fim: daParede(depoisDoUltimo, fuso).toISOString(), motivo }
+      : { inicio: instante(inicio), fim: instante(fim), motivo }
     const recusa = recusaDoBloqueio(e)
     if (recusa) { setErro(recusa); return }
     iniciar(async () => {
@@ -221,7 +229,7 @@ export function BlocoDoBloqueio({ bloqueio, top, height, rotulo, podeDesfazer, e
       }} />
       {/* O rótulo é um irmão, por cima dos cartões: o agendamento que começa
           junto com o bloqueio o cobriria. */}
-      <button type="button" data-rotulo-do-bloqueio={bloqueio.id} title={`${rotulo} · ${trechoDoBloqueio(bloqueio)}`}
+      <button type="button" data-rotulo-do-bloqueio={bloqueio.id} title={`${rotulo} · ${trechoDoBloqueio(bloqueio, fusoLocal())}`}
         onClick={e => { e.stopPropagation(); setAberto(true) }}
         style={{
           position: 'absolute', top: top + 2, right: 4, maxWidth: `calc(100% - ${esquerda + 8}px)`, zIndex: 3,
@@ -306,7 +314,7 @@ export function JanelaDoBloqueio({ bloqueio, titulo, podeDesfazer, onFechar }: {
         </div>
         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{titulo}</p>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
-          {trechoDoBloqueio(bloqueio).replace(/^d/, 'D')} · Motivo: {bloqueio.motivo}
+          {trechoDoBloqueio(bloqueio, fusoLocal()).replace(/^d/, 'D')} · Motivo: {bloqueio.motivo}
         </p>
         {bloqueio.criadoPorNome && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Bloqueado por {bloqueio.criadoPorNome}.</p>}
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useActionState, useEffect } from 'react'
+import { useState, useActionState, useCallback, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { X, CheckCircle2, Clock, AlertCircle, AlertTriangle, Ban, Play, CalendarClock, DoorOpen, HandCoins } from 'lucide-react'
 import Link from 'next/link'
@@ -16,6 +16,8 @@ import { PreAtendimentoDoAgendamento } from './pre-atendimento-do-agendamento'
 import { DocumentosDaJanela } from './documentos-da-janela'
 import { MudarDeUnidade, TrocarProfissional, UsarOQueJaFoiPago } from './janela-do-agendamento-acoes'
 import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
+import { useFuso } from '@/components/shared/fuso'
+import { naParede, daParede } from '@/lib/datetime'
 
 interface AppointmentEvent {
   id:               string
@@ -126,7 +128,10 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
     undefined,
   )
 
-  const dt = new Date(appointment.start)
+  // No relógio da UNIDADE (F62): `dt` é "de parede" (os campos locais são o relógio dela).
+  const fuso = useFuso()
+  const dt = naParede(appointment.start, fuso)
+  const instanteDe = useCallback((parede: string) => daParede(new Date(parede), fuso).toISOString(), [fuso])
   const dateStr = dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
   const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
@@ -150,7 +155,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
     if (!remarcando || !novoDT) return
     let vivo = true
     const t = setTimeout(() => {
-      avisosDoRemarcar(appointment.id, new Date(novoDT).toISOString())
+      avisosDoRemarcar(appointment.id, instanteDe(novoDT))
         .then(r => {
           if (!vivo) return
           // O choque do horário de AGORA é o próprio agendamento: só conta o do novo.
@@ -161,7 +166,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
         .catch(() => { if (vivo) setAvisosLidos({ de: novoDT, itens: [] }) })
     }, 250)
     return () => { vivo = false; clearTimeout(t) }
-  }, [remarcando, novoDT, inicioLocal, appointment.id])
+  }, [remarcando, novoDT, inicioLocal, appointment.id, instanteDe])
 
   // O que dizer quando dá certo (2026-10-21): a janela fechava em silêncio.
   const AVISO: Partial<Record<Parameters<typeof updateAppointmentStatus>[1], string>> = {
@@ -220,7 +225,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   const jaComecou = new Date(appointment.start).getTime() <= abertaEm
   // A chegada é do dia do agendamento (A18): a trava mora no servidor, e a
   // janela não oferece o que ele recusaria.
-  const ehODia = ehODiaDoAgendamento(appointment.start, new Date(abertaEm))
+  const ehODia = ehODiaDoAgendamento(appointment.start, new Date(abertaEm), fuso)
 
   // Os gestos de chegada e início, e UM em destaque — o próximo passo (A5 da
   // 10ª: eram três quase iguais, dois em rosé). No agendamento DELA, o gesto
@@ -292,8 +297,8 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             <Clock size={14} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
             <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
               <strong>{timeStr}</strong> — {dateStr}
-              {appointment.status === 'COMPLETED' && textoDoConcluido(appointment.start, appointment.completedAt) && (
-                <span style={{ color: 'var(--text-muted)' }}> · {textoDoConcluido(appointment.start, appointment.completedAt)}</span>
+              {appointment.status === 'COMPLETED' && textoDoConcluido(appointment.start, appointment.completedAt, fuso) && (
+                <span style={{ color: 'var(--text-muted)' }}> · {textoDoConcluido(appointment.start, appointment.completedAt, fuso)}</span>
               )}
             </span>
           </div>
@@ -419,7 +424,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               <form action={remarcaAction} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--bg-app)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>
                 <input type="hidden" name="_appointmentId" value={appointment.id} />
                 <input type="hidden" name="_slug"          value={slug} />
-                <input type="hidden" name="scheduled_at"   value={novoDT ? new Date(novoDT).toISOString() : ''} />
+                <input type="hidden" name="scheduled_at"   value={novoDT ? instanteDe(novoDT) : ''} />
                 <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>
                   Novo horário
                 </label>
@@ -599,7 +604,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                 <li key={i} style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                   <strong style={{ color: 'var(--text)' }}>{h.oQue}</strong>
                   {h.quem && <> · {h.quem}</>}
-                  {' · '}{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(h.quando))}
+                  {' · '}{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: fuso }).format(new Date(h.quando))}
                 </li>
               ))}
             </ul>

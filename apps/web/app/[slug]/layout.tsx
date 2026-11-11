@@ -18,6 +18,8 @@ import { ENDERECOS_RESERVADOS } from '@/lib/unidades/endereco'
 import { comAviso } from '@/lib/aviso-da-url'
 import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
 import { saudacao } from '@/lib/saudacao'
+import { FusoProvider } from '@/components/shared/fuso'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 export default async function BranchLayout({
   children,
@@ -57,7 +59,8 @@ export default async function BranchLayout({
     // não a tela de "sem acesso" — que fala de cargo e de rede (2026-10-21).
     const caminho = (await caminhoDaRequisicao()).split(' ')[1]?.split('?')[0] ?? ''
     if (caminho.startsWith(`/${slug}/`) && !caminho.startsWith(`/${slug}/cliente`)) redirect(`/${slug}/cliente`)
-    return <>{children}</>
+    // O app da cliente no fuso da unidade do endereço (F62).
+    return <FusoProvider fuso={await fusoDaUnidade(clientData!.tenant_id as string, unidade.id as string)}>{children}</FusoProvider>
   }
 
   // Usuário operacional (não-cliente). O acesso a cada módulo é gateado por
@@ -109,8 +112,12 @@ export default async function BranchLayout({
   // A clínica de uma unidade não fala "rede" (D-19, F8): a régua vai às telas do navegador.
   const umaUnidade = ctx.tenantId ? await redeTemUmaUnidade(ctx.tenantId) : true
 
+  // As datas e horas da tela no fuso da unidade (F62).
+  const fuso = await fusoDaUnidade(ctx.tenantId, branch.id)
+
   return (
     <UmaUnidadeProvider valor={umaUnidade}>
+    <FusoProvider fuso={fuso}>
     <SidebarProvider>
       <Suspense fallback={null}><AvisoDaUrl /></Suspense>
       <BranchSidebar
@@ -123,7 +130,7 @@ export default async function BranchLayout({
         allBranches={allBranches}
         umaUnidade={umaUnidade}
       />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} daRede={ctx.branchId === null} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao()} />
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} daRede={ctx.branchId === null} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
         marginTop:     'calc(var(--topbar-h) + env(safe-area-inset-top, 0px))',
@@ -143,6 +150,7 @@ export default async function BranchLayout({
         <CopilotForaDoPlano emTeste={await redeEmTeste(ctx.tenantId!)} assinaturaHref="/admin/settings?tab=assinatura" />
       )}
     </SidebarProvider>
+    </FusoProvider>
     </UmaUnidadeProvider>
   )
 }

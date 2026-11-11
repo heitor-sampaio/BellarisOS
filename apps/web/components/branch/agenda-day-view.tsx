@@ -12,6 +12,8 @@ import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type 
 import { bloqueioNoDia, trechoDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, JanelaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
 import { useAgora, passouSemFechar } from '@/lib/use-agora'
+import { useFuso } from '@/components/shared/fuso'
+import { naParede, fusoLocal } from '@/lib/datetime'
 
 /** `foraDoAtende`: tem agendamento aqui e não atende mais aqui (D3 da 9ª) — a coluna fica, marcada. */
 interface Professional { id: string; name: string; foraDoAtende?: boolean }
@@ -112,7 +114,10 @@ function ProfColumn({
 }: ColProps) {
   const colRef = useRef<HTMLDivElement>(null)
   const g = useContext(GradeCtx)
-  const agora = useAgora()
+  // A grade é "de parede" (F62): o agora também, no relógio da unidade.
+  const fuso = useFuso()
+  const agoraReal = useAgora()
+  const agora = agoraReal == null ? null : naParede(new Date(agoraReal), fuso).getTime()
   // O fora do horário dela, sombreado (J-30). O clique continua marcando ali:
   // o encaixe é permitido (§9.1) — o modal avisa.
   const foras = horarioDoDia ? forasDoHorario(horarioDoDia, g.START_HOUR * 60, g.END_HOUR * 60) : []
@@ -287,7 +292,7 @@ function ProfColumn({
               <SeloDoMenor menor={ev.menor} />
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
               {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt), 'HH:mm')}` : ''}</span>}
-              {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· {textoDoConcluido(ev.start, ev.completedAt) ?? 'concluído'}</span>}
+              {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· {textoDoConcluido(ev.start, ev.completedAt, fusoLocal()) ?? 'concluído'}</span>}
               {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}>· passou do horário</span>}
             </div>
             {/* O bloco curto (30 min): o procedimento e a sala numa segunda linha (A23 da 6ª
@@ -318,6 +323,7 @@ function ProfColumn({
 
 export function AgendaDayView({ currentDate, events, professionals, canWrite, onEventClick, onSlotClick, onDrop, janela, aberturaDoDia, horarioDaUnidade, horariosDosProfissionais, bloqueios = [], salas = [] }: Props) {
   const [draggingId,   setDraggingId]   = useState<string | null>(null)
+  const fuso = useFuso()
   const [salaAberta,   setSalaAberta]   = useState<BloqueioDaAgenda | null>(null)
   // As salas bloqueadas que tocam o dia: uma linha acima da grade (a grade é
   // por profissional, não por sala).
@@ -336,7 +342,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   // primeiro atendimento ou na abertura da unidade, o que vier antes (D8,
   // 2026-10-27: sem isso a grade herdava a rolagem do dia anterior e a manhã
   // sumia). Roda a cada troca de dia, e não a cada atualização dos eventos.
-  const ehHoje = isSameDay(currentDate, new Date())
+  const ehHoje = isSameDay(currentDate, naParede(new Date(), fuso))
   const diaChave = format(currentDate, 'yyyy-MM-dd')
   const primeiroEmMin = todayEvents.length
     ? Math.min(...todayEvents.map(e => { const d = new Date(e.start); return d.getHours() * 60 + d.getMinutes() }))
@@ -344,7 +350,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
   useEffect(() => {
     if (!scrollRef.current) return
     scrollRef.current.scrollTop = rolagemDaGrade({
-      ehHoje, horaAgora: new Date().getHours(), startHour: g.START_HOUR, hourPx: HOUR_PX,
+      ehHoje, horaAgora: naParede(new Date(), fuso).getHours(), startHour: g.START_HOUR, hourPx: HOUR_PX,
       aberturaEmMin: aberturaDoDia ?? null, primeiroEmMin,
     })
     // A grade já hidratou e rolou (F45): o clique num cartão antes disso caía
@@ -352,7 +358,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
     // agendamento" abria às 01:45 no lugar da janela do agendamento. Quem
     // precisa saber (o E2E, `cartaoNaGradeDoDia`) espera por esta marca.
     scrollRef.current.dataset.rolagem = 'pronta'
-  }, [diaChave, ehHoje, g.START_HOUR, aberturaDoDia, primeiroEmMin])
+  }, [diaChave, ehHoje, g.START_HOUR, aberturaDoDia, primeiroEmMin, fuso])
 
   // A posição na COLUNA: o retângulo dela já anda com a rolagem da grade. Somar
   // o `scrollTop` de novo (como era) jogava o horário solto para baixo — com a
@@ -399,7 +405,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
             padding: '2px 10px', borderRadius: 'var(--radius-chip-token)', border: '1px solid var(--warning-border)',
             background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', cursor: 'pointer',
           }}>
-            {nomeDaSala(b.roomId)} · {trechoDoBloqueio(b)} · {b.motivo}
+            {nomeDaSala(b.roomId)} · {trechoDoBloqueio(b, fusoLocal())} · {b.motivo}
           </button>
         ))}
       </div>

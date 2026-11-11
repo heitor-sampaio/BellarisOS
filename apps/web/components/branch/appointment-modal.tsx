@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
+import { startTransition, useActionState, useCallback, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, getSchedulingDaySlots } from '@/actions/appointments'
 import { faltaNoCadastroAoAgendar, type FaltaNoCadastroDoTermo } from '@/actions/documentos-da-janela'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
@@ -16,7 +16,8 @@ import { PerguntaJaExiste } from '@/components/shared/pergunta-ja-existe'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
-import { dayKeyTZ } from '@/lib/datetime'
+import { dayKeyTZ, naParede, daParede, instanteNoFuso } from '@/lib/datetime'
+import { useFuso } from '@/components/shared/fuso'
 import { textoDoProximoLivre } from '@/lib/agenda/proximo-livre'
 import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
@@ -112,7 +113,12 @@ export function AppointmentModal({
   // era a primeira em ordem alfabética (a Água Verde), não a que a pessoa quis.
   // Com uma só, ela; com o filtro da agenda ou o clique na coluna, a dele.
   const [unidadeId, setUnidadeId] = useState(branchId || unicaOpcao(unidades))
-  const [dados, setDados] = useState({ procedures, professionals, rooms, slug })
+  const [dados, setDados] = useState<{ procedures: typeof procedures; professionals: typeof professionals; rooms: typeof rooms; slug: string; fuso?: string }>({ procedures, professionals, rooms, slug })
+  // F62: a data e a hora do campo são as do relógio da UNIDADE (a do portal,
+  // ou a escolhida na rede); o instante sai por `daParede`.
+  const fusoDaTela = useFuso()
+  const fuso = dados.fuso ?? fusoDaTela
+  const instanteDe = useCallback((parede: string) => daParede(new Date(parede), fuso), [fuso])
   // Nasce carregando quando há unidade a carregar; cada troca liga de novo no
   // handler do seletor, e o efeito só desliga quando os dados chegam.
   const [carregandoUnidade, setCarregandoUnidade] = useState(escolheUnidade && !!unidadeId)
@@ -229,16 +235,16 @@ export function AppointmentModal({
   // "Agora", lido uma vez quando o modal abre — o render não pode ler o relógio.
   const [agora] = useState(() => Date.now())
   // O dia da tela só vale quando é DEPOIS de hoje (hoje e o passado: a partir de agora).
-  const diaDaTela = diaInicial && !defaultDate && diaInicial > dayKeyTZ(new Date(agora)) ? diaInicial : null
+  const diaDaTela = diaInicial && !defaultDate && diaInicial > dayKeyTZ(new Date(agora), fuso) ? diaInicial : null
 
   // Data/hora padrão em horário local (não UTC)
   const defaultDT = useMemo(() => {
     if (defaultDate) return defaultDate.substring(0, 16)  // já vem como local de agenda-calendar
     if (diaDaTela) return `${diaDaTela}T08:00`
-    const rounded = new Date(Math.ceil(agora / 1800000) * 1800000)
+    const rounded = naParede(new Date(Math.ceil(agora / 1800000) * 1800000), fuso)
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${rounded.getFullYear()}-${pad(rounded.getMonth()+1)}-${pad(rounded.getDate())}T${pad(rounded.getHours())}:${pad(rounded.getMinutes())}`
-  }, [defaultDate, agora, diaDaTela])
+  }, [defaultDate, agora, diaDaTela, fuso])
 
   // Controla o valor do input (exibe local) e o hidden UTC para envio
   const [localDT, setLocalDT] = useState(defaultDT)
@@ -270,7 +276,7 @@ export function AppointmentModal({
     if (!chaveDaAbertura) return
     let vivo = true
     const de = horaNaTela()
-    const instante = new Date(de)
+    const instante = instanteDe(de)
     const desde = de.length >= 16 && !Number.isNaN(instante.getTime()) ? instante.toISOString() : null
     proximoHorarioLivre(unidadeId, profId, duracaoMin, desde)
       .then(r => {
@@ -281,10 +287,10 @@ export function AppointmentModal({
       // Sem a conta, fica a hora de antes (o servidor confere ao gravar).
       .catch(() => { if (vivo) setAbertura({ chave: chaveDaAbertura, de, para: null }) })
     return () => { vivo = false }
-  }, [chaveDaAbertura, unidadeId, profId, duracaoMin])
+  }, [chaveDaAbertura, unidadeId, profId, duracaoMin, instanteDe])
   const conferindoAAbertura = !!chaveDaAbertura && abertura?.chave !== chaveDaAbertura
   const avisoDaTroca = abertura && abertura.chave === chaveDaAbertura && !horaTocada && abertura.para && localDT === abertura.para
-    ? textoDoProximoLivre(abertura.de, abertura.para, dados.professionals.find(p => p.id === profId)?.name ?? 'a profissional', dayKeyTZ(new Date(agora)))
+    ? textoDoProximoLivre(abertura.de, abertura.para, dados.professionals.find(p => p.id === profId)?.name ?? 'a profissional', dayKeyTZ(new Date(agora), fuso))
     : null
 
   // Ao mudar o defaultDate (novo clique no calendário), reseta — ajustado
@@ -296,8 +302,8 @@ export function AppointmentModal({
   }
 
   const scheduledAtUTC = useMemo(
-    () => localDT ? new Date(localDT).toISOString() : '',
-    [localDT],
+    () => localDT ? instanteDe(localDT).toISOString() : '',
+    [localDT, instanteDe],
   )
 
   // -- Sala (D5, 2026-10-30) --------------------------------------------------
@@ -447,10 +453,10 @@ export function AppointmentModal({
     && !horasDaGrade.includes(localDT.slice(11, 16)) && avisosDoMomento.length === 0
 
   const minDT = useMemo(() => {
-    const now = new Date(agora)
+    const now = naParede(new Date(agora), fuso)
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
-  }, [agora])
+  }, [agora, fuso])
 
   return (
     <JanelaModal onFechar={onClose} rotulo="Novo agendamento" largura={520}>
@@ -792,7 +798,7 @@ export function AppointmentModal({
                   horarioDaUnidade={gradeDoDia.horarioDaUnidade ?? null}
                   horarioDoProfissional={gradeDoDia.horarioDoProfissional ?? null}
                   nomeDoProfissional={dados.professionals.find(p => p.id === profId)?.name}
-                  ocupado={h => ocupanteDoHorario(new Date(`${diaEscolhido}T${h}:00-03:00`), duracaoMin, gradeDoDia.slots, gradeDoDia.bloqueios ?? [])}
+                  ocupado={h => ocupanteDoHorario(instanteNoFuso(diaEscolhido, h, fuso), duracaoMin, gradeDoDia.slots, gradeDoDia.bloqueios ?? [])}
                   selecionado={localDT.slice(11, 16)}
                   onEscolher={h => escolherHora(`${diaEscolhido}T${h}`)}
                   carregando={false}

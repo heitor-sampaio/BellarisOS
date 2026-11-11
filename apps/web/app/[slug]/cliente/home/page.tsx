@@ -10,6 +10,7 @@ import { CartaoDaClinica } from '@/components/client-portal/cartao-da-clinica'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { STATUS_DO_PROXIMO, inicioDosProximos, jaPassouDaHora } from '@/lib/clientes/agenda-do-portal'
+import { fusoValido } from '@/lib/unidades/fuso'
 import { boasVindas, nomeParaSaudar } from '@/lib/saudacao'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { contagemDoPago, textoDoParaAgendar } from '@/lib/pre-pago/contagem'
@@ -22,11 +23,12 @@ import { textoDoIndiqueUmaAmiga } from '@/lib/fidelidade/indicacao'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 
 // -- Helpers --------------------------------------------------------
-function fmtDateTime(iso: string) {
+/** No relógio da unidade (F62). */
+function fmtDateTime(iso: string, fuso: string) {
   const d = new Date(iso)
   return {
-    date: d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' }),
-    time: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }),
+    date: d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: fuso }),
+    time: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso }),
   }
 }
 
@@ -83,7 +85,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const admin = createAdminClient()
   // A unidade do endereço (o slug é único no sistema, §5): o procedimento do
   // pacote se agenda por aqui se é da rede ou desta unidade (A63).
-  const unidadeDoEndereco = await ler(admin.from('branches').select('id').eq('slug', slug).maybeSingle(), 'buscar a unidade do endereço') as { id: string } | null
+  const unidadeDoEndereco = await ler(admin.from('branches').select('id, fuso').eq('slug', slug).maybeSingle(), 'buscar a unidade do endereço') as { id: string; fuso: string | null } | null
+  // O relógio da unidade do endereço (F62): o "hoje" e as horas da tela.
+  const fuso = fusoValido(unidadeDoEndereco?.fuso)
 
   const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
     ler(admin.from('clients').select('name, tenant_id, gender').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
@@ -93,7 +97,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       // A mesma regra dos "Próximos" da Agenda (D14).
       .in('status', [...STATUS_DO_PROXIMO])
       // Desde o início de hoje (A51): o de hoje que passou da hora fica até a conclusão.
-      .gte('scheduled_at', inicioDosProximos())
+      .gte('scheduled_at', inicioDosProximos(new Date(), fuso))
       .order('scheduled_at')
       .limit(1)
       .maybeSingle(), 'buscar o próximo agendamento'),
@@ -344,7 +348,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     {a.procedures?.name ?? 'Procedimento'}
                   </p>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand-deep, var(--brand))', fontWeight: 600 }}>
-                    Concluído em {new Date(a.scheduled_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })} · toque para avaliar
+                    Concluído em {new Date(a.scheduled_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: fuso })} · toque para avaliar
                   </p>
                 </div>
                 <ChevronRight size={18} color="var(--brand)" style={{ flexShrink: 0 }} />
@@ -371,7 +375,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                   <CalendarDays size={13} color="var(--brand)" />
                   <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--brand)' }}>
                     {(() => {
-                      const { date, time } = fmtDateTime(nextAppt.scheduled_at)
+                      const { date, time } = fmtDateTime(nextAppt.scheduled_at, fuso)
                       return `${date} às ${time}`
                     })()}
                   </span>
@@ -494,7 +498,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
             ))}
 
             {activePlans.filter(p => p.status === 'ACCEPTED' && financeiroDosPlanos.has(p.id)).map(plan => (
-              <PlanoFechado key={plan.id} plano={plan} financeiro={financeiroDosPlanos.get(plan.id)!} slug={slug} />
+              <PlanoFechado key={plan.id} plano={plan} financeiro={financeiroDosPlanos.get(plan.id)!} slug={slug} fuso={fuso} />
             ))}
 
             {activePlans.filter(p => p.status !== 'PROPOSED' && !financeiroDosPlanos.has(p.id)).map(plan => {
@@ -622,12 +626,12 @@ function PlanoProposto({ plano, validadeDias, whatsapp, telefone, avulsos = [] }
  * de `getFinanceiroDoPlano` (lib/metrics); a tela não soma. Nada clínico: só
  * os procedimentos e as datas.
  */
-function PlanoFechado({ plano, financeiro, slug }: { plano: ActivePlan; financeiro: FinanceiroDoPlano; slug: string }) {
+function PlanoFechado({ plano, financeiro, slug, fuso }: { plano: ActivePlan; financeiro: FinanceiroDoPlano; slug: string; fuso: string }) {
   const sessoes = [...(plano.treatment_plan_sessions ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
   const { total, feitas, agendadas } = financeiro.sessoes
   const proximo = financeiro.lancamentos.filter(l => !l.pago && l.vencimento).map(l => l.vencimento!).sort()[0] ?? null
-  const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
-  const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+  const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: fuso })
+  const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso })
   const situacao = (a: ActivePlan['treatment_plan_sessions'][number]['appointments']) => {
     if (a?.status === 'COMPLETED') return { texto: `Feita em ${dia(a.completed_at ?? a.scheduled_at)}`, cor: 'var(--success)' }
     if (a && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(a.status)) {

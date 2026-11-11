@@ -1,4 +1,6 @@
 'use client'
+import { useFuso } from '@/components/shared/fuso'
+import { instanteNoFuso } from '@/lib/datetime'
 
 import { PerguntaDaPerda } from '@/components/branch/pergunta-da-perda'
 import { useEffect, useEffectEvent, useState, useTransition, useRef, useCallback } from 'react'
@@ -56,9 +58,10 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.05em', textTransform: 'uppercase',
 }
 
-function todayInSP(): string {
+/** Hoje no relógio da unidade (F62). */
+function hojeNoFuso(fuso: string): string {
   // 'en-CA' devolve YYYY-MM-DD
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  return new Date().toLocaleDateString('en-CA', { timeZone: fuso })
 }
 
 /** Moeda no formato do resto do sistema (CLAUDE.md §13). */
@@ -1085,6 +1088,8 @@ export function ScheduleModal({
   /** Os procedimentos de interesse do card: o primeiro que a unidade oferece vem escolhido (A1 da 11ª). */
   procedimentosDeInteresse?: string[]
 }) {
+  // A hora escolhida é a do relógio da unidade (F62).
+  const fuso = useFuso()
   const [nome,     setNome]     = useState(contatoInicial.nome)
   const [telefone, setTelefone] = useState(contatoInicial.telefone)
   // Sobra da F33 (8ª simulação; princípio 3): com duas ou mais unidades,
@@ -1098,7 +1103,7 @@ export function ScheduleModal({
   const interesseRef = useRef<string[]>(procedimentosDeInteresse ?? [])
   const [professionalId, setProfessionalId] = useState('')
   const [roomId,     setRoomId]     = useState('')
-  const [date,       setDate]       = useState(todayInSP())
+  const [date,       setDate]       = useState(() => hojeNoFuso(fuso))
   const [slots,      setSlots]      = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [slot,       setSlot]       = useState('')
@@ -1183,7 +1188,7 @@ export function ScheduleModal({
   // As salas (D5, 2026-10-30): só as que servem ao procedimento, dizendo a
   // ocupada no horário; a primeira livre vem escolhida até a pessoa escolher.
   const temSalas = !!data && data.rooms.length > 0
-  const horarioDaSala = slot ? new Date(`${date}T${slot}:00-03:00`).toISOString() : null
+  const horarioDaSala = slot ? instanteNoFuso(date, slot, fuso).toISOString() : null
   const chaveDasSalas = `${branchId}|${procedureId}|${horarioDaSala}`
   const [salasDoServidor, setSalasDoServidor] = useState<{ chave: string; salas: SalaParaAgendar[]; sugerida: string | null } | null>(null)
   useEffect(() => {
@@ -1225,7 +1230,7 @@ export function ScheduleModal({
       if (telefone.replace(/\D/g, '').length < 10)  { setError('Informe um telefone com DDD.'); return }
     }
 
-    const scheduledAt = new Date(`${date}T${slot}:00-03:00`).toISOString()
+    const scheduledAt = instanteNoFuso(date, slot, fuso).toISOString()
     startSave(async () => {
       const res = await createCrmAppointment({
         leadId,

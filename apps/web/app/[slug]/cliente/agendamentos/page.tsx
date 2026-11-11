@@ -5,6 +5,7 @@ import { CalendarDays, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-r
 import { ler, contar } from '@/lib/db'
 import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, inicioDosProximos } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
+import { fusoValido } from '@/lib/unidades/fuso'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { valoresCobrados, type ValorCobrado } from '@/lib/appointments/valor-cobrado'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
@@ -38,7 +39,7 @@ type Appt = {
   completed_at:  string | null
   procedures:    { name: string } | null
   professionals: { name: string } | null
-  branches:      { name: string } | null
+  branches:      { name: string; fuso?: string | null } | null
   /** Já pago antes (D12): "Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"… */
   pagoAntes?:    string | null
   /** D8 da 7ª: o pago com desconto mostra o valor cobrado, não o de tabela. */
@@ -53,7 +54,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
   const admin = createAdminClient()
   const data = await ler(admin
     .from('appointments')
-    .select('id, scheduled_at, status, price, duration_min, completed_at, procedures(name), professionals:users!professional_id(name), branches(name)')
+    .select('id, scheduled_at, status, price, duration_min, completed_at, procedures(name), professionals:users!professional_id(name), branches(name, fuso)')
     .eq('client_id', ctx.clientId!)
     .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
 
@@ -83,7 +84,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
     procedures: nomesDasSessoes.has(a.id) ? { ...a.procedures, name: nomesDasSessoes.get(a.id)! } : a.procedures,
   }))
   // A mesma regra da home (D14): o que ainda vai acontecer, em aberto.
-  const { proximos: upcoming, historico: past } = separarAgendaDoPortal(appointments)
+  const { proximos: upcoming, historico: past } = separarAgendaDoPortal(appointments, new Date(), a => fusoValido(a.branches?.fuso))
 
   return (
     <div>
@@ -180,6 +181,8 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 // O cartão abre o agendamento (2026-10-21: não abria — nem detalhe, nem cancelar).
 function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade = false }: { appt: Appt; slug: string; highlight?: boolean; prazoHoras?: number; comUnidade?: boolean }) {
   const dt    = new Date(appt.scheduled_at)
+  // O dia e a hora no relógio da unidade do agendamento (F62).
+  const fuso  = fusoValido(appt.branches?.fuso)
   const color = STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
   // D8 da 7ª: pago, vale o cobrado (o preço menos o desconto da recepção).
   const valor = appt.cobrado ? appt.cobrado.cobrado : Number(appt.price)
@@ -238,14 +241,14 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <CalendarDays size={11} />
-          {dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' })}
+          {dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: fuso })}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <Clock3 size={11} />
-          {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
+          {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso })}
           {/* A hora real ao lado da agendada (J-34). */}
-          {appt.status === 'COMPLETED' && textoDoConcluido(appt.scheduled_at, appt.completed_at) && (
-            <span data-hora-real>· {textoDoConcluido(appt.scheduled_at, appt.completed_at)}</span>
+          {appt.status === 'COMPLETED' && textoDoConcluido(appt.scheduled_at, appt.completed_at, fuso) && (
+            <span data-hora-real>· {textoDoConcluido(appt.scheduled_at, appt.completed_at, fuso)}</span>
           )}
         </span>
         {appt.pagoAntes ? (
@@ -265,12 +268,12 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
       </div>
       {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && aindaDaParaAlterar(appt.scheduled_at, prazoHoras) && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-          Alterar até {limiteParaAlterar(appt.scheduled_at, prazoHoras)}
+          Alterar até {limiteParaAlterar(appt.scheduled_at, prazoHoras, fuso)}
         </p>
       )}
       {/* A53 da 7ª simulação: passado o prazo, o cartão já diz o caminho (a regra do prazo fica). */}
       {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && !aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
-        && new Date(appt.scheduled_at).getTime() > new Date(inicioDosProximos()).getTime() && (
+        && new Date(appt.scheduled_at).getTime() > new Date(inicioDosProximos(new Date(), fuso)).getTime() && (
         <p data-prazo-encerrado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           Prazo do app encerrado: fale com a clínica para alterar
         </p>

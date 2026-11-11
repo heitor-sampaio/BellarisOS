@@ -17,6 +17,9 @@
  * profissional = segue a unidade naquele dia.
  */
 
+/** O fuso de quem não diz o seu (F62): o horário de Brasília. */
+const FUSO_DE_BRASILIA = 'America/Sao_Paulo'
+
 export interface Intervalo { de: string; ate: string }
 export type DiaDaSemana = 0 | 1 | 2 | 3 | 4 | 5 | 6
 /** Chave = o dia da semana ("0" = domingo … "6"); lista vazia = fechado. */
@@ -169,14 +172,14 @@ export function diaDaSemana(data: string): number {
 
 /**
  * O agendamento cai FORA do horário da unidade (o encaixe, §9.1)? Pelo
- * relógio de Brasília: o dia e os minutos do início, até o fim. A agenda da
+ * relógio da unidade (F62; sem o fuso, o de Brasília): o dia e os minutos do início, até o fim. A agenda da
  * rede o marca "Encaixe" (A26 da 6ª simulação: o das 03:00 da Casa Forte,
  * fechada de madrugada, ficava sem destaque). O que atravessa a meia-noite
  * conta como fora.
  */
-export function foraDoHorarioDaUnidade(unidade: Horario | null, inicioIso: string, duracaoMin: number): boolean {
+export function foraDoHorarioDaUnidade(unidade: Horario | null, inicioIso: string, duracaoMin: number, fuso = FUSO_DE_BRASILIA): boolean {
   const partes = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
   }).formatToParts(new Date(inicioIso))
   const v = (t: string) => partes.find(p => p.type === t)?.value ?? '00'
   const data = `${v('year')}-${v('month')}-${v('day')}`
@@ -212,20 +215,20 @@ export function resumoDoHorario(unidade: Horario | null, profissional: Horario |
   })
 }
 
-const diaEmBrasilia = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d)
+const diaNoFuso = (d: Date, fuso = FUSO_DE_BRASILIA) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(d)
 const proximoDia = (dia: string) => new Date(new Date(`${dia}T12:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10)
 
 /** Um agendamento de OUTRA unidade da profissional: o início (instante) e a duração. */
 export interface BlocoOcupado { inicio: string; minutos: number }
 
-/** Os blocos, recortados por dia de Brasília: `dia → [de, ate)` em minutos do dia, fundidos. */
-function ocupadoPorDia(blocos: BlocoOcupado[]): Map<string, [number, number][]> {
+/** Os blocos, recortados por dia do fuso da unidade: `dia → [de, ate)` em minutos do dia, fundidos. */
+function ocupadoPorDia(blocos: BlocoOcupado[], fuso = FUSO_DE_BRASILIA): Map<string, [number, number][]> {
   const porDia = new Map<string, [number, number][]>()
-  const hora = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  const hora = new Intl.DateTimeFormat('en-GB', { timeZone: fuso, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   for (const b of blocos) {
     const inicio = new Date(b.inicio)
     if (Number.isNaN(inicio.getTime()) || !(b.minutos > 0)) continue
-    let dia = diaEmBrasilia(inicio)
+    let dia = diaNoFuso(inicio, fuso)
     let de = minutos(hora.format(inicio))
     let resta = b.minutos
     // Passa da meia-noite: o resto cai no dia seguinte.
@@ -273,10 +276,12 @@ function minutosCobertos(intervalos: Intervalo[], ocupados: [number, number][]):
 export function capacidadeEmMinutos(
   unidade: Horario | null, profissionais: (Horario | null)[], de: Date, ate: Date,
   ocupadoFora: BlocoOcupado[][] = [],
+  /** O fuso da unidade (F62): o dia de cada bloco ocupado é o do relógio dela. */
+  fuso = FUSO_DE_BRASILIA,
 ): number {
-  const fora = profissionais.map((_, i) => ocupadoPorDia(ocupadoFora[i] ?? []))
-  const fim = diaEmBrasilia(ate)
-  let dia = diaEmBrasilia(de)
+  const fora = profissionais.map((_, i) => ocupadoPorDia(ocupadoFora[i] ?? [], fuso))
+  const fim = diaNoFuso(ate, fuso)
+  let dia = diaNoFuso(de, fuso)
   let total = 0
   for (let guarda = 0; dia <= fim && guarda < 400; guarda++) {
     const semana = diaDaSemana(dia)
@@ -319,9 +324,10 @@ export function janelaDaGrade(horarios: (Horario | null)[]): { inicio: number; f
 export function ocupacaoEmPct(
   minutosAgendados: number, unidade: Horario | null, profissionais: (Horario | null)[], de: Date, ate: Date,
   ocupadoFora: BlocoOcupado[][] = [],
+  fuso = FUSO_DE_BRASILIA,
 ): number | null {
   if (!profissionais.length) return null
-  const capacidade = capacidadeEmMinutos(unidade, profissionais, de, ate, ocupadoFora)
+  const capacidade = capacidadeEmMinutos(unidade, profissionais, de, ate, ocupadoFora, fuso)
   if (!capacidade) return null
   return Math.min(Math.round((minutosAgendados / capacidade) * 100), 100)
 }

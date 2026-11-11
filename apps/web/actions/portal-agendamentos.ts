@@ -12,6 +12,7 @@ import { escolherQuemAtende, juntarHorarios } from '@/lib/appointments/sem-prefe
 import { logHistory, notifyCancelledAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
+import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * A cliente cancela e remarca pelo portal (2026-10-21, decisão do Heitor): até
@@ -110,18 +111,20 @@ export async function remarcarPelaCliente(appointmentId: string, scheduledAt: st
     // procedimento — a escolha do agendar (`escolherQuemAtende`).
     const inicio = new Date(scheduledAt)
     if (Number.isNaN(inicio.getTime()) || inicio.getTime() <= Date.now()) return { error: 'Escolha um horário a partir de agora.' }
-    const p = partsInTZ(inicio)
+    // No relógio da unidade (F62).
+    const fuso = await lerFusoDaUnidade(admin, a.branch_id)
+    const p = partsInTZ(inicio, fuso)
     const hora = `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
     if (p.second !== 0) return { error: 'Este horário não está mais disponível. Escolha outro.' }
     let profissional = a.professional_id
     let nomeDeQuemAtende: string | null = null
     if (semPreferencia) {
-      const candidatas = await candidatasParaRemarcar(admin, a, dayKeyTZ(inicio))
+      const candidatas = await candidatasParaRemarcar(admin, a, dayKeyTZ(inicio, fuso))
       profissional = escolherQuemAtende(candidatas, hora)
       if (!profissional) return { error: 'Este horário não está mais disponível. Escolha outro.' }
       nomeDeQuemAtende = candidatas.find(c => c.id === profissional)?.nome ?? null
     } else {
-      const livres = await computeAvailableSlots(admin, a.branch_id, a.professional_id!, dayKeyTZ(inicio), a.duration_min || 30, a.id)
+      const livres = await computeAvailableSlots(admin, a.branch_id, a.professional_id!, dayKeyTZ(inicio, fuso), a.duration_min || 30, a.id)
       if (!livres.includes(hora)) return { error: 'Este horário não está mais disponível. Escolha outro.' }
     }
 
@@ -143,7 +146,7 @@ export async function remarcarPelaCliente(appointmentId: string, scheduledAt: st
     }).eq('id', a.id).in('status', ABERTOS).select('id'), 'remarcar o agendamento') as { id: string }[] | null
     if (!remarcadas?.length) return { error: 'Este agendamento não pode mais ser remarcado.' }
 
-    const quando = inicio.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    const quando = inicio.toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
     await logHistory(admin, a.id, null, `${a.clients.name} (app)`, 'RESCHEDULED', `Remarcado pela cliente no app para ${quando}`,
       { scheduled_at: inicio.toISOString() })
     await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_REMARCADO, a.id, { tenantId: a.clients.tenant_id }, {

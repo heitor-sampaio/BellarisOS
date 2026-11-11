@@ -1,4 +1,6 @@
 ﻿'use client'
+import { useFuso } from '@/components/shared/fuso'
+import { instanteNoFuso } from '@/lib/datetime'
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -131,6 +133,8 @@ const STEPS = [
 // -- Componente principal ------------------------------------------------------
 
 export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = true, onDone }: Props) {
+  // A hora escolhida é a do relógio da unidade (F62).
+  const fuso = useFuso()
   const router = useRouter()
   const pathname = usePathname()
   const total  = plan.total
@@ -294,7 +298,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   function isSlotBooked(time: string): { clientName: string | null; rotulo?: string } | null {
     if (!activeDate) return null
     const duracao = plan.sessions.find(s => s.id === activeSession)?.mainDurationMin || 60
-    return ocupanteDoHorario(new Date(`${activeDate}T${time}:00-03:00`), duracao, daySlots, slotsLidos.chave === chaveDosSlots ? slotsLidos.bloqueios : [])
+    return ocupanteDoHorario(instanteNoFuso(activeDate, time, fuso), duracao, daySlots, slotsLidos.chave === chaveDosSlots ? slotsLidos.bloqueios : [])
   }
 
   // A37: o que se recebe agora (à vista, entrada + parcelas) pede a forma.
@@ -434,7 +438,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         const d = sessionDates[s.id]!
         return {
           planSessionId:  s.id,
-          scheduledAt:    new Date(`${d.date}T${d.time}:00-03:00`).toISOString(),
+          scheduledAt:    instanteNoFuso(d.date, d.time, fuso).toISOString(),
           professionalId: schedProfId,
           branchId:       schedBranchId,
         }

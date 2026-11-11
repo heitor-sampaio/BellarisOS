@@ -14,6 +14,7 @@ import { AvisoDaAssinatura } from '@/components/shared/aviso-da-assinatura'
 import type { AvisoDaAssinatura as AvisoDaAssinaturaDados } from '@/lib/redes/aviso'
 import type { ResolvedPermissions, ResolvedScopes, SuporteNoContexto } from '@estetica-os/types'
 import { useUmaUnidade } from '@/components/shared/uma-unidade'
+import { useFuso } from '@/components/shared/fuso'
 import { rotuloDoCargo } from '@/lib/unidades/vocabulario'
 
 interface TopbarProps {
@@ -72,7 +73,8 @@ const ROLE_LABELS: Record<string, string> = {
 export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false, saudacaoInicial }: TopbarProps) {
   // "Dra. Lívia", não "Dra."; e a saudação pela hora (era "Bom dia" sempre).
   const firstName  = primeiroNome(userName)
-  const ola        = useSyncExternalStore(assinarOMinuto, () => saudacao(), () => saudacaoInicial ?? saudacao())
+  const fuso       = useFuso()
+  const ola        = useSyncExternalStore(assinarOMinuto, () => saudacao(new Date(), fuso), () => saudacaoInicial ?? saudacao(new Date(), fuso))
   const { toggle } = useSidebar()
   const umaUnidade = useUmaUnidade()
 

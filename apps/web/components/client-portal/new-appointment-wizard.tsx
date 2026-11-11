@@ -9,8 +9,11 @@ import { toast } from 'sonner'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 import { aUnica } from '@/lib/uma-opcao'
+import { useFuso } from '@/components/shared/fuso'
+import { instanteNoFuso } from '@/lib/datetime'
 
-const diaNoFuso = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(ms))
+/** O dia no relógio da unidade (F62). */
+const diaNoFuso = (ms: number, fuso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(new Date(ms))
 
 interface Procedure {
   id:           string
@@ -92,7 +95,9 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
   const [isPending,  startTransition] = useTransition()
 
   // O dia de hoje em Brasília (o toISOString dava o de amanhã depois das 21h).
-  const [{ today, tomorrow }] = useState(() => ({ today: diaNoFuso(Date.now()), tomorrow: diaNoFuso(Date.now() + 86_400_000) }))
+  // F62: a data e a hora são as do relógio da UNIDADE, não as do celular.
+  const fuso = useFuso()
+  const [{ today, tomorrow }] = useState(() => ({ today: diaNoFuso(Date.now(), fuso), tomorrow: diaNoFuso(Date.now() + 86_400_000, fuso) }))
 
   const quemRealiza = realizam(procedure)
   const soUma = !!procedure && quemRealiza.length === 1
@@ -137,7 +142,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
     const parts = time.split(':')
     const hhStr = (parts[0] ?? '00').padStart(2, '0')
     const mmStr = (parts[1] ?? '00').padStart(2, '0')
-    const scheduledAt = new Date(`${date}T${hhStr}:${mmStr}:00-03:00`).toISOString()
+    const scheduledAt = instanteNoFuso(date, `${hhStr}:${mmStr}`, fuso).toISOString()
 
     startTransition(async () => {
       const res = await createClientAppointment({
@@ -503,7 +508,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
           {/* A52 da 8ª: o agendamento dentro do prazo do app nascia "Prazo do
               app encerrado" — o Confirmar avisa ANTES. */}
           {prazoHoras != null && prazoHoras > 0 && date && time
-            && new Date(`${date}T${time.padStart(5, '0')}:00-03:00`).getTime() - abertoEm < prazoHoras * 3_600_000 && (
+            && instanteNoFuso(date, time.padStart(5, '0'), fuso).getTime() - abertoEm < prazoHoras * 3_600_000 && (
             <p data-dentro-do-prazo style={{
               color: 'var(--text)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)',
               padding: '10px 14px', fontSize: 'var(--text-sm-sz)', marginBottom: 16, lineHeight: 1.45,

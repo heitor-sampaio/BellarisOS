@@ -9,6 +9,7 @@ import { conferirPecasDoAgendamento, horarioOcupado, primeiroConflito, recusaDoC
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { getUserName, logHistory } from '@/lib/appointments/avisos'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
+import { fusoValido } from '@/lib/unidades/fuso'
 import { recusaDeQuemNaoAtende, textoDaTroca } from '@/lib/appointments/troca-de-profissional'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
@@ -32,6 +33,8 @@ const FINALIZADOS = ['COMPLETED', 'CANCELLED', 'NO_SHOW']
 export interface AgendamentoAoAlcance {
   id: string; branch_id: string; status: string; scheduled_at: string
   professional_id: string | null; duration_min: number; room_id: string | null
+  /** O fuso da unidade (F62): o dia e a hora do agendamento são os do relógio dela. */
+  fuso: string
 }
 
 /** A recusa de quem tem a agenda "só os meus" num agendamento de outro profissional. */
@@ -53,11 +56,11 @@ export function deOutroProfissional(ctx: TenantContext, professionalId: string |
  */
 export async function agendamentoAoAlcance(admin: Admin, ctx: TenantContext, id: string): Promise<AgendamentoAoAlcance | null> {
   const a = await ler(admin.from('appointments')
-    .select('id, branch_id, status, scheduled_at, professional_id, duration_min, room_id, branches!inner(id, tenant_id)')
+    .select('id, branch_id, status, scheduled_at, professional_id, duration_min, room_id, branches!inner(id, tenant_id, fuso)')
     .eq('id', id).maybeSingle(), 'buscar o agendamento')
-  const branch = a?.branches as unknown as { id: string; tenant_id: string } | null
+  const branch = a?.branches as unknown as { id: string; tenant_id: string; fuso: string | null } | null
   if (!a || branch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, branch.id, a.professional_id as string | null)) return null
-  return a as unknown as AgendamentoAoAlcance
+  return { ...(a as unknown as AgendamentoAoAlcance), fuso: fusoValido(branch.fuso) }
 }
 
 export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
@@ -112,7 +115,7 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   if (!remarcadas?.length) return { error: 'Este agendamento já foi finalizado.' }
 
   const userName = ctx.userName || await getUserName(admin, ctx.userId)
-  const dtStr = inicio.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  const dtStr = inicio.toLocaleString('pt-BR', { timeZone: existente.fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
   await logHistory(admin, existente.id, ctx.internalUserId, userName, 'RESCHEDULED',
     `Reagendado para ${dtStr}`, { scheduled_at: inicio.toISOString() })
   // A troca de profissional junto (o arraste para outra coluna): o histórico
@@ -285,7 +288,7 @@ export async function checkinCore(admin: Admin, ctx: TenantContext, appointmentI
   }
   // A cliente chega no dia dela (A18, 2026-10-27): a chegada de amanhã ou de
   // ontem é engano. Vale para a agenda, o Copilot e "Marcar chegada e iniciar".
-  if (!ehODiaDoAgendamento(existente.scheduled_at)) {
+  if (!ehODiaDoAgendamento(existente.scheduled_at, new Date(), existente.fuso)) {
     return { error: 'A chegada só se marca no dia do agendamento.' }
   }
   const agora = new Date().toISOString()
