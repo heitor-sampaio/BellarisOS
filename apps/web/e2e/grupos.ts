@@ -35,6 +35,7 @@ export const ISOLADOS = [
   'documentos-defeitos-da-12.spec.ts',
   'estoque-defeitos-da-12.spec.ts',
   'estoque-atritos-da-12.spec.ts',
+  'fidelidade-atritos-da-12.spec.ts',
   'plano-defeitos-da-12.spec.ts',
   'campanha-defeitos-da-12.spec.ts',
   // A F59 (o dinheiro da 12ª: o estorno no dia em que o dinheiro sai).

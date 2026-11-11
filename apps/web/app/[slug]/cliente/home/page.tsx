@@ -18,6 +18,7 @@ import { getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { bonusDosCreditosDaCliente } from '@/lib/creditos/bonus-da-cliente'
 import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
+import { textoDoIndiqueUmaAmiga } from '@/lib/fidelidade/indicacao'
 
 // -- Helpers --------------------------------------------------------
 function fmtDateTime(iso: string) {
@@ -141,7 +142,17 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   // O cliente não carrega a rede no token: ela vem da ficha dele. Programa
   // desligado = nenhum sinal de pontos, nem com saldo.
   const redeDoCliente = (clientRes as { tenant_id: string | null } | null)?.tenant_id ?? null
-  const fidelidadeLigada = redeDoCliente ? (await configDaRede(redeDoCliente, admin)).enabled : false
+  const cfgDaRede = redeDoCliente ? await configDaRede(redeDoCliente, admin) : null
+  const fidelidadeLigada = !!cfgDaRede?.enabled
+  // A54 da 12ª: o "Indique uma amiga" também no Início — só com o prêmio ligado, e
+  // só a recompensa ATIVA (a arquivada não sai, e o app não a promete).
+  const indiqueUmaAmiga = fidelidadeLigada && cfgDaRede && redeDoCliente ? textoDoIndiqueUmaAmiga({
+    premio: cfgDaRede.indicacao_premio, pontos: cfgDaRede.indicacao_pontos,
+    recompensa: cfgDaRede.indicacao_premio === 'RECOMPENSA' && cfgDaRede.indicacao_recompensa_id
+      ? ((await ler(admin.from('loyalty_rewards').select('name').eq('id', cfgDaRede.indicacao_recompensa_id)
+          .eq('tenant_id', redeDoCliente).eq('is_active', true).maybeSingle(), 'ler a recompensa da indicação')) as { name: string } | null)?.name ?? null
+      : null,
+  }) : null
   // A46 da 9ª: o crédito na clínica aparece no Início (só estava no Financeiro, e o
   // caminho até lá ficava dentro do detalhe de um plano). A conta é a do Financeiro do app.
   const creditoNaClinica = redeDoCliente ? await getCreditoInternoDoCliente(redeDoCliente, ctx.clientId!) : 0
@@ -270,6 +281,17 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
             Ver extrato <ChevronRight size={16} />
           </div>
         </Link>
+      )}
+
+      {/* -- Indique uma amiga (A54 da 12ª) -------------------------------- */}
+      {indiqueUmaAmiga && (
+        <section data-indique-uma-amiga aria-label="Indique uma amiga" className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p className="overline">Indique uma amiga</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 'var(--leading-snug)' }}>{indiqueUmaAmiga}</p>
+          <Link href={`/${slug}/cliente/fidelidade`} prefetch={false} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+            Como indicar, em Meus pontos <ChevronRight size={14} aria-hidden />
+          </Link>
+        </section>
       )}
 
       {/* -- Crédito na clínica (A46 da 9ª) ----------------------------- */}

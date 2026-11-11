@@ -5,7 +5,7 @@ import { Loader2, Star } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { ajustarPontos, extratoDoCliente } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
-import { formatarPontos, rotuloDoLancamento } from '@/lib/fidelidade/formato'
+import { formatarPontos, rotuloDoLancamento, descricaoDoLancamento } from '@/lib/fidelidade/formato'
 import type { FidelidadeDoPerfil, LinhaDoExtrato } from '@/lib/fidelidade/leitura'
 import { VouchersDoCliente } from '@/components/branch/vouchers-do-cliente'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -155,9 +155,12 @@ export function FidelidadeDoCliente({
                   <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
                     {rotuloDoLancamento(l.kind, l.description)}
                   </p>
-                  <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
-                    {l.description}
-                  </p>
+                  {/* A41 da 12ª: a descrição que repete o título ("Indicação de Carla") não sai duas vezes. */}
+                  {descricaoDoLancamento(l.kind, l.description) && (
+                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
+                      {descricaoDoLancamento(l.kind, l.description)}
+                    </p>
+                  )}
                   <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                     {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                     {l.branch_name && ` · ${l.branch_name}`}

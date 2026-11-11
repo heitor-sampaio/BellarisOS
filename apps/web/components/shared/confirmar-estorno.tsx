@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { pontosDoEstorno } from '@/actions/financial'
 
 /**
  * A confirmação do estorno de um lançamento, nos dois financeiros (rede e
@@ -20,7 +21,8 @@ import { JanelaModal } from '@/components/shared/janela-modal'
  */
 export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDevolverParte }: {
   /** `doAtendimento`: o lançamento é o recebimento de um atendimento (A51: a cobrança dele reabre). */
-  alvo:        { descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean
+  /** `id`: o lançamento — a janela pergunta ao banco o que o estorno faz com os pontos (A30 da 12ª). */
+  alvo:        { id?: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean
     /** A23 da 10ª: o pagamento de R$ 0, todo com o voucher ou os pontos — nenhum dinheiro volta. */
     pagoSemDinheiro?: string | null }
   estornando:  boolean
@@ -34,6 +36,14 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
 }) {
   const [motivo, setMotivo] = useState('')
   const [voltou, setVoltou] = useState<boolean | null>(null)
+  // A30 da 12ª: os pontos que saem (os da cliente e o prêmio de quem a indicou), ditos antes.
+  const [pontos, setPontos] = useState<string | null>(null)
+  useEffect(() => {
+    if (!alvo.id) return
+    let vivo = true
+    pontosDoEstorno(alvo.id).then(r => { if (vivo) setPontos(r.texto) }).catch(() => {})
+    return () => { vivo = false }
+  }, [alvo.id])
   const produto = !!alvo.vendaDeProduto
   const cancelar = produto && !!alvo.cancelarVenda
   const pronto = motivo.trim().length > 0 && (!produto || voltou !== null)
@@ -59,6 +69,11 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
         {alvo.doAtendimento && !produto && (
           <p data-cobranca-reabre style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
             O atendimento volta a receber: a cobrança dele reabre, e o “Confirmar pagamento” vale de novo.
+          </p>
+        )}
+        {pontos && (
+          <p data-pontos-do-estorno style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 12px', lineHeight: 1.45 }}>
+            {pontos}
           </p>
         )}
         {produto && (

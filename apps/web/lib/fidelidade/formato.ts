@@ -27,6 +27,26 @@ export function rotuloDoLancamento(tipo: string, descricao?: string | null): str
   return ROTULOS[tipo as TipoDeLancamento] ?? 'Lançamento'
 }
 
+/**
+ * A linha de baixo do extrato: a descrição que o banco gravou, só quando ela diz
+ * algo além do título (A41 da 12ª simulação: "Indicação de Carla Duarte" saía
+ * duas vezes — o bônus e o estorno da indicação usam a descrição como título).
+ */
+export function descricaoDoLancamento(tipo: string, descricao?: string | null): string | null {
+  const d = (descricao ?? '').trim()
+  if (!d || d === rotuloDoLancamento(tipo, descricao).trim()) return null
+  return d
+}
+
+/**
+ * Sem a troca pelo app, a recompensa que o saldo já alcança diz isso (A53 da
+ * 12ª simulação: com 780 pontos, a de 500 dizia só "a troca é feita na
+ * recepção").
+ */
+export function jaPodeTrocar(saldo: number, custo: number): string | null {
+  return saldo >= custo ? 'Você já pode trocar: peça na recepção.' : null
+}
+
 /** Quanto os pontos valem em R$, pelo valor do ponto da rede. Nunca negativo. */
 export function pontosEmReais(pontos: number, valorDoPonto: number): number {
   if (!Number.isFinite(pontos) || !Number.isFinite(valorDoPonto) || pontos <= 0 || valorDoPonto <= 0) return 0

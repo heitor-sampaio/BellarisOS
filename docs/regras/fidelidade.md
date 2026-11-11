@@ -47,7 +47,18 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   de R$ 500 + R$ 50 de bônus), pelo lançamento; o bônus é concessão sem
   dinheiro. Prova: `e2e/vendas-credito-bonus.spec.ts`.
 - **Estorno** (`estornar_transacao`) tira exatamente o que aquele pagamento deu
-  (lê o GANHO). Saldo pode ficar **negativo**, como estoque.
+  (lê o GANHO). Saldo pode ficar **negativo**, como estoque. **E a janela do
+  estorno diz ANTES** (A30 da 12ª simulação, 2026-11-11; princípio 3: a Helena
+  estornou o pagamento da Carla sem saber que saíam os 180 pontos dela e os 200
+  do prêmio da Ana): "Saem 180 pontos de Carla, os que este pagamento deu: o
+  saldo dela vai de 380 a 200 pontos. E saem os 200 pontos do prêmio de Ana pela
+  indicação de Carla." — ou que voltam os pontos usados nele, que o prêmio passa
+  ao outro pagamento dela, que o voucher do prêmio é cancelado (ou, usado, fica)
+  (`[data-pontos-do-estorno]` no `ConfirmarEstorno`; a conta é do banco,
+  `fidelidade_pontos_do_estorno`, migration `20261111006102`, e o texto,
+  `textoDosPontosDoEstorno`, `lib/fidelidade/pontos-do-estorno.ts`). Com a
+  fidelidade desligada, nada. A regra não mudou. Prova:
+  `e2e/fidelidade-atritos-da-12.spec.ts` ("A30"), `tests/atritos-da-12-f61.test.ts`.
 - **Ajuste manual** pela equipe (`loyalty: MANAGE`), com motivo, por
   `ajustar_pontos` — débito acima do saldo é recusado.
 - **Saldo = SOMA do extrato** (`saldo_de_pontos`). `loyalty_accounts.balance`
@@ -183,7 +194,10 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     "Faltam 120 pontos" embaixo do "Trocar" desabilitado, no app e na ficha —
     o texto é UM, `faltamPontos` (`lib/fidelidade/formato.ts`). Sem a troca pelo
     app (`client_redeem` desligado), o app mostra o "Faltam N pontos" embaixo do
-    custo da recompensa (A58 da 5ª simulação). Prova:
+    custo da recompensa (A58 da 5ª simulação) — **e, com o saldo que alcança,
+    "Você já pode trocar: peça na recepção."** (A53 da 12ª, 2026-11-11:
+    com 780 pontos, a de 500 dizia só "a troca é feita na recepção";
+    `jaPodeTrocar`, `[data-ja-pode-trocar]`). Prova:
     `tests/fidelidade-faltam-pontos.test.ts`, `e2e/fidelidade-opcionais.spec.ts`,
     `e2e/fidelidade-vouchers.spec.ts`.
   - **Aviso de vencimento por push** (`expiry_notice_days`, só com validade):
@@ -262,12 +276,16 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     prêmio: ela já tinha pagado antes…" (`indicacoes_da_ficha`,
     `situacaoDoPremio` em `lib/fidelidade/indicacao.ts`). Com a fidelidade
     desligada, nada de prêmio (só os nomes). O extrato de pontos diz "Indicação
-    de Marina" (`rotuloDoLancamento`).
+    de Marina" (`rotuloDoLancamento`) — uma vez: a descrição que repete o
+    título não sai embaixo dele (A41 da 12ª, `descricaoDoLancamento`).
   - **No app, "Indique uma amiga" só com o prêmio ligado, e diz o prêmio**
     (`[data-indique-uma-amiga]` em Meus pontos, `textoDoIndiqueUmaAmiga`): "você
     ganha 300 pontos" ou "um voucher: …". **A cliente não cadastra a amiga pelo
     app** — só a clínica cria ficha (CLAUDE.md §5): "É só ela dizer o seu nome
-    na recepção…".
+    na recepção…". **E também no Início do app** (A54 da 12ª, 2026-11-11: só
+    estava em Meus pontos): o mesmo texto e o caminho para Meus pontos
+    (`[data-indique-uma-amiga]` na home; só com o prêmio ligado e a
+    recompensa ativa).
   - Prova: `e2e/fidelidade-indicacao.spec.ts`, `tests/fidelidade-indicacao.test.ts`.
 - **O painel Fidelidade da ficha segue as props do servidor** (D16 da
   simulação de 2026-10-29): o saldo, o extrato e os vouchers copiados para o

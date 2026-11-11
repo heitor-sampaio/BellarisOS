@@ -6,7 +6,7 @@ import {
   configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede, pontosVencendo, saldosPorUnidade,
 } from '@/lib/fidelidade/leitura'
 import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
-import { formatarPontos, rotuloDoLancamento, faltamPontos } from '@/lib/fidelidade/formato'
+import { formatarPontos, rotuloDoLancamento, faltamPontos, jaPodeTrocar } from '@/lib/fidelidade/formato'
 import { TrocarRecompensa } from '@/components/client-portal/trocar-recompensa'
 import { quemTrocaPontos } from '@/lib/equipe/quem-desfaz'
 import { textoDoIndiqueUmaAmiga, COMO_INDICAR } from '@/lib/fidelidade/indicacao'
@@ -137,10 +137,15 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
                 </div>
                 {cfg.client_redeem ? (
                   <TrocarRecompensa slug={slug} rewardId={r.id} nome={r.name} custo={r.points_cost} saldo={saldoParaTrocar} />
-                ) : faltamPontos(saldoParaTrocar, r.points_cost) && (
+                ) : faltamPontos(saldoParaTrocar, r.points_cost) ? (
                   // A58: sem a troca pelo app, quanto falta aparece também (o J-52 só o pôs embaixo do "Trocar").
                   <p data-faltam-pontos style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600, margin: 0 }}>
                     {faltamPontos(saldoParaTrocar, r.points_cost)}
+                  </p>
+                ) : (
+                  // A53 da 12ª: com o saldo que alcança, diz que já pode trocar (era só "na recepção").
+                  <p data-ja-pode-trocar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 700, margin: 0 }}>
+                    {jaPodeTrocar(saldoParaTrocar, r.points_cost)}
                   </p>
                 )}
               </li>

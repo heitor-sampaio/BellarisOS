@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, isOwnScope, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
@@ -9,6 +9,7 @@ import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { lancarCore, marcarPagoCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
 import { logHistory } from '@/lib/appointments/avisos'
+import { textoDosPontosDoEstorno } from '@/lib/fidelidade/pontos-do-estorno'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -279,6 +280,42 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
     return { success: true }
   } catch (e) {
     return { error: mensagemDoErro(e) }
+  }
+}
+
+
+/**
+ * A30 da 12ª simulação (2026-11-11; princípio 3): o que o estorno faz com os
+ * pontos — os da cliente e o prêmio de quem a indicou —, dito na janela ANTES
+ * de estornar. A conta é do banco (`fidelidade_pontos_do_estorno`); a
+ * permissão e o alcance são os do estorno. Sem nada a dizer, nulo.
+ */
+export async function pontosDoEstorno(transactionId: string): Promise<{ texto: string | null }> {
+  try {
+    const ctx = await getTenantContext()
+    if (!can(ctx, 'financial', 'MANAGE')) return { texto: null }
+    const admin = createAdminClient()
+    const tx = await ler(admin.from('financial_transactions').select('branch_id, branches!inner(tenant_id)')
+      .eq('id', transactionId).maybeSingle(), 'buscar o lançamento')
+    const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string)) return { texto: null }
+    const linhas = await ler(admin.rpc('fidelidade_pontos_do_estorno', { p_tenant: ctx.tenantId!, p_transacao: transactionId }),
+      'ler os pontos do estorno') as {
+        ligada: boolean; cliente: string | null; ganhos: number; usados: number; saldo: number
+        indicadora: string | null; premio_pontos: number; premio_voucher: string | null; premio_voucher_status: string | null; premio_passa: boolean
+      }[] | null
+    const l = (linhas ?? [])[0]
+    if (!l) return { texto: null }
+    const temPremio = !!l.indicadora && (Number(l.premio_pontos) > 0 || (!!l.premio_voucher && l.premio_voucher_status !== 'CANCELADO'))
+    return { texto: textoDosPontosDoEstorno({
+      ligada: !!l.ligada, cliente: l.cliente ?? 'a cliente', ganhos: Number(l.ganhos), usados: Number(l.usados), saldo: Number(l.saldo),
+      premio: temPremio ? {
+        indicadora: l.indicadora!, pontos: Number(l.premio_pontos), voucher: l.premio_voucher,
+        voucherUsado: l.premio_voucher_status === 'USADO', passaParaOutro: !!l.premio_passa,
+      } : null,
+    }) }
+  } catch {
+    return { texto: null }
   }
 }
 
