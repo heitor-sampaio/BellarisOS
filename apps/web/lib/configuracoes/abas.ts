@@ -107,3 +107,49 @@ export function rotuloDasAbasAlcancadas(
   const lista = nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`
   return `Configurações (só ${lista})`
 }
+
+/**
+ * Os nomes que um link antigo (ou digitado) usa para uma aba (A11 da 12ª):
+ * `?tab=commissions` abria as Tags sem dizer nada.
+ */
+const APELIDOS_DE_ABA: Record<string, ChaveDeAba> = {
+  commissions: 'comissoes', comissao: 'comissoes', roles: 'permissions', cargos: 'permissions',
+  units: 'unidades', integracoes: 'integrations', loyalty: 'fidelidade', geral: 'general',
+}
+
+/** A chave da aba pedida na URL, com os apelidos resolvidos. */
+export function chaveDaAbaPedida(pedida: string | undefined): string | undefined {
+  if (!pedida) return undefined
+  return APELIDOS_DE_ABA[pedida] ?? pedida
+}
+
+/**
+ * Por que a aba pedida não abriu (A11 da 12ª, princípio 3) — a tela abre a
+ * primeira que a pessoa alcança e DIZ isso, em vez de trocar calada. Nulo = a
+ * aba abre.
+ */
+export function motivoDaAbaFechada(pedida: string, o: {
+  /** As abas deste portal. */
+  noPortal: readonly ChaveDeAba[]
+  gerencia: (m: AppModule) => boolean
+  noPlano: (aba: object) => boolean
+  /** Quem tem unidade fixa (as abas da rede, para ela, são da clínica toda). */
+  unidadeFixa: boolean
+  /** O nome do módulo, como a tela de Cargos o mostra. */
+  nomeDoModulo: (m: AppModule) => string
+  /** A aba que abriu no lugar. */
+  abriu: string
+}): string | null {
+  const aba = ABAS_DE_CONFIGURACAO.find(a => a.key === pedida)
+  if (!aba) return `A aba “${pedida}” não existe. Abrimos ${o.abriu}.`
+  if (!o.noPortal.includes(aba.key)) {
+    return o.unidadeFixa
+      ? `A aba ${aba.label} é da clínica toda: quem muda é quem administra a rede. Abrimos ${o.abriu}.`
+      : `A aba ${aba.label} fica nas Configurações da rede. Abrimos ${o.abriu}.`
+  }
+  if (!o.noPlano(aba)) return `A aba ${aba.label} não está no plano da rede. Abrimos ${o.abriu}.`
+  if (!abaLiberada(aba, o.gerencia)) {
+    return `A aba ${aba.label} pede ${o.nomeDoModulo(aba.module)} em Gerenciar no cargo, e o seu não tem. Abrimos ${o.abriu}.`
+  }
+  return null
+}

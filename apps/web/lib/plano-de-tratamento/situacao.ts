@@ -42,4 +42,4 @@ export function situacaoDaExecucao(status: string, feitas: number, total: number
 }
 
 /** Quem monta o plano (A18 da 6ª simulação): o "Novo plano" pede o Prontuário em Gerenciar, e a tela sem o botão diz isso. */
-export const TEXTO_QUEM_MONTA = 'Quem monta o plano é quem tem o Prontuário em Gerenciar (a profissional, na avaliação ou aqui).'
+export const TEXTO_QUEM_MONTA = 'Quem monta o plano é quem tem o Prontuário em Gerenciar (a profissional, na avaliação ou aqui). Para liberar, Configurações → Cargos → Prontuário em Gerenciar — e o cargo passa a ver e escrever o prontuário (o dado clínico) das clientes.'

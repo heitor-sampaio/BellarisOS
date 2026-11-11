@@ -194,7 +194,13 @@ um muro que não depende de cada trava do código.
   e a Equipe), ao lado do "Repetir", o atalho grava os 7 dias de 00:00 a 24:00
   (`[data-aberta-24-horas]`), e o dia inteiro aparece como "24 horas" com
   "Escolher o horário" (`[data-dia-inteiro]`) — o campo de hora não mostra
-  24:00. Prova: `e2e/setup-atritos-da-11.spec.ts`.
+  24:00. Prova: `e2e/setup-atritos-da-11.spec.ts`. **E se desfaz com um
+  toque** (A1 da 12ª simulação, 2026-11-11: a Helena e a Cláudia deixaram o
+  24 h ligado por engano, e desfazer era 7 × "Escolher o horário"): ligado, o
+  atalho fica marcado (`aria-pressed`) e diz "Ligado. Toque de novo para
+  voltar ao horário de antes." (`[data-desfazer-24-horas]`); o segundo toque
+  devolve o horário de antes do atalho. Prova:
+  `e2e/configuracoes-atritos-da-12.spec.ts` ("A1").
 - **O endereço que se dá à cliente é o do APP DA CLIENTE, inteiro** (A4 da
   6ª simulação, 2026-11-04; princípio 3): Configurações → Geral mostrava como
   "Endereço do portal" o identificador da rede (`/{tenants.slug}`), que não
@@ -644,6 +650,19 @@ um muro que não depende de cada trava do código.
   (são dados para a unidade dela, não configuração).
 - Sem aba pedida, quem tem unidade fixa abre Configurações na primeira aba que
   é DELA.
+- **A aba pedida que não abre diz por quê** (A11 da 12ª simulação, 2026-11-11;
+  princípio 3: a gerente da Acácia abria `?tab=commissions` e
+  `?tab=permissions` e caía nas Tags calada). A tela abre a primeira aba que
+  a pessoa alcança e diz "A aba Cargos pede Cargos e permissões em Gerenciar
+  no cargo, e o seu não tem. Abrimos Tags." — ou "é da clínica toda", "fica
+  nas Configurações da rede", "não está no plano", "não existe"
+  (`[data-aba-fora-do-acesso]`, `motivoDaAbaFechada`; os nomes em inglês de
+  link antigo valem pela aba: `chaveDaAbaPedida`, `lib/configuracoes/abas.ts`).
+  **E a Equipe só para ver diz** "Você vê a equipe. Cadastrar e editar é de
+  quem tem a Equipe em Gerenciar no cargo." (`[data-equipe-so-leitura]`, nos
+  dois portais). O `/admin/settings` de quem tem unidade fixa já levava à
+  unidade com o aviso do portal da rede (J-29) — o aviso some da URL depois de
+  mostrado. Prova: `e2e/configuracoes-atritos-da-12.spec.ts` ("A11").
 - **O resumo do cargo diz QUAIS abas de Configurações** (A7 da 7ª simulação,
   2026-11-05; princípio 3): sem Configurações em Gerenciar, a pessoa chega à
   tela só pelas abas dos outros módulos, e "O que essa pessoa vai ver" diz

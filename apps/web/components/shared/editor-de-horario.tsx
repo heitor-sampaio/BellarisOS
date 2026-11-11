@@ -41,8 +41,12 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
   // Até alguém mexer num dia, o horário próprio acompanha a base (a unidade
   // pode ter mudado no formulário enquanto "segue" estava marcado).
   const [mexeu, setMexeu] = useState(false)
+  // A1 da 12ª: o "Aberta 24 horas" ligado por engano se desfaz com um toque —
+  // volta o horário de antes do atalho (não 7 × "Escolher o horário").
+  const [antesDas24, setAntesDas24] = useState<Record<string, Intervalo[]> | null>(null)
+  const todosInteiros = DIAS.every(d => diaInteiro(dias[d.chave] ?? []))
 
-  const mudar = (dia: string, lista: Intervalo[]) => { setMexeu(true); setDias(prev => ({ ...prev, [dia]: lista })) }
+  const mudar = (dia: string, lista: Intervalo[]) => { setMexeu(true); setAntesDas24(null); setDias(prev => ({ ...prev, [dia]: lista })) }
   const rotulo = { fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' } as const
 
   return (
@@ -66,14 +70,30 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
           <button type="button" className="btn-ghost" data-repetir-horario
             style={{ fontSize: 'var(--text-xs-sz)' }}
             disabled={!(dias['1'] ?? []).length}
-            onClick={() => { const seg = dias['1'] ?? []; setMexeu(true); setDias(Object.fromEntries(DIAS.map(d => [d.chave, seg.map(i => ({ ...i }))]))) }}>
+            onClick={() => { const seg = dias['1'] ?? []; setMexeu(true); setAntesDas24(null); setDias(Object.fromEntries(DIAS.map(d => [d.chave, seg.map(i => ({ ...i }))]))) }}>
             Repetir o horário de segunda em todos os dias (domingo incluído)
           </button>
           <button type="button" className="btn-ghost" data-aberta-24-horas
-            style={{ fontSize: 'var(--text-xs-sz)' }}
-            onClick={() => { setMexeu(true); setDias(Object.fromEntries(DIAS.map(d => [d.chave, [{ ...DIA_INTEIRO }]]))) }}>
+            aria-pressed={todosInteiros}
+            style={{ fontSize: 'var(--text-xs-sz)', ...(todosInteiros ? { color: 'var(--brand)', background: 'var(--brand-soft)' } : {}) }}
+            onClick={() => {
+              setMexeu(true)
+              if (todosInteiros) {
+                // Desfaz: o horário de antes do atalho, ou o padrão se ele já veio 24 h.
+                setDias(antesDas24 ?? copiar(base ?? HORARIO_PADRAO))
+                setAntesDas24(null)
+                return
+              }
+              setAntesDas24(dias)
+              setDias(Object.fromEntries(DIAS.map(d => [d.chave, [{ ...DIA_INTEIRO }]])))
+            }}>
             Aberta 24 horas, todos os dias
           </button>
+          {todosInteiros && (
+            <span data-desfazer-24-horas style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', alignSelf: 'center' }}>
+              Ligado. Toque de novo para voltar ao horário de antes.
+            </span>
+          )}
         </div>
       )}
 

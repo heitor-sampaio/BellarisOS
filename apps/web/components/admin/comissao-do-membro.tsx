@@ -54,8 +54,25 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   const excecoes = regras.filter(r => r.procedure_id !== null).length
   const semRegra = atende && !padrao && !semDeProposito
 
+  // A4 da 12ª (princípio 1): o "é de propósito" à vista, ao lado do aviso — a
+  // dona que atende não precisa achar a caixa dentro da janela.
+  const router = useRouter()
+  const [marcando, marcar] = useTransition()
+  const [erroDoAtalho, setErroDoAtalho] = useState<string | null>(null)
+  function deProposito() {
+    setErroDoAtalho(null)
+    marcar(async () => {
+      const excecoesAtuais = regras.filter(r => r.procedure_id !== null)
+        .map(r => ({ procedure_id: r.procedure_id!, tipo: r.tipo, valor: r.valor }))
+      const r = await salvarRegrasDoProfissional(membro.id, { padrao: null, excecoes: excecoesAtuais, semComissaoDeProposito: true })
+      if (r.error) { setErroDoAtalho(r.error); return }
+      router.refresh()
+    })
+  }
+
   return (
     <>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
       <button type="button" onClick={abrir} title={`Comissão de ${membro.nome}`} aria-label={`Comissão de ${membro.nome}`}
         className={semRegra ? 'chip chip-warning' : 'chip chip-muted'} style={{ cursor: 'pointer' }}
         data-comissao={membro.id}>
@@ -63,6 +80,15 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
         {excecoes > 0 && ` · ${excecoes} ${excecoes === 1 ? 'exceção' : 'exceções'}`}
         {vendaPct != null && vendaPct > 0 && ` · venda ${paraTexto(vendaPct)}%`}
       </button>
+      {semRegra && (
+        <button type="button" className="btn-ghost" data-de-proposito-atalho={membro.id} disabled={marcando} onClick={deProposito}
+          title="Sem comissão, de propósito (como a dona que atende): o aviso deixa de contar esta pessoa"
+          style={{ fontSize: 'var(--text-2xs)', padding: '2px 6px' }}>
+          {marcando ? 'Marcando…' : 'É de propósito'}
+        </button>
+      )}
+      {erroDoAtalho && <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)' }}>{erroDoAtalho}</span>}
+      </span>
 
       <dialog ref={dialogRef} className="modal modal-flex" style={{ maxWidth: 560, textAlign: 'left' }}
         onClick={e => { if (e.target === dialogRef.current) fechar() }} aria-label={`Comissão de ${membro.nome}`}>

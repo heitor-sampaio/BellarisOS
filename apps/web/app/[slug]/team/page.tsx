@@ -130,6 +130,12 @@ export default async function TeamPage({
           <p data-recorte-da-equipe style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2, maxWidth: 560 }}>
             {fala(`Equipe da unidade ${branch?.name ?? ''}: quem é dela e quem é de fora e atende aqui. Quem é da rede e não atende fica na Equipe da rede.`)}
           </p>
+          {/* A11 da 12ª (princípio 3): quem só vê a equipe lê por que não há lápis nem "Novo membro". */}
+          {!canManage && (
+            <p data-equipe-so-leitura style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2, maxWidth: 560 }}>
+              Você vê a equipe. Cadastrar e editar é de quem tem a Equipe em Gerenciar no cargo.
+            </p>
+          )}
           {ninguemAtendeAqui && (
             <p data-ninguem-atende role="status" style={{
               marginTop: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)', maxWidth: 560,

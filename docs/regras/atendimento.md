@@ -1155,6 +1155,11 @@
   pelo custo atual, F49 D2) não mudou. E a embalagem tem **"seringa"** (A12: o
   ácido hialurônico virou "un", com "(seringa)" no nome; `MEDIDAS_DO_PRODUTO`).
   Prova: `e2e/configuracoes-atritos-da-11.spec.ts`, `tests/estoque-medidas.test.ts`.
+  **Sem custo, sem margem** (A9 da 12ª simulação, 2026-11-11; princípio 4: a
+  calculadora mostrava "Margem de lucro 100%" com custo R$ 0,00): com o custo
+  total zero, o campo da margem fica vazio e diz "Sem custo cadastrado: a
+  margem não se calcula…" (`[data-margem-sem-custo]`). Prova:
+  `e2e/configuracoes-atritos-da-12.spec.ts` ("A9").
 - **No Novo produto, cada rótulo é ligado ao campo** (A8 da 10ª: soltos e
   centralizados — `design.md`, "Formulários"; o `Label` do
   `stock-product-modal.tsx` recebe o `htmlFor`). Prova: o mesmo spec ("A8").
@@ -1744,7 +1749,11 @@ const procedures = await ler(
   "pode ser montado agora…" sem botão. A aba Planejamento vazia e a tela
   Planejamentos dizem "Quem monta o plano é quem tem o Prontuário em Gerenciar
   (a profissional, na avaliação ou aqui)." (`TEXTO_QUEM_MONTA`,
-  `lib/plano-de-tratamento/situacao.ts`). E `/planejamentos/novo` (os dois
+  `lib/plano-de-tratamento/situacao.ts`). **E diz onde se libera e o que isso
+  abre** (A12 da 12ª simulação, 2026-11-11; princípio 3): "Para liberar,
+  Configurações → Cargos → Prontuário em Gerenciar — e o cargo passa a ver e
+  escrever o prontuário (o dado clínico) das clientes." A regra fica. Prova:
+  `e2e/configuracoes-atritos-da-12.spec.ts` ("A12"). E `/planejamentos/novo` (os dois
   portais) não é 404: leva à lista com `?novo=1`, que abre o "Novo plano"
   para quem monta. Prova: `e2e/planejamentos-quem-monta.spec.ts`.
 - **Os planos de tratamento seguem a agenda "só os meus"** (decisão do Heitor,

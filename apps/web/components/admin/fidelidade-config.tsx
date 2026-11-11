@@ -273,6 +273,12 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, 
             <div style={{ maxWidth: 260 }}>
               <CampoNumero rotulo="Pontos para quem indicou" nome="indicacao_pontos" valor={pontosIndicacao} onChange={setPontosIndicacao}
                 desabilitado={!podeEditar} />
+              {/* A6 da 12ª: o 300 é sugestão, não regra (princípio 3). */}
+              {!inicial.indicacao_pontos && (
+                <span data-sugestao-de-pontos style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                  300 pontos é uma sugestão: ajuste ao seu programa.
+                </span>
+              )}
             </div>
           )}
           {indicacao === 'RECOMPENSA' && (
@@ -296,7 +302,7 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, 
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
             {indicacao === 'DESLIGADO'
               ? 'A ficha guarda quem indicou (“Indicada por”), mas ninguém ganha nada pela indicação.'
-              : `Quem indicou ganha ${indicacao === 'PONTOS' ? 'os pontos' : 'um voucher da recompensa, sem gastar pontos,'} quando a indicada pagar o primeiro atendimento ou a primeira compra na clínica — uma vez por indicada. Se esse pagamento for estornado, o prêmio sai junto. Quem já tinha pago antes da indicação não conta. No app, a cliente vê “Indique uma amiga” com o prêmio; a ficha da amiga continua sendo feita pela clínica.`}
+              : `Quem indicou ganha ${indicacao === 'PONTOS' ? 'os pontos' : 'um voucher da recompensa, sem gastar pontos,'} quando a indicada pagar o primeiro atendimento ou a primeira compra na clínica (a venda de pacote, pré-pago, produto ou crédito na clínica também conta) — uma vez por indicada. Se esse pagamento for estornado por inteiro, o prêmio sai junto; o estorno de uma parte não tira o prêmio. Quem já tinha pago antes da indicação não conta. No app, a cliente vê “Indique uma amiga” com o prêmio; a ficha da amiga continua sendo feita pela clínica.`}
           </p>
         </div>
       </Bloco>

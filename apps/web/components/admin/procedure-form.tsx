@@ -314,7 +314,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
       if (m < 100) setPrice(formatPrice(priceFromMargin(m)))
     } else {
       const p = parseBRL(price)
-      setMarginPct(p > 0 ? fmtMargin(marginFromPrice(p)) : '')
+      // A9 da 12ª (princípio 4): sem custo cadastrado, a margem não se calcula — não "100%".
+      setMarginPct(p > 0 && totalCost > 0 ? fmtMargin(marginFromPrice(p)) : '')
     }
   }
 
@@ -332,7 +333,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
     const num   = parseBRL(texto)
     setAncora('price')
     setPrice(texto)
-    setMarginPct(num > 0 ? fmtMargin(marginFromPrice(num)) : '')
+    setMarginPct(num > 0 && totalCost > 0 ? fmtMargin(marginFromPrice(num)) : '')
   }
 
   // Avisa o pai UMA vez por sucesso: `onSuccess` costuma vir inline, e nas
@@ -692,9 +693,14 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           </Field>
           <Field label="Margem de lucro" hint="Defina a margem e o preço se ajusta">
             <div style={{ position: 'relative' }}>
-              <input type="text" inputMode="decimal" className="field" value={marginPct} onChange={handleMarginInput} placeholder="0,0" style={{ paddingRight: 26 }} />
+              <input type="text" inputMode="decimal" className="field" value={marginPct} onChange={handleMarginInput} placeholder="0,0" aria-label="Margem de lucro (%)" style={{ paddingRight: 26 }} />
               <span style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
             </div>
+            {totalCost <= 0 && (
+              <span data-margem-sem-custo style={{ display: 'block', marginTop: 4, fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                Sem custo cadastrado: a margem não se calcula. Informe a mão de obra, os insumos ou outros custos.
+              </span>
+            )}
           </Field>
         </div>
       </div>

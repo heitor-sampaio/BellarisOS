@@ -286,6 +286,12 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
                     onChange={e => setTriggerDays(Number(e.target.value))}
                     style={{ width: 80 }}
                   />
+                  {/* A6 da 12ª: o 30 é sugestão (princípio 3). */}
+                  {gatilho.days == null && (
+                    <span data-dias-sugestao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+                      {triggerType === 'DAYS_AFTER_VISIT' ? '30 dias é uma sugestão: ajuste ao retorno dos seus procedimentos.' : '30 dias é uma sugestão: ajuste ao seu prazo.'}
+                    </span>
+                  )}
                 </div>
               )}
 

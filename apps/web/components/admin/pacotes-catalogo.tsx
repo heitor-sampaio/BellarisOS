@@ -316,12 +316,14 @@ function CamposDaComissao({ c, mudar }: { c: ComissaoDoRascunho; mudar: (parte: 
         {c.venda !== 'NENHUMA' && (
           <CampoDeValor tipo={c.venda} valor={c.vendaValor} onChange={v => mudar({ vendaValor: v })} rotulo="Valor da comissão de venda" />
         )}
-        <p style={ajuda}>
+        {/* A5 da 12ª (princípio 3): a regra do pacote VENCE a comissão de venda da
+            pessoa (Equipe) — e, sem ela, vale a da pessoa (comissoes.md). */}
+        <p style={ajuda} data-ajuda-da-venda>
           {c.venda === 'NENHUMA'
-            ? 'Quem vende o pacote não recebe comissão pela venda.'
+            ? 'Sem regra no pacote, vale a comissão de venda de quem vendeu (Equipe → Comissão); sem ela, ninguém recebe pela venda.'
             : c.venda === 'PERCENTAGE'
-              ? 'Sobre o valor vendido (com o desconto), liberada à medida que o pacote é pago; o estorno devolve.'
-              : 'Liberada à medida que o pacote é pago; o estorno devolve.'}
+              ? 'Sobre o valor vendido (com o desconto), liberada à medida que o pacote é pago; o estorno devolve. Vale no lugar da comissão de venda de cada pessoa (Equipe → Comissão).'
+              : 'Liberada à medida que o pacote é pago; o estorno devolve. Vale no lugar da comissão de venda de cada pessoa (Equipe → Comissão).'}
         </p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -235,7 +235,14 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     princípio 5: ela pagou — sai e volta, e fica um só); sem nenhum, o próximo
     pagamento dela é o primeiro que vale e premia. O estorno PARCIAL (o
     cancelamento do pacote que devolve parte) não tira o prêmio: o pagamento
-    continua de pé.
+    continua de pé. **A configuração diz isso** (A24 da 12ª simulação,
+    2026-11-11; princípio 3): "…o primeiro atendimento ou a primeira compra na
+    clínica (a venda de pacote, pré-pago, produto ou crédito na clínica também
+    conta)… Se esse pagamento for estornado por inteiro, o prêmio sai junto; o
+    estorno de uma parte não tira o prêmio." **E o número que vem é sugestão**
+    (A6): os 300 pontos que o campo traz ao ligar dizem "300 pontos é uma
+    sugestão: ajuste ao seu programa." (`[data-sugestao-de-pontos]`). Prova:
+    `e2e/configuracoes-atritos-da-12.spec.ts` ("A6/A24").
   - **A ficha diz**: na Visão geral (`[data-indicacao-da-ficha]`), "Indicada
     por: Ana Clara" (o link da ficha; o texto da planilha sem ficha diz "ligar
     na aba Dados") e "Indicou: Marina (prêmio dado em 10/11)" — ou "prêmio

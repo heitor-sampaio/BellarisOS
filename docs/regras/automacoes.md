@@ -231,6 +231,11 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   depois da meia-noite, e o aviso tocava o celular da cliente de madrugada. O
   lembrete do agendamento segue de hora em hora. Prova:
   `e2e/campanha-defeitos-da-11.spec.ts`, `tests/campanha-quando-dispara.test.ts`.
+  **Os 30 dias que o "Pós-visita" e o "antes do vencimento" trazem dizem que
+  são sugestão** (A6 da 12ª simulação, 2026-11-11; princípio 3): "30 dias é
+  uma sugestão: ajuste ao retorno dos seus procedimentos."
+  (`[data-dias-sugestao]`, na campanha nova). Prova:
+  `e2e/configuracoes-atritos-da-12.spec.ts` ("A6/A24").
 - **O construtor fala português, e o modelo dito pronto não avisa à toa** (A18
   da 11ª simulação, 2026-11-10; princípio 3: o "Lembrete antes do agendamento"
   dizia "Esperar até 1d antes de evento.dados.agendadoPara" e "não é nenhum de

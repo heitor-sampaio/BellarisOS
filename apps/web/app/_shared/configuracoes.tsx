@@ -14,6 +14,7 @@ import { BranchEditForm } from '@/components/admin/branch-edit-form'
 import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-unidade'
 import { CONFIG_DA_CLINICA, mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { Lock } from 'lucide-react'
+import { MODULE_LABELS } from '@/lib/permissions'
 import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
 import { SettingsPreAtendimento } from '@/components/admin/settings-pre-atendimento'
 import { SettingsDocumentos } from '@/components/admin/settings-documentos'
@@ -56,6 +57,7 @@ import { configDeComissaoDaRede, taxasDaRede, profissionaisSemComissao, comissoe
 import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import {
   ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_CLINICA_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
+  chaveDaAbaPedida, motivoDaAbaFechada,
 } from '@/lib/configuracoes/abas'
 
 /**
@@ -145,7 +147,7 @@ export async function Configuracoes({
     )
   }
 
-  const requested = abaPedida as ChaveDeAba | undefined
+  const requested = chaveDaAbaPedida(abaPedida) as ChaveDeAba | undefined
   // Cai na primeira aba permitida quando o link aponta para uma que este cargo
   // não acessa — em vez de renderizar a tela vazia.
   // Sem aba pedida, quem tem unidade fixa abre na primeira que é DELA (a
@@ -153,6 +155,15 @@ export async function Configuracoes({
   const primeira = tabs.find(t => mexeNaConfigDaClinica(ctx) || !ABAS_DA_CLINICA_TODA.includes(t.key)) ?? tabs[0]!
   const activeTab: ChaveDeAba =
     requested && tabs.some(t => t.key === requested) ? requested : primeira.key
+  // A11 da 12ª (princípio 3): a aba pedida que não abre diz por quê — antes a
+  // tela trocava pela primeira, calada (a gerente lia as Tags no lugar das Comissões).
+  const abaFechada = requested && requested !== activeTab
+    ? motivoDaAbaFechada(requested, {
+        noPortal: abas, gerencia: m => can(ctx, m, 'MANAGE'), noPlano: a => abaNoPlano(a, ctx.plano),
+        unidadeFixa: !mexeNaConfigDaClinica(ctx), nomeDoModulo: m => MODULE_LABELS[m],
+        abriu: tabs.find(t => t.key === activeTab)?.label ?? primeira.label,
+      })
+    : null
 
   // H7 (decisão do Heitor, 2026-11-01): quem tem unidade fixa abre a aba da
   // configuração da clínica toda e lê de quem ela é — sem o editor, e sem ler
@@ -387,6 +398,15 @@ export async function Configuracoes({
           ariaLabel="Assunto das configurações"
         />
       </div>
+
+      {abaFechada && (
+        <div className="card" data-aba-fora-do-acesso role="status" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '14px 18px', marginBottom: 20 }}>
+          <Lock size={15} aria-hidden style={{ color: 'var(--text-faint)', flexShrink: 0, marginTop: 2 }} />
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
+            {fala(abaFechada)}
+          </p>
+        </div>
+      )}
 
       {/* A configuração da clínica toda, para quem tem unidade fixa (H7). */}
       {daClinicaToda && (

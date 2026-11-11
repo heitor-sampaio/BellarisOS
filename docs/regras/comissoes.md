@@ -353,7 +353,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `salvarRegrasDoProfissional`): o aviso não a conta (`profissionaisSemComissao`)
   e a pílula diz "Sem comissão (de propósito)", sem o alerta. Só a marca: a
   conta não muda, e gravar uma regra padrão a desfaz. Prova:
-  `e2e/configuracoes-atritos-da-11.spec.ts` ("A14").
+  `e2e/configuracoes-atritos-da-11.spec.ts` ("A14"). **E o "É de propósito"
+  fica à vista** (A4 da 12ª simulação, 2026-11-11: a caixa só aparecia
+  abrindo o chip): ao lado da pílula âmbar "Sem comissão", o botão "É de
+  propósito" (`[data-de-proposito-atalho]`) grava a mesma marca, mantendo as
+  exceções. Prova: `e2e/configuracoes-atritos-da-12.spec.ts` ("A4").
 - **A comissão de venda POR PESSOA** (A17 da 11ª simulação, 2026-11-10;
   decidido pelo princípio 1 — a clínica decide; configuração com padrão que não
   muda nada: os dois times quiseram um percentual de venda por vendedora).
@@ -379,6 +383,13 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     (`regraDoLancamento`, `lib/comissoes/extrato-texto.ts`; o extrato é
     `comissoes_extrato_com_regra` — o `comissoes_extrato_com_base` ficou sem
     chamador no app). As linhas de antes dizem só a regra.
+  - **O "De venda" do pacote diz que vence** (A5 da 12ª simulação,
+    2026-11-11; princípio 3: o pacote com 5% não dizia que valia no lugar do
+    3% da Paula e do 8% da Rita): "Vale no lugar da comissão de venda de cada
+    pessoa (Equipe → Comissão)", e o "Nenhuma" diz "Sem regra no pacote, vale
+    a comissão de venda de quem vendeu…" — dizia "Quem vende o pacote não
+    recebe comissão", falso desde a A17 (`[data-ajuda-da-venda]`). Prova:
+    `e2e/configuracoes-atritos-da-12.spec.ts` ("A5").
   - O crédito na clínica vendido continua SEM comissão de venda (abaixo).
   - As funções: `pacote_vender_com_equipe`, `plano_comissao_de_venda`,
     `procedimento_vender_com_equipe`, `produto_vender_itens`

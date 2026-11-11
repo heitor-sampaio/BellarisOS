@@ -149,6 +149,12 @@ export default async function AdminTeamPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {fala(contagemDeMembros(members.length, hasFilters ? 'encontrados' : 'em toda a rede'))}
           </p>
+          {/* A11 da 12ª (princípio 3): quem só vê a equipe lê por que não há lápis nem "Novo membro". */}
+          {!canManage && (
+            <p data-equipe-so-leitura style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2, maxWidth: 560 }}>
+              Você vê a equipe. Cadastrar e editar é de quem tem a Equipe em Gerenciar no cargo.
+            </p>
+          )}
         </div>
         {canManage && (
           <AdminTeamForm branches={branches ?? []} roles={rolesParaDar} isNetworkAdmin={ctx.branchId === null} podeComissao={podeComissao}
