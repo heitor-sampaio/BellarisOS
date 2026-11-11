@@ -7,6 +7,7 @@ import { ler } from '@/lib/db'
 import { salasParaOProcedimento, salaSugerida } from '@/lib/agenda/salas'
 import { horarioOcupado } from '@/lib/appointments/core'
 import { alcancaUnidade } from '@/lib/auth'
+import { aUnica } from '@/lib/uma-opcao'
 import type { TenantContext } from '@estetica-os/types'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -87,3 +88,25 @@ export async function salasDoAgendar(
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * A sala ÚNICA que serve ao procedimento, se ela está livre no horário (D8 da
+ * 12ª simulação, 2026-11-11): o checkout do plano e o remarcar do app gravavam
+ * a sessão de laser sem sala, embora o laser só se faça na Sala do laser. A sala
+ * segue OPCIONAL (decisão do Heitor, 2026-11-01); a regra é a da única opção
+ * (A2 da 10ª, `unicaOpcao`): UMA sala serve — a ligada ao procedimento nesta
+ * unidade, ou a única da unidade —, livre, ela vem. Ocupada, nada vem, e
+ * `ocupada` diz qual (o aviso de quem chamou). Com duas ou mais, nenhuma.
+ */
+export async function salaUnicaDoHorario(admin: Admin, a: {
+  tenantId: string; branchId: string; procedureId: string | null
+  inicio: Date; duracaoMin: number; excluir?: string | null
+}): Promise<{ salaId: string | null; ocupada: string | null }> {
+  const { salas, ligadas } = await salasEDaLigacao(admin, a.branchId, a.procedureId)
+  const unica = aUnica(salasParaOProcedimento(salas, ligadas))
+  if (!unica) return { salaId: null, ocupada: null }
+  const ocupada = await horarioOcupado(admin, {
+    tenantId: a.tenantId, roomId: unica.id, branchId: a.branchId, inicio: a.inicio, duracaoMin: a.duracaoMin, excluir: a.excluir,
+  })
+  return ocupada ? { salaId: null, ocupada: unica.name } : { salaId: unica.id, ocupada: null }
+}

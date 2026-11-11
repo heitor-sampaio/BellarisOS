@@ -6,7 +6,8 @@ import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
-import { computeAvailableSlots, candidatasDoDia } from '@/lib/appointments/core'
+import { computeAvailableSlots, candidatasDoDia, horarioOcupado } from '@/lib/appointments/core'
+import { salaUnicaDoHorario } from '@/lib/appointments/salas'
 import { escolherQuemAtende, juntarHorarios } from '@/lib/appointments/sem-preferencia'
 import { logHistory, notifyCancelledAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
@@ -30,10 +31,10 @@ async function agendamentoDaCliente(appointmentId: string) {
   if (!UUID.safeParse(appointmentId).success || !ctx.clientId) return null
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
-    .select('id, status, scheduled_at, duration_min, branch_id, professional_id, procedure_id, client_id, clients!inner(name, tenant_id), branches!inner(tenant_id)')
+    .select('id, status, scheduled_at, duration_min, branch_id, professional_id, procedure_id, room_id, client_id, clients!inner(name, tenant_id), branches!inner(tenant_id)')
     .eq('id', appointmentId).eq('client_id', ctx.clientId).maybeSingle(), 'buscar o agendamento') as {
       id: string; status: string; scheduled_at: string; duration_min: number; branch_id: string; professional_id: string | null
-      procedure_id: string | null
+      procedure_id: string | null; room_id: string | null
       clients: { name: string; tenant_id: string }; branches: { tenant_id: string }
     } | null
   if (!a) return null
@@ -120,9 +121,21 @@ export async function remarcarPelaCliente(appointmentId: string, scheduledAt: st
       if (!livres.includes(hora)) return { error: 'Este horário não está mais disponível. Escolha outro.' }
     }
 
+    // D8 da 12ª: a sala no horário novo. A que ele tinha fica, se segue livre;
+    // senão, a sala única que serve ao procedimento, livre (a regra da única
+    // opção, A2 da 10ª); senão, sem sala — a sala é opcional (H1), e a cliente
+    // não escolhe sala.
+    const duracao = a.duration_min || 30
+    const salaDeAntesLivre = !!a.room_id && !(await horarioOcupado(admin, {
+      tenantId: a.clients.tenant_id, roomId: a.room_id, branchId: a.branch_id, inicio, duracaoMin: duracao, excluir: a.id,
+    }))
+    const sala = salaDeAntesLivre ? a.room_id : (await salaUnicaDoHorario(admin, {
+      tenantId: a.clients.tenant_id, branchId: a.branch_id, procedureId: a.procedure_id, inicio, duracaoMin: duracao, excluir: a.id,
+    })).salaId
+
     const remarcadas = await gravar(admin.from('appointments').update({
       scheduled_at: inicio.toISOString(), status: 'SCHEDULED', confirmed_at: null, updated_at: new Date().toISOString(),
-      professional_id: profissional, sem_preferencia: semPreferencia,
+      professional_id: profissional, sem_preferencia: semPreferencia, room_id: sala,
     }).eq('id', a.id).in('status', ABERTOS).select('id'), 'remarcar o agendamento') as { id: string }[] | null
     if (!remarcadas?.length) return { error: 'Este agendamento não pode mais ser remarcado.' }
 

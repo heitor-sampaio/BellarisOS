@@ -1074,7 +1074,18 @@
     sala não é usada para este procedimento."); o conflito ("Esta sala já está
     ocupada nesse horário.") é `horarioOcupado`, no núcleo e na remarcação.
     O checkout do plano, a unidade pré-paga e o Copilot não escolhem sala
-    (agendam sem); as sessões de pacote e de plano oferecem (A24, acima). Prova: `e2e/agenda-salas.spec.ts`,
+    (agendam sem); as sessões de pacote e de plano oferecem (A24, acima).
+    **Mas a sala ÚNICA do procedimento vem** (D8 da 12ª simulação, 2026-11-11;
+    a regra da única opção, A2 da 10ª — as sessões de laser da Marina ficavam
+    sem a Sala do laser, a única em que o laser se faz): o checkout do plano e o
+    remarcar do app gravam a sala quando UMA serve ao procedimento (a ligada a
+    ele na unidade, ou a única da unidade) e ela está livre no horário
+    (`salaUnicaDoHorario`, `lib/appointments/salas.ts`). Ocupada, a sessão vai
+    sem sala e o checkout diz "A Sala do laser está ocupada em 14/11 às 14:00:
+    essa sessão vai sem sala." (`avisoDaSala`, um aviso na tela). No remarcar do
+    app, a sala que o agendamento tinha fica se segue livre no horário novo;
+    ocupada, vale a única livre, senão sem sala (a cliente não escolhe sala).
+    Prova: `e2e/plano-defeitos-da-12.spec.ts` ("D8"). Prova: `e2e/agenda-salas.spec.ts`,
     `tests/agenda-salas.test.ts`.
 - `cancellationReason`: obrigatório ao cancelar para rastreabilidade
 - Ao marcar `COMPLETED`: consumo de estoque + comissão, numa transação — ver §10. Os pontos de fidelidade NÃO nascem aqui: nascem no pagamento (§9.2.2).

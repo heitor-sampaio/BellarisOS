@@ -450,6 +450,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       // O plano fechou (com ou sem o aviso do atendimento de hoje): o passo guardado não serve mais.
       limparPassoDoCheckout(plan.id)
       if ('aviso' in result && result.aviso) { setError(result.aviso); return }
+      // D8 da 12ª: a sala única do procedimento estava ocupada — a sessão foi sem sala.
+      if ('avisoDaSala' in result && result.avisoDaSala) toast.warning(result.avisoDaSala, { duration: 10_000 })
       // A37 da 8ª: concluir caía na ficha sem confirmação nenhuma.
       toast.success(avisoDoPlanoFechado(plan.sessions.length, semData))
       if (onDone) { onDone(plan.clientId); return }

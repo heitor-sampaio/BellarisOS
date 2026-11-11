@@ -1,8 +1,10 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
-import { criarMembro, type MembroDeTeste } from './apoio/sessao'
+import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
+import { chamarAcao } from './apoio/acao-direta'
+import { diaEmQueAUnidadeAbre } from './apoio/datas'
 
 /**
  * Os defeitos do plano de tratamento da 12ª simulação (2026-11-10/11, a
@@ -16,6 +18,11 @@ import { responderAnamnese } from './apoio/anamnese'
  *   "Cancelar plano" — só recarregando aparecia "Cancelado".
  * Princípio 3: o cancelado é um retrato, só leitura, com a data, o motivo e o
  * dinheiro; e a tela relê o plano ao cancelar.
+ * - D8: as sessões de laser do plano ficavam sem a sala, embora o laser só se
+ *   faça na Sala do laser — o checkout e o remarcar do app não escolhiam sala
+ *   nenhuma. A sala segue OPCIONAL (decisão do Heitor, 2026-11-01); a regra da
+ *   única opção (A2 da 10ª) vale: a sala única que serve ao procedimento, livre,
+ *   vem; ocupada, a sessão vai sem sala, com o aviso.
  */
 
 test.setTimeout(180_000)
@@ -26,6 +33,10 @@ let rede: OutraRede
 let gestor: MembroDeTeste
 let slug = ''
 let clienteId = ''
+let salaLaser = ''
+let app: ClienteDeTeste
+const DIA = diaEmQueAUnidadeAbre(3)
+const as = (hora: string) => new Date(`${DIA}T${hora}:00-03:00`).toISOString()
 
 async function como(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise<void>) {
   const ctx = await browser.newContext({ storageState: m.estado, viewport: { width: 1440, height: 900 } })
@@ -57,6 +68,16 @@ test.beforeAll(async () => {
   slug = (await b.from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   expect((await b.from('users').update({ atende_em: [rede.branchId], provides_services: true }).eq('id', rede.professionalId)).error).toBeNull()
   clienteId = await rede.criarCliente('Patricia')
+  // D8: duas salas, e o procedimento (o laser) só na Sala do laser.
+  const salas = await b.from('rooms').insert([
+    { branch_id: rede.branchId, name: `${PREFIXO} Sala do laser ${marca}` },
+    { branch_id: rede.branchId, name: `${PREFIXO} Sala facial ${marca}` },
+  ]).select('id, name')
+  expect(salas.error).toBeNull()
+  salaLaser = salas.data!.find(s => (s.name as string).includes('laser'))!.id as string
+  expect((await b.from('procedure_rooms').insert({ tenant_id: rede.tenantId, procedure_id: rede.procedureId, room_id: salaLaser })).error).toBeNull()
+  expect((await b.from('procedures').update({ duration_min: 60 }).eq('id', rede.procedureId)).error).toBeNull()
+  app = await clienteComSessao(`pl12c${marca}`, { id: rede.branchId, slug }, { tenant: rede.tenantId })
   await responderAnamnese(clienteId, rede.tenantId)
   // Quem cancela (o Financeiro em Gerenciar) e também monta plano (o Prontuário em
   // Gerenciar): é quem via o editor aberto no plano cancelado.
@@ -70,6 +91,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
+  await app?.limpar()
   await gestor?.limpar()
   await rede?.limpar()
 })
@@ -101,4 +123,60 @@ test('D5 e D4: cancelar relê o plano na hora, e o cancelado é só leitura, com
     await expect(p.getByRole('button', { name: /Adicionar procedimento/ })).toHaveCount(0)
     await expect(p.getByRole('button', { name: /Aceitar plano/ })).toHaveCount(0)
   })
+})
+
+/** O plano PROPOSTO de duas sessões, para o checkout. */
+async function planoProposto(rotulo: string): Promise<{ plano: string; sessoes: string[] }> {
+  const b = db()
+  const { data: pl, error } = await b.from('treatment_plans').insert({
+    branch_id: rede.branchId, client_id: clienteId, professional_id: rede.professionalId,
+    status: 'PROPOSED', name: `${PREFIXO} ${rotulo} ${marca}`,
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const { data: sessoes } = await b.from('treatment_plan_sessions').insert([0, 1].map(i => ({ plan_id: pl!.id, sort_order: i }))).select('id, sort_order')
+  const ord = [...sessoes!].sort((x, y) => x.sort_order - y.sort_order).map(s => s.id as string)
+  expect((await b.from('treatment_plan_session_procedures').insert(ord.map(s => ({ session_id: s, procedure_id: rede.procedureId, price: 100, sort_order: 0 })))).error).toBeNull()
+  return { plano: pl!.id, sessoes: ord }
+}
+
+test('D8: o checkout do plano põe a sessão na sala única do procedimento; ocupada, vai sem sala e diz', async ({ browser }) => {
+  // A Sala do laser já está ocupada às 14:00 (outra pessoa, outro atendimento).
+  const { error: eOcupa } = await db().from('appointments').insert({
+    branch_id: rede.branchId, client_id: await rede.criarCliente('Outra'), procedure_id: rede.procedureId, professional_id: gestor.userId,
+    room_id: salaLaser, scheduled_at: as('14:00'), duration_min: 60, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+  })
+  expect(eOcupa).toBeNull()
+  const { plano, sessoes } = await planoProposto('Plano D8')
+  await como(browser, gestor, async p => {
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', `/admin/checkout/${plano}`, [
+      plano, null,
+      [
+        { planSessionId: sessoes[0], scheduledAt: as('10:00'), professionalId: rede.professionalId, branchId: rede.branchId },
+        { planSessionId: sessoes[1], scheduledAt: as('14:00'), professionalId: rede.professionalId, branchId: rede.branchId },
+      ],
+      slug,
+    ])
+    expect(r.texto, 'o checkout fechou').toMatch(/"newAppointmentId":"[0-9a-f-]{36}"/)
+    expect(r.texto, 'a sessão das 14:00 vai sem sala, e a resposta diz').toMatch(/Sala do laser[^"]*ocupada/)
+  })
+  const { data: ags } = await db().from('appointments').select('scheduled_at, room_id').eq('treatment_plan_id', plano).order('scheduled_at')
+  expect(ags!.map(a => a.room_id), 'a das 10:00 na Sala do laser; a das 14:00 sem sala').toEqual([salaLaser, null])
+})
+
+test('D8: o remarcar do app põe o agendamento na sala única do procedimento, livre no horário novo', async ({ browser }) => {
+  const { data: ag, error } = await db().from('appointments').insert({
+    branch_id: rede.branchId, client_id: app.clientId, procedure_id: rede.procedureId, professional_id: rede.professionalId,
+    scheduled_at: as('09:00'), duration_min: 60, price: 0, status: 'SCHEDULED', source: 'CLIENT_APP',
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const ctx = await browser.newContext({ storageState: app.estado })
+  try {
+    const p = await ctx.newPage()
+    const r = await chamarAcao(p, 'actions/portal-agendamentos.ts', 'remarcarPelaCliente', `/${slug}/cliente/agendamentos/${ag!.id}`,
+      [ag!.id, as('16:00'), false])
+    expect(r.texto).toContain('"ok":true')
+  } finally { await ctx.close() }
+  const { data: depois } = await db().from('appointments').select('scheduled_at, room_id').eq('id', ag!.id).single()
+  expect(new Date(depois!.scheduled_at as string).toISOString()).toBe(as('16:00'))
+  expect(depois!.room_id, 'a Sala do laser, livre às 16:00').toBe(salaLaser)
 })

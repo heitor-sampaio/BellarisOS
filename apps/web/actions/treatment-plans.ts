@@ -6,6 +6,7 @@ import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { salaUnicaDoHorario } from '@/lib/appointments/salas'
 import { clienteAtendidaPor } from '@/lib/clientes/atendida-por'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -1599,6 +1600,9 @@ async function checkoutTreatmentPlanInterno(
   // inteira ser negada.
   const podeAgendar = can(ctx, 'agenda', 'MANAGE')
   let newAppointmentId: string | null = null
+  // D8 da 12ª: a sala única do procedimento, livre, vem; ocupada, a sessão vai
+  // sem sala (a sala é opcional — H1) e a tela diz.
+  const avisosDaSala: string[] = []
 
 
   for (const sess of sessions) {
@@ -1608,6 +1612,14 @@ async function checkoutTreatmentPlanInterno(
     let appointmentId: string | null = null
 
     if (sched && sess.mainProcedureId) {
+      const sala = await salaUnicaDoHorario(admin, {
+        tenantId: ctx.tenantId!, branchId: sched.branchId, procedureId: sess.mainProcedureId,
+        inicio: new Date(sched.scheduledAt), duracaoMin: sess.mainDurationMin || 60,
+      })
+      if (sala.ocupada) {
+        const quando = new Date(sched.scheduledAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(', ', ' às ')
+        avisosDaSala.push(`A ${sala.ocupada} está ocupada em ${quando}: essa sessão vai sem sala.`)
+      }
       const appt = await ler(admin
         .from('appointments')
         .insert({
@@ -1621,6 +1633,7 @@ async function checkoutTreatmentPlanInterno(
           status:            'SCHEDULED',
           source:            'INTERNAL',
           treatment_plan_id: planId,
+          room_id:           sala.salaId,
         })
         .select('id')
         .single(), 'carregar os agendamentos')
@@ -1698,7 +1711,7 @@ async function checkoutTreatmentPlanInterno(
     revalidatePath(`/admin/agenda/${plan.evaluation_appointment_id}`)
   }
 
-  return { transactionId, newAppointmentId, ...(aviso ? { aviso } : {}) }
+  return { transactionId, newAppointmentId, ...(aviso ? { aviso } : {}), ...(avisosDaSala.length ? { avisoDaSala: avisosDaSala.join(' ') } : {}) }
 }
 
 // -- Receber no check-in -------------------------------------------------------
