@@ -10406,6 +10406,28 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
 - Comissões (A46): o aviso de "sem comissão" diz que o "É de propósito" tira a dona dali.
 - Prova: `e2e/{fidelidade,estoque,portal-cliente,financeiro}-atritos-da-12.spec.ts`, `tests/atritos-da-12-f61.test.ts` e os vizinhos (34 no financeiro; dois specs antigos que fixavam o cabeçalho do CSV foram atualizados). Mexeu no `globals.css` do núcleo, em `lib/metrics` e na ficha: vale completa.
 
+**F62 FEITA (11/11, 7c189246…9dda1408, push; migration 20261111006202): o fuso horário da unidade** (decisão do Heitor: "deixa a clinica configurar o seu fuso"). A unidade tem o campo "Fuso horário"; no setup, o CEP sugere. A unidade que já existe não muda sozinha (princípio 6), e o padrão é o de Brasília, que não muda nada para quem não mexe. Fora de Brasília, a tela diz o relógio ("Horário de Manaus").
+- Fatias:
+  - A agenda e o agendar, na equipe, na rede e no app.
+  - O "hoje" e o Fechamento do dia, com o fundo de troco e o CSV.
+  - Os indicadores: período e barras. `metrics_*` usam `fuso_do_recorte`, e no gráfico cada lançamento cai no dia da sua unidade.
+  - O cron: campanhas das 09:00, aniversário, retornos do CRM e o texto da automação.
+  - As datas dos documentos e do PDF assinado.
+- Na rede com fusos diferentes, a janela sai no fuso comum; sem fuso comum, no de Brasília. A campanha automática, que é da rede, roda no fuso comum das unidades.
+- Regra em `docs/regras/indicadores.md`. Prova: `e2e/fuso-da-unidade.spec.ts` (11 testes) e `tests/fuso-da-unidade.test.ts`; Vitest 2122/2122; vizinhos: agenda (43), Fechamento (10), indicadores e financeiro (56), automações (14), documentos (27). Mexeu nos dois layouts, na topbar, em `lib/datetime.ts`, em `packages/utils/src/format.ts`, em `lib/appointments/core.ts` e nas `metrics_*`: vale completa.
+- **Em aberto, ainda no relógio de Brasília (a F62b):**
+  - Telas e formatação: a ficha, a sessão de atendimento, a tabela do financeiro e as comissões; parcelas, vencimentos, recibo e o CSV de lançamentos; fidelidade e vouchers; o quadro do CRM; as telas do portal; `inicio-adiantado.ts`; o Copilot.
+  - Automações: o silêncio noturno (`limites.ts`), as automações por horário (`tempo.ts`, `cron.ts`) e o "aniversário hoje" do contexto; no cron `fidelidade`, o bônus de aniversário.
+  - Indicadores fora da migration: `metrics_by_branch`, `clientes_para_reativar` (e `_rede`), `metrics_faixa_etaria`, `ultimas_visitas` e `clientes_do_publico`.
+  - No Brasília de propósito: plataforma, assinaturas, cobrança do Copilot, as âncoras de vencimento ao meio-dia (datas sem hora) e o `period_ref` das comissões (é da rede).
+
+**Pronto para lançar = zero defeitos e zero atritos** (o Heitor, 11/11: "as regras de negocio já estão definidas, não tem pq ter defeito ou atrito"). A partir da 13ª simulação, cada achado precisa cair num destes casos:
+1. Contraria uma regra escrita (`docs/regras` ou os seis princípios do CLAUDE.md §1).
+2. A pessoa não conseguiu fazer a tarefa, ou fez errado sem perceber.
+3. Não há regra: vai ao Heitor, e a decisão dele vira regra.
+
+O que não cai em nenhum dos três é gosto da simulação e não conta. Antes de corrigir um defeito, a frente procura todos os caminhos da mesma regra e corrige todos juntos: 7 dos 12 defeitos da 12ª eram sobras de frentes anteriores.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
