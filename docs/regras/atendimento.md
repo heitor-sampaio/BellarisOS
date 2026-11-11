@@ -2160,8 +2160,10 @@ const procedures = await ler(
     dizia 15/11. A regra é UMA, `lib/estoque/validade.ts`: a tela mostra o dia
     gravado (`validadeNaTela` — a linha do lote, o seletor de lote da perda, o
     histórico), no dia da validade o lote ainda vale e vencido é do dia
-    seguinte (`loteVencido`, o HOJE de Brasília; também o "jaVenceu" do
-    Copilot), e o "vence em 30 dias" compara os dias (`venceAte` em
+    seguinte (`loteVencido`, o HOJE da unidade do lote — F62b, com o fuso
+    opcional e Brasília de padrão; também o "jaVenceu" do Copilot e o FEFO,
+    na tela e no banco: `estoque_perda_em`, `produto_vender*`,
+    `on_stock_movement_lotes`, migration `20261111006203`), e o "vence em 30 dias" compara os dias (`venceAte` em
     `lotesVencendo`; o Copilot até o fim do dia). Prova:
     `e2e/estoque-tela-consumo-e-lotes.spec.ts` ("D1"),
     `tests/estoque-validade-do-lote.test.ts`.

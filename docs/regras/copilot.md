@@ -22,6 +22,12 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
 
 ## Como é feito
 
+- **O relógio é o do portal** (F62b, 2026-11-11): o "Agora" do prompt, o
+  "hoje" e as horas que ele lê e grava saem de `fusoDoPortal` (a unidade do
+  endereço; no /admin, o fuso da rede) e, por registro, de `fusoDe(c,
+  unidade)` — `lib/copilot/ferramentas/datas.ts` (`janelaDoDia`, `instanteDe`,
+  `quandoLegivel`, `agoraLegivel`, que diz o fuso). O mês da cobrança fica em
+  Brasília. Prova: `tests/fuso-da-unidade.test.ts`.
 - **Liberação** (`lib/copilot/disponivel.ts`): membro da equipe, o Copilot NO
   PLANO (o efetivo: plano ou adicional) — **sem plano não libera**, ao contrário
   das outras funcionalidades: ele custa por uso —, o Copilot NO CARGO, a

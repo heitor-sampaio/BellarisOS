@@ -226,7 +226,9 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   cliente, a partir das 09:00" (`[data-quando-dispara]`, `quandoDispara`,
   `lib/notifications/quando-dispara.ts`). E a hora é verdade: os gatilhos do
   DIA (aniversário, data comemorativa, depois da visita, antes de o pacote
-  vencer) saem a partir das 09:00 de Brasília (`jaEhHoraDeDisparar`, no cron
+  vencer) saem a partir das 09:00 da clínica (F62b: o fuso da rede;
+  o silêncio noturno e o teto, o da unidade da mensagem; o "aniversário
+  hoje" do contexto, o da unidade da cliente) (`jaEhHoraDeDisparar`, no cron
   `notification-campaigns`; `?hora=` é a costura do teste) — saíam logo
   depois da meia-noite, e o aviso tocava o celular da cliente de madrugada. O
   lembrete do agendamento segue de hora em hora. Prova:

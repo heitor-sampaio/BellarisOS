@@ -41,7 +41,31 @@
     quando não é o de Brasília (`NotaDoFuso`, princípio 3).
   - A campanha automática é da REDE (não tem unidade): roda no fuso comum.
   - Helper novo com dia ou hora recebe o fuso como parâmetro opcional (padrão
-    o de Brasília) — nunca lê `America/Sao_Paulo` fixo.
+    o de Brasília) — nunca lê `America/Sao_Paulo` fixo. Componente com data
+    ou hora passa `timeZone: fuso` (`useFuso`) mesmo onde o navegador
+    "acertaria": sem ele vale o relógio do aparelho, e a mesma linha diz duas
+    horas em dois computadores. Página do servidor nunca formata sem
+    `timeZone` (o servidor é UTC).
+  - **F62b (2026-11-11): tudo o que mostra ou decide uma hora ou um dia**
+    segue a regra — as telas (ficha, atendimento, Financeiro, comissões,
+    parcelas, fidelidade, vouchers, CRM, inbox, portal), o recibo (a unidade
+    que recebeu) e os CSV, o Copilot (o relógio do portal: `fusoDoPortal`), o
+    início adiantado, as automações (silêncio, gatilho de horário,
+    aniversário) e a rotina da fidelidade (a rede). O que é da REDE sem
+    unidade (fidelidade, LGPD, aniversariantes, a campanha) usa `fusoDaRede`.
+  - **O dia sem hora no banco** (migration `20261111006203`): o "cliente
+    desde", a última visita de antes, a faixa etária (`metrics_faixa_etaria`
+    com `p_fuso`), o público da campanha, `metrics_by_branch`, os
+    "para reativar", a busca ("de hoje em diante") e o FEFO do estoque
+    (vencido pelo dia da unidade: `(expires_at at time zone 'UTC')::date <
+    (now() at time zone fuso_da_unidade(branch_id))::date`) comparam com o dia
+    da unidade, não com o de Brasília.
+  - **Ficam em Brasília de propósito**: a plataforma e as assinaturas (a
+    cobrança é do BellarisOS), a cobrança do Copilot e o mês da Meta, o
+    `period_ref` e os limites do fechamento das comissões, e as DATAS sem
+    hora gravadas como âncora (o vencimento ao meio-dia de −03, a validade
+    do pacote) — a âncora é escrita e lida pela mesma regra; trocar só a
+    leitura mudaria o dia.
   - Prova: `e2e/fuso-da-unidade.spec.ts` e `tests/fuso-da-unidade.test.ts`.
 - **Período** por `resolvePeriod()`: o período anterior tem a mesma duração
   decorrida do atual. Comparar mês parcial com mês anterior inteiro faz todo

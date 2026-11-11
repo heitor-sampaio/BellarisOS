@@ -204,6 +204,8 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     `avisos_de_vencimento` REIVINDICA o aviso antes de o push sair (a conta
     guarda até onde já avisou) — um aviso por lote novo na janela, nunca um
     por dia nem dois por passagem concorrente.
+  - O dia do aniversário e o "vence em" do aviso são os da clínica (F62b:
+    `fusoDaRede`; Brasília de padrão). Prova: `tests/fuso-da-unidade.test.ts`.
   - A rotina é o cron `fidelidade`: expirar → aniversário → avisos, nessa
     ordem (avisar antes de expirar contaria o que acabou de vencer).
   - ⚠️ As três funções da rotina aceitam `p_tenant` (nulo = todas, o cron).
