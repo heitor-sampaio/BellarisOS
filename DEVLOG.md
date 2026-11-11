@@ -10377,6 +10377,16 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
 - D12: "hoje"/"ontem" do card do lead pelo dia de Brasília.
 - Provas: `tests/defeitos-da-12.test.ts` e os e2e `*-defeitos-da-12.spec.ts` (documentos, agenda, estoque, plano, campanha), mais os vizinhos; Vitest 2060/2060.
 
+**F59 FEITA (11/11, d951a4ac…feaaf0e0, push; migration 20261111005901): o estorno conta no dia em que o dinheiro sai (princípio 5).**
+- D2/A33: o pagamento conta no dia dele pelo valor que entrou; o estorno é saída do dia em que foi feito (no mesmo dia, um anula o outro); o relançado do cancelamento entra no dia do cancelamento. O Fechamento de 10/11 da Acácia voltou a R$ 1.730 (o "Bateu"), e o de 11/11 mostra os R$ 630 como saída ("Pagamento de 10/11: sai nas saídas deste dia."). O faturamento: estorno deste mês de um pagamento do mês passado é dedução deste mês.
+- D3: o estorno de despesa saiu dos "Estornos do dia" e diz "Anula a despesa estornada"; noutro dia, é entrada do caixa do dia do estorno.
+- A39: quem só tem Recebimentos vê as saídas só pela forma, sem a descrição e o motivo.
+- D9/A45: o "caixa da lista" e o CSV contam o que o banco diz que é caixa (coluna "Conta no caixa"; o CSV do Fechamento ganhou "Pagamento de" e "Nas saídas do dia").
+- A31/A57: "Já usado: R$ 180,00 usados, R$ 16,36 deles do bônus"; no app, "R$ 300,00 pagos · R$ 136,36 devolvidos" (o Histórico → Pagamentos do app ficou sem a nota).
+- No banco: `financial_transactions.estorno_de` liga o contra-lançamento ao pagamento estornado (os 18 antigos ligados, 0 sem ligação); `metrics_movimentos_pagos` é a régua do caixa, e as `metrics_*` de receita, Fechamento, resultado e composição foram recriadas sobre ela. Números passados que mudaram: 2 transações, nas [sim] Margarida e Acácia (pagas 10/11, estornadas 11/11); os 16 outros estornos, inclusive os da Bellaris Clinic, foram no mesmo dia.
+- Limpeza destrutiva nova (com o Heitor presente): `metrics_estornos_do_dia` e `metrics_taxa_dos_lancamentos` ficaram sem uso.
+- Prova: `e2e/financeiro-dinheiro-da-12.spec.ts` (6) e 98 vizinhos. Mexeu em `lib/metrics` e `metrics_*`: vale completa.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
