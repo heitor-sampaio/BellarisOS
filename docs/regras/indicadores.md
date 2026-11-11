@@ -416,9 +416,45 @@
 - **Médias de referência são ponderadas** pela grandeza que as sustenta (ROI e
   CPA por investimento, CTR por impressões). Média simples por campanha deixa
   uma campanha de R$ 5 ditar a régua de todas as outras.
-- **Estorno** sai dos dois lados: a transação marcada `notes='Estornada'` e a
-  contra-transação `category='Estorno'`. Contar só uma faz o estorno bater duas
-  vezes no resultado.
+- **Estorno: cada lado no seu dia** (D2 da 12ª simulação, 2026-11-11 —
+  DECIDIDO pelo princípio 5, "o caixa e o faturamento, no dia em que o dinheiro
+  entrou"; troca o "sai dos dois lados" de antes, que era regra de frente). A
+  Acácia fechou 10/11 com "Bateu" em R$ 1.730, o cancelamento do plano em 11/11
+  levou o 10/11 a R$ 1.100, e o 11/11 não mostrava saída nenhuma.
+  - O PAGAMENTO conta no dia dele pelo valor que ENTROU — o de antes de todo
+    estorno (o estorno parcial reduz o lançamento, r2-ven-05, mas o dia dele
+    volta a contar os R$ 1.100 pagos). Um dia (ou um mês) que já passou não
+    muda por um estorno feito depois — fechado ou não.
+  - O ESTORNO conta no dia em que foi feito: no Fechamento, é SAÍDA na forma do
+    pagamento (o parcial, a parte devolvida; o inteiro, o valor todo — e o
+    relançado do "estornar inteiro e lançar o usado de novo" é entrada do dia);
+    no faturamento, uma dedução do período em que aconteceu, como uma devolução
+    de venda. O estorno de uma DESPESA é o dinheiro que VOLTA ao caixa: entrada
+    do dia (e dedução da despesa do período).
+  - **No mesmo dia (na mesma janela), um anula o outro**, como sempre foi: o
+    pagamento estornado inteiro some, o parcial fica com o que sobrou, e o
+    estorno não vira saída. Em dias diferentes, cada lado conta no seu dia.
+  - As taxas da maquininha acompanham o pagamento: a do estornado fica no dia
+    dele e sai no dia do estorno.
+  - A régua é UMA: `metrics_movimentos_pagos` (migration `20261111005901`) — o
+    pagamento da janela pelo que entrou, menos o estorno na própria janela, e o
+    estorno feito na janela de um pagamento de FORA dela como linha negativa
+    (com os dados do pagamento: forma, categoria, cliente, atendimento, venda;
+    `estorno_de` preenchido). `metrics_receitas_pagas` parte dela, e a despesa
+    paga também (núcleo, por unidade, séries, composição, Fechamento, avisos,
+    custos da venda, resultado). O contra-lançamento sabe o pagamento que
+    estorna (`financial_transactions.estorno_de`, gravado pelas cinco portas do
+    estorno; os de antes, ligados pela migration). Sem ligação, a regra de
+    antes: os dois lados fora.
+  - Os números PASSADOS mudaram nas redes que tiveram estorno noutro dia: na
+    produção, 2 estornos em 2 redes — o parcial do crédito da Bruna ([sim]
+    Margarida, R$ 136,36) e o cancelamento do plano da Patrícia ([sim] Acácia,
+    R$ 630), os dois de 10/11 estornados em 11/11, no mesmo mês.
+  - A receita dos atendimentos por EXECUÇÃO (`metrics_receitas_pagas_dos_executados`,
+    o dia em que foi feito) não mudou: o pagamento estornado segue fora dela.
+  - Prova: `e2e/financeiro-dinheiro-da-12.spec.ts` (paga ontem, estorna hoje —
+    parcial, inteiro e o relançado —, os dois Fechamentos, o faturamento do mês
+    passado e deste, e o CSV).
 - **Receita e despesa simétricas**: se a receita exige `is_paid`, a despesa
   também. Senão o "lucro" mistura caixa de um lado com competência do outro.
 - **Percentual de percentual não existe**: variação de margem é em **p.p.**
@@ -473,8 +509,12 @@ série (a unidade escolhida mais os clientes sem unidade).
 
 **Uma regra de receita, e toda soma de dinheiro parte dela.**
 `metrics_receitas_pagas` (migration `20260927000011`) é o conjunto canônico —
-INCOME pago, sem estorno dos dois lados, eixo em `paid_at` — e é o mesmo
-predicado de `metrics_core.revenue_cash`. Receita por unidade, por forma de
+INCOME pago, eixo em `paid_at`, o estorno no dia dele (desde a F59,
+`metrics_movimentos_pagos`: "Estorno: cada lado no seu dia", acima) — e é o
+mesmo conjunto de `metrics_core.revenue_cash`. Ele pode trazer linhas
+NEGATIVAS (o estorno de um pagamento de fora da janela, com `estorno_de`):
+quem SOMA já sai certo; quem lista ENTRADAS (o Fechamento, "Por quem recebeu")
+separa pelo `estorno_de`. Receita por unidade, por forma de
 pagamento, por categoria, gasto por cliente e LTV saem DELE. Até 2026-09-27 os
 relatórios somavam esses gráficos por `created_at` e com estorno, ao lado de um
 KPI que não fazia nenhum dos dois.

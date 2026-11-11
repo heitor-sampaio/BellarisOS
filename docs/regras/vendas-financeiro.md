@@ -187,8 +187,10 @@ plano").
     ("No cartão, a operadora estorna o pagamento inteiro") e a (b) já vem
     escolhida; o banco recusa a (a). Na (b), a receita do usado entra no dia
     do cancelamento (é um pagamento novo, e o Fechamento do dia o mostra na
-    forma escolhida), e a do pagamento estornado sai do dia dele, como todo
-    estorno (decisão desta frente, para o Heitor revisar). A função é
+    forma escolhida), e o pagamento estornado FICA no dia dele: o estorno é a
+    saída do dia do cancelamento (D2 e A33 da 12ª, decidido pelo princípio 5 —
+    era "a do pagamento estornado sai do dia dele", decisão de frente;
+    `indicadores.md`, "Estorno: cada lado no seu dia"). A função é
     `pacote_cancelar_devolvendo` (`p_estorno` PARCIAL | INTEIRO, `p_novo`
     { metodo, vezes }; migration `20261103001303`); `pacote_cancelar` ficou
     um invólucro dela sem a escolha (fora do cartão, parcial; no cartão,
@@ -683,6 +685,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     sai do crédito nunca passa do saldo dela. O resto do estorno é o de sempre
     (parcial ou o inteiro com o usado de novo; no cartão, só o inteiro; os
     pontos do que voltou). `credito_estornar_venda` ganhou `p_bonus`.
+  - **O "Já usado" diz a fatia do bônus** (A31 da 12ª; princípio 3): a Bruna
+    (R$ 300 + R$ 30, usou R$ 180, o bônus na proporção) lia "Já usado
+    R$ 163,64" — o usado do PAGO. Agora "R$ 180,00 usados, R$ 16,36 deles do
+    bônus" (`textoDoJaUsado`, `lib/creditos/bonus.ts`: o usado do pago + o
+    bônus que não sai; `[data-ja-usado]`). A conta não mudou. Prova:
+    `e2e/financeiro-dinheiro-da-12.spec.ts` ("A31"), `tests/credito-ja-usado.test.ts`.
   - O uso segue a regra do crédito: não é receita de novo, e a comissão de
     execução é a do atendimento. Sem comissão de venda.
   - Prova: `e2e/vendas-credito-bonus.spec.ts`.
@@ -771,12 +779,36 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `#recebiveis-da-operadora`) a quem abre o Financeiro da unidade inteira. Só
     informação: não mexe no saldo. Prova: `e2e/financeiro-atritos-da-7.spec.ts` ("A44").
   - **Os atritos do Fechamento da 8ª simulação** (2026-11-06; princípio 3):
-    - **Os estornos do dia aparecem** (A42): pela regra única, a venda
-      estornada e o estorno saem das entradas e das saídas ("Saídas R$ 0"), e
-      o resumo não dizia que o dinheiro voltou. "Estornos do dia · R$ 397,00"
-      (`[data-estornos-do-dia]`) lista cada contra-lançamento pago no dia (a
-      descrição, a forma e o motivo), com o total de `getEstornosDoDia`
-      (`lib/metrics/fechamento-extra.ts`, em centavos). O resumo não muda.
+    - **Os estornos do dia aparecem** (A42): "Estornos do dia · R$ 397,00"
+      (`[data-estornos-do-dia]`) lista cada estorno pago no dia (a descrição,
+      a forma e o motivo), com o total de `getEstornosDoDia`
+      (`lib/metrics/fechamento-extra.ts`, em centavos).
+    - **O estorno sai no dia em que o dinheiro sai** (D2 da 12ª simulação,
+      2026-11-11 — DECIDIDO pelo princípio 5; `indicadores.md`, "Estorno: cada
+      lado no seu dia"): o Fechamento de um dia, fechado ou não, não muda por
+      um estorno feito depois — o pagamento fica nele pelo valor que entrou (o
+      parcial, pelo de antes). O estorno de um pagamento de OUTRO dia é SAÍDA
+      do dia em que foi feito, na forma do pagamento; o do MESMO dia já está
+      fora das entradas (um anula o outro, como sempre). Cada item dos
+      estornos diz qual dos dois: "Pagamento de 10/11: sai nas saídas deste
+      dia." ou "Pagamento deste dia: já fora das entradas."
+      (`[data-estorno-do-dia]`, `[data-de-outro-dia]`), e o texto diz quanto
+      das saídas são estornos de outros dias (`metrics_estornos_das_clientes_do_dia`:
+      `pago_em`, `mesmo_dia`, `total_de_outros_dias`). O CSV do Fechamento
+      traz "Pagamento de" e "Nas saídas do dia". Prova:
+      `e2e/financeiro-dinheiro-da-12.spec.ts`.
+    - **Os estornos do dia são o que voltou às CLIENTES** (D3 da 12ª; sobra da
+      F38): o estorno de uma DESPESA (a energia paga duas vezes) aparecia como
+      "O que voltou às clientes", com "− R$ 780,00" — o dinheiro voltou ao
+      CAIXA. Ele sai da lista (e do CSV); no outro dia, é ENTRADA do caixa na
+      forma dele (no mesmo dia, um anula o outro). A linha do Financeiro do
+      contra-lançamento de uma despesa diz "Anula a despesa estornada"
+      (`[data-anula-a-despesa]`). O estorno do uso do crédito na clínica
+      também sai (não é dinheiro do caixa). **E por isso quem só tem
+      Recebimentos não lê no Fechamento a descrição nem o motivo de uma
+      despesa** (A39 da 12ª): as saídas aparecem só pela forma; a descrição e
+      o motivo da despesa ficam no Financeiro, de quem o tem. Prova: o mesmo
+      spec ("D3", "A39").
     - **O da rede abre na unidade com movimento e mostra a clínica toda**
       (A45): com duas ou mais, "O dia na clínica" (`[data-fechamento-da-rede]`)
       — cada unidade com as entradas e as saídas do dia (ou "Sem movimento"),
@@ -938,6 +970,17 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   Em Relatórios → Financeiro, o cartão é "Despesas pagas (caixa)", com o
   detalhe de que entram a compra de estoque e o pagamento das comissões (o DRE
   usa só a operacional). Prova: `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A31").
+  **E é o caixa de verdade** (D9 e D2 da 12ª simulação, 2026-11-11; princípio
+  3): "13 lançamentos · caixa da lista R$ 3.383,64" ao lado da receita de
+  R$ 3.203,64 — os R$ 180 pagos com crédito na clínica entravam, e a própria
+  linha dizia "não é receita". Cada lançamento conta no caixa o que o BANCO diz
+  (`metrics_caixa_dos_lancamentos` → `getTaxaDosLancamentos`, `no_caixa`): o
+  pagamento pelo valor que entrou, o estorno ligado com o sinal dele, e nada o
+  em aberto, o uso do crédito na clínica (e o estorno dele) e o pago todo em
+  pontos — a mesma régua do Fechamento (`metrics_movimentos_pagos`). Somado na
+  lista do dia, é o saldo do Fechamento do dia (`resultadoDaLista` soma o
+  `no_caixa`; sem ele, a regra de antes, sem o crédito interno). Prova:
+  `e2e/financeiro-dinheiro-da-12.spec.ts` ("D9"), `tests/metrics-resultado-da-lista.test.ts`.
 - **O "Em aberto, todos os vencimentos" leva à baixa** (A38 da 8ª simulação,
   2026-11-06): a parcela do crediário que vence no mês que vem não aparecia em
   Lançamentos (a lista é do período, pela data de referência), e não se via
@@ -1009,6 +1052,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (`[data-fora-do-resultado]`, `metrics_entradas_de_estoque` →
   `getEntradasDeEstoque`). Prova: `e2e/financeiro-uso-da-10.spec.ts` ("A31"),
   `tests/financeiro-csv-dos-lancamentos.test.ts`, `tests/csv-da-contadora.test.ts`.
+  **E diz o que conta no caixa** (A45 da 12ª; princípio 3): o CSV trazia o
+  pagamento "Estornado", o "Estorno" e a nova linha juntos, e somar a coluna
+  Valor dava errado sem filtrar a Situação. A coluna "Conta no caixa" (Sim/Não,
+  logo depois do Valor) é o `no_caixa` do banco, e o Valor do "Sim" é o que ele
+  conta (o pagamento estornado em parte, pelo que entrou; o estorno, negativo):
+  somar só os "Sim" dá o caixa do período. A taxa e o líquido seguem a mesma
+  régua (a taxa do estornado no dia dele, a do estorno negativa no dele). Prova:
+  `e2e/financeiro-dinheiro-da-12.spec.ts` ("A45"), `tests/financeiro-csv-dos-lancamentos.test.ts`.
 - **Os cartões dizem a base** (A24 da 10ª simulação; princípio 3: Faturamento
   − Despesas ≠ Lucro, e pagar as comissões subia as Despesas sem mexer no
   lucro): o cartão das despesas é "Despesas pagas (caixa)" no Financeiro da
@@ -1037,8 +1088,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   parcial; migration `20261110005601`), e a linha dos dois financeiros diz
   "Pago R$ 1.100,00 · R$ 990,00 estornados" (`notaDoEstornoParcial`,
   `lib/financeiro/notas-do-lancamento.ts`, `[data-estorno-parcial-do-lancamento]`).
-  O Fechamento do dia diz, nos estornos, que as entradas já mostram o que ficou.
-  Os estornos parciais de antes da coluna ficam sem a nota.
+  Os estornos parciais de antes da coluna ficam sem a nota. No caixa, o dia do
+  pagamento conta o valor de antes, e o estorno sai no dia dele (D2 da 12ª,
+  acima). **E o app da cliente diz o mesmo** (A57 da 12ª): a compra de crédito
+  da Bruna estornada em parte aparecia "Crédito na clínica R$ 163,64 Pago";
+  agora, embaixo, "R$ 300,00 pagos · R$ 136,36 devolvidos"
+  (`notaDoEstornoParcialParaACliente`, `[data-devolvido-em-parte]`, no
+  Financeiro do app). Prova: `e2e/financeiro-dinheiro-da-12.spec.ts` ("A57"),
+  `tests/financeiro-notas-do-lancamento.test.ts`.
 - **O uso do crédito na clínica diz que não é receita** (A37 da 11ª): a linha
   "Receita · Pago · + R$ 130,00" do pagamento com `INTERNAL_CREDIT` ganha "Uso
   do crédito na clínica: não é receita — o caixa foi quando o crédito foi
@@ -1980,4 +2037,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Vender crédito na clínica pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, o "Crédito na clínica" do Vender (decisão 1 da 9ª)
 ❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem
 ❌ Lançar o bônus do crédito na clínica como receita, ou deixar o bônus no saldo depois do estorno da venda (ele sai junto, inteiro ou na proporção — a clínica escolhe; A20 da 11ª)
+❌ Tirar do dia do pagamento um estorno feito noutro dia (o Fechamento de um dia passado não muda): o estorno é a saída do dia em que foi feito — metrics_movimentos_pagos (D2 da 12ª, princípio 5)
+❌ Gravar um contra-lançamento de estorno (category = 'Estorno') sem estorno_de (o pagamento que ele estorna): sem a ligação, ele cai na regra antiga e some dos dois dias
+❌ Somar ENTRADAS a partir de metrics_receitas_pagas sem separar o estorno de outro dia (estorno_de, linha negativa): é saída, não entrada negativa
+❌ Pôr o estorno de uma DESPESA nos "Estornos do dia" ou com o sinal de devolução à cliente: o dinheiro voltou ao caixa (D3 da 12ª)
+❌ Somar o "caixa da lista" (ou a coluna do CSV) por uma regra própria: é o no_caixa de metrics_caixa_dos_lancamentos (D9 e A45 da 12ª)
 ```
