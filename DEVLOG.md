@@ -10366,6 +10366,17 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
 **Para o Heitor:** o fuso da clínica fora de Brasília (a Acácia é de Manaus, UTC−4: o 00:00 da tela é 23:00 na parede, e o "hoje", o Fechamento e as campanhas das 09:00 seguem Brasília). Recomendação: o fuso por unidade, escolhido pelo estado do CEP, com Brasília como padrão.
 - **Decidido pelo Heitor (2026-11-11): "Não, deixa a clinica configurar o seu fuso"** (logo depois de "Fuso horario oficial de brasilia", que ele trocou). O fuso é configuração da unidade, com Brasília como padrão e a sugestão pelo estado do CEP no setup; toda janela de dia e hora da unidade usa o fuso dela (F62).
 
+**F58 FEITA (11/11, db2bda10…66b1cf3c, push; sem migration): os defeitos fora do dinheiro.**
+- D1: a linha de Procedimentos e o "O que essa pessoa vai ver" dizem que o "Vender" da ficha é de Recebimentos (ou do Financeiro em Gerenciar); a tela de Pacotes também. A trava não mudou.
+- D4/D5: o plano cancelado (e o recusado) é um retrato só de leitura ("Cancelado em 11/11/2026 às 01:48, por Cláudia.", o motivo, as sessões canceladas, o usado, o crédito), e a tela troca para "Cancelado" sem recarregar.
+- D6: o passo Documentação do checkout diz "Neste plano saem vazias: …"; o menu do editor diz quando cada variável opcional sai vazia e que a forma de pagamento já é a frase completa. Nada bloqueia.
+- D7: o Agendar parte da hora da tela; se ela não cabe, troca e diz ("Hoje não há mais horário livre para Gabi. O próximo é amanhã, 00:00."); o "Confirmar" espera a conferência.
+- D8: o checkout do plano e o remarcar do app põem a sessão na sala única livre que serve ao procedimento; ocupada, vai sem sala com aviso. No remarcar, a sala antiga fica se seguir livre. A sala segue opcional.
+- D10: "Quem receberia hoje" conta o gatilho de hoje ("1 aniversariante hoje"), com o público à parte; a escolha de quem recebe é uma só para o cron e a tela (`lib/notifications/gatilho-de-hoje.ts`).
+- D11: sem a linha da unidade, o "Estoque mínimo" mostra (e grava) o mínimo do cadastro.
+- D12: "hoje"/"ontem" do card do lead pelo dia de Brasília.
+- Provas: `tests/defeitos-da-12.test.ts` e os e2e `*-defeitos-da-12.spec.ts` (documentos, agenda, estoque, plano, campanha), mais os vizinhos; Vitest 2060/2060.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
