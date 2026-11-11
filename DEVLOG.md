@@ -10398,6 +10398,14 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
 - Ficaram: A8 (unificar as sintaxes de variável é projeto), A10 (só anotado), A23 (r2-ven-12), A25 (a Minha agenda abre o atendimento por desenho, agenda-06); A21 não se reproduziu (ficou o teste).
 - Prova: `e2e/{configuracoes,documentos,vendas,agenda}-atritos-da-12.spec.ts`, `tests/{documentos,vendas}-atritos-da-12.test.ts`, `tests/fidelidade-brinde-sem-estoque.test.ts`; vitest 2083/2083. Mexeu em permissões, Configurações dos dois portais e no conversor dos documentos: vale completa.
 
+**F61 FEITA (11/11, 716482bd…fec79160, push; migrations 20261111006101/6102/6103): os atritos de caixa, financeiro, estoque e portal (A30, A32, A34–A38, A40–A44, A46–A56).** O PC reiniciou no meio da frente, com o financeiro escrito e sem commit; a sessão seguinte rodou os testes contra a main (5 e2e e 6 Vitest falharam pelo motivo certo), terminou o A36 e o A46 e fez os commits.
+- Fidelidade (A30, A41, A53, A54): a janela do estorno diz os pontos que saem (os da cliente, os usados que voltam, o saldo de depois e o prêmio de quem indicou — `fidelidade_pontos_do_estorno`); o extrato não repete o título; "Você já pode trocar: peça na recepção."; o "Indique uma amiga" também no Início do app, com o prêmio ligado.
+- Estoque (A40, A48, A49): o brinde entregue vai a Perdas como "Brinde da fidelidade", pelo custo do lote (`metrics_perdas`); o motivo do "Desfazer" diz que é obrigatório; a embalagem no plural ("27 frascos").
+- Portal (A50–A52, A55, A56): o "Sem preferência" diz o que é, e o remarcado diz com quem ficou; o agendar dentro do prazo diz que nasce sem cancelar pelo app; o plano com o nome e o desconto; o concluído é "toque para avaliar".
+- Caixa e financeiro (A32, A34–A38, A42–A44, A47): "Estornar" e "Receber" na aba Financeiro da ficha; o atendimento pago diz a quem pedir o estorno; "sem multa. Usado"; a tabela de Movimentações cabe a 1440 px (a descrição quebra em duas linhas); o "A pagar" na linha do em aberto; o Copilot não cobre o fim da página no computador; a quem só vê, "Ver a lista"; o "A pagar" diz todo o em aberto de qualquer mês e tem lista (`?aberto=a-pagar`); o CSV com Unidade, Profissional, Bandeira e Desconto; o Fechamento por bandeira e "Ainda não fechado".
+- Comissões (A46): o aviso de "sem comissão" diz que o "É de propósito" tira a dona dali.
+- Prova: `e2e/{fidelidade,estoque,portal-cliente,financeiro}-atritos-da-12.spec.ts`, `tests/atritos-da-12-f61.test.ts` e os vizinhos (34 no financeiro; dois specs antigos que fixavam o cabeçalho do CSV foram atualizados). Mexeu no `globals.css` do núcleo, em `lib/metrics` e na ficha: vale completa.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
