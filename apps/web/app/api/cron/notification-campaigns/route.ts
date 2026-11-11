@@ -5,16 +5,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { gravar, ler, lerTodas } from '@/lib/db'
-import { lerPublico } from '@/lib/clientes/publico'
-import { filtrosDaCampanha } from '@/lib/notifications/filtros-da-campanha'
-import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'
+import { partsInTZ, startOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { nomeParaSaudar } from '@/lib/saudacao'
 import { jaEhHoraDeDisparar, type GatilhoDaCampanha } from '@/lib/notifications/quando-dispara'
-
-/** Cliente de uma campanha: quem recebe, e o nome para o {{first_name}}. */
-type Destinatario = { id: string; name: string }
+import { aniversariantes, concluiramNoDia, pacotesVencendoNoDia, agendadosNaJanela } from '@/lib/notifications/gatilho-de-hoje'
 
 function getWebPush() {
   webpush.setVapidDetails(
@@ -174,21 +170,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, processed: results.length, results })
 }
 
-/**
- * Das clientes que o FATO escolheu (a visita de N dias atrás, o horário daqui
- * a N horas, o pacote vencendo), só as do público da campanha — as regras
- * gravadas dela, pela conta da prévia (`filtrosDaCampanha`), no banco. Até a
- * 9ª simulação (D1) estas três não liam regra nenhuma.
- */
-async function doPublico<T extends Destinatario>(camp: NotificationCampaign, clientes: T[]): Promise<T[]> {
-  if (!clientes.length) return clientes
-  const doPublico = new Set((await lerPublico(camp.tenant_id, {
-    ...filtrosDaCampanha(camp.audience_rules ?? {}),
-    client_ids: clientes.map(c => c.id),
-  })).map(c => c.id))
-  return clientes.filter(c => doPublico.has(c.id))
-}
-
 // -- Birthday: send to clients whose birth_date month/day == today ------
 
 async function processBirthdayCampaign(
@@ -196,20 +177,9 @@ async function processBirthdayCampaign(
   today: { month: number; day: number },
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
-  const rules = camp.audience_rules
-
-  // Os aniversariantes, filtrados NO BANCO (2026-10-22): o mês e o dia da data
-  // como gravada, que é o que o app lia do texto ('1990-09-27') — por
-  // `new Date()`, a meia-noite em UTC ainda é a véspera em São Paulo. Até
-  // então o app lia os clientes sem ordem, o PostgREST devolvia 1000, e o
-  // filtro do dia era feito sobre esse lote: quem ficava de fora nunca recebia.
-  // E com TODAS as regras da campanha (D1 da 9ª simulação): só a unidade e o
-  // "só quem tem o app" chegavam aqui — a tag, o sexo, o procedimento e o
-  // "sem visita" ficavam de fora.
-  const birthdayClients: Destinatario[] = (await lerPublico(camp.tenant_id, {
-    ...filtrosDaCampanha(rules),
-    aniversario: { mes: today.month, dia: today.day },
-  })).map(c => ({ id: c.id, name: c.name }))
+  // A escolha (as aniversariantes do público, no banco) é a do "Quem receberia
+  // hoje" do detalhe da campanha (D10 da 12ª): lib/notifications/gatilho-de-hoje.
+  const birthdayClients = await aniversariantes(camp, today)
 
   if (!birthdayClients.length) return 0
 
@@ -237,26 +207,7 @@ async function processVisitCampaign(
   targetDate: Date,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
-  const dayStart = startOfDayTZ(targetDate)
-  const dayEnd   = endOfDayTZ(targetDate)
-
-  const appts = await ler(admin
-    .from('appointments')
-    .select('client_id, clients!inner(id, name), branches!inner(tenant_id)')
-    .eq('branches.tenant_id', camp.tenant_id)
-    .eq('status', 'COMPLETED')
-    .gte('completed_at', dayStart.toISOString())
-    .lte('completed_at', dayEnd.toISOString()), 'carregar os agendamentos')
-
-  const seen = new Set<string>()
-  const clients: Destinatario[] = []
-
-  for (const a of (appts ?? []) as unknown as { client_id: string; clients: { name: string } | null }[]) {
-    if (a.clients && !seen.has(a.client_id)) {
-      seen.add(a.client_id)
-      clients.push({ id: a.client_id, name: a.clients.name })
-    }
-  }
+  const clients = await concluiramNoDia(admin, camp, targetDate)
   if (!clients.length) return 0
 
   // Idempotency
@@ -268,7 +219,7 @@ async function processVisitCampaign(
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
-  const toSend = (await doPublico(camp, clients)).filter(c => !alreadySent.has(c.id))
+  const toSend = clients.filter(c => !alreadySent.has(c.id))
   if (!toSend.length) return 0
   return sendBatch(camp, toSend, admin)
 }
@@ -280,27 +231,7 @@ async function processExpiryCampaign(
   targetDate: Date,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
-  const dayStart = startOfDayTZ(targetDate)
-  const dayEnd   = endOfDayTZ(targetDate)
-
-  const pkgs = await ler(admin
-    .from('client_packages')
-    .select('client_id, clients!inner(id, name, tenant_id)')
-    .eq('clients.tenant_id', camp.tenant_id)
-    // O pacote cancelado (F2b) não vence: não há o que lembrar.
-    .is('cancelado_em', null)
-    .gte('expires_at', dayStart.toISOString())
-    .lte('expires_at', dayEnd.toISOString()), 'carregar os pacotes do cliente')
-
-  const seen = new Set<string>()
-  const clients: Destinatario[] = []
-
-  for (const p of (pkgs ?? []) as unknown as { client_id: string; clients: { name: string } | null }[]) {
-    if (p.clients && !seen.has(p.client_id)) {
-      seen.add(p.client_id)
-      clients.push({ id: p.client_id, name: p.clients.name })
-    }
-  }
+  const clients = await pacotesVencendoNoDia(admin, camp, targetDate)
   if (!clients.length) return 0
 
   const todayStart = startOfDayTZ(new Date())
@@ -311,7 +242,7 @@ async function processExpiryCampaign(
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
-  const toSend = (await doPublico(camp, clients)).filter(c => !alreadySent.has(c.id))
+  const toSend = clients.filter(c => !alreadySent.has(c.id))
   if (!toSend.length) return 0
   return sendBatch(camp, toSend, admin)
 }
@@ -324,26 +255,9 @@ async function processAppointmentReminderCampaign(
   windowEnd: Date,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
-  // Busca agendamentos cujo scheduled_at cai dentro da janela
-  const appts = await ler(admin
-    .from('appointments')
-    .select('client_id, scheduled_at, clients!inner(id, name), branches!inner(tenant_id)')
-    .eq('branches.tenant_id', camp.tenant_id)
-    .in('status', ['SCHEDULED', 'CONFIRMED'])
-    .gte('scheduled_at', windowStart.toISOString())
-    .lt('scheduled_at', windowEnd.toISOString()), 'carregar os agendamentos')
-
-  if (!appts?.length) return 0
-
-  // Dedup: um lembrete por cliente por execução do cron (mesmo que tenha 2 agendamentos na janela)
-  const seen = new Set<string>()
-  const clients: { id: string; name: string; scheduled_at: string }[] = []
-  for (const a of appts as unknown as { client_id: string; scheduled_at: string; clients: { name: string } | null }[]) {
-    if (a.clients && !seen.has(a.client_id)) {
-      seen.add(a.client_id)
-      clients.push({ id: a.client_id, name: a.clients.name, scheduled_at: a.scheduled_at })
-    }
-  }
+  // Um por cliente por execução do cron, do público (lib/notifications/gatilho-de-hoje).
+  const clients = await agendadosNaJanela(admin, camp, windowStart, windowEnd)
+  if (!clients.length) return 0
 
   // Idempotência: não enviar mais de um lembrete desta campanha ao mesmo cliente hoje
   const todayStart = startOfDayTZ(new Date())
@@ -354,7 +268,7 @@ async function processAppointmentReminderCampaign(
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
-  const toSend = (await doPublico(camp, clients)).filter(c => !alreadySent.has(c.id))
+  const toSend = clients.filter(c => !alreadySent.has(c.id))
   if (!toSend.length) return 0
 
   return sendBatch(camp, toSend, admin)

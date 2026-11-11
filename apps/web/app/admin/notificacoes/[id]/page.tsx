@@ -10,6 +10,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { DeleteCampaignButton } from '@/components/admin/delete-campaign-button'
 import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { quandoDispara } from '@/lib/notifications/quando-dispara'
+import { quemReceberiaHoje } from '@/lib/notifications/gatilho-de-hoje'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,6 +55,10 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
   }
 
   const statusCfg = STATUS_CFG[campaign.status] ?? STATUS_CFG.DRAFT
+  // D10 da 12ª: na automática, "Quem receberia hoje" é o GATILHO de hoje (a
+  // escolha do cron) — o público inteiro fica numa linha à parte.
+  const mostraQuemReceberia = can(ctx, 'marketing', 'MANAGE') && !['ARCHIVED', 'COMPLETED'].includes(campaign.status)
+  const deHoje = mostraQuemReceberia && campaign.type === 'AUTOMATED' ? await quemReceberiaHoje(campaign) : null
   const TypeIcon  = TYPE_ICON[campaign.type] ?? Zap
   const readRate  = campaign.total_sent > 0
     ? Math.round(campaign.total_read / campaign.total_sent * 100)
@@ -182,9 +187,18 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
           <AudienceRow rules={campaign.audience_rules} />
           {/* A21 da 11ª: quem receberia HOJE, também fora do assistente (o
               rascunho não dizia) — a mesma conta do disparo. */}
-          {can(ctx, 'marketing', 'MANAGE') && !['ARCHIVED', 'COMPLETED'].includes(campaign.status) && (
+          {mostraQuemReceberia && (
             <div data-quem-receberia-hoje style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <p className="overline">Quem receberia hoje</p>
+              {deHoje && (
+                <p data-receberiam-hoje style={{
+                  fontSize: 'var(--text-base-sz)', fontWeight: 'var(--weight-bold)',
+                  color: deHoje.hoje > 0 ? 'var(--brand)' : 'var(--text-muted)',
+                }}>
+                  {deHoje.texto}
+                </p>
+              )}
+              {deHoje && <p className="overline" style={{ marginTop: 6 }}>Público da campanha</p>}
               <AudiencePreview rules={campaign.audience_rules} />
             </div>
           )}

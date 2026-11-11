@@ -256,6 +256,21 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   "Hoje, a busca acharia N clientes" (`contarBuscaDeClientes`, só LÊ, a
   `buscarClientes` do motor — `[data-quem-acharia-hoje]`). E a prévia do título
   da campanha diz que "Ana" é um nome de EXEMPLO (`[data-previa-do-titulo]`).
+- **Na campanha automática, "Quem receberia hoje" é o GATILHO de hoje** (D10 da
+  12ª simulação, 2026-11-11; princípio 3: o Aniversário e o Pós-visita 7 dias
+  diziam "12 clientes no público" — o público inteiro — quando ninguém fazia
+  aniversário nem fez 7 dias da visita). O detalhe diz quantas o gatilho escolhe
+  HOJE e quantas têm o app ("1 aniversariante hoje · 1 vai receber o aviso no
+  celular", ou "Hoje ninguém do público faz aniversário: a campanha não sai para
+  ninguém hoje." — `[data-receberiam-hoje]`), e o público inteiro fica numa
+  linha à parte, "Público da campanha" (`AudiencePreview`). A escolha é UMA, a
+  do cron: `lib/notifications/gatilho-de-hoje.ts` (`aniversariantes`,
+  `concluiramNoDia`, `pacotesVencendoNoDia`, `agendadosNaJanela`, todas pelo
+  público da campanha) — o cron `notification-campaigns` passou a usá-las, e o
+  detalhe lê `quemReceberiaHoje`. O lembrete do agendamento conta o resto do dia
+  (de agora ao fim de hoje, mais a antecedência); a data comemorativa, o público
+  inteiro só no dia dela. A imediata e a agendada seguem com o público.
+  Prova: `e2e/campanha-defeitos-da-12.spec.ts`.
 - **As ações da lista de campanhas têm nome** (A22 da 11ª: "Ativar" e
   "Arquivar" eram ícones lado a lado): "Ver", "Ativar", "Pausar", "Arquivar"
   escritos no botão. Prova: `e2e/automacoes-atritos-da-11.spec.ts`,
@@ -277,5 +292,6 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 ```
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
 ❌ Montar o filtro do público da campanha à mão (branch_ids: rules.branch_ids…) — é filtrosDaCampanha, senão a regra nova fica sem leitor e a campanha vai a todas (D1 da 9ª)
+❌ Contar "quem receberia hoje" da campanha automática pelo público inteiro, ou escolher as clientes do gatilho fora de lib/notifications/gatilho-de-hoje (o cron e o detalhe dividem a escolha — D10 da 12ª)
 ❌ Trazer um gatilho de campanha já marcado, ou dizer quando ela sai fora de quandoDispara (a hora é a do cron, jaEhHoraDeDisparar — D8 da 11ª)
 ```
