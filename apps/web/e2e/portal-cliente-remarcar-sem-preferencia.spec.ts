@@ -103,7 +103,7 @@ test('o "Sem preferência" remarca com quem estiver livre, não preso à escolhi
     await p.getByLabel('Novo dia').fill(dia(3))
     await p.getByRole('button', { name: '15:00', exact: true }).click()
     await p.getByRole('button', { name: 'Confirmar novo horário' }).click()
-    await expect(p.getByText('Agendamento remarcado.')).toBeVisible()
+    await expect(p.getByText(/Agendamento remarcado/)).toBeVisible()
   })
   const depois = (await db().from('appointments').select('professional_id, scheduled_at').eq('id', id).single()).data
   expect(new Date(depois!.scheduled_at as string).toISOString()).toBe(em(dia(3), '15:00'))

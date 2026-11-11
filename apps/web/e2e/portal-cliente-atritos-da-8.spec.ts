@@ -99,7 +99,7 @@ test('A51: a sessão "A agendar" do plano diz que quem marca é a clínica (o la
   await como(browser, cliente!, async p => {
     await p.goto(`/${slug}/cliente/home`)
     const cartao = p.locator('[data-plano-fechado]')
-    await cartao.getByText('Plano de tratamento', { exact: false }).first().click()
+    await cartao.locator('summary').click()
     const detalhe = cartao.locator('[data-plano-detalhe]')
     await expect(detalhe).toContainText('A agendar')
     await expect(detalhe.locator('[data-quem-marca-a-sessao]')).toContainText('quem marca é a clínica')

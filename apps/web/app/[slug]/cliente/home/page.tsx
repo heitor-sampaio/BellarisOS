@@ -19,6 +19,7 @@ import { bonusDosCreditosDaCliente } from '@/lib/creditos/bonus-da-cliente'
 import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 import { textoDoIndiqueUmaAmiga } from '@/lib/fidelidade/indicacao'
+import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 
 // -- Helpers --------------------------------------------------------
 function fmtDateTime(iso: string) {
@@ -57,6 +58,9 @@ type ActivePlan = {
   id:         string
   status:     string
   created_at: string
+  /** A55 da 12ª: o nome que a clínica deu e o desconto, no cartão. */
+  name?:      string | null
+  desconto?:  number | string | null
   // Os procedimentos vêm das SESSÕES. `treatment_plan_items` é legado: nenhum
   // código escreve nela desde que o plano passou a ser por sessão, e a lista
   // aqui aparecia sem nenhum procedimento.
@@ -108,7 +112,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('purchased_at', { ascending: false })
       .limit(5), 'buscar os pacotes'),
     ler(admin.from('treatment_plans')
-      .select('id, status, created_at, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(name, visible_on_client_app)))')
+      .select('id, status, created_at, name, desconto, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(name, visible_on_client_app)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
@@ -316,10 +320,12 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       {/* -- Aguardando confirmação --------------------------------- */}
       {pendingConfirm.length > 0 && (
         <section data-aguardando-confirmacao>
-          <SectionHeader label="Aguardando sua confirmação" />
+          {/* A56 da 12ª: "Aguardando sua confirmação" se lia como confirmar presença — é o atendimento
+              já feito, para a cliente confirmar que foi feito e, se quiser, avaliar. */}
+          <SectionHeader label="Como foram os seus atendimentos?" />
           {/* A54 da 8ª: parecia uma pendência — é opcional. */}
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '-4px 0 10px' }}>
-            É opcional: confirmar e avaliar ajuda a clínica a melhorar o atendimento.
+            É opcional: confirmar que o atendimento foi feito e avaliar ajuda a clínica a melhorar.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pendingConfirm.map(a => (
@@ -338,7 +344,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     {a.procedures?.name ?? 'Procedimento'}
                   </p>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand-deep, var(--brand))', fontWeight: 600 }}>
-                    Toque para confirmar e avaliar
+                    Concluído em {new Date(a.scheduled_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })} · toque para avaliar
                   </p>
                 </div>
                 <ChevronRight size={18} color="var(--brand)" style={{ flexShrink: 0 }} />
@@ -504,7 +510,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     <Sparkles size={15} color="var(--brand)" />
                     <div>
                       <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
-                        Plano de tratamento
+                        {nomeDoPlanoNoApp(plan.name)}
                       </p>
                       {procs && (
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
@@ -568,7 +574,7 @@ function PlanoProposto({ plano, validadeDias, whatsapp, telefone, avulsos = [] }
     <div data-plano-proposto className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Sparkles size={15} color="var(--brand)" />
-        <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>Plano de tratamento proposto</p>
+        <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>{plano.name?.trim() ? `${plano.name.trim()} (proposto)` : 'Plano de tratamento proposto'}</p>
         <span style={{
           marginLeft: 'auto', fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--info)', background: 'var(--info-soft)',
           padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', flexShrink: 0,
@@ -642,7 +648,10 @@ function PlanoFechado({ plano, financeiro, slug }: { plano: ActivePlan; financei
       <summary style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', listStyle: 'none' }}>
         <Sparkles size={15} color="var(--brand)" aria-hidden="true" />
         <div style={{ minWidth: 0 }}>
-          <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>Plano de tratamento</p>
+          <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', overflowWrap: 'anywhere' }}>{nomeDoPlanoNoApp(plano.name)}</p>
+          {descontoDoPlanoNoApp(plano.desconto) && (
+            <p data-desconto-do-plano style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{descontoDoPlanoNoApp(plano.desconto)}</p>
+          )}
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
             {feitas} de {total} {total === 1 ? 'sessão feita' : 'sessões feitas'}
             {agendadas > 0 ? ` · ${agendadas} ${agendadas === 1 ? 'agendada' : 'agendadas'}` : ''}

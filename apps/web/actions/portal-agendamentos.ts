@@ -21,7 +21,8 @@ import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
  * ser um dos que o self-service oferece (os livres do mesmo profissional).
  */
 
-type Resultado = { ok: true } | { error: string }
+/** A51 da 12ª: o remarcado diz com quem ficou (`quemAtende`, o nome). */
+type Resultado = { ok: true; quemAtende?: string | null } | { error: string }
 const ABERTOS = ['SCHEDULED', 'CONFIRMED']
 const UUID = z.string().uuid()
 
@@ -113,9 +114,12 @@ export async function remarcarPelaCliente(appointmentId: string, scheduledAt: st
     const hora = `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
     if (p.second !== 0) return { error: 'Este horário não está mais disponível. Escolha outro.' }
     let profissional = a.professional_id
+    let nomeDeQuemAtende: string | null = null
     if (semPreferencia) {
-      profissional = escolherQuemAtende(await candidatasParaRemarcar(admin, a, dayKeyTZ(inicio)), hora)
+      const candidatas = await candidatasParaRemarcar(admin, a, dayKeyTZ(inicio))
+      profissional = escolherQuemAtende(candidatas, hora)
       if (!profissional) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+      nomeDeQuemAtende = candidatas.find(c => c.id === profissional)?.nome ?? null
     } else {
       const livres = await computeAvailableSlots(admin, a.branch_id, a.professional_id!, dayKeyTZ(inicio), a.duration_min || 30, a.id)
       if (!livres.includes(hora)) return { error: 'Este horário não está mais disponível. Escolha outro.' }
@@ -148,7 +152,11 @@ export async function remarcarPelaCliente(appointmentId: string, scheduledAt: st
     notifyRescheduledAppointment(a.id, null)
     revalidateTag(`appointments:${a.clients.tenant_id}`, { expire: 0 })
     revalidatePath('/[slug]/cliente/agendamentos', 'page')
-    return { ok: true }
+    if (!nomeDeQuemAtende && profissional) {
+      nomeDeQuemAtende = ((await ler(admin.from('users').select('name').eq('id', profissional).eq('tenant_id', a.clients.tenant_id).maybeSingle(),
+        'ler quem atende')) as { name: string } | null)?.name ?? null
+    }
+    return { ok: true, quemAtende: nomeDeQuemAtende }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

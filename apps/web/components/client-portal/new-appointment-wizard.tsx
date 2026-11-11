@@ -148,8 +148,11 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
         return
       }
       // A48 da 6ª simulação: no "Sem preferência", ninguém dizia quem ficou com o horário.
+      // A52 da 12ª: dentro do prazo do app, o aviso diz também que o app não muda mais este horário.
+      const noPrazo = prazoHoras != null && prazoHoras > 0 && new Date(scheduledAt).getTime() - Date.now() < prazoHoras * 3_600_000
       toast.success('Horário marcado', {
-        description: `${res.quemAtende ? `Com ${res.quemAtende}, ` : ''}${fmtDate(date)} às ${time}.`,
+        description: `${res.quemAtende ? `Com ${res.quemAtende}, ` : ''}${fmtDate(date)} às ${time}.`
+          + (noPrazo ? ` Fica a menos de ${prazoHoras} horas: para cancelar ou remarcar, fale com a clínica.` : ''),
       })
       if (res.documentosParaAssinar) {
         // O procedimento pede termo ou contrato: direto para ele.
@@ -505,7 +508,8 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
               color: 'var(--text)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)',
               padding: '10px 14px', fontSize: 'var(--text-sm-sz)', marginBottom: 16, lineHeight: 1.45,
             }}>
-              Este horário fica a menos de {prazoHoras} horas: pelo app, a remarcação e o cancelamento vão até {prazoHoras} horas antes.
+              {/* A52 da 12ª: a Sabrina leu e não entendeu — a frase diz o que acontece com ESTE agendamento. */}
+              Este horário fica a menos de {prazoHoras} horas: o agendamento nasce sem cancelar nem remarcar pelo app (pelo app, só até {prazoHoras} horas antes).
               Depois de confirmar, para mudar, fale com a clínica.
             </p>
           )}

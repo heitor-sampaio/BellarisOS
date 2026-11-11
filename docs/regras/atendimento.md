@@ -710,6 +710,12 @@
     atendimento (`[data-avaliacao-da-cliente]`) e na linha do tempo da ficha
     ("Avaliou: …"); a cliente, no Histórico do app (`notasDaAvaliacao`,
     `lib/avaliacao/notas.ts`).
+  - **No Início do app, o concluído é para avaliar** (A56 da 12ª simulação,
+    2026-11-11; princípio 3: "Aguardando sua confirmação · Toque para
+    confirmar e avaliar" se lia como confirmar presença): a seção é "Como
+    foram os seus atendimentos?", diz que é opcional, e cada cartão "Concluído
+    em 10/11 · toque para avaliar" (`[data-aguardando-confirmacao]`). Prova:
+    `e2e/portal-cliente-atritos-da-12.spec.ts` ("A56").
   - Prova: `e2e/portal-cliente-avaliacao-por-procedimento.spec.ts`,
     `e2e/portal-cliente.spec.ts` ("confirma e avalia"),
     `tests/historico-autor-e-avaliacao.test.ts`.
@@ -791,6 +797,21 @@
   remarcar, para mudar de novo ou cancelar, fale com a clínica."
   (`[data-dentro-do-prazo]`), como o Confirmar do agendar (A52 da 8ª, que já
   valia para qualquer dia). Prova: `e2e/portal-cliente-atritos-da-11.spec.ts`.
+  **E o "Sem preferência" diz o que é, e o remarcado diz com quem** (A50 e A51
+  da 12ª simulação, 2026-11-11; princípio 3: a Ana via "Sem preferência"
+  marcado ao lado de "Com Helena" e não sabia se a profissional podia mudar; a
+  Sabrina passou da Eva à Fernanda e o "Agendamento remarcado." não dizia):
+  marcado, "Sem preferência: hoje o agendamento é com Helena; no horário novo,
+  fica com quem estiver livre — pode ser outra profissional. Para ficar com
+  Helena, escolha “Só com Helena”." (`[data-o-que-e-sem-preferencia]`; o outro
+  botão é "Só com X"); o "Confirmar novo horário" espera a conta de quem atende
+  ("Conferindo quem atende…"; a falha libera, o servidor confere ao gravar); e
+  o aviso é "Agendamento remarcado: com Fernanda, quinta-feira, 13/11 às
+  11:00." (`remarcarPelaCliente` devolve `quemAtende`). **O agendar dentro do
+  prazo diz o que acontece com ESTE agendamento** (A52 da 12ª): "o agendamento
+  nasce sem cancelar nem remarcar pelo app (pelo app, só até 24 horas antes)",
+  e o "Horário marcado" repete ("…para cancelar ou remarcar, fale com a
+  clínica"). Prova: `e2e/portal-cliente-atritos-da-12.spec.ts`.
 - **"Sem preferência" de profissional no app** (D-16, decisão do Heitor,
   2026-10-30): com mais de uma profissional na unidade, o passo
   "Profissional" do agendamento oferece "Sem preferência". A data mostra os
@@ -873,7 +894,16 @@
   e o dinheiro: "Pago R$ X" e "A pagar R$ Y · próxima em DD/MM/AAAA", com o
   link para os pagamentos. Os números são os de `getFinanceiroDoPlano`
   (`lib/metrics/plano.ts`, a regra única de receita); nada clínico vai.
-  Prova: `e2e/portal-cliente-plano-fechado.spec.ts`.
+  Prova: `e2e/portal-cliente-plano-fechado.spec.ts`. **O cartão diz o nome que
+  a clínica deu ao plano e o desconto** (A55 da 12ª simulação, 2026-11-11;
+  princípio 3: a Marina via só "Plano de tratamento", sem o "Manchas — laser"
+  combinado): o título é `treatment_plans.name` (sem nome, "Plano de
+  tratamento"; o proposto, "X (proposto)"), com "Com desconto de R$ 70,00"
+  quando houve (`nomeDoPlanoNoApp`, `descontoDoPlanoNoApp`,
+  `lib/plano-de-tratamento/nome.ts`); e o Financeiro do app diz, embaixo de
+  cada lançamento do plano, "Plano “Manchas — laser” · com desconto de R$ 70,00
+  no total" (`[data-plano-do-lancamento]`). Prova:
+  `e2e/portal-cliente-atritos-da-12.spec.ts` ("A55").
 - **O agendar do app diz QUANDO cada profissional atende** (J-60) e tem
   "Hoje"/"Amanhã" e os horários por Manhã/Tarde/Noite (J-59, o mesmo
   `gruposDeHorario` do remarcar). O texto é `resumoDoHorario`

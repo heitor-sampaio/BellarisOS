@@ -10,6 +10,8 @@ import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAte
 const diaNoFuso = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(ms))
 const diaDeHoje = () => diaNoFuso(Date.now())
 const diaDeAmanha = () => diaNoFuso(Date.now() + 86_400_000)
+/** "quinta-feira, 13/11" — o dia escolhido (AAAA-MM-DD), pelo meio-dia de Brasília. */
+const diaPorExtenso = (d: string) => new Date(`${d}T12:00:00-03:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
 
 /**
  * Cancelar ou remarcar pelo portal, até o prazo da rede (2026-10-21). Dentro
@@ -55,10 +57,13 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   const [quemAtendeDe, setQuemAtendeDe] = useState<{ chave: string; nome: string | null; mesma: boolean } | null>(null)
   const chaveDoHorario = semPreferencia && dia && hora ? `${dia} ${hora}` : null
   const quemAtende = quemAtendeDe && quemAtendeDe.chave === chaveDoHorario ? quemAtendeDe : null
+  const esperandoQuemAtende = !!chaveDoHorario && !quemAtende
   useEffect(() => {
     if (!chaveDoHorario || !dia || !hora) return
     let vivo = true
-    quemAtendeNoRemarcar(appointmentId, dia, hora).then(r => { if (vivo) setQuemAtendeDe({ chave: chaveDoHorario, ...r }) }).catch(() => {})
+    // A falha libera o botão (sem o nome): o servidor confere de novo ao remarcar.
+    quemAtendeNoRemarcar(appointmentId, dia, hora).then(r => { if (vivo) setQuemAtendeDe({ chave: chaveDoHorario, ...r }) })
+      .catch(() => { if (vivo) setQuemAtendeDe({ chave: chaveDoHorario, nome: null, mesma: false }) })
     return () => { vivo = false }
   }, [chaveDoHorario, dia, hora, appointmentId])
   // A57 da 11ª: o horário novo dentro do prazo do app — depois de remarcar, só a clínica muda.
@@ -112,7 +117,8 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     iniciar(async () => {
       const r = await remarcarPelaCliente(appointmentId, new Date(`${dia}T${hora}:00-03:00`).toISOString(), semPreferencia)
       if ('error' in r) { setErro(r.error); return }
-      setFeito('Agendamento remarcado.'); setModo('nada'); router.refresh()
+      // A51 da 12ª: o remarcado diz com quem ficou e quando (a Sabrina passou da Eva à Fernanda calada).
+      setFeito(`Agendamento remarcado${r.quemAtende ? `: com ${r.quemAtende}` : ''}, ${diaPorExtenso(dia)} às ${hora}.`); setModo('nada'); router.refresh()
     })
   }
 
@@ -149,13 +155,20 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
             <div role="group" aria-label="Com quem?" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button type="button" aria-pressed={!semPreferencia} className={!semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
                 onClick={() => { setSemPreferencia(false); if (dia) escolherDia(dia, false) }}>
-                {profissional ? `Com ${profissional}` : 'A mesma profissional'}
+                {profissional ? `Só com ${profissional}` : 'A mesma profissional'}
               </button>
               <button type="button" aria-pressed={semPreferencia} className={semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
                 onClick={() => { setSemPreferencia(true); if (dia) escolherDia(dia, true) }}>
                 Sem preferência
               </button>
             </div>
+          )}
+          {/* A50 da 12ª: "Sem preferência" marcado ao lado de "Com Helena" não dizia se a profissional podia mudar. */}
+          {ofereceSemPreferencia && semPreferencia && (
+            <p data-o-que-e-sem-preferencia style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+              Sem preferência: {profissional ? `hoje o agendamento é com ${profissional}; no` : 'no'} horário novo, fica com quem estiver livre — pode ser outra profissional.
+              {profissional ? ` Para ficar com ${profissional}, escolha “Só com ${profissional}”.` : ''}
+            </p>
           )}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
             Novo dia
@@ -196,8 +209,9 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
           )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="btn-secondary" disabled={enviando} onClick={() => setModo('nada')}>Voltar</button>
-            <button type="button" className="btn-primary" disabled={enviando || !hora} onClick={confirmarRemarcar}>
-              {enviando ? 'Remarcando…' : 'Confirmar novo horário'}
+            {/* A51 da 12ª: em "Sem preferência", só confirma depois de saber com quem. */}
+            <button type="button" className="btn-primary" disabled={enviando || !hora || esperandoQuemAtende} onClick={confirmarRemarcar}>
+              {enviando ? 'Remarcando…' : esperandoQuemAtende ? 'Conferindo quem atende…' : 'Confirmar novo horário'}
             </button>
           </div>
         </div>

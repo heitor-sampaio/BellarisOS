@@ -9,6 +9,7 @@ import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
 import { notaDoEstornoParcialParaACliente } from '@/lib/financeiro/notas-do-lancamento'
+import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 
 type TxRow = {
   id:             string
@@ -38,6 +39,8 @@ type TxRow = {
   planoCancelado: string | null
   /** A57 da 12ª: o pagamento estornado em parte — "R$ 300,00 pagos · R$ 136,36 devolvidos". */
   devolvidoEmParte: string | null
+  /** A55 da 12ª: o lançamento de um plano diz o nome que a clínica deu (e o desconto do plano). */
+  plano:          string | null
 }
 
 /** Lançamento como o select pede, com o procedimento do agendamento (se houver). */
@@ -47,7 +50,7 @@ type LancamentoLido = {
   due_date: string | null; data_de_referencia: string | null
   cartao_bandeira: string | null; product_sale_id: string | null
   type: string; category: string | null; client_packages: { cancelado_em: string | null } | null
-  treatment_plans: { cancelado_em: string | null } | null
+  treatment_plans: { cancelado_em: string | null; name: string | null; desconto: number | string | null } | null
   valor_antes_do_estorno: number | string | null
   appointments: { procedures: { name: string } | null } | null
 }
@@ -63,7 +66,7 @@ export default async function ClientFinancialPage() {
     .select(`
       id, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, notes, parcela_numero, product_sale_id,
       due_date, data_de_referencia, valor_antes_do_estorno,
-      type, category, client_packages(cancelado_em), treatment_plans(cancelado_em),
+      type, category, client_packages(cancelado_em), treatment_plans(cancelado_em, name, desconto),
       appointments(procedures(name))
     `)
     // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
@@ -94,6 +97,9 @@ export default async function ClientFinancialPage() {
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',
     pacoteCancelado: r.client_packages?.cancelado_em ?? null,
     planoCancelado:  r.treatment_plans?.cancelado_em ?? null,
+    plano: r.treatment_plans
+      ? `Plano “${nomeDoPlanoNoApp(r.treatment_plans.name)}”${descontoDoPlanoNoApp(r.treatment_plans.desconto) ? ` · ${descontoDoPlanoNoApp(r.treatment_plans.desconto)!.replace(/^Com /, 'com ')} no total` : ''}`
+      : null,
     devolvidoEmParte: r.type === 'INCOME' && r.category !== 'Estorno'
       ? notaDoEstornoParcialParaACliente({ type: r.type, amount: r.amount, is_paid: Boolean(r.is_paid), notes: r.notes, valor_antes_do_estorno: r.valor_antes_do_estorno })
       : null,
@@ -175,6 +181,9 @@ export default async function ClientFinancialPage() {
                   : new Date(r.paid_at ?? r.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                 {r.forma && ` · ${r.forma}`}
               </p>
+              {r.plano && (
+                <p data-plano-do-lancamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{r.plano}</p>
+              )}
               {r.pacoteCancelado && (
                 <p data-pacote-cancelado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
                   Pacote cancelado em {new Date(r.pacoteCancelado).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}

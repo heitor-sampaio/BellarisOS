@@ -83,7 +83,7 @@ test('A45: o cartão do plano fechado abre — as sessões feitas e as que falta
     await p.goto(`/${slug}/cliente/home`)
     const cartao = p.locator('[data-plano-fechado]')
     await expect(cartao).toContainText('1 de 3 sessões feitas')
-    await cartao.getByText('Plano de tratamento', { exact: false }).first().click()
+    await cartao.locator('summary').click()
     const detalhe = cartao.locator('[data-plano-detalhe]')
     await expect(detalhe).toBeVisible()
     await expect(detalhe).toContainText('Sessão 1')

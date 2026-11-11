@@ -92,7 +92,7 @@ test('A56: o "Sem preferência" do remarcar diz quem atende antes de confirmar �
     // Antes de confirmar: quem fica com o horário (a Bia continua — o horário dela não conta contra ela).
     await expect(p.locator('[data-quem-atende-no-remarcar]')).toContainText(`Bia`)
     await p.getByRole('button', { name: 'Confirmar novo horário' }).click()
-    await expect(p.getByText('Agendamento remarcado.')).toBeVisible()
+    await expect(p.getByText(/Agendamento remarcado/)).toBeVisible()
   })
   expect((await db().from('appointments').select('professional_id').eq('id', id).single()).data?.professional_id).toBe(bia.userId)
 })
