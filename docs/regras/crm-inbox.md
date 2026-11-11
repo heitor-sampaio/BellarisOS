@@ -1143,6 +1143,12 @@ sem conversa da pessoa e sem WhatsApp conectado (`redeTemWhatsapp`),
 está conectado": diz "Ainda não há conversa com X, e a clínica não tem um
 WhatsApp conectado…", com o caminho (Configurações → Integrações, ou pedir a
 quem administra). Prova: `e2e/crm-atritos-da-9.spec.ts` ("A43", "A44").
+
+**A idade do card é pelo DIA de Brasília** (D12 da 12ª simulação, 2026-11-11;
+princípio 3): o lead criado às 23:20 de 10/11 dizia "hoje" às 00:05 de 11/11 —
+era `differenceInDays`, 24 h corridas. "hoje", "ontem" e "há N dias" são os
+dias de calendário (`idadeDoLead`, `lib/crm/idade-do-lead.ts`, por `dayKeyTZ`).
+Prova: `tests/defeitos-da-12.test.ts` ("D12").
 **Ganhar ou perder sem rolar**
 (A19): a 1440 px as colunas de desfecho ficam fora da tela; o menu do card tem
 "Marcar como ganho (Fechado)" e "Marcar como perdido (Perdido)", e arrastando
@@ -1240,6 +1246,7 @@ o contato junto.
 ❌ Ler o owner_id vazio sem a marca _responsavelNaTela como "Sem responsável", ou abrir o "Novo lead" com um Responsável diferente do que a tela vai mandar (D1 da 11ª)
 ❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
 ❌ Oferecer a origem do lead da lista fixa (LEAD_SOURCES) onde a clínica escolhe — são as origens dela (crm_origens: origensDaRede, useOrigensDaRede); LEAD_SOURCES fica para a atribuição do anúncio e o fallback (A14 da 7ª)
+❌ Dizer "hoje"/"ontem" de um registro por 24 h corridas (differenceInDays) — é o dia de Brasília (idadeDoLead, dayKeyTZ — D12 da 12ª)
 ❌ Mover o card porque a cliente comprou — o card SUGERE ("Mover para Fechado"), quem move é a pessoa (A18 da 7ª, crm-05)
 ❌ Renomear a ficha sem levar o nome às pessoas ligadas a ela (atualizarClienteCore → propagarDadosDaPessoa — A21 da 7ª)
 ❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)

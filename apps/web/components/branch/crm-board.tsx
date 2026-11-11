@@ -8,7 +8,7 @@ import {
   MoreHorizontal, Trophy, XCircle, CalendarClock, BellRing,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { differenceInDays } from 'date-fns'
+import { idadeDoLead } from '@/lib/crm/idade-do-lead'
 import { updateLeadStage } from '@/actions/leads'
 import { ClientForm } from './client-form'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
@@ -588,10 +588,8 @@ function LeadCard({
   // Evita abrir o modal de edição ao finalizar um drag
   const wasDragging = useRef(false)
 
-  const ageInDays = differenceInDays(new Date(), new Date(lead.created_at))
-  const ageLabel  = ageInDays === 0 ? 'hoje'
-    : ageInDays === 1 ? 'ontem'
-    : `há ${ageInDays} dias`
+  // D12 da 12ª: pelo dia de Brasília, não por 24 h corridas.
+  const ageLabel  = idadeDoLead(lead.created_at, nowMs ?? new Date())
 
   // --- Métricas de atendimento -----------------------------------
   // Cliente aguardando resposta (prioridade máxima de sinal).
