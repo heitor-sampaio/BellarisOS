@@ -6,6 +6,7 @@ import { saveTreatmentPlan, proposeTreatmentPlan, pacotesParaODicaDoPlano } from
 import { pacoteEquivalente, type PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
 import type { PlanSessionInput } from '@/actions/treatment-plans'
 import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
+import type { RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
 
 export interface TreatmentPlanEditorRef {
   getSessions: () => PlanSessionInput[]
@@ -48,6 +49,8 @@ export interface ExistingPlan {
   status:   string
   notes:    string | null
   sessions: ExistingPlanSession[]
+  /** D4 da 12ª: o retrato do cancelado (getPlanoParaEditar). */
+  cancelamento?: RetratoDoCancelamento | null
 }
 
 // Kept for backward compat with appointment-session.tsx state
@@ -439,7 +442,10 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
   const [msg,       setMsg]       = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const isPlanLocked = ['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')
+  // D4 da 12ª: o cancelado e o recusado também são só leitura (reabriam como
+  // rascunho editável, com "Nova sessão" e as lixeiras).
+  const isPlanLocked = ['PROPOSED', 'ACCEPTED', 'COMPLETED', 'CANCELLED', 'REJECTED'].includes(existingPlan?.status ?? '')
+  const situacaoTravada = situacaoDoPlano(existingPlan?.status ?? 'PROPOSED')
 
   const grandTotal = sessions.reduce(
     (sum, s) => sum + s.procs.reduce((ps, p) => ps + p.price, 0),
@@ -620,8 +626,8 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
       <div className="card" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
-          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--success)', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 6, padding: '2px 8px' }}>
-            {situacaoDoPlano(existingPlan?.status ?? 'PROPOSED').label}
+          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: situacaoTravada.cor, background: situacaoTravada.fundo, borderRadius: 6, padding: '2px 8px' }}>
+            {situacaoTravada.label}
           </span>
         </div>
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>

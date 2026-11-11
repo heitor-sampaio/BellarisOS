@@ -41,11 +41,18 @@ export function CancelarPacote({ clientPackageId, onFechar }: { clientPackageId:
  * procedimentos"): a MESMA janela, com a conta de `plano_cancelar_devolvendo`
  * — o usado é o preço das sessões feitas no plano, com o desconto, sem multa.
  */
-export function CancelarPlano({ planId, onFechar }: { planId: string; onFechar: () => void }) {
-  return <CancelarConjunto tipo="PLANO" id={planId} onFechar={onFechar} />
+export function CancelarPlano({ planId, onFechar, onCancelado }: {
+  planId: string; onFechar: () => void
+  /**
+   * D5 da 12ª: a tela que lê o plano no navegador (o plano aberto, o resumo)
+   * relê aqui — o `router.refresh()` não chega ao estado do cliente.
+   */
+  onCancelado?: () => void
+}) {
+  return <CancelarConjunto tipo="PLANO" id={planId} onFechar={onFechar} onCancelado={onCancelado} />
 }
 
-function CancelarConjunto({ tipo, id, onFechar }: { tipo: 'PACOTE' | 'PLANO'; id: string; onFechar: () => void }) {
+function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' | 'PLANO'; id: string; onFechar: () => void; onCancelado?: () => void }) {
   const doPlano = tipo === 'PLANO'
   const nome = doPlano ? 'plano' : 'pacote'
   const Nome = doPlano ? 'Plano' : 'Pacote'
@@ -97,6 +104,7 @@ function CancelarConjunto({ tipo, id, onFechar }: { tipo: 'PACOTE' | 'PLANO'; id
           : `${Nome} cancelado. ${formatBRL(previa.devolver)} estornados à cliente.`
         : `${Nome} cancelado.`)
       onFechar()
+      onCancelado?.()
       router.refresh()
     })
   }

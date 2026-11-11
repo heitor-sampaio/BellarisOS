@@ -28,6 +28,7 @@ import { EntradaDoCancelamento } from '@/lib/pacotes/entrada-do-cancelamento'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment } from '@/lib/appointments/avisos'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
+import { retratoDoCancelamento, type RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
 
 /**
  * Quem pode o quê, neste arquivo.
@@ -702,6 +703,8 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   plano?: {
     id: string; status: string; notes: string | null
     sessions: { procedures: { procedureId: string; name: string; price: number; products?: { productId: string; name: string; unit: string; quantity: number }[] }[] }[]
+    /** D4 da 12ª: o retrato do cancelado (a data, o motivo, o dinheiro), para a tela só de leitura. */
+    cancelamento?: RetratoDoCancelamento | null
   }
   error?: string
 }> {
@@ -715,7 +718,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   const data = await ler(admin
     .from('treatment_plans')
     .select(`
-      id, status, professional_notes, professional_id, client_id,
+      id, status, professional_notes, professional_id, client_id, cancelado_em, cancelamento_motivo, cancelamento,
       treatment_plan_sessions(sort_order, treatment_plan_session_procedures(procedure_id, price, sort_order, products, procedures(name)))
     `)
     .eq('id', planId)
@@ -756,6 +759,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
       status:   data.status as string,
       notes,
       sessions,
+      cancelamento: retratoDoCancelamento(data as { cancelado_em?: string | null; cancelamento_motivo?: string | null; cancelamento?: unknown }),
     },
   }
 }

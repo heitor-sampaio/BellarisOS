@@ -460,10 +460,34 @@ export function PlanejamentoTratamento({
         </div>
       )}
 
+      {/* D4 da 12ª: o cancelado é um RETRATO — a data, quem, o motivo, o que
+          foi devolvido e o que ficou (o `cancelamento` que o banco guarda). */}
+      {(aberto.status === 'CANCELLED' || aberto.status === 'REJECTED') && (
+        <div data-retrato-do-cancelamento className="card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
+            {aberto.cancelamento?.quando ?? 'Plano cancelado.'}
+          </p>
+          {aberto.cancelamento?.motivo && (
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>Motivo: {aberto.cancelamento.motivo}</p>
+          )}
+          {(aberto.cancelamento?.linhas ?? []).map(l => (
+            <p key={l} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{l}</p>
+          ))}
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+            Só leitura: o plano cancelado não se edita. Para tratar de novo, monte um plano novo.
+          </p>
+        </div>
+      )}
+
       {/* O plano fechado diz o que foi pago, o que falta e as sessões (J-42).
           Dizia só "O que estiver em aberto é recebido no check-in", e o
           check-in só cobra o que VENCEU. */}
-      {fechado && aberto.status !== 'CANCELLED' && <ResumoDoPlano key={`resumo-${aberto.id}`} planId={aberto.id} />}
+      {/* D5 da 12ª: cancelado aqui, a tela relê o plano e a lista (o refresh não
+          chega ao estado do navegador, e o "Cancelar plano" ficava na tela). */}
+      {fechado && aberto.status !== 'CANCELLED' && (
+        <ResumoDoPlano key={`resumo-${aberto.id}`} planId={aberto.id}
+          onCancelado={() => { void carregarLista(); void abrirPlano(aberto.id) }} />
+      )}
 
       {/* Checkout sobre o planejamento, como na tela do atendimento. */}
       {checkout && (
@@ -514,7 +538,7 @@ function situacaoDoLancamento(l: LancamentoDoPlano): { texto: string; cor: strin
     : { texto: `A vencer em ${DIA.format(new Date(l.vencimento))}`, cor: 'var(--text-muted)' }
 }
 
-function ResumoDoPlano({ planId }: { planId: string }) {
+function ResumoDoPlano({ planId, onCancelado }: { planId: string; onCancelado?: () => void }) {
   const [resumo, setResumo] = useState<FinanceiroDoPlano | null>(null)
   // A28 da 9ª: a quem a recepção sem o Financeiro pede a parcela que vence depois.
   const [quemRecebe, setQuemRecebe] = useState<string[] | null>(null)
@@ -592,7 +616,7 @@ function ResumoDoPlano({ planId }: { planId: string }) {
           {quemRecebe.length > 0 ? `: ${quemRecebe.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
         </p>
       ))}
-      {cancelando && <CancelarPlano planId={planId} onFechar={() => setCancelando(false)} />}
+      {cancelando && <CancelarPlano planId={planId} onFechar={() => setCancelando(false)} onCancelado={onCancelado} />}
     </div>
   )
 }

@@ -271,6 +271,19 @@ plano").
     o "A receber" não tem mais as parcelas que caíram; o app não mostra o cartão
     do plano ("N sessões a agendar") e o pagamento diz "Plano cancelado em …"
     (`data-plano-cancelado`).
+  - **O plano cancelado é um retrato, só de leitura, e a tela muda na hora**
+    (D4 e D5 da 12ª simulação, 2026-11-11; princípio 3): ele reabria como
+    rascunho editável ("Nova sessão", lixeiras, preços), e cancelar deixava a
+    tela em "Fechado e pago" com o "Cancelar plano" até recarregar. O cancelado
+    (e o recusado de antes) é travado no editor (`isPlanLocked`) e mostra
+    "Cancelado em 11/11/2026 às 01:48, por Cláudia.", o motivo, as sessões
+    canceladas, o usado que fica, o a receber que caiu, o que voltou (estorno ou
+    crédito) e o que aconteceu com os agendamentos (`[data-retrato-do-cancelamento]`,
+    `retratoDoCancelamento`, `lib/plano-de-tratamento/retrato-do-cancelamento.ts`,
+    do `cancelamento` que o banco grava; `getPlanoParaEditar` o devolve). Ao
+    cancelar, a janela chama `onCancelado` e a tela relê o plano aberto e a
+    lista (o `router.refresh()` não chega ao estado do navegador). Prova:
+    `e2e/plano-defeitos-da-12.spec.ts` ("D5 e D4").
   - Substitui o "Cancelar tratamento" (`cancelTreatmentPlan`, que não mexia nas
     parcelas e dava de crédito o preço dos agendamentos futuros, pago ou não, a
     quem tinha a Agenda em Gerenciar). Prova: `e2e/plano-cancelar.spec.ts`.
