@@ -1774,6 +1774,30 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-11 — Décima segunda simulação: a clínica facial pequena da indicação e do crédito com bônus, e a clínica de laser dos planos
+
+É o mesmo ciclo pedido pelo Heitor, depois das F52–F57. A 7ª completa do ciclo não achou defeito do sistema (F57: as 6 falhas eram specs desatualizados).
+- **Quando:** em produção, de terça 10/11 às 22:51 até quarta 11/11 por volta das 02:15 (Brasília), com 13 agentes (run `wf_04a10676-a9f`). A primeira rodada inteira na instância Small, sem nenhuma parada.
+
+Os dois times:
+- **Time A, "[sim] Clínica Margarida"** (Campinas), estética facial pequena com a dona que atende pelo celular.
+  - A indicação que premia (deu, saiu no estorno, voltou na nova cobrança) e o crédito com bônus estornado na proporção.
+  - A comissão de venda por pessoa com a origem no extrato ("8% da Rita", "5% do pacote") e o "Fechar e pagar" desmarcando.
+- **Time B, "[sim] Clínica Acácia"** (Manaus), laser com uma sala só, três profissionais em turnos, gerente e contadora.
+  - Dois planos do começo ao fim (entrada com crediário e Visa 6x), contrato pelo link e o cancelamento no cartão.
+
+**Dinheiro:** bateu conta a conta nos dois, com duas exceções (D2 e D9).
+- Time A: receita R$ 3.203,64, lucro R$ 2.804,40; comissões R$ 302,50.
+- Time B: receita R$ 4.262,50 (R$ 3.947,50 depois do cancelamento), resultado R$ 2.070,55; comissões R$ 581,50.
+
+**Achados:**
+- **Defeitos:** 12, sem nenhuma regressão (1 ALTA, 9 MÉDIA, 2 BAIXA). O de mais peso: o estorno feito num dia reescrevia o Fechamento do dia da venda, até um dia já fechado com "Bateu" (D2).
+- **Atritos:** 57.
+- **Regra, engano ou artefato:** 13.
+- **Para o Heitor:** 1, o fuso da clínica fora de Brasília (Manaus).
+
+Detalhe em "5. Em aberto → Da simulação de 2026-11-10/11 (12ª)".
+
 ### 2026-11-10 — Décima primeira simulação: a clínica de injetáveis do lead ao plano, e a clínica de muito movimento
 
 É o mesmo ciclo pedido pelo Heitor, depois das F49–F53. A completa 42806897903 não achou defeito do sistema: duas falhas eram testes do A2 e duas foram paradas da instância.
@@ -10293,6 +10317,53 @@ As outras cinco foram cinco paradas curtas da instância, das 04:11 às 04:33Z: 
 - Mexeu em `lib/appointments/core.ts`, `lib/financeiro/lancamento.ts` (também do Copilot), `lib/vendas/equipe-da-venda.ts`, `components/shared/vender.tsx` e em funções de comissão e venda: vale a completa do fim do ciclo.
 
 **7ª completa do ciclo (run 42906474733, c7e89709, 10/11 18:35–19:33, a primeira na instância Small): 1.943 passaram, 6 falharam — nenhuma parada da instância.** **F57 FEITA (10/11, 036f6b96, def74a11, da6f054a; só specs):** as 6 eram testes que não conheciam mudanças de propósito da F56 — o Histórico na embalagem ("+5 frasco" com "500 ml" embaixo, A50), a caixa do Ajuste que virou "Confirmo que contei na prateleira." (A49, dois specs; o clique esperava o texto velho até estourar os 300 s), o dia da semana por extenso no prazo do app (A58, dois specs) e a Débora do D1 da 8ª, criada sem cargo e sem "Atende", que pela regra A42 não vende. Conferido que o "Quem vendeu" do Vender da rede usa a unidade ESCOLHIDA (`equipeDaVenda(tenant, u.id)` na página e o `branchId` da venda no servidor); o spec agora a cria como profissional do Batel e prova que ela fica fora da lista na Água Verde e vende no Batel.
+
+### Da simulação de 2026-11-10/11 (12ª: 12 defeitos e 57 atritos)
+
+O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª rodada está em `.sim/arquivo-2026-11-10b/`. Os ids D1…D12 e A1…A57 são desta rodada.
+
+**Alta**
+- **D1.** O cargo com Procedimentos e pacotes em Gerenciar promete "fechar a venda do pacote", mas o "Vender" da ficha só aparece com Recebimentos (`podeReceber`, `client-profile.tsx`; `permissions-copy.ts:104`). A vendedora ganhou Recebimentos e passou a ver o Fechamento de todos. Princípio 3.
+
+**Média**
+- **D2.** O estorno feito noutro dia reescreve o Fechamento do dia da venda (até um dia fechado com "Bateu") e não aparece como saída no dia em que o dinheiro saiu. Nos dois times (o estorno parcial do crédito; o cancelamento do plano no cartão). Princípio 5.
+- **D3.** O estorno de uma DESPESA entra em "Estornos do dia: o que voltou às clientes", com o sinal invertido, e o Financeiro diz "Anula a receita estornada" (`metrics_estornos_do_dia` só olha a categoria). Sobra da F38.
+- **D4.** O plano cancelado reabre como rascunho editável (`isPlanLocked` sem `CANCELLED`/`REJECTED`). Sobra da F41.
+- **D5.** Depois de cancelar o plano, a tela segue em "Fechado e pago" com o "Cancelar plano" até recarregar (o plano aberto é estado do cliente). Sobra da F41.
+- **D6.** O contrato saiu assinado com "Entrada: , … primeiro vencimento em ." — variáveis opcionais vazias, e nada avisa na prévia nem no "Enviar link".
+- **D7.** O agendamento pulou sozinho para o dia seguinte: o modal abre com a hora de agora (23:30, que não cabe) e o "próximo livre" troca dia e hora sem a pessoa ter escolhido nada.
+- **D8.** As sessões do plano (checkout) e o remarcar do app ficam sem a sala única do laser, e o conflito da sala não é conferido. A sala segue opcional; falta a regra da única opção. Sobra da F50 A2.
+- **D9.** O "caixa da lista" do Financeiro soma o uso do crédito na clínica (`resultadoDaLista`). Sobra da F56 A37.
+- **D10.** O "Quem receberia hoje" da campanha automática mostra o público inteiro, sem o gatilho. Sobra da F55 A21.
+
+**Baixa**
+- **D11.** O mínimo do produto sem estoque inicial aparece 0 na aba "Estoque mínimo" (sem a linha da unidade). Sobra da F54 D2.
+- **D12.** O card do lead diz "hoje" para o lead de ontem à noite (`differenceInDays` em 24 h corridas).
+
+**Atritos (57), por tela:**
+- **Setup e configurações** (A1–A12): o alcance pré-marcado no cargo novo; o Relatórios sem abas; o brinde que exige produto; a gerente sem saber por que não chega às configurações.
+- **Termos e contratos** (A13–A17): o registro no conselho; a profissional no contrato de plano; o "1. 1." no editor.
+- **Vendas e comercial** (A18–A24): o percentual e a origem no Vender; a venda de procedimento como "pré-pago"; o que conta como "primeiro pagamento" da indicação.
+- **Agenda e atendimento** (A25–A29).
+- **Caixa, financeiro e comissões** (A30–A47): o estorno que não diz os pontos que saem; a fatia do bônus no "Já usado"; o CSV sem bandeira e sem "conta no caixa"; o "Ainda não fechado".
+- **Estoque** (A48–A49) e o brinde sem custo em Perdas (A40); a embalagem no singular.
+- **Portal** (A50–A57): o "Sem preferência" do remarcar; o "você já pode trocar"; o "Indique uma amiga" escondido; o crédito estornado sem "devolvidos".
+
+**Decidido pelos princípios, sem perguntar:**
+- D1: o texto do cargo deixa de prometer a venda; o resumo e a tela de Pacotes dizem que o "Vender" é com Recebimentos.
+- **D2 (princípio 5): o caixa conta o estorno no dia em que o dinheiro SAIU.** O pagamento original fica no dia dele, e o Fechamento de um dia já fechado não muda; o estorno é saída do dia em que foi feito (a parte devolvida, ou o inteiro com o relançado como entrada do dia); no mesmo dia, um anula o outro, como hoje. O faturamento segue o mesmo: estorno de outro mês é dedução do mês em que aconteceu. Troca a nota "a do pagamento estornado sai do dia dele (decisão desta frente, para o Heitor revisar)" de `vendas-financeiro.md` e o "sai dos dois lados" de `indicadores.md` quando são dias diferentes. Muda os números passados das [sim] e da Bellaris Clinic que tiveram estorno em outro dia.
+- D3: o estorno de despesa sai dos "Estornos do dia" e diz "Anula a despesa estornada".
+- D4/D5: o plano cancelado é só leitura, com data, motivo e o que voltou e ficou; a tela relê ao cancelar.
+- D6: a prévia e o "Enviar link" dizem quais variáveis saem vazias; nada se bloqueia (princípio 2).
+- D7: a hora escolhida nunca é trocada; o "próximo livre" só preenche quando a abertura não cabe, e diz que trocou.
+- D8: o checkout e o app escolhem a sala única livre que serve ao procedimento (regra da única opção).
+- D9: o "caixa da lista" tem as mesmas exclusões da receita.
+- D10: "Quem receberia hoje" com o gatilho de hoje; o público total à parte.
+- D11: sem a linha da unidade, vale o mínimo do cadastro.
+- D12: "hoje" e "ontem" pelo dia de Brasília.
+- A2: o alcance do cargo novo nasce sem escolha; A7/A13: brinde sem estoque e o registro no conselho opcional; A40: o brinde em Perdas pelo custo; A51: o remarcar "Sem preferência" diz com quem ficou.
+
+**Para o Heitor:** o fuso da clínica fora de Brasília (a Acácia é de Manaus, UTC−4: o 00:00 da tela é 23:00 na parede, e o "hoje", o Fechamento e as campanhas das 09:00 seguem Brasília). Recomendação: o fuso por unidade, escolhido pelo estado do CEP, com Brasília como padrão.
 
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
