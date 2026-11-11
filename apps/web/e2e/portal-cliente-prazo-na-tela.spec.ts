@@ -29,10 +29,10 @@ async function agendado(quando: Date) {
   expect(error, 'agendar').toBeNull()
   return data!.id
 }
-/** "ter, 03/11 às 10:00" — o dia e a hora em Brasília. */
+/** "terça-feira, 03/11 às 10:00" — o dia e a hora em Brasília (A58 da 11ª: o dia da semana por extenso; era "ter"). */
 function emBrasilia(d: Date) {
   const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', ...o }).format(d)
-  return `${f({ weekday: 'short' }).replace('.', '')}, ${f({ day: '2-digit', month: '2-digit' })} às ${f({ hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`
+  return `${f({ weekday: 'long' })}, ${f({ day: '2-digit', month: '2-digit' })} às ${f({ hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`
 }
 
 const QUANDO = new Date(Date.now() + 5 * 86_400_000)
