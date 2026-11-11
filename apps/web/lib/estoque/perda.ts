@@ -30,8 +30,16 @@ export const MOTIVO_VENDA_ESTORNADA = 'VENDA_ESTORNADA'
  */
 export const MOTIVO_INVENTARIO = 'INVENTARIO'
 
+/**
+ * O brinde da fidelidade entregue (A40 da 12ª simulação, 2026-11-11): sai do
+ * estoque pelo voucher e é perda no relatório, pelo custo do lote. Nasce da
+ * entrega do voucher, não se escolhe na Perda.
+ */
+export const MOTIVO_BRINDE = 'BRINDE'
+
 export function rotuloDoMotivo(v: string | null | undefined): string {
   if (v === MOTIVO_VENDA_ESTORNADA) return 'Venda estornada (não voltou)'
   if (v === MOTIVO_INVENTARIO) return 'Inventário'
+  if (v === MOTIVO_BRINDE) return 'Brinde da fidelidade'
   return MOTIVOS_DA_PERDA.find(m => m.key === v)?.label ?? '—'
 }

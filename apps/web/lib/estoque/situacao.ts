@@ -1,3 +1,5 @@
+import { medidaNoPlural } from '@/lib/estoque/medidas'
+
 /**
  * Como o saldo de um produto numa unidade se MOSTRA e em que situação está —
  * puro, para a tela de estoque (rede e unidade) e o dashboard dizerem a mesma
@@ -117,7 +119,8 @@ export function formatarQuantidade(n: number): string {
 }
 
 export function formatarQuantidadeComUnidade(q: Quantidade): string {
-  return `${formatarQuantidade(q.quantidade)} ${q.unidade}`
+  // A49 da 12ª: a embalagem no plural ("2,68 frascos"); as siglas (ml, UI) ficam.
+  return `${formatarQuantidade(q.quantidade)} ${medidaNoPlural(q.unidade, q.quantidade)}`
 }
 
 /**

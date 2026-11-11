@@ -347,7 +347,11 @@
     movimento `MANUAL_ADJUSTMENT` negativo, ao custo do lote de onde saiu (os
     de antes, sem custo gravado, ao último custo). **O ajuste desfeito não é
     perda** (D5 da 11ª, migration `20261110005401`): nem ele nem o movimento
-    que o desfaz entram (`desfeita_em`, `desfeita_pelo`).
+    que o desfaz entram (`desfeita_em`, `desfeita_pelo`). **E o brinde da
+    fidelidade entregue** (`BRINDE`, "Brinde da fidelidade" — A40 da 12ª,
+    2026-11-11; migration `20261111006101`): o ajuste negativo da entrega do
+    voucher (`reference = 'voucher:<id>'`) era contado como "Inventário"; é o
+    motivo dele, ao custo do lote.
     **A perda é MÉTRICA, não dinheiro** (est-04/est-05, revisão de 2026-11-02:
     "perdido ou não, o insumo já foi pago na compra … serve como métrica"):
     não entra no lucro nem no financeiro, e o relatório mostra, além da

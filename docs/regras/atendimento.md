@@ -1991,6 +1991,25 @@ const procedures = await ler(
       linhas numa janela só ficou de fora (decisão da F56: o atrito era repetir
       a nota).
     - Prova: `e2e/estoque-atritos-da-11.spec.ts`, `tests/estoque-saldo-na-prateleira.test.ts`.
+  - **Os atritos de estoque da 12ª simulação** (2026-11-11; princípio 3):
+    - **A embalagem no plural** (A49: "3 frasco", "Saem 13.500 ml (27
+      frasco)"): a palavra vai ao plural a partir de 2 ("27 frascos", "10
+      refis fechados", "1,5 frasco"), e as siglas ficam ("13.500 ml", "5 un")
+      — `medidaNoPlural`/`quantidadeComMedida` (`lib/estoque/medidas.ts`), no
+      saldo da tela (`formatarQuantidadeComUnidade`), na prateleira
+      (`saldoNaPrateleira`), no Ajuste, na Perda, no Histórico, nas
+      confirmações e nas Perdas dos Relatórios.
+    - **O motivo do "Desfazer" diz que é obrigatório** (A48): "Motivo *", e,
+      vazio, "Escreva o motivo para desfazer: ele fica no histórico."
+      (`[data-motivo-obrigatorio]`) — o botão desligado não dizia por quê. Vale
+      no "Desfazer entrada" e no "Desfazer ajuste".
+    - **O brinde da fidelidade é perda "Brinde da fidelidade"** (A40): a entrega
+      do voucher de produto (`entregar_voucher_produto`, o ajuste negativo com
+      `reference = 'voucher:<id>'`) entrava em "Perdas no período" como
+      "Inventário"; agora é o motivo `BRINDE`, pelo custo do lote de onde saiu
+      (`metrics_perdas`, migration `20261111006101`). Métrica, como toda perda:
+      fora do giro e do lucro. O brinde sem produto (A7) não mexe no estoque.
+    - Prova: `e2e/estoque-atritos-da-12.spec.ts`, `tests/atritos-da-12-f61.test.ts`.
   - **O custo por unidade de consumo tem 4 casas** (D6 da 11ª; princípio 3: a
     cera a R$ 0,038/g gravava R$ 0,04, e a Drenagem dizia R$ 1,10 de insumos
     em vez de R$ 1,14): `procedure_products.unit_cost` é numeric(12,4)
@@ -2736,6 +2755,8 @@ O resto do fluxo:
 ❌ Corrigir um ajuste errado com outro ajuste (a perda do primeiro fica em Perdas): é "Desfazer ajuste" (estoque_desfazer_ajuste — D5 da 11ª)
 ❌ Criar a linha da unidade (branch_product_stock) desligando o gatilho do mínimo, ou mostrar o custo de um lote por outra conta que não custo_do_lote (custos_dos_lotes — D2 e D4 da 11ª)
 ❌ Mostrar ou guardar o custo por unidade de consumo com 2 casas (R$ 0,038/g vira R$ 0,04 — D6 da 11ª)
+❌ Escrever a quantidade com a embalagem no singular fixo ("3 frasco") — é medidaNoPlural/quantidadeComMedida (A49 da 12ª)
+❌ Contar a entrega do voucher de produto (reference voucher:) como "Inventário" em metrics_perdas — é BRINDE, pelo custo do lote (A40 da 12ª)
 ❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
 ❌ Mostrar no ajuste o saldo em embalagens arredondadas, ou ler a contagem do inventário tirando dela o "já consumido do frasco aberto" (estoque_ajuste, o de antes): a contagem vale EXATA na unidade digitada — estoque_ajuste_em (D3 da 7ª)
 ❌ Dizer no "Aplicado em" do lote a baixa INTEIRA do atendimento (é stock_movement_batches.quantity × o rendimento) ou a hora marcada (é a conclusão) — D6/A12 da 9ª; ou listar só os lotes com saldo onde o recall pede o esgotado (D15)

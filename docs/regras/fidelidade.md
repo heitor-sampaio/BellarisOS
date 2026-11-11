@@ -115,6 +115,12 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     recompensa é o nome, e o "Entregar brinde" só marca o voucher como usado
     (migration `20261111006003`, que relaxa `loyalty_rewards_por_tipo`).
     Prova: `tests/fidelidade-brinde-sem-estoque.test.ts`.
+    **O brinde que sai do estoque é perda "Brinde da fidelidade"** (A40 da 12ª,
+    2026-11-11; princípio 3: a máscara saía de 55 para 54 sem custo em nenhum
+    indicador): em Relatórios → Estoque, "Perdas no período", pelo custo do
+    lote (`metrics_perdas`, motivo `BRINDE`; era "Inventário"). Como toda
+    perda, é métrica: não entra no lucro (`indicadores.md`). Prova:
+    `e2e/estoque-atritos-da-12.spec.ts` ("A40").
   - Cancelar voucher não usado devolve os pontos; vencido (derivado de
     `expires_at`) não vale e não devolve; estorno do pagamento o reativa.
   - **O formulário diz quanto os pontos valem e de onde vem o procedimento**

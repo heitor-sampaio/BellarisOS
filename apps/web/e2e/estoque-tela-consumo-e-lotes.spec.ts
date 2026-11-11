@@ -140,7 +140,7 @@ test.describe.serial('a tela de estoque', () => {
       const linhaToxina = p.getByRole('row').filter({ hasText: toxina }).first()
       await expect(linhaToxina).toBeVisible()
       await expect(linhaToxina.getByText('268 UI').first(), 'o rendimento, não "3 frasco"').toBeVisible()
-      await expect(linhaToxina.getByText('2,68 frasco').first()).toBeVisible()
+      await expect(linhaToxina.getByText('2,68 frascos').first()).toBeVisible()
       await expect(linhaToxina.getByText(/abaixo do mín/i).first(), '268 UI < 300 UI').toBeVisible()
 
       const linhaSerum = p.getByRole('row').filter({ hasText: serum }).first()
@@ -201,12 +201,12 @@ test.describe.serial('a tela de estoque', () => {
       const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
       await modal.getByRole('button', { name: 'Ajuste', exact: true }).click()
       await expect(modal.locator('[data-saldo-do-ajuste]'), 'o saldo em consumo e em embalagens').toContainText('780 UI')
-      await expect(modal.locator('[data-saldo-do-ajuste]')).toContainText('7,8 frasco')
+      await expect(modal.locator('[data-saldo-do-ajuste]')).toContainText('7,8 frascos')
 
       // Em frascos: 7,7 frascos são 770 UI — a tela diz ANTES de aplicar.
       await modal.getByRole('group', { name: 'Contar em' }).getByRole('button', { name: 'frasco', exact: true }).click()
       await modal.getByLabel('Contagem').fill('7,7')
-      await expect(modal.locator('[data-ajuste-equivale]')).toContainText('7,7 frasco = 770 UI')
+      await expect(modal.locator('[data-ajuste-equivale]')).toContainText('7,7 frascos = 770 UI')
       await expect(modal.locator('[data-ajuste-equivale]')).toContainText('frasco aberto')
       await modal.getByLabel('Motivo').fill('Inventário')
       await modal.getByRole('checkbox').check()
@@ -223,7 +223,7 @@ test.describe.serial('a tela de estoque', () => {
       // D5 da 11ª: o "Contar em" nasce na embalagem (frasco), como o da Perda.
       await modal.getByRole('group', { name: 'Contar em' }).getByRole('button', { name: 'UI', exact: true }).click()
       await modal.getByLabel('Contagem').fill('765')
-      await expect(modal.locator('[data-ajuste-equivale]')).toContainText('765 UI = 7,65 frasco')
+      await expect(modal.locator('[data-ajuste-equivale]')).toContainText('765 UI = 7,65 frascos')
       await modal.getByLabel('Motivo').fill('Inventário')
       await modal.getByRole('checkbox').check()
       await modal.getByRole('button', { name: 'Aplicar ajuste' }).click()

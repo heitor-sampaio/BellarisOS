@@ -16,7 +16,7 @@ describe('o saldo na tela', () => {
   it('268 UI de toxina aparecem como 268 UI (2,68 frasco), não "3 frasco"', () => {
     const s = { embalagens: 3, rendimento: 268, minimo: 0 }
     expect(formatarQuantidadeComUnidade(saldoParaMostrar(s, toxina))).toBe('268 UI')
-    expect(formatarQuantidadeComUnidade(emEmbalagens(268, toxina)!)).toBe('2,68 frasco')
+    expect(formatarQuantidadeComUnidade(emEmbalagens(268, toxina)!)).toBe('2,68 frascos')
   })
   it('95 ml de ácido aparecem como 95 ml (0,95 frasco), não "1 frasco"', () => {
     const s = { embalagens: 1, rendimento: 95, minimo: 1 }

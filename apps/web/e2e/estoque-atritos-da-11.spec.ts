@@ -61,11 +61,11 @@ test.afterAll(async () => {
   await dona?.limpar(); await rede?.limpar()
 })
 
-test('A50: o mínimo diz "10 refil fechados + 1 aberto com 840 g", não "Atual: 11 refil"', async ({ browser }) => {
+test('A50: o mínimo diz "10 refis fechados + 1 aberto com 840 g", não "Atual: 11 refil"', async ({ browser }) => {
   await como(browser, dona, async p => {
     const modal = await abrirGerenciar(p, nomeCera)
     await modal.getByRole('button', { name: 'Estoque mínimo' }).click()
-    await expect(modal.getByText(/10 refil fechados \+ 1 aberto com 840 g/)).toBeVisible()
+    await expect(modal.getByText(/10 refis fechados \+ 1 aberto com 840 g/)).toBeVisible()
   })
 })
 
@@ -77,7 +77,7 @@ test('A49: o ajuste fala da contagem sem assustar, e diz o aberto em palavras si
     await expect(modal).not.toContainText('inconsistência')
     await modal.getByLabel(/Contagem|Nova quantidade|Quantidade contada/).first().fill('10,5')
     const eq = modal.locator('[data-ajuste-equivale]')
-    await expect(eq).toContainText('10,5 refil = 10.500 g')
+    await expect(eq).toContainText('10,5 refis = 10.500 g')
     await expect(eq).not.toContainText('fração')
     await expect(eq).toContainText('metade')
   })
@@ -109,7 +109,7 @@ test('A50: o Histórico destaca a entrada na embalagem ("+2 refil"), com os gram
     const modal = await abrirGerenciar(p, nomeCera)
     await modal.getByRole('button', { name: 'Histórico' }).click()
     const primeira = modal.locator('[data-movimento]').first()
-    await expect(primeira.locator('[data-quantidade-principal]')).toHaveText('+2 refil')
+    await expect(primeira.locator('[data-quantidade-principal]')).toHaveText('+2 refis')
     await expect(primeira).toContainText('2.000 g')
   })
 })

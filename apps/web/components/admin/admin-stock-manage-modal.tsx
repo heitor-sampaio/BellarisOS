@@ -14,6 +14,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
 import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
+import { medidaNoPlural as pl } from '@/lib/estoque/medidas'
 import { lerNotaDaEntradaAnterior, guardarNotaDaEntrada } from '@/lib/estoque/nota-da-entrada'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -149,7 +150,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
         envio.renovar()
         guardarNotaDaEntrada(String(fd.get('nota_fiscal') ?? ''), String(fd.get('fornecedor') ?? ''))
         // A52 da 11ª: a entrada confirma.
-        toast.success(`Entrada registrada: +${Number(fd.get('quantity')).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${product.unit} de ${product.name}.`)
+        toast.success(`Entrada registrada: +${Number(fd.get('quantity')).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${pl(product.unit, Number(fd.get('quantity')))} de ${product.name}.`)
         onSuccess()
       }
       else setError(res?.error ?? 'Erro inesperado.')
@@ -278,7 +279,7 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onS
         if (res.saldos) {
           const nome = (id: string) => allBranches.find(b => b.id === id)?.name ?? 'A unidade'
           const n = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 3 })
-          toast(`Transferido: ${nome(String(fd.get('toBranchId')))} agora tem ${n(res.saldos.destino)} ${product.unit}; ${nome(String(fd.get('fromBranchId')))} ficou com ${n(res.saldos.origem)} ${product.unit}.`)
+          toast(`Transferido: ${nome(String(fd.get('toBranchId')))} agora tem ${n(res.saldos.destino)} ${pl(product.unit, res.saldos.destino)}; ${nome(String(fd.get('fromBranchId')))} ficou com ${n(res.saldos.origem)} ${pl(product.unit, res.saldos.origem)}.`)
         }
         onSuccess()
       }
@@ -377,16 +378,16 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
   const fmtQ = (n: number, casas = 2) => n.toLocaleString('pt-BR', { maximumFractionDigits: casas })
   const equivale = rende && parsedNew !== null && parsedNew >= 0
     ? (contaEmConsumo
-      ? `${fmtQ(parsedNew)} ${product.consumptionUnit} = ${fmtQ(parsedNew / rende, 4)} ${product.unit}`
-      : `${fmtQ(parsedNew, 4)} ${product.unit} = ${fmtQ(parsedNew * rende)} ${product.consumptionUnit}. O ${product.unit} aberto entra pelo que sobra nele: pela metade, 0,5.`)
+      ? `${fmtQ(parsedNew)} ${product.consumptionUnit} = ${fmtQ(parsedNew / rende, 4)} ${pl(product.unit, parsedNew / rende)}`
+      : `${fmtQ(parsedNew, 4)} ${pl(product.unit, parsedNew)} = ${fmtQ(parsedNew * rende)} ${product.consumptionUnit}. O ${product.unit} aberto entra pelo que sobra nele: pela metade, 0,5.`)
     : null
   // D5 da 11ª: a variação de mais da metade do saldo avisa forte, com a conta
   // na outra unidade — −98% passava só com a caixa genérica.
   const variacaoPct = delta !== null && currentStock !== null && currentStock > 0 ? Math.abs(delta) / currentStock * 100 : null
   const variacaoGrande = variacaoPct !== null && variacaoPct > 50 && parsedNew !== null
   const naOutraUnidade = rende && parsedNew !== null
-    ? (contaEmConsumo ? `${fmtQ(parsedNew)} ${product.consumptionUnit} são ${fmtQ(parsedNew / rende, 4)} ${product.unit}`
-                      : `${fmtQ(parsedNew, 4)} ${product.unit} são ${fmtQ(parsedNew * rende)} ${product.consumptionUnit}`)
+    ? (contaEmConsumo ? `${fmtQ(parsedNew)} ${product.consumptionUnit} são ${fmtQ(parsedNew / rende, 4)} ${pl(product.unit, parsedNew / rende)}`
+                      : `${fmtQ(parsedNew, 4)} ${pl(product.unit, parsedNew)} são ${fmtQ(parsedNew * rende)} ${product.consumptionUnit}`)
     : null
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -401,7 +402,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
       const res = await adminAdjustStock(undefined, fd)
       if (res?.success) {
         // A52 da 11ª: o ajuste confirma.
-        toast.success(`Ajuste aplicado: ${product.name} agora tem ${fmtQ(parsedNew ?? 0, 4)} ${unidadeDaContagem}.`)
+        toast.success(`Ajuste aplicado: ${product.name} agora tem ${fmtQ(parsedNew ?? 0, 4)} ${pl(unidadeDaContagem, parsedNew ?? 0)}.`)
         onSuccess()
       }
       else setError(res?.error ?? 'Erro inesperado.')
@@ -445,7 +446,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
               <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-faint)' }}>{rende ? product.consumptionUnit : product.unit}</span>
               {rende && (
                 <span style={{ display: 'block', fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 0 }}>
-                  {`${fmtQ((rendimento ?? 0) / rende, 4)} ${product.unit}`}
+                  {`${fmtQ((rendimento ?? 0) / rende, 4)} ${pl(product.unit, (rendimento ?? 0) / rende)}`}
                 </span>
               )}
             </p>
@@ -622,7 +623,7 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
   const [quantidade, setQuantidade] = useState('')
   const lida = parseDecimal(quantidade, 4)
   const equivale = rende && Number.isFinite(lida) && lida > 0
-    ? (emConsumo ? `= ${(lida / rende).toLocaleString('pt-BR', { maximumFractionDigits: 4 })} ${product.unit}`
+    ? (emConsumo ? `= ${(lida / rende).toLocaleString('pt-BR', { maximumFractionDigits: 4 })} ${pl(product.unit, lida / rende)}`
                  : `= ${(lida * rende).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${product.consumptionUnit}`)
     : null
 
@@ -638,7 +639,7 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
       if (res?.success) {
         envio.renovar()
         // A52 da 11ª: a perda confirma.
-        toast.success(`Perda registrada: −${quantidade.trim()} ${emConsumo && product.consumptionUnit ? product.consumptionUnit : product.unit} de ${product.name}.`)
+        toast.success(`Perda registrada: −${quantidade.trim()} ${emConsumo && product.consumptionUnit ? product.consumptionUnit : pl(product.unit, lida)} de ${product.name}.`)
         onSuccess()
       }
       else setError(res?.error ?? 'Erro inesperado.')
@@ -786,11 +787,11 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
                 {/* A50 da 11ª: "Atual: 11 frasco" valia 10,84 — a aberta contava inteira. */}
                 Atual: {product.consumptionUnit && Number(product.unitsPerPackage) > 0 && bs?.currentRendimento != null
                   ? saldoNaPrateleira(Number(bs.currentRendimento), Number(product.unitsPerPackage), product.unit, product.consumptionUnit)
-                  : `${currentStock.toLocaleString('pt-BR')} ${product.unit}`}
+                  : `${currentStock.toLocaleString('pt-BR')} ${pl(product.unit, currentStock)}`}
               </p>
               {!bs && (product.minimoDoCadastro ?? 0) > 0 && (
                 <p data-minimo-do-cadastro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
-                  Ainda sem estoque nesta unidade: vale o mínimo do cadastro do produto ({product.minimoDoCadastro!.toLocaleString('pt-BR')} {product.unit}).
+                  Ainda sem estoque nesta unidade: vale o mínimo do cadastro do produto ({product.minimoDoCadastro!.toLocaleString('pt-BR')} {pl(product.unit, product.minimoDoCadastro!)}).
                 </p>
               )}
             </div>
@@ -1080,7 +1081,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
               {m.emEmbalagens != null && EM_EMBALAGENS.has(m.type) ? (
                 <>
                   <p data-quantidade-principal style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: entrada ? 'var(--success)' : 'var(--danger)' }}>
-                    {entrada ? '+' : '−'}{fmt(Math.abs(m.emEmbalagens))} {m.embalagem}
+                    {entrada ? '+' : '−'}{fmt(Math.abs(m.emEmbalagens))} {pl(m.embalagem, m.emEmbalagens)}
                   </p>
                   <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
                     {fmt(Math.abs(m.quantity))} {m.unidade}
@@ -1094,7 +1095,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
                   {/* O movimento também em embalagens (J-44): −32 UI = 0,32 frasco. */}
                   {m.emEmbalagens != null && (
                     <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
-                      {fmt(Math.abs(m.emEmbalagens))} {m.embalagem}
+                      {fmt(Math.abs(m.emEmbalagens))} {pl(m.embalagem, m.emEmbalagens)}
                     </p>
                   )}
                 </>
@@ -1103,7 +1104,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
                   mostra também a equivalência em embalagens. */}
               <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>
                 saldo {m.balanceAfter.toLocaleString('pt-BR')} {m.unidade}
-                {m.saldoEmEmbalagens != null ? ` · ${m.saldoEmEmbalagens.toLocaleString('pt-BR')} ${m.embalagem}` : ''}
+                {m.saldoEmEmbalagens != null ? ` · ${m.saldoEmEmbalagens.toLocaleString('pt-BR')} ${pl(m.embalagem, m.saldoEmEmbalagens)}` : ''}
               </p>
               {/* A38 da 10ª: a entrada errada se desfaz enquanto o lote dela não teve saída. */}
               {m.desfazivel && podeDesfazer && (
@@ -1155,14 +1156,20 @@ function DesfazerEntrada({ movimento, unidade, onFechar, onDesfeita }: {
       <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Desfazer a entrada</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          Saem {qtd} {unidade}{doLote}, que entraram em{' '}
+          Saem {qtd} {pl(unidade, movimento.emEmbalagens ?? movimento.quantity)}{doLote}, que entraram em{' '}
           {new Date(movimento.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Não é perda: a entrada fica no
           histórico, marcada como desfeita, e o valor em estoque volta ao de antes dela.
         </p>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="field-label">Motivo</span>
+          {/* A48 da 12ª: o motivo é obrigatório — o asterisco, e o botão desligado diz por quê. */}
+          <span className="field-label">Motivo *</span>
           <input className="field" maxLength={300} value={motivo} onChange={e => setMotivo(e.target.value)} disabled={gravando}
             placeholder="Ex.: lançada em dobro" />
+          {!motivo.trim() && (
+            <span data-motivo-obrigatorio style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              Escreva o motivo para desfazer: ele fica no histórico.
+            </span>
+          )}
         </label>
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 700 }}>{erro}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
@@ -1190,7 +1197,7 @@ function DesfazerAjuste({ movimento, onFechar, onDesfeito }: {
   const [gravando, iniciar] = useTransition()
   const fmt = (n: number, casas = 3) => n.toLocaleString('pt-BR', { maximumFractionDigits: casas })
   const qtd = `${fmt(Math.abs(movimento.quantity))} ${movimento.unidade}`
-    + (movimento.emEmbalagens != null ? ` (${fmt(Math.abs(movimento.emEmbalagens))} ${movimento.embalagem})` : '')
+    + (movimento.emEmbalagens != null ? ` (${fmt(Math.abs(movimento.emEmbalagens))} ${pl(movimento.embalagem, movimento.emEmbalagens)})` : '')
   const achouAMais = movimento.quantity > 0
   function desfazer() {
     setErro(null)
@@ -1212,9 +1219,15 @@ function DesfazerAjuste({ movimento, onFechar, onDesfeito }: {
           marcado como desfeito, e não fica em Perdas.
         </p>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="field-label">Motivo</span>
+          {/* A48 da 12ª: o motivo é obrigatório — o asterisco, e o botão desligado diz por quê. */}
+          <span className="field-label">Motivo *</span>
           <input className="field" maxLength={300} value={motivo} onChange={e => setMotivo(e.target.value)} disabled={gravando}
             placeholder="Ex.: contei em gramas, era em refis" />
+          {!motivo.trim() && (
+            <span data-motivo-obrigatorio style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              Escreva o motivo para desfazer: ele fica no histórico.
+            </span>
+          )}
         </label>
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 700 }}>{erro}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>

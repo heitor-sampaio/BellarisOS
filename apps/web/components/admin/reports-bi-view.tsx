@@ -19,6 +19,7 @@ import type { EntradaDeEstoqueDoPeriodo } from '@/lib/metrics/contadora'
 import { csvDoDre } from '@/lib/financeiro/csv-da-contadora'
 import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { rotuloDoMotivo } from '@/lib/estoque/perda'
+import { medidaNoPlural } from '@/lib/estoque/medidas'
 import {
   TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda,
 } from '@/lib/metrics/vendas-comum'
@@ -1270,8 +1271,8 @@ function TabEstoque(p: ReportsBiProps) {
                       motivo:  rotuloDoMotivo(l.motivo),
                       produto: l.produto,
                       qtd:     l.unidade !== l.embalagem
-                        ? `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${l.unidade} (${l.embalagens.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${l.embalagem})`
-                        : `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${l.unidade}`,
+                        ? `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.unidade, l.quantidade)} (${l.embalagens.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.embalagem, l.embalagens)})`
+                        : `${l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${medidaNoPlural(l.unidade, l.quantidade)}`,
                       custo:   l.custo,
                     }))}
                   />

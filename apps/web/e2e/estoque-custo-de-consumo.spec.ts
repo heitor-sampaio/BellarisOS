@@ -282,10 +282,10 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
       // (A50 da 11ª: a entrada se lê no que se digitou); o consumo: −5 ml, com o saldo
       // em ml e em frascos.
       const compra = modal.locator('[data-movimento]').filter({ hasText: 'Entrada' })
-      await expect(compra.locator('[data-quantidade-principal]')).toHaveText('+5 frasco')
+      await expect(compra.locator('[data-quantidade-principal]')).toHaveText('+5 frascos')
       await expect(compra.getByText('500 ml', { exact: true })).toBeVisible()
       await expect(modal.getByText('-5 ml', { exact: true })).toBeVisible()
-      await expect(modal.getByText('saldo 495 ml · 4,95 frasco', { exact: true })).toBeVisible()
+      await expect(modal.getByText('saldo 495 ml · 4,95 frascos', { exact: true })).toBeVisible()
     } finally { await ctx.close() }
   })
 })
