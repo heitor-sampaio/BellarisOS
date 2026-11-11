@@ -9,6 +9,8 @@ import { marcacaoParaEditor } from './editor/da-marcacao'
 import { variavelObrigatoria } from './variaveis'
 import { ehMenorDeIdade } from '@/lib/clients/menor'
 import { valoresDoDocumento, type DadosDoDocumento } from './valores'
+import { fusoValido } from '@/lib/unidades/fuso'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { gerarCodigoDeVerificacao } from './codigo'
 import {
   valoresDoPagamento, pagamentoNormalizado, pagamentoDoRetrato, descontoDoRetrato, type PagamentoDoPlano,
@@ -110,7 +112,7 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
       .eq('id', doc.client_id).eq('tenant_id', doc.tenant_id).single(), 'buscar o cliente do documento'),
     ler(admin.from('tenants').select('name, document, phone, email').eq('id', doc.tenant_id).single(), 'buscar a rede do documento'),
     doc.branch_id
-      ? ler(admin.from('branches').select('name, document, address, city, state, phone')
+      ? ler(admin.from('branches').select('name, document, address, city, state, phone, fuso')
           .eq('id', doc.branch_id).eq('tenant_id', doc.tenant_id).maybeSingle(), 'buscar a unidade do documento')
       : Promise.resolve(null),
     doc.procedure_id
@@ -150,6 +152,8 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
         ? (definido ? valoresDoPagamento(pagamento, Number(agendamento.price), desconto) : {})
         : null,
     agora:        new Date(),
+    // F62: no relógio da unidade do documento; sem unidade, o comum da rede.
+    fuso:         unidade ? fusoValido((unidade as { fuso?: string | null }).fuso) : await fusoDaRede(doc.tenant_id),
     cliente:      cliente as DadosDoDocumento['cliente'],
     rede:         rede as DadosDoDocumento['rede'],
     unidade:      (unidade as DadosDoDocumento['unidade']) ?? null,

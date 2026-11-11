@@ -15,6 +15,8 @@ const FUSO = 'America/Sao_Paulo'
 
 export interface DadosDoDocumento {
   agora:   Date
+  /** O fuso da unidade do documento (F62): a data de hoje e a hora do agendamento saem nele. Sem ele, o de Brasília. */
+  fuso?:   string
   cliente: {
     name: string | null; document: string | null; birth_date: string | null
     phone: string | null; email: string | null
@@ -86,8 +88,8 @@ export function formatarDataCivil(data: string | null | undefined): string | nul
   return m ? `${m[3]}/${m[2]}/${m[1]}` : null
 }
 
-export function dataPorExtenso(d: Date): string {
-  return new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: FUSO }).format(d)
+export function dataPorExtenso(d: Date, fuso: string = FUSO): string {
+  return new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: fuso }).format(d)
 }
 
 /** A linha do endereço: rua, número e bairro. Sem a rua não há endereço. */
@@ -103,8 +105,8 @@ export function valoresDoDocumento(d: DadosDoDocumento): Record<string, string |
   const c = d.cliente
   const a = d.agendamento
   return {
-    'data.hoje':           dataPorExtenso(d.agora),
-    'data.hoje_curta':     formatDate(d.agora),
+    'data.hoje':           dataPorExtenso(d.agora, d.fuso),
+    'data.hoje_curta':     formatDate(d.agora, d.fuso),
 
     'cliente.nome':        vazio(c.name),
     // Sem CPF, o passaporte (ou o RNE), com o tipo: o contrato não sai sem
@@ -139,8 +141,8 @@ export function valoresDoDocumento(d: DadosDoDocumento): Record<string, string |
 
     'procedimento.nome':   d.procedimentosDoTermo?.length ? d.procedimentosDoTermo.join(', ') : vazio(d.procedimento?.name),
     'procedimento.valor':  a?.price != null ? formatBRL(Number(a.price)) : null,
-    'agendamento.data':    a?.scheduled_at ? formatDate(a.scheduled_at) : null,
-    'agendamento.hora':    a?.scheduled_at ? formatTime(a.scheduled_at) : null,
+    'agendamento.data':    a?.scheduled_at ? formatDate(a.scheduled_at, d.fuso) : null,
+    'agendamento.hora':    a?.scheduled_at ? formatTime(a.scheduled_at, d.fuso) : null,
     'profissional.nome':   vazio(a?.profissional ?? d.profissional),
     'profissional.registro': vazio(d.profissionalRegistro),
 

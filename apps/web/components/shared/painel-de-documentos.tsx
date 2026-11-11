@@ -1,4 +1,5 @@
 'use client'
+import { useFuso } from '@/components/shared/fuso'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -18,9 +19,13 @@ import {
 
 export type LinhaDoPainel = DocumentoNoPainel & { unidade: string | null; slug: string | null }
 
-const TZ = 'America/Sao_Paulo'
-const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: TZ })
-const diaEHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: TZ, dateStyle: 'short', timeStyle: 'short' })
+/** As datas no relógio da tela (F62: a unidade, o dela; a rede, o comum) — o `useFuso` de quem chama. */
+function datasNo(fuso: string) {
+  return {
+    dia:      (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso }),
+    diaEHora: (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: fuso, dateStyle: 'short', timeStyle: 'short' }),
+  }
+}
 
 const CHIP: Record<SituacaoDoDocumento, string> = {
   FALTAM_DADOS: 'chip chip-warning', A_ENVIAR: 'chip chip-brand', ENVIADO: 'chip chip-info',
@@ -28,6 +33,7 @@ const CHIP: Record<SituacaoDoDocumento, string> = {
 }
 
 function Situacao({ l }: { l: LinhaDoPainel }) {
+  const { dia } = datasNo(useFuso())
   const extra = l.situacao === 'ASSINADO'
     ? [l.assinadoEm ? dia(l.assinadoEm) : null, l.canal ? ROTULO_DO_CANAL[l.canal] ?? l.canal : null].filter(Boolean).join(' · ')
     : ''
@@ -45,6 +51,7 @@ function Situacao({ l }: { l: LinhaDoPainel }) {
 }
 
 function Envio({ l }: { l: LinhaDoPainel }) {
+  const { dia } = datasNo(useFuso())
   if (!l.envio || !l.enviadoEm) return <span style={{ color: 'var(--text-faint)' }}>—</span>
   return (
     <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
@@ -88,6 +95,7 @@ function Numero({ rotulo, valor, chave, hero = false, detalhe }: {
 
 /** A janela de um documento: a trilha inteira, a assinatura e o caminho para a ficha. */
 function JanelaDoDocumento({ l, onFechar }: { l: LinhaDoPainel; onFechar: () => void }) {
+  const { diaEHora } = datasNo(useFuso())
   const pathname = usePathname()
   const [trilha, setTrilha] = useState<TrilhaDoDocumento | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -182,6 +190,7 @@ export function PainelDeDocumentos(p: {
   linhas:   LinhaDoPainel[]
   comUnidade: boolean
 }) {
+  const { dia } = datasNo(useFuso())
   const router = useRouter()
   const searchParams = useSearchParams()
   const [aberto, setAberto] = useState<LinhaDoPainel | null>(null)

@@ -146,3 +146,22 @@ describe('a mensagem da automação no fuso da unidade (F62, fatia 5)', () => {
     expect(interpolarTexto('às {{agendamento.inicio}}', ctx, 'America/Manaus')).toBe('às 14/11/2026 às 09:00')
   })
 })
+
+describe('as datas do documento no fuso da unidade (F62, fatia 6)', () => {
+  it('o termo assinado às 23:30 de Manaus é de 11 de novembro, e o horário é o dela', async () => {
+    const { valoresDoDocumento } = await import('@/lib/documentos/valores')
+    type Dados = Parameters<typeof valoresDoDocumento>[0]
+    const dados = (fuso?: string) => ({
+      agora: new Date('2026-11-12T03:30:00.000Z'), fuso,
+      cliente: { name: 'Bianca' }, rede: { name: null, document: null, phone: null, email: null },
+      unidade: null, procedimento: null, pagamento: null,
+      agendamento: { scheduled_at: '2026-11-14T13:00:00.000Z', price: null },
+    }) as unknown as Dados
+    const manaus = valoresDoDocumento(dados('America/Manaus'))
+    expect([manaus['data.hoje'], manaus['data.hoje_curta'], manaus['agendamento.data'], manaus['agendamento.hora']])
+      .toEqual(['11 de novembro de 2026', '11/11/2026', '14/11/2026', '09:00'])
+    // Sem fuso, o de Brasília: como era.
+    const brasilia = valoresDoDocumento(dados())
+    expect([brasilia['data.hoje'], brasilia['agendamento.hora']]).toEqual(['12 de novembro de 2026', '10:00'])
+  })
+})

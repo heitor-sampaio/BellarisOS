@@ -14,6 +14,8 @@ import {
 } from './pdf/diagramacao'
 import { sha256 } from './renderizar'
 import { ROTULO_DO_EVENTO } from './situacao'
+import { FUSO_PADRAO, fusoValido, nomeDoFuso } from '@/lib/unidades/fuso'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * O PDF final de um documento assinado: o documento (desenhado da MESMA árvore
@@ -92,7 +94,7 @@ export async function gerarPdfAssinado(tenantId: string, docId: string): Promise
       .eq('issued_document_id', doc.id).single(), 'buscar a assinatura'),
     ler(admin.from('tenants').select('name, document').eq('id', tenantId).single(), 'buscar a rede'),
     doc.branch_id
-      ? ler(admin.from('branches').select('name, document').eq('id', doc.branch_id).maybeSingle(), 'buscar a unidade')
+      ? ler(admin.from('branches').select('name, document, fuso').eq('id', doc.branch_id).maybeSingle(), 'buscar a unidade')
       : Promise.resolve(null),
     doc.template_version_id
       ? ler(admin.from('document_template_versions').select('version, file_path').eq('id', doc.template_version_id).maybeSingle(), 'buscar a versão do modelo')
@@ -157,6 +159,9 @@ export async function gerarPdfAssinado(tenantId: string, docId: string): Promise
   const url = urlDeVerificacao(codigo)
   p.colocar([...texto([{ texto: 'Página de evidências da assinatura eletrônica', negrito: true }], { tamanho: 14 }), espaco(6)])
   par('Documento', `${doc.title}${versao?.version ? ` (modelo, versão ${versao.version})` : ''}`)
+  // F62: no relógio da unidade do documento ("Brasília", como era, no padrão).
+  const fuso = unidade ? fusoValido((unidade as { fuso?: string | null }).fuso) : await fusoDaRede(tenantId)
+  const rotuloDoRelogio = fuso === FUSO_PADRAO ? 'Brasília' : nomeDoFuso(fuso)
   par('Rede', [rede?.name, rede?.document].filter(Boolean).join(' — '))
   if (unidade) par('Unidade', [unidade.name, unidade.document].filter(Boolean).join(' — '))
   par('Assinante', [nome, mascararDocumento(assinatura.signer_document as string | null)].filter(Boolean).join(', '))
@@ -164,7 +169,7 @@ export async function gerarPdfAssinado(tenantId: string, docId: string): Promise
   par('Identidade', IDENTIDADE[assinatura.identity_method as string] ?? String(assinatura.identity_method))
   par('Conduzido por', conduzidoPor)
   par('Aceite', assinatura.accepted_text as string | null)
-  par('Assinado em', `${quando(assinatura.signed_at as string, 'America/Sao_Paulo')} (Brasília) · ${quando(assinatura.signed_at as string, 'UTC')} (UTC)`)
+  par('Assinado em', `${quando(assinatura.signed_at as string, fuso)} (${rotuloDoRelogio}) · ${quando(assinatura.signed_at as string, 'UTC')} (UTC)`)
   par('IP', (assinatura.ip as string | null) ?? null)
   par('Aparelho', (assinatura.user_agent as string | null) ?? null)
   par('SHA-256 do conteúdo assinado', assinatura.content_sha256 as string)
@@ -185,7 +190,7 @@ export async function gerarPdfAssinado(tenantId: string, docId: string): Promise
 
   p.colocar(texto([{ texto: 'Trilha do documento', negrito: true }], { tamanho: 10.5 }))
   for (const e of (eventos ?? [])) {
-    p.colocar(texto([{ texto: `${quando(e.created_at as string, 'America/Sao_Paulo')} — ${EVENTO[e.kind as string] ?? e.kind}${e.channel ? ` (${CANAL[e.channel as string] ?? e.channel})` : ''}` }], { tamanho: 8.5, cinza: true }))
+    p.colocar(texto([{ texto: `${quando(e.created_at as string, fuso)} — ${EVENTO[e.kind as string] ?? e.kind}${e.channel ? ` (${CANAL[e.channel as string] ?? e.channel})` : ''}` }], { tamanho: 8.5, cinza: true }))
   }
   p.colocar([espaco(8), ...texto([{
     texto: 'Documento assinado eletronicamente (assinatura eletrônica simples, Lei nº 14.063/2020), com validade entre as partes nos '
