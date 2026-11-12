@@ -164,7 +164,13 @@ test('"só os meus": a visão geral, as vendas, os profissionais e as clientes s
 })
 
 test('"só os meus" no CRM: o funil conta os leads dela e os sem dono', async ({ browser }) => {
-  const total = (s: Record<string, unknown>) => (s.funil as { oportunidades: number }[]).reduce((t, e) => t + e.oportunidades, 0)
+  // C5 da F68: o comercial é o painel da tela — as etapas do funil padrão e o
+  // total dos funis ativos (`oportunidades`), o mesmo número da aba Comercial.
+  const total = (s: Record<string, unknown>) => {
+    const etapas = (s.funil as { etapas: { oportunidades: number }[] }).etapas.reduce((t, e) => t + e.oportunidades, 0)
+    expect(s.oportunidades).toBe(etapas)
+    return s.oportunidades as number
+  }
   await comSessao(browser, ela.estado, async p => {
     await p.goto('/admin/dashboard')
     expect(total(await chamar(p, { aba: 'comercial', periodo: 'month' }))).toBe(2)

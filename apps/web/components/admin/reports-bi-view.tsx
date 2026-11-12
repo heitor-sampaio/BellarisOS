@@ -56,27 +56,9 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'comercial',      label: REPORT_TAB_LABELS.comercial },
 ]
 
-/** Painel comercial, calculado no servidor (ver `painelComercial`). */
-export interface DadosComerciais {
-  funis:      { id: string; name: string }[]
-  funilAtivo: string
-  etapas:     { name: string; count: number }[]
-  totalLeads:  number
-  /** As oportunidades na etapa de ganho, de todos os funis (a conversão é da oportunidade). */
-  ganhos:      number
-  temGanho:    boolean
-  /** Ganhas ÷ oportunidades (lib/metrics); nula sem etapa de ganho ("—"). */
-  conversao:   number | null
-  comerciaisAgendados:    number
-  comerciaisConsiderados: number
-  comerciaisRealizados:   number
-  comparecimento:         number
-  ranking: { id: string; name: string; leads: number; ganhos: number; conversaoPct: number | null; agendamentos: number }[]
-  /** Por que as oportunidades do período foram perdidas (2026-10-21). */
-  motivosDePerda: { motivo: string; total: number }[]
-  /** A conversão de cada origem do lead (A20 da 7ª), contada e dividida em lib/metrics. */
-  conversaoPorOrigem: { origem: string; leads: number; ganhos: number; conversaoPct: number | null }[]
-}
+/** Painel comercial (lib/metrics/painel-comercial): o tipo mora lá. */
+export type { DadosComerciais } from '@/lib/metrics/painel-comercial'
+import type { DadosComerciais } from '@/lib/metrics/painel-comercial'
 
 export interface ReportsBiProps {
   /** 'Rede' no portal da rede, nome da unidade no portal dela. */

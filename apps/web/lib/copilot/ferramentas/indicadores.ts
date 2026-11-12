@@ -3,14 +3,15 @@ import { z } from 'zod/v4'
 import { REPORT_TABS, type ReportTab } from '@estetica-os/types'
 import { can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
 import { resolvePeriod } from '@/lib/metrics/period'
-import { getLeadFunnel, getTicketMedio, getResultadoDoEstoque } from '@/lib/metrics/queries'
+import { getTicketMedio, getResultadoDoEstoque, getEmAberto } from '@/lib/metrics/queries'
+import { painelComercial } from '@/lib/metrics/painel-comercial'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
-import { resumoDoFunil, resultadoDoPeriodo } from '@/lib/metrics/resultado'
+import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
 
 /**
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
@@ -99,13 +100,17 @@ export const indicadores: FerramentaDeLeitura<{
     }
 
     if (aba === 'overview') {
-      const [atual, anterior, ticket, estoque] = await Promise.all([
+      const [atual, anterior, ticket, estoque, emAberto] = await Promise.all([
         getCoreDosModulos({ ...janela, recorte }),
         getCoreDosModulos({ ...janela, from: periodo.prevFrom, to: periodo.prevTo, recorte }),
         getTicketMedio(doDinheiro),
         // O lucro, como nas telas: desconta o insumo consumido; a compra de
         // estoque fica nas despesas (o caixa). Não se atribui a ela com o financeiro OWN.
         recorteProprio ? Promise.resolve(null) : getResultadoDoEstoque(janela),
+        // C5 (F68): o "A receber" do Financeiro — pelo VENCIMENTO, até o FIM do
+        // período (getEmAberto). Era o pendente do núcleo até agora, outro número.
+        // As parcelas a receber são da unidade, não dos atendimentos dela.
+        recorteProprio ? Promise.resolve(null) : getEmAberto({ ...janela, to: periodo.fullTo }),
       ])
       const resultado = estoque ? resultadoDoPeriodo({ ...atual, ...estoque.total }) : null
       // Com o financeiro "só os meus", a comissão do núcleo já é a DELA.
@@ -114,7 +119,10 @@ export const indicadores: FerramentaDeLeitura<{
         dados: {
           ...cabecalho,
           faturamento: dinheiro(atual.revenueCash), faturamentoAnterior: dinheiro(anterior.revenueCash),
-          aReceber: dinheiro(atual.revenuePending),
+          ...(emAberto ? {
+            aReceber: dinheiro(emAberto.aReceber),
+            notaDoAReceber: 'O que vence no período, até o fim dele, e ainda não foi pago (o "A receber" do Financeiro).',
+          } : {}),
           // A despesa não se atribui a ela (o dashboard esconde o custo).
           ...(recorteProprio || !resultado ? {} : {
             despesas: dinheiro(atual.expensesCash),
@@ -139,19 +147,24 @@ export const indicadores: FerramentaDeLeitura<{
     }
 
     if (aba === 'comercial') {
-      // CRM "só os meus": os leads dela e os sem dono, o recorte do quadro.
-      const funil = await getLeadFunnel({ ...janela, ownerId: recorte.crm })
-      // A conversão é da OPORTUNIDADE (ganhas ÷ do funil), a conta das telas.
-      const resumo = resumoDoFunil(funil)
+      // C5 (F68): o MESMO painel da aba Comercial dos Relatórios — o funil do
+      // funil padrão, a conversão somando os funis ATIVOS, o comparecimento, os
+      // motivos de perda e a conversão por origem, até o FIM do período. Era só
+      // o funil padrão, até agora. CRM "só os meus": os leads dela e os sem dono.
+      const p = await painelComercial({ tenantId: c.ctx.tenantId!, branchIds, from: periodo.from, to: periodo.fullTo, ownerId: recorte.crm })
+      const pct = (v: number | null) => v === null ? null : `${v.toFixed(1).replace('.', ',')}%`
       return {
         dados: {
           ...cabecalho,
-          funil: funil.map(e => ({ etapa: e.name, desfecho: e.outcome, oportunidades: e.leads, jaSaoClientes: e.converted })),
-          oportunidades: resumo.total, ganhas: resumo.ganhos,
-          conversao: resumo.conversaoPct === null ? null : `${resumo.conversaoPct.toFixed(1).replace('.', ',')}%`,
-          nota: resumo.temGanho
-            ? 'Conversão = oportunidades na etapa de ganho ÷ oportunidades do funil (não importa se a pessoa já é cliente).'
-            : 'O funil não tem etapa de ganho: não há conversão.',
+          funil: { nome: p.funis.find(f => f.id === p.funilAtivo)?.name ?? null, etapas: p.etapas.map(e => ({ etapa: e.name, oportunidades: e.count })) },
+          oportunidades: p.totalLeads, ganhas: p.ganhos, conversao: pct(p.conversao),
+          primeirosAtendimentos: { agendados: p.comerciaisAgendados, realizados: p.comerciaisRealizados, comparecimento: `${Math.round(p.comparecimento)}%` },
+          motivosDePerda: p.motivosDePerda,
+          conversaoPorOrigem: p.conversaoPorOrigem.map(o => ({ ...o, conversaoPct: pct(o.conversaoPct) })),
+          porResponsavel: p.ranking.slice(0, 15).map(r => ({ nome: r.name, oportunidades: r.leads, ganhas: r.ganhos, conversao: pct(r.conversaoPct), agendamentos: r.agendamentos })),
+          nota: p.temGanho
+            ? 'Conversão = oportunidades na etapa de ganho ÷ oportunidades, somando os funis ativos (não importa se a pessoa já é cliente). As etapas são as do funil padrão.'
+            : 'Nenhum funil ativo tem etapa de ganho: não há conversão.',
         },
       }
     }
@@ -173,7 +186,8 @@ export const indicadores: FerramentaDeLeitura<{
     }
 
     const [r, ticket] = await Promise.all([
-      getRelatorioDosModulos({ ...janela, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba, granularidade: periodo.granularity === 'hour' ? 'hour' : 'day', recorte }),
+      // A agenda vai até o FIM do período, como a aba Agenda dos Relatórios (C5, F68).
+      getRelatorioDosModulos({ ...janela, to: aba === 'agenda' ? periodo.fullTo : periodo.to, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba, granularidade: periodo.granularity === 'hour' ? 'hour' : 'day', recorte }),
       aba === 'clientes' ? getTicketMedio(doDinheiro) : Promise.resolve(null),
     ])
     const nomesDasUnidades = await nomesPorId(c, 'branches', [...r.receitaPorUnidade.map(x => x.branchId), ...r.agendaPorUnidade.map(x => x.branchId), ...r.estoque.porUnidade.map(x => x.branchId)])

@@ -171,6 +171,15 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   críticos (o consumo dos atendimentos dela vai). A comissão do núcleo, com
   o recorte, é a dela e vai. Prova: `e2e/copilot-indicadores-so-os-meus.spec.ts`
   (contra o build, como todo `copilot-*`).
+- **`indicadores` lê pelas MESMAS funções da tela** (C5 da F68, 2026-11-12):
+  o "a receber" é o do Financeiro (`getEmAberto`, pelo vencimento, até o FIM
+  do período — era o pendente do núcleo até agora; com o financeiro "só os
+  meus" não vai, como na tela), a aba agenda vai até o fim do período como a
+  aba Agenda, e o comercial é o painel da aba Comercial (`painelComercial`,
+  `lib/metrics/painel-comercial.ts`: as etapas do funil padrão, a conversão
+  somando os funis ATIVOS, o comparecimento, os motivos de perda, a conversão
+  por origem e por responsável). Era só o funil padrão, até agora. Prova:
+  `tests/indicadores-f68.test.ts` ("C5"), `e2e/copilot-indicadores-so-os-meus.spec.ts`.
 - **O dinheiro de Relatórios segue as ABAS do cargo, também no Copilot**
   (decisão do Heitor, 2026-11-01: "concordo"). `indicadores` é a única
   ferramenta com o dinheiro dos Relatórios e recusa a aba que o cargo não tem
