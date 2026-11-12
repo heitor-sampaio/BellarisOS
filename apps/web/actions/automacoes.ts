@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LIMITES_PADRAO, TIPOS_DE_GATILHO, ROTULOS_DE_NO, rotuloDoEvento } from '@estetica-os/types'
 import type {
@@ -256,6 +257,12 @@ export async function criarAutomacaoDeModelo(chave: string): Promise<{ id?: stri
   return { id: data.id as string }
 }
 
+function mesmosLimites(a: LimitesDaAutomacao | null, novos: LimitesDaAutomacao): boolean {
+  const x = { ...LIMITES_PADRAO, ...(a ?? {}) }
+  const b = { ...LIMITES_PADRAO, ...novos }
+  return x.silencioDe === b.silencioDe && x.silencioAte === b.silencioAte && x.tetoPorClienteDia === b.tetoPorClienteDia
+}
+
 export async function salvarAutomacao(input: {
   id:        string
   nome:      string
@@ -271,10 +278,17 @@ export async function salvarAutomacao(input: {
   const admin = createAdminClient()
 
   const atual = await ler(admin
-    .from('automations').select('id, tenant_id, status, versao')
+    .from('automations').select('id, tenant_id, status, versao, limites')
     .eq('id', input.id).maybeSingle(), 'buscar a automação')
 
   if (!atual || atual.tenant_id !== ctx.tenantId) return { error: 'Automação não encontrada.' }
+
+  // Os limites decidem quantas mensagens a paciente recebe e em que horário:
+  // o suporte não muda (D18, o Heitor na 2ª volta). Editar o fluxo, pode.
+  if (!mesmosLimites(atual.limites as LimitesDaAutomacao | null, input.limites ?? LIMITES_PADRAO)) {
+    const travado = bloqueioDoSuporte(ctx, 'mudar os limites de uma automação')
+    if (travado) return { error: travado }
+  }
 
   const problemas = validarGrafo(input.grafo)
   const erros = problemas.filter(p => p.grau === 'erro')
@@ -459,6 +473,13 @@ export async function mudarStatusDaAutomacao(
   const daClinica = recusaDaConfigDaClinica(ctx)
   if (daClinica) return { error: daClinica }
   const admin = createAdminClient()
+
+  // Ligar faz a automação mandar mensagem à paciente: o suporte não liga
+  // (D18, o Heitor na 2ª volta). Pausar, pode.
+  if (status === 'ATIVA') {
+    const travado = bloqueioDoSuporte(ctx, 'ligar uma automação')
+    if (travado) return { error: travado }
+  }
 
   const { data, error: erroLeitura } = await admin
     .from('automations').select('id, tenant_id, grafo')

@@ -1077,6 +1077,8 @@ export function CRMInbox({
   }, [])
 
   const selectedConv = conversations.find(c => c.id === selectedId) ?? null
+  // O status que não gravou (conversa fora do alcance): volta e diz por quê.
+  const [erroDoStatus, setErroDoStatus] = useState<string | null>(null)
 
   // Editar mensagem enviada existe no WhatsApp, mas não na API oficial: lá a
   // mensagem é imutável depois de entregue. Nota interna nunca saiu daqui, então
@@ -1989,10 +1991,20 @@ export function CRMInbox({
                   status={selectedConv.status}
                   disabled={!canEdit}
                   onChange={async (s) => {
+                    const antes = selectedConv.status
+                    setErroDoStatus(null)
                     setConversations(prev => prev.map(c => c.id === selectedConv.id ? { ...c, status: s } : c))
-                    await setConversationStatus(selectedConv.id, s)
+                    const r = await setConversationStatus(selectedConv.id, s).catch(() => ({ error: 'Não deu certo. Tente de novo.' }))
+                    if (r?.error) {
+                      // Volta ao que estava, e diz por quê.
+                      setConversations(prev => prev.map(c => c.id === selectedConv.id ? { ...c, status: antes } : c))
+                      setErroDoStatus(r.error)
+                    }
                   }}
                 />
+                {erroDoStatus && (
+                  <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 600 }}>{erroDoStatus}</span>
+                )}
               </div>
 
               {/* Messages area */}

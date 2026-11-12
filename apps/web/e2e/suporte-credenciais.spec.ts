@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
@@ -56,7 +56,7 @@ test.beforeAll(async () => {
     permissoes: [
       { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'MANAGE' },
       { modulo: 'marketing', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'team', nivel: 'MANAGE' },
-      { modulo: 'settings', nivel: 'MANAGE' },
+      { modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'automations', nivel: 'MANAGE' }, { modulo: 'roles', nivel: 'MANAGE' },
     ],
   })
   membros.push(alvo)
@@ -133,6 +133,37 @@ test.describe.serial('suporte: credenciais e travas', () => {
     expect(c.texto).toContain('modo suporte')
     const l = await chamarAcao(p, 'actions/documentos.ts', 'gerarLinkDeAssinatura', `/admin/clients/${clienteId}`, [QUALQUER])
     expect(l.texto).toContain('modo suporte')
+  })
+
+  // C7 do levantamento (F63; D18, o Heitor na 2ª volta): o que muda a clínica
+  // de verdade — tirar ou devolver o acesso de alguém, apagar cargo, ligar
+  // automação ou mudar os limites dela — o suporte não faz.
+  test('não desativa nem reativa membro, não apaga cargo, não liga automação nem muda os limites', async () => {
+    const p = sup!.page
+    const casos: [string, string, string, unknown[]][] = [
+      ['actions/team.ts', 'deactivateTeamMember', '/admin/team', [QUALQUER, '/admin/team']],
+      ['actions/team.ts', 'reactivateTeamMember', '/admin/team', [QUALQUER, '/admin/team']],
+      ['actions/roles.ts', 'deleteRole', '/admin/settings', [QUALQUER]],
+      ['actions/automacoes.ts', 'mudarStatusDaAutomacao', '/admin/automacoes', [QUALQUER, 'ATIVA']],
+    ]
+    for (const [arquivo, funcao, rota, args] of casos) {
+      expect((await chamarAcao(p, arquivo, funcao, rota, args)).texto, funcao).toContain('modo suporte')
+    }
+    const { data: auto, error } = await db().from('automations').insert({
+      tenant_id: outra!.tenantId, nome: `${PREFIXO} limites ${marca}`, status: 'RASCUNHO', gatilhos: [],
+      grafo: { nos: [], ligacoes: [] }, limites: { silencioDe: '21:00', silencioAte: '08:00', tetoPorClienteDia: 3 },
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    try {
+      const salvar = (limites: unknown) => chamarAcao(p, 'actions/automacoes.ts', 'salvarAutomacao', `/admin/automacoes/${auto!.id}`,
+        [{ id: auto!.id, nome: `${PREFIXO} limites ${marca}`, grafo: { nos: [], ligacoes: [] }, limites }])
+      expect((await salvar({ silencioDe: '21:00', silencioAte: '08:00', tetoPorClienteDia: 30 })).texto, 'mudar o teto').toContain('modo suporte')
+      // O controle: salvar o fluxo com os mesmos limites, o suporte pode.
+      expect((await salvar({ silencioDe: '21:00', silencioAte: '08:00', tetoPorClienteDia: 3 })).texto).not.toContain('modo suporte')
+    } finally {
+      await db().from('automation_versions').delete().eq('automation_id', auto!.id)
+      await db().from('automations').delete().eq('id', auto!.id)
+    }
   })
 
   test('o cancelamento feito no suporte não manda push ao cliente', async ({ browser }) => {

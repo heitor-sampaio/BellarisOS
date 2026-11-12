@@ -8,8 +8,7 @@ import { cargosQueVendem } from '@/lib/vendas/equipe-da-venda'
 import { AdminTeamForm } from '@/components/admin/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { TeamFilters } from '@/components/admin/team-filters'
-import { reactivateTeamMember } from '@/actions/team'
-import { UserCheck } from 'lucide-react'
+import { ReativarMembro } from '@/components/admin/reativar-membro'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
@@ -323,19 +322,7 @@ export default async function AdminTeamPage({
                       {canManage && m.id !== ctx.internalUserId && podeMexerEm(m) && (m.is_active ? (
                         <DesativarMembro membroId={m.id} nome={m.name} redirectPath="/admin/team" />
                       ) : (
-                        <form action={async () => {
-                          'use server'
-                          await reactivateTeamMember(m.id, '/admin/team')
-                        }}>
-                          <button
-                            type="submit"
-                            className="btn-ghost"
-                            style={{ padding: '5px 8px', color: 'var(--brand)' }}
-                            title="Reativar membro"
-                          >
-                            <UserCheck size={15} />
-                          </button>
-                        </form>
+                        <ReativarMembro membroId={m.id} redirectPath="/admin/team" />
                       ))}
                       </div>
                     </td>

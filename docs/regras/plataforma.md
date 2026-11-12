@@ -555,7 +555,15 @@ um muro que não depende de cada trava do código.
 - **O que fica como permanente, o suporte não faz**: cadastrar membro, mudar
   cargo, abrangência ou a matriz de um cargo (`createTeamMember`,
   `updateTeamMember`, `createRole`, `updateRole`, `saveRolePermissions`) —
-  seria acesso fora do prazo da autorização. Nem colher assinatura, marcar
+  seria acesso fora do prazo da autorização. Nem tirar ou devolver o acesso
+  de alguém, nem apagar cargo (`deactivateTeamMember`, `reactivateTeamMember`,
+  `deleteRole` — F63, C7; o `deleteRole` dava a mensagem genérica do banco),
+  nem ligar automação ou mudar os limites dela (D18; `automacoes.md`).
+  ⚠️ Desde a F63 a matriz de cargos grava pelo cliente de SERVIÇO (a sessão
+  só lê, migration `20261112006302`): a restritiva do suporte não a protege
+  mais, e quem a protege é o `bloqueioDoSuporte` da action. Action nova que
+  grava cargo, matriz ou membro nasce com ele. Prova (contra o build):
+  `e2e/suporte-credenciais.spec.ts`. Nem colher assinatura, marcar
   papel ou dispensar documento: `document_signatures` é evidência imutável, e
   ali o atendente apareceria como o membro.
 - **O fim** (`app/auth/suporte-fim/route.ts` da clínica, o "Sair" do banner): encerra a

@@ -7,8 +7,8 @@ import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral 
 import { cargosQueVendem } from '@/lib/vendas/equipe-da-venda'
 import { TeamForm } from '@/components/branch/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
-import { reactivateTeamMember } from '@/actions/team'
-import { UserCheck, Pencil } from 'lucide-react'
+import { ReativarMembro } from '@/components/admin/reativar-membro'
+import { Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -256,19 +256,7 @@ export default async function TeamPage({
                       {canManage && m.id !== ctx.internalUserId && (m.is_active ? (
                       <DesativarMembro membroId={m.id} nome={m.name} redirectPath={`/${slug}/team`} />
                     ) : (
-                      <form action={async () => {
-                        'use server'
-                        await reactivateTeamMember(m.id, `/${slug}/team`)
-                      }}>
-                        <button
-                          type="submit"
-                          className="btn-ghost"
-                          style={{ padding: '5px 8px', color: 'var(--brand)' }}
-                          title="Reativar membro"
-                        >
-                          <UserCheck size={15} />
-                        </button>
-                      </form>
+                      <ReativarMembro membroId={m.id} redirectPath={`/${slug}/team`} />
                     ))}
                     </div>
                   </td>

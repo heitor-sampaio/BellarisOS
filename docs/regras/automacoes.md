@@ -197,9 +197,13 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
     teto".)
 - **O suporte não liga automação nem muda os limites** (D18 do levantamento
   das regras, o Heitor, 2026-11-11, opção a; CLAUDE.md §14: a ação que manda
-  algo à paciente passa por `bloqueioDoSuporte`). Na sessão de suporte, ligar,
-  desligar e mudar os limites de uma automação são recusados: o fluxo ligado
-  rodaria depois e falaria com as pacientes. (Correção C7.)
+  algo à paciente passa por `bloqueioDoSuporte`). Na sessão de suporte,
+  LIGAR (`mudarStatusDaAutomacao` com `ATIVA`, antes até de ler o id) e
+  mudar os limites (`salvarAutomacao` com silêncio ou teto diferentes do
+  gravado) são recusados: o fluxo ligado rodaria depois e falaria com as
+  pacientes. Pausar e editar o fluxo com os mesmos limites, o suporte pode —
+  é como ele para uma automação que está mandando errado (F63; a D18 é "não
+  liga nem muda limites"). Prova (contra o build): `e2e/suporte-credenciais.spec.ts`.
 - **O lembrete do agendamento da campanha e a madrugada** (D17 do
   levantamento das regras, o Heitor, 2026-11-11: "a + c opcional";
   princípios 2 e 6). O lembrete sai na antecedência que a clínica escolheu,

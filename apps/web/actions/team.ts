@@ -405,6 +405,8 @@ export async function updateTeamMember(
   return { success: true }
 }
 
+const MEMBRO_NAO_ENCONTRADO = 'Membro não encontrado.'
+
 /**
  * O membro, DA REDE da sessão, com o login dele.
  *
@@ -421,7 +423,9 @@ async function membroDaRede(
     .eq('id', userId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o membro')
   // E ao alcance (§11): a gerente da unidade A desativava — e bania do login —
   // gente da B e admins da rede.
-  if (!membro || !alcancaUnidade(ctx, membro.branch_id as string | null)) throw new Error('Membro não encontrado.')
+  // Nulo, e quem chama devolve `{ error }`: lançado, a mensagem chegava
+  // trocada à tela em produção (C9).
+  if (!membro || !alcancaUnidade(ctx, membro.branch_id as string | null)) return null
   return membro as { id: string; name: string; auth_id: string | null; is_active: boolean; role_id: string | null }
 }
 
@@ -454,6 +458,7 @@ export async function pendenciasParaDesativar(userId: string): Promise<Pendencia
   try {
     const admin = createAdminClient()
     const membro = await membroDaRede(admin, ctx, userId)
+    if (!membro) return { error: MEMBRO_NAO_ENCONTRADO }
     return await pendenciasDoMembro(admin, ctx, { id: membro.id, nome: membro.name })
   } catch (e) {
     return { error: mensagemDoErro(e) }
@@ -467,12 +472,16 @@ export async function deactivateTeamMember(
   assertPermission(ctx, 'team', 'MANAGE')
   // Desativar a si mesmo tranca a pessoa do lado de fora sem ninguém para
   // desfazer — se for a única que administra a equipe, a rede fica sem.
-  if (userId === ctx.internalUserId) throw new Error('Você não pode desativar o seu próprio acesso.')
+  if (userId === ctx.internalUserId) return { error: 'Você não pode desativar o seu próprio acesso.' }
+  // Tira o acesso de alguém da clínica: o suporte não faz (C7).
+  const travado = bloqueioDoSuporte(ctx, 'desativar membro da equipe')
+  if (travado) return { error: travado }
   const repasse = EntradaDoRepasse.safeParse(repasseBruto ?? {})
   if (!repasse.success) return { error: 'O repasse veio inválido. Recarregue a página e tente de novo.' }
 
   const admin = createAdminClient()
   const membro = await membroDaRede(admin, ctx, userId)
+  if (!membro) return { error: MEMBRO_NAO_ENCONTRADO }
   if (await ehAUltimaAdminAtiva(admin, ctx.tenantId!, membro)) {
     return { error: await falaDaRede(ctx.tenantId, 'Essa é a única Admin da rede ativa: a rede ficaria sem ninguém com acesso total.') }
   }
@@ -492,6 +501,7 @@ export async function deactivateTeamMember(
   }
 
   await gravar(admin.from('users').update({ is_active: false }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'desativar o membro')
+  let aviso: string | null = null
 
   // Desativar TIRA o acesso — até 2026-09-27 era só uma coluna que nada lia.
   // O bloqueio no Auth impede renovar o token e entrar de novo; o `updateTag`
@@ -499,8 +509,9 @@ export async function deactivateTeamMember(
   // e é ele que barra o token que ainda está na mão.
   if (membro.auth_id) {
     // Resposta do Auth, não do PostgREST: o erro é tratado aqui, e alto.
+    // O resto segue (o contexto já barra pelo is_active), e a tela diz.
     const { error: erroBloqueio } = await admin.auth.admin.updateUserById(membro.auth_id, { ban_duration: '876000h' })
-    if (erroBloqueio) throw new Error(`Desativado, mas não consegui bloquear o login: ${erroBloqueio.message}`)
+    if (erroBloqueio) aviso = `Desativado, mas não consegui bloquear o login: ${erroBloqueio.message}. Tente desativar de novo.`
     revalidateTag(`user:${membro.auth_id}`, { expire: 0 })
   }
 
@@ -522,14 +533,19 @@ export async function deactivateTeamMember(
 
   revalidatePath(redirectPath)
   revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
+  if (aviso) return { error: aviso }
 }
 
 export async function reactivateTeamMember(userId: string, redirectPath: string = '/admin/team'): Promise<{ error: string } | undefined> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'team', 'MANAGE')
+  // Devolve o acesso a alguém: o suporte não faz (C7).
+  const travado = bloqueioDoSuporte(ctx, 'reativar membro da equipe')
+  if (travado) return { error: travado }
 
   const admin = createAdminClient()
   const membro = await membroDaRede(admin, ctx, userId)
+  if (!membro) return { error: MEMBRO_NAO_ENCONTRADO }
   // Só outra Admin da rede reativa uma Admin (revisão do Heitor, 2026-10-29).
   const recusa = await recusaDeMexerNaAdmin(admin, ctx, membro)
   if (recusa) return { error: recusa }
@@ -539,9 +555,10 @@ export async function reactivateTeamMember(userId: string, redirectPath: string 
     if (limite) throw limiteDoPlano(limite)
   }
   await gravar(admin.from('users').update({ is_active: true }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'reativar o membro')
+  let aviso: string | null = null
   if (membro.auth_id) {
     const { error: erroDesbloqueio } = await admin.auth.admin.updateUserById(membro.auth_id, { ban_duration: 'none' })
-    if (erroDesbloqueio) throw new Error(`Reativado, mas não consegui desbloquear o login: ${erroDesbloqueio.message}`)
+    if (erroDesbloqueio) aviso = `Reativado, mas não consegui desbloquear o login: ${erroDesbloqueio.message}. Tente reativar de novo.`
     revalidateTag(`user:${membro.auth_id}`, { expire: 0 })
   }
 
@@ -549,4 +566,5 @@ export async function reactivateTeamMember(userId: string, redirectPath: string 
 
   revalidatePath(redirectPath)
   revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
+  if (aviso) return { error: aviso }
 }

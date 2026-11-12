@@ -10436,6 +10436,22 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   - Indicadores fora da migration: `metrics_by_branch`, `clientes_para_reativar` (e `_rede`), `metrics_faixa_etaria`, `ultimas_visitas` e `clientes_do_publico`.
   - No Brasília de propósito: plataforma, assinaturas, cobrança do Copilot, as âncoras de vencimento ao meio-dia (datas sem hora) e o `period_ref` das comissões (é da rede).
 
+**F63 — segurança (12/11; commits locais, SEM push e SEM migration aplicada — a 13ª simulação estava em produção): C1, C3, C7 e C9 do levantamento das regras.**
+- **C1, a sessão só lê.** A chave pública está no navegador, e o que a política deixa a sessão gravar qualquer membro grava sem a trava da action. Fechado:
+  - a matriz de cargos (`role_permissions`, `role_report_tabs`, `tenant_roles`), que aceitava escrita de qualquer membro da rede (`eh_da_rede()`): uma recepcionista se dava Gerenciar em tudo. `actions/roles.ts` e `actions/permissions.ts` gravam pelo cliente de serviço;
+  - `lgpd_requests_insert` (a cliente gravava o pedido com qualquer status, o prontuário "aprovado" e o caminho do arquivo de outra pessoa), `clients_delete` e o ALL de `stock_movements` (fica só a leitura, que a tela assina);
+  - a varredura das configurações com política só `eh_da_rede()`: campanhas (fica a leitura), categorias do estoque, disponibilidade e preço do procedimento por unidade. Todo o código já gravava pelo servidor;
+  - as comissões: `commissions` ia pelo Realtime a toda a unidade, inclusive a quem só vê "as minhas", e `commission_lines`, `_rules`, `_payouts`, `_configs` e `payment_fees` (as taxas, D7) se liam pela chave pública. Nenhuma tem leitura pela sessão (o código lia todas pelo servidor), `commissions` sai da publicação, e o Financeiro e "Comissões da equipe" assinam o sinal `comissoes_sinais` — o modelo do `crm_quadro_sinais`. O gatilho `despesa_de_fechamento_so_pelo_fechamento` passa a security definer (lia `commission_payouts` como quem grava).
+- **C3:** `findProductByBarcode` (mandava o custo) pede Estoque em Gerenciar; `lookupClientByCpf` não diz de quem é o CPF sem Clientes em Gerenciar; as taxas da maquininha vão a quem só recebe com o valor 0 e sem o prazo, só para dizer quais estão cadastradas (D7).
+- **C7:** `bloqueioDoSuporte` em desativar e reativar membro, `deleteRole`, ligar automação e mudar os limites (D18). Pausar a automação e editar o fluxo com os mesmos limites, o suporte pode — `automacoes.md` dizia também "desligar", e a D18 é "não liga nem muda limites": decidido pelos princípios (parar uma automação que manda errado é o que o suporte precisa poder), sem levar ao Heitor.
+- **C9:** `membroDaRede`, o desativar a si mesmo, o login que não bloqueou/desbloqueou e `setConversationStatus` devolvem `{ error }`. O "Reativar" da Equipe virou `ReativarMembro`, que mostra o motivo (o `<form>` de servidor descartava o erro); o status da conversa que não grava volta e diz por quê.
+- **Migrations, NÃO aplicadas — a ordem importa:**
+  1. `20261112006301_comissoes_sinal.sql` (aditiva) ANTES do push: o código novo assina `comissoes_sinais`, e o canal do Realtime com uma tabela fora da publicação falha inteiro (levaria junto o tempo real dos lançamentos no Financeiro).
+  2. o push, e esperar o deploy;
+  3. `20261112006302_sessao_so_le.sql` (restritiva) DEPOIS do deploy: o código de antes grava os cargos pela sessão e assina `commissions`.
+  4. rodar de novo `e2e/rls-sessao-so-le.spec.ts` (hoje os cinco falham pelo motivo certo) e `e2e/suporte-credenciais.spec.ts` contra o build.
+- **Fica de fora:** as tabelas OPERACIONAIS (agendamentos, lançamentos, produtos…) ainda aceitam escrita pela sessão dentro da rede e do alcance, o que o CLAUDE.md §11 aceita ("a trava da action é a única") — fechá-las é frente própria. `financial_transactions` segue no Realtime com leitura pela unidade (o "só os meus" do Financeiro: a mesma pergunta das comissões, não levantada no C1). Um `domain_events` 'estoque.movimentado' órfão ficou na rede de teste da primeira rodada do spec (o movimento plantado foi apagado; o evento, não — limpeza destrutiva, espera o Heitor).
+
 **Pronto para lançar = zero defeitos e zero atritos** (o Heitor, 11/11: "as regras de negocio já estão definidas, não tem pq ter defeito ou atrito"). A partir da 13ª simulação, cada achado precisa cair num destes casos:
 1. Contraria uma regra escrita (`docs/regras` ou os sete princípios do CLAUDE.md §1).
 2. A pessoa não conseguiu fazer a tarefa, ou fez errado sem perceber.

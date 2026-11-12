@@ -1620,12 +1620,13 @@ export async function markConversationRead(conversationId: string) {
   ])
 }
 
-export async function setConversationStatus(conversationId: string, status: ConvStatus) {
+export async function setConversationStatus(conversationId: string, status: ConvStatus): Promise<{ error: string } | undefined> {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
-  if (!(await conversaAoAlcance(admin, ctx, conversationId))) throw new Error('Conversa não encontrada.')
+  // `{ error }`, não lançado: em produção a mensagem chegava trocada (C9).
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { error: 'Conversa não encontrada.' }
 
   await gravar(admin
     .from('conversations')
