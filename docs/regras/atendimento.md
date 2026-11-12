@@ -2346,7 +2346,8 @@ const procedures = await ler(
   (A37 da 10ª, 2026-11-10: a Perda dizia "não gera despesa" e a Entrada não; o
   fornecedor e a nota iam nas Observações): "Não gera despesa: o custo é a
   base…" (`[data-entrada-sem-despesa]`) e os campos "Fornecedor" (vem o do
-  cadastro do produto) e "Nota fiscal", gravados no movimento
+  cadastro do produto; vira a lista de Fornecedores da rede pela D4 do
+  levantamento, abaixo) e "Nota fiscal", gravados no movimento
   (`stock_movements.fornecedor`/`nota_fiscal`, `estoque_entrada` de 10
   argumentos — a de 8 chama ela; migration `20261110005101`) e mostrados no
   Histórico ("NF 004630 · Distribuidora Sul"). Prova:
@@ -2374,6 +2375,22 @@ const procedures = await ler(
 
 **Decididas no levantamento das regras** (o Heitor, 2026-11-11; a correção
 indicada é a do consolidado do levantamento):
+- **Fornecedores é um cadastro da rede, como as categorias do estoque** (D4,
+  4ª volta: "temos uma nova entrada 'Fornecedor' que funciona igual a categoria, mas fica disponível para escolha também na adição do estoque. Então deve poder cadastrar fornecedor também."; H8 — as categorias são da rede). Substitui
+  o texto livre de fornecedor (`products.supplier` e o "Fornecedor" da
+  entrada, `stock_movements.fornecedor`), que migra para a lista. (Correção
+  C76; até ela entrar, o fornecedor é texto livre.)
+  - **O produto escolhe o fornecedor de costume** da lista.
+  - **Toda entrada escolhe o fornecedor da lista** — os caminhos irmãos
+    juntos: a Entrada manual, o código de barras, o estoque inicial e o
+    Copilot. Vem preenchida com o fornecedor da nota trazida da entrada
+    anterior (A54), senão com o de costume do produto, e grava o DESTA
+    entrada, que o Histórico mostra.
+  - **Quem faz a entrada cadastra um fornecedor novo ali mesmo** ("+ Novo
+    fornecedor"; princípio 7, simples primeiro: a nota na mão não espera a
+    rede). Editar e arquivar a lista é de quem é da rede
+    (`recusaDaConfigDaClinica`), como as categorias; o arquivado sai das
+    opções e continua no que já foi gravado.
 - **O produto desativado com saldo (D1; princípios 3 e 2).** Continua no
   valor em estoque enquanto houver saldo — o frasco está lá —, a linha diz
   "Inativo", e desativar avisa quanto fica no estoque e no valor, sem

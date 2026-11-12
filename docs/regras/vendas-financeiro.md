@@ -1280,6 +1280,28 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `salvarPrazoDaOperadora`, a mesma permissão e abrangência das taxas). O
     vencimento é retratado na parcela: mudar o prazo vale para as próximas
     vendas. Migration `20261103001301`.
+    - **As taxas passam a ser POR MAQUININHA** (D8 do levantamento das
+      regras, o Heitor, 2026-11-11, 4ª volta, opção b: "Quem escolhe a taxa é a operadora: stone, mercadopago, elo e por ai vai… a rede precisa configurar suas taxas, por operadora.";
+      e a primeira tela da passada de simplificação, princípio 7). É a regra
+      que vale; o modelo "regra geral + por bandeira" descrito a seguir é o
+      que o código ainda faz até a correção C75.
+      - **A rede cadastra as maquininhas que usa** (Stone, Mercado Pago…):
+        o nome, a taxa do débito, a do crédito à vista, até quantas vezes ela
+        parcela, a taxa de cada vez e o prazo de recebimento. O "Parcelar no
+        crédito até" e o "Prazo da operadora" passam a ser de cada maquininha.
+      - **A bandeira mora dentro da maquininha**, numa opção FECHADA por
+        padrão: "Esta maquininha cobra diferente em alguma bandeira?". Aberta,
+        a bandeira escolhida tem as suas taxas (e o seu prazo) naquela
+        maquininha; o campo vazio dela é a taxa da maquininha daquelas vezes
+        (a mesma régua do r4-f15-01, sem herdar faixa).
+      - **Na venda com cartão, "Qual maquininha?"** — só quando a rede tem
+        mais de uma; com uma, ela vale sem perguntar. A taxa, o líquido, o
+        recebível e o prazo saem da maquininha da venda (e da bandeira dentro
+        dela, se ela cobra diferente).
+      - **O Fechamento do dia separa por maquininha** (e, dentro dela, por
+        bandeira quando houver).
+      - Sem taxa cadastrada naquelas vezes, vale 0% e a tela avisa
+        (princípio 4), como hoje.
     - **Prazo e taxas POR BANDEIRA** (r3-f13-01, o Heitor, 2026-11-03:
       "Lembre-se, flexibilidade. Prazo por bandeira. Taxas também
       configuráveis por bandeira."; migration `20261103001502`). Em
@@ -1314,7 +1336,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       destaque de aviso — "Sem taxa: as vendas em 4x saem sem desconto da
       operadora." (`data-sem-taxa`) —, menos o Pix (sem taxa é comum) e o
       crédito acima do "Parcelar no crédito até" (não se vende ali; decisões
-      da F17, para o Heitor revisar); e o Fechamento do dia com venda no
+      da F17 — a D8 do levantamento as substituiu pelo modelo POR MAQUININHA,
+      acima, e a tela nova decide o aviso de cada maquininha na C75); e o Fechamento do dia com venda no
       cartão sem taxa diz "Sem taxa da maquininha cadastrada — saiu sem
       desconto da operadora: Crédito 4x (Elo): 1 venda, R$ 1.100,00…"
       (`metrics_vendas_sem_taxa_do_fechamento`, aviso `sem-taxa`). Prova:

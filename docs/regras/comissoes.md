@@ -486,7 +486,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     exatas, senão a geral daquelas vezes — r3-f13-01, sem herdar faixa da
     bandeira desde o r4-f15-01; sem nenhuma das duas, 0% — F16-2, nunca a de
     outras vezes: a comissão é sobre o valor cheio). No plano, ponderada pelo que
-    cada recebimento pagou. As vezes do recebimento: `cartao_vezes` (crédito
+    cada recebimento pagou. **Com as taxas POR MAQUININHA** (D8 do levantamento
+    das regras, o Heitor, 2026-11-11; `vendas-financeiro.md` §9.6), a taxa
+    descontada da base é a da MAQUININHA do recebimento daquelas vezes (e a da
+    bandeira dentro dela, quando ela cobra diferente), pela mesma
+    `private.comissao_taxa_pct`; sem taxa naquelas vezes, 0%. Correção C75. As vezes do recebimento: `cartao_vezes` (crédito
     em N vezes, pago na hora — 2026-10-20), senão `parcela_total`, senão 1.
     O avulso usava sempre 1x.
 - **Quem acerta**: a conclusão, e o gatilho `trg_comissoes_do_pagamento` em
