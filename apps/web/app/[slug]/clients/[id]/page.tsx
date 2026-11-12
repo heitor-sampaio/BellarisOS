@@ -51,19 +51,26 @@ import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import { registrarAcessoAoProntuario, acessosAoProntuario } from '@/lib/prontuario/acessos'
 import { nomeDosProcedimentos } from '@/lib/plano-de-tratamento/nome'
 import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
+import { abaDaFicha } from '@/lib/clientes/aba-da-ficha'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
 
 export default async function ClientProfilePage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ slug: string; id: string }>
+  searchParams: Promise<{ aba?: string | string[] }>
 }) {
   const { slug, id } = await params
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
   idOu404(id)
   const ctx = await getTenantContext()
   assertPermission(ctx, 'clients', 'VIEW')
+  // C77 (F65): o servidor monta o que a aba ABERTA mostra — a Visão geral
+  // (o topo da ficha) sempre; a linha do tempo, os links assinados dos
+  // documentos, as negociações e o que é só do prontuário, na aba deles. Era
+  // tudo a cada abertura, e o anexar esperava a ficha inteira se refazer.
+  const aba = abaDaFicha((await searchParams).aba)
 
   const admin = createAdminClient()
 
@@ -237,15 +244,15 @@ export default async function ClientProfilePage({
   // Quem viu o prontuário fica registrado (lib/prontuario/acessos.ts) — só
   // quando ele vai à tela; o admin da rede vê o registro na própria ficha.
   if (canViewRecords) await registrarAcessoAoProntuario(ctx, id, 'ficha')
-  const acessosDoProntuario = await acessosAoProntuario(ctx, id)
+  const acessosDoProntuario = aba === 'fichas' ? await acessosAoProntuario(ctx, id) : null
   const recordForms = canViewRecords ? buildRecordForms(mreEntries, apptNameById, new Map(allAppointments.map(a => [a.id, a.scheduledAt])),
     new Set(allAppointments.filter(a => a.status === 'COMPLETED').map(a => a.id))) : []
   // A33 da 11ª: o lote que cada atendimento usou (a baixa), no prontuário — e o
   // caminho ao "Aplicado em" do lote, a quem abre o Estoque e as Clientes.
-  const lotesDosAtendimentosDaFicha = canViewRecords ? await lotesDosAtendimentos(admin, ctx.tenantId!, recordForms.map(r => r.appointmentId)) : {}
+  const lotesDosAtendimentosDaFicha = canViewRecords && aba === 'fichas' ? await lotesDosAtendimentos(admin, ctx.tenantId!, recordForms.map(r => r.appointmentId)) : {}
   // O planejador de injetáveis retratado na ficha leva ao planejamento — se
   // ele existe e quem vê pode abri-lo (2026-10-29).
-  const planejamentosQueAbrem = canViewRecords
+  const planejamentosQueAbrem = canViewRecords && aba === 'fichas'
     ? await planejamentosAbriveisDasFichas(admin, ctx, id, recordForms.map(r => r.ficha))
     : []
   const generalAnamnesis = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, await fichaDePreAtendimento(clienteDeServico(), ctx.tenantId!)) : null
@@ -263,7 +270,8 @@ export default async function ClientProfilePage({
   // A35 da 11ª: quantos anexos clínicos ficaram de fora (o recorte), para a aba
   // não dizer "Nenhum documento" quando há — só a contagem, nada do conteúdo.
   const anexosClinicosFora = canViewRecords ? 0 : ((docsRaw as RawDoc[] | null) ?? []).filter(d => ehAnexoClinico(d.category)).length
-  const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(d => d.file_path))
+  // O link assinado só na aba Documentos (o Prontuário só conta as fotos do atendimento).
+  const docUrlMap: Record<string, string> = aba === 'documentos' ? await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(d => d.file_path)) : {}
   const documents: ClientDocumentItem[] = rawDocs.map(d => ({
     id:          d.id,
     name:        d.name,
@@ -315,12 +323,13 @@ export default async function ClientProfilePage({
   }
 
   // F17-3: as notas que a cliente deu a cada procedimento, dos atendimentos que ela confirmou.
-  const notasDasAvaliacoes = await notasDosProcedimentos(admin,
+  const naLinhaDoTempo = aba === 'historico'
+  const notasDasAvaliacoes = !naLinhaDoTempo ? new Map<string, never[]>() : await notasDosProcedimentos(admin,
     ((appts ?? []) as { id: string; client_confirmed_at?: string | null }[]).filter(a => a.client_confirmed_at).map(a => a.id))
   // 3. Agendamentos
   // F64: a hora do agendamento no relógio da unidade DELE (a ficha é da clínica, H5).
   const fusoDoAgendamento = new Map<string, string>()
-  for (const b of new Set((appts ?? []).map(a => (a as { branch_id?: string | null }).branch_id ?? null))) {
+  for (const b of naLinhaDoTempo ? new Set((appts ?? []).map(a => (a as { branch_id?: string | null }).branch_id ?? null)) : []) {
     fusoDoAgendamento.set(b ?? '', await fusoDaUnidade(ctx.tenantId, b))
   }
   for (const a of (appts ?? [])) {
@@ -444,7 +453,7 @@ export default async function ClientProfilePage({
   // dentro do sistema"): o "Assinado: <título>" aparece a quem vê a ficha. A
   // linha leva só o título do modelo e o canal — nada do conteúdo.
   const veDocumentos = await clienteNoEscopo(admin, ctx, 'medical_records', id)
-  for (const doc of await assinadosDoCliente(ctx.tenantId, id)) {
+  for (const doc of naLinhaDoTempo ? await assinadosDoCliente(ctx.tenantId, id) : []) {
     history.push({
       id: uid('ct'), date: doc.assinadoEm,
       type: 'CONSENT_SIGNED',
@@ -455,12 +464,12 @@ export default async function ClientProfilePage({
   }
 
   // 8. O "Unificar com a ficha" do cadastro (A23 da 7ª simulação), da corrente de eventos.
-  for (const u of await unificacoesDaFicha(admin, ctx.tenantId!, id)) {
+  for (const u of naLinhaDoTempo ? await unificacoesDaFicha(admin, ctx.tenantId!, id) : []) {
     history.push({ id: uid('un'), date: u.date, type: 'CLIENT_UNIFIED', title: 'Ficha unificada pelo cadastro', subtitle: u.subtitle, amount: null, link: null, autor: u.autor })
   }
 
   // Quem fez cada ação (J-27): o nome que appointment_history guardou.
-  const clientHistory = comAutores(history, await historicoDosAgendamentos(admin, (appts ?? []).map(a => a.id as string)))
+  const clientHistory = !naLinhaDoTempo ? [] : comAutores(history, await historicoDosAgendamentos(admin, (appts ?? []).map(a => a.id as string)))
     .sort((a, b) => b.date.localeCompare(a.date))
 
   // Procedimentos e insumos do editor de plano — a aba Planejamento monta o
@@ -469,14 +478,31 @@ export default async function ClientProfilePage({
 
   // Negociacoes desta pessoa: ser cliente nao encerra o funil -- reativacao e
   // abrir oportunidade nova para quem ja comprou.
-  const oportunidades = await oportunidadesDoCliente(ctx.tenantId!, client.id)
+  const oportunidades = aba === 'oportunidades' ? await oportunidadesDoCliente(ctx.tenantId!, client.id) : []
+
+  // O resto do que a ficha mostra, de uma vez (C77): eram leituras uma atrás
+  // da outra no meio da montagem da tela.
+  const veTermos = can(ctx, 'documents', 'VIEW')
+  const [pedidoLgpd, termosItens, pelaConversa, pacotesVenda, procedimentosVenda, produtosVenda, equipeVenda, prePagos, quemDesfaz, pagoComCredito, fidelidade] = await Promise.all([
+    pedidoLgpdDaFicha(ctx, id),
+    veTermos && veDocumentos ? documentosDoCliente(ctx.tenantId!, id) : Promise.resolve([]),
+    veTermos ? envioPelaConversaLigado(ctx.tenantId!) : Promise.resolve(false),
+    podeReceber(ctx) ? pacotesAVenda(ctx.tenantId!, branch.id as string) : Promise.resolve([]),
+    podeReceber(ctx) ? procedimentosAVenda(ctx.tenantId!, branch.id as string) : Promise.resolve([]),
+    podeReceber(ctx) ? produtosAVenda(ctx.tenantId!, branch.id as string) : Promise.resolve([]),
+    podeReceber(ctx) ? equipeDaVenda(ctx.tenantId!, branch.id as string, ctx.internalUserId, veComissaoDeTodos(ctx)) : Promise.resolve([]),
+    prePagosDoCliente(ctx.tenantId!, id),
+    podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? quemDesfazNoCaixa(ctx.tenantId!, branch.id as string) : Promise.resolve(null),
+    getPagoComCreditoDoCliente(ctx.tenantId!, id),
+    fidelidadeDoPerfil(ctx, id),
+  ])
 
   return (
     <>
     <RealtimeRefresher tables={['appointments', 'client_packages']} />
     <ClientProfile
       client={client}
-      pedidoLgpd={await pedidoLgpdDaFicha(ctx, id)}
+      pedidoLgpd={pedidoLgpd}
       branchId={branch.id}
       stats={stats}
       upcomingAppointments={upcomingAppointments}
@@ -490,7 +516,7 @@ export default async function ClientProfilePage({
       planejamentosQueAbrem={planejamentosQueAbrem}
       acessosAoProntuario={acessosDoProntuario}
       generalAnamnesis={generalAnamnesis}
-      fidelidade={await fidelidadeDoPerfil(ctx, id)}
+      fidelidade={fidelidade}
       activePackage={activePackage}
       transactions={transactions}
         veFinanceiro={veFinanceiro}
@@ -498,9 +524,8 @@ export default async function ClientProfilePage({
         financeiroSoOsProprios={financeiro.soOsProprios}
       internalCredits={internalCredits}
       documents={documents}
-      termos={can(ctx, 'documents', 'VIEW')
-        ? { itens: veDocumentos ? await documentosDoCliente(ctx.tenantId!, id) : [], recortado: !veDocumentos, podeColher: can(ctx, 'documents', 'MANAGE'),
-            pelaConversa: await envioPelaConversaLigado(ctx.tenantId!) }
+      termos={veTermos
+        ? { itens: termosItens, recortado: !veDocumentos, podeColher: can(ctx, 'documents', 'MANAGE'), pelaConversa }
         : null}
       canGrantCredit={canGrantCredit}
       branches={(branchesRaw ?? []) as { id: string; name: string }[]}
@@ -515,11 +540,11 @@ export default async function ClientProfilePage({
       podeReceber={podeReceber(ctx)}
       aReceber={aReceber}
       podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
-      pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branch.id as string) : []}
-      procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branch.id as string) : []}
-      produtosAVenda={podeReceber(ctx) ? await produtosAVenda(ctx.tenantId!, branch.id as string) : []}
-      equipeDaVenda={podeReceber(ctx) ? await equipeDaVenda(ctx.tenantId!, branch.id as string, ctx.internalUserId, veComissaoDeTodos(ctx)) : []}
-      prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
+      pacotesAVenda={pacotesVenda}
+      procedimentosAVenda={procedimentosVenda}
+      produtosAVenda={produtosVenda}
+      equipeDaVenda={equipeVenda}
+      prePagos={prePagos}
       podeAgendar={can(ctx, 'agenda', 'MANAGE')}
       podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}
       podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
@@ -529,8 +554,8 @@ export default async function ClientProfilePage({
       // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela (Recebimentos) na ficha.
       podeEstornar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
       podeReceberParcela={ctx.permissions.cashier === 'MANAGE'}
-      quemDesfaz={podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? await quemDesfazNoCaixa(ctx.tenantId!, branch.id as string) : null}
-      pagoComCredito={await getPagoComCreditoDoCliente(ctx.tenantId!, id)}
+      quemDesfaz={quemDesfaz}
+      pagoComCredito={pagoComCredito}
       isNetworkWide={ctx.branchId === null}
       clientHistory={clientHistory}
       opportunities={oportunidades}
