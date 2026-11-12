@@ -5,7 +5,7 @@ import { DesativarMembro } from '@/components/admin/desativar-membro'
 import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
 import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral } from '@/lib/comissoes/leitura'
-import { cargosQueVendem } from '@/lib/vendas/equipe-da-venda'
+import { cargosQueVendem, cargosQueVeemAsComissoes } from '@/lib/vendas/equipe-da-venda'
 import { AdminTeamForm } from '@/components/admin/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { TeamFilters } from '@/components/admin/team-filters'
@@ -89,9 +89,9 @@ export default async function AdminTeamPage({
   // A comissão de cada um é do financeiro, não da equipe: quem gere a equipe
   // sem `financial: MANAGE` não vê nem muda quanto cada um ganha.
   const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')
-  const [regras, procedimentos, comGeral, quemVende] = podeComissao
-    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId), procedimentosComComissaoGeral(ctx.tenantId!, ctx.branchId), cargosQueVendem(ctx.tenantId!)])
-    : [null, [], [], new Set<string>()]
+  const [regras, procedimentos, comGeral, quemVende, veemAsComissoes] = podeComissao
+    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId), procedimentosComComissaoGeral(ctx.tenantId!, ctx.branchId), cargosQueVendem(ctx.tenantId!), cargosQueVeemAsComissoes(ctx.tenantId!)])
+    : [null, [], [], new Set<string>(), new Set<string>()]
 
   // A clínica de uma unidade não fala "rede" (F8): o cargo "Admin da rede" é "Admin".
   const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
@@ -299,7 +299,8 @@ export default async function AdminTeamPage({
                         <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                           procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
                           semDeProposito={!!(m as { sem_comissao_de_proposito?: boolean }).sem_comissao_de_proposito}
-                        vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null} />
+                        vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null}
+                        naoVeAsProprias={!m.role_id || !veemAsComissoes.has(m.role_id as string)} />
                       )}
                       {canManage && podeMexerEm(m) && <TeamMemberEdit
                         member={{

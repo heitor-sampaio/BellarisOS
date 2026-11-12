@@ -50,6 +50,25 @@ export async function equipeDaVenda(
 }
 
 /**
+ * A3 da 13ª (F70): os cargos que VEEM as próprias comissões — o Financeiro
+ * aberto ("Minhas comissões" é o Financeiro em Ver, só os próprios;
+ * comissoes.md) e a Admin da rede. A Equipe → Comissão de quem está fora diz
+ * que ela não vê (princípio 3); o cargo segue decisão da clínica (princípio 1).
+ */
+export async function cargosQueVeemAsComissoes(tenantId: string): Promise<Set<string>> {
+  const admin = createAdminClient()
+  const [perms, adminDaRede] = await Promise.all([
+    lerTodas((de, ate) => admin.from('role_permissions').select('role_id')
+      .eq('tenant_id', tenantId).eq('module', 'financial').neq('level', 'NONE')
+      .order('role_id').range(de, ate), 'carregar os cargos que veem as comissões'),
+    lerTodas((de, ate) => admin.from('tenant_roles').select('id')
+      .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true)
+      .order('id').range(de, ate), 'carregar o cargo de Admin da rede'),
+  ])
+  return new Set([...(perms ?? []).map(p => p.role_id as string), ...(adminDaRede ?? []).map(r => r.id as string)])
+}
+
+/**
  * A42 da 11ª: os cargos da rede com o grupo VENDAS (`crm` ou `procedures`
  * abertos), mais os que recebem (o `podeReceber`) e a Admin — quem vende.
  */

@@ -4,7 +4,7 @@ import { DesativarMembro } from '@/components/admin/desativar-membro'
 import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
 import { regrasDaRede, procedimentosParaComissao, procedimentosComComissaoGeral } from '@/lib/comissoes/leitura'
-import { cargosQueVendem } from '@/lib/vendas/equipe-da-venda'
+import { cargosQueVendem, cargosQueVeemAsComissoes } from '@/lib/vendas/equipe-da-venda'
 import { TeamForm } from '@/components/branch/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { ReativarMembro } from '@/components/admin/reativar-membro'
@@ -107,9 +107,9 @@ export default async function TeamPage({
   const canManage = ctx.permissions.team === 'MANAGE'
   // A comissão é do financeiro, não da equipe (ver a página da rede).
   const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')
-  const [regras, procedimentos, comGeral, quemVende] = podeComissao
-    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, branchId), procedimentosComComissaoGeral(ctx.tenantId!, branchId), cargosQueVendem(ctx.tenantId!)])
-    : [null, [], [], new Set<string>()]
+  const [regras, procedimentos, comGeral, quemVende, veemAsComissoes] = podeComissao
+    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, branchId), procedimentosComComissaoGeral(ctx.tenantId!, branchId), cargosQueVendem(ctx.tenantId!), cargosQueVeemAsComissoes(ctx.tenantId!)])
+    : [null, [], [], new Set<string>(), new Set<string>()]
 
   return (
     <div>
@@ -229,7 +229,8 @@ export default async function TeamPage({
                       <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                         procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
                         semDeProposito={!!(m as { sem_comissao_de_proposito?: boolean }).sem_comissao_de_proposito}
-                        vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null} />
+                        vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null}
+                        naoVeAsProprias={!m.role_id || !veemAsComissoes.has(m.role_id as string)} />
                     )}
                     {canManage && (
                       <TeamMemberEdit

@@ -32,7 +32,9 @@ export const paraTexto = (n: number) => String(n).replace('.', ',')
 /** "1.250,50", "1.400" e "12.5" valem — a regra de todo campo de dinheiro (`parseDinheiro`, D3). */
 export const paraNumero = (t: string) => parseDinheiro(t)
 
-export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [], atende, semDeProposito = false, vendaPct = null }: {
+export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [], atende, semDeProposito = false, vendaPct = null, naoVeAsProprias = false }: {
+  /** A3 da 13ª (F70): o cargo dela não tem o Financeiro — ela não vê as próprias comissões. */
+  naoVeAsProprias?: boolean
   membro:        { id: string; nome: string }
   regras:        RegraDeComissao[]
   procedimentos: { id: string; name: string }[]
@@ -104,6 +106,14 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
             <button type="button" className="btn-ghost" onClick={fechar} style={{ padding: 6 }} aria-label="Fechar"><X size={16} /></button>
           </div>
           <div className="modal-body" style={{ padding: '20px 24px 24px' }}>
+            {naoVeAsProprias && (
+              <p data-nao-ve-as-proprias style={{
+                fontSize: 'var(--text-xs-sz)', color: 'var(--text)', background: 'var(--warning-soft)',
+                border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-field)', padding: '8px 12px', marginBottom: 16,
+              }}>
+                {membro.nome} não vê as próprias comissões: o cargo não tem Financeiro “só os próprios”. Para ver, ajuste o cargo em Configurações → Cargos.
+              </p>
+            )}
             <Formulario key={abertura} membroId={membro.id} regras={regras} procedimentos={procedimentos} comGeral={comGeral} onFim={fechar}
               semDeProposito={semDeProposito} vendaPct={vendaPct} />
           </div>

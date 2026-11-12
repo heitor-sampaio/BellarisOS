@@ -69,6 +69,11 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
   const [selectedId, setSelectedId] = useState<string | null>(editable[0]?.id ?? roles[0]?.id ?? null)
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
+  // A1 da 13ª (F70): enquanto se dá nome ao cargo novo, o painel dizia "O que
+  // Recepcionista acessa", com a matriz e o "Salvar acessos" do selecionado —
+  // parecia que o novo nascia como cópia. Agora o painel diz como ele nasce.
+  // A matriz do selecionado fica montada (escondida): o que foi mexido não se perde.
+  const [criando, setCriando] = useState(false)
 
   const selected = roles.find(r => r.id === selectedId) ?? null
 
@@ -88,9 +93,23 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
         canSeeTeam={canSeeTeam}
         dirtyId={dirty ? selectedId : null}
         onSelect={requestSelect}
+        showForm={criando}
+        setShowForm={setCriando}
       />
 
       <div style={{ flex: 1, minWidth: 0 }}>
+        {criando && (
+          <div className="card" data-cargo-novo style={{ background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+              Cargo novo: começa sem acesso nenhum.
+            </p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+              Dê o nome ao lado e clique em Criar. Depois, escolha aqui o que ele acessa.
+            </p>
+          </div>
+        )}
+
+        <div hidden={criando}>
         {selected?.is_system && <SystemRoleCard role={selected} />}
 
         {selected && !selected.is_system && (
@@ -111,6 +130,7 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
             </p>
           </div>
         )}
+        </div>
       </div>
 
       <ConfirmDialog
@@ -128,7 +148,7 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
 // ─── Lista de cargos ─────────────────────────────────────────────────────────
 
 function RoleListPanel({
-  roles, selectedId, permsByRole, canSeeTeam, dirtyId, onSelect,
+  roles, selectedId, permsByRole, canSeeTeam, dirtyId, onSelect, showForm, setShowForm,
 }: {
   roles: EditorRole[]
   selectedId: string | null
@@ -136,8 +156,10 @@ function RoleListPanel({
   canSeeTeam: boolean
   dirtyId: string | null
   onSelect: (id: string) => void
+  /** O formulário do cargo novo aberto (estado do pai: o painel da direita muda junto). */
+  showForm: boolean
+  setShowForm: (aberto: boolean) => void
 }) {
-  const [showForm, setShowForm] = useState(false)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<EditorRole | null>(null)
   const [pending, startTransition] = useTransition()
@@ -146,18 +168,14 @@ function RoleListPanel({
 
   // Só reage quando o resultado da action muda (não a cada render) — senão
   // reabrir o form seria fechado na hora enquanto createState.success persiste.
-  // Fechar o form é estado daqui: no render, com o resultado anterior guardado.
-  const [resultadoVisto, setResultadoVisto] = useState(createState)
-  if (resultadoVisto !== createState) {
-    setResultadoVisto(createState)
-    if (createState && 'success' in createState && createState.success) setShowForm(false)
-  }
-  // Selecionar o cargo novo é estado do PAI: esse fica no efeito.
-  const selecionarCriado = useEffectEvent((id: string) => onSelect(id))
+  // Fechar o form e selecionar o cargo novo são estado do PAI (A1 da 13ª: o
+  // painel da direita muda junto): ficam no efeito, não no render.
+  const aoCriar = useEffectEvent((id: string | null) => {
+    setShowForm(false)
+    if (id) onSelect(id)
+  })
   useEffect(() => {
-    if (createState && 'success' in createState && createState.success && createState.role) {
-      selecionarCriado(createState.role.id)
-    }
+    if (createState && 'success' in createState && createState.success) aoCriar(createState.role?.id ?? null)
   }, [createState])
 
   function confirmDelete() {

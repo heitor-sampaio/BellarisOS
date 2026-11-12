@@ -70,6 +70,23 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
         </p>
       </div>
 
+      {/* Quem não edita (a gerente de unidade fixa, quem só vê) lê o texto, não um campo
+          apagado que parece editável e não tem Salvar (A2 da 13ª, F70; princípio 7). */}
+      {!podeEditar && (
+        <div className="grade-de-campos" data-geral-so-leitura>
+          <SoLeitura rotulo={fala('Nome da rede')} valor={rede.name} />
+          <SoLeitura rotulo="CNPJ ou CPF" valor={documento || '—'} />
+          <SoLeitura rotulo="E-mail" valor={rede.email || '—'} />
+          <SoLeitura rotulo="Telefone" valor={telefone || '—'} />
+          <SoLeitura rotulo="Site" valor={rede.website || '—'} />
+          <SoLeitura rotulo="Prazo do portal" valor={`${rede.prazoPortalHoras} ${rede.prazoPortalHoras === 1 ? 'hora' : 'horas'}`}
+            porque="Até quantas horas antes a cliente cancela ou remarca pelo app." />
+          <SoLeitura rotulo="O que a cliente avalia" valor={ROTULO_DO_QUE_AVALIA[rede.oQueAClienteAvalia]} />
+          <SoLeitura rotulo="Validade do plano proposto" valor={`${rede.validadeDoPlanoDias} ${rede.validadeDoPlanoDias === 1 ? 'dia' : 'dias'}`} />
+        </div>
+      )}
+
+      {podeEditar && (
       <div className="grade-de-campos">
         <Campo rotulo={fala('Nome da rede')} obrigatorio>
           <input name="name" className="field" defaultValue={rede.name} disabled={!podeEditar} required />
@@ -112,6 +129,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
             defaultValue={rede.validadeDoPlanoDias} disabled={!podeEditar} inputMode="numeric" />
         </Campo>
       </div>
+      )}
 
       {/* O que não se edita, à vista. */}
       <div style={{

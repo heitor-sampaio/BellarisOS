@@ -240,3 +240,60 @@ test('D9 da 13ª: a pergunta do CNPJ não apaga o Número nem desmarca o Domingo
     await dona.limpar()
   }
 })
+
+test('A1 da 13ª: Cargos → Novo diz que o cargo novo começa sem acesso, sem a matriz de outro cargo', async ({ browser }) => {
+  const b = db()
+  const dona = await criarMembro(`f70cn${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  try {
+    await como(browser, dona.estado, async p => {
+      await p.goto('/admin/settings?tab=permissions')
+      await expect(p.getByRole('button', { name: 'Salvar acessos' })).toBeVisible({ timeout: 20_000 })
+      await p.getByRole('button', { name: 'Novo' }).click()
+      await expect(p.getByText('Cargo novo: começa sem acesso nenhum')).toBeVisible()
+      await expect(p.getByRole('button', { name: 'Salvar acessos' })).toBeHidden()
+      await p.getByRole('button', { name: 'Cancelar' }).click()
+      await expect(p.getByRole('button', { name: 'Salvar acessos' })).toBeVisible()
+      // Criado, o painel passa ao cargo novo.
+      await p.getByRole('button', { name: 'Novo' }).click()
+      await p.getByPlaceholder('Ex.: Recepção').fill(`Novo f70 ${marca}`)
+      await p.getByRole('button', { name: 'Criar', exact: true }).click()
+      await expect(p.getByText(`Novo f70 ${marca}`).first()).toBeVisible({ timeout: 20_000 })
+      await expect(p.getByText('Cargo novo: começa sem acesso nenhum')).toBeHidden()
+      await expect(p.getByRole('heading', { name: new RegExp(`O que Novo f70 ${marca} acessa`) })).toBeVisible()
+    })
+  } finally {
+    await b.from('tenant_roles').delete().eq('tenant_id', rede!.tenantId).eq('label', `Novo f70 ${marca}`)
+    await dona.limpar()
+  }
+})
+
+test('A2 da 13ª: Configurações → Geral, para a gerente de unidade fixa, é texto — sem campo que parece editável', async ({ browser }) => {
+  await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  // A gerente (unidade fixa, Configurações em Gerenciar) lê os dados da clínica: não os edita (H7).
+  await como(browser, gerente!.estado, async p => {
+    await p.goto(`/${slug}/settings?tab=general`)
+    await expect(p.locator('[data-geral-so-leitura]')).toBeVisible({ timeout: 20_000 })
+    await expect(p.locator('input[name="name"]')).toHaveCount(0)
+  })
+})
+
+test('A3 da 13ª: a comissão de quem não vê as próprias diz por quê', async ({ browser }) => {
+  const b = db()
+  const dona = await criarMembro(`f70cd${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  const vendedora = await criarMembro(`f70vd${marca}`, {
+    tenant: rede!.tenantId, rotulo: 'Vendedora', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }],
+  })
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  const { data: u } = await b.from('users').update({ comissao_venda_pct: 6 }).eq('id', vendedora.userId).select('name').single<{ name: string }>()
+  try {
+    await como(browser, dona.estado, async p => {
+      await p.goto('/admin/team')
+      await p.getByRole('button', { name: `Comissão de ${u!.name}` }).click()
+      await expect(p.getByText(`${u!.name} não vê as próprias comissões`)).toBeVisible()
+    })
+  } finally {
+    await vendedora.limpar()
+    await dona.limpar()
+  }
+})
