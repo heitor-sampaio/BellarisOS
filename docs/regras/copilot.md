@@ -190,6 +190,18 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   a profissional que não atende nela são recusados no preparo
   (`conferirPecasDoAgendamento`). Prova: `e2e/copilot-agendar-ja-pago.spec.ts`
   (contra a OpenAI falsa).
+- **O estoque segue as janelas** (C5, F66): a leitura `estoque` diz o saldo
+  da prateleira ("1 frasco fechado + 1 aberto com 50 UI",
+  `saldoNaPrateleira`), o mínimo na mesma régua (`minimoNaTela`) e a medida
+  no plural — nunca o `current_stock`, que conta a embalagem aberta inteira.
+  `entrada_de_estoque` leva fornecedor (em texto: o banco o põe na lista da
+  rede, C76) e nota fiscal; o cartão diz "Não gera despesa", "+2 frascos (200
+  UI)" e avisa a validade que já passou, sem recusar; o resultado diz o
+  "Saldo agora" da prateleira (`saldoAgoraEmTexto`, o mesmo da Entrada).
+  `ajuste_de_estoque`: o cartão diz para onde vai a diferença (a menos é
+  perda "Inventário"; a mais, um lote novo) e avisa a variação de mais da
+  metade do saldo. Prova: `e2e/copilot-estoque-f66.spec.ts` (contra a OpenAI
+  falsa).
 - **O cadastro sem CPF** (sobra da F29, decisão 1 do Heitor na 7ª simulação):
   `cadastrar_cliente` aceita `passaporte` ou `rne` no lugar do CPF — um
   documento só, pela regra do cadastro da tela (`documentoDaFicha`, via

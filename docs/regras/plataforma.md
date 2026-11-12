@@ -659,14 +659,25 @@ um muro que não depende de cada trava do código.
     configuração da rede, "Quem cadastra e edita os produtos", com "A unidade"
     (a gerente de unidade fixa cria e edita, `createProduct`/`updateProduct`;
     o produto aparece em todas as unidades) ou "Só a rede" (a gerente usa os
-    produtos e lança o estoque deles, mas não cria nem edita; a action
-    recusa com `recusaDaConfigDaClinica` e a tela diz por quê). O padrão é "A
+    produtos e lança o estoque deles, mas não cria, edita nem desativa; a
+    action recusa com `recusaDoCatalogo` e a tela diz por quê). O padrão é "A
     unidade", que é o comportamento de hoje (princípio 6: nada muda sozinho).
-    (Correção C63.)
+    **Feito na F66 (C63, 2026-11-12):** `tenants.catalogo_de_produtos`
+    (`UNIDADE`/`REDE`, `lib/estoque/catalogo.ts`), escolhido numa linha do
+    cabeçalho do Estoque da rede ("Produtos: … · Mudar",
+    `[data-catalogo-de-produtos]`; `salvarCatalogoDeProdutos`, de quem é da
+    rede). Com "Só a rede", o Estoque da unidade não mostra "Novo produto" nem
+    o lápis e diz `CATALOGO_DA_REDE` (`[data-catalogo-da-rede]`). Prova:
+    `e2e/estoque-cadastro-f66.spec.ts` ("C63").
   - **As categorias do estoque são da clínica toda** (a rede costuma usar o
     mesmo produto e fornecedor em todas as unidades): criar, renomear e
     apagar (`createCategory`…) recusam a gerente de unidade fixa com
-    `recusaDaConfigDaClinica`; ela escolhe as que existem. (C71.)
+    `recusaDaConfigDaClinica`; ela escolhe as que existem. (C71 — feito na
+    F66: a janela de Categorias só aparece a quem é da rede. Prova:
+    `e2e/estoque-cadastro-f66.spec.ts` ("C71").) **Os Fornecedores seguem a
+    mesma regra** (D4, C76): a lista é da rede — renomear e arquivar recusam a
+    unidade fixa —, mas quem registra uma entrada cadastra um novo ali mesmo
+    (`atendimento.md` §9.5).
   - **As respostas rápidas são de cada pessoa** (`quick_replies`): cada membro
     cria, edita, apaga e vê só as suas, no inbox e na aba. Deixam de ser uma
     biblioteca da rede mantida por quem tem o CRM em Gerenciar. (C72: hoje

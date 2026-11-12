@@ -411,8 +411,11 @@
     as fatias somam o valor em estoque da aba. Até 2026-10-28 esse produto
     sumia, e a tela dizia "Sem dados no período" com R$ 5.562 em estoque (D17,
     migration `20261028000502`). Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
-  - **perdas do estoque** (D-7, 2026-10-30) = os movimentos `LOSS` do
-    período, ao custo do movimento (`custo_do_movimento`), por motivo e
+  - **perdas do estoque** (D-7, 2026-10-30) = os movimentos `LOSS` NEGATIVOS
+    e não desfeitos do período (C69, F66: a perda desfeita — "Desfazer perda",
+    `desfeita_em` — sai, e o movimento positivo que a desfaz não conta), ao
+    custo do movimento (`custo_do_movimento`; desde a F66 a perda e a venda
+    saem ao custo DO LOTE, `custo_do_lote`, também o do ajuste — C20), por motivo e
     produto, com o total de cada motivo e o geral — `metrics_perdas`
     (grouping sets; a quantidade só por produto, que unidades diferentes não
     se somam) → `getPerdas` (`lib/metrics/perdas.ts`). É a seção "Perdas no

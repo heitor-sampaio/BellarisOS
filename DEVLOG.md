@@ -10525,6 +10525,51 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   - Vale completa: mexeu no núcleo do agendamento, em `cliente-rapido`, nas duas fichas e em `concluir_atendimento`.
 - **Fica de fora:** nada dos itens da frente. As perguntas que sobraram foram ao Heitor: a D20 com "só os meus" e Gerenciar remarcando o próprio, e o Chegou que a remarcação da equipe volta a Agendado.
 
+**F66 FEITA (12/11; ff538220…, push; migration 20261112006601 aplicada, aditiva): estoque** (levantamento das regras: C16–C26, C63 com H8, C69 com H12, C71, C76 com D4, C5 na parte do estoque).
+- **O cadastro (C17, C24):** editar o produto não zera mais o custo, porque o custo vem das entradas. O formulário abre com o mínimo do cadastro. A categoria tem de ser da rede, e o mínimo não pode ser negativo.
+- **Quem cadastra os produtos (C63, H8):** "A unidade" (o padrão) ou "Só a rede", numa linha do cabeçalho do Estoque da rede. Com "Só a rede", a unidade fixa não vê "Novo produto" nem o lápis e lê o porquê; a action recusa. **As categorias são da rede (C71):** só quem é da rede vê a janela e grava nelas.
+- **Fornecedores (C76, D4):**
+  - a lista é da rede (tabela `fornecedores`), com uma janela ao lado de Categorias para criar, renomear, arquivar e trazer de volta;
+  - a Entrada, o leitor, o estoque inicial, o cadastro do produto e o Copilot escolhem dela, com "+ Novo fornecedor" ali mesmo;
+  - o gatilho resolve o texto: o mesmo nome, sem diferença de maiúsculas nem de espaços, é o mesmo fornecedor;
+  - o texto livre antigo migrou para a lista e continua gravado.
+- **Movimentos:**
+  - **C18:** a transferência confere o rendimento. Antes, 2 frascos de 1,5 passavam e criavam UI.
+  - **C20:** a perda e a venda saem ao custo do lote, inclusive o lote do ajuste.
+  - **C69, H12:** "Desfazer perda" no Histórico, só na última perda, com motivo; a quantidade volta ao mesmo lote e sai das Perdas.
+  - **C16:** o leitor de código de barras acha o produto e abre a mesma Entrada. Antes gravava na medida errada, por um formulário próprio. A Entrada mostra "Saldo agora: 1 frasco fechado + 1 aberto com 50 UI". O estoque inicial diz "Não gera despesa", avisa a validade vencida e grava fornecedor e nota.
+- **A tela (C21–C23, C26, D1, D2):**
+  - o Valor e o Giro aparecem para quem vê o Estoque, nos dois portais;
+  - o total da rede soma só as unidades ativas;
+  - os produtos vêm em páginas e o Histórico de 80 em 80;
+  - o produto desativado que ainda tem saldo fica na lista, marcado "Inativo";
+  - a tela da unidade recarrega uma vez por movimento.
+- **Relatórios (C19):** "Validades próximas" mostra os lotes do recorte, pela conta do cartão do Estoque. Antes eram os lotes da rede inteira, em UTC. O "críticos" de `metrics_relatorio` conta produtos pela régua da tela.
+- **O aviso do lote (C25):** o lote vencido diz "venceu em", a medida vai ao plural e o aviso leva o produto. O lote é reivindicado antes do aviso; antes, duas passagens do cron avisavam duas vezes.
+- **O Copilot (C5, estoque):**
+  - o saldo da prateleira e a medida no plural;
+  - a entrada leva fornecedor e nota, diz "Não gera despesa", avisa a validade vencida e diz o "Saldo agora";
+  - o cartão do ajuste diz que a diferença vira perda (Inventário) e avisa a variação grande.
+- **Decidido pelos princípios:**
+  - o leitor reaproveita a Entrada da janela Gerenciar, em vez de ter um formulário próprio (princípio 7: uma porta só);
+  - na Entrada, o fornecedor vem da nota da entrada anterior e, sem ela, do fornecedor de costume do produto;
+  - "+ Novo fornecedor" fica com quem faz a entrada, porque a nota na mão não espera; renomear e arquivar são da rede;
+  - renomear muda o nome nos produtos e mantém o texto dos movimentos já gravados;
+  - o catálogo nasce "A unidade" (princípio 6);
+  - "Desfazer perda" só vale para a última perda, como o "Desfazer ajuste";
+  - o disponível da transferência é o rendimento (princípio 3);
+  - a lista de validades dos Relatórios vem inteira, sem o corte em 20 (princípio 3).
+- **Prova:** 4 specs novos, todos vistos falhando antes:
+  - `estoque-cadastro-f66`, `estoque-movimentos-f66` (com o C19), `copilot-estoque-f66` (contra a OpenAI falsa);
+  - o C25 em `estoque-lote-vencendo-no-sino`;
+  - vizinhos: 18 specs de estoque e vendas (65/65), `copilot-gestao`, `copilot-leituras`, `relatorios-so-os-meus`, `relatorios-coerencia`;
+  - os specs A37 e A51, que digitavam no Fornecedor, agora escolhem na lista;
+  - Vitest 2176, typecheck e lint limpos;
+  - vale completa: mexeu em `estoque_transferir`, `produto_vender_itens`, `metrics_relatorio` e `metrics_perdas`, e nas duas telas de Estoque.
+- **Fica de fora:**
+  - o aviso ao desativar um produto com saldo (D1): nenhuma tela viva desativa produto, porque o `AdminProductTable` não é usado;
+  - a limpeza do texto livre do fornecedor (`products.supplier`, `stock_movements.fornecedor`), que é destrutiva e fica para o Heitor presente.
+
 **Pronto para lançar = zero defeitos e zero atritos** (o Heitor, 11/11: "as regras de negocio já estão definidas, não tem pq ter defeito ou atrito"). A partir da 13ª simulação, cada achado precisa cair num destes casos:
 1. Contraria uma regra escrita (`docs/regras` ou os sete princípios do CLAUDE.md §1).
 2. A pessoa não conseguiu fazer a tarefa, ou fez errado sem perceber.

@@ -2440,7 +2440,15 @@ indicada é a do consolidado do levantamento):
   4ª volta: "temos uma nova entrada 'Fornecedor' que funciona igual a categoria, mas fica disponível para escolha também na adição do estoque. Então deve poder cadastrar fornecedor também."; H8 — as categorias são da rede). Substitui
   o texto livre de fornecedor (`products.supplier` e o "Fornecedor" da
   entrada, `stock_movements.fornecedor`), que migra para a lista. (Correção
-  C76; até ela entrar, o fornecedor é texto livre.)
+  C76 — **feita na F66**, 2026-11-12: tabela `fornecedores`, ids
+  `products.fornecedor_id`/`stock_movements.fornecedor_id`; o gatilho
+  `private.fornecedor_da_lista` resolve o texto na lista — o mesmo nome sem
+  caixa nem espaços é o mesmo fornecedor, o novo entra — e o id escolhido
+  vence o texto. O texto antigo migrou e continua gravado: apagar a coluna é
+  destrutivo, fica para o Heitor. A janela "Fornecedores" fica ao lado de
+  Categorias no Estoque da rede; o campo é `CampoFornecedor`. Renomear muda o
+  nome nos produtos e mantém o texto dos movimentos já gravados. Prova:
+  `e2e/estoque-movimentos-f66.spec.ts` ("C76").)
   - **O produto escolhe o fornecedor de costume** da lista.
   - **Toda entrada escolhe o fornecedor da lista** — os caminhos irmãos
     juntos: a Entrada manual, o código de barras, o estoque inicial e o
@@ -2455,10 +2463,16 @@ indicada é a do consolidado do levantamento):
 - **O produto desativado com saldo (D1; princípios 3 e 2).** Continua no
   valor em estoque enquanto houver saldo — o frasco está lá —, a linha diz
   "Inativo", e desativar avisa quanto fica no estoque e no valor, sem
-  recusar. (C22.)
+  recusar. (C22 — feito na F66 na LISTA: `produtosDoEstoque`,
+  `lib/estoque/produtos-da-tela.ts`, em páginas, com o selo "Inativo"
+  `[data-produto-inativo]`; na unidade, só onde ela tem saldo. O aviso ao
+  desativar fica para quando a tela tiver o desativar: hoje nenhuma tela viva
+  desativa produto — o `AdminProductTable` que o fazia não é usado.)
 - **Quem tem o Estoque em Ver vê o Valor e o Giro nos DOIS portais (D2;
   telas iguais nos dois portais, CLAUDE.md §6).** Quem não deve ver custo não
-  recebe o módulo (princípio 1). (C22: hoje vê na rede e não na unidade.)
+  recebe o módulo (princípio 1). (Feito na F66: os cartões e a coluna VALOR
+  nos dois portais; o total da rede soma só as unidades ATIVAS, as das
+  linhas.)
 - **O uso dos produtos antigos (est-01) não tem mais efeito (D3):** o wipe
   total de 02/11 apagou os produtos antigos. O produto novo continua nascendo
   Insumo.
@@ -2470,7 +2484,43 @@ indicada é a do consolidado do levantamento):
   No Histórico, a última perda de um produto tem "Desfazer perda", com motivo
   obrigatório: a quantidade volta ao MESMO lote de onde saiu, o movimento
   fica (nada se apaga) e a perda sai de `metrics_perdas`. Mesma permissão do
-  "Desfazer ajuste" (Estoque em Gerenciar, a unidade ao alcance). (C69.)
+  "Desfazer ajuste" (Estoque em Gerenciar, a unidade ao alcance). (C69 —
+  feito na F66: `estoque_desfazer_perda`, a action `desfazerPerdaDeEstoque`;
+  o Histórico mostra "Perda desfeita" e o botão só na última perda não
+  desfeita de cada unidade, `perdaDesfazivel`. Prova:
+  `e2e/estoque-movimentos-f66.spec.ts` ("C69").)
+
+**Corrigidas na F66** (2026-11-12, levantamento das regras):
+- **Editar o produto não mexe no custo** (C17): o custo vem das entradas;
+  `updateProduct` não grava `cost_price`, e o formulário abre com o mínimo
+  do CADASTRO. A categoria tem de ser da rede e o mínimo não é negativo
+  (C24). Prova: `e2e/estoque-cadastro-f66.spec.ts`.
+- **A transferência confere o RENDIMENTO** (C18): 2 frascos de 1,5 (150 UI)
+  são recusados — "Disponível: 1,5 frasco (o frasco aberto conta pelo que
+  sobra nele)" —, e a janela diz o disponível pela prateleira. Era a conta
+  nas embalagens arredondadas, e o destino ganhava o que não existia.
+- **A perda e a venda saem ao custo DO LOTE** (C20, `custo_do_lote`, que
+  acha também o lote do ajuste positivo); o que nenhum lote cobre, ao último
+  custo.
+- **O leitor de código de barras ACHA o produto e abre a mesma Entrada**
+  (C16): em embalagens, com lote, validade (a vencida avisa), fornecedor da
+  lista, nota, "Não gera despesa" e "Saldo agora: 1 frasco fechado + 1
+  aberto com 50 UI" (`saldoAgoraEmTexto`). O estoque inicial do cadastro
+  também diz "Não gera despesa", avisa a validade vencida e grava fornecedor e
+  nota (`estoque_inicial` de 11 argumentos). O Copilot é o quarto caminho
+  irmão (`copilot.md`).
+- **A lista em páginas, o Histórico de 80 em 80** (C26): `lerTodas` nos
+  produtos (cortava em 1000); "Ver mais antigas" no Histórico; a tela da
+  unidade assina só `stock_movements`.
+- **As "Validades próximas" dos Relatórios são os lotes do recorte** (C19):
+  `lotesVencendoDoRecorte`, a conta do cartão do Estoque — lia os da rede
+  inteira, em UTC.
+- **O aviso do lote** (C25): o vencido diz "venceu em", a medida no plural,
+  com o produto, e o lote é REIVINDICADO antes do aviso
+  (`vencimento_avisado_em`) — duas passagens do cron avisavam duas vezes.
+  Prova: `e2e/estoque-lote-vencendo-no-sino.spec.ts` ("C25").
+- O "críticos" de `metrics_relatorio` conta PRODUTOS pela régua da tela (o
+  rendimento contra o mínimo × o que a embalagem rende).
 
 ---
 
@@ -2938,6 +2988,11 @@ O resto do fluxo:
 ❌ Ajuste positivo de estoque fora de um lote, ou o negativo fora de "Perdas no período" (estoque_ajuste_com_lote, motivo INVENTARIO — D5 da 10ª)
 ❌ Corrigir uma entrada lançada errada com um ajuste a menos (vira perda e sai do lote errado pelo FEFO): é "Desfazer entrada" (estoque_desfazer_entrada — A38 da 10ª), ou o ajuste com o lote escolhido
 ❌ Corrigir um ajuste errado com outro ajuste (a perda do primeiro fica em Perdas): é "Desfazer ajuste" (estoque_desfazer_ajuste — D5 da 11ª)
+❌ Corrigir uma perda lançada errada com um ajuste a mais (a perda fica em Perdas e o lote certo não volta): é "Desfazer perda" (estoque_desfazer_perda — C69)
+❌ Conferir o disponível de uma transferência (ou de qualquer saída) pelo current_stock de produto com unidade de consumo — o frasco aberto conta inteiro; é o rendimento (C18)
+❌ Gravar o custo do produto ao editar o cadastro (o custo vem das entradas — C17)
+❌ Campo de fornecedor em texto livre numa porta de entrada nova — é CampoFornecedor (a lista da rede, com "+ Novo fornecedor" — C76)
+❌ Avisar um lote sem reivindicá-lo antes (vencimento_avisado_em — C25)
 ❌ Criar a linha da unidade (branch_product_stock) desligando o gatilho do mínimo, ou mostrar o custo de um lote por outra conta que não custo_do_lote (custos_dos_lotes — D2 e D4 da 11ª)
 ❌ Mostrar ou guardar o custo por unidade de consumo com 2 casas (R$ 0,038/g vira R$ 0,04 — D6 da 11ª)
 ❌ Escrever a quantidade com a embalagem no singular fixo ("3 frasco") — é medidaNoPlural/quantidadeComMedida (A49 da 12ª)
