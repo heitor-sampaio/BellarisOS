@@ -4,6 +4,7 @@
 // insert, histórico) desacoplada de FormData/cookies. Sem 'use server'.
 
 import { after } from 'next/server'
+import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { intervalosDoDia, normalizarHorario, slotsDoDia, diaDaSemana } from '@/lib/agenda/horario'
@@ -171,15 +172,15 @@ export async function conferirPecasDoAgendamento(
   if (pecas.branchId && ctx.branchId && pecas.branchId !== ctx.branchId) {
     return 'Você só pode agendar na sua unidade.'
   }
-  const [unidade, profissional, cliente, recusaSala] = await Promise.all([
+  const [unidade, profissional, cliente, recusaSala, procedimentoNaoFeito] = await Promise.all([
     pecas.branchId
       ? ler(admin.from('branches').select('id')
           .eq('id', pecas.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
       : Promise.resolve({ id: null }),
     pecas.professionalId
-      ? ler(admin.from('users').select('id')
-          .eq('id', pecas.professionalId).eq('tenant_id', ctx.tenantId!).eq('is_active', true).maybeSingle(), 'buscar o profissional')
-      : Promise.resolve({ id: null }),
+      ? ler(admin.from('users').select('id, name, atende_em')
+          .eq('id', pecas.professionalId).eq('tenant_id', ctx.tenantId!).eq('is_active', true).maybeSingle(), 'buscar o profissional') as Promise<{ id: string; name: string; atende_em: string[] | null } | null>
+      : Promise.resolve({ id: null, name: '', atende_em: null }),
     pecas.clientId
       ? ler(admin.from('clients').select('id, is_active')
           .eq('id', pecas.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente')
@@ -189,6 +190,11 @@ export async function conferirPecasDoAgendamento(
     pecas.roomId && pecas.branchId
       ? recusaDaSala(admin, { branchId: pecas.branchId, roomId: pecas.roomId, procedureId: pecas.procedureId })
       : Promise.resolve(pecas.roomId ? 'Sala não encontrada nesta unidade.' : null),
+    // O procedimento é FEITO na unidade (D7 da 13ª, F65): o da rede restrito a
+    // outras unidades não se agenda aqui, por caminho nenhum.
+    pecas.branchId && pecas.procedureId
+      ? recusaDoProcedimentoNaUnidade(admin, ctx.tenantId!, pecas.procedureId, pecas.branchId)
+      : Promise.resolve(null),
   ])
   if (!unidade)      return 'Unidade não encontrada.'
   if (!profissional) return 'Profissional não encontrado.'
@@ -196,6 +202,13 @@ export async function conferirPecasDoAgendamento(
   // Arquivada não se agenda (J-23): só quem cria passa o cliente por aqui.
   if (cliente.is_active === false) return CLIENTE_ARQUIVADA
   if (recusaSala)    return recusaSala
+  // Quem atende NA UNIDADE (C10, F65; o "Atende" por unidade, decisão 2 da 8ª):
+  // até 2026-11-12 o núcleo gravava a profissional que não atende ali. O
+  // encaixe fora do horário dela segue valendo — isto é a unidade, não a hora.
+  if (pecas.branchId && pecas.professionalId && !(profissional.atende_em ?? []).includes(pecas.branchId)) {
+    return `${profissional.name || 'Esta profissional'} não atende nesta unidade (o “Atende clientes em” dela, na Equipe).`
+  }
+  if (procedimentoNaoFeito) return procedimentoNaoFeito
   return null
 }
 

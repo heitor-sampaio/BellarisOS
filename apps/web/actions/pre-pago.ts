@@ -10,6 +10,7 @@
  */
 
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { z } from 'zod'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assertRecurso } from '@/lib/auth'
@@ -98,6 +99,9 @@ async function venderProcedimentoUmaVez(
     if (!proc) return { error: 'Procedimento não encontrado.' }
     if (proc.is_active === false) return { error: 'Este procedimento está desativado.' }
     if (proc.branch_id && proc.branch_id !== branchId) return { error: 'Este procedimento é de outra unidade.' }
+    // E a unidade OFERECE o procedimento (D7 da 13ª, F65): o da rede restrito a outras não se vende aqui.
+    const naoFeito = await recusaDoProcedimentoNaUnidade(admin, ctx.tenantId!, procedimentoId, branchId)
+    if (naoFeito) return { error: naoFeito }
 
     // O preço DA UNIDADE da venda, quando ela tem um (D2 da 9ª); o banco confere
     // pela mesma regra (`private.preco_na_unidade`).

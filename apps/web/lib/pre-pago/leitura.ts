@@ -1,4 +1,5 @@
 import 'server-only'
+import { COLUNAS_DA_OFERTA, ofereceNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
@@ -19,14 +20,16 @@ export async function procedimentosAVenda(tenantId: string, branchId: string | n
   const admin = createAdminClient()
   const [linhas, daUnidade] = await Promise.all([
     ler(admin.from('procedures')
-      .select('id, name, price')
+      .select(`id, name, price, ${COLUNAS_DA_OFERTA}`)
       .eq('tenant_id', tenantId).eq('is_active', true)
       .or(`branch_id.is.null,branch_id.eq.${branchId}`)
       .order('name'), 'carregar os procedimentos à venda'),
     // O preço DA UNIDADE da venda, quando ela tem um (D2 da 9ª).
     precosDaUnidade(admin, branchId),
   ])
-  return ((linhas ?? []) as { id: string; name: string; price: number | null }[])
+  // Só o que a unidade da venda OFERECE (D7 da 13ª, F65).
+  return ((linhas ?? []) as { id: string; name: string; price: number | null; branch_id: string | null; procedure_branch_availability: { branch_id: string }[] | null }[])
+    .filter(p => ofereceNaUnidade(p, branchId))
     .map(p => ({ id: p.id, name: p.name, price: precoNaUnidade(p.price, daUnidade.get(p.id)) }))
 }
 

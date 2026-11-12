@@ -30,7 +30,7 @@ import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
 import { emitirEventoClinico } from '@/lib/events/clinico'
-import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
+import { EVENTOS } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import type { FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { periodRef, dayKeyTZ, partsInTZ, instanteNoFuso } from '@/lib/datetime'
@@ -38,6 +38,7 @@ import { fusoValido } from '@/lib/unidades/fuso'
 import { fusoDaUnidade, fusoDaRede, lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
 import { semAcesso } from '@/lib/sem-acesso'
+import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
@@ -1043,6 +1044,12 @@ async function finishSessionInterno(
     // esta sessão — é zero que dispara a automação de renovação.
     if (gravado?.pacote) await emitirSessaoDePacoteUsada(gravado.pacote, appointmentId, ctx)
     await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CONCLUIDO, appointmentId, { ...ctx, userName })
+    // A entrada do prontuário nasceu na conclusão (o evento saía só do
+    // "Concluído" pelo status, que não conclui mais — F65).
+    await emitirEventoClinico(EVENTOS.PRONTUARIO_ENTRADA_CRIADA, appointmentId, ctx, {
+      clientId: appt.client_id as string | null, agendamentoId: appointmentId,
+      branchId: appt.branch_id as string | null, chave: 'prontuario.entrada_criada:' + appointmentId,
+    })
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -1699,6 +1706,8 @@ export async function getClientAvailableSlots(
     .eq('tenant_id', cliente?.tenant_id ?? '00000000-0000-0000-0000-000000000000')
     .maybeSingle(), 'buscar a unidade')
   if (!branch) return { slots: [] }
+  // O procedimento que a unidade não faz não tem horário nela (D7 da 13ª, F65).
+  if (procedureId && await recusaDoProcedimentoNaUnidade(admin, cliente!.tenant_id as string, procedureId, branchId)) return { slots: [] }
 
   if (!professionalId) {
     const candidatas = await candidatasDoDia(admin, cliente!.tenant_id as string, branchId, date, durationMin, procedureId)
@@ -1758,6 +1767,9 @@ export async function createClientAppointment(params: {
       .or(`branch_id.is.null,branch_id.eq.${params.branchId}`)
       .maybeSingle(), 'buscar o procedimento')
     if (!procedure) return { error: 'Procedimento não disponível.' }
+    // E feito NESTA unidade (D7 da 13ª, F65) — o núcleo confere de novo.
+    const naoFeito = await recusaDoProcedimentoNaUnidade(admin, branch.tenant_id as string, params.procedureId, params.branchId)
+    if (naoFeito) return { error: naoFeito }
 
     // O que ela JÁ PAGOU deste procedimento (2026-10-21, decisão do Heitor): a
     // sessão livre de um plano vendido, ou o crédito de pacote/pré-pago. Sem

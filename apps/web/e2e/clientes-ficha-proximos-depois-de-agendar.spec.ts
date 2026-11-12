@@ -31,6 +31,8 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(`fpa${marca}`)
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   cliente = await rede.criarCliente('Cláudio')
+  // A profissional atende na unidade (o núcleo confere desde a F65).
+  expect((await db().from('users').update({ atende_em: [rede.branchId] }).eq('id', rede.professionalId)).error).toBeNull()
   recepcao = await criarMembro(`fpar${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção',
     permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],

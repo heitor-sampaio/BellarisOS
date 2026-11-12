@@ -30,6 +30,8 @@ test.beforeAll(async () => {
   })
   cliente = await outra.criarCliente('pacote')
   const b = db()
+  // A profissional atende na unidade (o núcleo confere desde a F65).
+  expect((await b.from('users').update({ atende_em: [outra.branchId] }).eq('id', outra.professionalId)).error).toBeNull()
   const { data: sp } = await b.from('service_packages').insert({
     tenant_id: outra.tenantId, procedure_id: outra.procedureId, name: '[e2e] pacote', total_sessions: 2, price: 200,
   }).select('id').single<{ id: string }>()

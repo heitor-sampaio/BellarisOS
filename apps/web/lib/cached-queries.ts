@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { COLUNAS_DA_OFERTA, ofereceNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
 import { ler, lerTodas } from '@/lib/db'
@@ -259,26 +260,30 @@ export function getCachedBranchProcedures(branchId: string, tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const data = await ler(admin
+      const lidos = await ler(admin
         .from('procedures')
-        .select('id, name, category, duration_min, price')
+        .select(`id, name, category, duration_min, price, ${COLUNAS_DA_OFERTA}`)
         .eq('tenant_id', tenantId)
         .or(`branch_id.is.null,branch_id.eq.${branchId}`)
         .eq('is_active', true)
-        .order('name'), 'carregar os procedimentos')
+        .order('name'), 'carregar os procedimentos') as ({ id: string; name: string; category: string; duration_min: number; price: number; branch_id: string | null; procedure_branch_availability: { branch_id: string }[] | null }[] | null)
+      // Só o que a unidade OFERECE (D7 da 13ª, F65): o da rede restrito a
+      // outras unidades não aparece no agendar, no card nem no checkout.
+      const oferecidos = (lidos ?? []).filter(p => ofereceNaUnidade(p, branchId))
+        .map(p => ({ id: p.id, name: p.name, category: p.category, duration_min: p.duration_min, price: p.price }))
       // Quem realiza cada um (por-01): a agenda avisa quando a escolhida não
       // realiza. Gravar o procedimento expira a tag `procedures:<rede>`.
       const [realizam, daUnidade] = await Promise.all([
-        quemRealizaOsProcedimentos(admin, (data ?? []).map(p => p.id as string)),
+        quemRealizaOsProcedimentos(admin, oferecidos.map(p => p.id)),
         // O preço DA UNIDADE, quando ela tem um (D2 da 9ª). Gravar o
         // procedimento (e os preços por unidade) expira a mesma tag.
         precosDaUnidade(admin, branchId),
       ])
-      return (data ?? []).map(p => ({
-        ...p, price: precoNaUnidade(p.price as number, daUnidade.get(p.id as string)), realizam: realizam.get(p.id as string) ?? [],
+      return oferecidos.map(p => ({
+        ...p, price: precoNaUnidade(p.price, daUnidade.get(p.id)), realizam: realizam.get(p.id) ?? [],
       }))
     },
-    [`branch-procedures-v3-${branchId}`],
+    [`branch-procedures-v4-${branchId}`],
     { revalidate: 300, tags: [`procedures:${tenantId}`] },
   )()
 }

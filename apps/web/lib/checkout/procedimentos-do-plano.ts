@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { COLUNAS_DA_OFERTA, ofereceNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { ler } from '@/lib/db'
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
@@ -24,7 +25,7 @@ export async function procedimentosParaPlano(tenantId: string, branchId?: string
   const [procsRaw, prodsRaw, daUnidade] = await Promise.all([
     ler(admin
       .from('procedures')
-      .select('id, name, category, duration_min, price, procedure_products(product_id, quantity, products(id, name, unit, consumption_unit, units_per_package))')
+      .select(`id, name, category, duration_min, price, ${COLUNAS_DA_OFERTA}, procedure_products(product_id, quantity, products(id, name, unit, consumption_unit, units_per_package))`)
       .eq('tenant_id', tenantId)
       .eq('is_active', true)
       // A avaliação deixou de ser uma entidade e não precisa mais ser
@@ -47,9 +48,14 @@ export async function procedimentosParaPlano(tenantId: string, branchId?: string
   type RawProc = {
     id: string; name: string; category: string; duration_min: number; price: number
     procedure_products: RawProd[]
+    branch_id: string | null; procedure_branch_availability: { branch_id: string }[] | null
   }
 
-  const procedures = ((procsRaw ?? []) as unknown as RawProc[]).map(p => ({
+  // Com a unidade do plano, só o que ela OFERECE (D7 da 13ª, F65); sem unidade
+  // (a ficha da rede), o catálogo inteiro.
+  const procedures = ((procsRaw ?? []) as unknown as RawProc[])
+    .filter(p => !branchId || ofereceNaUnidade(p, branchId))
+    .map(p => ({
     id:          p.id,
     name:        p.name,
     category:    p.category,

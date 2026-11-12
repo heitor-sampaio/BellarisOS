@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { COLUNAS_DA_OFERTA, ofereceNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
@@ -57,7 +58,7 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
   const [rawProcedures, rawProfessionals] = await Promise.all([
     ler(admin
       .from('procedures')
-      .select('id, name, price, duration_min')
+      .select(`id, name, price, duration_min, ${COLUNAS_DA_OFERTA}`)
       .eq('tenant_id', branchTyped.tenant_id)
       .or(`branch_id.is.null,branch_id.eq.${branchTyped.id}`)
       .eq('is_active', true)
@@ -70,8 +71,11 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
 
   // Quem realiza cada um (por-01): o passo "Profissional" oferece só elas.
   // O preço DA UNIDADE do endereço, quando ela tem um (D2 da 9ª).
+  // Só o que a unidade OFERECE (D7 da 13ª, F65).
   const lidos = await comPrecoDaUnidade(admin, branchTyped.id,
-    (rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number }[])
+    ((rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number; branch_id: string | null; procedure_branch_availability: { branch_id: string }[] | null }[])
+      .filter(p => ofereceNaUnidade(p, branchTyped.id))
+      .map(({ id, name, price, duration_min }) => ({ id, name, price, duration_min })))
   const [realizam, jaPago] = await Promise.all([
     quemRealizaOsProcedimentos(admin, lidos.map(p => p.id)),
     // O que ela já pagou de cada um (D10 da 8ª): o Confirmar diz "Já pago pelo pacote X (sessão 2 de 3)".
