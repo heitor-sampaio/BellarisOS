@@ -8,7 +8,6 @@ import type { TenantContext } from '@estetica-os/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ehAnexoClinico } from '@/lib/clientes/anexos'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
 import { gravar, ler, tentar } from '@/lib/db'
 import { logHistory } from '@/lib/appointments/avisos'
@@ -57,16 +56,6 @@ export async function uploadClientDocument(
   if (!clientId || !branchId)   return { error: 'Dados inválidos.' }
   if (file.size > MAX_FILE_SIZE) return { error: 'Arquivo deve ter no máximo 20 MB.' }
 
-  // Ensure client belongs to this tenant
-  const supabase = await createSupabase()
-  const branch = await ler(supabase
-    .from('branches')
-    .select('id')
-    .eq('id', branchId)
-    .eq('tenant_id', ctx.tenantId!)
-    .single(), 'buscar a unidade')
-  if (!branch) return { error: 'Unidade não encontrada.' }
-
   const admin = createAdminClient()
 
   // A filial era conferida; o cliente, não — com a própria filial e o id de um
@@ -83,13 +72,30 @@ export async function uploadClientDocument(
 
   // O atendimento vem do formulário: é desta cliente, desta rede e de uma
   // unidade ao alcance — senão a foto iria para o atendimento de outra pessoa.
+  let unidadeDoAtendimento: string | null = null
   if (appointmentId) {
     const ag = await ler(admin.from('appointments').select('id, client_id, branch_id, professional_id, branches!inner(tenant_id)')
       .eq('id', appointmentId).maybeSingle(), 'conferir o atendimento do anexo')
     const redeDoAtendimento = (ag?.branches as unknown as { tenant_id: string } | null)?.tenant_id
     if (!ag || redeDoAtendimento !== ctx.tenantId || !alcancaOAgendamento(ctx, ag.branch_id as string, ag.professional_id as string | null)) return { error: 'Atendimento não encontrado.' }
     if (ag.client_id !== clientId) return { error: 'Este atendimento não é desta cliente.' }
+    unidadeDoAtendimento = ag.branch_id as string
   }
+
+  // A unidade do anexo (D5 da 13ª): a do ATENDIMENTO, quando é pela tela dele
+  // — a profissional que atende também na outra unidade anexa ali, e a sessão
+  // dela não vê aquela unidade (era o `.single()` pela sessão que derrubava a
+  // tela com 500). Pela ficha, a do contexto vence a do formulário. Lida pelo
+  // servidor, depois de conferidos a rede e o alcance; a recusa é mensagem.
+  const unidadeDoAnexo = unidadeDoAtendimento ?? ctx.branchId ?? branchId
+  const branch = await ler(admin
+    .from('branches')
+    .select('id')
+    .eq('id', unidadeDoAnexo)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle(), 'conferir a unidade do anexo')
+  if (!branch) return { error: 'Unidade não encontrada.' }
+  const unidade = branch.id as string
 
   // Bucket PRIVADO (LGPD) — nunca público. Guardamos o path; servimos por signed URL.
   await ensurePrivateBucket(BUCKET)
@@ -97,7 +103,7 @@ export async function uploadClientDocument(
   // Upload file
   const ext      = file.name.split('.').pop() ?? 'bin'
   const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-  const path     = `${branchId}/${clientId}/${safeName}`
+  const path     = `${unidade}/${clientId}/${safeName}`
 
   const arrayBuffer = await file.arrayBuffer()
   const { error: uploadError } = await admin.storage
@@ -109,7 +115,7 @@ export async function uploadClientDocument(
   // Insert record — guardamos o PATH, não uma URL pública
   const { error: dbError } = await admin.from('client_documents').insert({
     client_id:   clientId,
-    branch_id:   branchId,
+    branch_id:   unidade,
     name,
     category,
     file_path:   path,

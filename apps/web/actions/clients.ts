@@ -3,7 +3,6 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertClient, assertPermission, can } from '@/lib/auth'
 import { SO_CONSULTA_CLIENTES } from '@/lib/clients/so-consulta'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
@@ -28,16 +27,23 @@ import type { TenantContext } from '@estetica-os/types'
 
 const TELEFONE_INCOMPLETO = 'Telefone incompleto: informe o DDD e o número (10 ou 11 dígitos). De outro país, comece com + e o código do país (ex.: +351 912 345 678).'
 
-// --- Helper: valida que o branchId pertence ao tenant ------------
-async function resolveBranch(tenantId: string, branchId: string) {
-  const supabase = await createSupabase()
-  const data = await ler(supabase
+// --- Helper: a unidade do registro, da rede e ao alcance ----------
+/**
+ * A unidade em que o registro nasce: a do CONTEXTO vence a do formulário
+ * (quem tem unidade fixa grava na dela), e a lida é pelo servidor, com
+ * `maybeSingle` — a nula vira a mensagem de quem chama. Até 2026-11-12 era
+ * pela sessão com `.single()`: a unidade que a sessão não via lançava, e a
+ * tela caía em erro (D5 da 13ª, o mesmo do anexo).
+ */
+async function resolveBranch(ctx: TenantContext, branchId: string) {
+  const unidade = ctx.branchId ?? branchId
+  if (!unidade) return null
+  return ler(createAdminClient()
     .from('branches')
     .select('id, slug, name')
-    .eq('id', branchId)
-    .eq('tenant_id', tenantId)
-    .single(), 'buscar a unidade')
-  return data
+    .eq('id', unidade)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle(), 'buscar a unidade')
 }
 
 // `ligarContatoAoCliente` mora em `lib/clients/cliente-rapido.ts`: o vínculo é
@@ -124,7 +130,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
     if (conversationId && !(await conversaAoAlcance(admin, ctx, conversationId))) return { error: 'Conversa não encontrada.' }
   }
 
-  const branch   = await resolveBranch(ctx.tenantId!, branchId)
+  const branch   = await resolveBranch(ctx, branchId)
   if (!branch) return { error: 'Unidade inválida.' }
 
   // "Reativar a ficha de X" (A20): a ficha arquivada do telefone volta como
@@ -225,7 +231,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
 
   // 2) Cliente: a ficha nova. A que já existia só muda pelo "Unificar com a ficha" (acima).
   const dadosDoCliente = {
-    tenant_id: ctx.tenantId!, branch_id: branchId,
+    tenant_id: ctx.tenantId!, branch_id: branch.id as string,
     name, phone: fone.gravar, email, ...doc.colunas, ...resp.colunas,
     birth_date: birthDate, gender, notes, tags,
     is_active: true, auth_id: authId,
@@ -509,14 +515,8 @@ async function concederCredito(ctx: TenantContext, formData: FormData): Promise<
   if (!description)                  return { error: 'Informe o motivo do crédito.' }
   if (isNaN(amount) || amount <= 0)  return { error: 'Informe um valor maior que zero.' }
 
-  // Verify client belongs to this tenant's branch
-  const supabase = await createSupabase()
-  const branch = await ler(supabase
-    .from('branches')
-    .select('id')
-    .eq('id', branchId)
-    .eq('tenant_id', ctx.tenantId!)
-    .single(), 'buscar a unidade')
+  // A unidade do crédito: da rede, e a do contexto vence a do formulário (D5).
+  const branch = await resolveBranch(ctx, branchId)
   if (!branch) return { error: 'Unidade não encontrada.' }
 
   const admin = createAdminClient()
@@ -530,7 +530,7 @@ async function concederCredito(ctx: TenantContext, formData: FormData): Promise<
 
   const { error: dbErr } = await admin.from('internal_credits').insert({
     client_id:   clientId,
-    branch_id:   branchId,
+    branch_id:   branch.id as string,
     amount,
     description,
     // A41 da 9ª: concedido pela clínica, sem dinheiro (o comprado é o "Crédito na clínica" do Vender).
