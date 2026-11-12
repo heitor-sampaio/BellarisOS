@@ -679,9 +679,12 @@ um muro que não depende de cada trava do código.
     unidade fixa —, mas quem registra uma entrada cadastra um novo ali mesmo
     (`atendimento.md` §9.5).
   - **As respostas rápidas são de cada pessoa** (`quick_replies`): cada membro
-    cria, edita, apaga e vê só as suas, no inbox e na aba. Deixam de ser uma
-    biblioteca da rede mantida por quem tem o CRM em Gerenciar. (C72: hoje
-    são da rede inteira.)
+    cria, edita, apaga e vê só as suas, no inbox (`created_by` em toda leitura
+    e gravação de `actions/quick-replies.ts`; o nome é único por pessoa,
+    `uq_quick_replies_titulo_da_pessoa`; a sessão não lê nem grava a tabela).
+    Quem guarda é quem MANDA mensagem (o CRM em Gerenciar, como o envio).
+    Deixaram de ser uma biblioteca da rede (C72, F69; a única linha da
+    produção tinha autor). Prova: `e2e/inbox-respostas-de-cada-pessoa.spec.ts`.
   - **As Importações são de quem é da rede**, e a importação escolhe a que
     unidade os registros pertencem (a ficha da cliente, os produtos). A
     gerente de unidade fixa não importa: a aba diz "Esta configuração é da

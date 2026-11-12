@@ -41,7 +41,13 @@
   estava; `notifyClient` busca por `aparelhos_da_cliente(ficha)` — os de
   todas as fichas do mesmo login, e só dele. O registro (`client_notifications`)
   continua sendo da ficha que o aviso diz respeito, e o link do aviso leva ao
-  portal daquela clínica.
+  portal daquela clínica. **A campanha também** (C51, F69): `enviarCampanha`
+  lê por `aparelhos_das_clientes(fichas)` (a mesma régua, em lote), e o "vai
+  receber no celular" (`publico_com_aparelho`) conta igual. Prova:
+  `e2e/campanha-defeitos-do-levantamento.spec.ts` ("C51").
+- **O aparelho é de UMA pessoa OU de UMA cliente** (C56, F69): `push_tokens`
+  tem `check (num_nonnulls(user_id, client_id) = 1)` — o aparelho com os dois
+  levaria o aviso da clínica à equipe e o da equipe à cliente.
 - Fallback de notificação WhatsApp para quando push falhar (uazapi ou API oficial, conforme o que a rede tiver conectado)
 
 ### 9.8.0 Os números de WhatsApp da rede
@@ -138,6 +144,17 @@ tabela veio remover.
    automação NÃO abre conversa por ele, a não ser que a clínica ligue no passo
    "Para quem não tem conversa aberta: abrir pelo número padrão" (H1 do
    levantamento das regras, 2026-11-11; `automacoes.md` §9.9).
+
+**A conversa de WhatsApp da cliente é UMA régua** (C55, F69):
+`conversa_de_whatsapp_da_cliente(rede, ficha)` no banco
+(`conversaDeWhatsappDaCliente`, `lib/contatos/conversa-de-whatsapp.ts`) — a
+ligada à ficha; sem ela, a do telefone do cadastro (com e sem o 9 do
+celular); nunca a encerrada nem a de um número REMOVIDO (por ela nada sai — a
+automação escolhia a mais recente, e era essa); a em que a cliente falou por
+último primeiro. A usam a automação ("Mandar mensagem"), o link de assinatura
+e o da ficha de pré-atendimento pela conversa, e a conta antes de ligar uma
+automação (`publico_com_conversa`). Prova:
+`e2e/automacoes-defeitos-do-levantamento.spec.ts` ("C55").
 
 **Sem fallback para "a primeira ativa".** Rede com caixas ativas e nenhum padrão
 devolve `null` e a tela avisa: o índice garante NO MÁXIMO um padrão, não PELO
@@ -471,6 +488,8 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 
 ```
 ❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê
+❌ Achar "a conversa de WhatsApp da cliente" por uma consulta própria — é conversa_de_whatsapp_da_cliente (pula o número removido, acha pelo telefone)
+❌ Montar o endereço do webhook ou de link público com NEXT_PUBLIC_APP_URL no servidor (é o do BUILD) — é urlDaClinica() (CLINICA_URL, lido agora — D11)
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Gravar config de integração com chave fora da lista do provedor, ou baseUrl não pública (SSRF)

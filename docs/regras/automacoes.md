@@ -26,6 +26,20 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - `pagamento.*`, `estoque.*`, `comissao.liberada` e `comissao.paga` saem de GATILHO ou função no banco (`origem: 'banco'`, sem
   ator), porque esses fatos nascem em cinco ou seis lugares do código e
   instrumentar um a um é garantir esquecer o próximo.
+- **O fato do banco dispara automação pelo cron** (C2 do levantamento das
+  regras, F69). Nenhum `emitirEvento` despacha o que o gatilho SQL grava: até
+  a F69 a automação "Pagamento recebido → avisar" passava no ensaio e nunca
+  disparava. O cron de 5 minutos (`despacharFatosDoBanco`,
+  `lib/automacoes/cron.ts`) lê os de `origem = 'banco'` com `despachado_em`
+  nulo do último dia e REIVINDICA cada um (`despachado_em` de nulo para agora,
+  conferindo a linha devolvida) antes de `despacharEvento` — duas passagens
+  juntas criam uma execução só (e o índice único `(automation_id, evento_id)`
+  segura a segunda de qualquer jeito). Atraso: até 5 minutos. A migration
+  `20261112006901` marcou os fatos anteriores como despachados (não disparam
+  de uma vez). **O suporte**: o gatilho SQL não sabe que a gravação veio de
+  uma sessão de suporte (o servidor grava pelo cliente de serviço) — o fato
+  que ocorreu com uma sessão de suporte ATIVA na rede não dispara
+  (`suporteAtivoEm`). Prova: `e2e/automacoes-fatos-do-banco.spec.ts`.
 - **`pagamento.estornado` é só do que estava PAGO** (achado da F2b,
   migration `20261101001003`): a parcela nunca paga que cai como
   `Estornada` (o crediário que o cancelamento do pacote derruba, a venda de
@@ -173,14 +187,20 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   padrão · ( ) Mandar como aviso no celular. Abrir pelo número padrão é a
   clínica escolhendo correr o risco de banimento do WhatsApp Web; na API
   oficial pede um template aprovado, e o envio de template na automação ainda
-  precisa ser construído. (Correção C65.) O "padrão da rede" de
+  precisa ser construído. A conta é `contarAntesDeLigar` (`actions/automacoes.ts`):
+  a busca do passo "Buscar clientes" (com o teto) e, entre as achadas, as que
+  têm a conversa (`publico_com_conversa`, a mesma régua do envio — §9.8.0 de
+  `whatsapp-push.md`); sem o passo de busca, as clientes ativas da clínica. A
+  janela "Ligar a automação?" (`[data-antes-de-ligar]`) só abre quando o fluxo
+  manda WhatsApp; "Agora não" não liga. (C65 entregue na F69; o "Depois" segue
+  em aberto.) O "padrão da rede" de
   `whatsapp-push.md` §9.8.0 ("é por ele que sai tudo que o SISTEMA inicia")
   não abre conversa pela automação enquanto essa opção estiver desligada.
 - **O gatilho "N horas antes de cada agendamento" lembra o agendado E o
   confirmado** (D15 do levantamento das regras, o Heitor, 2026-11-11;
   princípio 3): lembrar também o não confirmado é o comportamento útil, e o
-  texto da tela (`quandoDispara`) passa a dizer "de cada agendamento marcado
-  (agendado ou confirmado)" (correção C54; hoje diz "confirmado").
+  texto da tela (`quandoDispara` e o card do gatilho no assistente) diz
+  "agendado ou confirmado" (F69).
 - **Os limites da automação: o silêncio noturno e o teto** (D16 do
   levantamento das regras, o Heitor, 2026-11-11, opção a; princípio 1). Valem
   só no "Mandar mensagem" (mensagem e aviso no celular à cliente; avisar a
@@ -192,9 +212,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
     a execução PARAR quando passa dele; o ensaio não conta.
   - **O campo vazio desliga** o silêncio ou o teto, de propósito, e a tela
     diz: "Sem silêncio: a mensagem sai a qualquer hora", "Sem teto". O
-    padrão vale só na automação nova. (Correção C54: hoje o vazio volta a
-    21:00/08:00/3 no motor e na tela reaberta, e o teto não aceita "sem
-    teto".)
+    padrão vale só na automação nova. O vazio grava `null`
+    (`LimitesDaAutomacao`), e o `null` vence o padrão na leitura
+    (`limitesDe`, `getAutomacao`) — até a F69 o vazio virava `undefined`,
+    sumia no JSON e o 21:00/08:00/3 voltava no motor e na tela reaberta. O
+    teto não tem máximo (princípio 2). Prova:
+    `e2e/automacoes-defeitos-do-levantamento.spec.ts` ("C54").
 - **O suporte não liga automação nem muda os limites** (D18 do levantamento
   das regras, o Heitor, 2026-11-11, opção a; CLAUDE.md §14: a ação que manda
   algo à paciente passa por `bloqueioDoSuporte`). Na sessão de suporte,
@@ -208,12 +231,38 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   levantamento das regras, o Heitor, 2026-11-11: "a + c opcional";
   princípios 2 e 6). O lembrete sai na antecedência que a clínica escolheu,
   mesmo de madrugada, e a tela avisa quando a antecedência o faz cair entre
-  21:00 e 08:00 ("Com 2 horas, o lembrete do agendamento das 07:00 sai às
-  05:00"). E a campanha tem a opção "Se cair de madrugada, mandar na véspera
-  às 20:00", DESLIGADA por padrão: ligada, o lembrete que cairia entre 21:00
-  e 08:00 sai às 20:00 do dia anterior, no relógio da unidade. Sem silêncio
-  automático nas campanhas. (Correção C74: hoje o lembrete sai de madrugada
-  sem aviso.)
+  21:00 e 08:00 ("Com 2 horas de antecedência, o lembrete dos agendamentos
+  entre 23:00 e 10:00 sai de madrugada" — `avisoDeMadrugada`,
+  `[data-lembrete-de-madrugada]`). E a campanha tem a opção "Se cair de
+  madrugada, mandar na véspera às 20:00" (`trigger_config.vespera_se_madrugada`),
+  DESLIGADA por padrão: ligada, o lembrete que cairia entre 21:00 e 08:00 sai
+  às 20:00 — a noite até 23:59 às 20:00 do mesmo dia, a madrugada às 20:00 da
+  véspera (`envioDoLembrete`, `lib/notifications/lembrete-de-madrugada.ts`),
+  no relógio da rede (o da campanha, F62). O cron e o "Quem receberia hoje"
+  escolhem por `lembretesNaJanela` (`gatilho-de-hoje.ts`): os lembretes que
+  SAEM na janela. Sem silêncio automático nas campanhas. Prova:
+  `e2e/campanha-defeitos-do-levantamento.spec.ts` ("C74"),
+  `tests/f69-comunicacao.test.ts`.
+- **"Sem visita há N dias" não é quem acabou de chegar** (C53, F69): a busca
+  do passo "Buscar clientes" corta também pela data de cliente
+  (`cliente_desde_antes` = o mesmo corte; cliente desde = a informada, senão
+  o cadastro), como a campanha já fazia. O "Sentimos sua falta" ia a quem se
+  cadastrou anteontem. Os filtros moram em `filtrosDaBusca`
+  (`lib/automacoes/tempo.ts`): o motor, a contagem do passo e a conta antes de
+  ligar leem por ela.
+- **O "N dias depois do ÚLTIMO atendimento" da campanha** (C52, F69) não pega
+  quem concluiu no dia-alvo e voltou depois (`concluiramNoDia` tira quem tem
+  concluído depois do fim daquele dia). Prova:
+  `e2e/campanha-defeitos-do-levantamento.spec.ts` ("C52").
+- **O envio da campanha é um só** (C51/C56, F69): `enviarCampanha`
+  (`lib/notifications/envio-da-campanha.ts`) — o disparo imediato, o agendado
+  e os automáticos do cron. Os aparelhos são os de TODAS as fichas do login
+  (`aparelhos_das_clientes`; a conta "vai receber no celular",
+  `publico_com_aparelho`, também), e o disparo é REIVINDICADO antes de mandar:
+  um por campanha, cliente e dia do relógio da rede (índice único
+  `campaign_dispatches_um_por_dia`, `upsert … ignoreDuplicates`) — a passagem
+  que não pegou a linha não manda. Ler "já mandei hoje?" e depois gravar
+  mandava duas vezes com duas passagens juntas.
 - **O seletor de campo não repete rótulo**, e o card diz o campo em
   português (A14): o rótulo repetido leva de onde vem — "Situação do
   agendamento", "Procedimento (do gatilho)" (`rotulosUnicos`); o card usa
@@ -353,4 +402,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 ❌ Montar o filtro do público da campanha à mão (branch_ids: rules.branch_ids…) — é filtrosDaCampanha, senão a regra nova fica sem leitor e a campanha vai a todas (D1 da 9ª)
 ❌ Contar "quem receberia hoje" da campanha automática pelo público inteiro, ou escolher as clientes do gatilho fora de lib/notifications/gatilho-de-hoje (o cron e o detalhe dividem a escolha — D10 da 12ª)
 ❌ Trazer um gatilho de campanha já marcado, ou dizer quando ela sai fora de quandoDispara (a hora é a do cron, jaEhHoraDeDisparar — D8 da 11ª)
+❌ Criar fato no banco (origem 'banco') e esperar que alguém o despache na hora — quem despacha é o cron (despacharFatosDoBanco), reivindicando despachado_em (C2)
+❌ Mandar campanha fora de enviarCampanha, ou ler os aparelhos pela ficha (push_tokens.client_id) — são os de todas as fichas do login, e o disparo é reivindicado por dia (C51/C56)
+❌ Gravar o limite vazio da automação como undefined (some no JSON e o padrão volta) — é null (C54)
 ```

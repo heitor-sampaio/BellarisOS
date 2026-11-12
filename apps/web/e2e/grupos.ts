@@ -33,6 +33,11 @@ export const ISOLADOS = [
   // A F58 (os defeitos fora do dinheiro da 12ª simulação, 2026-11-11).
   'agenda-defeitos-da-12.spec.ts',
   'documentos-defeitos-da-12.spec.ts',
+  // A F69 (documentos, automações, campanhas, WhatsApp e push — o levantamento das regras).
+  'automacoes-defeitos-do-levantamento.spec.ts',
+  'campanha-defeitos-do-levantamento.spec.ts',
+  'documentos-pedir-no-portal-sem-plano.spec.ts',
+  'inbox-respostas-de-cada-pessoa.spec.ts',
   'estoque-defeitos-da-12.spec.ts',
   'estoque-atritos-da-12.spec.ts',
   'fidelidade-atritos-da-12.spec.ts',

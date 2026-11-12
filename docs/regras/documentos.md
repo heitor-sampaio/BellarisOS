@@ -324,6 +324,12 @@ DEVLOG ("Termos e contratos").
   nome completo, IP nem conteúdo. "Conferir um arquivo" calcula o hash no
   navegador. O PDF da equipe sai por `/api/documentos/[id]/pdf` (sessão +
   `documents: VIEW` + rede + unidade).
+- **O link de conferência impresso no PDF é o endereço PÚBLICO da clínica**
+  (D11 da 13ª simulação, F69): `urlDeVerificacao` usa `urlDaClinica()` —
+  `CLINICA_URL`, lido em tempo de execução. O `NEXT_PUBLIC_APP_URL` é gravado
+  no BUILD, e o PDF assinado saía com o domínio do Railway (o QR de quem
+  confere morre com ele). O webhook da uazapi segue a mesma régua. Prova:
+  `tests/f69-comunicacao.test.ts` ("D11").
 - **Portal do cliente** (`/[slug]/cliente/documentos`): o cliente vê o que pede a
   assinatura dele e os assinados, e assina com a SESSÃO como identidade
   (`assinarNoPortal`, `actions/documentos-portal.ts` — só documento DELE). A
@@ -334,7 +340,13 @@ DEVLOG ("Termos e contratos").
   ela não tem o app): sem login, "Pedir no portal" some dos Termos (a ficha e
   o atendimento, `temAcessoAoApp`) e a tela diz antes "Sem acesso ao app:
   colha na clínica, por link ou no papel." (`[data-sem-portal]`). Prova:
-  `e2e/ficha-cadastro-atritos-da-7.spec.ts` ("A26").
+  `e2e/ficha-cadastro-atritos-da-7.spec.ts` ("A26"). **Sem o portal no
+  PLANO da clínica, também** (C57a, F69): "Pedir no portal" some, e a action
+  recusa ("O plano desta clínica não tem o portal do cliente…") sem gravar
+  NOTIFICADO_PORTAL — antes respondia "Pedido enviado" e o `notifyClient`
+  pulava o aviso calado. O "Enviar à cliente" do anexo recusa igual
+  (`enviarDocumentoACliente`). Prova:
+  `e2e/documentos-pedir-no-portal-sem-plano.spec.ts`.
   Quem agenda pelo portal e tem documento a assinar vai direto para ele.
   O detalhe do agendamento no portal tem "Documentos deste atendimento"
   (J-63, `documentosDoAgendamento`): o título e a situação — "Falta a sua
@@ -536,4 +548,6 @@ DEVLOG ("Termos e contratos").
 ❌ Pôr nas dependências do efeito que relê o passo do checkout um objeto que vem do servidor (cada refresh traz um novo, e a tela volta ao Pagamento — F46)
 ❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir
 ❌ Abrir no editor (ou gravar) o JSON do modelo sem normalizarListasDoEditor: a edição mostraria o que o documento não diz (A16 da 12ª)
+❌ Montar o link de /verificar com NEXT_PUBLIC_APP_URL (é o do build) — é urlDaClinica() (D11)
+❌ Registrar "notificado no portal" (ou dizer "enviado") quando o plano não tem o portal: o aviso não sai (C57a)
 ```
