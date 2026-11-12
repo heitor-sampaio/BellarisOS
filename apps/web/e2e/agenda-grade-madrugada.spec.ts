@@ -60,7 +60,7 @@ test('Minha agenda: o atendimento de madrugada tem a sua linha e abre ao clicar'
   try {
     const p = await ctx.newPage()
     await p.goto(`/${slug}/agenda`)
-    await expect(p.locator(`a[href$="/agenda/${ids.a}"] > div`)).toBeVisible()
+    await expect(p.locator(`[data-cartao-minha-agenda="${ids.a}"]`)).toBeVisible()
     const horas = await rotulosDeHora(p)
     expect(Math.min(...horas), 'a grade abre no atendimento mais cedo').toBe(2)
     expect(Math.max(...horas), 'e fecha no horário da unidade').toBe(17)
@@ -73,7 +73,7 @@ test('Minha agenda: o atendimento de 02:30 não fica por baixo do de 03:30', asy
   try {
     const p = await ctx.newPage()
     await p.goto(`/${slug}/agenda`)
-    const card = p.locator(`a[href$="/agenda/${ids.a}"] > div`)
+    const card = p.locator(`[data-cartao-minha-agenda="${ids.a}"]`)
     await expect(card).toBeVisible()
     await card.scrollIntoViewIfNeeded()
     // O que o clique alcançaria no centro do bloco: é o link DELE, não o do 03:30.
@@ -90,7 +90,7 @@ test('Minha agenda: sem atendimento fora do horário, a grade abre na abertura d
   try {
     const p = await ctx.newPage()
     await p.goto(`/${slug}/agenda`)
-    await expect(p.locator(`a[href$="/agenda/${ids.c}"] > div`)).toBeVisible()
+    await expect(p.locator(`[data-cartao-minha-agenda="${ids.c}"]`)).toBeVisible()
     const horas = await rotulosDeHora(p)
     expect(Math.min(...horas)).toBe(10)
     expect(Math.max(...horas)).toBe(17)
