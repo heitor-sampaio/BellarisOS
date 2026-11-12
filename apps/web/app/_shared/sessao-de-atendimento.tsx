@@ -543,7 +543,10 @@ export async function SessaoDeAtendimento({
   const isResponsibleProfessional = ctx.providesServices && ctx.internalUserId === apptRaw.professional_id
 
   const canCheckin   = ctx.permissions.agenda === 'MANAGE'
-  const canManage    = isResponsibleProfessional || isAdmin
+  // Quem inicia e conclui é o ESCOPO (D21, C14 — F65): com "só os meus", só
+  // o próprio; com "todos", qualquer um da unidade ao alcance (a página já
+  // conferiu o alcance). Era "a responsável ou a agenda em Gerenciar".
+  const canManage    = isOwnScope(ctx, 'agenda') ? ctx.internalUserId === apptRaw.professional_id : true
   const canReassign  = isAdmin
   const canPayment   = ctx.permissions.cashier === 'MANAGE'
   // Editar o clínico depende do módulo, não só de ser o responsável: com
