@@ -303,8 +303,9 @@ DEVLOG ("Termos e contratos").
   em `checkoutTreatmentPlanInterno`): documento que BLOQUEIA aberto, ou contrato
   assinado para OUTRO pagamento, recusam. Ela EMITE antes de conferir — quem
   chama a action direto não escapa por "ainda não havia documento". O gatilho
-  `trg_documentos_bloqueiam_plano` é a segunda linha (barra o status, mas o
-  checkout não é transação única).
+  `trg_documentos_bloqueiam_plano` é a segunda linha (barra o ACCEPTED que
+  `plano_checkout` grava; o checkout é uma transação só desde a F67, C32 —
+  a recusa do gatilho desfaz tudo).
 - **Toda rede nasce com o contrato de plano padrão** (`documentos_modelos_padrao`:
   migration para as de antes, `registerAction` para as novas). Sem CPF de
   propósito: o contrato de antes não o exigia.

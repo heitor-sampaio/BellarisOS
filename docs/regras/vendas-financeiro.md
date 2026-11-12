@@ -454,7 +454,9 @@ o procedimento avulso pago antes.
   2026-11-04; a regra de 30/09, "registra para fazer estorno" como DEVOLUÇÃO a
   pagar, ficou para trás com as decisões do pacote — F2b: a clínica escolhe;
   F13/r2-fin-03: no cartão, o pagamento inteiro). Com motivo, só a DISPONÍVEL
-  e não agendada, por quem recebe (`podeReceber`) e com a unidade ao alcance:
+  e não agendada, por quem tem o **Financeiro em Gerenciar** (C36 da F67: era
+  de quem recebe, e o caixa devolvia dinheiro por ali; como cancelar o pacote)
+  sem "só os meus", e com a unidade ao alcance:
   "Cancelar" no card "Procedimentos pagos" abre a janela "Cancelar unidade"
   (`CancelarUnidadePrePaga`), com a conta que o BANCO fez
   (`procedimento_cancelar_unidade_devolvendo` com `p_simular`,
@@ -723,6 +725,43 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ---
 
 ### 9.6 Financeiro
+
+- **O que a F67 fechou (2026-11-12) — a régua de quem mexe no dinheiro**:
+  - **O checkout do plano é UMA transação** (C32): o app confere (permissão,
+    documentos, peças da agenda, horário, quem vendeu) e MONTA os lançamentos
+    e os agendamentos; `plano_checkout` trava o plano (`for update`), confere
+    que ainda é PROPOSED e grava tudo junto — desconto, lançamentos,
+    agendamentos, sessões, o ACCEPTED e a comissão de venda. A segunda
+    chegada (duas abas, "tentar de novo") ouve "Este plano já foi fechado.
+    Recarregue a tela.". "Quem vendeu" fica no plano (`vendido_por`, A13) e a
+    tela o retoma. Prova: `e2e/plano-checkout-uma-transacao.spec.ts`.
+  - **A baixa é de Recebimentos (o caixa) em todo caminho** (C33): o
+    Financeiro em Gerenciar sem o caixa não tem "Pagar"/"Receber", e o
+    check-in do plano usa o caixa, como o avulso.
+  - **A baixa do lançamento sem meio exige a forma** (C34), no
+    `marcarPagoCore` e no `marcar_pago` do Copilot: "Escolha a forma de
+    pagamento." (ficava "Não informado").
+  - **O "só os meus" do Financeiro tranca a ACTION** (C35,
+    `recusaDoSoOsMeus`, `lib/financeiro/so-os-meus.ts`): não estorna, não
+    lança, não cancela pacote, plano nem unidade pré-paga, não dá crédito, não
+    traz pacote de fora, não devolve produto, não remarca nem antecipa — a tela
+    já escondia, e pela action direta gravava em qualquer registro da unidade.
+  - **O estornado do plano não conta como recebido** (C37,
+    `emAbertoDoPlano`): o check-in cobrava a menos.
+  - **Com a unidade filtrada, o "Débito no período" do Financeiro da rede é o
+    da unidade** (D8 da 13ª simulação; era o da rede inteira).
+  - **As telas do dinheiro assinam o SINAL `financeiro_sinais`**, não
+    `financial_transactions` (a sobra da F63; migration `20261112006710`):
+    Financeiro, Fechamento do dia, dashboards, relatórios e a sessão de
+    atendimento. Uma linha por rede, marcada por gatilho de COMANDO
+    (`trg_sinal_financeiro_ins/upd/del`, com tabela de transição: o lote marca
+    uma vez); a tela recarrega pelo servidor, que aplica o alcance. A linha do
+    lançamento (valor, cliente) não vai mais pelo websocket a quem o cargo
+    deixa ver só "os meus". `financial_transactions` sai da publicação DEPOIS
+    do deploy (`20261112006711`). Prova: `e2e/financeiro-sinal.spec.ts`,
+    `tests/realtime-assina-sinal.test.ts` (trava a tabela crua num
+    `RealtimeRefresher`).
+  - Prova do resto: `e2e/financeiro-f67.spec.ts`, `tests/vendas-f67.test.ts`.
 - **Não existe caixa de ABRIR** (o fechamento do dia, abaixo, é outra coisa:
   conferência, não gaveta aberta). O caixa de abrir e fechar foi removido em 2026-09-18: quase
   nada é recebido em dinheiro vivo (a rede opera em Pix e cartão), e a
@@ -1236,8 +1275,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   parcela (ou o primeiro); o "Vencimento" do lançamento único não aparece junto.
 - **A despesa recorrente guarda a forma de pagamento, como a parcelada** (D11
   do levantamento das regras, o Heitor, 2026-11-11; princípio 3): a forma
-  escolhida ao lançar vai a cada lançamento da recorrência. (C70: hoje a
-  recorrente a omite, e o "Pagar despesa" pergunta a forma.)
+  escolhida ao lançar vai a cada lançamento da recorrência (C70, F67:
+  a recorrente a omitia, e o "Pagar despesa" perguntava a forma). Prova:
+  `e2e/financeiro-f67.spec.ts` ("C70").
 - **O "Pagar" da despesa sem forma pergunta a forma** (A15 da 9ª; decidido pelo
   princípio 3 — a parcela da cliente e a comissão já perguntavam): "Pagar
   despesa" (`PagarDespesa`, nos dois financeiros), a forma nasce vazia e é
@@ -1286,9 +1326,52 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     vendas. Migration `20261103001301`.
     - **As taxas passam a ser POR MAQUININHA** (D8 do levantamento das
       regras, o Heitor, 2026-11-11, 4ª volta, opção b: "Quem escolhe a taxa é a operadora: stone, mercadopago, elo e por ai vai… a rede precisa configurar suas taxas, por operadora.";
-      e a primeira tela da passada de simplificação, princípio 7). É a regra
-      que vale; o modelo "regra geral + por bandeira" descrito a seguir é o
-      que o código ainda faz até a correção C75.
+      e a primeira tela da passada de simplificação, princípio 7). **Feito na
+      F67 (C75, 2026-11-12)**; o que se lê adiante sobre a "regra geral" e
+      `tenants.cartao_*`/`payment_fees` é o modelo de antes — a "regra geral"
+      é hoje a taxa DA MAQUININHA, e a bandeira, a de dentro dela.
+      - **Onde mora**: `maquininhas` (nome, `taxas` jsonb "DEBIT_CARD:1" /
+        "CREDIT_CARD:N", `max_vezes`, `prazo_dias`, `cobra_por_bandeira`,
+        `por_bandeira`, `arquivada_em`; a sessão NÃO lê nem grava — sem
+        política; grava `actions/maquininhas.ts` pelo cliente de serviço,
+        com `financial: MANAGE`, o recurso comissões e abrangência de rede).
+        O Pix em `tenants.pix_taxa_pct` (padrão 0). A venda guarda a sua em
+        `financial_transactions.maquininha_id`.
+      - **A migração**: a configuração de cada rede virou a 1ª maquininha,
+        "Maquininha". O lançamento já gravado fica com a taxa que tem (o
+        recebível é retratado). `payment_fees` e `tenants.cartao_*` seguem
+        só com um ESPELHO para a 1ª maquininha (gatilhos
+        `trg_maquininha_espelha_*`), até a limpeza com o Heitor.
+      - **Quem decide a maquininha da venda**: a escolhida; sem escolha, o
+        banco põe a PRIMEIRA ativa (`private.maquininha_do_lancamento`, por
+        `ordem`); o estorno herda a do pagamento; a de outra rede é recusada
+        ("Esta maquininha não é desta clínica."); a DESPESA no cartão não tem
+        maquininha (20261112006709). **Com mais de uma ativa, o cartão não
+        segue sem ela** — na tela (o botão espera) e no servidor
+        (`recusaDasVezesDaRede`: "Escolha a maquininha do cartão."): a
+        primeira não vale calada (princípio 3). Todos os caminhos: avulso,
+        check-in do plano, checkout, pacote, pré-pago, produto, crédito na
+        clínica, Novo lançamento, "Receber no cartão" e o Copilot (`lancar`
+        e `marcar_pago` pedem o nome; com mais de uma, sem ele, perguntam).
+        O pagamento combinado do CONTRATO não pergunta (é só texto: a
+        maquininha se escolhe quando o dinheiro entra).
+      - **Quem lê**: `private.taxa_da_maquininha(rede, método, vezes,
+        bandeira, maquininha)` (Pix → `pix_taxa_pct`; a da bandeira só com
+        `cobra_por_bandeira`), `comissao_taxa_pct` e `prazo_da_operadora`
+        com a maquininha — a comissão, os recebíveis, o líquido e os
+        indicadores. Na tela, `taxaNaMaquininha` (`lib/financeiro/maquininhas.ts`)
+        é o espelho; `maquininhasParaAVenda` manda a quem só recebe a
+        PRESENÇA de cada taxa (0), nunca o valor (D7).
+      - **A tela**: Configurações → Comissões → "Taxas da maquininha": o Pix;
+        a maquininha (com mais de uma, o seletor de qual editar); "+ Adicionar
+        maquininha"; arquivar ("Arquivar Stone") e "Voltar a usar" — a última
+        ativa não se arquiva; um "Salvar taxas" grava o Pix e as maquininhas
+        que mudaram. A bandeira aparece só com a opção marcada.
+      - **O Fechamento** separa o cartão por maquininha quando o dia teve mais
+        de uma (`metrics_fechamento_por_maquininha`; a despesa no cartão
+        aparece como "Cartão da clínica"), na tela e no CSV.
+      - Prova: `e2e/maquininhas-f67.spec.ts`, `tests/maquininhas.test.ts`; os
+        specs das taxas leem pela `e2e/apoio/maquininha.ts`.
       - **A rede cadastra as maquininhas que usa** (Stone, Mercado Pago…):
         o nome, a taxa do débito, a do crédito à vista, até quantas vezes ela
         parcela, a taxa de cada vez e o prazo de recebimento. O "Parcelar no
@@ -1625,7 +1708,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     número de parcelas com taxa cadastrada."): Configurações → Comissões →
     "Parcelar no crédito até" (`tenants.cartao_max_vezes`, 1–12, migration
     `20261029001603`; grava `salvarMaximoDeVezes`, a mesma permissão das
-    taxas). Vazio = automático: a maior parcela do CRÉDITO com taxa em
+    taxas — desde a F67, C75, é de CADA maquininha: `maquininhas.max_vezes`,
+    e a venda usa o da maquininha escolhida). Vazio = automático: a maior parcela do CRÉDITO com taxa em
     `payment_fees`; sem nenhuma, 12x (`maximoDeVezes`,
     `lib/financeiro/vezes-do-cartao.ts`). Todo "Vezes no cartão" monta as
     opções por `useOpcoesDeVezes` (recebimento do avulso, do plano no
@@ -1644,8 +1728,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     12 — vale igual em todo caminho que vende no crediário: o Vender (pacote,
     pré-pago, produto, o pagamento do contrato), o checkout do plano e o
     check-in do plano. A tela oferece até o limite da rede e o servidor recusa
-    acima dele, nos três. Hoje o Vender aceita até 12 (`EntradaDoPagamento`) e
-    o checkout e o check-in até 48 (`Math.min(…, 48)`) — a correção C38. A
+    acima dele, nos três (C38, F67: `tenants.crediario_max_parcelas`, no
+    card "Crediário da clínica" da aba de Comissões; o Vender cortava em 12 e
+    o checkout e o check-in em 48, calados — `maximoDeParcelasDaRede`). A
     DESPESA não muda: parcelada de 2 a 48, recorrente de 2 a 60 (é a clínica
     pagando, não vendendo).
   - **A tela diz o limite e o valor da parcela** (A47 da 5ª simulação):
@@ -2052,8 +2137,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   isso antes: "Estornar o Pix de R$ 900,00 do pacote 6 limpezas? O dinheiro
   volta à cliente, e o pacote volta a ter R$ 900,00 a receber. Para desfazer a
   venda, use 'Cancelar pacote' na ficha." Desfazer a venda continua sendo o
-  "Cancelar pacote/plano/unidade". (Correção C39: hoje as sessões seguem livres
-  e nada volta a ser cobrado.)
+  "Cancelar pacote/plano/unidade". Feito na F67 (C39): `estornar_e_reabrir`,
+  que só o "Estornar" da lista chama — os cancelamentos usam
+  `estornar_transacao` direto, porque ali a venda é desfeita. Prova:
+  `e2e/financeiro-f67.spec.ts` ("C39").
 - Estorno (`estornar_transacao`, uma transação): contra-transação + a original
   marcada `notes='Estornada'` (nunca deletar). Recusa lançamento **não pago**
   e o **próprio estorno**. A contra-transação não leva `appointment_id` (há
@@ -2134,6 +2221,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Dar à bandeira a taxa de OUTRA quantidade de vezes dela (a Elo do 3x no 5x) — sem a taxa exata na bandeira, vale a regra geral daquelas vezes (r4-f15-01)
 ❌ Pôr teto de negócio na taxa da maquininha (F16-3: só não negativa), ou ler a regra geral por payment_fees.taxa_pct sozinho (acima de 100% ela está em taxa_pct_sem_teto)
 ❌ Cair na taxa de OUTRA quantidade de vezes, na bandeira ou na regra geral (o 3x no 4x) — sem a taxa exata, é 0% e a tela avisa (F16-2); a taxa que existe é private.taxa_da_maquininha
+❌ Ler a taxa, o prazo ou o "parcelar até" sem a maquininha da venda (C75): é private.taxa_da_maquininha / comissao_taxa_pct / prazo_da_operadora COM financial_transactions.maquininha_id; payment_fees e tenants.cartao_* são só o espelho da 1ª maquininha até a limpeza
+❌ Caminho novo de cartão sem "Qual maquininha?" (CampoDaMaquininha + useFaltaAMaquininha/useRecusaDoPagamento na tela, recusaDasVezesDaRede com a maquininha e o método no servidor) — com mais de uma, a primeira não vale calada
+❌ Pôr maquininha em despesa (o cartão da clínica não é maquininha) ou assinar financial_transactions no Realtime (é o sinal financeiro_sinais)
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Receber o plano no check-in fora de plano_receber (o plano travado e o saldo conferido: duas abas recebiam o mesmo saldo duas vezes — F11)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)

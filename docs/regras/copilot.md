@@ -148,6 +148,17 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     em 3 —, com a trava do limite da clínica no PREPARO
     (`recusaDasVezesDaBaixa`, a mesma da baixa da tela). Prova: o caso F17-5
     de `e2e/copilot-gestao.spec.ts` (contra o build).
+  - **A maquininha** (C75 da F67): `lancar` (receita paga no cartão) e
+    `marcar_pago` aceitam `maquininha` pelo nome ("Stone"). Com uma só ativa,
+    nada a perguntar; com mais de uma e sem o nome, a ferramenta PERGUNTA
+    ("Em qual maquininha passou o cartão? Stone, Cielo.") — nunca a primeira
+    calada (princípio 3). Nome que bate em mais de uma pergunta qual; fora do
+    cartão, recusa. E o `marcar_pago` do lançamento sem meio exige a forma
+    (C34), como a baixa da tela.
+  - **A ficha da cliente não fala de pontos com o programa desligado** (C5,
+    a parte da fidelidade): `pontosDeFidelidade` só vai quando a rede tem o
+    programa ligado (`fidelidade.md`: nenhum sinal de pontos). Prova:
+    `e2e/copilot-leituras.spec.ts` (contra o build).
 - **"Só os meus" vale também no Copilot** (decisão do Heitor, 2026-10-28:
   "quem tem 'só os meus' vê 'só os meus', em qualquer lugar"). A ferramenta
   `indicadores` usa o recorte do dashboard (`indicadores.md`), com CADA número

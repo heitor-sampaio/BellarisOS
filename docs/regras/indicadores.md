@@ -521,6 +521,13 @@
     estorno não vira saída. Em dias diferentes, cada lado conta no seu dia.
   - As taxas da maquininha acompanham o pagamento: a do estornado fica no dia
     dele e sai no dia do estorno.
+  - **O cartão do Fechamento por maquininha** (C75 da F67): o quadro do cartão
+    sai de `metrics_fechamento_por_maquininha` (forma, maquininha, bandeira) —
+    a mesma régua dos movimentos pagos. Só quando o DIA teve mais de uma
+    maquininha a tela agrupa ("Stone: Visa R$ …, Elo R$ …") e o CSV da
+    contadora ganha a coluna ("Forma, maquininha e bandeira"); com uma só,
+    fica como era (princípio 7). A despesa não tem maquininha (o cartão da
+    clínica não é maquininha).
   - A régua é UMA: `metrics_movimentos_pagos` (migration `20261111005901`) — o
     pagamento da janela pelo que entrou, menos o estorno na própria janela, e o
     estorno feito na janela de um pagamento de FORA dela como linha negativa

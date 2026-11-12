@@ -10570,6 +10570,58 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   - o aviso ao desativar um produto com saldo (D1): nenhuma tela viva desativa produto, porque o `AdminProductTable` não é usado;
   - a limpeza do texto livre do fornecedor (`products.supplier`, `stock_movements.fornecedor`), que é destrutiva e fica para o Heitor presente.
 
+**F67 FEITA (12/11; 2e8145f1…, push; migrations 20261112006701 a 6710 aplicadas, aditivas; a 6711 só DEPOIS do deploy): vendas, financeiro e comissões** (levantamento das regras: C32–C43, C70, C75 com D8, C5 na parte do financeiro e da fidelidade; 13ª simulação: D8, A4, A5, A6, A11, A12, A13; a sobra da F63; a simplificação das telas de Comissões e do Vender).
+- **O checkout do plano é uma transação só (C32):** o app confere e monta, e `plano_checkout` trava o plano, confere que ainda é PROPOSED e grava tudo junto. A segunda chegada ouve "Este plano já foi fechado". Antes, duas abas gravavam o dinheiro duas vezes. "Quem vendeu" fica no plano e volta ao reabrir (A13). O checkout diz a comissão de venda antes de vender (C42).
+- **O crediário é da rede (C38):** `tenants.crediario_max_parcelas`, padrão 12, no card "Crediário da clínica". A tela oferece até ele e o servidor recusa acima, no Vender, nos documentos, no checkout e no check-in. Antes eram 12 num lugar e 48 calados no outro.
+- **Quem mexe no dinheiro:**
+  - **C33:** a baixa é do caixa (Recebimentos) em todo caminho;
+  - **C34:** a baixa sem meio exige a forma, na tela e no Copilot;
+  - **C35:** o "só os meus" do Financeiro tranca a action (`recusaDoSoOsMeus`): não estorna, não lança, não cancela, não dá crédito;
+  - **C36:** cancelar a unidade pré-paga é do Financeiro em Gerenciar;
+  - **C37:** o estornado do plano não conta como recebido no check-in.
+- **O estorno reabre a venda (C39, H2 = a):** o "Estornar" do pagamento de pacote, plano ou pré-pago devolve o dinheiro e põe o valor de volta como "a receber", com o mesmo vencimento (`estornar_e_reabrir`). Desfazer a venda continua sendo o "Cancelar".
+- **A despesa recorrente grava a forma (C70).** Com a unidade filtrada, o "Débito no período" do Financeiro da rede é o da unidade (D8 da 13ª).
+- **Comissões:**
+  - **C40:** a regra do pacote vence mesmo com 0%;
+  - **C41:** a taxa do avulso lê as vezes (pagava a do 1x);
+  - **A4 e A5:** "Venda de plano", "Venda de produto" e a lista de pacotes dizem "a regra de quem vendeu".
+- **Fidelidade:**
+  - **C43:** os pontos do pacote e do pré-pago no crediário são cumulativos, como o plano. 3 × R$ 33,33 davam 99 pontos de R$ 100;
+  - **C5:** o Copilot não fala de pontos com o programa desligado;
+  - **A6:** a aba diz que o crédito vendido pontua;
+  - **A11:** o Top 5 diz o que foi pago com crédito;
+  - **A12:** o CSV separa "Profissional" de "Quem vendeu".
+- **As taxas por maquininha (C75, D8 do levantamento):**
+  - a tabela `maquininhas` tem taxas, "parcelar até", prazo e bandeiras de cada uma. O Pix fica à parte;
+  - todo pagamento no cartão diz "Qual maquininha?" quando a rede tem mais de uma, na tela e no servidor ("Escolha a maquininha do cartão."), e o Copilot pergunta;
+  - com uma só, nada muda. O gatilho grava a primeira ativa onde a tela não pergunta;
+  - a comissão, o líquido e o recebível da operadora leem a maquininha do lançamento;
+  - o Fechamento e o CSV da contadora separam por maquininha quando o dia teve mais de uma;
+  - a tela de Taxas vira uma lista de maquininhas. "Cobra diferente em alguma bandeira?" esconde o raro, e o campo vazio diz o que vale ("0,00", "6 (da maquininha)").
+- **As telas do dinheiro assinam um sinal (a sobra da F63):** `financeiro_sinais` (6710), como as comissões e o quadro do CRM. A linha do lançamento não vai mais pelo websocket. `tests/realtime-assina-sinal.test.ts` trava a tabela crua num `RealtimeRefresher`.
+- **Simplificação (princípio 7):**
+  - Comissões começa por "Comissão de cada profissional". "Quando a comissão vale" mostra a regra numa linha e guarda o detalhe em "Como funciona". As frases repetidas saíram;
+  - o Vender foi revisto e ficou: o caso comum já vem primeiro, e o desconto antes do pagamento é a ordem da conta.
+- **Decidido pelos princípios:**
+  - com mais de uma maquininha, a escolha é obrigatória e a primeira nunca vale calada (princípio 3);
+  - o pagamento do contrato não pergunta a maquininha, porque é texto do documento e não lançamento;
+  - a despesa não tem maquininha, porque o cartão da clínica não é maquininha;
+  - o Fechamento só nomeia a maquininha quando o dia teve mais de uma (princípio 7);
+  - "Bandeira" fica atrás da pergunta (princípio 7);
+  - o campo de taxa vazio vale 0% sem aviso por campo (a resposta do Heitor na D8);
+  - os cancelamentos (pacote, pré-pago, plano, devolução de produto, estorno de crédito) que relançam um pagamento no cartão ficam com a primeira maquininha ativa pelo gatilho. Não perguntam, porque o relançado repete o pagamento de antes.
+- **Prova:** specs novos, todos vistos falhando antes:
+  - `plano-checkout-uma-transacao`, `financeiro-f67`, `comissoes-f67`, `fidelidade-f67`, `maquininhas-f67` (8), `financeiro-sinal`;
+  - Vitest `vendas-f67`, `maquininhas`, `realtime-assina-sinal`;
+  - vizinhos verdes: comissões 48, financeiro e vendas 50 + 36 + 59, cartão por bandeira 15, maquininhas, contrato e pacotes 23;
+  - Vitest 2191/2191, typecheck e lint limpos;
+  - vale completa: mexeu no checkout do plano, em `estornar_*`, nos pontos, na comissão, no gatilho de todo lançamento e nos `RealtimeRefresher` de dashboards e financeiro.
+- **Fica de fora:**
+  - **C64 (o bônus da fidelidade em várias unidades):** precisa de uma regra de qual saldo se debita primeiro e mexe no razão dos pontos. Vai ao Heitor;
+  - **a limpeza destrutiva depois do deploy:** `payment_fees`, `tenants.cartao_*`, os gatilhos de espelho para a primeira maquininha, as sobrecargas velhas das funções e o embrulho de 10 argumentos de `credito_vender`. Fica para o Heitor presente;
+  - a política de leitura de `financial_transactions` pela sessão (o "só os meus" pelo PostgREST) não mudou;
+  - o CSV de lançamentos não tem coluna de maquininha (o da contadora tem).
+
 **Pronto para lançar = zero defeitos e zero atritos** (o Heitor, 11/11: "as regras de negocio já estão definidas, não tem pq ter defeito ou atrito"). A partir da 13ª simulação, cada achado precisa cair num destes casos:
 1. Contraria uma regra escrita (`docs/regras` ou os sete princípios do CLAUDE.md §1).
 2. A pessoa não conseguiu fazer a tarefa, ou fez errado sem perceber.
@@ -10896,6 +10948,12 @@ numa sessão com você presente")**, junto com as que o levantamento achou:
 `plano_cancelar_comissao_de_venda`; `loyalty_configs.commission_base`; o
 `gasto_medio` de `metrics_relatorio`. Fica o ramo "sem preço libera na
 conclusão": o pacote trazido de fora ainda precisa dele.
+**Da F67 (12/11), para a mesma sessão:** o modelo de antes das taxas, que as
+maquininhas substituíram (C75): `payment_fees`, `tenants.cartao_prazo_dias`,
+`cartao_max_vezes` e `cartao_por_bandeira`, e os gatilhos que os espelham na
+primeira maquininha; as sobrecargas velhas das funções de venda que ganharam
+`p_maquininha`; o embrulho de 10 argumentos de `credito_vender`. Só depois de
+o código no ar não ler mais nenhum deles (`grep` antes).
 
 **F11 feita em 2026-11-03 — vendas, caixa e estoque** (d8818610…ca398ddf;
 migrations `20261101001101–1108`). Receber o plano no check-in é uma

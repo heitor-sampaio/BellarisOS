@@ -44,7 +44,8 @@ describe('lançamentos de uma venda', () => {
   it('a entrada do navegador é conferida', () => {
     expect(EntradaDoPagamento.safeParse({ forma: 'AVISTA', metodo: 'BITCOIN' }).success).toBe(false)
     expect(EntradaDoPagamento.safeParse({ forma: 'PARCELADO', metodo: 'PIX', entrada: -1, parcelas: 2, primeiroVencimento: '2026-10-10' }).success).toBe(false)
-    expect(EntradaDoPagamento.safeParse({ forma: 'PARCELADO', metodo: 'PIX', entrada: 0, parcelas: 13, primeiroVencimento: '2026-10-10' }).success).toBe(false)
+    // C38 (F67): o limite do crediário é da rede (até 48); o schema só barra acima do teto, e a action, acima do da rede.
+    expect(EntradaDoPagamento.safeParse({ forma: 'PARCELADO', metodo: 'PIX', entrada: 0, parcelas: 49, primeiroVencimento: '2026-10-10' }).success).toBe(false)
     expect(EntradaDoPagamento.safeParse({ forma: 'A_RECEBER', metodo: null, vencimento: 'amanhã' }).success).toBe(false)
     expect(EntradaDoPagamento.safeParse({ forma: 'A_RECEBER', metodo: null, vencimento: '2026-10-10T15:00:00.000Z' }).success).toBe(true)
   })

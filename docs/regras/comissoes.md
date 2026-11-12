@@ -160,13 +160,16 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   liberação diz "base cheia: R$ 1.100,00 · 3%"; o acerto, "R$ 110,00
   (R$ 1.100,00, na proporção do que ficou (10%))". A conta não mudou. Prova:
   `e2e/comissoes-defeitos-da-11.spec.ts`.
-  **Taxas da maquininha** em `payment_fees`
-  (Pix, débito, crédito 1–12x; sem teto desde a F16-3 — acima de 100% em
-  `taxa_pct_sem_teto`, e a comissão sobre o líquido nunca fica negativa),
-  gravadas por `comissao_taxas_definir` — a
-  REGRA GERAL; cada bandeira pode ter as suas (r3-f13-01,
-  `tenants.cartao_por_bandeira`, `vendas-financeiro.md` §9.6), e a
-  comissão desconta a taxa da bandeira do pagamento.
+  **Taxas da maquininha** — desde a F67 (C75), POR MAQUININHA: a tabela
+  `maquininhas` (débito e crédito 1–12x em `taxas`, sem teto desde a F16-3,
+  e a comissão sobre o líquido nunca fica negativa; cada bandeira pode ter
+  as suas em `por_bandeira`, quando ela `cobra_por_bandeira`), gravada por
+  `salvarMaquininha` (`actions/maquininhas.ts`), e o Pix à parte
+  (`salvarTaxaDoPix`). A comissão desconta a taxa da maquininha do
+  pagamento (`financial_transactions.maquininha_id`) e, dentro dela, a da
+  bandeira — `vendas-financeiro.md` §9.6. Antes era `payment_fees` +
+  `tenants.cartao_por_bandeira` (a "regra geral"), que um gatilho de espelho
+  ainda copia para a primeira maquininha até a limpeza depois do deploy.
 - **A comissão da VENDA DE PRODUTO** (D4, decisão do Heitor, 2026-10-29: "é
   configurável pela clínica"; migration `20261029001306`): Configurações →
   Comissões → "Venda de produto", `commission_configs.produto_pct` (vazio = sem
@@ -376,8 +379,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     pacote, a comissão do produto (no "Por produto") — **também quando é 0%**
     (D13 do levantamento das regras, o Heitor, 2026-11-11; princípio 2: o 0 é
     o valor que a clínica escolheu). A tela do Vender e o
-    `pacote_vender_com_equipe`, que hoje leem `valor > 0`, passam a seguir isso
-    (correção C40); **sem nenhuma das duas, a
+    `pacote_vender_com_equipe` seguem isso desde a F67 (C40; liam
+    `valor > 0`); **sem nenhuma das duas, a
     da clínica** — o "venda de plano (%)" e a "venda de produto" (a geral ou a
     regra sobre o total). O pacote e o pré-pago não têm regra da clínica.
   - **O pré-pago ganhou a linha de venda**: `origem = 'PRE_PAGO'` SEM
@@ -503,9 +506,13 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     das regras, o Heitor, 2026-11-11; `vendas-financeiro.md` §9.6), a taxa
     descontada da base é a da MAQUININHA do recebimento daquelas vezes (e a da
     bandeira dentro dela, quando ela cobra diferente), pela mesma
-    `private.comissao_taxa_pct`; sem taxa naquelas vezes, 0%. Correção C75. As vezes do recebimento: `cartao_vezes` (crédito
-    em N vezes, pago na hora — 2026-10-20), senão `parcela_total`, senão 1.
-    O avulso usava sempre 1x.
+    `private.comissao_taxa_pct`; sem taxa naquelas vezes, 0%. Feito na F67
+    (C75): a maquininha vem do lançamento (`maquininha_id`, que o gatilho
+    `private.maquininha_do_lancamento` preenche com a primeira ativa quando a
+    tela não pergunta). As vezes do recebimento: `cartao_vezes` (crédito em N
+    vezes, pago na hora — 2026-10-20), senão `parcela_total`, senão 1 — em
+    TODO ramo: até a F67 (C41) o AVULSO de `comissao_conta_detalhe` lia só
+    `cartao_vezes`, e o lançamento parcelado pagava a taxa do 1x.
 - **Quem acerta**: a conclusão, e o gatilho `trg_comissoes_do_pagamento` em
   `financial_transactions` (pagamento, recebimento do plano, estorno — marcar
   `notes = 'Estornada'` é o estorno). `confirmar_pagamento_do_atendimento` não

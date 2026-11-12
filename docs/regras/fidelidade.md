@@ -22,8 +22,11 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   já foi pago: entrada + restante somam exatamente os pontos do plano.
   **O pacote e o pré-pago no crediário também** (D14 do levantamento das
   regras, o Heitor, 2026-11-11; a regra do caminho irmão): cada parcela paga dá
-  o alvo menos o que já foi dado, como o plano (correção C43 em
-  `fidelidade_pontos_do_pagamento`).
+  o alvo menos o que já foi dado, como o plano (C43, feito na F67 em
+  `fidelidade_pontos_do_pagamento`, migrations `20261112006706`/`6707`:
+  cada parcela arredondava sozinha, 3 × R$ 33,33 davam 99 pontos de R$ 100;
+  o "já deu" conta o `ESTORNO_GANHO` do contra-lançamento, pelo
+  `estorno_de`). Prova: `e2e/fidelidade-f67.spec.ts`.
   A regra mora numa função só: `fidelidade_pontos_do_pagamento` — e multiplica
   antes de dividir (120 × (100 ÷ 300) perdia um ponto).
 - **Os números com fração da configuração** (pontos por R$ 1, valor de 1

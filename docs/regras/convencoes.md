@@ -204,8 +204,11 @@ edições do sistema". O mecanismo é UM:
   mudou". Prova: `e2e/plano-recebimento-concorrente.spec.ts`.
 - **Onde não precisou**: o que o ESTADO já barra — receber o atendimento
   (`confirmPayment`: o "já pago" é conferido dentro da transação), o ajuste de
-  estoque (grava o saldo absoluto, repetir dá o mesmo saldo), o checkout e o
-  cancelamento do plano e do pacote (a situação muda na primeira), o estorno.
+  estoque (grava o saldo absoluto, repetir dá o mesmo saldo), o cancelamento
+  do plano e do pacote (a situação muda na primeira), o estorno. O checkout do
+  plano TRAVA (C32, F67): `plano_checkout` pega o plano `for update` e confere
+  que ainda é PROPOSED — a segunda chegada ouve "Este plano já foi fechado".
+  Prova: `e2e/plano-checkout-uma-transacao.spec.ts`.
 - **Fica para depois** (não acumulam dinheiro nem estoque; o duplo clique
   cria um segundo registro visível, que se arquiva): o agendamento (`addAppointment`: o choque
   de horário já recusa o segundo do mesmo profissional), oportunidade e lead,
