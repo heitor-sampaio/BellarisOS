@@ -13,8 +13,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { format, isToday, isYesterday, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso, diaRelativo } from '@/lib/formatar-no-fuso'
 import { createClient } from '@/lib/supabase/client'
 import {
   getMessages, sendMessage, sendMediaMessage, markConversationRead,
@@ -131,19 +130,20 @@ function ChannelIcon({ ch }: { ch: InboxChannel }) {
   return <MessageSquare size={13} color="var(--text-faint)" />
 }
 
-function dayLabel(iso: string) {
-  const d = parseISO(iso)
-  if (isToday(d))     return 'Hoje'
-  if (isYesterday(d)) return 'Ontem'
-  return format(d, "d 'de' MMMM", { locale: ptBR })
+// O "Hoje" e a hora são os da UNIDADE (F64), não os do aparelho de quem abre.
+function dayLabel(iso: string, fuso: string) {
+  const rel = diaRelativo(iso, fuso)
+  if (rel === 'hoje')  return 'Hoje'
+  if (rel === 'ontem') return 'Ontem'
+  return formatarNoFuso(iso, "d 'de' MMMM", fuso)
 }
 
-function relTime(iso: string | null) {
+function relTime(iso: string | null, fuso: string) {
   if (!iso) return ''
-  const d = parseISO(iso)
-  if (isToday(d))     return format(d, 'HH:mm')
-  if (isYesterday(d)) return 'Ontem'
-  return format(d, 'dd/MM', { locale: ptBR })
+  const rel = diaRelativo(iso, fuso)
+  if (rel === 'hoje')  return formatarNoFuso(iso, 'HH:mm', fuso)
+  if (rel === 'ontem') return 'Ontem'
+  return formatarNoFuso(iso, 'dd/MM', fuso)
 }
 
 /**
@@ -188,6 +188,7 @@ function ConvItem({ conv, caixa, selected, onClick, nowMs }: {
   // `nowMs` só existe depois de montar: 'há 4min' no servidor e 'há 5min' no
   // cliente é o bastante para o React descartar a árvore inteira na hidratação.
   const awaitingSecs = nowMs == null ? null : secondsSince(conv.awaiting_since, nowMs)
+  const fuso = useFuso()
   return (
     <button
       type="button"
@@ -237,7 +238,7 @@ function ConvItem({ conv, caixa, selected, onClick, nowMs }: {
               <Megaphone size={11} color="var(--brand)" style={{ flexShrink: 0 }} aria-label="Veio de anúncio" />
             )}
             <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', flexShrink: 0 }}>
-              {relTime(conv.last_message_at)}
+              {relTime(conv.last_message_at, fuso)}
             </span>
           </div>
 
@@ -453,6 +454,7 @@ function Bubble({
   /** Null antes de montar: relógio no servidor difere do cliente e hidrata errado. */
   agora:       number | null
 }) {
+  const fuso   = useFuso()
   const out    = msg.direction === 'outbound'
   // Mensagem que o provedor recusou. Sem marcar, ela fica idêntica a uma
   // entregue e a pessoa segue a conversa achando que o cliente recebeu.
@@ -472,7 +474,7 @@ function Bubble({
 
   // Editar só faz sentido no que saiu daqui, é texto, chegou ao provedor e
   // ainda está dentro dos 15 minutos. `agora` é null até montar no cliente.
-  const idade = agora === null ? Infinity : agora - parseISO(msg.created_at).getTime()
+  const idade = agora === null ? Infinity : agora - new Date(msg.created_at).getTime()
   const podeEditar = podeAgir && canalEdita && out && !falhou
     && msg.status !== 'sending' && !msg.media_type && idade <= JANELA_DE_EDICAO_MS
   return (
@@ -613,7 +615,7 @@ function Bubble({
             </span>
           )}
           <span style={{ fontSize: 'var(--text-overline)', color: falhou ? 'color-mix(in srgb, var(--danger) 60%, transparent)' : out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
-            {msg.status === 'sending' ? '…' : format(parseISO(msg.created_at), 'HH:mm')}
+            {msg.status === 'sending' ? '…' : formatarNoFuso(msg.created_at, 'HH:mm', fuso)}
           </span>
           {out && !falhou && msg.status !== 'sending' && (
             <CheckCheck size={11} color={msg.status === 'read' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)'} />
@@ -2030,7 +2032,7 @@ export function CRMInbox({
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px' }}>
                         <div style={{ flex: 1, height: 1, background: 'var(--hairline)' }} />
                         <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', fontWeight: 700 }}>
-                          {dayLabel(g.msgs[0]!.created_at)}
+                          {dayLabel(g.msgs[0]!.created_at, fuso)}
                         </span>
                         <div style={{ flex: 1, height: 1, background: 'var(--hairline)' }} />
                       </div>

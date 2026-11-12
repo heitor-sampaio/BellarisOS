@@ -3,8 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { previaDoCancelamentoDaUnidade, cancelarUnidadePrePaga } from '@/actions/pre-pago'
@@ -110,7 +109,7 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {previa.parcelas.map(p => (
                       <li key={p.id} style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                        {p.descricao}{p.vencimento ? ` (vence ${format(new Date(p.vencimento), 'dd/MM', { locale: ptBR })})` : ''}:{' '}
+                        {p.descricao}{p.vencimento ? ` (vence ${formatarNoFuso(p.vencimento, 'dd/MM')})` /* a âncora do vencimento se lê em Brasília */ : ''}:{' '}
                         {p.fica > 0 ? `de ${formatBRL(p.valor)} passa a ${formatBRL(p.fica)}` : `${formatBRL(p.valor)} cancelada`}
                       </li>
                     ))}

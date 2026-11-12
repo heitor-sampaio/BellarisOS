@@ -14,8 +14,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { ehAnexoClinico, atendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-queries'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { pedidoLgpdDaFicha } from '@/lib/lgpd/aviso-do-pedido'
 import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores } from '@/lib/clients/historico-do-agendamento'
@@ -318,6 +318,11 @@ export default async function ClientProfilePage({
   const notasDasAvaliacoes = await notasDosProcedimentos(admin,
     ((appts ?? []) as { id: string; client_confirmed_at?: string | null }[]).filter(a => a.client_confirmed_at).map(a => a.id))
   // 3. Agendamentos
+  // F64: a hora do agendamento no relógio da unidade DELE (a ficha é da clínica, H5).
+  const fusoDoAgendamento = new Map<string, string>()
+  for (const b of new Set((appts ?? []).map(a => (a as { branch_id?: string | null }).branch_id ?? null))) {
+    fusoDoAgendamento.set(b ?? '', await fusoDaUnidade(ctx.tenantId, b))
+  }
   for (const a of (appts ?? [])) {
     const proc = (a.procedures as { name?: string } | null)?.name ?? '—'
     const prof = (a.professional as { name?: string } | null)?.name ?? '—'
@@ -361,7 +366,7 @@ export default async function ClientProfilePage({
         id: uid('as'), date: evDate,
         type: 'APPOINTMENT_SCHEDULED',
         title: `Agendamento: ${label}`,
-        subtitle: `${format(new Date(a.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} · ${prof}`,
+        subtitle: `${formatarNoFuso(a.scheduled_at, "dd/MM/yyyy 'às' HH:mm", fusoDoAgendamento.get((a as { branch_id?: string | null }).branch_id ?? ''))} · ${prof}`,
         amount: null,
         link: `/${slug}/agenda/${a.id}`,
       })

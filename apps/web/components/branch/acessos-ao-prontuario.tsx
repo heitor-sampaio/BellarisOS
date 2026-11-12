@@ -1,5 +1,6 @@
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+'use client'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
+import { useFuso } from '@/components/shared/fuso'
 import { ShieldCheck } from 'lucide-react'
 import { iniciaisDoNome } from '@estetica-os/utils'
 
@@ -11,6 +12,7 @@ import { iniciaisDoNome } from '@estetica-os/utils'
 export interface AcessoNaFicha { id: string; quem: string; onde: string; em: string }
 
 export function AcessosAoProntuario({ itens, total }: { itens: AcessoNaFicha[]; total: number }) {
+  const fuso = useFuso()
   return (
     <section className="card" aria-label="Acessos ao prontuário" style={{ padding: '18px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -50,7 +52,7 @@ export function AcessosAoProntuario({ itens, total }: { itens: AcessoNaFicha[]; 
                 <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>{a.onde}</p>
               </div>
               <time dateTime={a.em} style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                {format(new Date(a.em), "dd/MM/yyyy · HH:mm", { locale: ptBR })}
+                {formatarNoFuso(a.em, "dd/MM/yyyy · HH:mm", fuso)}
               </time>
             </li>
           ))}

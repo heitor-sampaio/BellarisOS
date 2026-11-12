@@ -32,8 +32,7 @@ import { rotaComParams } from '@/lib/query-params'
 import { isUnitTag, unitTag, unitTagName, iniciaisDoNome, maskPhone, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
-import { format, isSameDay, subDays } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso, diaRelativo } from '@/lib/formatar-no-fuso'
 import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
 import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
@@ -625,17 +624,16 @@ const HISTORY_CONFIG: Record<ClientHistoryEvent['type'], HistoryCfg> = {
   CLIENT_UNIFIED:        { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: UserPlus },
 }
 
-function fmtHistoryDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  const today = new Date()
-  if (isSameDay(date, today))
-    return `Hoje, ${format(date, 'HH:mm')}`
-  if (isSameDay(date, subDays(today, 1)))
-    return `Ontem, ${format(date, 'HH:mm')}`
-  return format(date, "dd 'de' MMM 'de' yyyy", { locale: ptBR })
+// "Hoje"/"Ontem" e a hora no relógio da unidade (F64, D3), não no do aparelho.
+function fmtHistoryDate(dateStr: string, fuso: string): string {
+  const rel = diaRelativo(dateStr, fuso)
+  if (rel === 'hoje')  return `Hoje, ${formatarNoFuso(dateStr, 'HH:mm', fuso)}`
+  if (rel === 'ontem') return `Ontem, ${formatarNoFuso(dateStr, 'HH:mm', fuso)}`
+  return formatarNoFuso(dateStr, "dd 'de' MMM 'de' yyyy", fuso)
 }
 
 function HistoryEventRow({ ev, isLast }: { ev: ClientHistoryEvent; isLast: boolean }) {
+  const fuso = useFuso()
   const cfg = HISTORY_CONFIG[ev.type]
 
   const content = (
@@ -661,7 +659,7 @@ function HistoryEventRow({ ev, isLast }: { ev: ClientHistoryEvent; isLast: boole
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{fmtHistoryDate(ev.date)}</span>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{fmtHistoryDate(ev.date, fuso)}</span>
           {ev.autor && (
             <>
               <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--hairline)' }}>·</span>
@@ -1303,6 +1301,7 @@ function FinanceiroTab({
   /** A35 da 12ª: "Receber" na parcela em aberto. */
   podeReceberParcela?: boolean
 }) {
+  const fuso = useFuso()
   const [showGrantForm, setShowGrantForm] = useState(false)
 
   const totalPago      = totais.pago
@@ -1387,8 +1386,8 @@ function FinanceiroTab({
                       {!t.isPaid && t.dueDate
                         ? `Vence ${new Date(t.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
                         : t.scheduledAt
-                          ? format(new Date(t.scheduledAt), 'dd/MM/yyyy', { locale: ptBR })
-                          : format(new Date(t.createdAt), 'dd/MM/yyyy', { locale: ptBR })
+                          ? formatarNoFuso(t.scheduledAt, 'dd/MM/yyyy', fuso)
+                          : formatarNoFuso(t.createdAt, 'dd/MM/yyyy', fuso)
                       }
                     </td>
                     <td data-label="" style={{ padding: '12px 16px', maxWidth: 240 }}>
@@ -1511,7 +1510,7 @@ function FinanceiroTab({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)' }}>{c.description}</p>
                 <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-                  {format(new Date(c.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                  {formatarNoFuso(c.createdAt, "dd/MM/yyyy", fuso)}
                 </p>
               </div>
               {/* Desde 2026-09-27 o USO do crédito entra negativo (o gatilho
@@ -2073,7 +2072,7 @@ export function ClientProfile({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{a.procedureName}</p>
                       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
-                        {format(new Date(a.scheduledAt), "EEE, dd MMM · HH:mm", { locale: ptBR })}
+                        {formatarNoFuso(a.scheduledAt, "EEE, dd MMM · HH:mm", fuso)}
                         {a.professionalName !== '—' && ` · ${a.professionalName}`}
                       </p>
                     </div>
@@ -2125,7 +2124,7 @@ export function ClientProfile({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{a.procedureName}</p>
                       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-                        {format(new Date(a.scheduledAt), "dd MMM yyyy", { locale: ptBR })}
+                        {formatarNoFuso(a.scheduledAt, "dd MMM yyyy", fuso)}
                         {a.professionalName !== '—' && ` · ${a.professionalName}`}
                       </p>
                     </div>
@@ -2246,7 +2245,7 @@ export function ClientProfile({
                         {o.stage_name ?? 'Sem etapa'}
                         {o.owner_name ? ` · ${o.owner_name}` : ''}
                         {' · desde '}
-                        {format(new Date(o.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        {formatarNoFuso(o.created_at, "dd/MM/yyyy", fuso)}
                       </div>
                     </div>
                     {o.value !== null && (
@@ -2294,7 +2293,7 @@ export function ClientProfile({
               <AttendanceRecordCard
                 key={entry.appointmentId}
                 client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
-                subtitle={`${entry.procedureName ?? 'Atendimento'} · ${entry.diaDoAtendimento || format(new Date(entry.createdAt), "dd/MM/yyyy", { locale: ptBR })}`}
+                subtitle={`${entry.procedureName ?? 'Atendimento'} · ${entry.diaDoAtendimento || formatarNoFuso(entry.createdAt, "dd/MM/yyyy", fuso)}`}
                 generalAnamnesis={
                   <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis?.ficha ?? { formId: null, nome: 'Pré-atendimento', rows: [] }} clientId={client.id} canEdit={false} />
                 }

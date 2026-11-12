@@ -16,8 +16,8 @@ import { getDoCliente } from '@/lib/metrics/unidade'
 import { financeiroDaFicha } from '@/lib/clientes/financeiro-da-ficha'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { ehAnexoClinico, atendimentoDoAnexo } from '@/lib/clientes/anexos'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { pedidoLgpdDaFicha } from '@/lib/lgpd/aviso-do-pedido'
 import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores } from '@/lib/clients/historico-do-agendamento'
@@ -123,7 +123,7 @@ export default async function AdminClientProfilePage({
   ] = await Promise.all([
     ler(admin
       .from('appointments')
-      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, confirmed_at, arrived_at, professional_id, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professional:users!professional_id(name)')
+      .select('id, branch_id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, confirmed_at, arrived_at, professional_id, client_confirmed_at, procedure_rating, client_rating, client_feedback, procedures(name), professional:users!professional_id(name)')
       .eq('client_id', id)
       .order('scheduled_at', { ascending: false })
       .limit(60), 'carregar os agendamentos do cliente'),
@@ -368,6 +368,11 @@ export default async function AdminClientProfilePage({
   // F17-3: as notas que a cliente deu a cada procedimento, dos atendimentos que ela confirmou.
   const notasDasAvaliacoes = await notasDosProcedimentos(admin,
     ((appts ?? []) as { id: string; client_confirmed_at?: string | null }[]).filter(a => a.client_confirmed_at).map(a => a.id))
+  // F64: a hora do agendamento no relógio da unidade DELE (a ficha é da clínica, H5).
+  const fusoDoAgendamento = new Map<string, string>()
+  for (const b of new Set((appts ?? []).map(a => (a as { branch_id?: string | null }).branch_id ?? null))) {
+    fusoDoAgendamento.set(b ?? '', await fusoDaUnidade(ctx.tenantId, b))
+  }
   for (const a of (appts ?? [])) {
     const proc   = (a.procedures as { name?: string } | null)?.name ?? '—'
     const prof   = (a.professional as { name?: string } | null)?.name ?? '—'
@@ -387,7 +392,7 @@ export default async function AdminClientProfilePage({
     } else if (a.status === 'NO_SHOW') {
       history.push({ id: uid('an'), date: a.scheduled_at, type: 'APPOINTMENT_NO_SHOW', title: `Não compareceu: ${label}`, subtitle: null, amount: null, link: `/admin/agenda/${a.id}` })
     } else {
-      history.push({ id: uid('as'), date: a.created_at ?? a.scheduled_at, type: 'APPOINTMENT_SCHEDULED', title: `Agendamento: ${label}`, subtitle: `${format(new Date(a.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} · ${prof}`, amount: null, link: `/admin/agenda/${a.id}` })
+      history.push({ id: uid('as'), date: a.created_at ?? a.scheduled_at, type: 'APPOINTMENT_SCHEDULED', title: `Agendamento: ${label}`, subtitle: `${formatarNoFuso(a.scheduled_at, "dd/MM/yyyy 'às' HH:mm", fusoDoAgendamento.get((a as { branch_id?: string | null }).branch_id ?? ''))} · ${prof}`, amount: null, link: `/admin/agenda/${a.id}` })
     }
   }
 

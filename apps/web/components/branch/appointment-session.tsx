@@ -10,8 +10,7 @@ import {
   AlertCircle, Info, StickyNote, Syringe,
 } from 'lucide-react'
 import Link from 'next/link'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { formatDate, idadeEm, iniciaisDoNome } from '@estetica-os/utils'
 import {
   checkinAppointment,
@@ -1644,7 +1643,7 @@ export function AppointmentSession({
       <div>
         <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Agendado para</p>
         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
-          {format(new Date(appointment.scheduledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+          {formatarNoFuso(appointment.scheduledAt, "dd/MM 'às' HH:mm", fuso)}
         </p>
       </div>
 
@@ -1670,14 +1669,14 @@ export function AppointmentSession({
       {appointment.startedAt && (
         <div>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Início real</p>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{format(new Date(appointment.startedAt), 'HH:mm', { locale: ptBR })}</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{formatarNoFuso(appointment.startedAt, 'HH:mm', fuso)}</p>
 
         </div>
       )}
       {appointment.completedAt && (
         <div>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Término</p>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{format(new Date(appointment.completedAt), 'HH:mm', { locale: ptBR })}</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{formatarNoFuso(appointment.completedAt, 'HH:mm', fuso)}</p>
         </div>
       )}
       {(() => {
@@ -2309,7 +2308,7 @@ export function AppointmentSession({
             {status === 'COMPLETED' && appointment.completedAt && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 600 }}>
-                  ✓ Atendimento concluído em {format(new Date(appointment.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  ✓ Atendimento concluído em {formatarNoFuso(appointment.completedAt, "dd/MM/yyyy 'às' HH:mm", fuso)}
                 </p>
                 {paymentTransaction ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -2368,7 +2367,7 @@ export function AppointmentSession({
                 {appointment.clientConfirmedAt ? (
                   <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--success-border)' }}>
                     <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
-                      ✓ Confirmado pelo cliente em {format(new Date(appointment.clientConfirmedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      ✓ Confirmado pelo cliente em {formatarNoFuso(appointment.clientConfirmedAt, "dd/MM/yyyy 'às' HH:mm", fuso)}
                     </p>
                     {appointment.notasDaCliente.length > 0 && (
                       <p data-avaliacao-da-cliente style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2 }}>

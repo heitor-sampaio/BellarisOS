@@ -8,6 +8,7 @@ import type {
   GrupoDeCondicao, RegraDeCondicao, OperadorDeCondicao,
 } from '@estetica-os/types'
 import { ROTULOS } from '@/lib/automacoes/validar'
+import { RelogioDaRede } from '@/components/shared/fuso'
 import {
   variaveisDisponiveis, eventoDoGatilhoDe, rotulosUnicos, CAMPOS_DE_PROCEDIMENTO,
   type GrupoDeVariaveis, type CampoVisto,
@@ -478,6 +479,8 @@ export function PainelDoNo({
                   onChange={e => set({ hora: e.target.value })}
                 />
                 <Dica>
+                  {/* A7 da 13ª: em que relógio (o da rede, o do cron — F62). */}
+                  <RelogioDaRede embutido />{' '}
                   O relógio roda de cinco em cinco minutos, então o disparo
                   acontece na primeira passagem depois do horário.
                 </Dica>

@@ -4,8 +4,8 @@ import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
+import { useFuso } from '@/components/shared/fuso'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { previaDoCancelamentoDoPacote, cancelarPacote } from '@/actions/pacotes'
@@ -53,6 +53,7 @@ export function CancelarPlano({ planId, onFechar, onCancelado }: {
 }
 
 function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' | 'PLANO'; id: string; onFechar: () => void; onCancelado?: () => void }) {
+  const fuso = useFuso()
   const doPlano = tipo === 'PLANO'
   const nome = doPlano ? 'plano' : 'pacote'
   const Nome = doPlano ? 'Plano' : 'Pacote'
@@ -153,7 +154,7 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {previa.parcelas.map(p => (
                       <li key={p.id} style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                        {p.descricao}{p.vencimento ? ` (vence ${format(new Date(p.vencimento), 'dd/MM', { locale: ptBR })})` : ''}:{' '}
+                        {p.descricao}{p.vencimento ? ` (vence ${formatarNoFuso(p.vencimento, 'dd/MM')})` /* a âncora do vencimento se lê em Brasília */ : ''}:{' '}
                         {p.fica > 0 ? `de ${formatBRL(p.valor)} passa a ${formatBRL(p.fica)}` : `${formatBRL(p.valor)} cancelada`}
                       </li>
                     ))}
@@ -194,7 +195,7 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {previa.agendamentos.map(a => (
                     <li key={a.id} style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                      {format(new Date(a.quando), "EEE, dd/MM 'às' HH:mm", { locale: ptBR })} · {a.procedimento ?? 'Sessão'}
+                      {formatarNoFuso(a.quando, "EEE, dd/MM 'às' HH:mm", fuso)} · {a.procedimento ?? 'Sessão'}
                       {a.profissional ? ` · ${a.profissional}` : ''}
                     </li>
                   ))}

@@ -36,3 +36,19 @@ export function NotaDoFuso({ fuso: dado, prefixo = '' }: { fuso?: string; prefix
     </span>
   )
 }
+
+/**
+ * "No horário de Brasília." junto da hora que vale para a REDE (F64, A7/D4 da
+ * 13ª: o "Pelo relógio" das automações e a hora da campanha agendada). Diz
+ * SEMPRE — no consolidado, com unidades em fusos diferentes, o relógio é o de
+ * Brasília, e é isso que a dona precisa ler; a `NotaDoFuso` cala em Brasília.
+ */
+export function RelogioDaRede({ fuso: dado, embutido = false }: { fuso?: string; embutido?: boolean }) {
+  const doContexto = useFuso()
+  // Embutido numa dica, herda o tamanho e a cor dela.
+  return (
+    <span data-relogio-da-rede style={embutido ? { fontWeight: 'var(--weight-semibold)' } : { fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 'var(--weight-semibold)' }}>
+      No {nomeDoFuso(dado ?? doContexto)}.
+    </span>
+  )
+}

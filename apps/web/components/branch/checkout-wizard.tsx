@@ -1,6 +1,6 @@
 ﻿'use client'
 import { useFuso } from '@/components/shared/fuso'
-import { instanteNoFuso } from '@/lib/datetime'
+import { instanteNoFuso, dayKeyTZ, addDaysTZ, BUSINESS_TZ } from '@/lib/datetime'
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -20,7 +20,6 @@ import type { Horario } from '@/lib/agenda/horario'
 import { rotaCliente, rotaAtendimento } from '@/lib/rotas'
 import { textoDaExigenciaDoModelo } from '@/lib/checkout/exigencia-do-modelo'
 import Link from 'next/link'
-import { format } from 'date-fns'
 import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -182,8 +181,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // O atendimento que gerou o plano entra junto quando algo é recebido agora.
   const recebeHoje   = !!plan.atendimentoDeHoje && (formaPgto === 'AVISTA' || formaPgto === 'PARCELADO')
   const precoDeHoje  = plan.atendimentoDeHoje?.preco ?? 0
+  // Daqui a 30 dias no relógio da unidade (F64), não no do aparelho.
   const [primeiroVenc,  setPrimeiroVenc]  = useState(() =>
-    format(new Date(Date.now() + 30 * 864e5), 'yyyy-MM-dd'),
+    dayKeyTZ(addDaysTZ(new Date(), 30, fuso), fuso),
   )
 
   // Desconto do fechamento (2026-09-30): R$ ou %, sobre a soma dos
@@ -345,7 +345,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       // A36 da 9ª: sem o passo guardado (outra aba, outro dia), o pagamento é o
       // que a cliente ASSINOU — não o "Receber no atendimento" de nascença.
       const p = plan.contratoAssinado.pagamento
-      const dia = (iso: string) => format(new Date(iso), 'yyyy-MM-dd')
+      // O dia do vencimento: o "AAAA-MM-DD" do campo passa como veio; a âncora
+      // do meio-dia (vencimentoDoDia) se lê em Brasília (F64).
+      const dia = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : dayKeyTZ(iso, BUSINESS_TZ)
       if (!p) setFormaPgto('NADA_AGORA')
       else {
         setFormaPgto(p.forma)
@@ -1017,7 +1019,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   }
 
   // PASSO 3: Agendamento
-  const minDate = format(new Date(), 'yyyy-MM-dd')
+  const minDate = dayKeyTZ(new Date(), fuso)
   const scheduledCount = plan.sessions.filter(s => sessionDates[s.id]?.date && sessionDates[s.id]?.time).length
 
   return (

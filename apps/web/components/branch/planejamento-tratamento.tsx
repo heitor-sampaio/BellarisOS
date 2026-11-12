@@ -532,7 +532,6 @@ export function PlanejamentoTratamento({
 
 // -- O dinheiro e as sessões do plano fechado (J-42) ---------------------------
 
-const DIA = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' })
 const diaNoFuso = (d: Date, fuso: string) => new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
 
 function rotuloDoLancamento(l: LancamentoDoPlano): string {
@@ -543,15 +542,16 @@ function rotuloDoLancamento(l: LancamentoDoPlano): string {
 
 function situacaoDoLancamento(l: LancamentoDoPlano, fuso = 'America/Sao_Paulo'): { texto: string; cor: string } {
   if (l.pago) {
-    // O pagamento é um instante: o dia da unidade (F62b). O vencimento é âncora de meio-dia (data sem hora).
+    // O pagamento é um instante: o dia da unidade (F62b). O vencimento é âncora de
+    // meio-dia −03 (data sem hora): cai no mesmo dia em todo fuso do Brasil (F64).
     const quando = l.pagoEm ? ` em ${diaNoFuso(new Date(l.pagoEm), fuso)}` : ''
     return { texto: `Pago${quando} · ${rotuloDaForma(l.forma, l.cartaoVezes)}`, cor: 'var(--success)' }
   }
   if (!l.vencimento) return { texto: 'A receber', cor: 'var(--warning)' }
   const venceu = new Date(l.vencimento).getTime() <= endOfDayTZ(new Date(), fuso).getTime()
   return venceu
-    ? { texto: `Vencida em ${DIA.format(new Date(l.vencimento))} · cobrada no check-in`, cor: 'var(--danger)' }
-    : { texto: `A vencer em ${DIA.format(new Date(l.vencimento))}`, cor: 'var(--text-muted)' }
+    ? { texto: `Vencida em ${diaNoFuso(new Date(l.vencimento), fuso)} · cobrada no check-in`, cor: 'var(--danger)' }
+    : { texto: `A vencer em ${diaNoFuso(new Date(l.vencimento), fuso)}`, cor: 'var(--text-muted)' }
 }
 
 function ResumoDoPlano({ planId, onCancelado }: { planId: string; onCancelado?: () => void }) {

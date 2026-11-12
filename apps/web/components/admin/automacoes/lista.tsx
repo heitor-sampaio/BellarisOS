@@ -8,6 +8,8 @@ import { Workflow, Plus, Zap, AlertCircle, ChevronRight, LayoutTemplate, X } fro
 import { criarAutomacao, criarAutomacaoDeModelo, type AutomacaoNaLista } from '@/actions/automacoes'
 import { MODELOS_DE_AUTOMACAO } from '@/lib/automacoes/modelos'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { RelogioDaRede } from '@/components/shared/fuso'
+import { NODES } from '@estetica-os/types'
 
 /**
  * A lista de automações.
@@ -126,7 +128,11 @@ export function ListaDeAutomacoes({
             {MODELOS_DE_AUTOMACAO.map(m => (
               <div key={m.chave} data-modelo={m.chave} className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', margin: 0 }}>{m.nome}</p>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{m.descricao}</p>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+                  {m.descricao}
+                  {/* A7 da 13ª: o "às 9h" do modelo pelo relógio é o da rede. */}
+                  {m.grafo().nos.some(n => n.tipo === NODES.GATILHO_AGENDA) && <>{' '}<RelogioDaRede embutido /></>}
+                </p>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)', margin: 0, lineHeight: 1.5 }}>
                   Para revisar: {m.revisar}
                 </p>

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -9,7 +9,7 @@ import { useNovoAgendamentoDaUrl, type PedidoDeAgendamento } from '@/components/
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor, type MenorDoAgendamento } from '@/components/shared/selo-do-menor'
-import { estenderJanela } from '@/lib/agenda/grade'
+import { estenderJanela, rolagemDaGrade } from '@/lib/agenda/grade'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, foraDoHorarioDaUnidade, type Horario } from '@/lib/agenda/horario'
 import { bloqueioNoDia, trechoNoDia, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, BotaoBloquearHorario, EtiquetaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
@@ -210,8 +210,26 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
 
   const TIME_COL = 52  // px
 
+  // D13 da 13ª: a grade da rede abria sempre no topo — numa unidade 24 h, à
+  // meia-noite. A mesma regra da grade da unidade (D8, `rolagemDaGrade`):
+  // hoje, uma hora antes de agora; outro dia, a abertura ou o primeiro
+  // atendimento, o que vier antes. Os horários são "de parede" (F62).
+  const rolagemRef = useRef<HTMLDivElement>(null)
+  const ehHoje = agoraReal != null && dia === dayKeyTZ(new Date(agoraReal), fusoDaTela)
+  const primeiroEmMin = appointments.length
+    ? Math.min(...appointments.map(a => { const d = new Date(a.scheduled_at); return d.getHours() * 60 + d.getMinutes() })) // parede
+    : null
+  useEffect(() => {
+    if (!rolagemRef.current) return
+    rolagemRef.current.scrollTop = rolagemDaGrade({
+      ehHoje, horaAgora: naParede(new Date(), fusoDaTela).getHours(), startHour: inicio, hourPx: HOUR_H,
+      aberturaEmMin: janela.inicio * 60, primeiroEmMin,
+    })
+    rolagemRef.current.dataset.rolagem = 'pronta'
+  }, [dia, ehHoje, inicio, janela.inicio, primeiroEmMin, fusoDaTela])
+
   return (
-    <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>
+    <div ref={rolagemRef} data-grade-da-rede style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>
       {/* A largura da coluna de filial vem do CSS (`--agenda-col`): no celular
           ela encolhe para 138px, senão com 180px cabia UMA coluna e meia na
           tela e a grade parecia cortada em vez de rolável. */}

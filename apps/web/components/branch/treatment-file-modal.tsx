@@ -5,8 +5,7 @@ import { idadeEm, maskPhone } from '@estetica-os/utils'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaAtendimento } from '@/lib/rotas'
 import { X, User, Stethoscope, Calendar, CheckCircle2, Play, ChevronRight, Loader2, Settings } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { getTreatmentPlanDetails } from '@/actions/treatment-plans'
 import { TreatmentSessionsModal } from './treatment-sessions-modal'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
@@ -21,12 +20,13 @@ import { useFuso } from '@/components/shared/fuso'
 
 // -- Helpers -------------------------------------------------------------------
 
-function fmtDate(d: string) {
-  return format(new Date(d), "dd/MM/yyyy", { locale: ptBR })
+// No relógio da unidade (F64), não no do aparelho.
+function fmtDate(d: string | null, fuso: string) {
+  return formatarNoFuso(d, "dd/MM/yyyy", fuso)
 }
 
-function fmtDateTime(d: string) {
-  return format(new Date(d), "EEE, dd MMM · HH:mm", { locale: ptBR })
+function fmtDateTime(d: string, fuso: string) {
+  return formatarNoFuso(d, "EEE, dd MMM · HH:mm", fuso)
 }
 
 // O nome de cada situação do plano é UM (J-37): lib/plano-de-tratamento/situacao.
@@ -66,6 +66,7 @@ function SessionItem({
   isLast:         boolean
   slug:           string
 }) {
+  const fuso = useFuso()
   const router     = useRouter()
   const pathname   = usePathname()
   const appt       = session.appointment
@@ -112,7 +113,7 @@ function SessionItem({
             {appt ? (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Calendar size={10} style={{ flexShrink: 0 }} />
-                {fmtDateTime(appt.scheduledAt)}
+                {fmtDateTime(appt.scheduledAt, fuso)}
               </p>
             ) : (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 3 }}>Aguardando agendamento</p>
@@ -159,12 +160,13 @@ function SessionItem({
 // -- Linha do tempo ------------------------------------------------------------
 
 function Timeline({ details }: { details: TreatmentFileDetails }) {
+  const fuso = useFuso()
   type TLEvent = { date: string; label: string; sub: string | null; color: string; icon: React.ReactNode }
   const events: TLEvent[] = []
 
   if (details.evaluationDate) {
     events.push({
-      date:  fmtDate(details.evaluationDate),
+      date:  fmtDate(details.evaluationDate, fuso),
       label: 'Avaliação inicial',
       sub:   details.professionalName ? `com ${details.professionalName}` : null,
       color: 'var(--brand)',
@@ -177,7 +179,7 @@ function Timeline({ details }: { details: TreatmentFileDetails }) {
     if (!s.appointment) return
     const procName = s.procedures[0]?.name ?? '—'
     events.push({
-      date:  fmtDate(s.appointment.scheduledAt),
+      date:  fmtDate(s.appointment.scheduledAt, fuso),
       label: `Sessão ${s.sortOrder + 1} realizada`,
       sub:   procName,
       color: 'var(--success)',
@@ -190,7 +192,7 @@ function Timeline({ details }: { details: TreatmentFileDetails }) {
     if (!s.appointment) return
     const procName = s.procedures[0]?.name ?? '—'
     events.push({
-      date:  fmtDate(s.appointment.scheduledAt),
+      date:  fmtDate(s.appointment.scheduledAt, fuso),
       label: `Sessão ${s.sortOrder + 1} agendada`,
       sub:   procName,
       color: 'var(--info)',
@@ -464,7 +466,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                     }}>
                       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <Calendar size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-                        {fmtDate(details.evaluationDate)}
+                        {fmtDate(details.evaluationDate, fuso)}
                         {details.professionalName && ` · ${details.professionalName}`}
                       </p>
                       {details.evaluationComplaints && (

@@ -149,7 +149,7 @@ export function ProfessionalAgendaView({
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>()
     for (const ev of events) {
-      const key = format(parseISO(ev.start), 'yyyy-MM-dd')
+      const key = format(parseISO(ev.start), 'yyyy-MM-dd') // parede
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(ev)
     }
@@ -381,7 +381,7 @@ export function ProfessionalAgendaView({
                   {heroEvent.ev.clientName}
                 </p>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'rgba(255,255,255,0.75)', marginTop: 2, overflowWrap: 'anywhere' }}>
-                  {format(parseISO(heroEvent.ev.start), 'HH:mm')} · {heroEvent.ev.procedureName}
+                  {format(parseISO(heroEvent.ev.start) /* parede */, 'HH:mm')} · {heroEvent.ev.procedureName}
                 </p>
               </>
             ) : (
@@ -534,7 +534,7 @@ export function ProfessionalAgendaView({
                 const st     = STATUS_COLORS[ev.status] ?? STATUS_COLORS['SCHEDULED']!
                 const top    = evTop(ev)
                 const height = evHeight(ev)
-                const time   = format(parseISO(ev.start), 'HH:mm')
+                const time   = format(parseISO(ev.start), 'HH:mm') // parede
                 const isIP   = ev.status === 'IN_PROGRESS'
                 // A24 da 8ª: o cartão de menos de 1 h (até 72 px) não tinha altura para
                 // as duas linhas com o avatar — o procedimento saía cortado no de 30 e

@@ -10,6 +10,8 @@ import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
 import { contarPublico, contarPublicoComAparelho } from '@/lib/clientes/publico'
 import { filtrosDaCampanha } from '@/lib/notifications/filtros-da-campanha'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
+import { instanteDaCampanha } from '@/lib/notifications/hora-da-campanha'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 // -- Types --------------------------------------------------------------
 
@@ -134,6 +136,13 @@ export async function createCampaign(
   const daClinica = recusaDaConfigDaClinica(ctx)
   if (daClinica) return { error: daClinica }
 
+  // F64 (D4): a hora digitada é a do relógio da REDE — ia crua e o banco a lia como UTC.
+  let agendada: string | null = null
+  if (input.scheduled_at) {
+    agendada = instanteDaCampanha(input.scheduled_at, await fusoDaRede(ctx.tenantId))
+    if (!agendada) return { error: 'Data e hora do disparo inválidas.' }
+  }
+
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('notification_campaigns')
@@ -148,7 +157,7 @@ export async function createCampaign(
       title:             input.title.trim(),
       body:              input.body.trim(),
       notification_type: input.notification_type,
-      scheduled_at:      input.scheduled_at ?? null,
+      scheduled_at:      agendada,
       trigger_type:      input.trigger_type ?? null,
       trigger_config:    input.trigger_config ?? null,
       audience_rules:    input.audience_rules,
@@ -188,6 +197,13 @@ export async function updateCampaign(
   if (!['DRAFT', 'PAUSED'].includes(existing.status))
     return { error: 'Apenas campanhas em rascunho ou pausadas podem ser editadas' }
 
+  // F64 (D4): a hora digitada é a do relógio da REDE (a mesma conta do criar).
+  let agendada: string | null | undefined = input.scheduled_at
+  if (input.scheduled_at) {
+    agendada = instanteDaCampanha(input.scheduled_at, await fusoDaRede(ctx.tenantId))
+    if (!agendada) return { error: 'Data e hora do disparo inválidas.' }
+  }
+
   const { error } = await admin
     .from('notification_campaigns')
     .update({
@@ -196,7 +212,7 @@ export async function updateCampaign(
       ...(input.title             !== undefined && { title: input.title.trim() }),
       ...(input.body              !== undefined && { body: input.body.trim() }),
       ...(input.notification_type !== undefined && { notification_type: input.notification_type }),
-      ...(input.scheduled_at      !== undefined && { scheduled_at: input.scheduled_at }),
+      ...(input.scheduled_at      !== undefined && { scheduled_at: agendada || null }),
       ...(input.trigger_type      !== undefined && { trigger_type: input.trigger_type }),
       ...(input.trigger_config    !== undefined && { trigger_config: input.trigger_config }),
       ...(input.audience_rules    !== undefined && { audience_rules: input.audience_rules }),

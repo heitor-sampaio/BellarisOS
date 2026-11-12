@@ -57,7 +57,7 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
   const fuso        = useFuso()
   const agoraReal   = useAgora()
   const agora       = agoraReal == null ? null : naParede(new Date(agoraReal), fuso).getTime()
-  const time        = format(new Date(ev.start), 'HH:mm')
+  const time        = format(new Date(ev.start), 'HH:mm') // parede
   if (eventoDesmarcado(ev)) {
     return (
       <div data-agendamento={ev.id} data-cancelado="" title={ev.motivoDoCancelamento ?? undefined}
@@ -220,7 +220,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                 {weekDays.map((day, di) => {
                   const dayEvs = events.filter(
                     // O dia do agendamento no relógio da unidade: a grade é "de parede" (F62).
-                    e => e.professionalId === pro.id && format(new Date(e.start), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'),
+                    e => e.professionalId === pro.id && format(new Date(e.start), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'), // parede
                   )
                   const isToday = isSameDay(day, today)
 

@@ -14,6 +14,9 @@ import { TagPicker } from '@/components/shared/tag-picker'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { filtrosDoPublico } from '@/lib/notifications/resumo-do-publico'
 import { quandoDispara } from '@/lib/notifications/quando-dispara'
+import { campoDaCampanha } from '@/lib/notifications/hora-da-campanha'
+import { nomeDoFuso } from '@/lib/unidades/fuso'
+import { useFuso, RelogioDaRede } from '@/components/shared/fuso'
 import type { CampaignType, TriggerType, AudienceRules, CreateCampaignInput, NotificationCampaign } from '@/actions/notification-campaigns'
 
 // -- Types --------------------------------------------------------------
@@ -40,19 +43,12 @@ interface Props {
   existing?:  NotificationCampaign
 }
 
-/** ISO do banco → o valor que um `datetime-local` aceita, no fuso do navegador. */
-function paraCampoLocal(iso: string | null | undefined): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const z = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`
-}
-
 type Step = 1 | 2 | 3 | 4
 
 export function NotificationCampaignForm({ branches, procedures, existing }: Props) {
   const router = useRouter()
+  // A campanha é da rede: a hora digitada é a do relógio comum das unidades (F64, D4).
+  const fuso   = useFuso()
   const [step, setStep]           = useState<Step>(1)
   const [isPending, startTransition] = useTransition()
   const [error, setError]         = useState<string | null>(null)
@@ -72,7 +68,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
   // D8 da 11ª (princípios 3 e 6): o gatilho começa SEM escolha — a dona
   // escolhe. Nascia "Aniversário", e a "Reativação 60 dias" saiu assim.
   const [triggerType,   setTriggerType]   = useState<TriggerType | null>(existing?.trigger_type ?? null)
-  const [scheduledAt,   setScheduledAt]   = useState(paraCampoLocal(existing?.scheduled_at))
+  const [scheduledAt,   setScheduledAt]   = useState(campoDaCampanha(existing?.scheduled_at, fuso))
   const [triggerDays,   setTriggerDays]   = useState(gatilho.days ?? 30)
   const [triggerHours,  setTriggerHours]  = useState(gatilho.hours ?? 24)
   const [annualMonth,   setAnnualMonth]   = useState(gatilho.month ?? 3)
@@ -224,10 +220,12 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
               <input
                 type="datetime-local"
                 className="field"
+                aria-label="Data e hora do disparo"
                 value={scheduledAt}
                 onChange={e => setScheduledAt(e.target.value)}
                 style={{ maxWidth: 280 }}
               />
+              <p style={{ marginTop: 6 }}><RelogioDaRede fuso={fuso} /></p>
             </div>
           )}
 
@@ -536,7 +534,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
           <ReviewRow label="Nome"       value={name} />
           <ReviewRow label="Tipo"       value={{ IMMEDIATE: 'Imediata', SCHEDULED: 'Agendada', AUTOMATED: 'Automática' }[campType]} />
           {campType === 'SCHEDULED' && scheduledAt && (
-            <ReviewRow label="Agendada para" value={new Date(scheduledAt).toLocaleString('pt-BR')} />
+            <ReviewRow label="Agendada para" value={`${scheduledAt.slice(8, 10)}/${scheduledAt.slice(5, 7)}/${scheduledAt.slice(0, 4)} às ${scheduledAt.slice(11, 16)} (${nomeDoFuso(fuso)})`} />
           )}
           {campType === 'AUTOMATED' && triggerType && (
             <>
@@ -549,7 +547,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
               }[triggerType]} />
               {/* D8 da 11ª: quando ela sai, com a hora — a mesma regra do cron. */}
               <div data-quando-dispara>
-                <ReviewRow label="Dispara" value={quandoDispara(triggerType, getTriggerConfig() as { days?: number; hours?: number; month?: number; day?: number } | undefined)} />
+                <ReviewRow label="Dispara" value={quandoDispara(triggerType, getTriggerConfig() as { days?: number; hours?: number; month?: number; day?: number } | undefined, fuso)} />
               </div>
             </>
           )}

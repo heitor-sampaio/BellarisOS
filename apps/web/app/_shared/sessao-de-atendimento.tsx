@@ -31,6 +31,8 @@ import { creditosDoCliente } from '@/lib/creditos/credito'
 import { nomeDaSessao } from '@/lib/plano-de-tratamento/nome'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { avisoDoBloqueioNoAtendimento } from '@/lib/agenda/bloqueio'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { FusoProvider } from '@/components/shared/fuso'
 import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 /**
@@ -458,7 +460,9 @@ export async function SessaoDeAtendimento({
     ])
     const doHorario = daProf[0] ?? daSala[0] ?? null
     if (doHorario) {
-      bloqueioDoHorario = avisoDoBloqueioNoAtendimento(daProf[0] ? { profissional: prof?.name } : { sala: room?.name }, doHorario)
+      // No relógio da unidade (F64, C4).
+      bloqueioDoHorario = avisoDoBloqueioNoAtendimento(daProf[0] ? { profissional: prof?.name } : { sala: room?.name }, doHorario,
+        await fusoDaUnidade(ctx.tenantId, branchId))
     }
   }
 
@@ -611,6 +615,9 @@ export async function SessaoDeAtendimento({
   return (
     <>
       <RealtimeRefresher tables={['appointments', 'medical_record_entries', 'financial_transactions']} />
+      {/* F64 (D6): as horas da tela no relógio da unidade DO ATENDIMENTO — no
+          /admin o provedor do layout é o da rede. */}
+      <FusoProvider fuso={await fusoDaUnidade(ctx.tenantId, branchId)}>
       <AppointmentSession
         appointment={appointment}
         client={client}
@@ -665,6 +672,7 @@ export async function SessaoDeAtendimento({
             temAcessoAoApp: !!(cli as { auth_id?: string | null } | null)?.auth_id }
           : null}
       />
+      </FusoProvider>
     </>
   )
 }

@@ -12,6 +12,8 @@ import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { quandoDispara } from '@/lib/notifications/quando-dispara'
 import { quemReceberiaHoje } from '@/lib/notifications/gatilho-de-hoje'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { FUSO_PADRAO, nomeDoFuso } from '@/lib/unidades/fuso'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +57,8 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
     notFound()
   }
 
+  // A campanha é da rede: as horas no relógio comum das unidades (F64, D4).
+  const fuso = await fusoDaRede(ctx.tenantId)
   const statusCfg = STATUS_CFG[campaign.status] ?? STATUS_CFG.DRAFT
   // D10 da 12ª: na automática, "Quem receberia hoje" é o GATILHO de hoje (a
   // escolha do cron) — o público inteiro fica numa linha à parte.
@@ -140,7 +144,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
         <StatCard icon={<Send size={16} />} label="Enviadas" value={campaign.total_sent.toLocaleString('pt-BR')} />
         <StatCard icon={<BookOpen size={16} />} label="Taxa de leitura" value={campaign.total_sent > 0 ? `${readRate}%` : '—'} />
         <StatCard icon={<Users size={16} />} label="Último disparo"
-          value={campaign.last_run_at ? new Date(campaign.last_run_at).toLocaleDateString('pt-BR', { timeZone: await fusoDaRede(ctx.tenantId) }) : '—'} />
+          value={campaign.last_run_at ? new Date(campaign.last_run_at).toLocaleDateString('pt-BR', { timeZone: fuso }) : '—'} />
       </div>
 
       {/* Campaign info */}
@@ -154,7 +158,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
           </div>
           <InfoRow label="Tipo"  value={{ IMMEDIATE: 'Imediata', SCHEDULED: 'Agendada', AUTOMATED: 'Automática' }[campaign.type]} />
           {campaign.type === 'SCHEDULED' && campaign.scheduled_at && (
-            <InfoRow label="Agendada para" value={new Date(campaign.scheduled_at).toLocaleString('pt-BR')} />
+            <InfoRow label="Agendada para" value={`${formatarNoFuso(campaign.scheduled_at, "dd/MM/yyyy 'às' HH:mm", fuso)}${fuso === FUSO_PADRAO ? '' : ` (${nomeDoFuso(fuso)})`}`} />
           )}
           {campaign.trigger_type && (
             <InfoRow label="Gatilho" value={TRIGGER_LABELS[campaign.trigger_type] ?? campaign.trigger_type} />
@@ -162,7 +166,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
           {/* D8 da 11ª: quando ela sai, com a hora — a mesma regra do cron. */}
           {campaign.type === 'AUTOMATED' && campaign.trigger_type && (
             <div data-quando-dispara>
-              <InfoRow label="Dispara" value={quandoDispara(campaign.trigger_type, campaign.trigger_config as { days?: number; hours?: number; month?: number; day?: number } | null)} />
+              <InfoRow label="Dispara" value={quandoDispara(campaign.trigger_type, campaign.trigger_config as { days?: number; hours?: number; month?: number; day?: number } | null, fuso)} />
             </div>
           )}
           {campaign.trigger_config && campaign.trigger_type === 'BEFORE_APPOINTMENT' && (
@@ -229,7 +233,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
                 <tr key={i} style={{ borderTop: '1px solid var(--hairline)' }}>
                   <td style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 500, color: 'var(--text)' }}>{d.client_name}</td>
                   <td style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
-                    {new Date(d.sent_at).toLocaleString('pt-BR')}
+                    {formatarNoFuso(d.sent_at, "dd/MM/yyyy, HH:mm", fuso)}
                   </td>
                   <td style={{ padding: '11px 16px' }}>
                     {(() => {

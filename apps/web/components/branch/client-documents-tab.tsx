@@ -7,8 +7,8 @@ import {
   Plus, Upload, FileText, FileImage, File, FileSpreadsheet,
   Download, Trash2, Loader2, Send, Smartphone, EyeOff,
 } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
+import { useFuso } from '@/components/shared/fuso'
 import { uploadClientDocument, deleteClientDocument, enviarDocumentoACliente } from '@/actions/client-documents'
 import { ehAnexoClinico, type AtendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { rotaAtendimento } from '@/lib/rotas'
@@ -241,6 +241,7 @@ function DocumentRow({
 }: {
   doc: ClientDocumentItem; slug: string; clientId: string; podeApagar: boolean; onDelete: (id: string) => void
 }) {
+  const fuso = useFuso()
   const [deleting, setDeleting] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -292,7 +293,7 @@ function DocumentRow({
         <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
           {doc.fileName}
           {doc.fileSize && ` · ${fileSizeLabel(doc.fileSize)}`}
-          {` · ${format(new Date(doc.createdAt), "dd/MM/yyyy", { locale: ptBR })}`}
+          {` · ${formatarNoFuso(doc.createdAt, "dd/MM/yyyy", fuso)}`}
           {doc.uploadedBy && ` · por ${doc.uploadedBy}`}
         </p>
         {doc.atendimento && (
@@ -307,7 +308,7 @@ function DocumentRow({
         <p data-envio-a-cliente style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 'var(--text-2xs)', marginTop: 4 }}>
           {doc.enviadoEm ? (
             <span style={{ color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Smartphone size={12} /> No app da cliente desde {format(new Date(doc.enviadoEm), 'dd/MM/yyyy', { locale: ptBR })}
+              <Smartphone size={12} /> No app da cliente desde {formatarNoFuso(doc.enviadoEm, 'dd/MM/yyyy', fuso)}
             </span>
           ) : (
             <span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>

@@ -202,7 +202,7 @@ function ProfColumn({
         const isCompleted = ev.status === 'COMPLETED'
         // A21 da 9ª: passou do horário e segue em aberto — marcado, nada se fecha sozinho.
         const passou      = passouSemFechar(ev, agora)
-        const timeStr   = format(new Date(ev.start), 'HH:mm')
+        const timeStr   = format(new Date(ev.start), 'HH:mm') // parede
         const isDraggable = canWrite && !isCompleted && !desmarcado
         // A24 da 8ª: até 40 min (menos de 56 px) o cartão tem DUAS linhas — a hora e a
         // cliente, o procedimento e a sala —, e as duas cabem; o de 40 cortava o
@@ -291,7 +291,7 @@ function ProfColumn({
               <SeloDaFicha estado={ev.fichaDeSaude} />
               <SeloDoMenor menor={ev.menor} />
               {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
-              {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt), 'HH:mm')}` : ''}</span>}
+              {isArrived && <span>· Chegou{ev.arrivedAt ? ` ${format(new Date(ev.arrivedAt) /* parede */, 'HH:mm')}` : ''}</span>}
               {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· {textoDoConcluido(ev.start, ev.completedAt, fusoLocal()) ?? 'concluído'}</span>}
               {passou && <span data-passou-sem-fechar style={{ color: 'var(--warning)', whiteSpace: 'nowrap' }}>· passou do horário</span>}
             </div>

@@ -1,13 +1,12 @@
 ﻿'use client'
 import { useFuso } from '@/components/shared/fuso'
-import { instanteNoFuso } from '@/lib/datetime'
+import { instanteNoFuso, dayKeyTZ } from '@/lib/datetime'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaAtendimento } from '@/lib/rotas'
 import { X, Calendar, Play, CheckCircle2, Loader2, ChevronRight } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import {
   getClientPackageSessions,
   schedulePackageSession,
@@ -215,7 +214,7 @@ export function SessionScheduler({
     if (result.error) setError(result.error)
   }
 
-  const minDate = format(new Date(), 'yyyy-MM-dd')
+  const minDate = dayKeyTZ(new Date(), fuso)
 
   return (
     <div data-agendar-sessao style={{ background: 'var(--bg-app)', borderRadius: 'var(--radius-field-token)', padding: '16px', marginTop: 10, border: '1px solid var(--border)' }}>
@@ -318,6 +317,7 @@ export function TreatmentSessionsModal({
   clientId, procedureId, procedureName, price, durationMin,
   slug, branches, currentBranchId, onClose, onCancelarPlano, emAberto = null,
 }: Props) {
+  const fuso = useFuso()
   const router = useRouter()
   const pathname = usePathname()
   const [sessions,      setSessions]      = useState<Session[]>([])
@@ -474,7 +474,7 @@ export function TreatmentSessionsModal({
                         {sess.scheduledAt ? (
                           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
                             <Calendar size={10} style={{ display: 'inline', marginRight: 3 }} />
-                            {format(new Date(sess.scheduledAt), "EEE, dd MMM · HH:mm", { locale: ptBR })}
+                            {formatarNoFuso(sess.scheduledAt, "EEE, dd MMM · HH:mm", fuso)}
                             {sess.professionalName && ` · ${sess.professionalName}`}
                           </p>
                         ) : isDone && !sess.appointmentId ? (
