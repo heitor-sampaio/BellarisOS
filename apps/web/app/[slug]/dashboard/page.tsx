@@ -1,7 +1,7 @@
 ﻿import Link from 'next/link'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
-import { baseDaOcupacao } from '@/lib/metrics/ocupacao'
+import { baseDaOcupacao, descontosDaOcupacao } from '@/lib/metrics/ocupacao'
 import { notFound, redirect } from 'next/navigation'
 import { capacidadeEmMinutos, normalizarHorario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
@@ -178,7 +178,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
     (canAgenda && !professionalOnly)
       // Os profissionais e o horário de cada um: a capacidade da ocupação.
-      ? ler(admin.from('users').select('id, horario')
+      ? ler(admin.from('users').select('id, name, horario')
           // Os da unidade e os da rede, que atendem em todas (D1, 2026-10-28).
           .eq('tenant_id', ctx.tenantId!).or(filtroDeQuemAtendeNaUnidade(branchId))
           .eq('provides_services', true).eq('is_active', true), 'carregar os profissionais')
@@ -248,21 +248,25 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // A capacidade do DIA (a agenda mostrada é a de hoje), pelo HORÁRIO da
   // unidade e de cada profissional — a mesma conta da agenda (lib/agenda/horario).
   const professionalsCount = (profissionaisDaUnidade ?? []).length
-  const profissionais = (profissionaisDaUnidade ?? []) as { id: string; horario: unknown }[]
+  const profissionais = (profissionaisDaUnidade ?? []) as { id: string; name: string; horario: unknown }[]
   // O que eles têm agendado HOJE em outra unidade (o da rede atende em todas —
   // D1) sai da capacidade daqui (decisão do Heitor, 2026-10-28). Desde a
   // véspera, para o atendimento que atravessa a meia-noite.
   const ocupadoFora: Record<string, BlocoOcupado[]> = {}
   if (profissionais.length) {
     const fora = await ler(admin.from('appointments')
-      .select('professional_id, scheduled_at, duration_min')
+      .select('professional_id, scheduled_at, duration_min, branch_id')
       .in('professional_id', profissionais.map(p => p.id))
       .neq('branch_id', branchId)
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
       .gte('scheduled_at', addDaysTZ(todayStart, -1, fuso).toISOString())
       .lte('scheduled_at', todayEnd.toISOString()), 'carregar a agenda dos profissionais nas outras unidades')
-    for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number }[]) {
-      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min })
+    // A unidade de cada um (A9 da 13ª): a base da ocupação diz onde ela está.
+    const nomes = (fora ?? []).length
+      ? new Map(((await ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!), 'ler as unidades da rede')) ?? []).map(b => [b.id as string, b.name as string]))
+      : new Map<string, string>()
+    for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number; branch_id: string }[]) {
+      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min, onde: nomes.get(a.branch_id) ?? 'outra unidade' })
     }
     // O tempo BLOQUEADO de cada uma (D15 da 8ª simulação) também sai da
     // capacidade: "430 min de 4.230 min disponíveis" contava as 23 h e meia da
@@ -281,6 +285,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     ocupadoFora:   profissionais.map(p => ocupadoFora[p.id] ?? []),
   }
   const capacityMin = capacidadeEmMinutos(horarios.unidade, horarios.profissionais, todayStart, todayEnd, horarios.ocupadoFora, fuso)
+  // A9 da 13ª: o que saiu da capacidade de hoje (a outra unidade, o bloqueio), dito na base.
+  const descontosDoDia = descontosDaOcupacao(horarios.unidade,
+    profissionais.map((p, i) => ({ nome: p.name, horario: horarios.profissionais[i] ?? null, blocos: horarios.ocupadoFora[i] ?? [] })), todayStart, todayEnd, fuso)
   const occupancy   = occupancyPct(scheduledMin, horarios, todayStart, todayEnd, fuso) ?? 0
 
   // -- Gráfico dos últimos 6 meses -------------------------------
@@ -503,7 +510,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             </div>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
               {/* A53 da 9ª: a base da conta, de quem atende (era "340min de 2720min disponíveis"). */}
-              <span data-base-da-ocupacao>{baseDaOcupacao({ agendados: scheduledMin, abertos: capacityMin, profissionais: professionalsCount })}, hoje</span>
+              <span data-base-da-ocupacao>{baseDaOcupacao({ agendados: scheduledMin, abertos: capacityMin, profissionais: professionalsCount, descontos: descontosDoDia })}, hoje</span>
             </p>
           </div>
         </div>

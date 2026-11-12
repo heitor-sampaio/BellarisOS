@@ -219,7 +219,11 @@ const diaNoFuso = (d: Date, fuso = FUSO_DE_BRASILIA) => new Intl.DateTimeFormat(
 const proximoDia = (dia: string) => new Date(new Date(`${dia}T12:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10)
 
 /** Um agendamento de OUTRA unidade da profissional: o início (instante) e a duração. */
-export interface BlocoOcupado { inicio: string; minutos: number }
+export interface BlocoOcupado {
+  inicio: string; minutos: number
+  /** A outra unidade em que ela está (A9 da 13ª: a base da ocupação diz onde). Sem ela, é bloqueio. */
+  onde?: string
+}
 
 /** Os blocos, recortados por dia do fuso da unidade: `dia → [de, ate)` em minutos do dia, fundidos. */
 function ocupadoPorDia(blocos: BlocoOcupado[], fuso = FUSO_DE_BRASILIA): Map<string, [number, number][]> {

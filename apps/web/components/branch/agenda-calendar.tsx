@@ -20,7 +20,7 @@ import { AgendaMonthView } from './agenda-month-view'
 import { rescheduleAppointment } from '@/actions/appointments'
 import type { CalendarEvent } from './agenda-month-view'
 import { ocupacaoEmPct, capacidadeEmMinutos, janelaDaGrade, intervalosDoDia, diaDaSemana, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
-import { baseDaOcupacao } from '@/lib/metrics/ocupacao'
+import { baseDaOcupacao, descontosDaOcupacao } from '@/lib/metrics/ocupacao'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { Dica } from '@/components/shared/dica'
 import { atendimentosPorExtenso } from '@/lib/agenda/grade'
@@ -133,7 +133,11 @@ function calcKPIs(
   const occupancy    = ocupacaoEmPct(bookedMin, horarioDaUnidade, horarios, from, to, ocupados, fuso) ?? 0
   // A53 da 9ª: a base, para a tela dizer a conta (a mesma capacidade de ocupacaoEmPct).
   const base = professionals.length
-    ? baseDaOcupacao({ agendados: bookedMin, abertos: capacidadeEmMinutos(horarioDaUnidade, horarios, from, to, ocupados, fuso), profissionais: professionals.length })
+    ? baseDaOcupacao({
+        agendados: bookedMin, abertos: capacidadeEmMinutos(horarioDaUnidade, horarios, from, to, ocupados, fuso), profissionais: professionals.length,
+        // A9 da 13ª: o que saiu da capacidade (a outra unidade, o bloqueio), dito.
+        descontos: descontosDaOcupacao(horarioDaUnidade, professionals.map((p, i) => ({ nome: p.name, horario: horarios[i] ?? null, blocos: ocupados[i] ?? [] })), from, to, fuso),
+      })
     : null
 
   return { totalCount, waitingCount, occupancy, base }

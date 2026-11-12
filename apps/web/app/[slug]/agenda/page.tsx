@@ -117,15 +117,19 @@ export default async function AgendaPage({ params, searchParams }: {
   const ocupadoFora: Record<string, BlocoOcupado[]> = {}
   if (idsDosProfissionais.length) {
     const fora = await lerTodas((de, ate) => createAdminClient().from('appointments')
-      .select('id, professional_id, scheduled_at, duration_min')
+      .select('id, professional_id, scheduled_at, duration_min, branch_id')
       .in('professional_id', idsDosProfissionais)
       .neq('branch_id', branchId)
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
       .gte('scheduled_at', from)
       .lte('scheduled_at', to)
       .order('scheduled_at').order('id').range(de, ate), 'carregar a agenda dos profissionais nas outras unidades')
-    for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number }[]) {
-      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min })
+    // A unidade de cada um (A9 da 13ª): a base da ocupação diz onde ela está.
+    const nomes = (fora ?? []).length
+      ? new Map(((await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string }[]).map(b => [b.id, b.name]))
+      : new Map<string, string>()
+    for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number; branch_id: string }[]) {
+      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min, onde: nomes.get(a.branch_id) ?? 'outra unidade' })
     }
   }
 

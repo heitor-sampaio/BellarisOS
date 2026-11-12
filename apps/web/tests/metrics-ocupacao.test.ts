@@ -129,3 +129,35 @@ describe('A53 da 9ª: a ocupação diz a base', async () => {
     expect(DEFINICOES.ocupacao.texto).toContain('bloque')
   })
 })
+
+// A9 da 13ª simulação (F65): a base dizia "2.720 min abertos" já sem o que a
+// profissional tinha na outra unidade — a conta não fechava com o horário que a
+// tela mostra (princípio 3). A base diz o desconto: de quem, onde, quanto.
+describe('A9 da 13ª: a base diz o que saiu da capacidade', async () => {
+  const { baseDaOcupacao, descontosDaOcupacao } = await import('@/lib/metrics/ocupacao')
+  const umDia = { dias: { 1: [{ de: '08:00', ate: '18:00' }] } }   // segunda, 600 min
+  const em = (h: string) => new Date(`2026-10-19T${h}:00-03:00`).toISOString()
+  it('o que ela tem na outra unidade e o bloqueio, cada um com o seu texto', () => {
+    const descontos = descontosDaOcupacao(umDia, [
+      { nome: 'Patrícia', horario: null, blocos: [{ inicio: em('09:00'), minutos: 140, onde: 'Água Verde' }] },
+      { nome: 'Ana', horario: null, blocos: [{ inicio: em('13:00'), minutos: 60 }] },
+    ], seg, fimDaSeg)
+    expect(descontos).toEqual([
+      { minutos: 140, quem: 'Patrícia', onde: 'Água Verde' },
+      { minutos: 60, quem: 'Ana', onde: null },
+    ])
+    expect(baseDaOcupacao({ agendados: 300, abertos: 1000, profissionais: 2, descontos }))
+      .toBe('300 min agendados de 1.000 min abertos (o horário de 2 profissionais que atendem, menos 140 min da Patrícia na Água Verde e 60 min bloqueados da Ana)')
+  })
+  it('o bloqueio que cai sobre o da outra unidade não sai duas vezes', () => {
+    const descontos = descontosDaOcupacao(umDia, [{ nome: 'Patrícia', horario: null, blocos: [
+      { inicio: em('09:00'), minutos: 120, onde: 'Água Verde' },
+      { inicio: em('10:00'), minutos: 120 },
+    ] }], seg, fimDaSeg)
+    expect(descontos.reduce((s, d) => s + d.minutos, 0), 'das 09:00 às 12:00: 180 min').toBe(180)
+  })
+  it('sem desconto, a base fica como era', () => {
+    expect(baseDaOcupacao({ agendados: 30, abertos: 600, profissionais: 1, descontos: [] }))
+      .toBe('30 min agendados de 600 min abertos (o horário de 1 profissional que atende)')
+  })
+})
