@@ -61,7 +61,7 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
   await page.goto('/admin/financeiro')
   const linha = page.locator('tr').filter({ hasText: descricao }).first()
   await expect(linha).toBeVisible()
-  await linha.getByTitle('Estornar').click()
+  await linha.getByTitle('Estornar', { exact: true }).click()
   // Estornar pede confirmação, com o valor (simulação de um dia de clínica,
   // 2026-10-20: era um clique só, sem volta). Voltar não estorna nada.
   const confirmar = page.getByRole('dialog', { name: 'Estornar este lançamento?' })
@@ -70,7 +70,7 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
   await expect(confirmar).toBeHidden()
   expect((await db.from('financial_transactions').select('notes').eq('id', original!.id).single()).data?.notes ?? null,
     'voltar não estorna').not.toBe('Estornada')
-  await linha.getByTitle('Estornar').click()
+  await linha.getByTitle('Estornar', { exact: true }).click()
   // O motivo é obrigatório (A36, 2026-10-27).
   await page.getByRole('dialog', { name: 'Estornar este lançamento?' }).getByLabel('Motivo do estorno').fill('teste e2e')
   await page.getByRole('dialog', { name: 'Estornar este lançamento?' }).getByRole('button', { name: 'Confirmar estorno' }).click()
@@ -128,7 +128,7 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
   await page.goto('/admin/financeiro')
   const linhaDoEstorno = page.locator('tr').filter({ hasText: `Estorno: ${descricao}` }).first()
   await expect(linhaDoEstorno).toBeVisible()
-  await expect(linhaDoEstorno.getByTitle('Estornar'), 'a linha do estorno não oferece estornar').toHaveCount(0)
+  await expect(linhaDoEstorno.getByTitle('Estornar', { exact: true }), 'a linha do estorno não oferece estornar').toHaveCount(0)
 })
 
 test('estorno de outra rede não encontra o lançamento', async () => {

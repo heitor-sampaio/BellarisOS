@@ -101,6 +101,9 @@ test('A26: no celular, a agenda da unidade mostra as duas profissionais inteiras
     await p.goto(`/${slug}/agenda?date=${DIA}`)
     const colunas = p.locator('[data-coluna-do-profissional]')
     await expect(colunas).toHaveCount(2)
+    // No streaming, o conteúdo chega primeiro num <div hidden> e só depois o
+    // React o troca pelo loading: contar já acha as colunas, medir ainda não.
+    await expect(colunas.nth(1)).toBeVisible()
     const segunda = await colunas.nth(1).boundingBox()
     expect(segunda!.x + segunda!.width, 'a segunda coluna sai da tela').toBeLessThanOrEqual(412)
   }, { width: 412, height: 860 })

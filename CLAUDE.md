@@ -58,7 +58,11 @@ regra de negócio que não está clara ou que contraria um deles.
 7. **Simples primeiro.** O caso comum aparece; o raro fica guardado até a
    clínica precisar. Tela que uma pessoa nova não entende sozinha é defeito.
    (O Heitor, 2026-11-11, sobre a tela de Taxas: "o sistema precisa ser
-   intuitivo, me parece que ta virando um monstro".)
+   intuitivo, me parece que ta virando um monstro".) Simplificar NÃO é
+   tirar recurso ("simplificar não é reduzir funcionalidade, é melhorar a
+   experiencia do usuario, melhorar interface"): tudo o que a tela faz
+   continua; muda a organização, os nomes, a ordem e o que fica à vista.
+   Opções, botões e comandos fáceis de achar e de entender.
 
 ---
 
