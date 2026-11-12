@@ -181,6 +181,35 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   princípio 3): lembrar também o não confirmado é o comportamento útil, e o
   texto da tela (`quandoDispara`) passa a dizer "de cada agendamento marcado
   (agendado ou confirmado)" (correção C54; hoje diz "confirmado").
+- **Os limites da automação: o silêncio noturno e o teto** (D16 do
+  levantamento das regras, o Heitor, 2026-11-11, opção a; princípio 1). Valem
+  só no "Mandar mensagem" (mensagem e aviso no celular à cliente; avisar a
+  equipe e anotar não têm limite):
+  - o **silêncio noturno** (21:00–08:00 na automação nova, no relógio da
+    unidade da mensagem) faz a mensagem ESPERAR o fim do silêncio, não a
+    descarta;
+  - o **teto** (3 por cliente por dia, por automação, na automação nova) faz
+    a execução PARAR quando passa dele; o ensaio não conta.
+  - **O campo vazio desliga** o silêncio ou o teto, de propósito, e a tela
+    diz: "Sem silêncio: a mensagem sai a qualquer hora", "Sem teto". O
+    padrão vale só na automação nova. (Correção C54: hoje o vazio volta a
+    21:00/08:00/3 no motor e na tela reaberta, e o teto não aceita "sem
+    teto".)
+- **O suporte não liga automação nem muda os limites** (D18 do levantamento
+  das regras, o Heitor, 2026-11-11, opção a; CLAUDE.md §14: a ação que manda
+  algo à paciente passa por `bloqueioDoSuporte`). Na sessão de suporte, ligar,
+  desligar e mudar os limites de uma automação são recusados: o fluxo ligado
+  rodaria depois e falaria com as pacientes. (Correção C7.)
+- **O lembrete do agendamento da campanha e a madrugada** (D17 do
+  levantamento das regras, o Heitor, 2026-11-11: "a + c opcional";
+  princípios 2 e 6). O lembrete sai na antecedência que a clínica escolheu,
+  mesmo de madrugada, e a tela avisa quando a antecedência o faz cair entre
+  21:00 e 08:00 ("Com 2 horas, o lembrete do agendamento das 07:00 sai às
+  05:00"). E a campanha tem a opção "Se cair de madrugada, mandar na véspera
+  às 20:00", DESLIGADA por padrão: ligada, o lembrete que cairia entre 21:00
+  e 08:00 sai às 20:00 do dia anterior, no relógio da unidade. Sem silêncio
+  automático nas campanhas. (Correção C74: hoje o lembrete sai de madrugada
+  sem aviso.)
 - **O seletor de campo não repete rótulo**, e o card diz o campo em
   português (A14): o rótulo repetido leva de onde vem — "Situação do
   agendamento", "Procedimento (do gatilho)" (`rotulosUnicos`); o card usa

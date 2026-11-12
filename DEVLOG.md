@@ -9103,8 +9103,9 @@ nada. O Heitor escolhe o que atacar, cada um com TDD. Caminhos relativos a
   só outra Admin muda (c1834ad9). Regras no CLAUDE.md §11 e §14 e em
   `docs/regras/plataforma.md`. Decisões da F4, para revisar: catálogo de
   produtos e categorias do estoque, respostas rápidas e Importações ficaram
-  com a unidade (respondida em 11/11, H8: "Catalogo da unidade, o resto da
-  clinica" — as outras três passam à clínica toda, C63); D8 só com o texto, sem "pedir à recepção"; A38 responde 404;
+  com a unidade (respondida em 11/11, H8, 2ª volta: o catálogo é decisão da
+  rede, as categorias e as Importações são da rede, as respostas rápidas são
+  de cada pessoa — C63, C71–C73); D8 só com o texto, sem "pedir à recepção"; A38 responde 404;
   A43 só mudou o texto; desbloquear e gerar plano pedem Prontuário em
   Gerenciar.
 
@@ -10393,7 +10394,7 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
 - Setup e configuração (A1, A4, A5, A6, A9, A11, A12, A24): o "Aberta 24 horas" volta ao horário de antes no segundo toque; "É de propósito" na pílula "Sem comissão"; o "De venda" do pacote diz que vale no lugar da comissão da pessoa; 300 pontos e 30 dias "são uma sugestão"; a margem sem custo fica vazia; os avisos de quem não alcança a aba ou a Equipe; quem monta o plano e o que liberar; o que conta como primeiro pagamento da indicação.
 - Termos (A13–A17): "Registro no conselho" opcional na pessoa da equipe (`users.registro_conselho`) e `{{profissional.registro}}`; a profissional no contrato de plano; "paciente" vale como "cliente" (princípio 2); o editor sem o "1. 1."; o Agendar diz qual dado do cadastro o termo pede.
 - Vendas (A18–A20, A22): o Vender diz a regra da comissão de venda ("8% do vendido — da Rita", "5% — do pacote"), e a de outra pessoa só a quem vê a de todos; "Venda de procedimento" no extrato; o agendar da sessão do pacote pede profissional e data.
-- A19 (decisão da frente, para o Heitor revisar): a taxa e o líquido da maquininha no Vender ficam só para quem tem o Financeiro de todos — desfaz a A40 da 8ª, coerente com a A39 e com o texto do cargo de Recebimentos.
+- A19 (decisão da frente; confirmada pelo Heitor em 11/11, D7 do levantamento das regras): a taxa e o líquido da maquininha no Vender ficam só para quem tem o Financeiro de todos — desfaz a A40 da 8ª, coerente com a A39 e com o texto do cargo de Recebimentos.
 - Agenda (A26–A29): o destaque da Minha agenda anda com o relógio ("Atrasado: 5 min"); "Não compareceu" diz quando aparece; a Minha agenda cabe no celular; "Aceitar plano" grava a observação que está na tela.
 - A7: a recompensa "Produto / brinde" aceita brinde ou serviço só com o nome, e "Entregar brinde" só marca o voucher. A frente o deixou num branch porque o drop da check pede confirmação; a sessão principal aplicou a migration 6003 e trouxe o commit (8c44f3d2, 4919ee4d — vão com o push da F61).
 - Ficaram: A8 (unificar as sintaxes de variável é projeto), A10 (só anotado), A23 (r2-ven-12), A25 (a Minha agenda abre o atendimento por desenho, agenda-06); A21 não se reproduziu (ficou o teste).
@@ -10457,11 +10458,18 @@ O que não cai em nenhum dos três é gosto da simulação e não conta. Antes d
   - H14: as limpezas destrutivas estão autorizadas, numa sessão com o Heitor presente (a lista abaixo, em "Limpezas destrutivas que esperam o Heitor", ganhou as novas).
   - D1, D2, D3, D5 (estoque), D9 (o "Automático" das taxas sai do "para revisar"), D11 (a recorrente guarda a forma), D12 (o fechamento das comissões no fuso da rede), D13 (a regra do item vence com 0%), D14 (os pontos cumulativos no crediário), D15 (o lembrete diz "agendado ou confirmado"), D19 (só uma Admin autoriza o suporte na conta de uma Admin), D20 e D21 (quem faz o quê na agenda, pelo escopo). O est-01 sai do "Para conversar" (D3: o wipe total o apagou).
 - **Mudadas pelo Heitor:**
-  - H8: "Catalogo da unidade, o resto da clinica". O catálogo de produtos fica com a gerente de unidade; as categorias do estoque, as respostas rápidas e as Importações passam a ser da clínica toda (`plataforma.md`, CLAUDE.md §11; correção C63). Fecha as "Decisões da F4, para revisar".
+  - H8 (1ª volta): "Catalogo da unidade, o resto da clinica" — refeita na 2ª volta (abaixo). Fecha as "Decisões da F4, para revisar".
   - H10: "O bônus é da cliente. A cliente é da rede(clinica). A clinica decide onde pode ser usado." Com os pontos por unidade, a clínica escolhe em quais unidades o bônus de aniversário e o de primeiro acesso se usam, e o padrão é todas (`fidelidade.md`; C64).
   - D10: "Decisão da rede". O máximo de parcelas do crediário é configuração da rede, padrão 12, igual no Vender, no checkout e no check-in do plano; a despesa não muda (`vendas-financeiro.md`; C38).
-- **Em conversa com o Heitor (ele pediu para conversar; seguem como estão):** H15 (o pedido de eliminação da LGPD), D4 (o fornecedor da entrada), D6 (o texto da /privacidade sobre a eliminação), D7 (a taxa e o líquido para quem só recebe, A19), D8 (o Pix sem taxa e o crédito acima do limite, F17), D16 (esvaziar o silêncio ou o teto da automação), D17 (o lembrete da campanha de madrugada) e D18 (a trava do suporte ao ligar automação).
-- **Correções:** C1–C62 do levantamento e as que nasceram das respostas (C63 H8, C64 H10, C65 H1, C66 H4, C67 H6, C68 H9, C69 H12, C70 D11) entram no ciclo de correções, junto com o que a 13ª simulação achar. C1 (a sessão grava por fora da action) é a primeira.
+- **Em conversa com o Heitor na 1ª volta:** H15, D4, D6, D7, D8, D16, D17 e D18. **A 2ª volta (11/11) fechou seis:**
+  - H15 (a): não agora; a cliente pede a eliminação pelo contato da clínica (`crm-inbox.md`). D6: a /privacidade deixa de prometer a eliminação (C30).
+  - D7 (a): a taxa e o líquido só para quem tem o Financeiro de todos, e o servidor deixa de mandar os números a quem só recebe (`vendas-financeiro.md`, C3). O "para revisar" do A19 sai.
+  - D16 (a): o campo vazio desliga o silêncio ou o teto, e a automação nova nasce com 21:00–08:00 e 3 (`automacoes.md`, C54). D18 (a): o suporte não liga automação nem muda os limites (C7).
+  - D17, "a + c opcional": o lembrete da campanha sai na antecedência escolhida, a tela avisa entre 21:00 e 08:00, e a campanha tem a opção, desligada por padrão, "Se cair de madrugada, mandar na véspera às 20:00" (C74).
+  - H10 e D10 confirmados como escritos.
+  - **H8 mudou de novo**, e substitui a 1ª resposta: "catalogo de produtos pode ser da rede ou da unidade, decisão da rede. Categorias de estoque é da rede, normalmente a rede usa o mesmo produto/fornecedor em todas unidades. Respostas rápidas, na verdade, o mais certo seria ser de cada usuário, cada usuário poder configurar as suas. Importações é da rede, ela que vai importar os seus clientes ou o que for, e na importação poder escolher se aquilo pertence a uma unidade." O catálogo de produtos vira configuração da rede, com o padrão "a unidade cadastra" (o de hoje; C63); as categorias do estoque são da clínica toda (C71); as respostas rápidas são de cada pessoa (C72; dúvida: as que não têm autor gravado); as Importações são de quem é da rede, e a importação escolhe a unidade (C73). `plataforma.md`, `crm-inbox.md` e CLAUDE.md §11.
+  - **Seguem em conversa:** D4 (o fornecedor da entrada) e D8 (o Pix sem taxa e o crédito acima do limite, F17).
+- **Correções:** C1–C62 do levantamento e as que nasceram das respostas (C63 e C71–C73 H8, C64 H10, C65 H1, C66 H4, C67 H6, C68 H9, C69 H12, C70 D11, C74 D17) entram no ciclo de correções, junto com o que a 13ª simulação achar. C1 (a sessão grava por fora da action) é a primeira.
 
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 

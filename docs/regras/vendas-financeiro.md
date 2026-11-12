@@ -363,7 +363,12 @@ plano").
   `veComissaoDeTodos`) — a régua de "quem vê quanto cada um ganha" e do texto do
   cargo de Recebimentos ("não vê o financeiro da unidade", A39). Quem só recebe
   segue vendo o aviso de taxa NÃO cadastrada (sem valor). Muda a A40 da 8ª,
-  que os mostrava a toda a recepção. Prova: `e2e/vendas-atritos-da-12.spec.ts`
+  que os mostrava a toda a recepção. **Confirmado pelo Heitor no levantamento
+  das regras** (D7, 2026-11-11, opção a; princípio 3: a tela de quem só recebe
+  não mostra o financeiro da clínica), e o servidor também deixa de mandar os
+  números a quem só recebe: `taxasDoCartaoDeCredito`, `taxaDoDebito` e
+  `cartaoPorBandeiraDaRede` (este, hoje sem conferir permissão nenhuma)
+  devolvem só o que a tela dessa pessoa mostra (correção C3). Prova: `e2e/vendas-atritos-da-12.spec.ts`
   ("A19"), `e2e/caixa-atritos-da-8.spec.ts` ("A40", agora com a dona).
 - **Quem vende é quem RECEBE, e a tela diz** (D1 da 12ª simulação, 2026-11-11;
   princípio 3 — quem vende segue decidido pelo cargo, princípio 1): a Rita, com

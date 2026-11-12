@@ -409,7 +409,14 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `e2e/ficha-financeiro-so-com-modulo.spec.ts`.
 - `LgpdRequest`: pedido de acesso aos dados pelo titular. Só `type: "export"`
   está implementado — a exclusão continua fora de escopo por conflitar com a
-  guarda legal de prontuário e de registros fiscais. Fluxo: o cliente solicita
+  guarda legal de prontuário e de registros fiscais. **Confirmado pelo Heitor
+  no levantamento das regras** (H15, 2026-11-11, opção a: "não agora"): o
+  sistema não registra pedido de eliminação; a cliente pede a eliminação pelo
+  contato da clínica, que responde à mão. **E a /privacidade diz isso** (D6,
+  de acordo; princípio 3 e "LGPD: só exportação" de 09/09): a página pública
+  deixa de prometer uma eliminação que o sistema não faz — a eliminação é
+  feita sob pedido, pelo contato da clínica, respeitando as guardas legais
+  (prontuário 20 anos, fiscal 5 anos). (Correção C30.) Fluxo: o cliente solicita
   em `/[slug]/cliente/perfil`, `actions/lgpd.ts` grava o pedido e processa em
   `after()` (não há fila no projeto); `/api/cron/lgpd-exports` recolhe o que
   ficar para trás. O pacote sai em PDF (legível) + JSON (portabilidade) no
@@ -548,8 +555,15 @@ dela — e vê Configurações só com essa aba.
   importador lê o arquivo que já está no campo. Prova:
   `e2e/importacao-antes-da-hidratacao.spec.ts` (o JavaScript da página
   segurado até o arquivo estar escolhido).
+- **A importação é de quem é da REDE** (H8 do levantamento das regras, o
+  Heitor, 2026-11-11: "Importações é da rede, ela que vai importar os seus
+  clientes ou o que for, e na importação poder escolher se aquilo pertence a
+  uma unidade"): quem tem unidade fixa não importa (`recusaDaConfigDaClinica`;
+  a aba diz "Esta configuração é da clínica toda"), e a importação escolhe a
+  unidade a que os registros pertencem. (Correção C73: hoje a gerente importa
+  para a unidade dela.) `plataforma.md`, "A configuração da clínica toda".
 - **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
-  escolhida — na unidade, a dela; `clients: MANAGE`) ou *contatos do CRM* (só a
+  escolhida; `clients: MANAGE`) ou *contatos do CRM* (só a
   pessoa: nome, telefone, e-mail, rede social, tags; `crm: MANAGE`). Oportunidade no funil é
   opcional (`crm: MANAGE` + recurso `oportunidades`; responsável que não é
   quem importa só com `podeTrocarResponsavel`) e não duplica: quem já tem uma

@@ -641,19 +641,33 @@ um muro que não depende de cada trava do código.
   **Unidade** do portal da unidade (nova): os dados, o horário e as salas da
   unidade do endereço (`updateBranch`, `actions/salas.ts`); o estoque dela
   (entrada, ajuste, perda, mínimo, transferência que sai dela); a equipe dela
-  (e a comissão de quem é dela); o CATÁLOGO de produtos (`createProduct`,
-  `updateProduct` — a entrada do estoque dela depende dele; o produto que ela
-  cadastra aparece em todas as unidades); os cadastros e a operação do dia.
-- **O catálogo é da unidade, o resto é da clínica** (H8 do levantamento das
-  regras, o Heitor, 2026-11-11: "Catalogo da unidade, o resto da clinica";
-  era a decisão da F4 "para revisar", que deixava as quatro com a unidade).
-  Passam a ser da clínica toda, com `recusaDaConfigDaClinica` na action e a
-  aba dizendo "Esta configuração é da clínica toda": as **categorias do
-  estoque** (`createCategory` e o apagar/renomear), as **respostas rápidas** do
-  inbox (`quick-replies`) e as **Importações** (clientes, produtos, o que a
-  aba Importações traz). A gerente de unidade fixa continua usando as
-  respostas rápidas e escolhendo as categorias que existem; só não as cria,
-  muda ou apaga. (Correção C63: hoje as três ainda são da unidade.)
+  (e a comissão de quem é dela); os cadastros e a operação do dia.
+- **O catálogo, as categorias do estoque, as respostas rápidas e as
+  Importações** (H8 do levantamento das regras, respondida pelo Heitor em
+  2026-11-11, na 2ª volta: "catalogo de produtos pode ser da rede ou da unidade, decisão da rede. Categorias de estoque é da rede, normalmente a rede usa o mesmo produto/fornecedor em todas unidades. Respostas rápidas, na verdade, o mais certo seria ser de cada usuário, cada usuário poder configurar as suas. Importações é da rede, ela que vai importar os seus clientes ou o que for, e na importação poder escolher se aquilo pertence a uma unidade."
+  Era a decisão da F4 "para revisar", que deixava as quatro com a unidade;
+  substitui a 1ª resposta, "Catalogo da unidade, o resto da clinica"):
+  - **O catálogo de produtos é decisão da REDE** (princípio 1): uma
+    configuração da rede, "Quem cadastra e edita os produtos", com "A unidade"
+    (a gerente de unidade fixa cria e edita, `createProduct`/`updateProduct`;
+    o produto aparece em todas as unidades) ou "Só a rede" (a gerente usa os
+    produtos e lança o estoque deles, mas não cria nem edita; a action
+    recusa com `recusaDaConfigDaClinica` e a tela diz por quê). O padrão é "A
+    unidade", que é o comportamento de hoje (princípio 6: nada muda sozinho).
+    (Correção C63.)
+  - **As categorias do estoque são da clínica toda** (a rede costuma usar o
+    mesmo produto e fornecedor em todas as unidades): criar, renomear e
+    apagar (`createCategory`…) recusam a gerente de unidade fixa com
+    `recusaDaConfigDaClinica`; ela escolhe as que existem. (C71.)
+  - **As respostas rápidas são de cada pessoa** (`quick_replies`): cada membro
+    cria, edita, apaga e vê só as suas, no inbox e na aba. Deixam de ser uma
+    biblioteca da rede mantida por quem tem o CRM em Gerenciar. (C72: hoje
+    são da rede inteira.)
+  - **As Importações são de quem é da rede**, e a importação escolhe a que
+    unidade os registros pertencem (a ficha da cliente, os produtos). A
+    gerente de unidade fixa não importa: a aba diz "Esta configuração é da
+    clínica toda", e a action recusa. (C73: hoje ela importa para a unidade
+    dela.)
 - Sem aba pedida, quem tem unidade fixa abre Configurações na primeira aba que
   é DELA.
 - **A aba pedida que não abre diz por quê** (A11 da 12ª simulação, 2026-11-11;
