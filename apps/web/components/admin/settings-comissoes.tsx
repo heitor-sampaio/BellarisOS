@@ -207,10 +207,10 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
           </label>
           <p style={texto}>
             {c.produto_modo === 'POR_PRODUTO'
-              ? 'Cada produto comissiona pela sua regra, sobre a parte dele no valor vendido (com o desconto rateado) — no kit, item a item. O produto sem regra própria usa a regra geral; sem as duas, não gera comissão.'
+              ? 'Cada produto comissiona pela sua regra, sobre a parte dele no valor vendido (com o desconto rateado) — no kit, item a item. O produto sem regra própria usa a regra de venda de quem vendeu (Equipe); sem ela, a regra geral; sem nenhuma, não gera comissão.'
               : pctProduto.trim()
-                ? 'Quem vendeu ganha esse percentual do valor vendido (com o desconto), uma comissão sobre o total — também no kit.'
-                : 'Vazio: a venda de produto não gera comissão.'}
+                ? 'Quem vendeu ganha a regra de venda dela (Equipe); sem ela, esse percentual do valor vendido (com o desconto), uma comissão sobre o total — também no kit.'
+                : 'Vazio: vale a regra de venda de quem vendeu; sem ela, a venda de produto não gera comissão.'}
             {' '}A comissão fica a pagar com a venda paga inteira: à vista ou no cartão (mesmo em várias vezes), na hora; no crediário, quando a última parcela entrar. O estorno devolve.
           </p>
           {/* A regra de CADA produto se registra no cadastro dele (o Heitor,
@@ -265,8 +265,8 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
           </label>
           <p style={texto}>
             {pctPlano.trim()
-              ? 'Quem vendeu o plano (o “Quem vendeu” do checkout) ganha esse percentual do valor do plano, com o desconto.'
-              : 'Vazio: a venda do plano não gera comissão.'}
+              ? 'Quem vendeu o plano (o “Quem vendeu” do checkout) ganha a regra de venda dela (Equipe); sem ela, esse percentual do valor do plano, com o desconto.'
+              : 'Vazio: vale a regra de venda de quem vendeu; sem ela, a venda do plano não gera comissão.'}
             {' '}A comissão fica a pagar com o plano pago inteiro: à vista ou no cartão (mesmo em várias vezes), na hora; no crediário, quando a última parcela entrar. Se o plano for cancelado, ela volta. A comissão de quem atende cada sessão segue a regra do profissional.
           </p>
         </div>

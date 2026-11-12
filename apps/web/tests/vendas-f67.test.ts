@@ -40,3 +40,11 @@ describe('C37: o pagamento estornado do plano não conta como recebido', () => {
     expect(r.pendentes).toEqual(['b'])
   })
 })
+
+describe('A5 da 13ª: o pacote sem "De venda" próprio diz que vale a regra de quem vendeu', () => {
+  it('na lista dos pacotes', async () => {
+    const { rotuloDaComissaoDoPacote } = await import('@/lib/comissoes/config')
+    expect(rotuloDaComissaoDoPacote({ venda: null, execucao: { tipo: 'REGRA', valor: null } }))
+      .toBe('Venda: a regra de quem vendeu · Execução: regra de cada profissional')
+  })
+})

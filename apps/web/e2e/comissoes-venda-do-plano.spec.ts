@@ -123,7 +123,7 @@ test('Configurações → Comissões: "Venda de plano" nasce vazia, e a clínica
     const como_ = p.getByLabel('Como a comissão acontece')
     const campo = como_.getByLabel('Comissão na venda de plano (%)')
     await expect(campo, 'vazio por padrão (princípio 6)').toHaveValue('')
-    await expect(como_.locator('[data-comissao-do-plano]')).toContainText('Vazio: a venda do plano não gera comissão.')
+    await expect(como_.locator('[data-comissao-do-plano]')).toContainText('Vazio: vale a regra de venda de quem vendeu; sem ela, a venda do plano não gera comissão.')
     await campo.fill('5')
     await como_.getByRole('button', { name: 'Salvar' }).click()
     await expect(como_.getByRole('status')).toHaveText('Salvo.')

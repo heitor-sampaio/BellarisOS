@@ -299,7 +299,7 @@ export function comissaoDoPacoteDaLinha(l: {
 
 /** "Venda: 10% · Execução: R$ 25,00 fixo por sessão". */
 export function rotuloDaComissaoDoPacote(c: ComissaoDoPacote): string {
-  const venda = c.venda ? rotuloDaRegra(c.venda) : 'nenhuma'
+  const venda = c.venda ? rotuloDaRegra(c.venda) : 'a regra de quem vendeu'
   const e = c.execucao
   const execucao = e.tipo === 'REGRA' ? 'regra de cada profissional'
     : e.tipo === 'NENHUMA' ? 'nenhuma'
