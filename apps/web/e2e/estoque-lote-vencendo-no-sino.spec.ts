@@ -55,3 +55,35 @@ test('A39: o lote que vence em 30 dias chega ao sino de quem cuida do estoque, u
   expect(r2.ok()).toBe(true)
   expect((await avisos()).length, 'o mesmo lote não avisa duas vezes').toBe(lista.length)
 })
+
+/**
+ * C25 (F66): o lote JÁ vencido com saldo dizia "vence em" uma data passada, a
+ * medida não ia ao plural ("2 frasco"), o aviso não levava o produto, e duas
+ * passagens do cron ao mesmo tempo avisavam duas vezes (a conferência "já
+ * existe aviso?" não reivindicava o lote). Agora o lote é reivindicado
+ * (`product_batches.vencimento_avisado_em`) antes de avisar.
+ */
+test('C25: o lote vencido diz "venceu em", a medida vai ao plural, leva o produto — e duas passagens juntas avisam uma vez', async ({ request }) => {
+  const segredo = process.env.CRON_SECRET
+  test.skip(!segredo, 'sem CRON_SECRET')
+  const { data: p } = await db().from('products').insert({ tenant_id: rede!.tenantId, name: `${PREFIXO} Ácido ${marca}`, unit: 'frasco', uso: 'INSUMO' })
+    .select('id').single<{ id: string }>()
+  expect((await db().rpc('estoque_entrada', {
+    p_produto: p!.id, p_unidade: rede!.branchId, p_quantidade: 2, p_custo: 50, p_observacao: null,
+    p_lote: `AC-${marca}`, p_validade: diaISO(new Date(Date.now() - 3 * 86_400_000)), p_autor: 'e2e',
+  })).error).toBeNull()
+  const vencido = (await db().from('product_batches').select('id').eq('batch_number', `AC-${marca}`).single<{ id: string }>()).data!.id
+  const avisos = async () => ((await db().from('user_notifications').select('user_id, body, data')
+    .eq('type', 'batch_expiring').filter('data->>lote_id', 'eq', vencido)).data ?? []) as { user_id: string; body: string; data: { produto_id: string | null } }[]
+
+  const chamar = () => request.get(`/api/cron/estoque-minimo?rede=${rede!.tenantId}`, { headers: { authorization: `Bearer ${segredo}` } })
+  const [a, b] = await Promise.all([chamar(), chamar()])
+  expect(a.ok(), await a.text()).toBe(true)
+  expect(b.ok(), await b.text()).toBe(true)
+  await expect.poll(async () => (await avisos()).map(x => x.user_id)).toContain(estoquista!.userId)
+  const lista = (await avisos()).filter(x => x.user_id === estoquista!.userId)
+  expect(lista.length, 'duas passagens juntas avisam uma vez').toBe(1)
+  expect(lista[0]!.body, 'o lote vencido não "vence"').toContain('venceu em')
+  expect(lista[0]!.body, 'a medida vai ao plural').toContain('2 frascos')
+  expect(lista[0]!.data.produto_id, 'o aviso leva o produto').toBe(p!.id)
+})
