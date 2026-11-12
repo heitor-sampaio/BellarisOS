@@ -592,7 +592,11 @@
   - Prova: `e2e/agenda-atritos-da-12.spec.ts`.
 - **A grade do dia rola a cada troca de dia** (D8): hoje, uma hora antes de
   agora; outro dia, o primeiro atendimento ou a abertura da unidade, o que
-  vier antes (`rolagemDaGrade`). O novo agendamento sugere o próximo horário
+  vier antes (`rolagemDaGrade`). A grade da REDE (`/admin/agenda`) segue a
+  mesma régua desde a F64 (D13 da 13ª: abria sempre no topo — numa unidade
+  24 h, à meia-noite), com o "hoje" no fuso da rede e a abertura da janela
+  das unidades (`[data-grade-da-rede][data-rolagem="pronta"]`; prova:
+  `e2e/fuso-da-unidade-sobras.spec.ts`). O novo agendamento sugere o próximo horário
   livre da profissional (A20, `proximoHorarioLivre`, a conta de
   `computeAvailableSlots`) quando a hora não veio de um clique na grade.
   **E a troca nunca é calada** (D7 da 12ª simulação, 2026-11-11; princípio 3:

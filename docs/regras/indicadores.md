@@ -61,15 +61,34 @@
     (now() at time zone fuso_da_unidade(branch_id))::date`) comparam com o dia
     da unidade, não com o de Brasília.
   - **Ficam em Brasília de propósito**: a plataforma e as assinaturas (a
-    cobrança é do BellarisOS), a cobrança do Copilot e o mês da Meta, e as DATAS sem
-    hora gravadas como âncora (o vencimento ao meio-dia de −03, a validade
-    do pacote) — a âncora é escrita e lida pela mesma regra; trocar só a
-    leitura mudaria o dia.
-  - **O fechamento das comissões sai da lista** (D12 do levantamento das
-    regras, o Heitor, 2026-11-11; princípio 3): o `period_ref` e os limites do
-    fechamento passam ao fuso da rede (`fusoDaRede`), como as telas que os
-    mostram — correção C4; até ela entrar, ainda é Brasília.
-  - Prova: `e2e/fuso-da-unidade.spec.ts` e `tests/fuso-da-unidade.test.ts`.
+    cobrança é do BellarisOS), a cobrança do Copilot e o mês da Meta, e o
+    VENCIMENTO, âncora ao meio-dia de −03 (`vencimentoDoDia`): o dia dela se
+    lê em Brasília (cai no mesmo dia em todo fuso do Brasil), e o "hoje" que
+    decide se venceu é o da unidade (`situacaoDoVencimento(…, fuso)`,
+    `separarOEmAberto`, o pago no dia de `lancarCore`).
+  - **A validade do pacote é o fim do dia DA UNIDADE** (F64): o pacote trazido
+    de fora grava `fimDoDiaDaValidade(dia, fuso)` e o cancelar diz a
+    validade no relógio dela. O pacote gravado antes (fim do dia de
+    Brasília) não muda — em Manaus a última hora dele já conta vencida.
+  - **As comissões são do fuso da REDE** (D12, o Heitor, 2026-11-11): o
+    `period_ref`, os limites e o rótulo do fechamento (`periodoDe`,
+    `periodosRecentes`, `periodRef(…, fusoDaRede)`; no banco,
+    `comissao_acertar_linha` e `comissao_fechar_escolhidos` com
+    `fuso_do_recorte(rede, null)`).
+  - **O instante se formata no fuso**: `formatarNoFuso` (`lib/formatar-no-fuso.ts`)
+    no lugar do `format` do date-fns num instante, `diaRelativo` no lugar de
+    `isToday`/`isYesterday`; o `format` direto só no Date "de parede" da
+    grade (a linha diz `parede`). `tests/fuso-sem-relogio-do-aparelho.test.ts`
+    trava. A hora que vale para a REDE (o "Às" do relógio das automações, os
+    modelos, a campanha agendada) diz SEMPRE o relógio (`RelogioDaRede`: "No
+    horário de Brasília."); a da unidade, só fora de Brasília (`NotaDoFuso`).
+  - **A campanha agendada**: a hora digitada é a do relógio da rede
+    (`instanteDaCampanha`); ia crua e o banco a lia como UTC.
+  - **Os gráficos do resultado e dos custos da venda** (`metrics_series_do_resultado`,
+    `metrics_series_dos_custos_da_venda`) põem cada lançamento no dia da
+    unidade dele, como `metrics_series` (F64).
+  - Prova: `e2e/fuso-da-unidade.spec.ts`, `e2e/fuso-da-unidade-sobras.spec.ts`,
+    `tests/fuso-da-unidade.test.ts` e `tests/fuso-sobras-f64.test.ts`.
 - **Período** por `resolvePeriod()`: o período anterior tem a mesma duração
   decorrida do atual. Comparar mês parcial com mês anterior inteiro faz todo
   delta nascer negativo.

@@ -10452,6 +10452,43 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   4. rodar de novo `e2e/rls-sessao-so-le.spec.ts` (hoje os cinco falham pelo motivo certo) e `e2e/suporte-credenciais.spec.ts` contra o build.
 - **Fica de fora:** as tabelas OPERACIONAIS (agendamentos, lançamentos, produtos…) ainda aceitam escrita pela sessão dentro da rede e do alcance, o que o CLAUDE.md §11 aceita ("a trava da action é a única") — fechá-las é frente própria. `financial_transactions` segue no Realtime com leitura pela unidade (o "só os meus" do Financeiro: a mesma pergunta das comissões, não levantada no C1). Um `domain_events` 'estoque.movimentado' órfão ficou na rede de teste da primeira rodada do spec (o movimento plantado foi apagado; o evento, não — limpeza destrutiva, espera o Heitor).
 
+**F64 FEITA (12/11; 36ec0522…53d41571; migration 20261112006401 aplicada antes do push): o fuso da unidade no que sobrou** (13ª simulação: D1–D4, D6, A7 e D13; o C4 do levantamento das regras). Com a unidade em Rio Branco e o navegador em Brasília, o modal dizia 16:00 para o das 18:00, e a ficha e o atendimento diziam 20:00.
+- **Telas:**
+  - o modal do agendamento: convertia duas vezes (D1);
+  - a ficha: próximos, histórico, financeiro, documentos e acessos (D3);
+  - a tela do atendimento, que no `/admin` passa a ter o fuso da unidade dela (D6);
+  - o inbox, o checkout e as sessões do plano;
+  - o cancelar pacote, pré-pago e devolver;
+  - o detalhe da campanha.
+- **A regra que trava a volta:** o instante se formata com `formatarNoFuso` / `diaRelativo`. O `format` direto só vale no Date "de parede" da grade, com o comentário `parede`. `tests/fuso-sem-relogio-do-aparelho.test.ts` varre o código.
+- **Servidor:**
+  - os avisos da agenda, no sino e no push (D2);
+  - o vencimento: o "hoje" é o da unidade, e a âncora segue em Brasília;
+  - o check-in do plano (`separarOEmAberto`) e o "pago hoje" do lançamento;
+  - a validade do pacote trazido de fora: fim do dia da unidade. Era a sobra da F62b;
+  - o bloqueio na tela do atendimento;
+  - o lote vencido nos Relatórios: diz "Venceu" ou "Vence hoje", não mais "0d".
+- **Comissões no fuso da REDE (D12):** o período, a chave e o `period_ref`; no banco, `comissao_acertar_linha` e o rótulo do fechamento.
+- **Gráficos:** o do resultado e o dos custos da venda põem cada lançamento no dia da unidade dele.
+- **Campanha agendada (D4):** a hora digitada é a do relógio da rede. Antes, o banco lia o horário cru como UTC: o 09:00 saía às 06:00 de Brasília.
+- **A tela diz o relógio da rede (A7):** no "Às" das automações, nos modelos pelo relógio e no formulário da campanha (`RelogioDaRede`).
+- **Agenda da rede (D13):** rola como a da unidade. Hoje, abre uma hora antes de agora; em outro dia, na abertura ou no primeiro atendimento.
+- **Decidido pelos princípios:**
+  - `RelogioDaRede` diz o relógio SEMPRE, até em Brasília (princípio 3). No consolidado com fusos diferentes o relógio é o de Brasília, e a dona precisa ler isso. A `NotaDoFuso` da unidade continua calada em Brasília.
+  - O que já foi gravado não muda (princípio 6): as 2 campanhas agendadas que existem e os pacotes trazidos antes, com validade no fim do dia de Brasília.
+  - Na agenda da rede, numa unidade 24 h, outro dia abre à meia-noite: é a régua da grade da unidade (D8), e as duas ficam iguais.
+- **Teste com falha de horário:** os três testes da "Minha agenda" em `agenda-grade-madrugada` dependiam da hora do dia. Às 02:30, o atendimento das 02:30 era também o "Próximo atendimento". Agora acham o cartão pelo `data-cartao-minha-agenda`.
+- **Prova:**
+  - `e2e/fuso-da-unidade-sobras.spec.ts`: 6 testes, 6 falhas contra o código de antes;
+  - `tests/fuso-sobras-f64.test.ts` e `tests/fuso-sem-relogio-do-aparelho.test.ts`;
+  - Vitest 2172/2172 e typecheck limpo;
+  - vizinhos: 19 specs e 80 testes; os 3 da "Minha agenda" foram corrigidos, e 1 pulado.
+  - Vale completa: mexeu na agenda das duas grades, na ficha, na sessão, no checkout, no inbox e em `lib/cached-queries`.
+- **Fica de fora:**
+  - os outros textos de Brasília em `docs/regras/atendimento.md` e `vendas-financeiro.md`, de antes da F62 (o `indicadores.md` manda);
+  - o histórico de alterações e os relatórios em PDF/CSV que já passavam `timeZone`;
+  - `startOfMonth` na janela de 3 meses da agenda da unidade, que é folga de busca e não decide dia.
+
 **Pronto para lançar = zero defeitos e zero atritos** (o Heitor, 11/11: "as regras de negocio já estão definidas, não tem pq ter defeito ou atrito"). A partir da 13ª simulação, cada achado precisa cair num destes casos:
 1. Contraria uma regra escrita (`docs/regras` ou os sete princípios do CLAUDE.md §1).
 2. A pessoa não conseguiu fazer a tarefa, ou fez errado sem perceber.
