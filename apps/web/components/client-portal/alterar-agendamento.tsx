@@ -21,8 +21,15 @@ const diaPorExtenso = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateStri
  * do prazo, só o caminho para falar com a clínica. As ações de verdade
  * conferem o prazo de novo no servidor.
  */
-export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, whatsappParaAlterar = null, ligar = null, telefone, profissional = null, semPreferenciaInicial = false, ofereceSemPreferencia = false }: {
+/** Uma unidade do "Em qual unidade?" (A15): o relógio dela e se a mesma profissional atende lá. */
+export interface UnidadeDoRemarcar { id: string; nome: string; fuso: string; comAMesma: boolean }
+
+export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, whatsappParaAlterar = null, ligar = null, telefone, profissional = null, semPreferenciaInicial = false, ofereceSemPreferencia = false, unidade: unidadeDoAgendamento = '', unidades = [] }: {
   appointmentId: string
+  /** A unidade do agendamento. */
+  unidade?:      string
+  /** Com mais de uma (A15, F65), o remarcar pergunta "Em qual unidade?". */
+  unidades?:     UnidadeDoRemarcar[]
   scheduledAt:   string
   prazoHoras:    number
   whatsapp:      string | null
@@ -40,8 +47,15 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   telefone:      string | null
 }) {
   const router = useRouter()
-  // F62: o dia e a hora são os do relógio da UNIDADE.
-  const fuso = useFuso()
+  // A unidade do horário novo (A15): a do agendamento, até a cliente escolher outra.
+  const [unidade, setUnidade] = useState(unidadeDoAgendamento)
+  const escolhida = unidades.find(u => u.id === unidade) ?? null
+  const outraUnidade = !!unidade && unidade !== unidadeDoAgendamento
+  // A mesma profissional só onde ela atende; noutra unidade, quem estiver livre.
+  const comAMesma = !outraUnidade || !!escolhida?.comAMesma
+  // F62: o dia e a hora são os do relógio da UNIDADE (a escolhida).
+  const fusoDoAgendamento = useFuso()
+  const fuso = escolhida?.fuso ?? fusoDoAgendamento
   const [abertoEm] = useState(() => Date.now())
   const podeAlterar = new Date(scheduledAt).getTime() - abertoEm >= prazoHoras * 3600_000
   // O dia e a hora em que o prazo acaba (J-61): era só "até 24 horas antes".
@@ -56,21 +70,23 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
   const [enviando, iniciar] = useTransition()
   // Com quem remarcar (A59): a mesma profissional, ou "Sem preferência" — que
   // escolhe de novo, entre quem realiza, quem estiver livre no horário.
-  const [semPreferencia, setSemPreferencia] = useState(ofereceSemPreferencia && semPreferenciaInicial)
+  const [semPreferenciaEscolhida, setSemPreferencia] = useState(ofereceSemPreferencia && semPreferenciaInicial)
+  const semPreferencia = semPreferenciaEscolhida || !comAMesma
+  const ofereceComQuem = ofereceSemPreferencia && comAMesma
   // A56 da 11ª: em "Sem preferência", quem fica com o horário — antes de confirmar.
   // A resposta guarda o dia e a hora a que se refere: a de outro horário não aparece.
   const [quemAtendeDe, setQuemAtendeDe] = useState<{ chave: string; nome: string | null; mesma: boolean } | null>(null)
-  const chaveDoHorario = semPreferencia && dia && hora ? `${dia} ${hora}` : null
+  const chaveDoHorario = semPreferencia && dia && hora ? `${unidade} ${dia} ${hora}` : null
   const quemAtende = quemAtendeDe && quemAtendeDe.chave === chaveDoHorario ? quemAtendeDe : null
   const esperandoQuemAtende = !!chaveDoHorario && !quemAtende
   useEffect(() => {
     if (!chaveDoHorario || !dia || !hora) return
     let vivo = true
     // A falha libera o botão (sem o nome): o servidor confere de novo ao remarcar.
-    quemAtendeNoRemarcar(appointmentId, dia, hora).then(r => { if (vivo) setQuemAtendeDe({ chave: chaveDoHorario, ...r }) })
+    quemAtendeNoRemarcar(appointmentId, dia, hora, unidade || null).then(r => { if (vivo) setQuemAtendeDe({ chave: chaveDoHorario, ...r }) })
       .catch(() => { if (vivo) setQuemAtendeDe({ chave: chaveDoHorario, nome: null, mesma: false }) })
     return () => { vivo = false }
-  }, [chaveDoHorario, dia, hora, appointmentId])
+  }, [chaveDoHorario, dia, hora, appointmentId, unidade])
   // A57 da 11ª: o horário novo dentro do prazo do app — depois de remarcar, só a clínica muda.
   const novoDentroDoPrazo = !!dia && !!hora && prazoHoras > 0
     && instanteNoFuso(dia, hora, fuso).getTime() - abertoEm < prazoHoras * 3_600_000
@@ -106,11 +122,11 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     )
   }
 
-  function escolherDia(novo: string, sem = semPreferencia) {
+  function escolherDia(novo: string, sem = semPreferencia, onde = unidade) {
     setDia(novo); setHora(null); setSlots(null); setErro(null)
     if (!novo) return
     iniciar(async () => {
-      const r = await horariosParaRemarcar(appointmentId, novo, sem)
+      const r = await horariosParaRemarcar(appointmentId, novo, sem, onde || null)
       if ('error' in r) setErro(r.error)
       else setSlots(r.slots)
     })
@@ -120,7 +136,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     if (!dia || !hora) return
     setErro(null)
     iniciar(async () => {
-      const r = await remarcarPelaCliente(appointmentId, instanteNoFuso(dia, hora, fuso).toISOString(), semPreferencia)
+      const r = await remarcarPelaCliente(appointmentId, instanteNoFuso(dia, hora, fuso).toISOString(), semPreferencia, unidade || null)
       if ('error' in r) { setErro(r.error); return }
       // A51 da 12ª: o remarcado diz com quem ficou e quando (a Sabrina passou da Eva à Fernanda calada).
       setFeito(`Agendamento remarcado${r.quemAtende ? `: com ${r.quemAtende}` : ''}, ${diaPorExtenso(dia)} às ${hora}.`); setModo('nada'); router.refresh()
@@ -156,7 +172,27 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
 
       {modo === 'remarcar' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {ofereceSemPreferencia && (
+          {/* A15 (F65): com mais de uma unidade que faz o procedimento, onde. As
+              opções vêm dos dados: é um select, não chip (design.md). */}
+          {unidades.length > 1 && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
+              Em qual unidade?
+              <select className="filtro-select" value={unidade} onChange={e => {
+                const nova = e.target.value
+                const mesma = nova === unidadeDoAgendamento || !!unidades.find(u => u.id === nova)?.comAMesma
+                setUnidade(nova)
+                if (dia) escolherDia(dia, semPreferenciaEscolhida || !mesma, nova)
+              }}>
+                {unidades.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+              </select>
+            </label>
+          )}
+          {outraUnidade && !comAMesma && (
+            <p data-outra-unidade-quem-atende style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+              {profissional ? `${profissional} não atende em ${escolhida?.nome ?? 'nesta unidade'}: o` : 'O'} horário novo fica com quem estiver livre lá.
+            </p>
+          )}
+          {ofereceComQuem && (
             <div role="group" aria-label="Com quem?" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button type="button" aria-pressed={!semPreferencia} className={!semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
                 onClick={() => { setSemPreferencia(false); if (dia) escolherDia(dia, false) }}>
@@ -169,7 +205,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
             </div>
           )}
           {/* A50 da 12ª: "Sem preferência" marcado ao lado de "Com Helena" não dizia se a profissional podia mudar. */}
-          {ofereceSemPreferencia && semPreferencia && (
+          {ofereceComQuem && semPreferencia && (
             <p data-o-que-e-sem-preferencia style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
               Sem preferência: {profissional ? `hoje o agendamento é com ${profissional}; no` : 'no'} horário novo, fica com quem estiver livre — pode ser outra profissional.
               {profissional ? ` Para ficar com ${profissional}, escolha “Só com ${profissional}”.` : ''}

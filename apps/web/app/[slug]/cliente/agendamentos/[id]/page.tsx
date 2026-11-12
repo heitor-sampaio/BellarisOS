@@ -13,6 +13,7 @@ import { fusoValido } from '@/lib/unidades/fuso'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { documentosDoAgendamento, type ResumoDeDocumento } from '@/lib/documentos/leitura'
+import { COLUNAS_DA_OFERTA, ofereceNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { FileSignature } from 'lucide-react'
 
 /**
@@ -60,11 +61,11 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
 
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
-    .select('id, status, scheduled_at, duration_min, cancellation_reason, branch_id, procedure_id, sem_preferencia, procedures(name), profissional:users!professional_id(name), branches!inner(name, phone, tenant_id, fuso)')
+    .select('id, status, scheduled_at, duration_min, cancellation_reason, branch_id, procedure_id, professional_id, sem_preferencia, procedures(name), profissional:users!professional_id(name, atende_em), branches!inner(name, phone, tenant_id, fuso)')
     .eq('id', id).eq('client_id', ctx.clientId).maybeSingle(), 'buscar o agendamento') as {
       id: string; status: string; scheduled_at: string; duration_min: number; cancellation_reason: string | null
-      branch_id: string; procedure_id: string | null; sem_preferencia: boolean
-      procedures: { name: string } | null; profissional: { name: string } | null
+      branch_id: string; procedure_id: string | null; professional_id: string | null; sem_preferencia: boolean
+      procedures: { name: string } | null; profissional: { name: string; atende_em: string[] | null } | null
       branches: { name: string; phone: string | null; tenant_id: string; fuso: string | null }
     } | null
   if (!a) notFound()
@@ -86,6 +87,23 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
     ])
     return (equipe as { id: string }[]).filter(p => realiza(realizam, p.id)).length > 1
   })()
+  // A15 (F65): com mais de uma unidade que FAZ o procedimento, o remarcar
+  // pergunta "Em qual unidade?" (H5: a cliente é da clínica). Em cada uma, se a
+  // mesma profissional atende lá.
+  const unidadesDoRemarcar = aberto ? await (async () => {
+    const [unidades, proc] = await Promise.all([
+      ler(admin.from('branches').select('id, name, fuso').eq('tenant_id', a.branches.tenant_id).eq('is_active', true).order('name'),
+        'listar as unidades da clínica') as Promise<{ id: string; name: string; fuso: string | null }[] | null>,
+      a.procedure_id
+        ? ler(admin.from('procedures').select(COLUNAS_DA_OFERTA).eq('id', a.procedure_id).maybeSingle(), 'conferir onde o procedimento é feito') as
+          Promise<{ branch_id: string | null; procedure_branch_availability: { branch_id: string }[] | null } | null>
+        : Promise.resolve(null),
+    ])
+    const atendeEm = a.profissional?.atende_em ?? []
+    return (unidades ?? [])
+      .filter(u => u.id === a.branch_id || !proc || ofereceNaUnidade(proc, u.id))
+      .map(u => ({ id: u.id, nome: u.name, fuso: fusoValido(u.fuso), comAMesma: !!a.professional_id && atendeEm.includes(u.id) }))
+  })() : []
   const telefone = (a.branches.phone || rede?.phone || '').replace(/\D/g, '')
   const quando = new Date(a.scheduled_at)
   // O relógio da unidade do agendamento (F62).
@@ -145,6 +163,8 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           profissional={a.profissional?.name ?? null}
           semPreferenciaInicial={a.sem_preferencia}
           ofereceSemPreferencia={ofereceSemPreferencia}
+          unidade={a.branch_id}
+          unidades={unidadesDoRemarcar.length > 1 ? unidadesDoRemarcar : []}
           whatsapp={whatsapp}
           whatsappParaAlterar={whatsappParaAlterar}
           ligar={telefone ? `tel:+${telefone.startsWith('55') && telefone.length > 11 ? telefone : `55${telefone}`}` : null}

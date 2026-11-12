@@ -109,10 +109,16 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   }
 
   // Com a guarda do status: concluído entre a leitura e a escrita não remarca.
+  // H3 (opção c, o Heitor, 2026-11-11): a equipe ou o Copilot remarcaram —
+  // ninguém ouviu a cliente. O horário novo volta a Agendado e a confirmação é
+  // pedida de novo (era o inverso: ficava "Confirmado" no horário que ela não
+  // confirmou). Só a troca de profissional no mesmo horário mantém a situação.
+  const mudaOHorario = inicio.getTime() !== new Date(existente.scheduled_at).getTime()
   const remarcadas = await gravar(admin.from('appointments').update({
     scheduled_at:    inicio.toISOString(),
     professional_id: input.professionalId || undefined,
     updated_at:      new Date().toISOString(),
+    ...(mudaOHorario ? { status: 'SCHEDULED', confirmed_at: null, arrived_at: null } : {}),
   }).eq('id', existente.id).not('status', 'in', ABERTOS_NAO).neq('status', 'IN_PROGRESS').select('id'), 'reagendar') as { id: string }[] | null
   if (!remarcadas?.length) return { error: 'Este agendamento já foi finalizado.' }
 

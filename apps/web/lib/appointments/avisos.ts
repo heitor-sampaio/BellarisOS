@@ -31,7 +31,9 @@ export async function logHistory(
   description: string,
   metadata?: Record<string, unknown>,
 ): Promise<void> {
-  if (!internalUserId) return
+  // A cliente pelo app não é membro (C15, F65): a linha vale com o nome dela
+  // ("Fulana (app)") e sem o id. Sem nome nenhum, não há quem registrar.
+  if (!internalUserId && !userName.trim()) return
   await tentar(admin.from('appointment_history').insert({
     appointment_id:  appointmentId,
     changed_by_id:   internalUserId,

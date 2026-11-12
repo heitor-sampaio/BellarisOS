@@ -268,7 +268,8 @@ export async function createAppointmentCore(
       .eq('id', input.procedureId).eq('tenant_id', ctx.tenantId!).single(),
     precosDaUnidade(admin, input.branchId),
     oportunidadeDoAgendamento(admin, ctx, input.clientId, input.leadId),
-    ctx.userName ? Promise.resolve(ctx.userName) : ctx.isClient ? Promise.resolve('') : getUserName(admin, ctx.userId),
+    // A cliente pelo app: o nome DELA, "(app)" — a linha do histórico (C15).
+    ctx.userName ? Promise.resolve(ctx.userName) : ctx.isClient ? nomeDaClienteNoApp(admin, input.clientId) : getUserName(admin, ctx.userId),
   ])
   if (recusa) return { error: recusa }
   if (doProcedimento.error || !doProcedimento.data) return { error: 'Procedimento não encontrado.' }
@@ -523,6 +524,11 @@ export async function getUserName(admin: Admin, authId: string): Promise<string>
   return data?.name ?? 'Usuário'
 }
 
+async function nomeDaClienteNoApp(admin: Admin, clientId: string): Promise<string> {
+  const c = await ler(admin.from('clients').select('name').eq('id', clientId).maybeSingle(), 'buscar o nome da cliente') as { name: string } | null
+  return c?.name ? `${c.name} (app)` : ''
+}
+
 async function logAppointmentHistory(
   admin: Admin,
   appointmentId: string,
@@ -531,7 +537,9 @@ async function logAppointmentHistory(
   action: string,
   description: string,
 ): Promise<void> {
-  if (!internalUserId) return
+  // A cliente pelo app não é membro (C15, F65): a linha vale com o nome dela
+  // ("Fulana (app)") e sem o id. Sem nome nenhum, não há quem registrar.
+  if (!internalUserId && !userName.trim()) return
   await tentar(admin.from('appointment_history').insert({
     appointment_id:  appointmentId,
     changed_by_id:   internalUserId,
