@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NODES } from '@estetica-os/types'
 import type { GrafoDeAutomacao, ConfigGatilhoAgenda } from '@estetica-os/types'
-import { executarRun } from './executar'
+import { executarRun, despacharEvento } from './executar'
 import { estaNaHora } from './tempo'
 import { partsInTZ } from '@/lib/datetime'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
@@ -19,7 +19,11 @@ import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
  *  - **o que falhou** — a rede caiu, a Graph API recusou. Vale tentar de novo,
  *    mas não para sempre;
  *  - **os gatilhos de agenda** — "todo dia às 9h" não nasce de ação nenhuma, e
- *    só existe porque alguém pergunta pela hora.
+ *    só existe porque alguém pergunta pela hora;
+ *  - **os fatos do banco** (C2, F69) — pagamento recebido e estornado, estoque,
+ *    comissão, termo emitido, pontos: os gatilhos SQL gravam o fato em
+ *    `domain_events` com `origem = 'banco'`, e nenhum `emitirEvento` os
+ *    despacha. Até a F69 a automação montada sobre eles nunca disparava.
  *
  * O disparo imediato continua acontecendo dentro do request (`after()`): este
  * cron é a rede de segurança e o relógio, não o caminho principal.
@@ -34,13 +38,88 @@ const LOTE = 50
 export interface ResultadoDoCron {
   retomadas: number
   agendas:   number
+  fatos:     number
   erros:     number
 }
 
 export async function rodarFilaDeAutomacoes(): Promise<ResultadoDoCron> {
+  const fatos     = await despacharFatosDoBanco()
   const agendas   = await dispararAgendas()
   const retomadas = await retomarPendentes()
-  return { ...retomadas, agendas }
+  return { ...retomadas, agendas, fatos }
+}
+
+/**
+ * Os fatos que nasceram no banco e ainda não foram despachados.
+ *
+ * Cada um é REIVINDICADO antes de despachar (`despachado_em` de nulo para
+ * agora, conferindo a linha devolvida): duas passagens do cron ao mesmo tempo
+ * não despacham o mesmo fato duas vezes — e, se despachassem, o índice único
+ * de `automation_runs (automation_id, evento_id)` ainda seguraria a segunda.
+ *
+ * Só o último dia: o fato mais velho que isso (o cron parado por um deploy
+ * longo) já não é "quando o pagamento entrar". A migration da F69 marcou os
+ * anteriores como despachados.
+ *
+ * O SUPORTE: o gatilho SQL não sabe que a gravação veio de uma sessão de
+ * suporte (o servidor grava pelo cliente de serviço). O fato que ocorreu
+ * enquanto a rede tinha uma sessão de suporte ATIVA não dispara — nada sai ao
+ * paciente por causa do suporte (CLAUDE.md §14).
+ */
+async function despacharFatosDoBanco(): Promise<number> {
+  const admin = createAdminClient()
+  const desde = new Date(Date.now() - 86_400_000).toISOString()
+  const { data, error } = await admin
+    .from('domain_events')
+    .select('id, tenant_id, branch_id, nome, entidade, entidade_id, dados, ator_nome, ator_tipo, origem, ocorrido_em, suporte_sessao_id')
+    .eq('origem', 'banco')
+    .is('despachado_em', null)
+    .gte('created_at', desde)
+    .order('created_at', { ascending: true })
+    .limit(LOTE)
+  if (error) { console.error('[cron automacoes] fatos do banco:', error.message); return 0 }
+
+  let despachados = 0
+  for (const ev of data ?? []) {
+    try {
+      const { data: meu } = await admin.from('domain_events')
+        .update({ despachado_em: new Date().toISOString() })
+        .eq('id', ev.id as string).is('despachado_em', null)
+        .select('id')
+      if (!meu?.length) continue // outra passagem pegou
+      if (ev.suporte_sessao_id) continue
+      if (await suporteAtivoEm(ev.tenant_id as string, ev.ocorrido_em as string)) continue
+      await despacharEvento({
+        id:         ev.id as string,
+        nome:       ev.nome as string,
+        entidade:   ev.entidade as string,
+        entidadeId: (ev.entidade_id as string | null) ?? null,
+        dados:      (ev.dados as Record<string, unknown> | null) ?? {},
+        atorNome:   (ev.ator_nome as string | null) ?? null,
+        atorTipo:   (ev.ator_tipo as string | null) ?? 'sistema',
+        origem:     'banco',
+        ocorridoEm: ev.ocorrido_em as string,
+        branchId:   (ev.branch_id as string | null) ?? null,
+      }, ev.tenant_id as string, 0)
+      despachados++
+    } catch (e) {
+      console.error('[cron automacoes] fato', ev.id, (e as Error).message)
+    }
+  }
+  return despachados
+}
+
+/** A rede tinha uma sessão de suporte aberta naquele instante? */
+async function suporteAtivoEm(tenantId: string, quando: string): Promise<boolean> {
+  const { data } = await createAdminClient()
+    .from('support_sessions')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .lte('started_at', quando)
+    .or(`ended_at.is.null,ended_at.gte.${quando}`)
+    .gte('expires_at', quando)
+    .limit(1)
+  return !!data?.length
 }
 
 /**
