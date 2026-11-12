@@ -10437,11 +10437,14 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   - No Brasília de propósito: plataforma, assinaturas, cobrança do Copilot, as âncoras de vencimento ao meio-dia (datas sem hora) e o `period_ref` das comissões (é da rede).
 
 **Pronto para lançar = zero defeitos e zero atritos** (o Heitor, 11/11: "as regras de negocio já estão definidas, não tem pq ter defeito ou atrito"). A partir da 13ª simulação, cada achado precisa cair num destes casos:
-1. Contraria uma regra escrita (`docs/regras` ou os seis princípios do CLAUDE.md §1).
+1. Contraria uma regra escrita (`docs/regras` ou os sete princípios do CLAUDE.md §1).
 2. A pessoa não conseguiu fazer a tarefa, ou fez errado sem perceber.
 3. Não há regra: vai ao Heitor, e a decisão dele vira regra.
+4. **CONFUSO** (o 7º princípio, "Simples primeiro", aprovado pelo Heitor em 11/11): a pessoa nova não acha o caminho, ou não entende o número sem ajuda. Conta como defeito.
 
-O que não cai em nenhum dos três é gosto da simulação e não conta. Antes de corrigir um defeito, a frente procura todos os caminhos da mesma regra e corrige todos juntos: 7 dos 12 defeitos da 12ª eram sobras de frentes anteriores.
+O que não cai em nenhum dos quatro é gosto da simulação e não conta. Antes de corrigir um defeito, a frente procura todos os caminhos da mesma regra e corrige todos juntos: 7 dos 12 defeitos da 12ª eram sobras de frentes anteriores.
+
+**Pendente: passada de simplificação** (o 7º princípio): Taxas (vira por maquininha, em decisão), Comissões, Cargos, Automações e Vender — cada tela vai ao Heitor em antes/depois antes de mudar.
 
 **Levantamento das regras (11/11): respostas do Heitor.** Oito agentes levantaram as 860 regras do sistema, área por área, contra o código: 631 conformes, 112 divergentes, 75 só no código, 8 só escritas, 16 contraditórias. O que pedia decisão foi a uma página (https://claude.ai/artifact/XP1RYjdqAw1t19xgZy29ZU): 15 perguntas (H1–H15) e 21 questões decididas pelos princípios (D1–D21). O Heitor respondeu as 36 na mesma noite. O consolidado, com as 70 correções (C1–C70), fica fora do git, em `scratchpad/levantamento/00-consolidado.md` da sessão 15b60fd2.
 - **De acordo com a recomendação (escritas em `docs/regras`, cada regra com a correção que falta):**
@@ -10468,7 +10471,7 @@ O que não cai em nenhum dos três é gosto da simulação e não conta. Antes d
   - D17, "a + c opcional": o lembrete da campanha sai na antecedência escolhida, a tela avisa entre 21:00 e 08:00, e a campanha tem a opção, desligada por padrão, "Se cair de madrugada, mandar na véspera às 20:00" (C74).
   - H10 e D10 confirmados como escritos.
   - **H8 mudou de novo**, e substitui a 1ª resposta: "catalogo de produtos pode ser da rede ou da unidade, decisão da rede. Categorias de estoque é da rede, normalmente a rede usa o mesmo produto/fornecedor em todas unidades. Respostas rápidas, na verdade, o mais certo seria ser de cada usuário, cada usuário poder configurar as suas. Importações é da rede, ela que vai importar os seus clientes ou o que for, e na importação poder escolher se aquilo pertence a uma unidade." O catálogo de produtos vira configuração da rede, com o padrão "a unidade cadastra" (o de hoje; C63); as categorias do estoque são da clínica toda (C71); as respostas rápidas são de cada pessoa (C72; dúvida: as que não têm autor gravado); as Importações são de quem é da rede, e a importação escolhe a unidade (C73). `plataforma.md`, `crm-inbox.md` e CLAUDE.md §11.
-  - **Seguem em conversa:** D4 (o fornecedor da entrada) e D8 (o Pix sem taxa e o crédito acima do limite, F17).
+  - **Seguem em conversa:** D4 (o fornecedor da entrada) e D8 (o Pix sem taxa e o crédito acima do limite, F17). Na 3ª volta, as duas foram para uma 4ª, e a D8 virou "taxas por OPERADORA da maquininha" (o Heitor: "Quem escolhe a taxa é a operadora: stone, mercadopago… a rede precisa configurar suas taxas, por operadora"), em decisão. A 3ª volta também aprovou o 7º princípio, "Simples primeiro" (CLAUDE.md §1).
 - **Correções:** C1–C62 do levantamento e as que nasceram das respostas (C63 e C71–C73 H8, C64 H10, C65 H1, C66 H4, C67 H6, C68 H9, C69 H12, C70 D11, C74 D17) entram no ciclo de correções, junto com o que a 13ª simulação achar. C1 (a sessão grava por fora da action) é a primeira.
 
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)

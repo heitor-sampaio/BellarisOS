@@ -55,6 +55,10 @@ regra de negócio que não está clara ou que contraria um deles.
    o dinheiro entrou.
 6. **Nada se move sozinho**: automação nasce como modelo desligado; a clínica
    liga se quiser.
+7. **Simples primeiro.** O caso comum aparece; o raro fica guardado até a
+   clínica precisar. Tela que uma pessoa nova não entende sozinha é defeito.
+   (O Heitor, 2026-11-11, sobre a tela de Taxas: "o sistema precisa ser
+   intuitivo, me parece que ta virando um monstro".)
 
 ---
 
