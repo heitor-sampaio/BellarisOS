@@ -79,10 +79,13 @@ export async function rodarFilaDeAutomacoes(): Promise<ResultadoDoCron> {
  * longo) já não é "quando o pagamento entrar". A migration da F69 marcou os
  * anteriores como despachados.
  *
- * O SUPORTE: o gatilho SQL não sabe que a gravação veio de uma sessão de
- * suporte (o servidor grava pelo cliente de serviço). O fato que ocorreu
- * enquanto a rede tinha uma sessão de suporte ATIVA não dispara — nada sai ao
- * paciente por causa do suporte (CLAUDE.md §14).
+ * O SUPORTE (C2, F71): só o fato cujo ATOR é a sessão de suporte deixa de
+ * disparar — nada sai ao paciente por causa do suporte (CLAUDE.md §14). O
+ * cliente de serviço da requisição do suporte manda o cabeçalho
+ * `x-bellaris-suporte-sessao` (`comMarcaDoSuporte`, no núcleo), e o gatilho de
+ * `domain_events` grava a marca `suporte_sessao_id` no fato que o gatilho SQL
+ * criou. O que a equipe ou a cliente faz no mesmo período dispara. (Até a F71
+ * o cron calava todo fato ocorrido com uma sessão de suporte ativa na rede.)
  */
 async function despacharFatosDoBanco(): Promise<number> {
   const admin = createAdminClient()
@@ -155,7 +158,6 @@ async function despacharReivindicados(fatos: FatoDoBanco[]): Promise<void> {
     try {
       if (ev.suporte_sessao_id) continue
       if (!assinados.has(`${ev.tenant_id}|${ev.nome}`)) continue
-      if (await suporteAtivoEm(ev.tenant_id, ev.ocorrido_em)) continue
       await despacharEvento({
         id:         ev.id,
         nome:       ev.nome,
@@ -172,19 +174,6 @@ async function despacharReivindicados(fatos: FatoDoBanco[]): Promise<void> {
       console.error('[cron automacoes] fato', ev.id, (e as Error).message)
     }
   }
-}
-
-/** A rede tinha uma sessão de suporte aberta naquele instante? */
-async function suporteAtivoEm(tenantId: string, quando: string): Promise<boolean> {
-  const { data } = await createAdminClient()
-    .from('support_sessions')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .lte('started_at', quando)
-    .or(`ended_at.is.null,ended_at.gte.${quando}`)
-    .gte('expires_at', quando)
-    .limit(1)
-  return !!data?.length
 }
 
 /**

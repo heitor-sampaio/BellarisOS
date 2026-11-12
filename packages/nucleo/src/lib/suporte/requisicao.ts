@@ -35,13 +35,45 @@ export async function sessaoDeSuporteAtual(): Promise<string | null> {
   const marcada = sessaoDeSuporteDaRequisicao()
   if (marcada) return marcada
   try {
+    // Toda ESCRITA do cliente de serviço pergunta por aqui (a marca do
+    // suporte no fato do banco, F71): a resposta fica guardada por token,
+    // 15 s, como o cache da sessão — sem isto cada escrita conferiria o token.
+    const chave = await chaveDoToken()
+    if (chave === null) return null
+    const guardada = MEMO.get(chave)
+    if (guardada && guardada.ate > Date.now()) return guardada.id
+
     const { createClient } = await import('../supabase/server')
     const { data } = await (await createClient()).auth.getClaims()
     const sid = (data?.claims as { session_id?: string } | undefined)?.session_id
-    if (!sid) return null
-    const { sessaoDeSuporte } = await import('./sessao')
-    return (await sessaoDeSuporte(sid))?.id ?? null
+    let id: string | null = null
+    if (sid) {
+      const { sessaoDeSuporte } = await import('./sessao')
+      id = (await sessaoDeSuporte(sid))?.id ?? null
+    }
+    if (MEMO.size >= MEMO_MAX) MEMO.clear()
+    MEMO.set(chave, { id, ate: Date.now() + 15_000 })
+    return id
   } catch {
     return null
   }
+}
+
+const MEMO = new Map<string, { id: string | null; ate: number }>()
+const MEMO_MAX = 500
+
+/**
+ * O token da requisição, resumido (SHA-256 dos cookies do Supabase): a chave
+ * do que já se conferiu. Sem cookie de sessão, nulo — não há sessão de
+ * suporte (o webhook, o cron, a página pública).
+ */
+async function chaveDoToken(): Promise<string | null> {
+  const { cookies } = await import('next/headers')
+  const pedacos = (await cookies()).getAll()
+    .filter(c => /^sb-.*-auth-token(\.\d+)?$/.test(c.name))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+  if (!pedacos.length) return null
+  const bruto = new TextEncoder().encode(pedacos.map(c => c.value).join(''))
+  const resumo = new Uint8Array(await crypto.subtle.digest('SHA-256', bruto))
+  return Array.from(resumo, b => b.toString(16).padStart(2, '0')).join('')
 }
