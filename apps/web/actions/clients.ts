@@ -643,6 +643,9 @@ export async function lookupClientByCpf(
   currentClientId: string,
 ): Promise<{ found: boolean; isSelf: boolean; name?: string }> {
   const ctx   = await getTenantContext()
+  // É o aviso "CPF já cadastrado" de quem edita a ficha: sem Clientes em
+  // Gerenciar, não diz de quem é um CPF (C3 — respondia a qualquer membro).
+  if (!can(ctx, 'clients', 'MANAGE')) return { found: false, isSelf: false }
   const admin = createAdminClient()
   const digits = cpf.replace(/\D/g, '')
   if (digits.length !== 11) return { found: false, isSelf: false }

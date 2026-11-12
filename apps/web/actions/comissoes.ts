@@ -180,13 +180,26 @@ export async function salvarCartaoPorBandeira(entrada: unknown): Promise<Resulta
   }
 }
 
+/**
+ * D7 (C3 do levantamento): a taxa é do financeiro da clínica. Quem recebe mas
+ * não vê a comissão de todos (`mostraOLiquidoDaMaquininha`) só precisa saber
+ * SE a taxa está cadastrada — para o aviso "sai sem desconto" —, então a
+ * action manda a taxa como 0 e nunca o prazo. Antes só a tela escondia: o
+ * número ia ao navegador de qualquer um.
+ */
+function soAPresenca(regra: CartaoPorBandeira): CartaoPorBandeira {
+  return Object.fromEntries(Object.entries(regra).map(([b, r]) =>
+    [b, { taxas: Object.fromEntries(Object.keys(r?.taxas ?? {}).map(k => [k, 0])) }]))
+}
+
 /** As taxas de cada bandeira, para o aviso de quem recebe (`AvisoDaTaxa`). */
 export async function cartaoPorBandeiraDaRede(): Promise<CartaoPorBandeira> {
   const ctx = await getTenantContext()
-  if (!ctx.tenantId) return {}
+  if (!ctx.tenantId || !podeReceber(ctx)) return {}
   const rede = await ler(createAdminClient().from('tenants').select('cartao_por_bandeira').eq('id', ctx.tenantId).maybeSingle(),
     'ler o cartão por bandeira') as { cartao_por_bandeira: unknown } | null
-  return lerCartaoPorBandeira(rede?.cartao_por_bandeira)
+  const regra = lerCartaoPorBandeira(rede?.cartao_por_bandeira)
+  return veComissaoDeTodos(ctx) ? regra : soAPresenca(regra)
 }
 
 /**
@@ -384,7 +397,9 @@ export async function taxaDoDebito(): Promise<number | null> {
   const linha = await ler(createAdminClient().from('payment_fees')
     .select('taxa_pct, taxa_pct_sem_teto').eq('tenant_id', ctx.tenantId!).eq('metodo', 'DEBIT_CARD').eq('parcelas', 1).maybeSingle(),
   'carregar a taxa do débito') as { taxa_pct: number | string; taxa_pct_sem_teto: number | string | null } | null
-  return linha ? Number(linha.taxa_pct_sem_teto ?? linha.taxa_pct) : null
+  if (!linha) return null
+  // D7: a quem não vê o financeiro de todos, só "está cadastrada" (0).
+  return veComissaoDeTodos(ctx) ? Number(linha.taxa_pct_sem_teto ?? linha.taxa_pct) : 0
 }
 
 /**
@@ -405,7 +420,9 @@ export async function taxasDoCartaoDeCredito(): Promise<{ parcelas: number; taxa
   const linhas = await ler(createAdminClient().from('payment_fees')
     .select('parcelas, taxa_pct, taxa_pct_sem_teto').eq('tenant_id', ctx.tenantId!).eq('metodo', 'CREDIT_CARD'),
   'carregar as taxas do cartão')
-  // F16-3: a taxa sem teto, como a clínica digitou.
+  // F16-3: a taxa sem teto, como a clínica digitou. D7: a quem não vê o
+  // financeiro de todos, só quais vezes estão cadastradas (a taxa vai 0).
+  const mostra = veComissaoDeTodos(ctx)
   return ((linhas ?? []) as { parcelas: number; taxa_pct: number | string; taxa_pct_sem_teto: number | string | null }[])
-    .map(t => ({ parcelas: Number(t.parcelas), taxa_pct: Number(t.taxa_pct_sem_teto ?? t.taxa_pct) }))
+    .map(t => ({ parcelas: Number(t.parcelas), taxa_pct: mostra ? Number(t.taxa_pct_sem_teto ?? t.taxa_pct) : 0 }))
 }

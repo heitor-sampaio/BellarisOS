@@ -286,6 +286,9 @@ export async function updateProduct(
 export async function findProductByBarcode(barcode: string) {
   try {
     const ctx = await getTenantContext()
+    // É a entrada por código de barras, e devolve o custo: só quem dá entrada
+    // no estoque (C3 — respondia a qualquer membro, com o cost_price).
+    assertPermission(ctx, 'stock', 'MANAGE')
     const admin = createAdminClient()
 
     const data = await ler(admin
