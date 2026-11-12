@@ -1078,6 +1078,8 @@ export async function cancelarPlano(planId: string, entrada: unknown): Promise<{
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
+    // C35: o Financeiro em "só os meus" não cancela (a tela já esconde).
+    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     const lido = EntradaDoCancelamento.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const admin = createAdminClient()
@@ -1334,6 +1336,7 @@ import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkou
 import { EntradaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
+import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { paraAnamneseGeral, respostasDaFicha, type AnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento, anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
@@ -1711,7 +1714,9 @@ async function receberDoPlanoInterno(
   slug:          string,
 ): Promise<{ error?: string; recebido?: number }> {
   const ctx = await getTenantContext()
-  assertPodeReceber(ctx)
+  // C33 (F67): receber no check-in é de Recebimentos — a mesma régua do
+  // atendimento avulso (`confirmPayment`): a baixa é do caixa em todo caminho.
+  assertPermission(ctx, 'cashier', 'MANAGE')
 
   const admin = createAdminClient()
 

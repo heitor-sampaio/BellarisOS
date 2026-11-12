@@ -79,7 +79,8 @@ const CASOS: Caso[] = [
     rota: () => '/admin/agenda', args: f => [f.agendamento, 'CANCELLED', f.unidade.slug, `${PREFIXO} invasão`],
     estado: f => campo('appointments', 'status', f.agendamento) },
   { nome: 'caixa: dar baixa num lançamento', arquivo: 'actions/financial.ts', funcao: 'markTransactionPaid',
-    rota: () => '/admin/financeiro', args: f => [f.lancamento, f.unidade.slug], estado: f => campo('financial_transactions', 'is_paid', f.lancamento) },
+    // C34 (F67): o lançamento sem meio só se baixa dizendo a forma.
+    rota: () => '/admin/financeiro', args: f => [f.lancamento, f.unidade.slug, null, null, 'PIX'], estado: f => campo('financial_transactions', 'is_paid', f.lancamento) },
   { nome: 'estoque: estoque mínimo', arquivo: 'actions/stock.ts', funcao: 'adminUpdateMinStock',
     rota: () => '/admin/estoque', args: f => [f.produto, f.unidade.id, 99],
     estado: async f => (await db().from('branch_product_stock').select('min_stock').eq('product_id', f.produto).eq('branch_id', f.unidade.id).single()).data?.min_stock },

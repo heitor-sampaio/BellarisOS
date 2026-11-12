@@ -1,7 +1,9 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, isOwnScope, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, can } from '@/lib/auth'
+import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
+import { formatBRL } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
@@ -45,6 +47,8 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
+    // C35: o Financeiro em "só os meus" não lança (a tela já esconde).
+    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
 
     const branchId      = str(formData, '_branchId')
     const slug          = str(formData, '_slug') ?? ''
@@ -137,6 +141,8 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
         category,
         description: `${description} (${i + 1}/${count})`,
         amount,
+        // C70 (D11): a forma escolhida vai a cada vencimento, como na parcelada.
+        payment_method: paymentMethod,
         due_date:    vencimentos[i],
         is_paid:     false,
         notes:       notes ?? null,
@@ -222,6 +228,8 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
+    // C35: o Financeiro em "só os meus" não estorna (a tela já esconde).
+    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     // O motivo é obrigatório e fica gravado nas duas pontas (A36 da simulação
     // de 2026-10-27): o estorno não perguntava por quê.
     const porque = (motivo ?? '').trim().slice(0, 500)
@@ -256,8 +264,12 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
       revalidatePath('/admin/estoque')
       return { success: true }
     }
+    // C39 (H2 = a): o estorno avulso do pagamento de um pacote, plano ou
+    // pré-pago REABRE a cobrança — o mesmo valor volta a ser "a receber" da
+    // venda, com o mesmo vencimento (`estornar_e_reabrir`). Os cancelamentos
+    // chamam `estornar_transacao` direto: ali a venda é desfeita, nada reabre.
     await gravar(
-      admin.rpc('estornar_transacao', {
+      admin.rpc('estornar_e_reabrir', {
         p_transacao: transactionId,
         p_tenant:    ctx.tenantId!,
         p_ator:      ctx.internalUserId,
@@ -320,6 +332,44 @@ export async function pontosDoEstorno(transactionId: string): Promise<{ texto: s
 }
 
 /**
+ * C39 (H2 = a): o que o estorno deste lançamento REABRE, dito na janela antes
+ * de estornar — "O pacote volta a ter R$ 900,00 a receber…". Nulo quando nada
+ * reabre (o atendimento tem o aviso dele; produto e crédito vendido se
+ * estornam pela venda; a venda cancelada não reabre). A mesma régua de
+ * `estornar_e_reabrir`.
+ */
+export async function reaberturaDoEstorno(transactionId: string): Promise<{ texto: string | null }> {
+  try {
+    const ctx = await getTenantContext()
+    if (!can(ctx, 'financial', 'MANAGE')) return { texto: null }
+    const admin = createAdminClient()
+    const tx = await ler(admin.from('financial_transactions')
+      .select('branch_id, type, amount, appointment_id, product_sale_id, credito_vendido_id, client_package_id, treatment_plan_id, procedure_sale_id, branches!inner(tenant_id)')
+      .eq('id', transactionId).maybeSingle(), 'buscar o lançamento')
+    const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string)) return { texto: null }
+    if (tx.type !== 'INCOME' || tx.appointment_id || tx.product_sale_id || tx.credito_vendido_id) return { texto: null }
+    const valor = formatBRL(Number(tx.amount))
+    if (tx.client_package_id) {
+      const cp = await ler(admin.from('client_packages').select('cancelado_em').eq('id', tx.client_package_id).maybeSingle(), 'ler o pacote')
+      if (!cp || cp.cancelado_em) return { texto: null }
+      return { texto: `O dinheiro volta à cliente, e o pacote volta a ter ${valor} a receber. Para desfazer a venda, use “Cancelar pacote” na ficha.` }
+    }
+    if (tx.treatment_plan_id) {
+      const tp = await ler(admin.from('treatment_plans').select('cancelado_em').eq('id', tx.treatment_plan_id).maybeSingle(), 'ler o plano')
+      if (!tp || tp.cancelado_em) return { texto: null }
+      return { texto: `O dinheiro volta à cliente, e o plano volta a ter ${valor} a receber. Para desfazer a venda, use “Cancelar plano” na ficha.` }
+    }
+    if (tx.procedure_sale_id) {
+      return { texto: `O dinheiro volta à cliente, e o pré-pago volta a ter ${valor} a receber. Para desfazer a venda, cancele a unidade pré-paga na ficha.` }
+    }
+    return { texto: null }
+  } catch {
+    return { texto: null }
+  }
+}
+
+/**
  * Marca como RECEBIDA, antes da data, uma parcela do cartão em N vezes que a
  * operadora deposita (F2c da 5ª simulação: a operadora antecipou). Na data ela
  * vira recebida sozinha — isto é só a antecipação.
@@ -351,7 +401,7 @@ async function mudarParcelaDaOperadora(
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
-    if (isOwnScope(ctx, 'financial')) return { error: 'Seu cargo não libera esta ação.' }
+    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     if (!/^[0-9a-f-]{36}$/i.test(parcelaId)) return { error: 'Parcela não encontrada.' }
 
     const admin = createAdminClient()
@@ -388,7 +438,7 @@ export async function remarcarVencimento(transactionId: string, dia: string, mot
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
-    if (isOwnScope(ctx, 'financial')) return { error: 'Seu cargo não libera esta ação.' }
+    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     if (typeof dia !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { error: 'Escolha o novo vencimento.' }
     const admin = createAdminClient()
     const tx = await ler(admin.from('financial_transactions')

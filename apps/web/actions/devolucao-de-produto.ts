@@ -14,6 +14,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { getTenantContext, alcancaUnidade, assertPermission } from '@/lib/auth'
+import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -120,6 +121,8 @@ export async function devolverParteDaVenda(
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
+    // C35: o Financeiro em "só os meus" não devolve (a tela já esconde).
+    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     const lido = EntradaDaDevolucao.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const admin = createAdminClient()

@@ -21,6 +21,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { getTenantContext, alcancaUnidade, assertPermission, podeReceber } from '@/lib/auth'
+import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
@@ -172,6 +173,8 @@ const EntradaDoEstorno = z.object({
 export async function estornarVendaDeCredito(transacaoId: string, entrada: unknown): Promise<{ error?: string; volta?: number }> {
   try {
     const { ctx, venda } = await vendaDoLancamento(transacaoId)
+    // C35: o Financeiro em "só os meus" não estorna.
+    { const soOsMeus = recusaDoSoOsMeus(ctx); if (soOsMeus) return { error: soOsMeus } }
     if (!venda) return { error: 'Venda de crédito não encontrada.' }
     const lido = EntradaDoEstorno.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }

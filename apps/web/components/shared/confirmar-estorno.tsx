@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { pontosDoEstorno } from '@/actions/financial'
+import { pontosDoEstorno, reaberturaDoEstorno } from '@/actions/financial'
 
 /**
  * A confirmação do estorno de um lançamento, nos dois financeiros (rede e
@@ -38,10 +38,13 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
   const [voltou, setVoltou] = useState<boolean | null>(null)
   // A30 da 12ª: os pontos que saem (os da cliente e o prêmio de quem a indicou), ditos antes.
   const [pontos, setPontos] = useState<string | null>(null)
+  // C39 (H2 = a): o pagamento de um pacote, plano ou pré-pago volta a ser a receber.
+  const [reabre, setReabre] = useState<string | null>(null)
   useEffect(() => {
     if (!alvo.id) return
     let vivo = true
     pontosDoEstorno(alvo.id).then(r => { if (vivo) setPontos(r.texto) }).catch(() => {})
+    reaberturaDoEstorno(alvo.id).then(r => { if (vivo) setReabre(r.texto) }).catch(() => {})
     return () => { vivo = false }
   }, [alvo.id])
   const produto = !!alvo.vendaDeProduto
@@ -70,6 +73,9 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
           <p data-cobranca-reabre style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
             O atendimento volta a receber: a cobrança dele reabre, e o “Confirmar pagamento” vale de novo.
           </p>
+        )}
+        {reabre && !produto && (
+          <p data-venda-reabre style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>{reabre}</p>
         )}
         {pontos && (
           <p data-pontos-do-estorno style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 12px', lineHeight: 1.45 }}>

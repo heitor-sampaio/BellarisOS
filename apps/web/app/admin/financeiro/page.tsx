@@ -172,6 +172,10 @@ export default async function AdminFinanceiroPage({
   const concluidosSemPagamentoDe = Object.fromEntries(await Promise.all(branchMetrics.map(async b =>
     [b.branchId, await getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId!, unidadeId: b.branchId })] as const)))
   const emAbertoDe = Object.fromEntries(emAbertoPorUnidade)
+  // D8 da 13ª: o débito do período de cada unidade, para o recorte (a nota
+  // dizia o débito da rede inteira com a unidade filtrada).
+  const debitoDe = Object.fromEntries(await Promise.all(branchMetrics.map(async b =>
+    [b.branchId, (await getComposicaoFinanceira({ ...metricArgs, branchIds: [b.branchId] })).formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0] as const)))
   // D13 da 9ª: o que já venceu (antes de hoje) — o total e cada unidade.
   const vencidas = await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds: null })
   const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
@@ -271,6 +275,7 @@ export default async function AdminFinanceiroPage({
         soAPagar={soAPagar}
         aReceberDaOperadora={operadora}
         debitoNoPeriodo={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0}
+        debitoPorUnidade={debitoDe}
         parcelasDaOperadora={parcelasDaOperadora}
         fluxoDeCaixa={await getFluxoDeCaixa({ tenantId: ctx.tenantId!, branchIds, porUnidade: true, meses: 12 })}
         totalProximoAReceber={emAbertoDaRede.proximoAReceber}
@@ -288,7 +293,9 @@ export default async function AdminFinanceiroPage({
         branches={branches}
         unidadeInicial={branches.find(b => b.id === sp.unidade || b.slug === sp.unidade)?.id ?? ""}
         canWrite={ctx.permissions.financial === 'MANAGE'}
-        canPay={operaCaixa || ctx.permissions.financial === 'MANAGE'}
+        // C33 (F67): a baixa é de Recebimentos (o caixa) em todo caminho — a action
+        // (`markTransactionPaid`) recusava quem só tinha o Financeiro em Gerenciar.
+        canPay={operaCaixa}
         podeDarCredito={ctx.permissions.financial === 'MANAGE'}
         canReverse={ctx.permissions.financial === 'MANAGE'}
         clients={(clientsRaw ?? []) as { id: string; name: string }[]}

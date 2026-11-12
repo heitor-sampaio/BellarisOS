@@ -135,7 +135,7 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
   // dava baixa em qualquer lançamento da unidade.
   modulo: 'cashier', nivel: 'MANAGE',
   recurso: 'financeiro',
-  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento opcional (dinheiro, Pix, débito, crédito) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3).',
+  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; obrigatória quando o lançamento não tem forma, como a parcela do crediário) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3).',
   parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional(), bandeira: z.string().max(30).optional(), vezes: z.number().int().min(1).max(12).optional() }),
   async preparar(c, a) {
     const tx = await lancamentoAoAlcance(c.admin, c.ctx, a.lancamento)
@@ -144,6 +144,8 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
     if (tx.notes === 'Estornada') return { erro: 'Esse lançamento foi estornado.' }
     const forma = formaDePagamento(a.forma)
     if (forma && typeof forma !== 'string') return forma
+    // C34 (F67): sem meio no lançamento, a baixa pede a forma — como a tela.
+    if (!forma && !tx.payment_method) return { erro: 'Esse lançamento não tem forma de pagamento: pergunte como foi pago (dinheiro, Pix, débito, crédito ou boleto, na despesa).' }
     const bandeira = bandeiraDoPedido(a.bandeira, (forma as string | null) ?? tx.payment_method)
     if (bandeira && typeof bandeira !== 'string') return bandeira
     // F17-5: as vezes só no crédito da receita, até o limite da clínica (a regra da baixa da tela).

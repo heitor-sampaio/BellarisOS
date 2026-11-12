@@ -142,6 +142,9 @@ export async function marcarPagoCore(
   const tx = await lancamentoAoAlcance(admin, ctx, transactionId)
   if (!tx) return { error: 'Lançamento não encontrado.' }
   if (bandeira && !ehBandeira(bandeira)) return { error: 'Bandeira do cartão desconhecida: use Visa, Mastercard, Elo, Amex, Hipercard ou Outras.' }
+  // C34 (F67): o lançamento sem meio (a parcela do crediário, a despesa sem
+  // forma) só se baixa dizendo a forma — ficava pago como "Não informado".
+  if (!forma && !tx.payment_method) return { error: 'Escolha a forma de pagamento.' }
   // A14 da 9ª: o Boleto é forma da despesa.
   if (forma === 'BOLETO' && tx.type !== 'EXPENSE') return { error: 'Boleto é forma de pagar uma despesa.' }
   const daBandeira = bandeiraDoPagamento(forma ?? tx.payment_method, bandeira)

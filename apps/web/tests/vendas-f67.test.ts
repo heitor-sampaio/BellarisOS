@@ -26,3 +26,17 @@ describe('C40 (D13): a regra do item vence mesmo com 0%', () => {
       .toContain('0% do vendido — do produto')
   })
 })
+
+describe('C37: o pagamento estornado do plano não conta como recebido', () => {
+  it('a linha "Estornada" sai do recebido', async () => {
+    const { separarOEmAberto } = await import('@/lib/checkout/em-aberto-do-plano')
+    const r = separarOEmAberto([
+      { id: 'a', amount: 300, is_paid: true, due_date: null, notes: 'Estornada' },
+      { id: 'b', amount: 300, is_paid: false, due_date: null, notes: 'Reaberta pelo estorno' },
+      { id: 'c', amount: 100, is_paid: true, due_date: null, notes: null },
+    ] as never, new Date('2026-11-12T15:00:00Z'))
+    expect(r.recebido).toBe(100)
+    expect(r.emAberto).toBe(300)
+    expect(r.pendentes).toEqual(['b'])
+  })
+})

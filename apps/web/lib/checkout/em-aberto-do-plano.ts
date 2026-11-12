@@ -32,14 +32,15 @@ export interface EmAbertoDoPlano {
   pendentes:   string[]
 }
 
-interface LinhaDoPlano { id: string; amount: number; is_paid: boolean; due_date: string | null }
+interface LinhaDoPlano { id: string; amount: number; is_paid: boolean; due_date: string | null; notes?: string | null }
 
 /** A conta, pura: o que já venceu (ou não tem data) × o que vai vencer depois de hoje. */
 export function separarOEmAberto(linhas: LinhaDoPlano[], agora: Date, fuso?: string): Omit<EmAbertoDoPlano, 'planId' | 'nome'> {
   // Lançamento zerado é histórico, não dinheiro: é o que sobra quando um saldo
   // em aberto foi substituído por entrada + parcelas no check-in. Quitá-lo
   // junto carimbaria um R$ 0,00 no fechamento do caixa.
-  const reais = linhas.filter(t => Number(t.amount) > 0)
+  // C37 (F67): o pagamento estornado não é dinheiro recebido (o estorno o devolveu).
+  const reais = linhas.filter(t => Number(t.amount) > 0 && t.notes !== 'Estornada')
   // O fim de HOJE na unidade do plano (F64, C4): em Manaus às 23:30, o
   // "hoje" de Brasília já era amanhã, e o check-in cobrava a parcela de amanhã.
   const fimDeHoje = endOfDayTZ(agora, fuso).getTime()
@@ -63,7 +64,7 @@ export async function emAbertoDoPlano(planId: string): Promise<EmAbertoDoPlano |
     admin.from('treatment_plans').select('id, name, status, branch_id').eq('id', planId).maybeSingle(),
     admin
       .from('financial_transactions')
-      .select('id, amount, is_paid, due_date, created_at')
+      .select('id, amount, is_paid, due_date, created_at, notes')
       .eq('treatment_plan_id', planId)
       .eq('type', 'INCOME')
       .order('created_at'),

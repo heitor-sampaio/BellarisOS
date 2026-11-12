@@ -2250,7 +2250,8 @@ export function AppointmentSession({
             plano={planoEmAberto}
             appointmentId={appointment.id}
             slug={slug}
-            podeReceber={podeReceber}
+            // C33: receber o plano no check-in é de Recebimentos (o mesmo do "Confirmar pagamento").
+            podeReceber={canPayment}
           />
         )}
 

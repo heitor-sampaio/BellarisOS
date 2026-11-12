@@ -147,6 +147,8 @@ interface Props {
   aReceberDaOperadora: { total: AReceberDaOperadora; porUnidade: Record<string, AReceberDaOperadora> }
   /** A38 da 11ª: o débito do período (a composição por forma), que conta como recebido no dia. */
   debitoNoPeriodo?: number
+  /** D8 da 13ª: o débito do período de cada unidade (o recorte do filtro). */
+  debitoPorUnidade?: Record<string, number>
   /** As parcelas da operadora: todo o em aberto e o que vence no período (D3). */
   parcelasDaOperadora: ParcelaDaOperadora[]
   /** r2-fin-04: o fluxo de caixa dos próximos meses — o do recorte e o de cada unidade. */
@@ -274,7 +276,7 @@ function KpiCard({
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
   totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, soAPagar = false, totalMovimentacoes,
-  aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0,
+  aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0, debitoPorUnidade = {},
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, umaUnidade = false, transactions, soOEmAberto = false, soAsVencidas = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
@@ -506,7 +508,7 @@ export function AdminFinancialView({
             {/* D3: o cartão leva à lista das parcelas. */}
             <LinkDasParcelas temParcelas={parcelasVisiveis.length > 0} />
             {/* A38 da 11ª: o débito conta como recebido no dia. */}
-            <NotaDoDebito debito={debitoNoPeriodo} />
+            <NotaDoDebito debito={statDaUnidade ? debitoPorUnidade[statDaUnidade.id] ?? 0 : debitoNoPeriodo} />
           </>}
           icon={<CreditCard size={16} color="var(--brand)" />}
         />
@@ -631,7 +633,7 @@ export function AdminFinancialView({
             ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
             : 'Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive.'}{' '}
           {/* A42 da 12ª: a contadora, que só vê, lia "use Pagar na linha" sem botão nenhum. */}
-          {canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) ou o Financeiro em Gerenciar.'}{' '}
+          {canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) no cargo.'}{' '}
           <a href={`/admin/financeiro?period=${period}#movimentacoes`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Voltar ao período</a>
         </p>
       )}
