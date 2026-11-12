@@ -553,14 +553,20 @@ export function ProfessionalAgendaView({
                         }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden' }}>
                           <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: isIP ? 'var(--brand)' : 'var(--text)', flexShrink: 0 }}>{time}</span>
-                          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.clientName}</span>
+                          {/* O nome da cliente nunca some (A8 da 13ª): cede por último. */}
+                          <span data-cliente-do-cartao style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', flex: '1 1 auto', minWidth: '5em' }}>{ev.clientName}</span>
                           <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: st.pill.color, flexShrink: 0 }}>· {st.label}</span>
                           <SeloDoMenor menor={ev.menor} />
-                          {ev.unidade && <span data-unidade-do-cartao className="chip chip-info" style={{ fontSize: 'var(--text-overline)', flexShrink: 0 }}>Na unidade {ev.unidade}</span>}
                         </div>
-                        <p data-procedimento-do-cartao style={{ fontSize: 'var(--text-overline)', lineHeight: 1.25, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {ev.procedureName} · {ev.durationMin}min
-                        </p>
+                        {/* A8 da 13ª: o selo da outra unidade vai para a linha do
+                            procedimento e encolhe com reticências — na linha da
+                            cliente, sem encolher, ele empurrava o nome para fora. */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', minWidth: 0 }}>
+                          {ev.unidade && <SeloDaOutraUnidade unidade={ev.unidade} />}
+                          <p data-procedimento-do-cartao style={{ fontSize: 'var(--text-overline)', lineHeight: 1.25, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                            {ev.procedureName} · {ev.durationMin}min
+                          </p>
+                        </div>
                       </div>
                     </Link>
                   )
@@ -597,11 +603,7 @@ export function ProfessionalAgendaView({
                         {/* A menor de idade (decisão 2 da 7ª; sobra da F29): a marca e o responsável na dica. */}
                         <SeloDoMenor menor={ev.menor} />
                         {/* O dela numa outra unidade em que atende (decisão 2 da 8ª). */}
-                        {ev.unidade && (
-                          <span data-unidade-do-cartao className="chip chip-info" style={{ fontSize: 'var(--text-overline)' }}>
-                            Na unidade {ev.unidade}
-                          </span>
-                        )}
+                        {ev.unidade && <SeloDaOutraUnidade unidade={ev.unidade} />}
                       </div>
                       {/* Linha inferior: avatar + nome + procedimento */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -614,7 +616,7 @@ export function ProfessionalAgendaView({
                           {initials(ev.clientName)}
                         </div>
                         <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+                          <p data-cliente-do-cartao style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
                             {ev.clientName}
                           </p>
                           <p data-procedimento-do-cartao style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
@@ -769,4 +771,18 @@ export function ProfessionalAgendaView({
 function DestaqueQueAbre({ href, style, children }: { href: string | null; style: React.CSSProperties; children: React.ReactNode }) {
   if (!href) return <div data-destaque-de-hoje style={style}>{children}</div>
   return <Link data-destaque-de-hoje href={href} style={style}>{children}</Link>
+}
+
+/**
+ * "Na unidade X" no cartão da Minha agenda (decisão 2 da 8ª: o dela numa outra
+ * unidade em que atende). Encolhe com reticências, com o nome inteiro na dica
+ * (A8 da 13ª: no celular, o nome longo da unidade não cabia).
+ */
+function SeloDaOutraUnidade({ unidade }: { unidade: string }) {
+  return (
+    <span data-unidade-do-cartao className="chip chip-info" title={`Na unidade ${unidade}`}
+      style={{ fontSize: 'var(--text-overline)', flex: '0 1 auto', minWidth: 0, maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>
+      Na unidade {unidade}
+    </span>
+  )
 }
