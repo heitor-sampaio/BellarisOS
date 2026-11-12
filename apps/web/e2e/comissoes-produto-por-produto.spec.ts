@@ -129,7 +129,7 @@ test('por produto: a dona escolhe em Configurações → Comissões, registra a 
     await p.goto('/admin/settings?tab=comissoes')
     const bloco = p.getByRole('group', { name: 'Comissão da venda de produto' })
     await bloco.getByRole('button', { name: 'Por produto' }).click()
-    await p.getByRole('button', { name: 'Salvar', exact: true }).click()
+    await p.getByLabel('Como a comissão acontece').getByRole('button', { name: 'Salvar', exact: true }).click()
     await expect(p.getByRole('status').filter({ hasText: 'Salvo.' }).first()).toBeVisible()
     // O Heitor (03/11): "em cada produto se possa registrar uma comissão
     // diferente". Configurações mostra só o resumo, com o caminho do cadastro.

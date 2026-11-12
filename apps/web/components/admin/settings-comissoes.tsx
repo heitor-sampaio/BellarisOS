@@ -64,9 +64,7 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <ComoAcontece inicial={inicial} podeEditar={podeEditar} produtos={produtos} />
-      <TabelaDeTaxas maquininhas={maquininhas} pixGravado={taxaDoPix} podeEditar={podeEditar} />
-      <CrediarioDaClinica gravado={crediarioMax} podeEditar={podeEditar} />
+      {/* Simplificação da F67 (princípio 7): primeiro o que a clínica mais procura — o percentual de cada um. */}
       <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Comissão de cada profissional">
         <h2 style={titulo}>Comissão de cada profissional</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
@@ -94,6 +92,9 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
         )}
         <Link href="/admin/team" className="btn-secondary" style={{ alignSelf: 'flex-start' }}>Abrir a equipe</Link>
       </div>
+      <ComoAcontece inicial={inicial} podeEditar={podeEditar} produtos={produtos} />
+      <TabelaDeTaxas maquininhas={maquininhas} pixGravado={taxaDoPix} podeEditar={podeEditar} />
+      <CrediarioDaClinica gravado={crediarioMax} podeEditar={podeEditar} />
     </div>
   )
 }
@@ -157,7 +158,15 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
 
       <Bloco titulo="Quando a comissão vale">
         <strong style={{ fontSize: 'var(--text-sm-sz)' }}>Quando a cliente paga tudo o que a gerou</strong>
-        {QUANDO_VALE.map(t => <p key={t} style={texto}>{t}</p>)}
+        {/* Simplificação da F67 (princípio 7): a regra à vista; o detalhe, a um toque. */}
+        <details data-como-funciona>
+          <summary style={{ cursor: 'pointer', fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>
+            Como funciona (pacote, plano, cartão, crediário, estorno)
+          </summary>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+            {QUANDO_VALE.map(t => <p key={t} style={texto}>{t}</p>)}
+          </div>
+        </details>
       </Bloco>
 
       <Bloco titulo="O que sai da base da comissão">
@@ -209,7 +218,6 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
               : pctProduto.trim()
                 ? 'Quem vendeu ganha a regra de venda dela (Equipe); sem ela, esse percentual do valor vendido (com o desconto), uma comissão sobre o total — também no kit.'
                 : 'Vazio: vale a regra de venda de quem vendeu; sem ela, a venda de produto não gera comissão.'}
-            {' '}A comissão fica a pagar com a venda paga inteira: à vista ou no cartão (mesmo em várias vezes), na hora; no crediário, quando a última parcela entrar. O estorno devolve.
           </p>
           {/* A regra de CADA produto se registra no cadastro dele (o Heitor,
               03/11: "em cada produto se possa registrar uma comissão
@@ -265,7 +273,7 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
             {pctPlano.trim()
               ? 'Quem vendeu o plano (o “Quem vendeu” do checkout) ganha a regra de venda dela (Equipe); sem ela, esse percentual do valor do plano, com o desconto.'
               : 'Vazio: vale a regra de venda de quem vendeu; sem ela, a venda do plano não gera comissão.'}
-            {' '}A comissão fica a pagar com o plano pago inteiro: à vista ou no cartão (mesmo em várias vezes), na hora; no crediário, quando a última parcela entrar. Se o plano for cancelado, ela volta. A comissão de quem atende cada sessão segue a regra do profissional.
+            {' '}Se o plano for cancelado, ela volta. A comissão de quem atende cada sessão segue a regra do profissional.
           </p>
         </div>
       </Bloco>
