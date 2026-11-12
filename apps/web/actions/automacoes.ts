@@ -17,7 +17,8 @@ import { modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ler, tentar } from '@/lib/db'
 import { buscarClientes } from '@/lib/automacoes/tempo'
-import { contarPublico, contarPublicoComConversa } from '@/lib/clientes/publico'
+import { contarPublico, contarPublicoComConversa, contarPublicoComAparelho } from '@/lib/clientes/publico'
+import type { CanalParaACliente, ContaAntesDeLigar } from '@/lib/automacoes/antes-de-ligar'
 import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 /**
@@ -888,23 +889,35 @@ async function buscaDoPasso(tenantId: string, cfg: unknown): Promise<{ cfg: Conf
 }
 
 /**
- * Antes de ligar uma automação que manda WhatsApp (C65 — H1 do levantamento,
- * F69): quantas a busca acharia hoje e quantas têm a conversa por onde a
- * mensagem sai. A automação não abre conversa nova; sem isto, a clínica ligava
- * "Reativação" para 200 e descobria nas execuções que saíram 12.
+ * Antes de ligar uma automação que chega à cliente (C65 — H1 do levantamento,
+ * F69; A10 da 14ª, F71: todo canal, não só o WhatsApp): quantas a busca
+ * acharia hoje e, entre elas, quantas a mensagem alcança por canal do fluxo —
+ * a conversa aberta do WhatsApp (a automação não abre conversa nova) e o
+ * aparelho do aviso no celular (o app ou o navegador, a régua do disparo da
+ * campanha). Sem isto a clínica ligava "Reativação" para 200 e descobria nas
+ * execuções que saíram 12.
  *
  * Com o passo "Buscar clientes", a busca dele (com o teto); sem ele (o fluxo
- * que nasce de um fato), as clientes ativas da clínica.
+ * que nasce de um fato), as clientes ativas da clínica. Os canais vêm do
+ * editor (`canaisParaACliente`); sem eles, o WhatsApp, como antes.
  */
-export async function contarAntesDeLigar(cfgDaBusca: unknown | null): Promise<
-  { porBusca: boolean; quantas: number; comConversa: number; truncado: boolean } | { error: string }
+export async function contarAntesDeLigar(cfgDaBusca: unknown | null, canais: CanalParaACliente[] = ['whatsapp']): Promise<
+  ContaAntesDeLigar | { error: string }
 > {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
   const tenant = ctx.tenantId!
+  const porCanal = async (filtros: { client_ids?: string[] }) => {
+    const vazio = filtros.client_ids !== undefined && filtros.client_ids.length === 0
+    const [comConversa, comAparelho] = await Promise.all([
+      canais.includes('whatsapp') ? (vazio ? 0 : contarPublicoComConversa(tenant, filtros)) : undefined,
+      canais.includes('push') ? (vazio ? 0 : contarPublicoComAparelho(tenant, filtros)) : undefined,
+    ])
+    return { comConversa, comAparelho }
+  }
   if (cfgDaBusca == null) {
-    const [quantas, comConversa] = await Promise.all([contarPublico(tenant, {}), contarPublicoComConversa(tenant, {})])
-    return { porBusca: false, quantas, comConversa, truncado: false }
+    const [quantas, conta] = await Promise.all([contarPublico(tenant, {}), porCanal({})])
+    return { porBusca: false, quantas, truncado: false, ...conta }
   }
   const busca = await buscaDoPasso(tenant, cfgDaBusca)
   if ('error' in busca) return busca
@@ -912,6 +925,5 @@ export async function contarAntesDeLigar(cfgDaBusca: unknown | null): Promise<
   const ids = achadas.clientes.map(c => c.id)
   // Contadas entre AS QUE A BUSCA ACHOU (com o teto do passo), não no público
   // inteiro: é a essas que a mensagem iria.
-  const comConversa = ids.length ? await contarPublicoComConversa(tenant, { client_ids: ids }) : 0
-  return { porBusca: true, quantas: ids.length, comConversa, truncado: achadas.truncado }
+  return { porBusca: true, quantas: ids.length, truncado: achadas.truncado, ...(await porCanal({ client_ids: ids })) }
 }

@@ -38,6 +38,8 @@ export const ISOLADOS = [
   'campanha-defeitos-do-levantamento.spec.ts',
   'documentos-pedir-no-portal-sem-plano.spec.ts',
   'inbox-respostas-de-cada-pessoa.spec.ts',
+  // A F71 (automações e comunicação — a 14ª simulação).
+  'automacoes-antes-de-ligar-push.spec.ts',
   'estoque-defeitos-da-12.spec.ts',
   'estoque-atritos-da-12.spec.ts',
   'fidelidade-atritos-da-12.spec.ts',

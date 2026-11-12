@@ -26,6 +26,7 @@ import { novoIdDeNo, novoIdDeLigacao, configPadrao } from '@/lib/automacoes/ids'
 import { encaixarPasso } from '@/lib/automacoes/encaixe'
 import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
 import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor, excluirAutomacao, contarAntesDeLigar } from '@/actions/automacoes'
+import { canaisParaACliente, explicacaoAntesDeLigar, textoAntesDeLigar } from '@/lib/automacoes/antes-de-ligar'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 import type { AutomacaoCompleta } from '@/actions/automacoes'
 
@@ -191,19 +192,18 @@ export function EditorDeAutomacao({
     })
   }
 
-  // C65 (H1 do levantamento, F69): antes de LIGAR uma automação que manda
-  // WhatsApp, a tela diz quantas a busca acharia e quantas têm a conversa por
-  // onde a mensagem sai — a automação não abre conversa nova, e a clínica só
-  // descobria isso nas execuções.
-  const mandaWhatsapp = grafo.nos.some(n =>
-    n.tipo === NODES.ACAO_MENSAGEM && (n.config as { canal?: string }).canal === 'whatsapp')
+  // C65 (H1 do levantamento, F69) e A10 da 14ª (F71): antes de LIGAR um
+  // fluxo que chega à cliente — por qualquer canal, o aviso no celular
+  // incluído —, a tela diz quantas a busca acharia e quantas a mensagem
+  // alcança. A regra mora em lib/automacoes/antes-de-ligar.ts.
+  const canaisDaCliente = canaisParaACliente(grafo)
   const [antesDeLigar, setAntesDeLigar] = useState<null | { texto: string | null; erro?: string }>(null)
 
   function pedirParaLigar() {
-    if (status === 'ATIVA' || !mandaWhatsapp) { alternarStatus(); return }
+    if (status === 'ATIVA' || canaisDaCliente.length === 0) { alternarStatus(); return }
     setAntesDeLigar({ texto: null })
     const busca = grafo.nos.find(n => n.tipo === NODES.BUSCAR_CLIENTES)
-    contarAntesDeLigar(busca ? busca.config : null)
+    contarAntesDeLigar(busca ? busca.config : null, canaisDaCliente)
       .then(r => {
         if ('error' in r) { setAntesDeLigar({ texto: null, erro: r.error }); return }
         setAntesDeLigar({ texto: textoAntesDeLigar(r) })
@@ -389,8 +389,7 @@ export function EditorDeAutomacao({
               Ligar a automação?
             </p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              Ela manda mensagem pelo WhatsApp, e a mensagem só chega a quem tem conversa aberta
-              com a clínica: a automação não abre conversa nova.
+              {explicacaoAntesDeLigar(canaisDaCliente)}
             </p>
             <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-bold)', lineHeight: 1.5 }}>
               {antesDeLigar.erro ?? antesDeLigar.texto ?? 'Contando as clientes…'}
@@ -648,13 +647,3 @@ function ListaDeProblemas({
   )
 }
 
-/** "Hoje a busca acharia 4 clientes, e 2 têm conversa aberta no WhatsApp." */
-function textoAntesDeLigar(r: { porBusca: boolean; quantas: number; comConversa: number; truncado: boolean }): string {
-  const clientes = (n: number) => `${n} ${n === 1 ? 'cliente' : 'clientes'}`
-  const tem = (n: number) => `${n} ${n === 1 ? 'tem' : 'têm'}`
-  const base = r.porBusca
-    ? `Hoje a busca acharia ${clientes(r.quantas)}${r.truncado ? ' (o teto do passo)' : ''}`
-    : `Hoje a clínica tem ${r.quantas} ${r.quantas === 1 ? 'cliente ativa' : 'clientes ativas'}`
-  if (r.quantas === 0) return `${base}.`
-  return `${base}, e ${tem(r.comConversa)} conversa aberta no WhatsApp.`
-}
