@@ -3,7 +3,10 @@ import { z } from 'zod/v4'
 import { revalidateTag } from 'next/cache'
 import { isOwnScope } from '@/lib/auth'
 import { ler } from '@/lib/db'
-import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado, CREDITO_JA_USADO } from '@/lib/appointments/core'
+import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
+import { conferirCredito, type CreditoDeAgendamento } from '@/lib/creditos/credito'
+import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { notifyCancelledAppointment, notifyCheckin, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { garantirClienteRapido, comPermissaoDeUnificar } from '@/lib/clients/cliente-rapido'
@@ -53,6 +56,8 @@ interface ArgsAgendar {
 interface PayloadAgendar {
   branchId: string; procedureId: string; professionalId: string; scheduledAt: string
   clientId: string | null; clienteNovo: { nome: string; telefone: string; jaExisteId?: string } | null; notes: string | null
+  /** O que a cliente JÁ PAGOU deste procedimento (C5, F65): o "Já pago" da agenda, escolhido igual. */
+  credito?: CreditoDeAgendamento | null
 }
 
 export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
@@ -113,34 +118,57 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     const fuso = await fusoDe(c, unidade.id)
     const inicio = instanteDe(a.data, a.hora, fuso)
     if (inicio.getTime() < Date.now() - 5 * 60_000) return { erro: 'Esse horário já passou.' }
-    const recusa = await conferirPecasDoAgendamento(c.admin, c.ctx, { branchId: unidade.id, professionalId: prof.id, clientId, roomId: null })
+    // Unidade, profissional (e que ela ATENDE nesta unidade — F65), cliente e
+    // procedimento feito aqui: o núcleo, o mesmo da tela.
+    const recusa = await conferirPecasDoAgendamento(c.admin, c.ctx, { branchId: unidade.id, professionalId: prof.id, clientId, roomId: null, procedureId: proc.id })
     if (recusa) return { erro: recusa }
-    if (!(await livre(c, { professionalId: prof.id, inicio, duracaoMin: proc.duration_min || 60 }))) {
+
+    // O "Já pago" (C5, F65): o que a cliente já pagou deste procedimento — a
+    // sessão livre do plano, ou o crédito de pacote/pré-pago — entra sozinho,
+    // como na janela "+ Agendar" (A20 da 8ª, princípio 3). Sem ele, o Copilot
+    // agendava avulso e o checkout cobrava de novo.
+    const pago = clientId ? await pagoParaAgendar(c.admin, c.ctx.tenantId!, clientId, proc.id) : null
+    const credito: CreditoDeAgendamento | null = pago?.tipo === 'CREDITO' ? pago.credito
+      : pago?.tipo === 'PLANO' ? { tipo: 'PLANO', id: pago.sessionId } : null
+    let duracao = proc.duration_min || 60
+    if (credito?.tipo === 'PLANO' && clientId) {
+      const conferido = await conferirCredito(c.admin, c.ctx.tenantId!, clientId, credito)
+      if (!('error' in conferido) && conferido.duracaoMin) duracao = conferido.duracaoMin
+    }
+
+    if (!(await livre(c, { professionalId: prof.id, inicio, duracaoMin: duracao }))) {
       return { erro: `${prof.name} já tem agendamento nesse horário. Veja os horários livres.` }
     }
-    const bloqueado = await recusaDoBloqueado(c, { professionalId: prof.id, nome: prof.name, inicio, duracaoMin: proc.duration_min || 60, fuso })
+    const bloqueado = await recusaDoBloqueado(c, { professionalId: prof.id, nome: prof.name, inicio, duracaoMin: duracao, fuso })
     if (bloqueado) return { erro: bloqueado }
+
+    // "Quem realiza" (por-01): como a janela da agenda, AVISA sem barrar — o
+    // encaixe é da clínica (princípio 2).
+    const naoRealiza = !realiza(await quemRealizaOProcedimento(c.admin, proc.id), prof.id)
+    const avisoDoRealiza = naoRealiza ? `${prof.name} não está em “Quem realiza” deste procedimento. ` : ''
 
     return {
       resumo: {
         titulo: 'Agendar atendimento',
         linhas: [
           { rotulo: 'Cliente', valor: nomeDoCliente },
-          { rotulo: 'Procedimento', valor: `${proc.name} · ${proc.duration_min} min` },
+          { rotulo: 'Procedimento', valor: `${proc.name} · ${duracao} min` },
           { rotulo: 'Profissional', valor: prof.name },
           { rotulo: 'Quando', valor: quandoLegivel(inicio, fuso) },
           { rotulo: 'Unidade', valor: unidade.name },
-          { rotulo: 'Valor', valor: dinheiro(proc.price) },
+          pago
+            ? { rotulo: 'Já pago', valor: `${pago.texto} · ${dinheiro(pago.preco)}` }
+            : { rotulo: 'Valor', valor: dinheiro(proc.price) },
           ...(a.observacao ? [{ rotulo: 'Observação', valor: a.observacao }] : []),
         ],
-        aviso: jaExiste
+        aviso: avisoDoRealiza + (jaExiste
           ? `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: agende numa ficha nova mesmo assim, ou na ficha que existe. O cliente recebe a confirmação do agendamento.`
-          : 'O cliente recebe a confirmação do agendamento.',
+          : 'O cliente recebe a confirmação do agendamento.'),
         ...(jaExiste ? { escolhas: escolhasDaFichaQueJaExiste(jaExiste) } : {}),
       },
       payload: {
         branchId: unidade.id, procedureId: proc.id, professionalId: prof.id, scheduledAt: inicio.toISOString(),
-        clientId, clienteNovo, notes: a.observacao?.trim() || null,
+        clientId, clienteNovo, notes: a.observacao?.trim() || null, credito,
       },
     }
   },
@@ -158,14 +186,19 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       clientId = novo.clientId
       revalidateTag(`clients:${c.ctx.tenantId!}`, { expire: 0 })
     }
-    const r = await createAppointmentCore(c.admin, c.ctx, {
+    const agendarCom = (credito: CreditoDeAgendamento | null) => createAppointmentCore(c.admin, c.ctx, {
       branchId: p.branchId, clientId: clientId!, procedureId: p.procedureId, professionalId: p.professionalId,
-      scheduledAt: p.scheduledAt, notes: p.notes, source: 'INTERNAL',
+      scheduledAt: p.scheduledAt, notes: p.notes, source: 'INTERNAL', credito,
     })
+    // O crédito que outro agendamento pegou entre o cartão e o Confirmar: agenda
+    // avulso, como o app (o checkout cobra) — e a mensagem diz.
+    let r = await agendarCom(p.credito ?? null)
+    let semOCredito = false
+    if ('error' in r && p.credito && r.error === CREDITO_JA_USADO) { r = await agendarCom(null); semOCredito = true }
     if ('error' in r) return { erro: r.error }
     revalidarAgendamento(c.ctx, r.id)
     notifyNewAppointment(r.id, c.ctx.internalUserId)
-    return { mensagem: `Agendado para ${quandoLegivel(p.scheduledAt, await fusoDe(c, p.branchId))}.`, href: rota(c, `/agenda/${r.id}`), rotuloDoLink: 'Ver agendamento' }
+    return { mensagem: `Agendado para ${quandoLegivel(p.scheduledAt, await fusoDe(c, p.branchId))}.${semOCredito ? ' O que ela já tinha pago foi usado em outro agendamento: este fica avulso.' : ''}`, href: rota(c, `/agenda/${r.id}`), rotuloDoLink: 'Ver agendamento' }
   },
 }
 
