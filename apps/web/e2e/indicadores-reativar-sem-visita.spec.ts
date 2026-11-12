@@ -48,7 +48,7 @@ test.describe.serial('D16: o vazio do "Reativar clientes"', () => {
       for (const url of ['/admin/dashboard', `/${slug}/dashboard`]) {
         await p.goto(url)
         await expect(quadro(p)).toContainText('Nenhuma cliente tem visita registrada ainda', { timeout: 20_000 })
-        await expect(quadro(p)).toContainText('2 clientes cadastradas nos últimos 90 dias')
+        await expect(quadro(p)).toContainText('2 clientes da clínica, cadastradas nos últimos 90 dias')
         await expect(quadro(p)).not.toContainText('retornaram')
       }
     })
@@ -66,7 +66,7 @@ test.describe.serial('D16: o vazio do "Reativar clientes"', () => {
     await como(browser, async p => {
       await p.goto('/admin/dashboard')
       await expect(quadro(p)).toContainText('Ninguém sumiu', { timeout: 20_000 })
-      await expect(quadro(p)).toContainText('2 clientes cadastradas nos últimos 90 dias ainda não têm visita')
+      await expect(quadro(p)).toContainText('2 clientes da clínica, cadastradas nos últimos 90 dias ainda não têm visita')
     })
   })
 })

@@ -9,7 +9,7 @@ import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { dayKeyTZ } from '@/lib/datetime'
 import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
-import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getAPagar, getEmAberto, getTicketMedio, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto } from '@/lib/metrics'
+import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getEmAberto, getTicketMedio, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto } from '@/lib/metrics'
 import { extrasDoCsv, type LancamentoParaOCsv } from '@/lib/financeiro/extras-do-csv'
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
@@ -59,16 +59,16 @@ export default async function FinancialPage({
 
   // Janela no fuso da UNIDADE (F62) e período anterior de mesma duração decorrida.
   const fuso = await fusoDaUnidade(ctx.tenantId, branch.id as string)
-  const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
+  const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, prevFullTo, label } =
     resolvePeriod(period, sp.from, sp.to, new Date(), fuso)
 
   // Os totais do período vêm do MESMO lugar que alimenta o dashboard e os
-  // relatórios: agregados no Postgres, eixo em `paid_at`, estorno fora dos dois
-  // lados. Somar a lista abaixo daria outro número assim que existisse uma
+  // relatórios: agregados no Postgres, eixo em `paid_at`, cada lado do estorno no
+  // seu dia (F59). Somar a lista abaixo daria outro número assim que existisse uma
   // parcela criada num mês e paga no outro — e o checkout de plano cria
   // exatamente isso.
   const argsDoNucleo = { tenantId: ctx.tenantId!, branchIds: [branch.id as string] }
-  const [totais, totaisAnteriores, composicao, serie, emAberto, aPagarAnterior, ticket, estoque, estoqueAnterior, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento] = await Promise.all([
+  const [totais, totaisAnteriores, composicao, serie, emAberto, emAbertoAnterior, ticket, estoque, estoqueAnterior, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento] = await Promise.all([
     getCore({ ...argsDoNucleo, from: start,     to: end }),
     getCore({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
     // Formas de pagamento e categorias: também do banco (a tela somava a lista).
@@ -78,7 +78,9 @@ export default async function FinancialPage({
     // A receber e a pagar pelo VENCIMENTO, até o fim do período, e o próximo
     // vencimento de cada lado (A34, 2026-10-27).
     getEmAberto({ ...argsDoNucleo, from: start, to: fimDoPeriodo }),
-    getAPagar({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
+    // O anterior INTEIRO, pela mesma régua (C46 da F68): era o a pagar só do
+    // trecho decorrido, contra o período atual inteiro.
+    getEmAberto({ ...argsDoNucleo, from: prevStart, to: prevFullTo }),
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29), a conta do sistema.
     getTicketMedio({ ...argsDoNucleo, from: start, to: end }),
     // O lucro desconta o insumo consumido e deixa a compra de estoque no caixa (2026-10-29).
@@ -239,7 +241,7 @@ export default async function FinancialPage({
         nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start, fuso), dayKeyTZ(fimDoPeriodo, fuso))}
         serie={serie}
         emAberto={emAberto}
-        aPagarAnterior={aPagarAnterior}
+        emAbertoAnterior={emAbertoAnterior}
         commissions={commissions}
         canReverse={canReverse}
         canWrite={canWrite}

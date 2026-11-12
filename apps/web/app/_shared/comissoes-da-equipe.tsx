@@ -1,4 +1,5 @@
 import { can, ownerFilter } from '@/lib/auth'
+import { totaisDoResumoDasComissoes } from '@/lib/metrics/comissoes'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import type { TenantContext } from '@estetica-os/types'
@@ -60,13 +61,8 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
   const resumo = resumoLido.map(r => ({ ...r, professionalName: marcar(r.professionalId, r.professionalName) }))
 
   // Os totais somam as LINHAS do resumo, que já vêm agregadas no banco (uma
-  // por profissional e unidade) — não há teto de linhas a truncar aqui.
-  const totais = resumo.reduce((t, r) => ({
-    aPagar:   Math.round((t.aPagar + r.aPagar) * 100) / 100,
-    liberado: Math.round((t.liberado + r.liberado) * 100) / 100,
-    pago:     Math.round((t.pago + r.pago) * 100) / 100,
-    aguardando: Math.round((t.aguardando + r.aguardando) * 100) / 100,
-  }), { aPagar: 0, liberado: 0, pago: 0, aguardando: 0 })
+  // por profissional e unidade) — a soma é a de lib/metrics (C46/C-17 da F68).
+  const totais = totaisDoResumoDasComissoes(resumo)
 
   return (
     <>

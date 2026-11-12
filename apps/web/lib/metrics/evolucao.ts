@@ -72,3 +72,20 @@ export function pontosDaEvolucao(
     return ponto(k, i + 1, `${k.slice(8, 10)}/${k.slice(5, 7)}`)
   })
 }
+
+/**
+ * A variação do semestre do gráfico de 6 meses (C46 da F68): o último mês
+ * FECHADO contra o primeiro, com os meses no rótulo ("de jun a out"). Era o
+ * mês corrente — pela metade — menos um mês inteiro, feita na tela: no começo
+ * do mês o selo sumia, e o que ele comparava não aparecia em lugar nenhum.
+ * Nulo sem dois meses fechados.
+ */
+export function variacaoDoSemestre(serie: { label: string; value: number }[]): { valor: number; de: string; ate: string } | null {
+  if (serie.length < 3) return null
+  const primeiro = serie[0]!
+  const ultimoFechado = serie[serie.length - 2]!
+  return {
+    valor: Math.round((ultimoFechado.value - primeiro.value) * 100) / 100,
+    de: primeiro.label, ate: ultimoFechado.label,
+  }
+}

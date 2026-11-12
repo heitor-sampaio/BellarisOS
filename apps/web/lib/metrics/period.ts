@@ -26,7 +26,15 @@ export type ResolvedPeriod = {
    */
   fullTo:      Date
   prevFrom:    Date
+  /** Fim do trecho anterior DECORRIDO (o mesmo tamanho do `to`): para o que conta até agora. */
   prevTo:      Date
+  /**
+   * Fim do período anterior INTEIRO (o mês anterior todo, ontem todo): para o
+   * que vai até o fim do período, como o "A receber" e o "A pagar" pelo
+   * vencimento (C46 da F68 — comparavam o período inteiro com o pedaço
+   * decorrido do anterior).
+   */
+  prevFullTo:  Date
   /** Há base de comparação? 'all' não tem período anterior. */
   comparable:  boolean
   label:       string
@@ -144,23 +152,29 @@ export function resolvePeriod(
   const elapsed = to.getTime() - from.getTime()
   let prevFrom: Date
   let prevTo:   Date
+  let prevFullTo: Date
 
   if (key === 'last_month') {
     // Período fechado: compara com o mês inteiro anterior a ele.
     const ref = addMonthsTZ(now, -2)
     prevFrom  = startOfMonthTZ(ref)
     prevTo    = endOfMonthTZ(ref)
+    prevFullTo = prevTo
   } else if (key === 'month') {
     prevFrom = startOfMonthTZ(addMonthsTZ(now, -1))
     // Mesmo trecho do mês anterior, sem estourar o fim dele.
     prevTo   = new Date(Math.min(prevFrom.getTime() + elapsed, endOfMonthTZ(prevFrom).getTime()))
+    prevFullTo = endOfMonthTZ(prevFrom)
   } else if (key === 'today') {
     const yesterday = addDaysTZ(now, -1)
     prevFrom = startOfDayTZ(yesterday)
     prevTo   = new Date(Math.min(prevFrom.getTime() + elapsed, endOfDayTZ(yesterday).getTime()))
+    prevFullTo = endOfDayTZ(yesterday)
   } else {
+    // A janela móvel: o anterior acaba onde o atual começa.
     prevTo   = new Date(from.getTime() - 1)
     prevFrom = new Date(prevTo.getTime() - elapsed)
+    prevFullTo = prevTo
   }
 
   return {
@@ -170,7 +184,7 @@ export function resolvePeriod(
     // hoje`, e o personalizado JÁ ENCERRADO caía no "hoje": a lista de março
     // de 2021 trazia tudo até agora (achado no relatório de vendas, 2026-10-14).
     fullTo: fullTo ?? (to.getTime() === now.getTime() ? endOfDayTZ(now) : to),
-    prevFrom, prevTo, comparable: key !== 'all', label, granularity,
+    prevFrom, prevTo, prevFullTo, comparable: key !== 'all', label, granularity,
   }
 }
 

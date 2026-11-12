@@ -464,8 +464,9 @@ export interface FechamentoDoDia {
 
 /**
  * O dia da unidade por forma de pagamento (`metrics_fechamento_do_dia`,
- * 2026-10-21): entradas pela regra de receita de sempre, saídas pagas, estorno
- * fora dos dois lados. O total vem do banco.
+ * 2026-10-21): entradas pela regra de receita (metrics_movimentos_pagos), saídas
+ * pagas, e o estorno no dia em que foi feito — o de um pagamento de outro dia é
+ * saída de hoje e não muda o dia do pagamento (F59; D2/D3 da 12ª). O total vem do banco.
  */
 export async function getFechamentoDoDia(args: { tenantId: string; branchId: string; from: Date; to: Date; dia?: string }): Promise<FechamentoDoDia> {
   const admin = createAdminClient()
@@ -544,8 +545,8 @@ export interface ComposicaoFinanceira {
 
 /**
  * Receita por forma de pagamento e receita/despesa por categoria, no período
- * (`metrics_financeiro_composicao`, a regra de metrics_core: estorno fora dos
- * dois lados). A tela do financeiro somava a lista e contava a
+ * (`metrics_financeiro_composicao`, a regra de metrics_receitas_pagas: cada
+ * lado do estorno no seu dia — F59). A tela do financeiro somava a lista e contava a
  * contra-transação do estorno como despesa (simulação de 2026-10-20).
  */
 export async function getComposicaoFinanceira(args: Args): Promise<ComposicaoFinanceira> {

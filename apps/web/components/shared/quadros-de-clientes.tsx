@@ -99,10 +99,13 @@ export interface ClienteSumida {
  * base importada no dia — cadastrada há menos de 90 dias, fora do quadro).
  * Os números vêm de lib/metrics (`comVisita`, `recentesSemVisita`).
  */
-export function vazioDoReativar(comVisita: number, recentesSemVisita: number): string {
+export function vazioDoReativar(comVisita: number, recentesSemVisita: number, deQuem?: string): string {
+  // A10 da 13ª: o texto diz DE QUAIS clientes fala ("que frequentam a unidade",
+  // "da clínica"), senão o "5 cadastradas" daqui brigava com o "4 novos" do lado.
+  const quem = deQuem ? ` ${deQuem},` : ''
   const recentes = recentesSemVisita === 1
-    ? '1 cliente cadastrada nos últimos 90 dias'
-    : `${recentesSemVisita} clientes cadastradas nos últimos 90 dias`
+    ? `1 cliente${quem} cadastrada nos últimos 90 dias`
+    : `${recentesSemVisita} clientes${quem} cadastradas nos últimos 90 dias`
   if (comVisita === 0) {
     return recentesSemVisita > 0
       ? `Nenhuma cliente tem visita registrada ainda (${recentes}). O quadro conta a partir da primeira visita concluída.`
@@ -112,11 +115,23 @@ export function vazioDoReativar(comVisita: number, recentesSemVisita: number): s
     + (recentesSemVisita > 0 ? ` ${recentes} ainda ${recentesSemVisita === 1 ? 'não tem' : 'não têm'} visita.` : '')
 }
 
+/**
+ * De quais clientes os quadros falam (A10 da 13ª simulação): o "Clientes no
+ * mês" e o "Reativar" contam universos diferentes conforme o recorte, e cada
+ * um diz o seu. A unidade é a TAG da cliente (a que ela frequenta — H5/C6).
+ */
+export function deQuemSaoAsClientes(r: { daUnidade: boolean; dela: boolean }): string {
+  if (r.dela) return 'que você atendeu'
+  return r.daUnidade ? 'que frequentam a unidade' : 'da clínica'
+}
+
 /** As clientes sem visita há mais de 90 dias (o total e as há mais tempo sem vir). */
-export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, comVisita = 1, recentesSemVisita = 0 }: {
+export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, comVisita = 1, recentesSemVisita = 0, deQuem }: {
   clientes: ClienteSumida[]; total: number; hrefAgendar: string; hrefVerTodas: string
   /** As do recorte com alguma visita concluída, e as novas sem nenhuma — o texto do vazio (D16). */
   comVisita?: number; recentesSemVisita?: number
+  /** De quais clientes o quadro fala (`deQuemSaoAsClientes`, A10). */
+  deQuem?: string
 }) {
   return (
     <div className="card" data-reativar-clientes style={{ display: 'flex', flexDirection: 'column' }}>
@@ -127,11 +142,13 @@ export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, c
         </h2>
       </div>
       {/* A35 da 10ª: o quadro não dizia que quem tem horário marcado sai da conta. */}
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Sem visita há mais de 90 dias — quem tem horário marcado não entra</p>
+      <p data-recorte-do-reativar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>
+        {deQuem ? `Clientes ${deQuem} sem visita` : 'Sem visita'} há mais de 90 dias — quem tem horário marcado não entra
+      </p>
 
       {clientes.length === 0 ? (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', paddingTop: 8, flex: 1 }}>
-          {vazioDoReativar(comVisita, recentesSemVisita)}
+          {vazioDoReativar(comVisita, recentesSemVisita, deQuem)}
         </p>
       ) : (
         <>

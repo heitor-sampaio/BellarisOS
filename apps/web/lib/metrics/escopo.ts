@@ -85,3 +85,19 @@ export function juntarPorNome<T extends { nome: string }>(daAgenda: T[], doDinhe
   for (const d of doDinheiro) if (!naAgenda.has(d.nome)) linhas.push(zerado(d, camposDaAgenda(d)))
   return linhas
 }
+
+/**
+ * As unidades dos números "Meus…" (D10 da 13ª simulação): com o módulo em
+ * "só os meus", a unidade do endereço e as outras em que ela ATENDE
+ * (`users.atende_em`) — o que é DELA, onde quer que tenha atendido, como a
+ * Minha agenda e "Minhas comissões". Sem o "só os meus", só a do endereço
+ * (os números da unidade). A unidade do endereço vem primeiro.
+ */
+export function unidadesDoQueEDela(
+  ctx: Pick<TenantContext, 'scopes' | 'internalUserId' | 'atendeEm'>,
+  unidade: string,
+  modulo: 'agenda' | 'financial',
+): string[] {
+  if (ctx.scopes[modulo] !== 'OWN' || !ctx.internalUserId) return [unidade]
+  return [unidade, ...(ctx.atendeEm ?? []).filter(u => u !== unidade).sort()]
+}

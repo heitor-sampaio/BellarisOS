@@ -90,7 +90,7 @@ export interface AdminDashboardProps {
   conversionRate:   number | null
   /** O funil tem etapa de ganho (sem ela, a conversão não existe). */
   funilTemGanho:    boolean
-  marketing:        { connected: boolean; spend: number; reach: number; activeCampaigns: number; totalCampaigns: number; notifActive: number } | null
+  marketing:        { connected: boolean; spend: number | null; reach: number | null; activeCampaigns: number; totalCampaigns: number; notifActive: number } | null
   monthLabel:       string
   /** O cargo vê o dinheiro do dashboard: o Financeiro ou a aba Financeiro dos Relatórios (D2). */
   veDinheiro:       boolean
@@ -98,7 +98,7 @@ export interface AdminDashboardProps {
   totalCost:         number
   totalAppointments: number
   newClients:       number
-  ticketMedio:      number
+  ticketMedio:      number | null
   /** O denominador do ticket: as clientes que pagaram no período. */
   clientesQuePagaram: number
   totalClientsEver: number
@@ -337,7 +337,8 @@ function KpiCard({
   /** Com o que o delta compara ("ontem", "mês anterior"); nulo esconde o delta. */
   anterior?: string | null
   label:   string
-  value:   number
+  /** Nulo = sem base para o número: "—" (C48 da F68). */
+  value:   number | null
   format?: 'brl' | 'int'
   sub?:    string
   delta?:  { pct: number; up: boolean } | null
@@ -365,6 +366,12 @@ function KpiCard({
         </div>
       </div>
 
+      {value === null ? (
+        <span data-sem-valor style={{
+          fontSize: 'clamp(21px, 5.4vw, 28px)', fontWeight: 800, letterSpacing: '-0.028em', lineHeight: 1,
+          color: brand ? 'var(--on-brand)' : 'var(--text)',
+        }}>—</span>
+      ) : (
       <AnimatedNum
         value={value}
         format={format}
@@ -373,6 +380,7 @@ function KpiCard({
           color: brand ? 'var(--on-brand)' : 'var(--text)',
         }}
       />
+      )}
 
       {sub && (
         <span style={{ fontSize: 'var(--text-2xs)', color: brand ? 'rgba(255,255,255,.6)' : 'var(--text-faint)' }}>
@@ -487,8 +495,9 @@ export function AdminDashboardView({
             {unidadeRecortada ?? (umaUnidade ? 'Visão geral' : 'Visão geral da rede')}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 4 }}>
-            {/* Recortada a uma unidade, o total segue o da CLÍNICA (H5: a cliente é da clínica) — e diz (A42). */}
-            {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`} · {totalClientsEver.toLocaleString('pt-BR')} {totalClientsEver === 1 ? 'cliente' : 'clientes'}{unidadeRecortada ? ' da clínica' : ''}
+            {/* Recortada a uma unidade, ou com o "só os meus", o total segue o da CLÍNICA (H5: a cliente é da
+                clínica; D12 da 13ª: o "só os meus" não recorta a ficha) — e diz (A42). */}
+            {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`} · {totalClientsEver.toLocaleString('pt-BR')} {totalClientsEver === 1 ? 'cliente' : 'clientes'}{unidadeRecortada || agendaPropria || recorteProprio ? ' da clínica' : ''}
             {unidadeRecortada && (
               <> · <Link href={hrefDaRede} style={{ color: 'var(--brand)', fontWeight: 700 }}>Ver a rede inteira</Link></>
             )}
@@ -553,7 +562,7 @@ export function AdminDashboardView({
           label="Novos clientes"
           value={newClients}
           format="int"
-          sub={`${totalClientsEver.toLocaleString('pt-BR')} ${unidadeRecortada ? 'clientes da clínica' : 'no total'}`}
+          sub={`${totalClientsEver.toLocaleString('pt-BR')} ${unidadeRecortada || agendaPropria ? 'clientes da clínica' : 'no total'}`}
           delta={deltaNewClients}
           semBase={prevNewClients === 0}
           anterior={rotulo.anterior}
@@ -1563,7 +1572,7 @@ export function AdminDashboardView({
       {marketing.connected ? (
         <div className="kpi-grid-auto" style={{ gap: 16 }}>
           <KpiCard label="Investimento (Meta)" value={marketing.spend} format="brl" sub="no período" icon={<TrendingUp size={16} color="var(--brand)" />} />
-          <KpiCard label="Alcance" value={marketing.reach} format="int" sub="pessoas alcançadas" icon={<Users size={16} color="var(--brand)" />} />
+          <KpiCard label="Alcance" value={marketing.reach} format="int" sub="pessoas alcançadas no período, cada uma uma vez" icon={<Users size={16} color="var(--brand)" />} />
           <KpiCard label="Campanhas ativas" value={marketing.activeCampaigns} format="int" sub={`${marketing.totalCampaigns} no total`} icon={<Zap size={16} color="var(--brand)" />} />
           <KpiCard label="Notificações ativas" value={marketing.notifActive} format="int" sub="campanhas rodando" icon={<Calendar size={16} color="var(--brand)" />} />
         </div>

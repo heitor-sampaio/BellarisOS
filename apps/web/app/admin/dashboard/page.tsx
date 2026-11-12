@@ -5,7 +5,6 @@ import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
-import type { DatePreset } from '@/lib/ads/types'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type {
   BranchStat,
@@ -30,8 +29,9 @@ import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { abertosDeAntes, SEM_ABERTOS_DE_ANTES } from '@/lib/metrics/abertos-de-antes'
 import { AbertosDeAntes } from '@/components/branch/abertos-de-antes'
-import { ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
-import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
+import { ClientesDoPeriodo, ReativarClientes, deQuemSaoAsClientes } from '@/components/shared/quadros-de-clientes'
+import { intervaloDosAnuncios } from '@/lib/ads/periodo'
+import { getClientesParaReativarDoRecorte, getClientesAtivos } from '@/lib/metrics/unidade'
 import { differenceInDays } from 'date-fns'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
 import type { LoteNoDashboard } from '@/components/shared/lotes-vencendo'
@@ -137,6 +137,12 @@ export default async function AdminDashboardPage({
   const unidadeRecortada = unidadeId && !umaUnidade ? (branches[0]?.name ?? null) : null
   const branchIds = branches.map(b => b.id)
   const fuso = await fusoDoRecorte(ctx.tenantId, branchIds)
+  // C45 (F68): o TOTAL da rede inteira inclui a unidade desativada — o "Por
+  // filial" a mostra quando ela teve movimento no período, e o total não
+  // fechava com a soma das linhas. Recortado a uma unidade, só ela.
+  const idsDosNumeros = unidadeId
+    ? branchIds
+    : ((await ler(admin.from('branches').select('id').eq('tenant_id', ctx.tenantId!), 'ler as unidades da rede')) ?? []).map(b => b.id as string)
 
   // -- Período selecionado -------------------------------------------
   // Janela e comparação resolvidas no fuso do RECORTE (F62: a unidade, o
@@ -174,7 +180,7 @@ export default async function AdminDashboardPage({
   }
 
   // -- Queries paralelas ---------------------------------------------
-  const janela       = { tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate }
+  const janela       = { tenantId: ctx.tenantId!, branchIds: idsDosNumeros, from: startDate, to: endDate }
   const daAgenda     = { ...janela, professionalId: agendaDela }
   const doDinheiro   = { ...janela, professionalId: dinheiroDela }
   /** O ranking pedido no recorte do dinheiro — o mesmo da agenda quando os dois são iguais. */
@@ -189,7 +195,7 @@ export default async function AdminDashboardPage({
   const seriesDoResultadoP = needsCore && !recorteProprio
     ? getSeriesDoResultado({ ...janela, granularity: period === 'today' ? 'hour' : 'day' })
     : Promise.resolve([])
-  const demografiaDaAgenda        = needsCore ? getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate, professionalId: agendaDela }) : Promise.resolve({ total: 0, idades: [], cidades: [], ceps: [] } as Demografia)
+  const demografiaDaAgenda        = needsCore ? getDemografia({ tenantId: ctx.tenantId!, branchIds: idsDosNumeros, to: endDate, professionalId: agendaDela }) : Promise.resolve({ total: 0, idades: [], cidades: [], ceps: [] } as Demografia)
 
   const [
     core,
@@ -287,14 +293,14 @@ export default async function AdminDashboardPage({
     // banco: em JS, passando de 1000 movimentos, subcontava.
     // O insumo é CUSTO: segue o financeiro — com ele "só os meus", o gasto
     // nos atendimentos dela.
-    getGiroDeEstoque({ branchIds, from: startDate, to: periodInfo.fullTo, professionalId: dinheiroDela }),
+    getGiroDeEstoque({ branchIds: idsDosNumeros, from: startDate, to: periodInfo.fullTo, professionalId: dinheiroDela }),
 
     // Demografia — os clientes da rede (com a agenda "só os meus", os que ela
     // atendeu), contada no banco: o total, idade, cidade e CEP. O LTV por CEP é
     // dinheiro: vem do recorte do financeiro. Antes vinha a base inteira e era
     // cortada em 1000.
     demografiaDaAgenda,
-    noDinheiro(demografiaDaAgenda, () => getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate, professionalId: dinheiroDela })),
+    noDinheiro(demografiaDaAgenda, () => getDemografia({ tenantId: ctx.tenantId!, branchIds: idsDosNumeros, to: endDate, professionalId: dinheiroDela })),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): o
     // total e o de cada unidade, numa chamada — dinheiro.
@@ -305,8 +311,11 @@ export default async function AdminDashboardPage({
     { total: 0, idades: [], cidades: [], ceps: [] } as Demografia, null,
   ]
 
-  // Total de clientes (todo o período): o da demografia, a mesma contagem.
-  const totalClientsEver = demografia.total
+  // D12 da 13ª simulação: o total de clientes do cabeçalho é SEMPRE o da
+  // clínica (as ativas) — o "só os meus" da agenda não recorta a ficha
+  // (Clientes não é módulo escopável). Era a demografia recortada pela agenda
+  // dela: a vendedora que não atende via "0 clientes" com 11 na lista.
+  const totalClientsEver = needsCore ? (await getClientesAtivos({ tenantId: ctx.tenantId!, unidades: [] })).total : 0
 
   const todayAppts = (todayApptsRaw ?? []) as AgendamentoDeHoje[]
 
@@ -319,8 +328,9 @@ export default async function AdminDashboardPage({
   const prevClientsCount  = prevCore.newClients
 
   // Ticket médio = a média de quanto cada CLIENTE gasta (pago ÷ clientes que
-  // pagaram; lib/metrics, 2026-10-29). 0 = nenhuma cliente pagou ("—").
-  const ticketMedio = ticket?.total.valor ?? 0
+  // pagaram; lib/metrics, 2026-10-29). Nulo = nenhuma cliente pagou: "—",
+  // não R$ 0,00 (C48 da F68).
+  const ticketMedio = ticket?.total.valor ?? null
   const clientesQuePagaram = ticket?.total.clientesQuePagaram ?? 0
 
   // -- Por filial ----------------------------------------------------
@@ -574,21 +584,26 @@ export default async function AdminDashboardPage({
 
   // -- Marketing: alcance/gasto (Meta Ads, tempo real) + campanhas (gate marketing) --
   let marketing: {
-    connected: boolean; spend: number; reach: number
+    connected: boolean; spend: number | null; reach: number | null
     activeCampaigns: number; totalCampaigns: number; notifActive: number
   } | null = null
   if (canMarketing) {
-    const adsPreset: DatePreset =
-      period === 'today' ? 'today' : period === '7d' ? '7d' : period === 'all' ? 'all' : '30d'
-    let spend = 0, reach = 0, activeCampaigns = 0, totalCampaigns = 0, connected = false
+    // C47 (F68): o MESMO período da tela — o mês, 15 dias e o personalizado
+    // iam como "últimos 30 dias" —, e o gasto e o alcance da CONTA: o alcance
+    // são pessoas únicas, e somar o das campanhas contava a mesma pessoa várias vezes.
+    const intervalo = intervaloDosAnuncios(periodInfo, fuso)
+    let spend: number | null = null, reach: number | null = null, activeCampaigns = 0, totalCampaigns = 0, connected = false
     try {
       // Anúncios fora do PLANO da rede: o quadro não consulta a Meta.
       const cfg = temRecurso(ctx, 'anuncios') ? await getAdsConfig(ctx.tenantId!, 'meta_ads') : null
       if (cfg) {
         connected = true
-        const campaigns = await resolveAdsProvider(cfg).getCampaigns({ preset: adsPreset })
-        spend           = campaigns.reduce((s, c) => s + (c.spend ?? 0), 0)
-        reach           = campaigns.reduce((s, c) => s + (c.reach ?? 0), 0)
+        const provedor  = resolveAdsProvider(cfg)
+        const campaigns = await provedor.getCampaigns(intervalo)
+        // Sem o resumo da conta, "—" (não um número somado na tela).
+        const resumo = await provedor.getResumoDaConta?.(intervalo).catch(() => null) ?? null
+        spend           = resumo?.spend ?? null
+        reach           = resumo?.reach ?? null
         activeCampaigns = campaigns.filter(c => c.status === 'ACTIVE').length
         totalCampaigns  = campaigns.length
       }
@@ -634,7 +649,7 @@ export default async function AdminDashboardPage({
   const umaSoNoRecorte = branches.length === 1 && !umaUnidade ? branches[0]! : null
   // A regra é UMA, a do Copilot também (r3-f13-10): getClientesParaReativarDoRecorte.
   const paraReativar = !canClients
-    ? { total: 0, comVisita: 0, recentesSemVisita: 0, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null; antesDoSistema?: boolean }[] }
+    ? { total: 0, comVisita: 0, recentesSemVisita: 0, daUnidade: false, lista: [] as { id: string; name: string; ultimaVisita: string | null; unidade: string | null; antesDoSistema?: boolean }[] }
     : await getClientesParaReativarDoRecorte({
         tenantId: ctx.tenantId!,
         unidade: branches.length === 1 ? { id: branches[0]!.id as string, name: branches[0]!.name as string } : null,
@@ -644,7 +659,8 @@ export default async function AdminDashboardPage({
     <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
       <ClientesDoPeriodo
         titulo="Clientes no período"
-        subtitulo={`${agendaDela ? 'As suas novas clientes e os seus agendamentos' : 'Novos clientes e agendamentos da clínica'} · ${periodLabel}, até agora`}
+        // A10 da 13ª: o quadro diz o seu recorte (a unidade é a tag da cliente — C6).
+        subtitulo={`${agendaDela ? 'As suas novas clientes e os seus agendamentos' : paraReativar.daUnidade ? 'Novas clientes que frequentam a unidade e os agendamentos dela' : 'Novas clientes e agendamentos da clínica'} · ${periodLabel}, até agora`}
         etapas={[
           { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
           { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)' },
@@ -659,6 +675,7 @@ export default async function AdminDashboardPage({
         }))}
         total={paraReativar.total}
         comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
+        deQuem={deQuemSaoAsClientes({ daUnidade: paraReativar.daUnidade, dela: !!agendaDela })}
         hrefAgendar="/admin/agenda"
         hrefVerTodas={umaSoNoRecorte && !umaUnidade ? `/admin/clients?unidade=${umaSoNoRecorte.slug as string}` : '/admin/clients'}
       />
@@ -698,7 +715,7 @@ export default async function AdminDashboardPage({
         totalCost={veDinheiro ? totalCost : 0}
         totalAppointments={totalAppointments}
         newClients={newClients}
-        ticketMedio={veDinheiro ? ticketMedio : 0}
+        ticketMedio={veDinheiro ? ticketMedio : null}
         clientesQuePagaram={veDinheiro ? clientesQuePagaram : 0}
         totalClientsEver={totalClientsEver ?? 0}
         branchCount={branches.length}

@@ -15,12 +15,22 @@ type Recorte = Pick<RecorteDosModulos, 'agenda' | 'financeiro'>
 
 export async function getCoreDosModulos(args: {
   tenantId: string; branchIds?: string[] | null; from: Date; to: Date; recorte: Recorte
+  /**
+   * As unidades de cada módulo, quando diferem do `branchIds` (D10 da 13ª: o
+   * "Meus…" de quem atende em duas unidades conta as duas — `unidadesDoQueEDela`).
+   */
+  unidadesDaAgenda?: string[]; unidadesDoDinheiro?: string[]
 }): Promise<MetricsCore> {
-  const { recorte, ...base } = args
-  if (recorte.agenda === recorte.financeiro) return getCore({ ...base, professionalId: recorte.agenda })
+  const { recorte, unidadesDaAgenda, unidadesDoDinheiro, ...base } = args
+  const daAgendaIds  = unidadesDaAgenda ?? base.branchIds
+  const doDinheiroIds = unidadesDoDinheiro ?? base.branchIds
+  const mesmasUnidades = JSON.stringify(daAgendaIds ?? null) === JSON.stringify(doDinheiroIds ?? null)
+  if (recorte.agenda === recorte.financeiro && mesmasUnidades) {
+    return getCore({ ...base, branchIds: daAgendaIds, professionalId: recorte.agenda })
+  }
   const [daAgenda, doDinheiro] = await Promise.all([
-    getCore({ ...base, professionalId: recorte.agenda }),
-    getCore({ ...base, professionalId: recorte.financeiro }),
+    getCore({ ...base, branchIds: daAgendaIds, professionalId: recorte.agenda }),
+    getCore({ ...base, branchIds: doDinheiroIds, professionalId: recorte.financeiro }),
   ])
   return juntarNucleos(daAgenda, doDinheiro)
 }

@@ -17,7 +17,8 @@ import { ClientCreditModal, ClientCreditModalHandle }       from './client-credi
 import { FinancialTable, Transaction }                      from './financial-table'
 import { SegSelect }                                        from '@/components/shared/seg-select'
 import { iniciaisDoNome } from '@estetica-os/utils'
-import { resultadoDoPeriodo, type EstoqueNoResultado } from '@/lib/metrics/resultado'
+import { resultadoDoPeriodo, variacaoPercentual, type EstoqueNoResultado } from '@/lib/metrics/resultado'
+import { totaisDasComissoes } from '@/lib/metrics/comissoes'
 import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
 import type { EmAberto } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
@@ -105,7 +106,8 @@ interface Props {
   /** A despesa a pagar do período e do anterior (metrics_a_pagar). */
   /** A receber e a pagar do período, pelo vencimento, e o próximo vencimento (getEmAberto). */
   emAberto:         EmAberto
-  aPagarAnterior:   number
+  /** O em aberto do período anterior INTEIRO (getEmAberto até `prevFullTo`): a base da variação. */
+  emAbertoAnterior: EmAberto
   commissions:      CommissionEntry[]
   canReverse:       boolean
   canWrite:         boolean
@@ -144,13 +146,6 @@ const PERIOD_OPTIONS = [
   { value: 'custom',     label: 'Personalizado' },
 ]
 
-function delta(curr: number, prev: number): { pct: number; up: boolean; neutral: boolean } {
-  // `neutral` = sem base de comparação. Antes um período anterior zerado
-  // virava "▲ 100%", um crescimento que nunca existiu.
-  if (prev === 0) return { pct: 0, up: true, neutral: true }
-  const pct = ((curr - prev) / prev) * 100
-  return { pct: Math.abs(pct), up: pct >= 0, neutral: false }
-}
 
 // --- KPI Card -----------------------------------------------------
 
@@ -162,7 +157,8 @@ function KpiCardFull({
   /** Uma linha a mais embaixo (o "pelo vencimento" e o próximo, no A receber/A pagar). */
   nota?:         React.ReactNode
   label:         string
-  curr:          number
+  /** Nulo = sem base para o número ("—", C48 da F68: o ticket sem cliente que pagou). */
+  curr:          number | null
   prev:          number
   icon:          React.ReactNode
   iconBg:        string
@@ -171,7 +167,10 @@ function KpiCardFull({
   format?:       (v: number) => string
   highlight?:    boolean
 }) {
-  const d = delta(curr, prev)
+  // A variação é a de lib/metrics (C46/C-17 da F68: o hub tinha a sua cópia).
+  // Sem base (anterior = 0, ou o número nulo), "sem dados anteriores" — nunca "▲ 100%".
+  const v = curr === null ? null : variacaoPercentual(curr, prev)
+  const d = { pct: v?.pct ?? 0, up: v?.up ?? true, neutral: v === null }
   const isGood = invertDelta ? !d.up : d.up
 
   const hl = highlight
@@ -205,7 +204,7 @@ function KpiCardFull({
       </div>
       {/* A25 da 10ª: o valor numa linha só — o "-" do negativo ficava sozinho em cima. */}
       <p data-valor-do-kpi style={{ fontSize: 'clamp(18px, 5vw, 24px)', fontWeight: 800, letterSpacing: '-0.025em', color: valColor, lineHeight: 1, whiteSpace: 'nowrap' }}>
-        {format(curr)}
+        {curr === null ? '—' : format(curr)}
       </p>
       {!d.neutral ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -416,19 +415,11 @@ function CategoryBars({
 
 function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
   const fuso = useFuso()
-  const totalComm = entries.reduce((s, e) => s + e.amount, 0)
-  const totalPaid = entries.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
-
-  // Agrupa por profissional mantendo a ordem de inserção
-  const groups: { id: string; name: string; items: CommissionEntry[] }[] = []
-  const seen: Record<string, number> = {}
-  for (const e of entries) {
-    if (seen[e.professionalId] === undefined) {
-      seen[e.professionalId] = groups.length
-      groups.push({ id: e.professionalId, name: e.professionalName, items: [] })
-    }
-    groups[seen[e.professionalId]!]!.items.push(e)
-  }
+  // Os totais e os grupos por profissional (na ordem do banco) vêm de lib/metrics (C46/C-17).
+  const totais = totaisDasComissoes(entries)
+  const totalComm = totais.total
+  const totalPaid = totais.pago
+  const groups = totais.porProfissional.map(g => ({ id: g.id, name: g.name, total: g.total, items: g.itens }))
 
   return (
     <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -463,7 +454,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
       ) : (
         <div style={{ overflowY: 'auto', flex: 1, maxHeight: 280 }}>
           {groups.map((group, gi) => {
-            const groupTotal = group.items.reduce((s, i) => s + i.amount, 0)
+            const groupTotal = group.total
             const initials   = iniciaisDoNome(group.name)
             return (
               <div key={group.id} style={{ marginBottom: gi < groups.length - 1 ? 12 : 0 }}>
@@ -528,7 +519,7 @@ export function FinancialHub({
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
-  transactions, soOEmAberto = false, soAsVencidas = false, soAPagar = false, aPagarEmAberto = 0, vencidas, nomeDoCsv, serie, emAberto, aPagarAnterior,
+  transactions, soOEmAberto = false, soAsVencidas = false, soAPagar = false, aPagarEmAberto = 0, vencidas, nomeDoCsv, serie, emAberto, emAbertoAnterior,
   commissions,
   canReverse,
   canWrite,
@@ -558,17 +549,20 @@ export function FinancialHub({
   const pendingIncome  = emAberto.aReceber
   const prevIncome     = totaisAnteriores.revenueCash
   const prevExpense    = totaisAnteriores.expensesCash
-  const prevPendingIncome = totaisAnteriores.revenuePending
+  // O anterior INTEIRO, pelo vencimento, como o atual (C46 da F68): comparava o
+  // período inteiro com o pedaço decorrido do anterior.
+  const prevPendingIncome = emAbertoAnterior.aReceber
 
   // Ticket médio, na definição do §13.1: a média de quanto cada CLIENTE gasta
   // — o pago pelas clientes ÷ as que pagaram (2026-10-29), contado no banco e
   // dividido em lib/metrics. Antes era receita ÷ nº de lançamentos, que sobe
   // quando alguém paga em duas parcelas e desce quando paga numa.
-  const avgTicket = ticketMedio ?? 0
+  // Nulo = nenhuma cliente pagou: "—", não R$ 0,00 (C48 da F68).
+  const avgTicket = ticketMedio
 
   // A despesa a pagar vem do banco (metrics_a_pagar): era somada na lista.
   const pendingExpense     = emAberto.aPagar
-  const prevPendingExpense = aPagarAnterior
+  const prevPendingExpense = emAbertoAnterior.aPagar
 
   // O lucro do período vem de lib/metrics (resultadoDoPeriodo), como nos
   // Relatórios: desconta o insumo consumido; a compra de estoque fica nas

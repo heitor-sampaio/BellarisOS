@@ -27,27 +27,27 @@ export const DEFINICOES = {
       + 'ainda vão acontecer e os cancelados. No meio do mês ela fica abaixo da taxa de aproveitamento do '
       + 'dashboard, que conta só até agora.',
   },
-  /** A receita paga: o dia é o do PAGAMENTO, no fuso de Brasília. */
+  /** A receita paga: o dia é o do PAGAMENTO, no fuso da unidade (F62); o estorno, no dia dele (F59). */
   receita: {
     rotulo: 'Qual data a receita usa',
-    texto: 'O que entrou no caixa, pelo dia do PAGAMENTO (horário de Brasília), sem estornos. '
-      + 'O atendimento concluído ontem e pago hoje entra hoje.',
+    texto: 'O que entrou no caixa, pelo dia do PAGAMENTO (no fuso da unidade). O estorno sai no dia em que foi '
+      + 'feito: o de um pagamento de outro período desconta deste. O atendimento concluído ontem e pago hoje entra hoje.',
   },
   /** A despesa paga: também pelo pagamento. */
   despesa: {
     rotulo: 'Qual data a despesa usa',
-    texto: 'O que saiu do caixa, pelo dia do PAGAMENTO (horário de Brasília).',
+    texto: 'O que saiu do caixa, pelo dia do PAGAMENTO (no fuso da unidade).',
   },
   /** Os atendimentos: o dia é o da hora MARCADA. */
   atendimentos: {
     rotulo: 'Qual data os atendimentos usam',
-    texto: 'Atendimentos concluídos, pelo dia da hora MARCADA (horário de Brasília) — ou da conclusão, quando ela '
+    texto: 'Atendimentos concluídos, pelo dia da hora MARCADA (no fuso da unidade) — ou da conclusão, quando ela '
       + 'veio antes. O atendimento das 23:30 concluído à meia-noite e pouco conta no dia em que foi marcado.',
   },
   /** O ticket médio: o pago pelas clientes ÷ as clientes que pagaram. */
   ticket: {
     rotulo: 'Como o ticket médio é contado',
-    texto: 'O que as clientes pagaram no período ÷ quantas clientes pagaram, pelo dia do PAGAMENTO (horário de Brasília).',
+    texto: 'O que as clientes pagaram no período ÷ quantas clientes pagaram, pelo dia do PAGAMENTO (no fuso da unidade).',
   },
   /**
    * A receita por procedimento e por profissional — a da EXECUÇÃO (D3 da 5ª,
@@ -56,7 +56,7 @@ export const DEFINICOES = {
   /** "Meu faturamento" (financeiro "só os meus"): a VENDA dela, pelo pagamento (A41). */
   meuFaturamento: {
     rotulo: 'O que o "Meu faturamento" conta',
-    texto: 'O que entrou no caixa pelas SUAS vendas e pelos SEUS atendimentos, no dia do PAGAMENTO (horário de Brasília): '
+    texto: 'O que entrou no caixa pelas SUAS vendas e pelos SEUS atendimentos, no dia do PAGAMENTO (no fuso da unidade): '
       + 'o atendimento avulso que você fez e foi pago, e o pacote, o pré-pago e o produto que você vendeu (inteiros; no '
       + 'crediário, cada parcela quando entra). A sessão de pacote ou de plano que você atende não soma de novo: o dinheiro '
       + 'é de quem vendeu. Os Relatórios contam outra coisa — a receita dos atendimentos que você FEZ, no dia em que fez —, '
@@ -73,7 +73,7 @@ export const DEFINICOES = {
   },
   receitaDosAtendimentos: {
     rotulo: 'O que a receita dos atendimentos conta',
-    texto: 'O valor dos atendimentos FEITOS, para quem atendeu, no dia em que o atendimento foi FEITO (horário de Brasília): '
+    texto: 'O valor dos atendimentos FEITOS, para quem atendeu, no dia em que o atendimento foi FEITO (no fuso da unidade): '
       + 'o que a cliente pagou pelo avulso (com o desconto e sem estornos; pago depois, entra no dia do atendimento) e, na '
       + 'sessão de pacote, de pré-pago ou de plano, a parte dela no que foi vendido (na de plano, cada procedimento da sessão '
       + 'conta no seu). É a conta da EXECUÇÃO; o caixa e o "Meu faturamento" contam no dia do pagamento (o pacote e o '
@@ -89,7 +89,7 @@ export const DEFINICOES = {
   /** Relatórios → Visão geral: o status dos agendamentos do período inteiro (J-57). */
   statusDoPeriodo: {
     rotulo: 'O que o gráfico de status conta',
-    texto: 'Todos os agendamentos do período, até o fim dele, pela hora marcada (horário de Brasília). "Em aberto" '
+    texto: 'Todos os agendamentos do período, até o fim dele, pela hora marcada (no fuso da unidade). "Em aberto" '
       + 'são os agendados, confirmados ou em atendimento — inclusive os que ainda vão acontecer. Os cartões de '
       + 'cima contam só até agora.',
   },
@@ -108,6 +108,6 @@ export const DEFINICOES = {
     rotulo: 'O que entra em Insumos e produtos vendidos',
     texto: 'O insumo usado nos atendimentos do período (ao custo de consumo: o preço da embalagem ÷ o que ela rende) '
       + 'mais o custo dos produtos vendidos (o dos lotes que saíram). Desconta do lucro. A perda e o ajuste de '
-      + 'estoque ficam fora: o insumo já foi pago na compra — eles aparecem em Relatórios → Estoque.',
+      + 'estoque ficam fora: são métrica, não entram no lucro nem quando a compra é paga — eles aparecem em Relatórios → Estoque.',
   },
 } satisfies Record<string, DefinicaoDoNumero>

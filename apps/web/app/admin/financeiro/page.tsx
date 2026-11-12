@@ -97,7 +97,10 @@ export default async function AdminFinanceiroPage({
   // números com cara de total que não são total. A pessoa vai para as
   // comissões dela — a tela para a qual este aviso apontava não existia.
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
-  const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
+  // C45 (F68): os TOTAIS da rede contam todas as unidades — a desativada que
+  // ainda tem movimento aparece no "Por filial" (getByBranch), e o total não
+  // fechava com a soma das linhas. A lista e o seletor seguem as ativas.
+  const metricArgs = { tenantId: ctx.tenantId!, branchIds: null, from: start, to: end }
 
   // A lista do período (ou de todo o em aberto, A38 da 8ª), lida em páginas.
   const daLista = (de: number, ate: number) => admin
@@ -160,8 +163,8 @@ export default async function AdminFinanceiroPage({
     getAReceberEmAberto({ tenantId: ctx.tenantId!, branchIds: null }),
     // F2c: o cartão em N vezes que a OPERADORA ainda deposita, mês a mês, pelo
     // vencimento até o fim do período — o total das ativas e cada unidade.
-    getAReceberDaOperadora({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo }),
-    getParcelasDaOperadora({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo }),
+    getAReceberDaOperadora({ tenantId: ctx.tenantId!, branchIds: null, from: start, to: fimDoPeriodo }),
+    getParcelasDaOperadora({ tenantId: ctx.tenantId!, branchIds: null, from: start, to: fimDoPeriodo }),
     // "Reforça", item 4: os concluídos sem pagamento da rede inteira,
     // separados dos lançamentos (só apareciam no Fechamento).
     getTotalDosAtendimentosAReceber({ tenantId: ctx.tenantId! }),
@@ -178,7 +181,7 @@ export default async function AdminFinanceiroPage({
     [b.branchId, (await getComposicaoFinanceira({ ...metricArgs, branchIds: [b.branchId] })).formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0] as const)))
   // D13 da 9ª: o que já venceu (antes de hoje) — o total e cada unidade.
   const vencidas = await getAReceberVencido({ tenantId: ctx.tenantId!, branchIds: null })
-  const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds, from: start, to: fimDoPeriodo })
+  const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds: null, from: start, to: fimDoPeriodo })
   // A43 da 12ª: todo o a pagar em aberto, de qualquer vencimento — o total e cada unidade.
   const aPagarEmAberto = await getAPagarEmAberto({ tenantId: ctx.tenantId!, branchIds: null })
 

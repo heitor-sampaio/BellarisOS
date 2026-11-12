@@ -23,7 +23,9 @@ import {
   resolvePeriod, delta, occupancyPct,
   getCore, getSeries, getTopProcedures, getTicketMedio, EMPTY_CORE,
 } from '@/lib/metrics'
-import { recorteDosModulos } from '@/lib/metrics/escopo'
+import { recorteDosModulos, unidadesDoQueEDela } from '@/lib/metrics/escopo'
+import { totaisDoResumoDasComissoes } from '@/lib/metrics/comissoes'
+import { variacaoDoSemestre } from '@/lib/metrics/evolucao'
 import { configDeComissaoDaRede, resumoDasComissoes } from '@/lib/comissoes/leitura'
 import { periodosRecentes } from '@/lib/comissoes/periodo'
 import { getCoreDosModulos } from '@/lib/metrics/dos-modulos'
@@ -37,7 +39,7 @@ import { LotesVencendo } from '@/components/shared/lotes-vencendo'
 import { EstoqueAbaixoDoMinimo } from '@/components/shared/estoque-abaixo-do-minimo'
 import { itensAbaixoDoMinimo } from '@/lib/estoque/abaixo-do-minimo'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
-import { AvatarDaCliente as Avatar, ClientesDoPeriodo, ReativarClientes } from '@/components/shared/quadros-de-clientes'
+import { AvatarDaCliente as Avatar, ClientesDoPeriodo, ReativarClientes, deQuemSaoAsClientes } from '@/components/shared/quadros-de-clientes'
 
 // O avatar da cliente é o dos quadros de clientes (um desenho só, F7b).
 
@@ -108,6 +110,17 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const recorte = recorteDosModulos(ctx)
   const proId = recorte.agenda
   const dinheiroDela = recorte.financeiro
+  // D10 da 13ª simulação: o "Meus…" é o que é DELA em todas as unidades em que
+  // atende (como a Minha agenda e "Minhas comissões") — não só o desta. Só as
+  // unidades ativas da rede; a do endereço vem primeiro.
+  const ativasDaRede = await ler(admin.from('branches').select('id, name')
+    .eq('tenant_id', ctx.tenantId!).eq('is_active', true), 'ler as unidades da rede')
+  const nomeDaUnidade = new Map((ativasDaRede ?? []).map(b => [b.id as string, b.name as string]))
+  const soAsAtivas = (ids: string[]) => ids.filter(id => id === branchId || nomeDaUnidade.has(id))
+  const unidadesDaAgenda   = soAsAtivas(unidadesDoQueEDela(ctx, branchId, 'agenda'))
+  const unidadesDoDinheiro = soAsAtivas(unidadesDoQueEDela(ctx, branchId, 'financial'))
+  /** " · nas 2 unidades", quando o número dela soma mais de uma. */
+  const nasUnidades = (ids: string[]) => (ids.length > 1 ? ` · nas ${ids.length} unidades` : '')
 
   const hasAnyWidget = canFinancial || canAgenda || canProcedures || canClients
 
@@ -122,7 +135,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
   // O mês até agora; o núcleo junta o dinheiro de um recorte e a agenda do outro.
   const janela = { tenantId: ctx.tenantId!, branchIds: [branchId], from: period.from, to: period.to }
-  const doDinheiro = { ...janela, professionalId: dinheiroDela }
+  const doDinheiro = { ...janela, branchIds: unidadesDoDinheiro, professionalId: dinheiroDela }
 
   const [
     core,
@@ -138,7 +151,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     // O núcleo é uma chamada só, agregada no Postgres: receita, atendimentos,
     // novos clientes e comissões saem coerentes entre si por construção.
     (canFinancial || canAgenda || canClients)
-      ? getCoreDosModulos({ ...janela, recorte })
+      ? getCoreDosModulos({ ...janela, recorte, unidadesDaAgenda, unidadesDoDinheiro })
       : Promise.resolve({ ...EMPTY_CORE }),
 
     // O anterior só serve à variação do FATURAMENTO: o recorte do dinheiro.
@@ -148,7 +161,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
     canFinancial
       ? getSeries({
-          tenantId: ctx.tenantId!, branchIds: [branchId],
+          tenantId: ctx.tenantId!, branchIds: unidadesDoDinheiro,
           from: sixMonthsAgo, to: period.to, granularity: 'month', professionalId: dinheiroDela,
         })
       : Promise.resolve([]),
@@ -166,8 +179,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     canAgenda
       ? (() => {
           let q = admin.from('appointments')
-            .select('id, client_id, scheduled_at, duration_min, status, price, clients(name), procedures(name), users!appointments_professional_id_fkey(name)')
-            .eq('branch_id', branchId)
+            .select('id, client_id, branch_id, scheduled_at, duration_min, status, price, clients(name), procedures(name), users!appointments_professional_id_fkey(name)')
+            // "Meus agendamentos hoje": os dela nas unidades em que atende (D10).
+            .in('branch_id', unidadesDaAgenda)
             .gte('scheduled_at', todayStart.toISOString())
             .lte('scheduled_at', todayEnd.toISOString())
             .order('scheduled_at')
@@ -202,7 +216,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       ? getClientesParaReativarDoRecorte({
           tenantId: ctx.tenantId!, unidade: { id: branchId, name: branch.name }, desde: ninetyDaysAgo, professionalId: proId,
         })
-      : Promise.resolve({ total: 0, lista: [], comVisita: 0, recentesSemVisita: 0 }),
+      : Promise.resolve({ total: 0, lista: [], comVisita: 0, recentesSemVisita: 0, daUnidade: true }),
 
     // Ticket médio = o pago pelas clientes ÷ as que pagaram (2026-10-29): dinheiro.
     canFinancial
@@ -218,10 +232,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         const config = await configDeComissaoDaRede(ctx.tenantId!)
         const periodo = periodosRecentes(config.periodo, now, 1, await fusoDaRede(ctx.tenantId))[0]!
         const linhas = await resumoDasComissoes({
-          tenantId: ctx.tenantId!, branchIds: [branchId], inicio: periodo.inicio, fim: periodo.fim, profissionalId: dinheiroDela,
+          tenantId: ctx.tenantId!, branchIds: unidadesDoDinheiro, inicio: periodo.inicio, fim: periodo.fim, profissionalId: dinheiroDela,
         })
-        const soma = (f: (l: (typeof linhas)[number]) => number) => Math.round(linhas.reduce((t, l) => t + f(l), 0) * 100) / 100
-        return { periodo: periodo.rotulo, aPagar: soma(l => l.aPagar), lancado: soma(l => l.liberado) }
+        const totais = totaisDoResumoDasComissoes(linhas)
+        return { periodo: periodo.rotulo, aPagar: totais.aPagar, lancado: totais.liberado }
       })()
     : null
 
@@ -288,7 +302,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // A9 da 13ª: o que saiu da capacidade de hoje (a outra unidade, o bloqueio), dito na base.
   const descontosDoDia = descontosDaOcupacao(horarios.unidade,
     profissionais.map((p, i) => ({ nome: p.name, horario: horarios.profissionais[i] ?? null, blocos: horarios.ocupadoFora[i] ?? [] })), todayStart, todayEnd, fuso)
-  const occupancy   = occupancyPct(scheduledMin, horarios, todayStart, todayEnd, fuso) ?? 0
+  // C48 (F68): dia sem capacidade (ninguém atende hoje) não tem ocupação — "—", não 0%.
+  const occupancy   = occupancyPct(scheduledMin, horarios, todayStart, todayEnd, fuso)
 
   // -- Gráfico dos últimos 6 meses -------------------------------
   const seriesByMonth = new Map(monthSeries.map(p => [monthKeyTZ(p.bucket, fuso), p.revenue]))
@@ -299,9 +314,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       value: seriesByMonth.get(monthKeyTZ(month, fuso)) ?? 0,
     }
   })
-  // Variação do semestre = último mês vs. primeiro. Antes era o total dos 6
-  // meses menos o primeiro mês, o que não comparava nada.
-  const semesterDelta = (chartData[5]?.value ?? 0) - (chartData[0]?.value ?? 0)
+  // A variação do semestre: o último mês FECHADO contra o primeiro, com os
+  // meses no selo (C46 da F68; a conta é de lib/metrics).
+  const semestre = variacaoDoSemestre(chartData)
 
   // -- Top procedimentos -----------------------------------------
   // O pago sem execução no período vem com 0 (D3 da 5ª): não é "realizado".
@@ -437,7 +452,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             {formatBRL(minhasComissoes.aPagar)}
           </p>
           <p style={{ fontSize: 'var(--text-xs-sz)', marginTop: 10, opacity: 0.85 }}>
-            {formatBRL(minhasComissoes.lancado)} lançados em {minhasComissoes.periodo}
+            {formatBRL(minhasComissoes.lancado)} lançados em {minhasComissoes.periodo}{nasUnidades(unidadesDoDinheiro)}
           </p>
         </Link>
         )}
@@ -456,6 +471,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             : { fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.02em', marginTop: 10, lineHeight: 1 }}>
             {formatBRL(monthRevenue)}
           </p>
+          {dinheiroDela && unidadesDoDinheiro.length > 1 && (
+            <p data-nas-unidades style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+              Nas {unidadesDoDinheiro.length} unidades em que você atende
+            </p>
+          )}
           {dinheiroDela && (
             <p data-fora-do-meu-faturamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.45 }}>
               {DEFINICOES.foraDoMeuFaturamento.texto}
@@ -478,7 +498,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             {todayCount}
           </p>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-            {awaitingCount} aguardando confirmação
+            {awaitingCount} aguardando confirmação{proId ? nasUnidades(unidadesDaAgenda) : ''}
           </p>
         </div>
         )}
@@ -493,7 +513,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
             {monthCompletedCount ?? 0}
           </p>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>concluídos neste mês</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>concluídos neste mês{nasUnidades(unidadesDaAgenda)}</p>
         </div>
         ) : (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -502,11 +522,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             <Dica rotulo={DEFINICOES.ocupacao.rotulo}>{DEFINICOES.ocupacao.texto}</Dica>
           </p>
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
-            {professionalsCount ? `${occupancy}%` : '—'}
+            {professionalsCount && occupancy !== null ? `${occupancy}%` : '—'}
           </p>
           <div>
             <div style={{ height: 5, borderRadius: 99, background: 'var(--bg-app)', overflow: 'hidden', marginTop: 8 }}>
-              <div style={{ height: '100%', width: `${occupancy}%`, background: occupancy > 70 ? 'var(--brand)' : occupancy > 40 ? 'var(--warning)' : 'var(--border)', borderRadius: 99, transition: 'width 600ms ease' }} />
+              <div style={{ height: '100%', width: `${occupancy ?? 0}%`, background: (occupancy ?? 0) > 70 ? 'var(--brand)' : (occupancy ?? 0) > 40 ? 'var(--warning)' : 'var(--border)', borderRadius: 99, transition: 'width 600ms ease' }} />
             </div>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
               {/* A53 da 9ª: a base da conta, de quem atende (era "340min de 2720min disponíveis"). */}
@@ -547,10 +567,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                 {dinheiroDela ? 'Últimos 6 meses · o que você vendeu (pacotes, pré-pagos e produtos) e os seus atendimentos pagos' : 'Últimos 6 meses'}
               </p>
             </div>
-            {semesterDelta > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 99 }}>
-                <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--success)' }}>
-                  ▲ {formatBRL(semesterDelta)} no semestre
+            {semestre && semestre.valor !== 0 && (
+              <div data-semestre style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: semestre.valor > 0 ? 'var(--success-bg)' : 'var(--danger-soft)', border: `1px solid ${semestre.valor > 0 ? 'var(--success-border)' : 'var(--danger-border)'}`, borderRadius: 99 }}>
+                <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: semestre.valor > 0 ? 'var(--success)' : 'var(--danger)' }}>
+                  {semestre.valor > 0 ? '▲' : '▼'} {formatBRL(Math.abs(semestre.valor))} de {semestre.de} a {semestre.ate}
                 </span>
               </div>
             )}
@@ -578,6 +598,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
               {validToday.slice(0, 5).map((a, i) => {
                 const client    = a.clients    as unknown as { name: string } | null
                 const procedure = a.procedures as unknown as { name: string } | null
+                // D10: o dela em OUTRA unidade diz onde é.
+                const daUnidade = (a as { branch_id?: string }).branch_id ?? branchId
+                const outraUnidade = daUnidade !== branchId ? (nomeDaUnidade.get(daUnidade) ?? 'outra unidade') : null
                 const isLast    = i === Math.min(validToday.length, 5) - 1
                 return (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
@@ -590,7 +613,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                         {client?.name ?? '—'}
                       </p>
                       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {procedure?.name ?? '—'}
+                        {procedure?.name ?? '—'}{outraUnidade && <span data-outra-unidade> · {outraUnidade}</span>}
                       </p>
                     </div>
                     <StatusChip status={a.status} />
@@ -654,7 +677,13 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         {canClients && (
           <ClientesDoPeriodo
             titulo="Clientes no mês"
-            subtitulo={proId ? 'As suas novas clientes e os seus agendamentos neste mês, até agora' : 'Novos clientes e agendamentos da unidade neste mês, até agora'}
+            // A10 da 13ª: o quadro diz o seu recorte — as novas clientes são as que
+            // FREQUENTAM a unidade (a tag; C6), não as cadastradas nela.
+            subtitulo={proId
+              ? `As suas novas clientes e os seus agendamentos neste mês, até agora${nasUnidades(unidadesDaAgenda)}`
+              : paraReativar.daUnidade
+                ? 'Novas clientes que frequentam a unidade e os agendamentos da unidade, neste mês, até agora'
+                : 'Novas clientes da clínica e os agendamentos, neste mês, até agora'}
             etapas={funnel}
           />
         )}
@@ -665,6 +694,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             clientes={toReactivate.map(c => ({ id: c.id, name: c.name, diasSemVir: c.daysSince, antesDoSistema: c.antesDoSistema }))}
             total={inactiveCount}
             comVisita={paraReativar.comVisita} recentesSemVisita={paraReativar.recentesSemVisita}
+            deQuem={deQuemSaoAsClientes({ daUnidade: paraReativar.daUnidade, dela: !!proId })}
             hrefAgendar={`/${slug}/agenda`}
             hrefVerTodas={`/${slug}/clients?status=active`}
           />

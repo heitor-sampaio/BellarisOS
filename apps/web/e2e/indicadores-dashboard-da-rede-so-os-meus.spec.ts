@@ -169,7 +169,7 @@ test.afterAll(async () => {
 })
 
 /** O card "Reativar clientes" (o título leva um ✦ junto). */
-const reativar = (p: Page) => p.locator('.card').filter({ hasText: 'Sem visita há mais de 90 dias' }).first()
+const reativar = (p: Page) => p.locator('[data-reativar-clientes]').first()
 
 /** O card do dashboard que tem este título. */
 const card = (p: Page, titulo: string, qual: 'first' | 'last' = 'first') =>

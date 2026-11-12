@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import type { AdsProvider, Campaign, DateRange, MetaAdsConfig } from './types'
+import type { AdsProvider, Campaign, DateRange, MetaAdsConfig, ResumoDaConta } from './types'
 
 const GRAPH_API_VERSION = 'v25.0'
 const BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`
@@ -20,11 +20,40 @@ export class MetaAdsProvider implements AdsProvider {
     return (this.config.graphBase ?? BASE_URL).replace(/\/$/, '')
   }
 
-  async getCampaigns(dateRange: DateRange): Promise<Campaign[]> {
+  /** `date_preset(...)` ou, com as datas, `time_range({...})` (C47 da F68). */
+  private intervalo(dateRange: DateRange): { modificador: string; param: [string, string] } {
+    if (dateRange.since && dateRange.until) {
+      const faixa = JSON.stringify({ since: dateRange.since, until: dateRange.until })
+      return { modificador: `time_range(${faixa})`, param: ['time_range', faixa] }
+    }
     const preset = PRESET_MAP[dateRange.preset] ?? 'last_30d'
+    return { modificador: `date_preset(${preset})`, param: ['date_preset', preset] }
+  }
+
+  /**
+   * O gasto e o alcance da CONTA no período (`act_<id>/insights`, nível da
+   * conta): o alcance é de pessoas únicas, e somar o das campanhas contava a
+   * mesma pessoa uma vez por campanha (C47 da F68).
+   */
+  async getResumoDaConta(dateRange: DateRange): Promise<ResumoDaConta> {
+    const { param } = this.intervalo(dateRange)
+    const qs = new URLSearchParams({ access_token: this.config.accessToken, fields: 'spend,reach', level: 'account' })
+    qs.set(param[0], param[1])
+    const res = await fetch(`${this.base}/act_${this.config.adAccountId}/insights?${qs}`, { cache: 'no-store' })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error((err as { error?: { message?: string } })?.error?.message ?? `Meta API error ${res.status}`)
+    }
+    const body = await res.json() as { data?: { spend?: string; reach?: string }[] }
+    const linha = body.data?.[0]
+    return { spend: parseFloat(linha?.spend ?? '0'), reach: parseInt(linha?.reach ?? '0', 10) }
+  }
+
+  async getCampaigns(dateRange: DateRange): Promise<Campaign[]> {
+    const { modificador } = this.intervalo(dateRange)
     const fields = [
       'id', 'name', 'status',
-      `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,cost_per_conversion,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,purchase_roas,action_values}`,
+      `insights.${modificador}{spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,cost_per_conversion,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,purchase_roas,action_values}`,
     ].join(',')
 
     const qs = new URLSearchParams({

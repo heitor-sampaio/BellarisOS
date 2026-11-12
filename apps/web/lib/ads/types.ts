@@ -2,7 +2,17 @@ export type DatePreset = 'today' | '7d' | '30d' | '90d' | 'all'
 
 export interface DateRange {
   preset: DatePreset
+  /**
+   * O intervalo exato (YYYY-MM-DD, os dois dias inclusos), quando o período
+   * não tem preset na Meta — o mês, 15 dias, o personalizado (C47 da F68).
+   * Com os dois, vale o intervalo; o `preset` é a reserva.
+   */
+  since?: string
+  until?: string
 }
+
+/** O gasto e o alcance da CONTA no período: o alcance sem contar a mesma pessoa duas vezes. */
+export interface ResumoDaConta { spend: number; reach: number }
 
 export interface Campaign {
   id: string
@@ -151,6 +161,8 @@ export interface CampaignDetail {
 
 export interface AdsProvider {
   getCampaigns(dateRange: DateRange): Promise<Campaign[]>
+  /** O gasto e o alcance da conta inteira (o alcance não se soma por campanha). */
+  getResumoDaConta?(dateRange: DateRange): Promise<ResumoDaConta>
   testConnection(): Promise<{ ok: boolean; detail?: string }>
 }
 
