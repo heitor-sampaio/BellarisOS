@@ -11010,6 +11010,22 @@ maquininhas substituíram (C75): `payment_fees`, `tenants.cartao_prazo_dias`,
 primeira maquininha; as sobrecargas velhas das funções de venda que ganharam
 `p_maquininha`; o embrulho de 10 argumentos de `credito_vender`. Só depois de
 o código no ar não ler mais nenhum deles (`grep` antes).
+**Feitas em 12/11, com o Heitor presente** (conferido um por um: nenhum código
+dos três apps, spec ou função do banco usava; sem cascade): `…000502`
+(`senha_da_conta_confere`), `…000709` (`retornos_a_marcar` e as três colunas do
+retorno em `appointments`) e `20261112007101_limpeza_sem_uso`
+(`juntar_conversas_do_numero`, `metrics_estornos_do_dia`,
+`metrics_taxa_dos_lancamentos`, `estoque_ajuste`,
+`plano_cancelar_comissao_de_venda`, a tabela
+`private.avaliacoes_dos_procedimentos_juncao_descartada`, `leads.stage` e os
+dois `domain_events` órfãos de testes de estoque). `loyalty_configs.commission_base`
+já não existia. **Paradas, à espera do Heitor:** o resto da lista ainda é lido
+— só pela MONTAGEM de dados de specs (`payment_fees` e `tenants.cartao_*` com
+os gatilhos de espelho, `produto_vender`/`procedimento_vender`/`pacote_vender`,
+as sobrecargas de `credito_vender`, `estoque_ajuste_em`, `comissoes_extrato*`,
+`comissao_taxas_definir`, `crm_stages.marca`, o `gasto_medio`) ou pelo código
+(`products.supplier` e `stock_movements.fornecedor`, cópias do nome do
+cadastro: zero divergências). O Heitor não quis mexer em teste para isso.
 
 **F11 feita em 2026-11-03 — vendas, caixa e estoque** (d8818610…ca398ddf;
 migrations `20261101001101–1108`). Receber o plano no check-in é uma
