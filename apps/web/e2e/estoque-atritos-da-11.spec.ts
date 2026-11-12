@@ -90,7 +90,9 @@ test('A51, A52 e A54: a validade vencida avisa, a entrada confirma, e a próxima
     await modal.getByLabel('Validade').fill('2025-01-01')
     await expect(modal.locator('[data-validade-vencida]')).toContainText('já passou')
     await modal.getByLabel('Nota fiscal').fill(`NF-${marca}`)
-    await modal.getByLabel('Fornecedor').fill('Distribuidora Sul')
+    // C76 (F66): o fornecedor é da lista da rede; o novo se cadastra ali mesmo.
+    await modal.getByLabel('Fornecedor').selectOption({ label: '+ Novo fornecedor' })
+    await modal.getByLabel('Nome do novo fornecedor').fill('Distribuidora Sul')
     await modal.getByRole('button', { name: 'Registrar entrada' }).click()
     await expect(p.getByText(/Entrada registrada: \+3 frasco/)).toBeVisible({ timeout: 15_000 })
     // A54: a próxima entrada (outro produto da mesma nota) já vem com ela.

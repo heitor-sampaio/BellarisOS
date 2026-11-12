@@ -136,7 +136,8 @@ test('A37: a Entrada diz que não gera despesa e guarda o fornecedor e a nota', 
     await modal.getByLabel('Quantidade').fill('3')
     await modal.getByLabel('Custo unitário').fill('20')
     await modal.getByLabel('Nº do lote').fill(`UD-${marca}`)
-    await expect(modal.getByLabel('Fornecedor')).toHaveValue('Distribuidora Sul')
+    // C76 (F66): o de costume vem escolhido na LISTA de fornecedores da rede.
+    await expect(modal.getByLabel('Fornecedor').locator('option:checked')).toHaveText('Distribuidora Sul')
     await modal.getByLabel('Nota fiscal').fill('004630')
     await modal.getByRole('button', { name: 'Registrar entrada' }).click()
     await expect.poll(() => saldo(gel)).toBe(antes + 3)

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import {
   adminAddStock, adminTransferStock, adminAdjustStock, adminUpdateMinStock, registrarPerda,
-  getProductMovements, desfazerEntradaDeEstoque, desfazerAjusteDeEstoque, type MovimentoDeEstoque,
+  getProductMovements, desfazerEntradaDeEstoque, desfazerAjusteDeEstoque, desfazerPerdaDeEstoque, type MovimentoDeEstoque,
 } from '@/actions/stock'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
@@ -22,6 +22,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 import { parseDecimal } from '@estetica-os/utils'
 import { useFuso } from '@/components/shared/fuso'
+import { CampoFornecedor, type FornecedorDaLista } from '@/components/admin/campo-fornecedor'
 
 type BranchStock = {
   branchId:     string
@@ -44,6 +45,8 @@ type ProductInfo = {
   unitsPerPackage?: number | null
   /** O fornecedor do cadastro: a Entrada já o sugere (A37 da 10ª). */
   supplier?:        string | null
+  /** C76: o fornecedor de costume, da lista da rede. */
+  fornecedorId?:    string | null
   /** O mínimo do cadastro do produto: vale na unidade que ainda não tem linha (D11 da 12ª). */
   minimoDoCadastro?: number | null
 }
@@ -54,6 +57,10 @@ interface Props {
   product:         ProductInfo
   allBranches:     AllBranch[]
   defaultBranchId?: string
+  /** C76: a lista de fornecedores da rede. */
+  fornecedores?:   FornecedorDaLista[]
+  /** C16: aberto pelo leitor de código de barras — só a Entrada. */
+  somenteEntrada?: boolean
   onClose:         () => void
   onSuccess:       () => void
 }
@@ -124,9 +131,10 @@ function BranchSelect({
 }
 
 // -- Formulário: Entrada -----------------------------------------------
-function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }: {
+function EntradaForm({ product, allBranches, defaultBranchId, fornecedores = [], onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
   defaultBranchId?: string
+  fornecedores?: FornecedorDaLista[]
   onClose: () => void; onSuccess: () => void
 }) {
   const envio = useEnvioUnico()
@@ -151,9 +159,12 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
       const res = await adminAddStock(undefined, fd)
       if (res?.success) {
         envio.renovar()
-        guardarNotaDaEntrada(String(fd.get('nota_fiscal') ?? ''), String(fd.get('fornecedor') ?? ''))
-        // A52 da 11ª: a entrada confirma.
-        toast.success(`Entrada registrada: +${Number(fd.get('quantity')).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${pl(product.unit, Number(fd.get('quantity')))} de ${product.name}.`)
+        const idEscolhido = String(fd.get('fornecedor_id') ?? '')
+        const nomeDoFornecedor = String(fd.get('fornecedor') ?? '') || fornecedores.find(f => f.id === idEscolhido)?.nome || ''
+        guardarNotaDaEntrada(String(fd.get('nota_fiscal') ?? ''), nomeDoFornecedor)
+        // A52 da 11ª: a entrada confirma — e diz o saldo DEPOIS (C16).
+        const saldo = 'saldoAgora' in res && res.saldoAgora ? ` Saldo agora: ${res.saldoAgora}.` : ''
+        toast.success(`Entrada registrada: +${Number(fd.get('quantity')).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${pl(product.unit, Number(fd.get('quantity')))} de ${product.name}.${saldo}`)
         onSuccess()
       }
       else setError(res?.error ?? 'Erro inesperado.')
@@ -215,13 +226,14 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
         </p>
       )}
 
-      {/* A37 da 10ª: o fornecedor e a nota, estruturados (eram as Observações). */}
+      {/* A37 da 10ª: o fornecedor e a nota, estruturados (eram as Observações).
+          C76: o fornecedor vem da LISTA da rede — o da nota trazida da entrada
+          anterior primeiro (é a mesma nota), senão o de costume do produto. */}
       <div className="form-2col">
-        <FieldWrap>
-          <Label htmlFor="entrada-fornecedor">Fornecedor</Label>
-          <input id="entrada-fornecedor" name="fornecedor" type="text" maxLength={120} className="field"
-            defaultValue={product.supplier ?? notaAnterior?.fornecedor ?? ''} placeholder="Nome do fornecedor" />
-        </FieldWrap>
+        <CampoFornecedor id="entrada-fornecedor" fornecedores={fornecedores}
+          inicial={notaAnterior?.fornecedor
+            ? { nome: notaAnterior.fornecedor }
+            : { id: product.fornecedorId ?? null, nome: product.supplier ?? null }} />
         <FieldWrap>
           <Label htmlFor="entrada-nota">Nota fiscal</Label>
           <input id="entrada-nota" name="nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota"
@@ -265,8 +277,16 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onS
   const [fromId,  setFromId]  = useState(defaultBranchId ?? '')
   const [toId,    setToId]    = useState('')
 
-  const stockMap  = Object.fromEntries(product.branches.map(b => [b.branchId, b.currentStock]))
-  const fromStock = fromId ? (stockMap[fromId] ?? 0) : null
+  // C18: o disponível é o que a origem RENDE — o frasco aberto conta pelo que
+  // sobra nele (era o saldo em embalagens arredondado, e 1,5 frasco deixava
+  // transferir 2). Em embalagens, com a fração, e a prateleira por extenso.
+  const rende     = product.consumptionUnit && Number(product.unitsPerPackage) > 0 ? Number(product.unitsPerPackage) : null
+  const daOrigem  = fromId ? product.branches.find(b => b.branchId === fromId) : undefined
+  const rendOrigem = rende ? (daOrigem?.currentRendimento ?? (daOrigem?.currentStock ?? 0) * rende) : null
+  const fromStock = fromId
+    ? (rende ? Math.max(0, Math.floor(rendOrigem! / rende * 1000) / 1000) : (daOrigem?.currentStock ?? 0))
+    : null
+  const naPrateleira = fromId && rende ? saldoNaPrateleira(rendOrigem!, rende, product.unit, product.consumptionUnit!) : null
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setPending(true); setError(undefined)
@@ -312,9 +332,10 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onS
           fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
         }}>
           Disponível na origem:&nbsp;
-          <strong style={{ color: 'var(--text)' }}>
-            {fromStock.toLocaleString('pt-BR')} {product.unit}
+          <strong data-disponivel-na-origem style={{ color: 'var(--text)' }}>
+            {fromStock.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {pl(product.unit, fromStock)}
           </strong>
+          {naPrateleira && <span> ({naPrateleira})</span>}
         </div>
       )}
 
@@ -351,6 +372,8 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
   defaultBranchId?: string
   onClose: () => void; onSuccess: () => void
 }) {
+  // C24: a chave do envio — o duplo clique ajusta uma vez só.
+  const envio = useEnvioUnico()
   const [error,     setError]     = useState<string>()
   const [pending,   setPending]   = useState(false)
   const [branchId,  setBranchId]  = useState(defaultBranchId ?? unicaUnidade(allBranches))
@@ -402,8 +425,10 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
       fd.set('productId', product.id)
       fd.set('unidade', contaEmConsumo ? 'CONSUMO' : 'EMBALAGEM')
       if (parsedNew !== null) fd.set('new_quantity', String(parsedNew))
+      fd.set('_envio', envio.chave())
       const res = await adminAdjustStock(undefined, fd)
       if (res?.success) {
+        envio.renovar()
         // A52 da 11ª: o ajuste confirma.
         toast.success(`Ajuste aplicado: ${product.name} agora tem ${fmtQ(parsedNew ?? 0, 4)} ${pl(unidadeDaContagem, parsedNew ?? 0)}.`)
         onSuccess()
@@ -561,7 +586,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
           )}
           <p data-ajuste-negativo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             A diferença sai {loteDoAjuste ? 'do lote escolhido (o que faltar nele, do que vence primeiro)' : 'do lote que vence primeiro'} e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.
-            Entrada ou ajuste lançados errados se desfazem no Histórico (“Desfazer entrada”, “Desfazer ajuste”), sem virar perda.
+            Entrada, ajuste ou perda lançados errados se desfazem no Histórico (“Desfazer entrada”, “Desfazer ajuste”, “Desfazer perda”).
           </p>
         </>
       )}
@@ -767,7 +792,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
         Configure o estoque mínimo desejável de <strong style={{ color: 'var(--text)' }}>{product.name}</strong> em
-        cada unidade. Abaixo deste valor, o produto será sinalizado como alerta.
+        cada unidade. No mínimo ou abaixo deste valor, o produto é sinalizado como alerta.
       </p>
 
       {visibleBranches.map(b => {
@@ -849,7 +874,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
 }
 
 // -- Modal principal ---------------------------------------------------
-export function AdminStockManageModal({ product, allBranches, defaultBranchId, onClose, onSuccess }: Props) {
+export function AdminStockManageModal({ product, allBranches, defaultBranchId, fornecedores = [], somenteEntrada = false, onClose, onSuccess }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router = useRouter()
   const [tab,   setTab]   = useState<Tab>('movimentacoes')
@@ -888,7 +913,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
       }}>
         <div>
           <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-            Gerenciar estoque
+            {somenteEntrada ? 'Entrada por código de barras' : 'Gerenciar estoque'}
           </h2>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>{product.name}</p>
         </div>
@@ -901,8 +926,8 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
         </button>
       </div>
 
-      {/* Tabs */}
-      <div style={{
+      {/* Tabs (o leitor abre só a Entrada — C16) */}
+      {!somenteEntrada && <div style={{
         display: 'flex', gap: 0,
         borderBottom: '1px solid var(--border)',
         padding: '0 22px',
@@ -923,10 +948,12 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
             {l}
           </button>
         ))}
-      </div>
+      </div>}
 
       <div style={{ padding: '20px 22px 26px' }}>
-        {tab === 'movimentacoes' ? (
+        {somenteEntrada ? (
+          <EntradaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />
+        ) : tab === 'movimentacoes' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Sub-tabs de operação */}
             <div style={{
@@ -949,7 +976,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
               ))}
             </div>
 
-            {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
+            {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'transferencia' && <TransferenciaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'ajuste'        && <AjusteForm        product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'perda'         && <PerdaForm         product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
@@ -998,14 +1025,17 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
   const [recarga, setRecarga] = useState(0)
   const [aDesfazer, setADesfazer] = useState<MovimentoDeEstoque | null>(null)
   const [ajusteADesfazer, setAjusteADesfazer] = useState<MovimentoDeEstoque | null>(null)
+  const [perdaADesfazer, setPerdaADesfazer] = useState<MovimentoDeEstoque | null>(null)
+  // C26: as 80 mais recentes, e "Ver mais antigas" (era um corte calado em 80).
+  const [limite, setLimite] = useState(POR_PAGINA)
 
   useEffect(() => {
     let vivo = true
-    getProductMovements(product.id, defaultBranchId ?? '')
+    getProductMovements(product.id, defaultBranchId ?? '', limite)
       .then(r => { if (vivo) setMovs(r) })
       .catch(e => { if (vivo) setErro(erroParaTela(e, 'Não foi possível carregar as movimentações.')) })
     return () => { vivo = false }
-  }, [product.id, defaultBranchId, recarga])
+  }, [product.id, defaultBranchId, recarga, limite])
 
   if (erro)   return <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>
   if (!movs)  return <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando…</p>
@@ -1017,8 +1047,16 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
     )
   }
 
+  const temMais = movs.length > limite
+  const visiveis = temMais ? movs.slice(0, limite) : movs
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
+      {perdaADesfazer && (
+        <DesfazerPerda movimento={perdaADesfazer}
+          onFechar={() => setPerdaADesfazer(null)}
+          onDesfeita={() => { setPerdaADesfazer(null); setRecarga(n => n + 1); onAlterou?.() }} />
+      )}
       {aDesfazer && (
         <DesfazerEntrada movimento={aDesfazer} unidade={product.unit}
           onFechar={() => setADesfazer(null)}
@@ -1029,7 +1067,7 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
           onFechar={() => setAjusteADesfazer(null)}
           onDesfeito={() => { setAjusteADesfazer(null); setRecarga(n => n + 1); onAlterou?.() }} />
       )}
-      {movs.map(m => {
+      {visiveis.map(m => {
         const entrada = m.quantity >= 0
         const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
         const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -1055,7 +1093,11 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
-                {m.type === 'PURCHASE' && m.quantity < 0 ? 'Entrada desfeita' : m.desfazAjuste ? 'Ajuste desfeito' : (MOV_LABEL[m.type] ?? m.type)}
+                {m.type === 'PURCHASE' && m.quantity < 0 ? 'Entrada desfeita'
+                  : m.type === 'LOSS' && m.quantity > 0 ? 'Perda desfeita'
+                  : m.desfazAjuste ? 'Ajuste desfeito'
+                  : m.brinde ? 'Brinde da fidelidade'
+                  : (MOV_LABEL[m.type] ?? m.type)}
                 <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {m.branchName}</span>
               </p>
               {/* A37 da 10ª: o fornecedor e a nota da entrada. */}
@@ -1124,11 +1166,82 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
                   Desfazer ajuste
                 </button>
               )}
+              {/* C69 (H12): a última perda do produto na unidade se desfaz. */}
+              {m.perdaDesfazivel && podeDesfazer && (
+                <button type="button" className="btn-ghost" onClick={() => setPerdaADesfazer(m)}
+                  style={{ marginTop: 4, fontSize: 'var(--text-2xs)', padding: '2px 6px', color: 'var(--danger)', fontWeight: 700 }}>
+                  Desfazer perda
+                </button>
+              )}
             </div>
           </div>
         )
       })}
+      {temMais && (
+        <button type="button" className="btn-secondary" data-ver-mais-antigas onClick={() => setLimite(n => n + POR_PAGINA)}
+          style={{ alignSelf: 'center', marginTop: 4 }}>
+          Ver mais antigas
+        </button>
+      )}
     </div>
+  )
+}
+
+const POR_PAGINA = 80
+
+/**
+ * "Desfazer perda" (C69, H12 = a do levantamento das regras): a perda lançada
+ * errada volta ao MESMO lote de onde saiu; o movimento fica, marcado, e sai de
+ * "Perdas no período". Só a última perda do produto na unidade — o banco
+ * confere de novo (estoque_desfazer_perda).
+ */
+function DesfazerPerda({ movimento, onFechar, onDesfeita }: {
+  movimento: MovimentoDeEstoque; onFechar: () => void; onDesfeita: () => void
+}) {
+  const fuso = useFuso()
+  const [motivo, setMotivo] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+  const [gravando, iniciar] = useTransition()
+  const fmt = (n: number, casas = 3) => n.toLocaleString('pt-BR', { maximumFractionDigits: casas })
+  const qtd = `${fmt(Math.abs(movimento.quantity))} ${movimento.unidade}`
+    + (movimento.emEmbalagens != null ? ` (${fmt(Math.abs(movimento.emEmbalagens))} ${pl(movimento.embalagem, movimento.emEmbalagens)})` : '')
+  function desfazer() {
+    setErro(null)
+    iniciar(async () => {
+      const r = await desfazerPerdaDeEstoque(movimento.id, motivo)
+      if (r.error) { setErro(r.error); return }
+      toast.success('Perda desfeita.')
+      onDesfeita()
+    })
+  }
+  return (
+    <JanelaModal rotulo="Desfazer a perda" largura={440} travado={gravando} onFechar={onFechar}>
+      <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Desfazer a perda</h2>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Voltam {qtd} que a perda de{' '}
+          {new Date(movimento.createdAt).toLocaleDateString('pt-BR', { timeZone: fuso })} tirou, ao lote de onde saíram.
+          A perda fica no histórico, marcada como desfeita, e sai de “Perdas no período”.
+        </p>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="field-label">Motivo *</span>
+          <input className="field" maxLength={300} value={motivo} onChange={e => setMotivo(e.target.value)} disabled={gravando}
+            placeholder="Ex.: o frasco não tinha quebrado" />
+          {!motivo.trim() && (
+            <span data-motivo-obrigatorio style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+              Escreva o motivo para desfazer: ele fica no histórico.
+            </span>
+          )}
+        </label>
+        {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 700 }}>{erro}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn-secondary" onClick={onFechar} disabled={gravando}>Voltar</button>
+          <button type="button" className="btn-primary" onClick={desfazer} disabled={gravando || !motivo.trim()}>
+            {gravando ? 'Desfazendo…' : 'Desfazer perda'}
+          </button>
+        </div>
+      </div>
+    </JanelaModal>
   )
 }
 

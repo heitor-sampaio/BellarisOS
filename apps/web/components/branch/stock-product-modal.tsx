@@ -1,10 +1,10 @@
-﻿'use client'
+'use client'
 
 import { useId,
   useRef, useCallback, useState, useMemo,
   forwardRef, useImperativeHandle,
 } from 'react'
-import { X, Package, Building2, ChevronDown, Barcode } from 'lucide-react'
+import { X, Package, Barcode } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
 import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
@@ -14,6 +14,9 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
 import { ComissaoDoProduto } from '@/components/branch/comissao-do-produto'
 import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
+import { CampoFornecedor, type FornecedorDaLista } from '@/components/admin/campo-fornecedor'
+import { loteVencido, validadeNaTela } from '@/lib/estoque/validade'
+import { useFuso } from '@/components/shared/fuso'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -33,6 +36,8 @@ export interface StockProduct {
   min_stock:         number | null
   consumption_unit:  string | null
   units_per_package: number | null
+  /** C76: o fornecedor de costume, da lista da rede. */
+  fornecedor_id?:    string | null
 }
 
 export interface ProductCategory { id: string; name: string }
@@ -40,7 +45,8 @@ export interface ProductCategory { id: string; name: string }
 interface Props {
   product?:    StockProduct
   trigger?:    React.ReactNode
-  suppliers?:  string[]
+  /** C76: a lista de fornecedores da rede (o texto livre virou lista). */
+  fornecedores?: FornecedorDaLista[]
   categories?: ProductCategory[]
   /**
    * Unidades da rede. Quando vem preenchida, o estoque inicial pergunta em qual
@@ -51,76 +57,6 @@ interface Props {
   onSuccess?:  () => void
 }
 
-function SupplierCombobox({ suppliers, defaultValue, id }: { suppliers: string[]; defaultValue?: string | null; id?: string }) {
-  const [value,    setValue]    = useState(defaultValue ?? '')
-  const [open,     setOpen]     = useState(false)
-  const containerRef            = useRef<HTMLDivElement>(null)
-
-  const filtered = useMemo(() => {
-    const q = value.trim().toLowerCase()
-    if (!q) return suppliers
-    return suppliers.filter(s => s.toLowerCase().includes(q))
-  }, [suppliers, value])
-
-  const showDrop = open && filtered.length > 0
-
-  return (
-    <div ref={containerRef} style={{ position: 'relative' }}>
-      <div style={{ position: 'relative' }}>
-        <input
-          id={id}
-          name="supplier"
-          type="text"
-          className="field campo-busca"
-          value={value}
-          placeholder="Buscar ou digitar fornecedor…"
-          autoComplete="off"
-          onChange={e => { setValue(e.target.value); setOpen(true) }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          style={{ paddingRight: 30 }}
-        />
-        <ChevronDown
-          size={13}
-          style={{
-            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-            color: 'var(--text-faint)', pointerEvents: 'none',
-            transition: 'transform 120ms',
-            rotate: open ? '180deg' : '0deg',
-          }}
-        />
-      </div>
-      {showDrop && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 60,
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 10, boxShadow: 'var(--shadow-popover)',
-          maxHeight: 192, overflowY: 'auto',
-        }}>
-          {filtered.map((s, i) => (
-            <button
-              key={s}
-              type="button"
-              onMouseDown={() => { setValue(s); setOpen(false) }}
-              style={{
-                width: '100%', textAlign: 'left', padding: '9px 14px',
-                background: 'none', border: 'none',
-                borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none',
-                cursor: 'pointer', fontSize: 'var(--text-base-sz)', color: 'var(--text)',
-                display: 'flex', alignItems: 'center', gap: 9,
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-            >
-              <Building2 size={12} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 const UNITS = MEDIDAS_DO_PRODUTO
 
@@ -140,10 +76,10 @@ function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: str
 
 // -- Campos compartilhados --------------------------------------------
 function ProductFields({
-  product, suppliers, categories = [], branches = [], onClose, state, pending, submitLabel, isCreate = false, pergunta = null,
+  product, fornecedores = [], categories = [], branches = [], onClose, state, pending, submitLabel, isCreate = false, pergunta = null,
 }: {
   product?:    StockProduct
-  suppliers:   string[]
+  fornecedores?: FornecedorDaLista[]
   categories:  ProductCategory[]
   branches?:   { id: string; name: string }[]
   onClose:     () => void
@@ -167,6 +103,10 @@ function ProductFields({
     lerUso(product?.uso) ?? ((product?.sale_price ?? null) !== null ? 'AMBOS' : 'INSUMO'))
   const vendaDireta = uso !== 'INSUMO'
   const [showStock,        setShowStock]        = useState(false)
+  // C16: a validade do estoque inicial que já passou avisa (o dia da unidade, F62b).
+  const fuso = useFuso()
+  const [validadeInicial, setValidadeInicial] = useState('')
+  const validadeInicialVencida = !!validadeInicial && loteVencido(validadeInicial, new Date(), fuso)
 
   const selectedCat = useMemo(() => categories.find(c => c.id === categoryId), [categories, categoryId])
   const skuPreview  = useMemo(
@@ -372,10 +312,10 @@ function ProductFields({
 
       {/* Fornecedor + Estoque mínimo */}
       <div className="form-2col">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <Label htmlFor={id('fornecedor')}>Fornecedor</Label>
-          <SupplierCombobox id={id('fornecedor')} suppliers={suppliers} defaultValue={product?.supplier} />
-        </div>
+        {/* C76: o fornecedor de costume vem da lista da rede, com "+ Novo fornecedor". */}
+        <CampoFornecedor id={id('fornecedor')} rotulo="Fornecedor de costume" fornecedores={fornecedores}
+          nomeId="fornecedor_id" nomeTexto="supplier"
+          inicial={{ id: product?.fornecedor_id ?? null, nome: product?.supplier ?? null }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <Label htmlFor={id('minimo')}>Estoque mínimo</Label>
           <input id={id('minimo')} name="min_stock" type="number" step="0.001" min="0" className="field"
@@ -482,7 +422,12 @@ function ProductFields({
 
               {/* Sem "lançar como despesa": movimentação de estoque nunca gera
                   despesa (D13 revisto, decisão do Heitor, 2026-10-28). O custo
-                  é base de insumo, custo e margem. */}
+                  é base de insumo, custo e margem — e o estoque inicial DIZ isso,
+                  como a Entrada (D5 do levantamento, C16). */}
+              <p data-entrada-sem-despesa style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a clínica pagou entra no
+                Financeiro por um lançamento (Novo lançamento, categoria “Compra de estoque”).
+              </p>
 
               {/* Lote + Validade */}
               <div className="form-2col">
@@ -492,14 +437,33 @@ function ProductFields({
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <Label htmlFor={id('validade')}>Data de validade</Label>
-                  <input id={id('validade')} name="initial_expires_at" type="date" className="field" />
+                  <input id={id('validade')} name="initial_expires_at" type="date" className="field"
+                    value={validadeInicial} onChange={e => setValidadeInicial(e.target.value)} />
+                </div>
+              </div>
+              {/* C16 (caminho irmão da Entrada): a validade que já passou avisa, sem recusar (princípio 2). */}
+              {validadeInicialVencida && (
+                <p data-validade-vencida role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.45 }}>
+                  Esta validade já passou ({validadeNaTela(validadeInicial)}): o lote entra vencido. Confira a data na embalagem — se estiver certa, a entrada vale assim.
+                </p>
+              )}
+
+              {/* C16: o fornecedor e a nota DESTA entrada, estruturados, como na Entrada
+                  (o fornecedor vem o de costume escolhido acima, se nada mudar aqui). */}
+              <div className="form-2col">
+                <CampoFornecedor id={id('fornecedor-inicial')} rotulo="Fornecedor desta entrada" fornecedores={fornecedores}
+                  nomeId="initial_fornecedor_id" nomeTexto="initial_fornecedor"
+                  inicial={{ id: product?.fornecedor_id ?? null, nome: product?.supplier ?? null }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <Label htmlFor={id('nota')}>Nota fiscal</Label>
+                  <input id={id('nota')} name="initial_nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota" />
                 </div>
               </div>
 
               {/* Observações */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <Label htmlFor={id('obs')}>Observações</Label>
-                <input id={id('obs')} name="initial_notes" type="text" className="field" placeholder="Ex: Compra inicial, NF 1234" />
+                <input id={id('obs')} name="initial_notes" type="text" className="field" placeholder="Ex: compra inicial" />
               </div>
             </>
           )}
@@ -543,8 +507,8 @@ function ProductFields({
 }
 
 // -- Form de criação ---------------------------------------------------
-function CreateForm({ suppliers, categories, branches, onClose, onSuccess }: {
-  suppliers:  string[]
+function CreateForm({ fornecedores, categories, branches, onClose, onSuccess }: {
+  fornecedores: FornecedorDaLista[]
   categories: ProductCategory[]
   branches?:  { id: string; name: string }[]
   onClose:    () => void
@@ -580,7 +544,7 @@ function CreateForm({ suppliers, categories, branches, onClose, onSuccess }: {
     <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <ProductFields
         isCreate
-        suppliers={suppliers} categories={categories} branches={branches} onClose={onClose}
+        fornecedores={fornecedores} categories={categories} branches={branches} onClose={onClose}
         state={error ? { error } : undefined}
         pending={pending} submitLabel="Criar produto"
         pergunta={pergunta ? {
@@ -598,9 +562,9 @@ function CreateForm({ suppliers, categories, branches, onClose, onSuccess }: {
 }
 
 // -- Form de edição ---------------------------------------------------
-function EditForm({ product, suppliers, categories, onClose, onSuccess }: {
+function EditForm({ product, fornecedores, categories, onClose, onSuccess }: {
   product:    StockProduct
-  suppliers:  string[]
+  fornecedores: FornecedorDaLista[]
   categories: ProductCategory[]
   onClose:    () => void
   onSuccess:  () => void
@@ -627,7 +591,7 @@ function EditForm({ product, suppliers, categories, onClose, onSuccess }: {
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <input type="hidden" name="_productId" value={product.id} />
       <ProductFields
-        product={product} suppliers={suppliers} categories={categories} onClose={onClose}
+        product={product} fornecedores={fornecedores} categories={categories} onClose={onClose}
         state={error ? { error } : undefined}
         pending={pending} submitLabel="Salvar"
       />
@@ -637,7 +601,7 @@ function EditForm({ product, suppliers, categories, onClose, onSuccess }: {
 
 // -- Modal wrapper -----------------------------------------------------
 export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
-  function StockProductModal({ product, trigger, suppliers = [], categories = [], branches = [], onSuccess }, ref) {
+  function StockProductModal({ product, trigger, fornecedores = [], categories = [], branches = [], onSuccess }, ref) {
     const isEdit    = !!product
     const dialogRef = useRef<HTMLDialogElement>(null)
     const router    = useRouter()
@@ -692,8 +656,8 @@ export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
 
           <div style={{ padding: '24px 24px 28px' }}>
             {isEdit
-              ? <EditForm key={`${product.id}-${formKey}`} product={product} suppliers={suppliers} categories={categories} onClose={close} onSuccess={handleSuccess} />
-              : <CreateForm key={formKey} suppliers={suppliers} categories={categories} branches={branches} onClose={close} onSuccess={handleSuccess} />
+              ? <EditForm key={`${product.id}-${formKey}`} product={product} fornecedores={fornecedores} categories={categories} onClose={close} onSuccess={handleSuccess} />
+              : <CreateForm key={formKey} fornecedores={fornecedores} categories={categories} branches={branches} onClose={close} onSuccess={handleSuccess} />
             }
           </div>
         </dialog>

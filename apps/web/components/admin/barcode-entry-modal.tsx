@@ -1,32 +1,24 @@
-﻿'use client'
+'use client'
 
 import { useState, useRef, useEffect, useTransition } from 'react'
-import { X, Barcode, PackagePlus, RotateCcw, Loader2, Link2, Search } from 'lucide-react'
-import { findProductByBarcode, adminAddStock, saveBarcodeToProduct, searchProducts } from '@/actions/stock'
-import { useRouter } from 'next/navigation'
-import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { X, Barcode, RotateCcw, Loader2, Link2, Search } from 'lucide-react'
+import { findProductByBarcode, saveBarcodeToProduct, searchProducts } from '@/actions/stock'
 
-type Branch = { id: string; name: string }
-
+/**
+ * O LEITOR de código de barras (C16 do levantamento das regras, 2026-11-12):
+ * ele só ACHA o produto (ou liga o código a um produto); a entrada é a do
+ * Gerenciar estoque, que o pai abre (`onAchou`). Tinha um formulário próprio
+ * que mostrava a quantidade e o custo na unidade de CONSUMO ("ml") enquanto a
+ * action lia EMBALAGENS — 100 ml viravam 100 frascos —, sem fornecedor, nota,
+ * "Não gera despesa" nem o aviso de validade vencida. Agora é a mesma Entrada.
+ */
 interface Props {
-  allBranches:    Branch[]
-  defaultBranchId?: string   // pre-selects and hides the branch selector
-  onClose:        () => void
+  onClose: () => void
+  /** O produto achado (ou recém-ligado ao código). Devolve false se a tela não o tem. */
+  onAchou: (productId: string) => boolean
 }
 
-type Step = 'scan' | 'entry' | 'not-found'
-
-interface FoundProduct {
-  id:                string
-  name:              string
-  unit:              string
-  cost_price:        number | null
-  consumption_unit:  string | null
-  units_per_package: number | null
-  sku:               string | null
-  category:          string | null
-  barcode:           string | null
-}
+type Step = 'scan' | 'not-found'
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -39,21 +31,15 @@ function FieldWrap({ children }: { children: React.ReactNode }) {
   return <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>{children}</div>
 }
 
-export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Props) {
+export function BarcodeEntryModal({ onClose, onAchou }: Props) {
   const dialogRef  = useRef<HTMLDialogElement>(null)
   const barcodeRef = useRef<HTMLInputElement>(null)
   const searchRef  = useRef<HTMLInputElement>(null)
-  const router     = useRouter()
 
   const [step,         setStep]         = useState<Step>('scan')
   const [barcode,      setBarcode]      = useState('')
-  const [product,      setProduct]      = useState<FoundProduct | null>(null)
   const [scanError,    setScanError]    = useState<string>()
-  const [entryError,   setEntryError]   = useState<string>()
-  const [success,      setSuccess]      = useState(false)
   const [isPending,    startTransition] = useTransition()
-  // A chave do envio (D10): a mesma entrada, reenviada, entra uma vez; a próxima leitura é outro envio.
-  const envio = useEnvioUnico()
 
   // Not-found flow
   const [searchQuery,  setSearchQuery]  = useState('')
@@ -81,7 +67,6 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
   function resetToScan() {
     setStep('scan')
     setBarcode('')
-    setProduct(null)
     setScanError(undefined)
     setSearchQuery('')
     setSearchRes([])
@@ -101,9 +86,8 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
         // Not found → offer to link
         setStep('not-found')
         setTimeout(() => searchRef.current?.focus(), 50)
-      } else {
-        setProduct(res.product as FoundProduct)
-        setStep('entry')
+      } else if (!onAchou(res.product.id as string)) {
+        setScanError('Este produto não está na lista desta tela (desativado?).')
       }
     })
   }
@@ -115,58 +99,12 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
     const res = await saveBarcodeToProduct(selectedProd.id, barcode.trim())
     setLinking(false)
     if (res.error) { setLinkError(res.error); return }
-    // barcode linked → now fetch the full product and go to entry
-    startTransition(async () => {
-      const res2 = await findProductByBarcode(barcode.trim())
-      if ('error' in res2) {
-        // Fallback: use a minimal product object
-        setProduct({ id: selectedProd.id, name: selectedProd.name, unit: '', cost_price: null, consumption_unit: null, units_per_package: null, sku: null, category: null, barcode: barcode.trim() })
-      } else {
-        setProduct(res2.product as FoundProduct)
-      }
-      setSearchQuery('')
-      setSearchRes([])
-      setSelectedProd(null)
-      setStep('entry')
-    })
+    // O código ficou ligado: a entrada é a do Gerenciar estoque.
+    setSearchQuery('')
+    setSearchRes([])
+    if (!onAchou(selectedProd.id)) { setStep('scan'); setScanError('Este produto não está na lista desta tela (desativado?).') }
+    setSelectedProd(null)
   }
-
-  async function handleEntry(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!product) return
-    setEntryError(undefined)
-
-    const fd = new FormData(e.currentTarget)
-    fd.set('productId', product.id)
-    fd.set('_envio', envio.chave())
-
-    startTransition(async () => {
-      const res = await adminAddStock(undefined, fd)
-      if (res?.success) {
-        envio.renovar()
-        setSuccess(true)
-        router.refresh()
-        setTimeout(() => {
-          resetToScan()
-          setSuccess(false)
-        }, 1200)
-      } else {
-        setEntryError(res?.error ?? 'Erro inesperado.')
-      }
-    })
-  }
-
-  const displayUnit = (product?.consumption_unit && product?.units_per_package)
-    ? product.consumption_unit
-    : product?.unit ?? ''
-
-  const defaultUnitCost = product
-    ? (() => {
-        const cp  = parseFloat(String(product.cost_price ?? 0)) || 0
-        const upp = parseFloat(String(product.units_per_package ?? 0)) || 0
-        return upp > 0 && product.consumption_unit ? (cp / upp).toFixed(4) : cp.toFixed(2)
-      })()
-    : ''
 
   return (
     <dialog
@@ -187,12 +125,6 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
               Entrada por código de barras
             </h2>
-            {step === 'entry' && product && (
-              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
-                {product.name}
-                {product.sku && <span style={{ color: 'var(--text-faint)' }}> · {product.sku}</span>}
-              </p>
-            )}
             {step === 'not-found' && (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                 Código não cadastrado · {barcode}
@@ -269,7 +201,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                 <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--warning)' }}>Código não cadastrado</p>
                 <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', marginTop: 2 }}>
                   Nenhum produto com o código <code style={{ fontFamily: 'monospace', fontWeight: 700 }}>{barcode}</code>.
-                  Vincule a um produto existente para continuar.
+                  Ligue o código a um produto para registrar a entrada.
                 </p>
               </div>
             </div>
@@ -360,131 +292,12 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                 style={{ flex: 1, justifyContent: 'center' }}
               >
                 {linking || isPending ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
-                {linking ? 'Vinculando…' : 'Vincular e registrar entrada'}
+                {linking ? 'Ligando…' : 'Ligar e registrar entrada'}
               </button>
             </div>
           </>
         )}
 
-        {/* -- Passo 3: entrada -- */}
-        {step === 'entry' && product && (
-          <>
-            {/* Card do produto */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '12px 14px', borderRadius: 10,
-              background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)',
-            }}>
-              <Barcode size={20} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>{product.name}</p>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                  {product.category && <span>{product.category} · </span>}
-                  {displayUnit && <span>Unidade: {displayUnit}</span>}
-                  {product.barcode && <span style={{ color: 'var(--text-faint)' }}> · {product.barcode}</span>}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={resetToScan}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)',
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                }}
-              >
-                <RotateCcw size={12} /> Trocar
-              </button>
-            </div>
-
-            <form onSubmit={handleEntry} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Branch selector — hidden if defaultBranchId provided */}
-              {defaultBranchId ? (
-                <input type="hidden" name="branchId" value={defaultBranchId} />
-              ) : (
-                <FieldWrap>
-                  <Label>Unidade de destino *</Label>
-                  {/* Uma unidade só: já vem escolhida (F8). */}
-                  <select name="branchId" required className="field" defaultValue={allBranches.length === 1 ? allBranches[0]!.id : ''}>
-                    <option value="" disabled>Selecionar unidade…</option>
-                    {allBranches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
-                </FieldWrap>
-              )}
-
-              <div className="form-2col">
-                <FieldWrap>
-                  <Label>Quantidade *</Label>
-                  <div style={{ position: 'relative' }}>
-                    <input name="quantity" type="number" step="0.001" min="0.001" required className="field"
-                      placeholder="0" style={{ paddingRight: 36 }} autoFocus />
-                    <span style={{
-                      position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                      fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', pointerEvents: 'none',
-                    }}>{displayUnit}</span>
-                  </div>
-                </FieldWrap>
-                <FieldWrap>
-                  <Label>Custo unitário</Label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{
-                      position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-                      fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
-                    }}>R$</span>
-                    <input name="unit_cost" type="number" step="0.0001" min="0" className="field"
-                      defaultValue={defaultUnitCost} placeholder="0,00" style={{ paddingLeft: 28 }} />
-                  </div>
-                </FieldWrap>
-              </div>
-
-              <div className="form-2col">
-                <FieldWrap>
-                  <Label>Nº do lote</Label>
-                  <input name="batch_number" type="text" className="field" placeholder="LOT-001" />
-                </FieldWrap>
-                <FieldWrap>
-                  <Label>Validade</Label>
-                  <input name="expires_at" type="date" className="field" />
-                </FieldWrap>
-              </div>
-
-              <FieldWrap>
-                <Label>Observações</Label>
-                <textarea name="notes" className="field" rows={2} placeholder="Nota fiscal, fornecedor…"
-                  style={{ resize: 'vertical' }} />
-              </FieldWrap>
-
-              {entryError && (
-                <p style={{
-                  fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '8px 12px', borderRadius: 8,
-                  background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger-border)',
-                }}>{entryError}</p>
-              )}
-
-              {success && (
-                <p style={{
-                  fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '8px 12px', borderRadius: 8,
-                  background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)',
-                  display: 'flex', alignItems: 'center', gap: 7,
-                }}>
-                  ✓ Entrada registrada. Preparando próxima leitura…
-                </p>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button type="button" onClick={onClose} className="btn-secondary" disabled={isPending}>
-                  Fechar
-                </button>
-                <button type="submit" className="btn-primary" disabled={isPending || success}>
-                  {isPending ? <Loader2 size={14} className="animate-spin" /> : <PackagePlus size={14} />}
-                  {isPending ? 'Registrando…' : 'Registrar entrada'}
-                </button>
-              </div>
-            </form>
-          </>
-        )}
       </div>
     </dialog>
   )

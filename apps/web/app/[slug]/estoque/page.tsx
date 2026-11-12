@@ -17,20 +17,9 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
-
-/** Produto como o select pede, com o saldo por unidade embutido. */
-type ProdutoLido = {
-  id: string; name: string; sku: string | null; barcode: string | null
-  category: string | null; category_id: string | null; unit: string; supplier: string | null
-  cost_price: number | string | null; sale_price: number | string | null
-  consumption_unit: string | null; units_per_package: number | string | null; is_active: boolean
-  uso: string | null
-  min_stock: number | string | null
-  branch_product_stock: {
-    current_stock: number; min_stock: number; current_rendimento: number | null
-    branches: { id: string; name: string; slug: string } | null
-  }[] | null
-}
+import { produtosDoEstoque, fornecedoresDaRede, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
+import { catalogoDaRede, recusaDoCatalogo } from '@/lib/estoque/catalogo'
+import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -62,21 +51,11 @@ export default async function BranchStockPage({
 
   // Produtos e categorias em paralelo
   // Por `ler`: consulta que falha PARA, em vez de virar um estoque vazio.
-  const [raw, categoriesRaw] = await Promise.all([
-    ler(admin
-      .from('products')
-      .select(`
-        id, name, sku, barcode, category, category_id, unit, supplier,
-        cost_price, sale_price, consumption_unit, units_per_package, is_active, uso, min_stock,
-        branch_product_stock(
-          current_stock, min_stock, current_rendimento,
-          branches(id, name, slug)
-        )
-      `)
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'), 'carregar os produtos'),
-
+  // C26: os produtos em páginas; D1: o desativado com saldo continua (lib/estoque/produtos-da-tela).
+  const [raw, fornecedores, catalogo, categoriesRaw] = await Promise.all([
+    produtosDoEstoque(ctx.tenantId!),
+    fornecedoresDaRede(ctx.tenantId!),
+    catalogoDaRede(admin, ctx.tenantId!),
     ler(admin
       .from('product_categories')
       .select('id, name')
@@ -85,7 +64,10 @@ export default async function BranchStockPage({
   ])
 
   // Normaliza — filtra estoque apenas desta filial
-  const products = ((raw ?? []) as unknown as ProdutoLido[]).map(p => {
+  // D1: o desativado só aparece onde ainda tem saldo — nesta unidade.
+  const comSaldoAqui = (p: ProdutoDoEstoque) => (p.branch_product_stock ?? []).some(b => b.branches?.id === branchId
+    && (Number(b.current_stock) > 0 || Number(b.current_rendimento ?? 0) > 0))
+  const products = raw.filter(p => p.is_active || comSaldoAqui(p)).map(p => {
     const bps = p.branch_product_stock ?? []
 
     const branchStocks = bps
@@ -116,6 +98,8 @@ export default async function BranchStockPage({
       categoryId:       p.category_id,
       unit:             p.unit,
       supplier:         p.supplier,
+      fornecedorId:     p.fornecedor_id,
+      isActive:         p.is_active,
       costPrice:        Number(p.cost_price ?? 0),
       // D11 da 12ª: sem a linha da unidade, a aba "Estoque mínimo" mostra este.
       minimoDoCadastro: p.min_stock != null ? Number(p.min_stock) : null,
@@ -181,12 +165,17 @@ export default async function BranchStockPage({
   // A36 da 10ª: o "Ver lotes esgotados" só onde há algum.
   const comLoteEsgotado = productIds.length > 0 ? await paresComLoteEsgotado(admin, [branchId]) : []
 
-  const suppliers       = [...new Set(products.map(p => p.supplier).filter(Boolean) as string[])].sort()
+  // C63: com "Só a rede", quem tem unidade fixa não cadastra nem edita produto; e
+  // C71: as categorias são da rede (a janela delas, só para quem é da rede).
+  const recusaDoCadastro = recusaDoCatalogo(ctx, catalogo)
+  const podeEditarProduto = !readOnly && !recusaDoCadastro
   const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <RealtimeRefresher tables={['products', 'branch_product_stock', 'stock_movements']} />
+      {/* C26: todo saldo muda por um movimento — assinar o saldo e o cadastro
+          recarregava a tela três vezes a cada entrada. */}
+      <RealtimeRefresher tables={['stock_movements']} />
 
       {/* Header */}
       {/* Sem `flexWrap`, os botões espremiam o título: no celular o subtítulo
@@ -199,15 +188,20 @@ export default async function BranchStockPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {branch.name}
           </p>
+          {!readOnly && recusaDoCadastro && (
+            <p data-catalogo-da-rede style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 4, maxWidth: 560 }}>
+              {recusaDoCadastro}
+            </p>
+          )}
         </div>
 
         {!readOnly && (
           <div style={{ display: 'flex', gap: 8 }}>
-            <ProductCategoryModal categories={categories} />
+            {mexeNaConfigDaClinica(ctx) && <ProductCategoryModal categories={categories} />}
             {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
-            {products.length > 0 && (
+            {products.length > 0 && podeEditarProduto && (
               <StockProductModal
-                suppliers={suppliers}
+                fornecedores={fornecedores}
                 categories={categories}
                 // O estoque inicial entra NESTA unidade (D8 da 9ª: quem é da rede
                 // ficava sem seletor e o estoque era recusado).
@@ -227,7 +221,10 @@ export default async function BranchStockPage({
       {/* KPIs */}
       {(() => {
         const allKpis = [
-          ...(!readOnly ? [
+          // D2 do levantamento: quem tem o Estoque em Ver vê o Valor e o Giro
+          // nos DOIS portais (na rede já via); quem não deve ver custo não
+          // recebe o módulo (princípio 1).
+          ...([
             {
               label: 'VALOR EM ESTOQUE',
               value: fmtBRL(valorEstoque),
@@ -244,7 +241,7 @@ export default async function BranchStockPage({
               iconBg: 'var(--brand-soft)', color: 'var(--text)',
               labelColor: 'var(--text-muted)', brand: false,
             },
-          ] : []),
+          ]),
           {
             id:    'baixo',
             label: 'ESTOQUE BAIXO',
@@ -257,6 +254,8 @@ export default async function BranchStockPage({
           },
           {
             label: 'SEM ESTOQUE',
+            // C23: o cartão diz o que conta, como o da rede (D19 da 8ª).
+            detalhe: 'produtos sem saldo nesta unidade',
             value: String(semEstoque),
             icon:  <Package size={18} style={{ color: semEstoque > 0 ? 'var(--danger)' : 'var(--text-faint)' }} />,
             iconBg: semEstoque > 0 ? 'var(--danger-soft)' : 'var(--bg-app)',
@@ -290,9 +289,10 @@ export default async function BranchStockPage({
         unidadesDaRede={unidadesDaRede}
         categories={stockCategories}
         productCategories={categories as { id: string; name: string }[]}
-        suppliers={suppliers}
+        fornecedores={fornecedores}
         defaultBranchId={branchId}
         readOnly={readOnly}
+        podeEditarProduto={podeEditarProduto}
         podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}
         comLoteEsgotado={comLoteEsgotado}
         loteInicial={await loteDaUrl(ctx.tenantId!, (await searchParams).lote)}

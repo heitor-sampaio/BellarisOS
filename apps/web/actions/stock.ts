@@ -5,7 +5,7 @@ import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, lerTodas, tentar, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
+import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede, saldoAgoraEmTexto } from '@/lib/estoque/movimentos'
 import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
 import { prefixoDoSku } from '@/lib/estoque/sku'
 import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
@@ -13,6 +13,8 @@ import { comissaoDoProdutoNoFormulario } from '@/lib/comissoes/gravacao'
 import { aplicacoesDoLote as aplicacoesDoLoteCore, type AplicacaoDoLote } from '@/lib/estoque/aplicacoes-do-lote'
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { notaDaTransferencia, notaDeTransferenciaSemNome } from '@/lib/estoque/transferencia'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { catalogoDaRede, recusaDoCatalogo, lerCatalogo } from '@/lib/estoque/catalogo'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -35,6 +37,34 @@ async function nextSku(tenantId: string, category: string | null, uso: UsoDoProd
   }, 0)
 
   return `${prefix}-${String(maxNum + 1).padStart(3, '0')}`
+}
+
+/**
+ * A categoria do formulário é desta rede (C24): o id de outra rede entrava no
+ * produto, com o nome dela. `undefined` = recusada; null = sem categoria.
+ */
+async function categoriaDaRede(tenantId: string, categoryId: string | null): Promise<{ nome: string } | null | undefined> {
+  if (!categoryId) return null
+  if (!/^[0-9a-f-]{36}$/i.test(categoryId)) return undefined
+  const cat = await ler(createAdminClient().from('product_categories').select('name')
+    .eq('id', categoryId).eq('tenant_id', tenantId).maybeSingle(), 'buscar a categoria') as { name: string } | null
+  return cat ? { nome: cat.name } : undefined
+}
+
+/**
+ * O fornecedor de costume do produto (C76): o escolhido da lista (`fornecedor_id`)
+ * ou o nome escrito ("+ Novo fornecedor"), que o banco liga à lista
+ * (`private.fornecedor_da_lista`). `undefined` = o id não é desta rede.
+ */
+async function fornecedorDoFormulario(tenantId: string, fd: FormData, campoId = 'fornecedor_id', campoNome = 'supplier'): Promise<{ supplier: string | null; fornecedor_id: string | null } | undefined> {
+  const id = str(fd, campoId)
+  if (id) {
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return undefined
+    const f = await ler(createAdminClient().from('fornecedores').select('nome')
+      .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o fornecedor') as { nome: string } | null
+    return f ? { supplier: f.nome, fornecedor_id: id } : undefined
+  }
+  return { supplier: str(fd, campoNome), fornecedor_id: null }
 }
 
 function num(fd: FormData, key: string): number | null {
@@ -99,15 +129,21 @@ async function createProductInterno(
     const comissao = comissaoDoProdutoNoFormulario(ctx, formData)
     if (comissao.error) return { error: comissao.error }
 
-    const categoryId = str(formData, 'category_id')
     const admin = createAdminClient()
+    // C63: com "Só a rede", quem tem unidade fixa não cadastra produto.
+    const recusa = recusaDoCatalogo(ctx, await catalogoDaRede(admin, ctx.tenantId!))
+    if (recusa) return { error: recusa }
 
+    const categoryId = str(formData, 'category_id')
     // Resolve o nome da categoria para geração do SKU e campo denormalizado
-    let categoryName: string | null = null
-    if (categoryId) {
-      const cat = await ler(admin.from('product_categories').select('name').eq('id', categoryId).single(), 'buscar a categoria')
-      categoryName = cat?.name ?? null
-    }
+    const cat = await categoriaDaRede(ctx.tenantId!, categoryId)
+    if (cat === undefined) return { error: 'Categoria não encontrada.' }
+    const categoryName = cat?.nome ?? null
+    const fornecedor = await fornecedorDoFormulario(ctx.tenantId!, formData)
+    if (!fornecedor) return { error: 'Fornecedor não encontrado.' }
+    // O fornecedor DESTA entrada (o estoque inicial), que vem com o de costume e pode mudar.
+    const fornecedorInicial = await fornecedorDoFormulario(ctx.tenantId!, formData, 'initial_fornecedor_id', 'initial_fornecedor')
+    if (!fornecedorInicial) return { error: 'Fornecedor não encontrado.' }
 
     // A unidade do estoque inicial vem do formulário: da rede e ao alcance de
     // quem cria (§11). Até 2026-09-28 ia direto para o saldo, o movimento e a
@@ -160,7 +196,8 @@ async function createProductInterno(
       category:    categoryName,
       category_id: categoryId,
       unit,
-      supplier:    str(formData, 'supplier'),
+      supplier:    fornecedor.supplier,
+      fornecedor_id: fornecedor.fornecedor_id,
       barcode:           str(formData, 'barcode'),
       cost_price:        num(formData, 'cost_price'),
       sale_price:        usoEPreco.preco,
@@ -189,6 +226,10 @@ async function createProductInterno(
           p_observacao: str(formData, 'initial_notes') ?? 'Estoque inicial',
           p_lote: str(formData, 'initial_batch'), p_validade: str(formData, 'initial_expires_at'),
           p_autor: ctx.internalUserId, p_minimo: minStock,
+          // C16 (caminho irmão da Entrada): o fornecedor e a nota desta entrada,
+          // estruturados — o escolhido no estoque inicial, senão o de costume.
+          p_fornecedor: fornecedorInicial.supplier ?? fornecedor.supplier,
+          p_nota_fiscal: str(formData, 'initial_nota_fiscal'),
         }), 'registrar o estoque inicial')
       } catch (e) {
         await desfazer()
@@ -231,20 +272,24 @@ export async function updateProduct(
     const comissao = comissaoDoProdutoNoFormulario(ctx, formData)
     if (comissao.error) return { error: comissao.error }
 
-    const categoryId = str(formData, 'category_id')
     const admin = createAdminClient()
+    // C63: com "Só a rede", quem tem unidade fixa não edita produto.
+    const recusa = recusaDoCatalogo(ctx, await catalogoDaRede(admin, ctx.tenantId!))
+    if (recusa) return { error: recusa }
 
-    let categoryName: string | null = null
-    if (categoryId) {
-      const cat = await ler(admin.from('product_categories').select('name').eq('id', categoryId).single(), 'buscar a categoria')
-      categoryName = cat?.name ?? null
-    }
+    const categoryId = str(formData, 'category_id')
+    const cat = await categoriaDaRede(ctx.tenantId!, categoryId)
+    if (cat === undefined) return { error: 'Categoria não encontrada.' }
+    const categoryName = cat?.nome ?? null
+    const fornecedor = await fornecedorDoFormulario(ctx.tenantId!, formData)
+    if (!fornecedor) return { error: 'Fornecedor não encontrado.' }
 
     // Preserva SKU existente; gera novo somente se ainda não tem e uma categoria foi definida
-    const current = await ler(admin.from('products').select('sku').eq('id', productId).single(), 'buscar o produto')
-    let sku = current?.sku ?? null
+    const current = await ler(admin.from('products').select('sku').eq('id', productId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto')
+    if (!current) return { error: 'Produto não encontrado.' }
+    let sku = current.sku ?? null
     if (!sku && categoryName) {
-      sku = await nextSku(ctx.tenantId!, categoryName)
+      sku = await nextSku(ctx.tenantId!, categoryName, usoEPreco.uso)
     }
 
     const { error } = await admin.from('products')
@@ -254,9 +299,12 @@ export async function updateProduct(
         category:    categoryName,
         category_id: categoryId,
         unit,
-        supplier:    str(formData, 'supplier'),
+        supplier:    fornecedor.supplier,
+        fornecedor_id: fornecedor.fornecedor_id,
         barcode:           str(formData, 'barcode'),
-        cost_price:        num(formData, 'cost_price'),
+        // C17: o custo NÃO se edita aqui — é o da última entrada (a base do
+        // custo de consumo e do valor em estoque). O formulário de edição não
+        // tem o campo, e gravar `num(…)` zerava o custo a cada edição.
         sale_price:        usoEPreco.preco,
         uso:               usoEPreco.uso,
         min_stock:         num(formData, 'min_stock') ?? 0,
@@ -330,6 +378,8 @@ async function toggleProductActiveInterno(productId: string, isActive: boolean) 
     assertPermission(ctx, 'stock', 'MANAGE')
 
     const admin = createAdminClient()
+    const recusa = recusaDoCatalogo(ctx, await catalogoDaRede(admin, ctx.tenantId!))
+    if (recusa) return { error: recusa }
     await gravar(admin.from('products')
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
       .eq('id', productId)
@@ -355,6 +405,10 @@ export async function createCategory(
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
+
+    // C71 (H8): as categorias do estoque são da rede.
+    const recusa = recusaDaConfigDaClinica(ctx)
+    if (recusa) return { error: recusa }
 
     const name = (formData.get('name') as string | null)?.trim()
     if (!name) return { error: 'Nome é obrigatório.' }
@@ -382,6 +436,8 @@ export async function deleteCategory(categoryId: string) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
+    const recusa = recusaDaConfigDaClinica(ctx)
+    if (recusa) return { error: recusa }
 
     const admin = createAdminClient()
     const { error } = await admin.from('product_categories')
@@ -431,6 +487,9 @@ async function adminUpdateMinStockInterno(productId: string, branchId: string, m
     assertPermission(ctx, 'stock', 'MANAGE')
     if (ctx.branchId !== null && branchId !== ctx.branchId)
       return { error: 'Operação não permitida fora da sua unidade.' }
+    // C24: o impossível é recusado (princípio 2) — o mínimo negativo.
+    if (typeof minStock !== 'number' || !Number.isFinite(minStock)) return { error: 'Informe o mínimo.' }
+    if (minStock < 0) return { error: 'O mínimo não pode ser negativo.' }
 
     const admin = createAdminClient()
     if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
@@ -506,13 +565,15 @@ async function adminAddStockInterno(
       validade:      str(formData, 'expires_at'),
       // A37 da 10ª: o fornecedor e a nota da compra, estruturados.
       fornecedor:    str(formData, 'fornecedor'),
+      fornecedorId:  str(formData, 'fornecedor_id'),
       notaFiscal:    str(formData, 'nota_fiscal'),
     })
     if ('error' in r) return { error: r.error }
 
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
-    return { success: true }
+    // C16: a confirmação diz o saldo DEPOIS, na medida da prateleira.
+    return { success: true, saldoAgora: await saldoAgoraEmTexto(createAdminClient(), productId, branchId) }
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
@@ -603,7 +664,11 @@ export async function adminAdjustStock(
   ...args: Parameters<typeof adminAdjustStockInterno>
 ): ReturnType<typeof adminAdjustStockInterno> {
   try {
-    return await adminAdjustStockInterno(...args)
+    // C24: o mesmo envio ajusta UMA vez. O saldo é absoluto, mas a contagem
+    // maior cria lote, e o movimento repetido aparece no Histórico.
+    const ctx = await getTenantContext()
+    return await umaVez(ctx.tenantId!, 'adminAdjustStock', chaveDoEnvio(args[1]), () => adminAdjustStockInterno(...args),
+      { gravou: r => !!r.success })
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
@@ -755,6 +820,13 @@ export interface MovimentoDeEstoque {
   ajusteDesfazivel: boolean
   /** Este movimento desfaz um ajuste ("Ajuste desfeito"). */
   desfazAjuste: boolean
+  /**
+   * C69 (H12): a ÚLTIMA perda (não desfeita) do produto na unidade se desfaz.
+   * O banco confere de novo (estoque_desfazer_perda).
+   */
+  perdaDesfazivel: boolean
+  /** C23: o brinde entregue pela fidelidade (o ajuste do voucher) — não é "Ajuste manual". */
+  brinde: boolean
 }
 
 /**
@@ -768,9 +840,15 @@ export interface MovimentoDeEstoque {
 export async function getProductMovements(
   productId: string,
   branchId: string,
+  /**
+   * C26: quantas, das mais recentes. Vem uma a MAIS, que diz à tela que há
+   * mais antigas ("Ver mais antigas") — o corte em 80 era calado.
+   */
+  limite = 80,
 ): Promise<MovimentoDeEstoque[]> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'stock', 'VIEW')
+  const quantas = Math.min(Math.max(Math.trunc(Number(limite) || 80), 1), 960)
 
   const admin = createAdminClient()
   let query = admin
@@ -779,7 +857,8 @@ export async function getProductMovements(
     .eq('product_id', productId)
     .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
-    .limit(80)
+    .order('id', { ascending: false })
+    .limit(quantas + 1)
 
   // Quem tem unidade fixa só vê a dela — qualquer que seja o pedido; a rede vê
   // todas. Antes o `branchId` do chamador vencia o do contexto.
@@ -883,6 +962,12 @@ export async function getProductMovements(
     }
     return ligs.every(l => !l.product_batches || !saiuDepois(l.product_batches.id, m))
   }
+  // C69: a última perda não desfeita de cada unidade (a lista vem da mais
+  // recente; a mais recente de todas está nela).
+  const ultimaPerda = new Map<string, string>()
+  for (const m of linhas) {
+    if (m.type === 'LOSS' && Number(m.quantity) < 0 && !m.desfeita_em && !ultimaPerda.has(m.branch_id)) ultimaPerda.set(m.branch_id, m.id)
+  }
   const nota = (m: Row) => {
     if (!m.reference || !notaDeTransferenciaSemNome(m.type, m.notes)) return m.notes
     const outra = outraPerna.get(`${m.reference}|${m.type === 'TRANSFER_OUT' ? 'TRANSFER_IN' : 'TRANSFER_OUT'}`) || null
@@ -912,6 +997,8 @@ export async function getProductMovements(
     desfazivel:   desfazivel(m),
     ajusteDesfazivel: ajusteDesfazivel(m),
     desfazAjuste: desfazimentos.has(m.id),
+    perdaDesfazivel: ultimaPerda.get(m.branch_id) === m.id,
+    brinde: m.type === 'MANUAL_ADJUSTMENT' && (m.reference ?? '').startsWith('voucher:'),
   }))
 }
 
@@ -1129,6 +1216,167 @@ export async function desfazerAjusteDeEstoque(movimentoId: string, motivo: strin
     }
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath('/*/stock')
+    return { success: true }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * "Desfazer perda" (C69, H12 = a do levantamento das regras, 2026-11-11): a
+ * perda lançada errada volta — simétrico ao "Desfazer entrada" e ao "Desfazer
+ * ajuste". Só a ÚLTIMA perda (não desfeita) do produto na unidade, com o
+ * motivo: a quantidade volta ao MESMO lote de onde saiu, o movimento fica
+ * marcado (nada se apaga) e a perda sai de "Perdas no período"
+ * (`estoque_desfazer_perda`, `metrics_perdas`). Estoque em Gerenciar, a
+ * unidade da perda ao alcance.
+ */
+export async function desfazerPerdaDeEstoque(movimentoId: string, motivo: string): Promise<{ error?: string; success?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'MANAGE')
+    if (typeof movimentoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(movimentoId)) return { error: 'Perda não encontrada.' }
+    const porque = typeof motivo === 'string' ? motivo.trim() : ''
+    if (!porque) return { error: 'Diga por que a perda é desfeita.' }
+    if (porque.length > 300) return { error: 'O motivo passa de 300 caracteres.' }
+    const admin = createAdminClient()
+    const mov = await ler(admin.from('stock_movements').select('id, branch_id, branches!inner(tenant_id)')
+      .eq('id', movimentoId).eq('branches.tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a perda')
+    if (!mov || !alcancaUnidade(ctx, mov.branch_id as string)) return { error: 'Perda não encontrada.' }
+    const { error } = await admin.rpc('estoque_desfazer_perda', {
+      p_tenant: ctx.tenantId!, p_movimento: movimentoId, p_motivo: porque, p_autor: ctx.internalUserId,
+    })
+    if (error) {
+      if (error.code === 'P0001') return { error: error.message }
+      throw new Error(`Não consegui desfazer a perda: ${error.message}`)
+    }
+    revalidatePath('/admin/estoque')
+    if (ctx.branchId) revalidatePath('/*/stock')
+    return { success: true }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * "Quem cadastra e edita os produtos" (C63, H8): a unidade (o padrão) ou só a
+ * rede. É configuração da clínica toda: quem é da rede, com o Estoque em Gerenciar.
+ */
+export async function salvarCatalogoDeProdutos(regra: string): Promise<{ error?: string; success?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'MANAGE')
+    const recusa = recusaDaConfigDaClinica(ctx)
+    if (recusa) return { error: recusa }
+    if (regra !== 'UNIDADE' && regra !== 'REDE') return { error: 'Escolha quem cadastra os produtos.' }
+    await gravar(createAdminClient().from('tenants').update({ catalogo_de_produtos: lerCatalogo(regra) })
+      .eq('id', ctx.tenantId!).select('id').single(), 'salvar quem cadastra os produtos')
+    revalidatePath('/admin/estoque')
+    revalidatePath('/[slug]/estoque', 'page')
+    return { success: true }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+// --- Fornecedores (C76, D4 do levantamento) -------------------------
+
+const nomeDoFornecedor = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : '')
+const chaveDoFornecedor = (v: string) => nomeDoFornecedor(v).toLocaleLowerCase('pt-BR')
+
+// O nome gravado é sempre o limpo (um espaço, sem as pontas — a action e o
+// gatilho `private.fornecedor_da_lista`): o ilike exato acha o mesmo sem caixa.
+async function fornecedorPeloNome(tenantId: string, nome: string) {
+  const parecidos = await ler(createAdminClient().from('fornecedores').select('id, nome, arquivado_em')
+    .eq('tenant_id', tenantId).ilike('nome', nome.replace(/[%_\\]/g, '\\$&')).limit(5),
+  'buscar o fornecedor') as { id: string; nome: string; arquivado_em: string | null }[] | null
+  return (parecidos ?? []).find(f => chaveDoFornecedor(f.nome) === chaveDoFornecedor(nome)) ?? null
+}
+
+/**
+ * "+ Novo fornecedor" — na Entrada, no estoque inicial e no cadastro do
+ * produto. Quem faz a entrada cadastra ali mesmo (D4: "a nota na mão não
+ * espera a rede"); o nome que já existe (sem caixa nem espaços) é o mesmo
+ * fornecedor — e, se arquivado, volta à lista.
+ */
+export async function criarFornecedor(nome: string): Promise<{ error?: string; fornecedor?: { id: string; nome: string } }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'MANAGE')
+    const limpo = nomeDoFornecedor(nome)
+    if (!limpo) return { error: 'Escreva o nome do fornecedor.' }
+    if (limpo.length > 120) return { error: 'O nome passa de 120 caracteres.' }
+    const admin = createAdminClient()
+    const mesmo = await fornecedorPeloNome(ctx.tenantId!, limpo)
+    if (mesmo) {
+      if (mesmo.arquivado_em) {
+        await gravar(admin.from('fornecedores').update({ arquivado_em: null }).eq('id', mesmo.id).eq('tenant_id', ctx.tenantId!)
+          .select('id').single(), 'trazer o fornecedor de volta')
+      }
+      return { fornecedor: { id: mesmo.id, nome: mesmo.nome } }
+    }
+    const { data, error } = await admin.from('fornecedores')
+      .insert({ tenant_id: ctx.tenantId!, nome: limpo, created_by: ctx.internalUserId })
+      .select('id, nome').single<{ id: string; nome: string }>()
+    if (error?.code === '23505') {
+      // Outra aba criou o mesmo ao mesmo tempo: é ele.
+      const outro = await fornecedorPeloNome(ctx.tenantId!, limpo)
+      if (outro) return { fornecedor: { id: outro.id, nome: outro.nome } }
+    }
+    if (error || !data) throw new Error(`Não consegui criar o fornecedor: ${error?.message}`)
+    revalidatePath('/admin/estoque')
+    return { fornecedor: data }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/** Renomear um fornecedor da lista — de quem é da rede, como as categorias. O nome nos movimentos já gravados fica. */
+export async function renomearFornecedor(id: string, nome: string): Promise<{ error?: string; success?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'MANAGE')
+    const recusa = recusaDaConfigDaClinica(ctx)
+    if (recusa) return { error: recusa }
+    if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return { error: 'Fornecedor não encontrado.' }
+    const limpo = nomeDoFornecedor(nome)
+    if (!limpo) return { error: 'Escreva o nome do fornecedor.' }
+    if (limpo.length > 120) return { error: 'O nome passa de 120 caracteres.' }
+    const admin = createAdminClient()
+    const { data, error } = await admin.from('fornecedores').update({ nome: limpo })
+      .eq('id', id).eq('tenant_id', ctx.tenantId!).select('id').maybeSingle()
+    if (error?.code === '23505') return { error: 'Já existe um fornecedor com esse nome.' }
+    if (error) throw new Error(`Não consegui renomear o fornecedor: ${error.message}`)
+    if (!data) return { error: 'Fornecedor não encontrado.' }
+    // O de costume dos produtos acompanha o nome novo (o texto é o espelho da lista).
+    await gravar(admin.from('products').update({ supplier: limpo }).eq('tenant_id', ctx.tenantId!).eq('fornecedor_id', id), 'atualizar o fornecedor dos produtos')
+    revalidatePath('/admin/estoque')
+    revalidatePath('/[slug]/estoque', 'page')
+    return { success: true }
+  } catch (e) {
+    if ((e as { digest?: string })?.digest) throw e
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/** Arquivar (ou trazer de volta) um fornecedor: sai das opções e continua no que já foi gravado. */
+export async function arquivarFornecedor(id: string, arquivar: boolean): Promise<{ error?: string; success?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'stock', 'MANAGE')
+    const recusa = recusaDaConfigDaClinica(ctx)
+    if (recusa) return { error: recusa }
+    if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return { error: 'Fornecedor não encontrado.' }
+    const data = await gravar(createAdminClient().from('fornecedores')
+      .update({ arquivado_em: arquivar ? new Date().toISOString() : null })
+      .eq('id', id).eq('tenant_id', ctx.tenantId!).select('id').maybeSingle(), 'arquivar o fornecedor')
+    if (!data) return { error: 'Fornecedor não encontrado.' }
+    revalidatePath('/admin/estoque')
+    revalidatePath('/[slug]/estoque', 'page')
     return { success: true }
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e

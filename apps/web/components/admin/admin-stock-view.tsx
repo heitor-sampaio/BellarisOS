@@ -65,9 +65,14 @@ type ProductStock = {
   branches:         BranchStock[]
   /** Os lotes com saldo do produto nas unidades da tela. */
   lotes?:           LoteNaTela[]
+  /** D1 do levantamento: o produto desativado com saldo continua na lista, marcado "Inativo". */
+  isActive?:        boolean
+  /** C76: o fornecedor de costume, da lista da rede. */
+  fornecedorId?:    string | null
 }
 
 type Branch = { id: string; name: string; slug: string }
+export type Fornecedor = { id: string; nome: string }
 
 const medidas = (p: ProductStock): MedidasDoProduto =>
   ({ unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage })
@@ -83,7 +88,6 @@ interface Props {
   branches:          Branch[]
   categories:        string[]
   productCategories?: ProductCategory[]
-  suppliers?:        string[]
   defaultBranchId?:  string
   /**
    * Unidade já selecionada ao abrir (`?unidade=` na URL).
@@ -107,6 +111,13 @@ interface Props {
   comLoteEsgotado?:  string[]
   /** A33 da 11ª: o lote da URL (`?lote=`, da ficha da paciente) — o "Aplicado em" dele abre sozinho. */
   loteInicial?:      { id: string; rotulo: string } | null
+  /**
+   * C63: quem cadastra e edita os produtos. Com "Só a rede", quem tem unidade
+   * fixa movimenta o estoque (a engrenagem) e não edita o produto (o lápis some).
+   */
+  podeEditarProduto?: boolean
+  /** C76: a lista de fornecedores da rede (os arquivados ficam fora). */
+  fornecedores?:     Fornecedor[]
 }
 
 type ViewMode  = 'consolidado' | 'por-unidade'
@@ -200,6 +211,21 @@ function IconButton({ onClick, title, children }: { onClick: (e: React.MouseEven
     </button>
   )
 }
+/**
+ * D1 do levantamento (princípios 3 e 2): o produto desativado com saldo segue
+ * no valor em estoque — o frasco está lá —, e a linha diz "Inativo".
+ */
+function SeloInativo() {
+  return (
+    <span data-produto-inativo title="Produto desativado: sai do catálogo, e o saldo continua no estoque e no valor até acabar." style={{
+      marginLeft: 8, fontSize: 'var(--text-overline)', fontWeight: 700, padding: '1px 7px', borderRadius: 99,
+      background: 'var(--bg-app)', color: 'var(--text-muted)', border: '1px solid var(--border)', verticalAlign: 'middle',
+    }}>
+      Inativo
+    </span>
+  )
+}
+
 function GearButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Gerenciar estoque"><Settings size={13} /></IconButton>
 }
@@ -207,7 +233,7 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null }: Props) {
+export function AdminStockView({ products, branches, categories, productCategories, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null, podeEditarProduto = !readOnly, fornecedores = [] }: Props) {
   const temLoteEsgotado = useMemo(() => new Set(comLoteEsgotado), [comLoteEsgotado])
   // O dia do "vencido" é o da unidade (F62b).
   const fuso = useFuso()
@@ -230,6 +256,10 @@ export function AdminStockView({ products, branches, categories, productCategori
   const [managing,   setManaging]   = useState<ProductStock | null>(null)
   const [editing,    setEditing]    = useState<ProductStock | null>(null)
   const [scanning,   setScanning]   = useState(false)
+  // C16: o produto que o leitor achou abre a MESMA Entrada do Gerenciar
+  // (em embalagens, com fornecedor, nota e "Não gera despesa"); ao gravar,
+  // o leitor volta para o próximo código.
+  const [entradaDoLeitor, setEntradaDoLeitor] = useState<ProductStock | null>(null)
   const editModalRef = useRef<StockProductModalHandle>(null)
   // Lido uma vez (o lote vencido se marca em vermelho; Date.now não roda no render).
   const [agora] = useState(() => Date.now())
@@ -403,10 +433,10 @@ export function AdminStockView({ products, branches, categories, productCategori
             <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', maxWidth: 360 }}>
               Cadastre os insumos antes dos procedimentos que os usam — e os produtos que a clínica vende.
             </p>
-            {!readOnly && (
+            {podeEditarProduto && (
               <div style={{ marginTop: 10 }}>
                 <StockProductModal
-                  suppliers={suppliers ?? []}
+                  fornecedores={fornecedores}
                   categories={productCategories ?? []}
                   // Na unidade, a da tela (D8 da 9ª); na rede, a escolha.
                   branches={defaultBranchId ? branches.filter(x => x.id === defaultBranchId) : branches}
@@ -439,7 +469,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                       da unidade a coluna somava só a unidade. */}
                   <th style={thStyle}>{variasUnidades ? 'TOTAL REDE' : 'ESTOQUE'}</th>
                   {variasUnidades && <th style={thStyle}>ESTOQUE POR UNIDADE</th>}
-                  {!readOnly && <th style={{ ...thStyle, textAlign: 'right' }}>VALOR EM ESTOQUE</th>}
+                  <th style={{ ...thStyle, textAlign: 'right' }}>VALOR EM ESTOQUE</th>
                   {!readOnly && <th style={{ ...thStyle, width: 68 }} />}
                   <th style={{ ...thStyle, width: 36 }} />
                 </tr>
@@ -467,7 +497,10 @@ export function AdminStockView({ products, branches, categories, productCategori
                         onClick={() => p.branches.length > 0 && toggleExpand(p.id)}
                       >
                         <td data-label="" style={{ padding: '13px 16px' }}>
-                          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
+                          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
+                            {p.name}
+                            {p.isActive === false && <SeloInativo />}
+                          </p>
                           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
                             {[p.sku, rotuloDoUso(p.uso)].filter(Boolean).join(' · ')}
                           </p>
@@ -511,9 +544,10 @@ export function AdminStockView({ products, branches, categories, productCategori
                             <BranchPills branches={p.branches} produto={p} />
                           </td>
                         )}
-                        {!readOnly && (
+                        {(
                           <td data-label="Valor" data-par style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {p.costPrice > 0
+                            {/* C21: o valor do banco decide (o custo do lote, não o do cadastro). */}
+                            {p.valor > 0 || p.costPrice > 0
                               ? (
                                 <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
                                   {p.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -527,7 +561,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                         {!readOnly && (
                           <td data-label="" style={{ padding: '13px 10px' }}>
                             <div style={{ display: 'flex', gap: 4 }}>
-                              <PencilButton onClick={() => setEditing(p)} />
+                              {podeEditarProduto && <PencilButton onClick={() => setEditing(p)} />}
                               <GearButton   onClick={() => setManaging(p)} />
                             </div>
                           </td>
@@ -542,7 +576,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                       </tr>
                       {isExpanded && (
                         <tr style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
-                          <td data-label="" colSpan={(variasUnidades ? 4 : 3) + (readOnly ? 0 : 2) + 1} style={{ padding: '0 16px 14px 40px', background: 'var(--bg-app)' }}>
+                          <td data-label="" colSpan={(variasUnidades ? 4 : 3) + 1 + (readOnly ? 0 : 1) + 1} style={{ padding: '0 16px 14px 40px', background: 'var(--bg-app)' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {p.branches.map(b => {
                                 const lotes = (p.lotes ?? []).filter(l => l.unidadeId === b.branchId)
@@ -617,7 +651,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                   <th style={thStyle}>UNIDADE</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>ESTOQUE</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>MÍNIMO</th>
-                  {!readOnly && <th style={{ ...thStyle, textAlign: 'right' }}>VALOR</th>}
+                  <th style={{ ...thStyle, textAlign: 'right' }}>VALOR</th>
                   <th style={thStyle}>STATUS</th>
                   {!readOnly && <th style={{ ...thStyle, width: 68 }} />}
                 </tr>
@@ -632,7 +666,10 @@ export function AdminStockView({ products, branches, categories, productCategori
                       background: i % 2 === 0 ? 'var(--surface)' : 'transparent',
                     }}>
                       <td data-label="" style={{ padding: '12px 16px' }}>
-                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{row.name}</p>
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
+                          {row.name}
+                          {row.isActive === false && <SeloInativo />}
+                        </p>
                         {row.sku && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{row.sku}</p>}
                       </td>
                       <td data-label="Categoria" data-par style={{ padding: '12px 16px' }}>
@@ -655,9 +692,9 @@ export function AdminStockView({ products, branches, categories, productCategori
                           {row.branch.minStock > 0 ? formatarQuantidadeComUnidade(minimoParaMostrar(saldoDe(row.branch), medidas(row))) : '—'}
                         </span>
                       </td>
-                      {!readOnly && (
+                      {(
                         <td data-label="Valor" data-par style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {row.costPrice > 0
+                          {row.branch.valor > 0 || row.costPrice > 0
                             ? (
                               <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
                                 {row.branch.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -674,7 +711,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                       {!readOnly && (
                         <td data-label="" style={{ padding: '12px 10px' }}>
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <PencilButton onClick={() => setEditing(row)} />
+                            {podeEditarProduto && <PencilButton onClick={() => setEditing(row)} />}
                             <GearButton   onClick={() => setManaging(row)} />
                           </div>
                         </td>
@@ -693,8 +730,21 @@ export function AdminStockView({ products, branches, categories, productCategori
           product={managing}
           allBranches={unidadesDaRede && unidadesDaRede.length > 0 ? unidadesDaRede : branches}
           defaultBranchId={defaultBranchId}
+          fornecedores={fornecedores}
           onClose={() => setManaging(null)}
           onSuccess={() => { setManaging(null); router.refresh() }}
+        />
+      )}
+
+      {entradaDoLeitor && (
+        <AdminStockManageModal
+          product={entradaDoLeitor}
+          allBranches={branches}
+          defaultBranchId={defaultBranchId}
+          fornecedores={fornecedores}
+          somenteEntrada
+          onClose={() => setEntradaDoLeitor(null)}
+          onSuccess={() => { setEntradaDoLeitor(null); router.refresh(); setScanning(true) }}
         />
       )}
 
@@ -715,9 +765,11 @@ export function AdminStockView({ products, branches, categories, productCategori
             uso:               editing.uso ?? null,
             consumption_unit:  editing.consumptionUnit,
             units_per_package: editing.unitsPerPackage,
-            min_stock:         null,
+            // C17: o mínimo do cadastro — era null, o campo mostrava 0 e salvar gravava 0.
+            min_stock:         editing.minimoDoCadastro ?? null,
+            fornecedor_id:     editing.fornecedorId ?? null,
           } satisfies StockProduct}
-          suppliers={suppliers ?? []}
+          fornecedores={fornecedores}
           categories={productCategories ?? []}
           onSuccess={() => { setEditing(null); router.refresh() }}
         />
@@ -725,9 +777,14 @@ export function AdminStockView({ products, branches, categories, productCategori
 
       {scanning && (
         <BarcodeEntryModal
-          allBranches={branches}
-          defaultBranchId={defaultBranchId}
           onClose={() => setScanning(false)}
+          onAchou={id => {
+            const achado = products.find(x => x.id === id)
+            if (!achado) return false
+            setScanning(false)
+            setEntradaDoLeitor(achado)
+            return true
+          }}
         />
       )}
     </div>

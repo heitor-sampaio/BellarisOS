@@ -18,6 +18,8 @@ export function ProductCategoryModal({ categories }: Props) {
 
   const [state, formAction, pending] = useActionState(createCategory, undefined)
   const [deletingId, setDeletingId]  = useState<string | null>(null)
+  // A recusa de apagar (a categoria em uso, a configuração da clínica) aparece — era ignorada.
+  const [erroAoApagar, setErroAoApagar] = useState<string | null>(null)
   const [, startDelete] = useTransition()
 
   const open  = useCallback(() => dialogRef.current?.showModal(), [])
@@ -32,9 +34,11 @@ export function ProductCategoryModal({ categories }: Props) {
 
   function handleDelete(id: string) {
     setDeletingId(id)
+    setErroAoApagar(null)
     startDelete(async () => {
-      await deleteCategory(id)
+      const r = await deleteCategory(id)
       setDeletingId(null)
+      if (r?.error) { setErroAoApagar(r.error); return }
       router.refresh()
     })
   }
@@ -129,6 +133,10 @@ export function ProductCategoryModal({ categories }: Props) {
             </div>
           )}
 
+          {erroAoApagar && (
+            <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 700, margin: 0 }}>{erroAoApagar}</p>
+          )}
+
           {/* Divisor */}
           <div style={{ borderTop: '1px solid var(--hairline)' }} />
 
@@ -152,7 +160,7 @@ export function ProductCategoryModal({ categories }: Props) {
                 </button>
               </div>
               {state?.error && (
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', margin: 0 }}>{state.error}</p>
+                <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', margin: 0 }}>{state.error}</p>
               )}
             </div>
           </form>

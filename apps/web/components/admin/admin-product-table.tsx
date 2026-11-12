@@ -27,13 +27,13 @@ interface Product {
 interface Props {
   initialProducts: Product[]
   categories:      ProductCategory[]
-  suppliers:       string[]
+  suppliers?:      string[]
 }
 
 type SortKey = 'name' | 'category' | 'unit'
 type SortDir = 'asc' | 'desc'
 
-export function AdminProductTable({ initialProducts, categories, suppliers }: Props) {
+export function AdminProductTable({ initialProducts, categories }: Props) {
   const [search,      setSearch]      = useState('')
   const [category,    setCategory]    = useState('')
   const [showInactive, setShowInactive] = useState(false)
@@ -253,7 +253,6 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
           ref={editRef}
           key={editProduct.id}
           product={editProduct}
-          suppliers={suppliers}
           categories={categories}
         />
       )}

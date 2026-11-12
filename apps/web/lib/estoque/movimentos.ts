@@ -2,6 +2,7 @@ import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
+import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
 
 /**
  * ENTRADA e AJUSTE de estoque — os núcleos que a tela de estoque (actions/
@@ -51,7 +52,28 @@ export interface EntradaDeEstoque {
   validade?: string | null
   /** A37 da 10ª: o fornecedor e a nota fiscal da compra (informação — não gera despesa). */
   fornecedor?: string | null
+  /** C76 (D4 do levantamento): o fornecedor escolhido da lista da rede — vence o texto. */
+  fornecedorId?: string | null
   notaFiscal?: string | null
+}
+
+/**
+ * O saldo da unidade depois do movimento, em texto, como a prateleira o mostra
+ * ("Saldo agora: 10 frascos fechados + 1 aberto com 40 UI"; C16 do
+ * levantamento): a entrada, o leitor e o Copilot dizem o mesmo.
+ */
+export async function saldoAgoraEmTexto(admin: Admin, productId: string, branchId: string): Promise<string> {
+  const [p, s] = await Promise.all([
+    ler(admin.from('products').select('unit, consumption_unit, units_per_package').eq('id', productId).maybeSingle(), 'ler o produto'),
+    ler(admin.from('branch_product_stock').select('current_stock, current_rendimento').eq('product_id', productId).eq('branch_id', branchId).maybeSingle(), 'ler o saldo'),
+  ]) as [{ unit: string; consumption_unit: string | null; units_per_package: number | null } | null, { current_stock: number; current_rendimento: number | null } | null]
+  const unidade = p?.unit ?? 'un'
+  const rende = p?.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 0
+  if (rende > 0) {
+    const rend = s?.current_rendimento != null ? Number(s.current_rendimento) : Number(s?.current_stock ?? 0) * rende
+    return saldoNaPrateleira(rend, rende, unidade, p!.consumption_unit!)
+  }
+  return saldoNaPrateleira(Number(s?.current_stock ?? 0), 0, unidade, '')
 }
 
 export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: EntradaDeEstoque): Promise<{ ok: true; saldo: number } | { error: string }> {
@@ -65,11 +87,20 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
   // entradas ao mesmo tempo (a tela e o Copilot) não se perdem mais.
   // Movimentação de estoque NUNCA gera despesa (D13 revisto, decisão do Heitor,
   // 2026-10-28): o custo fica no movimento, base do insumo, do custo e da margem.
+  let fornecedor = e.fornecedor?.trim() || null
+  if (e.fornecedorId) {
+    if (!/^[0-9a-f-]{36}$/i.test(e.fornecedorId)) return { error: 'Fornecedor não encontrado.' }
+    const f = await ler(admin.from('fornecedores').select('nome').eq('id', e.fornecedorId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+      'buscar o fornecedor') as { nome: string } | null
+    if (!f) return { error: 'Fornecedor não encontrado.' }
+    fornecedor = f.nome
+  }
+
   const saldo = await gravar(admin.rpc('estoque_entrada', {
     p_produto: e.productId, p_unidade: e.branchId, p_quantidade: e.quantidade,
     p_custo: e.custoUnitario ?? null, p_observacao: e.observacao ?? null,
     p_lote: e.lote || null, p_validade: e.validade || null, p_autor: ctx.internalUserId,
-    p_fornecedor: e.fornecedor?.trim() || null, p_nota_fiscal: e.notaFiscal?.trim() || null,
+    p_fornecedor: fornecedor, p_nota_fiscal: e.notaFiscal?.trim() || null,
   }), 'registrar a entrada de estoque') as number
   return { ok: true, saldo: Number(saldo) }
 }

@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loteDaUrl } from '@/lib/estoque/lote-da-url'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
@@ -9,26 +9,15 @@ import { startOfMonthTZ, endOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 import { getGiroDeEstoque } from '@/lib/metrics/demografia'
 import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/unidade'
 import { termoDaUrl } from '@/lib/texto'
-import { ler } from '@/lib/db'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
-
-/** Produto como o select pede, com o saldo por unidade embutido. */
-type ProdutoLido = {
-  id: string; name: string; sku: string | null; barcode: string | null
-  category: string | null; category_id: string | null; unit: string; supplier: string | null
-  cost_price: number | string | null; sale_price: number | string | null
-  consumption_unit: string | null; units_per_package: number | string | null; is_active: boolean
-  uso: string | null
-  min_stock: number | string | null
-  branch_product_stock: {
-    current_stock: number; min_stock: number; current_rendimento: number | null
-    branches: { id: string; name: string; slug: string } | null
-  }[] | null
-}
+import { produtosDoEstoque, todosOsFornecedores, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
+import { catalogoDaRede } from '@/lib/estoque/catalogo'
+import { FornecedoresModal } from '@/components/admin/fornecedores-modal'
+import { CatalogoDeProdutosLinha } from '@/components/admin/catalogo-de-produtos'
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -52,20 +41,11 @@ export default async function AdminEstoquePage({
   // O erro do embed aninhado (`products → branch_product_stock → branches`) era
   // descartado: qualquer recusa do PostgREST deixava o estoque da rede inteiro
   // em branco, sem mensagem nenhuma.
-  const [{ data: raw, error: produtosErr }, { data: branchesRaw, error: filiaisErr }, { data: categoriesRaw, error: categoriasErr }] = await Promise.all([
-    admin
-      .from('products')
-      .select(`
-        id, name, sku, barcode, category, category_id, unit, supplier,
-        cost_price, sale_price, consumption_unit, units_per_package, is_active, uso, min_stock,
-        branch_product_stock(
-          current_stock, min_stock, current_rendimento,
-          branches(id, name, slug)
-        )
-      `)
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'),
+  // C26: os produtos em páginas; D1: o desativado com saldo continua (lib/estoque/produtos-da-tela).
+  const [raw, fornecedores, catalogo, { data: branchesRaw, error: filiaisErr }, { data: categoriesRaw, error: categoriasErr }] = await Promise.all([
+    produtosDoEstoque(ctx.tenantId!),
+    todosOsFornecedores(ctx.tenantId!),
+    catalogoDaRede(admin, ctx.tenantId!),
 
     admin
       .from('branches')
@@ -81,12 +61,11 @@ export default async function AdminEstoquePage({
       .order('name'),
   ])
 
-  if (produtosErr) throw new Error(`Não foi possível carregar o estoque: ${produtosErr.message}`)
   if (filiaisErr)  throw new Error(`Não foi possível carregar as unidades: ${filiaisErr.message}`)
   if (categoriasErr) throw new Error(`Não foi possível carregar as categorias: ${categoriasErr.message}`)
 
   // Normaliza produtos
-  const products = ((raw ?? []) as unknown as ProdutoLido[]).map(p => {
+  const products = (raw as ProdutoDoEstoque[]).map(p => {
     const bps = p.branch_product_stock ?? []
 
     const branchStocks = bps
@@ -116,6 +95,8 @@ export default async function AdminEstoquePage({
       categoryId:       p.category_id,
       unit:             p.unit,
       supplier:         p.supplier,
+      fornecedorId:     p.fornecedor_id,
+      isActive:         p.is_active,
       costPrice:        Number(p.cost_price ?? 0),
       // D11 da 12ª: sem a linha da unidade, a aba "Estoque mínimo" mostra este.
       minimoDoCadastro: p.min_stock != null ? Number(p.min_stock) : null,
@@ -145,8 +126,9 @@ export default async function AdminEstoquePage({
   // Por `ler`: sem checar o erro, uma falha virava giro zero e nenhum lote
   // vencendo — os dois alertas quietos exatamente quando não deviam.
   // O recorte: a unidade escolhida, ou todas as unidades da rede.
-  const todasAsUnidades = ((await ler(admin.from('branches').select('id').eq('tenant_id', ctx.tenantId!), 'listar as unidades da rede')) ?? [])
-    .map(b => b.id as string)
+  // C22: as unidades ATIVAS — as das linhas da tabela. Com a inativa, o total
+  // do cartão somava um saldo que nenhuma linha mostrava.
+  const todasAsUnidades = branches.map(b => b.id)
   const unidadesDoRecorte = unidadeId ? [unidadeId] : todasAsUnidades
   // O mês do giro e o "em 30 dias" no fuso do recorte (F62b), como o dashboard.
   const fuso       = await fusoDoRecorte(ctx.tenantId, unidadeId ? [unidadeId] : null)
@@ -194,7 +176,7 @@ export default async function AdminEstoquePage({
   // A36 da 10ª: o "Ver lotes esgotados" só onde há algum.
   const comLoteEsgotado = productIds.length > 0 ? await paresComLoteEsgotado(admin, unidadesDoRecorte) : []
 
-  const suppliers      = [...new Set(products.map(p => p.supplier).filter(Boolean) as string[])].sort()
+  const fornecedoresAtivos = fornecedores.filter(f => !f.arquivado).map(({ id, nome }) => ({ id, nome }))
   const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()
 
   return (
@@ -214,14 +196,18 @@ export default async function AdminEstoquePage({
               : umaUnidadeSo(branches.length) ? 'Estoque da clínica'
               : `Visão consolidada da rede · ${branches.length} unidades`}
           </p>
+          {/* C63 (H8): quem cadastra e edita os produtos — decisão da rede. */}
+          {canEdit && <CatalogoDeProdutosLinha regra={catalogo} />}
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {canEdit && <ProductCategoryModal categories={categories} />}
+          {/* C76: os fornecedores são um cadastro da rede, como as categorias. */}
+          {canEdit && <FornecedoresModal fornecedores={fornecedores} />}
           {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
           {canEdit && products.length > 0 && (
             <StockProductModal
-              suppliers={suppliers}
+              fornecedores={fornecedoresAtivos}
               categories={categories}
               branches={branches}
               trigger={
@@ -306,7 +292,7 @@ export default async function AdminEstoquePage({
         branches={branches}
         categories={stockCategories}
         productCategories={categories as { id: string; name: string }[]}
-        suppliers={suppliers}
+        fornecedores={fornecedoresAtivos}
         unidadeInicial={unidadeId}
         readOnly={!canEdit}
         podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}
