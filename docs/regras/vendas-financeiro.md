@@ -1300,8 +1300,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
         dela, se ela cobra diferente).
       - **O Fechamento do dia separa por maquininha** (e, dentro dela, por
         bandeira quando houver).
-      - Sem taxa cadastrada naquelas vezes, vale 0% e a tela avisa
-        (princípio 4), como hoje.
+      - **O Pix tem um campo próprio na tela de Taxas, fora das
+        maquininhas** (o Heitor, 2026-11-11, sobre a C75: "A taxa do pix fica em algum lugar nessas configurações e o aviso sem taxa acho que nem precisa na verdade"),
+        com o padrão 0%.
+      - **Sem o aviso "Sem taxa" nos campos** (a mesma resposta): o campo
+        vazio mostra "0%" e vale 0% — o princípio 4 (faltou o dado, vale zero
+        e a tela diz) cumprido pelo próprio campo. Saem o destaque
+        `data-sem-taxa` das linhas e a nota do Pix sem taxa que a 1ª proposta
+        da D8 trazia.
     - **Prazo e taxas POR BANDEIRA** (r3-f13-01, o Heitor, 2026-11-03:
       "Lembre-se, flexibilidade. Prazo por bandeira. Taxas também
       configuráveis por bandeira."; migration `20261103001502`). Em
@@ -1336,8 +1342,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       destaque de aviso — "Sem taxa: as vendas em 4x saem sem desconto da
       operadora." (`data-sem-taxa`) —, menos o Pix (sem taxa é comum) e o
       crédito acima do "Parcelar no crédito até" (não se vende ali; decisões
-      da F17 — a D8 do levantamento as substituiu pelo modelo POR MAQUININHA,
-      acima, e a tela nova decide o aviso de cada maquininha na C75); e o Fechamento do dia com venda no
+      da F17). Com as maquininhas (C75), esse destaque SAI: o campo vazio
+      mostra "0%" (acima); e o Fechamento do dia com venda no
       cartão sem taxa diz "Sem taxa da maquininha cadastrada — saiu sem
       desconto da operadora: Crédito 4x (Elo): 1 venda, R$ 1.100,00…"
       (`metrics_vendas_sem_taxa_do_fechamento`, aviso `sem-taxa`). Prova:
@@ -1409,10 +1415,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       (D9, o Heitor, 2026-11-11). O que está
       gravado acima do limite NÃO se apaga (fica no formulário e é regravado
       no "Salvar taxas"), e aumentar o limite traz as linhas de volta, as
-      vazias com o aviso "Sem taxa". **O Pix tem a sua taxa** (na regra geral;
+      vazias com o aviso "Sem taxa" (que sai com a C75). **O Pix tem a sua taxa** (na regra geral;
       Pix não tem bandeira): `payment_fees` `PIX`, que já valia no líquido da
       comissão e na estimativa do Fechamento; vazio é sem taxa, sem aviso, e a
-      tela diz "o Pix, só se a sua operadora cobrar". Prova:
+      tela diz "o Pix, só se a sua operadora cobrar". Com as maquininhas
+      (C75), o Pix fica num campo próprio da tela de Taxas, fora delas, com
+      o padrão 0%. Prova:
       `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F17-4").
     - **Nenhum teto nas taxas** (F16-3, o Heitor: "não é pra recusar nada,
       juros podem passar facilmente de 100% no acumulado"; migration
