@@ -11,6 +11,10 @@ import { ler } from '@/lib/db'
  * Não confundir com `message_templates`: template é HSM, passa pela aprovação
  * da Meta e existe para furar a janela de 24h. Resposta rápida é texto comum,
  * vale em qualquer canal e é só um atalho de digitação.
+ *
+ * São de CADA PESSOA (C72 — H8 do levantamento das regras, F69): cada uma vê,
+ * edita e apaga só as suas (`created_by`), e o nome é único por pessoa. A
+ * sessão não lê nem grava a tabela — só o servidor, por aqui.
  */
 
 export interface QuickReply {
@@ -33,10 +37,13 @@ export async function listQuickReplies(): Promise<QuickReply[]> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
 
+  const eu = await membroId(ctx)
+  if (!eu) return []
   const { data, error } = await createAdminClient()
     .from('quick_replies')
     .select('id, title, content, created_at')
     .eq('tenant_id', ctx.tenantId!)
+    .eq('created_by', eu)
     .order('title')
 
   // Erro descartado aqui faria a lista aparecer vazia e a pessoa recriar tudo.
@@ -65,22 +72,27 @@ export async function saveQuickReply(
   }
 
   const agora = new Date().toISOString()
+  const eu = await membroId(ctx)
+  if (!eu) return { ok: false, error: 'Só quem é da equipe guarda respostas rápidas.' }
 
   if (input.id) {
-    const { error } = await admin
+    const { data: mudou, error } = await admin
       .from('quick_replies')
       .update({ title, content, updated_at: agora })
       .eq('id', input.id)
       .eq('tenant_id', ctx.tenantId!)
+      .eq('created_by', eu)
+      .select('id')
 
     if (error) return { ok: false, error: traduzir(error) }
+    if (!mudou?.length) return { ok: false, error: 'Atalho não encontrado.' }
     revalidarInbox()
     return { ok: true, id: input.id }
   }
 
   const { data, error } = await admin
     .from('quick_replies')
-    .insert({ tenant_id: ctx.tenantId!, title, content, created_by: await membroId(ctx) })
+    .insert({ tenant_id: ctx.tenantId!, title, content, created_by: eu })
     .select('id')
     .single()
 
@@ -94,13 +106,18 @@ export async function deleteQuickReply(id: string): Promise<{ ok: boolean; error
   assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
 
-  const { error } = await createAdminClient()
+  const eu = await membroId(ctx)
+  if (!eu) return { ok: false, error: 'Atalho não encontrado.' }
+  const { data: apagou, error } = await createAdminClient()
     .from('quick_replies')
     .delete()
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
+    .eq('created_by', eu)
+    .select('id')
 
   if (error) return { ok: false, error: error.message }
+  if (!apagou?.length) return { ok: false, error: 'Atalho não encontrado.' }
   revalidarInbox()
   return { ok: true }
 }
@@ -108,7 +125,7 @@ export async function deleteQuickReply(id: string): Promise<{ ok: boolean; error
 // -- auxiliares ---------------------------------------------------------------
 
 function traduzir(error: { code?: string; message: string }): string {
-  if (error.code === '23505') return 'Já existe um atalho com esse nome.'
+  if (error.code === '23505') return 'Você já tem um atalho com esse nome.'
   return error.message
 }
 
