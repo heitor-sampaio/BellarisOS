@@ -25,6 +25,8 @@ import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { quemVendeu } from '@/lib/vendas/equipe-da-venda'
+import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { garantirRenderizado, sha256 } from '@/lib/documentos/renderizar'
 import { prepararDocumentosDoPlano, contratoQueSeriaSubstituido } from '@/lib/documentos/plano'
@@ -222,7 +224,15 @@ export async function prepararDocumentosDoCheckout(
   /** O desconto do checkout (R$ ou %): o contrato cita o valor com ele. */
   desconto?: unknown,
   /** A resposta ao aviso do A45: só com ela o contrato assinado é substituído. */
-  opcoes?: { substituirContrato?: boolean },
+  opcoes?: {
+    substituirContrato?: boolean
+    /**
+     * A13 da 13ª: quem vendeu, guardado no plano já na documentação — reabrir
+     * o checkout em outra aba o traz de volta (a comissão é do fechamento,
+     * `plano_checkout`, que regrava o mesmo campo).
+     */
+    vendedorId?: string | null
+  },
 ): Promise<{ itens?: ResumoDeDocumento[]; error?: string; substituiContrato?: { titulo: string; pagamento: string } }> {
   try {
     const ctx = await getTenantContext()
@@ -231,6 +241,9 @@ export async function prepararDocumentosDoCheckout(
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
     const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento))
     if (recusaDasVezes) return { error: recusaDasVezes }
+    // C38: o crediário até o limite da rede.
+    const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, pagamento)
+    if (recusaDasParcelas) return { error: recusaDasParcelas }
     const d = EntradaDoDesconto.safeParse(desconto)
     if (!d.success) return { error: 'Desconto inválido.' }
     const admin = createAdminClient()
@@ -252,6 +265,12 @@ export async function prepararDocumentosDoCheckout(
     if (opcoes?.substituirContrato !== true) {
       const troca = await contratoQueSeriaSubstituido(ctx.tenantId!, planId, pagamento, doDesconto.reais)
       if (troca) return { substituiContrato: troca }
+    }
+    if (opcoes && 'vendedorId' in opcoes) {
+      const vendeu = await quemVendeu(ctx.tenantId!, ctx.internalUserId ?? null, { vendedorId: opcoes.vendedorId ?? null, semVendedor: true }, plano.branch_id as string)
+      if ('error' in vendeu) return { error: vendeu.error }
+      if ('vendedor' in vendeu) await gravar(admin.from('treatment_plans').update({ vendido_por: vendeu.vendedor })
+        .eq('id', planId).eq('status', 'PROPOSED').select('id'), 'guardar quem vendeu o plano')
     }
     const docs = await prepararDocumentosDoPlano(ctx.tenantId!, planId, pagamento, ctx.internalUserId ?? null, doDesconto.reais)
     return { itens: await resumirDocumentos(ctx.tenantId!, docs) }

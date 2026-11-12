@@ -18,6 +18,7 @@ import { ler, mensagemDoErro } from '@/lib/db'
 import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
+import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
@@ -120,6 +121,9 @@ async function venderProdutoUmaVez(
     const reais = descontoEmReais(tabela, d.data)
     const vendido = Math.round((tabela - reais) * 100) / 100
     const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
+    // C38: o crediário até o limite da rede.
+    const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, lido.data)
+    if (recusaDasParcelas) return { error: recusaDasParcelas }
     if (recusaDaEntrada) return { error: recusaDaEntrada }
     const rotulo = [...itens].map(([id, qtd]) => `${qtd}× ${porId.get(id)!.name as string}`).join(' + ')
     // Quem vendeu (com-06): leva a comissão da venda; vazio, só com a confirmação.

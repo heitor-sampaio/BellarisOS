@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { SegSelect } from '@/components/shared/seg-select'
-import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarCartaoPorBandeira } from '@/actions/comissoes'
+import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarCartaoPorBandeira, salvarMaximoDeParcelas } from '@/actions/comissoes'
+import { CREDIARIO_PADRAO, opcoesDeParcelas, TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
 import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, faixaDaOperadora, avisoDaTaxaQueBaixa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
@@ -44,7 +45,7 @@ const PARCELAS_DO_CREDITO = Array.from({ length: 11 }, (_, i) => i + 2)
 /** Os campos de taxa são curtos: em grade, quantos couberem na linha. */
 const grade = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 } as const
 
-export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, podeEditar, maximoDeVezes: maximoGravado = null, prazoDaOperadora = PRAZO_PADRAO_DA_OPERADORA, porBandeira = {}, produtos = [] }: {
+export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, podeEditar, maximoDeVezes: maximoGravado = null, prazoDaOperadora = PRAZO_PADRAO_DA_OPERADORA, porBandeira = {}, produtos = [], crediarioMax = CREDIARIO_PADRAO }: {
   inicial:    ConfigDeComissao
   taxas:      TaxaDePagamento[]
   /** "Parcelar no crédito até" gravado pela rede (D-15); nulo = automático. */
@@ -55,6 +56,8 @@ export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, po
   porBandeira?: CartaoPorBandeira
   /** Os produtos de revenda e a comissão de cada um (r2-ven-10). */
   produtos?: ComissaoDoProduto[]
+  /** C38: até quantas parcelas a clínica divide o crediário (padrão 12). */
+  crediarioMax?: number
   /** Quem atende clientes e não tem comissão padrão configurada. */
   semRegra:   { id: string; nome: string }[]
   /** Quantos atendem (A12): sem ninguém, a tela não diz "todos têm comissão". */
@@ -65,6 +68,7 @@ export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, po
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <ComoAcontece inicial={inicial} podeEditar={podeEditar} produtos={produtos} />
       <TabelaDeTaxas inicial={taxas} podeEditar={podeEditar} maximoGravado={maximoGravado} prazoGravado={prazoDaOperadora} porBandeiraGravado={porBandeira} />
+      <CrediarioDaClinica gravado={crediarioMax} podeEditar={podeEditar} />
       <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Comissão de cada profissional">
         <h2 style={titulo}>Comissão de cada profissional</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
@@ -282,6 +286,51 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
           {salvo && <span role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>Salvo.</span>}
           <button type="button" className="btn-primary" onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * C38 da F67 (a D10 mudada pelo Heitor: "Decisão da rede"): até quantas
+ * parcelas a clínica divide o crediário — o "entrada + parcelas", com a
+ * clínica. Padrão 12. Vale no Vender, no checkout e no check-in do plano; a
+ * despesa parcelada não muda.
+ */
+function CrediarioDaClinica({ gravado, podeEditar }: { gravado: number; podeEditar: boolean }) {
+  const router = useRouter()
+  const [n, setN] = useState(String(gravado))
+  const [erro, setErro] = useState<string | null>(null)
+  const [salvo, setSalvo] = useState(false)
+  const [salvando, iniciar] = useTransition()
+  function salvar() {
+    setErro(null)
+    iniciar(async () => {
+      const r = await salvarMaximoDeParcelas(Number(n))
+      if (r.error) { setErro(r.error); return }
+      setSalvo(true)
+      router.refresh()
+    })
+  }
+  return (
+    <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }} aria-label="Crediário da clínica">
+      <h2 style={titulo}>Crediário da clínica</h2>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Dividir o crediário em até</span>
+        <select className="field" aria-label="Dividir o crediário em até" disabled={!podeEditar} value={n}
+          onChange={e => { setN(e.target.value); setSalvo(false) }}>
+          {opcoesDeParcelas(TETO_DO_CREDIARIO).map(v => <option key={v} value={String(v)}>{v === 1 ? '1 parcela' : `${v} parcelas`}{v === CREDIARIO_PADRAO ? ' (padrão)' : ''}</option>)}
+        </select>
+        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          É o “Parcelas do saldo” do “entrada + parcelas” — no Vender, no checkout e no check-in do plano. Acima disso o sistema não deixa passar. A despesa parcelada não muda.
+        </span>
+      </label>
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      {podeEditar && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
+          {salvo && <span role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>Salvo.</span>}
+          <button type="button" className="btn-primary" onClick={salvar} disabled={salvando || Number(n) === gravado}>{salvando ? 'Salvando…' : 'Salvar'}</button>
         </div>
       )}
     </div>

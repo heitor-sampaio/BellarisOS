@@ -4,7 +4,7 @@ import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/ch
 import { SegSelect } from '@/components/shared/seg-select'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
-import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { useOpcoesDeVezes, useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes, ResumoDasParcelas } from '@/components/shared/resumo-das-vezes'
 import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
 import { temBandeira } from '@/lib/financeiro/bandeiras'
@@ -128,6 +128,8 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
   const { forma } = estado
   // Até quantas vezes a clínica parcela no crédito (D-15).
   const opcoesDeVezes = useOpcoesDeVezes()
+  // C38: o crediário até o limite da rede (padrão 12).
+  const opcoesDeParcelas = useOpcoesDeParcelas()
   const metodos = semCredito ? METODOS.filter(m => m.value !== 'INTERNAL_CREDIT') : METODOS
   return (
     <>
@@ -188,7 +190,7 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={rotulo}>Parcelas do saldo</span>
               <select className="field" value={estado.parcelas} onChange={e => mudar({ parcelas: Number(e.target.value) })} aria-label="Parcelas">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}x</option>)}
+                {opcoesDeParcelas.map(n => <option key={n} value={n}>{n}x</option>)}
               </select>
             </label>
           )}

@@ -16,6 +16,7 @@ import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
+import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
 import { atendimentoDeHojeDoPlano } from '@/lib/checkout/atendimento-de-hoje'
@@ -1307,6 +1308,7 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
 
   const { plan: checkout, error } = await montarCheckoutPlan(
     planId, plan.branch_id as string, branch.name, ctx.tenantId!, prof => podeVerClinico(ctx, prof), ctx.internalUserId ?? null,
+    veComissaoDeTodos(ctx),
   )
   // A anotação clínica foi à tela: fica no registro (lib/prontuario/acessos.ts).
   if (checkout?.professionalNotes) await registrarAcessoAoProntuario(ctx, checkout.clientId, 'plano', planId)
@@ -1331,6 +1333,7 @@ import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
+import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { paraAnamneseGeral, respostasDaFicha, type AnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento, anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
@@ -1401,6 +1404,9 @@ async function checkoutTreatmentPlanInterno(
   // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
   const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento))
   if (recusaDasVezes) return { error: recusaDasVezes }
+  // C38: o crediário até o limite da rede (era `Math.min(…, 48)`, calado).
+  const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, pagamento)
+  if (recusaDasParcelas) return { error: recusaDasParcelas }
   // A37: o que se recebe agora pede a forma (a tela a deixa nascer vazia).
   if (pagamento && pagamento.forma !== 'A_RECEBER' && !pagamento.metodo) return { error: 'Escolha a forma de pagamento.' }
 
@@ -1440,49 +1446,25 @@ async function checkoutTreatmentPlanInterno(
   const recusaDosDocumentos = await recusaDosDocumentosDoPlano(ctx.tenantId!, planId, pagamento, doDesconto.reais)
   if (recusaDosDocumentos) return { error: recusaDosDocumentos }
 
-  // O desconto vira o PREÇO de cada procedimento do plano (rateado), antes do
-  // dinheiro e das sessões: o que vem depois — lançamentos, agendamentos,
-  // comissão, fidelidade — lê o preço vendido e não precisa saber de desconto.
-  // Sempre chamado: parte do preço de antes, então repetir é seguro e desconto
-  // zero desfaz o de um checkout que falhou no meio.
-  await gravar(admin.rpc('plano_aplicar_desconto', {
-    p_plano: planId, p_tenant: ctx.tenantId, p_ator: ctx.internalUserId ?? null,
-    p_desconto: doDesconto.reais, p_precos: precosComDesconto(precos, doDesconto.reais),
-  }), 'aplicar o desconto do plano')
-
   // Busca sessões com procedimentos
-  const { sessions, total } = await getTreatmentPlanSessions(planId)
+  const { sessions } = await getTreatmentPlanSessions(planId)
   if (sessions.length === 0) return { error: 'Plano sem sessões cadastradas.' }
+  // O total é o do plano DEPOIS do desconto: o rateio (`precosComDesconto`)
+  // fecha exatamente nele, e é o que `plano_checkout` confere.
+  const total = Math.round((precos.subtotal - doDesconto.reais) * 100) / 100
 
-  const agora     = new Date().toISOString()
   // A47 da 6ª simulação: a descrição chega à cliente (o app, o recibo): sem
   // texto interno ("checkout novo paciente"). "Plano de tratamento — parcela 1/2".
   const descricao = 'Plano de tratamento'
 
   // O motivo do desconto (fin-01) vai no PRIMEIRO lançamento do plano.
   let motivoDoDescontoAinda = motivoDoDesconto(entradaDoDesconto.data, doDesconto.reais)
-
-  /** Uma transação do plano; devolve o id ou aborta com erro. */
-  async function lancar(campos: Record<string, unknown>) {
+  const lancamentos: Record<string, unknown>[] = []
+  /** Um lançamento do plano, montado aqui e gravado por `plano_checkout`. */
+  function lancar(campos: Record<string, unknown>) {
     const motivo = motivoDoDescontoAinda
     motivoDoDescontoAinda = null
-    return admin
-      .from('financial_transactions')
-      .insert({
-        branch_id:         plan!.branch_id,
-        client_id:         plan!.client_id,
-        // É por este vínculo que o check-in sabe quanto deste plano ainda está
-        // em aberto. Sem ele, o valor existiria no financeiro sem endereço.
-        treatment_plan_id: planId,
-        type:              'INCOME',
-        category:          'Serviços',
-        description:       descricao,
-        created_by:        ctx.internalUserId,
-        ...(motivo ? { desconto_motivo: motivo } : {}),
-        ...campos,
-      })
-      .select('id')
-      .single()
+    lancamentos.push({ description: descricao, ...(motivo ? { desconto_motivo: motivo } : {}), ...campos })
   }
 
   // Cada horário escolhido é conferido ANTES de o dinheiro e o primeiro agendamento nascerem:
@@ -1510,56 +1492,42 @@ async function checkoutTreatmentPlanInterno(
   // O que foi RECEBIDO agora e o que ficou A RECEBER são transações separadas:
   // `revenueCash` conta INCOME pago com eixo em `paid_at`, então uma transação
   // única marcada como não paga faria a entrada sumir do caixa do dia.
-  let transactionId: string | null = null
-
   if (!pagamento) {
     // Aceito sem cobrar: o valor nasce a receber, sem vencimento, esperando o
     // check-in do primeiro atendimento. Preço congelado no aceite — o que a
     // recepção cobrar depois é este número, não o da tabela do dia.
-    const { data, error } = await lancar({
-      amount:   total,
-      is_paid:  false,
-      notes:    'Plano aceito — a receber no check-in',
-    })
-    if (error) return { error: `Erro ao registrar o valor do plano: ${error.message}` }
-    transactionId = data!.id as string
+    lancar({ amount: total, is_paid: false, notes: 'Plano aceito — a receber no check-in' })
 
   } else if (pagamento.forma === 'AVISTA') {
     // No cartão de crédito em N vezes a maquininha paga a clínica: pago na
     // hora, e as vezes ficam no lançamento para a taxa da comissão.
     const vezes = vezesNoCartao(pagamento)
-    const { data, error } = await lancar({
-      amount:           total,
-      payment_method:   pagamento.metodo,
-      is_paid:          true,
-      paid_at:          agora,
+    lancar({
+      amount:          total,
+      payment_method:  pagamento.metodo,
+      is_paid:         true,
       ...(vezes > 1 ? { cartao_vezes: vezes } : {}),
       // r3-f13-01: a bandeira do cartão, opcional.
-      ...(bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) ? { cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) } : {}),
+      cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira),
     })
-    if (error) return { error: `Erro ao registrar pagamento: ${error.message}` }
-    transactionId = data!.id as string
 
   } else if (pagamento.forma === 'PARCELADO') {
     const entrada = Math.max(0, Math.min(pagamento.entrada, total))
     const saldo   = Math.round((total - entrada) * 100) / 100
-    const vezes   = Math.max(1, Math.min(pagamento.parcelas, 48))
+    const vezes   = Math.max(1, pagamento.parcelas)
 
     if (entrada > 0) {
       // D5: a entrada no crédito também em N vezes na maquininha.
       const vezesDaEntrada = vezesNoCartao(pagamento)
-      const { data, error } = await lancar({
-        amount:           entrada,
-        payment_method:   pagamento.metodo,
-        is_paid:          true,
-        paid_at:          agora,
-        description:      `${descricao} — entrada`,
-        notes:            'Entrada do plano de tratamento',
+      lancar({
+        amount:          entrada,
+        payment_method:  pagamento.metodo,
+        is_paid:         true,
+        description:     `${descricao} — entrada`,
+        notes:           'Entrada do plano de tratamento',
         ...(vezesDaEntrada > 1 ? { cartao_vezes: vezesDaEntrada } : {}),
-        ...(bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) ? { cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) } : {}),
+        cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira),
       })
-      if (error) return { error: `Erro ao registrar a entrada: ${error.message}` }
-      transactionId = data!.id as string
     }
 
     // Cada parcela, um lançamento com o seu vencimento (2026-09-30): o saldo
@@ -1569,9 +1537,8 @@ async function checkoutTreatmentPlanInterno(
       for (const parcela of dividirEmParcelas(saldo, vezes, pagamento.primeiroVencimento)) {
         // D6: o crediário da CLÍNICA nasce sem meio (escolhe-se ao receber) —
         // não é o cartão da entrada.
-        const { data, error } = await lancar({
+        lancar({
           amount:         parcela.amount,
-          payment_method: null,
           is_paid:        false,
           due_date:       parcela.due_date,
           description:    `${descricao} — ${rotuloDaParcela(parcela)}`,
@@ -1580,91 +1547,64 @@ async function checkoutTreatmentPlanInterno(
           parcela_total:  parcela.total,
           parcela_grupo:  grupo,
         })
-        if (error) return { error: `Erro ao registrar as parcelas: ${error.message}` }
-        transactionId = transactionId ?? (data!.id as string)
       }
     }
 
   } else {
-    const { data, error } = await lancar({
-      amount:         total,
-      payment_method: pagamento.metodo,
-      is_paid:        false,
-      due_date:       pagamento.vencimento,
-    })
-    if (error) return { error: `Erro ao registrar o valor a receber: ${error.message}` }
-    transactionId = data!.id as string
+    lancar({ amount: total, payment_method: pagamento.metodo, is_paid: false, due_date: pagamento.vencimento })
   }
 
-  // 2. Para cada sessão: criar appointment (se agendado)
+  // 2. Para cada sessão: o agendamento (se agendado)
   //
   // Marcar horário na agenda é gesto de agenda: quem recebe mas não gerencia
   // agenda fecha a venda e as sessões ficam para marcar depois, em vez de a tela
   // inteira ser negada.
   const podeAgendar = can(ctx, 'agenda', 'MANAGE')
-  let newAppointmentId: string | null = null
   // D8 da 12ª: a sala única do procedimento, livre, vem; ocupada, a sessão vai
   // sem sala (a sala é opcional — H1) e a tela diz.
   const avisosDaSala: string[] = []
-
-
+  const agendamentos: Record<string, unknown>[] = []
   for (const sess of sessions) {
-    const sched = podeAgendar
-      ? sessionSchedules.find(s => s.planSessionId === sess.id) ?? null
-      : null
-    let appointmentId: string | null = null
-
-    if (sched && sess.mainProcedureId) {
-      const sala = await salaUnicaDoHorario(admin, {
-        tenantId: ctx.tenantId!, branchId: sched.branchId, procedureId: sess.mainProcedureId,
-        inicio: new Date(sched.scheduledAt), duracaoMin: sess.mainDurationMin || 60,
-      })
-      if (sala.ocupada) {
-        const quando = new Date(sched.scheduledAt).toLocaleString('pt-BR', { timeZone: await fusoDaUnidade(ctx.tenantId, sched.branchId), day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(', ', ' às ')
-        avisosDaSala.push(`A ${sala.ocupada} está ocupada em ${quando}: essa sessão vai sem sala.`)
-      }
-      const appt = await ler(admin
-        .from('appointments')
-        .insert({
-          branch_id:         sched.branchId,
-          client_id:         plan.client_id,
-          procedure_id:      sess.mainProcedureId,
-          professional_id:   sched.professionalId,
-          scheduled_at:      sched.scheduledAt,
-          duration_min:      sess.mainDurationMin,
-          price:             sess.totalPrice,
-          status:            'SCHEDULED',
-          source:            'INTERNAL',
-          treatment_plan_id: planId,
-          room_id:           sala.salaId,
-        })
-        .select('id')
-        .single(), 'carregar os agendamentos')
-      appointmentId = appt?.id ?? null
-      if (!newAppointmentId) newAppointmentId = appointmentId
+    const sched = podeAgendar ? sessionSchedules.find(s => s.planSessionId === sess.id) ?? null : null
+    if (!sched || !sess.mainProcedureId) continue
+    const sala = await salaUnicaDoHorario(admin, {
+      tenantId: ctx.tenantId!, branchId: sched.branchId, procedureId: sess.mainProcedureId,
+      inicio: new Date(sched.scheduledAt), duracaoMin: sess.mainDurationMin || 60,
+    })
+    if (sala.ocupada) {
+      const quando = new Date(sched.scheduledAt).toLocaleString('pt-BR', { timeZone: await fusoDaUnidade(ctx.tenantId, sched.branchId), day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(', ', ' às ')
+      avisosDaSala.push(`A ${sala.ocupada} está ocupada em ${quando}: essa sessão vai sem sala.`)
     }
-
-    // Atualiza treatment_plan_sessions.appointment_id
-    await gravar(admin
-      .from('treatment_plan_sessions')
-      .update({ appointment_id: appointmentId })
-      .eq('id', sess.id), 'vincular a sessão ao agendamento')
+    agendamentos.push({
+      sessao:          sess.id,
+      branch_id:       sched.branchId,
+      procedure_id:    sess.mainProcedureId,
+      professional_id: sched.professionalId,
+      scheduled_at:    sched.scheduledAt,
+      duration_min:    sess.mainDurationMin,
+      room_id:         sala.salaId,
+    })
   }
 
-  // 3. Marcar plano como ACCEPTED
-  await gravar(admin
-    .from('treatment_plans')
-    .update({ status: 'ACCEPTED', updated_at: new Date().toISOString() })
-    .eq('id', planId), 'marcar o plano como aceito')
-
-  // A comissão de VENDA (decisão 4 da 7ª): a linha nasce agora, com o plano
-  // aceito, e o banco a acerta pelo que já entrou — à vista libera na hora, o
-  // crediário espera a última parcela (H4). É o caminho do pacote
-  // (`comissao_conta`), sem conta nova.
-  if (equipe != null) {
-    await gravar(admin.rpc('plano_comissao_de_venda', { p_tenant: ctx.tenantId, p_plano: planId, p_vendedor: vendedor }),
-      'registrar a comissão de venda do plano')
-  }
+  // 3. Tudo numa transação só (C32 do levantamento, 2026-11-12): o desconto,
+  // o dinheiro, os agendamentos, as sessões, o ACCEPTED e a comissão de VENDA
+  // (decisão 4 da 7ª: à vista libera na hora, o crediário espera a última
+  // parcela — H4). A função trava o plano e confere que ainda é PROPOSED: a
+  // segunda aba ouve "Este plano já foi fechado", e uma falha no meio não
+  // deixa nada gravado pela metade.
+  const fechado = await gravar(admin.rpc('plano_checkout', {
+    p_tenant:       ctx.tenantId,
+    p_plano:        planId,
+    p_ator:         ctx.internalUserId ?? null,
+    p_desconto:     doDesconto.reais,
+    p_precos:       precosComDesconto(precos, doDesconto.reais),
+    p_lancamentos:  lancamentos,
+    p_agendamentos: agendamentos,
+    p_com_comissao: equipe != null,
+    p_vendedor:     vendedor,
+  }), 'fechar o plano') as { transacao: string | null; agendamento: string | null } | null
+  const transactionId    = fechado?.transacao ?? null
+  const newAppointmentId = fechado?.agendamento ?? null
 
   // Plano aceito é o fato comercial mais forte do sistema: virou venda.
   await planoAceito(planId, ctx)
@@ -1822,7 +1762,10 @@ async function receberDoPlanoInterno(
     if (recusaDaEntrada) return { error: recusaDaEntrada }
     const entrada = Math.max(0, Math.round(recebimento.entrada * 100) / 100)
     const resto   = Math.round((saldo.emAberto - entrada) * 100) / 100
-    const vezes   = Math.max(1, Math.min(recebimento.parcelas, 48))
+    const vezes   = Math.max(1, recebimento.parcelas)
+    // C38: o crediário até o limite da rede (era `Math.min(…, 48)`, calado).
+    const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, recebimento)
+    if (recusaDasParcelas) return { error: recusaDasParcelas }
     if (entrada <= 0 && resto <= 0) return { error: 'Informe o valor da entrada.' }
 
     // O saldo anterior sai de cena inteiro e volta partido: o que foi recebido

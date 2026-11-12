@@ -55,6 +55,7 @@ import { configDaRede, redeTemLancamentos } from '@/lib/fidelidade/leitura'
 import { SettingsComissoes } from '@/components/admin/settings-comissoes'
 import { configDeComissaoDaRede, taxasDaRede, profissionaisSemComissao, comissoesDosProdutos } from '@/lib/comissoes/leitura'
 import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import {
   ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_CLINICA_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
   chaveDaAbaPedida, motivoDaAbaFechada,
@@ -282,7 +283,7 @@ export async function Configuracoes({
   const temLancamentos = conteudo === 'fidelidade' ? await redeTemLancamentos(ctx.tenantId!) : false
   // As comissões também são da rede (a aba não está em ABAS_DA_UNIDADE).
   const comissoes = conteudo === 'comissoes'
-    ? await Promise.all([configDeComissaoDaRede(ctx.tenantId!), taxasDaRede(ctx.tenantId!), profissionaisSemComissao(ctx.tenantId!), maximoDeVezesDaRede(ctx.tenantId!), comissoesDosProdutos(ctx.tenantId!)])
+    ? await Promise.all([configDeComissaoDaRede(ctx.tenantId!), taxasDaRede(ctx.tenantId!), profissionaisSemComissao(ctx.tenantId!), maximoDeVezesDaRede(ctx.tenantId!), comissoesDosProdutos(ctx.tenantId!), maximoDeParcelasDaRede(ctx.tenantId!)])
     : null
   const visibilidadeDoInbox = wantsRoles ? await lerVisibilidadeDoInbox() : null
 
@@ -570,7 +571,7 @@ export async function Configuracoes({
       )}
 
       {conteudo === 'comissoes' && comissoes && (
-        <SettingsComissoes inicial={comissoes[0]} taxas={comissoes[1]} semRegra={comissoes[2]} quantosAtendem={comissoes[2].quantosAtendem} maximoDeVezes={comissoes[3].configurado} prazoDaOperadora={comissoes[3].prazoDias} porBandeira={comissoes[3].porBandeira} produtos={comissoes[4]}
+        <SettingsComissoes inicial={comissoes[0]} taxas={comissoes[1]} semRegra={comissoes[2]} quantosAtendem={comissoes[2].quantosAtendem} maximoDeVezes={comissoes[3].configurado} prazoDaOperadora={comissoes[3].prazoDias} porBandeira={comissoes[3].porBandeira} produtos={comissoes[4]} crediarioMax={comissoes[5]}
           podeEditar={can(ctx, 'financial', 'MANAGE') && ctx.branchId === null} />
       )}
 

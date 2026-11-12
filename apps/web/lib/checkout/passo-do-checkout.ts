@@ -48,7 +48,7 @@ export function lerPassoDoCheckout(planId: string): PassoDoCheckout | null {
       formaPgto:     v.formaPgto as PassoDoCheckout['formaPgto'],
       paymentMethod: typeof v.paymentMethod === 'string' ? v.paymentMethod : '',
       entrada:       typeof v.entrada === 'string' ? v.entrada : '',
-      parcelas:      Number.isInteger(v.parcelas) && v.parcelas! >= 1 && v.parcelas! <= 12 ? v.parcelas! : 3,
+      parcelas:      Number.isInteger(v.parcelas) && v.parcelas! >= 1 && v.parcelas! <= 48 ? v.parcelas! : 3,
       vezesCartao:   Number.isInteger(v.vezesCartao) && v.vezesCartao! >= 1 && v.vezesCartao! <= 12 ? v.vezesCartao! : 1,
       bandeira:      typeof v.bandeira === 'string' ? v.bandeira : '',
       primeiroVenc:  typeof v.primeiroVenc === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.primeiroVenc) ? v.primeiroVenc : '',

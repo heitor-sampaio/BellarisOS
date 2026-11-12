@@ -30,8 +30,10 @@ import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { textoDasSessoesSemData, avisoDoPlanoFechado } from '@/lib/checkout/sessoes-sem-data'
 import { toast } from 'sonner'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
+import { textoDaComissaoDaVenda } from '@/lib/comissoes/comissao-da-venda'
 import type { MembroDaVenda } from '@/components/shared/vender'
 import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
 import { unicaOpcao } from '@/lib/uma-opcao'
@@ -71,6 +73,10 @@ export interface CheckoutPlan {
    * do plano vai para quem vendeu. Sem a lista, o campo não aparece.
    */
   equipe?: MembroDaVenda[]
+  /** A13 da 13ª: quem vendeu, guardado no plano desde a documentação. */
+  vendidoPor?: string | null
+  /** C42: a "Venda de plano" da clínica (%), para dizer a comissão antes de vender. */
+  comissaoDoPlanoPct?: number | null
   /**
    * A36 da 9ª simulação: o contrato de plano JÁ ASSINADO e o pagamento que ele
    * diz. Reabrir o checkout zerava o pagamento na tela e mantinha o "Assinado":
@@ -107,6 +113,13 @@ interface Props {
 }
 
 // -- Helpers -------------------------------------------------------------------
+
+/** C42: a comissão de venda de quem vendeu o plano, antes de vender (a da pessoa; sem ela, a "Venda de plano" da clínica). */
+function comissaoDaVendaDoPlano(plan: CheckoutPlan, vendedorId: string): string | null {
+  const quem = (plan.equipe ?? []).find(m => m.id === vendedorId)
+  if (!quem) return null
+  return textoDaComissaoDaVenda({ tipo: 'PLANO', pessoa: { nome: quem.nome, pct: quem.comissaoVendaPct }, itens: [{ regra: null }], clinicaPct: plan.comissaoDoPlanoPct ?? null })
+}
 
 function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -178,6 +191,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [bandeira,      setBandeira]      = useState('')
   // Até quantas vezes a clínica parcela no crédito (D-15).
   const opcoesDeVezes = useOpcoesDeVezes()
+  // C38: o crediário até o limite da rede (padrão 12).
+  const opcoesDeParcelas = useOpcoesDeParcelas()
   // O atendimento que gerou o plano entra junto quando algo é recebido agora.
   const recebeHoje   = !!plan.atendimentoDeHoje && (formaPgto === 'AVISTA' || formaPgto === 'PARCELADO')
   const precoDeHoje  = plan.atendimentoDeHoje?.preco ?? 0
@@ -315,7 +330,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     setPerguntaDoVendedor(null)
     setSubstitui(null)
     startPreparar(async () => {
-      const r = await prepararDocumentosDoCheckout(plan.id, montarPagamento(), descontoDoEstado(desconto), { substituirContrato })
+      const r = await prepararDocumentosDoCheckout(plan.id, montarPagamento(), descontoDoEstado(desconto), { substituirContrato, ...(temQuemVendeu ? { vendedorId: vendedorId || null } : {}) })
       if (r.error) { setError(r.error); return }
       if (r.substituiContrato) { setSubstitui(r.substituiContrato); return }
       setDocs(r.itens ?? [])
@@ -360,6 +375,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         if (p.forma === 'A_RECEBER' && p.vencimento) setPrimeiroVenc(dia(p.vencimento))
       }
       if (plan.contratoAssinado.desconto > 0) setDesconto(estadoDoDesconto(plan.contratoAssinado.desconto))
+    }
+    // A13 da 13ª: sem o passo guardado (outra aba, outro dia), quem vendeu é o
+    // que ficou no plano na documentação — o que a pessoa escolheu continua escolhido.
+    if (!(r && (r.step > 0 || !plan.contratoAssinado)) && plan.vendidoPor && (plan.equipe ?? []).some(m => m.id === plan.vendidoPor)) {
+      setVendedorId(plan.vendidoPor)
     }
     setPassoLido(true)
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -700,6 +720,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         {temQuemVendeu && (
           <div data-quem-vendeu-do-plano style={{ marginBottom: 16, maxWidth: 420 }}>
             <CampoQuemVendeu equipe={plan.equipe ?? []} valor={vendedorId}
+              comissao={comissaoDaVendaDoPlano(plan, vendedorId)}
               aoMudar={id => { setVendedorId(id); setSemVendedor(false); setPerguntaDoVendedor(null) }} />
           </div>
         )}
@@ -770,7 +791,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               <div>
                 <label htmlFor="checkout-parcelas-do-saldo" style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Parcelas do saldo</label>
                 <select id="checkout-parcelas-do-saldo" value={parcelas} onChange={e => setParcelas(Number(e.target.value))} className="field" style={{ marginTop: 5 }}>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
+                  {opcoesDeParcelas.map(n => (
                     <option key={n} value={n}>{n}x</option>
                   ))}
                 </select>

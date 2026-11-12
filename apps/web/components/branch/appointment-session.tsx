@@ -52,7 +52,7 @@ import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
-import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { useOpcoesDeVezes, useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -833,6 +833,8 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
   const [vezes,   setVezes]   = useState(1)
   const [bandeira, setBandeira] = useState('')
   const opcoesDeVezes = useOpcoesDeVezes()
+  // C38: o crediário até o limite da rede (padrão 12; era até 48, calado).
+  const opcoesDeParcelas = useOpcoesDeParcelas()
   const [venc,    setVenc]    = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() + 1)
     return d.toISOString().slice(0, 10)
@@ -957,9 +959,10 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                         value={entrada} onChange={e => setEntrada(Math.max(0, Number(e.target.value)))} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <label className="field-label">Parcelas</label>
-                      <input type="number" className="field" min={1} max={48}
-                        value={parcelas} onChange={e => setParcelas(Math.max(1, Number(e.target.value)))} />
+                      <label className="field-label" htmlFor="plano-parcelas-do-saldo">Parcelas</label>
+                      <select id="plano-parcelas-do-saldo" className="field" value={parcelas} onChange={e => setParcelas(Number(e.target.value))}>
+                        {opcoesDeParcelas.map(n => <option key={n} value={n}>{n}x</option>)}
+                      </select>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

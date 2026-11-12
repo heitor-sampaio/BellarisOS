@@ -18,6 +18,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDoMembroDaVenda, quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
+import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao } from '@/lib/checkout/pagamento'
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
@@ -169,6 +170,9 @@ async function venderPacoteUmaVez(
     const reais = descontoEmReais(preco, d.data)
     const vendido = Math.round((preco - reais) * 100) / 100
     const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
+    // C38: o crediário até o limite da rede.
+    const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, lido.data)
+    if (recusaDasParcelas) return { error: recusaDasParcelas }
     if (recusaDaEntrada) return { error: recusaDaEntrada }
 
     // Quem vendeu (com-06): leva a comissão de venda do pacote; vazio, só com a confirmação.

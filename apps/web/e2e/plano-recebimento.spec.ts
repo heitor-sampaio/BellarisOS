@@ -83,7 +83,8 @@ test.describe.serial('receber o plano no atendimento', () => {
     await modal.getByLabel('Forma de pagamento').selectOption('PIX')
     const numeros = modal.locator('input[type="number"]')
     await numeros.nth(0).fill('100')   // Entrada (R$)
-    await numeros.nth(1).fill('2')     // Parcelas
+    // C38 (F67): as parcelas são um seletor, até o limite do crediário da rede.
+    await modal.getByLabel('Parcelas', { exact: true }).selectOption('2')
     const chamada = capturarAcao(page, corpo => corpo.includes(c!.plano) && corpo.includes(c!.appt))
     await modal.getByRole('button', { name: 'Confirmar recebimento' }).click()
     recebimento = await chamada

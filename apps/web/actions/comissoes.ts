@@ -1,5 +1,8 @@
 'use server'
 
+import { CREDIARIO_PADRAO, TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
+import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
+
 /**
  * Comissões — a configuração da rede, as taxas da maquininha e as regras de
  * cada profissional (padrão + exceções por procedimento). Decisões do Heitor
@@ -102,6 +105,37 @@ export async function salvarMaximoDeVezes(entrada: unknown): Promise<Resultado> 
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
+}
+
+/**
+ * Até quantas parcelas a clínica divide o crediário ("entrada + parcelas") —
+ * C38 da F67 (a D10 mudada pelo Heitor: "Decisão da rede"). Padrão 12; vale no
+ * Vender, no checkout e no check-in do plano. Da rede inteira, como o
+ * "Parcelar no crédito até".
+ */
+export async function salvarMaximoDeParcelas(entrada: unknown): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
+    assertPermission(ctx, 'financial', 'MANAGE')
+    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'O crediário vale para a rede inteira: quem muda é quem administra a rede.') }
+    const n = entrada === null || entrada === '' ? CREDIARIO_PADRAO : Number(entrada)
+    if (!(Number.isInteger(n) && n >= 1 && n <= TETO_DO_CREDIARIO)) return { error: `Escolha de 1 a ${TETO_DO_CREDIARIO} parcelas.` }
+    const linhas = await gravar(createAdminClient().from('tenants')
+      .update({ crediario_max_parcelas: n }).eq('id', ctx.tenantId!).select('id'), 'salvar o limite de parcelas do crediário')
+    if (!linhas?.length) return { error: 'Rede não encontrada.' }
+    revalidar()
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/** Até quantas parcelas o seletor do crediário oferece (C38). Leitura da própria rede; sem rede, o padrão. */
+export async function maximoDeParcelasNoCrediario(): Promise<number> {
+  const ctx = await getTenantContext()
+  if (!ctx.tenantId) return CREDIARIO_PADRAO
+  return maximoDeParcelasDaRede(ctx.tenantId)
 }
 
 /**

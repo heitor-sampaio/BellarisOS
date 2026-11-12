@@ -44,6 +44,7 @@ export function comMotivoDoDesconto(lancamentos: Lancamento[], motivo: string | 
 }
 
 const METODOS = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'INTERNAL_CREDIT'] as const
+import { TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
 const BANDEIRA = z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).optional()
 const data = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'Data inválida.')
 
@@ -52,7 +53,8 @@ export const EntradaDoPagamento = z.discriminatedUnion('forma', [
   z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA }),
   z.object({
     forma: z.literal('PARCELADO'), metodo: z.enum(METODOS),
-    entrada: z.number().min(0), parcelas: z.number().int().min(1).max(12), primeiroVencimento: data, bandeira: BANDEIRA,
+    // C38: o limite é da rede (`recusaDasParcelasDaRede`); aqui, só o teto do registro.
+    entrada: z.number().min(0), parcelas: z.number().int().min(1).max(TETO_DO_CREDIARIO), primeiroVencimento: data, bandeira: BANDEIRA,
     /** D5: as vezes na maquininha da ENTRADA no crédito. */
     vezes: z.number().int().min(1).max(12).optional(),
   }),

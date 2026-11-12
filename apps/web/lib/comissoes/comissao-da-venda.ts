@@ -19,29 +19,32 @@ import { formatBRL } from '@estetica-os/utils'
 
 export interface RegraDeVenda { tipo: 'PERCENTAGE' | 'FIXED_AMOUNT'; valor: number }
 type Origem = 'ITEM' | 'PESSOA' | 'CLINICA'
+type TipoDaVenda = 'PACOTE' | 'PRODUTO' | 'PRE_PAGO' | 'PLANO'
 
 const num = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
 
-function regraEmTexto(r: RegraDeVenda, tipo: 'PACOTE' | 'PRODUTO' | 'PRE_PAGO'): string {
+function regraEmTexto(r: RegraDeVenda, tipo: TipoDaVenda): string {
   if (r.tipo === 'PERCENTAGE') return `${num(r.valor)}% do vendido`
   return tipo === 'PRODUTO' ? `${formatBRL(r.valor)} por unidade` : `${formatBRL(r.valor)} fixo`
 }
 
 export function textoDaComissaoDaVenda(o: {
-  tipo: 'PACOTE' | 'PRODUTO' | 'PRE_PAGO'
+  /** O plano (C42 da F67): a da pessoa; sem ela, a "Venda de plano" da clínica (`plano_comissao_de_venda`). */
+  tipo: TipoDaVenda
   /** Um por item: o pacote e o pré-pago têm um; o produto, um por produto do kit. */
   itens: { nome?: string; regra: RegraDeVenda | null }[]
   pessoa: { nome: string; pct: number | null | undefined }
-  /** A "Venda de produto" da clínica (só no produto). */
+  /** A "Venda de produto" (no produto) ou a "Venda de plano" (no plano) da clínica. */
   clinicaPct?: number | null
 }): string | null {
   const daPessoa = o.pessoa.pct
   const resolvidos: ({ regra: RegraDeVenda; de: Origem } | null)[] = []
   for (const it of o.itens) {
-    if (o.tipo !== 'PRE_PAGO' && it.regra && it.regra.valor > 0) { resolvidos.push({ regra: it.regra, de: 'ITEM' }); continue }
+    // C40 (D13): a regra do item vence mesmo com 0% — o 0 é a escolha de não pagar.
+    if (o.tipo !== 'PRE_PAGO' && o.tipo !== 'PLANO' && it.regra) { resolvidos.push({ regra: it.regra, de: 'ITEM' }); continue }
     if (daPessoa === undefined) return null
     if (daPessoa != null && daPessoa > 0) { resolvidos.push({ regra: { tipo: 'PERCENTAGE', valor: daPessoa }, de: 'PESSOA' }); continue }
-    if (o.tipo === 'PRODUTO' && o.clinicaPct != null && o.clinicaPct > 0) {
+    if ((o.tipo === 'PRODUTO' || o.tipo === 'PLANO') && o.clinicaPct != null && o.clinicaPct > 0) {
       resolvidos.push({ regra: { tipo: 'PERCENTAGE', valor: o.clinicaPct }, de: 'CLINICA' }); continue
     }
     resolvidos.push(null)
@@ -53,6 +56,8 @@ export function textoDaComissaoDaVenda(o: {
       ? `${nome} não tem comissão de venda: o pré-pago usa a comissão de venda da pessoa (Equipe → Comissão).`
       : o.tipo === 'PACOTE'
         ? `${nome} não tem comissão de venda neste pacote: nem o pacote nem ela têm regra de venda.`
+        : o.tipo === 'PLANO'
+          ? `${nome} não tem comissão de venda neste plano: nem ela nem a clínica ("Venda de plano") têm regra de venda.`
         : `${nome} não tem comissão de venda nestes produtos: nem o produto, nem ela, nem a clínica têm regra de venda.`
   }
   const deOnde = (de: Origem) => de === 'ITEM' ? (o.tipo === 'PRODUTO' ? 'do produto' : 'do pacote') : de === 'PESSOA' ? `da ${nome}` : 'da clínica'

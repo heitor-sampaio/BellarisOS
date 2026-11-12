@@ -30,12 +30,14 @@ export async function montarCheckoutPlan(
   veClinico: (professionalId: string | null) => boolean = () => false,
   /** Quem abre o checkout (o "(você)" do "Quem vendeu"). */
   euId: string | null = null,
+  /** A18 da 12ª: quem vê a comissão de todos (`veComissaoDeTodos`) lê a de cada um no "Quem vendeu"; os outros, só a própria. */
+  veComissoes = false,
 ): Promise<{ plan?: CheckoutPlan; clientId?: string; error?: string }> {
   const admin = createAdminClient()
 
   const planRaw = await ler(admin
     .from('treatment_plans')
-    .select('id, status, professional_notes, professional_id, client_id, branch_id, clients(name, document, documento_numero, phone)')
+    .select('id, status, professional_notes, professional_id, client_id, branch_id, vendido_por, clients(name, document, documento_numero, phone)')
     .eq('id', planId)
     .eq('branch_id', branchId)
     .maybeSingle(), 'carregar o plano do checkout')
@@ -48,7 +50,7 @@ export async function montarCheckoutPlan(
   type RawClient = { name: string; document: string | null; documento_numero: string | null; phone: string | null }
   const cli = planRaw.clients as unknown as RawClient | null
 
-  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes, equipe, contratoAssinado, contratoSemDocumento] = await Promise.all([
+  const [{ sessions }, precos, professionalsRaw, medRecordRaw, branchesRaw, atendimentoDeHoje, pacotes, equipe, contratoAssinado, contratoSemDocumento, configDaComissao] = await Promise.all([
     getTreatmentPlanSessions(planId),
     // O total é o de ANTES do desconto: depois de um checkout que falhou no
     // meio, os preços do plano já estão rateados, e o desconto é dado de novo
@@ -61,11 +63,13 @@ export async function montarCheckoutPlan(
     // Os pacotes à venda na unidade, para sugerir o equivalente (2026-10-21).
     redeTemRecurso(tenantId, 'pacotes').then(tem => tem ? catalogoDePacotes(tenantId, { branchId, soAtivos: true }) : []),
     // "Quem vendeu" (decisão 4 da 7ª): a equipe que alcança a unidade, como nas outras vendas.
-    equipeDaVenda(tenantId, branchId, euId),
+    equipeDaVenda(tenantId, branchId, euId, veComissoes),
     // A36 da 9ª: o contrato já assinado — o checkout parte do pagamento dele.
     contratoAssinadoDoPlano(tenantId, planId),
     // A35 da 9ª: o contrato vai sem o documento da cliente? Avisa antes de emitir.
     contratoSemDocumentoDaCliente(tenantId, cli),
+    // C42: a "Venda de plano" da clínica, para dizer a comissão antes de vender.
+    ler(admin.from('commission_configs').select('plano_pct').eq('tenant_id', tenantId).maybeSingle(), 'ler a comissão de venda do plano'),
   ])
 
   return {
@@ -89,6 +93,9 @@ export async function montarCheckoutPlan(
       atendimentoDeHoje,
       pacoteEquivalente: pacoteEquivalente(sessions, precos.subtotal, pacotes),
       equipe,
+      // A13 da 13ª: quem vendeu, guardado desde a documentação, volta em outra aba.
+      vendidoPor:        (planRaw.vendido_por as string | null) ?? null,
+      comissaoDoPlanoPct: configDaComissao?.plano_pct != null ? Number(configDaComissao.plano_pct) : null,
       contratoAssinado,
       contratoSemDocumento,
     },
