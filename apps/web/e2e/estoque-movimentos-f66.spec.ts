@@ -187,3 +187,22 @@ test('C76: o fornecedor da entrada vira a lista da rede — o mesmo nome, sem ca
   })
   expect((await db().from('fornecedores').select('nome').eq('id', lista![0]!.id).single<{ nome: string }>()).data!.nome).toBe('Distribuidora Sul Ltda')
 })
+
+test('C19: as "Validades próximas" do Relatório da unidade são os lotes DELA — o da outra unidade não aparece', async ({ browser }) => {
+  const b = db()
+  const daqui = await b.from('products').insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Creme A ${marca}`, unit: 'un', cost_price: 5, uso: 'INSUMO' }).select('id').single<{ id: string }>()
+  const dali  = await b.from('products').insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Creme B ${marca}`, unit: 'un', cost_price: 5, uso: 'INSUMO' }).select('id').single<{ id: string }>()
+  const em10 = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 10 * 864e5))
+  for (const [produto, unidade, lote] of [[daqui.data!.id, rede.branchId, `CA${marca}`], [dali.data!.id, unidadeB, `CB${marca}`]] as const) {
+    const r = await b.rpc('estoque_entrada', {
+      p_produto: produto, p_unidade: unidade, p_quantidade: 1, p_custo: 5, p_observacao: null,
+      p_lote: lote, p_validade: em10, p_autor: 'e2e',
+    })
+    expect(r.error).toBeNull()
+  }
+  await como(browser, dona, async p => {
+    await p.goto(`/${slug}/reports?tab=estoque&period=today`)
+    await expect(p.getByText(`${PREFIXO} Creme A ${marca}`).first(), 'o lote desta unidade aparece').toBeVisible()
+    await expect(p.getByText(`${PREFIXO} Creme B ${marca}`), 'o lote da outra unidade não').toHaveCount(0)
+  })
+})

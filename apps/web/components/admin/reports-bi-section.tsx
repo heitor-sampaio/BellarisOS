@@ -6,7 +6,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
 import { pontosDaEvolucao } from '@/lib/metrics/evolucao'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
-import { addDaysTZ } from '@/lib/datetime'
+import { lotesVencendoDoRecorte, type LoteVencendo } from '@/lib/estoque/lotes'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { getAtendimentosSemReceita } from '@/lib/metrics/fechamento-extra'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
@@ -156,18 +156,14 @@ export async function ReportsBiSection({
       aba: tab, granularidade: granularity, recorte,
     }),
 
-    // Lotes vencendo em ≤ 30 dias.
-    // O filtro por tenant vem do produto: sem ele esta consulta rodava com o
-    // service role (RLS desligada) e trazia lotes de OUTROS tenants.
+    // Lotes vencendo em ≤ 30 dias: a MESMA conta do cartão "Validade em 30
+    // dias" do Estoque e do dashboard (`lotesVencendoDoRecorte`) — nas
+    // unidades do RECORTE, pelo dia da unidade, só produto ativo (C19 do
+    // levantamento, F66: lia os lotes da rede inteira, também os da outra
+    // unidade, com 30 dias contados em UTC).
     needBatches
-      ? ler(admin.from('product_batches')
-          .select('id, product_id, batch_number, expires_at, quantity, products!inner(name, tenant_id)')
-          .eq('products.tenant_id', ctx.tenantId!)
-          .lte('expires_at', addDaysTZ(now, 30).toISOString())
-          .gt('quantity', 0)
-          .order('expires_at', { ascending: true })
-          .limit(20), 'carregar os lotes vencendo')
-      : Promise.resolve([] as unknown[]),
+      ? lotesVencendoDoRecorte(ctx.tenantId!, branchIds, 30, now)
+      : Promise.resolve([] as LoteVencendo[]),
 
     // Parcelas a receber (aba financeiro): cada parcela é um lançamento desde
     // 2026-09-30. Lia `installments`, que não sabia de baixa nem de estorno — a
@@ -247,7 +243,10 @@ export async function ReportsBiSection({
     ? await getQuemAtende({ tenantId, branchIds, professionalId: profAgenda })
     : undefined
 
-  const productBatches = (productBatchesRaw ?? []) as unknown as LinhaLote[]
+  const productBatches: LinhaLote[] = (productBatchesRaw as LoteVencendo[]).map(l => ({
+    id: l.id, product_id: l.produtoId, batch_number: l.numero, expires_at: l.validade ?? '',
+    quantity: l.quantidade, products: { name: l.produto, tenant_id: ctx.tenantId! },
+  }))
   const installments   = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
     .filter(i => branchIds.includes(i.branch_id))
 
