@@ -22,7 +22,12 @@ describe('a pergunta "Já existe a ficha de X"', () => {
     const r = respostaDoJaExiste(`cadastrar:${A} lixo cadastrar:${B.toUpperCase()} atualizar:${B}`)
     expect([...r.cadastrar]).toEqual([A, B])
     expect(r.atualizar).toBe(B)
-    expect(respostaDoJaExiste(null)).toEqual({ cadastrar: new Set(), atualizar: null })
+    expect(respostaDoJaExiste(null)).toEqual({ cadastrar: new Set(), atualizar: null, usar: null })
+  })
+  it('C66: "usar:<id>" é a ficha como está (quem não tem Clientes em Gerenciar)', () => {
+    const r = respostaDoJaExiste(`usar:${A.toUpperCase()}`)
+    expect(r.usar).toBe(A)
+    expect(r.atualizar).toBeNull()
   })
   it('a próxima ficha sem resposta: o "cadastrar mesmo assim" vale para aquela ficha, e nunca para o CPF', () => {
     const fichas = [ficha(A), ficha(B, { motivo: 'CPF', podeCadastrarMesmoAssim: false })]
