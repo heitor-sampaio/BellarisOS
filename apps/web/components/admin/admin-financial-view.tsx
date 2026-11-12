@@ -114,6 +114,7 @@ interface AdminTx {
   cartao_bandeira?:   string | null
   desconto_valor?:    number | null
   profissional_nome?: string | null
+  vendedor_nome?: string | null
 }
 
 interface Props {

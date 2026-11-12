@@ -13,9 +13,10 @@ import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
  *   (`sale_discount`); o da venda (produto, pacote, pré-pago, plano) mora na
  *   venda e sai UMA vez — no lançamento que leva o motivo, senão no primeiro da
  *   venda (a entrada, a parcela 1) —, não em cada parcela.
- * - A PROFISSIONAL: a do atendimento; na venda, quem vendeu (`sold_by`; no
- *   plano, `vendido_por`, senão a dona do plano) — a mesma pessoa da coluna
- *   Profissional das Vendas.
+ * - A PROFISSIONAL: quem ATENDE — a do atendimento; no plano, a dona do
+ *   plano; no pacote, a responsável (`responsavel_id`). E QUEM VENDEU numa
+ *   coluna à parte (A12 da 13ª, 2026-11-12: a recepcionista que vendeu o
+ *   pacote saía como "Profissional"): `sold_by`; no plano, `vendido_por`.
  */
 export interface LancamentoParaOCsv {
   id: string
@@ -30,18 +31,22 @@ export interface LancamentoParaOCsv {
   parcela_numero?: number | null
 }
 
-type Venda = { id: string; desconto: number | string | null; quem: string | null }
+type Venda = { id: string; desconto: number | string | null; quem: string | null; atende: string | null }
+export interface ExtraDoCsv { desconto: number | null; profissional: string | null; vendedor: string | null }
 
-export async function extrasDoCsv(tenantId: string, linhas: LancamentoParaOCsv[]): Promise<Record<string, { desconto: number | null; profissional: string | null }>> {
+export async function extrasDoCsv(tenantId: string, linhas: LancamentoParaOCsv[]): Promise<Record<string, ExtraDoCsv>> {
   const admin = createAdminClient()
   const ids = (k: keyof LancamentoParaOCsv) => [...new Set(linhas.map(l => l[k] as string | null | undefined).filter((v): v is string => !!v))]
-  /** `quem`: as colunas de quem vendeu, na ordem (a primeira que tiver alguém vale). */
-  const lerVendas = async (tabela: string, quem: string[], lista: string[]): Promise<Venda[]> => {
+  /** `quem`: a coluna de quem vendeu; `atende`: a de quem atende (a dona do plano, a responsável do pacote). */
+  const lerVendas = async (tabela: string, quem: string, atende: string | null, lista: string[]): Promise<Venda[]> => {
     const saida: Venda[] = []
     for (let i = 0; i < lista.length; i += 150) {
-      const lote = await ler(admin.from(tabela).select(`id, desconto, ${quem.join(', ')}`).in('id', lista.slice(i, i + 150)),
+      const lote = await ler(admin.from(tabela).select(`id, desconto, ${quem}${atende ? `, ${atende}` : ''}`).in('id', lista.slice(i, i + 150)),
         `ler as vendas de ${tabela}`) as Record<string, unknown>[] | null
-      for (const r of lote ?? []) saida.push({ id: String(r.id), desconto: r.desconto as number | null, quem: (quem.map(c => r[c]).find(v => !!v) ?? null) as string | null })
+      for (const r of lote ?? []) saida.push({
+        id: String(r.id), desconto: r.desconto as number | null,
+        quem: (r[quem] ?? null) as string | null, atende: atende ? (r[atende] ?? null) as string | null : null,
+      })
     }
     return saida
   }
@@ -55,16 +60,16 @@ export async function extrasDoCsv(tenantId: string, linhas: LancamentoParaOCsv[]
     return saida
   }
   const [produtos, pacotes, prePagos, planos, atendimentos] = await Promise.all([
-    lerVendas('product_sales', ['sold_by'], ids('product_sale_id')),
-    lerVendas('client_packages', ['sold_by'], ids('client_package_id')),
-    lerVendas('procedure_sales', ['sold_by'], ids('procedure_sale_id')),
-    lerVendas('treatment_plans', ['vendido_por', 'professional_id'], ids('treatment_plan_id')),
+    lerVendas('product_sales', 'sold_by', null, ids('product_sale_id')),
+    lerVendas('client_packages', 'sold_by', 'responsavel_id', ids('client_package_id')),
+    lerVendas('procedure_sales', 'sold_by', null, ids('procedure_sale_id')),
+    lerVendas('treatment_plans', 'vendido_por', 'professional_id', ids('treatment_plan_id')),
     lerAtendimentos(ids('appointment_id')),
   ])
   const venda = new Map<string, Venda>()
   for (const v of [...produtos, ...pacotes, ...prePagos, ...planos]) venda.set(v.id, v)
   const nomes = await nomesDosRegistros(tenantId, {
-    membros: [...[...venda.values()].map(v => v.quem), ...atendimentos.values()],
+    membros: [...[...venda.values()].flatMap(v => [v.quem, v.atende]), ...atendimentos.values()],
   })
 
   // O lançamento de cada venda que leva o desconto: o do motivo, senão o primeiro.
@@ -81,15 +86,17 @@ export async function extrasDoCsv(tenantId: string, linhas: LancamentoParaOCsv[]
     if (!atual || antes(l, atual) < 0) primeiro.set(v, l)
   }
 
-  const saida: Record<string, { desconto: number | null; profissional: string | null }> = {}
+  const saida: Record<string, ExtraDoCsv> = {}
   for (const l of linhas) {
     const avulso = Number(l.sale_discount ?? 0)
     const v = daVenda(l)
     const daVendaAqui = v && primeiro.get(v)?.id === l.id ? Number(venda.get(v)?.desconto ?? 0) : 0
-    const quem = l.appointment_id ? atendimentos.get(l.appointment_id) ?? null : v ? venda.get(v)?.quem ?? null : null
+    const atende = l.appointment_id ? atendimentos.get(l.appointment_id) ?? null : v ? venda.get(v)?.atende ?? null : null
+    const vendeu = !l.appointment_id && v ? venda.get(v)?.quem ?? null : null
     saida[l.id] = {
       desconto: avulso > 0 ? avulso : daVendaAqui > 0 ? daVendaAqui : null,
-      profissional: quem ? nomes.membros[quem] ?? null : null,
+      profissional: atende ? nomes.membros[atende] ?? null : null,
+      vendedor: vendeu ? nomes.membros[vendeu] ?? null : null,
     }
   }
   return saida

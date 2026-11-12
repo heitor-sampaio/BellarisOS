@@ -24,6 +24,7 @@ import {
   TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda,
 } from '@/lib/metrics/vendas-comum'
 import type { SemReceita } from '@/lib/metrics/fechamento-extra'
+import { notasDoTop5 } from '@/lib/relatorios/nota-do-top5'
 import { Download } from 'lucide-react'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
@@ -408,9 +409,11 @@ function TabOverview(p: ReportsBiProps) {
         )}
         <SCard title="Top 5 Procedimentos por receita dos atendimentos" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={topProcs} />
+          <NotasDoTop5 notas={notasDoTop5(topProcs.map(x => x.name), p.semReceita?.porProcedimento)} />
         </SCard>
         <SCard title="Top 5 Profissionais por receita dos atendimentos" dica={DEFINICOES.receitaDosAtendimentos}>
           <HBarChart data={topProfs} color={CHART_COLORS[1]} />
+          <NotasDoTop5 notas={notasDoTop5(topProfs.map(x => x.name), p.semReceita?.porProfissional)} />
         </SCard>
         <SCard title="Forma de Pagamento">
           <DonutChart data={byPayment} />
@@ -929,6 +932,16 @@ function AgeRankCard({ data }: {
 // TAB: PROCEDIMENTOS
 // -----------------------------------------------------------------------------
 /** "R$ 160,00 concluídos sem pagamento (1)" e "R$ 450,00 pagos com crédito na clínica (não é receita)" — A47/A43 da 8ª. */
+/** A11 da 13ª: o Top 5 da Visão geral diz o pago com crédito na clínica, como as tabelas. */
+function NotasDoTop5({ notas }: { notas: string[] }) {
+  if (notas.length === 0) return null
+  return (
+    <div data-top5-com-credito style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 500, marginTop: 6 }}>
+      {notas.map(n => <p key={n}>{n}</p>)}
+    </div>
+  )
+}
+
 function NotaSemReceita({ s }: { s: SemReceita | undefined }) {
   if (!s || (s.semPagamento.n === 0 && s.comCredito.valor <= 0)) return null
   return (

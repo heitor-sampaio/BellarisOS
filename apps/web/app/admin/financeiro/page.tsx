@@ -246,6 +246,7 @@ export default async function AdminFinanceiroPage({
     no_caixa: taxas[t.id]?.noCaixa ?? null,
     desconto_valor: extras[t.id]?.desconto ?? null,
     profissional_nome: extras[t.id]?.profissional ?? null,
+    vendedor_nome: extras[t.id]?.vendedor ?? null,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
     vencida: !t.is_paid && situacaoDoVencimento(t.due_date, new Date(), fuso) === 'VENCIDA',
     branchName: branchNameMap[t.branch_id] ?? '—',

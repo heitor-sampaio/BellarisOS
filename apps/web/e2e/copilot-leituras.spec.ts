@@ -112,6 +112,8 @@ test('o dono lê a agenda, os horários livres, a ficha, o financeiro e o estoqu
     expect(texto).not.toContain('12345678901')
     expect(texto).not.toContain('NOTA-CLINICA-SECRETA')
     expect((ficha.saida!.proximosAtendimentos as unknown[]).length).toBe(2)
+    // C5 (F67): a fidelidade da rede está desligada — nenhum sinal de pontos.
+    expect(ficha.saida, 'sem pontos com o programa desligado').not.toHaveProperty('pontosDeFidelidade')
 
     const aniversario = await chamar(p, 'clientes', { filtro: 'aniversariantes', mes: Number(AMANHA.slice(5, 7)) })
     expect(JSON.stringify(aniversario.saida)).toContain(clienteId)

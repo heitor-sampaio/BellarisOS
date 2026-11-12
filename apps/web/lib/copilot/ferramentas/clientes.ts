@@ -81,7 +81,9 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
         : Promise.resolve(null),
       // Pontos por unidade quando a rede configurou assim (a mesma regra da agenda).
       can(c.ctx, 'loyalty', 'VIEW') && temRecurso(c.ctx, 'fidelidade')
-        ? configDaRede(c.ctx.tenantId!, c.admin).then(cfg => saldoDoCliente(ficha.id, cfg.scope_per_branch ? (c.ctx.branchId ?? null) : null, c.admin))
+        // C5: com o programa desligado, nenhum sinal de pontos (fidelidade.md).
+        ? configDaRede(c.ctx.tenantId!, c.admin).then(cfg => cfg.enabled
+            ? saldoDoCliente(ficha.id, cfg.scope_per_branch ? (c.ctx.branchId ?? null) : null, c.admin) : null)
         : Promise.resolve(null),
     ])
     type Ag = { id: string; scheduled_at: string; status: string; procedure_id: string; professional_id: string | null; branch_id: string }

@@ -106,8 +106,8 @@ describe('A44: o CSV com bandeira, desconto, profissional e unidade', () => {
         forma: 'CREDIT_CARD', vezes: 6, bandeira: 'VISA', situacao: 'PAGO', valor: 630, desconto: 70, profissional: 'Bianca', unidade: 'Acácia Adrianópolis' },
     ])
     const l = csv.slice(1).split('\r\n')
-    expect(l[0]).toBe('Data;Descrição;Cliente;Unidade;Profissional;Categoria;Tipo;Forma;Bandeira;Situação;Valor;Conta no caixa;Desconto;Taxa da maquininha;Líquido;Vencimento;Pago em;Fornecedor (se informado);Nota fiscal (se informada)')
-    expect(l[1]).toBe('10/11/2026;Plano — entrada;Patrícia;Acácia Adrianópolis;Bianca;Procedimento;Receita;Crédito 6x;Visa;Pago;630,00;Sim;70,00;;;;;;')
+    expect(l[0]).toBe('Data;Descrição;Cliente;Unidade;Profissional;Quem vendeu;Categoria;Tipo;Forma;Bandeira;Situação;Valor;Conta no caixa;Desconto;Taxa da maquininha;Líquido;Vencimento;Pago em;Fornecedor (se informado);Nota fiscal (se informada)')
+    expect(l[1]).toBe('10/11/2026;Plano — entrada;Patrícia;Acácia Adrianópolis;Bianca;;Procedimento;Receita;Crédito 6x;Visa;Pago;630,00;Sim;70,00;;;;;;')
   })
   it('o Fechamento: cada bandeira do cartão, e se o dia foi fechado', () => {
     const base = {

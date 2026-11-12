@@ -154,6 +154,7 @@ export default async function FinancialPage({
     no_caixa: taxas[t.id as string]?.noCaixa ?? null,
     desconto_valor: extras[t.id as string]?.desconto ?? null,
     profissional_nome: extras[t.id as string]?.profissional ?? null,
+    vendedor_nome: extras[t.id as string]?.vendedor ?? null,
     unidade_nome: branch.name as string,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
     vencida: !t.is_paid && situacaoDoVencimento(t.due_date as string | null, new Date(), fuso) === 'VENCIDA',

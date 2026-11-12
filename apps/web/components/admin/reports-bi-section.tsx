@@ -338,7 +338,7 @@ export async function ReportsBiSection({
         comprasNoEstoque={needInstall ? await getEntradasDeEstoque({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: periodInfo.fullTo }) : undefined}
         quemAtende={quemAtende}
         receitaDaClinica={profAgenda !== null && profDinheiro === null}
-        semReceita={tab === 'procedimentos' || tab === 'profissionais'
+        semReceita={tab === 'procedimentos' || tab === 'profissionais' || tab === 'overview'
           ? await getAtendimentosSemReceita({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate, professionalId: profAgenda })
           : null}
       />

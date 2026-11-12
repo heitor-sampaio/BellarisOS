@@ -130,7 +130,7 @@ test('A44: o Financeiro exporta as movimentações em CSV', async ({ browser }) 
     const fs = await import('node:fs/promises')
     const texto = await fs.readFile((await arquivo.path())!, 'utf8')
     // A44 da 12ª: a Unidade, a Profissional e a Bandeira entraram no cabeçalho.
-    expect(texto).toContain('Data;Descrição;Cliente;Unidade;Profissional;Categoria;Tipo;Forma;Bandeira;Situação;Valor')
+    expect(texto).toContain('Data;Descrição;Cliente;Unidade;Profissional;Quem vendeu;Categoria;Tipo;Forma;Bandeira;Situação;Valor')
     expect(texto).toContain(`Hidratante ${marca}`)
     expect(texto).toContain('89,00')
   })

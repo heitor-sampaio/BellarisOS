@@ -48,3 +48,28 @@ describe('A5 da 13ª: o pacote sem "De venda" próprio diz que vale a regra de q
       .toBe('Venda: a regra de quem vendeu · Execução: regra de cada profissional')
   })
 })
+
+describe('A11 da 13ª: o Top 5 da Visão geral diz o pago com crédito na clínica, como as tabelas', () => {
+  it('uma linha por nome do Top 5 que tem crédito; o resto fica calado', async () => {
+    const { notasDoTop5 } = await import('@/lib/relatorios/nota-do-top5')
+    const zero = { n: 0, valor: 0 }
+    expect(notasDoTop5(['Teresa', 'Sílvia', 'Rosa'], {
+      Teresa: { semPagamento: zero, comCredito: { n: 1, valor: 140 } },
+      Sílvia: { semPagamento: { n: 1, valor: 90 }, comCredito: zero },
+      Outra:  { semPagamento: zero, comCredito: { n: 1, valor: 50 } },
+    }).map(t => t.replace(/ /g, ' '))).toEqual(['Teresa: R$ 140,00 pagos com crédito na clínica (não é receita)'])
+  })
+})
+
+describe('A12 da 13ª: o CSV de lançamentos separa quem atendeu de quem vendeu', () => {
+  it('"Profissional" é quem atendeu, e "Quem vendeu" leva a vendedora', async () => {
+    const { csvDosLancamentos } = await import('@/lib/financeiro/csv-dos-lancamentos')
+    const csv = csvDosLancamentos([
+      { data: '2026-11-10T15:00:00Z', descricao: 'Pacote — 5 limpezas', cliente: 'Rosa', categoria: 'Serviços', tipo: 'INCOME',
+        forma: 'PIX', vezes: null, situacao: 'PAGO', valor: 750, profissional: 'Teresa', vendedor: 'Lia', unidade: 'Batel' },
+    ])
+    const l = csv.slice(1).split('\r\n')
+    expect(l[0]).toContain(';Unidade;Profissional;Quem vendeu;Categoria;')
+    expect(l[1]).toContain(';Batel;Teresa;Lia;Serviços;')
+  })
+})

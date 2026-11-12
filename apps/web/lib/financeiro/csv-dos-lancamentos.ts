@@ -51,6 +51,8 @@ export interface LinhaDoCsv {
   bandeira?:     string | null
   desconto?:     number | null
   profissional?: string | null
+  /** A12 da 13ª: quem vendeu (pacote, pré-pago, produto, plano) — "Profissional" é quem atendeu. */
+  vendedor?:     string | null
 }
 
 const SITUACAO: Record<LinhaDoCsv['situacao'], string> = { PAGO: 'Pago', EM_ABERTO: 'Em aberto', ESTORNADO: 'Estornado' }
@@ -70,14 +72,14 @@ const dia = (iso: string | null | undefined, fuso = 'America/Sao_Paulo') => iso
 // F62b: a Data e o Pago em no dia da unidade (`fuso`, o da tela); o Vencimento
 // é um DIA (âncora ao meio-dia de Brasília) e fica no padrão.
 export function csvDosLancamentos(linhas: LinhaDoCsv[], fuso?: string): string {
-  const cabecalho = ['Data', 'Descrição', 'Cliente', 'Unidade', 'Profissional', 'Categoria', 'Tipo', 'Forma', 'Bandeira', 'Situação', 'Valor', 'Conta no caixa',
+  const cabecalho = ['Data', 'Descrição', 'Cliente', 'Unidade', 'Profissional', 'Quem vendeu', 'Categoria', 'Tipo', 'Forma', 'Bandeira', 'Situação', 'Valor', 'Conta no caixa',
     'Desconto', 'Taxa da maquininha', 'Líquido', 'Vencimento', 'Pago em', 'Fornecedor (se informado)', 'Nota fiscal (se informada)']
   const corpo = linhas.map(l => {
     const sinal = l.tipo === 'EXPENSE' ? -1 : 1
     const conta = l.noCaixa !== undefined ? l.noCaixa != null : l.situacao === 'PAGO' && !l.estorno
     const centavos = l.noCaixa != null ? Math.round(l.noCaixa * 100) : Math.round(l.valor * 100) * sinal
     return [
-      dia(l.data, fuso), l.descricao, l.cliente ?? '', l.unidade ?? '', l.profissional ?? '', l.categoria ?? '',
+      dia(l.data, fuso), l.descricao, l.cliente ?? '', l.unidade ?? '', l.profissional ?? '', l.vendedor ?? '', l.categoria ?? '',
       l.estorno ? 'Estorno' : l.tipo === 'EXPENSE' ? 'Despesa' : 'Receita',
       l.forma ? rotuloDaForma(l.forma, l.vezes) : '',
       (l.forma === 'CREDIT_CARD' || l.forma === 'DEBIT_CARD') && l.bandeira ? nomeDaBandeira(l.bandeira) : '',
@@ -113,7 +115,7 @@ export function linhaDoLancamento(t: {
   cliente?: { name: string } | null
   due_date?: string | null; paid_at?: string | null; fornecedor?: string | null; nota_fiscal?: string | null
   taxa?: number | null; liquido?: number | null; no_caixa?: number | null
-  desconto_valor?: number | null; profissional_nome?: string | null; unidade_nome?: string | null
+  desconto_valor?: number | null; profissional_nome?: string | null; vendedor_nome?: string | null; unidade_nome?: string | null
 }, unidade?: string | null): LinhaDoCsv {
   return {
     data: t.data_de_referencia ?? t.created_at, descricao: t.description, cliente: t.cliente?.name ?? null,
@@ -121,6 +123,7 @@ export function linhaDoLancamento(t: {
     situacao: t.notes === 'Estornada' ? 'ESTORNADO' : t.is_paid ? 'PAGO' : 'EM_ABERTO',
     valor: Number(t.amount), estorno: t.category === 'Estorno', unidade: unidade ?? t.unidade_nome ?? null,
     bandeira: t.cartao_bandeira ?? null, desconto: t.desconto_valor ?? null, profissional: t.profissional_nome ?? null,
+    vendedor: t.vendedor_nome ?? null,
     taxa: t.taxa ?? null, liquido: t.liquido ?? null, vencimento: t.due_date ?? null, pagoEm: t.paid_at ?? null,
     fornecedor: t.fornecedor ?? null, nota: t.nota_fiscal ?? null,
     ...(t.no_caixa !== undefined ? { noCaixa: t.no_caixa } : {}),

@@ -323,7 +323,7 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, 
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
           {pontuaProduto
             ? 'O produto vendido na ficha dá pontos pelo valor pago, na mesma conta de pontos por R$ 1 — também quando os procedimentos pontuam por procedimento.'
-            : 'O produto vendido na ficha não dá pontos. Só os atendimentos, pacotes, pré-pagos e planos pontuam.'}
+            : 'O produto vendido na ficha não dá pontos. Os atendimentos, os pacotes, os pré-pagos, os planos e o crédito na clínica vendido pontuam.'}
         </p>
       </Bloco>
 
