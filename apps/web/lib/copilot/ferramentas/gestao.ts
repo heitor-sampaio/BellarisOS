@@ -5,6 +5,9 @@ import { ler } from '@/lib/db'
 import { addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { rotaOportunidade } from '@/lib/rotas'
 import { loteVencido } from '@/lib/estoque/validade'
+import { medidaNoPlural } from '@/lib/estoque/medidas'
+import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
+import { formatarQuantidade } from '@/lib/estoque/situacao'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, UUID, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 
@@ -94,6 +97,27 @@ export const lancamentos: FerramentaDeLeitura<{
   },
 }
 
+/**
+ * O saldo como a prateleira da tela o diz (C5 do levantamento, F66): o produto
+ * com unidade de consumo pelo rendimento ("1 frasco fechado + 1 aberto com 50
+ * UI"), não o `current_stock`, que conta a embalagem aberta inteira ("2
+ * frasco"); a medida no plural.
+ */
+type MedidasLidas = { unit: string | null; consumption_unit: string | null; units_per_package: number | string | null }
+function saldoDaPrateleira(l: { current_stock: number; current_rendimento: number | null }, p: MedidasLidas): string {
+  const rende = p.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 0
+  const un = p.unit ?? ''
+  if (!rende) return saldoNaPrateleira(Number(l.current_stock), 0, un, '').trim()
+  const rend = l.current_rendimento != null ? Number(l.current_rendimento) : Number(l.current_stock) * rende
+  return saldoNaPrateleira(rend, rende, un, p.consumption_unit!)
+}
+/** O mínimo na mesma régua ("2 frascos (200 UI)"). */
+function minimoNaRegua(minimo: number, p: MedidasLidas): string {
+  const rende = p.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 0
+  const un = p.unit ?? ''
+  return `${formatarQuantidade(minimo)} ${medidaNoPlural(un, minimo)}${rende ? ` (${formatarQuantidade(minimo * rende)} ${p.consumption_unit})` : ''}`.trim()
+}
+
 export const estoque: FerramentaDeLeitura<{
   filtro?: 'abaixo_do_minimo' | 'zerados' | 'vencendo' | 'produto'; produto?: string; dias?: number; unidade?: string
 }> = {
@@ -135,7 +159,7 @@ export const estoque: FerramentaDeLeitura<{
           lotes: lotes.map(l => ({
             produto: l.products.name, lote: l.batch_number, vence: l.expires_at.slice(0, 10),
             jaVenceu: loteVencido(l.expires_at, new Date(), fusosDosLotes.get(l.branch_id) ?? fusoDoLote),
-            quantidade: `${Number(l.quantity)} ${l.products.unit ?? ''}`.trim(), unidade: filiais.get(l.branch_id) ?? null,
+            quantidade: `${formatarQuantidade(Number(l.quantity))} ${medidaNoPlural(l.products.unit ?? '', Number(l.quantity))}`.trim(), unidade: filiais.get(l.branch_id) ?? null,
           })),
         },
       }
@@ -145,19 +169,31 @@ export const estoque: FerramentaDeLeitura<{
       // No banco (copilot_estoque_critico): saldo <= mínimo, a régua da tela.
       const criticos = (await ler(c.admin.rpc('copilot_estoque_critico', { p_tenant: c.ctx.tenantId!, p_branch_ids: unidades, p_limite: 60 }), 'ler o estoque crítico') as
         { product_id: string; name: string; unit: string | null; branch_id: string; current_stock: number; min_stock: number }[] | null) ?? []
+      // O rendimento e as medidas de cada linha, para dizer o saldo como a tela.
+      const ids = [...new Set(criticos.map(l => l.product_id))]
+      const extras = ids.length ? ((await ler(c.admin.from('branch_product_stock')
+        .select('product_id, branch_id, current_rendimento, products!inner(unit, consumption_unit, units_per_package, tenant_id)')
+        .in('product_id', ids).in('branch_id', unidades).eq('products.tenant_id', c.ctx.tenantId!), 'ler o rendimento do estoque crítico') as unknown as
+        { product_id: string; branch_id: string; current_rendimento: number | null; products: MedidasLidas }[] | null) ?? []) : []
+      const extra = new Map(extras.map(e => [`${e.product_id}:${e.branch_id}`, e]))
       return {
         dados: {
           filtro,
-          itens: criticos.map(l => ({
-            produto: l.name, produtoId: l.product_id, unidade: filiais.get(l.branch_id) ?? null,
-            saldo: `${Number(l.current_stock)} ${l.unit ?? ''}`.trim(), minimo: Number(l.min_stock),
-          })),
+          itens: criticos.map(l => {
+            const e = extra.get(`${l.product_id}:${l.branch_id}`)
+            const medidas = e?.products ?? { unit: l.unit, consumption_unit: null, units_per_package: null }
+            return {
+              produto: l.name, produtoId: l.product_id, unidade: filiais.get(l.branch_id) ?? null,
+              saldo: saldoDaPrateleira({ current_stock: l.current_stock, current_rendimento: e?.current_rendimento ?? null }, medidas),
+              minimo: Number(l.min_stock), minimoNaTela: minimoNaRegua(Number(l.min_stock), medidas),
+            }
+          }),
         },
       }
     }
 
     let q = c.admin.from('branch_product_stock')
-      .select('current_stock, min_stock, branch_id, products!inner(id, name, unit, tenant_id, is_active)')
+      .select('current_stock, current_rendimento, min_stock, branch_id, products!inner(id, name, unit, consumption_unit, units_per_package, tenant_id, is_active)')
       .in('branch_id', unidades).eq('products.tenant_id', c.ctx.tenantId!).eq('products.is_active', true)
       .order('current_stock').limit(60)
     if (filtro === 'produto') {
@@ -166,14 +202,16 @@ export const estoque: FerramentaDeLeitura<{
     }
     if (filtro === 'zerados') q = q.lte('current_stock', 0)
     const linhas = (await ler(q, 'ler o estoque') as unknown as {
-      current_stock: number; min_stock: number | null; branch_id: string; products: { id: string; name: string; unit: string | null }
+      current_stock: number; current_rendimento: number | null; min_stock: number | null; branch_id: string
+      products: { id: string; name: string } & MedidasLidas
     }[] | null) ?? []
     return {
       dados: {
         filtro,
         itens: linhas.map(l => ({
           produto: l.products.name, produtoId: l.products.id, unidade: filiais.get(l.branch_id) ?? null,
-          saldo: `${Number(l.current_stock)} ${l.products.unit ?? ''}`.trim(), minimo: l.min_stock != null ? Number(l.min_stock) : null,
+          saldo: saldoDaPrateleira(l, l.products), minimo: l.min_stock != null ? Number(l.min_stock) : null,
+          ...(l.min_stock != null && Number(l.min_stock) > 0 ? { minimoNaTela: minimoNaRegua(Number(l.min_stock), l.products) } : {}),
         })),
       },
     }

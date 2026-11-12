@@ -7,7 +7,10 @@ import { origensDaRede } from '@/lib/crm/origens'
 import { ler } from '@/lib/db'
 import { dayKeyTZ } from '@/lib/datetime'
 import { lancarCore, marcarPagoCore, lancamentoAoAlcance, recusaDasVezesDaBaixa, CATEGORIAS_DE_DESPESA, CATEGORIAS_DE_RECEITA, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
-import { entradaDeEstoqueCore, ajusteDeEstoqueCore } from '@/lib/estoque/movimentos'
+import { entradaDeEstoqueCore, ajusteDeEstoqueCore, saldoAgoraEmTexto } from '@/lib/estoque/movimentos'
+import { loteVencido, validadeNaTela } from '@/lib/estoque/validade'
+import { medidaNoPlural } from '@/lib/estoque/medidas'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { criarOportunidadeCore, moverEtapaCore } from '@/lib/crm/oportunidade'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
@@ -173,11 +176,12 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
 }
 
 /** O produto da rede, pelo id ou pelo nome (tem de ser um só). */
-async function resolverProduto(c: ContextoDaFerramenta, pedido: string): Promise<{ id: string; name: string; unit: string | null } | { erro: string }> {
+type ProdutoAchado = { id: string; name: string; unit: string | null; consumption_unit: string | null; units_per_package: number | null }
+async function resolverProduto(c: ContextoDaFerramenta, pedido: string): Promise<ProdutoAchado | { erro: string }> {
   const porId = UUID.safeParse(pedido)
-  let q = c.admin.from('products').select('id, name, unit').eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
+  let q = c.admin.from('products').select('id, name, unit, consumption_unit, units_per_package').eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
   q = porId.success ? q.eq('id', pedido) : q.ilike('name', `%${pedido.replace(/[%_\\]/g, '')}%`)
-  const achados = (await ler(q.limit(8), 'procurar o produto') as { id: string; name: string; unit: string | null }[] | null) ?? []
+  const achados = (await ler(q.limit(8), 'procurar o produto') as ProdutoAchado[] | null) ?? []
   const exato = achados.filter(p => p.name.toLowerCase() === pedido.trim().toLowerCase())
   if (achados.length === 1) return achados[0]!
   if (exato.length === 1) return exato[0]!
@@ -202,15 +206,25 @@ async function saldoDoAjuste(c: ContextoDaFerramenta, productId: string, branchI
   return { embalagens: Math.round(rend / rende * 10_000) / 10_000, consumo: prod!.consumption_unit!, rende }
 }
 
-interface ArgsEntrada { produto: string; quantidade: number; custoUnitario?: number; lote?: string; validade?: string; unidade?: string; observacao?: string }
-interface PayloadEntrada { productId: string; branchId: string; quantidade: number; custoUnitario: number | null; lote: string | null; validade: string | null; observacao: string | null }
+interface ArgsEntrada { produto: string; quantidade: number; custoUnitario?: number; lote?: string; validade?: string; unidade?: string; observacao?: string; fornecedor?: string; notaFiscal?: string }
+interface PayloadEntrada {
+  productId: string; branchId: string; quantidade: number; custoUnitario: number | null; lote: string | null; validade: string | null; observacao: string | null
+  fornecedor?: string | null; notaFiscal?: string | null
+}
+
+/**
+ * O que a janela de Entrada diz (C5 do levantamento, F66): a regra da despesa
+ * (D13 revisto — movimentação de estoque nunca gera despesa).
+ */
+const ENTRADA_SEM_DESPESA = 'Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a clínica pagou entra no Financeiro por um lançamento (categoria “Compra de estoque”).'
+const num = (n: number, casas = 4) => n.toLocaleString('pt-BR', { maximumFractionDigits: casas })
 
 export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> = {
   nome: 'entrada_de_estoque',
   tipo: 'escrita',
   modulo: 'stock', nivel: 'MANAGE',
   recurso: 'estoque',
-  descricao: 'Registra a ENTRADA (compra/recebimento) de um produto numa unidade: quantidade em embalagens, custo unitário opcional, lote e validade (AAAA-MM-DD) opcionais.',
+  descricao: 'Registra a ENTRADA (compra/recebimento) de um produto numa unidade: quantidade em embalagens, custo unitário opcional, lote e validade (AAAA-MM-DD) opcionais, o fornecedor (o nome; entra na lista de Fornecedores da rede) e a nota fiscal, opcionais.',
   parametros: z.object({
     produto: z.string().min(2).max(80),
     quantidade: z.number().positive().max(100_000),
@@ -219,6 +233,8 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
     validade: DATA.optional(),
     unidade: z.string().max(80).optional(),
     observacao: z.string().max(200).optional(),
+    fornecedor: z.string().max(120).optional(),
+    notaFiscal: z.string().max(60).optional(),
   }),
   async preparar(c, a) {
     const u = await resolverUnidade(c, a.unidade, { exigir: true })
@@ -228,28 +244,42 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
     // Sem o saldo no cartão: ele muda com o consumo até o Confirmar, e a entrada
     // continua valendo (o saldo novo vem na mensagem do resultado).
     const un = p.unit ?? ''
+    const rende = p.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : null
+    // C5 (F66): o cartão diz o que a janela de Entrada diz — a quantidade no
+    // plural e no que rende, "Não gera despesa", e a validade que já passou
+    // (avisa; a entrada vale assim, princípio 2).
+    const vencida = !!a.validade && loteVencido(a.validade, new Date(), await fusoDaUnidade(c.ctx.tenantId, u.unidade!.id))
+    const fornecedor = a.fornecedor?.trim().replace(/\s+/g, ' ') || null
+    const nota = a.notaFiscal?.trim() || null
     return {
       resumo: {
         titulo: 'Entrada de estoque',
         linhas: [
           { rotulo: 'Produto', valor: p.name },
-          { rotulo: 'Quantidade', valor: `+${a.quantidade} ${un}`.trim() },
+          { rotulo: 'Quantidade', valor: `+${num(a.quantidade)} ${medidaNoPlural(un, a.quantidade)}${rende ? ` (${num(a.quantidade * rende)} ${p.consumption_unit})` : ''}`.trim() },
           ...(a.custoUnitario ? [{ rotulo: 'Custo unitário', valor: dinheiro(a.custoUnitario) }] : []),
           ...(a.lote ? [{ rotulo: 'Lote', valor: `${a.lote}${a.validade ? ` · vence ${a.validade.split('-').reverse().join('/')}` : ''}` }] : []),
+          ...(fornecedor ? [{ rotulo: 'Fornecedor', valor: fornecedor }] : []),
+          ...(nota ? [{ rotulo: 'Nota fiscal', valor: nota }] : []),
           { rotulo: 'Unidade', valor: u.unidade!.name },
         ],
+        aviso: (vencida ? `Esta validade já passou (${validadeNaTela(a.validade!)}): o lote entra vencido. Confira a data na embalagem — se estiver certa, a entrada vale assim. ` : '')
+          + ENTRADA_SEM_DESPESA,
       },
       payload: {
         productId: p.id, branchId: u.unidade!.id, quantidade: a.quantidade, custoUnitario: a.custoUnitario ?? null,
         lote: a.lote?.trim() || null, validade: a.validade ?? null, observacao: a.observacao?.trim() || null,
+        fornecedor, notaFiscal: nota,
       },
     }
   },
   async efetivar(c, p) {
+    // O fornecedor vai em texto: o banco o resolve na lista da rede (o mesmo
+    // nome, sem caixa nem espaços, é o mesmo; o novo entra — C76).
     const r = await entradaDeEstoqueCore(c.admin, c.ctx, p)
     if ('error' in r) return { erro: r.error }
     revalidar('estoque')
-    return { mensagem: `Entrada registrada. Saldo agora: ${r.saldo}.` }
+    return { mensagem: `Entrada registrada. Saldo agora: ${await saldoAgoraEmTexto(c.admin, p.productId, p.branchId)}.` }
   },
 }
 
@@ -273,7 +303,22 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
     const s = await saldoDoAjuste(c, p.id, u.unidade!.id)
     const saldo = s.embalagens
     if (saldo === a.novoSaldo) return { erro: `O saldo de ${p.name} já é ${saldo}.` }
-    const num = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 4 })
+    // C5 (F66): o cartão diz o que a janela de Ajuste diz — para onde vai a
+    // diferença (a menos é perda, "Inventário"; a mais entra num lote novo) e,
+    // como a D5 da 11ª, a variação de mais da metade do saldo.
+    const delta = a.novoSaldo - saldo
+    const pct = saldo > 0 ? Math.abs(delta) / saldo * 100 : null
+    const un = p.unit ?? ''
+    const naOutra = s.rende ? ` (${num(a.novoSaldo)} ${medidaNoPlural(un, a.novoSaldo)} são ${num(a.novoSaldo * s.rende)} ${s.consumo})` : ''
+    const aviso = [
+      pct !== null && pct > 50
+        ? `A contagem muda o saldo em ${num(pct, 0)}%. Confira se contou na unidade certa: a contagem está em ${medidaNoPlural(un, 2)}${naOutra}.`
+        : null,
+      delta < 0
+        ? 'A diferença sai do lote que vence primeiro e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.'
+        : 'A diferença entra num lote novo, sem número. Não gera despesa.',
+      'Errado, se desfaz no Histórico (“Desfazer ajuste”).',
+    ].filter(Boolean).join(' ')
     return {
       resumo: {
         titulo: 'Ajustar estoque',
@@ -285,6 +330,7 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
           { rotulo: 'Motivo', valor: a.motivo.trim() },
           { rotulo: 'Unidade', valor: u.unidade!.name },
         ],
+        aviso,
       },
       payload: { productId: p.id, branchId: u.unidade!.id, novoSaldo: a.novoSaldo, motivo: a.motivo.trim() },
     }
