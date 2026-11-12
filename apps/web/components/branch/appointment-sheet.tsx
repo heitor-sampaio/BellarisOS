@@ -101,9 +101,10 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   // profissional, em vez de "Chegou" → "Iniciar" (A25 da 6ª simulação: eram
   // quatro cliques e uma confirmação). A action é a mesma (chegarEIniciar).
   const ehMeu = !!meuId && appointment.professionalId === meuId && podeGerenciar
-  // Cancelar e "Não compareceu": a recepção (todas) e a profissional "só os
-  // meus" com a agenda em Gerenciar, no dela (agenda-06).
-  const podeCancelar = !isProfessional || podeGerenciar
+  // Cancelar e "Não compareceu": a agenda em Gerenciar — a recepção (todas) e
+  // a profissional "só os meus", no dela (agenda-06). A agenda em Ver inicia e
+  // conclui, e só (D20, F65: os botões apareciam e a action recusava).
+  const podeCancelar = podeGerenciar
   const router   = useRouter()
   // Para onde ir ao iniciar o atendimento: quem decide o portal é o caminho
   // atual, não o slug do registro. Sem isto, iniciar pela agenda da rede jogava
@@ -234,9 +235,9 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   // 10ª: eram três quase iguais, dois em rosé). No agendamento DELA, o gesto
   // dela; chegou, iniciar; confirmado, a chegada; agendado, confirmar.
   const aindaNaoChegou = appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED'
-  const mostraChegarEIniciar = aindaNaoChegou && (isProfessional || ehMeu) && ehODia
-  const mostraConfirmar = appointment.status === 'SCHEDULED' && !isProfessional
-  const mostraChegou = aindaNaoChegou && !isProfessional && ehODia
+  const mostraChegarEIniciar = aindaNaoChegou && (isProfessional || ehMeu) && ehODia && podeGerenciar
+  const mostraConfirmar = appointment.status === 'SCHEDULED' && !isProfessional && podeGerenciar
+  const mostraChegou = aindaNaoChegou && !isProfessional && ehODia && podeGerenciar
   const mostraIniciar = appointment.status === 'ARRIVED' || (appointment.status === 'CONFIRMED' && !isProfessional)
   const principal = mostraChegarEIniciar ? 'chegarEIniciar'
     : appointment.status === 'ARRIVED' ? 'iniciar'
@@ -416,7 +417,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             {/* Remarcar existia só no arraste do calendário da unidade — a
                 agenda da rede é por unidade, não por profissional, e ali não há
                 o que arrastar. Aqui o horário novo é digitado. */}
-            {!isProfessional && appointment.status !== 'IN_PROGRESS' && (
+            {!isProfessional && podeGerenciar && appointment.status !== 'IN_PROGRESS' && (
               <button disabled={loading} onClick={() => setRemarcando(v => !v)} className="btn-secondary"
                 style={{ width: '100%', justifyContent: 'center' }}>
                 <CalendarClock size={14} /> Remarcar

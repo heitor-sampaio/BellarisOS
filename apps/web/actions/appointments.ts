@@ -11,7 +11,6 @@ import { getAReceberVencido, parcelasVencidas } from '@/lib/metrics/vencidas'
 import { formatBRL } from '@estetica-os/utils'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar, mensagemDoErro } from '@/lib/db'
 import {
@@ -194,42 +193,31 @@ async function updateAppointmentStatusInterno(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
 
-  // Quem só gerencia a própria agenda mexe no andamento do atendimento
-  // (iniciar/concluir) e, com a agenda em Gerenciar, cancela e marca a falta
-  // do DELA (agenda-06, revisão do Heitor de 2026-11-02: em 28/10 ele
-  // confirmou que a profissional cancela o que é dela). Confirmar e chegar
-  // seguem com a recepção.
-  if (isOwnScope(ctx, 'agenda')) {
-    const doAndamento = (['IN_PROGRESS', 'COMPLETED'] as string[]).includes(status)
-    const doDela = (['CANCELLED', 'NO_SHOW'] as string[]).includes(status) && ctx.permissions.agenda === 'MANAGE'
-    if (!doAndamento && !doDela) throw semAcesso()
-  }
-  // E só no agendamento DELE (D4, 2026-10-28): o iniciar pelo status mexia no
-  // de qualquer profissional da unidade, pelo id.
-  if (isOwnScope(ctx, 'agenda')) {
-    const dono = await ler(createAdminClient().from('appointments').select('professional_id')
-      .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento')
-    if (deOutroProfissional(ctx, dono?.professional_id as string | null | undefined)) throw new Error(DE_OUTRO_PROFISSIONAL)
-  }
+  // Quem faz o quê na agenda (D20, F65): a agenda em Ver inicia e conclui,
+  // dentro do escopo; confirmar, marcar a chegada, cancelar e marcar a falta
+  // são da agenda em Gerenciar (C10: até 2026-11-12 quem só via confirmava,
+  // cancelava e marcava a falta pelo id). Com "só os meus" e Gerenciar,
+  // cancela e marca a falta só do DELA (agenda-06, revisão do Heitor de
+  // 2026-11-02); confirmar e chegar seguem com a recepção.
+  const doCicloDeVida = (['CONFIRMED', 'ARRIVED', 'CANCELLED', 'NO_SHOW'] as string[]).includes(status)
+  if (doCicloDeVida && ctx.permissions.agenda !== 'MANAGE') throw semAcesso()
+  if (isOwnScope(ctx, 'agenda') && (status === 'CONFIRMED' || status === 'ARRIVED')) throw semAcesso()
 
   if (status === 'CANCELLED' && !cancellationReason?.trim()) {
     throw new Error('Motivo de cancelamento obrigatório.')
   }
 
-  // Iniciar antes do horário (qualquer tempo, r2-age-06) pede a confirmação (A32 da 5ª
-  // simulação: a Tatiane iniciou às 11:07 o das 13:00, sem aviso).
-  if (status === 'IN_PROGRESS' && opcoes?.inicioAdiantadoConfirmado !== true) {
-    const pergunta = await perguntaDoInicio(appointmentId)
-    if (pergunta) throw new InicioAdiantado(pergunta)
+  // Iniciar é o MESMO início do botão da sessão (C11, F65): só do Confirmado ou
+  // do Chegou, com o termo do início, a pergunta do horário adiantado (A32) e a
+  // guarda da situação na escrita. Até ali o update genérico reabria o
+  // concluído, o cancelado e a falta pelo id.
+  if (status === 'IN_PROGRESS') {
+    const r = await startAppointmentInterno(appointmentId, slug, opcoes)
+    if (r.confirmarInicioAdiantado && r.error) throw new InicioAdiantado(r.error)
+    if (r.error) throw new Error(r.error)
+    revalidarAgendamento(ctx, appointmentId, slug)
+    return
   }
-
-  const now = new Date().toISOString()
-  const fields: Record<string, unknown> = { status }
-
-  if (status === 'IN_PROGRESS') fields.started_at    = now
-  if (status === 'CANCELLED')   { fields.cancelled_at = now; fields.cancellation_reason = cancellationReason }
-
-  const supabase = await createSupabase()
 
   if (status === 'COMPLETED') {
     await completeAppointment(appointmentId, slug, ctx)
@@ -238,7 +226,6 @@ async function updateAppointmentStatusInterno(
 
   // Chegou (o check-in) também é núcleo dividido, e avisa a profissional.
   if (status === 'ARRIVED') {
-    if (ctx.permissions.agenda !== 'MANAGE') throw semAcesso()
     const r = await checkinCore(createAdminClient(), ctx, appointmentId)
     if ('error' in r) throw new Error(r.error)
     notifyCheckin(appointmentId)
@@ -254,90 +241,50 @@ async function updateAppointmentStatusInterno(
     return
   }
 
-  // Concluído tem prontuário, baixa de estoque e comissão: não volta a
-  // cancelado nem a falta (o gatilho trg_atendimento_concluido_nao_cancela é a
-  // segunda linha). Desfazer o dinheiro é estornar o pagamento.
-  if (status === 'CANCELLED' || status === 'NO_SHOW') {
-    const atual = await ler(createAdminClient().from('appointments').select('status, scheduled_at')
-      .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento')
-    if (atual?.status === 'COMPLETED') {
-      throw new Error('Atendimento concluído não pode ser cancelado nem marcado como falta. Para devolver o dinheiro, estorne o pagamento.')
-    }
-    // Falta é de quem não veio na hora — antes dela, ainda pode vir.
-    if (status === 'NO_SHOW' && atual?.scheduled_at && new Date(atual.scheduled_at as string).getTime() > Date.now()) {
-      throw new Error('O horário ainda não chegou: "Não compareceu" só depois do início do agendamento.')
-    }
+  // Cancelar é o MESMO núcleo do "Cancelar" da sessão e do Copilot (C12, F65):
+  // a guarda da situação na escrita — o update genérico trocava a Falta por
+  // Cancelado —, o histórico e o evento.
+  if (status === 'CANCELLED') {
+    const r = await cancelarCore(createAdminClient(), ctx, { appointmentId, motivo: cancellationReason ?? '' })
+    if ('error' in r) throw new Error(r.error)
+    revalidarAgendamento(ctx, appointmentId, slug)
+    notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
+    return
   }
 
-  // O erro deste update era descartado, e o histórico logo abaixo é escrito
-  // pelo admin client: quando a escrita falhava, a linha do tempo registrava a
-  // mudança, a tela dizia que deu certo e o status continuava o mesmo.
-  //
-  // Pelo cliente de serviço (2026-10-08), com o alcance conferido antes
-  // (resolveBranchId): a sessão de suporte não grava pelo PostgREST
-  // (`suporte_sem_escrita`), e o suporte muda status de agendamento pela tela.
-  const unidadeDoAgendamento = await resolveBranchId(supabase, appointmentId, ctx)
-  // D7 da 9ª: o termo do início nasce ANTES do update (a trava recusa e desfaria a emissão).
-  if (status === 'IN_PROGRESS') await emitirDocumentosDoInicio(createAdminClient(), appointmentId)
-  const { data: atualizadas, error: updErr } = await createAdminClient()
-    .from('appointments')
-    .update(fields)
-    .eq('id', appointmentId)
-    .eq('branch_id', unidadeDoAgendamento)
-    .select('id')
+  // Falta (NO_SHOW): só de quem ainda não foi atendida — Agendado, Confirmado
+  // ou Chegou —, conferida também na escrita. O agendamento chega pelo
+  // alcance (C15: a sessão lia a unidade com `.single()`, e a profissional
+  // fora da unidade dela não chegava ao agendamento DELA).
+  const admin = createAdminClient()
+  const atual = await agendamentoAoAlcance(admin, ctx, appointmentId)
+  if (!atual) throw new Error('Agendamento não encontrado.')
+  if (deOutroProfissional(ctx, atual.professional_id)) throw new Error(DE_OUTRO_PROFISSIONAL)
+  if (atual.status === 'COMPLETED') {
+    throw new Error('Atendimento concluído não pode ser cancelado nem marcado como falta. Para devolver o dinheiro, estorne o pagamento.')
+  }
+  if (atual.status === 'IN_PROGRESS') throw new Error('A cliente está em atendimento: não é falta.')
+  if (!ANTES_DO_ATENDIMENTO.includes(atual.status)) throw new Error('Agendamento já finalizado.')
+  // Falta é de quem não veio na hora — antes dela, ainda pode vir.
+  if (new Date(atual.scheduled_at).getTime() > Date.now()) {
+    throw new Error('O horário ainda não chegou: "Não compareceu" só depois do início do agendamento.')
+  }
+  const atualizadas = await gravar(admin.from('appointments').update({ status: 'NO_SHOW' })
+    .eq('id', appointmentId).in('status', ANTES_DO_ATENDIMENTO).select('id'), 'marcar a falta') as { id: string }[] | null
+  if (!atualizadas?.length) throw new Error('O agendamento mudou de situação. Confira na agenda.')
 
-  if (updErr) throw new Error(`Não foi possível atualizar o agendamento: ${updErr.message}`)
-  if (!atualizadas?.length) throw new Error('Não foi possível atualizar o agendamento.')
-
-  const admin    = createAdminClient()
   const userName = ctx.userName || await getUserName(admin, ctx.userId)
-  const actionDescMap: Record<string, string> = {
-    CONFIRMED:   'Agendamento confirmado',
-    IN_PROGRESS: 'Atendimento iniciado',
-    NO_SHOW:     'Cliente não compareceu',
-    CANCELLED:   `Cancelado: ${cancellationReason ?? ''}`,
-  }
-  await logHistory(admin, appointmentId, ctx.internalUserId, userName, status, actionDescMap[status] ?? status)
+  await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'NO_SHOW', 'Cliente não compareceu')
+  // A corrente de eventos, ao lado do histórico: o histórico é a linha do
+  // tempo da tela; o evento é o gatilho que a automação escuta.
+  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_NAO_COMPARECEU, appointmentId, { ...ctx, userName }, { motivo: null })
 
-  // A corrente de eventos, ao lado do histórico. São coisas diferentes: o
-  // histórico é a linha do tempo que a tela do agendamento mostra; o evento é
-  // o gatilho que a automação escuta, e por isso é nomeado pela intenção e
-  // carrega o retrato do agendamento junto.
-  const EVENTO_DO_STATUS: Record<string, NomeDeEvento> = {
-    CONFIRMED:   EVENTOS.AGENDAMENTO_CONFIRMADO,
-    IN_PROGRESS: EVENTOS.AGENDAMENTO_INICIADO,
-    CANCELLED:   EVENTOS.AGENDAMENTO_CANCELADO,
-    NO_SHOW:     EVENTOS.AGENDAMENTO_NAO_COMPARECEU,
-  }
-  const evento = EVENTO_DO_STATUS[status]
-  if (evento) {
-    await emitirEventoDeAgendamento(evento, appointmentId, { ...ctx, userName }, {
-      motivo: status === 'CANCELLED' ? cancellationReason ?? null : null,
-    })
-  }
-
-  // Os dois portais olham a mesma agenda: confirmar pela rede tem de aparecer
-  // na unidade, e vice-versa.
+  // Os dois portais olham a mesma agenda.
   revalidarAgendamento(ctx, appointmentId, slug)
-  if (status === 'CANCELLED') notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
 }
 
-// Resolve o branchId pelo appointmentId (para validar acesso)
-async function resolveBranchId(
-  supabase: Awaited<ReturnType<typeof createSupabase>>,
-  appointmentId: string,
-  ctx: Awaited<ReturnType<typeof getTenantContext>>,
-) {
-  const data = await ler(supabase
-    .from('appointments')
-    .select('branch_id, branches!inner(id, tenant_id)')
-    .eq('id', appointmentId)
-    .single(), 'buscar o agendamento')
-
-  const branch = data?.branches as unknown as { id: string; tenant_id: string } | null
-  if (!branch || branch.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, branch.id)) throw new Error('Acesso negado.')
-  return data!.branch_id
-}
+/** Antes do atendimento: o que ainda pode faltar. */
+const ANTES_DO_ATENDIMENTO = ['SCHEDULED', 'CONFIRMED', 'ARRIVED']
 
 // --- Concluir atendimento (transação completa) --------------------
 async function completeAppointment(
@@ -350,7 +297,7 @@ async function completeAppointment(
 
   const appt = await ler(admin
     .from('appointments')
-    .select('id, branch_id, client_id, procedure_id, professional_id, price, treatment_plan_id, branches!inner(tenant_id)')
+    .select('id, status, branch_id, client_id, procedure_id, professional_id, price, treatment_plan_id, branches!inner(tenant_id)')
     .eq('id', appointmentId)
     .maybeSingle(), 'buscar o agendamento')
   // Concluir baixa estoque, lança comissão e pontos: até 2026-09-28 o id
@@ -361,38 +308,22 @@ async function completeAppointment(
     throw new Error('Agendamento não encontrado.')
   }
 
-  if (!appt) throw new Error('Agendamento não encontrado.')
+  if (deOutroProfissional(ctx, appt.professional_id as string | null)) throw new Error(DE_OUTRO_PROFISSIONAL)
 
-  // Garante que finishSession() foi chamado antes (cria prontuário + debita estoque)
-  const existingEntry = await ler(admin
-    .from('medical_record_entries')
-    .select('id')
-    .eq('appointment_id', appointmentId)
-    .maybeSingle(), 'conferir a entrada do prontuário')
-
-  if (!existingEntry) {
-    throw new Error('O atendimento deve ser finalizado pelo profissional antes de ser concluído. Use a opção "Finalizar Sessão".')
+  // Só se conclui o que foi iniciado, e a conclusão é a transação do
+  // "Finalizar" (H5 = a, C13, F65): este caminho só lança o a receber do
+  // atendimento JÁ concluído. Até 2026-11-12 ele marcava "Concluído" sozinho
+  // — reescrevendo a hora da conclusão, e aceitando a entrada do prontuário da
+  // DESISTÊNCIA (ou o rascunho da evolução) como prova de que houve atendimento.
+  if (appt.status !== 'COMPLETED') {
+    throw new Error(appt.status === 'IN_PROGRESS'
+      ? 'Use "Finalizar atendimento" para concluir: é ali que o prontuário, os insumos e a comissão se gravam.'
+      : ['CANCELLED', 'NO_SHOW'].includes(appt.status as string)
+        ? 'Agendamento já finalizado.'
+        : 'Só se conclui o atendimento que foi iniciado: use “Iniciar” e depois “Finalizar”.')
   }
 
-  const now = new Date().toISOString()
-
-  // 1. Atualiza status
-  await gravar(admin.from('appointments').update({ status: 'COMPLETED', completed_at: now }).eq('id', appointmentId), 'concluir o agendamento')
-
-  // 2. Cria entrada de prontuário (se não existir)
-  await gravar(admin.from('medical_record_entries').upsert(
-    { appointment_id: appointmentId, professional_id: appt.professional_id },
-    { onConflict: 'appointment_id', ignoreDuplicates: true }
-  ), 'abrir a entrada no prontuário')
-
-  await emitirEventoClinico(EVENTOS.PRONTUARIO_ENTRADA_CRIADA, appointmentId, ctx, {
-    clientId:      appt.client_id as string | null,
-    agendamentoId: appointmentId,
-    branchId:      appt.branch_id as string | null,
-    chave:         'prontuario.entrada_criada:' + appointmentId,
-  })
-
-  // 3. Lança a receita do atendimento como CONTA A RECEBER; confirmPayment
+  // Lança a receita do atendimento como CONTA A RECEBER; confirmPayment
   //    depois dá baixa (is_paid). Comissão, fidelidade, estoque e pacote já
   //    foram gravados por finishSession (obrigatório antes daqui) — repetir
   //    aqui duplicaria. Sessão de plano ou de pacote também não gera receita:
@@ -590,10 +521,13 @@ async function startAppointmentInterno(
     // assinatura no mesmo update e a transação desfazia a emissão — a recepção
     // lia "Falta assinar: …" e o termo não existia para colher.
     await emitirDocumentosDoInicio(admin, appointmentId)
-    await gravar(admin
+    // Com a guarda da situação NA ESCRITA (C11, F65): o que foi concluído,
+    // cancelado ou marcado como falta entre a leitura e a escrita não reabre.
+    const iniciados = await gravar(admin
       .from('appointments')
       .update({ status: 'IN_PROGRESS', started_at: new Date().toISOString() })
-      .eq('id', appointmentId), 'iniciar o atendimento')
+      .eq('id', appointmentId).in('status', ['CONFIRMED', 'ARRIVED']).select('id'), 'iniciar o atendimento') as { id: string }[] | null
+    if (!iniciados?.length) return { error: 'O agendamento mudou de situação. Confira na agenda.' }
 
     const userName = ctx.userName || await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'STARTED', 'Atendimento iniciado')
@@ -954,6 +888,10 @@ async function finishSessionInterno(
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     if (appt.status === 'COMPLETED')                      return { error: 'Atendimento já concluído.' }
     if (['CANCELLED', 'NO_SHOW'].includes(appt.status as string)) return { error: 'Agendamento já finalizado.' }
+    // Só se conclui o que foi iniciado (H5 = a, C13, F65): pelo id, o
+    // Agendado, o Confirmado e o Chegou pulavam o termo do início, a pergunta
+    // do horário adiantado e a trava dos termos que bloqueiam.
+    if (appt.status !== 'IN_PROGRESS') return { error: 'Só se conclui o atendimento que foi iniciado: use “Iniciar” e depois “Finalizar”.' }
 
     if (isOwnScope(ctx, 'agenda') && appt.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode concluir este atendimento.' }
@@ -1327,8 +1265,15 @@ async function saveDraftNotesInterno(
     // A evolução do atendimento de OUTRA, com a agenda "só os meus" (D4, 2026-10-28).
     if (deOutroProfissional(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
 
+    // O cancelado e a falta não tiveram atendimento: não há evolução a
+    // escrever (C15, F65). A intercorrência da desistência se grava no próprio
+    // "Cancelar" do atendimento em andamento.
+    if (appt.status === 'CANCELLED' || appt.status === 'NO_SHOW') {
+      return { error: 'Este agendamento foi cancelado ou a cliente não compareceu: não há atendimento para escrever a evolução.' }
+    }
+
     // Profissional não pode editar registro já finalizado
-    const isFinalised = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)
+    const isFinalised = appt.status === 'COMPLETED'
     const isAdmin     = ctx.permissions.agenda === 'MANAGE'
     if (isFinalised && !isAdmin) return { error: 'Registro finalizado. Apenas gerentes podem editar.' }
 

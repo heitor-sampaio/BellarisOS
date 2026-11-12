@@ -176,6 +176,8 @@ test('"só os meus" não inicia, não troca, não remarca, não cancela nem escr
 
 test('"só os meus" segue fazendo tudo isso no agendamento DELA', async ({ browser }) => {
   const dela = await agendado('Dela', propria!.userId)
+  // Iniciar é do Confirmado ou do Chegou (C11, F65): pelo status, o Agendado não pula a chegada.
+  expect((await db().from('appointments').update({ status: 'CONFIRMED' }).eq('id', dela)).error).toBeNull()
   await como(browser, propria!, async p => {
     const a = acoes(p, `/${slug}/agenda/${dela}`)
     await a.evolucao(dela)

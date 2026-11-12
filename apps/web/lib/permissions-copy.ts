@@ -171,7 +171,10 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
 export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
   reports:   'Com alcance próprio a pessoa vê os relatórios da unidade dela; o consolidado da rede fica indisponível.',
   financial: 'Com alcance próprio a tela vira só "minhas comissões": some faturamento, despesas e extrato — e não dá para lançar, mesmo com Gerenciar.',
-  agenda:    'Com alcance próprio a pessoa consegue iniciar e concluir os atendimentos dela, mas não cancela nem marca falta.',
+  // D20 (o Heitor, 2026-11-11): Ver inicia e conclui; Gerenciar confirma,
+  // marca a chegada, cancela, marca a falta, remarca e troca a profissional;
+  // com "só os meus", tudo isso só nos dela (F65).
+  agenda:    'Com "só os meus", a pessoa mexe só nos atendimentos dela. Em Ver, inicia e conclui. Em Gerenciar, também marca a chegada, cancela e marca a falta dos dela. Confirmar a presença fica com quem tem "todos" e Gerenciar (a recepção).',
 }
 
 // ─── Módulos que só existem no portal da rede ────────────────────────────────

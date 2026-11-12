@@ -74,6 +74,8 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   if (!existente) return { error: 'Agendamento não encontrado.' }
   if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   if (FINALIZADOS.includes(existente.status)) return { error: 'Este agendamento já foi finalizado.' }
+  // O atendimento já começou: o horário dele é o que está acontecendo (C15, F65).
+  if (existente.status === 'IN_PROGRESS') return { error: 'Este agendamento está em atendimento agora: não se remarca. Para desistir, use "Cancelar" no atendimento.' }
   const inicio = new Date(input.scheduledAt)
   if (Number.isNaN(inicio.getTime())) return { error: 'Data inválida.' }
 
@@ -111,7 +113,7 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
     scheduled_at:    inicio.toISOString(),
     professional_id: input.professionalId || undefined,
     updated_at:      new Date().toISOString(),
-  }).eq('id', existente.id).not('status', 'in', ABERTOS_NAO).select('id'), 'reagendar') as { id: string }[] | null
+  }).eq('id', existente.id).not('status', 'in', ABERTOS_NAO).neq('status', 'IN_PROGRESS').select('id'), 'reagendar') as { id: string }[] | null
   if (!remarcadas?.length) return { error: 'Este agendamento já foi finalizado.' }
 
   const userName = ctx.userName || await getUserName(admin, ctx.userId)

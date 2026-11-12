@@ -75,7 +75,7 @@ const CASOS: Caso[] = [
     semControle: 'tornar a caixa de teste padrão tiraria o padrão da caixa real da clínica', estado: f => campo('whatsapp_numbers', 'is_default', f.caixa) },
   { nome: 'configurações: desativar unidade', arquivo: 'actions/branches.ts', funcao: 'toggleBranchStatus',
     rota: f => `/admin/branches/${f.unidadeTeste}`, args: f => [f.unidadeTeste, false], estado: f => campo('branches', 'is_active', f.unidadeTeste) },
-  { nome: 'agenda: cancelar agendamento', arquivo: 'actions/appointments.ts', funcao: 'updateAppointmentStatus', bastaVer: true,
+  { nome: 'agenda: cancelar agendamento', arquivo: 'actions/appointments.ts', funcao: 'updateAppointmentStatus',
     rota: () => '/admin/agenda', args: f => [f.agendamento, 'CANCELLED', f.unidade.slug, `${PREFIXO} invasão`],
     estado: f => campo('appointments', 'status', f.agendamento) },
   { nome: 'caixa: dar baixa num lançamento', arquivo: 'actions/financial.ts', funcao: 'markTransactionPaid',
