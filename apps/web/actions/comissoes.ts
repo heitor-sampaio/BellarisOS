@@ -23,6 +23,7 @@ import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDa
 import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
 import { gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin, podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { periodoDaChave } from '@/lib/comissoes/periodo'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { TETO_DE_VEZES, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
 import { EntradaDoCartaoPorBandeira, semBandeirasVazias, lerCartaoPorBandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
@@ -314,7 +315,7 @@ export async function fecharComissoes(
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
 
     const { periodo: tipo } = await configDeComissaoDaRede(ctx.tenantId!)
-    const periodo = periodoDaChave(periodoChave, tipo)
+    const periodo = periodoDaChave(periodoChave, tipo, await fusoDaRede(ctx.tenantId))
     if (!periodo) return { error: 'Período inválido.' }
     const agora = new Date()
     const fim = periodo.fim.getTime() < agora.getTime() ? periodo.fim : agora

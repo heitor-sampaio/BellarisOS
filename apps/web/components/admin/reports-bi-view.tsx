@@ -1147,6 +1147,7 @@ function TabProfissionais(p: ReportsBiProps) {
 // -----------------------------------------------------------------------------
 function TabEstoque(p: ReportsBiProps) {
   const { relatorio: r, productBatches, branches } = p
+  const fuso = useFuso()
   const e = r.estoque
   const nomeDaUnidade = nomesDasUnidades(branches)
 
@@ -1182,17 +1183,18 @@ function TabEstoque(p: ReportsBiProps) {
     { key: 'qty',        label: 'Qtd', align: 'center' },
     {
       key: 'days', label: 'Dias Restantes', align: 'center',
-      render: (v) => <Badge label={`${v}d`} color={Number(v) <= 7 ? 'red' : Number(v) <= 15 ? 'amber' : 'gray'} />,
+      render: (v, row) => <Badge label={String(row.rotulo ?? `${v}d`)} color={Number(v) <= 7 ? 'red' : Number(v) <= 15 ? 'amber' : 'gray'} />,
     },
   ]
   const batchRows = productBatches.map(b => {
-    const validade = validadeDoLote(b.expires_at, today)
+    const validade = validadeDoLote(b.expires_at, today, fuso)
     return {
       product: b.products?.name ?? '—',
       batch:   b.batch_number ?? '—',
       expires: validade.dia,
       qty:     Number(b.quantity),
       days:    validade.dias,
+      rotulo:  validade.rotulo,
     }
   })
 

@@ -1,3 +1,5 @@
+import { FUSO_PADRAO, nomeDoFuso } from '@/lib/unidades/fuso'
+
 /**
  * Quando a campanha AUTOMÁTICA dispara — a regra do cron
  * (`app/api/cron/notification-campaigns`) e o texto que a revisão e os
@@ -6,7 +8,7 @@
  * tela não dizia quando ela sairia).
  *
  * Os gatilhos do DIA (aniversário, data comemorativa, depois da visita, antes
- * de o pacote vencer) saem a partir das 09:00 de Brasília — na primeira
+ * de o pacote vencer) saem a partir das 09:00 do relógio da rede (F62) — na primeira
  * passada do cron (de hora em hora) depois disso; até 2026-11-10 saíam logo
  * depois da meia-noite, e o aviso tocava o celular da cliente de madrugada
  * (a regra do lembrete do CRM, que só avisa a partir das 7h). O lembrete do
@@ -24,10 +26,12 @@ export function jaEhHoraDeDisparar(gatilho: GatilhoDaCampanha, horaEmBrasilia: n
 }
 
 const doisDigitos = (n: number) => String(n).padStart(2, '0')
-const aPartirDas = `a partir das ${doisDigitos(HORA_DAS_CAMPANHAS_DO_DIA)}:00`
+const aPartirDasHora = `a partir das ${doisDigitos(HORA_DAS_CAMPANHAS_DO_DIA)}:00`
 
 /** "no dia do aniversário da cliente, a partir das 09:00" — o que a revisão e os detalhes dizem. */
-export function quandoDispara(gatilho: GatilhoDaCampanha | null | undefined, config?: { days?: number; hours?: number; month?: number; day?: number } | null): string {
+export function quandoDispara(gatilho: GatilhoDaCampanha | null | undefined, config?: { days?: number; hours?: number; month?: number; day?: number } | null, fuso?: string): string {
+  // A campanha roda no relógio da rede (F62); fora de Brasília, a tela diz qual (A7 da 13ª).
+  const aPartirDas = `${aPartirDasHora}${fuso && fuso !== FUSO_PADRAO ? ` (${nomeDoFuso(fuso)})` : ''}`
   switch (gatilho) {
     case 'BIRTHDAY':           return `no dia do aniversário da cliente, ${aPartirDas}`
     case 'ANNUAL_DATE':        return `todo ano em ${doisDigitos(config?.day ?? 0)}/${doisDigitos(config?.month ?? 0)}, ${aPartirDas}`

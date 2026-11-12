@@ -124,7 +124,7 @@ export function monthKeyTZ(date: Date | string, tz: string = BUSINESS_TZ): strin
   return `${p.year}-${pad(p.month)}`
 }
 
-/** `period_ref` de comissão ('YYYY-MM'), sempre no fuso do negócio. */
+/** `period_ref` de comissão ('YYYY-MM'), no fuso da REDE (`fusoDaRede`, D12). */
 export const periodRef = monthKeyTZ
 
 /** Dia da semana (0=domingo) no fuso. */

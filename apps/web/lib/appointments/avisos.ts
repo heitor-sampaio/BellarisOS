@@ -1,7 +1,7 @@
 import 'server-only'
 import { after } from 'next/server'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarNoFuso } from '@/lib/formatar-no-fuso'
+import { fusoValido } from '@/lib/unidades/fuso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, tentar } from '@/lib/db'
 import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
@@ -45,8 +45,13 @@ export async function logHistory(
 // ─── Notificações de eventos de agendamento ───────────────────────────────────
 // Disparadas via after() — rodam APÓS a resposta da action, sem atrasá-la.
 
-export function fmtDateTime(iso: string): string {
-  try { return format(new Date(iso), "dd/MM 'às' HH:mm", { locale: ptBR }) } catch { return '' }
+/**
+ * "11/11 às 18:50" no relógio da UNIDADE do agendamento (D2 da 13ª
+ * simulação: o sininho e o push diziam a hora do servidor — Brasília —, e a
+ * cliente do Acre lia 20:50 para as 18:50, às vezes com o dia errado).
+ */
+export function fmtDateTime(iso: string, fuso?: string): string {
+  try { return formatarNoFuso(iso, "dd/MM 'às' HH:mm", fuso) } catch { return '' }
 }
 
 export type ApptCtx = {
@@ -55,6 +60,8 @@ export type ApptCtx = {
   branchId: string | null
   clientName: string; procedureName: string; scheduledAt: string
   slug: string
+  /** O fuso da unidade do agendamento (F64): a hora dos avisos sai nele. */
+  fuso: string
 }
 
 export async function loadApptCtx(
@@ -63,7 +70,7 @@ export async function loadApptCtx(
 ): Promise<ApptCtx | null> {
   const data = await ler(admin
     .from('appointments')
-    .select('client_id, professional_id, branch_id, scheduled_at, clients(name), procedures(name), branches(slug)')
+    .select('client_id, professional_id, branch_id, scheduled_at, clients(name), procedures(name), branches(slug, fuso)')
     .eq('id', appointmentId)
     .maybeSingle(), 'buscar o agendamento')
   if (!data) return null
@@ -75,6 +82,7 @@ export async function loadApptCtx(
     procedureName:  ((data.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento'),
     scheduledAt:    data.scheduled_at as string,
     slug:           ((data.branches as unknown as { slug?: string } | null)?.slug ?? ''),
+    fuso:           fusoValido((data.branches as unknown as { fuso?: string | null } | null)?.fuso),
   }
 }
 
@@ -91,7 +99,7 @@ export function notifyNewAppointment(appointmentId: string, ator?: string | null
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
     if (!c) return
-    const when = fmtDateTime(c.scheduledAt)
+    const when = fmtDateTime(c.scheduledAt, c.fuso)
     const data = { appointment_id: appointmentId }
     await avisarCliente(admin, c.clientId, {
       // "Marcado", não "confirmado": a clínica ainda não confirmou (simulação de 2026-10-20).
@@ -116,7 +124,7 @@ export function notifyCancelledAppointment(appointmentId: string, reason?: strin
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
     if (!c) return
-    const when = fmtDateTime(c.scheduledAt)
+    const when = fmtDateTime(c.scheduledAt, c.fuso)
     const motivo = reason?.trim() ? ` Motivo: ${reason.trim()}.` : ''
     const data = { appointment_id: appointmentId }
     await avisarCliente(admin, c.clientId, {
@@ -139,7 +147,7 @@ export function notifyRescheduledAppointment(appointmentId: string, ator?: strin
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
     if (!c) return
-    const when = fmtDateTime(c.scheduledAt)
+    const when = fmtDateTime(c.scheduledAt, c.fuso)
     const data = { appointment_id: appointmentId }
     await avisarCliente(admin, c.clientId, {
       type: 'appointment_rescheduled', title: 'Agendamento remarcado',

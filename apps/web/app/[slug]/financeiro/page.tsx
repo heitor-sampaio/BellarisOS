@@ -156,7 +156,7 @@ export default async function FinancialPage({
     profissional_nome: extras[t.id as string]?.profissional ?? null,
     unidade_nome: branch.name as string,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
-    vencida: !t.is_paid && situacaoDoVencimento(t.due_date as string | null) === 'VENCIDA',
+    vencida: !t.is_paid && situacaoDoVencimento(t.due_date as string | null, new Date(), fuso) === 'VENCIDA',
     cliente: client_id && nomes.clientes[client_id] ? { name: nomes.clientes[client_id] } : null,
   }))
 

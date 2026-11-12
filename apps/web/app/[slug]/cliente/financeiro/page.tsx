@@ -179,8 +179,8 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
               </p>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                 {/* D13 da 9ª: a vencida diz que venceu (era só "Pendente"). */}
-                {r.vencimento && !r.is_paid && !r.estornado && situacaoDoVencimento(r.vencimento) === 'VENCIDA'
-                  ? textoDoVencimento(r.vencimento)
+                {r.vencimento && !r.is_paid && !r.estornado && situacaoDoVencimento(r.vencimento, new Date(), fuso) === 'VENCIDA'
+                  ? textoDoVencimento(r.vencimento, new Date(), fuso)
                   : r.vencimento
                   ? `Vence ${formatDia(r.vencimento)}`
                   : new Date(r.paid_at ?? r.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
@@ -220,10 +220,10 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
                 fontSize: 'var(--text-overline)',
                 fontWeight: 700,
                 color:      r.estornado || r.estorno ? 'var(--text-muted)' : r.is_paid ? 'var(--success)'
-                  : r.vencimento && situacaoDoVencimento(r.vencimento) === 'VENCIDA' ? 'var(--danger)' : 'var(--warning)',
+                  : r.vencimento && situacaoDoVencimento(r.vencimento, new Date(), fuso) === 'VENCIDA' ? 'var(--danger)' : 'var(--warning)',
               }}>
                 {r.estorno ? 'Estorno' : r.estornado ? 'Estornado' : r.is_paid ? 'Pago'
-                  : r.vencimento && situacaoDoVencimento(r.vencimento) === 'VENCIDA' ? 'Vencida' : 'Pendente'}
+                  : r.vencimento && situacaoDoVencimento(r.vencimento, new Date(), fuso) === 'VENCIDA' ? 'Vencida' : 'Pendente'}
               </span>
               {/* ven-06: o recibo do que ela pagou (PDF). */}
               {r.is_paid && !r.estornado && !r.estorno && (

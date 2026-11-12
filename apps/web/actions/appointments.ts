@@ -36,7 +36,7 @@ import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import type { FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { periodRef, dayKeyTZ, partsInTZ, instanteNoFuso } from '@/lib/datetime'
 import { fusoValido } from '@/lib/unidades/fuso'
-import { fusoDaUnidade, lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { fusoDaUnidade, fusoDaRede, lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
 import { semAcesso } from '@/lib/sem-acesso'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
@@ -789,7 +789,7 @@ async function reassignProfessionalInterno(
       const a = createAdminClient()
       const c = await loadApptCtx(a, appointmentId)
       if (!c) return
-      const when = fmtDateTime(c.scheduledAt)
+      const when = fmtDateTime(c.scheduledAt, c.fuso)
       const data = { appointment_id: appointmentId }
       if (oldProfId && oldProfId !== professionalId) {
         await notifyUser(a, oldProfId, {
@@ -1098,7 +1098,7 @@ async function finishSessionInterno(
       if (Number(linha.liberado) <= 0) continue
       await emitirComissaoGerada(
         appointmentId, linha.linha, linha.procedure_id, appt.professional_id as string | null,
-        Number(linha.liberado), periodRef(now), appt.branch_id as string | null, ctx,
+        Number(linha.liberado), periodRef(now, await fusoDaRede(ctx.tenantId)), appt.branch_id as string | null, ctx,
       )
     }
     // Depois do incremento (feito na transação), para `restantes` já refletir

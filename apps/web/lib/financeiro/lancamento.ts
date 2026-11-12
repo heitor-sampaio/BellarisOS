@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { vencimentoDoDia } from '@/lib/financeiro/vencimentos'
 import { dayKeyTZ } from '@/lib/datetime'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { bandeiraDoPagamento, ehBandeira } from '@/lib/financeiro/bandeiras'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
@@ -78,7 +79,9 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
   if (!l.categoria) return { error: 'Categoria é obrigatória.' }
   if (!l.descricao) return { error: 'Descrição é obrigatória.' }
   if (!l.valor || l.valor <= 0) return { error: 'Valor deve ser maior que zero.' }
-  const pagoEm = l.pago ? pagoNoDia(l.pagoEm) : null
+  // O "hoje" da unidade do lançamento (F64, C4): em Manaus às 23:30, o dia de
+  // Brasília já era amanhã, e "pago hoje" recusava a data de hoje como futura.
+  const pagoEm = l.pago ? pagoNoDia(l.pagoEm, new Date(), await fusoDaUnidade(ctx.tenantId, l.branchId)) : null
   if (pagoEm && typeof pagoEm !== 'string') return pagoEm
   if (l.bandeira && !ehBandeira(l.bandeira)) return { error: 'Bandeira do cartão desconhecida: use Visa, Mastercard, Elo, Amex, Hipercard ou Outras.' }
   const bandeira = l.pago && l.tipo === 'INCOME' ? bandeiraDoPagamento(l.formaDePagamento, l.bandeira) : null

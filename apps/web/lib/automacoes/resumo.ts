@@ -1,6 +1,7 @@
 import { NODES, rotuloDoEvento } from '@estetica-os/types'
 import type { TipoDeNo, GrupoDeCondicao, OperadorDeCondicao } from '@estetica-os/types'
 import { rotuloDoCaminho } from './disponiveis'
+import { FUSO_PADRAO, nomeDoFuso } from '@/lib/unidades/fuso'
 
 /**
  * O que cada node faz, em uma frase.
@@ -87,7 +88,7 @@ function descreverGrupo(grupo?: GrupoDeCondicao): string {
     : partes.join(cola)
 }
 
-export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): string {
+export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>, fuso?: string): string {
   const c = config ?? {}
 
   switch (tipo as TipoDeNo) {
@@ -115,7 +116,9 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
       const freq = frequencia === 'mensal' ? `Todo mês, dia ${Number(c.diaDoMes ?? 1)},`
         : frequencia === 'semanal' ? `Toda semana, ${DIAS[Number(c.diaDaSemana ?? 1)] ?? 'segunda'},`
         : 'Todo dia'
-      return `${freq} às ${(c.hora as string) ?? '--:--'}`
+      // O relógio é o da rede (F62b); fora de Brasília, a tela diz qual (A7 da 13ª).
+      const relogio = fuso && fuso !== FUSO_PADRAO ? ` (${nomeDoFuso(fuso)})` : ''
+      return `${freq} às ${(c.hora as string) ?? '--:--'}${relogio}`
     }
 
     case NODES.BUSCAR_CLIENTES: {

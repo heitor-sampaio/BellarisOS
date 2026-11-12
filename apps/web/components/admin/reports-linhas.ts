@@ -26,17 +26,22 @@ export interface LinhaLote {
  * A validade do lote na tabela "Validades": o dia e quantos dias faltam.
  * A validade é um DIA SEM hora (o campo de data da entrada, gravado à
  * meia-noite UTC): `formatDia` lê o dia como foi gravado, e os dias contam do
- * HOJE de Brasília até ele, pelo calendário. Com `new Date(...)` o 17/11 virava
- * 16/11 no navegador (D10 da simulação de 2026-10-29, CLAUDE.md §14).
+ * HOJE da unidade (F62b; sem fuso, Brasília) até ele, pelo calendário. Com
+ * `new Date(...)` o 17/11 virava 16/11 no navegador (D10 da simulação de
+ * 2026-10-29, CLAUDE.md §14).
+ *
+ * O selo diz "Venceu" no lote vencido e "Vence hoje" no dia (F64, C4 do
+ * levantamento: os dois diziam "0d"). `dias` fica no zero para a cor.
  */
-export function validadeDoLote(expiresAt: string, hoje: Date = new Date()): { dia: string; dias: number } {
+export function validadeDoLote(expiresAt: string, hoje: Date = new Date(), fuso?: string): { dia: string; dias: number; vencido: boolean; rotulo: string } {
   const dia = formatDia(expiresAt) ?? '—'
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(expiresAt)
-  const [a, mes, d] = dayKeyTZ(hoje).split('-').map(Number)
+  const [a, mes, d] = dayKeyTZ(hoje, fuso).split('-').map(Number)
   const dias = m
     ? Math.round((Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) - Date.UTC(a!, mes! - 1, d!)) / 86_400_000)
     : 0
-  return { dia, dias: Math.max(0, dias) }
+  const rotulo = dias < 0 ? 'Venceu' : dias === 0 ? 'Vence hoje' : `${dias}d`
+  return { dia, dias: Math.max(0, dias), vencido: dias < 0, rotulo }
 }
 
 /**

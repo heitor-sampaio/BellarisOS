@@ -1,7 +1,8 @@
 import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { zonedToUtc } from '@/lib/datetime'
+import { BUSINESS_TZ, zonedToUtc } from '@/lib/datetime'
+import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -17,21 +18,25 @@ export interface PacoteATrazer {
   total: number; usadas: number
   /** O valor de referência do pacote inteiro (opcional). */
   valor: number | null
-  /** aaaa-mm-dd (válido até o fim desse dia, em Brasília) ou nulo. */
+  /** aaaa-mm-dd (válido até o fim desse dia, no relógio da unidade) ou nulo. */
   validade: string | null
 }
 
-/** "aaaa-mm-dd" → o fim desse dia em Brasília (a validade vale o dia inteiro). */
-export function fimDoDiaDaValidade(dia: string | null): string | null {
+/**
+ * "aaaa-mm-dd" → o fim desse dia NA UNIDADE do pacote (a validade vale o dia
+ * inteiro). Era o fim do dia de Brasília (a sobra da F62b): em Manaus, a
+ * última hora do último dia já contava como vencida. Sem fuso, Brasília.
+ */
+export function fimDoDiaDaValidade(dia: string | null, fuso: string = BUSINESS_TZ): string | null {
   if (!dia || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return null
   const [a, m, d] = dia.split('-').map(Number) as [number, number, number]
-  return zonedToUtc(a, m, d, 23, 59, 59, 999).toISOString()
+  return zonedToUtc(a, m, d, 23, 59, 59, 999, fuso).toISOString()
 }
 
 export async function trazerPacoteCore(admin: Admin, tenantId: string, atorId: string | null, p: PacoteATrazer): Promise<string> {
   return await ler(admin.rpc('pacote_trazer', {
     p_tenant: tenantId, p_cliente: p.clientId, p_unidade: p.branchId, p_procedimento: p.procedureId,
-    p_total: p.total, p_usadas: p.usadas, p_validade: fimDoDiaDaValidade(p.validade),
+    p_total: p.total, p_usadas: p.usadas, p_validade: fimDoDiaDaValidade(p.validade, await lerFusoDaUnidade(admin, p.branchId)),
     p_valor: p.valor, p_ator: atorId,
   }), 'trazer o pacote de fora') as string
 }

@@ -3,6 +3,7 @@ import type { TenantContext } from '@estetica-os/types'
 import { can, isOwnScope, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { ordenarTransacoesDaFicha } from '@/lib/clientes/ordem-das-transacoes'
@@ -40,6 +41,7 @@ type Linha = {
   notes: string | null; category: string | null; appointment_id: string | null; parcela_numero: number | null
   product_sale_id: string | null
   credito_vendido_id: string | null
+  branch_id: string | null
   appointment: { scheduled_at: string; professional_id: string | null; procedures: { name: string } | null } | null
 }
 
@@ -55,7 +57,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   const [linhas, totaisRaw, aReceber, creditos] = await Promise.all([
     lerTodas<unknown>((de, ate) => {
       let q = admin.from('financial_transactions')
-        .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, product_sale_id, credito_vendido_id,
+        .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, product_sale_id, credito_vendido_id, branch_id,
           branches!inner(tenant_id),
           appointment:appointments!financial_transactions_appointment_id_fkey${meu ? '!inner' : ''}(scheduled_at, professional_id, procedures(name))`)
         .eq('client_id', clientId).eq('branches.tenant_id', ctx.tenantId!)
@@ -75,6 +77,9 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   // pontuar (a regra de padrão, D4), o lançamento da venda diz por quê — a
   // ficha mostrava o pago e nada sobre os pontos que não vieram.
   const produtoNaoPontua = await vendaDeProdutoNaoPontua(ctx.tenantId!, admin)
+  // O "hoje" do vencimento é o da unidade do lançamento (F64, C4).
+  const fusos = new Map<string, string>()
+  for (const b of new Set((linhas as Linha[]).map(l => l.branch_id ?? ''))) fusos.set(b, await fusoDaUnidade(ctx.tenantId, b || null))
   // D7 da 10ª: em ordem pela data que a linha mostra (ordenarTransacoesDaFicha).
   const transactions: ProfileTransaction[] = ordenarTransacoesDaFicha((linhas as Linha[]).map(l => ({
     id:            l.id,
@@ -92,7 +97,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     scheduledAt:   l.appointment?.scheduled_at ?? null,
     dueDate:       l.due_date,
     // D13 da 9ª: "Vencida em 05/11" (o dia decidido aqui, no servidor).
-    vencida:       l.type === 'INCOME' && !l.is_paid && l.notes !== 'Estornada' && situacaoDoVencimento(l.due_date) === 'VENCIDA',
+    vencida:       l.type === 'INCOME' && !l.is_paid && l.notes !== 'Estornada' && situacaoDoVencimento(l.due_date, new Date(), fusos.get(l.branch_id ?? '')) === 'VENCIDA',
     isCheckout:    !l.appointment_id && l.category !== 'Estorno',
     // O estorno com o sinal certo e o original marcado (D6, 2026-10-28).
     estornada:     l.notes === 'Estornada',

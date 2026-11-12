@@ -18,7 +18,7 @@ import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ, naParede, horaNoFuso } from '@/lib/datetime'
-import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import {
   resolvePeriod, delta, occupancyPct,
   getCore, getSeries, getTopProcedures, getTicketMedio, EMPTY_CORE,
@@ -216,7 +216,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const minhasComissoes = canFinancial && dinheiroDela
     ? await (async () => {
         const config = await configDeComissaoDaRede(ctx.tenantId!)
-        const periodo = periodosRecentes(config.periodo, now, 1)[0]!
+        const periodo = periodosRecentes(config.periodo, now, 1, await fusoDaRede(ctx.tenantId))[0]!
         const linhas = await resumoDasComissoes({
           tenantId: ctx.tenantId!, branchIds: [branchId], inicio: periodo.inicio, fim: periodo.fim, profissionalId: dinheiroDela,
         })

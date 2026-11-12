@@ -1,4 +1,5 @@
 ﻿import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { fusoValido } from '@/lib/unidades/fuso'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -104,6 +105,9 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   assertClient(ctx)
 
   const admin = createAdminClient()
+  // O "hoje" do vencimento é o da unidade do endereço (F64, C4).
+  const fuso = fusoValido((await ler(admin.from('branches').select('fuso').eq('slug', slug).maybeSingle(),
+    'buscar o fuso da unidade') as { fuso: string | null } | null)?.fuso)
 
   const [procedimentosRes, pagamentosRes, docsRes, consentRes] = await Promise.all([
     // Procedimentos = appointments concluídos
@@ -181,7 +185,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     // A64: o vencimento e a parcela — "Pendente" sozinho não dizia quando.
     vencimento:     r.is_paid ? null : (r.due_date ?? r.data_de_referencia ?? null),
     // D13 da 9ª: "Vencida em 05/11" (o dia decidido aqui, no servidor).
-    vencida:        !r.is_paid && r.notes !== 'Estornada' && situacaoDoVencimento(r.due_date) === 'VENCIDA',
+    vencida:        !r.is_paid && r.notes !== 'Estornada' && situacaoDoVencimento(r.due_date, new Date(), fuso) === 'VENCIDA',
     parcela:        r.parcela_numero && r.parcela_total && r.parcela_total > 1 ? `Parcela ${r.parcela_numero} de ${r.parcela_total}` : null,
     forma:          formaDoLancamento({ metodo: r.payment_method, vezes: r.cartao_vezes, bandeira: r.cartao_bandeira, pago: Boolean(r.is_paid), parcela: r.parcela_numero }),
     estorno:        r.type === 'EXPENSE' && r.category === 'Estorno',

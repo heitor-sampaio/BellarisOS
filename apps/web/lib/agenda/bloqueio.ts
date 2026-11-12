@@ -64,9 +64,9 @@ export function avisoDoBloqueioDaSala(nome: string, b: Periodo & { motivo: strin
  * Na tela do atendimento (A31 da 8ª simulação): iniciar dentro das férias da
  * Débora dizia só "faltam 3 h 57 min". Só aviso — o atendimento segue.
  */
-export function avisoDoBloqueioNoAtendimento(quem: { profissional?: string | null; sala?: string | null }, b: Periodo & { motivo: string }): string {
+export function avisoDoBloqueioNoAtendimento(quem: { profissional?: string | null; sala?: string | null }, b: Periodo & { motivo: string }, fuso?: string): string {
   const de = quem.profissional ? `Horário bloqueado para ${quem.profissional}` : `${quem.sala ?? 'A sala'} está bloqueada`
-  return `${de} ${trechoDoBloqueio(b)} (${b.motivo}). O atendimento pode seguir: o bloqueio só avisa.`
+  return `${de} ${trechoDoBloqueio(b, fuso)} (${b.motivo}). O atendimento pode seguir: o bloqueio só avisa.`
 }
 
 /** O que se recusa ao bloquear (o resto é da clínica — princípio 2). */

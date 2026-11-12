@@ -243,7 +243,7 @@ export default async function AdminFinanceiroPage({
     desconto_valor: extras[t.id]?.desconto ?? null,
     profissional_nome: extras[t.id]?.profissional ?? null,
     // D13 da 9ª: a vencida decidida aqui (o dia de Brasília), não no navegador.
-    vencida: !t.is_paid && situacaoDoVencimento(t.due_date) === 'VENCIDA',
+    vencida: !t.is_paid && situacaoDoVencimento(t.due_date, new Date(), fuso) === 'VENCIDA',
     branchName: branchNameMap[t.branch_id] ?? '—',
     clienteNome: t.cliente?.name ?? null,
     amount:     Number(t.amount),

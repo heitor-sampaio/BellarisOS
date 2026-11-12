@@ -12,6 +12,7 @@ import { TIPOS_DE_GATILHO } from '@estetica-os/types'
 import type { GrafoDeAutomacao } from '@estetica-os/types'
 import { NoDoQuadro, type DadosDoNo } from './no-do-quadro'
 import { resumoDoNo } from '@/lib/automacoes/resumo'
+import { useFuso } from '@/components/shared/fuso'
 import { novoIdDeLigacao } from '@/lib/automacoes/ids'
 import { saidasDoNo } from '@/lib/automacoes/encaixe'
 
@@ -175,6 +176,8 @@ function QuadroInterno({
     obs.observe(alvo)
     return () => obs.disconnect()
   }, [enquadrar])
+  // O "Todo dia às 09:00" diz o relógio da rede fora de Brasília (A7 da 13ª).
+  const fuso = useFuso()
   const nodes: Node[] = useMemo(() => grafo.nos.map(n => ({
     id: n.id,
     type: 'bellaris',
@@ -183,11 +186,11 @@ function QuadroInterno({
     data: {
       tipo:   n.tipo,
       config: n.config as Record<string, unknown>,
-      resumo: resumoDoNo(n.tipo, n.config as Record<string, unknown>),
+      resumo: resumoDoNo(n.tipo, n.config as Record<string, unknown>, fuso),
       temProblema: comProblema.has(n.id),
       saidas: saidasDoNo(n.tipo, n.config as Record<string, unknown>),
     } satisfies DadosDoNo,
-  })), [grafo.nos, selecionado, comProblema])
+  })), [grafo.nos, selecionado, comProblema, fuso])
 
   const edges: Edge[] = useMemo(() => grafo.ligacoes.map(l => ({
     id: l.id,

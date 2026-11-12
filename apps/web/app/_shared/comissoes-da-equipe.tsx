@@ -5,6 +5,7 @@ import type { TenantContext } from '@estetica-os/types'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FinanceiroComissoes } from '@/components/shared/financeiro-comissoes'
 import { periodosRecentes, periodoDaChave } from '@/lib/comissoes/periodo'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import {
   configDeComissaoDaRede, resumoDasComissoes, extratoDasComissoes, fechamentosRecentes,
 } from '@/lib/comissoes/leitura'
@@ -29,8 +30,10 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
 }) {
   const config = await configDeComissaoDaRede(ctx.tenantId!)
   const agora = new Date()
-  const periodos = periodosRecentes(config.periodo, agora, 12)
-  const periodo = periodoDaChave(periodoPedido, config.periodo) ?? periodos[0]!
+  // O fechamento no relógio da rede (D12 do levantamento das regras).
+  const fuso = await fusoDaRede(ctx.tenantId)
+  const periodos = periodosRecentes(config.periodo, agora, 12, fuso)
+  const periodo = periodoDaChave(periodoPedido, config.periodo, fuso) ?? periodos[0]!
   // O período pedido pode ser mais antigo que a lista: entra nela.
   const lista = periodos.some(p => p.chave === periodo.chave) ? periodos : [...periodos, periodo]
 

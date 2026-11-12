@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { endOfDayTZ } from '@/lib/datetime'
+import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * Quanto de um plano de tratamento ainda não foi recebido.
@@ -34,12 +35,14 @@ export interface EmAbertoDoPlano {
 interface LinhaDoPlano { id: string; amount: number; is_paid: boolean; due_date: string | null }
 
 /** A conta, pura: o que já venceu (ou não tem data) × o que vai vencer depois de hoje. */
-export function separarOEmAberto(linhas: LinhaDoPlano[], agora: Date): Omit<EmAbertoDoPlano, 'planId' | 'nome'> {
+export function separarOEmAberto(linhas: LinhaDoPlano[], agora: Date, fuso?: string): Omit<EmAbertoDoPlano, 'planId' | 'nome'> {
   // Lançamento zerado é histórico, não dinheiro: é o que sobra quando um saldo
   // em aberto foi substituído por entrada + parcelas no check-in. Quitá-lo
   // junto carimbaria um R$ 0,00 no fechamento do caixa.
   const reais = linhas.filter(t => Number(t.amount) > 0)
-  const fimDeHoje = endOfDayTZ(agora).getTime()
+  // O fim de HOJE na unidade do plano (F64, C4): em Manaus às 23:30, o
+  // "hoje" de Brasília já era amanhã, e o check-in cobrava a parcela de amanhã.
+  const fimDeHoje = endOfDayTZ(agora, fuso).getTime()
   const abertas = reais.filter(t => !t.is_paid)
   const vencidas = abertas.filter(t => !t.due_date || new Date(t.due_date).getTime() <= fimDeHoje)
   const futuras = abertas.filter(t => !vencidas.includes(t))
@@ -57,7 +60,7 @@ export async function emAbertoDoPlano(planId: string): Promise<EmAbertoDoPlano |
   const admin = createAdminClient()
 
   const [{ data: plan }, { data: txs, error }] = await Promise.all([
-    admin.from('treatment_plans').select('id, name, status').eq('id', planId).maybeSingle(),
+    admin.from('treatment_plans').select('id, name, status, branch_id').eq('id', planId).maybeSingle(),
     admin
       .from('financial_transactions')
       .select('id, amount, is_paid, due_date, created_at')
@@ -74,6 +77,7 @@ export async function emAbertoDoPlano(planId: string): Promise<EmAbertoDoPlano |
   return {
     planId: plan.id as string,
     nome:   (plan.name as string | null) ?? null,
-    ...separarOEmAberto((txs ?? []) as LinhaDoPlano[], new Date()),
+    ...separarOEmAberto((txs ?? []) as LinhaDoPlano[], new Date(),
+      await lerFusoDaUnidade(admin, plan.branch_id as string | null)),
   }
 }

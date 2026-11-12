@@ -7,6 +7,7 @@ import { alcancaUnidade, can, isOwnScope } from '@/lib/auth'
 import { gravar, ler, lerTodas } from '@/lib/db'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { logHistory, loadApptCtx, fmtDateTime } from '@/lib/appointments/avisos'
+import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { notifyUser } from '@/lib/notifications/notify'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 import { quemRealizaOsProcedimentos, realiza } from '@/lib/procedimentos/quem-realiza'
@@ -272,7 +273,7 @@ export async function aplicarRepasse(
     for (const item of repasse.agendamentos) {
       const ag = porId.get(item.id)
       if (!ag) { falhas.push('Um dos agendamentos já não é desta pessoa (ou já passou).'); continue }
-      const quando = fmtDateTime(ag.scheduled_at)
+      const quando = fmtDateTime(ag.scheduled_at, await fusoDaUnidade(ctx.tenantId, ag.branch_id))
       const para = porPessoa.get(item.para)
       if (!para || !atendeNaUnidade(para, ag.branch_id)) {
         falhas.push(`O agendamento de ${quando} não foi repassado: a pessoa escolhida não atende nesta unidade.`)
@@ -308,7 +309,7 @@ export async function aplicarRepasse(
         if (!c) return
         await notifyUser(admin, para.id, {
           type: 'appointment_new', title: 'Novo agendamento',
-          body: `${c.clientName} — ${c.procedureName} em ${fmtDateTime(c.scheduledAt)}.`, data: { appointment_id: ag.id },
+          body: `${c.clientName} — ${c.procedureName} em ${fmtDateTime(c.scheduledAt, c.fuso)}.`, data: { appointment_id: ag.id },
         })
       })
     }

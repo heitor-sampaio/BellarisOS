@@ -1,3 +1,5 @@
+import { BUSINESS_TZ, dayKeyTZ } from '@/lib/datetime'
+
 /**
  * Vencimentos de lançamento. O dia ("2026-11-05") vira MEIO-DIA de Brasília:
  * à meia-noite UTC ele é a noite do dia anterior em Brasília, e o lançamento
@@ -33,25 +35,29 @@ export function vencimentosRecorrentes(primeiro: string, freq: FrequenciaRecorre
   })
 }
 
-const diaDe = (d: Date | string) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-const curto = (d: Date | string) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })
-const longo = (d: Date | string) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+// O vencimento é uma ÂNCORA (o dia ao meio-dia de Brasília): o dia dele se lê
+// pela mesma regra que o gravou. O HOJE é o da unidade (F64, C4 do
+// levantamento: das 23:00 à meia-noite de Manaus, a lista dizia "Vencida" e o
+// cartão, que já contava no dia da unidade, "a vencer").
+const diaDe = (d: Date | string) => dayKeyTZ(d, BUSINESS_TZ)
+const curto = (d: Date | string) => { const [, m, dd] = diaDe(d).split('-'); return `${dd}/${m}` }
+const longo = (d: Date | string) => { const [a, m, dd] = diaDe(d).split('-'); return `${dd}/${m}/${a}` }
 
 /**
  * O lançamento em aberto VENCEU? (D13 da 9ª simulação, princípio 3: a parcela
  * vencida era "Pendente", igual à que vai vencer.) Vencida é a do dia ANTES de
- * hoje em Brasília — o que vence hoje ainda não venceu. A mesma régua de
- * `metrics_a_receber_vencido`.
+ * hoje NA UNIDADE (sem fuso, Brasília) — o que vence hoje ainda não venceu. A
+ * mesma régua de `metrics_a_receber_vencido` (o fuso do recorte).
  */
-export function situacaoDoVencimento(vencimento: string | null | undefined, agora: Date = new Date()): 'VENCIDA' | 'HOJE' | 'A_VENCER' | null {
+export function situacaoDoVencimento(vencimento: string | null | undefined, agora: Date = new Date(), fuso: string = BUSINESS_TZ): 'VENCIDA' | 'HOJE' | 'A_VENCER' | null {
   if (!vencimento) return null
-  const dia = diaDe(vencimento), hoje = diaDe(agora)
+  const dia = diaDe(vencimento), hoje = dayKeyTZ(agora, fuso)
   return dia < hoje ? 'VENCIDA' : dia === hoje ? 'HOJE' : 'A_VENCER'
 }
 
 /** "Vencida em 05/11", "Vence hoje" ou "Vence 05/12/2026" — a mesma frase em toda tela. */
-export function textoDoVencimento(vencimento: string | null | undefined, agora: Date = new Date()): string | null {
-  const s = situacaoDoVencimento(vencimento, agora)
+export function textoDoVencimento(vencimento: string | null | undefined, agora: Date = new Date(), fuso: string = BUSINESS_TZ): string | null {
+  const s = situacaoDoVencimento(vencimento, agora, fuso)
   if (!s || !vencimento) return null
   return s === 'VENCIDA' ? `Vencida em ${curto(vencimento)}` : s === 'HOJE' ? 'Vence hoje' : `Vence ${longo(vencimento)}`
 }
