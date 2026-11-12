@@ -130,7 +130,7 @@
     (`getAReceberEmAberto`, aviso `parcelas-em-aberto`).
   - **a receber VENCIDO** (D13 da 9ª simulação, 2026-11-07) = o a receber da
     cliente em aberto (o conjunto de `metrics_a_receber_em_aberto`) com o
-    vencimento antes de hoje em Brasília — `metrics_a_receber_vencido` →
+    vencimento antes de hoje no fuso da unidade (F62) — `metrics_a_receber_vencido` →
     `getAReceberVencido` (`lib/metrics/vencidas.ts`), por unidade e no total,
     por cliente (o check-in) e no escopo do financeiro. O cartão "A receber
     da cliente", o dashboard e o check-in dizem esse número
@@ -596,8 +596,11 @@ isso** (sobra da F35): "Última visita há 120 dias · antes do sistema"
 `e2e/indicadores-cenario.spec.ts` (unidade `[e2e]` + janela em 2021, antes de
 qualquer dado real). `relatorios-coerencia` prova que tela e RPC concordam;
 aquele prova que estão CERTOS. Mexeu numa `metrics_*`, o cenário tem de continuar
-batendo — ou mudar junto, com o porquê. `new_clients` respeita a unidade como a
-série (a unidade escolhida mais os clientes sem unidade).
+batendo — ou mudar junto, com o porquê. `new_clients` da UNIDADE são as
+clientes que a frequentam — a tag "Unidade: <nome>" (C6 da F68, migration
+`20261112006801`); a clínica inteira (nulo ou todas as unidades ativas,
+`public.recorte_e_a_clinica`) conta todas. Era `clients.branch_id` (a unidade
+de cadastro) mais as sem unidade.
 
 **Uma regra de receita, e toda soma de dinheiro parte dela.**
 `metrics_receitas_pagas` (migration `20260927000011`) é o conjunto canônico —
@@ -692,7 +695,7 @@ linha — `metrics_vendas` (migration `20261014000001`), paginada por
 geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - **Procedimento** avulso: atendimento concluído, com preço, que não consumiu
   nada já vendido. A sessão de pacote, a unidade pré-paga e a sessão de plano
-  não são venda de novo. Data `scheduled_at` (o eixo de `serviceRevenue`);
+  não são venda de novo. Data `aconteceu_em` (o dia em que aconteceu — D13; o eixo de `serviceRevenue`);
   vale o preço menos o desconto comercial da recepção (`sale_discount`; ponto
   é forma de pagamento, não desconto).
 - **Pacote** (`purchased_at`, o vendido, quem vendeu) e **pré-pago**
@@ -1189,3 +1192,65 @@ Prova: `e2e/agenda-cancelados.spec.ts`.
 
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).
+
+**F68 — os indicadores do levantamento das regras (2026-11-12).** O que
+mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
+- **Ticket médio sem estorno de fora** (C44a): o numerador é o pago pelas
+  clientes que PAGARAM (> 0) — as do denominador. O estorno de um pagamento de
+  outro período entrava negativo e o ticket saía −R$ 500 com uma cliente que
+  pagou R$ 500. A receita do período continua descontando o estorno.
+- **A taxa do cartão no estorno é a GRAVADA** (C44b):
+  `private.taxa_gravada_do_cartao` (proporcional ao valor, das parcelas de
+  `recebiveis_do_cartao`, procurada pelo `estorno_de`) em
+  `metrics_custos_da_venda`, na série e no caixa dos lançamentos; sem
+  recebível, a configuração como antes. O dia do pagamento fica com a taxa
+  dele, e o do estorno a devolve.
+- **Réguas** (C49): os motivos de perda só dos funis ATIVOS; o comercial conta
+  o agendamento por `aconteceu_em`; o "Reativar" da unidade mostra a última
+  visita NA unidade.
+- **A unidade da cliente é a tag** (C6/C45): o público das campanhas e do
+  "Buscar clientes" das automações (`clientes_do_publico`), as novas clientes
+  do cartão, da série e do "Por filial". A cliente que frequenta duas unidades
+  conta nas duas linhas e uma vez no total.
+- **O total da rede conta a unidade desativada** (C45): o dashboard e o
+  Financeiro da rede inteira somam todas as unidades — a desativada com
+  movimento já aparecia no "Por filial", e o total não fechava. O recorte de
+  uma unidade, as listas e os seletores seguem as ativas.
+- **Comparações** (C46): `resolvePeriod` devolve `prevFullTo` (o fim do
+  período anterior INTEIRO); o "A receber" e o "A pagar" do hub comparam com
+  `getEmAberto` até ele (eram o período inteiro × o pedaço decorrido). O selo
+  do gráfico de 6 meses é `variacaoDoSemestre` (`lib/metrics/evolucao.ts`):
+  o último mês FECHADO contra o primeiro, "▲ R$ X de jun a out" (ou ▼). A
+  variação do hub é `variacaoPercentual`; as somas das comissões, de
+  `lib/metrics/comissoes.ts` (`totaisDoResumoDasComissoes`,
+  `totaisDasComissoes`).
+- **Marketing** (C47): o cartão pede à Meta o MESMO período da tela
+  (`intervaloDosAnuncios`, `lib/ads/periodo.ts`: o mês, 15 dias e o
+  personalizado vão com `since`/`until`), e o gasto e o alcance são os da
+  CONTA (`getResumoDaConta`, `act_<id>/insights`): o alcance é de pessoas
+  únicas, não a soma das campanhas. Sem o resumo, "—".
+- **"—" e não zero** (C48): o ticket da rede sem cliente que pagou; a ocupação
+  do dia sem capacidade (ninguém atende hoje).
+- **As dicas** (C50): "no fuso da unidade" (era "horário de Brasília"); a
+  receita diz que o estorno sai no dia em que foi feito; a perda e o ajuste
+  são métrica (era "já foi pago na compra").
+- **O "Meus…" de quem atende em mais de uma unidade** (D10 da 13ª): no
+  dashboard da unidade, com o módulo em "só os meus", "Minhas comissões",
+  "Meus atendimentos", "Meus agendamentos hoje", o "Meu faturamento" e o
+  ticket dela contam as unidades em que ela ATENDE (`unidadesDoQueEDela`,
+  `lib/metrics/escopo.ts`; só as ativas), e dizem "nas 2 unidades"; o horário
+  de fora diz a unidade. Como a Minha agenda e a tela de comissões.
+- **O total de clientes do cabeçalho do dashboard da rede é o da clínica**
+  (D12 da 13ª): as ativas (`getClientesAtivos`), com "da clínica" quando a
+  tela está recortada (unidade ou "só os meus"). O "só os meus" da agenda não
+  recorta a ficha.
+- **Cada quadro de clientes diz o seu recorte** (A10 da 13ª):
+  `deQuemSaoAsClientes` — "que frequentam a unidade", "da clínica", "que você
+  atendeu" — no subtítulo do "Clientes no mês" e no "Reativar".
+- **O Copilot usa as funções da tela** (C5): o "a receber" é o do Financeiro
+  (`getEmAberto` até o fim do período), a aba agenda vai até o fim do período,
+  e o comercial é o painel da aba Comercial (`painelComercial`, que saiu da
+  tela para `lib/metrics/painel-comercial.ts`: o funil padrão, a conversão dos
+  funis ativos, os motivos e a conversão por origem).
+Prova: `e2e/indicadores-f68-contas.spec.ts`, `e2e/indicadores-f68-telas.spec.ts`,
+`tests/indicadores-f68.test.ts`.

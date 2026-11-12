@@ -10570,7 +10570,7 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   - o aviso ao desativar um produto com saldo (D1): nenhuma tela viva desativa produto, porque o `AdminProductTable` não é usado;
   - a limpeza do texto livre do fornecedor (`products.supplier`, `stock_movements.fornecedor`), que é destrutiva e fica para o Heitor presente.
 
-**F67 FEITA (12/11; 2e8145f1…, push; migrations 20261112006701 a 6710 aplicadas, aditivas; a 6711 só DEPOIS do deploy): vendas, financeiro e comissões** (levantamento das regras: C32–C43, C70, C75 com D8, C5 na parte do financeiro e da fidelidade; 13ª simulação: D8, A4, A5, A6, A11, A12, A13; a sobra da F63; a simplificação das telas de Comissões e do Vender).
+**F67 FEITA (12/11; 2e8145f1…, push; migrations 20261112006701 a 6710 aplicadas, aditivas; a 6711, `financeiro_fora_do_realtime`, aplicada depois do deploy de 1c22bef3): vendas, financeiro e comissões** (levantamento das regras: C32–C43, C70, C75 com D8, C5 na parte do financeiro e da fidelidade; 13ª simulação: D8, A4, A5, A6, A11, A12, A13; a sobra da F63; a simplificação das telas de Comissões e do Vender).
 - **O checkout do plano é uma transação só (C32):** o app confere e monta, e `plano_checkout` trava o plano, confere que ainda é PROPOSED e grava tudo junto. A segunda chegada ouve "Este plano já foi fechado". Antes, duas abas gravavam o dinheiro duas vezes. "Quem vendeu" fica no plano e volta ao reabrir (A13). O checkout diz a comissão de venda antes de vender (C42).
 - **O crediário é da rede (C38):** `tenants.crediario_max_parcelas`, padrão 12, no card "Crediário da clínica". A tela oferece até ele e o servidor recusa acima, no Vender, nos documentos, no checkout e no check-in. Antes eram 12 num lugar e 48 calados no outro.
 - **Quem mexe no dinheiro:**
@@ -10621,6 +10621,27 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   - **a limpeza destrutiva depois do deploy:** `payment_fees`, `tenants.cartao_*`, os gatilhos de espelho para a primeira maquininha, as sobrecargas velhas das funções e o embrulho de 10 argumentos de `credito_vender`. Fica para o Heitor presente;
   - a política de leitura de `financial_transactions` pela sessão (o "só os meus" pelo PostgREST) não mudou;
   - o CSV de lançamentos não tem coluna de maquininha (o da contadora tem).
+
+**F68 FEITA (12/11; push; migration 20261112006801 aplicada, aditiva): indicadores** (levantamento das regras: C44–C50, C6, C5 na parte dos indicadores; 13ª simulação: D10, D12, A10). Regra nova em `docs/regras/indicadores.md` ("F68") e em `copilot.md`.
+- **As contas no banco (C44, C49, C6, C45):**
+  - o ticket médio soma só o pago pelas clientes que pagaram (o estorno de um pagamento de outro mês dava −R$ 500);
+  - o estorno devolve a taxa do cartão GRAVADA no pagamento (`private.taxa_gravada_do_cartao`), não a configurada hoje;
+  - os motivos de perda só dos funis ativos; o comercial pelo `aconteceu_em`; o "Reativar" da unidade com a última visita NELA;
+  - a unidade da cliente é a TAG em todo número: o público das campanhas e do "Buscar clientes" das automações, as novas clientes do cartão, da série e do "Por filial".
+- **O total da rede conta a unidade desativada (C45):** o dashboard e o Financeiro da rede inteira; o "Por filial" já a mostrava, e o total não fechava.
+- **Comparações e contas na tela (C46):** `prevFullTo` no `resolvePeriod`; o "A receber"/"A pagar" do hub comparam com o anterior INTEIRO; o selo do semestre compara meses fechados ("▲ R$ X de jun a out"); a variação e as somas das comissões saíram das telas para `lib/metrics`.
+- **Marketing (C47):** o cartão pede o período da tela (mês, 15 dias e personalizado iam como 30 dias) e o alcance da CONTA (somar as campanhas contava a mesma pessoa várias vezes).
+- **C48:** ticket sem pagante e ocupação sem capacidade mostram "—". **C50:** as dicas dizem "no fuso da unidade", o estorno no dia dele e a perda como métrica; comentários e as duas contradições da regra corrigidos.
+- **D10:** o "Meus…" do dashboard da unidade (comissões, atendimentos, agendamentos de hoje, faturamento e ticket dela) conta as unidades em que ela atende e diz "nas 2 unidades"; o horário de fora diz a unidade. **D12:** o cabeçalho do dashboard da rede diz o total de clientes da clínica. **A10:** cada quadro de clientes diz o seu recorte ("que frequentam a unidade", "da clínica", "que você atendeu").
+- **C5 (Copilot):** o "a receber" é o do Financeiro, a agenda vai até o fim do período, e o comercial é o painel da aba Comercial (`painelComercial` foi da tela para `lib/metrics/painel-comercial.ts`).
+- **Decidido pelos princípios:**
+  - a cliente que frequenta duas unidades conta nas duas linhas do "Por filial" e uma vez no total (princípio 3: cada linha é a unidade que ela frequenta);
+  - o "Meus…" estende também o "Meu faturamento" e o ticket dela (o mesmo "só os meus" do dinheiro; dois recortes no mesmo cartão seriam regra escondida); os procedimentos mais procurados e o "Reativar" seguem a unidade (são da unidade, não "Meus");
+  - sem o resumo da conta da Meta, o alcance e o gasto ficam "—" — nunca a soma das campanhas (princípio 4);
+  - o selo do semestre mostra também a queda (▼), não só a alta (princípio 3);
+  - com o financeiro "só os meus", o Copilot não diz o "a receber" (as parcelas são da unidade, como na tela).
+- **Prova:** `e2e/indicadores-f68-contas.spec.ts` (7), `e2e/indicadores-f68-telas.spec.ts` (3) e `tests/indicadores-f68.test.ts` (22), todos vistos falhando antes; vizinhos de indicadores, relatórios, comissões, financeiro, anúncios e Copilot. Ajustados: o texto do "Reativar" em `indicadores-reativar-sem-visita`, o localizador em `indicadores-dashboard-da-rede-so-os-meus` e a forma do comercial em `copilot-indicadores-so-os-meus` (só contra o build). Vale completa: mexeu em `metrics_*`, nos dois dashboards, nos dois Financeiros e no `resolvePeriod`.
+- **Fica de fora:** C-12 e C-13 do levantamento de indicadores (o vencido na tela com Brasília fixo; a série de custo de rede com fusos mistos) — não estavam na lista da frente; a tela "Minhas comissões" segue com a sua conta das unidades (a mesma regra de `unidadesDoQueEDela`, sem trocar).
 
 **Pronto para lançar = zero defeitos e zero atritos** (o Heitor, 11/11: "as regras de negocio já estão definidas, não tem pq ter defeito ou atrito"). A partir da 13ª simulação, cada achado precisa cair num destes casos:
 1. Contraria uma regra escrita (`docs/regras` ou os sete princípios do CLAUDE.md §1).
