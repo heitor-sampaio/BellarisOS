@@ -13,7 +13,14 @@ import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
 import { RepasseDoAtende, repasseDasEscolhas } from '@/components/admin/repasse-do-atende'
 
 interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
-interface Role   { id: string; label: string }
+/** C62 (F70): o porquê do cargo desligado (o mesmo texto da recusa da action, `lib/equipe/cargo-acima.ts`). */
+const DICA_DO_CARGO_ACIMA_TEXTO = 'Só quem tem esses módulos pode dar este cargo.'
+
+interface Role   {
+  id: string; label: string
+  /** C62 (F70): o cargo tem mais acesso que o de quem age — aparece desligado. */
+  acimaDoMeu?: boolean
+}
 
 export interface EditableMember {
   id:               string
@@ -170,9 +177,15 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                       >
                         <option value="" disabled>Selecione…</option>
                         {roles.map(r => (
-                          <option key={r.id} value={r.id}>{r.label}</option>
+                          // O cargo que ela JÁ TEM fica escolhível: manter não é dar (C62).
+                          <option key={r.id} value={r.id} disabled={r.acimaDoMeu && r.id !== member.roleId}>
+                            {r.acimaDoMeu && r.id !== member.roleId ? `${r.label} (tem módulos que você não tem)` : r.label}
+                          </option>
                         ))}
                       </select>
+                      {roles.some(r => r.acimaDoMeu && r.id !== member.roleId) && (
+                        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{DICA_DO_CARGO_ACIMA_TEXTO}</span>
+                      )}
                       <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                         A troca de cargo vale no próximo carregamento — não é preciso sair e entrar.
                       </span>

@@ -1,5 +1,6 @@
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { notFound, redirect } from 'next/navigation'
+import { comAviso } from '@/lib/aviso-da-url'
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -56,6 +57,14 @@ export default async function FinancialPage({
     .from('branches').select('id, name')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
+  // A14 da 13ª simulação (F70): "?unidade=<outra>" aqui abria ESTA unidade
+  // calado — a pessoa achava que via a outra. O filtro de unidade é do portal
+  // da rede; aqui, o aviso (princípio 3) e a URL sem ele.
+  if (sp.unidade && sp.unidade !== slug && sp.unidade !== branch.id) {
+    const resto = new URLSearchParams(Object.entries(sp).filter(([k]) => k !== 'unidade'))
+    const busca = resto.toString()
+    redirect(comAviso(`/${slug}/financeiro${busca ? `?${busca}` : ''}`, 'filtro-de-unidade'))
+  }
 
   // Janela no fuso da UNIDADE (F62) e período anterior de mesma duração decorrida.
   const fuso = await fusoDaUnidade(ctx.tenantId, branch.id as string)

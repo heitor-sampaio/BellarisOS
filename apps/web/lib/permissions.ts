@@ -68,7 +68,9 @@ export const SCOPE_LABELS: Record<ScopedModule, { own: string; all: string }> = 
   medical_records: { own: 'Só os próprios pacientes', all: 'Todos os pacientes' },
   financial:       { own: 'Só as próprias comissões', all: 'Financeiro completo' },
   crm:             { own: 'Só os próprios leads',     all: 'Todos os leads' },
-  reports:         { own: 'Só a própria unidade',     all: 'A rede inteira' },
+  // C60 (F70; princípio 3): para quem é da rede, o "próprio" de Relatórios é
+  // uma unidade por vez (qualquer uma) — "Só a própria unidade" não dizia isso.
+  reports:         { own: 'Uma unidade por vez',      all: 'A rede inteira' },
 }
 
 /**

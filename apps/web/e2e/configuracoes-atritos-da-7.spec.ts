@@ -118,7 +118,7 @@ test('A7/A8: o resumo do cargo diz a aba de Configurações e não conta "só a 
     // A8: o cartão do SDR.
     const cartaoSdr = p.getByText(`SDR cf7${marca}`).first().locator('xpath=ancestor::div[2]')
     await expect(cartaoSdr).toContainText('1 só os próprios')
-    await expect(cartaoSdr).toContainText('Relatórios só da unidade')
+    await expect(cartaoSdr).toContainText('Relatórios uma unidade por vez')
     await expect(cartaoSdr).not.toContainText('2 só os próprios')
 
     // A7: o Financeiro alcança só a aba Comissões (com as taxas).

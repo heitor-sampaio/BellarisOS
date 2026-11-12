@@ -86,9 +86,12 @@ export default async function BranchLayout({
     redirect(comAviso(`/${userBranch?.slug ?? ''}/dashboard`, 'outra-unidade'))
   }
 
-  // Filiais (NETWORK_ADMIN) + não-lidas em paralelo. Nome e permissões já vêm no ctx.
+  // As unidades para trocar (quem é da REDE, a abrangência — C60, F70: era o
+  // nome do cargo, e a sócia da rede com outro cargo não trocava de unidade)
+  // + não-lidas em paralelo. Nome e permissões já vêm no ctx.
+  const daRede = ctx.branchId === null
   const [allBranches, unreadRes] = await Promise.all([
-    ctx.role === 'NETWORK_ADMIN'
+    daRede
       ? ler(supabase
           .from('branches')
           .select('name, slug')
@@ -126,7 +129,7 @@ export default async function BranchLayout({
         permissions={permissions}
         scopes={ctx.scopes}
         plano={ctx.plano ?? null}
-        isNetworkAdmin={ctx.role === 'NETWORK_ADMIN'}
+        isNetworkAdmin={daRede}
         allBranches={allBranches}
         umaUnidade={umaUnidade}
       />

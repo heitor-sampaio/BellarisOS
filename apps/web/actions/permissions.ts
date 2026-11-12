@@ -81,44 +81,31 @@ export async function saveRolePermissions(
   }
   const linhas = rows.map(r => ({ tenant_id: r.tenant_id, role_id: r.role_id, module: r.module, level: r.level, scope: r.scope }))
 
-  const { error } = await supabase
-    .from('role_permissions')
-    .upsert(linhas, { onConflict: 'role_id,module' })
-
-  if (error) return { error: 'Erro ao salvar permissões. Tente novamente.' }
-
-  // -- Caixas de WhatsApp no inbox -------------------------------------------
-  // Mesmo formulário, mesmo gesto. Valor fora da lista vira o padrão, não erro:
-  // é o que `lerCaixas` faria na leitura de qualquer jeito.
-  const { error: caixasErro } = await supabase
-    .from('tenant_roles')
-    .update({ inbox_caixas: lerCaixas(formData.get('inbox_caixas')) })
-    .eq('id', roleId)
-    .eq('tenant_id', ctx.tenantId!)
-    .select('id')
-    .single()
-  if (caixasErro) return { error: 'Erro ao salvar quais números o cargo vê. Tente novamente.' }
-
   // -- Abas de Relatórios ------------------------------------------------
   // Vêm no mesmo formulário porque são o mesmo gesto: "o que este cargo
   // acessa". Sem nenhuma marcada, o cargo fica sem relatório — e é por isso
   // que o nível de `reports` sozinho não basta (ver `buildContext`).
   const abas = ALL_REPORT_TABS.filter(t => formData.get(`report:${t}`) === 'on')
+  // C60 (F70; princípio 3): Relatórios em "Ver" sem nenhuma aba gravava um
+  // acesso que não abre nada (o contexto o lê como NONE). A tela pede a aba.
+  const relatorios = linhas.find(l => l.module === 'reports')
+  if (relatorios && relatorios.level !== 'NONE' && abas.length === 0) {
+    return { error: 'Marque ao menos uma aba de Relatórios — ou deixe Relatórios em "Sem acesso".' }
+  }
 
-  // Apaga e regrava: a lista é pequena e assim marcar e desmarcar na mesma
-  // salvada não deixa linha órfã de uma aba que saiu.
-  const { error: delErro } = await supabase
-    .from('role_report_tabs')
-    .delete()
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('role_id', roleId)
-  if (delErro) return { error: 'Erro ao salvar as abas de relatórios. Tente novamente.' }
-
-  if (abas.length > 0) {
-    const { error: insErro } = await supabase
-      .from('role_report_tabs')
-      .insert(abas.map(tab => ({ tenant_id: ctx.tenantId!, role_id: roleId, tab })))
-    if (insErro) return { error: 'Erro ao salvar as abas de relatórios. Tente novamente.' }
+  // A matriz, as caixas do inbox e as abas de Relatórios numa transação só
+  // (C60, F70): eram três gravações soltas, e uma falha no meio deixava o
+  // cargo meio salvo — as abas apagadas e não regravadas. Valor de caixa fora
+  // da lista vira o padrão, não erro: é o que `lerCaixas` faria na leitura.
+  const { error } = await supabase.rpc('salvar_matriz_do_cargo', {
+    p_tenant: ctx.tenantId!, p_role: roleId,
+    p_linhas: linhas.map(l => ({ module: l.module, level: l.level, scope: l.scope })),
+    p_caixas: lerCaixas(formData.get('inbox_caixas')),
+    p_abas: abas,
+  })
+  if (error) {
+    console.error('[saveRolePermissions]', error.message)
+    return { error: 'Erro ao salvar permissões. Tente novamente.' }
   }
 
   await emitirCargoPermissoesAlteradas(

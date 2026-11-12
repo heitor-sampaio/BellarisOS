@@ -1,3 +1,4 @@
+import { cargosAcimaDoMeu } from '@/lib/equipe/cargo-acima'
 import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { DesativarMembro } from '@/components/admin/desativar-membro'
@@ -104,7 +105,11 @@ export default async function AdminTeamPage({
   const cargoDeAdmin = allRoles.find(r => r.key === 'NETWORK_ADMIN' && r.is_system)
   const souAdmin = !!cargoDeAdmin && ctx.roleId === cargoDeAdmin.id
   // A9 da 7ª simulação: a Admin vem PRIMEIRO, como na tela de Cargos (era a última da lista).
-  const rolesParaDar = souAdmin && cargoDeAdmin ? [cargoDeAdmin, ...assignableRoles] : assignableRoles
+  // C62 (F70; H7 = b): o cargo com mais acesso que o de quem age aparece
+  // desligado, dizendo por quê — a action também recusa.
+  const acimaDoMeu = await cargosAcimaDoMeu(createAdminClient(), ctx, assignableRoles.map(r => r.id), souAdmin)
+  const comTrava = assignableRoles.map(r => (acimaDoMeu.has(r.id) ? { ...r, acimaDoMeu: true } : r))
+  const rolesParaDar = souAdmin && cargoDeAdmin ? [cargoDeAdmin, ...comTrava] : comTrava
   /** Quem age pode mexer neste membro? A Admin da rede, só outra Admin (ou ela mesma). */
   const podeMexerEm = (m: { id: string; role_id: string | null }) =>
     !cargoDeAdmin || m.role_id !== cargoDeAdmin.id || souAdmin || m.id === ctx.internalUserId

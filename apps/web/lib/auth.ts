@@ -36,13 +36,16 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
 
   const tenantId = meta.tenant_id ?? null
   const role = (meta.role ?? 'CLIENT') as UserRole
-  const isNetworkAdmin = role === 'NETWORK_ADMIN'
   const isClient = role === 'CLIENT'
 
   // O banco vem ANTES do claim: trocar o cargo de alguém já cadastrado tem
   // efeito na hora. Com a precedência invertida, o `role_id` velho continuava
   // no JWT até o token renovar e a mudança parecia não ter acontecido.
   const member = isClient ? null : await getCachedMember(authId)
+  // O "tudo" da Admin da rede também é do BANCO (C58, F70): o cargo de
+  // sistema pela chave, nunca a claim `role` — a Admin rebaixada seguia com
+  // tudo até o token renovar, e quem não é membro não é Admin de nada.
+  const isNetworkAdmin = member?.ehAdminDaRede === true
 
   // Membro DESATIVADO não opera, com sessão ou sem. A conta também é bloqueada
   // no Auth ao desativar (não renova o token nem entra de novo), mas o token

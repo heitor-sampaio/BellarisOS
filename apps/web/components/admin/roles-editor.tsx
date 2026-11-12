@@ -267,7 +267,7 @@ function summarize(perms: Partial<Record<AppModule, RoleModulePermission>>): str
   const own = open.filter(m => m !== 'reports' && isScoped(m) && perms[m]?.scope === 'OWN').length
   const relatoriosDaUnidade = open.includes('reports') && perms.reports?.scope === 'OWN'
   const areas = `${open.length} ${open.length === 1 ? 'área' : 'áreas'}`
-  return [areas, own > 0 ? `${own} só os próprios` : null, relatoriosDaUnidade ? 'Relatórios só da unidade' : null]
+  return [areas, own > 0 ? `${own} só os próprios` : null, relatoriosDaUnidade ? 'Relatórios uma unidade por vez' : null]
     .filter(Boolean).join(' · ')
 }
 

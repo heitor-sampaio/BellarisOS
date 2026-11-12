@@ -35,7 +35,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const [tenant, unreadRes] = await Promise.all([
     // A rede É lida com `ler`: com o erro descartado, uma falha na consulta
     // parecia "onboarding não concluído" e mandava o admin para /setup.
-    (ctx.role === 'NETWORK_ADMIN' && ctx.tenantId)
+    // A Admin da rede pelo cargo do BANCO (C58/C60, F70), não pela claim.
+    (ctx.isNetworkAdmin && ctx.tenantId)
       ? ler(admin.from('tenants').select('onboarding_completed_at').eq('id', ctx.tenantId).maybeSingle(), 'carregar a rede')
       : Promise.resolve(null),
     ctx.internalUserId
@@ -48,7 +49,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // criada a unidade, toda URL do /admin voltava ao "Tudo pronto!" até o
   // clique em "Acessar o painel" — quem fechava a aba no fim caía nele de
   // novo. Sem unidade ativa, o setup segue sendo o caminho.
-  if (ctx.role === 'NETWORK_ADMIN' && !tenant?.onboarding_completed_at) {
+  if (ctx.isNetworkAdmin && !tenant?.onboarding_completed_at) {
     const unidade = await ler(admin.from('branches').select('id')
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(1), 'conferir a unidade da rede') as { id: string }[] | null
     if (!unidade?.length) redirect('/setup')

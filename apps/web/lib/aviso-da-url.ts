@@ -7,6 +7,10 @@
 export const AVISOS_DA_URL = {
   'outra-unidade':  'Você não tem acesso a essa unidade. Abrimos a sua.',
   'portal-da-rede': 'O portal da rede é de quem atende todas as unidades. Abrimos a sua.',
+  // C61 (F70): o primeiro acesso da clínica (o /setup) é de quem é da rede.
+  'setup-da-rede':  'O primeiro acesso da clínica é de quem é da rede. Abrimos a sua unidade.',
+  // A14 da 13ª (F70): "?unidade=" no portal de uma unidade abria esta, calado.
+  'filtro-de-unidade': 'Aqui é o portal desta unidade: para ver outra, troque de unidade no menu ou use o portal da rede.',
 } as const
 
 export type ChaveDoAviso = keyof typeof AVISOS_DA_URL

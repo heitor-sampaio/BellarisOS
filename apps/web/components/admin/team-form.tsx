@@ -10,7 +10,14 @@ import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
 import { toast } from 'sonner'
 
 interface Branch { id: string; name: string }
-interface Role   { id: string; label: string }
+/** C62 (F70): o porquê do cargo desligado (o mesmo texto da recusa da action, `lib/equipe/cargo-acima.ts`). */
+const DICA_DO_CARGO_ACIMA_TEXTO = 'Só quem tem esses módulos pode dar este cargo.'
+
+interface Role   {
+  id: string; label: string
+  /** C62 (F70): o cargo tem mais acesso que o de quem age — aparece desligado. */
+  acimaDoMeu?: boolean
+}
 
 interface AdminTeamFormProps {
   branches:       Branch[]
@@ -114,9 +121,14 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                   <select id="tm-role" name="roleId" required className="field" value={roleId} onChange={e => setRoleId(e.target.value)}>
                     <option value="" disabled>Selecione…</option>
                     {roles.map(r => (
-                      <option key={r.id} value={r.id}>{r.label}</option>
+                      <option key={r.id} value={r.id} disabled={r.acimaDoMeu}>
+                        {r.acimaDoMeu ? `${r.label} (tem módulos que você não tem)` : r.label}
+                      </option>
                     ))}
                   </select>
+                  {roles.some(r => r.acimaDoMeu) && (
+                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{DICA_DO_CARGO_ACIMA_TEXTO}</span>
+                  )}
                   {roles.length === 0 && (
                     <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                       Crie um cargo em Configurações → Cargos antes de adicionar membros.

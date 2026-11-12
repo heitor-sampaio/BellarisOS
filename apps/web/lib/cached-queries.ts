@@ -13,6 +13,12 @@ import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-un
 // Invalidar em actions/team.ts via tag `user:${authId}`.
 export type CachedMember = {
   id: string; name: string; roleId: string | null; roleLabel: string
+  /**
+   * O cargo é o de SISTEMA "Admin da rede" (`tenant_roles.key = 'NETWORK_ADMIN'`
+   * com `is_system`) — lido do BANCO (C58, F70). O "tudo" da Admin vinha da
+   * claim `role` do token: rebaixada, ela seguia com tudo até o token renovar.
+   */
+  ehAdminDaRede: boolean
   providesServices: boolean
   /**
    * As unidades em que ele ATENDE (decisão 2 do Heitor, 8ª simulação): o
@@ -43,23 +49,26 @@ export function getCachedMember(authId: string) {
       const admin = createAdminClient()
       const data = await ler(admin
         .from('users')
-        .select('id, name, role_id, branch_id, provides_services, atende_em, is_active, tenant_roles(label)')
+        .select('id, name, role_id, branch_id, provides_services, atende_em, is_active, tenant_roles(label, key, is_system)')
         .eq('auth_id', authId)
         .maybeSingle(), 'buscar o usuário')
       if (!data) return null
-      const roleRef = data.tenant_roles as unknown as { label: string } | null
+      const roleRef = data.tenant_roles as unknown as { label: string; key: string | null; is_system: boolean | null } | null
       return {
         id: data.id,
         name: data.name ?? '',
         roleId: data.role_id ?? null,
         roleLabel: roleRef?.label ?? '',
+        ehAdminDaRede: roleRef?.key === 'NETWORK_ADMIN' && roleRef?.is_system === true,
         providesServices: data.provides_services ?? false,
         atendeEm: ((data as { atende_em?: string[] | null }).atende_em ?? []) as string[],
         branchId: (data.branch_id as string | null) ?? null,
         isActive: data.is_active !== false,
       }
     },
-    [`member-${authId}`],
+    // `v2`: o formato ganhou o `ehAdminDaRede` (F70) — a entrada antiga, sem
+    // ele, valeria "não é Admin" por até uma hora depois do deploy.
+    [`member-v2-${authId}`],
     { revalidate: 3600, tags: [`user:${authId}`] },
   )()
 }

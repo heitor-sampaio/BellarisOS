@@ -1,5 +1,6 @@
 'use server'
 
+import { cargosAcimaDoMeu, recusaDoCargoAcima } from '@/lib/equipe/cargo-acima'
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
 import { erroDoAuth } from '@/lib/erro-do-auth'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
@@ -60,19 +61,26 @@ async function assertRoleInTenant(
   admin: ReturnType<typeof createAdminClient>,
   ctx: Awaited<ReturnType<typeof getTenantContext>>,
   roleId: string,
+  /** O cargo que o membro JÁ TEM (editar sem trocar): a regra do "acima" vale para quem DÁ o cargo. */
+  opcoes: { jaETeuCargo?: boolean } = {},
 ): Promise<{ error: string } | { ok: true; admin: boolean }> {
   const role = await ler(admin
     .from('tenant_roles')
-    .select('is_system')
+    .select('is_system, label')
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar o cargo')
   if (!role) return { error: 'Cargo inválido.' }
+  const souAdmin = await souAdminDaRede(admin, ctx)
   if (await cargoEhAdminDaRede(admin, ctx.tenantId!, roleId)) {
-    if (!(await souAdminDaRede(admin, ctx))) return { error: await falaDaRede(ctx.tenantId, 'Só quem é Admin da rede dá o cargo de Admin da rede.') }
+    if (!souAdmin) return { error: await falaDaRede(ctx.tenantId, 'Só quem é Admin da rede dá o cargo de Admin da rede.') }
     return { ok: true, admin: true }
   }
   if (role.is_system) return { error: 'Esse cargo não pode ser atribuído pela equipe.' }
+  // Ninguém dá um cargo com mais acesso que o próprio (C62, F70; H7 = b). A
+  // Admin da rede dá qualquer um.
+  const acima = opcoes.jaETeuCargo ? undefined : (await cargosAcimaDoMeu(admin, ctx, [roleId], souAdmin)).get(roleId)
+  if (acima) return { error: recusaDoCargoAcima((role as { label: string }).label, acima) }
   return { ok: true, admin: false }
 }
 
@@ -322,7 +330,7 @@ export async function updateTeamMember(
   let effectiveBranchId = member.branch_id as string | null
   if (!mantemCargoDoSistema) {
     // Dar o cargo de Admin da rede só quem o tem (`assertRoleInTenant`).
-    const roleCheck = await assertRoleInTenant(admin, ctx, roleId)
+    const roleCheck = await assertRoleInTenant(admin, ctx, roleId, { jaETeuCargo: roleId === member.role_id })
     if ('error' in roleCheck) return roleCheck
 
     // A Admin da rede é sempre da rede, peça o formulário o que pedir.
