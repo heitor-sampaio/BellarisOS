@@ -1408,6 +1408,7 @@ export function ScheduleModal({
                 handleSubmit(resposta)
               }}
               aoAtualizar={id => handleSubmit(`atualizar:${id}`)}
+              aoUsar={id => handleSubmit(`usar:${id}`)}
             />
           )}
 

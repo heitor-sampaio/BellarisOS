@@ -821,6 +821,7 @@ export function AppointmentModal({
                 reenviar(resposta)
               }}
               aoAtualizar={id => reenviar(`atualizar:${id}`)}
+              aoUsar={id => reenviar(`usar:${id}`)}
             />
           )}
 

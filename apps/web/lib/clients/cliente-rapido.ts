@@ -18,6 +18,18 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { conferirIndicadaPor } from '@/lib/clients/indicada-por'
 import { fichasQueJaExistem, respostaDoJaExiste, proximaSemResposta, atualizarFichaComOPreenchido, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
+import { RECUSA_DE_UNIFICAR_SEM_CLIENTES } from '@/lib/clients/ja-existe-texto'
+
+/**
+ * Quem pode unificar com / reativar a ficha que existe (C66, H4 = b): Clientes
+ * em Gerenciar. Criar a ficha rápida continua sem pedir o módulo.
+ */
+export const podeUnificarFicha = (ctx: Pick<TenantContext, 'permissions'>) => ctx.permissions?.clients === 'MANAGE'
+
+/** A ficha que a pergunta mostra, dizendo se quem pergunta pode unificar. */
+export function comPermissaoDeUnificar(f: FichaQueJaExiste, ctx: Pick<TenantContext, 'permissions'>): FichaQueJaExiste {
+  return { ...f, podeUnificar: podeUnificarFicha(ctx) }
+}
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -138,7 +150,17 @@ export async function garantirClienteRapido(
     digitos: fone.digitos, cpf: input.complemento?.document ?? null, nome, nascimento: input.complemento?.birthDate ?? null,
   }, { comArquivadas: true })
 
+  // "Agendar para a ficha de X" (C66): a ficha como está — nada se grava nela.
+  // A arquivada não: trazê-la de volta é reativar, que pede o módulo.
+  const usada = resposta.usar ? jaExistem.find(f => f.id.toLowerCase() === resposta.usar) : null
+  if (usada) {
+    if (usada.arquivada) return { error: `A ficha de ${usada.nome} está arquivada: reativá-la pede Clientes em Gerenciar. Cadastre mesmo assim, ou peça a quem cuida dos clientes.` }
+    if (input.conversationId) await ligarContatoAoCliente(admin, ctx.tenantId!, input.conversationId, usada.id)
+    return { clientId: usada.id, criado: false }
+  }
   const escolhida = resposta.atualizar ? jaExistem.find(f => f.id.toLowerCase() === resposta.atualizar) : null
+  // Unificar e reativar mexem na ficha que existe: Clientes em Gerenciar (C66).
+  if (escolhida && !podeUnificarFicha(ctx)) return { error: RECUSA_DE_UNIFICAR_SEM_CLIENTES }
   if (escolhida) {
     // "Reativar a ficha de X" (a arquivada volta) / "Unificar com a ficha de X" (sem trocar o nome dela, r3-f14-01).
     if (escolhida.arquivada) {
@@ -158,7 +180,7 @@ export async function garantirClienteRapido(
     return { clientId: escolhida.id, criado: false }
   }
   const pendente = proximaSemResposta(jaExistem, resposta.cadastrar)
-  if (pendente) return { jaExiste: pendente }
+  if (pendente) return { jaExiste: comPermissaoDeUnificar(pendente, ctx) }
 
   const { data: cliente, error } = await admin
     .from('clients')

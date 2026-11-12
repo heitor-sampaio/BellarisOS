@@ -7,6 +7,7 @@ import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { darAcessoAoCliente, documentoDoAcesso, type DocumentoDoAcesso } from '@/lib/clients/acesso'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, rotuloDoAtualizar, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
+import { rotuloDoUsar } from '@/lib/clients/ja-existe-texto'
 import { isUnitTag } from '@estetica-os/utils'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
@@ -90,9 +91,13 @@ interface PayloadCadastro {
  * (ou "Reativar", na arquivada).
  */
 export function escolhasDaFichaQueJaExiste(f: FichaQueJaExiste) {
+  // Sem Clientes em Gerenciar (C66): a ficha como está no lugar de unificar,
+  // e nada para a arquivada (reativar pede o módulo).
+  const unifica = f.podeUnificar !== false
   return [
     ...(f.podeCadastrarMesmoAssim ? [{ chave: 'cadastrar', rotulo: 'Cadastrar mesmo assim' }] : []),
-    { chave: 'atualizar', rotulo: rotuloDoAtualizar(f) },
+    ...(unifica ? [{ chave: 'atualizar', rotulo: rotuloDoAtualizar(f) }]
+      : !f.arquivada ? [{ chave: 'usar', rotulo: rotuloDoUsar(f) }] : []),
   ]
 }
 

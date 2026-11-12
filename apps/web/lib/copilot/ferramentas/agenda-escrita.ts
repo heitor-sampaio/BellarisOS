@@ -6,7 +6,7 @@ import { ler } from '@/lib/db'
 import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { notifyCancelledAppointment, notifyCheckin, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
-import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
+import { garantirClienteRapido, comPermissaoDeUnificar } from '@/lib/clients/cliente-rapido'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { trechoDoBloqueio } from '@/lib/agenda/bloqueio'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
@@ -101,6 +101,11 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       // calada — o cartão pergunta, como o "+ Agendar" da tela: cadastrar
       // mesmo assim (pode ser a filha de quem tem o número) ou usar a ficha.
       ;[jaExiste] = await fichasQueJaExistem(c.admin, c.ctx.tenantId!, { digitos: fone.digitos, nome: clienteNovo.nome }, { comArquivadas: true })
+      // Unificar/reativar pede Clientes em Gerenciar (C66): o cartão sabe.
+      if (jaExiste) jaExiste = comPermissaoDeUnificar(jaExiste, c.ctx)
+      if (jaExiste && !jaExiste.podeCadastrarMesmoAssim && jaExiste.podeUnificar === false && jaExiste.arquivada) {
+        return { erro: `${textoDaFichaQueJaExiste(jaExiste)} Reativar a ficha pede Clientes em Gerenciar: peça a quem cuida dos clientes.` }
+      }
       if (jaExiste) clienteNovo = { ...clienteNovo, jaExisteId: jaExiste.id }
     }
 
@@ -143,7 +148,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     let clientId = p.clientId
     if (!clientId && p.clienteNovo) {
       // A ficha que já existia: a escolha do cartão decide (r2-cli-01).
-      if (p.clienteNovo.jaExisteId && escolha !== 'cadastrar' && escolha !== 'atualizar') return { erro: 'Escolha no cartão: ficha nova mesmo assim, ou a ficha que existe.' }
+      if (p.clienteNovo.jaExisteId && escolha !== 'cadastrar' && escolha !== 'atualizar' && escolha !== 'usar') return { erro: 'Escolha no cartão: ficha nova mesmo assim, ou a ficha que existe.' }
       const novo = await garantirClienteRapido(c.admin, c.ctx, {
         nome: p.clienteNovo.nome, telefone: p.clienteNovo.telefone, branchId: p.branchId,
         jaExiste: p.clienteNovo.jaExisteId ? `${escolha}:${p.clienteNovo.jaExisteId}` : null,

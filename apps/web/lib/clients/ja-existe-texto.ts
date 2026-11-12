@@ -24,6 +24,13 @@ export interface FichaQueJaExiste {
    * e-mail e o telefone digitados no lugar dos dela (ou os dela, sem nada).
    */
   naFicha?: { email: string | null; telefone: string | null }
+  /**
+   * Quem pergunta pode "Unificar" / "Reativar"? (C66, H4 = b, o Heitor,
+   * 2026-11-11): mexer na ficha que existe pede Clientes em Gerenciar. Sem
+   * ele (`false`), a pergunta oferece agendar para a ficha COMO ESTÁ ("usar")
+   * ou cadastrar mesmo assim. Ausente = pode (o cadastro, que já pede o módulo).
+   */
+  podeUnificar?: boolean
 }
 
 /** "Já existe a ficha de Valdir com este telefone." */
@@ -44,21 +51,34 @@ export function rotuloDoAtualizar(f: Pick<FichaQueJaExiste, 'nome' | 'arquivada'
   return f.arquivada ? `Reativar a ficha de ${f.nome}` : `Unificar com a ficha de ${f.nome}`
 }
 
+/** "Agendar para a ficha de X" — sem Clientes em Gerenciar, a ficha que existe é usada como está (C66). */
+export function rotuloDoUsar(f: Pick<FichaQueJaExiste, 'nome'>): string {
+  return `Agendar para a ficha de ${f.nome}`
+}
+
+/** A recusa de unificar/reativar sem Clientes em Gerenciar (C66). */
+export const RECUSA_DE_UNIFICAR_SEM_CLIENTES =
+  'Unificar ou reativar a ficha que já existe pede Clientes em Gerenciar. Agende para a ficha como está, ou cadastre mesmo assim.'
+
 /**
  * A resposta da pessoa, no campo `_jaExiste` do formulário (ou na escolha do
  * cartão do Copilot): "cadastrar:<id>" — uma por ficha, separadas por espaço,
- * acumulam (cada uma vale para AQUELA ficha) — ou "atualizar:<id>".
+ * acumulam (cada uma vale para AQUELA ficha) —, "atualizar:<id>" (unificar /
+ * reativar) ou "usar:<id>" (a ficha como está, sem mexer nela — C66).
  */
-export function respostaDoJaExiste(texto: string | null | undefined): { cadastrar: Set<string>; atualizar: string | null } {
+export function respostaDoJaExiste(texto: string | null | undefined): { cadastrar: Set<string>; atualizar: string | null; usar: string | null } {
   const cadastrar = new Set<string>()
   let atualizar: string | null = null
+  let usar: string | null = null
   for (const parte of String(texto ?? '').split(/\s+/)) {
-    const m = /^(cadastrar|atualizar):([0-9a-f-]{36})$/i.exec(parte)
+    const m = /^(cadastrar|atualizar|usar):([0-9a-f-]{36})$/i.exec(parte)
     if (!m) continue
-    if (m[1]!.toLowerCase() === 'cadastrar') cadastrar.add(m[2]!.toLowerCase())
-    else atualizar = m[2]!.toLowerCase()
+    const tipo = m[1]!.toLowerCase(), id = m[2]!.toLowerCase()
+    if (tipo === 'cadastrar') cadastrar.add(id)
+    else if (tipo === 'usar') usar = id
+    else atualizar = id
   }
-  return { cadastrar, atualizar }
+  return { cadastrar, atualizar, usar }
 }
 
 /** A PRÓXIMA ficha que ainda pede a pergunta (nenhuma resposta para ela), ou nula. */

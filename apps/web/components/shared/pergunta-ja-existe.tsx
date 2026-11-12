@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertTriangle } from 'lucide-react'
-import { textoDaFichaQueJaExiste, rotuloDoAtualizar, type FichaQueJaExiste } from '@/lib/clients/ja-existe-texto'
+import { textoDaFichaQueJaExiste, rotuloDoAtualizar, rotuloDoUsar, type FichaQueJaExiste } from '@/lib/clients/ja-existe-texto'
 
 /**
  * "Já existe a ficha de X" nos caminhos RÁPIDOS de cadastro — o "+ Agendar"
@@ -9,13 +9,26 @@ import { textoDaFichaQueJaExiste, rotuloDoAtualizar, type FichaQueJaExiste } fro
  * 2026-11-03: "se já existir, retorna avisando que já existe, perguntando se
  * deseja cadastrar mesmo assim ou atualizar a ficha existente"). Nada foi
  * gravado; a resposta reenvia. A arquivada oferece "Reativar a ficha de X".
+ *
+ * Sem Clientes em Gerenciar (`ficha.podeUnificar === false`, C66): no lugar de
+ * unificar/reativar, "Agendar para a ficha de X" (a ficha como está) — e, na
+ * arquivada, só "Cadastrar mesmo assim".
  */
-export function PerguntaJaExiste({ ficha, pending, aoCadastrarMesmoAssim, aoAtualizar }: {
+export function PerguntaJaExiste({ ficha, pending, aoCadastrarMesmoAssim, aoAtualizar, aoUsar }: {
   ficha:                 FichaQueJaExiste
   pending:               boolean
   aoCadastrarMesmoAssim: (id: string) => void
   aoAtualizar:           (id: string) => void
+  /** "Agendar para a ficha de X", sem mexer nela (quem não tem Clientes em Gerenciar). */
+  aoUsar:                (id: string) => void
 }) {
+  const unifica = ficha.podeUnificar !== false
+  const usa = !unifica && !ficha.arquivada
+  const nota = unifica
+    ? (ficha.arquivada ? 'Reativar traz a ficha de volta, e o agendamento vai para ela.' : 'Unificar usa a ficha dela: o telefone digitado aqui entra nela, e o nome continua o da ficha.')
+    : ficha.arquivada
+      ? 'Reativar a ficha arquivada pede Clientes em Gerenciar: peça a quem cuida dos clientes, ou cadastre uma nova.'
+      : 'O agendamento vai para a ficha dela como está: o que foi digitado aqui não entra nela.'
   return (
     <div role="alert" data-ja-existe style={{
       display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start',
@@ -36,12 +49,19 @@ export function PerguntaJaExiste({ ficha, pending, aoCadastrarMesmoAssim, aoAtua
             Cadastrar mesmo assim
           </button>
         )}
-        <button type="button" className="btn-secondary" disabled={pending} onClick={() => aoAtualizar(ficha.id)}>
-          {rotuloDoAtualizar(ficha)}
-        </button>
+        {unifica && (
+          <button type="button" className="btn-secondary" disabled={pending} onClick={() => aoAtualizar(ficha.id)}>
+            {rotuloDoAtualizar(ficha)}
+          </button>
+        )}
+        {usa && (
+          <button type="button" className="btn-secondary" disabled={pending} onClick={() => aoUsar(ficha.id)}>
+            {rotuloDoUsar(ficha)}
+          </button>
+        )}
       </span>
       <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }}>
-        {ficha.arquivada ? 'Reativar traz a ficha de volta, e o agendamento vai para ela.' : 'Unificar usa a ficha dela: o telefone digitado aqui entra nela, e o nome continua o da ficha.'}
+        {nota}
       </span>
     </div>
   )
