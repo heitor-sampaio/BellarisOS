@@ -79,7 +79,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
 
   return (
     <>
-      <RealtimeRefresher tables={['financial_transactions', 'appointments']} />
+      <RealtimeRefresher tables={['financeiro_sinais', 'appointments']} />
       <FusoProvider fuso={fuso}>
       <FechamentoDoDiaTela
         basePath={basePath}

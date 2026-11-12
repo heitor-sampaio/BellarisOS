@@ -668,7 +668,7 @@ export default async function AdminDashboardPage({
   return (
     <>
       <RealtimeRefresher
-        tables={['appointments', 'financial_transactions', 'branch_product_stock']}
+        tables={['appointments', 'financeiro_sinais', 'branch_product_stock']}
       />
       <AdminDashboardView
         permissions={ctx.permissions}

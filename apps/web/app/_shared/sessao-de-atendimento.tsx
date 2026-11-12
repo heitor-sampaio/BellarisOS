@@ -617,7 +617,7 @@ export async function SessaoDeAtendimento({
 
   return (
     <>
-      <RealtimeRefresher tables={['appointments', 'medical_record_entries', 'financial_transactions']} />
+      <RealtimeRefresher tables={['appointments', 'medical_record_entries', 'financeiro_sinais']} />
       {/* F64 (D6): as horas da tela no relógio da unidade DO ATENDIMENTO — no
           /admin o provedor do layout é o da rede. */}
       <FusoProvider fuso={await fusoDaUnidade(ctx.tenantId, branchId)}>

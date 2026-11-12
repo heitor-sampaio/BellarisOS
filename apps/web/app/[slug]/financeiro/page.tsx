@@ -208,7 +208,7 @@ export default async function FinancialPage({
 
   return (
     <>
-      <RealtimeRefresher tables={['financial_transactions', 'comissoes_sinais']} />
+      <RealtimeRefresher tables={['financeiro_sinais', 'comissoes_sinais']} />
 
       <FinancialHub
         totais={totais}

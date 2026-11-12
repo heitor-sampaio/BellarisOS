@@ -256,7 +256,7 @@ export default async function AdminFinanceiroPage({
 
   return (
     <>
-      <RealtimeRefresher tables={['financial_transactions', 'comissoes_sinais']} />
+      <RealtimeRefresher tables={['financeiro_sinais', 'comissoes_sinais']} />
       <AdminFinancialView
         period={period}
         periodLabel={label}

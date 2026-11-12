@@ -290,16 +290,15 @@ export async function ReportsBiSection({
     <>
       <RealtimeRefresher tables={[
         'appointments',
-        'financial_transactions',
+        'financeiro_sinais',
         'clients',
-        'commissions',
+        'comissoes_sinais',
         'stock_movements',
         'branch_product_stock',
         'installments',
         'product_batches',
         'procedure_products',
         'client_packages',
-        'procedure_sales',
         'treatment_plans',
       ]} />
       <ReportsBiView
