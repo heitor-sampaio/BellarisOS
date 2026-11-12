@@ -199,7 +199,11 @@ test('"só os meus": os rankings, a demografia, o giro, os planos e o funil são
     await p.goto('/admin/dashboard?period=month')
     await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
     const corpo = p.locator('main')
-    await expect.soft(corpo, 'o total: as clientes que ela atendeu').toContainText(/ · 2 clientes/)
+    // D12 da 13ª (F68): o total do cabeçalho é o da CLÍNICA — o "só os meus" não
+    // recorta a ficha —, e diz que é ("da clínica"). Era o das clientes que ela atendeu.
+    const { count: daClinica } = await banco().from('clients').select('id', { count: 'exact', head: true })
+      .eq('tenant_id', rede!.tenantId).eq('is_active', true)
+    await expect.soft(corpo, 'o total: as clientes da clínica').toContainText(new RegExp(` · ${daClinica} clientes da clínica`))
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'o procedimento dela').toContainText(`Proc dr${marca}`)
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'não o da outra').not.toContainText(outroProc)
     await expect.soft(card(p, 'Ranking — Procedimentos por receita dos atendimentos'), 'a receita por procedimento dela').toContainText('R$ 120,00')
@@ -229,7 +233,9 @@ test('"só os meus": o dashboard da UNIDADE mostra o faturamento DELA nos 6 mese
     await expect(p.getByText('Meus agendamentos hoje')).toBeVisible()
     const main = p.locator('main')
     await expect.soft(p.getByText('Últimos 6 meses'), 'o gráfico do faturamento DELA').toBeVisible()
-    await expect.soft(main, 'a receita dela no semestre').toContainText(/▲\s*R\$\s*120 no semestre/)
+    // C46 da F68: o selo do semestre compara meses FECHADOS — com o dinheiro só
+    // neste mês, não há selo (era "▲ R$ 120 no semestre": o mês pela metade × um inteiro).
+    await expect.soft(p.locator('[data-semestre]'), 'sem selo com o mês corrente só').toHaveCount(0)
     await expect.soft(main, 'a receita dela').toContainText(/Meu faturamento do mês\s*R\$\s*120(?!\d)/)
     await expect.soft(main, 'nem a da unidade no semestre').not.toContainText('R$ 420')
     await expect.soft(card(p, 'Procedimentos mais procurados'), 'o procedimento dela').toContainText(`Proc dr${marca}`)
@@ -244,7 +250,7 @@ test('"só os meus": o dashboard da UNIDADE mostra o faturamento DELA nos 6 mese
     await p.goto(`/${slug}/dashboard`)
     await expect(p.getByText('Últimos 6 meses'), 'controle').toBeVisible()
     await expect(p.locator('main')).toContainText(/Faturamento do mês\s*R\$\s*420/)
-    await expect(p.locator('main')).toContainText(/▲\s*R\$\s*420 no semestre/)
+    await expect(p.locator('[data-semestre]')).toHaveCount(0)
     await expect(card(p, 'Procedimentos mais procurados')).toContainText(outroProc)
     await expect(p.locator('[data-etapa="Novos clientes"]')).toContainText(/4$/)
     await expect(reativar(p)).toContainText('Sumida da outra')

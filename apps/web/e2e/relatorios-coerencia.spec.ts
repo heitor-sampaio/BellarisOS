@@ -174,8 +174,13 @@ test('financeiro da unidade bate com o núcleo do mês', async ({ page }) => {
       { message: 'receita da unidade × núcleo', timeout: 10_000 })
     .toBe(receita)
 
-  await expect
-    .poll(async () => brl(await cartao('Ticket médio').innerText()),
-      { message: 'ticket médio da unidade × definição do §13.1', timeout: 10_000 })
-    .toBeCloseTo(ticket, 2)
+  // Sem cliente que pagou, o cartão diz "—" e não R$ 0,00 (C48 da F68).
+  if (Number(t.clientes) === 0) {
+    await expect(cartao('Ticket médio').locator('[data-valor-do-kpi]')).toHaveText('—')
+  } else {
+    await expect
+      .poll(async () => brl(await cartao('Ticket médio').innerText()),
+        { message: 'ticket médio da unidade × definição do §13.1', timeout: 10_000 })
+      .toBeCloseTo(ticket, 2)
+  }
 })

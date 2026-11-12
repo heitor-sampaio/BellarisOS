@@ -79,6 +79,7 @@ test('o sérum que a Bruna vendeu entra no faturamento DELA (só os meus)', asyn
   await como(browser, async pg => {
     await pg.goto(`/${slug}/dashboard`)
     await expect(pg.getByRole('heading', { name: 'Meu faturamento' })).toBeVisible()
-    await expect(pg.getByText('R$ 98 no semestre')).toBeVisible()
+    // O selo do semestre compara meses FECHADOS (C46 da F68): o mês é o cartão.
+    await expect(pg.locator('main')).toContainText(/Meu faturamento do mês\s*R\$\s*98(?!\d)/)
   })
 })
