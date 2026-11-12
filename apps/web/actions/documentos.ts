@@ -20,7 +20,7 @@ import { conversaDoCliente, envioPelaConversaLigado } from '@/lib/documentos/lin
 import { enviarNaConversa } from '@/lib/inbox/enviar'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
-import { getTenantContext, assertPermission, alcancaUnidade, can, podeReceber } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, can, podeReceber, temRecurso } from '@/lib/auth'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -364,6 +364,12 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
     assertPermission(ctx, 'documents', 'MANAGE')
     const travado = bloqueioDoSuporte(ctx, 'pedir assinatura ao cliente')
     if (travado) return { error: travado }
+    // C57a (F69): sem o portal no plano, o aviso não sai (`notifyClient` pula
+    // a clínica sem portal, calado) — e a tela dizia "Pedido enviado" e
+    // gravava NOTIFICADO_PORTAL. Recusa antes, sem gravar nada.
+    if (!temRecurso(ctx, 'portal')) {
+      return { error: 'O plano desta clínica não tem o portal do cliente. Colha na clínica, por link ou no papel.' }
+    }
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
     const montado = await garantirRenderizado(ctx.tenantId!, doc.id)

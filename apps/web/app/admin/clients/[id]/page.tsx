@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { idOu404 } from '@/lib/id-da-rota'
-import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 import { getPagoComCreditoDoCliente } from '@/lib/metrics/fechamento-extra'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
@@ -508,7 +508,7 @@ export default async function AdminClientProfilePage({
         internalCredits={internalCredits}
         documents={documents}
         termos={veTermos
-          ? { itens: termosItens, recortado: !veDocumentos, podeColher: can(ctx, 'documents', 'MANAGE'), pelaConversa }
+          ? { itens: termosItens, recortado: !veDocumentos, podeColher: can(ctx, 'documents', 'MANAGE'), pelaConversa, portalNoPlano: temRecurso(ctx, 'portal') }
           : null}
         canGrantCredit={ctx.permissions.financial === 'MANAGE'}
         branches={(branchesRaw ?? []) as { id: string; name: string }[]}

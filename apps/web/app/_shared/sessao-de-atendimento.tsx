@@ -671,8 +671,9 @@ export async function SessaoDeAtendimento({
                 ? await documentosDoAgendamento(ctx.tenantId!, appointment.id) : [],
               podeColher: can(ctx, 'documents', 'MANAGE'),
             pelaConversa: await envioPelaConversaLigado(ctx.tenantId!),
-            // "Pedir no portal" só para quem tem o app (A26 da 7ª simulação).
-            temAcessoAoApp: !!(cli as { auth_id?: string | null } | null)?.auth_id }
+            // "Pedir no portal" só para quem tem o app (A26 da 7ª simulação) —
+            // e com o portal no plano da clínica (C57a, F69).
+            temAcessoAoApp: temRecurso(ctx, 'portal') && !!(cli as { auth_id?: string | null } | null)?.auth_id }
           : null}
       />
       </FusoProvider>

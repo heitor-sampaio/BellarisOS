@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, alcancaUnidade, alcancaOAgendamento, can, isOwnScope } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade, alcancaOAgendamento, can, isOwnScope, temRecurso } from '@/lib/auth'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { notifyClient } from '@/lib/notifications/notify'
 import type { TenantContext } from '@estetica-os/types'
@@ -167,6 +167,9 @@ export async function enviarDocumentoACliente(
   const travado = bloqueioDoSuporte(ctx, 'enviar documento ao cliente')
   if (travado) return { error: travado }
   if (typeof documentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(documentId)) return { error: 'Documento não encontrado.' }
+  // Sem o portal no plano, a cliente não tem onde ver (C57a, F69): recusa em
+  // vez de dizer "enviado". Tirar do app continua valendo.
+  if (enviar && !temRecurso(ctx, 'portal')) return { error: 'O plano desta clínica não tem o portal do cliente: não há onde a cliente ver o documento.' }
 
   const admin = createAdminClient()
   const doc = await ler(admin

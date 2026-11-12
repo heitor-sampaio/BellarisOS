@@ -19,6 +19,7 @@ import { cifrarSegredos } from '@/lib/integracoes/cofre'
 import { MAX_ROTULO } from '@/lib/whatsapp/rotulo'
 import { marcarNumeroComoRemovido } from '@/lib/whatsapp/remover'
 import { dispararHistoricoUazapi, ultimaImportacaoDoHistorico } from '@/lib/whatsapp/historico-uazapi'
+import { urlDaClinica } from '@/lib/plataforma/destino'
 
 /**
  * Conexão de WhatsApp gerenciada pelo BellarisOS.
@@ -267,9 +268,11 @@ export async function criarConexaoUazapi(
     return { ok: false, error: `Limite de ${teto} conexões atingido nesta instalação.` }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  // O endereço PÚBLICO da clínica, lido agora (D11, F69): o NEXT_PUBLIC_APP_URL
+  // é o do build, e o webhook nascia no domínio do Railway.
+  const appUrl = enderecoDaClinica()
   if (!appUrl) {
-    return { ok: false, error: 'NEXT_PUBLIC_APP_URL não configurada — o webhook nasceria apontando para lugar nenhum.' }
+    return { ok: false, error: 'CLINICA_URL não configurada — o webhook nasceria apontando para lugar nenhum.' }
   }
 
   // (1) A linha primeiro. Nasce inativa e sem credencial: `resolverCanal` a
@@ -386,8 +389,8 @@ export async function repararConexaoUazapi(
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
   const config = numero.config as UazapiConfig
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
-  if (!appUrl) return { ok: false, error: 'NEXT_PUBLIC_APP_URL não configurada.' }
+  const appUrl = enderecoDaClinica()
+  if (!appUrl) return { ok: false, error: 'CLINICA_URL não configurada.' }
 
   try {
     await configurarWebhook(baseDa(config), config.token, `${appUrl}/api/webhooks/uazapi`)
@@ -607,4 +610,8 @@ export async function removerConexaoUazapi(
   revalidatePath('/admin/settings')
   revalidatePath('/admin/inbox')
   return { ok: true }
+}
+
+function enderecoDaClinica(): string | null {
+  try { return urlDaClinica() } catch { return null }
 }

@@ -16,6 +16,7 @@ import { sha256 } from './renderizar'
 import { ROTULO_DO_EVENTO } from './situacao'
 import { FUSO_PADRAO, fusoValido, nomeDoFuso } from '@/lib/unidades/fuso'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { urlDaClinica } from '@/lib/plataforma/destino'
 
 /**
  * O PDF final de um documento assinado: o documento (desenhado da MESMA árvore
@@ -57,9 +58,14 @@ function mascararDocumento(doc: string | null): string | null {
   return d ? '(informado)' : null
 }
 
+/**
+ * O link de conferência impresso no PDF e no QR (D11 da 13ª simulação):
+ * o endereço PÚBLICO da clínica (`CLINICA_URL`, lido em tempo de execução). O
+ * `NEXT_PUBLIC_APP_URL` é gravado no BUILD, e o PDF assinado em produção saiu
+ * com o domínio do Railway — o link de quem confere morre com ele.
+ */
 export function urlDeVerificacao(codigo: string): string {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
-  return `${base}/verificar/${codigo}`
+  return `${urlDaClinica()}/verificar/${codigo}`
 }
 
 async function pngDoDataUrl(pdf: PDFDocument, dataUrl: string | null): Promise<PDFImage | null> {

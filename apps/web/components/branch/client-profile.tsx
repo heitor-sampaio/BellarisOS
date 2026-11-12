@@ -344,7 +344,7 @@ interface Props {
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
-  termos?:               { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean; recortado?: boolean } | null
+  termos?:               { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean; recortado?: boolean; portalNoPlano?: boolean } | null
   /** A33 da 11ª: o lote que cada atendimento usou (a baixa), por id do atendimento. */
   lotesDosAtendimentos?: Record<string, LoteDoAtendimento[]>
   /** Abre o "Aplicado em" do lote no Estoque (o Estoque e as Clientes). */
@@ -2364,7 +2364,7 @@ export function ClientProfile({
       {tab === 'documentos' && termos && (
         <section aria-label="Termos e contratos" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Termos e contratos</h3>
-          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso} recortado={!!termos.recortado} />
+          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso && termos.portalNoPlano !== false} recortado={!!termos.recortado} />
         </section>
       )}
       {tab === 'documentos' && (
