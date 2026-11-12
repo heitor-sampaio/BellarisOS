@@ -4,6 +4,7 @@ import { lerPublico, contarPublicoComAparelho } from '@/lib/clientes/publico'
 import { filtrosDaCampanha } from '@/lib/notifications/filtros-da-campanha'
 import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ } from '@/lib/datetime'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { envioDoLembrete } from '@/lib/notifications/lembrete-de-madrugada'
 import type { AudienceRules, TriggerType } from '@/actions/notification-campaigns'
 
 /**
@@ -56,16 +57,36 @@ export async function aniversariantes(camp: CampanhaDoGatilho, hoje: { month: nu
   })).map(c => ({ id: c.id, name: c.name }))
 }
 
-/** Quem concluiu um atendimento no dia de `alvo` (o "N dias depois da visita"), do público. */
+/**
+ * Quem concluiu um atendimento no dia de `alvo` e NÃO VOLTOU depois (o "N dias
+ * depois do ÚLTIMO atendimento"), do público. C52 (F69): quem concluiu naquele
+ * dia e voltou anteontem recebia o "Como ficou?" da visita velha — o nome do
+ * gatilho diz "último".
+ */
 export async function concluiramNoDia(admin: Admin, camp: CampanhaDoGatilho, alvo: Date, fuso?: string): Promise<Destinatario[]> {
+  const fimDoDia = endOfDayTZ(alvo, fuso).toISOString()
   const appts = await ler(admin
     .from('appointments')
     .select('client_id, clients!inner(id, name), branches!inner(tenant_id)')
     .eq('branches.tenant_id', camp.tenant_id)
     .eq('status', 'COMPLETED')
     .gte('completed_at', startOfDayTZ(alvo, fuso).toISOString())
-    .lte('completed_at', endOfDayTZ(alvo, fuso).toISOString()), 'carregar os agendamentos')
-  return doPublico(camp, semRepetir((appts ?? []) as unknown as { client_id: string; clients: { name: string } | null }[]))
+    .lte('completed_at', fimDoDia), 'carregar os agendamentos')
+  const doDia = semRepetir((appts ?? []) as unknown as { client_id: string; clients: { name: string } | null }[])
+  if (!doDia.length) return doDia
+  // As que voltaram: um concluído depois do dia-alvo. São as do dia de UMA
+  // clínica (poucas), em lotes de 100 ids.
+  const voltaram = new Set<string>()
+  for (let i = 0; i < doDia.length; i += 100) {
+    const depois = await ler(admin
+      .from('appointments')
+      .select('client_id')
+      .in('client_id', doDia.slice(i, i + 100).map(c => c.id))
+      .eq('status', 'COMPLETED')
+      .gt('completed_at', fimDoDia), 'conferir quem voltou depois')
+    for (const d of (depois ?? []) as { client_id: string }[]) voltaram.add(d.client_id)
+  }
+  return doPublico(camp, doDia.filter(c => !voltaram.has(c.id)))
 }
 
 /** Quem tem pacote (não cancelado) vencendo no dia de `alvo`, do público. */
@@ -81,19 +102,44 @@ export async function pacotesVencendoNoDia(admin: Admin, camp: CampanhaDoGatilho
   return doPublico(camp, semRepetir((pkgs ?? []) as unknown as { client_id: string; clients: { name: string } | null }[]))
 }
 
-/** Quem tem agendamento (agendado ou confirmado) em [inicio, fim), do público — um por cliente. */
-export async function agendadosNaJanela(admin: Admin, camp: CampanhaDoGatilho, inicio: Date, fim: Date): Promise<(Destinatario & { scheduled_at: string })[]> {
+/**
+ * Os lembretes do agendamento que SAEM em [de, ate) — a conta do cron (de
+ * hora em hora: de agora a daqui a 1 h) e do "Quem receberia hoje" (de agora
+ * ao fim do dia). "N horas antes", e, com a opção da véspera ligada (C74), o
+ * que cairia de madrugada sai às 20:00 (`envioDoLembrete`).
+ */
+export async function lembretesNaJanela(admin: Admin, camp: CampanhaDoGatilho, de: Date, ate: Date, fuso?: string): Promise<(Destinatario & { scheduled_at: string })[]> {
+  const cfg = (camp.trigger_config ?? {}) as { hours?: number; vespera_se_madrugada?: boolean }
+  const horas = cfg.hours ?? 24
+  const vespera = cfg.vespera_se_madrugada === true
+  // O que sai às 20:00 da véspera é de até 12 h depois da hora natural.
+  const folga = vespera ? 13 * 3_600_000 : 0
+  const candidatos = await agendadosNaJanelaPorAgendamento(admin, camp,
+    new Date(de.getTime() + horas * 3_600_000), new Date(ate.getTime() + horas * 3_600_000 + folga))
+  const vistos = new Set<string>()
+  const saem: (Destinatario & { scheduled_at: string })[] = []
+  for (const a of candidatos) {
+    const envio = envioDoLembrete(new Date(a.scheduled_at), horas, fuso, vespera)
+    if (envio < de || envio >= ate || vistos.has(a.id)) continue
+    vistos.add(a.id)
+    saem.push(a)
+  }
+  return doPublico(camp, saem)
+}
+
+/** Os agendamentos ativos em [inicio, fim), um por linha (a cliente pode repetir). */
+async function agendadosNaJanelaPorAgendamento(admin: Admin, camp: CampanhaDoGatilho, inicio: Date, fim: Date): Promise<(Destinatario & { scheduled_at: string })[]> {
   const appts = await ler(admin
     .from('appointments')
     .select('client_id, scheduled_at, clients!inner(id, name), branches!inner(tenant_id)')
     .eq('branches.tenant_id', camp.tenant_id)
     .in('status', ['SCHEDULED', 'CONFIRMED'])
     .gte('scheduled_at', inicio.toISOString())
-    .lt('scheduled_at', fim.toISOString()), 'carregar os agendamentos')
-  return doPublico(camp, semRepetir<Destinatario & { scheduled_at: string }>(
-    (appts ?? []) as unknown as { client_id: string; scheduled_at: string; clients: { name: string } | null }[],
-    (l: { scheduled_at: string }) => ({ scheduled_at: l.scheduled_at }),
-  ))
+    .lt('scheduled_at', fim.toISOString())
+    .order('scheduled_at'), 'carregar os agendamentos')
+  return ((appts ?? []) as unknown as { client_id: string; scheduled_at: string; clients: { name: string } | null }[])
+    .filter(l => l.clients)
+    .map(l => ({ id: l.client_id, name: l.clients!.name, scheduled_at: l.scheduled_at }))
 }
 
 /**
@@ -129,9 +175,7 @@ export async function quemReceberiaHoje(camp: CampanhaDoGatilho, agora = new Dat
       break
     case 'BEFORE_APPOINTMENT': {
       const horas = cfg.hours ?? 24
-      const inicio = new Date(agora.getTime() + horas * 3_600_000)
-      const fim = new Date(endOfDayTZ(agora, fuso).getTime() + 1 + horas * 3_600_000)
-      quem = await agendadosNaJanela(admin, camp, inicio, fim)
+      quem = await lembretesNaJanela(admin, camp, agora, new Date(endOfDayTZ(agora, fuso).getTime() + 1), fuso)
       ninguem = `Até o fim de hoje, ninguém do público tem agendamento ${horas} horas depois: nenhum lembrete sai hoje.`
       alguem = n => `${n} ${n === 1 ? 'lembrete sai' : 'lembretes saem'} até o fim de hoje`
       break

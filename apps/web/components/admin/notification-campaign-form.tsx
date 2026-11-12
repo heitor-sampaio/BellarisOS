@@ -13,6 +13,7 @@ import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { filtrosDoPublico } from '@/lib/notifications/resumo-do-publico'
+import { avisoDeMadrugada } from '@/lib/notifications/lembrete-de-madrugada'
 import { quandoDispara } from '@/lib/notifications/quando-dispara'
 import { campoDaCampanha } from '@/lib/notifications/hora-da-campanha'
 import { nomeDoFuso } from '@/lib/unidades/fuso'
@@ -62,7 +63,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
   useEffect(() => { if (destino) router.push(destino) }, [destino, router])
 
   // Step 1
-  const gatilho = (existing?.trigger_config ?? {}) as Record<string, number | undefined>
+  const gatilho = (existing?.trigger_config ?? {}) as { days?: number; hours?: number; month?: number; day?: number; vespera_se_madrugada?: boolean }
   const regras  = existing?.audience_rules ?? {}
   const [campType,      setCampType]      = useState<CampaignType>(existing?.type ?? 'IMMEDIATE')
   // D8 da 11ª (princípios 3 e 6): o gatilho começa SEM escolha — a dona
@@ -71,6 +72,8 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
   const [scheduledAt,   setScheduledAt]   = useState(campoDaCampanha(existing?.scheduled_at, fuso))
   const [triggerDays,   setTriggerDays]   = useState(gatilho.days ?? 30)
   const [triggerHours,  setTriggerHours]  = useState(gatilho.hours ?? 24)
+  // C74 (D17, F69): desligada por padrão — a regra de sempre é "N horas antes".
+  const [vespera,       setVespera]       = useState(gatilho.vespera_se_madrugada === true)
   const [annualMonth,   setAnnualMonth]   = useState(gatilho.month ?? 3)
   const [annualDay,     setAnnualDay]     = useState(gatilho.day ?? 8)
 
@@ -110,7 +113,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
     if (campType !== 'AUTOMATED') return undefined
     if (triggerType === 'ANNUAL_DATE')       return { month: annualMonth, day: annualDay }
     if (triggerType === 'BIRTHDAY')          return undefined
-    if (triggerType === 'BEFORE_APPOINTMENT') return { hours: triggerHours }
+    if (triggerType === 'BEFORE_APPOINTMENT') return { hours: triggerHours, ...(vespera && { vespera_se_madrugada: true }) }
     return { days: triggerDays }
   }
 
@@ -242,7 +245,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
                 {([
                   { t: 'BIRTHDAY',           label: 'Aniversário',        desc: 'No dia do aniversário do cliente',          Icon: Gift },
                   { t: 'ANNUAL_DATE',        label: 'Data comemorativa',  desc: 'Toda vez que uma data específica chegar',   Icon: CalendarHeart },
-                  { t: 'BEFORE_APPOINTMENT', label: 'Lembrete de agenda', desc: 'N horas antes do agendamento confirmado',   Icon: AlarmClock },
+                  { t: 'BEFORE_APPOINTMENT', label: 'Lembrete de agenda', desc: 'N horas antes do agendamento (agendado ou confirmado)', Icon: AlarmClock },
                   { t: 'DAYS_AFTER_VISIT',   label: 'Pós-visita',         desc: 'N dias após o último atendimento',          Icon: CalendarDays },
                   { t: 'DAYS_BEFORE_EXPIRY', label: 'Venc. de pacote',    desc: 'N dias antes do pacote vencer',             Icon: Package },
                 ] as { t: TriggerType; label: string; desc: string; Icon: React.ElementType }[]).map(opt => (
@@ -294,13 +297,15 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
               )}
 
               {triggerType === 'BEFORE_APPOINTMENT' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <SectionLabel style={{ marginBottom: 0 }}>Enviar quantas horas antes?</SectionLabel>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div role="group" aria-label="Horas antes" style={{ display: 'flex', gap: 6 }}>
                     {[2, 6, 12, 24, 48].map(h => (
                       <button
                         key={h}
                         type="button"
+                        aria-pressed={triggerHours === h}
                         onClick={() => setTriggerHours(h)}
                         style={{
                           padding: '6px 14px', borderRadius: 8,
@@ -314,6 +319,16 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
                       </button>
                     ))}
                   </div>
+                </div>
+                {/* C74 (D17): o aviso de quais agendamentos têm o lembrete de
+                    madrugada, e a opção — desligada — de mandar na véspera. */}
+                <p data-lembrete-de-madrugada style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {avisoDeMadrugada(triggerHours)}
+                </p>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={vespera} onChange={e => setVespera(e.target.checked)} />
+                  Se cair de madrugada, mandar na véspera às 20:00
+                </label>
                 </div>
               )}
 
@@ -543,11 +558,11 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
                 ANNUAL_DATE: `${annualDay}/${annualMonth} todo ano`,
                 DAYS_AFTER_VISIT: `${triggerDays} dias após última visita`,
                 DAYS_BEFORE_EXPIRY: `${triggerDays} dias antes do vencimento`,
-                BEFORE_APPOINTMENT: `${triggerHours}h antes do agendamento`,
+                BEFORE_APPOINTMENT: `${triggerHours}h antes do agendamento${vespera ? ' (de madrugada, na véspera às 20:00)' : ''}`,
               }[triggerType]} />
               {/* D8 da 11ª: quando ela sai, com a hora — a mesma regra do cron. */}
               <div data-quando-dispara>
-                <ReviewRow label="Dispara" value={quandoDispara(triggerType, getTriggerConfig() as { days?: number; hours?: number; month?: number; day?: number } | undefined, fuso)} />
+                <ReviewRow label="Dispara" value={quandoDispara(triggerType, getTriggerConfig() as { days?: number; hours?: number; month?: number; day?: number; vespera_se_madrugada?: boolean } | undefined, fuso)} />
               </div>
             </>
           )}

@@ -29,7 +29,7 @@ const doisDigitos = (n: number) => String(n).padStart(2, '0')
 const aPartirDasHora = `a partir das ${doisDigitos(HORA_DAS_CAMPANHAS_DO_DIA)}:00`
 
 /** "no dia do aniversário da cliente, a partir das 09:00" — o que a revisão e os detalhes dizem. */
-export function quandoDispara(gatilho: GatilhoDaCampanha | null | undefined, config?: { days?: number; hours?: number; month?: number; day?: number } | null, fuso?: string): string {
+export function quandoDispara(gatilho: GatilhoDaCampanha | null | undefined, config?: { days?: number; hours?: number; month?: number; day?: number; vespera_se_madrugada?: boolean } | null, fuso?: string): string {
   // A campanha roda no relógio da rede (F62); fora de Brasília, a tela diz qual (A7 da 13ª).
   const aPartirDas = `${aPartirDasHora}${fuso && fuso !== FUSO_PADRAO ? ` (${nomeDoFuso(fuso)})` : ''}`
   switch (gatilho) {
@@ -37,7 +37,9 @@ export function quandoDispara(gatilho: GatilhoDaCampanha | null | undefined, con
     case 'ANNUAL_DATE':        return `todo ano em ${doisDigitos(config?.day ?? 0)}/${doisDigitos(config?.month ?? 0)}, ${aPartirDas}`
     case 'DAYS_AFTER_VISIT':   return `${config?.days ?? '?'} dias depois do último atendimento da cliente, ${aPartirDas}`
     case 'DAYS_BEFORE_EXPIRY': return `${config?.days ?? '?'} dias antes de o pacote da cliente vencer, ${aPartirDas}`
-    case 'BEFORE_APPOINTMENT': return `${config?.hours ?? 24} horas antes de cada agendamento confirmado (conferido de hora em hora)`
+    // "Agendado ou confirmado" é o que o cron faz (C54/D15, F69): a tela dizia
+    // só "confirmado". Com a véspera ligada (C74), a madrugada vai às 20:00.
+    case 'BEFORE_APPOINTMENT': return `${config?.hours ?? 24} horas antes de cada agendamento, agendado ou confirmado (conferido de hora em hora)${config?.vespera_se_madrugada ? '; o que cairia de madrugada sai na véspera às 20:00' : ''}`
     default:                   return 'escolha o gatilho'
   }
 }
