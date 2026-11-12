@@ -79,6 +79,8 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
     const bandeira      = str(formData, 'cartao_bandeira')
     // F16-5: as vezes no crédito da receita paga (lancarCore confere o limite da clínica).
     const vezesNoCartao = str(formData, 'cartao_vezes')
+    // C75: a maquininha do cartão da receita paga (lancarCore confere a rede).
+    const maquininha    = str(formData, 'maquininha_id') || null
 
     if (!type)                return { error: 'Tipo é obrigatório.' }
     // A14 da 9ª: o Boleto é forma da despesa (a cliente não paga a recepção por boleto).
@@ -161,7 +163,7 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
         branchId, tipo: type, categoria: category, descricao: description, valor: amount,
         formaDePagamento: paymentMethod, vencimento: dueDate, pago: isPaid, pagoEm: paidOn, observacoes: notes,
         fornecedor, notaFiscal,
-        bandeira, vezes: vezesNoCartao ? Number(vezesNoCartao) : null,
+        bandeira, vezes: vezesNoCartao ? Number(vezesNoCartao) : null, maquininha,
       })
       if ('error' in r) return { error: r.error }
     }
@@ -181,17 +183,20 @@ export async function markTransactionPaid(
    * do crediário da clínica nasce sem), escolhida na baixa.
    */
   forma?: string | null,
+  /** C75: a maquininha do cartão (sem ela, o banco põe a primeira). */
+  maquininha?: string | null,
 ) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'cashier', 'MANAGE')
+    if (maquininha != null && (typeof maquininha !== 'string' || !/^[0-9a-f-]{36}$/i.test(maquininha))) return { error: 'Maquininha inválida.' }
     // A15 da 9ª: a despesa também diz a forma na baixa — e pode ser Boleto (A14).
     if (forma != null && !(FORMAS_DE_PAGAMENTO as readonly string[]).includes(forma) && forma !== 'BOLETO') return { error: 'Forma de pagamento inválida.' }
 
     // O núcleo (lib/financeiro/lancamento.ts) é o mesmo do Copilot: confere a
     // rede e a unidade ao alcance antes de escrever. A bandeira (r3-f13-01)
     // só vale no cartão; as vezes (F17-5), só no crédito.
-    const r = await marcarPagoCore(createAdminClient(), ctx, transactionId, forma ?? null, bandeira ?? null, vezes ?? null)
+    const r = await marcarPagoCore(createAdminClient(), ctx, transactionId, forma ?? null, bandeira ?? null, vezes ?? null, maquininha ?? null)
     if ('error' in r) return { error: r.error }
 
     // Os dois portais operam o mesmo caixa: quem abre pela rede precisa ver o

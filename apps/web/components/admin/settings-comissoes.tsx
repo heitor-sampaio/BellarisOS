@@ -1,23 +1,24 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { SegSelect } from '@/components/shared/seg-select'
-import { salvarConfigDeComissao, salvarTaxasDaMaquininha, salvarMaximoDeVezes, salvarPrazoDaOperadora, salvarCartaoPorBandeira, salvarMaximoDeParcelas } from '@/actions/comissoes'
+import { salvarConfigDeComissao, salvarMaximoDeParcelas } from '@/actions/comissoes'
+import { salvarMaquininha, arquivarMaquininha, salvarTaxaDoPix } from '@/actions/maquininhas'
+import type { Maquininha, EntradaDaMaquininha } from '@/lib/financeiro/maquininhas'
 import { CREDIARIO_PADRAO, opcoesDeParcelas, TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
 import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, faixaDaOperadora, avisoDaTaxaQueBaixa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
 import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA, PRAZO_MAXIMO_DA_OPERADORA, recusaDoPrazoDaOperadora, recusaDaTaxaDaMaquininha } from '@/lib/financeiro/vezes-do-cartao'
-import { rotuloDaBase, type ConfigDeComissao, type TaxaDePagamento, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
+import { rotuloDaBase, type ConfigDeComissao, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO, formatBRL } from '@estetica-os/utils'
 import { Fala } from '@/components/shared/uma-unidade'
 
 /**
- * Configurações → Comissões: como a comissão acontece na rede, a tabela de
- * taxas da maquininha e quem atende sem comissão configurada. As regras de
+ * Configurações → Comissões: como a comissão acontece na rede, as taxas (o Pix
+ * e as maquininhas) e quem atende sem comissão configurada. As regras de
  * cada profissional (o padrão e as exceções por procedimento) ficam na Equipe.
  */
 
@@ -45,15 +46,12 @@ const PARCELAS_DO_CREDITO = Array.from({ length: 11 }, (_, i) => i + 2)
 /** Os campos de taxa são curtos: em grade, quantos couberem na linha. */
 const grade = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 } as const
 
-export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, podeEditar, maximoDeVezes: maximoGravado = null, prazoDaOperadora = PRAZO_PADRAO_DA_OPERADORA, porBandeira = {}, produtos = [], crediarioMax = CREDIARIO_PADRAO }: {
+export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegra, quantosAtendem, podeEditar, produtos = [], crediarioMax = CREDIARIO_PADRAO }: {
   inicial:    ConfigDeComissao
-  taxas:      TaxaDePagamento[]
-  /** "Parcelar no crédito até" gravado pela rede (D-15); nulo = automático. */
-  maximoDeVezes?: number | null
-  /** A cada quantos dias a operadora deposita cada parcela (r2-fin-01). */
-  prazoDaOperadora?: number
-  /** O prazo e as taxas de cada bandeira (r3-f13-01); o que falta é a regra geral. */
-  porBandeira?: CartaoPorBandeira
+  /** As maquininhas da rede, as ativas primeiro (C75 da F67). */
+  maquininhas: Maquininha[]
+  /** A taxa do Pix, fora das maquininhas (padrão 0%). */
+  taxaDoPix?: number
   /** Os produtos de revenda e a comissão de cada um (r2-ven-10). */
   produtos?: ComissaoDoProduto[]
   /** C38: até quantas parcelas a clínica divide o crediário (padrão 12). */
@@ -67,7 +65,7 @@ export function SettingsComissoes({ inicial, taxas, semRegra, quantosAtendem, po
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <ComoAcontece inicial={inicial} podeEditar={podeEditar} produtos={produtos} />
-      <TabelaDeTaxas inicial={taxas} podeEditar={podeEditar} maximoGravado={maximoGravado} prazoGravado={prazoDaOperadora} porBandeiraGravado={porBandeira} />
+      <TabelaDeTaxas maquininhas={maquininhas} pixGravado={taxaDoPix} podeEditar={podeEditar} />
       <CrediarioDaClinica gravado={crediarioMax} podeEditar={podeEditar} />
       <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Comissão de cada profissional">
         <h2 style={titulo}>Comissão de cada profissional</h2>
@@ -337,31 +335,152 @@ function CrediarioDaClinica({ gravado, podeEditar }: { gravado: number; podeEdit
   )
 }
 
-/** O que a tela edita de uma bandeira: o prazo e as taxas, em texto ("3,5"); vazio = a regra geral. */
+/** O que a tela edita de uma bandeira: o prazo e as taxas, em texto ("3,5"); vazio = a da maquininha. */
 interface BandeiraNaTela { prazo: string; valores: Record<string, string> }
 const virgula = (n: number) => String(n).replace('.', ',')
 
-function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBandeiraGravado }: {
-  inicial: TaxaDePagamento[]; podeEditar: boolean; maximoGravado: number | null; prazoGravado: number; porBandeiraGravado: CartaoPorBandeira
+/**
+ * Uma maquininha como a tela a edita (C75 da F67). `chave` identifica a linha
+ * mesmo antes de ela ter id (a nova, ainda não salva). As taxas em texto, com
+ * as chaves "DEBIT_CARD/1" e "CREDIT_CARD/N".
+ */
+interface MaquininhaNaTela {
+  chave: string
+  id: string | null
+  nome: string
+  valores: Record<string, string>
+  maxVezes: string
+  prazo: string
+  cobraPorBandeira: boolean
+  porBandeira: Partial<Record<Bandeira, BandeiraNaTela>>
+  arquivada: boolean
+}
+
+function maquininhaNaTela(m: Maquininha): MaquininhaNaTela {
+  return {
+    chave: m.id, id: m.id, nome: m.nome,
+    valores: Object.fromEntries(Object.entries(m.taxas).map(([k, v]) => [k.replace(':', '/'), virgula(v)])),
+    maxVezes: m.maxVezes == null ? '' : String(m.maxVezes),
+    prazo: String(m.prazoDias),
+    cobraPorBandeira: m.cobraPorBandeira,
+    porBandeira: Object.fromEntries(Object.entries(m.porBandeira).map(([b, r]) => [b, {
+      prazo: r?.prazo != null ? String(r.prazo) : '',
+      valores: Object.fromEntries(Object.entries(r?.taxas ?? {}).map(([k, v]) => [k.replace(':', '/'), virgula(v)])),
+    }])),
+    arquivada: m.arquivada,
+  }
+}
+
+/** O que o "Salvar taxas" manda de uma maquininha, ou a recusa (com o que está errado). */
+function entradaDaMaquininha(m: MaquininhaNaTela): EntradaDaMaquininha | { erro: string } {
+  const nome = m.nome.trim()
+  if (!nome) return { erro: 'Dê um nome à maquininha (ex.: Stone).' }
+  const taxas: Record<string, number> = {}
+  for (const [k, bruto] of Object.entries(m.valores)) {
+    const v = bruto.trim()
+    if (!v) continue
+    const n = Number(v.replace(',', '.'))
+    // F16-3: sem teto — só não negativa (e o limite do registro).
+    const recusa = recusaDaTaxaDaMaquininha(n)
+    if (recusa) return { erro: recusa }
+    taxas[k.replace('/', ':')] = n
+  }
+  const dias = Number(m.prazo.trim())
+  const recusaDoPrazo = recusaDoPrazoDaOperadora(dias)
+  if (recusaDoPrazo) return { erro: recusaDoPrazo }
+  // As bandeiras: só o que foi preenchido; o resto é a taxa da maquininha.
+  const porBandeira: CartaoPorBandeira = {}
+  for (const b of BANDEIRAS) {
+    const r = m.porBandeira[b.value]
+    if (!r) continue
+    const taxasDela: Record<string, number> = {}
+    for (const [k, bruto] of Object.entries(r.valores)) {
+      const v = bruto.trim()
+      if (!v) continue
+      const n = Number(v.replace(',', '.'))
+      const recusa = recusaDaTaxaDaMaquininha(n)
+      if (recusa) return { erro: `${b.label}: ${recusa}` }
+      const [metodo, parcelas] = k.split('/') as ['DEBIT_CARD' | 'CREDIT_CARD', string]
+      taxasDela[chaveDaTaxa(metodo, Number(parcelas))] = n
+    }
+    const prazoDela = r.prazo.trim() ? Number(r.prazo.trim()) : null
+    if (prazoDela !== null) {
+      const recusa = recusaDoPrazoDaOperadora(prazoDela)
+      if (recusa) return { erro: `${b.label}: ${recusa}` }
+    }
+    if (prazoDela === null && !Object.keys(taxasDela).length) continue
+    porBandeira[b.value] = { ...(prazoDela !== null ? { prazo: prazoDela } : {}), taxas: taxasDela }
+  }
+  return {
+    ...(m.id ? { id: m.id } : {}),
+    nome, taxas, maxVezes: m.maxVezes === '' ? null : Number(m.maxVezes), prazoDias: dias,
+    cobraPorBandeira: m.cobraPorBandeira, porBandeira,
+  }
+}
+
+/** A2 da 8ª: o que parece engano (mais vezes, taxa menor) vira aviso, sem recusar (princípio 2). */
+function avisosDaTaxaQueBaixa(e: EntradaDaMaquininha): string[] {
+  const avisos: string[] = []
+  const doCredito = (t: Record<string, number>) => Object.entries(t)
+    .map(([k, taxa]) => { const m = /^CREDIT_CARD:(\d+)$/.exec(k); return m ? { parcelas: Number(m[1]), taxa } : null })
+    .filter((x): x is { parcelas: number; taxa: number } => x !== null)
+  const avisoGeral = avisoDaTaxaQueBaixa(doCredito(e.taxas))
+  if (avisoGeral) avisos.push(avisoGeral)
+  if (!e.cobraPorBandeira) return avisos
+  for (const b of BANDEIRAS) {
+    const taxasDela = (e.porBandeira as CartaoPorBandeira)[b.value]?.taxas
+    if (!taxasDela) continue
+    const a = avisoDaTaxaQueBaixa(doCredito({ ...e.taxas, ...taxasDela }))
+    if (a && a !== avisoGeral) avisos.push(`${b.label}: ${a}`)
+  }
+  return avisos
+}
+
+/**
+ * As taxas (C75 da F67 — o Heitor: "a rede precisa configurar suas taxas, por
+ * operadora"): o Pix, com campo próprio, e as MAQUININHAS da rede. A clínica
+ * comum tem uma — a tela é a de sempre; com mais de uma, escolhe-se qual
+ * editar. Cada maquininha tem o débito, o crédito de 1x até onde parcela, o
+ * prazo e, guardada até a clínica precisar (princípio 7), a opção "cobra
+ * diferente em alguma bandeira?". O campo vazio vale 0% e mostra 0%
+ * (princípio 3): não há mais aviso de "sem taxa" em cada campo.
+ */
+function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
+  maquininhas: Maquininha[]; pixGravado: number; podeEditar: boolean
 }) {
   const router = useRouter()
   const chave = (m: MetodoComTaxa, n: number) => `${m}/${n}`
-  const [valores, setValores] = useState<Record<string, string>>(() =>
-    Object.fromEntries(inicial.map(t => [chave(t.metodo, t.parcelas), String(t.taxa_pct).replace('.', ',')])))
+  const [lista, setLista] = useState<MaquininhaNaTela[]>(() => maquininhas.map(maquininhaNaTela))
+  // O que está gravado, para o "Salvar taxas" mandar só o que mudou.
+  const [gravadas, setGravadas] = useState<Record<string, string>>(() =>
+    Object.fromEntries(maquininhas.map(m => [m.id, JSON.stringify(entradaDaMaquininha(maquininhaNaTela(m)))])))
+  const ativasNaTela = lista.filter(m => !m.arquivada)
+  const arquivadasNaTela = lista.filter(m => m.arquivada && m.id)
+  const [aberta, setAberta] = useState<string>(() => ativasNaTela[0]?.chave ?? lista[0]?.chave ?? '')
+  const atual: MaquininhaNaTela = ativasNaTela.find(m => m.chave === aberta) ?? ativasNaTela[0]
+    ?? { chave: '', id: null, nome: 'Maquininha', valores: {}, maxVezes: '', prazo: String(PRAZO_PADRAO_DA_OPERADORA), cobraPorBandeira: false, porBandeira: {}, arquivada: false }
+  const variasMaquininhas = ativasNaTela.length > 1
+  const mudarAtual = (f: (m: MaquininhaNaTela) => Partial<MaquininhaNaTela>) => {
+    setLista(l => l.map(m => m.chave === atual.chave ? { ...m, ...f(m) } : m))
+    setSalvo(false)
+  }
+  const valores = atual.valores
+  const setValores = (f: (v: Record<string, string>) => Record<string, string>) => mudarAtual(m => ({ valores: f(m.valores) }))
+  const maxVezes = atual.maxVezes
+  const prazo = atual.prazo
+
+  const [pix, setPix] = useState(pixGravado ? virgula(pixGravado) : '')
   // r3-f13-01 (o Heitor: "Prazo por bandeira. Taxas também configuráveis por
-  // bandeira."): a tabela mostra a REGRA GERAL ('') ou a de uma bandeira. O
-  // vazio da bandeira é a regra geral — o campo mostra qual é.
-  const [bandeira, setBandeira] = useState<'' | Bandeira>('')
-  const [porBandeira, setPorBandeira] = useState<Partial<Record<Bandeira, BandeiraNaTela>>>(() => Object.fromEntries(
-    Object.entries(porBandeiraGravado).map(([b, r]) => [b, {
-      prazo: r?.prazo != null ? String(r.prazo) : '',
-      valores: Object.fromEntries(Object.entries(r?.taxas ?? {}).map(([k, v]) => [k.replace(':', '/'), virgula(v)])),
-    }]),
-  ))
+  // bandeira."): com "cobra diferente em alguma bandeira?" marcado, a tabela
+  // mostra a da maquininha ('') ou a de uma bandeira. O vazio da bandeira é a
+  // da maquininha — o campo mostra qual.
+  const [bandeiraEscolhida, setBandeira] = useState<'' | Bandeira>('')
+  const bandeira: '' | Bandeira = atual.cobraPorBandeira ? bandeiraEscolhida : ''
+  const porBandeira = atual.porBandeira
   const daBandeira: BandeiraNaTela = bandeira ? (porBandeira[bandeira] ?? { prazo: '', valores: {} }) : { prazo: '', valores: {} }
   const mudarNaBandeira = (parte: Partial<BandeiraNaTela>) => {
     if (!bandeira) return
-    setPorBandeira(atual => ({ ...atual, [bandeira]: { ...daBandeira, ...parte } }))
+    mudarAtual(m => ({ porBandeira: { ...m.porBandeira, [bandeira]: { ...(m.porBandeira[bandeira] ?? { prazo: '', valores: {} }), ...parte } } }))
   }
   const comRegraPropria = BANDEIRAS.filter(b => {
     const r = porBandeira[b.value]
@@ -373,27 +492,24 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
   // D-15: "parcela até Nx". Vazio = automático, a maior parcela do crédito
   // com taxa preenchida acima (sem nenhuma, 12x) — calculado do que está na
   // tela, para o rótulo acompanhar a tabela enquanto ela é editada.
-  const [maxVezes, setMaxVezes] = useState<string>(maximoGravado == null ? '' : String(maximoGravado))
   const parcelasComTaxa = Object.entries(valores)
     .filter(([k, v]) => k.startsWith('CREDIT_CARD/') && v.trim() !== '')
     .map(([k]) => Number(k.split('/')[1]))
   const automatico = maximoDeVezes(null, parcelasComTaxa)
   // F17-4 (o Heitor: "as linhas só devem aparecer se estiverem dentro do range
   // de parcelas que são oferecidas"): com o limite escolhido, o crédito aparece
-  // de 1x até ele — na regra geral e na bandeira. No "Automático" o limite SAI
+  // de 1x até ele — na maquininha e na bandeira. No "Automático" o limite SAI
   // das linhas (a maior com taxa), então todas aparecem. O que está gravado
   // acima do limite fica no estado e é regravado no "Salvar taxas": esconder
   // não apaga.
   const ateQuantasVezes = maxVezes === '' ? TETO_DE_VEZES : Number(maxVezes)
   const parcelasNaTela = PARCELAS_DO_CREDITO.filter(n => n <= ateQuantasVezes)
-  // r2-fin-01: o prazo da operadora, em dias corridos.
-  const [prazo, setPrazo] = useState(String(prazoGravado))
-  // O prazo da explicação: o da bandeira escolhida, ou o geral.
+  // O prazo da explicação: o da bandeira escolhida, ou o da maquininha.
   const prazoMostrado = bandeira && daBandeira.prazo.trim() ? daBandeira.prazo : prazo
 
-  // r4-f15-01: o campo vazio da bandeira mostra a regra geral DAQUELAS vezes — a
-  // que vale (private.comissao_taxa_pct): a das vezes exatas, senão 0 (F16-2:
-  // nunca a de outras vezes).
+  // r4-f15-01: o campo vazio da bandeira mostra a taxa da maquininha DAQUELAS
+  // vezes — a que vale (private.taxa_da_maquininha): a das vezes exatas, senão
+  // 0 (F16-2: nunca a de outras vezes).
   const geralQueVale = (m: MetodoComTaxa, n: number) => {
     const doMetodo = Object.entries(valores)
       .map(([k, v]) => [k, Number(v.trim().replace(',', '.'))] as const)
@@ -404,8 +520,8 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
 
   // r4-f15-01 (o Heitor: "a taxa é por parcela, por exemplo 1.15% por parcela,
   // então a taxa total é a taxa vezes a quantidade de parcelas"): preenche o
-  // crédito 1x a 12x da tabela aberta (a geral ou a da bandeira) com a taxa ×
-  // as vezes. Só os campos: grava no "Salvar taxas" de sempre, e cada um
+  // crédito 1x a 12x da tabela aberta (a da maquininha ou a da bandeira) com a
+  // taxa × as vezes. Só os campos: grava no "Salvar taxas" de sempre, e cada um
   // continua editável. O débito não muda.
   const [porParcelaAberto, setPorParcelaAberto] = useState(false)
   const [taxaPorParcela, setTaxaPorParcela] = useState('')
@@ -446,7 +562,6 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
       : null)
     if (bandeira) mudarNaBandeira({ valores: { ...daBandeira.valores, ...novos } })
     else setValores(v => ({ ...v, ...novos }))
-    setSalvo(false)
     setErroPorParcela(null)
     setPorParcelaAberto(false)
     setTaxaPorParcela('')
@@ -478,77 +593,80 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
     if (bandeira) mudarNaBandeira({ valores: { ...daBandeira.valores, ...novos } })
     else setValores(v => ({ ...v, ...novos }))
     setAvisoDo1x(null)
-    setSalvo(false)
     setColarAberto(false)
     setTabelaColada('')
   }
 
+  /** Troca a maquininha aberta: o que foi digitado nas outras fica, até o "Salvar taxas". */
+  function abrir(c: string) {
+    setAberta(c)
+    setBandeira('')
+    setColarAberto(false)
+    setPorParcelaAberto(false)
+    setAvisoDo1x(null)
+    setErro(null)
+  }
+
+  // A chave da maquininha nova (ainda sem id): um contador da tela.
+  const [novas, setNovas] = useState(0)
+  function adicionarMaquininha() {
+    const c = `nova-${novas + 1}`
+    setNovas(n => n + 1)
+    setLista(l => [...l, { chave: c, id: null, nome: '', valores: {}, maxVezes: '', prazo: String(PRAZO_PADRAO_DA_OPERADORA), cobraPorBandeira: false, porBandeira: {}, arquivada: false }])
+    abrir(c)
+    setSalvo(false)
+  }
+
+  function descartarANova() {
+    setLista(l => l.filter(m => m.chave !== atual.chave))
+    abrir(ativasNaTela.find(m => m.chave !== atual.chave)?.chave ?? '')
+  }
+
+  function arquivar(m: MaquininhaNaTela, arquivarEla: boolean) {
+    if (!m.id) return
+    setErro(null)
+    iniciar(async () => {
+      const r = await arquivarMaquininha(m.id, arquivarEla)
+      if (r.error) { setErro(r.error); return }
+      setLista(l => l.map(x => x.chave === m.chave ? { ...x, arquivada: arquivarEla } : x))
+      if (arquivarEla) abrir(ativasNaTela.find(x => x.chave !== m.chave)?.chave ?? '')
+      else abrir(m.chave)
+      router.refresh()
+    })
+  }
+
   function salvar() {
     setErro(null)
-    const lista: TaxaDePagamento[] = []
-    for (const [k, bruto] of Object.entries(valores)) {
-      const v = bruto.trim()
-      if (!v) continue
-      const n = Number(v.replace(',', '.'))
-      // F16-3: sem teto — só não negativa (e o limite do registro).
-      const recusa = recusaDaTaxaDaMaquininha(n)
-      if (recusa) { setErro(recusa); return }
-      const [metodo, parcelas] = k.split('/') as [MetodoComTaxa, string]
-      lista.push({ metodo, parcelas: Number(parcelas), taxa_pct: n })
-    }
-    const dias = Number(prazo.trim())
-    const recusaDoPrazo = recusaDoPrazoDaOperadora(dias)
-    if (recusaDoPrazo) { setErro(recusaDoPrazo); return }
-    // As bandeiras: só o que foi preenchido; o resto é a regra geral.
-    const bandeiras: CartaoPorBandeira = {}
-    for (const b of BANDEIRAS) {
-      const r = porBandeira[b.value]
-      if (!r) continue
-      const taxas: Record<string, number> = {}
-      for (const [k, bruto] of Object.entries(r.valores)) {
-        const v = bruto.trim()
-        if (!v) continue
-        const n = Number(v.replace(',', '.'))
-        const recusa = recusaDaTaxaDaMaquininha(n)
-        if (recusa) { setErro(`${b.label}: ${recusa}`); return }
-        const [metodo, parcelas] = k.split('/') as ['DEBIT_CARD' | 'CREDIT_CARD', string]
-        taxas[chaveDaTaxa(metodo, Number(parcelas))] = n
+    const pixTexto = pix.trim()
+    const pixN = pixTexto ? Number(pixTexto.replace(',', '.')) : 0
+    const recusaDoPix = recusaDaTaxaDaMaquininha(pixN)
+    if (recusaDoPix) { setErro(`Pix: ${recusaDoPix}`); return }
+    // As maquininhas que mudaram (e as novas), conferidas antes de gravar qualquer uma.
+    const aGravar: { m: MaquininhaNaTela; e: EntradaDaMaquininha }[] = []
+    for (const m of lista.filter(x => !x.arquivada)) {
+      const e = entradaDaMaquininha(m)
+      if ('erro' in e) {
+        // Abre a maquininha do erro (se é outra), e o erro fica à vista.
+        if (m.chave !== atual.chave) abrir(m.chave)
+        setErro(variasMaquininhas || !m.id ? `${m.nome.trim() || 'A maquininha nova'}: ${e.erro}` : e.erro)
+        return
       }
-      const prazoDela = r.prazo.trim() ? Number(r.prazo.trim()) : null
-      if (prazoDela !== null) {
-        const recusa = recusaDoPrazoDaOperadora(prazoDela)
-        if (recusa) { setErro(`${b.label}: ${recusa}`); return }
-      }
-      if (prazoDela === null && !Object.keys(taxas).length) continue
-      bandeiras[b.value] = { ...(prazoDela !== null ? { prazo: prazoDela } : {}), taxas }
+      if (m.id && gravadas[m.id] === JSON.stringify(e)) continue
+      aGravar.push({ m, e })
     }
     iniciar(async () => {
-      const r = await salvarTaxasDaMaquininha(lista)
-      if (r.error) { setErro(r.error); return }
-      const pb = await salvarCartaoPorBandeira(bandeiras)
-      if (pb.error) { setErro(pb.error); return }
-      const m = await salvarMaximoDeVezes(maxVezes === '' ? null : Number(maxVezes))
-      if (m.error) { setErro(m.error); return }
-      if (dias !== prazoGravado) {
-        const pz = await salvarPrazoDaOperadora(dias)
-        if (pz.error) { setErro(pz.error); return }
-      }
-      // A2 da 8ª: o que parece engano (mais vezes, taxa menor) vira aviso, sem recusar.
       const avisos: string[] = []
-      const doCredito = (t: Record<string, number>) => Object.entries(t).map(([n, taxa]) => ({ parcelas: Number(n), taxa }))
-      const geral = Object.fromEntries(lista.filter(t => t.metodo === 'CREDIT_CARD').map(t => [t.parcelas, t.taxa_pct]))
-      const avisoGeral = avisoDaTaxaQueBaixa(doCredito(geral))
-      if (avisoGeral) avisos.push(avisoGeral)
-      for (const b of BANDEIRAS) {
-        const taxasDela = bandeiras[b.value]?.taxas
-        if (!taxasDela) continue
-        const efetiva: Record<string, number> = { ...geral }
-        for (const [k, v] of Object.entries(taxasDela)) {
-          const m = /^CREDIT_CARD:(\d+)$/.exec(k)
-          if (m) efetiva[m[1]!] = v
-        }
-        const a = avisoDaTaxaQueBaixa(doCredito(efetiva))
-        if (a && a !== avisoGeral) avisos.push(`${b.label}: ${a}`)
+      for (const { m, e } of aGravar) {
+        const r = await salvarMaquininha(e)
+        if (r.error) { setErro(variasMaquininhas ? `${e.nome}: ${r.error}` : r.error); return }
+        const id = r.id ?? m.id!
+        setLista(l => l.map(x => x.chave === m.chave ? { ...x, id } : x))
+        setGravadas(g => ({ ...g, [id]: JSON.stringify({ ...e, id }) }))
+        for (const a of avisosDaTaxaQueBaixa(e)) avisos.push(variasMaquininhas ? `${e.nome} — ${a}` : a)
+      }
+      if (pixN !== pixGravado) {
+        const r = await salvarTaxaDoPix(pixN)
+        if (r.error) { setErro(`Pix: ${r.error}`); return }
       }
       setAvisoTaxaMenor(avisos)
       setSalvo(true)
@@ -556,97 +674,106 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
     })
   }
 
-  // F16-2 (o Heitor, opção A): sem a taxa EXATA daquelas vezes — nem na
-  // bandeira, nem na regra geral — a venda sai com 0%, sem desconto da
-  // operadora. A linha diz isso. Não avisa o Pix (sem taxa é comum) nem o
-  // crédito acima do "Parcelar no crédito até" (não se vende ali).
-  const limiteDeVezes = maxVezes === '' ? automatico : Number(maxVezes)
-  const vazio = (texto: string | undefined) => !texto || texto.trim() === ''
-  const semTaxa = (m: MetodoComTaxa, n: number) => {
-    if (m === 'PIX' || (m === 'CREDIT_CARD' && n > limiteDeVezes)) return false
-    if (!vazio(valores[chave(m, n)])) return false
-    return !bandeira || vazio(daBandeira.valores[chave(m, n)])
-  }
-  const avisoSemTaxa = (m: MetodoComTaxa, n: number) =>
-    m === 'DEBIT_CARD' ? 'no débito' : n === 1 ? 'no crédito à vista' : `em ${n}x`
-
   const campo = (m: MetodoComTaxa, n: number, rotulo: string) => (
-    <label key={chave(m, n)} {...(semTaxa(m, n) ? { 'data-sem-taxa': '' } : {})} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <label key={chave(m, n)} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>{rotulo}</span>
       <div style={{ position: 'relative' }}>
-        {bandeira ? (
-          // Na bandeira, o vazio é a regra geral: o campo diz qual.
+        {m === 'PIX' ? (
+          <input className="field" inputMode="decimal" placeholder="0,00" aria-label="Taxa Pix" disabled={!podeEditar}
+            value={pix} onChange={e => { setPix(e.target.value); setSalvo(false) }} style={{ paddingRight: 28 }} />
+        ) : bandeira ? (
+          // Na bandeira, o vazio é a taxa da maquininha: o campo diz qual.
           <input className="field" inputMode="decimal" aria-label={`Taxa ${rotulo}`} disabled={!podeEditar}
-            placeholder={`${geralQueVale(m, n)} (geral)`}
+            placeholder={`${geralQueVale(m, n)} (da maquininha)`}
             value={daBandeira.valores[chave(m, n)] ?? ''}
-            onChange={e => { mudarNaBandeira({ valores: { ...daBandeira.valores, [chave(m, n)]: e.target.value } }); setSalvo(false) }}
+            onChange={e => mudarNaBandeira({ valores: { ...daBandeira.valores, [chave(m, n)]: e.target.value } })}
             style={{ paddingRight: 28 }} />
         ) : (
           <input className="field" inputMode="decimal" placeholder="0,00" aria-label={`Taxa ${rotulo}`} disabled={!podeEditar}
-            value={valores[chave(m, n)] ?? ''} onChange={e => { setValores(v => ({ ...v, [chave(m, n)]: e.target.value })); setSalvo(false) }}
+            value={valores[chave(m, n)] ?? ''} onChange={e => { const v = e.target.value; setValores(x => ({ ...x, [chave(m, n)]: v })) }}
             style={{ paddingRight: 28 }} />
         )}
         <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>%</span>
       </div>
-      {semTaxa(m, n) && (
-        <span data-aviso-sem-taxa role="note" style={{
-          display: 'flex', gap: 4, alignItems: 'flex-start', padding: '4px 6px', borderRadius: 'var(--radius-field-token)',
-          background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
-          fontSize: 'var(--text-2xs)', color: 'var(--text)', lineHeight: 1.35,
-        }}>
-          <AlertTriangle size={11} aria-hidden style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
-          <span>Sem taxa: as vendas {avisoSemTaxa(m, n)} saem sem desconto da operadora.</span>
-        </span>
-      )}
     </label>
   )
+
+  const rotuloPequeno = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
+  const ajuda = { fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' } as const
 
   return (
     <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }} aria-label="Taxas da maquininha">
       <div>
         <h2 style={titulo}>Taxas da maquininha</h2>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2, maxWidth: 600 }}>
-          O percentual que a operadora cobra em cada forma de pagamento. Descontado da base da comissão quando a opção acima está marcada. Dinheiro e crédito do cliente não têm taxa; o Pix, só se a sua operadora cobrar (vazio é sem taxa).
+        <p style={{ ...ajuda, marginTop: 2, maxWidth: 600 }}>
+          O percentual que a operadora cobra em cada pagamento. Descontado da base da comissão quando a opção acima está marcada. Dinheiro e crédito do cliente não têm taxa. Campo vazio é 0%.
         </p>
       </div>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
-        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Bandeira</span>
-        <select className="filtro-select" aria-label="Bandeira" value={bandeira}
-          onChange={e => setBandeira(e.target.value as '' | Bandeira)}>
-          <option value="">Regra geral — toda bandeira sem regra própria</option>
-          {BANDEIRAS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-        </select>
-        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          {bandeira
-            ? 'O prazo e as taxas desta bandeira. Campo vazio usa a regra geral (mostrada no campo).'
-            : 'Vale para todo pagamento no cartão sem bandeira, e para a bandeira sem regra própria.'}
-          {comRegraPropria.length > 0 && <> Com regra própria: {comRegraPropria.join(', ')}.</>}
-        </span>
-      </label>
       <div style={grade}>
-        {!bandeira && campo('PIX', 1, 'Pix')}
+        {campo('PIX', 1, 'Pix')}
+      </div>
+
+      <div data-maquininhas style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <p className="overline">{variasMaquininhas ? 'Maquininhas' : 'Cartão'}</p>
+          {podeEditar && (
+            <button type="button" className="btn-secondary" onClick={adicionarMaquininha}>+ Adicionar maquininha</button>
+          )}
+        </div>
+        {variasMaquininhas && (
+          <SegSelect ariaLabel="Maquininha" value={atual.chave} onSelect={abrir}
+            options={ativasNaTela.map(m => ({ key: m.chave, label: m.nome.trim() || 'Nova maquininha' }))} />
+        )}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+          <span style={rotuloPequeno}>Nome da maquininha</span>
+          <input className="field" aria-label="Nome da maquininha" disabled={!podeEditar} maxLength={60}
+            placeholder="Ex.: Stone" value={atual.nome} autoFocus={!atual.id}
+            onChange={e => { const v = e.target.value; mudarAtual(() => ({ nome: v })) }} />
+          {!variasMaquininhas && (
+            <span style={ajuda}>A clínica que passa o cartão em mais de uma maquininha cadastra cada uma: aí a venda no cartão pergunta “Qual maquininha?”.</span>
+          )}
+        </label>
+      </div>
+
+      {atual.cobraPorBandeira && (
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+          <span style={rotuloPequeno}>Bandeira</span>
+          <select className="filtro-select" aria-label="Bandeira" value={bandeira}
+            onChange={e => setBandeira(e.target.value as '' | Bandeira)}>
+            <option value="">Todas — a taxa desta maquininha</option>
+            {BANDEIRAS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+          </select>
+          <span style={ajuda}>
+            {bandeira
+              ? 'O prazo e as taxas desta bandeira nesta maquininha. Campo vazio usa a taxa da maquininha (mostrada no campo).'
+              : 'Vale para o cartão sem bandeira informada e para a bandeira sem taxa própria.'}
+            {comRegraPropria.length > 0 && <> Com taxa própria: {comRegraPropria.join(', ')}.</>}
+          </span>
+        </label>
+      )}
+      <div style={grade}>
         {campo('DEBIT_CARD', 1, 'Débito')}
         {campo('CREDIT_CARD', 1, 'Crédito à vista')}
       </div>
       {!bandeira && <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
-        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Parcelar no crédito até</span>
+        <span style={rotuloPequeno}>Parcelar no crédito até</span>
         <select className="field" aria-label="Parcelar no crédito até" disabled={!podeEditar} value={maxVezes}
-          onChange={e => { setMaxVezes(e.target.value); setSalvo(false) }}>
+          onChange={e => { const v = e.target.value; mudarAtual(() => ({ maxVezes: v })) }}>
           <option value="">Automático — até {automatico === 1 ? 'à vista' : `${automatico}x`} (a maior parcela com taxa)</option>
           {opcoesDeVezes(TETO_DE_VEZES).map(n => <option key={n} value={String(n)}>{n === 1 ? 'Só à vista' : `Até ${n}x`}</option>)}
         </select>
-        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          É o “Vezes no cartão” do recebimento, do checkout do plano e das vendas. Acima disso o sistema não deixa passar — e as linhas do crédito abaixo vão só até aqui.
+        <span style={ajuda}>
+          É o “Vezes no cartão” do recebimento, do checkout do plano e das vendas{variasMaquininhas ? ', nesta maquininha' : ''}. Acima disso o sistema não deixa passar — e as linhas do crédito abaixo vão só até aqui.
         </span>
       </label>}
       {bandeira && maxVezes !== '' && (
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          As linhas do crédito vão até {ateQuantasVezes === 1 ? 'à vista' : `${ateQuantasVezes}x`}, o “Parcelar no crédito até” da clínica (na regra geral).
+        <p style={ajuda}>
+          As linhas do crédito vão até {ateQuantasVezes === 1 ? 'à vista' : `${ateQuantasVezes}x`}, o “Parcelar no crédito até” desta maquininha.
         </p>
       )}
       {parcelasNaTela.length === 0 ? (
-        <p data-so-a-vista style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          A clínica recebe no crédito só à vista: o crédito parcelado não aparece. Para parcelar, escolha até quantas vezes{bandeira ? ' na regra geral' : ' acima'}.
+        <p data-so-a-vista style={ajuda}>
+          {variasMaquininhas ? 'Nesta maquininha, a' : 'A'} clínica recebe no crédito só à vista: o crédito parcelado não aparece. Para parcelar, escolha até quantas vezes{bandeira ? ' na taxa da maquininha' : ' acima'}.
         </p>
       ) : (<>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
@@ -669,12 +796,12 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
           borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)',
         }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Tabela da operadora</span>
+            <span style={rotuloPequeno}>Tabela da operadora</span>
             <textarea className="field" rows={6} autoFocus aria-label="Tabela da operadora" value={tabelaColada}
               placeholder={'1x 2,99%\n2x 4,09%\n3x 4,79%\n…'}
               onChange={e => setTabelaColada(e.target.value)} style={{ fontFamily: 'inherit', resize: 'vertical' }} />
           </label>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          <p style={ajuda}>
             Cole a tabela como a operadora manda (ou de uma planilha): uma linha por vez, “6x 6,50%”. Só os números também servem — aí vão em ordem, de 1x em diante.
             {' '}Cada vez fica com a taxa da tabela{bandeira ? ' nesta bandeira' : ''}; a que a tabela não traz fica como está. O débito e o Pix têm campo próprio. Confira e use “Salvar taxas” para gravar.
           </p>
@@ -710,7 +837,7 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 160 }}>
-              <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Taxa por parcela (%)</span>
+              <span style={rotuloPequeno}>Taxa por parcela (%)</span>
               <input className="field" inputMode="decimal" placeholder="Ex.: 1,15" autoFocus value={taxaPorParcela}
                 onChange={e => { setTaxaPorParcela(e.target.value); setErroPorParcela(null) }}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); preencherPelaTaxaPorParcela() } }} />
@@ -718,7 +845,7 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
             <button type="button" className="btn-primary" onClick={preencherPelaTaxaPorParcela}>Preencher</button>
             <button type="button" className="btn-secondary" onClick={() => { setPorParcelaAberto(false); setErroPorParcela(null) }}>Cancelar</button>
           </div>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          <p style={ajuda}>
             {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x (à vista, inclusive) a {ateQuantasVezes}x fica com a taxa × as vezes (1,15% → 1x 1,15%, 2x 2,30%, 3x 3,45%…).
             {' '}O débito não muda. Confira e use “Salvar taxas” para gravar.
             {' '}Serve só quando a operadora cobra a MESMA taxa por parcela — a maioria cobra uma tabela própria, mais cara a cada vez.
@@ -763,26 +890,37 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         {parcelasNaTela.map(n => campo('CREDIT_CARD', n, `${n}x`))}
       </div>
       </>)}
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+      <p style={ajuda}>
         {bandeira
-          ? 'Campo vazio usa a regra geral daquelas vezes (o número mostrado nele), não a de outra quantidade. Sem nenhuma das duas, a venda sai sem desconto da operadora (0%).'
-          : 'Parcela sem taxa própria sai sem desconto da operadora (0%) — nunca com a taxa de outra quantidade.'}
+          ? 'Campo vazio usa a taxa da maquininha daquelas vezes (o número mostrado nele), não a de outra quantidade. Sem nenhuma das duas, a venda sai sem desconto da operadora (0%).'
+          : 'Campo vazio é 0%: a venda sai sem desconto da operadora — nunca com a taxa de outra quantidade.'}
       </p>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
-        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Prazo da operadora (dias)</span>
+        <span style={rotuloPequeno}>Prazo da operadora (dias)</span>
         {bandeira ? (
           <input className="field" inputMode="numeric" aria-label="Prazo da operadora (dias)" disabled={!podeEditar}
-            placeholder={`${prazo} (geral)`} value={daBandeira.prazo} style={{ maxWidth: 160 }}
-            onChange={e => { mudarNaBandeira({ prazo: e.target.value.replace(/\D/g, '').slice(0, 3) }); setSalvo(false) }} />
+            placeholder={`${prazo} (da maquininha)`} value={daBandeira.prazo} style={{ maxWidth: 160 }}
+            onChange={e => mudarNaBandeira({ prazo: e.target.value.replace(/\D/g, '').slice(0, 3) })} />
         ) : (
           <input className="field" inputMode="numeric" aria-label="Prazo da operadora (dias)" disabled={!podeEditar} value={prazo}
             style={{ maxWidth: 120 }}
-            onChange={e => { setPrazo(e.target.value.replace(/\D/g, '').slice(0, 3)); setSalvo(false) }} />
+            onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 3); mudarAtual(() => ({ prazo: v })) }} />
         )}
-        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+        <span style={ajuda}>
           No crédito (à vista ou em várias vezes), a operadora deposita cada parcela a cada {recusaDoPrazoDaOperadora(Number(prazoMostrado)) ? 'N' : prazoMostrado} dias
           corridos contados da venda: em 3x, nos dias {[1, 2, 3].map(k => k * (Number(prazoMostrado) || 0)).join(', ')}. Vale para as próximas
           vendas; de 1 a {PRAZO_MAXIMO_DA_OPERADORA} dias.
+        </span>
+      </label>
+      {/* C75: guardada até a clínica precisar (princípio 7) — fechada de saída. */}
+      <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+        <input type="checkbox" disabled={!podeEditar} checked={atual.cobraPorBandeira}
+          onChange={e => { const v = e.target.checked; mudarAtual(() => ({ cobraPorBandeira: v })); setBandeira('') }} />
+        <span>
+          Esta maquininha cobra diferente em alguma bandeira?
+          <span style={{ display: 'block', ...ajuda }}>
+            Marque se a operadora tem taxa ou prazo diferente para Elo, Amex… Desmarcada, toda bandeira paga a taxa acima{comRegraPropria.length > 0 && !atual.cobraPorBandeira ? ` (as de ${comRegraPropria.join(', ')} ficam guardadas, sem valer)` : ''}.
+          </span>
         </span>
       </label>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
@@ -796,9 +934,30 @@ function TabelaDeTaxas({ inicial, podeEditar, maximoGravado, prazoGravado, porBa
         </p>
       )}
       {podeEditar && (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
-          {salvo && <span role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>Salvo.</span>}
-          <button type="button" className="btn-primary" onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar taxas'}</button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', gap: 8 }}>
+            {!atual.id && atual.chave && (
+              <button type="button" className="btn-secondary" onClick={descartarANova} disabled={salvando}>Descartar esta maquininha</button>
+            )}
+            {atual.id && variasMaquininhas && (
+              <button type="button" className="btn-secondary" onClick={() => arquivar(atual, true)} disabled={salvando}>Arquivar {atual.nome.trim() || 'esta maquininha'}</button>
+            )}
+          </span>
+          <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+            {salvo && <span role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>Salvo.</span>}
+            <button type="button" className="btn-primary" onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar taxas'}</button>
+          </span>
+        </div>
+      )}
+      {arquivadasNaTela.length > 0 && (
+        <div data-maquininhas-arquivadas style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', ...ajuda }}>
+          Arquivadas (as vendas feitas nelas continuam com as taxas delas):
+          {arquivadasNaTela.map(m => (
+            <span key={m.chave} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ color: 'var(--text)' }}>{m.nome}</span>
+              {podeEditar && <button type="button" className="btn-secondary" onClick={() => arquivar(m, false)} disabled={salvando}>Voltar a usar</button>}
+            </span>
+          ))}
         </div>
       )}
     </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
+import { CampoDaBandeira, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
@@ -32,15 +32,18 @@ export function ReceberNoCartao({ descricao, metodo, valor, pending, aoConfirmar
   metodo: string | null
   valor: number
   pending: boolean
-  aoConfirmar: (bandeira: string | null, vezes: number, forma: string | null) => void
+  aoConfirmar: (bandeira: string | null, vezes: number, forma: string | null, maquininha: string | null) => void
   aoFechar: () => void
 }) {
   const [bandeira, setBandeira] = useState('')
   const [vezes, setVezes] = useState(1)
   const [escolhida, setEscolhida] = useState('')
-  const opcoesDeVezes = useOpcoesDeVezes()
+  // C75: "Qual maquininha?" (só com mais de uma na rede).
+  const [maquininha, setMaquininha] = useState('')
+  const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   const pergunta = !metodo
   const forma = metodo ?? escolhida
+  const faltaAMaquininha = useFaltaAMaquininha(forma, maquininha)
   const noCredito = forma === 'CREDIT_CARD'
   const titulo = pergunta ? 'Receber' : 'Receber no cartão'
   return (
@@ -60,7 +63,8 @@ export function ReceberNoCartao({ descricao, metodo, valor, pending, aoConfirmar
             </select>
           </label>
         )}
-        <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={valor} />
+        <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={valor}
+          maquininha={maquininha} aoMudarMaquininha={v => { setMaquininha(v); setVezes(1) }} />
         {noCredito && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <label htmlFor="baixa-vezes" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>Vezes no cartão</label>
@@ -74,13 +78,13 @@ export function ReceberNoCartao({ descricao, metodo, valor, pending, aoConfirmar
                 (no “A receber da operadora”). Não é um parcelamento da cliente com a clínica.
               </span>
             )}
-            <AvisoDaTaxa vezes={vezes} bandeira={bandeira} />
+            <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={aoFechar} disabled={pending}>Cancelar</button>
-          <button type="button" className="btn-primary" onClick={() => aoConfirmar(bandeira || null, noCredito ? vezes : 1, pergunta ? escolhida : null)}
-            disabled={pending || !forma}>
+          <button type="button" className="btn-primary" onClick={() => aoConfirmar(bandeira || null, noCredito ? vezes : 1, pergunta ? escolhida : null, maquininha || null)}
+            disabled={pending || !forma || !!faltaAMaquininha} title={faltaAMaquininha ?? undefined}>
             {pending ? 'Recebendo…' : 'Confirmar recebimento'}
           </button>
         </div>

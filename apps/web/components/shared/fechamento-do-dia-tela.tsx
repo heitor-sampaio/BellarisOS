@@ -90,6 +90,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, start] = useTransition()
   const ultimo = feitos[0] ?? null
+  // C75: com mais de uma maquininha no dia, o cartão se separa por ela (cada uma é uma operadora).
+  const variasMaquininhas = new Set(bandeiras.map(b => b.maquininha).filter(Boolean)).size > 1
 
   function ir(novoDia: string, unidade = unidadeId) {
     const q = new URLSearchParams({ dia: novoDia })
@@ -209,8 +211,12 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                       {/* A44 da 12ª: o cartão por bandeira — a Ivone concilia com a operadora assim. */}
                       {!total && bandeiras.some(b => b.forma === l.forma) && (
                         <span data-bandeiras-da-forma style={{ display: 'block', fontSize: 'var(--text-xs-sz)', fontWeight: 500, color: 'var(--text-muted)' }}>
-                          {bandeiras.filter(b => b.forma === l.forma)
-                            .map(b => `${nomeDaBandeira(b.bandeira)} ${brl(b.entradas)}${b.saidas > 0 ? ` (saídas ${brl(b.saidas)})` : ''}`).join(' · ')}
+                          {variasMaquininhas
+                            ? [...new Set(bandeiras.filter(b => b.forma === l.forma).map(b => b.maquininha))].map(m =>
+                                `${m ?? 'Cartão da clínica'}: ${bandeiras.filter(b => b.forma === l.forma && b.maquininha === m)
+                                  .map(b => `${nomeDaBandeira(b.bandeira)} ${brl(b.entradas)}${b.saidas > 0 ? ` (saídas ${brl(b.saidas)})` : ''}`).join(', ')}`).join(' · ')
+                            : bandeiras.filter(b => b.forma === l.forma)
+                              .map(b => `${nomeDaBandeira(b.bandeira)} ${brl(b.entradas)}${b.saidas > 0 ? ` (saídas ${brl(b.saidas)})` : ''}`).join(' · ')}
                         </span>
                       )}
                     </td>

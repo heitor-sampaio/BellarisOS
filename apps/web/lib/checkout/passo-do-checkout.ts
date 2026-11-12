@@ -19,6 +19,8 @@ export interface PassoDoCheckout {
   parcelas:      number
   vezesCartao:   number
   bandeira:      string
+  /** C75: a maquininha do cartão ('' = nenhuma escolhida). */
+  maquininha?:   string
   primeiroVenc:  string
   desconto:      { tipo: 'VALOR' | 'PERCENTUAL'; texto: string; motivo?: string }
   vendedorId:    string
@@ -51,6 +53,7 @@ export function lerPassoDoCheckout(planId: string): PassoDoCheckout | null {
       parcelas:      Number.isInteger(v.parcelas) && v.parcelas! >= 1 && v.parcelas! <= 48 ? v.parcelas! : 3,
       vezesCartao:   Number.isInteger(v.vezesCartao) && v.vezesCartao! >= 1 && v.vezesCartao! <= 12 ? v.vezesCartao! : 1,
       bandeira:      typeof v.bandeira === 'string' ? v.bandeira : '',
+      maquininha:    typeof v.maquininha === 'string' ? v.maquininha : '',
       primeiroVenc:  typeof v.primeiroVenc === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.primeiroVenc) ? v.primeiroVenc : '',
       desconto:      d && (d.tipo === 'VALOR' || d.tipo === 'PERCENTUAL') && typeof d.texto === 'string'
         ? { tipo: d.tipo, texto: d.texto, ...(typeof d.motivo === 'string' ? { motivo: d.motivo } : {}) }

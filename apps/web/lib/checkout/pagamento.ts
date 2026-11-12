@@ -20,14 +20,14 @@ export type PagamentoDoPlano =
    * então para o cliente é PAGO na hora — "entrada + parcelas" é o crediário da
    * própria clínica, cada parcela a receber. 1 (ou ausente) é o à vista de sempre.
    */
-  | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string }
+  | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string; maquininha?: string }
   /**
    * `metodo`, `vezes` e `bandeira` são da ENTRADA, paga agora (D5 da 6ª
    * simulação: a entrada no crédito também em N vezes na maquininha). As
    * parcelas do saldo são o CREDIÁRIO da clínica: nascem sem meio, que se
    * escolhe ao receber (D6 — não são cartão).
    */
-  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number }
+  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number; maquininha?: string }
   /** Vencimento opcional: "a receber" sem data combinada é válido. */
   | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string | null }
 
@@ -83,6 +83,20 @@ export function vezesNoCartao(p: PagamentoDoPlano | null | undefined): number {
   if (p.forma === 'PARCELADO' && !(p.entrada > 0)) return 1
   if (p.forma !== 'AVISTA' && p.forma !== 'PARCELADO') return 1
   return Math.max(1, Math.min(12, Math.round(Number(p.vezes) || 1)))
+}
+
+/** O meio do que é pago AGORA (à vista, ou a entrada do "entrada + parcelas"), ou nulo. */
+export function metodoQuePagaAgora(p: PagamentoDoPlano | null | undefined): string | null {
+  if (!p || (p.forma !== 'AVISTA' && p.forma !== 'PARCELADO')) return null
+  if (p.forma === 'PARCELADO' && !(p.entrada > 0)) return null
+  return p.metodo || null
+}
+
+/** C75: a maquininha do que é pago agora no cartão (à vista ou a entrada), ou nula. */
+export function maquininhaDoPagamento(p: PagamentoDoPlano | null | undefined): string | null {
+  if (!p || (p.metodo !== 'CREDIT_CARD' && p.metodo !== 'DEBIT_CARD')) return null
+  if (p.forma !== 'AVISTA' && p.forma !== 'PARCELADO') return null
+  return p.maquininha || null
 }
 
 /** "no cartão de crédito em 3x", "no Pix" — o meio da entrada (D5). */

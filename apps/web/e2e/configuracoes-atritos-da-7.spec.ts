@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcaoComFormulario } from './apoio/acao-direta'
+import { taxasDaPrimeira } from './apoio/maquininha'
 
 /**
  * Os atritos de Configurações e cargos da 7ª simulação (2026-11-05), pelas
@@ -77,8 +78,7 @@ test('A3: colar a tabela da operadora preenche cada vez com a taxa dela — e di
     await expect(card.getByLabel('Taxa 2x', { exact: true })).toHaveValue('4,09')
   })
   // Só preenche: grava no "Salvar taxas" de sempre.
-  const { data } = await db().from('payment_fees').select('parcelas').eq('tenant_id', rede.tenantId).eq('metodo', 'CREDIT_CARD').eq('parcelas', 6)
-  expect(data ?? []).toEqual([])
+  expect((await taxasDaPrimeira(rede.tenantId)).filter(([m, k]) => m === 'CREDIT_CARD' && k === 6)).toEqual([])
 })
 
 test('A5: "Procedimento grátis" diz que o procedimento vem do catálogo e quanto os pontos valem', async ({ browser }) => {

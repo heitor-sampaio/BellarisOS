@@ -18,20 +18,16 @@ import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assertRecurso, podeReceber } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDeMexerNaAdmin } from '@/lib/equipe/admin-da-rede'
-import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento, type ComissaoNoCadastroDoProduto } from '@/lib/comissoes/config'
+import { EntradaDaConfigDeComissao, EntradaDasRegras, EntradaDaComissaoDoProcedimento, type ComissaoNoCadastroDoProduto } from '@/lib/comissoes/config'
 import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
 import { gravarComissaoDoProcedimento, recusaDaComissaoDaAdmin, podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { periodoDaChave } from '@/lib/comissoes/periodo'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
-import { maximoDeVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
-import { TETO_DE_VEZES, recusaDoPrazoDaOperadora } from '@/lib/financeiro/vezes-do-cartao'
-import { EntradaDoCartaoPorBandeira, semBandeirasVazias, lerCartaoPorBandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { falaDaRede } from '@/lib/unidades/uma-so'
-import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -58,48 +54,6 @@ export async function salvarConfigDeComissao(entrada: unknown): Promise<Resultad
       produto_modo: c.produto_modo, plano_pct: c.plano_pct && c.plano_pct > 0 ? c.plano_pct : null,
       updated_at: new Date().toISOString(), updated_by: ctx.internalUserId ?? null,
     }, { onConflict: 'tenant_id' }).select('tenant_id').single(), 'salvar a configuração de comissões')
-    revalidar()
-    return { ok: true }
-  } catch (e) {
-    return { error: mensagemDoErro(e) }
-  }
-}
-
-export async function salvarTaxasDaMaquininha(entrada: unknown): Promise<Resultado> {
-  try {
-    const ctx = await getTenantContext()
-    assertRecurso(ctx, 'comissoes')
-    assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'As taxas valem para a rede inteira: quem muda é quem administra a rede.') }
-    const lido = EntradaDasTaxas.safeParse(entrada)
-    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
-    await gravar(createAdminClient().rpc('comissao_taxas_definir', { p_tenant: ctx.tenantId!, p_taxas: lido.data }),
-      'salvar as taxas da maquininha')
-    revalidar()
-    return { ok: true }
-  } catch (e) {
-    return { error: mensagemDoErro(e) }
-  }
-}
-
-/**
- * "Parcelar no crédito até" (D-15): nulo volta ao padrão (a maior parcela com
- * taxa). Vale para a rede inteira, como as taxas — mesma permissão e
- * abrangência.
- */
-export async function salvarMaximoDeVezes(entrada: unknown): Promise<Resultado> {
-  try {
-    const ctx = await getTenantContext()
-    assertRecurso(ctx, 'comissoes')
-    assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'O parcelamento vale para a rede inteira: quem muda é quem administra a rede.') }
-    const n = entrada === null || entrada === '' ? null : Number(entrada)
-    if (n !== null && !(Number.isInteger(n) && n >= 1 && n <= TETO_DE_VEZES)) {
-      return { error: `Escolha de 1 a ${TETO_DE_VEZES} vezes.` }
-    }
-    const linhas = await gravar(createAdminClient().from('tenants')
-      .update({ cartao_max_vezes: n }).eq('id', ctx.tenantId!).select('id'), 'salvar o limite de vezes no crédito')
-    if (!linhas?.length) return { error: 'Rede não encontrada.' }
     revalidar()
     return { ok: true }
   } catch (e) {
@@ -162,89 +116,6 @@ export async function comissaoNoCadastroDoProduto(productId: string | null): Pro
     tipo,
     valor:    tipo && produto?.comissao_valor != null ? Number(produto.comissao_valor) : null,
   }
-}
-
-/**
- * O prazo da operadora (r2-fin-01): a cada quantos dias corridos, contados da
- * venda, ela deposita cada parcela do cartão em N vezes. Vale para a rede
- * inteira e para as PRÓXIMAS vendas (o vencimento é retratado na parcela) —
- * mesma permissão e abrangência das taxas.
- */
-export async function salvarPrazoDaOperadora(entrada: unknown): Promise<Resultado> {
-  try {
-    const ctx = await getTenantContext()
-    assertRecurso(ctx, 'comissoes')
-    assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'O prazo da operadora vale para a rede inteira: quem muda é quem administra a rede.') }
-    const n = Number(entrada)
-    const recusa = recusaDoPrazoDaOperadora(n)
-    if (recusa) return { error: recusa }
-    const linhas = await gravar(createAdminClient().from('tenants')
-      .update({ cartao_prazo_dias: n }).eq('id', ctx.tenantId!).select('id'), 'salvar o prazo da operadora')
-    if (!linhas?.length) return { error: 'Rede não encontrada.' }
-    revalidar()
-    return { ok: true }
-  } catch (e) {
-    return { error: mensagemDoErro(e) }
-  }
-}
-
-/**
- * O prazo da operadora e as taxas da maquininha de cada BANDEIRA (r3-f13-01;
- * o Heitor, 2026-11-03: "Lembre-se, flexibilidade. Prazo por bandeira. Taxas
- * também configuráveis por bandeira."). O que a bandeira não tem é a regra
- * geral (as taxas e o prazo de sempre). Grava o conjunto inteiro, de uma vez
- * (`tenants.cartao_por_bandeira`); a mesma permissão e abrangência das taxas.
- */
-export async function salvarCartaoPorBandeira(entrada: unknown): Promise<Resultado> {
-  try {
-    const ctx = await getTenantContext()
-    assertRecurso(ctx, 'comissoes')
-    assertPermission(ctx, 'financial', 'MANAGE')
-    if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'As taxas valem para a rede inteira: quem muda é quem administra a rede.') }
-    const lido = EntradaDoCartaoPorBandeira.safeParse(entrada)
-    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
-    const valor = semBandeirasVazias(lido.data as CartaoPorBandeira)
-    const linhas = await gravar(createAdminClient().from('tenants')
-      .update({ cartao_por_bandeira: valor }).eq('id', ctx.tenantId!).select('id'), 'salvar o cartão por bandeira')
-    if (!linhas?.length) return { error: 'Rede não encontrada.' }
-    revalidar()
-    return { ok: true }
-  } catch (e) {
-    return { error: mensagemDoErro(e) }
-  }
-}
-
-/**
- * D7 (C3 do levantamento): a taxa é do financeiro da clínica. Quem recebe mas
- * não vê a comissão de todos (`mostraOLiquidoDaMaquininha`) só precisa saber
- * SE a taxa está cadastrada — para o aviso "sai sem desconto" —, então a
- * action manda a taxa como 0 e nunca o prazo. Antes só a tela escondia: o
- * número ia ao navegador de qualquer um.
- */
-function soAPresenca(regra: CartaoPorBandeira): CartaoPorBandeira {
-  return Object.fromEntries(Object.entries(regra).map(([b, r]) =>
-    [b, { taxas: Object.fromEntries(Object.keys(r?.taxas ?? {}).map(k => [k, 0])) }]))
-}
-
-/** As taxas de cada bandeira, para o aviso de quem recebe (`AvisoDaTaxa`). */
-export async function cartaoPorBandeiraDaRede(): Promise<CartaoPorBandeira> {
-  const ctx = await getTenantContext()
-  if (!ctx.tenantId || !podeReceber(ctx)) return {}
-  const rede = await ler(createAdminClient().from('tenants').select('cartao_por_bandeira').eq('id', ctx.tenantId).maybeSingle(),
-    'ler o cartão por bandeira') as { cartao_por_bandeira: unknown } | null
-  const regra = lerCartaoPorBandeira(rede?.cartao_por_bandeira)
-  return veComissaoDeTodos(ctx) ? regra : soAPresenca(regra)
-}
-
-/**
- * Até quantas vezes o seletor de "Vezes no cartão" oferece (D-15). Leitura
- * da própria rede; sem rede (a cliente), o teto.
- */
-export async function maximoDeVezesNoCartao(): Promise<number> {
-  const ctx = await getTenantContext()
-  if (!ctx.tenantId) return TETO_DE_VEZES
-  return (await maximoDeVezesDaRede(ctx.tenantId)).maximo
 }
 
 export async function salvarRegrasDoProfissional(profissionalId: string, entrada: unknown): Promise<Resultado> {
@@ -414,50 +285,4 @@ export async function estornarFechamento(fechamentoId: string, motivo: string): 
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
-}
-
-/**
- * As taxas da maquininha do cartão de crédito, para o aviso de quem recebe
- * (A33 da simulação de 2026-10-27): escolher "3x" sem a taxa de 3x cadastrada
- * não dizia nada, e a comissão usava outra. Só leitura; pede quem recebe.
- */
-/**
- * A taxa da maquininha do DÉBITO na regra geral (A34 da 9ª simulação): o débito
- * com a bandeira "Não informada" aplica a regra geral, e a tela não dizia qual.
- * Nula = não cadastrada (vale 0%, F16-2). Para quem recebe.
- */
-export async function taxaDoDebito(): Promise<number | null> {
-  const ctx = await getTenantContext()
-  if (!podeReceber(ctx)) return null
-  const linha = await ler(createAdminClient().from('payment_fees')
-    .select('taxa_pct, taxa_pct_sem_teto').eq('tenant_id', ctx.tenantId!).eq('metodo', 'DEBIT_CARD').eq('parcelas', 1).maybeSingle(),
-  'carregar a taxa do débito') as { taxa_pct: number | string; taxa_pct_sem_teto: number | string | null } | null
-  if (!linha) return null
-  // D7: a quem não vê o financeiro de todos, só "está cadastrada" (0).
-  return veComissaoDeTodos(ctx) ? Number(linha.taxa_pct_sem_teto ?? linha.taxa_pct) : 0
-}
-
-/**
- * A19 da 12ª simulação: a taxa e o LÍQUIDO da maquininha (o que a clínica
- * recebe) são do financeiro da clínica — a vendedora com "só as próprias
- * comissões" os via no Vender. Mostra a quem vê o financeiro de todos
- * (`veComissaoDeTodos`, a régua de "quem vê quanto cada um ganha"); quem só
- * recebe vê o aviso de taxa não cadastrada, que não diz valor nenhum.
- */
-export async function mostraOLiquidoDaMaquininha(): Promise<boolean> {
-  const ctx = await getTenantContext()
-  return podeReceber(ctx) && veComissaoDeTodos(ctx)
-}
-
-export async function taxasDoCartaoDeCredito(): Promise<{ parcelas: number; taxa_pct: number }[]> {
-  const ctx = await getTenantContext()
-  if (!podeReceber(ctx)) return []
-  const linhas = await ler(createAdminClient().from('payment_fees')
-    .select('parcelas, taxa_pct, taxa_pct_sem_teto').eq('tenant_id', ctx.tenantId!).eq('metodo', 'CREDIT_CARD'),
-  'carregar as taxas do cartão')
-  // F16-3: a taxa sem teto, como a clínica digitou. D7: a quem não vê o
-  // financeiro de todos, só quais vezes estão cadastradas (a taxa vai 0).
-  const mostra = veComissaoDeTodos(ctx)
-  return ((linhas ?? []) as { parcelas: number; taxa_pct: number | string; taxa_pct_sem_teto: number | string | null }[])
-    .map(t => ({ parcelas: Number(t.parcelas), taxa_pct: mostra ? Number(t.taxa_pct_sem_teto ?? t.taxa_pct) : 0 }))
 }

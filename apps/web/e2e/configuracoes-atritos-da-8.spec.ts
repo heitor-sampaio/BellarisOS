@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { taxasDaPrimeira } from './apoio/maquininha'
 
 /**
  * A2 da 8ª simulação (2026-11-06; os dois times esbarraram): "Preencher pela
@@ -63,9 +64,8 @@ test('A2: a tabela com mais vezes MAIS BARATA salva e avisa, sem recusar', async
     await card.getByRole('button', { name: 'Salvar taxas' }).click()
     await expect(card.locator('[data-aviso-taxa-menor]')).toContainText('2x (1,98%) sai mais barato que o crédito à vista (2,80%)')
   })
-  await expect.poll(async () => ((await db().from('payment_fees').select('parcelas, taxa_pct')
-    .eq('tenant_id', rede.tenantId).eq('metodo', 'CREDIT_CARD').order('parcelas')).data ?? [])
-    .map(t => `${t.parcelas}x ${Number(t.taxa_pct)}`), { message: 'gravou como a clínica escolheu' }).toEqual(['1x 2.8', '2x 1.98'])
+  await expect.poll(async () => (await taxasDaPrimeira(rede.tenantId)).filter(([m]) => m === 'CREDIT_CARD')
+    .map(([, k, v]) => `${k}x ${v}`), { message: 'gravou como a clínica escolheu' }).toEqual(['1x 2.8', '2x 1.98'])
 })
 
 /**

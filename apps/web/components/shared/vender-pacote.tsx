@@ -8,7 +8,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { venderPacote } from '@/actions/pacotes'
 import { schedulePackageSession } from '@/actions/appointments'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
-import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
+import { CamposDoPagamento, estadoDoPagamento, montarPagamento, useRecusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
@@ -48,6 +48,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const [vendida, setVendida] = useState<{ id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null>(null)
   const [pacoteId, setPacoteId] = useState(pacotes[0]!.id)
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
+  // C75: com mais de uma maquininha, o cartão não segue sem "Qual maquininha?".
+  const recusaDoPagamento = useRecusaDoPagamento()
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
   const pacote = pacotes.find(p => p.id === pacoteId) ?? pacotes[0]!

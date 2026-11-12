@@ -65,7 +65,7 @@ export interface FechamentoParaCsv {
   /** A40 e A44 da 11ª: as entradas de cada pessoa que recebeu, por forma (o CSV só trazia as formas). */
   porQuemRecebeu?: { pessoa: string | null; nome: string | null; formas: { forma: string; entradas: number; lancamentos: number }[]; total: { entradas: number; lancamentos: number } }[]
   /** A44 da 12ª: cada bandeira do cartão (a Ivone concilia com a operadora por bandeira). */
-  bandeiras?: { forma: string; bandeira: string | null; entradas: number; saidas: number }[]
+  bandeiras?: { forma: string; maquininha?: string | null; bandeira: string | null; entradas: number; saidas: number }[]
   /** A47 da 12ª: o último fechamento do dia, ou nulo — "Ainda não fechado". */
   fechado?: { quem: string | null; quando: string; diferenca: number } | null
   /** F62: as horas no relógio da unidade; sem ele, o de Brasília. */
@@ -90,12 +90,19 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
     ['Total do dia', reais(f.total.entradas), reais(f.total.saidas), reais(f.total.saldo), String(f.total.lancamentos)],
     ['Dinheiro em espécie esperado', reais(f.esperadoDinheiro)],
     ...(f.fechado !== undefined ? [['Situação do dia', situacaoDoFechamento(f.fechado, f.fuso), ...(f.fechado ? [diferencaEmTexto(f.fechado.diferenca)] : [])]] : []),
-    ...(f.bandeiras?.length ? [
-      [],
-      ['Cartão por bandeira'],
-      ['Forma e bandeira', 'Entradas', 'Saídas', 'Saldo'],
-      ...f.bandeiras.map(b => [`${rotuloDaFormaDoFechamento(b.forma)} · ${nomeDaBandeira(b.bandeira)}`, reais(b.entradas), reais(b.saidas), reais(b.entradas - b.saidas)]),
-    ] : []),
+    ...(f.bandeiras?.length ? (() => {
+      // C75: com mais de uma maquininha no dia, a linha diz qual (cada uma é uma operadora).
+      const varias = new Set(f.bandeiras.map(b => b.maquininha).filter(Boolean)).size > 1
+      return [
+        [],
+        [varias ? 'Cartão por maquininha e bandeira' : 'Cartão por bandeira'],
+        [varias ? 'Forma, maquininha e bandeira' : 'Forma e bandeira', 'Entradas', 'Saídas', 'Saldo'],
+        ...f.bandeiras.map(b => [
+          `${rotuloDaFormaDoFechamento(b.forma)}${varias ? ` · ${b.maquininha ?? 'Cartão da clínica'}` : ''} · ${nomeDaBandeira(b.bandeira)}`,
+          reais(b.entradas), reais(b.saidas), reais(b.entradas - b.saidas),
+        ]),
+      ]
+    })() : []),
     [],
     ['Estornos do dia'],
     ['Descrição', 'Forma', 'Valor', 'Motivo', 'Pagamento de', 'Nas saídas do dia'],

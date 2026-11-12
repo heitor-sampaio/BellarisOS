@@ -3,7 +3,7 @@ import type { PagamentoDoPlano } from './pagamento'
 import { dividirEmParcelas, rotuloDaParcela } from './parcelas'
 import { vezesNoCartao } from './pagamento'
 import { recusaDaEntradaAcimaDoTotal } from './entrada'
-import { BANDEIRAS, bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
+import { BANDEIRAS, bandeiraDoPagamento, temBandeira } from '@/lib/financeiro/bandeiras'
 
 /**
  * Os lançamentos de uma venda paga de uma vez ou em partes — hoje, a venda de
@@ -33,6 +33,8 @@ export interface Lancamento {
   cartao_vezes?:   number
   /** A bandeira do cartão do que foi PAGO agora (r3-f13-01): o prazo e a taxa dela. */
   cartao_bandeira?: string
+  /** A maquininha do que foi PAGO agora no cartão (C75); sem ela, o banco põe a primeira. */
+  maquininha_id?: string
   /** O motivo do desconto da venda (fin-01): só no PRIMEIRO lançamento, para a lista do Financeiro. */
   desconto_motivo?: string
 }
@@ -46,15 +48,17 @@ export function comMotivoDoDesconto(lancamentos: Lancamento[], motivo: string | 
 const METODOS = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'INTERNAL_CREDIT'] as const
 import { TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
 const BANDEIRA = z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).optional()
+/** C75: a maquininha do cartão (o banco confere que é da rede). */
+const MAQUININHA = z.string().regex(/^[0-9a-f-]{36}$/i, 'Maquininha inválida.').optional()
 const data = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'Data inválida.')
 
 /** O pagamento como chega do navegador: conferido aqui, antes de virar dinheiro. */
 export const EntradaDoPagamento = z.discriminatedUnion('forma', [
-  z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA }),
+  z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA, maquininha: MAQUININHA }),
   z.object({
     forma: z.literal('PARCELADO'), metodo: z.enum(METODOS),
     // C38: o limite é da rede (`recusaDasParcelasDaRede`); aqui, só o teto do registro.
-    entrada: z.number().min(0), parcelas: z.number().int().min(1).max(TETO_DO_CREDIARIO), primeiroVencimento: data, bandeira: BANDEIRA,
+    entrada: z.number().min(0), parcelas: z.number().int().min(1).max(TETO_DO_CREDIARIO), primeiroVencimento: data, bandeira: BANDEIRA, maquininha: MAQUININHA,
     /** D5: as vezes na maquininha da ENTRADA no crédito. */
     vezes: z.number().int().min(1).max(12).optional(),
   }),
@@ -79,7 +83,8 @@ export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotul
   const valor = centavos(total)
   // r3-f13-01: a bandeira vai no que é PAGO agora no cartão (à vista, a entrada).
   const bandeira = bandeiraDoPagamento(p.metodo, p.forma === 'A_RECEBER' ? null : p.bandeira)
-  const comBandeira = bandeira ? { cartao_bandeira: bandeira } : {}
+  const maquininha = p.forma !== 'A_RECEBER' && temBandeira(p.metodo) && p.maquininha ? p.maquininha : null
+  const comBandeira = { ...(bandeira ? { cartao_bandeira: bandeira } : {}), ...(maquininha ? { maquininha_id: maquininha } : {}) }
   if (p.forma === 'AVISTA') {
     const vezes = vezesNoCartao(p)
     return [{ amount: valor, payment_method: p.metodo, is_paid: true, due_date: null, notes: null, ...(vezes > 1 ? { cartao_vezes: vezes } : {}), ...comBandeira }]

@@ -40,6 +40,8 @@ const PagamentoDoCredito = z.object({
   metodo:   z.enum(FORMAS, { message: 'Escolha a forma de pagamento (Pix, dinheiro ou cartão): crédito na clínica não se paga com crédito.' }),
   vezes:    z.number().int().min(1).max(12).optional(),
   bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).optional().nullable(),
+  /** C75: a maquininha do cartão (o banco confere a rede). */
+  maquininha: z.string().regex(/^[0-9a-f-]{36}$/i, 'Maquininha inválida.').optional().nullable(),
 })
 
 function revalidar() {
@@ -94,7 +96,8 @@ async function venderUmaVez(
     const lido = PagamentoDoCredito.safeParse(pagamento)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
     const vezes = lido.data.metodo === 'CREDIT_CARD' ? lido.data.vezes ?? 1 : 1
-    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezes)
+    const maquininha = lido.data.metodo === 'CREDIT_CARD' || lido.data.metodo === 'DEBIT_CARD' ? lido.data.maquininha ?? null : null
+    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezes, maquininha, lido.data.metodo)
     if (recusaDasVezes) return { error: recusaDasVezes }
 
     const admin = createAdminClient()
@@ -111,6 +114,7 @@ async function venderUmaVez(
       p_valor: Math.round(reais * 100) / 100, p_metodo: lido.data.metodo, p_vezes: vezes,
       p_bandeira: lido.data.bandeira ?? null, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName || null,
       p_bonus: Math.round(bonusEmReais * 100) / 100,
+      p_maquininha: maquininha,
     })
     if (error) {
       if (error.code === 'P0001') return { error: error.message }

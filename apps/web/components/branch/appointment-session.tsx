@@ -51,7 +51,7 @@ import { divergenciasDaBaixa, textoDaDivergencia, formatarDose, type TotalDoMapa
 import { planejamentosDaFicha } from '@/lib/atendimento/retrato-dos-injetaveis'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
-import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
+import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes, useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
@@ -640,8 +640,11 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
   const [vezes, setVezes] = useState(1)
   // r3-f13-01: a bandeira do cartão, opcional (vazia = a regra geral).
   const [bandeira, setBandeira] = useState('')
-  // Até quantas vezes a clínica parcela no crédito (D-15).
-  const opcoesDeVezes = useOpcoesDeVezes()
+  // C75: "Qual maquininha?" (só com mais de uma na rede).
+  const [maquininha, setMaquininha] = useState('')
+  const faltaAMaquininha = useFaltaAMaquininha(metodoEscolhido, maquininha)
+  // Até quantas vezes a maquininha parcela no crédito (D-15).
+  const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   const router = useRouter()
   const [state, action, pending] = useActionState(confirmPayment, null)
   // Pontos de fidelidade: só aparecem com o programa ligado e saldo positivo
@@ -761,6 +764,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
                 {metodoEscolhido === 'INTERNAL_CREDIT' && clienteId && <SaldoDoCredito clienteId={clienteId} valor={resgate.restante} />}
+                <CampoDaMaquininha metodo={metodoEscolhido} valor={maquininha} aoMudar={v => { setMaquininha(v); setVezes(1) }} name="maquininha_id" />
                 {metodoEscolhido === 'CREDIT_CARD' && (
                   <>
                     {/* A39: o campo das vezes tem rótulo, como os outros. */}
@@ -770,10 +774,10 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
                       {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
                     </select>
                     <DicaDasVezes total={resgate.restante} vezes={vezes} opcoes={opcoesDeVezes} />
-                    <AvisoDaTaxa vezes={vezes} bandeira={bandeira} total={resgate.restante} />
+                    <AvisoDaTaxa vezes={vezes} bandeira={bandeira} total={resgate.restante} maquininha={maquininha} />
                   </>
                 )}
-                <CampoDaBandeira metodo={metodoEscolhido} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" total={resgate.restante} />
+                <CampoDaBandeira metodo={metodoEscolhido} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" total={resgate.restante} maquininha={maquininha} />
                 {pagamentoCombinado && (
                   <p data-testid="pagamento-combinado" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                     Combinado no contrato: {pagamentoCombinado.rotulo}.
@@ -794,7 +798,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, pacotesP
           {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
-            <button type="submit" disabled={pending || !!doDesconto.recusa || (!totalZero && !metodoEscolhido)} className="btn-primary"
+            <button type="submit" disabled={pending || !!doDesconto.recusa || (!totalZero && !metodoEscolhido) || (!totalZero && !!faltaAMaquininha)} className="btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
               {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
               {pending ? 'Registrando…' : 'Confirmar pagamento'}
@@ -832,7 +836,10 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
   const [parcelas, setParcelas] = useState(3)
   const [vezes,   setVezes]   = useState(1)
   const [bandeira, setBandeira] = useState('')
-  const opcoesDeVezes = useOpcoesDeVezes()
+  // C75: "Qual maquininha?" (só com mais de uma na rede).
+  const [maquininha, setMaquininha] = useState('')
+  const faltaAMaquininha = useFaltaAMaquininha(forma === 'AVISTA' || entrada > 0 ? metodo : null, maquininha)
+  const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   // C38: o crediário até o limite da rede (padrão 12; era até 48, calado).
   const opcoesDeParcelas = useOpcoesDeParcelas()
   const [venc,    setVenc]    = useState(() => {
@@ -848,7 +855,8 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
 
   async function receber() {
     if (recusaDaEntrada) { setErro(recusaDaEntrada); return }
-    const comBandeira = bandeira && (metodo === 'CREDIT_CARD' || metodo === 'DEBIT_CARD') ? { bandeira } : {}
+    const noCartao = metodo === 'CREDIT_CARD' || metodo === 'DEBIT_CARD'
+    const comBandeira = { ...(bandeira && noCartao ? { bandeira } : {}), ...(maquininha && noCartao ? { maquininha } : {}) }
     setSalvando(true); setErro(null)
     const res = await receberDoPlano(
       plano.planId,
@@ -936,6 +944,9 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                 </select>
               </div>
 
+              {(forma === 'AVISTA' || entrada > 0) && (
+                <CampoDaMaquininha metodo={metodo} valor={maquininha} aoMudar={v => { setMaquininha(v); setVezes(1) }} />
+              )}
               {metodo === 'CREDIT_CARD' && (forma === 'AVISTA' || entrada > 0) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {/* D5: na entrada + parcelas, as vezes são da ENTRADA (a maquininha). */}
@@ -944,10 +955,10 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                     {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
                   </select>
                   <DicaDasVezes total={forma === 'PARCELADO' ? entrada : plano.emAberto} vezes={vezes} opcoes={opcoesDeVezes} />
-                  <AvisoDaTaxa vezes={vezes} bandeira={bandeira} />
+                  <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
                 </div>
               )}
-              <CampoDaBandeira metodo={metodo} valor={bandeira} aoMudar={setBandeira} />
+              <CampoDaBandeira metodo={metodo} valor={bandeira} aoMudar={setBandeira} maquininha={maquininha} />
 
               {forma === 'PARCELADO' && (
                 <>
@@ -985,7 +996,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
                 <button type="button" onClick={() => setAberto(false)} className="btn-secondary"><X size={13} /> Voltar</button>
-                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada || !metodo} className="btn-primary"
+                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada || !metodo || !!faltaAMaquininha} className="btn-primary"
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
                   {salvando ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                   {salvando ? 'Registrando…' : 'Confirmar recebimento'}

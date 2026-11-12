@@ -4,6 +4,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { taxasDaPrimeira, taxaDoPix } from './apoio/maquininha'
 
 /**
  * Comissões, fase 1 (2026-09-30): Configurações → Comissões (como a comissão
@@ -83,11 +84,9 @@ test.describe.serial('comissões — configuração e regras', () => {
     const { data: cfg } = await db().from('commission_configs')
       .select('modo, desconta_insumos, desconta_taxa, periodo, updated_by').eq('tenant_id', rede!.tenantId).single()
     expect(cfg).toEqual({ modo: 'INTEGRAL', desconta_insumos: true, desconta_taxa: true, periodo: 'QUINZENAL', updated_by: gestor!.userId })
-    const { data: fees } = await db().from('payment_fees').select('metodo, parcelas, taxa_pct')
-      .eq('tenant_id', rede!.tenantId).order('metodo').order('parcelas')
-    expect((fees ?? []).map(f => [f.metodo, f.parcelas, Number(f.taxa_pct)])).toEqual([
-      ['CREDIT_CARD', 1, 3.2], ['CREDIT_CARD', 6, 8], ['PIX', 1, 0.99],
-    ])
+    // C75 da F67: as taxas do cartão na maquininha; o Pix, à parte.
+    expect(await taxasDaPrimeira(rede!.tenantId)).toEqual([['CREDIT_CARD', 1, 3.2], ['CREDIT_CARD', 6, 8]])
+    expect(await taxaDoPix(rede!.tenantId)).toBe(0.99)
   })
 
   test('o modo antigo ("no atendimento") não se grava nem pela action', async ({ browser }) => {
@@ -153,14 +152,19 @@ test.describe.serial('comissões — configuração e regras', () => {
       const cfgR = await chamarAcao(p, 'actions/comissoes.ts', 'salvarConfigDeComissao', '/admin/settings',
         [{ desconta_insumos: false, desconta_taxa: false, base_com_pontos: 'PRECO', periodo: 'MENSAL' }])
       expect(cfgR.texto).not.toContain('"ok":true')
-      const taxasR = await chamarAcao(p, 'actions/comissoes.ts', 'salvarTaxasDaMaquininha', '/admin/settings', [[]])
+      const taxasR = await chamarAcao(p, 'actions/maquininhas.ts', 'salvarMaquininha', '/admin/settings',
+        [{ nome: 'Intrusa', taxas: {}, maxVezes: null, prazoDias: 30, cobraPorBandeira: false, porBandeira: {} }])
       expect(taxasR.texto).not.toContain('"ok":true')
+      const pixR = await chamarAcao(p, 'actions/maquininhas.ts', 'salvarTaxaDoPix', '/admin/settings', [5])
+      expect(pixR.texto).not.toContain('"ok":true')
     })
     expect((await regras()).map(r => Number(r.value))).toEqual([30, 80])
     const { data: cfg } = await db().from('commission_configs').select('periodo').eq('tenant_id', rede!.tenantId).single()
     expect(cfg?.periodo).toBe('QUINZENAL')
-    const { count } = await db().from('payment_fees').select('metodo', { count: 'exact', head: true }).eq('tenant_id', rede!.tenantId)
-    expect(count).toBe(3)
+    expect((await taxasDaPrimeira(rede!.tenantId)).length, 'as taxas da maquininha ficam').toBe(2)
+    const { count } = await db().from('maquininhas').select('id', { count: 'exact', head: true }).eq('tenant_id', rede!.tenantId)
+    expect(count, 'nenhuma maquininha nova').toBe(1)
+    expect(await taxaDoPix(rede!.tenantId)).toBe(0.99)
   })
 
   test('um profissional de outra rede não recebe regra', async ({ browser }) => {
@@ -204,6 +208,10 @@ test.describe.serial('comissões — configuração e regras', () => {
     expect(cfg.data ?? []).toHaveLength(0)
     const fee = await api.from('payment_fees').insert({ tenant_id: rede!.tenantId, metodo: 'DEBIT_CARD', parcelas: 1, taxa_pct: 50 }).select('metodo')
     expect(fee.error).not.toBeNull()
+    // C75: a sessão nem lê nem grava as maquininhas (só o servidor).
+    const maq = await api.from('maquininhas').insert({ tenant_id: rede!.tenantId, nome: 'Pela sessão' }).select('id')
+    expect(maq.error).not.toBeNull()
+    expect((await api.from('maquininhas').select('id').eq('tenant_id', rede!.tenantId)).data ?? []).toHaveLength(0)
     const rpc = await api.rpc('comissao_regras_definir', {
       p_tenant: rede!.tenantId, p_profissional: rede!.professionalId, p_padrao: null, p_excecoes: [], p_ator: null,
     })

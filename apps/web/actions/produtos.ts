@@ -20,7 +20,7 @@ import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
-import { vezesNoCartao } from '@/lib/checkout/pagamento'
+import { vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora } from '@/lib/checkout/pagamento'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, motivoDoDesconto } from '@/lib/vendas/desconto'
 
 const UUID = /^[0-9a-f-]{36}$/i
@@ -88,7 +88,7 @@ async function venderProdutoUmaVez(
     const lido = EntradaDoPagamento.safeParse(pagamento)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(lido.data))
+    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(lido.data), maquininhaDoPagamento(lido.data), metodoQuePagaAgora(lido.data))
     if (recusaDasVezes) return { error: recusaDasVezes }
     const d = EntradaDoDesconto.safeParse(desconto)
     if (!d.success) return { error: 'Desconto inválido.' }

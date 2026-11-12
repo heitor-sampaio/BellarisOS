@@ -1329,7 +1329,7 @@ export type SessionScheduleInput = {
 // O pagamento do plano mora em lib/checkout/pagamento.ts: o contrato de plano
 // (lib/documentos) também o lê, e aqui todo export é endpoint público.
 export type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
-import { rotuloDoPagamento, vezesNoCartao, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { rotuloDoPagamento, vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
@@ -1405,7 +1405,7 @@ async function checkoutTreatmentPlanInterno(
   // de um plano de outra rede, tudo isso acontecia lá.
   if (!(await planoDoTenant(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
   // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-  const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento))
+  const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento), maquininhaDoPagamento(pagamento), metodoQuePagaAgora(pagamento))
   if (recusaDasVezes) return { error: recusaDasVezes }
   // C38: o crediário até o limite da rede (era `Math.min(…, 48)`, calado).
   const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, pagamento)
@@ -1510,8 +1510,9 @@ async function checkoutTreatmentPlanInterno(
       payment_method:  pagamento.metodo,
       is_paid:         true,
       ...(vezes > 1 ? { cartao_vezes: vezes } : {}),
-      // r3-f13-01: a bandeira do cartão, opcional.
+      // r3-f13-01: a bandeira do cartão, opcional. C75: a maquininha.
       cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira),
+      maquininha_id:   maquininhaDoPagamento(pagamento),
     })
 
   } else if (pagamento.forma === 'PARCELADO') {
@@ -1530,6 +1531,7 @@ async function checkoutTreatmentPlanInterno(
         notes:           'Entrada do plano de tratamento',
         ...(vezesDaEntrada > 1 ? { cartao_vezes: vezesDaEntrada } : {}),
         cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira),
+        maquininha_id:   maquininhaDoPagamento(pagamento),
       })
     }
 
@@ -1634,7 +1636,7 @@ async function checkoutTreatmentPlanInterno(
       const { error } = await admin.rpc('confirmar_pagamento_do_atendimento', {
         p_agendamento: hoje.appointmentId, p_tenant: ctx.tenantId, p_ator: ctx.internalUserId,
         p_ator_nome:   ctx.userName || ctx.roleLabel || 'Recepção',
-        p_dados:       { metodo: pagamento.metodo, pontos: 0, desconto: 0, valor_final: hoje.preco, cartao_vezes: vezesNoCartao(pagamento), cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira) },
+        p_dados:       { metodo: pagamento.metodo, pontos: 0, desconto: 0, valor_final: hoje.preco, cartao_vezes: vezesNoCartao(pagamento), cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira), maquininha_id: maquininhaDoPagamento(pagamento) },
       })
       if (error) aviso = `O plano foi fechado, mas o atendimento de hoje não foi recebido (${error.message}). Receba pela tela do atendimento.`
     }
@@ -1670,9 +1672,9 @@ async function checkoutTreatmentPlanInterno(
  */
 export type RecebimentoDoPlano =
   /** `vezes`: o cartão de crédito em N vezes, pago na hora (2026-10-20). */
-  | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string }
-  /** `metodo`, `vezes` e `bandeira` são da entrada (D5); as parcelas são da clínica, sem meio (D6). */
-  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number }
+  | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string; maquininha?: string }
+  /** `metodo`, `vezes`, `bandeira` e `maquininha` são da entrada (D5); as parcelas são da clínica, sem meio (D6). */
+  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number; maquininha?: string }
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1730,7 +1732,7 @@ async function receberDoPlanoInterno(
   const planTenant = (plan?.branches as unknown as { tenant_id: string } | null)?.tenant_id
   if (!plan || planTenant !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { error: 'Plano não encontrado.' }
   // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-  const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(recebimento))
+  const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(recebimento), maquininhaDoPagamento(recebimento), metodoQuePagaAgora(recebimento))
   if (recusaDasVezes) return { error: recusaDasVezes }
   // A37: a forma nasce vazia na tela; sem ela, não se recebe.
   if (!recebimento.metodo) return { error: 'Escolha a forma de pagamento.' }
@@ -1814,13 +1816,15 @@ async function receberDoPlanoInterno(
     throw new Error(`Não consegui registrar o recebimento: ${erroDoRecebimento.message}`)
   }
 
-  // r3-f13-01: a bandeira do cartão do que foi pago agora. `plano_receber` não
-  // a recebe (a assinatura fica); gravada logo depois, o gatilho das parcelas da
-  // operadora refaz o prazo e a taxa pela bandeira, e a comissão se acerta.
+  // r3-f13-01: a bandeira do cartão do que foi pago agora — e a maquininha
+  // (C75). `plano_receber` não as recebe (a assinatura fica); gravadas logo
+  // depois, o gatilho das parcelas da operadora refaz o prazo e a taxa pela
+  // bandeira e pela maquininha, e a comissão se acerta.
   const bandeira = bandeiraDoPagamento(recebimento.metodo, recebimento.bandeira)
-  if (bandeira) {
-    const base = admin.from('financial_transactions').update({ cartao_bandeira: bandeira })
-      .eq('treatment_plan_id', planId).eq('is_paid', true).is('cartao_bandeira', null)
+  const maquininha = maquininhaDoPagamento(recebimento)
+  if (bandeira || maquininha) {
+    const base = admin.from('financial_transactions').update({ ...(bandeira ? { cartao_bandeira: bandeira } : {}), ...(maquininha ? { maquininha_id: maquininha } : {}) })
+      .eq('treatment_plan_id', planId).eq('is_paid', true)
       .eq('payment_method', recebimento.metodo as 'CREDIT_CARD' | 'DEBIT_CARD')
     await gravar((recebimento.forma === 'AVISTA'
       ? base.in('id', saldo.pendentes)

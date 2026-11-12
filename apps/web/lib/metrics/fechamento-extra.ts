@@ -141,20 +141,24 @@ export async function getFechamentoPorQuemRecebeu(args: { tenantId: string; bran
     (a.pessoa ? 0 : 1) - (b.pessoa ? 0 : 1) || b.total.entradas - a.total.entradas || (a.nome ?? '').localeCompare(b.nome ?? '', 'pt-BR'))
 }
 
-/** A44 da 12ª: uma linha de cartão do Fechamento, de UMA bandeira (nula: não informada). */
-export interface CartaoPorBandeira { forma: string; bandeira: string | null; entradas: number; saidas: number; lancamentos: number }
+/**
+ * A44 da 12ª: uma linha de cartão do Fechamento, de UMA bandeira (nula: não
+ * informada) numa MAQUININHA (C75 da F67; nula: a saída no cartão da clínica).
+ */
+export interface CartaoPorBandeira { forma: string; maquininha: string | null; bandeira: string | null; entradas: number; saidas: number; lancamentos: number }
 
 /**
  * A44 da 12ª simulação (a Ivone, contadora da Acácia, concilia com a operadora
- * por bandeira): as linhas de cartão do Fechamento do dia divididas pela
- * bandeira — o mesmo conjunto e a mesma chave da forma do resumo
- * (`metrics_fechamento_por_bandeira`). A tela não soma.
+ * por bandeira) e C75 da F67 (cada maquininha é uma operadora): as linhas de
+ * cartão do Fechamento do dia divididas pela maquininha e pela bandeira — o
+ * mesmo conjunto e a mesma chave da forma do resumo
+ * (`metrics_fechamento_por_maquininha`). A tela não soma.
  */
 export async function getFechamentoPorBandeira(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<CartaoPorBandeira[]> {
-  const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_fechamento_por_bandeira', {
+  const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_fechamento_por_maquininha', {
     p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
-  }).order('forma').order('bandeira', { nullsFirst: false }).range(de, ate), 'separar o cartão do dia por bandeira') as {
-    forma: string; bandeira: string | null; entradas: number | string; saidas: number | string; lancamentos: number
+  }).order('forma').order('maquininha', { nullsFirst: false }).order('bandeira', { nullsFirst: false }).range(de, ate), 'separar o cartão do dia por maquininha e bandeira') as {
+    forma: string; maquininha: string | null; bandeira: string | null; entradas: number | string; saidas: number | string; lancamentos: number
   }[]
-  return (linhas ?? []).map(l => ({ forma: l.forma, bandeira: l.bandeira, entradas: Number(l.entradas), saidas: Number(l.saidas), lancamentos: Number(l.lancamentos) }))
+  return (linhas ?? []).map(l => ({ forma: l.forma, maquininha: l.maquininha, bandeira: l.bandeira, entradas: Number(l.entradas), saidas: Number(l.saidas), lancamentos: Number(l.lancamentos) }))
 }

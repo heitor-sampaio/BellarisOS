@@ -25,7 +25,7 @@ import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
 import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
-import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
+import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { textoDasSessoesSemData, avisoDoPlanoFechado } from '@/lib/checkout/sessoes-sem-data'
 import { toast } from 'sonner'
@@ -189,8 +189,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [vezesCartao,   setVezesCartao]   = useState(1)
   // r3-f13-01: a bandeira do cartão, opcional (vazia = a regra geral).
   const [bandeira,      setBandeira]      = useState('')
+  // C75: "Qual maquininha?" (só com mais de uma na rede).
+  const [maquininha,    setMaquininha]    = useState('')
   // Até quantas vezes a clínica parcela no crédito (D-15).
-  const opcoesDeVezes = useOpcoesDeVezes()
+  const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   // C38: o crediário até o limite da rede (padrão 12).
   const opcoesDeParcelas = useOpcoesDeParcelas()
   // O atendimento que gerou o plano entra junto quando algo é recebido agora.
@@ -318,6 +320,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
   // A37: o que se recebe agora (à vista, entrada + parcelas) pede a forma.
   const semForma = (formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && !paymentMethod
+  const faltaAMaquininha = useFaltaAMaquininha(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0) ? paymentMethod : null, maquininha)
 
   // -- Documentação: monta os documentos com o pagamento escolhido -----------
   // Voltar ao pagamento e trocá-lo monta de novo — e o contrato já assinado
@@ -352,7 +355,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     // e o contrato assinado (A36) vale.
     if (r && (r.step > 0 || !plan.contratoAssinado)) {
       setFormaPgto(r.formaPgto); setPaymentMethod(r.paymentMethod); setEntrada(r.entrada); setParcelas(r.parcelas)
-      setVezesCartao(r.vezesCartao); setBandeira(r.bandeira); if (r.primeiroVenc) setPrimeiroVenc(r.primeiroVenc)
+      setVezesCartao(r.vezesCartao); setBandeira(r.bandeira); setMaquininha(r.maquininha ?? ''); if (r.primeiroVenc) setPrimeiroVenc(r.primeiroVenc)
       setDesconto(r.desconto); setVendedorId(r.vendedorId); setSemVendedor(r.semVendedor)
       setStep(Math.min(r.step, 1))
       if (r.step >= 2) setRetomada(r)
@@ -403,8 +406,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   }, [retomada])
   useEffect(() => {
     if (!passoLido) return
-    gravarPassoDoCheckout(plan.id, { step, formaPgto, paymentMethod, entrada, parcelas, vezesCartao, bandeira, primeiroVenc, desconto, vendedorId, semVendedor })
-  }, [passoLido, plan.id, step, formaPgto, paymentMethod, entrada, parcelas, vezesCartao, bandeira, primeiroVenc, desconto, vendedorId, semVendedor])
+    gravarPassoDoCheckout(plan.id, { step, formaPgto, paymentMethod, entrada, parcelas, vezesCartao, bandeira, maquininha, primeiroVenc, desconto, vendedorId, semVendedor })
+  }, [passoLido, plan.id, step, formaPgto, paymentMethod, entrada, parcelas, vezesCartao, bandeira, maquininha, primeiroVenc, desconto, vendedorId, semVendedor])
 
   function abrirParaAssinar(id: string) {
     setError(null)
@@ -421,7 +424,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     // `null` = aceito sem cobrar. O valor nasce em aberto e aparece no check-in
     // do primeiro atendimento, com o botão de receber.
     if (formaPgto === 'NADA_AGORA') return null
-    const comBandeira = bandeira && (paymentMethod === 'CREDIT_CARD' || paymentMethod === 'DEBIT_CARD') ? { bandeira } : {}
+    const noCartao = paymentMethod === 'CREDIT_CARD' || paymentMethod === 'DEBIT_CARD'
+    const comBandeira = { ...(bandeira && noCartao ? { bandeira } : {}), ...(maquininha && noCartao ? { maquininha } : {}) }
     if (formaPgto === 'PARCELADO') {
       return {
         forma:              'PARCELADO',
@@ -860,6 +864,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             <SaldoDoCredito clienteId={plan.clientId} valor={formaPgto === 'PARCELADO' ? entradaNum : liquido} />
           </div>
         )}
+        {(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && (
+          <div style={{ marginBottom: 16, maxWidth: 260 }}>
+            <CampoDaMaquininha metodo={paymentMethod} valor={maquininha} aoMudar={v => { setMaquininha(v); setVezesCartao(1) }} />
+          </div>
+        )}
         {/* D5: na entrada + parcelas, a ENTRADA no crédito também em N vezes. */}
         {(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && paymentMethod === 'CREDIT_CARD' && (
           <div style={{ marginBottom: 16, maxWidth: 220 }}>
@@ -872,12 +881,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               </select>
             </label>
             <DicaDasVezes total={(formaPgto === 'PARCELADO' ? entradaNum : liquido) + (recebeHoje ? precoDeHoje : 0)} vezes={vezesCartao} opcoes={opcoesDeVezes} />
-            <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} total={(formaPgto === 'PARCELADO' ? entradaNum : liquido) + (recebeHoje ? precoDeHoje : 0)} />
+            <AvisoDaTaxa vezes={vezesCartao} bandeira={bandeira} maquininha={maquininha} total={(formaPgto === 'PARCELADO' ? entradaNum : liquido) + (recebeHoje ? precoDeHoje : 0)} />
           </div>
         )}
         {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && (
           <div style={{ marginBottom: 16, maxWidth: 260 }}>
-            <CampoDaBandeira metodo={paymentMethod} valor={bandeira} aoMudar={setBandeira} />
+            <CampoDaBandeira metodo={paymentMethod} valor={bandeira} aoMudar={setBandeira} maquininha={maquininha} />
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>
@@ -938,7 +947,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       )}
 
       <button
-        onClick={() => irParaDocumentos()} disabled={preparando || !!contaDesc.recusa || semForma}
+        onClick={() => irParaDocumentos()} disabled={preparando || !!contaDesc.recusa || semForma || !!faltaAMaquininha} title={faltaAMaquininha ?? undefined}
         style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: preparando ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
         {preparando ? 'Montando os documentos…' : 'Ir para a documentação'} <ChevronRight size={18} />
       </button>

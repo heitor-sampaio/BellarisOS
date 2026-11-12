@@ -6,7 +6,7 @@ import { createTransactionAdvanced } from '@/actions/financial'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { dayKeyTZ } from '@/lib/datetime'
 import { CATEGORIAS_DE_RECEITA, CATEGORIAS_DE_DESPESA } from '@/lib/financeiro/categorias'
-import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
+import { CampoDaBandeira, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
@@ -78,8 +78,11 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
   const [bandeira,         setBandeira]         = useState('')
   // F16-5: as vezes no crédito da receita paga (até o limite da clínica, D-15).
   const [vezesNoCartao,    setVezesNoCartao]    = useState(1)
-  const opcoesDeVezes = useOpcoesDeVezes()
+  // C75: "Qual maquininha?" — só com mais de uma na rede.
+  const [maquininha,       setMaquininha]       = useState('')
+  const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   const creditoPago = type === 'INCOME' && isPaid && formaDePagamento === 'CREDIT_CARD'
+  const faltaAMaquininha = useFaltaAMaquininha(type === 'INCOME' && isPaid ? formaDePagamento : null, maquininha)
 
   const [state, formAction, pending] = useActionState(createTransactionAdvanced, undefined)
   // A chave do envio (D10): o duplo clique lança uma vez só.
@@ -119,6 +122,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
     setFormaDePagamento('')
     setBandeira('')
     setVezesNoCartao(1)
+    setMaquininha('')
     if (!isAdminMode) {
       setSelectedBranchId(branchId ?? '')
       setSelectedBranchSlug(slug ?? '')
@@ -353,6 +357,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                 aberto, a bandeira é perguntada na baixa ("Receber no cartão"). */}
             {type === 'INCOME' && isPaid && (
               <CampoDaBandeira metodo={formaDePagamento} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" gap={5}
+                maquininha={maquininha} aoMudarMaquininha={v => { setMaquininha(v); setVezesNoCartao(1) }} nameDaMaquininha="maquininha_id"
                 rotuloComoLabel="" estiloDoRotulo={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }} />
             )}
 
@@ -376,7 +381,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                     (no “A receber da operadora”). Não é um parcelamento da cliente com a clínica.
                   </span>
                 )}
-                <AvisoDaTaxa vezes={vezesNoCartao} bandeira={bandeira} total={finalAmount} />
+                <AvisoDaTaxa vezes={vezesNoCartao} bandeira={bandeira} total={finalAmount} maquininha={maquininha} />
               </div>
             )}
 
@@ -545,7 +550,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
               <button type="button" onClick={close} className="btn-secondary" disabled={pending}>
                 Cancelar
               </button>
-              <button type="submit" disabled={pending} className="btn-primary">
+              <button type="submit" disabled={pending || !!faltaAMaquininha} title={faltaAMaquininha ?? undefined} className="btn-primary">
                 {pending ? 'Salvando…' : 'Lançar'}
               </button>
             </div>

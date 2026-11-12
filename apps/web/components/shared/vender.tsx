@@ -17,7 +17,7 @@ import { venderProduto } from '@/actions/produtos'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
 import { FormularioDoPacote, type PacoteAVenda } from '@/components/shared/vender-pacote'
-import { CamposDoPagamento, estadoDoPagamento, montarPagamento, recusaDoPagamento } from '@/components/shared/campos-do-pagamento'
+import { CamposDoPagamento, estadoDoPagamento, montarPagamento, useRecusaDoPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
@@ -278,6 +278,8 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
   const router = useRouter()
   const [itens, setItens] = useState<{ prodId: string; quantidade: string }[]>(() => [{ prodId: produtos[0]!.id, quantidade: '1' }])
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
+  // C75: com mais de uma maquininha, o cartão não segue sem "Qual maquininha?".
+  const recusaDoPagamento = useRecusaDoPagamento()
   const [desconto, setDesconto] = useState(SEM_DESCONTO)
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
@@ -400,6 +402,8 @@ function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string
   // A20 da 11ª (decisão do Heitor): o bônus, opcional — nasce vazio (princípio 6).
   const [bonus, setBonus] = useState('')
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
+  // C75: com mais de uma maquininha, o cartão não segue sem "Qual maquininha?".
+  const recusaDoPagamento = useRecusaDoPagamento()
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
   // A55 da 11ª: a cliente sem acesso ao app não vê o saldo pelo celular.
@@ -509,6 +513,8 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   const [quantidade, setQuantidade] = useState('1')
   const [validade, setValidade] = useState('')
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
+  // C75: com mais de uma maquininha, o cartão não segue sem "Qual maquininha?".
+  const recusaDoPagamento = useRecusaDoPagamento()
   const [desconto, setDesconto] = useState(SEM_DESCONTO)
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()

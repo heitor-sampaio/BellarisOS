@@ -126,9 +126,9 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
   const [noCartao, setNoCartao] = useState<{ id: string; descricao: string; metodo: string | null; valor: number } | null>(null)
   // A15 da 9ª: a despesa sem forma pergunta a forma na baixa.
   const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; descricao: string; valor: number } | null>(null)
-  function handleMarkPaid(id: string, bandeira?: string | null, vezes?: number, forma?: string | null) {
+  function handleMarkPaid(id: string, bandeira?: string | null, vezes?: number, forma?: string | null, maquininha?: string | null) {
     startTx(async () => {
-      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null)
+      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null, maquininha ?? null)
       if (r?.error) toast.error(r.error)
       else { setNoCartao(null); setDespesaAPagar(null); router.refresh() }
     })
@@ -189,7 +189,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
     {noCartao && (
       <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
         valor={noCartao.valor}
-        aoConfirmar={(b, v, f) => handleMarkPaid(noCartao.id, b, v, f)} aoFechar={() => setNoCartao(null)} />
+        aoConfirmar={(b, v, f, m) => handleMarkPaid(noCartao.id, b, v, f, m)} aoFechar={() => setNoCartao(null)} />
     )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Filtros */}

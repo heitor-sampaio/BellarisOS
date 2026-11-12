@@ -6,7 +6,7 @@ import { gravar, ler } from '@/lib/db'
 import { vencimentoDoDia } from '@/lib/financeiro/vencimentos'
 import { dayKeyTZ } from '@/lib/datetime'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
-import { bandeiraDoPagamento, ehBandeira } from '@/lib/financeiro/bandeiras'
+import { bandeiraDoPagamento, ehBandeira, temBandeira } from '@/lib/financeiro/bandeiras'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
 
@@ -54,6 +54,8 @@ export interface NovoLancamento {
    * não é o parcelado da cliente. Fora do crédito pago, ignorado.
    */
   vezes?: number | null
+  /** C75: a maquininha do cartão da receita paga (sem ela, o banco põe a primeira). */
+  maquininha?: string | null
 }
 
 /** O `paid_at` do lançamento pago no dia escolhido. */
@@ -89,7 +91,10 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
   const noCreditoPago = l.pago && l.tipo === 'INCOME' && l.formaDePagamento === 'CREDIT_CARD'
   const vezes = noCreditoPago && l.vezes != null ? Math.trunc(l.vezes) : 1
   if (noCreditoPago && (!Number.isFinite(vezes) || vezes < 1 || vezes > TETO_DE_VEZES)) return { error: `As vezes no cartão vão de 1 a ${TETO_DE_VEZES}.` }
-  const recusaDasVezes = noCreditoPago ? await recusaDasVezesDaRede(ctx.tenantId!, vezes) : null
+  // C75: a maquininha do cartão pago (a de outra rede é recusada aqui e no banco).
+  const maquininha = l.pago && l.tipo === 'INCOME' && temBandeira(l.formaDePagamento) ? l.maquininha || null : null
+  const noCartaoPago = l.pago && l.tipo === 'INCOME' && temBandeira(l.formaDePagamento)
+  const recusaDasVezes = noCartaoPago ? await recusaDasVezesDaRede(ctx.tenantId!, vezes, maquininha, l.formaDePagamento) : null
   if (recusaDasVezes) return { error: recusaDasVezes }
 
   const linha = await gravar(admin.from('financial_transactions').insert({
@@ -108,6 +113,7 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
     nota_fiscal:    l.notaFiscal?.trim().slice(0, 60) || null,
     ...(bandeira ? { cartao_bandeira: bandeira } : {}),
     ...(noCreditoPago && vezes >= 2 ? { cartao_vezes: vezes } : {}),
+    ...(maquininha ? { maquininha_id: maquininha } : {}),
   }).select('id').single(), 'registrar o lançamento') as { id: string }
   return { id: linha.id }
 }
@@ -138,6 +144,8 @@ export async function marcarPagoCore(
    * "Novo lançamento". Só no crédito; até o limite da clínica (D-15).
    */
   vezes?: number | null,
+  /** C75: a maquininha do cartão (sem ela, o banco põe a primeira). */
+  maquininha?: string | null,
 ): Promise<{ ok: true } | { error: string }> {
   const tx = await lancamentoAoAlcance(admin, ctx, transactionId)
   if (!tx) return { error: 'Lançamento não encontrado.' }
@@ -148,8 +156,9 @@ export async function marcarPagoCore(
   // A14 da 9ª: o Boleto é forma da despesa.
   if (forma === 'BOLETO' && tx.type !== 'EXPENSE') return { error: 'Boleto é forma de pagar uma despesa.' }
   const daBandeira = bandeiraDoPagamento(forma ?? tx.payment_method, bandeira)
-  const recusa = await recusaDasVezesDaBaixa(ctx, tx.type, forma ?? tx.payment_method, vezes)
+  const recusa = await recusaDasVezesDaBaixa(ctx, tx.type, forma ?? tx.payment_method, vezes, maquininha)
   if (recusa) return { error: recusa }
+  const daMaquininha = temBandeira(forma ?? tx.payment_method) ? maquininha || null : null
   const emVezes = vezes != null && vezes >= 2 ? Math.trunc(vezes) : null
   const agora = new Date().toISOString()
   // Com a guarda: o já pago (ou estornado) não tem o pagamento sobrescrito.
@@ -160,6 +169,7 @@ export async function marcarPagoCore(
     ...(forma ? { payment_method: forma } : {}),
     ...(daBandeira ? { cartao_bandeira: daBandeira } : {}),
     ...(emVezes ? { cartao_vezes: emVezes } : {}),
+    ...(daMaquininha ? { maquininha_id: daMaquininha } : {}),
   }).eq('id', transactionId).eq('is_paid', false).or('notes.is.null,notes.neq.Estornada').select('id'), 'dar baixa no lançamento') as { id: string }[] | null
   if (!feitas?.length) return { error: 'Esse lançamento já está pago (ou foi estornado).' }
   return { ok: true }
@@ -170,9 +180,9 @@ export async function marcarPagoCore(
  * limite da clínica. Vazio é 1x. O Copilot confere no cartão (preparar) com a
  * mesma regra.
  */
-export async function recusaDasVezesDaBaixa(ctx: TenantContext, tipo: string, forma: string | null, vezes: number | null | undefined): Promise<string | null> {
-  if (vezes == null || vezes === 1) return null
+export async function recusaDasVezesDaBaixa(ctx: TenantContext, tipo: string, forma: string | null, vezes: number | null | undefined, maquininha?: string | null): Promise<string | null> {
+  if (vezes == null || vezes === 1) return tipo === 'INCOME' && temBandeira(forma) ? recusaDasVezesDaRede(ctx.tenantId!, 1, maquininha, forma) : null
   if (tipo !== 'INCOME' || forma !== 'CREDIT_CARD') return 'As vezes no cartão são só no crédito (o débito é 1x).'
   if (!Number.isInteger(vezes) || vezes < 1 || vezes > TETO_DE_VEZES) return `As vezes no cartão vão de 1 a ${TETO_DE_VEZES}.`
-  return recusaDasVezesDaRede(ctx.tenantId!, vezes)
+  return recusaDasVezesDaRede(ctx.tenantId!, vezes, maquininha, forma)
 }

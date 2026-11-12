@@ -141,7 +141,7 @@ test('A34: o débito com a bandeira "Não informada" diz a taxa que vai valer', 
     const dlg = p.getByRole('dialog', { name: 'Confirmar pagamento' })
     await dlg.getByRole('combobox', { name: 'Forma de pagamento' }).selectOption('DEBIT_CARD')
     const aviso = dlg.locator('[data-taxa-do-debito]')
-    await expect(aviso).toContainText('Taxa da maquininha no débito: 1,6% — a regra geral (bandeira não informada)')
+    await expect(aviso).toContainText('Taxa da maquininha no débito: 1,6%')
     await expect(aviso).toContainText(/a clínica recebe R\$\s186,96/)
   })
 })

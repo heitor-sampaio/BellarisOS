@@ -1080,7 +1080,10 @@ export async function confirmPayment(
     // Cartão de crédito em N vezes (2026-10-20): pago na hora; o banco confere 1–12 e o meio.
     const cartaoVezes   = paymentMethod === 'CREDIT_CARD' ? Math.trunc(Number(formData.get('cartao_vezes') ?? 1) || 1) : 1
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, cartaoVezes)
+    // C75: a maquininha do cartão (com uma só, o banco põe a única).
+    const maquininhaId  = paymentMethod === 'CREDIT_CARD' || paymentMethod === 'DEBIT_CARD'
+      ? (formData.get('maquininha_id') as string | null)?.trim() || null : null
+    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, cartaoVezes, maquininhaId, paymentMethod)
     if (recusaDasVezes) return { error: recusaDasVezes }
     // r3-f13-01: a bandeira do cartão, opcional (o banco confere a lista).
     const cartaoBandeira = bandeiraDoPagamento(paymentMethod, (formData.get('cartao_bandeira') as string | null)?.trim() || null)
@@ -1158,6 +1161,7 @@ export async function confirmPayment(
           voucher_id: voucherId, desconto_voucher: descontoVoucher, desconto_venda: descontoVenda,
           cartao_vezes: valorFinal > 0 ? cartaoVezes : 1,
           cartao_bandeira: valorFinal > 0 ? cartaoBandeira : null,
+          maquininha_id: valorFinal > 0 ? maquininhaId : null,
           desconto_motivo: descontoVenda > 0 ? motivoDoDesconto : null,
         },
       }), 'confirmar o pagamento')

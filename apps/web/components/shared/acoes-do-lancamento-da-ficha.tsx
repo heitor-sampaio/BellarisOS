@@ -53,9 +53,9 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
       router.refresh()
     })
   }
-  function receber(bandeira: string | null, vezes: number, forma: string | null) {
+  function receber(bandeira: string | null, vezes: number, forma: string | null, maquininha: string | null = null) {
     iniciar(async () => {
-      const r = await markTransactionPaid(l.id, slug, bandeira, vezes, forma)
+      const r = await markTransactionPaid(l.id, slug, bandeira, vezes, forma, maquininha)
       if (r?.error) { toast.error(r.error); return }
       setAReceber(false)
       toast.success('Recebido.')

@@ -51,7 +51,7 @@ export function DefinirPagamento({ documentoId, atual, descontoAtual, total, aoT
         O contrato cita o pagamento: defina como o cliente vai pagar antes de colher a assinatura.
       </p>
       {total != null && total > 0 && <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={total} />}
-      <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['NADA_AGORA', 'AVISTA', 'PARCELADO', 'A_RECEBER']} total={liquido} doQue="do atendimento" />
+      <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['NADA_AGORA', 'AVISTA', 'PARCELADO', 'A_RECEBER']} total={liquido} doQue="do atendimento" semMaquininha />
       {estado.forma === 'NADA_AGORA' && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)' }}>O contrato diz o valor do atendimento, a receber no dia.</p>
       )}

@@ -84,23 +84,21 @@ test('o CPF não diz de quem é a quem não edita clientes', async ({ browser })
 
 test('a taxa da maquininha não vai a quem só recebe (D7) — só se ela está cadastrada', async ({ browser }) => {
   const rota = '/admin/financeiro'
-  const acoes = ['taxasDoCartaoDeCredito', 'taxaDoDebito', 'cartaoPorBandeiraDaRede'] as const
+  // C75 da F67: a leitura é a das maquininhas (o "Qual maquininha?" e o aviso da taxa).
   const pela = (m: MembroDeTeste) => como(browser, m, async p => {
     if (m === dona) await p.goto(rota)
-    const saida: Record<string, string> = {}
-    for (const a of acoes) saida[a] = (await chamarAcao(p, 'actions/comissoes.ts', a, rota, [])).texto
-    return saida
+    return (await chamarAcao(p, 'actions/maquininhas.ts', 'maquininhasParaAVenda', rota, [])).texto
   })
   const controle = await pela(dona)
-  expect(controle.taxasDoCartaoDeCredito, 'o controle: a dona vê a taxa de 3x').toContain('7.77')
-  expect(controle.taxaDoDebito).toContain('1.99')
-  expect(controle.cartaoPorBandeiraDaRede).toContain('8.88')
+  expect(controle, 'o controle: a dona vê a taxa de 3x').toContain('7.77')
+  expect(controle).toContain('1.99')
+  expect(controle).toContain('8.88')
 
   const r = await pela(caixa)
   for (const n of ['7.77', '1.99', '8.88', '"prazo"']) {
-    expect(Object.values(r).join('\n'), `${n} chegou ao caixa`).not.toContain(n)
+    expect(r, `${n} chegou ao caixa`).not.toContain(n)
   }
-  // Mas sabe QUAIS estão cadastradas: é o que decide o aviso "sai sem desconto".
-  expect(r.taxasDoCartaoDeCredito).toContain('"parcelas":3')
-  expect(r.cartaoPorBandeiraDaRede).toContain('CREDIT_CARD:3')
+  // Mas sabe QUAIS estão cadastradas: é o que decide o aviso "não há taxa cadastrada".
+  expect(r).toContain('"CREDIT_CARD:3":0')
+  expect(r).toContain('"DEBIT_CARD:1":0')
 })

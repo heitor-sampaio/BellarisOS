@@ -1,27 +1,23 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { maximoDeVezesNoCartao, maximoDeParcelasNoCrediario } from '@/actions/comissoes'
-import { opcoesDeVezes } from '@/lib/financeiro/vezes-do-cartao'
+import { maximoDeParcelasNoCrediario } from '@/actions/comissoes'
+import { opcoesDeVezes, TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
+import { useMaquininhas, maquininhaEscolhida } from '@/components/shared/use-maquininhas'
 import { opcoesDeParcelas, CREDIARIO_PADRAO } from '@/lib/financeiro/parcelas-do-crediario'
 
 /**
- * As opções do "Vezes no cartão" da rede (D-15): de à vista ao limite que a
- * clínica configurou (ou, sem ele, a maior parcela do crédito com taxa).
+ * As opções do "Vezes no cartão" (D-15) na MAQUININHA da venda (C75): de à
+ * vista ao "Parcelar até" dela (ou, sem ele, a maior parcela do crédito com
+ * taxa). Sem maquininha escolhida, a primeira (a que o banco põe).
  *
- * Enquanto o limite não chega, só "À vista" — oferecer 12x e encolher depois
- * deixaria escolher o que o servidor recusa. Uma leitura por tela.
+ * Enquanto as maquininhas não chegam, só "À vista" — oferecer 12x e encolher
+ * depois deixaria escolher o que o servidor recusa.
  */
-export function useOpcoesDeVezes(): number[] {
-  const [maximo, setMaximo] = useState(1)
-  useEffect(() => {
-    let vivo = true
-    maximoDeVezesNoCartao()
-      .then(n => { if (vivo) setMaximo(n) })
-      .catch(e => console.error('[pagamento] limite de vezes no crédito:', e))
-    return () => { vivo = false }
-  }, [])
-  return opcoesDeVezes(maximo)
+export function useOpcoesDeVezes(maquininha?: string | null): number[] {
+  const leitura = useMaquininhas()
+  const m = maquininhaEscolhida(leitura?.lista, maquininha)
+  return opcoesDeVezes(leitura ? (m?.maximo ?? TETO_DE_VEZES) : 1)
 }
 
 /**

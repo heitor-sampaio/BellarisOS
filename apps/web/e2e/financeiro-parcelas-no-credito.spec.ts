@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { primeiraMaquininha } from './apoio/maquininha'
 
 /**
  * D-15 (decisão do Heitor, 2026-10-29): "A clínica configura 'parcela até
@@ -101,8 +102,7 @@ test.describe.serial('parcelas no crédito', () => {
       await p.getByRole('button', { name: 'Salvar taxas' }).click()
       await expect(p.getByRole('status').filter({ hasText: 'Salvo.' })).toBeVisible()
     })
-    const { data } = await db().from('tenants').select('cartao_max_vezes').eq('id', rede!.tenantId).single()
-    expect(data!.cartao_max_vezes).toBe(2)
+    expect((await primeiraMaquininha(rede!.tenantId)).max_vezes, 'o "até 2x" da maquininha (C75)').toBe(2)
     await como(browser, recepcao!, async p => {
       await expect.poll(() => vezesOferecidas(p)).toEqual(['1', '2'])
     })

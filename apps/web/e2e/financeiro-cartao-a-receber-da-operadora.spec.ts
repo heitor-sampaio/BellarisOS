@@ -4,6 +4,7 @@ import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste 
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
+import { primeiraMaquininha } from './apoio/maquininha'
 
 /**
  * O cartão de crédito em N vezes vira N parcelas A RECEBER DA OPERADORA, mês a
@@ -332,7 +333,7 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
       await p.getByRole('button', { name: 'Salvar taxas' }).click()
       await expect(p.getByRole('status').filter({ hasText: 'Salvo.' })).toBeVisible()
     })
-    expect((await db().from('tenants').select('cartao_prazo_dias').eq('id', rede!.tenantId).single()).data?.cartao_prazo_dias).toBe(15)
+    expect((await primeiraMaquininha(rede!.tenantId)).prazo_dias, 'o prazo da maquininha (C75)').toBe(15)
     const { data, error } = await db().from('financial_transactions').insert({
       branch_id: rede!.branchId, client_id: cliente!.clientId, type: 'INCOME', category: 'Serviços',
       description: `${PREFIXO} Venda com prazo de 15 dias ${marca}`, amount: 300, payment_method: 'CREDIT_CARD', cartao_vezes: 2,
@@ -346,7 +347,10 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     // Fora do intervalo, a action recusa.
     await comSessao(browser, dona!.estado, async p => {
       await p.goto('/admin/settings?tab=comissoes')
-      const r = await chamarAcao(p, 'actions/comissoes.ts', 'salvarPrazoDaOperadora', '/admin/settings', [0])
+      const m = await primeiraMaquininha(rede!.tenantId)
+      const r = await chamarAcao(p, 'actions/maquininhas.ts', 'salvarMaquininha', '/admin/settings', [{
+        id: m.id, nome: 'Maquininha', taxas: m.taxas, maxVezes: m.max_vezes, prazoDias: 0, cobraPorBandeira: false, porBandeira: {},
+      }])
       expect(r.texto).toContain('de 1 a 120 dias')
     })
     expect((await db().from('tenants').update({ cartao_prazo_dias: 30 }).eq('id', rede!.tenantId)).error).toBeNull()

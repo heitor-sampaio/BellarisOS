@@ -33,7 +33,7 @@ import { prepararDocumentosDoPlano, contratoQueSeriaSubstituido } from '@/lib/do
 import { ipEAparelho, dadosDoAssinante, depoisDeAssinar, COLUNAS_ASSINAVEIS, type DocumentoAssinavel } from '@/lib/documentos/assinar'
 import { notifyClient } from '@/lib/notifications/notify'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
-import { vezesNoCartao, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { vezesNoCartao, maquininhaDoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { ROTULO_DO_EVENTO, ROTULO_DO_CANAL } from '@/lib/documentos/situacao'
 import { precosDoPlano, descontoDoPlano } from '@/lib/checkout/desconto-do-plano'
@@ -239,7 +239,7 @@ export async function prepararDocumentosDoCheckout(
     if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
     if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento))
+    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento), maquininhaDoPagamento(pagamento))
     if (recusaDasVezes) return { error: recusaDasVezes }
     // C38: o crediário até o limite da rede.
     const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, pagamento)
@@ -299,7 +299,7 @@ export async function definirPagamentoDoContrato(
     assertPermission(ctx, 'documents', 'MANAGE')
     if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento))
+    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento), maquininhaDoPagamento(pagamento))
     if (recusaDasVezes) return { error: recusaDasVezes }
     const d = EntradaDoDesconto.safeParse(desconto)
     if (!d.success) return { error: 'Desconto inválido.' }

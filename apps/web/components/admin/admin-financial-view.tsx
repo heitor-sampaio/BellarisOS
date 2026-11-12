@@ -303,9 +303,9 @@ export function AdminFinancialView({
   const [noCartao, setNoCartao] = useState<{ id: string; slug: string; descricao: string; metodo: string | null; valor: number } | null>(null)
   // A15 da 9ª: a despesa sem forma pergunta a forma na baixa.
   const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; slug: string; descricao: string; valor: number } | null>(null)
-  function marcarPago(id: string, slug: string, bandeira?: string | null, vezes?: number, forma?: string | null) {
+  function marcarPago(id: string, slug: string, bandeira?: string | null, vezes?: number, forma?: string | null, maquininha?: string | null) {
     startT(async () => {
-      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null)
+      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null, maquininha ?? null)
       if (r?.error) toast.error(r.error)
       else { setNoCartao(null); setDespesaAPagar(null); router.refresh() }
     })
@@ -394,7 +394,7 @@ export function AdminFinancialView({
       {noCartao && (
         <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
           valor={noCartao.valor}
-          aoConfirmar={(b, v, f) => marcarPago(noCartao.id, noCartao.slug, b, v, f)} aoFechar={() => setNoCartao(null)} />
+          aoConfirmar={(b, v, f, m) => marcarPago(noCartao.id, noCartao.slug, b, v, f, m)} aoFechar={() => setNoCartao(null)} />
       )}
 
       {/* Header: título (esquerda) + seletores e botão (direita) */}
