@@ -688,8 +688,9 @@ um muro que não depende de cada trava do código.
   - **As Importações são de quem é da rede**, e a importação escolhe a que
     unidade os registros pertencem (a ficha da cliente, os produtos). A
     gerente de unidade fixa não importa: a aba diz "Esta configuração é da
-    clínica toda", e a action recusa. (C73: hoje ela importa para a unidade
-    dela.)
+    clínica toda", e a action recusa (`importarContatos`,
+    `retomarImportacao`; a aba está em `ABAS_DA_CLINICA_TODA`). Prova:
+    `e2e/permissoes-f70.spec.ts` ("C73").
 - Sem aba pedida, quem tem unidade fixa abre Configurações na primeira aba que
   é DELA.
 - **A aba pedida que não abre diz por quê** (A11 da 12ª simulação, 2026-11-11;
@@ -752,9 +753,8 @@ um muro que não depende de cada trava do código.
   área recusada para a gerente, com a dona como controle; a aba Unidade; as
   telas).
 
-**Decididas no levantamento das regras** (o Heitor, 2026-11-11; a correção
-indicada é a do consolidado do levantamento — até ela entrar, o sistema ainda
-faz o que está entre parênteses):
+**Decididas no levantamento das regras** (o Heitor, 2026-11-11; as três
+abaixo entraram na F70, 2026-11-12):
 - **Ninguém dá um cargo com mais acesso que o próprio** (H7, opção b; o
   espírito da regra de 29/10, "somente admin promove a admin", aplicado aos
   módulos). Quem tem a Equipe em Gerenciar só dá (ao criar ou editar um
@@ -762,20 +762,32 @@ faz o que está entre parênteses):
   cargo; o que passa aparece desabilitado na lista, "Financeiro (tem módulos
   que você não tem)", com a nota "Só quem tem esses módulos pode dar este
   cargo." A Admin da rede continua dando qualquer cargo. A action recusa
-  também. (C62: hoje dá qualquer cargo menos o de Admin.)
+  também. "Acima" é, em algum módulo: um nível acima, o "todos" onde quem dá
+  tem "só os meus", ou uma aba de Relatórios que ela não vê; manter o cargo
+  que o membro já tem não é dar. Mora em `lib/equipe/cargo-acima.ts`
+  (`cargosAcimaDoMeu`, `assertRoleInTenant`). Prova:
+  `e2e/permissoes-f70.spec.ts` ("C62").
 - **Desativar uma unidade mostra o que fica e oferece resolver, sem impedir**
   (H6, opção a; a mesma regra da H6 de 01/11 para o membro, e os princípios 2
   e 3). "A unidade Jardins tem 2 pessoas da equipe só nela e 14 agendamentos
   marcados. [Mudar a equipe de unidade] [Ver os agendamentos] [Desativar
   mesmo assim]" — nas duas portas (a lista e o detalhe da unidade), com
-  confirmação. (C67 e C61: hoje desativar só tira a unidade do ar; quem é
-  fixo nela recebe "página não encontrada", os agendamentos ficam sem aviso,
-  e o detalhe nem confirma.)
+  confirmação. A janela é `DesativarUnidade`
+  (`components/admin/desativar-unidade.tsx`, com `lib/unidades/desativar.ts`):
+  "Mudar a equipe de unidade" é `moverEquipeDaUnidade` — leva quem é fixo nela
+  para outra unidade ATIVA (a abrangência e os claims; o "Atende" de cada
+  pessoa não muda, e nunca "para a rede", que daria mais acesso); "Ver os
+  agendamentos" abre a agenda dela, onde se remarca ou cancela. Prova:
+  `e2e/permissoes-f70.spec.ts` ("C67").
 - **Só uma Admin autoriza o suporte a entrar na conta de uma Admin** (D19; a
   regra de 29/10, "somente admin pode alterar admin": entrar como ela é agir
   como ela). Para a própria conta, ela mesma; para a de outra Admin, outra
   Admin. Quem tem Configurações em Gerenciar sem ser Admin não vê o botão na
-  linha de uma Admin, e a action recusa. Quem autoriza também revoga. (C59.)
+  linha de uma Admin, e a action recusa. Quem autoriza também revoga.
+  `podeAutorizar(quem, alvo, { alvoEhAdmin })` em `lib/suporte/regras.ts`; a
+  aba Suporte mostra a conta dela desligada, "(só uma Admin da rede
+  autoriza)". Prova: `tests/suporte-regras.test.ts`, `e2e/permissoes-f70.spec.ts`
+  ("C59").
 
 **O "Atende" é por unidade — e não é abrangência (§11 do CLAUDE.md; decisão 2
 do Heitor sobre a 8ª simulação, 2026-11-06: "Inves de atende também em, o

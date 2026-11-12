@@ -423,7 +423,11 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   de acordo; princípio 3 e "LGPD: só exportação" de 09/09): a página pública
   deixa de prometer uma eliminação que o sistema não faz — a eliminação é
   feita sob pedido, pelo contato da clínica, respeitando as guardas legais
-  (prontuário 20 anos, fiscal 5 anos). (Correção C30.) Fluxo: o cliente solicita
+  (prontuário 20 anos, fiscal 5 anos). (C30, feita na F70: a /privacidade diz
+  como pedir e os prazos; prova em `e2e/privacidade-publica.spec.ts`.) O aviso
+  do pedido de exportação com prontuário chega também a quem tem o Prontuário
+  em Gerenciar, e a aba LGPD abre para ela — é quem libera o prontuário
+  (`quemResponde`, `lib/lgpd/aviso-do-pedido.ts`). Fluxo: o cliente solicita
   em `/[slug]/cliente/perfil`, `actions/lgpd.ts` grava o pedido e processa em
   `after()` (não há fila no projeto) — e SÓ a action grava: até a F63 a
   política `lgpd_requests_insert` deixava a cliente gravar pela chave pública
@@ -1282,6 +1286,12 @@ o contato junto.
 ❌ Lançar a trava de módulo (assertPermission) num layout.tsx de seção: sai antes do streaming e a resposta é 500 — o layout sem o módulo só deixa passar a página, e a trava é dela (D11 da 7ª)
 ❌ Recusar o acesso ao app de quem tem passaporte ou RNE, ou escolher a senha inicial fora de documentoDoAcesso (o CPF, senão o documento da ficha — decisão 1 da 7ª)
 ❌ Ligar a ficha à conta de outra clínica sem o MESMO documento (login_de_cliente_para_ligar_doc: o CPF, ou o tipo e o número do passaporte/RNE)
+❌ Comparar telefone pelos últimos 8 dígitos no SQL (dois números do mesmo final viram a mesma pessoa): é private.telefone_casa com o número inteiro (≥ 10 dígitos), e no navegador telefoneCasaComDigitos (F70, C28)
+❌ Gravar o telefone de lead, contato ou card sem telefoneParaGravar (lib/contatos/propagar.ts): o formato do WhatsApp, e o incompleto recusado (F70, C28)
+❌ Editar o card (updateLead) sem leadAoAlcance ANTES de gravar, nem conferir a linha devolvida (F70, C27)
+❌ Procurar cliente com ilike no nome ou no telefone cru (Copilot, seletores): é a regra única buscar_clientes / clienteCasaComBusca (D6 da 8ª; F70, C5)
+❌ Importar (importarContatos, retomarImportacao) sem recusaDaConfigDaClinica: as Importações são de quem é da rede (H8; F70, C73)
+❌ Unificar ficha trocando o documento que ela já tem (CPF por passaporte, um passaporte por outro): a ficha tem UM documento (F70, C31)
 ❌ Barrar o cadastro ou o atendimento da menor sem responsável (é aviso — princípio 2), ou decidir "menor" fora de ehMenorDeIdade
 ❌ Oferecer cadastrar ou editar cliente a quem tem Clientes em Ver, ou recusar isso lançando semAcesso dentro do useActionState (é { error: SO_CONSULTA_CLIENTES })
 ```

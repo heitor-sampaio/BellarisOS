@@ -214,6 +214,8 @@ test('C73 (H8): as Importações são de quem é da rede — quem tem unidade fi
 })
 
 test('D9 da 13ª: a pergunta do CNPJ não apaga o Número nem desmarca o Domingo da unidade nova', async ({ browser }) => {
+  // Criar a unidade passa por duas idas ao servidor (a pergunta e a resposta), com a lista recarregada: no dev, lento.
+  test.setTimeout(150_000)
   const b = db()
   const dona = await criarMembro(`f70nu${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
@@ -229,7 +231,7 @@ test('D9 da 13ª: a pergunta do CNPJ não apaga o Número nem desmarca o Domingo
       await janela.getByLabel('Domingo abre').check()
       await janela.getByRole('button', { name: 'Criar unidade' }).click()
       await janela.getByRole('button', { name: 'Criar sem CNPJ' }).click()
-      await expect(janela).toBeHidden({ timeout: 20_000 })
+      await expect(janela).toBeHidden({ timeout: 60_000 })
     })
     const { data: u } = await b.from('branches').select('address, horario').eq('tenant_id', rede!.tenantId).eq('name', nome)
       .single<{ address: string | null; horario: { dias: Record<string, unknown[]> } | null }>()

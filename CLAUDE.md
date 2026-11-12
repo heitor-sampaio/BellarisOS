@@ -559,6 +559,13 @@ ownerFilter(ctx, 'agenda')                                   // internalUserId |
 Regras:
 - **Nunca** decida acesso por nome de cargo (`ctx.role === 'NETWORK_ADMIN'`).
   Para "só quem é da rede", use a abrangência: `ctx.branchId === null`.
+  O "tudo" da Admin da rede (`ctx.isNetworkAdmin`) vem do CARGO no banco
+  (`tenant_roles.key = 'NETWORK_ADMIN'` com `is_system`, no membro em cache),
+  nunca da claim `role` do token (C58, F70: a claim valia mais que o cargo
+  gravado, e a Admin rebaixada seguia com tudo até o token renovar).
+- **Ninguém dá um cargo com mais acesso que o próprio** (H7, F70): a Equipe
+  mostra o cargo acima desligado e a action recusa (`lib/equipe/cargo-acima.ts`);
+  a Admin da rede dá qualquer um. Regra em `docs/regras/plataforma.md`.
 - Toda leitura de módulo escopável passa `ownerFilter` para dentro da query.
   Filtrar só na renderização deixa o registro acessível pelo id.
 - **O "Atende" é por unidade** (`users.atende_em`; decisão 2 do Heitor, 8ª

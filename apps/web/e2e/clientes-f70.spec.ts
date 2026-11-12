@@ -103,7 +103,7 @@ test.describe('C29: a cliente edita o próprio cadastro pela mesma regra da fich
 
   test('o válido grava, e o "dados alterados" sai (o núcleo)', async ({ browser }) => {
     const antes = await naFicha()
-    const r = await enviar(browser, { phone: `(48) 9${n8.slice(0, 4)}-${n8.slice(4, 7)}9`, email: antes.email, city: 'Floripa' })
+    await enviar(browser, { phone: `(48) 9${n8.slice(0, 4)}-${n8.slice(4, 7)}9`, email: antes.email, city: 'Floripa' })
     const depois = await naFicha()
     expect(depois.phone.replace(/\D/g, '')).toBe(`489${n8.slice(0, 7)}9`)
     const { count } = await db().from('domain_events').select('id', { count: 'exact', head: true })
