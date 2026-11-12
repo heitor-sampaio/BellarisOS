@@ -188,10 +188,11 @@ test.describe.serial('comissões — configuração e regras', () => {
       auth: { persistSession: false },
       global: { headers: { Authorization: `Bearer ${gestor!.accessToken}` } },
     })
-    // Controle: a sessão LÊ as regras da própria rede.
-    const { data: lidas, error: eLer } = await api.from('commission_rules').select('id').eq('professional_id', rede!.professionalId)
+    // Controle: a sessão alcança a própria rede (lê os procedimentos). As
+    // regras ela não lê mais desde a F63 — só o servidor (rls-sessao-so-le).
+    const { data: lidas, error: eLer } = await api.from('procedures').select('id').eq('id', rede!.procedureId)
     expect(eLer).toBeNull()
-    expect(lidas).toHaveLength(2)
+    expect(lidas).toHaveLength(1)
 
     const ins = await api.from('commission_rules').insert({
       tenant_id: rede!.tenantId, professional_id: gestor!.userId, procedure_id: null, type: 'PERCENTAGE', value: 90, is_active: true,

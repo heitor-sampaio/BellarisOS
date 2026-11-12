@@ -442,6 +442,19 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   comissão nas duas unidades. O formulário de novo membro da UNIDADE também
   pede a comissão padrão (A3 da 8ª simulação). Vale para o Admin da rede que atende
   (D2, 2026-10-29): o chip aparece quando ele marca "Atende clientes".
+- **A sessão não lê comissão nenhuma; a tela escuta um SINAL** (F63, C1 do
+  levantamento das regras). `commissions` ia pelo Realtime, legível por toda
+  a unidade: quem o cargo deixa ver "só as minhas" recebia no websocket cada
+  comissão das colegas — e `commission_lines`, `_rules`, `_payouts`,
+  `_configs` e `payment_fees` se liam pela chave pública. Desde a migration
+  `20261112006302` nenhuma delas tem política de leitura (tudo se lê pelo
+  servidor, `lib/comissoes/leitura.ts`, com o "só as minhas" do cargo), e
+  `commissions` saiu da publicação. O Financeiro e "Comissões da equipe"
+  assinam `comissoes_sinais` (`20261112006301`): uma linha por rede, "as
+  comissões mudaram às X", marcada por gatilho nas quatro tabelas, e a tela
+  recarrega pelo servidor — o modelo do `crm_quadro_sinais`. Tela nova de
+  comissão assina o sinal, nunca a tabela. Prova: `e2e/rls-sessao-so-le.spec.ts`
+  (com o token de uma profissional de unidade).
 - **A comissão DEVIDA é uma linha por procedimento executado**
   (`commission_lines`), e `commissions` é o EXTRATO dela: cada lançamento
   (`kind` LIBERACAO | AJUSTE | ESTORNO, com `motivo`, `released_at` e a

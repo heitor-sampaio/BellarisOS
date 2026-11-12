@@ -115,9 +115,8 @@ test.describe('a mesma cliente em duas clínicas', () => {
     expect(await ids('internal_credits', 'client_id'), 'os créditos das duas').toEqual(dela)
     expect(agAlheio).toBeTruthy()
 
-    // Escrever: o pedido de LGPD vai pela ficha da clínica a que se refere.
-    const { error: eLgpdB } = await ela.from('lgpd_requests').insert({ client_id: fichaB, type: 'export', tenant_id: B.tenantId })
-    expect(eLgpdB, 'ela pede pela ficha da B').toBeNull()
+    // Escrever: o pedido de LGPD só nasce pela action (F63) — e nunca pela
+    // ficha de outra pessoa.
     const { error: eLgpdAlheio } = await ela.from('lgpd_requests').insert({ client_id: alheia, type: 'export', tenant_id: B.tenantId })
     expect(eLgpdAlheio, 'nunca pela ficha de outra pessoa').not.toBeNull()
   })

@@ -418,7 +418,11 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   feita sob pedido, pelo contato da clínica, respeitando as guardas legais
   (prontuário 20 anos, fiscal 5 anos). (Correção C30.) Fluxo: o cliente solicita
   em `/[slug]/cliente/perfil`, `actions/lgpd.ts` grava o pedido e processa em
-  `after()` (não há fila no projeto); `/api/cron/lgpd-exports` recolhe o que
+  `after()` (não há fila no projeto) — e SÓ a action grava: até a F63 a
+  política `lgpd_requests_insert` deixava a cliente gravar pela chave pública
+  o próprio pedido com qualquer status, o prontuário "aprovado" e o caminho
+  do arquivo de outra pessoa (C1; a migration `20261112006302` tira a
+  política, prova em `e2e/rls-sessao-so-le.spec.ts`); `/api/cron/lgpd-exports` recolhe o que
   ficar para trás. O pacote sai em PDF (legível) + JSON (portabilidade) no
   bucket privado `lgpd-exports`, com download por signed URL e validade de
   30 dias. Um pedido em aberto por cliente, garantido por índice único parcial.

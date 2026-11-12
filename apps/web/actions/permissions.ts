@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ALL_MODULES, MODULE_LEVELS, MODULE_LABELS, isScoped, ALL_REPORT_TABS } from '@/lib/permissions'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
@@ -33,7 +33,9 @@ export async function saveRolePermissions(
   const roleId = formData.get('roleId') as string
   if (!roleId) return { error: 'Cargo não informado.' }
 
-  const supabase = await createClient()
+  // Grava pelo cliente de serviço, depois da trava (F63): a sessão só lê a
+  // matriz — pela chave pública, quem é da rede se dava Gerenciar em tudo.
+  const supabase = createAdminClient()
 
   // Valida que o cargo pertence à rede
   const role = await ler(supabase

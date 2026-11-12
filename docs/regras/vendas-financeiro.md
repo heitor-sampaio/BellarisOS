@@ -366,10 +366,14 @@ plano").
   que os mostrava a toda a recepção. **Confirmado pelo Heitor no levantamento
   das regras** (D7, 2026-11-11, opção a; princípio 3: a tela de quem só recebe
   não mostra o financeiro da clínica), e o servidor também deixa de mandar os
-  números a quem só recebe: `taxasDoCartaoDeCredito`, `taxaDoDebito` e
-  `cartaoPorBandeiraDaRede` (este, hoje sem conferir permissão nenhuma)
-  devolvem só o que a tela dessa pessoa mostra (correção C3). Prova: `e2e/vendas-atritos-da-12.spec.ts`
-  ("A19"), `e2e/caixa-atritos-da-8.spec.ts` ("A40", agora com a dona).
+  números a quem só recebe (F63, C3): `taxasDoCartaoDeCredito`, `taxaDoDebito`
+  e `cartaoPorBandeiraDaRede` mandam a quem não vê o financeiro de todos só
+  QUAIS vezes e bandeiras estão cadastradas, com a taxa 0 e sem o prazo — é
+  o que o aviso "não há taxa cadastrada" precisa; sem `podeReceber`, a
+  bandeira nem responde. E a sessão não lê `payment_fees` pela chave pública
+  (migration `20261112006302`). Prova: `e2e/vendas-atritos-da-12.spec.ts`
+  ("A19"), `e2e/caixa-atritos-da-8.spec.ts` ("A40", agora com a dona),
+  `e2e/permissoes-respostas-sem-permissao.spec.ts` (a resposta da action).
 - **Quem vende é quem RECEBE, e a tela diz** (D1 da 12ª simulação, 2026-11-11;
   princípio 3 — quem vende segue decidido pelo cargo, princípio 1): a Rita, com
   Procedimentos, CRM e Clientes em Gerenciar, lia "fechar a venda do pacote" na

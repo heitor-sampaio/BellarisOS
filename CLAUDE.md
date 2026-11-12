@@ -166,6 +166,11 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   Meta pela chave pública. Tela que precise de algo dali pelo navegador não
   reabre a tabela: expõe só as colunas sem segredo, numa view ou função.
   Prova: `e2e/credenciais-fora-da-sessao.spec.ts`.
+- **Configuração e dado sensível: a sessão só LÊ** (F63, 2026-11-12). Cargos,
+  LGPD, comissões, taxas, campanhas, estoque: o servidor grava pelo cliente de
+  serviço, depois da trava; as comissões nem se leem pela sessão (a tela
+  assina o sinal `comissoes_sinais`). Regra em `docs/regras/convencoes.md`;
+  prova: `e2e/rls-sessao-so-le.spec.ts`.
 - **Realtime de tela que mostra dado com escopo assina um SINAL, não a tabela.**
   O quadro de oportunidades assina `crm_quadro_sinais` (uma linha por rede,
   marcada por gatilho em leads, etapas e funis) e recarrega pelo servidor, que
@@ -717,6 +722,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)
 ❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
+❌ Política de ESCRITA em tabela de configuração que confere só eh_da_rede() (sem o módulo, qualquer membro da rede grava) — a sessão lê, o servidor grava
 ❌ Policy de leitura numa tabela do Realtime sem `to authenticated` (o inscrito anônimo a estoura e o lote some para todos)
 ❌ Escolher a ficha da cliente pela claim client_id ou por auth_id … limit 1 (ela tem uma ficha por clínica: é ctx.clientId no app, clientes_do_login() no banco)
 ❌ Gravar o slug de uma unidade sem escolherEndereco (lib/unidades/endereco.ts) — é único no sistema inteiro, e nunca o nome de uma rota

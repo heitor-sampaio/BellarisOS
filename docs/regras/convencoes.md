@@ -63,6 +63,27 @@ export async function createAppointment(input: unknown) {
 }
 ```
 
+### A sessão só lê — quem grava é o servidor (F63, 2026-11-12)
+
+A chave pública está no navegador: o que uma política deixa a sessão
+gravar, qualquer membro grava direto no PostgREST, sem o `assertPermission`
+da action. Por isso, em tabela de CONFIGURAÇÃO, de dado sensível ou que a
+action monta (status, caminho de arquivo, matriz de cargos):
+- a sessão tem só política de LEITURA — ou nenhuma, como as credenciais e
+  as comissões —, e a action grava pelo **cliente de serviço**
+  (`createAdminClient`), depois da trava, da recusa da configuração da
+  clínica e do `bloqueioDoSuporte`, sempre com o `.eq('tenant_id', ctx.tenantId)`;
+- política de escrita que confere só `eh_da_rede()` (sem o módulo) é a mesma
+  porta aberta: a migration `20261112006302` tirou as dos cargos, campanhas,
+  categorias do estoque, disponibilidade e preço por unidade, o
+  `lgpd_requests_insert`, o `clients_delete` e o ALL de `stock_movements`.
+- Prova com o token de um membro (nunca `service_role`):
+  `e2e/rls-sessao-so-le.spec.ts`, cada caso com a leitura como controle.
+
+As tabelas OPERACIONAIS (agendamentos, lançamentos, produtos…) ainda aceitam
+escrita pela sessão dentro da rede e do alcance — o §11 do CLAUDE.md aceita
+isso ("a trava da action é a única"). Fechá-las é uma frente à parte.
+
 ### Queries — filtro obrigatório
 
 ```typescript

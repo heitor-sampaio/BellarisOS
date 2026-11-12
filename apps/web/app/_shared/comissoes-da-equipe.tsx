@@ -67,7 +67,7 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
 
   return (
     <>
-      <RealtimeRefresher tables={['commissions']} />
+      <RealtimeRefresher tables={['comissoes_sinais']} />
       <FinanceiroComissoes
         titulo={soAsProprias ? 'Minhas comissões' : 'Comissões'}
         basePath={basePath}

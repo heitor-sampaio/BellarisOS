@@ -4,9 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar } from '@/lib/db'
 
+// Os cargos gravam pelo cliente de serviço, depois da trava (F63): a sessão
+// só lê a matriz — pela chave pública, quem é da rede se dava Gerenciar.
 function toKey(label: string): string {
   return label
     .toUpperCase()
@@ -36,7 +38,7 @@ export async function createRole(
   if (!key) return { error: 'Nome inválido.' }
   if (key === 'NETWORK_ADMIN' || key === 'CLIENT') return { error: 'Esse nome é reservado.' }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from('tenant_roles')
@@ -69,7 +71,7 @@ export async function updateRole(
   const label  = (formData.get('label') as string)?.trim()
   if (!roleId || !label || label.length < 2) return { error: 'Nome inválido.' }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   // Não permite renomear cargo de sistema
   const role = await ler(supabase
@@ -107,8 +109,10 @@ export async function deleteRole(roleId: string): Promise<{ error: string } | { 
   // O cargo é da clínica toda (H7): quem tem unidade fixa não muda.
   const daClinica = recusaDaConfigDaClinica(ctx)
   if (daClinica) return { error: daClinica }
+  const travado = bloqueioDoSuporte(ctx, 'excluir cargo')
+  if (travado) return { error: travado }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const role = await ler(supabase
     .from('tenant_roles')
