@@ -207,12 +207,15 @@ export async function resolverCliente(
     if (!achado) return { erro: `Nenhum cliente com o telefone ${termo}.` }
     return await ler(c.admin.from('clients').select('id, name, phone').eq('id', achado as string).single(), 'ler o cliente') as { id: string; name: string; phone: string | null }
   }
-  const q = c.admin.from('clients').select('id, name, phone').eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
-    .ilike('name', `%${termo.replace(/[%_\\]/g, '')}%`)
-  const achados = (await ler(q.limit(6), 'procurar o cliente') as { id: string; name: string; phone: string | null }[] | null) ?? []
+  // O nome pela regra ÚNICA da busca de cliente (D6 da 8ª; C5, F70): sem
+  // acento, as palavras em qualquer ordem — "Zelia" acha a "Zélia". Era um
+  // `ilike` no nome cru.
+  const achados = (await ler(c.admin.rpc('buscar_clientes', { p_tenant: c.ctx.tenantId!, p_termo: termo, p_limite: 6 }),
+    'procurar o cliente') as { id: string; name: string; phone: string | null }[] | null) ?? []
   if (achados.length === 1) return achados[0]!
   if (!achados.length) return { erro: `Nenhum cliente com "${termo}".` }
-  const exato = achados.filter(a => a.name.toLowerCase() === termo.toLowerCase())
+  const semAcento = (v: string) => v.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
+  const exato = achados.filter(a => semAcento(a.name) === semAcento(termo))
   if (exato.length === 1) return exato[0]!
   return { erro: `Mais de um cliente com "${termo}": ${achados.map(a => `${a.name}${a.phone ? ` (${a.phone})` : ''} [id ${a.id}]`).join('; ')}. Qual?` }
 }

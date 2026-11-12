@@ -467,20 +467,25 @@ export async function buscarClientesParaPlano(termo: string): Promise<{
   const admin = createAdminClient()
   const digitos = busca.replace(/\D/g, '')
 
-  const data = await ler(admin
-    .from('clients')
-    .select('id, name, phone, document')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .or(
-      digitos.length >= 3
-        ? `name.ilike.%${busca}%,phone.ilike.%${digitos}%,document.ilike.%${digitos}%`
-        : `name.ilike.%${busca}%`,
-    )
-    .order('name')
-    .limit(8), 'carregar os clientes')
-
-  return { clientes: (data ?? []) as { id: string; name: string; phone: string | null; document: string | null }[] }
+  // O nome e o telefone pela regra ÚNICA da busca de cliente (D6 da 8ª; C5,
+  // F70): sem acento, as palavras em qualquer ordem, o telefone pelos dígitos
+  // com o 55 e o nono dígito tolerados. Era `ilike` no nome e no telefone cru.
+  // O CPF segue à parte (a regra única não olha o documento).
+  type Achado = { id: string; name: string; phone: string | null; document: string | null }
+  const [daRegra, peloCpf] = await Promise.all([
+    ler(admin.rpc('buscar_clientes', { p_tenant: ctx.tenantId!, p_termo: busca, p_limite: 8 }), 'carregar os clientes') as
+      Promise<{ id: string }[] | null>,
+    digitos.length >= 3 && !/\p{L}/u.test(busca)
+      ? ler(admin.from('clients').select('id').eq('tenant_id', ctx.tenantId!).eq('is_active', true)
+          .ilike('document', `%${digitos}%`).order('name').limit(8), 'carregar os clientes pelo CPF') as Promise<{ id: string }[] | null>
+      : Promise.resolve(null),
+  ])
+  const ids = [...new Set([...(daRegra ?? []), ...(peloCpf ?? [])].map(c => c.id))].slice(0, 8)
+  if (!ids.length) return { clientes: [] }
+  const fichas = (await ler(admin.from('clients').select('id, name, phone, document')
+    .eq('tenant_id', ctx.tenantId!).in('id', ids), 'carregar os clientes') as Achado[] | null) ?? []
+  // A ordem da regra (quem começa com o termo primeiro), depois o CPF.
+  return { clientes: ids.map(id => fichas.find(f => f.id === id)).filter((f): f is Achado => !!f) }
 }
 
 /** Renomeia o plano. */

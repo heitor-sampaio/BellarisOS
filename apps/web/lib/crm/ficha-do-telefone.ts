@@ -22,6 +22,20 @@ export async function fichasDoTelefoneDoLead(tenantId: string, telefone: string 
   return (linhas ?? []).filter(f => f.ativa).map(f => ({ id: f.id, nome: f.nome }))
 }
 
+/**
+ * A ficha da oportunidade que a IMPORTAÇÃO cria (C5 do levantamento das
+ * regras, F70; D11): sem ninguém a quem perguntar "É a mesma pessoa?", uma
+ * ficha ativa com o telefone liga o card a ela; mais de uma, não escolhe
+ * (princípio 4: nada de chutar) e o relatório da linha diz.
+ */
+export function fichaDaOportunidadeImportada(fichas: FichaDoTelefone[]): { clientId: string | null; aviso: string | null } {
+  if (fichas.length === 1) return { clientId: fichas[0]!.id, aviso: null }
+  if (fichas.length > 1) {
+    return { clientId: null, aviso: `O telefone é de mais de uma ficha (${fichas.map(f => f.nome).join(', ')}): a oportunidade nasceu sem ficha.` }
+  }
+  return { clientId: null, aviso: null }
+}
+
 /** A resposta do "É a mesma pessoa?": `mesma:<id da ficha>` ou `outra`. */
 export function respostaDaFichaDoTelefone(valor: string | null | undefined): { mesma: string } | { outra: true } | null {
   const v = (valor ?? '').trim()

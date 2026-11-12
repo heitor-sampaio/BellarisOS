@@ -5,6 +5,7 @@ import { unitTag, mergeTags } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { criarOportunidadeCore } from '@/lib/crm/oportunidade'
+import { fichasDoTelefoneDoLead, fichaDaOportunidadeImportada } from '@/lib/crm/ficha-do-telefone'
 import { propagarDadosDaPessoa } from '@/lib/contatos/propagar'
 import type { ChaveDeCampo, Destino } from './campos'
 import { validarLinha, chaveDaPessoa, nomeDiferente, variantesDoTelefone, telefoneDaFichaImportada, pacotesDaLinha, type DadosDaLinha } from './normalizar'
@@ -275,6 +276,13 @@ async function gravarLinha(
   const pessoa = await pessoaDaLinha(admin, p.tenant_id, dados)
   if (pessoa && await temOportunidadeAberta(admin, p.tenant_id, pessoa.id, p.oportunidade.etapaId)) {
     return { resultado, oportunidade: false, avisos }
+  }
+  // D11 (C5, F70): o contato com o telefone de UMA ficha ativa — o card nasce
+  // ligado a ela; de mais de uma, sem ficha, e o relatório diz.
+  if (!clientId && (pessoa?.phone || fone)) {
+    const ligacao = fichaDaOportunidadeImportada(await fichasDoTelefoneDoLead(p.tenant_id, pessoa?.phone || fone))
+    clientId = ligacao.clientId
+    if (ligacao.aviso) avisos.push(ligacao.aviso)
   }
   const nome = (dados.name as string | undefined) ?? fone ?? (dados.email as string)
   const texto = (c: ChaveDeCampo) => (dados[c] as string | undefined) ?? null
