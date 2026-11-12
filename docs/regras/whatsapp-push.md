@@ -134,7 +134,10 @@ tabela veio remover.
 1. o número **do usuário**, sempre que ele tiver um — inclusive respondendo uma
    conversa que chegou por outra caixa;
 2. a caixa **da conversa**;
-3. o **padrão da rede** — é por ele que sai tudo que o SISTEMA inicia.
+3. o **padrão da rede** — é por ele que sai tudo que o SISTEMA inicia. A
+   automação NÃO abre conversa por ele, a não ser que a clínica ligue no passo
+   "Para quem não tem conversa aberta: abrir pelo número padrão" (H1 do
+   levantamento das regras, 2026-11-11; `automacoes.md` §9.9).
 
 **Sem fallback para "a primeira ativa".** Rede com caixas ativas e nenhum padrão
 devolve `null` e a tela avisa: o índice garante NO MÁXIMO um padrão, não PELO

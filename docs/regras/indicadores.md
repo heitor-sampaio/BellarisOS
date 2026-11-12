@@ -61,11 +61,14 @@
     (now() at time zone fuso_da_unidade(branch_id))::date`) comparam com o dia
     da unidade, não com o de Brasília.
   - **Ficam em Brasília de propósito**: a plataforma e as assinaturas (a
-    cobrança é do BellarisOS), a cobrança do Copilot e o mês da Meta, o
-    `period_ref` e os limites do fechamento das comissões, e as DATAS sem
+    cobrança é do BellarisOS), a cobrança do Copilot e o mês da Meta, e as DATAS sem
     hora gravadas como âncora (o vencimento ao meio-dia de −03, a validade
     do pacote) — a âncora é escrita e lida pela mesma regra; trocar só a
     leitura mudaria o dia.
+  - **O fechamento das comissões sai da lista** (D12 do levantamento das
+    regras, o Heitor, 2026-11-11; princípio 3): o `period_ref` e os limites do
+    fechamento passam ao fuso da rede (`fusoDaRede`), como as telas que os
+    mostram — correção C4; até ela entrar, ainda é Brasília.
   - Prova: `e2e/fuso-da-unidade.spec.ts` e `tests/fuso-da-unidade.test.ts`.
 - **Período** por `resolvePeriod()`: o período anterior tem a mesma duração
   decorrida do atual. Comparar mês parcial com mês anterior inteiro faz todo
@@ -1110,7 +1113,10 @@ houver. A da profissional (`metrics_top_professionals`) é a do atendimento;
 sem ela ("Só cada procedimento"), a média das dos procedimentos daquele
 atendimento. A margem por faixa segue o preço do atendimento. O ranking e a tabela por PROFISSIONAL contam
 ATENDIMENTOS: a sessão é um atendimento (+1, com os R$ 2.000) — decisão da
-F17, para o Heitor revisar. Prova:
+F17, confirmada pelo Heitor no levantamento das regras (H11, 2026-11-11,
+opção a: "atendimento" é como a clínica mede o trabalho da profissional, e a
+execução já tem o seu lugar no ranking de procedimentos); a coluna se chama
+"Atendimentos". Prova:
 `e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts` (com os
 casos r3-f13-07 e r4-f15-03 / F16-1).
 **O avulso pago noutro período** era o último caminho de "0 execuções ·

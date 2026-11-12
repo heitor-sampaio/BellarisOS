@@ -641,13 +641,19 @@ um muro que não depende de cada trava do código.
   **Unidade** do portal da unidade (nova): os dados, o horário e as salas da
   unidade do endereço (`updateBranch`, `actions/salas.ts`); o estoque dela
   (entrada, ajuste, perda, mínimo, transferência que sai dela); a equipe dela
-  (e a comissão de quem é dela); as importações para a unidade dela; os
-  cadastros e a operação do dia.
-- Decisões desta frente, para o Heitor revisar: o CATÁLOGO de produtos e as
-  categorias do estoque (`createProduct`, `createCategory`) e as respostas
-  rápidas do inbox (`quick-replies`) seguem com a unidade — a entrada do
-  estoque dela e o atendimento do inbox dependem deles; as Importações também
-  (são dados para a unidade dela, não configuração).
+  (e a comissão de quem é dela); o CATÁLOGO de produtos (`createProduct`,
+  `updateProduct` — a entrada do estoque dela depende dele; o produto que ela
+  cadastra aparece em todas as unidades); os cadastros e a operação do dia.
+- **O catálogo é da unidade, o resto é da clínica** (H8 do levantamento das
+  regras, o Heitor, 2026-11-11: "Catalogo da unidade, o resto da clinica";
+  era a decisão da F4 "para revisar", que deixava as quatro com a unidade).
+  Passam a ser da clínica toda, com `recusaDaConfigDaClinica` na action e a
+  aba dizendo "Esta configuração é da clínica toda": as **categorias do
+  estoque** (`createCategory` e o apagar/renomear), as **respostas rápidas** do
+  inbox (`quick-replies`) e as **Importações** (clientes, produtos, o que a
+  aba Importações traz). A gerente de unidade fixa continua usando as
+  respostas rápidas e escolhendo as categorias que existem; só não as cria,
+  muda ou apaga. (Correção C63: hoje as três ainda são da unidade.)
 - Sem aba pedida, quem tem unidade fixa abre Configurações na primeira aba que
   é DELA.
 - **A aba pedida que não abre diz por quê** (A11 da 12ª simulação, 2026-11-11;
@@ -709,6 +715,31 @@ um muro que não depende de cada trava do código.
 - Prova: `e2e/permissoes-gerente-de-unidade.spec.ts` (a action direta de cada
   área recusada para a gerente, com a dona como controle; a aba Unidade; as
   telas).
+
+**Decididas no levantamento das regras** (o Heitor, 2026-11-11; a correção
+indicada é a do consolidado do levantamento — até ela entrar, o sistema ainda
+faz o que está entre parênteses):
+- **Ninguém dá um cargo com mais acesso que o próprio** (H7, opção b; o
+  espírito da regra de 29/10, "somente admin promove a admin", aplicado aos
+  módulos). Quem tem a Equipe em Gerenciar só dá (ao criar ou editar um
+  membro) um cargo cujos módulos, níveis e escopos não passem dos do próprio
+  cargo; o que passa aparece desabilitado na lista, "Financeiro (tem módulos
+  que você não tem)", com a nota "Só quem tem esses módulos pode dar este
+  cargo." A Admin da rede continua dando qualquer cargo. A action recusa
+  também. (C62: hoje dá qualquer cargo menos o de Admin.)
+- **Desativar uma unidade mostra o que fica e oferece resolver, sem impedir**
+  (H6, opção a; a mesma regra da H6 de 01/11 para o membro, e os princípios 2
+  e 3). "A unidade Jardins tem 2 pessoas da equipe só nela e 14 agendamentos
+  marcados. [Mudar a equipe de unidade] [Ver os agendamentos] [Desativar
+  mesmo assim]" — nas duas portas (a lista e o detalhe da unidade), com
+  confirmação. (C67 e C61: hoje desativar só tira a unidade do ar; quem é
+  fixo nela recebe "página não encontrada", os agendamentos ficam sem aviso,
+  e o detalhe nem confirma.)
+- **Só uma Admin autoriza o suporte a entrar na conta de uma Admin** (D19; a
+  regra de 29/10, "somente admin pode alterar admin": entrar como ela é agir
+  como ela). Para a própria conta, ela mesma; para a de outra Admin, outra
+  Admin. Quem tem Configurações em Gerenciar sem ser Admin não vê o botão na
+  linha de uma Admin, e a action recusa. Quem autoriza também revoga. (C59.)
 
 **O "Atende" é por unidade — e não é abrangência (§11 do CLAUDE.md; decisão 2
 do Heitor sobre a 8ª simulação, 2026-11-06: "Inves de atende também em, o

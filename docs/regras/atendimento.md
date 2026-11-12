@@ -1144,6 +1144,36 @@
 - `cancellationReason`: obrigatório ao cancelar para rastreabilidade
 - Ao marcar `COMPLETED`: consumo de estoque + comissão, numa transação — ver §10. Os pontos de fidelidade NÃO nascem aqui: nascem no pagamento (§9.2.2).
 
+**Decididas no levantamento das regras** (o Heitor, 2026-11-11, pela página
+de decisões; o código segue a correção indicada, do consolidado do
+levantamento — até ela entrar, o sistema ainda faz o que está entre
+parênteses):
+- **Quem faz o quê na agenda (D20; princípio 3: a tela de Cargos já diz
+  isso).** A Agenda em Ver inicia e conclui, dentro do escopo. A Agenda em
+  Gerenciar confirma, marca a chegada, cancela, marca a falta, remarca e
+  troca a profissional. Com "só os meus" e Gerenciar, cancela e marca a falta
+  só dos próprios. A tabela vai também para a `SCOPE_NOTE` de
+  `lib/permissions-copy.ts`. (C10 e C15: hoje
+  `updateAppointmentStatusInterno` deixa quem só vê confirmar, cancelar e
+  marcar a falta.)
+- **Quem inicia e conclui o atendimento de outra profissional é o ESCOPO
+  (D21; os três eixos, CLAUDE.md §11),** na tela e no servidor: com "só os
+  meus", só o próprio; com "todos", qualquer um da unidade ao alcance. (C14:
+  hoje a tela só deixa o próprio e o servidor deixa qualquer um.)
+- **A remarcação e a confirmação (H3, opção c; princípio 3: "Confirmado" é
+  "a cliente disse que vem nesse horário").** A cliente que remarca pelo app
+  escolheu o horário novo: ele já nasce Confirmado, sem pedir a confirmação
+  de novo. Quando a equipe ou o Copilot remarcam, ninguém ouviu a cliente: o
+  horário volta a Agendado e a confirmação é pedida de novo. (C8: hoje é o
+  inverso.)
+- **Quem só agenda cria a ficha, mas não mexe na que existe (H4, opção b;
+  princípio 3: a mesma ação não muda conforme a porta).** O "+ Agendar" com
+  nome e telefone, e o agendar pelo CRM, criam a ficha rápida sem pedir
+  Clientes em Gerenciar — agendar a cliente nova é o trabalho da recepção.
+  "Unificar com a ficha de X" e "Reativar a ficha de X" pedem Clientes em
+  Gerenciar, na tela e na action; sem ele, a janela oferece só agendar para a
+  ficha como está ou cadastrar mesmo assim. (C66.)
+
 ---
 
 ### 9.3 Procedimentos
@@ -1537,7 +1567,10 @@ const procedures = await ler(
     a regra de verdade — "quem tem o Prontuário em Gerenciar, sem unidade
     fixa" (A43 da 5ª simulação, 2026-11-01: dizia "só a administração da
     rede", e o médico da rede, com o prontuário em Gerenciar, via a lista).
-    A regra ficou; decisão para o Heitor revisar. O escopo não muda a regra,
+    A regra ficou, e o Heitor a confirmou no levantamento das regras (H13,
+    2026-11-11, opção a: pelo princípio 1 a clínica decide pelo cargo quem tem
+    o Prontuário em Gerenciar, e pela H7 o controle da clínica toda é de quem é
+    da rede; a gerente de unidade fixa não vê o bloco). O escopo não muda a regra,
     e o texto diz isso desde a A35 da 6ª simulação (2026-11-04): "… sem
     unidade fixa — também com o escopo “só os meus”" (o Igor, médico da rede
     com o prontuário "só os meus", via a lista e o texto parecia excluí-lo).
@@ -2339,6 +2372,28 @@ const procedures = await ler(
   seletor de insumo diz o SKU (o cadastro do procedimento e o "Adicionar
   insumo" do atendimento). Prova: `e2e/estoque-unidade-da-9.spec.ts`.
 
+**Decididas no levantamento das regras** (o Heitor, 2026-11-11; a correção
+indicada é a do consolidado do levantamento):
+- **O produto desativado com saldo (D1; princípios 3 e 2).** Continua no
+  valor em estoque enquanto houver saldo — o frasco está lá —, a linha diz
+  "Inativo", e desativar avisa quanto fica no estoque e no valor, sem
+  recusar. (C22.)
+- **Quem tem o Estoque em Ver vê o Valor e o Giro nos DOIS portais (D2;
+  telas iguais nos dois portais, CLAUDE.md §6).** Quem não deve ver custo não
+  recebe o módulo (princípio 1). (C22: hoje vê na rede e não na unidade.)
+- **O uso dos produtos antigos (est-01) não tem mais efeito (D3):** o wipe
+  total de 02/11 apagou os produtos antigos. O produto novo continua nascendo
+  Insumo.
+- **O estoque inicial não gera despesa (D5)** — já decidido pelo Heitor em
+  29/10; o estoque inicial, o leitor e o Copilot são caminhos irmãos da
+  Entrada e dizem "Não gera despesa" como ela.
+- **A perda ganha "Desfazer perda" (H12, opção a; simétrico ao A38 e à D5 da
+  11ª, e pelo princípio 3 as Perdas ficam só com o que se perdeu de fato).**
+  No Histórico, a última perda de um produto tem "Desfazer perda", com motivo
+  obrigatório: a quantidade volta ao MESMO lote de onde saiu, o movimento
+  fica (nada se apaga) e a perda sai de `metrics_perdas`. Mesma permissão do
+  "Desfazer ajuste" (Estoque em Gerenciar, a unidade ao alcance). (C69.)
+
 ---
 
 ## 10. Fluxo de conclusão de atendimento
@@ -2348,6 +2403,15 @@ comissão aplicada, os pontos, a baixa de cada insumo (com rendimento e o
 arredondamento das embalagens) — e a função `concluir_atendimento` (migration
 `20260928000003`) GRAVA tudo de uma vez. Nenhuma regra de negócio no banco: ela
 recebe os números prontos. É o desenho do estorno (`estornar_transacao`).
+
+**Só se conclui o que foi iniciado** (H5 do levantamento das regras, o
+Heitor, 2026-11-11, opção a; princípio 3, a tela já só oferece "Finalizar" a
+partir de "Em atendimento", e princípio 5, a execução precisa ter
+acontecido). `finishSession`, `concluir_atendimento` e `completeAppointment`
+recusam Agendado, Confirmado e Chegou — pelo id também, para que o termo do
+início, a pergunta do horário adiantado e a trava dos termos que bloqueiam
+não sejam puladas. A profissional que esqueceu de iniciar clica Iniciar e
+depois Finalizar. (C13: hoje o servidor conclui pelo id qualquer um dos três.)
 
 O que a transação grava, na ordem:
 

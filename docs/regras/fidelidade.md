@@ -20,6 +20,10 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   points_per_real)`) ou por procedimento (`procedures.loyalty_points`, editado
   no cadastro do procedimento, só nesse modo). Plano é **cumulativo** pelo que
   já foi pago: entrada + restante somam exatamente os pontos do plano.
+  **O pacote e o pré-pago no crediário também** (D14 do levantamento das
+  regras, o Heitor, 2026-11-11; a regra do caminho irmão): cada parcela paga dá
+  o alvo menos o que já foi dado, como o plano (correção C43 em
+  `fidelidade_pontos_do_pagamento`).
   A regra mora numa função só: `fidelidade_pontos_do_pagamento` — e multiplica
   antes de dividir (120 × (100 ÷ 300) perdia um ponto).
 - **Os números com fração da configuração** (pontos por R$ 1, valor de 1
@@ -173,6 +177,19 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     (`clients.app_account_created_at`, marcado por `fidelidade_primeiro_acesso`
     no `loginAction` e na sessão do app); quem já tinha entrado antes da
     opção existir não ganha.
+  - **O bônus é da cliente, e a clínica decide onde ele se usa** (H10 do
+    levantamento das regras, o Heitor, 2026-11-11: "O bônus é da cliente. A
+    cliente é da rede(clinica). A clinica decide onde pode ser usado."; e a
+    H5 de 02/11, nada se prende à unidade de cadastro). Com a abrangência
+    "só na unidade", o bônus de aniversário e o de primeiro acesso — os que
+    não vêm de um pagamento — não caem na unidade de cadastro da ficha: a aba
+    Fidelidade tem "Onde o bônus pode ser usado", com as unidades da rede
+    marcáveis, e o padrão é TODAS (princípio 1). O saldo do bônus aparece e se
+    usa em cada unidade marcada; a ficha e o app de cada uma o mostram. Com a
+    abrangência "rede inteira", nada muda. (Correção C64: hoje o bônus vai à
+    unidade de cadastro, e a Maria, cadastrada no Batel e atendida na Água
+    Verde, não vê nem usa os 100 pontos de aniversário.) O prêmio da indicação
+    continua na unidade do pagamento.
   - **A venda de produto pontua?** (`pontua_venda_de_produto`, D4,
     2026-10-30 — "os pontos são configuráveis pela clínica"): nasce
     DESLIGADO. Ligado, a venda de produto paga dá pontos por real pago

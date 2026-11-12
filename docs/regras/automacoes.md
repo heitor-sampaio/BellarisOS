@@ -162,6 +162,25 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   portal, o app e o navegador da cliente, sem conversa (a resposta não chega
   no inbox); o título é o nome da clínica. O passo em WhatsApp numa rede sem
   número mostra o aviso com "Mandar como aviso no celular".
+- **A automação e a cliente SEM conversa aberta** (H1 do levantamento das
+  regras, o Heitor, 2026-11-11, opção d, com a a valendo já; princípios 1, 3
+  e 6). O "Mandar mensagem" em WhatsApp só fala numa conversa já aberta e
+  ligada à ficha (e, na API oficial, com a janela de 24 h aberta); nunca abre
+  conversa nova sozinho. **Já:** antes de ligar, a tela diz quantas clientes
+  vão receber — "Hoje a busca acharia 40 clientes, e 12 têm conversa aberta
+  no WhatsApp." **Depois:** o passo ganha "Para quem não tem conversa
+  aberta", desligado por padrão — ( ) Não mandar · ( ) Abrir pelo número
+  padrão · ( ) Mandar como aviso no celular. Abrir pelo número padrão é a
+  clínica escolhendo correr o risco de banimento do WhatsApp Web; na API
+  oficial pede um template aprovado, e o envio de template na automação ainda
+  precisa ser construído. (Correção C65.) O "padrão da rede" de
+  `whatsapp-push.md` §9.8.0 ("é por ele que sai tudo que o SISTEMA inicia")
+  não abre conversa pela automação enquanto essa opção estiver desligada.
+- **O gatilho "N horas antes de cada agendamento" lembra o agendado E o
+  confirmado** (D15 do levantamento das regras, o Heitor, 2026-11-11;
+  princípio 3): lembrar também o não confirmado é o comportamento útil, e o
+  texto da tela (`quandoDispara`) passa a dizer "de cada agendamento marcado
+  (agendado ou confirmado)" (correção C54; hoje diz "confirmado").
 - **O seletor de campo não repete rótulo**, e o card diz o campo em
   português (A14): o rótulo repetido leva de onde vem — "Situação do
   agendamento", "Procedimento (do gatilho)" (`rotulosUnicos`); o card usa

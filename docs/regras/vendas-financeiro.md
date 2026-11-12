@@ -1225,6 +1225,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   ("Boleto é forma de pagar uma despesa.").
 - **A despesa parcelada (ou recorrente) pede UM vencimento** (A14): o da 1ª
   parcela (ou o primeiro); o "Vencimento" do lançamento único não aparece junto.
+- **A despesa recorrente guarda a forma de pagamento, como a parcelada** (D11
+  do levantamento das regras, o Heitor, 2026-11-11; princípio 3): a forma
+  escolhida ao lançar vai a cada lançamento da recorrência. (C70: hoje a
+  recorrente a omite, e o "Pagar despesa" pergunta a forma.)
 - **O "Pagar" da despesa sem forma pergunta a forma** (A15 da 9ª; decidido pelo
   princípio 3 — a parcela da cliente e a comissão já perguntavam): "Pagar
   despesa" (`PagarDespesa`, nos dois financeiros), a forma nasce vazia e é
@@ -1373,7 +1377,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       as que aparecem. O seletor do limite fica logo acima do crédito
       parcelado. Com "Só à vista", o crédito parcelado some e a tela diz por
       quê. No **Automático** todas as linhas aparecem: o limite sai delas (a
-      maior com taxa) — decisão da F18, para o Heitor revisar. O que está
+      maior com taxa) — decisão da F18, confirmada no levantamento das regras
+      (D9, o Heitor, 2026-11-11). O que está
       gravado acima do limite NÃO se apaga (fica no formulário e é regravado
       no "Salvar taxas"), e aumentar o limite traz as linhas de volta, as
       vazias com o aviso "Sem taxa". **O Pix tem a sua taxa** (na regra geral;
@@ -1591,8 +1596,18 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `venderProcedimento`, `venderProduto`, `definirPagamentoDoContrato`,
     `prepararDocumentosDoCheckout` e o "Novo lançamento" (`lancarCore`,
     F16-5). Vale só para o cartão em N vezes; as
-    parcelas do crediário ("entrada + parcelas") não mudaram. Prova:
+    parcelas do crediário ("entrada + parcelas") têm o limite delas, abaixo. Prova:
     `e2e/financeiro-parcelas-no-credito.spec.ts`, `tests/financeiro-vezes-do-cartao.test.ts`.
+  - **O crediário em quantas vezes é decisão da REDE** (D10 do levantamento
+    das regras, o Heitor, 2026-11-11: "Decisão da rede"; princípio 1). Uma
+    configuração da rede — o máximo de parcelas do "entrada + parcelas", padrão
+    12 — vale igual em todo caminho que vende no crediário: o Vender (pacote,
+    pré-pago, produto, o pagamento do contrato), o checkout do plano e o
+    check-in do plano. A tela oferece até o limite da rede e o servidor recusa
+    acima dele, nos três. Hoje o Vender aceita até 12 (`EntradaDoPagamento`) e
+    o checkout e o check-in até 48 (`Math.min(…, 48)`) — a correção C38. A
+    DESPESA não muda: parcelada de 2 a 48, recorrente de 2 a 60 (é a clínica
+    pagando, não vendendo).
   - **A tela diz o limite e o valor da parcela** (A47 da 5ª simulação):
     junto de todo "Vezes no cartão" (venda de pacote, pré-pago e produto, o
     recebimento do avulso e do plano, o checkout), "Até 4x no crédito" e,
@@ -1988,6 +2003,17 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **Estornar pede confirmação** (`ConfirmarEstorno`, nos financeiros da rede e
   da unidade; 2026-10-20): mostra o lançamento e o valor e avisa que não se
   desfaz. Era um clique só.
+- **O estorno avulso do pagamento de um pacote, plano ou pré-pago REABRE a
+  cobrança** (H2 do levantamento das regras, o Heitor, 2026-11-11, opção a; a
+  mesma regra da D6 de 28/10 para o atendimento avulso). O "Estornar" da lista
+  devolve o dinheiro, e aquele pagamento volta a ser "a receber" da mesma
+  venda, com o mesmo vencimento — a clínica não perde dinheiro sem perceber, e
+  corrigir a forma continua possível (estorna e recebe de novo). A janela diz
+  isso antes: "Estornar o Pix de R$ 900,00 do pacote 6 limpezas? O dinheiro
+  volta à cliente, e o pacote volta a ter R$ 900,00 a receber. Para desfazer a
+  venda, use 'Cancelar pacote' na ficha." Desfazer a venda continua sendo o
+  "Cancelar pacote/plano/unidade". (Correção C39: hoje as sessões seguem livres
+  e nada volta a ser cobrado.)
 - Estorno (`estornar_transacao`, uma transação): contra-transação + a original
   marcada `notes='Estornada'` (nunca deletar). Recusa lançamento **não pago**
   e o **próprio estorno**. A contra-transação não leva `appointment_id` (há

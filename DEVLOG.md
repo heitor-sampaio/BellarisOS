@@ -9103,7 +9103,8 @@ nada. O Heitor escolhe o que atacar, cada um com TDD. Caminhos relativos a
   só outra Admin muda (c1834ad9). Regras no CLAUDE.md §11 e §14 e em
   `docs/regras/plataforma.md`. Decisões da F4, para revisar: catálogo de
   produtos e categorias do estoque, respostas rápidas e Importações ficaram
-  com a unidade; D8 só com o texto, sem "pedir à recepção"; A38 responde 404;
+  com a unidade (respondida em 11/11, H8: "Catalogo da unidade, o resto da
+  clinica" — as outras três passam à clínica toda, C63); D8 só com o texto, sem "pedir à recepção"; A38 responde 404;
   A43 só mudou o texto; desbloquear e gerar plano pedem Prontuário em
   Gerenciar.
 
@@ -10441,6 +10442,27 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
 
 O que não cai em nenhum dos três é gosto da simulação e não conta. Antes de corrigir um defeito, a frente procura todos os caminhos da mesma regra e corrige todos juntos: 7 dos 12 defeitos da 12ª eram sobras de frentes anteriores.
 
+**Levantamento das regras (11/11): respostas do Heitor.** Oito agentes levantaram as 860 regras do sistema, área por área, contra o código: 631 conformes, 112 divergentes, 75 só no código, 8 só escritas, 16 contraditórias. O que pedia decisão foi a uma página (https://claude.ai/artifact/XP1RYjdqAw1t19xgZy29ZU): 15 perguntas (H1–H15) e 21 questões decididas pelos princípios (D1–D21). O Heitor respondeu as 36 na mesma noite. O consolidado, com as 70 correções (C1–C70), fica fora do git, em `scratchpad/levantamento/00-consolidado.md` da sessão 15b60fd2.
+- **De acordo com a recomendação (escritas em `docs/regras`, cada regra com a correção que falta):**
+  - H1: a automação não abre conversa no WhatsApp sozinha; já, a tela diz quantas recebem; depois, a opção do passo "Para quem não tem conversa aberta", desligada por padrão (`automacoes.md`, `whatsapp-push.md`).
+  - H2: o estorno avulso do pagamento de pacote, plano ou pré-pago reabre a cobrança (`vendas-financeiro.md`).
+  - H3: a remarcação da cliente pelo app nasce Confirmada; a da equipe e do Copilot volta a Agendado (`atendimento.md`).
+  - H4: o "+ Agendar" cria a ficha rápida, mas unificar e reativar pedem Clientes em Gerenciar (`atendimento.md`).
+  - H5: só se conclui o que foi iniciado, também pelo id (`atendimento.md` §10).
+  - H6: desativar a unidade mostra o que fica e oferece resolver, sem impedir (`plataforma.md`).
+  - H7: ninguém dá um cargo com mais acesso que o próprio, menos a Admin (`plataforma.md`).
+  - H9: a regra geral da comissão do procedimento continua do procedimento, com o aviso quando muda o que uma Admin ganha (`comissoes.md`).
+  - H11: o ranking por profissional conta atendimentos (`indicadores.md`); H13: o registro de acessos ao prontuário fica com quem é da rede e tem o Prontuário em Gerenciar (`atendimento.md`). As duas saem do "para revisar".
+  - H12: a perda ganha "Desfazer perda" (`atendimento.md` §9.5).
+  - H14: as limpezas destrutivas estão autorizadas, numa sessão com o Heitor presente (a lista abaixo, em "Limpezas destrutivas que esperam o Heitor", ganhou as novas).
+  - D1, D2, D3, D5 (estoque), D9 (o "Automático" das taxas sai do "para revisar"), D11 (a recorrente guarda a forma), D12 (o fechamento das comissões no fuso da rede), D13 (a regra do item vence com 0%), D14 (os pontos cumulativos no crediário), D15 (o lembrete diz "agendado ou confirmado"), D19 (só uma Admin autoriza o suporte na conta de uma Admin), D20 e D21 (quem faz o quê na agenda, pelo escopo). O est-01 sai do "Para conversar" (D3: o wipe total o apagou).
+- **Mudadas pelo Heitor:**
+  - H8: "Catalogo da unidade, o resto da clinica". O catálogo de produtos fica com a gerente de unidade; as categorias do estoque, as respostas rápidas e as Importações passam a ser da clínica toda (`plataforma.md`, CLAUDE.md §11; correção C63). Fecha as "Decisões da F4, para revisar".
+  - H10: "O bônus é da cliente. A cliente é da rede(clinica). A clinica decide onde pode ser usado." Com os pontos por unidade, a clínica escolhe em quais unidades o bônus de aniversário e o de primeiro acesso se usam, e o padrão é todas (`fidelidade.md`; C64).
+  - D10: "Decisão da rede". O máximo de parcelas do crediário é configuração da rede, padrão 12, igual no Vender, no checkout e no check-in do plano; a despesa não muda (`vendas-financeiro.md`; C38).
+- **Em conversa com o Heitor (ele pediu para conversar; seguem como estão):** H15 (o pedido de eliminação da LGPD), D4 (o fornecedor da entrada), D6 (o texto da /privacidade sobre a eliminação), D7 (a taxa e o líquido para quem só recebe, A19), D8 (o Pix sem taxa e o crédito acima do limite, F17), D16 (esvaziar o silêncio ou o teto da automação), D17 (o lembrete da campanha de madrugada) e D18 (a trava do suporte ao ligar automação).
+- **Correções:** C1–C62 do levantamento e as que nasceram das respostas (C63 H8, C64 H10, C65 H1, C66 H4, C67 H6, C68 H9, C69 H12, C70 D11) entram no ciclo de correções, junto com o que a 13ª simulação achar. C1 (a sessão grava por fora da action) é a primeira.
+
 ### A revisão das 113 decisões das frentes (respondida pelo Heitor em 2026-11-02)
 
 As decisões que as frentes tomaram sozinhas desde 27/10 foram para uma página
@@ -10717,6 +10739,15 @@ passam às novas), `crm_stages.marca`, `leads.stage` e a função
 100% de `payment_fees` (`payment_fees_taxa_pct_check`; a F17 contorna com
 `taxa_pct_sem_teto` e um gatilho que limita `taxa_pct` a 100), e a tabela
 `private.avaliacoes_dos_procedimentos_juncao_descartada` (só linhas de teste, F18).
+**Autorizadas pelo Heitor em 11/11 (H14 do levantamento das regras: "sim, tudo,
+numa sessão com você presente")**, junto com as que o levantamento achou:
+`metrics_estornos_do_dia` e `metrics_taxa_dos_lancamentos`; `estoque_ajuste_em` e
+`estoque_ajuste`; nas comissões, os ramos ATENDIMENTO e PAGAMENTO de
+`comissao_conta_detalhe`, as seis "linhas de antes", `comissoes_extrato`,
+`comissoes_extrato_linhas`, `comissoes_extrato_com_base` e
+`plano_cancelar_comissao_de_venda`; `loyalty_configs.commission_base`; o
+`gasto_medio` de `metrics_relatorio`. Fica o ramo "sem preço libera na
+conclusão": o pacote trazido de fora ainda precisa dele.
 
 **F11 feita em 2026-11-03 — vendas, caixa e estoque** (d8818610…ca398ddf;
 migrations `20261101001101–1108`). Receber o plano no check-in é uma
@@ -10895,8 +10926,9 @@ repassar pede Agenda/CRM em Gerenciar com "todos".
 
 **Para conversar:** a comissão de execução do pacote (com-04), o
 "Confirmar assinatura" (doc-02), o "Assinado" escondido no histórico
-(doc-03), o uso dos produtos antigos (est-01), o fundo de troco (ven-03,
-decidido: opcional).
+(doc-03), ~~o uso dos produtos antigos (est-01)~~ (sem efeito: o wipe total
+de 02/11 os apagou — D3 do levantamento das regras, 11/11), o fundo de troco
+(ven-03, decidido: opcional).
 
 ### Próximas fases já combinadas
 

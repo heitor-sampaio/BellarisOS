@@ -97,7 +97,12 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     ("Só quem é Admin da rede altera a comissão de uma Admin da rede."). "A
     mesma para todos" tira a exceção dela e conta como mexer; a regra geral
     nova num procedimento em que ela não tem valor próprio é do procedimento,
-    não dela (decisão desta frente, para o Heitor revisar). Vale nas duas
+    não dela — confirmado pelo Heitor no levantamento das regras (H9,
+    2026-11-11, opção a: a dona já controla quem tem o Financeiro em
+    Gerenciar). **Com o aviso** (princípio 3): quando a regra geral nova muda o
+    que uma Admin ganha, a janela diz antes de salvar — "A mesma para todos:
+    20%. Vale também para a Dra. Ana (Admin da rede), que hoje recebe 40% pelo
+    padrão dela." (correção C68; hoje salva calada). Vale nas duas
     portas: o chip (`salvarComissaoDoProcedimento`) e o modal do procedimento
     (antes de gravar o procedimento), e `gravarComissaoDoProcedimento` confere
     de novo. Prova: `e2e/comissoes-procedimento-da-admin.spec.ts`.
@@ -368,7 +373,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   atender). Vale para PACOTE, PLANO, PRÉ-PAGO e PRODUTO, sobre o vendido, para
   quem está em "Quem vendeu":
   - **a regra do item vence a da pessoa**, como na execução: o "De venda" do
-    pacote, a comissão do produto (no "Por produto"); **sem nenhuma das duas, a
+    pacote, a comissão do produto (no "Por produto") — **também quando é 0%**
+    (D13 do levantamento das regras, o Heitor, 2026-11-11; princípio 2: o 0 é
+    o valor que a clínica escolheu). A tela do Vender e o
+    `pacote_vender_com_equipe`, que hoje leem `valor > 0`, passam a seguir isso
+    (correção C40); **sem nenhuma das duas, a
     da clínica** — o "venda de plano (%)" e a "venda de produto" (a geral ou a
     regra sobre o total). O pacote e o pré-pago não têm regra da clínica.
   - **O pré-pago ganhou a linha de venda**: `origem = 'PRE_PAGO'` SEM
@@ -488,6 +497,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `trg_atendimento_concluido_nao_cancela` + `updateAppointmentStatus`): tem
   prontuário, baixa e comissão. Desfazer o dinheiro é estornar o pagamento.
 - `period_ref` do lançamento é o mês de `released_at` (fuso de SP).
+  **Passa ao fuso da REDE** (D12 do levantamento das regras, o Heitor,
+  2026-11-11; princípio 3: o mesmo mês em toda tela): o `period_ref` e os
+  limites do fechamento usam `fusoDaRede` (`lib/comissoes/periodo.ts`,
+  `private.comissao_acertar_linha`) — correção C4; até ela entrar, é SP.
 - **O período de uma comissão é o do LANÇAMENTO** (`released_at`), em toda
   métrica (`metrics_core`, `_by_branch`, `_commissions_detail`,
   `_top_professionals`, a aba Profissionais de `metrics_relatorio`) e no
