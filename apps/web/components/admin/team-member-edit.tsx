@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { startTransition, useActionState, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { normalizarHorario, horarioDeQuemDeixaDeSeguir } from '@/lib/agenda/horario'
@@ -148,7 +148,17 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
               </button>
             </div>
 
-            <form ref={formRef} action={action} onSubmit={() => setAtendeEnviado(atendeEm.join(','))} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Pelo onSubmit, e não por <form action> (D9 da 13ª, F70): o React limpa o formulário
+                depois de cada envio por action, e a resposta a uma pergunta (rebaixar, repasse)
+                reenviava o campo solto com o valor do começo — o registro no conselho digitado
+                voltava ao de antes. */}
+            <form ref={formRef} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+              onSubmit={e => {
+                e.preventDefault()
+                setAtendeEnviado(atendeEm.join(','))
+                const dados = new FormData(e.currentTarget)
+                startTransition(() => action(dados))
+              }}>
               <input type="hidden" name="_repasseDoAtende" value={repasseVale && responderRepasse ? JSON.stringify(repasseDasEscolhas(escolhas)) : ''} />
               <input type="hidden" name="userId" value={member.id} />
               <input type="hidden" name="_rebaixarAdmin" value={rebaixar ? 'sim' : ''} />

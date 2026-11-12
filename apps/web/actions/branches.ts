@@ -142,7 +142,10 @@ export async function updateBranch(
   const stateRegistration = (formData.get('state_registration') as string)?.trim() || null
   const email             = (formData.get('email') as string)?.trim().toLowerCase() || null
   const phone             = (formData.get('phone') as string)?.trim() || null
-  const address           = (formData.get('address') as string)?.trim() || null
+  // O Número à parte, como na unidade nova (D9 da 13ª, F70); sem o campo, o endereço como veio.
+  const address           = formData.has('address_number')
+    ? enderecoComNumero(formData.get('address') as string | null, formData.get('address_number') as string | null)
+    : (formData.get('address') as string)?.trim() || null
   const city              = (formData.get('city') as string)?.trim() || null
   const state             = (formData.get('state') as string)?.trim().toUpperCase() || null
   const zipCode           = (formData.get('zip_code') as string)?.trim() || null

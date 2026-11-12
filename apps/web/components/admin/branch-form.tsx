@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useActionState, useRef, useState } from 'react'
+import { startTransition, useActionState, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { Plus, X, Loader2, AlertTriangle } from 'lucide-react'
 import { createBranch, type RespostaDeCriarUnidade } from '@/actions/branches'
@@ -138,7 +138,16 @@ export function BranchForm() {
               </button>
             </div>
 
-            <form ref={formRef} action={action} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* Enviado pelo onSubmit, e não por <form action>: o React LIMPA o formulário depois
+                de cada envio por action, e a resposta à pergunta do CNPJ reenviava o Número
+                (solto) vazio e o horário do começo — o Domingo marcado voltava a fechado
+                (D9 da 13ª simulação, F70). Assim nada se limpa até a unidade nascer. */}
+            <form ref={formRef} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}
+              onSubmit={e => {
+                e.preventDefault()
+                const dados = new FormData(e.currentTarget)
+                startTransition(() => action(dados))
+              }}>
               <input type="hidden" name="_cnpj" value={respostaCnpj} />
 
               {/* -- Identificação -- */}

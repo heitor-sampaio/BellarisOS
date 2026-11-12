@@ -212,3 +212,31 @@ test('C73 (H8): as Importações são de quem é da rede — quem tem unidade fi
     await fixa.limpar()
   }
 })
+
+test('D9 da 13ª: a pergunta do CNPJ não apaga o Número nem desmarca o Domingo da unidade nova', async ({ browser }) => {
+  const b = db()
+  const dona = await criarMembro(`f70nu${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  const nome = `[e2e] Nova f70 ${marca}`
+  try {
+    await como(browser, dona.estado, async p => {
+      await p.goto('/admin/settings?tab=unidades')
+      await p.getByRole('button', { name: 'Nova unidade' }).first().click()
+      const janela = p.getByRole('dialog', { name: 'Nova unidade' })
+      await janela.locator('#br-name').fill(nome)
+      await janela.locator('#br-address').fill('Rua das Flores')
+      await janela.locator('#br-number').fill('321')
+      await janela.getByLabel('Domingo abre').check()
+      await janela.getByRole('button', { name: 'Criar unidade' }).click()
+      await janela.getByRole('button', { name: 'Criar sem CNPJ' }).click()
+      await expect(janela).toBeHidden({ timeout: 20_000 })
+    })
+    const { data: u } = await b.from('branches').select('address, horario').eq('tenant_id', rede!.tenantId).eq('name', nome)
+      .single<{ address: string | null; horario: { dias: Record<string, unknown[]> } | null }>()
+    expect(u!.address, 'o Número continua').toBe('Rua das Flores, 321')
+    expect((u!.horario?.dias['0'] ?? []).length, 'o Domingo continua aberto').toBeGreaterThan(0)
+  } finally {
+    await b.from('branches').delete().eq('tenant_id', rede!.tenantId).eq('name', nome)
+    await dona.limpar()
+  }
+})

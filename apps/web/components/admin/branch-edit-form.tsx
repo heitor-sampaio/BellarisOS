@@ -8,6 +8,7 @@ import { normalizarHorario } from '@/lib/agenda/horario'
 import { maskPhoneDigitando, maskCEPDigitando } from '@estetica-os/utils'
 import { fetchCep } from '@/lib/cep'
 import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
+import { separarNumero } from '@/lib/unidades/endereco-com-numero'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -38,7 +39,10 @@ export function BranchEditForm({ branch }: Props) {
   const boundAction = updateBranch.bind(null, branch.id)
   const [formState, action, pending] = useActionState(boundAction, undefined)
 
-  const [address, setAddress] = useState(branch.address ?? '')
+  // O Número à parte, como na unidade nova (D9 da 13ª, F70): o endereço gravado
+  // é "Logradouro, 123 — Bairro", e se separa para editar.
+  const [address, setAddress] = useState(() => separarNumero(branch.address).endereco)
+  const [numero,  setNumero]  = useState(() => separarNumero(branch.address).numero)
   const [city,    setCity]    = useState(branch.city    ?? '')
   const [uf,      setUf]      = useState(branch.state   ?? '')
   const [zipCode, setZipCode] = useState(branch.zip_code ? maskCEPDigitando(branch.zip_code) : '')
@@ -154,12 +158,19 @@ export function BranchEditForm({ branch }: Props) {
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label className="overline" htmlFor="be-address">Logradouro</label>
-          <input id="be-address" type="text" className="field"
-            value={address}
-            onChange={e => setAddress(e.target.value)}
-            placeholder="Rua das Flores, 123 — Bairro" />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <label className="overline" htmlFor="be-address">Logradouro</label>
+            <input id="be-address" type="text" className="field"
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="Rua das Flores — Bairro" />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <label className="overline" htmlFor="be-number">Número</label>
+            <input id="be-number" name="address_number" type="text" className="field" inputMode="numeric" placeholder="123"
+              value={numero} onChange={e => setNumero(e.target.value)} />
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 16 }}>
