@@ -8,6 +8,7 @@ import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { gravar } from '@/lib/db'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
+import { drenarEmLotes } from '@/lib/cron/drenar'
 
 /**
  * O que o cron faz a cada cinco minutos.
@@ -32,8 +33,19 @@ import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 /** Quantas vezes vale tentar de novo antes de desistir. */
 const MAX_TENTATIVAS = 3
 
-/** Teto por passagem: cinco minutos não dão para drenar uma fila infinita. */
+/**
+ * O tamanho de cada lote. A passagem drena lote atrás de lote
+ * (`drenarEmLotes`, F71): um lote só por passagem deixava a fila crescer sem
+ * fim com mais de 50 fatos a cada 5 minutos.
+ */
 const LOTE = 50
+
+/**
+ * Quanto cada fila pode ocupar da passagem. O resto fica para a próxima; a
+ * soma cabe com folga no minuto do serviço (`maxDuration` da rota).
+ */
+const ORCAMENTO_DOS_FATOS_MS     = 15_000
+const ORCAMENTO_DAS_RETOMADAS_MS = 15_000
 
 export interface ResultadoDoCron {
   retomadas: number
@@ -52,10 +64,16 @@ export async function rodarFilaDeAutomacoes(): Promise<ResultadoDoCron> {
 /**
  * Os fatos que nasceram no banco e ainda não foram despachados.
  *
- * Cada um é REIVINDICADO antes de despachar (`despachado_em` de nulo para
- * agora, conferindo a linha devolvida): duas passagens do cron ao mesmo tempo
- * não despacham o mesmo fato duas vezes — e, se despachassem, o índice único
- * de `automation_runs (automation_id, evento_id)` ainda seguraria a segunda.
+ * **A fila se DRENA** (F71): lote atrás de lote, do mais velho para o mais
+ * novo, até esvaziar ou até o orçamento da passagem (`drenarEmLotes`). Um lote
+ * só de 50 por passagem deixava a fila crescer sem fim com movimento acima de
+ * 50 fatos a cada 5 minutos — e o fato novo nunca disparava.
+ *
+ * Cada lote é REIVINDICADO antes de despachar (`despachado_em` de nulo para
+ * agora, numa escrita só, devolvendo as linhas que ESTA passagem mudou): duas
+ * passagens do cron ao mesmo tempo não despacham o mesmo fato duas vezes — e,
+ * se despachassem, o índice único de `automation_runs (automation_id,
+ * evento_id)` ainda seguraria a segunda.
  *
  * Só o último dia: o fato mais velho que isso (o cron parado por um deploy
  * longo) já não é "quando o pagamento entrar". A migration da F69 marcou os
@@ -69,44 +87,91 @@ export async function rodarFilaDeAutomacoes(): Promise<ResultadoDoCron> {
 async function despacharFatosDoBanco(): Promise<number> {
   const admin = createAdminClient()
   const desde = new Date(Date.now() - 86_400_000).toISOString()
-  const { data, error } = await admin
-    .from('domain_events')
-    .select('id, tenant_id, branch_id, nome, entidade, entidade_id, dados, ator_nome, ator_tipo, origem, ocorrido_em, suporte_sessao_id')
-    .eq('origem', 'banco')
-    .is('despachado_em', null)
-    .gte('created_at', desde)
-    .order('created_at', { ascending: true })
-    .limit(LOTE)
-  if (error) { console.error('[cron automacoes] fatos do banco:', error.message); return 0 }
+  try {
+    const r = await drenarEmLotes<{ id: string }>({
+      tamanho: LOTE,
+      orcamentoMs: ORCAMENTO_DOS_FATOS_MS,
+      buscar: async n => {
+        const { data, error } = await admin
+          .from('domain_events')
+          .select('id')
+          .eq('origem', 'banco')
+          .is('despachado_em', null)
+          .gte('created_at', desde)
+          .order('created_at', { ascending: true })
+          .order('id')
+          .limit(n)
+        if (error) throw new Error(`fatos do banco: ${error.message}`)
+        return (data ?? []) as { id: string }[]
+      },
+      processar: async lote => {
+        // A reivindicação do lote inteiro, numa escrita: a linha que outra
+        // passagem já marcou não volta (o `is null` é conferido de novo
+        // depois do bloqueio da linha), e só as devolvidas são desta.
+        const { data: meus, error } = await admin.from('domain_events')
+          .update({ despachado_em: new Date().toISOString() })
+          .in('id', lote.map(f => f.id))
+          .is('despachado_em', null)
+          .select('id, tenant_id, branch_id, nome, entidade, entidade_id, dados, ator_nome, ator_tipo, ocorrido_em, suporte_sessao_id')
+        if (error) throw new Error(`reivindicar os fatos do banco: ${error.message}`)
+        await despacharReivindicados((meus ?? []) as FatoDoBanco[])
+        return meus?.length ?? 0
+      },
+    })
+    return r.processados
+  } catch (e) {
+    console.error('[cron automacoes]', (e as Error).message)
+    return 0
+  }
+}
 
-  let despachados = 0
-  for (const ev of data ?? []) {
+interface FatoDoBanco {
+  id: string; tenant_id: string; branch_id: string | null; nome: string; entidade: string
+  entidade_id: string | null; dados: Record<string, unknown> | null; ator_nome: string | null
+  ator_tipo: string | null; ocorrido_em: string; suporte_sessao_id: string | null
+}
+
+/**
+ * Despacha os fatos que esta passagem reivindicou. Antes, UMA leitura das
+ * automações ligadas das redes do lote: o fato que nenhuma automação assina
+ * (quase todos) sai sem ir ao motor — sem isso cada fato custava as consultas
+ * do `despacharEvento`, e a drenagem não cabia na passagem.
+ */
+async function despacharReivindicados(fatos: FatoDoBanco[]): Promise<void> {
+  if (!fatos.length) return
+  const redes = [...new Set(fatos.map(f => f.tenant_id))]
+  const { data: ligadas, error } = await createAdminClient()
+    .from('automations')
+    .select('tenant_id, gatilhos')
+    .eq('status', 'ATIVA')
+    .in('tenant_id', redes)
+  if (error) throw new Error(`automações ligadas do lote: ${error.message}`)
+  const assinados = new Set<string>()
+  for (const a of ligadas ?? []) {
+    for (const g of (a.gatilhos as string[] | null) ?? []) assinados.add(`${a.tenant_id}|${g}`)
+  }
+
+  for (const ev of fatos) {
     try {
-      const { data: meu } = await admin.from('domain_events')
-        .update({ despachado_em: new Date().toISOString() })
-        .eq('id', ev.id as string).is('despachado_em', null)
-        .select('id')
-      if (!meu?.length) continue // outra passagem pegou
       if (ev.suporte_sessao_id) continue
-      if (await suporteAtivoEm(ev.tenant_id as string, ev.ocorrido_em as string)) continue
+      if (!assinados.has(`${ev.tenant_id}|${ev.nome}`)) continue
+      if (await suporteAtivoEm(ev.tenant_id, ev.ocorrido_em)) continue
       await despacharEvento({
-        id:         ev.id as string,
-        nome:       ev.nome as string,
-        entidade:   ev.entidade as string,
-        entidadeId: (ev.entidade_id as string | null) ?? null,
-        dados:      (ev.dados as Record<string, unknown> | null) ?? {},
-        atorNome:   (ev.ator_nome as string | null) ?? null,
-        atorTipo:   (ev.ator_tipo as string | null) ?? 'sistema',
+        id:         ev.id,
+        nome:       ev.nome,
+        entidade:   ev.entidade,
+        entidadeId: ev.entidade_id ?? null,
+        dados:      ev.dados ?? {},
+        atorNome:   ev.ator_nome ?? null,
+        atorTipo:   ev.ator_tipo ?? 'sistema',
         origem:     'banco',
-        ocorridoEm: ev.ocorrido_em as string,
-        branchId:   (ev.branch_id as string | null) ?? null,
-      }, ev.tenant_id as string, 0)
-      despachados++
+        ocorridoEm: ev.ocorrido_em,
+        branchId:   ev.branch_id ?? null,
+      }, ev.tenant_id, 0)
     } catch (e) {
       console.error('[cron automacoes] fato', ev.id, (e as Error).message)
     }
   }
-  return despachados
 }
 
 /** A rede tinha uma sessão de suporte aberta naquele instante? */
@@ -128,75 +193,102 @@ async function suporteAtivoEm(tenantId: string, quando: string): Promise<boolean
  * `rodar_apos <= agora` cobre os dois casos: a espera que venceu e a falha que
  * merece nova tentativa. A ordem é a mais antiga primeiro — quem espera há
  * mais tempo tem prioridade sobre quem acabou de entrar.
+ *
+ * **A fila se DRENA** (F71, a mesma regra dos fatos do banco): lote atrás de
+ * lote até esvaziar ou até o orçamento. Para o mesmo run não voltar no lote
+ * seguinte da MESMA passagem: o que falhou agora fica de fora pelo `fim_em`
+ * (gasta uma tentativa por passagem, não as três de uma vez), e a rede
+ * bloqueada sai da busca — o run dela fica na fila sem gastar tentativa.
  */
 async function retomarPendentes(): Promise<{ retomadas: number; erros: number }> {
   const admin = createAdminClient()
-
-  const { data, error } = await admin
-    .from('automation_runs')
-    .select('id, tenant_id, status, tentativas')
-    .in('status', ['esperando', 'falhou'])
-    .lte('rodar_apos', new Date().toISOString())
-    .lt('tentativas', MAX_TENTATIVAS)
-    .order('rodar_apos', { ascending: true })
-    .limit(LOTE)
-
-  if (error) { console.error('[cron automacoes] fila:', error.message); return { retomadas: 0, erros: 1 } }
+  const inicio = new Date().toISOString()
+  const bloqueadas = new Set<string>()
 
   let retomadas = 0
   let erros = 0
 
-  for (const run of data ?? []) {
-    // Um run não pode derrubar a passagem inteira. As gravações do motor agora
-    // falham alto — que é o certo para o run —, mas deixar a exceção subir daqui
-    // faria um registro problemático impedir que TODOS os outros rodassem, e o
-    // sintoma seria uma fila que para de andar sem nada explicando.
-    try {
-      // Rede bloqueada: o run fica na fila, sem gastar tentativa — volta a
-      // andar quando a rede voltar (o "esperar 3 dias" não se perde).
-      if (await redeEstaBloqueada(run.tenant_id as string)) continue
-      // A tentativa é contada ANTES de rodar. Contar depois faria um run que
-      // derruba o processo no meio ser tentado para sempre — e um run que
-      // derruba o processo é exatamente o que mais precisa parar de voltar.
-      //
-      // ⚠️ E a contagem é também a REIVINDICAÇÃO da execução. O `.eq('tentativas',
-      // …)` faz dela um compare-and-swap: quem escreve primeiro leva, e o segundo
-      // não acha linha para atualizar. Sem isso, duas passagens concorrentes do
-      // cron selecionam o mesmo run e executam os passos dele DUAS VEZES — num
-      // `notificar_equipe` é um aviso duplicado; numa ação de mensagem, é o
-      // cliente recebendo a mesma coisa duas vezes.
-      //
-      // Concorrer é normal: o serviço roda de 5 em 5 minutos e uma passagem com
-      // fila grande passa disso. Mesmo idioma de `ultimo_disparo_agenda` (§9.9):
-      // a marca vai antes de executar, e o que decide é quantas linhas mudaram.
-      //
-      // ⚠️ E a reivindicação TIRA o run da fila (status `rodando`) na mesma
-      // escrita. Só o compare-and-swap não bastava: se a passagem B lesse a fila
-      // DEPOIS de A reivindicar — e antes de o motor marcar `rodando`, o que só
-      // acontece depois de ler o run e a automação —, B via o run ainda
-      // `esperando`, agora com `tentativas` já somada, e o CAS dela (1 → 2)
-      // também passava: o passo rodava duas vezes. Foi o que a suíte completa
-      // pegou em 2026-09-30 (automacoes-cron-concorrente, intermitente).
-      const tentativas = (run.tentativas as number) ?? 0
-      const reivindicado = await gravar(admin
-        .from('automation_runs')
-        .update({ tentativas: tentativas + 1, status: 'rodando' })
-        .eq('id', run.id as string)
-        .eq('tentativas', tentativas)
-        .in('status', ['esperando', 'falhou'])
-        .select('id'), 'reivindicar a execução')
+  try {
+    await drenarEmLotes<{ id: string; tenant_id: string; tentativas: number | null }>({
+      tamanho: LOTE,
+      orcamentoMs: ORCAMENTO_DAS_RETOMADAS_MS,
+      buscar: async n => {
+        let q = admin
+          .from('automation_runs')
+          .select('id, tenant_id, tentativas')
+          .in('status', ['esperando', 'falhou'])
+          .lte('rodar_apos', inicio)
+          .lt('tentativas', MAX_TENTATIVAS)
+          .or(`fim_em.is.null,fim_em.lt.${inicio}`)
+        if (bloqueadas.size) q = q.not('tenant_id', 'in', `(${[...bloqueadas].join(',')})`)
+        const { data, error } = await q
+          .order('rodar_apos', { ascending: true })
+          .order('id')
+          .limit(n)
+        if (error) throw new Error(`fila: ${error.message}`)
+        return (data ?? []) as { id: string; tenant_id: string; tentativas: number | null }[]
+      },
+      processar: async lote => {
+        let levados = 0
+        for (const run of lote) {
+          // Um run não pode derrubar a passagem inteira. As gravações do motor agora
+          // falham alto — que é o certo para o run —, mas deixar a exceção subir daqui
+          // faria um registro problemático impedir que TODOS os outros rodassem, e o
+          // sintoma seria uma fila que para de andar sem nada explicando.
+          try {
+            // Rede bloqueada: o run fica na fila, sem gastar tentativa — volta a
+            // andar quando a rede voltar (o "esperar 3 dias" não se perde).
+            if (await redeEstaBloqueada(run.tenant_id as string)) { bloqueadas.add(run.tenant_id); continue }
+            // A tentativa é contada ANTES de rodar. Contar depois faria um run que
+            // derruba o processo no meio ser tentado para sempre — e um run que
+            // derruba o processo é exatamente o que mais precisa parar de voltar.
+            //
+            // ⚠️ E a contagem é também a REIVINDICAÇÃO da execução. O `.eq('tentativas',
+            // …)` faz dela um compare-and-swap: quem escreve primeiro leva, e o segundo
+            // não acha linha para atualizar. Sem isso, duas passagens concorrentes do
+            // cron selecionam o mesmo run e executam os passos dele DUAS VEZES — num
+            // `notificar_equipe` é um aviso duplicado; numa ação de mensagem, é o
+            // cliente recebendo a mesma coisa duas vezes.
+            //
+            // Concorrer é normal: o serviço roda de 5 em 5 minutos e uma passagem com
+            // fila grande passa disso. Mesmo idioma de `ultimo_disparo_agenda` (§9.9):
+            // a marca vai antes de executar, e o que decide é quantas linhas mudaram.
+            //
+            // ⚠️ E a reivindicação TIRA o run da fila (status `rodando`) na mesma
+            // escrita. Só o compare-and-swap não bastava: se a passagem B lesse a fila
+            // DEPOIS de A reivindicar — e antes de o motor marcar `rodando`, o que só
+            // acontece depois de ler o run e a automação —, B via o run ainda
+            // `esperando`, agora com `tentativas` já somada, e o CAS dela (1 → 2)
+            // também passava: o passo rodava duas vezes. Foi o que a suíte completa
+            // pegou em 2026-09-30 (automacoes-cron-concorrente, intermitente).
+            const tentativas = (run.tentativas as number) ?? 0
+            const reivindicado = await gravar(admin
+              .from('automation_runs')
+              .update({ tentativas: tentativas + 1, status: 'rodando' })
+              .eq('id', run.id as string)
+              .eq('tentativas', tentativas)
+              .in('status', ['esperando', 'falhou'])
+              .select('id'), 'reivindicar a execução')
 
-      // Zero linhas não é erro: é outra passagem que chegou primeiro. Seguir
-      // daqui executaria o mesmo fluxo de novo.
-      if (!reivindicado || (reivindicado as unknown[]).length === 0) continue
+            // Zero linhas não é erro: é outra passagem que chegou primeiro. Seguir
+            // daqui executaria o mesmo fluxo de novo.
+            if (!reivindicado || (reivindicado as unknown[]).length === 0) continue
 
-      const status = await executarRun(run.id as string)
-      if (status === 'falhou') erros += 1
-      retomadas += 1
-    } catch (e) {
-      console.error(`[cron automacoes] run ${run.id}:`, e)
-      erros += 1
-    }
+            const status = await executarRun(run.id as string)
+            if (status === 'falhou') erros += 1
+            retomadas += 1
+            levados += 1
+          } catch (e) {
+            console.error(`[cron automacoes] run ${run.id}:`, e)
+            erros += 1
+          }
+        }
+        return levados
+      },
+    })
+  } catch (e) {
+    console.error('[cron automacoes]', (e as Error).message)
+    erros += 1
   }
 
   return { retomadas, erros }
