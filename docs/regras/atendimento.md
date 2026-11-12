@@ -1149,34 +1149,77 @@
 - Ao marcar `COMPLETED`: consumo de estoque + comissão, numa transação — ver §10. Os pontos de fidelidade NÃO nascem aqui: nascem no pagamento (§9.2.2).
 
 **Decididas no levantamento das regras** (o Heitor, 2026-11-11, pela página
-de decisões; o código segue a correção indicada, do consolidado do
-levantamento — até ela entrar, o sistema ainda faz o que está entre
-parênteses):
+de decisões) — **implementadas na F65 (2026-11-12)**:
 - **Quem faz o quê na agenda (D20; princípio 3: a tela de Cargos já diz
   isso).** A Agenda em Ver inicia e conclui, dentro do escopo. A Agenda em
   Gerenciar confirma, marca a chegada, cancela, marca a falta, remarca e
   troca a profissional. Com "só os meus" e Gerenciar, cancela e marca a falta
-  só dos próprios. A tabela vai também para a `SCOPE_NOTE` de
-  `lib/permissions-copy.ts`. (C10 e C15: hoje
-  `updateAppointmentStatusInterno` deixa quem só vê confirmar, cancelar e
-  marcar a falta.)
+  só dos próprios. A tabela está na `SCOPE_NOTE` de
+  `lib/permissions-copy.ts`. `updateAppointmentStatusInterno` pede Gerenciar
+  para Confirmado, Chegou, Cancelado e Falta (C10); o Cancelado passa pelo
+  `cancelarCore` (motivo, aviso, histórico — C12), a Falta só sai de
+  Agendado/Confirmado/Chegou e nunca vira Cancelado, e o "Em atendimento"
+  passa pelo início de verdade (`startAppointment`). A janela só mostra o
+  que o cargo faz. Prova: `e2e/agenda-guardas-de-status.spec.ts`,
+  `e2e/permissoes-acoes.spec.ts` ("agenda: cancelar agendamento" pede
+  Gerenciar).
 - **Quem inicia e conclui o atendimento de outra profissional é o ESCOPO
   (D21; os três eixos, CLAUDE.md §11),** na tela e no servidor: com "só os
-  meus", só o próprio; com "todos", qualquer um da unidade ao alcance. (C14:
-  hoje a tela só deixa o próprio e o servidor deixa qualquer um.)
+  meus", só o próprio; com "todos", qualquer um da unidade ao alcance (C14).
+  Prova: `e2e/atendimento-quem-inicia-e-conclui.spec.ts`.
+- **O "Iniciar" não reabre o que acabou** (C11): só sai de Confirmado ou
+  Chegou (a gravação confere a situação); o gatilho do banco recusa sair de
+  Concluído ("Atendimento concluído não muda de situação…", migration
+  `20261112006501`). Os pontos não duplicam: nascem no pagamento, e o
+  "Concluído" da agenda (`completeAppointment`) não conclui mais nada (§10).
+  **O remarcar recusa o que está em atendimento** (C15, `remarcarCore`), e
+  as anotações de rascunho recusam o cancelado e a falta.
 - **A remarcação e a confirmação (H3, opção c; princípio 3: "Confirmado" é
   "a cliente disse que vem nesse horário").** A cliente que remarca pelo app
   escolheu o horário novo: ele já nasce Confirmado, sem pedir a confirmação
   de novo. Quando a equipe ou o Copilot remarcam, ninguém ouviu a cliente: o
-  horário volta a Agendado e a confirmação é pedida de novo. (C8: hoje é o
-  inverso.)
+  horário volta a Agendado (sem `confirmed_at` nem `arrived_at`) e a
+  confirmação é pedida de novo (C8). Prova:
+  `e2e/portal-cliente-remarcar-pelo-nucleo.spec.ts`.
 - **Quem só agenda cria a ficha, mas não mexe na que existe (H4, opção b;
   princípio 3: a mesma ação não muda conforme a porta).** O "+ Agendar" com
   nome e telefone, e o agendar pelo CRM, criam a ficha rápida sem pedir
   Clientes em Gerenciar — agendar a cliente nova é o trabalho da recepção.
   "Unificar com a ficha de X" e "Reativar a ficha de X" pedem Clientes em
-  Gerenciar, na tela e na action; sem ele, a janela oferece só agendar para a
-  ficha como está ou cadastrar mesmo assim. (C66.)
+  Gerenciar, na tela e na action (`garantirClienteRapido` recusa o
+  "atualizar:<id>"); sem ele, a pergunta (`PerguntaJaExiste`,
+  `podeUnificar`) oferece "Agendar para a ficha de X" (a resposta
+  "usar:<id>": a ficha como está, nada se grava nela; a arquivada não) ou
+  "Cadastrar mesmo assim". O cartão do Copilot, igual (C66). Prova:
+  `e2e/agenda-ja-existe-sem-clientes.spec.ts`.
+- **O agendamento só nasce com quem ATENDE na unidade** (F65): o
+  `conferirPecasDoAgendamento` recusa a profissional sem a unidade no
+  "Atende clientes em" ("X não atende nesta unidade (o “Atende clientes em”
+  dela, na Equipe)") — o encaixe fora do HORÁRIO continua permitido (é
+  aviso). E só com o procedimento que a unidade FAZ (D7 da 13ª, §9.3).
+  Prova: `e2e/agenda-procedimento-e-quem-atende-na-unidade.spec.ts`.
+- **O remarcar do app passa pelo núcleo e pergunta a unidade** (C8, A15 da
+  13ª; H5: a cliente é da clínica). `remarcarPelaCliente` confere as peças
+  (`conferirPecasDoAgendamento`: a ficha arquivada não remarca), reprecifica
+  quando a unidade muda e escreve no histórico o remarcado, a troca de
+  unidade e, no "Sem preferência" que troca a profissional, de quem para
+  quem. Com mais de uma unidade que faz o procedimento, a tela pergunta "Em
+  qual unidade?"; noutra unidade, a mesma profissional só se atende lá (senão
+  o horário fica com quem estiver livre, e a tela diz). O que a cliente faz
+  pelo app entra no histórico como "Fulana (app)" (`changed_by_id` aceita
+  nulo, migration `20261112006502`). Prova:
+  `e2e/portal-cliente-remarcar-pelo-nucleo.spec.ts`.
+- **A foto clínica no atendimento da outra unidade em que ela atende entra**
+  (D5 da 13ª): a unidade do anexo é a do ATENDIMENTO, lida pelo servidor
+  depois da rede e do alcance — a leitura pela sessão com `.single()`
+  derrubava a tela com 500. Pela ficha, a unidade do contexto vence a do
+  formulário (`ctx.branchId ?? branchId`), como no cadastro e no crédito
+  (`resolveBranch`). Prova: `e2e/atendimento-foto-de-outra-unidade.spec.ts`.
+- **No celular, o cartão da outra unidade não esconde o nome da cliente** (A8
+  da 13ª): na "Minha agenda", o selo "Na unidade X" vai para a linha do
+  procedimento e encolhe com reticências (o nome inteiro na dica); o nome da
+  cliente cede por último. Prova:
+  `e2e/agenda-cartao-de-outra-unidade-no-celular.spec.ts`.
 
 ---
 
@@ -1198,6 +1241,16 @@ parênteses):
   "Editar no catálogo da clínica →" (`/admin/procedures`); a gerente de unidade
   fixa segue só lendo (H7). Prova: o mesmo spec ("A20 da 9ª").
 - `visibleOnClientApp`: controla se o procedimento aparece para o cliente agendar pelo app
+- **O procedimento que a unidade NÃO faz sai de toda lista e o núcleo o
+  recusa** (D7 da 13ª, F65). "Em quais unidades" do cadastro
+  (`procedure_branch_availability`; sem nenhuma marcada, todas) vale na agenda
+  (`getCachedBranchProcedures`), no app da cliente, no Vender
+  (`procedimentosAVenda`, `venderProcedimento`), no editor do plano com a
+  unidade e no Copilot; `conferirPecasDoAgendamento` (com o procedimento) e o
+  agendar do app recusam: "X não é feito na unidade Y. Escolha outra unidade
+  ou outro procedimento." A regra é UMA, `ofereceNaUnidade` /
+  `recusaDoProcedimentoNaUnidade` (`lib/procedimentos/disponivel-na-unidade.ts`).
+  Prova: `e2e/agenda-procedimento-e-quem-atende-na-unidade.spec.ts`.
 - **O preço vazio é R$ 0,00 — o procedimento gratuito** (A1 da 6ª simulação,
   2026-11-04; princípios 2 e 4): a avaliação grátis tinha só o "0,00" de
   exemplo, e o navegador recusava o campo vazio. O campo não é mais
@@ -1225,7 +1278,11 @@ parênteses):
   recompensa da fidelidade, a ficha da rede com várias unidades no editor do
   plano), vale o da rede. Prova: `e2e/procedimento-preco-da-unidade.spec.ts`,
   `tests/preco-na-unidade.test.ts`.
-- `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um procedimento
+- `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um
+  procedimento. **É o histórico do preço DA REDE** (C15, F65; princípio 7): o
+  preço próprio de cada unidade (`procedure_branch_pricing`) não entra nele.
+  Nenhuma tela mostra o histórico hoje; quando uma mostrar, ela diz que é o
+  preço da rede.
 - `ProcedureProduct`: insumos consumidos por execução — base do consumo automático de estoque
   - **O catálogo diz o procedimento sem insumo ligado** (A6 da 10ª simulação,
     2026-11-10; princípio 3: o criado antes do estoque ficava sem insumo, e a
@@ -2432,7 +2489,13 @@ acontecido). `finishSession`, `concluir_atendimento` e `completeAppointment`
 recusam Agendado, Confirmado e Chegou — pelo id também, para que o termo do
 início, a pergunta do horário adiantado e a trava dos termos que bloqueiam
 não sejam puladas. A profissional que esqueceu de iniciar clica Iniciar e
-depois Finalizar. (C13: hoje o servidor conclui pelo id qualquer um dos três.)
+depois Finalizar (C13, F65): `finishSession` recusa o que não está Em
+atendimento ("Só se conclui o atendimento que foi iniciado…"), a função
+`concluir_atendimento` confere de novo com o agendamento travado (migration
+`20261112006501`), e o "Concluído" da agenda (`completeAppointment`) só
+aceita o que o fechamento já concluiu — ele não muda a situação nem grava o
+prontuário, só lança a conta a receber. O concluído não volta: o gatilho do
+banco recusa sair de Concluído. Prova: `e2e/agenda-guardas-de-status.spec.ts`.
 
 O que a transação grava, na ordem:
 
@@ -2826,6 +2889,11 @@ O resto do fluxo:
 ❌ Trava de permissão (assertPermission/semAcesso) num LAYOUT fora do Suspense da página: vira HTTP 500 — o layout só passa a página, que trava por si (D17 da 9ª)
 ❌ Gravar as dores do cliente em appointments.notes (é a observação interna; as dores são medical_record_entries.queixas)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
+❌ Mudar a situação do agendamento por update direto em vez dos núcleos (cancelarCore, startAppointment, a falta guardada pela situação): o Cancelado sem motivo, a Falta virando Cancelado e o "Em atendimento" que pulava o termo vinham daí (C10–C12, F65)
+❌ Concluir (finishSession, concluir_atendimento, completeAppointment) o que não está Em atendimento, ou tirar um agendamento de Concluído (C13, F65)
+❌ Oferecer ou aceitar no agendamento a profissional que não ATENDE na unidade, ou o procedimento que a unidade não FAZ — é conferirPecasDoAgendamento com o procedimento (F65, D7 da 13ª)
+❌ Ler a unidade de um registro pela SESSÃO com .single() numa action — a unidade que a sessão não vê lança, e a tela cai em 500 (D5 da 13ª): servidor, maybeSingle, depois da rede e do alcance
+❌ Deixar "Unificar" ou "Reativar a ficha" para quem não tem Clientes em Gerenciar — a resposta é "usar:<id>" (a ficha como está) ou cadastrar mesmo assim (C66)
 ❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts
 ❌ Criar agendamento sem procedure_id (a avaliação era a exceção e não existe mais)
 ❌ Gravar o agendamento do app da cliente fora de createAppointmentCore (por-05: uma regra só, a da agenda da clínica)

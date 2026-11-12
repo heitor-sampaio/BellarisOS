@@ -175,7 +175,21 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   "Já existe a ficha de X" de `cadastrar_cliente` e do `agendar` com cliente
   novo: "Cadastrar mesmo assim" e "Unificar com a ficha de X" (o mesmo
   `garantirClienteRapido` com `jaExiste`, `crm-inbox.md`). Prova: o caso
-  r2-cli-01 de `e2e/copilot-gravacoes.spec.ts` (contra o build).
+  r2-cli-01 de `e2e/copilot-gravacoes.spec.ts` (contra o build). Sem
+  Clientes em Gerenciar (C66, F65), o `agendar` troca o "Unificar"/"Reativar"
+  por "Agendar para a ficha de X" (`usar`: a ficha como está), e a ficha
+  ARQUIVADA só oferece cadastrar mesmo assim (`escolhasDaFichaQueJaExiste`
+  pelo `podeUnificar`).
+- **O `agendar` segue a janela "+ Agendar"** (C5, F65): o "Já pago" — o que
+  a cliente já pagou do MESMO procedimento (a sessão livre do plano, o pacote,
+  o pré-pago; `pagoParaAgendar`, a escolha do app) — entra sozinho, o cartão
+  diz "Já pago: …" no lugar do valor e a sessão do plano usa a duração dela;
+  o crédito que outro agendamento pegou entre o cartão e o Confirmar vira
+  avulso, e a mensagem diz. A profissional fora de "Quem realiza" é AVISADA
+  no cartão, sem barrar (princípio 2). O procedimento que a unidade não faz e
+  a profissional que não atende nela são recusados no preparo
+  (`conferirPecasDoAgendamento`). Prova: `e2e/copilot-agendar-ja-pago.spec.ts`
+  (contra a OpenAI falsa).
 - **O cadastro sem CPF** (sobra da F29, decisão 1 do Heitor na 7ª simulação):
   `cadastrar_cliente` aceita `passaporte` ou `rne` no lugar do CPF — um
   documento só, pela regra do cadastro da tela (`documentoDaFicha`, via

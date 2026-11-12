@@ -319,6 +319,13 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   qualquer cliente e vê a Visão geral e o Histórico inteiros — os atendimentos de outras
   profissionais, os valores, o plano e o contrato. O escopo continua valendo onde é do módulo: a
   aba Prontuário (o dado clínico de quem ela não atendeu) e a aba Financeiro (o OWN do Financeiro).
+- **A ficha monta só a aba aberta** (C77, F65): as duas fichas (`app/[slug]/clients/[id]` e
+  `app/admin/clients/[id]`) leem o `?aba=` (`abaDaFicha`, `lib/clientes/aba-da-ficha.ts` — as chaves da
+  tela; o resto é a Visão geral) e montam sempre o que a Visão geral e o topo usam; a linha do tempo só
+  no Histórico, os links assinados só em Documentos, as negociações só em Oportunidades, os lotes, os
+  planejamentos e a lista de acessos só no Prontuário. As outras leituras vão num `Promise.all`. Dado
+  novo que uma aba só mostra entra na condição dela; o que a Visão geral usa, fora. Prova:
+  `e2e/clientes-ficha-carrega-a-aba-aberta.spec.ts`.
 - **A ficha é da CLÍNICA, não da unidade de cadastro** (H5, "A cliente é da clínica, pode agendar
   em qualquer unidade da clínica"; F6 da 5ª simulação, o Heitor: "concordo"): quem tem Clientes em
   Gerenciar edita os dados, as anotações e as tags e ARQUIVA/REATIVA a ficha de qualquer cliente da

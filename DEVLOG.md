@@ -10489,6 +10489,42 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   - o histórico de alterações e os relatórios em PDF/CSV que já passavam `timeZone`;
   - `startOfMonth` na janela de 3 meses da agenda da unidade, que é folga de busca e não decide dia.
 
+**F65 FEITA (12/11; 8b5bca67…81841e42, push; migrations 20261112006501 e 20261112006502 aplicadas, aditivas): agenda, atendimento, procedimentos e prontuário** (levantamento das regras: C5 na parte da agenda, C8 com H3 = c, C10–C15, C66 com H4 = b, C77; 13ª simulação: D5, D7, A8, A9 e A15).
+- **Quem faz o quê na agenda (D20, C10/C12):** confirmar, chegou, cancelar e falta pedem a Agenda em Gerenciar. O Cancelado passa pelo `cancelarCore` (motivo, aviso, histórico). A Falta só sai de Agendado, Confirmado ou Chegou. O "Em atendimento" passa pelo `startAppointment`. A janela só mostra o que o cargo faz.
+- **Guardas de situação (C11, C13, C15):**
+  - o Iniciar só sai de Confirmado ou Chegou;
+  - `finishSession` e `concluir_atendimento` só concluem o que foi iniciado;
+  - o gatilho do banco recusa sair de Concluído (6501);
+  - o "Concluído" da agenda (`completeAppointment`) só lança a conta a receber do que o fechamento concluiu;
+  - o remarcar recusa o que está em atendimento;
+  - as anotações de rascunho recusam o cancelado e a falta.
+- **O escopo decide quem inicia e conclui o de outra profissional (C14, D21)**, na tela e no servidor.
+- **O agendamento só nasce com quem atende na unidade e com o procedimento que ela faz (D7 da 13ª):** `conferirPecasDoAgendamento` recebe o procedimento. A regra é uma, `ofereceNaUnidade` / `recusaDoProcedimentoNaUnidade`, e vale na agenda, no app, no Vender, no plano e no Copilot.
+- **A remarcação (C8, H3 = c, A15):**
+  - a do app passa pelo núcleo e nasce Confirmada; com mais de uma unidade, pergunta "Em qual unidade?" e reprecifica;
+  - o histórico registra a troca de unidade e de profissional, como "Fulana (app)": `changed_by_id` aceita nulo (6502);
+  - a da equipe e a do Copilot voltam a Agendado, sem `confirmed_at` nem `arrived_at`.
+- **"Já existe" (C66, H4 = b):** unificar e reativar pedem Clientes em Gerenciar, na tela, na action e no Copilot. Sem isso, a pergunta oferece "Agendar para a ficha de X" (a resposta `usar:<id>`, que não grava nada na ficha) ou "Cadastrar mesmo assim".
+- **A foto clínica na outra unidade (D5):** a unidade do anexo é a do atendimento, lida pelo servidor (era o 500). Pela ficha, `ctx.branchId ?? branchId`; o cadastro e o crédito vão juntos (`resolveBranch`).
+- **O agendar do Copilot (C5, agenda):** usa o "Já pago" (pacote, plano, crédito); refaz sem o crédito se outro já o usou, e diz. Avisa "Quem realiza" e confere a unidade.
+- **A ocupação (A9):** a base diz o que saiu da capacidade, "menos 140 min da Patrícia na Água Verde e 60 min bloqueados da Ana" (`descontosDaOcupacao`, na agenda e no dashboard).
+- **No celular (A8):** o selo "Na unidade X" do cartão curto da Minha agenda vai à linha do procedimento e encolhe; o nome da cliente fica.
+- **A ficha (C77):** o servidor monta só a aba aberta (`?aba=`): a linha do tempo, os links assinados, as negociações e os lotes do prontuário. O resto das leituras vai num `Promise.all`. Tudo o que cada aba mostra continua.
+- **Decidido pelos princípios:**
+  - o histórico de preço é o da REDE; o preço próprio da unidade não entra (C15, princípio 7). Nenhuma tela o mostra, e a regra ficou escrita em `atendimento.md`;
+  - o "Quem realiza" no Copilot avisa e não barra, como na agenda (princípio 2);
+  - sem Clientes em Gerenciar, a pergunta oferece usar a ficha como está, que é o "agendar para a ficha como está" da H4 (princípio 3);
+  - a base da ocupação conta também o bloqueio (princípio 3: o número diz de onde vem);
+  - os pontos não duplicam: nascem no pagamento, e o Concluído da agenda não conclui mais nada.
+- **Prova:** 10 specs novos, todos vistos falhando antes:
+  - `agenda-guardas-de-status`, `agenda-procedimento-e-quem-atende-na-unidade`, `atendimento-quem-inicia-e-conclui`;
+  - `portal-cliente-remarcar-pelo-nucleo`, `agenda-ja-existe-sem-clientes`, `atendimento-foto-de-outra-unidade`;
+  - `copilot-agendar-ja-pago`, `agenda-ocupacao-diz-o-desconto`, `agenda-cartao-de-outra-unidade-no-celular`, `clientes-ficha-carrega-a-aba-aberta`;
+  - mais os vizinhos de cada um, inclusive `permissoes-acoes` e os do Copilot com a OpenAI falsa;
+  - Vitest 2176, typecheck e lint limpos.
+  - Vale completa: mexeu no núcleo do agendamento, em `cliente-rapido`, nas duas fichas e em `concluir_atendimento`.
+- **Fica de fora:** nada dos itens da frente. As perguntas que sobraram foram ao Heitor: a D20 com "só os meus" e Gerenciar remarcando o próprio, e o Chegou que a remarcação da equipe volta a Agendado.
+
 **Pronto para lançar = zero defeitos e zero atritos** (o Heitor, 11/11: "as regras de negocio já estão definidas, não tem pq ter defeito ou atrito"). A partir da 13ª simulação, cada achado precisa cair num destes casos:
 1. Contraria uma regra escrita (`docs/regras` ou os sete princípios do CLAUDE.md §1).
 2. A pessoa não conseguiu fazer a tarefa, ou fez errado sem perceber.

@@ -354,7 +354,14 @@
     `DEFINICOES.ocupacao` (o que entra: os concluídos; o que sai: cancelados,
     faltas, o tempo bloqueado e o que ela tem em outra unidade). A conta não
     mudou. Prova: `e2e/agenda-atritos-da-9.spec.ts` ("A53"),
-    `tests/metrics-ocupacao.test.ts`.
+    `tests/metrics-ocupacao.test.ts`. **E diz o que saiu da capacidade** (A9
+    da 13ª, F65; princípio 3: os minutos abertos não fechavam com o horário
+    da tela): "… (o horário de 2 profissionais que atendem, menos 140 min da
+    Patrícia na Água Verde e 60 min bloqueados da Ana)" — `descontosDaOcupacao`
+    (`lib/metrics/ocupacao.ts`), a MESMA `capacidadeEmMinutos` acumulada um
+    grupo por vez (o bloqueio sobre o horário da outra unidade não sai duas
+    vezes; a soma é o que a capacidade perdeu). Prova:
+    `e2e/agenda-ocupacao-diz-o-desconto.spec.ts`, `tests/metrics-ocupacao.test.ts` ("A9 da 13ª").
   - **composição do financeiro** (receita por forma de pagamento, receita e
     despesa por categoria) = `metrics_financeiro_composicao`
     (`getComposicaoFinanceira`, 2026-10-21), com a regra de `metrics_core`.
