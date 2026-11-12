@@ -77,10 +77,13 @@ test('C61: o /setup da gerente de unidade fixa leva à unidade dela, com o aviso
 })
 
 test('A14: "?unidade=<outra>" no financeiro da unidade tira o filtro e avisa', async ({ browser }) => {
+  // A página tem loading.tsx: o redirect sai no streaming (200 e a troca no
+  // navegador), não como 307 — confere o que a pessoa vê.
   await como(browser, gerente!.estado, async p => {
-    const r = await p.request.get(`/${slug}/financeiro?period=month&unidade=outra-unidade-${marca}`, { maxRedirects: 0 })
-    expect([303, 307, 308], 'redireciona').toContain(r.status())
-    expect(r.headers().location ?? '').toContain(`/${slug}/financeiro?period=month&aviso=filtro-de-unidade`)
+    await p.goto(`/${slug}/financeiro?period=month&unidade=outra-unidade-${marca}`)
+    await expect(p.getByText('Aqui é o portal desta unidade')).toBeVisible({ timeout: 20_000 })
+    expect(p.url()).not.toContain('unidade=outra-unidade')
+    expect(p.url()).toContain(`/${slug}/financeiro`)
   })
 })
 
@@ -167,17 +170,22 @@ test('C59 (D19): a conta de uma Admin da rede só outra Admin autoriza ao suport
 test('C67 (H6 = a): desativar a unidade oferece mudar a equipe fixa dela para outra unidade', async ({ browser }) => {
   const b = db()
   const dona = await criarMembro(`f70ua${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
-  const fixa = await criarMembro(`f70uf${marca}`, {
-    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Recepção', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
-  })
   await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  // Duas unidades só deste teste: mover a equipe fixa da unidade da rede
+  // levaria junto a gerente que os outros testes usam.
+  const { data: fecha } = await b.from('branches')
+    .insert({ tenant_id: rede!.tenantId, name: `[e2e] Fecha ${marca}`, slug: `e2e-f70-fecha-${marca}` })
+    .select('id').single<{ id: string }>()
   const { data: outra } = await b.from('branches')
     .insert({ tenant_id: rede!.tenantId, name: `[e2e] Segunda ${marca}`, slug: `e2e-f70-seg-${marca}` })
     .select('id').single<{ id: string }>()
+  const fixa = await criarMembro(`f70uf${marca}`, {
+    tenant: rede!.tenantId, branchId: fecha!.id, rotulo: 'Recepção', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
+  })
   try {
     await como(browser, dona.estado, async p => {
       const r = await chamarAcao(p, 'actions/branches.ts', 'moverEquipeDaUnidade', '/admin/settings?tab=unidades',
-        [rede!.branchId, outra!.id])
+        [fecha!.id, outra!.id])
       expect(r.status, r.texto.slice(0, 300)).toBe(200)
     })
     const { data: u } = await b.from('users').select('branch_id').eq('id', fixa.userId).single<{ branch_id: string }>()
@@ -185,7 +193,7 @@ test('C67 (H6 = a): desativar a unidade oferece mudar a equipe fixa dela para ou
   } finally {
     await fixa.limpar()
     await dona.limpar()
-    await b.from('branches').delete().eq('id', outra!.id)
+    await b.from('branches').delete().in('id', [fecha!.id, outra!.id])
   }
 })
 
