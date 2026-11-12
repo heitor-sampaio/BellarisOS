@@ -10,6 +10,9 @@ import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ArrowLeft, Power, PowerOff, Users } from 'lucide-react'
 import { ler } from '@/lib/db'
+import { DesativarUnidade } from '@/components/admin/desativar-unidade'
+import { oQueFicaNaUnidade, resumoDoQueFica } from '@/lib/unidades/desativar'
+import { origemDoApp, enderecoDoAppDaCliente } from '@/lib/unidades/app-da-cliente'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -45,6 +48,14 @@ export default async function BranchDetailPage({ params }: Props) {
   const salas = ((await ler(createAdminClient().from('rooms').select('id, name, is_active')
     .eq('branch_id', id).order('name'), 'carregar as salas')) ?? []) as SalaDaUnidade[]
 
+  // O que fica para trás se ela sair do ar (C67, F70) e para onde a equipe pode ir.
+  const oQueFica = branch.is_active ? await oQueFicaNaUnidade(createAdminClient(), ctx.tenantId!, id) : null
+  const outrasAtivas = branch.is_active
+    ? (((await ler(createAdminClient().from('branches').select('id, name')
+        .eq('tenant_id', ctx.tenantId!).eq('is_active', true).neq('id', id).order('name'), 'carregar as outras unidades')) ?? []) as { id: string; name: string }[])
+        .map(b => ({ id: b.id, nome: b.name }))
+    : []
+
   const members = (Array.isArray(branch.users) ? branch.users : []) as { id: string; name: string; is_active: boolean }[]
   const activeMembers = members.filter(u => u.is_active).length
 
@@ -79,31 +90,34 @@ export default async function BranchDetailPage({ params }: Props) {
               {branch.is_active ? 'Ativa' : 'Inativa'}
             </span>
           </div>
-          <code style={{
-            fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)',
-            background: 'var(--bg-app)', padding: '2px 8px',
-            borderRadius: 6, border: '1px solid var(--border)',
-          }}>
-            /{branch.slug}
-          </code>
+          {/* O endereço cru ("/jardins") não dizia nada (C61, F70): o que se usa é o app da cliente. */}
+          {branch.is_active && (
+            <p data-app-da-cliente-da-unidade style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
+              App da cliente: <b style={{ color: 'var(--text)' }}>{enderecoDoAppDaCliente(await origemDoApp(), branch.slug)}</b>
+            </p>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <form action={async () => {
-            'use server'
-            await toggleBranchStatus(id, !branch.is_active)
-          }}>
-            <button
-              type="submit"
-              className="btn-secondary"
-              style={{ gap: 6, fontSize: 'var(--text-xs-sz)', color: branch.is_active ? 'var(--text-faint)' : 'var(--success)' }}
+          {/* Desativar pede confirmação e diz o que fica para trás (C61/C67, F70); reativar é um clique. */}
+          {branch.is_active && oQueFica ? (
+            <DesativarUnidade
+              branchId={id} nome={branch.name} resumo={resumoDoQueFica(branch.name, oQueFica)}
+              fixos={oQueFica.fixos} agendamentos={oQueFica.agendamentos} outras={outrasAtivas}
+              className="btn-secondary" style={{ gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}
             >
-              {branch.is_active
-                ? <><PowerOff size={13} /> Desativar</>
-                : <><Power size={13} /> Reativar</>
-              }
-            </button>
-          </form>
+              <PowerOff size={13} /> Desativar
+            </DesativarUnidade>
+          ) : (
+            <form action={async () => {
+              'use server'
+              await toggleBranchStatus(id, true)
+            }}>
+              <button type="submit" className="btn-secondary" style={{ gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--success)' }}>
+                <Power size={13} /> Reativar
+              </button>
+            </form>
+          )}
         </div>
       </div>
 

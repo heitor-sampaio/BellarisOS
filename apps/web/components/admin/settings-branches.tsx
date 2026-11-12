@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
+import { DesativarUnidade } from '@/components/admin/desativar-unidade'
+import { oQueFicaNaUnidade, resumoDoQueFica, type OQueFicaNaUnidade } from '@/lib/unidades/desativar'
 import { getTenantContext } from '@/lib/auth'
 import { BranchForm } from '@/components/admin/branch-form'
 import { toggleBranchStatus } from '@/actions/branches'
@@ -45,6 +46,10 @@ export async function SettingsBranches() {
   const ondeAtendem = ((await lendoOndeAtendem) ?? []).flatMap(u => (u.atende_em as string[] | null) ?? [])
   const quantosAtendem = (id: string) => ondeAtendem.filter(u => u === id).length
   const unica = umaUnidade ? (branches ?? []).find(b => b.is_active) ?? null : null
+  // O que fica para trás em cada unidade ativa (C67, F70): a janela de desativar diz.
+  const ativas = (branches ?? []).filter(b => b.is_active)
+  const oQueFica = new Map<string, OQueFicaNaUnidade>(await Promise.all(
+    ativas.map(async b => [b.id, await oQueFicaNaUnidade(createAdminClient(), ctx.tenantId!, b.id)] as const)))
   const salasDaUnica = unica
     ? ((await ler(createAdminClient().from('rooms').select('id, name, is_active')
         .eq('branch_id', unica.id).order('name'), 'carregar as salas')) ?? []) as SalaDaUnidade[]
@@ -170,18 +175,15 @@ export async function SettingsBranches() {
                   paddingTop: 14, borderTop: '1px solid var(--hairline)',
                 }}>
                   {branch.is_active ? (
-                    <BotaoComConfirmacao
-                      acao={async () => {
-                        'use server'
-                        await toggleBranchStatus(branch.id, false)
-                      }}
-                      titulo="Desativar unidade?"
-                      explicacao={<><strong style={{ color: 'var(--text)' }}>{branch.name}</strong> sai do ar: a agenda dela fecha para novos agendamentos, e ela some do app das clientes. Dá para reativar depois.</>}
-                      rotuloConfirmar="Desativar"
+                    <DesativarUnidade
+                      branchId={branch.id} nome={branch.name}
+                      resumo={resumoDoQueFica(branch.name, oQueFica.get(branch.id) ?? { fixos: [], agendamentos: 0 })}
+                      fixos={oQueFica.get(branch.id)?.fixos ?? []} agendamentos={oQueFica.get(branch.id)?.agendamentos ?? 0}
+                      outras={ativas.filter(b => b.id !== branch.id).map(b => ({ id: b.id, nome: b.name }))}
                       style={{ fontSize: 'var(--text-xs-sz)', gap: 5, color: 'var(--text-faint)' }}
                     >
                       <PowerOff size={13} /> Desativar
-                    </BotaoComConfirmacao>
+                    </DesativarUnidade>
                   ) : (
                     <form action={async () => {
                       'use server'

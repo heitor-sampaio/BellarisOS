@@ -21,13 +21,18 @@ const ROTULO: Record<ChaveDeLimite, [string, string]> = {
   whatsapp: ['número de WhatsApp', 'números de WhatsApp'],
 }
 
-export function mensagemDoLimite(chave: ChaveDeLimite, limite: number): string {
+/**
+ * `umaUnidade`: a clínica de UMA unidade ativa não fala "rede" (a régua do
+ * D-19, `falaDaRede` no app; o núcleo não importa do app, e conta aqui).
+ * C61 do levantamento das regras (F70).
+ */
+export function mensagemDoLimite(chave: ChaveDeLimite, limite: number, fala: { umaUnidade?: boolean } = {}): string {
   const [um, varios] = ROTULO[chave]
   // O WhatsApp a clínica amplia sozinha: a conexão adicional (2026-10-07).
   const caminho = chave === 'whatsapp'
     ? 'contrate uma conexão adicional em Configurações → Assinatura ou fale com o BellarisOS.'
     : 'fale com o BellarisOS.'
-  return `O plano da sua rede permite até ${limite} ${limite === 1 ? um : varios}. Para ampliar, ${caminho}`
+  return `O plano da sua ${fala.umaUnidade ? 'clínica' : 'rede'} permite até ${limite} ${limite === 1 ? um : varios}. Para ampliar, ${caminho}`
 }
 
 /**
@@ -56,12 +61,15 @@ export async function conferirLimite(tenantId: string, chave: ChaveDeLimite): Pr
   const rede = await getCachedRede(tenantId)
   const limite = limiteDe(rede?.recursos ?? null, chave)
   if (limite === null) return null
-  const { count, error } = await createAdminClient()
+  const admin = createAdminClient()
+  const { count, error } = await admin
     .from(TABELA[chave]).select('id', { count: 'exact', head: true })
     .eq('tenant_id', tenantId).eq('is_active', true)
-  if (error) {
-    console.error(`[planos] contar ${chave}:`, error.message)
-    return mensagemDoLimite(chave, limite)
-  }
-  return passaDoLimite(limite, count ?? 0) ? mensagemDoLimite(chave, limite) : null
+  if (!error && !passaDoLimite(limite, count ?? 0)) return null
+  if (error) console.error(`[planos] contar ${chave}:`, error.message)
+  // A fala: "clínica" com UMA unidade ativa (contada só na recusa).
+  const { count: unidades } = chave === 'unidades' && !error
+    ? { count }
+    : await admin.from('branches').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('is_active', true)
+  return mensagemDoLimite(chave, limite, { umaUnidade: unidades === 1 })
 }

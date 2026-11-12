@@ -63,7 +63,7 @@ export function TelaDeErro({
           {forbidden
             ? 'Seu cargo não libera esta tela. Se precisar dela para trabalhar, fale com quem administra a rede.'
             : limite
-            ? 'O plano da sua rede chegou ao limite de unidades, membros ou números de WhatsApp. Para ampliar, fale com o BellarisOS.'
+            ? 'O plano chegou ao limite de unidades, membros ou números de WhatsApp. Para ampliar, fale com o BellarisOS.'
             : 'A tela não conseguiu carregar. Tentar de novo costuma resolver; se insistir, avise quem administra a rede.'}
         </p>
 

@@ -441,7 +441,7 @@ test.describe.serial('os limites do plano — unidades, membros e números de Wh
   let dono: MembroDeTeste | null = null
   let inativo: MembroDeTeste | null = null
   let segundaUnidade: string | null = null
-  const LIMITE = /BELLARIS_LIMITE_DO_PLANO|O plano da sua rede permite até/
+  const LIMITE = /BELLARIS_LIMITE_DO_PLANO|O plano da sua (rede|clínica) permite até/
   const comLimites = async (limites: { unidades: number | null; membros: number | null; whatsapp: number | null } | null) => {
     const recursos = limites ? { funcionalidades: FUNCIONALIDADES.map(f => f.chave), limites } : null
     expect((await db().from('tenant_subscriptions').upsert({ tenant_id: outra.tenantId, plan_id: planoBase, valor_centavos: 0, recursos }, { onConflict: 'tenant_id' })).error).toBeNull()

@@ -163,3 +163,28 @@ test('C59 (D19): a conta de uma Admin da rede só outra Admin autoriza ao suport
     await dona.limpar()
   }
 })
+
+test('C67 (H6 = a): desativar a unidade oferece mudar a equipe fixa dela para outra unidade', async ({ browser }) => {
+  const b = db()
+  const dona = await criarMembro(`f70ua${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  const fixa = await criarMembro(`f70uf${marca}`, {
+    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Recepção', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }],
+  })
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  const { data: outra } = await b.from('branches')
+    .insert({ tenant_id: rede!.tenantId, name: `[e2e] Segunda ${marca}`, slug: `e2e-f70-seg-${marca}` })
+    .select('id').single<{ id: string }>()
+  try {
+    await como(browser, dona.estado, async p => {
+      const r = await chamarAcao(p, 'actions/branches.ts', 'moverEquipeDaUnidade', '/admin/settings?tab=unidades',
+        [rede!.branchId, outra!.id])
+      expect(r.status, r.texto.slice(0, 300)).toBe(200)
+    })
+    const { data: u } = await b.from('users').select('branch_id').eq('id', fixa.userId).single<{ branch_id: string }>()
+    expect(u!.branch_id, 'a pessoa fixa passou para a outra unidade').toBe(outra!.id)
+  } finally {
+    await fixa.limpar()
+    await dona.limpar()
+    await b.from('branches').delete().eq('id', outra!.id)
+  }
+})

@@ -24,7 +24,7 @@ export function erroParaTela(e: unknown, padrao: string): string {
     return 'Seu cargo não libera esta ação.'
   }
   if (e && typeof e === 'object' && ehLimiteDoPlano(e as { digest?: string })) {
-    return 'O plano da sua rede chegou ao limite. Para ampliar, fale com o BellarisOS.'
+    return 'O plano chegou ao limite. Para ampliar, fale com o BellarisOS.'
   }
   if (e instanceof Error && !('digest' in e) && e.message && !/server components/i.test(e.message)) {
     return e.message

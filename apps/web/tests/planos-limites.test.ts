@@ -29,4 +29,7 @@ describe('mensagemDoLimite', () => {
     // O WhatsApp a clínica pode ampliar sozinha (adicional, 2026-10-07).
     expect(mensagemDoLimite('whatsapp', 2)).toBe('O plano da sua rede permite até 2 números de WhatsApp. Para ampliar, contrate uma conexão adicional em Configurações → Assinatura ou fale com o BellarisOS.')
   })
+  it('C61 (F70): a clínica de UMA unidade não fala "rede"', () => {
+    expect(mensagemDoLimite('membros', 5, { umaUnidade: true })).toBe('O plano da sua clínica permite até 5 membros na equipe. Para ampliar, fale com o BellarisOS.')
+  })
 })

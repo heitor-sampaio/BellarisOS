@@ -8,6 +8,7 @@ import { getTenantContext, assertPermission, assertUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { semAcesso } from '@/lib/sem-acesso'
+import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { slugDoTexto, candidatosDeEndereco, escolherEndereco } from '@/lib/unidades/endereco'
 import { maskCPF, maskCNPJ } from '@estetica-os/utils'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
@@ -212,4 +213,48 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean) {
   revalidatePath('/admin/branches')
   revalidatePath(`/admin/branches/${branchId}`)
   revalidateTag(`branches:${ctx.tenantId!}`, { expire: 0 })
+}
+
+/**
+ * Muda a equipe FIXA de uma unidade para outra (C67 do levantamento das
+ * regras, F70; H6 = a): é o que a janela de desativar oferece antes de tirar a
+ * unidade do ar. Só quem é da rede, com Configurações e Equipe em Gerenciar.
+ * Move a abrangência (a unidade de quem entra só nela) e reemite os claims; o
+ * "Atende" de cada pessoa não muda (é uma decisão por pessoa, em Equipe).
+ */
+export async function moverEquipeDaUnidade(
+  origemId: string, destinoId: string,
+): Promise<{ error: string } | { ok: true; movidos: number }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+  assertPermission(ctx, 'team', 'MANAGE')
+  if (ctx.branchId !== null) return { error: 'Mudar a equipe de unidade é de quem é da rede.' }
+  const travado = bloqueioDoSuporte(ctx, 'mudar a equipe de unidade')
+  if (travado) return { error: travado }
+  if (!origemId || !destinoId || origemId === destinoId) return { error: 'Escolha outra unidade.' }
+
+  const admin = createAdminClient()
+  const unidades = await ler(admin.from('branches').select('id, is_active')
+    .eq('tenant_id', ctx.tenantId!).in('id', [origemId, destinoId]), 'conferir as unidades') as { id: string; is_active: boolean }[] | null
+  const destino = (unidades ?? []).find(u => u.id === destinoId)
+  if (!(unidades ?? []).some(u => u.id === origemId) || !destino) return { error: 'Unidade não encontrada.' }
+  if (!destino.is_active) return { error: 'A unidade escolhida está desativada.' }
+
+  const fixos = await ler(admin.from('users').select('id, auth_id, role_id')
+    .eq('tenant_id', ctx.tenantId!).eq('branch_id', origemId).eq('is_active', true), 'carregar a equipe da unidade') as
+    { id: string; auth_id: string | null; role_id: string | null }[] | null
+  for (const m of fixos ?? []) {
+    await gravar(admin.from('users').update({ branch_id: destinoId })
+      .eq('id', m.id).eq('tenant_id', ctx.tenantId!).eq('branch_id', origemId), 'mudar a pessoa de unidade')
+    if (m.auth_id) {
+      await gravar(admin.rpc('set_user_claims', {
+        p_auth_id: m.auth_id, p_tenant_id: ctx.tenantId!, p_branch_id: destinoId, p_role_id: m.role_id,
+      }), 'atualizar o acesso da pessoa')
+      revalidateTag(`user:${m.auth_id}`, { expire: 0 })
+    }
+  }
+  revalidateTag(`professionals:${ctx.tenantId!}`, { expire: 0 })
+  revalidatePath('/admin/team')
+  revalidatePath('/admin/settings')
+  return { ok: true, movidos: (fixos ?? []).length }
 }
