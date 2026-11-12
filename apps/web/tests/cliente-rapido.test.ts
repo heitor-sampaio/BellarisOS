@@ -13,9 +13,10 @@ describe('digitosDoTelefone', () => {
   })
 
   it('o mesmo número em máscaras diferentes tem os mesmos 8 dígitos finais', () => {
-    // É por isso que a busca compara `right(digits, 8)`: o formulário grava
-    // "(47) 99123-4567" e o WhatsApp manda "5547991234567". Um `ilike` com os
-    // dígitos crus não casava com a máscara e criava cliente duplicado.
+    // O formulário grava "(47) 99123-4567" e o WhatsApp manda "5547991234567":
+    // a busca compara os dígitos pelo número inteiro, com o 55 e o nono dígito
+    // tolerados (`private.telefone_casa`, F70 — antes, os 8 finais, e o DDD
+    // ficava de fora).
     const doFormulario = digitosDoTelefone('(47) 99123-4567')
     const doWhatsApp   = digitosDoTelefone('5547991234567')
     expect(doFormulario).not.toBe(doWhatsApp)

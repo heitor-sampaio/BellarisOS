@@ -26,6 +26,10 @@ import { umaVez, chaveDoEnvio, chaveDoConteudo } from '@/lib/envio-unico'
 import { fichasQueJaExistem, respostaDoJaExiste, proximaSemResposta, atualizarFichaComOPreenchido, type FichaQueJaExiste, type PreenchidoAgora } from '@/lib/clients/ja-existe'
 import type { TenantContext } from '@estetica-os/types'
 
+/** O e-mail com um "@" e um domínio — a regra do cadastro, em todo lugar que grava a ficha (C31, F70). */
+const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_INVALIDO = 'E-mail inválido.'
+
 const TELEFONE_INCOMPLETO = 'Telefone incompleto: informe o DDD e o número (10 ou 11 dígitos). De outro país, comece com + e o código do país (ex.: +351 912 345 678).'
 
 // --- Helper: a unidade do registro, da rede e ao alcance ----------
@@ -170,7 +174,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   // O de outro país começa com "+" e passa (frente de cadastro, 2026-10-29).
   const fone = telefoneDoCadastro(phone)
   if (!fone) return { error: TELEFONE_INCOMPLETO }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'E-mail inválido.' }
+  if (email && !EMAIL_VALIDO.test(email)) return { error: EMAIL_INVALIDO }
   // D12: pelos dígitos verificadores (em `documentoDaFicha`) — o 11111111111 passava e virava a senha inicial do login.
   // Sem CPF, a senha inicial é o passaporte ou o RNE da ficha (decisão 1 do
   // Heitor, 2026-11-05). Sem documento nenhum, sem acesso.
@@ -602,6 +606,8 @@ export async function updateClientContactData(
   }
   // As mesmas regras do cadastro (D12, D13).
   if (data.phone?.trim() && !telefoneDoCadastro(data.phone)) return { error: TELEFONE_INCOMPLETO }
+  // O e-mail também (C31, F70): a aba Dados gravava "sem-arroba".
+  if (data.email?.trim() && !EMAIL_VALIDO.test(data.email.trim())) return { error: EMAIL_INVALIDO }
   const doc = documentoDaFicha(data.documentType ?? 'CPF', data.document)
   if ('error' in doc) return doc
   // O responsável só vem quando a tela o mostra (a menor); sem o campo, o que está fica.
@@ -672,35 +678,42 @@ export async function updateClientSelf(
 ): Promise<{ error?: string; success?: boolean }> {
   const ctx = await getTenantContext()
   assertClient(ctx)
+  if (!ctx.clientId) return { error: 'Cadastro não encontrado.' }
 
-  const admin   = createAdminClient()
-  const phone   = (formData.get('phone') as string)?.replace(/\D/g, '') || null
-  const email   = (formData.get('email') as string)?.trim() || null
-  const zip     = (formData.get('zip_code') as string)?.replace(/\D/g, '') || null
-  const addr    = (formData.get('address') as string)?.trim() || null
-  const addrNum = (formData.get('address_number') as string)?.trim() || null
-  const addrCmp = (formData.get('address_complement') as string)?.trim() || null
-  const hood    = (formData.get('neighborhood') as string)?.trim() || null
-  const city    = (formData.get('city') as string)?.trim() || null
-  const state   = (formData.get('state') as string)?.trim() || null
+  const admin = createAdminClient()
+  const texto = (k: string) => (formData.get(k) as string | null)?.trim() || null
+  const phone = texto('phone')
+  const email = texto('email')
+  // As regras da ficha (C29, F70): gravava qualquer coisa — o telefone
+  // incompleto, o e-mail sem "@" — e devolvia o erro cru do banco.
+  if (phone && !telefoneDoCadastro(phone)) return { error: TELEFONE_INCOMPLETO }
+  if (email && !EMAIL_VALIDO.test(email)) return { error: EMAIL_INVALIDO }
 
-  const { error } = await admin
-    .from('clients')
-    .update({
-      phone,
-      email,
-      zip_code:           zip,
-      address:            addr,
-      address_number:     addrNum,
-      address_complement: addrCmp,
-      neighborhood:       hood,
-      city,
-      state,
-      updated_at:         new Date().toISOString(),
+  // A ficha é a da clínica do ENDEREÇO (ctx.clientId, §5); a rede sai dela.
+  const ficha = await ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId).maybeSingle(),
+    'buscar o cadastro da cliente') as { tenant_id: string } | null
+  if (!ficha) return { error: 'Cadastro não encontrado.' }
+
+  // O núcleo da ficha (lib/clients/atualizar.ts), como a aba Dados e o
+  // Copilot: a rede conferida, o "dados alterados" para as automações, e o
+  // cache da lista de clientes expirado.
+  try {
+    const r = await atualizarClienteCore(admin, { ...ctx, tenantId: ficha.tenant_id }, ctx.clientId, {
+      // O de outro país guarda o "+", como foi escrito (a regra da aba Dados).
+      phone:              telefoneInternacional(phone) ?? (phone?.replace(/\D/g, '') || null),
+      email:              email?.toLowerCase() ?? null,
+      zip_code:           texto('zip_code')?.replace(/\D/g, '') || null,
+      address:            texto('address'),
+      address_number:     texto('address_number'),
+      address_complement: texto('address_complement'),
+      neighborhood:       texto('neighborhood'),
+      city:               texto('city'),
+      state:              texto('state'),
     })
-    .eq('id', ctx.clientId!)
-
-  if (error) return { error: error.message }
+    if (r.error) return { error: r.error }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
   return { success: true }
 }
 

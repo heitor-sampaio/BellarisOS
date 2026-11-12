@@ -66,3 +66,16 @@ test('o público não vê o aviso interno de documento incompleto (A46)', async 
   await expect(page.getByText('Documento ainda incompleto')).toHaveCount(0)
   await expect(page.getByText(/Falta preencher/)).toHaveCount(0)
 })
+
+// C30 do levantamento das regras (F70; D6 e H15 = a): a página prometia que "o
+// pedido de eliminação é atendido", e o sistema não tem eliminação — ela é feita
+// a pedido, pelo contato da clínica, respeitando as guardas legais.
+test('a eliminação é pelo contato da clínica, com as guardas do prontuário e do fiscal', async ({ page }) => {
+  await page.goto('/privacidade')
+  const main = page.locator('main')
+  await expect(main).toContainText('Para pedir a eliminação dos seus dados')
+  await expect(main).toContainText('pelo contato da clínica')
+  await expect(main).toContainText('20 anos')
+  await expect(main).toContainText('5 anos')
+  await expect(main).not.toContainText('o pedido de eliminação é atendido')
+})

@@ -203,6 +203,9 @@ export async function garantirClienteRapido(
     .select('id')
     .single()
 
+  // A corrida (a ficha nasceu entre a pergunta e o insert): a unique do CPF
+  // ou do documento não chega crua à tela (C29, F70).
+  if (error?.code === '23505') return { error: 'Já existe uma ficha com este documento. Procure-a em Clientes (inclusive nas arquivadas).' }
   if (error || !cliente) return { error: `Erro ao cadastrar o cliente: ${error?.message ?? 'desconhecido'}` }
 
   await gravar(admin.rpc('fidelidade_conta', { p_cliente: cliente.id }), 'abrir a conta de fidelidade')

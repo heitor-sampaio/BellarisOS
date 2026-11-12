@@ -28,7 +28,10 @@ export const ABAS_DE_CONFIGURACAO = [
   { key: 'fidelidade',    label: 'Fidelidade',   module: 'settings',  recurso: 'fidelidade' },
   // Como a comissão acontece e as taxas da maquininha: é dinheiro, 'financial'.
   { key: 'comissoes',     label: 'Comissões',    module: 'financial', recurso: 'comissoes' },
-  { key: 'lgpd',          label: 'LGPD',         module: 'settings' },
+  // Quem libera o prontuário do pacote (Prontuário em Gerenciar) também abre
+  // a aba (C31, F70): o pedido com o prontuário avisava só Configurações, e
+  // quem podia liberar não chegava ao botão.
+  { key: 'lgpd',          label: 'LGPD',         module: 'settings',  alternativas: ['medical_records'] },
   // A assinatura do BellarisOS (plano, faturas, pagar). Da rede.
   { key: 'assinatura',    label: 'Assinatura',   module: 'settings' },
   // O suporte do BellarisOS: autorizar o acesso e ver o que ele fez. Da rede.
@@ -54,7 +57,7 @@ export function abaLiberada(aba: object, gerencia: (m: AppModule) => boolean): b
 }
 
 /** Os módulos que abrem alguma aba (a página de Configurações confere isto). */
-export const MODULOS_DAS_ABAS: AppModule[] = ['settings', 'roles', 'forms', 'financial', 'clients', 'crm']
+export const MODULOS_DAS_ABAS: AppModule[] = ['settings', 'roles', 'forms', 'financial', 'clients', 'crm', 'medical_records']
 
 /**
  * A aba é de uma funcionalidade do PLANO (lib/planos/recursos.ts)? Fora dele,

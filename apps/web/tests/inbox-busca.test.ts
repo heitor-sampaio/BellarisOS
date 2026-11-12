@@ -27,4 +27,16 @@ describe('conversaCasaComBusca', () => {
   it('menos de 3 dígitos não busca por telefone', () => {
     expect(conversaCasaComBusca(conversa('5548999771234'), '(4')).toBe(false)
   })
+
+  // C31 (F70): a busca do inbox é a mesma regra da de cliente (D6 da 8ª) —
+  // todas as palavras em qualquer ordem, e o telefone com o 55 e o nono dígito.
+  it('todas as palavras, em qualquer ordem', () => {
+    expect(conversaCasaComBusca(conversa('5548999771234'), 'informacoes cris')).toBe(true)
+    expect(conversaCasaComBusca(conversa('5548999771234'), 'cris maria')).toBe(false)
+  })
+
+  it('o telefone sem o nono dígito casa com o digitado com ele, e vice-versa', () => {
+    expect(conversaCasaComBusca(conversa('554899771234'), '(48) 99977-1234')).toBe(true)
+    expect(conversaCasaComBusca(conversa('5548999771234'), '(48) 9977-1234')).toBe(true)
+  })
 })

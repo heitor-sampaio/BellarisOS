@@ -64,9 +64,13 @@ export async function fichasQueJaExistem(
   }
 
   if (q.cpf) {
-    const doCpf = await ler(admin.from('clients').select('id, name').eq('tenant_id', tenantId)
-      .eq('document', q.cpf).eq('is_active', true).limit(1), 'conferir se o CPF já tem ficha') as { id: string; name: string }[] | null
-    for (const c of doCpf ?? []) junta(c.id, c.name, 'CPF')
+    // Nos caminhos rápidos, a ARQUIVADA do CPF também (C29, F70): o CPF é
+    // único na clínica, e sem ela na pergunta o insert batia na unique e a
+    // tela mostrava o erro cru do banco. Ela entra com o "Reativar".
+    let doCpfQ = admin.from('clients').select('id, name, is_active').eq('tenant_id', tenantId).eq('document', q.cpf)
+    if (!opcoes.comArquivadas) doCpfQ = doCpfQ.eq('is_active', true)
+    const doCpf = await ler(doCpfQ.limit(1), 'conferir se o CPF já tem ficha') as { id: string; name: string; is_active: boolean }[] | null
+    for (const c of doCpf ?? []) junta(c.id, c.name, 'CPF', c.is_active === false)
   }
   if (q.digitos && q.digitos.length >= 8) {
     const doTelefone = await ler(admin.rpc('fichas_do_telefone', { p_tenant: tenantId, p_digitos: q.digitos }),
@@ -123,9 +127,10 @@ export interface PreenchidoAgora {
 export async function atualizarFichaComOPreenchido(
   admin: Admin, ctx: TenantContext, clientId: string, agora: PreenchidoAgora,
 ): Promise<{ error?: string; alterou?: string[] }> {
-  const antes = await ler(admin.from('clients').select('name, document, notes, tags, is_active')
+  const antes = await ler(admin.from('clients').select('name, document, documento_tipo, documento_numero, notes, tags, is_active')
     .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a ficha que já existe') as {
-      name: string; document: string | null; notes: string | null; tags: string[] | null; is_active: boolean
+      name: string; document: string | null; documento_tipo: string | null; documento_numero: string | null
+      notes: string | null; tags: string[] | null; is_active: boolean
     } | null
   if (!antes || !antes.is_active) return { error: 'A ficha não foi encontrada.' }
 
@@ -140,6 +145,13 @@ export async function atualizarFichaComOPreenchido(
     if (antes.document && antes.document !== doc.document) return { error: `A ficha de ${antes.name} já tem outro CPF. Confira o CPF digitado.` }
     colunas.document = doc.document
   } else if (doc?.documento_numero) {
+    // O passaporte/RNE segue a regra do CPF (C31, F70): a ficha com CPF não
+    // ganha um passaporte por cima (a ficha tem UM documento), e o documento
+    // diferente do que ela já tem é recusado — era gravado por cima.
+    if (antes.document) return { error: `A ficha de ${antes.name} já tem CPF. Confira o documento digitado.` }
+    const mesmo = antes.documento_tipo === doc.documento_tipo
+      && (antes.documento_numero ?? '').toUpperCase() === doc.documento_numero.toUpperCase()
+    if (antes.documento_numero && !mesmo) return { error: `A ficha de ${antes.name} já tem outro documento. Confira o documento digitado.` }
     colunas.documento_tipo = doc.documento_tipo
     colunas.documento_numero = doc.documento_numero
   }

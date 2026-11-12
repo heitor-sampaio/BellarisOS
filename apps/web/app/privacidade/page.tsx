@@ -228,6 +228,11 @@ export default function PoliticaDePrivacidade() {
               o pacote é gerado de novo com a parte clínica junto.
             </>,
             <>
+              <B>Para pedir a eliminação dos seus dados:</B> fale com a clínica que atende
+              você, pelo contato dela. O sistema não tem um botão de eliminação: a clínica
+              recebe o pedido, confere o que pode ser apagado e responde a você.
+            </>,
+            <>
               <B>Se você usa o sistema para trabalhar:</B> fale com o encarregado, no contato
               da seção 12.
             </>,
@@ -236,10 +241,11 @@ export default function PoliticaDePrivacidade() {
           <SubTitulo>O que não apagamos, e por quê</SubTitulo>
           <P>
             <B>Não excluímos prontuário nem registro financeiro a pedido.</B> Não é uma
-            escolha de produto: prontuário tem guarda obrigatória por lei e por norma
-            profissional, e registro fiscal tem prazo próprio. Apagá-los conflitaria com
-            esses deveres — e a LGPD reconhece isso expressamente (art. 16, I). Fora dessas
-            hipóteses, o pedido de eliminação é atendido.
+            escolha de produto: o prontuário tem guarda obrigatória por lei e por norma
+            profissional (<B>20 anos</B> desde o último registro), e o registro fiscal, a
+            dele (<B>5 anos</B>). Apagá-los conflitaria com esses deveres — e a LGPD
+            reconhece isso expressamente (art. 16, I). O resto é eliminado quando você
+            pede, pelo contato da clínica, respeitando essas guardas.
           </P>
         </Secao>
 

@@ -16,9 +16,12 @@ export const CAMINHO_DA_ABA_LGPD = '/admin/settings?tab=lgpd'
  * Gerenciar, da clínica toda (a aba é do portal da rede) — e a Admin da rede
  * (o cargo de sistema, que tem tudo).
  */
-async function quemResponde(admin: Admin, tenantId: string): Promise<string[]> {
+async function quemResponde(admin: Admin, tenantId: string, comProntuario: boolean): Promise<string[]> {
+  // Com o prontuário no pacote, também quem o LIBERA (Prontuário em Gerenciar,
+  // que abre a aba LGPD — C31, F70): a parte clínica espera por essa pessoa.
+  const modulos = comProntuario ? ['settings', 'medical_records'] : ['settings']
   const cargos = await ler(admin.from('role_permissions').select('role_id')
-    .eq('tenant_id', tenantId).eq('module', 'settings').eq('level', 'MANAGE'), 'listar os cargos que respondem à LGPD') as { role_id: string }[] | null
+    .eq('tenant_id', tenantId).in('module', modulos).eq('level', 'MANAGE'), 'listar os cargos que respondem à LGPD') as { role_id: string }[] | null
   const roleIds = (cargos ?? []).map(c => c.role_id)
   const comConfig = roleIds.length ? (await ler(admin.from('users').select('id')
     .eq('tenant_id', tenantId).eq('is_active', true).is('branch_id', null).in('role_id', roleIds),
@@ -43,7 +46,7 @@ export async function avisarPedidoDaCliente(pedidoId: string): Promise<void> {
     'ler o pedido de dados') as { tenant_id: string; requested_at: string; include_medical: boolean; clients: { name: string } | null } | null
     if (!pedido) return
     const nome = pedido.clients?.name ?? 'Uma cliente'
-    const ids = await quemResponde(admin, pedido.tenant_id)
+    const ids = await quemResponde(admin, pedido.tenant_id, pedido.include_medical)
     const fuso = await fusoDaRede(pedido.tenant_id)
     await Promise.allSettled(ids.map(id => notifyUser(admin, id, {
       type: 'lgpd.pedido',

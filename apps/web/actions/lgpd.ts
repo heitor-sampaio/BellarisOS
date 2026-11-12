@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { LGPD_BUCKET } from '@/lib/lgpd/export'
 import { processExportRequest } from '@/lib/lgpd/processar'
 import { avisarPedidoDaCliente } from '@/lib/lgpd/aviso-do-pedido'
-import { ler, mensagemDoErro } from '@/lib/db'
+import { ler, lerTodas, mensagemDoErro } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 
 /**
@@ -172,14 +172,17 @@ export async function listDataRequests(): Promise<LgpdAdminRow[]> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'clients', 'VIEW')
 
-  const data = await ler(createAdminClient()
+  // Todos os pedidos, em páginas (C31, F70): o `.limit(100)` escondia o mais
+  // antigo — inclusive o que ainda esperava resposta dentro do prazo.
+  const data = await lerTodas((de, ate) => createAdminClient()
     .from('lgpd_requests')
     .select('id, type, status, requested_at, completed_at, include_medical, medical_status, medical_reviewed_at, expires_at, error_message, export_pdf_path, requested_via, client_id, clients(name)')
     .eq('tenant_id', ctx.tenantId!)
     .order('requested_at', { ascending: false })
-    .limit(100), 'carregar os pedidos de LGPD')
+    .order('id')
+    .range(de, ate), 'carregar os pedidos de LGPD')
 
-  return (data ?? []).map(r => ({
+  return data.map(r => ({
     id: r.id, type: r.type, status: r.status,
     requested_at: r.requested_at, completed_at: r.completed_at,
     include_medical: r.include_medical, medical_status: r.medical_status,
