@@ -20,6 +20,13 @@ describe('quem autoriza o suporte', () => {
     expect(podeAutorizar({ internalUserId: 'u1', branchId: 'b1', permissions: com({ settings: 'MANAGE' }) }, 'u2')).toBe(false)
     expect(podeAutorizar({ internalUserId: 'u1', branchId: null, permissions: com({ settings: 'VIEW' }) }, 'u2')).toBe(false)
   })
+  it('D19 (F70): a conta de uma Admin da rede só uma Admin da rede autoriza', () => {
+    const gerenteDaRede = { internalUserId: 'u1', branchId: null, permissions: com({ settings: 'MANAGE' }) }
+    expect(podeAutorizar(gerenteDaRede, 'u2', { alvoEhAdmin: true })).toBe(false)
+    expect(podeAutorizar({ ...gerenteDaRede, isNetworkAdmin: true }, 'u2', { alvoEhAdmin: true })).toBe(true)
+    // A própria Admin, para si, sempre.
+    expect(podeAutorizar({ ...gerenteDaRede, internalUserId: 'u2', isNetworkAdmin: true }, 'u2', { alvoEhAdmin: true })).toBe(true)
+  })
   it('sem membro (cliente final) não autoriza nada', () => {
     expect(podeAutorizar({ internalUserId: null, branchId: null, permissions: com({ settings: 'MANAGE' }) }, 'u2')).toBe(false)
   })

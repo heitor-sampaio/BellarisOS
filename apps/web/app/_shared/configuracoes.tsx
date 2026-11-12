@@ -517,7 +517,7 @@ export async function Configuracoes({
       )}
 
       {conteudo === 'suporte' && (dadosDoSuporte
-        ? <SettingsSuporte dados={dadosDoSuporte} podeClinico={podeIncluirClinico(ctx)} />
+        ? <SettingsSuporte dados={dadosDoSuporte} podeClinico={podeIncluirClinico(ctx)} souAdmin={ctx.isNetworkAdmin} meuId={ctx.internalUserId} />
         : (
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
             Indisponível no modo suporte: quem autoriza o acesso é a própria clínica.

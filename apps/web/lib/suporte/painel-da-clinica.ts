@@ -8,7 +8,8 @@ import { ROTULO_DO_REGISTRO, type TipoDeRegistroDaPlataforma } from '@/lib/plata
  * alguém dela (e o que foi feito), e o que a plataforma fez sobre a rede.
  */
 export interface DadosDaAbaSuporte {
-  membros:       { id: string; nome: string; unidade: string | null; cargo: string | null }[]
+  /** `ehAdmin`: tem o cargo de sistema Admin da rede (D19: só outra Admin autoriza a conta dela). */
+  membros:       { id: string; nome: string; unidade: string | null; cargo: string | null; ehAdmin: boolean }[]
   autorizacoes:  { id: string; membro: string; membroId: string; expiraEm: string; clinico: boolean; por: string | null; via: string }[]
   sessoes:       { id: string; atendente: string; membro: string; motivo: string; inicio: string; fim: string | null;
                    status: string; motivoDoFim: string | null; acessos: number; clinico: boolean }[]
@@ -19,7 +20,7 @@ export async function dadosDaAbaSuporte(tenantId: string): Promise<DadosDaAbaSup
   const admin = createAdminClient()
   const agora = new Date().toISOString()
   const [membros, grants, sessoes, registros] = await Promise.all([
-    ler(admin.from('users').select('id, name, branches(name), tenant_roles(label)')
+    ler(admin.from('users').select('id, name, branches(name), tenant_roles(label, key, is_system)')
       .eq('tenant_id', tenantId).eq('is_active', true).order('name'), 'carregar a equipe'),
     ler(admin.from('support_grants')
       .select('id, target_user_id, expires_at, includes_clinical, via, alvo:users!support_grants_target_user_id_fkey(name), por:users!support_grants_granted_by_user_id_fkey(name)')
@@ -32,8 +33,12 @@ export async function dadosDaAbaSuporte(tenantId: string): Promise<DadosDaAbaSup
   ])
 
   return {
-    membros: ((membros ?? []) as unknown as { id: string; name: string; branches: { name: string } | null; tenant_roles: { label: string } | null }[])
-      .map(m => ({ id: m.id, nome: m.name, unidade: m.branches?.name ?? null, cargo: m.tenant_roles?.label ?? null })),
+    membros: ((membros ?? []) as unknown as {
+      id: string; name: string; branches: { name: string } | null; tenant_roles: { label: string; key: string; is_system: boolean } | null
+    }[]).map(m => ({
+      id: m.id, nome: m.name, unidade: m.branches?.name ?? null, cargo: m.tenant_roles?.label ?? null,
+      ehAdmin: m.tenant_roles?.key === 'NETWORK_ADMIN' && m.tenant_roles?.is_system === true,
+    })),
     autorizacoes: ((grants ?? []) as unknown as {
       id: string; target_user_id: string; expires_at: string; includes_clinical: boolean; via: string
       alvo: { name: string } | null; por: { name: string } | null

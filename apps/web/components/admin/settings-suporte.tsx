@@ -21,10 +21,16 @@ const FIM: Record<string, string> = {
   saiu: 'saiu', venceu: 'o prazo venceu', 'autorização revogada': 'autorização revogada',
 }
 
-export function SettingsSuporte({ dados, podeClinico }: { dados: DadosDaAbaSuporte; podeClinico: boolean }) {
+export function SettingsSuporte({ dados, podeClinico, souAdmin, meuId }: {
+  dados: DadosDaAbaSuporte; podeClinico: boolean
+  /** Quem vê tem o cargo de sistema Admin da rede; `meuId` é o membro dela. */
+  souAdmin: boolean; meuId: string | null
+}) {
   const fuso = useFuso()
   const router = useRouter()
-  const [membro, setMembro] = useState(dados.membros[0]?.id ?? '')
+  // D19 (F70): a conta de uma Admin da rede só outra Admin autoriza (a própria, sempre).
+  const travada = (id: string) => !souAdmin && id !== meuId && !!dados.membros.find(m => m.id === id)?.ehAdmin
+  const [membro, setMembro] = useState(dados.membros.find(m => !travada(m.id))?.id ?? '')
   const [horas, setHoras] = useState<HorasDeAutorizacao>(HORAS_PADRAO)
   const [clinico, setClinico] = useState(false)
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null)
@@ -70,7 +76,9 @@ export function SettingsSuporte({ dados, podeClinico }: { dados: DadosDaAbaSupor
             <span className="field-label">Conta</span>
             <select className="filtro-select" value={membro} onChange={e => setMembro(e.target.value)}>
               {dados.membros.map(m => (
-                <option key={m.id} value={m.id}>{m.nome}{m.cargo ? ` · ${m.cargo}` : ''}{m.unidade ? ` · ${m.unidade}` : ''}</option>
+                <option key={m.id} value={m.id} disabled={travada(m.id)}>
+                  {m.nome}{m.cargo ? ` · ${m.cargo}` : ''}{m.unidade ? ` · ${m.unidade}` : ''}{travada(m.id) ? ' (só uma Admin da rede autoriza)' : ''}
+                </option>
               ))}
             </select>
           </label>
@@ -104,10 +112,12 @@ export function SettingsSuporte({ dados, podeClinico }: { dados: DadosDaAbaSupor
                   <td data-label="Prontuário" data-par>{a.clinico ? 'Incluído' : 'Fora'}</td>
                   <td data-label="Por" data-par>{a.por ?? '—'}{a.via === 'chamado' ? ' (chamado)' : ''}</td>
                   <td data-label="">
-                    <button type="button" className="btn-ghost" disabled={pendente}
-                      onClick={() => rodar(() => revogarAutorizacaoDeSuporte(a.id), 'Autorização revogada.')}>
-                      Revogar
-                    </button>
+                    {!travada(a.membroId) && (
+                      <button type="button" className="btn-ghost" disabled={pendente}
+                        onClick={() => rodar(() => revogarAutorizacaoDeSuporte(a.id), 'Autorização revogada.')}>
+                        Revogar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

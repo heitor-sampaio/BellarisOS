@@ -5,7 +5,9 @@ import type { ResolvedPermissions } from '@estetica-os/types'
  *
  * - **Quem autoriza quem:** o próprio membro, para si; quem é da REDE
  *   (abrangência de rede) com `settings: MANAGE`, para qualquer membro.
- *   Gente de unidade só autoriza a si mesma.
+ *   Gente de unidade só autoriza a si mesma. A conta de uma Admin da rede
+ *   só uma Admin da rede autoriza (D19, F70): a gerente com Configurações
+ *   abria ao suporte o acesso total que ela mesma não tem.
  * - **Dado clínico:** só quem tem `medical_records: MANAGE` pode incluí-lo —
  *   o mesmo critério de liberar prontuário num pedido de LGPD.
  * - **Duração da autorização:** 24 h, 72 h (padrão) ou 7 dias.
@@ -24,11 +26,17 @@ interface QuemAutoriza {
   internalUserId: string | null
   branchId:       string | null
   permissions:    ResolvedPermissions
+  /** Tem o cargo de sistema Admin da rede (lido do banco, `buildContext`). */
+  isNetworkAdmin?: boolean
 }
 
-export function podeAutorizar(quem: QuemAutoriza, alvoUserId: string): boolean {
+/** A mensagem de quando a conta é de uma Admin da rede e quem pede não é. */
+export const SO_ADMIN_AUTORIZA_ADMIN = 'A conta de uma Admin da rede só outra Admin da rede autoriza ao suporte.'
+
+export function podeAutorizar(quem: QuemAutoriza, alvoUserId: string, alvo: { alvoEhAdmin?: boolean } = {}): boolean {
   if (!quem.internalUserId) return false
   if (quem.internalUserId === alvoUserId) return true
+  if (alvo.alvoEhAdmin && !quem.isNetworkAdmin) return false
   return quem.branchId === null && quem.permissions.settings === 'MANAGE'
 }
 

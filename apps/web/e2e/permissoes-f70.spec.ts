@@ -141,3 +141,25 @@ test('C62: ninguém dá um cargo com mais acesso que o próprio', async ({ brows
     await rh.limpar()
   }
 })
+
+test('C59 (D19): a conta de uma Admin da rede só outra Admin autoriza ao suporte', async ({ browser }) => {
+  const b = db()
+  const dona = await criarMembro(`f70sa${marca}`, { tenant: rede!.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
+  const gerenteDaRede = await criarMembro(`f70sg${marca}`, {
+    tenant: rede!.tenantId, rotulo: 'Gerente da rede', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+  })
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  try {
+    await como(browser, gerenteDaRede.estado, async p => {
+      const r = await chamarAcao(p, 'actions/suporte-autorizacao.ts', 'autorizarSuporte', '/admin/settings?tab=suporte',
+        [{ userId: dona.userId, horas: 24 }])
+      expect(r.texto).toContain('só outra Admin da rede autoriza')
+    })
+    const { count } = await b.from('support_grants').select('id', { count: 'exact', head: true }).eq('target_user_id', dona.userId)
+    expect(count, 'nenhuma autorização para a conta da Admin').toBe(0)
+  } finally {
+    await b.from('support_grants').delete().eq('target_user_id', dona.userId)
+    await gerenteDaRede.limpar()
+    await dona.limpar()
+  }
+})
