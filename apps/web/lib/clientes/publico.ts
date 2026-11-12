@@ -73,3 +73,14 @@ export async function contarPublicoComAparelho(tenantId: string, filtros: Filtro
   if (error) throw new Error(`Não consegui contar quem tem o app: ${error.message}`)
   return Number(data ?? 0)
 }
+
+/**
+ * Quantas do público têm uma conversa de WhatsApp por onde a mensagem sai
+ * (`conversa_de_whatsapp_da_cliente`: pela ficha, senão pelo telefone; nunca
+ * a de um número removido). É a régua do envio da automação (C55/C65, F69).
+ */
+export async function contarPublicoComConversa(tenantId: string, filtros: FiltrosDoPublico): Promise<number> {
+  const { data, error } = await createAdminClient().rpc('publico_com_conversa', argumentos(tenantId, filtros))
+  if (error) throw new Error(`Não consegui contar quem tem conversa aberta: ${error.message}`)
+  return Number(data ?? 0)
+}

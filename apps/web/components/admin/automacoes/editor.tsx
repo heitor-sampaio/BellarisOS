@@ -25,7 +25,7 @@ import { validarGrafo, ROTULOS, type ProblemaDoGrafo } from '@/lib/automacoes/va
 import { novoIdDeNo, novoIdDeLigacao, configPadrao } from '@/lib/automacoes/ids'
 import { encaixarPasso } from '@/lib/automacoes/encaixe'
 import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
-import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor, excluirAutomacao } from '@/actions/automacoes'
+import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor, excluirAutomacao, contarAntesDeLigar } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 import type { AutomacaoCompleta } from '@/actions/automacoes'
 
@@ -191,8 +191,29 @@ export function EditorDeAutomacao({
     })
   }
 
+  // C65 (H1 do levantamento, F69): antes de LIGAR uma automação que manda
+  // WhatsApp, a tela diz quantas a busca acharia e quantas têm a conversa por
+  // onde a mensagem sai — a automação não abre conversa nova, e a clínica só
+  // descobria isso nas execuções.
+  const mandaWhatsapp = grafo.nos.some(n =>
+    n.tipo === NODES.ACAO_MENSAGEM && (n.config as { canal?: string }).canal === 'whatsapp')
+  const [antesDeLigar, setAntesDeLigar] = useState<null | { texto: string | null; erro?: string }>(null)
+
+  function pedirParaLigar() {
+    if (status === 'ATIVA' || !mandaWhatsapp) { alternarStatus(); return }
+    setAntesDeLigar({ texto: null })
+    const busca = grafo.nos.find(n => n.tipo === NODES.BUSCAR_CLIENTES)
+    contarAntesDeLigar(busca ? busca.config : null)
+      .then(r => {
+        if ('error' in r) { setAntesDeLigar({ texto: null, erro: r.error }); return }
+        setAntesDeLigar({ texto: textoAntesDeLigar(r) })
+      })
+      .catch(() => setAntesDeLigar({ texto: null, erro: 'Não consegui contar agora — dá para ligar assim mesmo.' }))
+  }
+
   function alternarStatus() {
     const novo: StatusDaAutomacao = status === 'ATIVA' ? 'PAUSADA' : 'ATIVA'
+    setAntesDeLigar(null)
 
     salvar(async () => {
       // Ligar com alterações na tela ligaria a versão do BANCO, não a que a
@@ -350,7 +371,7 @@ export function EditorDeAutomacao({
               </button>
             )}
             <button
-              type="button" className="btn-primary" onClick={alternarStatus}
+              type="button" className="btn-primary" onClick={pedirParaLigar}
               disabled={salvando || (status !== 'ATIVA' && erros.length > 0)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               title={erros.length ? 'Corrija os problemas antes de ligar' : undefined}
@@ -360,6 +381,30 @@ export function EditorDeAutomacao({
           </>
         )}
       </div>
+
+      {antesDeLigar && (
+        <JanelaModal rotulo="Ligar a automação?" largura={460} travado={salvando} onFechar={() => setAntesDeLigar(null)}>
+          <div data-antes-de-ligar style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
+              Ligar a automação?
+            </p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Ela manda mensagem pelo WhatsApp, e a mensagem só chega a quem tem conversa aberta
+              com a clínica: a automação não abre conversa nova.
+            </p>
+            <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-bold)', lineHeight: 1.5 }}>
+              {antesDeLigar.erro ?? antesDeLigar.texto ?? 'Contando as clientes…'}
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" className="btn-secondary" onClick={() => setAntesDeLigar(null)} disabled={salvando}>Agora não</button>
+              <button type="button" className="btn-primary" onClick={alternarStatus} disabled={salvando}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Play size={14} /> {salvando ? 'Ligando…' : 'Ligar'}
+              </button>
+            </div>
+          </div>
+        </JanelaModal>
+      )}
 
       {aviso.destino && (
         <JanelaModal rotulo="Sair sem salvar?" largura={420} papel="alertdialog" travado={salvando} onFechar={aviso.ficar}>
@@ -601,4 +646,15 @@ function ListaDeProblemas({
       )}
     </div>
   )
+}
+
+/** "Hoje a busca acharia 4 clientes, e 2 têm conversa aberta no WhatsApp." */
+function textoAntesDeLigar(r: { porBusca: boolean; quantas: number; comConversa: number; truncado: boolean }): string {
+  const clientes = (n: number) => `${n} ${n === 1 ? 'cliente' : 'clientes'}`
+  const tem = (n: number) => `${n} ${n === 1 ? 'tem' : 'têm'}`
+  const base = r.porBusca
+    ? `Hoje a busca acharia ${clientes(r.quantas)}${r.truncado ? ' (o teto do passo)' : ''}`
+    : `Hoje a clínica tem ${r.quantas} ${r.quantas === 1 ? 'cliente ativa' : 'clientes ativas'}`
+  if (r.quantas === 0) return `${base}.`
+  return `${base}, e ${tem(r.comConversa)} conversa aberta no WhatsApp.`
 }

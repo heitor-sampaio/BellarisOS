@@ -13,6 +13,10 @@ import type { LimitesDaAutomacao } from '@estetica-os/types'
  * Nascem preenchidos (21h–8h, três contatos por dia) e não vazios: uma
  * automação recém-criada não deveria depender de alguém lembrar de configurar
  * isto para não acordar cliente às três da manhã.
+ *
+ * O campo VAZIO desliga (C54/D16, F69): grava `null`, e a tela diz "Sem
+ * silêncio" / "Sem teto". Antes o vazio virava `undefined`, sumia no JSON e o
+ * padrão voltava — no motor e na tela reaberta.
  */
 export function PainelDeLimites({
   limites, onChange, onFechar, somenteLeitura,
@@ -22,6 +26,8 @@ export function PainelDeLimites({
   onFechar: () => void
   somenteLeitura?: boolean
 }) {
+  const semSilencio = !limites.silencioDe || !limites.silencioAte
+  const semTeto = !limites.tetoPorClienteDia
   return (
     <aside
       className="auto-gaveta"
@@ -53,46 +59,49 @@ export function PainelDeLimites({
           equipe e anotar na oportunidade não acordam ninguém.
         </p>
 
-        <div>
-          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)', marginBottom: 5 }}>
+        <div role="group" aria-labelledby="limites-silencio">
+          <p id="limites-silencio" className="field-label" style={{ marginBottom: 5 }}>
             Não mandar mensagem entre
           </p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input
-              type="time" className="field" value={limites.silencioDe ?? ''}
+              type="time" className="field" aria-label="Começa às" value={limites.silencioDe ?? ''}
               disabled={somenteLeitura}
-              onChange={e => onChange({ ...limites, silencioDe: e.target.value || undefined })}
+              onChange={e => onChange({ ...limites, silencioDe: e.target.value || null })}
             />
             <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>e</span>
             <input
-              type="time" className="field" value={limites.silencioAte ?? ''}
+              type="time" className="field" aria-label="Termina às" value={limites.silencioAte ?? ''}
               disabled={somenteLeitura}
-              onChange={e => onChange({ ...limites, silencioAte: e.target.value || undefined })}
+              onChange={e => onChange({ ...limites, silencioAte: e.target.value || null })}
             />
           </div>
-          <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
-            A mensagem não é descartada: ela <strong>espera</strong> o horário.
-            Descartar faria o lembrete simplesmente não acontecer.
+          <p data-limite-silencio style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
+            {semSilencio
+              ? <><strong>Sem silêncio: a mensagem sai a qualquer hora.</strong> Para voltar a esperar a manhã, preencha os dois horários.</>
+              : <>A mensagem não é descartada: ela <strong>espera</strong> o horário. Deixe os campos vazios para mandar a qualquer hora.</>}
           </p>
         </div>
 
         <div>
-          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)', marginBottom: 5 }}>
+          <label className="field-label" htmlFor="limites-teto" style={{ display: 'block', marginBottom: 5 }}>
             No máximo, por cliente por dia
-          </p>
+          </label>
           <input
-            type="number" min={1} max={20} className="field"
+            id="limites-teto" type="number" min={1} className="field"
             value={limites.tetoPorClienteDia ?? ''}
             disabled={somenteLeitura}
             onChange={e => onChange({
               ...limites,
-              tetoPorClienteDia: e.target.value ? Number(e.target.value) : undefined,
+              tetoPorClienteDia: e.target.value ? Number(e.target.value) : null,
             })}
           />
-          <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
-            Conta as execuções desta automação com o mesmo cliente. Passou do
-            teto, o fluxo para — esperar até amanhã acumularia a fila e
-            mandaria tudo de uma vez.
+          <p data-limite-teto style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
+            {semTeto
+              ? <><strong>Sem teto:</strong> a automação fala com a mesma cliente quantas vezes o fluxo mandar.</>
+              : <>Conta as execuções desta automação com a mesma cliente. Passou do
+                teto, o fluxo para — esperar até amanhã acumularia a fila e
+                mandaria tudo de uma vez. Deixe vazio para não ter teto.</>}
           </p>
         </div>
       </div>

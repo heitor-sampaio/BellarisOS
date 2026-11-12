@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { conversaDeWhatsappDaCliente } from '@/lib/contatos/conversa-de-whatsapp'
 import { enviarNaConversa } from '@/lib/inbox/enviar'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
@@ -61,6 +62,13 @@ async function conversaPara(
   const clienteId = (contexto.cliente as { id?: string } | null)?.id
   if (!clienteId) {
     return { motivo: 'Este fluxo não tem conversa nem cliente — não há para quem mandar.' }
+  }
+
+  // WhatsApp: a régua única (C55, F69) — pela ficha, senão pelo telefone,
+  // sem a conversa de um número removido.
+  if (canal === 'whatsapp') {
+    const id = await conversaDeWhatsappDaCliente(tenantId, clienteId)
+    return id ? { id } : { motivo: 'Este cliente não tem conversa aberta no WhatsApp. A automação não abre conversa nova.' }
   }
 
   const { data, error } = await createAdminClient()

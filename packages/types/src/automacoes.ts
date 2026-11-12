@@ -385,11 +385,15 @@ export interface GrafoDeAutomacao {
  * quem a montou não tenha pensado nisso.
  */
 export interface LimitesDaAutomacao {
-  /** 'HH:MM' — fora desta faixa, ações de mensagem esperam o horário. */
-  silencioDe?:   string
-  silencioAte?:  string
-  /** Máximo de execuções por cliente por dia. */
-  tetoPorClienteDia?: number
+  /**
+   * 'HH:MM' — dentro desta faixa, ações de mensagem esperam o horário.
+   * `null` (o campo vazio na tela) DESLIGA o silêncio (C54/D16, F69): a
+   * mensagem sai a qualquer hora. Ausente vale o padrão.
+   */
+  silencioDe?:   string | null
+  silencioAte?:  string | null
+  /** Máximo de execuções por cliente por dia. `null` = sem teto. */
+  tetoPorClienteDia?: number | null
 }
 
 export const LIMITES_PADRAO: LimitesDaAutomacao = {

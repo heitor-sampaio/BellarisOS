@@ -169,6 +169,21 @@ export function ListaDeAutomacoes({
             Uma automação começa num fato — cliente cadastrado, conversa iniciada,
             pagamento recebido — e faz o que você montar a partir dali.
           </p>
+          {/* Simples primeiro (princípio 7, F69): a lista vazia oferece os dois
+              caminhos ali mesmo — o modelo pronto, que é o caso comum, e o
+              começo do zero. Nada muda sozinho: o modelo nasce desligado. */}
+          {podeEditar && (
+            <div data-comecar style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 18 }}>
+              <button type="button" className="btn-primary" onClick={() => setVendoModelos(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <LayoutTemplate size={15} /> Começar por um modelo
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setAbrindo(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Plus size={15} /> Montar do zero
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="cards-1-col" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

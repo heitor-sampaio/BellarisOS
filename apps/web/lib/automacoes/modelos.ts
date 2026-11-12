@@ -129,7 +129,9 @@ export const MODELOS_DE_AUTOMACAO: readonly ModeloDeAutomacao[] = [
         { id: 'n_lem_msg', tipo: NODES.ACAO_MENSAGEM, nome: 'Lembrete', pos: { x: 920, y: 120 },
           config: {
             canal: 'whatsapp',
-            texto: 'Oi, {{cliente.nome}}! Passando para lembrar do seu horário de {{agendamento.procedimento}} amanhã. Se precisar remarcar, é só responder esta mensagem.',
+            // C57b (F69): "amanhã" mentia no agendamento marcado para daqui a
+            // menos de um dia (a espera já passou, a mensagem sai na hora). A data.
+            texto: 'Oi, {{cliente.nome}}! Passando para lembrar do seu horário de {{agendamento.procedimento}} em {{agendamento.data}}. Se precisar remarcar, é só responder esta mensagem.',
           } },
       ],
       ligacoes: [

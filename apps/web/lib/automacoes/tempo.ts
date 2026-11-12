@@ -5,7 +5,7 @@ import type {
   ConfigEsperaDuracao, ConfigEsperaAte, ConfigGatilhoAgenda, ConfigBuscarClientes,
 } from '@estetica-os/types'
 import type { ContextoDaExecucao } from './contexto'
-import { lerPublicoAte } from '@/lib/clientes/publico'
+import { lerPublicoAte, type FiltrosDoPublico } from '@/lib/clientes/publico'
 
 /**
  * O tempo — esperas, agenda e busca.
@@ -161,6 +161,32 @@ export interface ClienteEncontrado {
 }
 
 /**
+ * Os filtros do passo "Buscar clientes" no público (`clientes_do_publico`).
+ * Uma régua só: a busca do motor, a contagem do passo e o aviso antes de
+ * ligar (C65) leem por aqui.
+ */
+export function filtrosDaBusca(cfg: ConfigBuscarClientes, fuso?: string): FiltrosDoPublico {
+  // Dia e mês no fuso do NEGÓCIO. Comparar com `getMonth()` cru usaria o fuso
+  // do processo (UTC no container) e erraria por um dia quem faz aniversário
+  // na virada.
+  const hoje = partsInTZ(new Date(), fuso)
+  const corte = cfg.semRetornoHaDias
+    ? new Date(Date.now() - cfg.semRetornoHaDias * 24 * 3600 * 1000).toISOString()
+    : undefined
+  return {
+    branch_ids: cfg.unidadeId ? [cfg.unidadeId] : undefined,
+    tags: cfg.tags?.length ? cfg.tags : undefined,
+    aniversario: cfg.aniversarioHoje ? { mes: hoje.month, dia: hoje.day } : undefined,
+    // Quem TEVE atendimento concluído depois do corte sai da lista.
+    sem_retorno_desde: corte,
+    // E quem chegou depois do corte também (C53, F69): "sem visita há 60 dias"
+    // não é a cliente que se cadastrou anteontem — o "Sentimos sua falta" ia a
+    // quem acabou de chegar. Cliente desde = a data informada, senão o cadastro.
+    cliente_desde_antes: corte,
+  }
+}
+
+/**
  * Os clientes que um fluxo de agenda vai percorrer.
  *
  * Teto obrigatório (200 por padrão): um filtro largo demais numa base grande
@@ -176,26 +202,13 @@ export async function buscarClientes(
   fuso?: string,
 ): Promise<{ clientes: ClienteEncontrado[]; truncado: boolean }> {
   const limite = Math.min(cfg.limite ?? 200, 500)
-  // Dia e mês no fuso do NEGÓCIO. Comparar com `getMonth()` cru usaria o fuso
-  // do processo (UTC no container) e erraria por um dia quem faz aniversário
-  // na virada.
-  const hoje = partsInTZ(new Date(), fuso)
-
   // Todos os filtros NO BANCO, e o teto DEPOIS deles (2026-10-22). Antes o
   // teto vinha primeiro — 501 clientes quaisquer — e o aniversário e o "sem
   // retorno" filtravam esse lote: a automação de aniversário perdia quase
   // todos os aniversariantes, e o `truncado`, contado depois, não avisava.
   // Uma a mais que o teto, para saber se ele cortou alguém e poder dizer isso
   // no passo, em vez de silenciosamente atender só uma parte.
-  const linhas = await lerPublicoAte(tenantId, {
-    branch_ids: cfg.unidadeId ? [cfg.unidadeId] : undefined,
-    tags: cfg.tags?.length ? cfg.tags : undefined,
-    aniversario: cfg.aniversarioHoje ? { mes: hoje.month, dia: hoje.day } : undefined,
-    // Quem TEVE atendimento concluído depois do corte sai da lista.
-    sem_retorno_desde: cfg.semRetornoHaDias
-      ? new Date(Date.now() - cfg.semRetornoHaDias * 24 * 3600 * 1000).toISOString()
-      : undefined,
-  }, limite + 1)
+  const linhas = await lerPublicoAte(tenantId, filtrosDaBusca(cfg, fuso), limite + 1)
 
   const truncado = linhas.length > limite
   return {

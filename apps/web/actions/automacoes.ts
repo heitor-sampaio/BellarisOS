@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { LIMITES_PADRAO, TIPOS_DE_GATILHO, ROTULOS_DE_NO, rotuloDoEvento } from '@estetica-os/types'
 import type {
   GrafoDeAutomacao, StatusDaAutomacao, LimitesDaAutomacao, StatusDaExecucao,
-  NoDoGrafo, TipoDeNo,
+  NoDoGrafo, TipoDeNo, ConfigBuscarClientes,
 } from '@estetica-os/types'
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
@@ -17,6 +17,7 @@ import { modeloDeAutomacao, semWhatsapp } from '@/lib/automacoes/modelos'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ler, tentar } from '@/lib/db'
 import { buscarClientes } from '@/lib/automacoes/tempo'
+import { contarPublico, contarPublicoComConversa } from '@/lib/clientes/publico'
 import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 /**
@@ -858,20 +859,59 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
 export async function contarBuscaDeClientes(cfg: unknown): Promise<{ quantas: number; truncado: boolean } | { error: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  const busca = await buscaDoPasso(ctx.tenantId!, cfg)
+  if ('error' in busca) return busca
+  const { clientes, truncado } = await buscarClientes(ctx.tenantId!, busca.cfg, busca.fuso)
+  return { quantas: clientes.length, truncado }
+}
+
+/** A config do passo "Buscar clientes" vinda da tela, conferida (a unidade é da rede). */
+async function buscaDoPasso(tenantId: string, cfg: unknown): Promise<{ cfg: ConfigBuscarClientes; fuso: string } | { error: string }> {
   const c = (cfg && typeof cfg === 'object' ? cfg : {}) as Record<string, unknown>
   const dias = Number(c.semRetornoHaDias)
   const limite = Number(c.limite)
   const tags = Array.isArray(c.tags) ? (c.tags as unknown[]).filter((t): t is string => typeof t === 'string').slice(0, 50) : undefined
   const unidade = typeof c.unidadeId === 'string' && /^[0-9a-f-]{36}$/i.test(c.unidadeId) ? c.unidadeId : null
   if (unidade) {
-    const daRede = await ler(createAdminClient().from('branches').select('id').eq('id', unidade).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a unidade da busca')
+    const daRede = await ler(createAdminClient().from('branches').select('id').eq('id', unidade).eq('tenant_id', tenantId).maybeSingle(), 'conferir a unidade da busca')
     if (!daRede) return { error: 'Unidade não encontrada.' }
   }
-  const { clientes, truncado } = await buscarClientes(ctx.tenantId!, {
-    semRetornoHaDias: Number.isFinite(dias) && dias > 0 ? Math.floor(dias) : undefined,
-    aniversarioHoje: c.aniversarioHoje === true,
-    tags, unidadeId: unidade,
-    limite: Number.isFinite(limite) && limite > 0 ? Math.min(Math.floor(limite), 500) : 200,
-  }, unidade ? await fusoDaUnidade(ctx.tenantId, unidade) : await fusoDaRede(ctx.tenantId))
-  return { quantas: clientes.length, truncado }
+  return {
+    cfg: {
+      semRetornoHaDias: Number.isFinite(dias) && dias > 0 ? Math.floor(dias) : undefined,
+      aniversarioHoje: c.aniversarioHoje === true,
+      tags, unidadeId: unidade,
+      limite: Number.isFinite(limite) && limite > 0 ? Math.min(Math.floor(limite), 500) : 200,
+    },
+    fuso: unidade ? await fusoDaUnidade(tenantId, unidade) : await fusoDaRede(tenantId),
+  }
+}
+
+/**
+ * Antes de ligar uma automação que manda WhatsApp (C65 — H1 do levantamento,
+ * F69): quantas a busca acharia hoje e quantas têm a conversa por onde a
+ * mensagem sai. A automação não abre conversa nova; sem isto, a clínica ligava
+ * "Reativação" para 200 e descobria nas execuções que saíram 12.
+ *
+ * Com o passo "Buscar clientes", a busca dele (com o teto); sem ele (o fluxo
+ * que nasce de um fato), as clientes ativas da clínica.
+ */
+export async function contarAntesDeLigar(cfgDaBusca: unknown | null): Promise<
+  { porBusca: boolean; quantas: number; comConversa: number; truncado: boolean } | { error: string }
+> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'VIEW')
+  const tenant = ctx.tenantId!
+  if (cfgDaBusca == null) {
+    const [quantas, comConversa] = await Promise.all([contarPublico(tenant, {}), contarPublicoComConversa(tenant, {})])
+    return { porBusca: false, quantas, comConversa, truncado: false }
+  }
+  const busca = await buscaDoPasso(tenant, cfgDaBusca)
+  if ('error' in busca) return busca
+  const achadas = await buscarClientes(tenant, busca.cfg, busca.fuso)
+  const ids = achadas.clientes.map(c => c.id)
+  // Contadas entre AS QUE A BUSCA ACHOU (com o teto do passo), não no público
+  // inteiro: é a essas que a mensagem iria.
+  const comConversa = ids.length ? await contarPublicoComConversa(tenant, { client_ids: ids }) : 0
+  return { porBusca: true, quantas: ids.length, comConversa, truncado: achadas.truncado }
 }
