@@ -221,7 +221,7 @@ test('a escolha é feita na aba Cargos e fica gravada', async ({ page }) => {
 
     await secao.getByRole('button', { name: 'Pela conversa' }).click()
     await expect(secao.getByText('Salvo')).toBeVisible()
-    await expect(secao.getByTestId('explicacao-visibilidade')).toContainText('conforme a oportunidade aberta nela')
+    await expect(secao.getByTestId('explicacao-visibilidade')).toContainText('a oportunidade ligada a ela (aberta, ganha ou perdida)')
 
     const { data } = await db.from('tenants').select('inbox_visibilidade').eq('id', tenant).single()
     expect(data!.inbox_visibilidade, 'a tela disse "Salvo" — o banco tem de concordar').toBe('conversa')

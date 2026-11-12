@@ -42,9 +42,11 @@ export async function camposDaPerda(admin: Admin, tenantId: string, opcoes: {
     if (opcoes.exigirMotivo) return { error: 'Informe o motivo da perda.' }
     return { patch: { motivo_perda_id: null, motivo_perda_obs: null, perdido_em: new Date().toISOString() }, mudanca: null }
   }
-  const motivo = await ler(admin.from('crm_motivos_perda').select('id, nome')
-    .eq('id', perda.motivoId).eq('tenant_id', tenantId).maybeSingle(), 'conferir o motivo da perda') as { id: string; nome: string } | null
+  const motivo = await ler(admin.from('crm_motivos_perda').select('id, nome, ativo')
+    .eq('id', perda.motivoId).eq('tenant_id', tenantId).maybeSingle(), 'conferir o motivo da perda') as { id: string; nome: string; ativo: boolean } | null
   if (!motivo) return { error: 'Motivo de perda não encontrado.' }
+  // O desativado sai da lista da tela; pelo id também não entra (C31, F70).
+  if (!motivo.ativo) return { error: `O motivo "${motivo.nome}" foi desativado: escolha outro.` }
   const obs = (perda.obs ?? '').trim().slice(0, 300) || null
   return {
     patch: { motivo_perda_id: motivo.id, motivo_perda_obs: obs, perdido_em: new Date().toISOString() },

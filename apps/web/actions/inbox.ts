@@ -29,7 +29,7 @@ import {
 } from '@/lib/inbox/media'
 import type { ChannelKind } from '@/lib/channels/types'
 import { registrarEventoLead } from '@/lib/lead-events'
-import { propagarDadosDaPessoa } from '@/lib/contatos/propagar'
+import { propagarDadosDaPessoa, telefoneParaGravar } from '@/lib/contatos/propagar'
 import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
 } from '@/lib/templates/core'
@@ -1211,7 +1211,12 @@ export async function atualizarContato(
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (dados.nome     !== undefined) patch.contact_name  = dados.nome.trim() || null
-  if (dados.telefone !== undefined) patch.contact_phone = dados.telefone.replace(/\D/g, '') || null
+  if (dados.telefone !== undefined) {
+    // O do WhatsApp (55 + DDD + número), e o incompleto recusado (C28, F70).
+    const t = telefoneParaGravar(dados.telefone, (antes as { contact_phone: string | null } | null)?.contact_phone ?? null)
+    if ('error' in t) return { ok: false, error: t.error }
+    patch.contact_phone = t.fone
+  }
 
   const { data: atualizada, error } = await admin
     .from('conversations')

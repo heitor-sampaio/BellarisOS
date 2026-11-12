@@ -2,6 +2,7 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 import type { getTenantContext } from '@/lib/auth'
 import { gravar, ler } from '@/lib/db'
 import { registrarEventoLead } from '@/lib/lead-events'
+import { normalizarTelefone } from '@/lib/importacao/normalizar'
 
 type Admin = ReturnType<typeof createAdminClient>
 type Ctx = Awaited<ReturnType<typeof getTenantContext>>
@@ -21,6 +22,35 @@ export function mesmoTelefone(a: string | null | undefined, b: string | null | u
   }
   const x = nacional(a)
   return x !== '' && x === nacional(b)
+}
+
+/** O mesmo número brasileiro com e sem o 55 (só dígitos). */
+function formasDoMesmoNumero(d: string): string[] {
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) return [d, d.slice(2)]
+  if (d.length === 10 || d.length === 11) return [d, `55${d}`]
+  return [d]
+}
+
+export const TELEFONE_INCOMPLETO = 'Telefone incompleto: com o DDD, 10 ou 11 dígitos (ou “+” e o código do país).'
+
+/**
+ * O telefone que a pessoa, a conversa e a oportunidade GUARDAM (C28 do
+ * levantamento das regras, F70): o do WhatsApp — só dígitos, 55 + DDD + número
+ * (`normalizarTelefone`, a mesma regra da importação); o de outro país, com
+ * "+", fica com os dígitos dele. Era só tirar a máscara: "(48) 99876-1234"
+ * virava "48998761234", e a próxima mensagem do WhatsApp ("5548998761234") não
+ * achava a pessoa. O incompleto é recusado. O MESMO número de antes (com ou sem
+ * máscara, com ou sem o 55) fica como estava — inclusive o de fora gravado sem
+ * o "+".
+ */
+export function telefoneParaGravar(
+  bruto: string | null | undefined, anterior?: string | null,
+): { fone: string | null } | { error: string } {
+  const d = digitosDoTelefone(bruto)
+  if (!d) return { fone: null }
+  if (anterior && (d === digitosDoTelefone(anterior) || mesmoTelefone(bruto, anterior))) return { fone: anterior }
+  const fone = normalizarTelefone(bruto ?? '')
+  return fone ? { fone } : { error: TELEFONE_INCOMPLETO }
 }
 
 /**
@@ -61,7 +91,9 @@ export async function propagarDadosDaPessoa(
   const nome     = mudanca.nome?.trim() || null
   const mexeNome = mudanca.nome !== undefined && !!nome
   const mexeFone = mudanca.telefone !== undefined
-  const fone     = mexeFone ? digitosDoTelefone(mudanca.telefone) : null
+  // No formato do WhatsApp (C28): quem chama já conferiu o tamanho; o que não
+  // se reconhece (o de fora gravado sem o "+") segue só com os dígitos.
+  const fone     = mexeFone ? (normalizarTelefone(mudanca.telefone ?? '') ?? digitosDoTelefone(mudanca.telefone)) : null
   const anterior = digitosDoTelefone(mudanca.telefoneAnterior)
   if (!mexeNome && !mexeFone) return
 
@@ -86,10 +118,12 @@ export async function propagarDadosDaPessoa(
       .eq('contato_id', contatoId).eq('tenant_id', tenantId), 'atualizar o nome nas conversas')
   }
   if (mexeFone) {
-    // `anterior` é só dígitos: seguro dentro do filtro em texto.
+    // `anterior` é só dígitos: seguro dentro do filtro em texto. A conversa
+    // pode guardar o mesmo número com ou sem o 55 (as gravadas antes da F70).
+    const formas = anterior ? formasDoMesmoNumero(anterior) : []
     let q = admin.from('conversations').update({ contact_phone: fone, updated_at: agora })
       .eq('contato_id', contatoId).eq('tenant_id', tenantId)
-    q = anterior ? q.or(`contact_phone.is.null,contact_phone.eq.${anterior}`) : q.is('contact_phone', null)
+    q = formas.length ? q.or(`contact_phone.is.null,contact_phone.in.(${formas.join(',')})`) : q.is('contact_phone', null)
     await gravar(q, 'atualizar o telefone nas conversas')
   }
 

@@ -16,7 +16,8 @@ import { isUnitTag, unitTagName, parseDinheiro } from '@estetica-os/utils'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
 import { pessoaDoNovoLeadValida } from '@/lib/crm/pessoa-para-novo-lead'
-import { propagarDadosDaPessoa, digitosDoTelefone, mesmoTelefone } from '@/lib/contatos/propagar'
+import { propagarDadosDaPessoa, digitosDoTelefone, telefoneParaGravar } from '@/lib/contatos/propagar'
+import { leadAoAlcance } from '@/lib/crm/alcance'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 
 function str(fd: FormData, key: string) {
@@ -99,6 +100,11 @@ export async function createLead(
 
     if (!name)                       return { error: 'Nome é obrigatório.' }
     if (!phone && !email && !social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
+    // O incompleto é recusado já aqui (C28, F70): o núcleo grava no formato do WhatsApp.
+    if (phone) {
+      const t = telefoneParaGravar(phone)
+      if ('error' in t) return { error: t.error }
+    }
 
     // A pessoa do CRM que a busca universal mandou (A15): a oportunidade nasce
     // dela — a só com e-mail não seria achada pelo gatilho (criaria outra
@@ -205,6 +211,11 @@ export async function updateLead(
     const crmStageId = str(formData, 'crm_stage_id')
 
     if (!leadId) return { error: 'Lead não identificado.' }
+    // C27 (F70): o alcance ANTES de tudo. O filtro do dono no update segurava
+    // só a linha do card; o resto — o nome e o telefone da PESSOA, as
+    // conversas, os procedimentos de interesse, a linha do tempo — rodava mesmo
+    // assim com o id do card de outra pessoa.
+    if (!(await leadAoAlcance(createAdminClient(), ctx, leadId))) return { error: 'Oportunidade não encontrada.' }
 
     const name   = str(formData, 'name')
     let   phone  = str(formData, 'phone')
@@ -259,8 +270,13 @@ export async function updateLead(
     // O modal mostra o telefone com a máscara (J-19): "(41) 99200-0040" é o
     // MESMO número que o "5541992000040" do WhatsApp gravado. Salvar sem mexer
     // não troca o número (nem propaga, nem vira "mudou" no histórico).
-    if (antes && mesmoTelefone(phone, antes.campos.phone ?? null)) {
-      phone = antes.campos.phone ?? null
+    // Outro número entra no formato do WhatsApp (55 + DDD + número), e o
+    // incompleto é recusado (C28, F70): "48998761234" não achava a pessoa
+    // quando a próxima mensagem chegava como "5548998761234".
+    {
+      const t = telefoneParaGravar(phone, antes?.campos.phone ?? null)
+      if ('error' in t) return { error: t.error }
+      phone = t.fone
       patch.phone = phone
     }
 
@@ -289,12 +305,14 @@ export async function updateLead(
       .eq('tenant_id', ctx.tenantId!)
     const owner = ownerFilter(ctx, 'crm')
     if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
-    const { error } = await q
+    const { data: gravadas, error } = await q.select('id')
 
     if (error) {
       console.error('[updateLead]', error.message)
       return { error: `Erro ao atualizar lead: ${error.message}` }
     }
+    // Nenhuma linha = fora do alcance (ou apagada no meio): nada do resto roda.
+    if (!gravadas?.length) return { error: 'Oportunidade não encontrada.' }
 
     await salvarProcedimentosDeInteresse(admin, ctx.tenantId!, leadId, procedureIds)
 

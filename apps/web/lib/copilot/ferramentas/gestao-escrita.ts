@@ -1,8 +1,8 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { revalidatePath } from 'next/cache'
-import { isOwnScope, ownerFilter } from '@/lib/auth'
-import { maskPhone, unitTag } from '@estetica-os/utils'
+import { can, isOwnScope, ownerFilter } from '@/lib/auth'
+import { unitTag } from '@estetica-os/utils'
 import { origensDaRede } from '@/lib/crm/origens'
 import { ler } from '@/lib/db'
 import { dayKeyTZ } from '@/lib/datetime'
@@ -13,6 +13,9 @@ import { medidaNoPlural } from '@/lib/estoque/medidas'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { criarOportunidadeCore, moverEtapaCore } from '@/lib/crm/oportunidade'
 import { leadAoAlcance } from '@/lib/crm/alcance'
+import { fichasDoTelefoneDoLead } from '@/lib/crm/ficha-do-telefone'
+import { telefoneParaGravar } from '@/lib/contatos/propagar'
+import { telefoneDaFichaImportada } from '@/lib/importacao/normalizar'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 import { rotaOportunidade } from '@/lib/rotas'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
@@ -376,6 +379,8 @@ interface ArgsOportunidade { nome: string; telefone?: string; email?: string; or
 interface PayloadOportunidade {
   nome: string; telefone: string | null; email: string | null; origem: string | null; procedureIds: string[]; observacoes: string | null; funnelId: string | null; tags: string[]
   valor?: number; responsavelId?: string
+  /** D11: as fichas ativas com este telefone — a escolha "mesma:<id>" liga a oportunidade a uma. */
+  fichas?: string[]
 }
 
 export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOportunidade> = {
@@ -416,7 +421,17 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
     // Criada no portal de uma unidade (ou por quem é de uma): nasce com a tag dela, como na tela.
     const u = c.ctx.branchId || c.slugDoPortal ? await resolverUnidade(c, null) : { unidade: null }
     const tags = 'unidade' in u && u.unidade ? [unitTag(u.unidade.name)] : []
-    const digitos = a.telefone?.replace(/[^0-9]/g, '') ?? ''
+    // O incompleto é recusado e o número vai no formato do WhatsApp (C28, F70).
+    let digitos = ''
+    if (a.telefone) {
+      const t = telefoneParaGravar(a.telefone)
+      if ('error' in t) return { erro: t.error }
+      digitos = t.fone ?? ''
+    }
+    // D11 da 9ª, como o "Novo lead" (C5, F70): o telefone de uma CLIENTE
+    // pergunta "É a mesma pessoa?"; o "Sim" liga a oportunidade à ficha.
+    const fichas = digitos ? (await fichasDoTelefoneDoLead(c.ctx.tenantId!, digitos)).slice(0, 3) : []
+    const veNomes = can(c.ctx, 'clients', 'VIEW')
     const procs: { id: string; name: string }[] = []
     for (const nome of a.interesse ?? []) {
       const p = await resolverProcedimento(c, nome)
@@ -434,7 +449,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
         titulo: 'Criar oportunidade',
         linhas: [
           { rotulo: 'Nome', valor: a.nome.trim() },
-          ...(digitos ? [{ rotulo: 'Telefone', valor: maskPhone(digitos) }] : []),
+          ...(digitos ? [{ rotulo: 'Telefone', valor: telefoneDaFichaImportada(digitos) }] : []),
           ...(a.email ? [{ rotulo: 'E-mail', valor: a.email.trim() }] : []),
           ...(procs.length ? [{ rotulo: 'Interesse', valor: procs.map(p => p.name).join(', ') }] : []),
           ...(origem ? [{ rotulo: 'Origem', valor: origem }] : []),
@@ -442,20 +457,32 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
           ...(a.valor ? [{ rotulo: 'Valor', valor: dinheiro(a.valor) }] : []),
           ...(responsavel ? [{ rotulo: 'Responsável', valor: responsavel.name }] : []),
         ],
+        ...(fichas.length ? {
+          aviso: veNomes
+            ? `Este telefone é da ficha de ${fichas.map(f => f.nome).join(', ')}. É a mesma pessoa? Com o “Sim”, a oportunidade nasce ligada à ficha.`
+            : 'Este telefone é de uma cliente da clínica. É a mesma pessoa? Com o “Sim”, a oportunidade nasce ligada à ficha.',
+          escolhas: [
+            ...fichas.map(f => ({ chave: `mesma:${f.id}`, rotulo: veNomes ? `Sim, é ${f.nome}` : 'Sim, é a mesma pessoa' })),
+            { chave: 'outra', rotulo: 'Não, é outra pessoa' },
+          ],
+        } : {}),
       },
       payload: {
-        nome: a.nome.trim(), telefone: digitos ? maskPhone(digitos) : null, email: a.email?.trim().toLowerCase() || null,
+        nome: a.nome.trim(), telefone: digitos || null, fichas: fichas.map(f => f.id), email: a.email?.trim().toLowerCase() || null,
         origem, procedureIds: procs.map(p => p.id), observacoes: a.observacao?.trim() || null, funnelId: funil?.id ?? null, tags,
         ...(a.valor ? { valor: a.valor } : {}),
         ...(responsavel ? { responsavelId: responsavel.id } : {}),
       },
     }
   },
-  async efetivar(c, p) {
+  async efetivar(c, p, escolha) {
+    // A ficha escolhida tem de ser uma das que o cartão ofereceu.
+    const mesma = escolha?.startsWith('mesma:') ? escolha.slice(6) : null
+    if (mesma && !(p.fichas ?? []).includes(mesma)) return { erro: 'A ficha deste telefone não foi encontrada.' }
     const r = await criarOportunidadeCore(c.admin, c.ctx, {
       nome: p.nome, telefone: p.telefone, email: p.email, origem: p.origem, observacoes: p.observacoes,
       procedureIds: p.procedureIds, funnelId: p.funnelId, tags: p.tags, valor: p.valor ?? null,
-    })
+    }, mesma ? { clientId: mesma } : {})
     if ('error' in r) return { erro: r.error }
     revalidar('oportunidades')
     // Como a tela (createLead): nasce de quem criou, e o responsável escolhido

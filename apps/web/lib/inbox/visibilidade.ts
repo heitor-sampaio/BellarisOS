@@ -28,8 +28,8 @@ export const OPCOES_DE_VISIBILIDADE: {
     key: 'conversa',
     label: 'Pela conversa',
     explicacao:
-      'Cada conversa aparece conforme a oportunidade aberta nela. Uma conversa nova da mesma pessoa, ' +
-      'por outro número, aparece para todos até alguém abrir oportunidade ali.',
+      'Cada conversa aparece para quem tem a oportunidade ligada a ela (aberta, ganha ou perdida). ' +
+      'Uma conversa nova da mesma pessoa, por outro número, aparece para todos até alguém abrir oportunidade ali.',
   },
 ]
 

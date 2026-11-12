@@ -9,6 +9,8 @@ import { seedDefaultFunnel, listStages } from '@/lib/crm/funis'
 import { registrarEventoLead, etapaAtualDoLead } from '@/lib/lead-events'
 import { emitirEventoDeLead, eventoDoDesfecho, etapaDeCrm } from '@/lib/events/lead'
 import { camposDaPerda, type PerdaInformada } from '@/lib/crm/motivos-perda'
+import { TELEFONE_INCOMPLETO } from '@/lib/contatos/propagar'
+import { normalizarTelefone } from '@/lib/importacao/normalizar'
 
 /**
  * CRIAR uma oportunidade e MOVER de etapa — os núcleos que o quadro (actions/
@@ -109,6 +111,13 @@ export async function criarOportunidadeCore(
   const nome = o.nome?.trim()
   if (!nome) return { error: 'Nome é obrigatório.' }
   if (!o.telefone && !o.email && !o.social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
+  // O telefone no formato do WhatsApp (C28, F70) — é por ele que o gatilho
+  // acha a pessoa e que a próxima mensagem a encontra. Quem chama com o que a
+  // pessoa DIGITOU (a tela, o Copilot) já recusou o incompleto; aqui o que não
+  // se reconhece (o de fora vindo do WhatsApp, sem o "+") segue com os dígitos.
+  const digitos = (o.telefone ?? '').replace(/\D/g, '')
+  if (o.telefone && digitos.length < 8) return { error: TELEFONE_INCOMPLETO }
+  const telefone = digitos ? (normalizarTelefone(o.telefone!) ?? digitos) : null
 
   // Origem canônica: se há atribuição, deriva; senão respeita a escolhida; sem nada, sem origem ("Não informado", D14).
   const derived = resolveLeadSource({ fbclid: o.fbclid ?? null, gclid: o.gclid ?? null, utm_source: o.utmSource ?? null, utm_medium: o.utmMedium ?? null }, o.origem ?? null)
@@ -120,7 +129,7 @@ export async function criarOportunidadeCore(
     // Lead é SEMPRE da rede. A unidade é a tag `Unidade: <nome>`, dimensão
     // de métrica e recorte de tela — não fronteira de dado.
     branch_id: null,
-    name: nome, phone: o.telefone ?? null, email: o.email ?? null, social_media: o.social ?? null,
+    name: nome, phone: telefone, email: o.email ?? null, social_media: o.social ?? null,
     source: derived.source, notes: o.observacoes ?? null,
     ...(o.valor !== undefined && o.valor !== null ? { value: o.valor } : {}),
     crm_stage_id: etapaInicial,
