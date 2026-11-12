@@ -188,3 +188,27 @@ test('C67 (H6 = a): desativar a unidade oferece mudar a equipe fixa dela para ou
     await b.from('branches').delete().eq('id', outra!.id)
   }
 })
+
+test('C73 (H8): as Importações são de quem é da rede — quem tem unidade fixa não importa', async ({ browser }) => {
+  const b = db()
+  const fixa = await criarMembro(`f70im${marca}`, {
+    tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Recepção que importa', permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }],
+  })
+  await b.from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
+  try {
+    await como(browser, fixa.estado, p => chamarAcao(p, 'actions/importacao.ts', 'importarContatos', '/admin/settings', [{
+      destino: 'clientes', branchId: rede!.branchId, nomeArquivo: `f70-${marca}.csv`,
+      mapeamento: ['name', 'phone'], linhas: [['F70 Importada', '48999990070']], oportunidade: null,
+    }]))
+    const { count } = await b.from('importacoes').select('id', { count: 'exact', head: true }).eq('criada_por', fixa.userId)
+    expect(count, 'nenhuma importação começou').toBe(0)
+  } finally {
+    const { data: imps } = await b.from('importacoes').select('id').eq('criada_por', fixa.userId)
+    for (const i of imps ?? []) {
+      await b.from('importacao_linhas').delete().eq('importacao_id', i.id)
+      await b.from('importacoes').delete().eq('id', i.id)
+    }
+    await b.from('clients').delete().eq('tenant_id', rede!.tenantId).eq('name', 'F70 Importada')
+    await fixa.limpar()
+  }
+})

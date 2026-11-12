@@ -10,8 +10,8 @@
  * a quem é da rede e a quem é de uma unidade.
  *
  * Fica com a unidade o que é dela: os dados, o horário e as salas da unidade
- * (Configurações → Unidade), o estoque dela, a equipe dela, as importações
- * para ela. A lista do que ficou em cada lado está em `docs/regras/plataforma.md`.
+ * (Configurações → Unidade), o estoque dela, a equipe dela. As importações
+ * passaram a ser da rede (C73, F70; H8): a importação escolhe a unidade. A lista do que ficou em cada lado está em `docs/regras/plataforma.md`.
  *
  * Puro de propósito: a página (o aviso e o botão) e a action (a recusa) leem
  * a mesma regra.

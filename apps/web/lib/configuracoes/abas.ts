@@ -75,7 +75,7 @@ export const ABAS_DA_REDE: readonly ChaveDeAba[] =
   ABAS_DE_CONFIGURACAO.map(t => t.key).filter(k => k !== 'unidade')
 
 /**
- * As abas do portal da unidade. A Unidade e as Importações são DELA; as outras
+ * As abas do portal da unidade. A Unidade é DELA; as outras (as Importações também, C73)
  * são da clínica toda (`ABAS_DA_CLINICA_TODA`) e, para quem tem unidade fixa,
  * dizem isso em vez de abrir o editor (H7, 2026-11-01).
  */
@@ -86,11 +86,14 @@ export const ABAS_DA_UNIDADE: readonly ChaveDeAba[] =
  * As abas que são configuração da CLÍNICA TODA (H7, decisão do Heitor,
  * 2026-11-01: "gerente de uma unidade só mexe no que é da unidade"). Quem tem
  * unidade fixa abre a aba e lê "Esta configuração é da clínica toda" — sem o
- * editor (a action também recusa: `recusaDaConfigDaClinica`). Fora daqui ficam
- * a Unidade (a dela) e as Importações (para a unidade dela).
+ * editor (a action também recusa: `recusaDaConfigDaClinica`). Fora daqui fica
+ * só a Unidade (a dela). As Importações entraram (C73 do levantamento das
+ * regras, F70; H8, 2ª volta: "Importações é da rede, ela que vai importar os
+ * seus clientes ou o que for, e na importação poder escolher se aquilo
+ * pertence a uma unidade").
  */
 export const ABAS_DA_CLINICA_TODA: readonly ChaveDeAba[] =
-  ABAS_DE_CONFIGURACAO.map(t => t.key).filter(k => k !== 'unidade' && k !== 'importacoes')
+  ABAS_DE_CONFIGURACAO.map(t => t.key).filter(k => k !== 'unidade')
 
 /**
  * O que "Configurações" quer dizer no resumo do cargo (A7 da 7ª simulação,

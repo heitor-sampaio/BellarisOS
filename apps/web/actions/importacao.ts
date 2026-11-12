@@ -11,6 +11,7 @@ import { variantesDoTelefone } from '@/lib/importacao/normalizar'
 import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
 import type { LinhaDoRelatorio } from '@/lib/importacao/processar'
 import { podeTrazerPacoteDeFora } from '@/lib/pacotes/de-fora'
+import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 
 /**
  * O importador de contatos (CSV), 2026-10-13. O navegador lê o arquivo, mapeia
@@ -55,6 +56,9 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
   const ctx = await getTenantContext()
   const destino: Destino = pedido?.destino === 'contatos' ? 'contatos' : 'clientes'
   assertPermission(ctx, destino === 'clientes' ? 'clients' : 'crm', 'MANAGE')
+  // As Importações são de quem é da rede (C73, F70; H8): a importação escolhe a unidade.
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
 
   // O mapeamento: só campos do destino, cada um uma vez, e os obrigatórios.
   // Os do card só com oportunidade; a unidade por linha, só a rede importando
@@ -233,6 +237,8 @@ export async function andamentoDaImportacao(id: string): Promise<AndamentoDaImpo
 /** "Tentar de novo" da importação interrompida: continua de onde parou. */
 export async function retomarImportacao(id: string): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
+  const daClinica = recusaDaConfigDaClinica(ctx)
+  if (daClinica) return { ok: false, error: daClinica }
   const imp = await importacaoAoAlcance(ctx, id)
   if (!imp) return { ok: false, error: 'Importação não encontrada nesta rede.' }
   if (imp.status !== 'falhou') return { ok: false, error: 'Só a importação que falhou ou parou continua.' }
