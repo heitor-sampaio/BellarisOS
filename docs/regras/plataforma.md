@@ -634,6 +634,23 @@ um muro que não depende de cada trava do código.
   ABRANGÊNCIA (`ctx.branchId`), nunca do nome do cargo: `mexeNaConfigDaClinica`
   / `recusaDaConfigDaClinica` (`lib/configuracao-da-rede.ts`), na action E na
   tela.
+- **Quem é da rede chega, pelo portal da UNIDADE, ao que só a rede tem** (A1
+  da 14ª simulação, F74, 2026-11-13; CLAUDE.md §1, a clínica única: a dona
+  entra pelo endereço da unidade e não achava Comissões nem Automações). Uma
+  lista só — o que o menu da rede tem e o da unidade não
+  (`SO_NO_MENU_DA_REDE`, `lib/menu.ts`) — e três lugares que a leem: o MENU
+  da unidade (`menuDaUnidadeFor`: as entradas de `BRANCH_MENU` na unidade, e
+  as que só a rede tem levando a `/admin`), a BUSCA da topbar
+  (`paginasDaBusca`, `opcoes.daRede`) e as CONFIGURAÇÕES da unidade (a aba
+  pedida que só a rede tem vira link, `linkDaAbaNaRede`; e as abas da clínica
+  ficam numa linha "Nas Configurações da rede: …", `abasSoDaRede`, com a
+  permissão e o plano de cada uma). Quem tem unidade fixa não vê nada disso
+  (não entra em `/admin`). Trava: `tests/configuracoes-e-menu-da-14.test.ts`
+  (toda entrada de `ADMIN_MENU` chega ao menu da unidade de quem é da rede).
+- **A aba da clínica toda diz QUEM muda** (A5 da 14ª, princípio 3): depois de
+  "Esta configuração é da clínica toda", "Quem muda: …" com os nomes de quem é
+  da rede e tem o módulo da aba em Gerenciar (`quemMudaNaClinica`,
+  `lib/equipe/quem-desfaz.ts` — a mesma consulta do "quem desfaz").
 - **Fica com quem é da rede** (a action recusa, a aba diz "Esta configuração é
   da clínica toda" sem o editor, `ABAS_DA_CLINICA_TODA`): tags
   (`actions/tags.ts`), funis, etapas e motivos de perda (`crm-funnels`,

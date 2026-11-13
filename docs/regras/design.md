@@ -62,6 +62,18 @@ Princípios inegociáveis:
   coluna, a aba cortada na lateral. Vale para as colunas do funil
   (`.crm-coluna-cards`), a rolagem lateral do quadro e as barras de aba.
   A exceção é o modal (`.modal-body`), onde a barra é fina e rosé.
+- **O menu lateral que continua abaixo da dobra DIZ que continua** (A4 da
+  14ª simulação, F74, 2026-11-13: a 900 px o menu da rede terminava em
+  "GESTÃO E CONFIGURAÇÃO", e Equipe e Configurações ficavam abaixo, sem
+  sinal). A lista dos dois menus é o `MenuComRolagem`
+  (`components/shared/menu-com-rolagem.tsx`): com o fim fora da vista, um
+  "Mais abaixo" preso no pé da lista (`.menu-continua`, `[data-menu-continua]`;
+  recolhida, só a seta) rola até o fim e some. A barra de rolagem segue fina.
+- **Liga/desliga que só vale depois do "Salvar" diz "Falta salvar"** (A3 da
+  14ª): o `.filtro-toggle` ganha o `.interruptor` (o trilho com a bolinha,
+  `[data-ligado]`) e, enquanto a tela difere do gravado, "Falta salvar: vale
+  depois do “Salvar”". Não "Não salvo": o "Salvo" do rodapé é procurado pelo
+  texto, e o "Não salvo" o achava antes da hora.
 - **Sobreposição no celular começa EMBAIXO da topbar**, nunca em
   `inset: 0`: `top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px))`.
   A topbar desenha por cima dos primeiros 68px do documento, e o que costuma

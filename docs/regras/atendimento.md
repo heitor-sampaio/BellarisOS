@@ -2470,6 +2470,37 @@ indicada é a do consolidado do levantamento):
   Categorias no Estoque da rede; o campo é `CampoFornecedor`. Renomear muda o
   nome nos produtos e mantém o texto dos movimentos já gravados. Prova:
   `e2e/estoque-movimentos-f66.spec.ts` ("C76").)
+  - **Nos DOIS portais** (A12 da 14ª, F74, 2026-11-13): a janela
+    "Fornecedores" fica ao lado de Categorias também no Estoque da unidade,
+    para quem é da rede (`mexeNaConfigDaClinica`; a unidade fixa não a vê, e
+    a action já a recusava). As duas telas leem `todosOsFornecedores` uma vez
+    e tiram a lista das opções por `fornecedoresAtivos`.
+  - **Os dois campos dizem a diferença** (A14 da 14ª): o "Fornecedor de
+    costume" (o do produto, "vem sugerido nas próximas entradas") e o
+    "Fornecedor desta entrada" / o da Entrada ("vale só desta entrada; fica no
+    histórico e no lote"), pela `dica` do `CampoFornecedor`. E a LINHA DO LOTE
+    mostra a nota e o fornecedor da compra que o criou (`lotesComSaldo` lê o
+    movimento PURCHASE ligado ao lote; ajuste e transferência não têm).
+- **O que a 14ª simulação corrigiu no Estoque** (F74, 2026-11-13):
+  - O botão da linha diz **"Entrada e perda"** (A12; era uma engrenagem sem
+    texto). A janela segue "Gerenciar estoque" (o `title` do botão também).
+  - **A perda sem "Desfazer perda" diz por quê** (A13, princípio 3): só a
+    mais nova de cada unidade se desfaz (C69), e as outras dizem "desfaça
+    antes as mais novas desta unidade" (`perdaSemDesfazer`, de
+    `getProductMovements`; `[data-sem-desfazer]`).
+  - **O mínimo herdado do cadastro diz "(do cadastro)"** (A15, princípio 3):
+    "5 seringas (do cadastro)" quando o mínimo da unidade é igual ao do
+    produto (e maior que zero); o da unidade, sem a marca. Uma regra só,
+    `minimoEhDoCadastro` + `rotuloDoMinimo` (`lib/estoque/situacao.ts`), em
+    todo lugar que escreve o mínimo: a linha e a linha aberta do Estoque, a
+    aba "Estoque mínimo" ("O mesmo do cadastro do produto"), os quadros dos
+    dois dashboards, o aviso do sino e o Copilot. Trava:
+    `tests/configuracoes-e-menu-da-14.test.ts` (nenhum
+    `formatarQuantidadeComUnidade(minimoParaMostrar(` fora dela).
+  - **A unidade filtrada vem marcada** (A16, princípio 7): com `?unidade=`, a
+    Entrada (se ativa), o Ajuste e a Perda já vêm com ela, também na entrada
+    pelo leitor (`unidadeSugerida`, `admin-stock-manage-modal.tsx`).
+  - Prova: `e2e/estoque-atritos-da-14.spec.ts`.
   - **O produto escolhe o fornecedor de costume** da lista.
   - **Toda entrada escolhe o fornecedor da lista** — os caminhos irmãos
     juntos: a Entrada manual, o código de barras, o estoque inicial e o

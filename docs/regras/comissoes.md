@@ -110,6 +110,12 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `comissao_do_procedimento_definir` (service_role, conferem profissional e
   procedimentos da rede). A sessão só LÊ — até 2026-09-30
   qualquer funcionário gravava `commission_rules` pelo PostgREST.
+- **A aba se chama "Comissões e taxas"** (A2 da 14ª simulação, F74,
+  2026-11-13: a dona procurava as taxas da maquininha e não achava; a aba
+  guardava as duas coisas e só dizia uma). A chave segue `comissoes`; todo
+  texto que manda à aba diz "Configurações → Comissões e taxas" (trava em
+  `tests/configuracoes-e-menu-da-14.test.ts`). O passo do setup segue "Taxas
+  da maquininha" e diz o nome da aba.
 - **Configuração da REDE** (`commission_configs`, Configurações → Comissões,
   `financial: MANAGE` + abrangência de rede): `modo` (só `INTEGRAL` desde
   2026-11-01, acima; era ATENDIMENTO | PAGAMENTO), descontos da base
