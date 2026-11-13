@@ -284,6 +284,31 @@
   `CLIENT_TAGS` (`packages/utils/client-tags.ts`) virou só as oito com que a
   rede nova nasce.
 
+**Não existe tag de unidade** (H16, o Heitor, 2026-11-13: "não existem tags
+de unidade, existem tags, a rede cria a tag que quiser e usa elas como filtro
+depois, do que quiser, com nome que quiser. Não complica." — e antes: "o
+cliente não é da unidade, o cliente é da rede. Se a rede quiser ela pode
+colocar um tag pra ajudar a filtrar"). A cliente é da REDE (H5). Tag é só da
+clínica: quem cria, dá nome e usa como filtro é ela. O sistema NÃO cria tag
+e não dá significado a nenhuma pelo nome. Isto desfaz:
+- o gatilho `trg_appointment_unit_tag` (julho de 2026), que punha
+  "Unidade: X" na ficha a cada agendamento — sai (nada se move sozinho,
+  princípio 6). As "Unidade: …" já gravadas ficam como tags comuns da
+  clínica (nada se apaga; ela renomeia, arquiva ou tira se quiser) e entram
+  no vocabulário como qualquer outra (o `trg_registrar_tags` deixa de
+  pular `Unidade: %`);
+- toda leitura que tomava "Unidade: X" como "a unidade da cliente" (C6/C45
+  da F68, `tags_das_unidades`): o público das campanhas e o "Buscar
+  clientes" das automações filtrados por unidade, as novas clientes por
+  unidade (cartão, série, "Por filial"), o "Reativar", a lista de Clientes
+  do portal da unidade e o A25 da F73 (`unidadeDaTag`, a tag escolhendo a
+  unidade do Agendar);
+- a conta pela unidade de CADASTRO (`clients.branch_id`) também não volta:
+  ela é só onde a ficha nasceu.
+Onde uma tela ou conta precisa de "a cliente nesta unidade", vale o FATO: a
+cliente atendida (agendamento) naquela unidade — nunca uma tag nem o
+cadastro. A lista de Clientes da unidade é a da clínica (a cliente é da rede).
+
 **As tags da rede** (2026-10-13, pedido do Heitor; **Configurações → Tags**,
 nos dois portais, para quem tem `clients` OU `crm` em Gerenciar — e é da rede:
 quem tem unidade fixa lê "Esta configuração é da clínica toda", e
