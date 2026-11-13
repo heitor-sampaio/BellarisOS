@@ -53,7 +53,7 @@ superfícies em volta. A ordem é do Heitor.
 | Prontuário | `medical_records` | ⬜ |
 | Documentos (termos e contratos) | `documents` | ⬜ |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
-| Procedimentos e pacotes | `procedures` | ⬜ |
+| Procedimentos e pacotes | `procedures` | 🟡 |
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ⬜ |
@@ -182,6 +182,67 @@ perda, ajuste, lotes, validade e aviso de mínimo."
 
 - **P4 (E15), respondida:** "o filtro de marca ou fornecedor mostra os
   produtos que tem alguma entrada dessa marca/fornecedor".
+
+## Procedimentos 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+"A tela de procedimentos esta boa. Para as categorias, vale a mesma regra do
+estoque, só quem tem permissão de gerenciar procedimentos. No cadastro do
+procedimento, troque \"Visivel no app do cliente\" por \"Permitir auto
+agendamento\". Em \"Ficha\" mude para \"Ficha de atendimento\" mantem o padrão
+lista. Agora vamos mudar a parte de termo de consentimento e contrato.
+Transforme em uma seção \"Documentos\" onde é possível linkar todos os
+documentos que precisam de assinatura do cliente. Deve ser possível adicionar
+quantos documentos quiser. Depois vamos modificar os documentos para se
+comportarem dessa forma, eles não terão mais categorias, todos serão apenas
+documentos que poderão ser linkados a um procedimento. Parte de descrição,
+disponivel nas unidades, salas, insumos e o resto pode manter."
+
+### O que faz (levantamento pelo sistema)
+
+Levantado em `components/admin/procedure-form.tsx`,
+`actions/procedures.ts`, `actions/categorias-de-procedimento.ts` e
+`docs/regras/documentos.md`.
+
+- **Categorias de procedimento:** criar, renomear (junta, se o nome já
+  existe) e arquivar. Quem pode: Procedimentos em Gerenciar **e** ser da
+  rede (`ctx.branchId === null`).
+- **Criar e editar procedimento** também exige ser da rede (`assertRede`:
+  "Procedimentos são do catálogo da rede").
+- **Cadastro:** nome, categoria *, duração *, a caixa "Visível no app do
+  cliente" ("A cliente vê o procedimento no app e agenda sozinha"), "Ficha"
+  (lista suspensa, uma só), "Termo de consentimento" (UM) e "Contrato" (UM),
+  pontos de fidelidade (só no modo por procedimento), descrição, e o resto
+  (unidades, salas, insumos, quem realiza, comissão).
+- **Termo e contrato:** cada um é uma lista suspensa com um modelo. Embaixo,
+  a dica diz quando o documento nasce (ao agendar / no início do atendimento)
+  e se ele bloqueia o início sem assinatura ou só avisa.
+- **Os documentos têm hoje três categorias** (`kind`): TERMO, CONTRATO e
+  CONTRATO_PLANO. Cada uma tem as suas variáveis (o termo não usa
+  `agendamento.*`, porque também serve ao plano; só o contrato de plano usa
+  `plano.*` e `pagamento.*`). O CONTRATO_PLANO não se liga a procedimento:
+  é UM ativo por rede e vale no checkout do plano.
+
+### Diferenças
+
+| # | Diferença | Estado |
+|---|---|---|
+| PR1 | Categorias: hoje Gerenciar **e** ser da rede | **Decidido:** só quem tem Procedimentos em Gerenciar (a regra do Estoque) |
+| PR2 | A caixa se chama "Visível no app do cliente" | **Decidido:** "Permitir auto agendamento" |
+| PR3 | O campo se chama "Ficha" | **Decidido:** "Ficha de atendimento", mantém a lista |
+| PR4 | UM termo e UM contrato por procedimento, em dois campos | **Decidido:** seção "Documentos", com quantos documentos quiser, todos os que precisam da assinatura da cliente |
+| PR5 | Os documentos têm categorias (termo, contrato, contrato de plano) | **Decidido, para a revisão de Documentos:** sem categorias; todo documento é só um documento que se liga a um procedimento |
+
+### Perguntas em aberto
+
+- **PR6:** criar e editar o **procedimento** também exige hoje ser da rede.
+  Vale a mesma regra das categorias: só quem tem Procedimentos em Gerenciar?
+- **Para a revisão de Documentos** (não agora; anotado para não se perder):
+  sem categorias, (a) o que acontece com o contrato de plano, que hoje não é
+  de procedimento e vale no checkout do plano? (b) As variáveis, hoje
+  separadas por categoria, ficam todas valendo em todo documento? (c) "Quando
+  nasce" e "bloqueia ou avisa" continuam de cada documento?
 
 ## O PLANO DE ADAPTAÇÃO
 
