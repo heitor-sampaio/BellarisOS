@@ -12,6 +12,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   à rede. No código: `tenant` = rede, `branch` = unidade.
 - **"Clínica" é a mesma coisa que rede e não deve existir no sistema.**
 - **"Filial" sai de vez.**
+- **Nada de nome de cargo como se fosse cargo fixo** (o Heitor, 2026-11-13:
+  "não quero mais tu falando nomes de cargos como se fossem cargos fixos, o
+  que define quem gerencia é permissão, ponto. Pq esse vocabulario pode te
+  levar a concluir coisas que não deveria e acabar criando coisas que não
+  deveria também. O sistema é baseado em permissões, e a aba cargos é apenas
+  para definir um conjunto de permissões para aplicar a um usuário."). Regra,
+  tela, teste e conversa falam em PERMISSÃO ("quem tem o Estoque em
+  Gerenciar"), nunca em "a gerente", "a recepção", "a profissional", "a
+  contadora".
 - O texto que ainda diz "clínica" ou "filial" (telas, regras em
   `docs/regras/`, este arquivo) é pendência da revisão — não é regra.
 

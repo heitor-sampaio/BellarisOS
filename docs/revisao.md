@@ -35,6 +35,7 @@ Anotado no CLAUDE.md, §1, em "Vocabulário".
 
 | # | Diferença | Estado |
 |---|---|---|
+| V0 | Nome de cargo usado como cargo fixo ("a gerente", "a recepção"), nas regras e no CLAUDE.md — o Heitor, 13/11: "o que define quem gerencia é permissão, ponto" (anotado no CLAUDE.md §1) | aberto |
 | V1 | "Clínica" aparece nas telas (inclusive no portal e no app da cliente: "Crédito na clínica", "Telefone da clínica"), na política de privacidade, nas regras (`docs/regras/`) e no CLAUDE.md | aberto |
 | V2 | "Filial" aparece no CLAUDE.md ("Portal Web Filial"), nas regras e em nomes internos do código (`filial`, `trocarFilial…`). Nas telas, a palavra é "unidade" | aberto |
 
@@ -56,7 +57,7 @@ superfícies em volta. A ordem é do Heitor.
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ⬜ |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ |
-| Estoque | `stock` | 🟡 |
+| Estoque | `stock` | 🟡 (falta P4) |
 | Relatórios e indicadores | `reports` | ⬜ |
 | Equipe | `team` | ⬜ (já tem item, vindo do Estoque: P3) |
 | Fichas (formulários, pré-atendimento) | `forms` | ⬜ |
@@ -164,6 +165,23 @@ Levantado no código das telas e das actions (`app/*/estoque`,
   de UMA unidade, e o "Atende" é uma lista de unidades (decisão 2 da 8ª
   simulação: "o atende vira um checklist com todas as unidades").
 - **E2:** "checkbox".
+
+### O resto do Estoque (o Heitor, 13/11)
+
+"Até aqui falamos sobre a criaçao de produtos no estoque, a tela geral do
+estoque esta boa. A entrada adapta para o novo formato de informar marca e
+fornecedor. Garanta que existam os 3 filtros: categorias, marca,
+fornecedores. Mantem saída no atendimento, transferencia entre unidades,
+perda, ajuste, lotes, validade e aviso de mínimo."
+
+| # | Diferença | Estado |
+|---|---|---|
+| E14 | A Entrada pede o fornecedor da lista de hoje (a que vira marca, E5), com "+ Novo"; não pede marca | **Decidido:** a Entrada passa a pedir marca e fornecedor |
+| E15 | Filtros da tela hoje: busca, categoria, unidade, situação. Não há filtro de marca nem de fornecedor | **Decidido:** os 3 filtros, categorias, marca e fornecedores (ver P4) |
+
+- **P4 (E15), em aberto:** marca e fornecedor ficam na ENTRADA, não no
+  produto (E10). O filtro de marca mostra os produtos que têm alguma entrada
+  (lote) daquela marca? Ou é outra coisa?
 
 ## O que já estava pendente, para entrar no módulo dele
 
