@@ -68,7 +68,7 @@ superfícies em volta. A ordem é do Heitor.
 | Configurações (rede e unidade) | `settings` | ✅ |
 | Copilot | `copilot` | ⏸ por último (a regra: acompanha tudo) |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ✅ |
-| Portal e app da cliente | `/[slug]/cliente`, `apps/native` | 🟡 |
+| Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ✅ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ⬜ |
 | Busca | `busca_universal` | ⬜ |
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ⬜ |
@@ -1405,7 +1405,7 @@ CLAUDE.md §6 ("Portal não é filial").
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Portais".
 
-## Portal e app da cliente 🟡
+## Portal e app da cliente ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -1431,12 +1431,16 @@ pessoa em várias redes, com o seletor na entrada.
   senha, LGPD).
 - O que ela nunca vê: o prontuário, a anotação da equipe.
 
-### Recomendação do Claude (aguarda o Heitor)
+### Recomendação do Claude (o Heitor: "Concordo")
 
 - **CA1 — sem "clínica" no portal** (V1, como o PO2): "Crédito na clínica",
   "Telefone da clínica", "A clínica enviou um documento" passam a usar o NOME
   da rede ("Crédito na Estética Bella").
 - O resto, como está, com o que já foi decidido acima.
+
+### Bloco no plano: Portal da cliente
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Portal da cliente".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1704,6 +1708,16 @@ Heitor de que vale uma completa.
 | PO1 | **A pessoa de várias unidades** entra no portal da unidade (a primeira das dela, ou a última usada), com o seletor "Unidade: X ▾" no topo; trocar leva à MESMA tela na outra unidade (`lib/rotas`). O layout da unidade aceita qualquer unidade dela (hoje confere UMA). Quem tem "A rede inteira" segue no portal da rede | EQ1 |
 | PO2 | **Sai o "clínica" da rede de uma unidade** (`useFala`, `lib/unidades/vocabulario.ts`): onde a palavra é necessária, o NOME da rede; onde não é, nenhuma | V1 |
 | — | Mantém: os dois portais, as mesmas telas com o mesmo sufixo, o filtro de unidade na rede, o que é só da rede, o "Abrir unidade" do Dashboard, o esconder do que só serve com duas unidades | — |
+
+### Bloco: Portal da cliente
+
+| # | O que muda | Depende de |
+|---|---|---|
+| CA1 | **Sem "clínica" no portal e no app**: "Crédito na clínica", "Telefone da clínica", "A clínica enviou um documento", os avisos no celular — o NOME da rede no lugar | V1 |
+| CA2 | **O plano no app** (PT1/PT3): ver tudo — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados —, ACEITAR e agendar as sessões | Plano de tratamento |
+| CA3 | **Agendar a sessão de plano ou de pacote** pelo app, mesmo com o procedimento sem "Permitir auto agendamento" | PT3 |
+| CA4 | **Assinar todos os documentos abertos de uma vez** (DC3) e "Ficha de saúde" (PR3) | DC3, PR3 |
+| — | Mantém: o acesso criado pela rede, o login único em várias redes, o início, o agendar, o histórico com "Confirmar e avaliar", o financeiro, a fidelidade, o perfil e a LGPD, o app Android como casca do portal | — |
 
 ### Bloco: Cargos
 
