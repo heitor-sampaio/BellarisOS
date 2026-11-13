@@ -55,7 +55,7 @@ superfícies em volta. A ordem é do Heitor.
 | CRM (inbox, oportunidades, funis) | `crm` | ✅ |
 | Procedimentos | `procedures` | ✅ |
 | Pacotes | `procedures` (pacotes) | ✅ |
-| Plano de tratamento | `treatment_plans` | ⬜ (já tem itens, vindos de Pacotes: PC7–PC9) |
+| Plano de tratamento | `treatment_plans` | 🟡 |
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
@@ -882,6 +882,53 @@ O resto, o Heitor: "o resto fica como está".
 ### Bloco no plano: CRM
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: CRM".
+
+## Plano de tratamento 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+Já decidido em outros módulos:
+- **PDV4**: a comanda do plano nasce ao iniciar o PRIMEIRO atendimento do
+  plano; sai o "Fechar checkout" como porta de pagamento.
+- **PC7–PC10 e DC1–DC4**: na criação, o plano puxa os termos e os outros
+  documentos dos procedimentos (cada um com excluir) e usa o contrato de
+  plano; os documentos nascem na criação e se assinam de uma vez; a sessão
+  do plano não pede documento.
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/atendimento.md` §9.4 e §10 e
+`docs/regras/vendas-financeiro.md`. No menu, Planejamento → Tratamentos; na
+ficha, Planejamento → Tratamentos.
+- **Quem monta**: quem tem o Prontuário em Gerenciar — na avaliação (o editor
+  "Tratamento" na tela do atendimento, "Gerar plano e enviar à recepção") ou
+  pelo "Novo plano" (ficha, Tratamentos). Nasce no primeiro "Salvar plano".
+- **O plano**: sessões, cada uma com os procedimentos, o preço e a duração;
+  observações; a anotação da profissional (clínica). Sugere o pacote
+  equivalente, se houver.
+- **Proposto**: "Aceitar plano" ou "Cliente vai pensar". A cliente vê o
+  proposto no app, com o valor e a validade (30 dias, da rede — só
+  informação), e "o aceite é feito na clínica". O agendar avisa quando o mesmo
+  procedimento está num plano ("Agendar pelo plano? Avulso, ele é cobrado à
+  parte.").
+- **Fechar checkout** (quem recebe): Plano → Pagamento (à vista, entrada +
+  parcelas, "atendimento de hoje", desconto, "Quem vendeu") → Documentação
+  (contrato de plano e termos) → Agendamento das sessões. Fechado, a tela do
+  plano mostra o dinheiro e as sessões; o check-in cobra só a parcela que
+  venceu. Cancelar o plano fechado é do Financeiro em Gerenciar (como o
+  pacote).
+- **Quem vê**: os planos seguem a Agenda (sem ela, não há plano) e o "só os
+  meus" dela: o plano das clientes que a pessoa atende e os que ela montou.
+
+### Recomendação do Claude (aguarda o Heitor)
+
+- **PT1 — o "Fechar checkout" vira o ACEITE do plano, sem dinheiro**: "Aceitar
+  plano" pergunta o pagamento COMBINADO (à vista, entrada + parcelas — o
+  contrato de plano o cita), manda os documentos (um link, uma assinatura) e
+  agenda as sessões. O dinheiro é no PDV: a comanda do plano nasce ao iniciar
+  o 1º atendimento, já com o combinado, e as parcelas seguem como hoje (o
+  check-in/PDV cobra a que venceu). "Quem vendeu" e o desconto ficam no
+  aceite.
 
 ## O PLANO DE ADAPTAÇÃO
 
