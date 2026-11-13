@@ -53,7 +53,8 @@ superfícies em volta. A ordem é do Heitor.
 | Prontuário | `medical_records` | ⬜ |
 | Documentos (termos e contratos) | `documents` | ⬜ |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
-| Procedimentos e pacotes | `procedures` | 🟡 |
+| Procedimentos | `procedures` | ✅ |
+| Pacotes | `procedures` (pacotes) | ⬜ |
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ⬜ |
@@ -183,7 +184,7 @@ perda, ajuste, lotes, validade e aviso de mínimo."
 - **P4 (E15), respondida:** "o filtro de marca ou fornecedor mostra os
   produtos que tem alguma entrada dessa marca/fornecedor".
 
-## Procedimentos 🟡
+## Procedimentos ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -234,10 +235,10 @@ Levantado em `components/admin/procedure-form.tsx`,
 | PR4 | UM termo e UM contrato por procedimento, em dois campos | **Decidido:** seção "Documentos", com quantos documentos quiser, todos os que precisam da assinatura da cliente |
 | PR5 | Os documentos têm categorias (termo, contrato, contrato de plano) | **Decidido, para a revisão de Documentos:** sem categorias; todo documento é só um documento que se liga a um procedimento |
 
-### Perguntas em aberto
+### Perguntas
 
-- **PR6:** criar e editar o **procedimento** também exige hoje ser da rede.
-  Vale a mesma regra das categorias: só quem tem Procedimentos em Gerenciar?
+- **PR6, respondida:** "sim, só quem tem permissão de gerenciar". Criar e
+  editar procedimento: quem tem Procedimentos em Gerenciar, e só isso.
 - **Para a revisão de Documentos** (não agora; anotado para não se perder):
   sem categorias, (a) o que acontece com o contrato de plano, que hoje não é
   de procedimento e vale no checkout do plano? (b) As variáveis, hoje
@@ -285,6 +286,17 @@ revisão, só se escreve o plano. Nada se implementa.
 | E15 | Filtros da tela: **categorias, marca, fornecedores**. Marca e fornecedor mostram os produtos que têm alguma entrada daquela marca ou fornecedor | E14 |
 | E13 | **Quem cadastra produto:** quem tem o Estoque em Gerenciar. Sai a regra "catálogo só da rede × as unidades também". Quem é de uma unidade só: a unidade vem preenchida e travada. Quem é de mais de uma: a lista mostra só as unidades dela | **Equipe** (a pessoa em mais de uma unidade) |
 | — | Mantém: nome, SKU automático, código de barras (digitado ou leitor), categoria, embalagem (lista fixa), conteúdo da embalagem, preço e comissão de venda, estoque mínimo, aviso de nome repetido. A tela geral do estoque, a saída no atendimento, a transferência entre unidades, a perda, o ajuste, os lotes, a validade e o aviso de mínimo | — |
+
+### Bloco: Procedimentos
+
+| # | O que muda | Depende de |
+|---|---|---|
+| PR1/PR6 | Categorias de procedimento (criar, renomear, arquivar) **e** o próprio procedimento (criar, editar, ativar/desativar): quem tem Procedimentos em **Gerenciar**, e só isso. Sai a exigência de ser da rede (`assertRede`, `quemGerencia`) | — |
+| PR2 | "Visível no app do cliente" → **"Permitir auto agendamento"** (o rótulo e a dica) | — |
+| PR3 | "Ficha" → **"Ficha de atendimento"**, a mesma lista | — |
+| PR4 | Termo (um) e Contrato (um) → seção **"Documentos"**: liga quantos documentos quiser, os que precisam da assinatura da cliente. O que hoje nasce por `consent_template_id`/`contract_template_id` passa a nascer pela lista | **Documentos** (PR5 e as perguntas dela) |
+| PR5 | Os documentos **sem categorias**: todo documento é só um documento que se liga a procedimento | a revisão de **Documentos** |
+| — | Mantém: a tela, nome, categoria, duração, pontos de fidelidade, descrição, unidades, salas, insumos, quem realiza, comissão | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
