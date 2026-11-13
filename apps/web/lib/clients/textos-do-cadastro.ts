@@ -36,15 +36,47 @@ export function avisoDoAcessoCriado({ contaLigada, email, documento }: {
       }
 }
 
+/** Por que a ficha "já existe" — a pergunta da tela e o rodapé dizem o mesmo (D5 da 14ª). */
+export const POR_QUE_JA_EXISTE = {
+  CPF: 'com este CPF', TELEFONE: 'com este telefone', NOME_E_NASCIMENTO: 'com este nome e esta data de nascimento',
+} as const
+
+/**
+ * Onde a pergunta aparece no formulário (D5 da 14ª): a do telefone, logo
+ * abaixo do telefone e do e-mail; a do CPF e a do nome com o nascimento, logo
+ * abaixo do documento e do nascimento — junto do campo que a causou.
+ */
+export function perguntaJuntoDoDocumento(motivo: keyof typeof POR_QUE_JA_EXISTE | undefined): boolean {
+  return motivo === 'CPF' || motivo === 'NOME_E_NASCIMENTO'
+}
+const ONDE = 'logo abaixo do telefone e do e-mail'
+const ONDE_DO_MOTIVO = { CPF: 'logo abaixo do CPF', NOME_E_NASCIMENTO: 'logo abaixo da data de nascimento', TELEFONE: ONDE } as const
+
 /**
  * "Cadastrar" com uma pergunta do telefone sem resposta (A22 da 7ª simulação,
  * 2026-11-05): o clique não fazia nada nem dizia por quê. A frase vai junto do
  * botão e diz qual pergunta responder e onde ela está.
+ *
+ * Repete a pergunta da TELA (D5 da 14ª, F73; princípio 3): os botões com o
+ * nome que eles têm, e só os que aparecem — pelo CPF não há "Cadastrar mesmo
+ * assim" (o CPF é único na clínica), e o rodapé mandava clicar nele.
  */
-export function oQueFaltaResponder(p: { tipo: 'lead' | 'jaExiste' | 'arquivada'; nome: string; ehLead?: boolean }): string {
-  if (p.tipo === 'lead') return `Responda antes de cadastrar: é a mesma pessoa do ${p.ehLead === false ? 'contato' : 'lead'} ${p.nome}? (Sim ou Não, logo abaixo do telefone)`
-  if (p.tipo === 'jaExiste') return `Responda antes de cadastrar: já existe a ficha de ${p.nome} — “Cadastrar mesmo assim” ou “Unificar com a ficha”, logo abaixo do telefone.`
-  return `Responda antes de cadastrar: o telefone é da ficha arquivada de ${p.nome} — “Reativar” ou “É outra pessoa”, logo abaixo do telefone.`
+export function oQueFaltaResponder(p: {
+  tipo: 'lead' | 'jaExiste' | 'arquivada'; nome: string; ehLead?: boolean
+  motivo?: keyof typeof POR_QUE_JA_EXISTE; podeCadastrarMesmoAssim?: boolean
+}): string {
+  if (p.tipo === 'lead') {
+    return `Responda antes de cadastrar: é a mesma pessoa do ${p.ehLead === false ? 'contato' : 'lead'} ${p.nome}? (“Sim, é a mesma pessoa” ou “Não, é outra pessoa”, ${ONDE})`
+  }
+  if (p.tipo === 'jaExiste') {
+    const porQue = p.motivo ? ` ${POR_QUE_JA_EXISTE[p.motivo]}` : ''
+    const onde = p.motivo ? ONDE_DO_MOTIVO[p.motivo] : ONDE
+    const unificar = `“Unificar com a ficha de ${p.nome}”`
+    return p.podeCadastrarMesmoAssim === false
+      ? `Responda antes de cadastrar: já existe a ficha de ${p.nome}${porQue}, e o CPF é único na clínica — ${unificar}, ${onde}, ou corrija o CPF.`
+      : `Responda antes de cadastrar: já existe a ficha de ${p.nome}${porQue} — é outra pessoa (“Cadastrar mesmo assim”) ou é ela (${unificar})? A pergunta está ${onde}.`
+  }
+  return `Responda antes de cadastrar: o telefone é da ficha arquivada de ${p.nome} — é ela (“Reativar a ficha de ${p.nome}”) ou “É outra pessoa”? A pergunta está ${ONDE}.`
 }
 
 /**

@@ -12,7 +12,7 @@ import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDi
 import { ResponsavelLegal, RESPONSAVEL_VAZIO, type CamposDoResponsavel } from '@/components/shared/responsavel-legal'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
-import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro, oQueFaltaResponder } from '@/lib/clients/textos-do-cadastro'
+import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro, oQueFaltaResponder, POR_QUE_JA_EXISTE, perguntaJuntoDoDocumento } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 
@@ -151,6 +151,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const doEnvio = perguntaDe(state)
   // Gravado, nenhuma pergunta: a conferência que chega DEPOIS do cadastro acharia a própria ficha nova.
   const pergunta = state?.success ? null : doEnvio ?? perguntaDe(digitos ? previa : null)
+  const noDocumento = pergunta?.tipo === 'jaExiste' && perguntaJuntoDoDocumento(pergunta.motivo)
 
   // A pergunta que veio do clique em "Cadastrar" aparece onde a pessoa está olhando.
   useEffect(() => {
@@ -296,7 +297,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         </Field>
 
         {/* A pergunta do telefone, logo abaixo dele (A18). */}
-        {pergunta && (
+        {pergunta && !noDocumento && (
           <div ref={perguntaRef} style={{ gridColumn: '1 / -1' }}>
             <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar}
               atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ email, telefone: phone }} />
@@ -331,6 +332,14 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
             value={nascimento} onChange={e => setNascimento(e.target.value)}
           />
         </Field>
+
+        {/* A do CPF e a do nome com o nascimento, junto do campo que a causou (D5 da 14ª). */}
+        {pergunta && noDocumento && (
+          <div ref={perguntaRef} style={{ gridColumn: '1 / -1' }}>
+            <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar}
+              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ email, telefone: phone }} />
+          </div>
+        )}
 
         <Field label="Gênero">
           <select name="gender" className="field" defaultValue=''>
@@ -439,7 +448,11 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
           fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
         }}>
-          {oQueFaltaResponder({ tipo: pergunta.tipo, nome: pergunta.nome, ehLead: pergunta.tipo === 'lead' ? pergunta.ehLead : undefined })}
+          {oQueFaltaResponder({
+            tipo: pergunta.tipo, nome: pergunta.nome, ehLead: pergunta.tipo === 'lead' ? pergunta.ehLead : undefined,
+            // D5 da 14ª: o rodapé repete a pergunta da tela, com os botões que ela tem.
+            ...(pergunta.tipo === 'jaExiste' ? { motivo: pergunta.motivo, podeCadastrarMesmoAssim: pergunta.podeCadastrarMesmoAssim } : {}),
+          })}
         </p>
       )}
 
@@ -471,7 +484,7 @@ const caixaDaPergunta: React.CSSProperties = {
 }
 const explicacao: React.CSSProperties = { fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }
 const destaque: React.CSSProperties = { color: 'var(--text)' }
-const POR_QUE = { CPF: 'com este CPF', TELEFONE: 'com este telefone', NOME_E_NASCIMENTO: 'com este nome e esta data de nascimento' } as const
+const POR_QUE = POR_QUE_JA_EXISTE
 
 /**
  * Como a ficha FICA ao unificar (A17 da 6ª simulação: a Daniela ficou com o
