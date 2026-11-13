@@ -66,7 +66,7 @@ superfícies em volta. A ordem é do Heitor.
 | Fichas (formulários, pré-atendimento) | `forms` | ✅ |
 | Cargos e permissões | `roles` | ✅ |
 | Configurações (rede e unidade) | `settings` | ✅ |
-| Copilot | `copilot` | 🟡 |
+| Copilot | `copilot` | ⏸ por último (a regra: acompanha tudo) |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ⬜ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ⬜ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ⬜ |
@@ -1335,11 +1335,14 @@ configuração da rede toda é de quem é da rede (H7).
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Configurações".
 
-## Copilot 🟡
+## Copilot ⏸ (por último)
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+"Sim, copilot acompanha tudo e como ainda podemos precisar mudar outras coisas
+nessa revisão, melhor deixar copilot por último, mas a orientação é a mesma,
+acompanha as mudanças". A regra está decidida (CP1); a conferência das
+ferramentas fica para o fim da revisão, depois do último módulo.
 
 ### O que faz hoje (levantamento)
 
@@ -1356,13 +1359,17 @@ imagem e documento.
   no cargo: Ver (só consultas) ou Gerenciar (também gravações, e cada uma
   ainda pede o módulo dela). Cota mensal por rede.
 
-### Recomendação do Claude (aguarda o Heitor)
+### Recomendação do Claude (aprovada)
 
 - **CP1 — as ferramentas acompanham o sistema adaptado**: vender e receber
   pela comanda do PDV, o plano com o aceite (sem o checkout), "contato" e
   "oportunidade", a "Ficha de saúde", as unidades da pessoa, os documentos
   num link só. A gravação do Copilot entra na Auditoria como a de quem pediu,
   com a marca "pelo Copilot".
+
+### Bloco no plano: Copilot
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Copilot" — o último, depois do de Cargos.
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1633,6 +1640,12 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 | CG2 | **"Termos e contratos" → "Documentos"** | DC1 |
 | CG3 | **Os textos de cada linha** (`LEVEL_COPY`, `SCOPE_NOTE`, as notas de abrangência, o resumo "O que essa pessoa vai ver") dizem o sistema adaptado: o PDV, "oportunidade", a aba "Oportunidades", a "Ficha de saúde" e as fotos no Prontuário, o plano montado por quem atende, "as unidades dela". Nenhum nível nem escopo muda | todos os blocos |
 | — | Mantém: os cargos da rede, os modelos e os de sistema, a matriz, os escopos, as abas de relatório, o refino do inbox, as caixas por cargo, o "cargo acima" | — |
+
+### Bloco: Copilot (o último)
+
+| # | O que muda | Depende de |
+|---|---|---|
+| CP1 | **As ferramentas acompanham o sistema adaptado**: cada mudança da revisão que mexe no que o Copilot lê ou grava (o PDV e as comandas, o aceite do plano, contato e oportunidade, a ficha de saúde, as unidades da pessoa, o link único dos documentos, a Auditoria…) muda a ferramenta junto. A gravação dele entra na Auditoria em nome de quem pediu, com "pelo Copilot". Conferido ferramenta por ferramenta no fim | todos os blocos |
 
 ## O que já estava pendente, para entrar no módulo dele
 
