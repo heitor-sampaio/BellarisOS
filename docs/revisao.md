@@ -48,7 +48,7 @@ superfícies em volta. A ordem é do Heitor.
 | Módulo | No sistema | Estado |
 |---|---|---|
 | Agenda | `agenda` | ⬜ |
-| Clientes (ficha, tags, LGPD) | `clients` | ⬜ |
+| Clientes (ficha, tags, LGPD) | `clients` | ⬜ (as tags: ver "Tags") |
 | Fidelidade | `loyalty` | ⬜ |
 | Prontuário | `medical_records` | ⬜ |
 | Documentos (termos e contratos) | `documents` | ⬜ |
@@ -374,6 +374,62 @@ Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
   - **Um link só** para a cliente, e **uma assinatura** assina todos de uma
     vez. Hoje é um link por documento (`gerarLinkDeAssinatura`: uso único, 7
     dias, um ativo por documento) e cada documento se assina à parte.
+
+## Tags (regra do sistema inteiro) 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+"Tag é uma coisa que serve para criar filtros personalizados. Isso em
+qualquer lugar do sistema, tá? O sistema não coloca tag nenhuma
+automaticamente em ninguém por nenhum motivo, tá? As tags são uma maneira
+para a clínica criar filtros personalizados. Então ela cria uma tag com o que
+ela quiser e depois, onde tiver for passível de filtro, um dos filtros que
+ela pode usar são as tags. Tá? Com isso, a clínica tem flexibilidade para
+filtrar o que ela quiser do jeito que ela quiser, além dos filtros que a
+gente já apresenta ali fixos em cada página."
+
+Substitui as leituras do Claude sobre a H16 (o bloco "Não existe tag de
+unidade" em `docs/regras/crm-inbox.md`). Anotado no CLAUDE.md §1, "Tags".
+
+### O que faz (levantamento pelo sistema)
+
+Onde o sistema põe tag sozinho hoje:
+- **T1.** A cada agendamento, o gatilho `trg_appointment_unit_tag` põe
+  "Unidade: X" na cliente (migration `20260721140001`). E há leituras que
+  tomam essa tag como "a unidade da cliente": público das campanhas e
+  "Buscar clientes" das automações por unidade, novas clientes por unidade,
+  "Reativar", a lista de Clientes do portal da unidade, o Agendar escolhendo
+  a unidade pela tag (A25 da F73, `unidadeDaTag`).
+- **T2.** A conversa nova que vem de anúncio nasce com a ORIGEM como tag
+  (`deriveLeadSource` → `conversations.tags`, que o gatilho leva para a
+  pessoa).
+- **T3.** Na Importação, a coluna "Origem" de cada linha vira tag da pessoa
+  ("Origem (vira tag da pessoa)").
+- **T4.** As automações têm a ação "Tag do cliente" (adicionar/remover): é a
+  rede que monta a automação, mas quem grava a tag é o sistema, sozinho,
+  quando ela dispara.
+- **T5.** Onde a tag é filtro hoje: na pessoa (`contacts.tags`) — ficha,
+  inbox, oportunidades, campanhas, automações. Produto, procedimento,
+  agendamento etc. não têm tag.
+
+### Diferenças
+
+| # | Diferença | Estado |
+|---|---|---|
+| T1 | O gatilho da "Unidade: X" e as leituras da tag como unidade | **Decidido:** sai. O sistema não põe tag |
+| T2 | A origem do anúncio vira tag | **Decidido:** sai (a origem pode continuar gravada como origem, não como tag — ver T6) |
+| T3 | A origem da Importação vira tag | **Decidido:** sai (idem) |
+| T4 | A ação "Tag do cliente" das automações | **Em aberto (T6)** |
+
+### Perguntas em aberto
+
+- **T6:** (a) A ação de automação que adiciona/remove tag: é a rede que monta
+  e liga a automação. Fica (é a rede pondo a tag, por uma regra dela) ou sai
+  (é o sistema pondo a tag sozinho)? (b) A ORIGEM (do anúncio, da planilha)
+  continua guardada e filtrável como origem, só não como tag? (c) "Onde for
+  passível de filtro": a tag continua sendo só da PESSOA, ou a rede também
+  marca tag em produto, procedimento, agendamento, oportunidade…? (d) As
+  "Unidade: X" já gravadas nas fichas: ficam como tags comuns, ou saem?
 
 ## O PLANO DE ADAPTAÇÃO
 

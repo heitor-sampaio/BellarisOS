@@ -24,6 +24,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - O texto que ainda diz "clínica" ou "filial" (telas, regras em
   `docs/regras/`, este arquivo) é pendência da revisão — não é regra.
 
+### Tags (o Heitor, 2026-11-13 — vale para o sistema inteiro)
+
+"Tag é uma coisa que serve para criar filtros personalizados. Isso em
+qualquer lugar do sistema, tá? O sistema não coloca tag nenhuma
+automaticamente em ninguém por nenhum motivo, tá? As tags são uma maneira
+para a clínica criar filtros personalizados. Então ela cria uma tag com o que
+ela quiser e depois, onde tiver for passível de filtro, um dos filtros que
+ela pode usar são as tags. Tá? Com isso, a clínica tem flexibilidade para
+filtrar o que ela quiser do jeito que ela quiser, além dos filtros que a
+gente já apresenta ali fixos em cada página."
+
+- Tag é **filtro personalizado da rede**: ela cria com o nome que quiser e usa
+  como filtro onde houver filtro, ao lado dos filtros fixos de cada tela.
+- **O sistema NUNCA põe tag sozinho**, em ninguém, por motivo nenhum.
+- O que hoje contraria isto está em `docs/revisao.md` ("Tags").
+
 **A revisão do sistema, módulo por módulo, está em `docs/revisao.md`**
 (aberta pelo Heitor em 2026-11-13). Enquanto ela corre, nada se implementa.
 
