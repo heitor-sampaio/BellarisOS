@@ -51,7 +51,7 @@ superfícies em volta. A ordem é do Heitor.
 | Clientes (ficha, tags, LGPD) | `clients` | ✅ |
 | Fidelidade | `loyalty` | ✅ |
 | Prontuário | `medical_records` | ✅ |
-| Documentos (termos e contratos) | `documents` | 🟡 |
+| Documentos (termos e contratos) | `documents` | ✅ |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
 | Procedimentos | `procedures` | ✅ |
 | Pacotes | `procedures` (pacotes) | ✅ |
@@ -757,7 +757,7 @@ Injetáveis.
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Prontuário".
 
-## Documentos (termos e contratos) 🟡
+## Documentos (termos e contratos) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -802,7 +802,7 @@ Regras em `docs/regras/documentos.md` §9.4.1.
   dispensado, cancelado) e a trilha. Com o Prontuário "só os meus", só os das
   clientes que a pessoa atende.
 
-### Recomendações do Claude (aguardam o Heitor)
+### Recomendações do Claude (o Heitor, 13/11: "concordo")
 
 Fecham as três perguntas que ficaram de Procedimentos (o que é do contrato de
 plano, as variáveis, "quando nasce" e "bloqueia").
@@ -825,6 +825,10 @@ plano, as variáveis, "quando nasce" e "bloqueia").
   "Bloqueia o início ou só avisa" fica, por documento (princípio 1). O
   contrato que cita o pagamento continua pedindo o "pagamento combinado"
   antes (até lá, "faltam dados", e a tela diz).
+
+### Bloco no plano: Documentos
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Documentos".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -991,6 +995,21 @@ unidade.
 | PR2c | **O pacote LGPD leva as anotações e as versões** | PR2a, PR2b |
 | PR3 | **"Ficha de saúde" em toda tela, mensagem e aviso** (a equipe, o app, o link, Configurações → Fichas, o Copilot): sai "pré-atendimento" e "anamnese" do texto que se lê. O nome no código e no banco fica | — |
 | — | Mantém: o registro de cada atendimento (evolução, intercorrência, ficha do procedimento, o lote), a ficha de saúde e o envio dela, os injetáveis, quem vê e o registro de quem abriu | — |
+
+### Bloco: Documentos
+
+Junta o que foi decidido em Procedimentos (PR4, PR5), Pacotes (PC2, PC7–PC10)
+e Agenda (AG1) com o DC1–DC4.
+
+| # | O que muda | Depende de |
+|---|---|---|
+| DC1 | **Os tipos**: Termo de consentimento, Contrato do procedimento, Contrato de plano, Contrato de pacote e Documento. O tipo novo "Documento" (editor ou PDF) usa as variáveis do termo; o Contrato de pacote, as do de plano trocando `plano.*` por `pacote.*` (procedimentos, sessões, validade) mais `pagamento.*`. Um contrato de pacote ativo por rede, trocado por "Tornar ativo", como o de plano | — |
+| DC1b | **O procedimento liga**: "Termo de consentimento" (opcional), "Contrato" (opcional, só no avulso) e "Outros documentos" (quantos quiser, do tipo Documento — ou termo/contrato já criados, a decidir na implementação pela regra do PC7: "qualquer documento criado ou anexado") | PR4, PC7 |
+| DC1c | **O pacote e o plano**: ao criar, puxam os termos e os outros documentos dos procedimentos distintos (não o contrato deles), listados logo abaixo da seleção do termo e do contrato, cada um com "excluir"; o contrato é o de pacote / de plano. A venda do pacote (no PDV) emite os dele; a sessão de pacote e a de plano não emitem | PC8–PC10, PDV |
+| DC2 | **Toda rede nasce com o contrato de pacote padrão** (`documentos_modelos_padrao`), ao lado do de plano | DC1 |
+| DC3 | **Uma assinatura para todos, em todo canal**: o link único (um link por cliente e momento — o agendamento, o pacote, o plano —, com todos os documentos abertos dele), o aparelho entregue na clínica e o app. A cliente vê a lista, abre cada um, marca "li e concordo" (um aceite que diz os títulos) e assina uma vez. Cada documento ganha a sua evidência (a mesma imagem da assinatura, o hash DELE), o seu PDF e o seu QR. Documento com "faltam dados" não entra e a tela diz qual. O papel e o dispensar seguem por documento | AG1 |
+| DC4 | **Sai "quando nasce"**: todo documento do atendimento nasce ao agendar (o gatilho no INSERT; sai o do check-in e a emissão do início); o do pacote, na venda; o do plano, na criação. "Bloqueia o início ou só avisa" fica, por documento. O contrato com `pagamento.*` segue pedindo o "pagamento combinado" antes | — |
+| — | Mantém: o editor e as versões, o PDF pronto, "faltam dados", o responsável da menor, o papel, o dispensar com motivo, o PDF assinado com evidências e o `/verificar`, a segurança do link (CPF ou nascimento, tentativas, uso único, 7 dias), o envio pela conversa (opção da rede), a tela Documentos só de leitura e o "só os meus" | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
