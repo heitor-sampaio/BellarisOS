@@ -47,10 +47,8 @@ export async function profissionaisSemComissao(tenantId: string): Promise<{ id: 
       .eq('is_active', true).is('procedure_id', null), 'listar as comissões padrão'),
   ])
   const comPadrao = new Set((padroes ?? []).map(p => p.professional_id as string))
-  // A14 da 11ª: quem está sem comissão DE PROPÓSITO (a dona que atende) não entra no aviso.
-  const deProposito = new Set(((await ler(admin.from('users').select('id').eq('tenant_id', tenantId)
-    .eq('sem_comissao_de_proposito', true), 'listar quem está sem comissão de propósito')) ?? []).map(u => u.id as string))
-  const sem = (membros ?? []).filter(m => !comPadrao.has(m.id as string) && !deProposito.has(m.id as string))
+  // Sem "de propósito" desde 2026-11-13 (o Heitor tirou a caixa): quem atende sem padrão fica no aviso.
+  const sem = (membros ?? []).filter(m => !comPadrao.has(m.id as string))
     .map(m => ({ id: m.id as string, nome: m.name as string }))
   // A12 (5ª simulação): quantos atendem, para a tela não dizer "todos têm
   // comissão" quando ninguém atende.

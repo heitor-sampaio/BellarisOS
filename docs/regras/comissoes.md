@@ -358,20 +358,14 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   venda do "vale" não pergunta "Quem vendeu" e nenhuma linha nasce. Quem
   atende depois, pago com o crédito, recebe a comissão de EXECUÇÃO do
   atendimento, como sempre. Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
-- **"Sem comissão, de propósito"** (A14 da 11ª simulação, 2026-11-10;
-  princípio 1, a clínica decide): o aviso "profissionais sem comissão" de
-  Configurações → Comissões e a pílula "Sem comissão" da Equipe contavam a
-  dona que atende e fica sem comissão de propósito. Na comissão da pessoa, com
-  "Sem comissão" escolhido, a caixa "Sem comissão, de propósito" grava
-  `users.sem_comissao_de_proposito` (migration `20261110005502`, só o servidor,
-  `salvarRegrasDoProfissional`): o aviso não a conta (`profissionaisSemComissao`)
-  e a pílula diz "Sem comissão (de propósito)", sem o alerta. Só a marca: a
-  conta não muda, e gravar uma regra padrão a desfaz. Prova:
-  `e2e/configuracoes-atritos-da-11.spec.ts` ("A14"). **E o "É de propósito"
-  fica à vista** (A4 da 12ª simulação, 2026-11-11: a caixa só aparecia
-  abrindo o chip): ao lado da pílula âmbar "Sem comissão", o botão "É de
-  propósito" (`[data-de-proposito-atalho]`) grava a mesma marca, mantendo as
-  exceções. Prova: `e2e/configuracoes-atritos-da-12.spec.ts` ("A4").
+- **Não existe "sem comissão, de propósito"** (o Heitor, 2026-11-13: "Só tira
+  o \"de proposito\" na caixa tambem"). Saíram o botão "É de propósito" da
+  linha da Equipe (A4 da 12ª), o "Desfazer" dele (A6 da 14ª) e a caixa da
+  janela de comissão (A14 da 11ª). Quem atende sem comissão padrão fica no
+  aviso de Configurações → Comissões e na pílula âmbar "Sem comissão" da
+  Equipe. A coluna `users.sem_comissao_de_proposito` ficou no banco, e nada a
+  lê nem grava. Prova: `e2e/configuracoes-atritos-da-11.spec.ts` ("A14
+  (revista)") e `e2e/configuracoes-atritos-da-12.spec.ts` ("A4 (revista)").
 - **A comissão de venda POR PESSOA** (A17 da 11ª simulação, 2026-11-10;
   decidido pelo princípio 1 — a clínica decide; configuração com padrão que não
   muda nada: os dois times quiseram um percentual de venda por vendedora).

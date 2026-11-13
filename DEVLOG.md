@@ -1791,8 +1791,10 @@ A rede de teste agora nasce de `apps/web/scripts/rede-de-teste.mjs`
 (`docs/regras/e2e.md`). Por causa do wipe, o plano de adaptação não migra
 dado nenhum.
 
-Na Equipe, saiu o atalho "É de propósito" ao lado do "Sem comissão" (pedido
-do Heitor); o "sem comissão, de propósito" fica na janela da comissão.
+Na Equipe, saiu o "sem comissão, de propósito" inteiro (pedido do Heitor):
+o atalho ao lado do "Sem comissão" e a caixa na janela da comissão. Quem
+atende sem comissão padrão fica no aviso. A coluna
+`users.sem_comissao_de_proposito` ficou no banco, sem uso.
 
 ### 2026-11-11 — Décima segunda simulação: a clínica facial pequena da indicação e do crédito com bônus, e a clínica de laser dos planos
 

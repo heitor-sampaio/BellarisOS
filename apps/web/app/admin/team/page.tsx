@@ -65,7 +65,7 @@ export default async function AdminTeamPage({
     ler((() => {
       let query = supabase
         .from('users')
-        .select('id, name, email, role_id, is_active, branch_id, provides_services, atende_em, horario, sem_comissao_de_proposito, comissao_venda_pct, registro_conselho, branches(name)')
+        .select('id, name, email, role_id, is_active, branch_id, provides_services, atende_em, horario, comissao_venda_pct, registro_conselho, branches(name)')
         .eq('tenant_id', ctx.tenantId!)
 
       if (branch) query = query.eq('branch_id', branch)
@@ -295,7 +295,6 @@ export default async function AdminTeamPage({
                       {regras && (m.provides_services || regras.has(m.id) || (!!m.role_id && quemVende.has(m.role_id as string)) || (m as { comissao_venda_pct?: number | null }).comissao_venda_pct != null) && podeMexerEm(m) && (
                         <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                           procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
-                          semDeProposito={!!(m as { sem_comissao_de_proposito?: boolean }).sem_comissao_de_proposito}
                         vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null}
                         naoVeAsProprias={!m.role_id || !veemAsComissoes.has(m.role_id as string)} />
                       )}

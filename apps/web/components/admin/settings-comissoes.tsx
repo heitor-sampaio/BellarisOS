@@ -77,10 +77,6 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
             </p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', marginTop: 4 }}>{semRegra.map(p => p.nome).join(', ')}.</p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>Sem regra, o atendimento é concluído sem gerar comissão.</p>
-            {/* A46 da 12ª: a dona que atende pesava aqui como pendência, sem dizer como sair. */}
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
-              Se é de propósito, abra a comissão da pessoa na Equipe e marque “Sem comissão, de propósito”: ela sai deste aviso.
-            </p>
           </div>
         ) : quantosAtendem === 0 ? (
           // A12: "todos têm comissão" sem ninguém que atende parecia tudo em ordem.
@@ -88,7 +84,7 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
             Ninguém da equipe está marcado como “atende clientes”. Marque quem atende na Equipe para configurar a comissão.
           </p>
         ) : (
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Todos os profissionais que atendem têm comissão configurada (ou estão marcados “sem comissão, de propósito”, na Equipe).</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Todos os profissionais que atendem têm comissão configurada.</p>
         )}
         <Link href="/admin/team" className="btn-secondary" style={{ alignSelf: 'flex-start' }}>Abrir a equipe</Link>
       </div>

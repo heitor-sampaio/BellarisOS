@@ -57,25 +57,25 @@ test('A13: o insumo do procedimento diz que o custo é o último custo, e que a 
   })
 })
 
-test('A14: a dona que atende fica "sem comissão, de propósito" — e sai do aviso', async ({ browser }) => {
-  expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId] }).eq('id', dona.userId)).error).toBeNull()
+// A14 da 11ª saiu em 2026-11-13 (o Heitor: "Só tira o \"de proposito\" na
+// caixa tambem"): não existe mais "sem comissão, de propósito" — nem o atalho
+// na linha da Equipe, nem a caixa na janela, nem a exceção no aviso.
+test('A14 (revista): não há "sem comissão, de propósito" — quem atende sem comissão fica no aviso', async ({ browser }) => {
+  // Uma marca antiga no banco não vale mais nada.
+  expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId], sem_comissao_de_proposito: true }).eq('id', dona.userId)).error).toBeNull()
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=comissoes')
-    await expect(p.locator('[data-sem-regra]')).toContainText('Dona')
-    // A46 da 12ª: o aviso pesava como pendência sem dizer como a dona sai dele.
-    // Desde 2026-11-13 o caminho é a caixa da janela da comissão (o atalho saiu).
-    await expect(p.locator('[data-sem-regra]')).toContainText('“Sem comissão, de propósito”')
+    const aviso = p.locator('[data-sem-regra]')
+    await expect(aviso).toContainText('Dona')
+    await expect(aviso).not.toContainText('propósito')
     await p.goto('/admin/team')
     const chip = p.locator(`[data-comissao="${dona.userId}"]`)
     await expect(chip).toHaveText('Sem comissão')
+    await expect(chip).toHaveClass(/chip-warning/)
     await chip.click()
     const janela = p.getByRole('dialog', { name: /Comissão de/ })
-    await janela.locator('[data-sem-comissao-de-proposito] input').check()
-    await janela.getByRole('button', { name: 'Salvar' }).click()
-    await expect(chip).toHaveText('Sem comissão (de propósito)', { timeout: 15_000 })
-    await expect(chip).not.toHaveClass(/chip-warning/)
-    await p.goto('/admin/settings?tab=comissoes')
-    await expect(p.locator('[data-sem-regra]')).toHaveCount(0)
+    await expect(janela.getByText('Comissão padrão', { exact: true })).toBeVisible()
+    await expect(janela.locator('[data-sem-comissao-de-proposito]')).toHaveCount(0)
+    await expect(janela).not.toContainText('propósito')
   })
-  await expect.poll(async () => (await db().from('users').select('sem_comissao_de_proposito').eq('id', dona.userId).single<{ sem_comissao_de_proposito: boolean }>()).data?.sem_comissao_de_proposito).toBe(true)
 })

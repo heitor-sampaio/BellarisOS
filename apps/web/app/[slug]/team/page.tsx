@@ -65,7 +65,7 @@ export default async function TeamPage({
   const [todosOsMembros, tenantRoles, daRedeQueAtendem, unidadesDaRede] = await Promise.all([
     ler(supabase
       .from('users')
-      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario, sem_comissao_de_proposito, comissao_venda_pct, registro_conselho')
+      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario, comissao_venda_pct, registro_conselho')
       .eq('branch_id', branchId)
       .order('name'), 'carregar a equipe'),
     ler(supabase
@@ -228,7 +228,6 @@ export default async function TeamPage({
                     {regras && (m.provides_services || regras.has(m.id) || (!!m.role_id && quemVende.has(m.role_id as string)) || (m as { comissao_venda_pct?: number | null }).comissao_venda_pct != null) && (
                       <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                         procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
-                        semDeProposito={!!(m as { sem_comissao_de_proposito?: boolean }).sem_comissao_de_proposito}
                         vendaPct={(m as { comissao_venda_pct?: number | null }).comissao_venda_pct ?? null}
                         naoVeAsProprias={!m.role_id || !veemAsComissoes.has(m.role_id as string)} />
                     )}

@@ -137,14 +137,11 @@ export async function salvarRegrasDoProfissional(profissionalId: string, entrada
     const recusa = await recusaDeMexerNaAdmin(admin, ctx, membro as { id: string; role_id: string | null })
     if (recusa) return { error: recusa }
 
-    const { padrao, excecoes, semComissaoDeProposito, vendaPct } = lido.data
+    const { padrao, excecoes, vendaPct } = lido.data
     await gravar(admin.rpc('comissao_regras_definir', {
       p_tenant: ctx.tenantId!, p_profissional: profissionalId,
       p_padrao: padrao, p_excecoes: excecoes, p_ator: ctx.internalUserId ?? null,
     }), 'salvar as regras de comissão')
-    // A14 da 11ª: a marca "sem comissão, de propósito" só vale sem padrão.
-    await gravar(admin.from('users').update({ sem_comissao_de_proposito: !padrao && !!semComissaoDeProposito })
-      .eq('id', profissionalId).eq('tenant_id', ctx.tenantId!).select('id').single(), 'marcar a comissão de propósito')
     // A17 da 11ª: a comissão de venda da pessoa (vazia é nenhuma — vale a do item ou a da clínica).
     if (vendaPct !== undefined) {
       await gravar(admin.from('users').update({ comissao_venda_pct: vendaPct && vendaPct > 0 ? Math.round(vendaPct * 100) / 100 : null })
