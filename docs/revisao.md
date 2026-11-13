@@ -61,7 +61,7 @@ superfícies em volta. A ordem é do Heitor.
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ✅ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
-| Relatórios e indicadores | `reports` | ⬜ |
+| Relatórios e indicadores | `reports` | 🟡 |
 | Equipe | `team` | ⬜ (já tem item, vindo do Estoque: P3) |
 | Fichas (formulários, pré-atendimento) | `forms` | ⬜ |
 | Cargos e permissões | `roles` | ⬜ |
@@ -1117,6 +1117,42 @@ Automações), com o módulo Automações.
 ### Bloco no plano: Automações
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Automações".
+
+## Relatórios e indicadores 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/indicadores.md` §13.1 (todo número vem de
+`lib/metrics/`). Gestão → Relatórios, e o Dashboard de cada portal.
+- **Relatórios**: nove abas — Visão geral (faturamento, lucro), Financeiro
+  (receita, despesa, DRE, formas de pagamento, parcelas a vencer), Vendas
+  (cada venda do período, com cliente, profissional e valor), Agenda
+  (volume, cancelamentos, faltas, horários), Clientes (novos, retorno, gasto
+  médio, perfil), Procedimentos (execuções, margem, custo), Profissionais
+  (produção e comissões), Estoque (valor parado, giro, críticos, vencimentos)
+  e Funil comercial (conversão, ranking por vendedor). O período, a unidade
+  (na rede) e o CSV (as vendas, o DRE).
+- **Quem vê**: Relatórios em Ver abre a tela; o cargo marca QUAIS abas vê
+  (o time comercial vê o funil sem ver o faturamento); o escopo é "só a
+  minha unidade" ou "a rede inteira".
+- **Dashboard**: os números do dia e do período (receita, atendimentos,
+  novos clientes, ticket médio…) conforme as permissões; na rede, um cartão
+  por unidade com "Abrir unidade".
+- **As regras dos números**: o atendimento conta no dia em que foi feito, o
+  dinheiro no dia em que entrou (princípio 5); período comparado com o mesmo
+  pedaço do anterior; o fuso de Brasília.
+
+### Recomendações do Claude (aguardam o Heitor)
+
+- **RL1 — a aba Vendas lista as COMANDAS do PDV**: cada venda, do que for
+  (atendimento avulso, pacote, plano, produto, crédito), com um filtro por
+  tipo. Decorre do PDV (uma venda = uma comanda).
+- **RL2 — "Funil comercial" fala em oportunidades** (CR1): "Funil de
+  oportunidades", sem "leads".
 
 ## O PLANO DE ADAPTAÇÃO
 
