@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 1. O que é este projeto
 
+### Vocabulário (o Heitor, 2026-11-13 — revisão do sistema)
+
+- **Rede** é o conjunto de unidades. **Unidade** é uma unidade que pertence
+  à rede. No código: `tenant` = rede, `branch` = unidade.
+- **"Clínica" é a mesma coisa que rede e não deve existir no sistema.**
+- **"Filial" sai de vez.**
+- O texto que ainda diz "clínica" ou "filial" (telas, regras em
+  `docs/regras/`, este arquivo) é pendência da revisão — não é regra.
+
 BellarisOS é o **ERP + CRM** de clínicas de estética — a ferramenta em que a
 clínica opera o dia inteiro: agenda, prontuário, clientes, conversas, estoque,
 comercial e financeiro. Não é um sistema financeiro com agenda em volta; o
