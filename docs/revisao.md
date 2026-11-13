@@ -64,7 +64,7 @@ superfícies em volta. A ordem é do Heitor.
 | Relatórios e indicadores | `reports` | ✅ |
 | Equipe | `team` | ✅ |
 | Fichas (formulários, pré-atendimento) | `forms` | ✅ |
-| Cargos e permissões | `roles` | 🟡 |
+| Cargos e permissões | `roles` | ✅ |
 | Configurações (rede e unidade) | `settings` | ⬜ |
 | Copilot | `copilot` | ⬜ |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ⬜ |
@@ -1234,7 +1234,7 @@ Configurações → Fichas, para quem tem as Fichas em Gerenciar e é da rede.
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Fichas".
 
-## Cargos e permissões 🟡
+## Cargos e permissões ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -1260,7 +1260,7 @@ definido".
   para quem é da rede" em Marketing, Automações, Cargos e Configurações.
 - Ninguém dá um cargo acima do próprio; a Admin da rede é a exceção da regra.
 
-### Recomendações do Claude (aguardam o Heitor)
+### Recomendações do Claude (o Heitor: "concordo, o resto fica como está")
 
 - **CG1 — "Recebimentos" vira "PDV"**: a linha de quem vende e recebe no PDV
   (as comandas, as parcelas que a cliente veio pagar, fechar o dia).
@@ -1272,6 +1272,10 @@ definido".
   no Prontuário (e montar o plano não pede o Prontuário), as unidades da
   pessoa (Equipe, "unidade fixa" → "as unidades dela"). Nenhuma permissão
   muda — só o que a tela diz.
+
+### Bloco no plano: Cargos
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Cargos".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1520,6 +1524,17 @@ Heitor de que vale uma completa.
 |---|---|---|
 | FC1 | **"Fichas de atendimento"** (as dos procedimentos) e **"Ficha de saúde"** (a da cliente) em Configurações → Fichas: abas, botões, dicas. Junto com o PR3 (Prontuário) e o "Ficha de atendimento" do procedimento | PR3 |
 | — | Mantém: o construtor, os tipos de campo, o obrigatório, o "Mostrar só quando", uma ficha por procedimento, a ficha de saúde da rede (e o bloco de injetáveis), a validade e o envio | — |
+
+### Bloco: Cargos
+
+Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
+
+| # | O que muda | Depende de |
+|---|---|---|
+| CG1 | **"Recebimentos" → "PDV"** (`MODULE_LABELS.cashier`, o texto do nível, o resumo do cargo, o menu onde aparecer) | PDV |
+| CG2 | **"Termos e contratos" → "Documentos"** | DC1 |
+| CG3 | **Os textos de cada linha** (`LEVEL_COPY`, `SCOPE_NOTE`, as notas de abrangência, o resumo "O que essa pessoa vai ver") dizem o sistema adaptado: o PDV, "oportunidade", a aba "Oportunidades", a "Ficha de saúde" e as fotos no Prontuário, o plano montado por quem atende, "as unidades dela". Nenhum nível nem escopo muda | todos os blocos |
+| — | Mantém: os cargos da rede, os modelos e os de sistema, a matriz, os escopos, as abas de relatório, o refino do inbox, as caixas por cargo, o "cargo acima" | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
