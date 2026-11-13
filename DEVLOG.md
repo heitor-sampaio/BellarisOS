@@ -1791,6 +1791,9 @@ A rede de teste agora nasce de `apps/web/scripts/rede-de-teste.mjs`
 (`docs/regras/e2e.md`). Por causa do wipe, o plano de adaptação não migra
 dado nenhum.
 
+Na Equipe, saiu o atalho "É de propósito" ao lado do "Sem comissão" (pedido
+do Heitor); o "sem comissão, de propósito" fica na janela da comissão.
+
 ### 2026-11-11 — Décima segunda simulação: a clínica facial pequena da indicação e do crédito com bônus, e a clínica de laser dos planos
 
 É o mesmo ciclo pedido pelo Heitor, depois das F52–F57. A 7ª completa do ciclo não achou defeito do sistema (F57: as 6 falhas eram specs desatualizados).
