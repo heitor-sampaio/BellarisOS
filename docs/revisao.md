@@ -54,7 +54,8 @@ superfícies em volta. A ordem é do Heitor.
 | Documentos (termos e contratos) | `documents` | ⬜ |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
 | Procedimentos | `procedures` | ✅ |
-| Pacotes | `procedures` (pacotes) | 🟡 |
+| Pacotes | `procedures` (pacotes) | ✅ |
+| Plano de tratamento | `treatment_plans` | ⬜ (já tem itens, vindos de Pacotes: PC7–PC9) |
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ⬜ |
@@ -245,7 +246,7 @@ Levantado em `components/admin/procedure-form.tsx`,
   separadas por categoria, ficam todas valendo em todo documento? (c) "Quando
   nasce" e "bloqueia ou avisa" continuam de cada documento?
 
-## Pacotes 🟡
+## Pacotes ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -350,9 +351,10 @@ Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
     parte do de plano, preenchido com os procedimentos, as sessões e o
     pagamento de cada pacote vendido.
   - Três contratos: o de plano, o de pacote e o avulso de cada procedimento.
-- **PC9 (b), em aberto:** onde aparece a lista dos "outros documentos" para
-  manter ou excluir: no cadastro do pacote (vale para toda venda dele) ou na
-  venda à cliente? E no plano, na tela de montar o plano?
+- **PC9 (b), respondido (o Heitor, 13/11):** "Isso aí aparece na hora de
+  criar um plano e um pacote, tá? Naquele mesmo pop-up da criação ali, ele
+  aparece ali logo abaixo da seleção do termo e do contrato, tá? Isso vale
+  para os dois, tanto para o plano quanto para o pacote."
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -406,6 +408,18 @@ revisão, só se escreve o plano. Nada se implementa.
 | PR4 | (Revisto no PC7) Mantém o campo **"Termo de consentimento"** e o campo **"Contrato"** (este só no atendimento avulso) e acrescenta **"outros documentos"**: quantos quiser, de qualquer documento criado ou anexado no sistema | PC8; a revisão de **Documentos** |
 | PR5 | (Revisto no PC7) Termo e contrato continuam papéis específicos; o que muda nos documentos fica para a revisão de Documentos | a revisão de **Documentos** |
 | — | Mantém: a tela, nome, categoria, duração, pontos de fidelidade, descrição, unidades, salas, insumos, quem realiza, comissão | — |
+
+### Bloco: Pacotes (e os documentos de procedimento, pacote e plano)
+
+| # | O que muda | Depende de |
+|---|---|---|
+| PC1 | O preço do pacote **já vem com a soma** dos procedimentos adicionados (sessões × preço de tabela) e pode ser alterado. Hoje nasce vazio | — |
+| PC6 | Criar e editar pacote: quem tem Procedimentos em **Gerenciar**, e só isso (sai a exigência de ser da rede) | — |
+| PC7/PC8 | **No procedimento:** "Termo de consentimento" (opcional), "Contrato" (opcional, só no atendimento AVULSO) e "Outros documentos" (opcional, quantos quiser, qualquer documento criado ou anexado no sistema) | a revisão de **Documentos** |
+| PC9a | **Contrato de pacote**, novo: o equivalente do contrato de plano, um modelo da rede à parte, preenchido com os procedimentos, as sessões e o pagamento de cada pacote vendido. O contrato de plano fica como está | a revisão de **Documentos** (as variáveis do pacote) |
+| PC2/PC7 | **Na venda do pacote,** a cliente assina UMA vez: um termo de cada procedimento diferente (puxado sozinho), o contrato de pacote e os outros documentos que ficaram (PC9b). As sessões do pacote não emitem documento de novo. Hoje cada sessão emite o termo e o contrato do procedimento | PC7, PC9a |
+| PC9b | **No pop-up de criação do pacote e do plano,** logo abaixo da parte do termo e do contrato: a lista dos outros documentos dos procedimentos, cada um com manter ou excluir | PC7; **Plano de tratamento** |
+| — | Mantém: nome, procedimentos e sessões de cada um, validade em dias, "À venda", comissões de venda e de execução, Vendas → Pacotes (não aparece no Estoque) | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
