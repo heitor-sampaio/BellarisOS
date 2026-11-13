@@ -18,7 +18,8 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  * - A3 (7): o liga/desliga da fidelidade diz "Falta salvar" até o Salvar.
  * - A4 (7): o menu que continua abaixo da dobra diz que continua.
  * - A5 (3, 7): a aba da clínica toda diz QUEM muda, pelo nome.
- * - A6 (7): o "É de propósito" ganha o Desfazer à vista; o lápis diz "Cargo e unidade".
+ * - A6 (7): o lápis diz "Cargo e unidade". (O atalho "É de propósito" e o
+ *   Desfazer dele saíram da linha da Equipe em 2026-11-13, a pedido do Heitor.)
  * - A7 (7): o Desativar fala neutro, e o "Repassar todos" diz que preenche as linhas.
  */
 
@@ -143,23 +144,12 @@ test('A5: a aba da clínica toda diz quem muda, pelo nome', async ({ browser }) 
   })
 })
 
-test('A6: o "É de propósito" tem o Desfazer à vista, e o lápis diz "Cargo e unidade"', async ({ browser }) => {
-  expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId], sem_comissao_de_proposito: false }).eq('id', dona.userId)).error).toBeNull()
+test('A6: o lápis diz "Cargo e unidade"', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto('/admin/team')
-    const chip = p.locator(`[data-comissao="${dona.userId}"]`)
-    await p.locator(`[data-de-proposito-atalho="${dona.userId}"]`).click()
-    await expect(chip).toHaveText('Sem comissão (de propósito)', { timeout: 15_000 })
-    const desfazer = p.locator(`[data-desfazer-de-proposito="${dona.userId}"]`)
-    await expect(desfazer).toBeVisible()
-    await desfazer.click()
-    await expect(chip).toHaveText('Sem comissão', { timeout: 15_000 })
-    await expect(chip).toHaveClass(/chip-warning/)
-
     const linhaDoCaio = p.locator('tr').filter({ hasText: await nome(caio) })
     await expect(linhaDoCaio.getByTitle(`Editar ${await nome(caio)}`)).toContainText('Cargo e unidade')
   })
-  await expect.poll(async () => (await db().from('users').select('sem_comissao_de_proposito').eq('id', dona.userId).single<{ sem_comissao_de_proposito: boolean }>()).data?.sem_comissao_de_proposito).toBe(false)
 })
 
 test('A7: o Desativar fala neutro, e o "Repassar todos" diz que preenche as linhas', async ({ browser }) => {

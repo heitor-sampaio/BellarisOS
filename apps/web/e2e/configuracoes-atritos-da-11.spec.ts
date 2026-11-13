@@ -63,7 +63,8 @@ test('A14: a dona que atende fica "sem comissão, de propósito" — e sai do av
     await p.goto('/admin/settings?tab=comissoes')
     await expect(p.locator('[data-sem-regra]')).toContainText('Dona')
     // A46 da 12ª: o aviso pesava como pendência sem dizer como a dona sai dele.
-    await expect(p.locator('[data-sem-regra]')).toContainText('“É de propósito”')
+    // Desde 2026-11-13 o caminho é a caixa da janela da comissão (o atalho saiu).
+    await expect(p.locator('[data-sem-regra]')).toContainText('“Sem comissão, de propósito”')
     await p.goto('/admin/team')
     const chip = p.locator(`[data-comissao="${dona.userId}"]`)
     await expect(chip).toHaveText('Sem comissão')

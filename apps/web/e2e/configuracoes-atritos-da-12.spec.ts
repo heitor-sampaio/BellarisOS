@@ -133,20 +133,18 @@ test('A1: "Aberta 24 horas" se desfaz com um toque, e o horário de antes volta'
   })
 })
 
-test('A4: o "Sem comissão" da dona tem o "é de propósito" à vista, sem abrir a janela', async ({ browser }) => {
+// A4 foi revista pelo Heitor em 2026-11-13 ("tira agora esse aviso de é de
+// propósito na configuração da equipe"): a linha da Equipe não tem mais o
+// atalho; o "sem comissão, de propósito" fica só na janela da comissão (A14 da 11ª).
+test('A4 (revista): a linha da Equipe não tem o atalho "É de propósito"', async ({ browser }) => {
   expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId], sem_comissao_de_proposito: false }).eq('id', dona.userId)).error).toBeNull()
   await como(browser, dona, async p => {
     await p.goto('/admin/team')
     const chip = p.locator(`[data-comissao="${dona.userId}"]`)
     await expect(chip).toHaveText('Sem comissão')
-    const atalho = p.locator(`[data-de-proposito-atalho="${dona.userId}"]`)
-    await expect(atalho).toBeVisible()
-    await atalho.click()
-    await expect(chip).toHaveText('Sem comissão (de propósito)', { timeout: 15_000 })
-    await expect(chip).not.toHaveClass(/chip-warning/)
-    await expect(atalho).toHaveCount(0)
+    await expect(p.locator(`[data-de-proposito-atalho="${dona.userId}"]`)).toHaveCount(0)
+    await expect(p.locator('tr').filter({ has: chip }).getByText('É de propósito')).toHaveCount(0)
   })
-  await expect.poll(async () => (await db().from('users').select('sem_comissao_de_proposito').eq('id', dona.userId).single<{ sem_comissao_de_proposito: boolean }>()).data?.sem_comissao_de_proposito).toBe(true)
 })
 
 test('A5: o "De venda" do pacote diz que vence a comissão de venda de cada pessoa', async ({ browser }) => {

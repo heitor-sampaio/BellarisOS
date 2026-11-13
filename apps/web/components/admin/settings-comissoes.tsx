@@ -79,7 +79,7 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>Sem regra, o atendimento é concluído sem gerar comissão.</p>
             {/* A46 da 12ª: a dona que atende pesava aqui como pendência, sem dizer como sair. */}
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
-              Se é de propósito (como a dona que atende), toque em “É de propósito” na linha da pessoa, na Equipe: ela sai deste aviso.
+              Se é de propósito, abra a comissão da pessoa na Equipe e marque “Sem comissão, de propósito”: ela sai deste aviso.
             </p>
           </div>
         ) : quantosAtendem === 0 ? (
