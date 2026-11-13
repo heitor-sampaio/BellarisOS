@@ -887,6 +887,38 @@ Está no PLANO DE ADAPTAÇÃO, "Bloco: CRM".
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
+"Tá, isso aí a gente vai precisar reavaliar. Porque um plano de tratamento,
+ele deve poder ser feito por qualquer pessoa que atende, né? Quem vai montar o
+plano vai ser a profissional que vai estar fazendo a avaliação,
+provavelmente, que vai estar atendendo aquela pessoa efetivamente, é ela que
+monta o plano, então não necessariamente ela vai gerenciar em prontuário,
+então não dá para linkar isso. E um plano é feito de sessões, cada um com seu
+procedimento, preço, duração, isso aí tudo certo. O a proposta ali de aceitar
+plano ah, acho que ok, talvez dê para melhorar. E essa questão do checkout,
+aí a gente precisa melhorar também, porque o plano foi aceito, a partir do
+momento que a cliente aceita o plano, ela precisa daí pagar e agendar as
+sessões, ou todas, ou uma de cada vez, como ela preferir, né? Mas fica o
+plano registrado lá no portal da cliente para ela acessar. E na hora do
+pagamento, o plano ele o pagamento fica a critério da clínica, né? Como todo
+outro produto, pode ser pago à vista, pode ser pago parcelado, mas o valor do
+plano é a soma do valor dos procedimentos, né? E vezes a quantidade de
+sessões. Então, ele é pago como esse valor, não por sessão individual. Tá?
+Então, ele vai ser pago integralmente, podendo ser parcelado pela clínica
+como qualquer outro produto. E essa parte ali da tua recomendação, do fechar
+o checkout vira o aceito do plano sem dinheiro, acho que tu pode me explicar
+um pouco"
+
+Em resumo:
+- Montar o plano NÃO pede o Prontuário em Gerenciar (a permissão que decide
+  está em aberto — PT2).
+- Sessões com procedimento, preço e duração: fica.
+- Aceitar: fica, "talvez dê para melhorar".
+- **Aceito, a cliente PAGA o plano inteiro** (o valor é a soma das sessões),
+  à vista ou parcelado, como qualquer venda. Isto REVÊ o PDV4 (a comanda
+  nascia no 1º atendimento): ela nasce no aceite.
+- **As sessões se agendam todas de uma vez ou uma por vez**, como a cliente
+  preferir; o plano fica no portal da cliente.
+
 Já decidido em outros módulos:
 - **PDV4**: a comanda do plano nasce ao iniciar o PRIMEIRO atendimento do
   plano; sai o "Fechar checkout" como porta de pagamento.
@@ -920,15 +952,28 @@ ficha, Planejamento → Tratamentos.
 - **Quem vê**: os planos seguem a Agenda (sem ela, não há plano) e o "só os
   meus" dela: o plano das clientes que a pessoa atende e os que ela montou.
 
-### Recomendação do Claude (aguarda o Heitor)
+### Recomendação do Claude
 
-- **PT1 — o "Fechar checkout" vira o ACEITE do plano, sem dinheiro**: "Aceitar
+- ~~**PT1 — o "Fechar checkout" vira o ACEITE do plano, sem dinheiro**: "Aceitar
   plano" pergunta o pagamento COMBINADO (à vista, entrada + parcelas — o
   contrato de plano o cita), manda os documentos (um link, uma assinatura) e
   agenda as sessões. O dinheiro é no PDV: a comanda do plano nasce ao iniciar
   o 1º atendimento, já com o combinado, e as parcelas seguem como hoje (o
   check-in/PDV cobra a que venceu). "Quem vendeu" e o desconto ficam no
-  aceite.
+  aceite.~~ **Revisto pela fala do Heitor** (o dinheiro vem no aceite): ver
+  PT1 revisto, abaixo.
+
+### Perguntas (13/11)
+
+- **PT1 revisto (a confirmar)**: "Aceitar plano" faz nascer a comanda do
+  plano no PDV, com o valor inteiro, como a venda do pacote; ali se paga à
+  vista ou parcelado. O "Fechar checkout" (os quatro passos) sai. As sessões
+  se agendam depois, todas ou uma por vez, pelo plano. O contrato de plano
+  cita a forma de pagamento: fica pronto para assinar quando a forma é
+  escolhida no PDV, e trava o início da 1ª sessão se não for assinado.
+- **PT2**: qual PERMISSÃO monta o plano (não o Prontuário em Gerenciar)?
+- **PT3**: no portal, a cliente só vê o plano, ou também agenda as sessões
+  dele por lá?
 
 ## O PLANO DE ADAPTAÇÃO
 
