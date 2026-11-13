@@ -975,6 +975,23 @@ ficha, Planejamento → Tratamentos.
 - **PT3**: no portal, a cliente só vê o plano, ou também agenda as sessões
   dele por lá?
 
+Respostas (o Heitor, 13/11): "pt1 acho que ok mas nao tenho ctz se entendi.
+pt2 quem monta o plano é quem atende, nem precisa de permissão pra isso pq
+isso é proprio atendimento, faz parte. pt3, a cliente ve tudo sobre o plano,
+o plano em si, pagamentos, sessoes abertas e realizadas, documentos assinados
+e também pode agendar sessões em aberto."
+- **PT1**: "acho que ok", com dúvida — o Claude explicou com um exemplo
+  passo a passo (a confirmar).
+- **PT2, decidido**: monta o plano QUEM ATENDE, como parte do atendimento —
+  sem permissão própria. Leitura do Claude, a confirmar: o plano se monta na
+  tela do atendimento, por quem o está fazendo; o "Novo plano" fora de um
+  atendimento (ficha, Tratamentos) sai.
+- **PT3, decidido**: no portal, a cliente vê TUDO do plano — o plano, os
+  pagamentos, as sessões abertas e realizadas, os documentos assinados — e
+  AGENDA as sessões em aberto. Leitura do Claude: a sessão do plano se agenda
+  pelo app mesmo com o procedimento sem "Permitir auto agendamento" (ele já
+  foi avaliado e comprado).
+
 ## O PLANO DE ADAPTAÇÃO
 
 O Heitor, 13/11: "eu quero que os resultados da revisão de cada modulo
