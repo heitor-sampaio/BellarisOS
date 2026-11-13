@@ -49,7 +49,7 @@ superfícies em volta. A ordem é do Heitor.
 |---|---|---|
 | Agenda | `agenda` | ✅ |
 | Clientes (ficha, tags, LGPD) | `clients` | ✅ |
-| Fidelidade | `loyalty` | 🟡 |
+| Fidelidade | `loyalty` | ✅ |
 | Prontuário | `medical_records` | ⬜ |
 | Documentos (termos e contratos) | `documents` | ⬜ |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
@@ -652,7 +652,7 @@ crédito"; o CSV. As comissões em página própria (Financeiro → Comissões).
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Financeiro".
 
-## Fidelidade 🟡
+## Fidelidade ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -676,7 +676,7 @@ Fidelidade (`fidelidade-config.tsx`, o catálogo em `fidelidade-catalogo.tsx`).
 - **Na ficha**: o saldo, o extrato, o que vence e os vouchers. Quem tem a
   Fidelidade em Gerenciar ajusta à mão, com motivo.
 
-### Recomendações do Claude (aguardam o Heitor)
+### Recomendações do Claude (o Heitor, 13/11: "concordo")
 
 - **FD1 — fica como está.** Ganhar por real gasto e trocar por desconto ou
   recompensa é o modelo que as clínicas usam e que a cliente entende sem
@@ -690,7 +690,13 @@ Fidelidade (`fidelidade-config.tsx`, o catálogo em `fidelidade-catalogo.tsx`).
 - **FD3 — "pontos só na unidade" sai.** A cliente é da rede e qualquer
   unidade a atende (CL3); um saldo separado por unidade contraria isso e
   confunde a cliente ("tenho pontos, mas não aqui"). Com a opção fora, o saldo
-  é sempre um só, da rede.
+  é sempre um só, da rede. Junto sai o que só existia por causa dela: o
+  "Onde o bônus pode ser usado" (H10) e a correção pendente C64 (o bônus em
+  várias unidades) — com um saldo só, não há o que escolher.
+
+### Bloco no plano: Fidelidade
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Fidelidade".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -833,6 +839,19 @@ quem cuida do dinheiro.
 | FI7 | **"Conceder crédito" vai para a ficha da cliente**, aba Financeiro, para quem tem o Financeiro em Gerenciar (como o "Trazer pacote de fora"). No topo do Financeiro fica só o "Novo lançamento" | — |
 | — | Mantém: o período, o filtro de unidade na rede, quem vê o quê pelas permissões. Fora, por ser mais do que uma clínica pequena precisa: conciliação com o extrato do banco e plano de contas contábil completo | — |
 
+### Bloco: Fidelidade
+
+O programa fica como está (FD1); muda onde o ponto se usa e sai o saldo por
+unidade.
+
+| # | O que muda | Depende de |
+|---|---|---|
+| FD2a | **O desconto em pontos e o voucher se aplicam na comanda do PDV** — os dois caminhos que hoje existem fora dele (o pagamento do atendimento, a troca na ficha que vira desconto) passam a ser o PDV | PDV1–PDV7 |
+| FD2b | **O ponto nasce quando a comanda é paga**, pela regra que já existe (por real ou por procedimento; o pacote vendido como produto pontua na venda; o produto pontua se a rede ligou). O estorno da comanda tira o que ela deu | PDV1 |
+| FD2c | **A tela de Configurações → Fidelidade** diz "No PDV, ao receber" no lugar de "Na recepção, ao confirmar o pagamento" | — |
+| FD3 | **Sai "pontos só na unidade"**: o saldo é sempre um, da rede. Saem junto a escolha "Onde o bônus pode ser usado" e a C64. A coluna e o saldo por unidade no razão dos pontos saem das funções e da tela (banco zerado: não há saldo a migrar) | — |
+| — | Mantém: ganho por real ou por procedimento, o catálogo e os vouchers, o ajuste com motivo, a validade, os bônus, o prêmio da indicação, a troca pelo app — todos opcionais e desligados ao nascer | — |
+
 ## O que já estava pendente, para entrar no módulo dele
 
 Não foi decidido. Cada item entra na revisão do módulo indicado.
@@ -867,7 +886,7 @@ novas clientes por unidade, Reativar, lista de Clientes da unidade, Agendar).
 - O CSV do Fechamento põe a maquininha na coluna "Forma".
 - O crediário sem entrada não pede o meio de pagamento.
 - A frase "o fechamento é por unidade" aparece só com mais de uma unidade.
-- C64: o bônus da fidelidade usado em várias unidades ficou de fora (Fidelidade).
+- ~~C64: o bônus da fidelidade usado em várias unidades~~ — sai com o FD3 (o saldo é um só, da rede).
 
 **Parado, esperando a revisão:**
 - a F77, que implementaria a H16 no código;
