@@ -52,7 +52,7 @@ superfícies em volta. A ordem é do Heitor.
 | Fidelidade | `loyalty` | ✅ |
 | Prontuário | `medical_records` | ✅ |
 | Documentos (termos e contratos) | `documents` | ✅ |
-| CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
+| CRM (inbox, oportunidades, funis) | `crm` | 🟡 |
 | Procedimentos | `procedures` | ✅ |
 | Pacotes | `procedures` (pacotes) | ✅ |
 | Plano de tratamento | `treatment_plans` | ⬜ (já tem itens, vindos de Pacotes: PC7–PC9) |
@@ -829,6 +829,41 @@ plano, as variáveis, "quando nasce" e "bloqueia").
 ### Bloco no plano: Documentos
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Documentos".
+
+## CRM (inbox, oportunidades, funis) 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/crm-inbox.md` §9.2.1. No menu, Vendas → Inbox e
+Oportunidades; o funil e as origens se montam em Configurações.
+- **Quem é quem**: a PESSOA (contato, uma por rede), as CONVERSAS dela (uma
+  por canal e número), as OPORTUNIDADES dela no funil e, se virar, a FICHA de
+  cliente. Contato não vira cliente sozinho.
+- **Inbox**: as conversas de WhatsApp (os números da rede), Instagram e
+  Messenger numa fila só, de 30 em 30, com filtros (número, responsável,
+  etapa, tags, não lidas…). Responder com texto, anexo, resposta rápida (de
+  cada pessoa) e modelo do WhatsApp oficial (fora das 24 h). Ao lado, o painel
+  da pessoa: nome, telefone, e-mail, rede social, tags, as outras conversas
+  dela, as oportunidades, "Agendar", "Cadastrar como cliente", "Nova
+  conversa".
+- **Oportunidades**: o quadro por funil (etapas em colunas), o card arrasta
+  de etapa, o menu "…" move de etapa ou de funil. O card tem responsável,
+  origem (lista da rede), valor, procedimentos, "Retornar em" com o que
+  fazer, observações, a linha do tempo (inclusive o que a cliente ligada fez),
+  "Agendar", "Ir para a conversa", ganho e perdido (motivo da lista da rede).
+  O card não anda sozinho: nenhum fato o move. Oportunidade não se apaga (fica
+  perdida). Resumo do quadro e filtro "já é cliente / ainda não é".
+- **Quem vê**: quem tem o CRM. Com "só os meus", a rede escolhe se segue a
+  PESSOA ou a CONVERSA; e o cargo escolhe se vê todos os números de WhatsApp
+  ou só os ligados à pessoa. Trocar o responsável é de quem tem o CRM em
+  Gerenciar com "todos".
+- **Já decidido em outros módulos**: o "Agendar" do inbox com a caixa de
+  unidade (AG2), o "Vender" do inbox leva ao PDV (PDV), e as tags que o
+  sistema põe sozinho saem (bloco Tags).
 
 ## O PLANO DE ADAPTAÇÃO
 
