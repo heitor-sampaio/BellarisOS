@@ -65,7 +65,7 @@ superfícies em volta. A ordem é do Heitor.
 | Equipe | `team` | ✅ |
 | Fichas (formulários, pré-atendimento) | `forms` | ✅ |
 | Cargos e permissões | `roles` | ✅ |
-| Configurações (rede e unidade) | `settings` | ⬜ |
+| Configurações (rede e unidade) | `settings` | 🟡 |
 | Copilot | `copilot` | ⬜ |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ⬜ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ⬜ |
@@ -1276,6 +1276,36 @@ definido".
 ### Bloco no plano: Cargos
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Cargos".
+
+## Configurações (rede e unidade) 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Uma tela com abas (`lib/configuracoes/abas.ts`); cada aba pede o módulo
+dela em Gerenciar. Na rede, 15 abas, numa lista só: Unidades, Cargos, Fichas,
+Documentos, Integrações, Fidelidade, Comissões e taxas, LGPD, Assinatura,
+Suporte, Eventos, Ações em lote, Tags, Importações, Geral. Na unidade, a aba
+Unidade (os dados, o horário e as salas dela) e as que o cargo alcança; a
+configuração da rede toda é de quem é da rede (H7).
+- **Eventos**: o painel de conferência dos fatos do sistema — existe para
+  quem monta automação ver se o gatilho já disparou.
+- **Ações em lote**: o que roda em segundo plano e demora (o histórico do
+  WhatsApp…).
+
+### Recomendações do Claude (aguardam o Heitor)
+
+- **CF1 — as abas em grupos** (princípio 7: nada sai, muda a organização):
+  **A rede** (Geral, Unidades, Assinatura) · **Equipe e acesso** (Cargos,
+  Suporte) · **Atendimento** (Fichas, Documentos) · **Clientes** (Tags,
+  Fidelidade, Importações, LGPD) · **Dinheiro** (Comissões e taxas) ·
+  **Conexões** (Integrações) · **Avançado** (Ações em lote).
+- **CF2 — "Eventos" vai para as Automações** ("O que já aconteceu", ao lado
+  das execuções): é de quem monta automação, e em Configurações ninguém o
+  procura.
 
 ## O PLANO DE ADAPTAÇÃO
 
