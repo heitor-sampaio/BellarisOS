@@ -11,7 +11,8 @@ import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
 import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto, getComposicaoFinanceira } from '@/lib/metrics'
 import { extrasDoCsv, type LancamentoParaOCsv } from '@/lib/financeiro/extras-do-csv'
 import { lerTodas } from '@/lib/db'
-import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { umaUnidadeSo } from '@/lib/unidades/uma-so'
+import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
 import { getAReceberDaOperadora, getParcelasDaOperadora } from '@/lib/metrics/operadora'
 import { getFluxoDeCaixa } from '@/lib/metrics/fluxo-de-caixa'
 import { getTotalDosAtendimentosAReceber } from '@/lib/metrics/a-receber'
@@ -60,25 +61,13 @@ export default async function AdminFinanceiroPage({
 
   const admin = createAdminClient()
 
-  // Todas as filiais ativas do tenant. Falha de consulta não é rede sem filial —
-  // mesmo tratamento de /admin/agenda.
-  const { data: branchesRaw, error: branchesError } = await admin
-    .from('branches')
-    .select('id, name, slug')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name')
-
-  if (branchesError) {
-    console.error('[admin/financeiro] branches:', branchesError.message)
-    return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
-        Não foi possível carregar as unidades agora. Tente recarregar em instantes.
-      </div>
-    )
-  }
-
-  const branches   = branchesRaw ?? []
+  // F72 (D1 da 14ª; H6, C45): as unidades de LEITURA — a desativada com o que
+  // ficou (o a receber dela, a comissão, o estoque) ou com movimento no período
+  // entra na lista, no filtro e no `?unidade=`, com o selo. O "Ver o a receber"
+  // da janela de desativar chega aqui.
+  const branches = (await unidadesParaLer(ctx.tenantId!, {
+    periodo: await periodoDaTela(ctx.tenantId!, period, sp.from, sp.to),
+  })).map(b => ({ id: b.id, name: nomeNaTela(b), slug: b.slug, ativa: b.ativa }))
   const branchIds  = branches.map(b => b.id)
   // F62: no fuso do recorte — o comum das unidades; com fusos diferentes, o de Brasília.
   const fuso = await fusoDoRecorte(ctx.tenantId, branchIds)
@@ -210,7 +199,7 @@ export default async function AdminFinanceiroPage({
   const branchStats = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal
     || (aReceberEmAberto.porUnidade[b.branchId] ?? 0) > 0).map(b => ({
     id:          b.branchId,
-    name:        b.branchName,
+    name:        nomeNaTela({ name: b.branchName, ativa: b.isActive }),
     slug:        b.branchSlug,
     revenue:     b.revenueCash,
     expenses:    b.expensesCash,
@@ -288,7 +277,8 @@ export default async function AdminFinanceiroPage({
         prevRevenue={prevRevenue}
         prevExpenses={prevExpenses}
         branchStats={branchStats}
-        umaUnidade={await redeTemUmaUnidade(ctx.tenantId!)}
+        // D-19 nos NÚMEROS (F72): a desativada com dado aqui faz a tela falar de rede.
+        umaUnidade={umaUnidadeSo(branches.length)}
         transactions={transactions}
         soOEmAberto={soOEmAberto}
         soAsVencidas={soAsVencidas}

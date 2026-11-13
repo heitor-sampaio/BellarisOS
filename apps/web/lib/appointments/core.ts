@@ -174,9 +174,9 @@ export async function conferirPecasDoAgendamento(
   }
   const [unidade, profissional, cliente, recusaSala, procedimentoNaoFeito] = await Promise.all([
     pecas.branchId
-      ? ler(admin.from('branches').select('id')
-          .eq('id', pecas.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
-      : Promise.resolve({ id: null }),
+      ? ler(admin.from('branches').select('id, is_active')
+          .eq('id', pecas.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade') as Promise<{ id: string; is_active: boolean } | null>
+      : Promise.resolve({ id: null, is_active: true }),
     pecas.professionalId
       ? ler(admin.from('users').select('id, name, atende_em')
           .eq('id', pecas.professionalId).eq('tenant_id', ctx.tenantId!).eq('is_active', true).maybeSingle(), 'buscar o profissional') as Promise<{ id: string; name: string; atende_em: string[] | null } | null>
@@ -197,6 +197,10 @@ export async function conferirPecasDoAgendamento(
       : Promise.resolve(null),
   ])
   if (!unidade)      return 'Unidade não encontrada.'
+  // F72 (H6): a unidade desativada fica alcançável pelo que ficou nela, mas
+  // não recebe agendamento novo nem horário novo — é para onde se marca, e só
+  // as ativas recebem (`unidadesParaCriar`).
+  if (unidade.is_active === false) return 'Esta unidade foi desativada. Escolha uma unidade ativa.'
   if (!profissional) return 'Profissional não encontrado.'
   if (!cliente)      return 'Cliente não encontrado.'
   // Arquivada não se agenda (J-23): só quem cria passa o cliente por aqui.

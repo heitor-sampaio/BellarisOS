@@ -1,4 +1,5 @@
 import { getTenantContext, assertAnyPermission, can, temRecurso } from '@/lib/auth'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
@@ -36,9 +37,8 @@ export async function ImportarContatos({ unidadeFixa }: {
     const b = await ler(admin.from('branches').select('id, name').eq('id', ctx.branchId).maybeSingle(), 'buscar a unidade')
     if (b) unidades = [{ id: b.id as string, nome: b.name as string }]
   } else {
-    const bs = await ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true).order('name'), 'listar as unidades') as { id: string; name: string }[] | null
-    unidades = (bs ?? []).map(b => ({ id: b.id, nome: b.name }))
+    // A que unidade o importado pertence: as ATIVAS (lib/unidades/da-tela).
+    unidades = (await unidadesParaCriar(ctx.tenantId!)).map(b => ({ id: b.id, nome: b.name }))
   }
 
   // A prévia resolve os nomes da planilha (etapa, responsável, procedimento)

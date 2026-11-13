@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { origensDaRede } from '@/lib/crm/origens'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
@@ -90,15 +91,8 @@ export default async function BranchOportunidadesPage({
     .map(p => ({ id: p.id, name: p.name }))
 
   // Unidades da rede — alimentam as sugestões de tag do modal.
-  const { data: todasAsUnidades, error: erroUnidades } = await supabase
-    .from('branches')
-    .select('id, name')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name')
-  if (erroUnidades) throw new Error(`Falha ao carregar as unidades: ${erroUnidades.message}`)
-
-  const unidades = (todasAsUnidades ?? []).map(b => ({ id: b.id as string, name: b.name as string }))
+  // A tag de unidade da oportunidade nova: as ATIVAS (lib/unidades/da-tela).
+  const unidades = (await unidadesParaCriar(ctx.tenantId!)).map(b => ({ id: b.id, name: b.name }))
 
   // Leads do funil aberto.
   //

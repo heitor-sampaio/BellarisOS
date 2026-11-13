@@ -1,7 +1,7 @@
 import Link from 'next/link'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertPermission } from '@/lib/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { ClientForm } from '@/components/branch/client-form'
 import { prefillDaBusca } from '@/lib/busca/acoes'
 
@@ -19,16 +19,8 @@ export default async function AdminNewClientPage({ searchParams }: { searchParam
   const ctx = await getTenantContext()
   assertPermission(ctx, 'clients', 'MANAGE')
 
-  const admin = createAdminClient()
-  const { data: branchesRaw, error } = await admin
-    .from('branches')
-    .select('id, name')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name')
-  if (error) throw new Error(`Falha ao carregar as unidades: ${error.message}`)
-
-  const branches = (branchesRaw ?? []) as { id: string; name: string }[]
+  // A ficha nova nasce numa unidade ATIVA (lib/unidades/da-tela).
+  const branches = (await unidadesParaCriar(ctx.tenantId!)).map(({ id, name }) => ({ id, name }))
 
   return (
     <div style={{ maxWidth: 620 }}>

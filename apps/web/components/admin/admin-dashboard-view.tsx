@@ -4,6 +4,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { variacaoPercentual, mediaPorAtendimento } from '@/lib/metrics/resultado'
 import { rotulosDoPeriodo } from '@/lib/rotulos-do-periodo'
 import Link from 'next/link'
+import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES, type DefinicaoDoNumero } from '@/lib/metrics/definicoes'
 import {
@@ -110,6 +111,8 @@ export interface AdminDashboardProps {
   umaUnidade?:      boolean
   /** O nome da unidade do `?unidade=` (J-54): o dashboard da rede recortado a ela. */
   unidadeRecortada?: string | null
+  /** A unidade recortada foi desativada (F72): o cabeçalho leva o selo. */
+  recorteDesativado?: boolean
   /** A volta à rede inteira, com o período escolhido. */
   hrefDaRede?:      string
   prevRevenue:      number
@@ -444,7 +447,7 @@ export function AdminDashboardView({
   leadsTotal, leadsGanhos, conversionRate, funilTemGanho, marketing,
   monthLabel, veDinheiro,
   totalRevenue, totalCost, totalAppointments, newClients, ticketMedio, clientesQuePagaram,
-  totalClientsEver, branchCount, umaUnidade = false, unidadeRecortada = null, hrefDaRede = '/admin/dashboard',
+  totalClientsEver, branchCount, umaUnidade = false, unidadeRecortada = null, recorteDesativado = false, hrefDaRede = '/admin/dashboard',
   prevRevenue, prevAppointments, prevNewClients,
   branchStats, todayTotal, todayByBranch,
   pendingPlans, lowStockItems, lotesVencendo = [], agora = new Date().toISOString(), stockStatus, zeroStockCount, lowStockCount, stockTurnover,
@@ -494,6 +497,7 @@ export function AdminDashboardView({
           }}>
             {unidadeRecortada ?? (umaUnidade ? 'Visão geral' : 'Visão geral da rede')}
           </h1>
+          {recorteDesativado && <div style={{ marginTop: 6 }}><SeloUnidadeDesativada /></div>}
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 4 }}>
             {/* Recortada a uma unidade, ou com o "só os meus", o total segue o da CLÍNICA (H5: a cliente é da
                 clínica; D12 da 13ª: o "só os meus" não recorta a ficha) — e diz (A42). */}

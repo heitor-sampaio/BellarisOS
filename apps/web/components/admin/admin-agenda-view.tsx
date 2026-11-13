@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { AppointmentModal } from '@/components/branch/appointment-modal'
+import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { useNovoAgendamentoDaUrl, type PedidoDeAgendamento } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
@@ -27,7 +28,7 @@ const TEXTO_DO_PASSOU = 'passou do horário sem chegada nem conclusão: marque a
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
 
-interface Branch      { id: string; name: string; slug: string; /** O horário de funcionamento (A26); sem ele, a grade não sombreia. */ horario?: Horario | null; /** O fuso da unidade (F62): a coluna dela desenha no relógio dela. */ fuso?: string }
+interface Branch      { id: string; name: string; slug: string; /** Falso na unidade desativada (F72): aparece pelo que ficou, mas não recebe agendamento novo. */ ativa?: boolean; /** O horário de funcionamento (A26); sem ele, a grade não sombreia. */ horario?: Horario | null; /** O fuso da unidade (F62): a coluna dela desenha no relógio dela. */ fuso?: string }
 interface Appointment {
   id:              string
   /** A profissional (A25: no agendamento dela, "Marcar chegada e iniciar"). */
@@ -64,7 +65,7 @@ interface Props {
   todayStr:     string       // 'YYYY-MM-DD'
   /** Unidades exibidas — já recortadas pelo filtro. */
   branches:     Branch[]
-  /** Todas as unidades ativas, para o seletor. */
+  /** As unidades de leitura (F72: as ativas e a desativada com o que ficou), para o seletor. */
   todasUnidades: Branch[]
   /** Unidade do recorte atual; vazio = rede inteira. */
   unidadeId:    string
@@ -317,7 +318,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                 key={b.id}
                 className="agenda-coluna"
                 data-unidade={b.id}
-                onClick={onHorarioVazio ? e => {
+                onClick={onHorarioVazio && b.ativa !== false ? e => {
                   // Só o fundo: o clique num agendamento sobe até aqui, e sem
                   // esta guarda abrir uma ficha marcaria um horário novo junto.
                   if (e.target !== e.currentTarget) return
@@ -328,7 +329,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
                   position: 'relative',
                   height: GRID_H,
                   borderLeft: '1px solid var(--hairline)',
-                  cursor: onHorarioVazio ? 'copy' : undefined,
+                  cursor: onHorarioVazio && b.ativa !== false ? 'copy' : undefined,
                 }}
               >
                 {foras.map(f => (
@@ -604,6 +605,7 @@ export function AdminAgendaView({
   const [clienteInicial, setClienteInicial] = useState<string | null>(null)
   const [pedidoInicial, setPedidoInicial] = useState<PedidoDeAgendamento>({ procedimento: null, profissional: null })
   // `?novo=1&cliente=`: a busca universal e a ficha abrem o modal por aqui (e o "Reagendar", com o procedimento e a profissional — A27).
+  const recorteDesativado = !!unidadeId && todasUnidades.find(b => b.id === unidadeId)?.ativa === false
   useNovoAgendamentoDaUrl(podeAgendar, (cliente, pedido) => { setClienteInicial(cliente); setPedidoInicial(pedido); setAgendando(true) })
 
   const mondayStr = getMondayOf(selectedDate)
@@ -717,6 +719,7 @@ export function AdminAgendaView({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {/* Recorte por unidade — o destino do "ver esta unidade" no dashboard
               da rede, que antes saía do portal. */}
+          {recorteDesativado && <SeloUnidadeDesativada />}
           {todasUnidades.length > 1 && (
             <SegSelect
               options={[
@@ -846,7 +849,9 @@ export function AdminAgendaView({
           // Vindo da grade, a unidade é a COLUNA em que se clicou, não a do
           // filtro: com "Toda a rede" escolhido, `unidadeId` é vazio e o modal
           // abriria pedindo de novo o que o clique já disse.
-          branchId={agendando === true ? unidadeId : agendando.branchId}
+          // F72: no recorte de uma unidade desativada, o "Agendar" pede a unidade —
+          // agendamento novo é só nas ativas.
+          branchId={agendando === true ? (recorteDesativado ? '' : unidadeId) : agendando.branchId}
           defaultDate={agendando === true ? undefined : agendando.quando}
           // A16 da 9ª: o "Agendar" abre no dia que está na tela.
           diaInicial={agendando === true ? selectedDate : null}
@@ -854,7 +859,7 @@ export function AdminAgendaView({
           procedures={[]}
           professionals={[]}
           rooms={[]}
-          unidades={todasUnidades}
+          unidades={todasUnidades.filter(b => b.ativa !== false)}
           clienteInicialId={clienteInicial}
           procedimentoInicialId={pedidoInicial.procedimento}
           profissionalInicialId={pedidoInicial.profissional}

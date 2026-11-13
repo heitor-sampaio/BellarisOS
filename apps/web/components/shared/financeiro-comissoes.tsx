@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, Download } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
@@ -46,7 +47,8 @@ export interface PropsDaTela {
   /** A32 da 10ª: o período escolhido ainda corre (o fechamento paga até agora). */
   periodoEmCurso?: boolean
   /** Portal da rede: o filtro de unidade. */
-  unidades?:     { id: string; name: string }[]
+  /** `ativa: false` = a desativada com comissão a pagar (F72): o filtro a alcança, com o selo. */
+  unidades?:     { id: string; name: string; ativa?: boolean }[]
   unidadeAtual?: string
   resumo:        ResumoDoProfissional[]
   totais:        { aPagar: number; liberado: number; pago: number; aguardando: number }
@@ -103,6 +105,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
           <select className="filtro-select" aria-label="Período" value={p.periodoAtual} onChange={e => navegar(e.target.value)}>
             {p.periodos.map(x => <option key={x.chave} value={x.chave}>{x.rotulo}</option>)}
           </select>
+          {p.unidades?.find(u => u.id === p.unidadeAtual)?.ativa === false && <SeloUnidadeDesativada />}
           {p.unidades && p.unidades.length > 1 && (
             <select className="filtro-select" aria-label="Unidade" value={p.unidadeAtual ?? ''} onChange={e => navegar(p.periodoAtual, e.target.value)}>
               <option value="">Todas as unidades</option>

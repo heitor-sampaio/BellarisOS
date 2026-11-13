@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { quantasUnidadesAtivas } from '@/lib/unidades/da-tela'
 import { getTenantContext, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
@@ -50,9 +51,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // clique em "Acessar o painel" — quem fechava a aba no fim caía nele de
   // novo. Sem unidade ativa, o setup segue sendo o caminho.
   if (ctx.isNetworkAdmin && !tenant?.onboarding_completed_at) {
-    const unidade = await ler(admin.from('branches').select('id')
-      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(1), 'conferir a unidade da rede') as { id: string }[] | null
-    if (!unidade?.length) redirect('/setup')
+    if (!(await quantasUnidadesAtivas(ctx.tenantId!))) redirect('/setup')
   }
 
   // O contador do sino é acessório: falhar aqui não pode derrubar o portal

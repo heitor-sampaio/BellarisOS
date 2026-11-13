@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { COLUNAS_DA_OFERTA, ofereceNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -35,12 +36,8 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
     .single(), 'buscar o cliente')
   if (!clientRecord) notFound()
 
-  const unidades = ((await ler(admin
-    .from('branches')
-    .select('id, name, tenant_id, slug, horario')
-    .eq('tenant_id', clientRecord.tenant_id as string)
-    .eq('is_active', true)
-    .order('name'), 'buscar as unidades da clínica')) ?? []) as { id: string; name: string; tenant_id: string; slug: string; horario: unknown }[]
+  // Agendar é criar: só as unidades ATIVAS (lib/unidades/da-tela).
+  const unidades = await unidadesParaCriar<{ tenant_id: string; horario: unknown }>(clientRecord.tenant_id as string, 'tenant_id, horario')
 
   const branch = unidades.find(u => u.slug === slug)
   if (!branch) notFound()

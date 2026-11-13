@@ -1,4 +1,5 @@
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference } from '@/lib/cached-queries'
@@ -73,8 +74,8 @@ export default async function AdminProceduresPage({
     salasDaRede,
     quemAtende,
   ] = await Promise.all([
-    ler(admin.from('branches').select('id, name')
-      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as unidades'),
+    // Onde o procedimento é oferecido: as unidades ATIVAS (lib/unidades/da-tela).
+    unidadesParaCriar(ctx.tenantId!),
 
     ler(admin.from('procedures')
       .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, consent_template_id, contract_template_id, loyalty_points')

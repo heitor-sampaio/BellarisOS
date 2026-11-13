@@ -24,10 +24,12 @@ const diaPorExtenso = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateStri
 /** Uma unidade do "Em qual unidade?" (A15): o relógio dela e se a mesma profissional atende lá. */
 export interface UnidadeDoRemarcar { id: string; nome: string; fuso: string; comAMesma: boolean }
 
-export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, whatsappParaAlterar = null, ligar = null, telefone, profissional = null, semPreferenciaInicial = false, ofereceSemPreferencia = false, unidade: unidadeDoAgendamento = '', unidades = [] }: {
+export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, whatsapp, whatsappParaAlterar = null, ligar = null, telefone, profissional = null, semPreferenciaInicial = false, ofereceSemPreferencia = false, unidade: unidadeDoAgendamento = '', unidadeInicial, unidades = [] }: {
   appointmentId: string
   /** A unidade do agendamento. */
   unidade?:      string
+  /** A unidade em que o horário novo começa: a do agendamento, ou (F72) a primeira ativa quando a dele foi desativada. */
+  unidadeInicial?: string
   /** Com mais de uma (A15, F65), o remarcar pergunta "Em qual unidade?". */
   unidades?:     UnidadeDoRemarcar[]
   scheduledAt:   string
@@ -48,7 +50,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
 }) {
   const router = useRouter()
   // A unidade do horário novo (A15): a do agendamento, até a cliente escolher outra.
-  const [unidade, setUnidade] = useState(unidadeDoAgendamento)
+  const [unidade, setUnidade] = useState(unidadeInicial ?? unidadeDoAgendamento)
   const escolhida = unidades.find(u => u.id === unidade) ?? null
   const outraUnidade = !!unidade && unidade !== unidadeDoAgendamento
   // A mesma profissional só onde ela atende; noutra unidade, quem estiver livre.
@@ -174,7 +176,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {/* A15 (F65): com mais de uma unidade que faz o procedimento, onde. As
               opções vêm dos dados: é um select, não chip (design.md). */}
-          {unidades.length > 1 && (
+          {(unidades.length > 1 || (unidades.length === 1 && unidades[0]!.id !== unidadeDoAgendamento)) && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
               Em qual unidade?
               <select className="filtro-select" value={unidade} onChange={e => {

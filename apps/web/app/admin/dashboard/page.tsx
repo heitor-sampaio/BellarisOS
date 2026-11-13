@@ -1,7 +1,8 @@
 import { getTenantContext, temRecurso, can, podeVerRelatorio, isOwnScope } from '@/lib/auth'
 import { ParcelasVencidas } from '@/components/shared/parcelas-vencidas'
 import { getAReceberVencido } from '@/lib/metrics/vencidas'
-import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { umaUnidadeSo } from '@/lib/unidades/uma-so'
+import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
@@ -117,24 +118,26 @@ export default async function AdminDashboardPage({
   // -- Filiais -------------------------------------------------------
   // Falha de consulta não é rede sem filial — o erro sobe em vez de virar um
   // dashboard vazio com cara de rede nova.
-  const branchesRaw = await ler(admin
-    .from('branches')
-    .select('id, name, slug, city, state, zip_code')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name'), 'carregar as unidades')
-
-  const todasAsUnidades = branchesRaw ?? []
-  // D-19: a clínica de uma unidade só não vê ranking nem "por filial".
-  const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
+  // F72 (D1 e D2 da 14ª; H6, C45): as unidades de LEITURA — a desativada com
+  // movimento no período ou com o que ficou (agenda, estoque, a receber,
+  // comissão) entra no "Hoje", no estoque, no Giro e no `?unidade=`, com o
+  // selo. Fechada a Pampulha, o "Hoje" caía de 10 para 6 e o Giro pela metade.
+  const todasAsUnidades = await unidadesParaLer<{ city: string | null; state: string | null; zip_code: string | null }>(ctx.tenantId!, {
+    periodo: await periodoDaTela(ctx.tenantId!, rawPeriod, rawFrom, rawTo), colunas: 'city, state, zip_code',
+  })
+  // D-19: a clínica de uma unidade só não vê ranking nem "por filial" — uma nos
+  // NÚMEROS (F72): a desativada com dado no período ainda conta.
+  const umaUnidade = umaUnidadeSo(todasAsUnidades.length)
   // `?unidade=<id|slug>` recorta a rede a uma unidade (J-54, 2026-10-30): é o
   // drill-down da rede (CLAUDE.md §6), que o dashboard ignorava. A abrangência
-  // vence o pedido (ctx.branchId ?? unidade); valor desconhecido ou unidade
-  // desativada cai na rede inteira. Com uma unidade só, não há o que recortar.
+  // vence o pedido (ctx.branchId ?? unidade); valor desconhecido cai na rede
+  // inteira — a desativada com o que ficou é alcançável (F72, com o selo). Com
+  // uma unidade só, não há o que recortar.
   const pedida = umaUnidade ? null : todasAsUnidades.find(b => b.id === rawUnidade || b.slug === rawUnidade)?.id ?? null
   const unidadeId = ctx.branchId ?? pedida
   const branches  = unidadeId ? todasAsUnidades.filter(b => b.id === unidadeId) : todasAsUnidades
-  const unidadeRecortada = unidadeId && !umaUnidade ? (branches[0]?.name ?? null) : null
+  const unidadeRecortada = unidadeId && !umaUnidade && branches[0] ? branches[0].name : null
+  const recorteDesativado = !!unidadeRecortada && branches[0]?.ativa === false
   const branchIds = branches.map(b => b.id)
   const fuso = await fusoDoRecorte(ctx.tenantId, branchIds)
   // C45 (F68): o TOTAL da rede inteira inclui a unidade desativada — o "Por
@@ -337,7 +340,8 @@ export default async function AdminDashboardPage({
   // Unidade desativada só entra se teve movimento no período (simulação de 2026-10-20).
   const branchStats: BranchStat[] = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal).map(b => ({
     id:           b.branchId,
-    name:         b.branchName,
+    // F72: a desativada diz que é (o selo no nome da linha).
+    name:         nomeNaTela({ name: b.branchName, ativa: b.isActive }),
     slug:         b.branchSlug,
     revenue:      b.revenueCash,
     appointments: b.appointmentsCompleted,
@@ -352,7 +356,7 @@ export default async function AdminDashboardPage({
       if (bToday.length === 0) return null
       return {
         id:         branch.id,
-        name:       branch.name,
+        name:       nomeNaTela(branch),
         slug:       branch.slug,
         total:      bToday.length,
         scheduled:  bToday.filter(a => a.status === 'SCHEDULED').length,
@@ -723,6 +727,7 @@ export default async function AdminDashboardPage({
         // clínica de uma unidade só — e o título diz qual.
         umaUnidade={umaUnidade || !!unidadeRecortada}
         unidadeRecortada={unidadeRecortada}
+        recorteDesativado={recorteDesativado}
         hrefDaRede={hrefDaRede}
         prevRevenue={veDinheiro ? prevRevenue : 0}
         prevAppointments={prevAppointments}

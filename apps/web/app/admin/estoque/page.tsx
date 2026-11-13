@@ -11,6 +11,8 @@ import { getValorEmEstoque, getValorEmEstoquePorProduto } from '@/lib/metrics/un
 import { termoDaUrl } from '@/lib/texto'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
+import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
+import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
@@ -42,17 +44,14 @@ export default async function AdminEstoquePage({
   // descartado: qualquer recusa do PostgREST deixava o estoque da rede inteiro
   // em branco, sem mensagem nenhuma.
   // C26: os produtos em páginas; D1: o desativado com saldo continua (lib/estoque/produtos-da-tela).
-  const [raw, fornecedores, catalogo, { data: branchesRaw, error: filiaisErr }, { data: categoriesRaw, error: categoriasErr }] = await Promise.all([
+  // F72 (D1 da 14ª; H6): as unidades de LEITURA — a desativada com saldo (ou
+  // com o que ficou nela) entra no total, nas linhas e no `?unidade=`, com o
+  // selo. Fechada a Pampulha, o total caía R$ 894,80 sem nada ter saído.
+  const [raw, fornecedores, catalogo, unidadesDeLeitura, { data: categoriesRaw, error: categoriasErr }] = await Promise.all([
     produtosDoEstoque(ctx.tenantId!),
     todosOsFornecedores(ctx.tenantId!),
     catalogoDaRede(admin, ctx.tenantId!),
-
-    admin
-      .from('branches')
-      .select('id, name, slug')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'),
+    unidadesParaLer(ctx.tenantId!),
 
     admin
       .from('product_categories')
@@ -61,18 +60,19 @@ export default async function AdminEstoquePage({
       .order('name'),
   ])
 
-  if (filiaisErr)  throw new Error(`Não foi possível carregar as unidades: ${filiaisErr.message}`)
   if (categoriasErr) throw new Error(`Não foi possível carregar as categorias: ${categoriasErr.message}`)
 
+  const daLeitura = new Map(unidadesDeLeitura.map(u => [u.id, u]))
   // Normaliza produtos
   const products = (raw as ProdutoDoEstoque[]).map(p => {
     const bps = p.branch_product_stock ?? []
 
+    // As linhas são as das unidades de LEITURA (F72): a desativada só com o que ficou nela, com o selo.
     const branchStocks = bps
-      .flatMap(b => (b.branches ? [{ ...b, branches: b.branches }] : []))
+      .flatMap(b => (b.branches && daLeitura.has(b.branches.id) ? [{ ...b, branches: b.branches }] : []))
       .map(b => ({
         branchId:          b.branches.id,
-        branchName:        b.branches.name,
+        branchName:        nomeNaTela(daLeitura.get(b.branches.id)!),
         branchSlug:        b.branches.slug,
         currentStock:      Number(b.current_stock),
         minStock:          Number(b.min_stock),
@@ -110,7 +110,10 @@ export default async function AdminEstoquePage({
     }
   })
 
-  const branches   = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
+  const branches   = unidadesDeLeitura.map(b => ({ id: b.id, name: nomeNaTela(b), slug: b.slug, ativa: b.ativa }))
+  // Para CRIAR (o produto novo com estoque inicial, a entrada): só as ativas.
+  const ativas     = branches.filter(b => b.ativa)
+  const desativadas = new Set(branches.filter(b => !b.ativa).map(b => b.id))
   const categories = categoriesRaw ?? []
   const productIds = products.map(p => p.id)
 
@@ -126,8 +129,8 @@ export default async function AdminEstoquePage({
   // Por `ler`: sem checar o erro, uma falha virava giro zero e nenhum lote
   // vencendo — os dois alertas quietos exatamente quando não deviam.
   // O recorte: a unidade escolhida, ou todas as unidades da rede.
-  // C22: as unidades ATIVAS — as das linhas da tabela. Com a inativa, o total
-  // do cartão somava um saldo que nenhuma linha mostrava.
+  // C22 + F72: as unidades de LEITURA — as das linhas da tabela: a ativa e a
+  // desativada que ainda tem saldo (H6; princípio 3: o total fecha com as linhas).
   const todasAsUnidades = branches.map(b => b.id)
   const unidadesDoRecorte = unidadeId ? [unidadeId] : todasAsUnidades
   // O mês do giro e o "em 30 dias" no fuso do recorte (F62b), como o dashboard.
@@ -191,7 +194,7 @@ export default async function AdminEstoquePage({
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {unidade
-              ? unidade.name
+              ? <>{daLeitura.get(unidade.id)?.name ?? unidade.name}{desativadas.has(unidade.id) && <> <SeloUnidadeDesativada /></>}</>
               // A clínica de uma unidade não fala "rede" (F8).
               : umaUnidadeSo(branches.length) ? 'Estoque da clínica'
               : `Visão consolidada da rede · ${branches.length} unidades`}
@@ -209,7 +212,7 @@ export default async function AdminEstoquePage({
             <StockProductModal
               fornecedores={fornecedoresAtivos}
               categories={categories}
-              branches={branches}
+              branches={ativas}
               trigger={
                 <button type="button" className="btn-primary">
                   <Package size={15} />

@@ -1,10 +1,9 @@
 import Link from 'next/link'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { idOu404 } from '@/lib/id-da-rota'
 import { notFound, redirect } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { getCampaign } from '@/actions/notification-campaigns'
 import { NotificationCampaignForm } from '@/components/admin/notification-campaign-form'
@@ -32,14 +31,9 @@ export default async function EditarCampanhaPage({ params }: { params: Promise<{
   }
   if (!['DRAFT', 'PAUSED'].includes(campaign.status)) redirect(`/admin/notificacoes/${id}`)
 
-  const admin = createAdminClient()
   const [branches, procedures] = await Promise.all([
-    ler(admin
-      .from('branches')
-      .select('id, name, city')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'), 'carregar as unidades'),
+    // A campanha nova mira as unidades ATIVAS (lib/unidades/da-tela).
+    unidadesParaCriar<{ city: string | null }>(ctx.tenantId!, 'city'),
     getCachedNetworkProcedures(ctx.tenantId!),
   ])
 

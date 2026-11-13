@@ -1,4 +1,5 @@
 ﻿import Link from 'next/link'
+import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { baseDaOcupacao, descontosDaOcupacao } from '@/lib/metrics/ocupacao'
@@ -112,10 +113,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const dinheiroDela = recorte.financeiro
   // D10 da 13ª simulação: o "Meus…" é o que é DELA em todas as unidades em que
   // atende (como a Minha agenda e "Minhas comissões") — não só o desta. Só as
-  // unidades ativas da rede; a do endereço vem primeiro.
-  const ativasDaRede = await ler(admin.from('branches').select('id, name')
-    .eq('tenant_id', ctx.tenantId!).eq('is_active', true), 'ler as unidades da rede')
-  const nomeDaUnidade = new Map((ativasDaRede ?? []).map(b => [b.id as string, b.name as string]))
+  // unidades de LEITURA (F72: a desativada em que ainda há o que é dela — a
+  // comissão a receber, o horário marcado — conta); a do endereço vem primeiro.
+  const ativasDaRede = await unidadesParaLer(ctx.tenantId!)
+  const nomeDaUnidade = new Map(ativasDaRede.map(b => [b.id, b.name]))
   const soAsAtivas = (ids: string[]) => ids.filter(id => id === branchId || nomeDaUnidade.has(id))
   const unidadesDaAgenda   = soAsAtivas(unidadesDoQueEDela(ctx, branchId, 'agenda'))
   const unidadesDoDinheiro = soAsAtivas(unidadesDoQueEDela(ctx, branchId, 'financial'))

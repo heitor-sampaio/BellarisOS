@@ -13,6 +13,7 @@ import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
 import { nomesDosRegistros } from '@/lib/nomes-dos-registros'
 import { getCachedBranchProfessionals, getCachedRoomsByBranch } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
+import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { fusoComum, fusoValido } from '@/lib/unidades/fuso'
 
 type AgendaView = 'day' | 'week'
@@ -31,36 +32,27 @@ export default async function AdminAgendaPage({
   const view        = ((rawView ?? 'day') as AgendaView)
 
   // -- Filiais -------------------------------------------------------
-  const { data: branchesRaw, error: branchesError } = await admin
-    .from('branches')
-    .select('id, name, slug, horario, fuso')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name')
-
-  // Falha de consulta não é ausência de filial — ver o mesmo tratamento em
-  // /admin/reports.
-  if (branchesError) {
-    console.error('[admin/agenda] branches:', branchesError.message)
-    return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
-        Não foi possível carregar as unidades agora. Tente recarregar em instantes.
-      </div>
-    )
-  }
-
-  const todasUnidadesComHorario = (branchesRaw ?? []) as { id: string; name: string; slug: string; horario: unknown; fuso: string | null }[]
-  const todasUnidades = todasUnidadesComHorario.map(({ id, name, slug }) => ({ id, name, slug }))
+  // F72 (D2 da 14ª; H6): as unidades de LEITURA — a desativada com agenda
+  // marcada (ou movimento na semana olhada) segue alcançável pelo `?unidade=`,
+  // com o selo: o "Ver os agendamentos" da janela de desativar abria a outra.
+  const dataPedida = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? new Date(`${rawDate}T12:00:00Z`) : null
+  const todasUnidadesComHorario = await unidadesParaLer<{ horario: unknown; fuso: string | null }>(ctx.tenantId!, {
+    colunas: 'horario, fuso',
+    periodo: dataPedida && !Number.isNaN(dataPedida.getTime())
+      ? { de: new Date(dataPedida.getTime() - 8 * 86_400_000), ate: new Date(dataPedida.getTime() + 8 * 86_400_000) }
+      : undefined,
+  })
+  const todasUnidades = todasUnidadesComHorario.map(u => ({ id: u.id, name: nomeNaTela(u), slug: u.slug, ativa: u.ativa }))
 
   // `?unidade=` recorta a rede a uma filial — é para onde o dashboard aponta ao
   // se olhar uma unidade, em vez de mandar a pessoa para o portal dela. Aceita
   // id ou slug: quem linka daqui de dentro tem o id, o dashboard tem o slug, e
   // `?unidade=centro` ainda é legível para quem olha a URL. Valor desconhecido
-  // (ou unidade desativada) cai na rede inteira, em vez de numa tela vazia.
+  // cai na rede inteira, em vez de numa tela vazia.
   const unidadeId = todasUnidades.find(b => b.id === unidade || b.slug === unidade)?.id ?? ''
   // Cada coluna leva o horário DA unidade: a grade sombreia o fechado dela e
   // marca o encaixe (A26 da 6ª simulação).
-  const comHorario = (b: { id: string; name: string; slug: string }) =>
+  const comHorario = (b: { id: string; name: string; slug: string; ativa: boolean }) =>
     ({ ...b, horario: normalizarHorario(todasUnidadesComHorario.find(x => x.id === b.id)?.horario), fuso: fusoValido(todasUnidadesComHorario.find(x => x.id === b.id)?.fuso) })
   const branches  = (unidadeId ? todasUnidades.filter(b => b.id === unidadeId) : todasUnidades).map(comHorario)
   const branchIds = branches.map(b => b.id)
@@ -170,7 +162,7 @@ export default async function AdminAgendaPage({
   // "Bloquear horário" daqui com UMA unidade na tela (a clínica de uma unidade
   // vive no /admin — H3): a lista de quem atende e das salas dela.
   const umaSo = branches.length === 1 ? branches[0]! : null
-  const paraBloquear = umaSo && ctx.permissions.agenda === 'MANAGE'
+  const paraBloquear = umaSo && umaSo.ativa && ctx.permissions.agenda === 'MANAGE'
     ? {
         branchId: umaSo.id,
         profissionais: ((await getCachedBranchProfessionals(umaSo.id, ctx.tenantId!)) ?? []).map(p => ({ id: p.id as string, name: p.name as string })),

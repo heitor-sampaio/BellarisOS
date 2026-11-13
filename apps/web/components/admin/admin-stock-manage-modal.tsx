@@ -51,12 +51,19 @@ type ProductInfo = {
   minimoDoCadastro?: number | null
 }
 
-type AllBranch = { id: string; name: string }
+/** `ativa: false` = a unidade desativada (F72): dela sai (transferir, ajustar, perda), para ela não entra. */
+type AllBranch = { id: string; name: string; ativa?: boolean }
+const soAtivas = (lista: AllBranch[]) => lista.filter(b => b.ativa !== false)
 
 interface Props {
   product:         ProductInfo
   allBranches:     AllBranch[]
   defaultBranchId?: string
+  /**
+   * A unidade filtrada na tela (F72): a origem já escolhida da transferência —
+   * o "Transferir o estoque" da janela de desativar chega aqui.
+   */
+  origemSugerida?: string
   /** C76: a lista de fornecedores da rede. */
   fornecedores?:   FornecedorDaLista[]
   /** C16: aberto pelo leitor de código de barras — só a Entrada. */
@@ -177,7 +184,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, fornecedores = [],
       {defaultBranchId ? (
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
-        <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches}
+        <BranchSelect name="branchId" branches={product.branches} allBranches={soAtivas(allBranches)}
           label="Unidade de destino" required />
       )}
 
@@ -265,16 +272,19 @@ function EntradaForm({ product, allBranches, defaultBranchId, fornecedores = [],
 }
 
 // -- Formulário: Transferência -----------------------------------------
-function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }: {
+function TransferenciaForm({ product, allBranches, defaultBranchId, origemSugerida, onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
   /** Unidade de quem esta operando: a origem e ela, e nao ha o que escolher. */
   defaultBranchId?: string
+  /** F72: a unidade filtrada na tela, já escolhida como origem. */
+  origemSugerida?: string
   onClose: () => void; onSuccess: () => void
 }) {
+  const origemInicial = defaultBranchId ?? (origemSugerida && allBranches.some(b => b.id === origemSugerida) ? origemSugerida : undefined)
   const envio = useEnvioUnico()
   const [error,   setError]   = useState<string>()
   const [pending, setPending] = useState(false)
-  const [fromId,  setFromId]  = useState(defaultBranchId ?? '')
+  const [fromId,  setFromId]  = useState(origemInicial ?? '')
   const [toId,    setToId]    = useState('')
 
   // C18: o disponível é o que a origem RENDE — o frasco aberto conta pelo que
@@ -316,12 +326,12 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onS
       <div className="flex-wrap-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'end', gap: 8 }}>
         <BranchSelect name="fromBranchId" branches={product.branches}
           allBranches={defaultBranchId ? allBranches.filter(b => b.id === defaultBranchId) : allBranches}
-          label="Origem" required onChange={setFromId} defaultValue={defaultBranchId} />
+          label="Origem" required onChange={setFromId} defaultValue={origemInicial} />
         <div style={{ paddingBottom: 10, color: 'var(--text-faint)' }}>
           <ArrowLeftRight size={16} />
         </div>
         <BranchSelect name="toBranchId" branches={product.branches}
-          allBranches={allBranches.filter(b => b.id !== fromId)}
+          allBranches={soAtivas(allBranches).filter(b => b.id !== fromId)}
           label="Destino" required onChange={setToId} />
       </div>
 
@@ -874,11 +884,13 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
 }
 
 // -- Modal principal ---------------------------------------------------
-export function AdminStockManageModal({ product, allBranches, defaultBranchId, fornecedores = [], somenteEntrada = false, onClose, onSuccess }: Props) {
+export function AdminStockManageModal({ product, allBranches, defaultBranchId, origemSugerida, fornecedores = [], somenteEntrada = false, onClose, onSuccess }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router = useRouter()
   const [tab,   setTab]   = useState<Tab>('movimentacoes')
-  const [movOp, setMovOp] = useState<MovOp>('entrada')
+  // F72: aberto na unidade DESATIVADA, começa no que resolve o saldo dela — transferir.
+  const [movOp, setMovOp] = useState<MovOp>(() =>
+    !somenteEntrada && !defaultBranchId && allBranches.find(b => b.id === origemSugerida)?.ativa === false ? 'transferencia' : 'entrada')
 
   useEffect(() => {
     const dialogo = dialogRef.current
@@ -977,7 +989,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, f
             </div>
 
             {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />}
-            {movOp === 'transferencia' && <TransferenciaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
+            {movOp === 'transferencia' && <TransferenciaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} origemSugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'ajuste'        && <AjusteForm        product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'perda'         && <PerdaForm         product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
           </div>

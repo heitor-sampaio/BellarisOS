@@ -22,7 +22,7 @@ import {
 export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath, voltarPara, periodoPedido }: {
   ctx:           TenantContext
   /** As unidades ao alcance desta tela (no portal da unidade, uma). */
-  unidades:      { id: string; name: string }[]
+  unidades:      { id: string; name: string; ativa?: boolean }[]
   /** Recorte da rede por uma unidade. */
   unidadeAtual?: string
   basePath:      string

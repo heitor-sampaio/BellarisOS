@@ -1,10 +1,11 @@
 ﻿import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assinadosDoCliente } from '@/lib/documentos/leitura'
-import { ler, contar } from '@/lib/db'
+import { ler } from '@/lib/db'
 import { formaDoLancamento } from '@/lib/financeiro/formas'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
@@ -157,7 +158,8 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   // A53 da 8ª: com mais de uma unidade, cada atendimento diz onde foi.
   const redeDosAtendimentos = lidos.find(r => r.branches?.tenant_id)?.branches?.tenant_id ?? null
   const variasUnidades = redeDosAtendimentos
-    ? await contar(admin.from('branches').select('id', { count: 'exact', head: true }).eq('tenant_id', redeDosAtendimentos).eq('is_active', true), 'contar as unidades') > 1
+    // A desativada onde ela foi atendida conta (F72, lib/unidades/da-tela).
+    ? (await unidadesParaLer(redeDosAtendimentos)).length > 1
     : false
   const procedimentos: ProcedimentoItem[] = lidos.map(r => ({
     id:                  r.id,

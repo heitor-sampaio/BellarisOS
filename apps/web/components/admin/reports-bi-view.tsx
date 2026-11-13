@@ -1448,7 +1448,7 @@ export function ReportsBiView(props: ReportsBiProps) {
       {/* Page header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <p style={{
+          <p data-escopo-dos-relatorios style={{
             fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)',
             textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px',
           }}>

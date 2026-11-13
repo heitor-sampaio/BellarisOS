@@ -172,7 +172,8 @@ interface Props {
   /** A44 da 8ª: o nome do CSV das movimentações. */
   nomeDoCsv?:       string
   branchSlugMap:    Record<string, string>
-  branches:         { id: string; name: string; slug: string }[]
+  /** As unidades de leitura (F72): `ativa: false` é a desativada com o que ficou — aparece, mas não recebe lançamento novo. */
+  branches:         { id: string; name: string; slug: string; ativa?: boolean }[]
   /**
    * Unidade já recortada ao abrir (`?unidade=` na URL).
    *
@@ -442,7 +443,7 @@ export function AdminFinancialView({
           )}
           {/* Com o Financeiro em Ver, o botão aparecia e a recusa chegava em inglês (D7). */}
           {canWrite && <FinancialTransactionModal
-            branches={branches}
+            branches={branches.filter(b => b.ativa !== false)}
             trigger={
               <button type="button" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 8 }}>
                 <Plus size={15} />
@@ -867,10 +868,10 @@ export function AdminFinancialView({
 
       <ClientCreditModal
         ref={creditModalRef}
-        branchId={filterBranch !== 'all' ? filterBranch : ''}
+        branchId={filterBranch !== 'all' && branches.find(b => b.id === filterBranch)?.ativa !== false ? filterBranch : ''}
         slug=""
         clients={clients}
-        branches={branches}
+        branches={branches.filter(b => b.ativa !== false)}
       />
     </div>
   )

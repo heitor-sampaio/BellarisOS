@@ -71,7 +71,8 @@ type ProductStock = {
   fornecedorId?:    string | null
 }
 
-type Branch = { id: string; name: string; slug: string }
+/** `ativa: false` = a desativada com o que ficou (F72): aparece e se transfere DELA; não recebe. */
+type Branch = { id: string; name: string; slug: string; ativa?: boolean }
 export type Fornecedor = { id: string; nome: string }
 
 const medidas = (p: ProductStock): MedidasDoProduto =>
@@ -439,7 +440,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                   fornecedores={fornecedores}
                   categories={productCategories ?? []}
                   // Na unidade, a da tela (D8 da 9ª); na rede, a escolha.
-                  branches={defaultBranchId ? branches.filter(x => x.id === defaultBranchId) : branches}
+                  branches={(defaultBranchId ? branches.filter(x => x.id === defaultBranchId) : branches).filter(x => x.ativa !== false)}
                   trigger={
                     <button type="button" className="btn-primary">
                       <Plus size={15} /> Novo produto
@@ -730,6 +731,7 @@ export function AdminStockView({ products, branches, categories, productCategori
           product={managing}
           allBranches={unidadesDaRede && unidadesDaRede.length > 0 ? unidadesDaRede : branches}
           defaultBranchId={defaultBranchId}
+          origemSugerida={branchId || undefined}
           fornecedores={fornecedores}
           onClose={() => setManaging(null)}
           onSuccess={() => { setManaging(null); router.refresh() }}

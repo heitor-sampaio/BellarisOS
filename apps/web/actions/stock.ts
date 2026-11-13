@@ -5,7 +5,7 @@ import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, lerTodas, tentar, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede, saldoAgoraEmTexto } from '@/lib/estoque/movimentos'
+import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede, saldoAgoraEmTexto, unidadeDesativada, RECUSA_DA_UNIDADE_DESATIVADA } from '@/lib/estoque/movimentos'
 import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
 import { prefixoDoSku } from '@/lib/estoque/sku'
 import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
@@ -219,6 +219,7 @@ async function createProductInterno(
       const desfazer = () => tentar(admin.from('products').delete().eq('id', newProduct.id).eq('tenant_id', ctx.tenantId!), 'desfazer o produto sem o estoque inicial')
       const unidadeDaRede = await produtoEUnidadesDaRede(admin, ctx.tenantId!, newProduct.id, [filialEstoque])
       if (!unidadeDaRede) { await desfazer(); return { error: 'A unidade do estoque inicial não é desta rede.' } }
+      if (await unidadeDesativada(admin, ctx.tenantId!, filialEstoque)) { await desfazer(); return { error: RECUSA_DA_UNIDADE_DESATIVADA } }
       try {
         await gravar(admin.rpc('estoque_inicial', {
           p_produto: newProduct.id, p_unidade: filialEstoque, p_quantidade: initialQty,
@@ -627,6 +628,8 @@ async function adminTransferStockInterno(
     const admin = createAdminClient()
     if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [fromBranchId, toBranchId])))
       return { error: 'Produto ou unidade não encontrado.' }
+    // F72 (H6): da desativada sai (é resolver o que sobrou); para ela, não.
+    if (await unidadeDesativada(admin, ctx.tenantId!, toBranchId)) return { error: RECUSA_DA_UNIDADE_DESATIVADA }
 
     // As duas pernas, os dois saldos e o rendimento numa transação, com as
     // linhas travadas (estoque_transferir, 2026-10-08). Era ler os dois saldos

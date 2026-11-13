@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { quantasUnidadesAtivas } from '@/lib/unidades/da-tela'
 import { getTenantContext, assertPermission, temRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { SetupWizard } from '@/components/setup/setup-wizard'
@@ -27,8 +28,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
       .select('name, document, phone, website, onboarding_completed_at')
       .eq('id', ctx.tenantId!)
       .single(), 'buscar a rede'),
-    ler(admin.from('branches').select('id').eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(1),
-      'conferir as unidades da rede'),
+    quantasUnidadesAtivas(ctx.tenantId!),
   ])
 
   if (tenant?.onboarding_completed_at) redirect('/admin/dashboard')
@@ -44,7 +44,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
         telefone:  (tenant?.phone as string | null) ?? '',
         site:      (tenant?.website as string | null) ?? '',
       }}
-      temUnidade={(unidades ?? []).length > 0}
+      temUnidade={unidades > 0}
       noPassoDaUnidade={passo === 'unidade'}
       // Os próximos passos do fim (A1 da 7ª): o de uma funcionalidade fora do plano não aparece.
       foraDoPlano={(['fichas', 'documentos', 'fidelidade', 'oportunidades'] as const).filter(r => !temRecurso(ctx, r))}

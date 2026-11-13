@@ -31,6 +31,19 @@ export async function produtoEUnidadesDaRede(
   return !!produto && (unidades ?? []).length === new Set(branchIds).size
 }
 
+/**
+ * A unidade desativada não RECEBE estoque (F72; H6): entrada nela e
+ * transferência para ela são coisa nova numa unidade fora do ar. Tirar o que
+ * sobrou (transferir DELA, ajustar, registrar a perda) continua — é resolver.
+ */
+export const RECUSA_DA_UNIDADE_DESATIVADA = 'Esta unidade foi desativada: o estoque novo vai para uma unidade ativa.'
+
+export async function unidadeDesativada(admin: Admin, tenantId: string, branchId: string): Promise<boolean> {
+  const u = await ler(admin.from('branches').select('is_active').eq('id', branchId).eq('tenant_id', tenantId).maybeSingle(),
+    'conferir se a unidade está ativa') as { is_active: boolean } | null
+  return u?.is_active === false
+}
+
 /** As unidades por embalagem do produto (para o rendimento); null quando não usa. */
 export async function getUpp(admin: Admin, productId: string): Promise<number | null> {
   const data = await ler(admin
@@ -82,6 +95,7 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
   if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, e.productId, [e.branchId]))) {
     return { error: 'Produto ou unidade não encontrado.' }
   }
+  if (await unidadeDesativada(admin, ctx.tenantId!, e.branchId)) return { error: RECUSA_DA_UNIDADE_DESATIVADA }
 
   // Numa transação só, com a linha do saldo travada (estoque_entrada): duas
   // entradas ao mesmo tempo (a tela e o Copilot) não se perdem mais.

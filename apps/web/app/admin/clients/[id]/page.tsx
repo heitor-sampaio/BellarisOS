@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
@@ -158,12 +159,8 @@ export default async function AdminClientProfilePage({
       .is('apagado_em', null)
       .order('created_at', { ascending: false }), 'carregar os documentos'),
 
-    ler(admin
-      .from('branches')
-      .select('id, name, slug')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'), 'carregar as unidades'),
+    // Onde se vende, dá crédito e agenda: as unidades ATIVAS (lib/unidades/da-tela).
+    unidadesParaCriar(ctx.tenantId!),
 
     ler(admin
       .from('treatment_plans')

@@ -107,7 +107,11 @@ async function candidatasParaRemarcar(admin: ReturnType<typeof createAdminClient
 async function unidadeDoRemarcar(admin: ReturnType<typeof createAdminClient>, a: {
   branch_id: string; procedure_id: string | null; clients: { tenant_id: string }
 }, pedida?: string | null): Promise<string | null> {
-  if (!pedida || pedida === a.branch_id) return a.branch_id
+  if (!pedida || pedida === a.branch_id) {
+    // F72: o horário NOVO não nasce numa unidade desativada — a cliente escolhe outra.
+    const ativa = await ler(admin.from('branches').select('is_active').eq('id', a.branch_id).maybeSingle(), 'buscar a unidade') as { is_active: boolean } | null
+    return ativa?.is_active === false ? null : a.branch_id
+  }
   if (!UUID.safeParse(pedida).success) return null
   const unidade = await ler(admin.from('branches').select('id').eq('id', pedida)
     .eq('tenant_id', a.clients.tenant_id).eq('is_active', true).maybeSingle(), 'buscar a unidade')
@@ -132,7 +136,7 @@ export async function remarcarPelaCliente(
     if (recusa) return { error: recusa }
     if (!a.professional_id && !semPreferencia) return { error: 'Fale com a clínica para remarcar este horário.' }
     const unidade = await unidadeDoRemarcar(admin, a, branchId)
-    if (!unidade) return { error: 'Esta unidade não faz este procedimento. Escolha outra.' }
+    if (!unidade) return { error: 'Esta unidade não atende este procedimento agora. Escolha outra.' }
     const mudaDeUnidade = unidade !== a.branch_id
 
     // O horário novo é um dos livres do self-service: da mesma profissional,
@@ -269,7 +273,7 @@ export async function horariosParaRemarcar(appointmentId: string, dia: string, s
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return { slots: [] }
     // A unidade escolhida no "Em qual unidade?" (A15).
     const unidade = await unidadeDoRemarcar(admin, a, branchId)
-    if (!unidade) return { error: 'Esta unidade não faz este procedimento. Escolha outra.' }
+    if (!unidade) return { error: 'Esta unidade não atende este procedimento agora. Escolha outra.' }
     if (semPreferencia) return { slots: juntarHorarios((await candidatasParaRemarcar(admin, a, dia, unidade)).map(c => c.livres)) }
     if (!a.professional_id) return { slots: [] }
     // A mesma profissional na outra unidade só se ela atende lá.

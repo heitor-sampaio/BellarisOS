@@ -1,8 +1,8 @@
 import { redirect, notFound } from 'next/navigation'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { getTenantContext, isOwnScope, caminhoDaRequisicao } from '@/lib/auth'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { UmaUnidadeProvider } from '@/components/shared/uma-unidade'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { BranchSidebar } from '@/components/branch/sidebar'
 import { Topbar } from '@/components/shared/topbar'
@@ -65,8 +65,6 @@ export default async function BranchLayout({
 
   // Usuário operacional (não-cliente). O acesso a cada módulo é gateado por
   // assertPermission nas páginas; aqui só validamos vínculo com a filial (abaixo).
-  const supabase = await createClient()
-
   const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
 
   if (!branch) notFound()
@@ -92,12 +90,8 @@ export default async function BranchLayout({
   const daRede = ctx.branchId === null
   const [allBranches, unreadRes] = await Promise.all([
     daRede
-      ? ler(supabase
-          .from('branches')
-          .select('name, slug')
-          .eq('tenant_id', ctx.tenantId!)
-          .eq('is_active', true)
-          .order('name'), 'carregar as unidades da rede').then(d => d ?? [])
+      // Trocar de unidade é ENTRAR no portal dela: só as ativas (lib/unidades/da-tela).
+      ? unidadesParaCriar(ctx.tenantId!).then(us => us.map(({ name, slug }) => ({ name, slug })))
       : Promise.resolve([]),
     ctx.internalUserId
       ? createAdminClient()

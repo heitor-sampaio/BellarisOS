@@ -1,6 +1,6 @@
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
-import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { umaUnidadeSo } from '@/lib/unidades/uma-so'
+import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
 import {
   ReportsBiSection, type ReportsTab, type ReportsPeriod,
 } from '@/components/admin/reports-bi-section'
@@ -20,27 +20,13 @@ export default async function AdminReportsPage({
   // opção "Rede inteira".
   const podeVerRede = !isOwnScope(ctx, 'reports')
 
-  const admin = createAdminClient()
-
-  const { data: branchesRaw, error: branchesError } = await admin
-    .from('branches')
-    .select('id, name, slug')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name')
-
-  // Consulta que falha é diferente de rede sem unidade. Tratar as duas como a
-  // mesma coisa dizia "nenhuma filial cadastrada" quando o banco estava fora.
-  if (branchesError) {
-    console.error('[admin/reports] branches:', branchesError.message)
-    return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
-        Não foi possível carregar as unidades agora. Tente recarregar em instantes.
-      </div>
-    )
-  }
-
-  const branches = branchesRaw ?? []
+  // F72 (D1 da 14ª; H6, C45): as unidades de LEITURA — a desativada com
+  // movimento no período ou com o que ficou nela entra no total, no seletor e
+  // no `?unidade=`, com o selo; os Relatórios diziam R$ 1.846 e "MANACÁ
+  // SAVASSI" com a Pampulha recém-fechada (o dashboard dizia R$ 2.476).
+  const branches = (await unidadesParaLer(ctx.tenantId!, {
+    periodo: await periodoDaTela(ctx.tenantId!, rawPeriod ?? 'month', rawFrom, rawTo),
+  })).map(b => ({ id: b.id, name: nomeNaTela(b), slug: b.slug }))
 
   if (branches.length === 0) {
     return (
@@ -58,8 +44,9 @@ export default async function AdminReportsPage({
   const selecionada = branches.find(b => b.id === pedida || b.slug === pedida)
     ?? (podeVerRede ? undefined : branches[0])
   // D-19: com UMA unidade, o cabeçalho diz o nome dela, não "Rede", e os
-  // quadros por unidade somem.
-  const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
+  // quadros por unidade somem. F72: "uma" é uma nos NÚMEROS — enquanto a
+  // desativada tem dado aqui, o total é de duas, e o cabeçalho diz "Rede".
+  const umaUnidade = umaUnidadeSo(branches.length)
 
   return (
     <ReportsBiSection

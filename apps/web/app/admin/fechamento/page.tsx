@@ -1,7 +1,7 @@
 import { getTenantContext, podeVerFechamento } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
+import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
+import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
 import { FechamentoDoDia } from '@/app/_shared/fechamento-do-dia'
 import { getMovimentoDasUnidades } from '@/lib/metrics/fechamento-extra'
 import { diaDoFechamento, janelaDoDia } from '@/lib/financeiro/fechamento'
@@ -16,10 +16,15 @@ export default async function FechamentoDaRedePage({ searchParams }: {
   if (!podeVerFechamento(ctx)) throw semAcesso()
   const sp = await searchParams
 
-  let q = createAdminClient().from('branches').select('id, name, slug, fuso')
-    .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name')
-  if (ctx.branchId) q = q.eq('id', ctx.branchId)
-  const unidades = ((await ler(q, 'carregar as unidades')) ?? []) as { id: string; name: string; slug: string; fuso: string | null }[]
+  // F72 (H6, C45): as unidades de LEITURA — a desativada com movimento no dia
+  // olhado (ou com o que ficou: o a receber, a agenda) tem o fechamento dela,
+  // com o selo. A abrangência vence: quem tem unidade fixa, só a dela.
+  const diaPedido = sp.dia && /^\d{4}-\d{2}-\d{2}$/.test(sp.dia) ? new Date(`${sp.dia}T12:00:00Z`) : new Date()
+  const unidades = (await unidadesParaLer<{ fuso: string | null }>(ctx.tenantId!, {
+    colunas: 'fuso',
+    periodo: Number.isNaN(diaPedido.getTime()) ? undefined
+      : { de: new Date(diaPedido.getTime() - 36 * 3_600_000), ate: new Date(diaPedido.getTime() + 36 * 3_600_000) },
+  })).filter(u => !ctx.branchId || u.id === ctx.branchId)
   if (unidades.length === 0) {
     return <p style={{ padding: 40, color: 'var(--text-muted)' }}>Nenhuma unidade ativa.</p>
   }
@@ -32,7 +37,7 @@ export default async function FechamentoDaRedePage({ searchParams }: {
   const janela = janelaDoDia(diaDaTela, new Date(), fusoDaTela)!
   const daRede = unidades.length > 1
     ? await getMovimentoDasUnidades({
-        tenantId: ctx.tenantId!, unidades, from: janela.from, to: janela.to,
+        tenantId: ctx.tenantId!, unidades: unidades.map(u => ({ id: u.id, name: nomeNaTela(u) })), from: janela.from, to: janela.to,
         janelaDe: id => janelaDoDia(diaDaTela, new Date(), fusoValido(unidades.find(u => u.id === id)?.fuso)),
       })
     : null
@@ -41,7 +46,10 @@ export default async function FechamentoDaRedePage({ searchParams }: {
   const atual = pedida ?? unidades.find(u => u.id === comMovimento?.id) ?? unidades[0]!
 
   return (
-    <FechamentoDoDia ctx={ctx} unidades={unidades.map(u => ({ id: u.id, name: u.name }))}
-      unidadeId={atual.id} diaPedido={sp.dia} basePath="/admin/fechamento" daRede={daRede} />
+    <>
+      {!atual.ativa && <div style={{ marginBottom: 12 }}><SeloUnidadeDesativada /></div>}
+      <FechamentoDoDia ctx={ctx} unidades={unidades.map(u => ({ id: u.id, name: nomeNaTela(u) }))}
+        unidadeId={atual.id} diaPedido={sp.dia} basePath="/admin/fechamento" daRede={daRede} />
+    </>
   )
 }

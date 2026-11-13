@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext, podeVerRelatorio, alcancaUnidade, isOwnScope } from '@/lib/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
+import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
 import { resolvePeriod } from '@/lib/metrics'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
@@ -41,9 +40,12 @@ export async function GET(req: NextRequest) {
 
   const q = req.nextUrl.searchParams
   const pedida = q.get('branch') ?? ctx.branchId
-  const unidades = await ler(createAdminClient().from('branches')
-    .select('id, name').eq('tenant_id', ctx.tenantId).eq('is_active', true), 'carregar as unidades') as { id: string; name: string }[] | null
-  const nomeDe = new Map((unidades ?? []).map(u => [u.id, u.name]))
+  // F72: as mesmas unidades da aba de Vendas — as de LEITURA (a desativada com
+  // movimento no período segue no total e na exportação, com o selo).
+  const unidades = await unidadesParaLer(ctx.tenantId, {
+    periodo: await periodoDaTela(ctx.tenantId, q.get('period') ?? 'month', q.get('from') ?? undefined, q.get('to') ?? undefined),
+  })
+  const nomeDe = new Map(unidades.map(u => [u.id, nomeNaTela(u)]))
 
   let branchIds: string[] | null
   if (pedida) {

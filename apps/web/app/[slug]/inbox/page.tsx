@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -56,13 +57,8 @@ export default async function BranchInboxPage({
 
   const admin = createAdminClient()
 
-  const branchesRaw = await ler(admin
-    .from('branches')
-    .select('id, name, slug')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name'), 'carregar as unidades')
-  const branches = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
+  // A unidade do contato e do agendar pelo inbox: as ATIVAS (lib/unidades/da-tela).
+  const branches = await unidadesParaCriar(ctx.tenantId!)
 
   const leadOwner = ownerFilter(ctx, 'crm')
   // Todas, em páginas (2026-10-22): com o corte de 1000 do PostgREST, as

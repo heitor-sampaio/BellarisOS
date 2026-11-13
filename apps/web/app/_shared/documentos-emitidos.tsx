@@ -1,5 +1,6 @@
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
 import { ler } from '@/lib/db'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { vocabulario } from '@/lib/unidades/vocabulario'
@@ -39,8 +40,10 @@ export async function DocumentosEmitidos({
   assertPermission(ctx, 'documents', 'VIEW')
   const admin = createAdminClient()
 
-  const unidades = (await ler(admin.from('branches').select('id, name, slug')
-    .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as unidades')) as { id: string; name: string; slug: string }[] | null ?? []
+  // F72: as unidades de LEITURA (a desativada com o que ficou ou movimento no período, com o selo).
+  const unidades = (await unidadesParaLer(ctx.tenantId!, {
+    periodo: await periodoDaTela(ctx.tenantId!, params.period ?? 'month', params.from, params.to),
+  })).map(u => ({ id: u.id, name: nomeNaTela(u), slug: u.slug }))
 
   // Quem tem unidade fixa vê a dela, peça a URL o que pedir (ctx.branchId ?? pedido).
   const escolhida = unidade ?? unidades.find(u => u.id === params.unidade || u.slug === params.unidade) ?? null

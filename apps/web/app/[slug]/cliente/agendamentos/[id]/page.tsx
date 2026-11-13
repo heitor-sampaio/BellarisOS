@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
+import { AvisoUnidadeDesativada } from '@/components/client-portal/unidade-desativada'
 import { idOu404 } from '@/lib/id-da-rota'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, CalendarDays, Clock3, User, MapPin } from 'lucide-react'
@@ -61,12 +63,12 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
 
   const admin = createAdminClient()
   const a = await ler(admin.from('appointments')
-    .select('id, status, scheduled_at, duration_min, cancellation_reason, branch_id, procedure_id, professional_id, sem_preferencia, procedures(name), profissional:users!professional_id(name, atende_em), branches!inner(name, phone, tenant_id, fuso)')
+    .select('id, status, scheduled_at, duration_min, cancellation_reason, branch_id, procedure_id, professional_id, sem_preferencia, procedures(name), profissional:users!professional_id(name, atende_em), branches!inner(name, phone, tenant_id, fuso, is_active)')
     .eq('id', id).eq('client_id', ctx.clientId).maybeSingle(), 'buscar o agendamento') as {
       id: string; status: string; scheduled_at: string; duration_min: number; cancellation_reason: string | null
       branch_id: string; procedure_id: string | null; professional_id: string | null; sem_preferencia: boolean
       procedures: { name: string } | null; profissional: { name: string; atende_em: string[] | null } | null
-      branches: { name: string; phone: string | null; tenant_id: string; fuso: string | null }
+      branches: { name: string; phone: string | null; tenant_id: string; fuso: string | null; is_active: boolean }
     } | null
   if (!a) notFound()
   const rede = await ler(admin.from('tenants').select('portal_prazo_alteracao_horas, phone').eq('id', a.branches.tenant_id).single(),
@@ -92,8 +94,8 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
   // mesma profissional atende lá.
   const unidadesDoRemarcar = aberto ? await (async () => {
     const [unidades, proc] = await Promise.all([
-      ler(admin.from('branches').select('id, name, fuso').eq('tenant_id', a.branches.tenant_id).eq('is_active', true).order('name'),
-        'listar as unidades da clínica') as Promise<{ id: string; name: string; fuso: string | null }[] | null>,
+      // O horário novo só nasce numa unidade ATIVA (lib/unidades/da-tela).
+      unidadesParaCriar<{ fuso: string | null }>(a.branches.tenant_id, 'fuso'),
       a.procedure_id
         ? ler(admin.from('procedures').select(COLUNAS_DA_OFERTA).eq('id', a.procedure_id).maybeSingle(), 'conferir onde o procedimento é feito') as
           Promise<{ branch_id: string | null; procedure_branch_availability: { branch_id: string }[] | null } | null>
@@ -138,6 +140,8 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
         </span>
         <span style={linha}><User size={15} aria-hidden="true" /> {a.profissional?.name ?? 'Profissional'}</span>
         <span style={linha}><MapPin size={15} aria-hidden="true" /> {a.branches.name}</span>
+        {/* F72: a unidade foi desativada — o remarcar leva às ativas. */}
+        {!a.branches.is_active && <AvisoUnidadeDesativada nome={a.branches.name} aberto={aberto} />}
         {a.status === 'CANCELLED' && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>
             Cancelado{a.cancellation_reason ? ` — ${a.cancellation_reason}` : ''}
@@ -164,7 +168,8 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
           semPreferenciaInicial={a.sem_preferencia}
           ofereceSemPreferencia={ofereceSemPreferencia}
           unidade={a.branch_id}
-          unidades={unidadesDoRemarcar.length > 1 ? unidadesDoRemarcar : []}
+          unidades={unidadesDoRemarcar.length > 1 || !a.branches.is_active ? unidadesDoRemarcar : []}
+          unidadeInicial={a.branches.is_active ? undefined : unidadesDoRemarcar[0]?.id ?? ''}
           whatsapp={whatsapp}
           whatsappParaAlterar={whatsappParaAlterar}
           ligar={telefone ? `tel:+${telefone.startsWith('55') && telefone.length > 11 ? telefone : `55${telefone}`}` : null}

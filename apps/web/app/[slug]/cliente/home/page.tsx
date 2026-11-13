@@ -1,4 +1,6 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
+import { unidadesParaLer } from '@/lib/unidades/da-tela'
+import { AvisoUnidadeDesativada } from '@/components/client-portal/unidade-desativada'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { avulsosDoPlano, textoDoAvulso } from '@/lib/checkout/plano-e-avulso'
 import { ler, contar } from '@/lib/db'
@@ -40,7 +42,7 @@ type NextAppt = {
   professionals: { name: string } | null
   /** A unidade do agendamento (A53 da 8ª): pode não ser a do endereço. */
   branch_id?:   string
-  branches?:    { name: string; address: string | null; city: string | null; state: string | null } | null
+  branches?:    { name: string; address: string | null; city: string | null; state: string | null; is_active?: boolean } | null
 }
 
 type ActivePackage = {
@@ -92,7 +94,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
     ler(admin.from('clients').select('name, tenant_id, gender').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
     ler(admin.from('appointments')
-      .select('id, scheduled_at, branch_id, branches(name, address, city, state), procedures(name), professionals:users!professional_id(name)')
+      .select('id, scheduled_at, branch_id, branches(name, address, city, state, is_active), procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       // A mesma regra dos "Próximos" da Agenda (D14).
       .in('status', [...STATUS_DO_PROXIMO])
@@ -185,7 +187,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const temProposto = activePlans.some(p => p.status === 'PROPOSED')
   // A53 da 8ª: com mais de uma unidade, o próximo agendamento diz onde é.
   const variasUnidades = redeDoCliente
-    ? await contar(admin.from('branches').select('id', { count: 'exact', head: true }).eq('tenant_id', redeDoCliente).eq('is_active', true), 'contar as unidades') > 1
+    // A desativada que ainda tem agendamento conta (F72, lib/unidades/da-tela).
+    ? (await unidadesParaLer(redeDoCliente)).length > 1
     : false
   const [validadeDias, aClinica] = await Promise.all([
     temProposto && redeDoCliente
@@ -395,6 +398,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     </span>
                   </p>
                 )}
+                {/* F72: o próximo agendamento numa unidade que a clínica desativou diz isso. */}
+                {nextAppt.branches?.is_active === false && <AvisoUnidadeDesativada nome={nextAppt.branches.name} aberto />}
                 {/* A51: o de hoje que passou da hora segue aqui até a clínica concluir. */}
                 {jaPassouDaHora(nextAppt.scheduled_at) && (
                   <p data-passou-da-hora style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>

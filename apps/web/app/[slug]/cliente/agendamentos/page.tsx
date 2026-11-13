@@ -1,8 +1,10 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
+import { unidadesParaLer } from '@/lib/unidades/da-tela'
+import { AvisoUnidadeDesativada } from '@/components/client-portal/unidade-desativada'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { CalendarDays, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-react'
-import { ler, contar } from '@/lib/db'
+import { ler } from '@/lib/db'
 import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, inicioDosProximos } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { fusoValido } from '@/lib/unidades/fuso'
@@ -39,7 +41,7 @@ type Appt = {
   completed_at:  string | null
   procedures:    { name: string } | null
   professionals: { name: string } | null
-  branches:      { name: string; fuso?: string | null } | null
+  branches:      { name: string; fuso?: string | null; is_active?: boolean } | null
   /** Já pago antes (D12): "Pré-pago · 1 de 2", "Pacote X · sessão 1 de 2"… */
   pagoAntes?:    string | null
   /** D8 da 7ª: o pago com desconto mostra o valor cobrado, não o de tabela. */
@@ -54,7 +56,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
   const admin = createAdminClient()
   const data = await ler(admin
     .from('appointments')
-    .select('id, scheduled_at, status, price, duration_min, completed_at, procedures(name), professionals:users!professional_id(name), branches(name, fuso)')
+    .select('id, scheduled_at, status, price, duration_min, completed_at, procedures(name), professionals:users!professional_id(name), branches(name, fuso, is_active)')
     .eq('client_id', ctx.clientId!)
     .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
 
@@ -67,10 +69,8 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
   const prazoHoras = rede?.portal_prazo_alteracao_horas ?? 24
   // A clínica de mais de uma unidade: cada cartão diz ONDE (A65). O agendamento
   // da Zona Sul aparecia sob o cabeçalho da Moinhos, sem dizer a unidade.
-  const variasUnidades = ficha
-    ? ((await contar(admin.from('branches').select('id', { count: 'exact', head: true })
-        .eq('tenant_id', ficha.tenant_id).eq('is_active', true), 'contar as unidades da clínica')) ?? 0) > 1
-    : false
+  // A desativada que ainda tem agendamento conta (F72, lib/unidades/da-tela).
+  const variasUnidades = ficha ? (await unidadesParaLer(ficha.tenant_id)).length > 1 : false
 
   // O que já foi pago antes (D12): pré-pago, pacote, plano — sem o "R$" a pagar.
   const [jaPagos, cobrados, nomesDasSessoes] = await Promise.all([
@@ -229,7 +229,7 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
 
       {/* Details row */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
-        {comUnidade && appt.branches?.name && (
+        {(comUnidade || appt.branches?.is_active === false) && appt.branches?.name && (
           <span data-unidade-do-agendamento style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             <MapPin size={11} aria-hidden="true" />
             {appt.branches.name}
@@ -266,6 +266,10 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
           </span>
         )}
       </div>
+      {/* F72: o agendamento numa unidade que a clínica desativou diz isso no cartão. */}
+      {appt.branches?.is_active === false && (
+        <AvisoUnidadeDesativada nome={appt.branches.name} aberto={['SCHEDULED', 'CONFIRMED'].includes(appt.status)} />
+      )}
       {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && aindaDaParaAlterar(appt.scheduled_at, prazoHoras) && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           Alterar até {limiteParaAlterar(appt.scheduled_at, prazoHoras, fuso)}

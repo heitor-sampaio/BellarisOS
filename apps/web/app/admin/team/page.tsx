@@ -1,4 +1,5 @@
 import { cargosAcimaDoMeu } from '@/lib/equipe/cargo-acima'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { DesativarMembro } from '@/components/admin/desativar-membro'
@@ -51,12 +52,8 @@ export default async function AdminTeamPage({
 
   // Dados para os filtros + lista de membros em paralelo
   const [branches, tenantRoles, membersResult] = await Promise.all([
-    ler(supabase
-      .from('branches')
-      .select('id, name, horario')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'), 'carregar as unidades'),
+    // Onde a pessoa entra e atende: as unidades ATIVAS (lib/unidades/da-tela).
+    unidadesParaCriar<{ horario: unknown }>(ctx.tenantId!, 'horario'),
 
     ler(supabase
       .from('tenant_roles')
