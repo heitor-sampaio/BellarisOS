@@ -15,6 +15,7 @@ import { gravar, ler, tentar, contar, mensagemDoErro, lerTodas } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { unidadesDosInsumos, procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { recusaDosProcedimentosDoPlano } from '@/lib/procedimentos/disponivel-na-unidade'
+import { planoCasaComBusca } from '@/lib/busca/cliente'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
@@ -672,8 +673,8 @@ export async function listarPlanejamentos(opcoes?: {
   type RawCli  = { id: string; name: string; phone: string | null; document: string | null }
   type RawSess = { treatment_plan_session_procedures: { price: number }[] }
 
-  const termo = (opcoes?.busca ?? '').trim().toLowerCase()
-  const digitos = termo.replace(/\D/g, '')
+  // A busca pela regra única da busca de cliente (F73; sem acento, telefone e documento por dígitos).
+  const termo = (opcoes?.busca ?? '').trim()
 
   const planos = (data ?? [])
     .map(p => {
@@ -693,15 +694,9 @@ export async function listarPlanejamentos(opcoes?: {
         cliente:  cli ? { id: cli.id, name: cli.name, phone: cli.phone } : null,
         unidade:  doTenant.find(b => b.id === p.branch_id)?.name ?? null,
       }
-      return { plano, doc: cli?.document ?? '', fone: cli?.phone ?? '' }
+      return { plano, doc: cli?.document ?? '' }
     })
-    .filter(({ plano: p, doc, fone }) => {
-      if (!termo) return true
-      if (p.nome.toLowerCase().includes(termo)) return true
-      if (p.cliente?.name.toLowerCase().includes(termo)) return true
-      if (digitos && (doc.includes(digitos) || fone.replace(/\D/g, '').includes(digitos))) return true
-      return false
-    })
+    .filter(({ plano: p, doc }) => planoCasaComBusca({ nome: p.nome, cliente: p.cliente, documento: doc }, termo))
     .map(({ plano }) => plano)
 
   return { planos }

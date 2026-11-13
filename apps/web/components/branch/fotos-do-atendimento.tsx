@@ -27,13 +27,15 @@ export interface FotoDoAtendimento {
  * categoria "Foto clínica", a recusa do anexo clínico), ligado ao
  * agendamento. Quem hospeda só monta este cartão para quem vê o prontuário.
  */
-export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmentId, podeAnexar }: {
+export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmentId, podeAnexar, portalNoPlano }: {
   fotos:         FotoDoAtendimento[]
   clientId:      string
   branchId:      string
   slug:          string
   appointmentId: string
   podeAnexar:    boolean
+  /** O portal do cliente no plano da rede: sem ele, nada de "Enviar à cliente" (F73; a action recusa). */
+  portalNoPlano: boolean
 }) {
   const fuso = useFuso()
   const router = useRouter()
@@ -116,7 +118,7 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-2xs)', fontWeight: 600, color: f.enviadoEm ? 'var(--success)' : 'var(--text-faint)' }}>
                   {f.enviadoEm ? <><Smartphone size={11} aria-hidden="true" /> No app da cliente</> : <><EyeOff size={11} aria-hidden="true" /> Só a equipe vê</>}
                 </span>
-                {podeAnexar && (
+                {podeAnexar && (portalNoPlano || f.enviadoEm) && (
                   <button type="button" onClick={() => alternarEnvio(f)} disabled={enviando === f.id} className="btn-ghost"
                     style={{ alignSelf: 'flex-start', padding: '2px 6px', gap: 4, fontSize: 'var(--text-2xs)', fontWeight: 700, color: f.enviadoEm ? 'var(--text-muted)' : 'var(--brand)' }}>
                     {enviando === f.id ? <Loader2 size={11} className="animate-spin" /> : !f.enviadoEm && <Send size={11} aria-hidden="true" />}

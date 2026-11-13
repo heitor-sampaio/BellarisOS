@@ -186,6 +186,8 @@ interface Props {
   canViewRecords?:    boolean
   /** As fotos clínicas deste atendimento (A30). Nulo = quem vê não tem o prontuário. */
   fotosDoAtendimento?: FotoDoAtendimento[] | null
+  /** O portal do cliente no plano da rede: sem ele, a foto não oferece "Enviar à cliente" (F73). */
+  portalNoPlano?:     boolean
   canReassign:        boolean
   canPayment:         boolean
   isProfessional:     boolean
@@ -1248,7 +1250,7 @@ function DorasCard({ value, onChange, readonly, erro }: {
 export function AppointmentSession({
   appointment, client, anamnesis, fichaDeSaudeVencidaEm = null, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts, lotesDosInsumos,
   professionals, history, branchId, slug,
-  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
+  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, quemEstorna = null, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
@@ -2741,6 +2743,7 @@ export function AppointmentSession({
                 slug={slug}
                 appointmentId={appointment.id}
                 podeAnexar={canEditRecords}
+                portalNoPlano={portalNoPlano}
               />
             )}
 

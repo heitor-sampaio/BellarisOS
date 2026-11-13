@@ -44,3 +44,21 @@ export function clienteCasaComBusca(c: { name: string; phone?: string | null; em
   if (/\p{L}/u.test(t)) return false
   return telefoneCasaComDigitos(c.phone, soDigitos(t))
 }
+
+/**
+ * O plano de tratamento casa com a busca da lista de Planejamentos (F73; a
+ * sobra da F70): o nome do plano e o da cliente sem acento, o telefone pela
+ * regra acima e o documento por dígitos. `listarPlanejamentos` filtrava com
+ * `toLowerCase().includes`: "Jose" não achava o plano da "José".
+ */
+export function planoCasaComBusca(
+  p: { nome: string; cliente: { name: string; phone?: string | null } | null; documento?: string | null },
+  termo: string,
+): boolean {
+  const t = termo.trim()
+  if (!t) return true
+  if (casaComTermo(t, [p.nome, p.cliente?.name ?? ''])) return true
+  if (p.cliente && clienteCasaComBusca({ name: p.cliente.name, phone: p.cliente.phone ?? null }, t)) return true
+  const digitos = soDigitos(t)
+  return !/\p{L}/u.test(t) && digitos.length >= 3 && soDigitos(p.documento).includes(digitos)
+}

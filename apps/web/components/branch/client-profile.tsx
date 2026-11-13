@@ -272,6 +272,8 @@ interface Props {
   podeAnexarClinico?:    boolean
   /** Anexar o que não é clínico (RG, comprovante…): o cadastro (`clients: MANAGE`). */
   podeAnexarComum?:      boolean
+  /** O portal do cliente no plano da rede: sem ele, o anexo não oferece "Enviar à cliente" (F73). */
+  portalNoPlano?:        boolean
   /** A49 da 9ª: o pedido de dados (LGPD) feito pelo app, em aberto, e onde responder (null = a quem não responde). */
   pedidoLgpd?:           { pedidoEm: string; prazo: string; aberto: boolean; caminho: string | null } | null
   /** O financeiro do cliente (pagamentos, crédito): `financial` ou quem recebe. */
@@ -1534,7 +1536,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
@@ -2376,6 +2378,7 @@ export function ClientProfile({
           slug={slug}
           podeAnexarClinico={podeAnexarClinico}
           podeAnexarComum={podeAnexarComum}
+          portalNoPlano={portalNoPlano}
         />
       )}
     </div>

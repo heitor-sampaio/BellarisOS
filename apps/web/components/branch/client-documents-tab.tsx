@@ -44,6 +44,11 @@ interface Props {
   podeAnexarClinico?: boolean
   /** O cadastro (`clients: MANAGE`): anexar e apagar o que não é clínico. */
   podeAnexarComum?:   boolean
+  /**
+   * O portal do cliente está no plano da rede (C57a, F69)? Sem ele, "Enviar à
+   * cliente" não aparece — a action recusa (F73, a sobra da F69).
+   */
+  portalNoPlano:      boolean
 }
 
 // -- Constants -----------------------------------------------------------------
@@ -237,9 +242,9 @@ export function UploadForm({
 // -- Document row --------------------------------------------------------------
 
 function DocumentRow({
-  doc, slug, clientId, podeApagar, onDelete,
+  doc, slug, clientId, podeApagar, onDelete, portalNoPlano,
 }: {
-  doc: ClientDocumentItem; slug: string; clientId: string; podeApagar: boolean; onDelete: (id: string) => void
+  doc: ClientDocumentItem; slug: string; clientId: string; podeApagar: boolean; onDelete: (id: string) => void; portalNoPlano: boolean
 }) {
   const fuso = useFuso()
   const [deleting, setDeleting] = useState(false)
@@ -315,7 +320,8 @@ function DocumentRow({
               <EyeOff size={12} /> Só a equipe vê
             </span>
           )}
-          {podeApagar && (
+          {/* Sem o portal no plano, só o "Tirar do app" do que já foi (F73). */}
+          {podeApagar && (portalNoPlano || doc.enviadoEm) && (
             <button
               type="button"
               onClick={() => alternarEnvio(!doc.enviadoEm)}
@@ -372,7 +378,7 @@ function DocumentRow({
 
 // -- Main component ------------------------------------------------------------
 
-export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarClinico = false, podeAnexarComum = false, anexosClinicosFora = 0 }: Props) {
+export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarClinico = false, podeAnexarComum = false, anexosClinicosFora = 0, portalNoPlano }: Props) {
   const router = useRouter()
   const [showForm, setShowForm]   = useState(false)
   // A lista vem das PROPS a cada render; localmente só se guarda o que acabou
@@ -518,6 +524,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
                   clientId={clientId}
                   podeApagar={ehAnexoClinico(doc.category) ? podeAnexarClinico : podeAnexarComum}
                   onDelete={handleDelete}
+                  portalNoPlano={portalNoPlano}
                 />
               ))}
             </div>

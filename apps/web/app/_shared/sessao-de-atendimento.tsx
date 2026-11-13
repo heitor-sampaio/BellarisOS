@@ -620,6 +620,7 @@ export async function SessaoDeAtendimento({
         canEditRecords={canEditRecords}
         canViewRecords={canViewRecords}
         fotosDoAtendimento={fotosDoAtendimento}
+        portalNoPlano={temRecurso(ctx, 'portal')}
         ficha={ficha}
         respostasDaFicha={respostasDaFicha}
         products={products}

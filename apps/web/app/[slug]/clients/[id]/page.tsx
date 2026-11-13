@@ -535,6 +535,7 @@ export default async function ClientProfilePage({
       // Anexo clínico com o alcance da ficha (o "só os meus" do prontuário).
         podeAnexarClinico={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
         podeAnexarComum={can(ctx, 'clients', 'MANAGE')}
+        portalNoPlano={temRecurso(ctx, 'portal')}
       planProcedures={planoProcs.procedures}
       planProducts={planoProcs.products}
       podeReceber={podeReceber(ctx)}
