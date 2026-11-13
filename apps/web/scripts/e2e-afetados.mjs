@@ -101,6 +101,10 @@ const AREAS = [
   { nome: 'configurações e rede',
     chaves: ['settings', 'configurac', 'branch', 'unidade', 'tenant', 'rede', 'integrac', 'integration', 'lotes', 'historico', 'setup'],
     specs: /^(configuracoes|estrutura|equipe|anuncios|abrangencia|credenciais|acoes-entre-redes|acoes-em-lote|setup|rede-de-uma-unidade)/ },
+  // A unidade desativada (F72): as telas de leitura × as de criação (lib/unidades/da-tela).
+  { nome: 'unidade desativada',
+    chaves: ['unidades/da-tela', 'unidades/o-que-fica', 'unidades/desativar', 'desativar-unidade', 'unidade-desativada', 'settings-branches'],
+    specs: /^(unidade-desativada|indicadores-f68-telas|financeiro-a-receber-todos-os-vencimentos|rede-de-uma-unidade|permissoes-f70)/ },
   { nome: 'suporte e plataforma',
     chaves: ['suporte', 'plataforma', 'chamado', 'ajuda', 'lib/supabase/middleware'],
     specs: /^(suporte|clinico|chamados)/ },

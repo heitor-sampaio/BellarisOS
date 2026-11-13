@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { DesativarUnidade } from '@/components/admin/desativar-unidade'
-import { oQueFicaNaUnidade, resumoDoQueFica, type OQueFicaNaUnidade } from '@/lib/unidades/desativar'
+import { oQueFicaNaUnidade, resumoDoQueFica, temOQueFicou, NADA_FICA, type OQueFicaNaUnidade } from '@/lib/unidades/desativar'
+import { CaminhosDoQueFicou } from '@/components/admin/o-que-ficou'
 import { getTenantContext } from '@/lib/auth'
 import { BranchForm } from '@/components/admin/branch-form'
 import { toggleBranchStatus } from '@/actions/branches'
@@ -46,10 +47,11 @@ export async function SettingsBranches() {
   const ondeAtendem = ((await lendoOndeAtendem) ?? []).flatMap(u => (u.atende_em as string[] | null) ?? [])
   const quantosAtendem = (id: string) => ondeAtendem.filter(u => u === id).length
   const unica = umaUnidade ? (branches ?? []).find(b => b.is_active) ?? null : null
-  // O que fica para trás em cada unidade ativa (C67, F70): a janela de desativar diz.
+  // O que fica para trás em cada unidade (C67, F70; F72): a janela de desativar
+  // diz, e o cartão da desativada continua dizendo, com os caminhos.
   const ativas = (branches ?? []).filter(b => b.is_active)
   const oQueFica = new Map<string, OQueFicaNaUnidade>(await Promise.all(
-    ativas.map(async b => [b.id, await oQueFicaNaUnidade(createAdminClient(), ctx.tenantId!, b.id)] as const)))
+    (branches ?? []).map(async b => [b.id, await oQueFicaNaUnidade(createAdminClient(), ctx.tenantId!, b.id)] as const)))
   const salasDaUnica = unica
     ? ((await ler(createAdminClient().from('rooms').select('id, name, is_active')
         .eq('branch_id', unica.id).order('name'), 'carregar as salas')) ?? []) as SalaDaUnidade[]
@@ -107,8 +109,10 @@ export async function SettingsBranches() {
             return (
               <div
                 key={branch.id}
+                data-unidade-card={branch.id}
                 className="card"
-                style={{ opacity: branch.is_active ? 1 : 0.6, display: 'flex', flexDirection: 'column', gap: 16 }}
+                // F72: a desativada com o que ficou não esmaece — ainda tem o que resolver.
+                style={{ opacity: branch.is_active || temOQueFicou(oQueFica.get(branch.id) ?? NADA_FICA) ? 1 : 0.6, display: 'flex', flexDirection: 'column', gap: 16 }}
               >
                 {/* Top row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -169,6 +173,16 @@ export async function SettingsBranches() {
                   )}
                 </div>
 
+                {/* F72 (D2 da 14ª): depois do clique em Desativar, o que ficou e os caminhos continuam aqui. */}
+                {!branch.is_active && temOQueFicou(oQueFica.get(branch.id) ?? NADA_FICA) && (
+                  <div data-o-que-ficou style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600, lineHeight: 1.5 }}>
+                      {resumoDoQueFica(branch.name, { ...(oQueFica.get(branch.id) ?? NADA_FICA), fixos: [] })}
+                    </p>
+                    <CaminhosDoQueFicou branchId={branch.id} oQueFica={oQueFica.get(branch.id) ?? NADA_FICA} />
+                  </div>
+                )}
+
                 {/* Footer */}
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -177,8 +191,7 @@ export async function SettingsBranches() {
                   {branch.is_active ? (
                     <DesativarUnidade
                       branchId={branch.id} nome={branch.name}
-                      resumo={resumoDoQueFica(branch.name, oQueFica.get(branch.id) ?? { fixos: [], agendamentos: 0 })}
-                      fixos={oQueFica.get(branch.id)?.fixos ?? []} agendamentos={oQueFica.get(branch.id)?.agendamentos ?? 0}
+                      oQueFica={oQueFica.get(branch.id) ?? NADA_FICA}
                       outras={ativas.filter(b => b.id !== branch.id).map(b => ({ id: b.id, nome: b.name }))}
                       style={{ fontSize: 'var(--text-xs-sz)', gap: 5, color: 'var(--text-faint)' }}
                     >

@@ -1,33 +1,35 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { toggleBranchStatus, moverEquipeDaUnidade } from '@/actions/branches'
+import { resumoDoQueFica, type OQueFicaNaUnidade } from '@/lib/unidades/o-que-fica'
+import { CaminhosDoQueFicou } from '@/components/admin/o-que-ficou'
 
 /**
- * Desativar uma unidade (C67/C61 do levantamento das regras, F70; H6 = a):
- * a janela diz o que fica para trás — quem da equipe é fixo só nela e os
- * agendamentos marcados — e oferece resolver antes: mudar a equipe de
- * unidade e ver os agendamentos. Não impede: "Desativar mesmo assim". A mesma
- * janela nas duas portas (a lista de unidades e o detalhe).
+ * Desativar uma unidade (C67/C61 do levantamento das regras, F70; H6 = a;
+ * D2 e A32 da 14ª, F72): a janela diz TUDO o que fica para trás — quem da
+ * equipe é fixo só nela, os agendamentos marcados, o estoque com saldo, o a
+ * receber e a comissão a pagar — e leva a resolver cada um na tela que já
+ * existe (`CaminhosDoQueFicou`). Não impede: "Desativar mesmo assim". A
+ * mesma janela nas duas portas (a lista de unidades e o detalhe).
  */
 export function DesativarUnidade({
-  branchId, nome, resumo, fixos, agendamentos, outras, children, className = 'btn-ghost', style,
+  branchId, nome, oQueFica, outras, children, className = 'btn-ghost', style,
 }: {
   branchId:     string
   nome:         string
-  /** "A unidade X tem 2 pessoas da equipe só nela e 14 agendamentos marcados." (null = nada fica). */
-  resumo:       string | null
-  fixos:        { id: string; nome: string }[]
-  agendamentos: number
+  /** O que fica na unidade (`oQueFicaNaUnidade`). */
+  oQueFica:     OQueFicaNaUnidade
   /** As outras unidades ATIVAS da rede: para onde a equipe pode ir. */
   outras:       { id: string; nome: string }[]
   children:     React.ReactNode
   className?:   string
   style?:       React.CSSProperties
 }) {
+  const resumo = resumoDoQueFica(nome, oQueFica)
+  const fixos = oQueFica.fixos
   const router = useRouter()
   const [aberta, setAberta] = useState(false)
   const [destino, setDestino] = useState(outras[0]?.id ?? '')
@@ -74,6 +76,11 @@ export function DesativarUnidade({
             </p>
 
             {resumo && <p style={{ ...texto, color: 'var(--text)', fontWeight: 600 }}>{resumo}</p>}
+            {resumo && (
+              <p style={texto}>
+                O que ficou nela continua nos totais da clínica e nas telas da rede, com o selo “Unidade desativada”, até ser resolvido.
+              </p>
+            )}
 
             {fixos.length > 0 && (
               <div className="card-sm" style={quadro}>
@@ -96,17 +103,7 @@ export function DesativarUnidade({
               </div>
             )}
 
-            {agendamentos > 0 && (
-              <div className="card-sm" style={quadro}>
-                <p style={texto}>
-                  {agendamentos === 1 ? 'O agendamento continua marcado' : `Os ${agendamentos} agendamentos continuam marcados`} depois
-                  de desativar. Remarque ou cancele na agenda antes, se for o caso.
-                </p>
-                <Link href={`/admin/agenda?unidade=${branchId}`} className="btn-secondary" style={{ alignSelf: 'flex-start', textDecoration: 'none' }}>
-                  Ver os agendamentos
-                </Link>
-              </div>
-            )}
+            <CaminhosDoQueFicou branchId={branchId} oQueFica={oQueFica} />
 
             {aviso && (
               <p role={aviso.ok ? 'status' : 'alert'} style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: aviso.ok ? 'var(--success)' : 'var(--danger)' }}>

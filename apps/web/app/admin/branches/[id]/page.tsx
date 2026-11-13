@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { idOu404 } from '@/lib/id-da-rota'
 import Link from 'next/link'
 import { getTenantContext, assertPermission } from '@/lib/auth'
@@ -11,7 +12,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ArrowLeft, Power, PowerOff, Users } from 'lucide-react'
 import { ler } from '@/lib/db'
 import { DesativarUnidade } from '@/components/admin/desativar-unidade'
-import { oQueFicaNaUnidade, resumoDoQueFica } from '@/lib/unidades/desativar'
+import { oQueFicaNaUnidade, resumoDoQueFica, temOQueFicou } from '@/lib/unidades/desativar'
+import { CaminhosDoQueFicou } from '@/components/admin/o-que-ficou'
 import { origemDoApp, enderecoDoAppDaCliente } from '@/lib/unidades/app-da-cliente'
 
 interface Props {
@@ -49,11 +51,10 @@ export default async function BranchDetailPage({ params }: Props) {
     .eq('branch_id', id).order('name'), 'carregar as salas')) ?? []) as SalaDaUnidade[]
 
   // O que fica para trás se ela sair do ar (C67, F70) e para onde a equipe pode ir.
-  const oQueFica = branch.is_active ? await oQueFicaNaUnidade(createAdminClient(), ctx.tenantId!, id) : null
+  // F72: também na desativada — o que ficou e os caminhos continuam aqui depois do clique.
+  const oQueFica = await oQueFicaNaUnidade(createAdminClient(), ctx.tenantId!, id)
   const outrasAtivas = branch.is_active
-    ? (((await ler(createAdminClient().from('branches').select('id, name')
-        .eq('tenant_id', ctx.tenantId!).eq('is_active', true).neq('id', id).order('name'), 'carregar as outras unidades')) ?? []) as { id: string; name: string }[])
-        .map(b => ({ id: b.id, nome: b.name }))
+    ? (await unidadesParaCriar(ctx.tenantId!)).filter(b => b.id !== id).map(b => ({ id: b.id, nome: b.name }))
     : []
 
   const members = (Array.isArray(branch.users) ? branch.users : []) as { id: string; name: string; is_active: boolean }[]
@@ -100,10 +101,9 @@ export default async function BranchDetailPage({ params }: Props) {
 
         <div style={{ display: 'flex', gap: 8 }}>
           {/* Desativar pede confirmação e diz o que fica para trás (C61/C67, F70); reativar é um clique. */}
-          {branch.is_active && oQueFica ? (
+          {branch.is_active ? (
             <DesativarUnidade
-              branchId={id} nome={branch.name} resumo={resumoDoQueFica(branch.name, oQueFica)}
-              fixos={oQueFica.fixos} agendamentos={oQueFica.agendamentos} outras={outrasAtivas}
+              branchId={id} nome={branch.name} oQueFica={oQueFica} outras={outrasAtivas}
               className="btn-secondary" style={{ gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}
             >
               <PowerOff size={13} /> Desativar
@@ -120,6 +120,16 @@ export default async function BranchDetailPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      {/* F72 (D2 da 14ª): a desativada diz o que ficou nela e leva a resolver. */}
+      {!branch.is_active && temOQueFicou(oQueFica) && (
+        <div data-o-que-ficou className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600, lineHeight: 1.5 }}>
+            {resumoDoQueFica(branch.name, { ...oQueFica, fixos: [] })} Continua nos totais da clínica, com o selo “Unidade desativada”.
+          </p>
+          <CaminhosDoQueFicou branchId={id} oQueFica={oQueFica} />
+        </div>
+      )}
 
       {/* Equipe da unidade — resumo rápido */}
       <div className="card-sm" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, padding: '12px 18px' }}>
