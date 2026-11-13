@@ -981,6 +981,15 @@
   de `computeAvailableSlots`. A mensagem nunca cita intervalo invertido.
   Prova: `e2e/agenda-defeitos-da-11.spec.ts` ("D3"),
   `tests/agenda-concluido-antes-de-comecar.test.ts`.
+  **E a GRADE desenha pela mesma régua** (A17 da 14ª simulação, F75): o
+  concluído adiantado é desenhado até a conclusão — a Cliente 02 das 19:00,
+  concluída às 18:10, seguia desenhada até as 20:00 por cima da Bianca das
+  18:45, e no celular o toque caía no cartão errado. `minutosDesenhados` e
+  `ladoALado` (`lib/agenda/desenho.ts`, puros) servem às três grades — a da
+  unidade (também a do celular), a da rede e a "Minha agenda"; o que ainda se
+  cruza NA TELA (a altura mínima do cartão) fica lado a lado, e na grade da
+  unidade o concluído que liberou o horário vai para a metade direita, como o
+  cancelado (`data-liberou`). Trava: `tests/agenda-desenho-ate-a-ocupacao.test.ts`.
 - **O conflito diz a unidade do outro atendimento** (A30): o profissional da
   rede atende em várias, e a recepção de uma não vê a agenda da outra. O
   aviso do modal ("…das 15:00 às 16:00, na unidade Moinhos.") e a recusa
@@ -1172,6 +1181,12 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   que o cargo faz. Prova: `e2e/agenda-guardas-de-status.spec.ts`,
   `e2e/permissoes-acoes.spec.ts` ("agenda: cancelar agendamento" pede
   Gerenciar).
+  **Com "só os meus" e Gerenciar, a janela mostra o "Remarcar" do PRÓPRIO**
+  (F75): a action (`remarcarCore`) já remarcava o próprio; a janela escondia
+  o botão (`ehMeu` passou a mostrá-lo). ⚠️ É a leitura da F75 (a tarefa da
+  frente), não uma resposta escrita do Heitor: a F65 levou a ele a pergunta
+  "só os meus" + Gerenciar remarcando o próprio, e ela segue aberta para
+  confirmar. Prova: `e2e/agenda-f75-remarcar-o-proprio.spec.ts`.
 - **Quem inicia e conclui o atendimento de outra profissional é o ESCOPO
   (D21; os três eixos, CLAUDE.md §11),** na tela e no servidor: com "só os
   meus", só o próprio; com "todos", qualquer um da unidade ao alcance (C14).

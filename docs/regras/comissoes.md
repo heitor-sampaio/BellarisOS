@@ -550,6 +550,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     cria `commission_payouts` e a **despesa paga** (categoria "Comissões", na
     unidade) e marca os lançamentos `PAID` com `payout_id`. Trava por
     profissional e unidade: dois cliques fecham uma vez.
+    **E a tela diz que o fechamento é por unidade** (A27 da 14ª, F75): com
+    mais de uma unidade, as Comissões dizem "O fechamento é por unidade: quem
+    atende em mais de uma tem um fechamento em cada, e cada um vira uma
+    despesa paga no financeiro daquela unidade" (`[data-fechamento-por-unidade]`).
+    Prova: `e2e/indicadores-f75-recortes-ditos.spec.ts`.
   - **No lucro, a comissão entra quando é LANÇADA, e a despesa do fechamento
     fica só no caixa** (decisão do Heitor, 2026-11-04: o lucro desconta as
     comissões; `indicadores.md`, "Lucro e margem"): a despesa paga

@@ -608,9 +608,9 @@ export function AdminDashboardView({
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de unidades</span>
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{monthLabel}</span>
           </div>
-          {/* A26 da 14ª: o "Novos" de cada unidade são as clientes que a FREQUENTAM
-              (a tag da unidade, C6 da F68) — a coluna somava mais que o cartão
-              "Novos clientes", e a tela não dizia por quê (princípio 3). */}
+          {/* A26 da 14ª: a mesma cliente conta em cada unidade em que foi
+              atendida — a coluna somava mais que o cartão "Novos clientes", e a
+              tela não dizia por quê (princípio 3). */}
           <p data-recorte-do-ranking style={{ padding: '8px 20px', borderBottom: '1px solid var(--border)', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Novos: as clientes novas que frequentam a unidade. Quem foi atendida em duas unidades conta em cada unidade em que foi atendida, por isso a soma pode passar do cartão “Novos clientes”.
           </p>

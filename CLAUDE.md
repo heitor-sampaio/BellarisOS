@@ -169,7 +169,8 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
 - **Configuração e dado sensível: a sessão só LÊ** (F63, 2026-11-12). Cargos,
   LGPD, comissões, taxas, campanhas, estoque: o servidor grava pelo cliente de
   serviço, depois da trava; as comissões nem se leem pela sessão (a tela
-  assina o sinal `comissoes_sinais`). Regra em `docs/regras/convencoes.md`;
+  assina o sinal `comissoes_sinais`), e os lançamentos também não (F75:
+  `financeiro_so_pelo_servidor`; prova `e2e/rls-f75-financeiro-pela-sessao.spec.ts`). Regra em `docs/regras/convencoes.md`;
   prova: `e2e/rls-sessao-so-le.spec.ts`.
 - **Realtime de tela que mostra dado com escopo assina um SINAL, não a tabela.**
   O quadro de oportunidades assina `crm_quadro_sinais` (uma linha por rede,

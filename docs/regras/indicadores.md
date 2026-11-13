@@ -601,6 +601,14 @@ clientes que a frequentam — a tag "Unidade: <nome>" (C6 da F68, migration
 `20261112006801`); a clínica inteira (nulo ou todas as unidades ativas,
 `public.recorte_e_a_clinica`) conta todas. Era `clients.branch_id` (a unidade
 de cadastro) mais as sem unidade.
+**E o ranking de unidades diz que a mesma cliente conta em cada unidade** (A26
+da 14ª, F75; princípio 3): a coluna "Novos" somava mais que o cartão "Novos
+clientes", calada. Embaixo do título: "Novos: as clientes novas que frequentam
+a unidade. Quem foi atendida em duas unidades conta em cada unidade em que foi
+atendida…" (`[data-recorte-do-ranking]`). O número não mudou. ⚠️ A conta de
+hoje se apoia na marca "Unidade: X" que a H16 (13/11, `crm-inbox.md`) desfaz;
+a frase descreve o FATO que a H16 manda contar (a cliente atendida na unidade)
+e não deve ser lida como apoio à marca. Prova: `e2e/indicadores-f75-recortes-ditos.spec.ts`.
 
 **Uma regra de receita, e toda soma de dinheiro parte dela.**
 `metrics_receitas_pagas` (migration `20260927000011`) é o conjunto canônico —

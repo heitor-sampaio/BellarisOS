@@ -783,6 +783,16 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     do deploy (`20261112006711`). Prova: `e2e/financeiro-sinal.spec.ts`,
     `tests/realtime-assina-sinal.test.ts` (trava a tabela crua num
     `RealtimeRefresher`).
+  - **A sessão não lê nem grava lançamento** (F75, a sobra da F63; C1 do
+    levantamento): a política "Operacional acessa financeiro da filial" era ALL
+    para todo membro da unidade, sem o módulo — a profissional sem o
+    Financeiro lia o caixa pela chave pública, e qualquer membro gravava um
+    recebimento falso. A lista do Financeiro da unidade lê pelo cliente de
+    serviço, depois do `assertPermission`, do "só os meus" e do alcance
+    (`assertUnidade`); a política RESTRITIVA `financeiro_so_pelo_servidor`
+    (migration `20261113007503`, depois do deploy) fecha a sessão. Leitura
+    nova de lançamento é pelo servidor. Prova:
+    `e2e/rls-f75-financeiro-pela-sessao.spec.ts` (com o token de cada membro).
   - Prova do resto: `e2e/financeiro-f67.spec.ts`, `tests/vendas-f67.test.ts`.
 - **Não existe caixa de ABRIR** (o fechamento do dia, abaixo, é outra coisa:
   conferência, não gaveta aberta). O caixa de abrir e fechar foi removido em 2026-09-18: quase
@@ -1409,6 +1419,17 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
         dela, se ela cobra diferente).
       - **O Fechamento do dia separa por maquininha** (e, dentro dela, por
         bandeira quando houver).
+        **E o CSV dele leva a taxa e o líquido de cada maquininha** (A28 da
+        14ª, F75 — a Ivone concilia o depósito de cada operadora): a seção
+        "Taxa e líquido por maquininha (estimados)", com o Pix numa linha
+        própria — a mesma conta da linha "Taxas da maquininha no dia",
+        separada (`metrics_taxas_por_maquininha`, migration
+        `20261113007502`; `getTaxasPorMaquininha`). Só a quem vê o
+        financeiro da clínica: para quem só recebe, o servidor nem a busca.
+        ⚠️ É o D7 (escrito para o VENDER) estendido ao CSV pela F75, a
+        confirmar com o Heitor — a linha "Taxas da maquininha no dia" da TELA
+        do Fechamento segue à vista da recepção (`fechamento-do-dia-avisos:82`).
+        Prova: `e2e/fechamento-f75-taxas-por-maquininha.spec.ts`.
       - **O Pix tem um campo próprio na tela de Taxas, fora das
         maquininhas** (o Heitor, 2026-11-11, sobre a C75: "A taxa do pix fica em algum lugar nessas configurações e o aviso sem taxa acho que nem precisa na verdade"),
         com o padrão 0%.
@@ -1755,6 +1776,20 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     o checkout e o check-in em 48, calados — `maximoDeParcelasDaRede`). A
     DESPESA não muda: parcelada de 2 a 48, recorrente de 2 a 60 (é a clínica
     pagando, não vendendo).
+  - **O crediário tem UM nome, diz o limite e só pede o meio com entrada**
+    (A23 da 14ª simulação, F75; princípio 7): a configuração dizia
+    "Crediário da clínica" e o Vender, "Entrada + parcelas" — a Wanda e a
+    Débora não ligavam um ao outro. Toda tela que vende nele diz
+    "Crediário (entrada + parcelas)" (`ROTULO_DO_CREDIARIO`,
+    `lib/financeiro/parcelas-do-crediario.ts`), e a lista das parcelas diz
+    "até 6x, o limite da clínica" (`limiteDoCrediarioEmTexto`). O meio é o da
+    ENTRADA ("Meio de pagamento da entrada", `rotuloDoMeioNoCrediario`): sem
+    entrada, nada se recebe agora e ele não é pedido — na tela
+    (`recusaDoPagamento`) e no servidor (`EntradaDoPagamento`), que só o
+    exigem com entrada ("Escolha o meio de pagamento da entrada."). A caixa
+    do plano no atendimento (o pagamento do dia) segue pedindo a forma: lá
+    sempre se recebe algo. Trava: `tests/crediario-nomes-e-entrada.test.ts`
+    (nenhuma tela escreve o nome velho à mão).
   - **A tela diz o limite e o valor da parcela** (A47 da 5ª simulação):
     junto de todo "Vezes no cartão" (venda de pacote, pré-pago e produto, o
     recebimento do avulso e do plano, o checkout), "Até 4x no crédito" e,
@@ -1807,6 +1842,19 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     código. Prova:
     `e2e/financeiro-historico-forma-em-portugues.spec.ts`,
     `tests/checkout-pagamento.test.ts`.
+  - **E diz a MAQUININHA, quando a rede tem mais de uma** (A18 da 14ª
+    simulação, F75: com duas, o pagamento dizia só "Débito", e quem estornava
+    não sabia de qual): "Débito Visa · Stone", "Crédito Mastercard 3x ·
+    Mercado Pago" — `rotuloDaForma(…, { maquininha })`, com o nome dado por
+    `maquininhaDoRotulo` + `nomesDasMaquininhas` (`lib/financeiro/vezes-da-rede.ts`;
+    as arquivadas contam, o pagamento antigo foi nelas; com uma só, nada). No
+    banco, `private.rotulo_do_pagamento` (migration `20261113007501`) é o
+    espelho com a bandeira e a maquininha, e o histórico do pagamento
+    confirmado o usa desde então (o gravado antes fica como está). Os lugares:
+    a confirmação do atendimento, o histórico, a lista do Financeiro (unidade e
+    rede) e o CSV dos lançamentos (na coluna Forma). Prova:
+    `e2e/financeiro-f75-pagamento-com-maquininha.spec.ts`,
+    `tests/rotulo-do-pagamento-com-maquininha.test.ts`.
   - **"Sem forma (pontos)" só para o que os pontos pagaram** (A35): no
     Fechamento do dia, a receita sem forma com `loyalty_discount` é `PONTOS`;
     todo o resto sem forma (a compra de estoque) é "Sem forma de pagamento".
@@ -1817,6 +1865,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   mesmo wizard do atendimento. O botão só existia na tela da avaliação; quem
   escreve no plano segue com o "Aceitar plano". Prova:
   `e2e/plano-fechar-checkout-na-pagina.spec.ts`.
+  **E o erro fica junto do botão; o plano aceito diz "Continuar o
+  checkout"** (A24 da 14ª, F75): o erro do "Aceitar plano", do "Cliente vai
+  pensar" e do "Fechar checkout" aparece ao lado deles (`ErroDoBotao`,
+  `[data-erro-do-botao]`), não no topo da página; e no PROPOSTO (o checkout
+  ficou pela metade) quem escreve no plano vê "Continuar o checkout". Prova:
+  `e2e/plano-f75-aceitar.spec.ts`.
 - **O checkout do plano cobra também o "atendimento de hoje"** (decisão do
   Heitor, 2026-10-20): o atendimento que GEROU o plano
   (`evaluation_appointment_id`), quando está concluído, tem preço, é avulso e
@@ -2062,6 +2116,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   pergunta a forma (`ReceberNoCartao`) — `AcoesDoLancamentoDaFicha`
   (`components/shared/acoes-do-lancamento-da-ficha.tsx`). As actions conferem
   tudo de novo. Prova: `e2e/financeiro-atritos-da-12.spec.ts` ("A32", "A35").
+  **E no atendimento pago** (A19 da 14ª, F75): a página do atendimento
+  mostra o "Estornar" junto de "Pagamento confirmado", com a mesma janela.
+  Quem vê o botão é uma conta só, `podeEstornar(ctx)`
+  (`lib/financeiro/so-os-meus.ts`, a trava de `reverseTransaction`), usada
+  pela ficha (unidade e rede) e pelo atendimento. Prova:
+  `e2e/financeiro-f75-pagamento-com-maquininha.spec.ts`.
 - **A venda concluída avisa** (A46 da 8ª): o "Vender" (produto, procedimento e
   pacote) fechava a janela calado; agora "Venda registrada: 2× Sérum —
   R$ 200,00. O recibo fica na aba Financeiro da ficha." (`avisoDaVenda`).
@@ -2248,6 +2308,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Ler a taxa, o prazo ou o "parcelar até" sem a maquininha da venda (C75): é private.taxa_da_maquininha / comissao_taxa_pct / prazo_da_operadora COM financial_transactions.maquininha_id; payment_fees e tenants.cartao_* são só o espelho da 1ª maquininha até a limpeza
 ❌ Caminho novo de cartão sem "Qual maquininha?" (CampoDaMaquininha + useFaltaAMaquininha/useRecusaDoPagamento na tela, recusaDasVezesDaRede com a maquininha e o método no servidor) — com mais de uma, a primeira não vale calada
 ❌ Pôr maquininha em despesa (o cartão da clínica não é maquininha) ou assinar financial_transactions no Realtime (é o sinal financeiro_sinais)
+❌ Ler ou gravar financial_transactions pela sessão (é o servidor, depois da trava e do alcance — a política restritiva financeiro_so_pelo_servidor recusa)
+❌ Montar o rótulo de um pagamento de cartão sem a maquininha quando a rede tem mais de uma (é rotuloDaForma com maquininhaDoRotulo; no banco, private.rotulo_do_pagamento)
+❌ Escrever "Entrada + parcelas" à mão numa tela (é ROTULO_DO_CREDIARIO)
 ❌ Cobrar no check-in parcela que ainda não venceu (já está combinada; é emAbertoDoPlano quem separa)
 ❌ Receber o plano no check-in fora de plano_receber (o plano travado e o saldo conferido: duas abas recebiam o mesmo saldo duas vezes — F11)
 ❌ Fechar o checkout de um plano deixando de fora o atendimento de origem com preço e sem pagamento (atendimentoDeHojeDoPlano)
