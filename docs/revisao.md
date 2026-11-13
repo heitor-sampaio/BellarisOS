@@ -57,7 +57,7 @@ superfícies em volta. A ordem é do Heitor.
 | Pacotes | `procedures` (pacotes) | ✅ |
 | Plano de tratamento | `treatment_plans` | ✅ |
 | Marketing (campanhas) | `marketing` | ✅ |
-| Automações | `automations` | ⬜ |
+| Automações | `automations` | 🟡 |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ✅ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
@@ -1077,6 +1077,42 @@ Regras em `docs/regras/automacoes.md` (campanhas) e `whatsapp-push.md`
 ### Bloco no plano: Marketing
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Marketing".
+
+## Automações 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/automacoes.md` §9.9. Só no portal da rede (Gestão →
+Automações), com o módulo Automações.
+- **O fluxo**: um GATILHO — um dos 47 fatos do sistema (agendou, não
+  compareceu, pagamento recebido, ficha respondida…) ou o tempo (de N em N
+  minutos/horas, todo dia, semana ou mês num horário, "N horas antes de cada
+  agendamento") — e os PASSOS: "Se" (condições), mandar mensagem (WhatsApp
+  numa conversa já aberta, ou aviso no celular), avisar a equipe, adicionar
+  tag, mudar a etapa da oportunidade, definir responsável, anotar, buscar
+  clientes, esperar.
+- **Modelos prontos**, ao lado do "Nova automação" (que começa vazia):
+  aniversário, retorno depois do atendimento, lembrete antes do agendamento,
+  "Agendou: o card muda de etapa". Nascem em rascunho, para a rede revisar.
+- **Antes de ligar**, a tela diz quantas clientes receberiam e quantas
+  realmente recebem. **Limites**: silêncio noturno (21h–8h: a mensagem
+  espera) e teto (3 por cliente por dia), os dois desligáveis. Ensaio, as
+  execuções e as últimas 30 versões. O suporte não liga.
+- **Já decidido em outros módulos**: a ação vira "Adicionar tag", com
+  qualquer tag (T4); saem as automações por unidade lidas pela tag (T1); os
+  gatilhos da campanha automática viram modelos aqui (MK1).
+
+### Recomendação do Claude (aguarda o Heitor)
+
+- **AU1 — os modelos que chegam da campanha automática** (MK1): vencimento de
+  pacote, confirmação do agendamento, cancelamento, pontos de fidelidade (o
+  aniversário, o lembrete e o pós-visita já existem como modelo). Todos
+  nascem em rascunho, desligados (princípio 6), e mandam pelo canal que a rede
+  tem (WhatsApp na conversa aberta ou aviso no celular, como os de hoje).
 
 ## O PLANO DE ADAPTAÇÃO
 
