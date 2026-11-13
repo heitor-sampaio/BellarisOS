@@ -834,7 +834,12 @@ Está no PLANO DE ADAPTAÇÃO, "Bloco: Documentos".
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+Sobre o "lead" na tela: "leads e oportunidades sao entidades diferentes, pq
+lead é a pessoa, a pessoa pode ao longo da vida ter varias oportunidades
+ligadas ela, não?" — é assim que o sistema já funciona por dentro (o contato
+e as oportunidades dele); o que estava errado era a tela chamar o card de
+"lead", porque a tabela das oportunidades se chama `leads`. Escolha do nome:
+"contato e oportunidade".
 
 ### O que faz hoje (levantamento)
 
@@ -864,6 +869,13 @@ Oportunidades; o funil e as origens se montam em Configurações.
 - **Já decidido em outros módulos**: o "Agendar" do inbox com a caixa de
   unidade (AG2), o "Vender" do inbox leva ao PDV (PDV), e as tags que o
   sistema põe sozinho saem (bloco Tags).
+
+### Diferenças
+
+| # | Diferença | Estado |
+|---|---|---|
+| CR1 | A tela chama o card de "lead" ("Nenhum lead disponível", "Nenhum lead perdido com motivo", "LEAD", a atribuição de anúncio…) e também de "oportunidade" | **Decidido:** a PESSOA é "Contato", o card é "Oportunidade"; "lead" sai de todo texto que se lê (tela, aviso, Copilot, relatórios). O nome da tabela no código fica |
+| CR2 | O mesmo gesto tem dois nomes: "Cadastrar como cliente" (inbox) e "Converter em cliente" (quadro) | Recomendado: "Cadastrar como cliente" nos dois |
 
 ## O PLANO DE ADAPTAÇÃO
 
