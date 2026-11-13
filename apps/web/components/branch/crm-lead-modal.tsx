@@ -778,6 +778,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
             clienteId={agendar.clienteId}
             contatoInicial={{ nome: existing.name, telefone: telefoneDoCampo(existing.phone) }}
             procedimentosDeInteresse={(existing.lead_procedures ?? []).map(lp => lp.procedure_id)}
+            tags={tags}
             branches={agendar.unidades}
             onClose={() => setAgendando(false)}
             onScheduled={() => { setAgendando(false); router.refresh() }}

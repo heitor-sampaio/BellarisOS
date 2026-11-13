@@ -48,7 +48,7 @@ import { creditosParaAgendar } from '@/actions/creditos'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { formatBRL, maskPhone } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
+import { unidadeInicial, unidadeDaTag } from '@/lib/unidades/unidade-inicial'
 import { sugestaoDoAgendar, TEXTO_DA_SUGESTAO, type SugestaoDoAgendar } from '@/lib/crm/sugestao-do-agendar'
 
 export interface PanelBranch { id: string; name: string; slug: string }
@@ -683,6 +683,7 @@ export function InboxLeadPanel({
           clienteId={cliente?.id ?? null}
           contatoInicial={{ nome, telefone }}
           procedimentosDeInteresse={(card.abertas.find(o => o.id === (scheduling || card.abertas[0]?.id))?.procedure_ids) ?? []}
+          tags={[...tags, ...((card.abertas.find(o => o.id === (scheduling || card.abertas[0]?.id))?.tags) ?? [])]}
           branches={branches}
           onClose={() => setScheduling(null)}
           onScheduled={() => { setScheduling(null); void recarregar(); onLeadChanged?.() }}
@@ -1074,7 +1075,7 @@ function NovaOportunidade({
  */
 export function ScheduleModal({
   leadId, conversationId, clienteLigado, clienteId, contatoInicial, branches, onClose, onScheduled,
-  procedimentosDeInteresse,
+  procedimentosDeInteresse, tags = [],
 }: {
   leadId:         string
   conversationId: string | null
@@ -1088,6 +1089,8 @@ export function ScheduleModal({
   onScheduled:    () => void
   /** Os procedimentos de interesse do card: o primeiro que a unidade oferece vem escolhido (A1 da 11ª). */
   procedimentosDeInteresse?: string[]
+  /** As tags do lead: a "Unidade: X" de uma unidade da lista já vem escolhida (A25 da 14ª). */
+  tags?: readonly string[]
 }) {
   // A hora escolhida é a do relógio da unidade (F62).
   const fuso = useFuso()
@@ -1095,7 +1098,9 @@ export function ScheduleModal({
   const [telefone, setTelefone] = useState(contatoInicial.telefone)
   // Sobra da F33 (8ª simulação; princípio 3): com duas ou mais unidades,
   // nenhuma vem escolhida — nascia na primeira em ordem alfabética.
-  const [branchId,   setBranchId]   = useState(() => unidadeInicial(branches))
+  // A25 da 14ª (F73; "a unidade da cliente é a tag", F68): a tag "Unidade: X"
+  // do lead escolhe a unidade quando aponta uma só.
+  const [branchId,   setBranchId]   = useState(() => unidadeInicial(branches) || unidadeDaTag(branches, tags))
   const [data,       setData]       = useState<CrmSchedulingData | null>(null)
   const [loadingData, setLoadingData] = useState(!!branchId)
   const [procedureId, setProcedureId] = useState('')

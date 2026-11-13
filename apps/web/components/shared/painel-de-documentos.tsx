@@ -34,6 +34,7 @@ const CHIP: Record<SituacaoDoDocumento, string> = {
 
 function Situacao({ l }: { l: LinhaDoPainel }) {
   const { dia } = datasNo(useFuso())
+  const pathname = usePathname()
   const extra = l.situacao === 'ASSINADO'
     ? [l.assinadoEm ? dia(l.assinadoEm) : null, l.canal ? ROTULO_DO_CANAL[l.canal] ?? l.canal : null].filter(Boolean).join(' · ')
     : ''
@@ -42,6 +43,16 @@ function Situacao({ l }: { l: LinhaDoPainel }) {
       <span className={CHIP[l.situacao]}>{ROTULO_DA_SITUACAO[l.situacao]}{extra ? ` · ${extra}` : ''}</span>
       {l.situacao === 'FALTAM_DADOS' && l.faltando.length > 0 && (
         <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Falta: {l.faltando.join(', ')}</span>
+      )}
+      {/* A22 da 14ª (F73): onde completar — a aba Dados da cliente, como a
+          janela do agendamento já levava (A9 da 11ª). A linha abre a janela
+          do documento: o link não a abre junto. */}
+      {l.situacao === 'FALTAM_DADOS' && l.clienteId && (
+        <Link data-completar-cadastro href={`${rotaCliente(pathname, l.slug, l.clienteId)}?aba=dados`}
+          onClick={e => e.stopPropagation()}
+          style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
+          Completar a ficha
+        </Link>
       )}
       {(l.situacao === 'DISPENSADO' || l.situacao === 'CANCELADO') && l.motivo && (
         <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', whiteSpace: 'normal' }}>{l.motivo}</span>

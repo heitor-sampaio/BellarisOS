@@ -81,6 +81,11 @@ export default async function BranchLayout({
       .eq('tenant_id', ctx.tenantId!)
       .maybeSingle(), 'buscar a unidade')
     // Com o aviso (J-29): sem ele, o link "quebrado" voltava calado ao dashboard.
+    // Quem ATENDE naquela unidade vai à própria agenda, onde estão os
+    // atendimentos de lá (A20 da 14ª, F73; princípio 3).
+    if ((ctx.atendeEm ?? []).includes(branch.id as string)) {
+      redirect(comAviso(`/${userBranch?.slug ?? ''}/agenda`, 'atende-em-outra-unidade'))
+    }
     redirect(comAviso(`/${userBranch?.slug ?? ''}/dashboard`, 'outra-unidade'))
   }
 

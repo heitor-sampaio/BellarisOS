@@ -6,6 +6,9 @@
  */
 export const AVISOS_DA_URL = {
   'outra-unidade':  'Você não tem acesso a essa unidade. Abrimos a sua.',
+  // A20 da 14ª (F73): quem ATENDE na outra unidade (§11, o "Atende" é por
+  // unidade) não opera nela, mas os atendimentos de lá estão na agenda dela.
+  'atende-em-outra-unidade': 'Os seus atendimentos nessa unidade estão na sua agenda, aqui. O resto daquela unidade é da equipe de lá.',
   'portal-da-rede': 'O portal da rede é de quem atende todas as unidades. Abrimos a sua.',
   // C61 (F70): o primeiro acesso da clínica (o /setup) é de quem é da rede.
   'setup-da-rede':  'O primeiro acesso da clínica é de quem é da rede. Abrimos a sua unidade.',
