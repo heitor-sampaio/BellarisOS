@@ -375,7 +375,7 @@ Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
     vez. Hoje é um link por documento (`gerarLinkDeAssinatura`: uso único, 7
     dias, um ativo por documento) e cada documento se assina à parte.
 
-## Tags (regra do sistema inteiro) 🟡
+## Tags (regra do sistema inteiro) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -417,19 +417,31 @@ Onde o sistema põe tag sozinho hoje:
 | # | Diferença | Estado |
 |---|---|---|
 | T1 | O gatilho da "Unidade: X" e as leituras da tag como unidade | **Decidido:** sai. O sistema não põe tag |
-| T2 | A origem do anúncio vira tag | **Decidido:** sai (a origem pode continuar gravada como origem, não como tag — ver T6) |
-| T3 | A origem da Importação vira tag | **Decidido:** sai (idem) |
-| T4 | A ação "Tag do cliente" das automações | **Em aberto (T6)** |
+| T2 | A origem do anúncio vira tag | **Decidido:** sai |
+| T3 | A origem da Importação vira tag | **Decidido:** sai |
+| T4 | A ação "Tag do cliente" das automações | **Decidido:** "Adicionar tag", com qualquer tag registrada |
 
-### Perguntas em aberto
+### Respostas (o Heitor, 13/11)
 
-- **T6:** (a) A ação de automação que adiciona/remove tag: é a rede que monta
-  e liga a automação. Fica (é a rede pondo a tag, por uma regra dela) ou sai
-  (é o sistema pondo a tag sozinho)? (b) A ORIGEM (do anúncio, da planilha)
-  continua guardada e filtrável como origem, só não como tag? (c) "Onde for
-  passível de filtro": a tag continua sendo só da PESSOA, ou a rede também
-  marca tag em produto, procedimento, agendamento, oportunidade…? (d) As
-  "Unidade: X" já gravadas nas fichas: ficam como tags comuns, ou saem?
+"sobre a ação tag do cliente, essa ação ela deve se chamar só adicionar tag,
+tá? E aí ela permite que se adicione qualquer tag que tenha sido registrada
+no sistema, tá? Básico. Sobre a origem sem virar tag, como eu já falei, o
+sistema não atribui tag automaticamente a nada nem ninguém em momento algum.
+Essa é a regra e ponto. Não existe porque tem outras perguntas nesse
+sentido, certo?"
+
+- **T4:** a ação das automações se chama **"Adicionar tag"** e oferece
+  qualquer tag registrada no sistema. (Leitura do Claude: a ação só
+  adiciona; o modo "remover" sai.)
+- **T2/T3:** a regra basta — nenhuma origem vira tag. Não perguntar de novo
+  nada que a regra já responde.
+- Ficam para a revisão de **Clientes**, sem pergunta nova agora: onde mais a
+  tag pode ser marcada além da pessoa, e as "Unidade: X" já gravadas (apagar
+  dado é com o Heitor presente).
+
+### Bloco no plano: Tags
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Tags".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -496,6 +508,16 @@ revisão, só se escreve o plano. Nada se implementa.
 | PC9b/PC10 | **No pop-up de criação do pacote e do plano,** logo abaixo da parte do termo e do contrato: os documentos puxados dos procedimentos (o termo de cada procedimento diferente e os outros documentos deles; o contrato do procedimento NÃO), cada um com excluir | PC7; **Plano de tratamento** |
 | PC10 | **Um link só, uma assinatura:** os documentos do pacote ou do plano vão à cliente num link único, e uma assinatura assina todos de uma vez. Hoje é um link por documento e uma assinatura por documento | a revisão de **Documentos** |
 | — | Mantém: nome, procedimentos e sessões de cada um, validade em dias, "À venda", comissões de venda e de execução, Vendas → Pacotes (não aparece no Estoque) | — |
+
+### Bloco: Tags (o sistema inteiro)
+
+| # | O que muda | Depende de |
+|---|---|---|
+| T1 | Sai o gatilho `trg_appointment_unit_tag` ("Unidade: X" a cada agendamento) e toda leitura da tag como unidade: campanhas e automações por unidade, novas clientes por unidade, "Reativar", a lista de Clientes da unidade, o Agendar (`unidadeDaTag`) | o que entra no lugar de "a unidade" nessas telas: revisão de **Clientes**, **Agenda**, **Marketing**, **Automações**, **Relatórios** |
+| T2 | A conversa nascida de anúncio não ganha tag da origem | — |
+| T3 | A Importação não transforma a coluna "Origem" em tag | — |
+| T4 | A ação de automação vira **"Adicionar tag"**, com qualquer tag registrada no sistema | **Automações** |
+| — | Uma trava (teste) de que nenhum caminho do sistema grava tag sem ser a pessoa ou a ação "Adicionar tag" que a rede montou | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
