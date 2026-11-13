@@ -66,6 +66,11 @@ export interface FechamentoParaCsv {
   porQuemRecebeu?: { pessoa: string | null; nome: string | null; formas: { forma: string; entradas: number; lancamentos: number }[]; total: { entradas: number; lancamentos: number } }[]
   /** A44 da 12ª: cada bandeira do cartão (a Ivone concilia com a operadora por bandeira). */
   bandeiras?: { forma: string; maquininha?: string | null; bandeira: string | null; entradas: number; saidas: number }[]
+  /**
+   * A28 da 14ª: a taxa e o líquido de cada maquininha (e do Pix) — só a quem
+   * vê o financeiro da clínica (D7); nulo ou ausente, a seção não sai.
+   */
+  taxasPorMaquininha?: { maquininha: string; bruto: number; taxa: number; liquido: number }[] | null
   /** A47 da 12ª: o último fechamento do dia, ou nulo — "Ainda não fechado". */
   fechado?: { quem: string | null; quando: string; diferenca: number } | null
   /** F62: as horas no relógio da unidade; sem ele, o de Brasília. */
@@ -103,6 +108,12 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
         ]),
       ]
     })() : []),
+    ...(f.taxasPorMaquininha?.length ? [
+      [],
+      ['Taxa e líquido por maquininha (estimados)'],
+      ['Maquininha', 'Bruto', 'Taxa', 'Líquido'],
+      ...f.taxasPorMaquininha.map(t => [t.maquininha, reais(t.bruto), reais(t.taxa), reais(t.liquido)]),
+    ] : []),
     [],
     ['Estornos do dia'],
     ['Descrição', 'Forma', 'Valor', 'Motivo', 'Pagamento de', 'Nas saídas do dia'],

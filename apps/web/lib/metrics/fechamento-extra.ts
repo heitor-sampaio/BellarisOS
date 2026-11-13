@@ -162,3 +162,19 @@ export async function getFechamentoPorBandeira(args: { tenantId: string; branchI
   }[]
   return (linhas ?? []).map(l => ({ forma: l.forma, maquininha: l.maquininha, bandeira: l.bandeira, entradas: Number(l.entradas), saidas: Number(l.saidas), lancamentos: Number(l.lancamentos) }))
 }
+
+export interface TaxaPorMaquininha { maquininha: string; bruto: number; taxa: number; liquido: number }
+
+/**
+ * A28 da 14ª simulação (F75): a taxa e o LÍQUIDO de cada maquininha no dia
+ * (e o Pix, à parte) — a Ivone concilia o depósito de cada operadora. A mesma
+ * conta da linha "Taxas da maquininha no dia" (`metrics_avisos_do_fechamento`),
+ * separada pela maquininha (`metrics_taxas_por_maquininha`). Só para quem vê o
+ * financeiro da clínica (D7): quem chama confere `veComissaoDeTodos`.
+ */
+export async function getTaxasPorMaquininha(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<TaxaPorMaquininha[]> {
+  const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_taxas_por_maquininha', {
+    p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
+  }).range(de, ate), 'ler a taxa e o líquido de cada maquininha no dia') as { maquininha: string; bruto: number | string; taxa: number | string; liquido: number | string }[]
+  return (linhas ?? []).map(l => ({ maquininha: l.maquininha, bruto: Number(l.bruto), taxa: Number(l.taxa), liquido: Number(l.liquido) }))
+}

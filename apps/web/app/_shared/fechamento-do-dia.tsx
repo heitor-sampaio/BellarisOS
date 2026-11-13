@@ -11,7 +11,8 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { FusoProvider } from '@/components/shared/fuso'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FechamentoDoDiaTela, type FechamentoFeito } from '@/components/shared/fechamento-do-dia-tela'
-import { getEstornosDoDia, getFechamentoPorQuemRecebeu, getFechamentoPorBandeira, type MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
+import { getEstornosDoDia, getFechamentoPorQuemRecebeu, getFechamentoPorBandeira, getTaxasPorMaquininha, type MovimentoDaUnidade } from '@/lib/metrics/fechamento-extra'
+import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 
 /**
  * O fechamento do dia, o corpo dos dois portais (2026-10-21, decisão do
@@ -76,6 +77,11 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
     tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to,
     desde: ultimo ? String(ultimo.fechado_em) : null,
   })
+  // A28 da 14ª: a taxa e o líquido por maquininha, no CSV — só a quem vê o
+  // financeiro da clínica (D7); para quem só recebe, nem se busca.
+  const taxasPorMaquininha = veComissaoDeTodos(ctx)
+    ? await getTaxasPorMaquininha({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to })
+    : null
 
   return (
     <>
@@ -100,6 +106,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
         estornos={estornos}
         porQuemRecebeu={porQuemRecebeu}
         bandeiras={bandeiras}
+        taxasPorMaquininha={taxasPorMaquininha}
         daRede={daRede}
         ehHoje={dia === diaDoFechamento(undefined, new Date(), fuso)}
         aReceber={aReceber}

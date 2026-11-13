@@ -9,7 +9,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { useFuso } from '@/components/shared/fuso'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
-import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
+import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira, TaxaPorMaquininha } from '@/lib/metrics/fechamento-extra'
 import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
@@ -48,7 +48,7 @@ export interface OperadoraNoFechamento {
   link:     string | null
 }
 
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, operadora = null, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null, estornos = null, porQuemRecebeu = [], daRede = null, ehHoje = true, bandeiras = [] }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, feitos, podeFechar, aReceber, emAberto = 0, operadora = null, podeReceberAtendimento = false, avisos, atendeAte = null, fundoInformado = null, estornos = null, porQuemRecebeu = [], daRede = null, ehHoje = true, bandeiras = [], taxasPorMaquininha = null }: {
   basePath:  string
   dia:       string
   unidades:  { id: string; name: string }[]
@@ -83,6 +83,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   ehHoje?: boolean
   /** A44 da 12ª: as linhas de cartão por bandeira (do banco). */
   bandeiras?: CartaoPorBandeira[]
+  /** A28 da 14ª: a taxa e o líquido de cada maquininha, para o CSV — nulo a quem só recebe (D7). */
+  taxasPorMaquininha?: TaxaPorMaquininha[] | null
 }) {
   const router = useRouter()
   const [contado, setContado] = useState('')
@@ -183,6 +185,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           estornos: estornos?.itens ?? [],
           porQuemRecebeu,
           bandeiras,
+          taxasPorMaquininha,
           fechado: ultimo ? { quem: ultimo.quem, quando: ultimo.quando, diferenca: ultimo.diferenca } : null,
         }))}>
           Exportar CSV
