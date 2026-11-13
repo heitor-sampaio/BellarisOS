@@ -551,9 +551,13 @@ mais se aproxima é o "A receber" do Financeiro e o Fechamento do dia.
 
 ### Perguntas
 
-- **PDV-P1.** A comanda é uma por agendamento, ou uma comanda aberta por
-  cliente que junta tudo dela (dois atendimentos no mesmo dia, o produto que
-  ela leva junto)?
+- **PDV-P1, respondida (o Heitor, 13/11):** "Uma comanda para cada coisa que
+  vai ser vendido, né? Se foi um agendamento isolado para um atendimento, um
+  procedimento qualquer, é uma comanda para isso. Se foi, se está sendo
+  vendido um pacote ou está sendo vendido um plano, é uma comanda para um
+  pacote ou para um plano. Tudo que for uma venda gera uma comanda."
+  Uma VENDA = uma comanda: o agendamento avulso, o pacote, o plano, cada um
+  na sua.
 - **PDV-P2.** A comanda do agendamento aparece no PDV quando: ao agendar
   (dá para pagar adiantado), no dia, ou quando o atendimento termina?
 - **PDV-P3.** O "Vender" da ficha e do inbox: sai (vende-se só pelo PDV), ou
