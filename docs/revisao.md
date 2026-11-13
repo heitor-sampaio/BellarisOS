@@ -70,7 +70,7 @@ superfícies em volta. A ordem é do Heitor.
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ✅ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ✅ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ✅ (sem bloco: só o V1) |
-| Busca | `busca_universal` | 🟡 |
+| Busca | `busca_universal` | ✅ |
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ⬜ |
 | Site | `apps/site` | ⬜ |
 
@@ -1472,11 +1472,11 @@ Configurações → Integrações.
 
 Nada a mudar além do vocabulário (sem "clínica" nos avisos — V1, CA1).
 
-## Busca 🟡
+## Busca ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+"Ok" (BU1; o resto fica como está).
 
 ### O que faz hoje (levantamento)
 
@@ -1491,11 +1491,15 @@ portais da equipe (Ctrl+K ou "/"; no celular, a lupa).
 - **Não abre exceção**: quem não acha um registro na tela dele não o acha
   aqui; cada ação só aparece a quem a tela de destino libera.
 
-### Recomendação do Claude (aguarda o Heitor)
+### Recomendação do Claude (aprovada)
 
 - **BU1 — "Vender" na linha da cliente leva ao PDV** com ela escolhida (o
   "Vender" da ficha sai — PDV7). As páginas novas (PDV, Auditoria) e os nomes
   novos entram sozinhos, porque a busca lê o menu e as abas.
+
+### Bloco no plano: Busca
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Busca".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1773,6 +1777,13 @@ Heitor de que vale uma completa.
 | CA3 | **Agendar a sessão de plano ou de pacote** pelo app, mesmo com o procedimento sem "Permitir auto agendamento" | PT3 |
 | CA4 | **Assinar todos os documentos abertos de uma vez** (DC3) e "Ficha de saúde" (PR3) | DC3, PR3 |
 | — | Mantém: o acesso criado pela rede, o login único em várias redes, o início, o agendar, o histórico com "Confirmar e avaliar", o financeiro, a fidelidade, o perfil e a LGPD, o app Android como casca do portal | — |
+
+### Bloco: Busca
+
+| # | O que muda | Depende de |
+|---|---|---|
+| BU1 | **"Vender" na linha da cliente leva ao PDV** com ela escolhida (`lib/busca/acoes.ts`; era `…/clients/<id>?acao=vender`). Aparece a quem vende no PDV (CG1). As páginas novas (PDV, Auditoria) e os nomes novos vêm do menu e das abas | PDV, CG1 |
+| — | Mantém: o que se acha, as outras ações, a regra de não abrir exceção | — |
 
 ### Bloco: Cargos
 
