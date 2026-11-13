@@ -1774,6 +1774,27 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-13 — A revisão do sistema terminou: o plano de adaptação está pronto
+
+Os 26 itens da revisão (`docs/revisao.md`) estão fechados. Cada módulo virou
+um bloco do PLANO DE ADAPTAÇÃO. Ele ainda não rodou: roda quando o Heitor
+mandar, com TDD, até ficar tudo verde. "Tudo verde" quer dizer typecheck,
+vitest, a completa contra o build e um passeio pelas telas. As mudanças
+grandes que o plano traz:
+- **o PDV**, com comandas; dele saem o checkout do plano e o "Vender" da ficha;
+- **o plano de tratamento** com aceite sem dinheiro, também pelo app;
+- **contato × oportunidade**;
+- **a Ficha de saúde**;
+- **os Documentos** com cinco tipos e uma assinatura só;
+- **a Auditoria**, com menu e permissão próprios;
+- **várias unidades por pessoa**;
+- **as tags só da rede**: sai a "Unidade: X";
+- **as Configurações agrupadas**;
+- **o vocabulário**: sem "clínica", "filial" nem cargo fixo.
+
+O Copilot acompanha tudo e vem no último bloco. Ficam dois pontos pequenos
+para o Heitor, no fim do `docs/revisao.md`.
+
 ### 2026-11-13 — Revisão do sistema aberta, e o banco zerado
 
 O Heitor abriu a revisão módulo por módulo (`docs/revisao.md`): ele diz o que
