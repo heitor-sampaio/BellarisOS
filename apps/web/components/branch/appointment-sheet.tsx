@@ -416,8 +416,10 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
 
             {/* Remarcar existia só no arraste do calendário da unidade — a
                 agenda da rede é por unidade, não por profissional, e ali não há
-                o que arrastar. Aqui o horário novo é digitado. */}
-            {!isProfessional && podeGerenciar && appointment.status !== 'IN_PROGRESS' && (
+                o que arrastar. Aqui o horário novo é digitado. D20 (F75): com
+                "só os meus" e Gerenciar, remarca o PRÓPRIO — como cancela e marca
+                a falta dele; a action (`remarcarCore`) já deixava. */}
+            {(!isProfessional || ehMeu) && podeGerenciar && appointment.status !== 'IN_PROGRESS' && (
               <button disabled={loading} onClick={() => setRemarcando(v => !v)} className="btn-secondary"
                 style={{ width: '100%', justifyContent: 'center' }}>
                 <CalendarClock size={14} /> Remarcar
