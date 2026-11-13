@@ -43,5 +43,8 @@ describe('o card só anda pela pessoa ou por uma automação da clínica (r2-cfg
     expect(gravam.filter(f => !PERMITIDOS.has(f))).toEqual([])
     // E os três de sempre continuam achados (a trava não ficou cega).
     expect(gravam.sort()).toEqual([...PERMITIDOS].sort())
-  })
+    // Lê o código inteiro: sozinho leva ~2 s, mas com o vitest todo em paralelo
+    // passava dos 5 s padrão sem defeito nenhum (o Heitor, 13/11: "pode dar mais
+    // tempo a esse teste do card também").
+  }, 30_000)
 })

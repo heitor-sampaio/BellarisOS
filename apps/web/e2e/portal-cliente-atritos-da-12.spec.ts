@@ -119,20 +119,29 @@ test('A50 e A51: o "Sem preferência" do remarcar diz o que significa, e o remar
 })
 
 test('A52: agendar dentro do prazo do app diz que o agendamento nasce sem cancelar nem remarcar pelo app', async ({ browser }) => {
-  await como(browser, async p => {
-    await p.goto(`/${slug}/cliente/agendamentos/novo`)
-    await p.getByRole('button', { name: new RegExp(`Avaliação ${marca}`) }).first().click()
-    const prof = p.getByRole('button', { name: /\[e2e\] Ana/ }).first()
-    await expect(prof.or(p.getByText('Escolha a data e o horário disponível.'))).toBeVisible()
-    if (await prof.isVisible()) await prof.click()
-    // Amanhã (o primeiro útil) fica sempre a menos de 48 h.
-    await p.locator('input[type="date"]').fill(dia(1))
-    await p.getByRole('button', { name: /^\s*\d{2}:\d{2}\s*$/ }).first().click()
-    await expect(p.getByText('Confirme os detalhes do seu agendamento.')).toBeVisible()
-    const aviso = p.locator('[data-dentro-do-prazo]')
-    await expect(aviso).toContainText('nasce sem cancelar nem remarcar pelo app')
-    await expect(aviso).toContainText('48 horas')
-  })
+  // O primeiro dia útil fica a até ~80 h (sexta 00:01 → segunda 08:00): com
+  // 48 h, na sexta e no sábado ele caía FORA do prazo e o aviso, com razão,
+  // não aparecia. Só aqui o prazo da clínica é 96 h (o Heitor, 13/11:
+  // "pode alterar o teste do A52"); volta a 48 h para os outros testes.
+  const b = db()
+  expect((await b.from('tenants').update({ portal_prazo_alteracao_horas: 96 }).eq('id', rede.tenantId)).error).toBeNull()
+  try {
+    await como(browser, async p => {
+      await p.goto(`/${slug}/cliente/agendamentos/novo`)
+      await p.getByRole('button', { name: new RegExp(`Avaliação ${marca}`) }).first().click()
+      const prof = p.getByRole('button', { name: /\[e2e\] Ana/ }).first()
+      await expect(prof.or(p.getByText('Escolha a data e o horário disponível.'))).toBeVisible()
+      if (await prof.isVisible()) await prof.click()
+      await p.locator('input[type="date"]').fill(dia(1))
+      await p.getByRole('button', { name: /^\s*\d{2}:\d{2}\s*$/ }).first().click()
+      await expect(p.getByText('Confirme os detalhes do seu agendamento.')).toBeVisible()
+      const aviso = p.locator('[data-dentro-do-prazo]')
+      await expect(aviso).toContainText('nasce sem cancelar nem remarcar pelo app')
+      await expect(aviso).toContainText('96 horas')
+    })
+  } finally {
+    expect((await b.from('tenants').update({ portal_prazo_alteracao_horas: 48 }).eq('id', rede.tenantId)).error).toBeNull()
+  }
 })
 
 test('A55 e A56: o plano diz o nome e o desconto; o concluído diz que é para avaliar', async ({ browser }) => {
