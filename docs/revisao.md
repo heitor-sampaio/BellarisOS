@@ -56,7 +56,7 @@ superfícies em volta. A ordem é do Heitor.
 | Procedimentos | `procedures` | ✅ |
 | Pacotes | `procedures` (pacotes) | ✅ |
 | Plano de tratamento | `treatment_plans` | ✅ |
-| Marketing (campanhas) | `marketing` | 🟡 |
+| Marketing (campanhas) | `marketing` | ✅ |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ✅ |
@@ -1033,11 +1033,12 @@ não acha?"
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Plano de tratamento".
 
-## Marketing (campanhas) 🟡
+## Marketing (campanhas) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+"mk1 ok. mk2 remove filtro de unidade, as tags e filtro de tag já cobrem o
+caso." O resto fica como está.
 
 ### O que faz hoje (levantamento)
 
@@ -1057,7 +1058,7 @@ Regras em `docs/regras/automacoes.md` (campanhas) e `whatsapp-push.md`
 - **Templates**: os modelos do WhatsApp oficial (escrever, mandar à Meta
   para aprovação), usados no inbox fora das 24 h e nas automações.
 
-### Diferenças e recomendações do Claude (aguardam o Heitor)
+### Diferenças e recomendações do Claude
 
 - **MK1 — a campanha "Automática" é uma automação com outro nome.** A regra
   escrita diz "Campanha ≠ automação: campanha é disparo em massa por
@@ -1067,9 +1068,15 @@ Regras em `docs/regras/automacoes.md` (campanhas) e `whatsapp-push.md`
   campanha fica Imediata ou Agendada (inclusive a data anual — Dia das
   Mães); os gatilhos da Automática viram MODELOS desligados nas Automações
   (princípio 6), onde já se reage a fatos. Nada se perde, muda de lugar.
+- **MK1 — aprovado** ("mk1 ok").
 - **MK2 — "Tags do CRM" vira "Tags"** (a tag é da rede e filtra em todo
-  lugar). O filtro "Unidades" do público deixa de ler a tag "Unidade: X" (bloco
-  Tags) e passa a ser "atendidas na unidade".
+  lugar). ~~O filtro "Unidades" passa a ser "atendidas na unidade".~~
+  **Revisto pelo Heitor: o filtro "Unidades" SAI** — "as tags e filtro de
+  tag já cobrem o caso".
+
+### Bloco no plano: Marketing
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Marketing".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1273,6 +1280,14 @@ e Agenda (AG1) com o DC1–DC4.
 | PT1f | **Tratamentos** (menu) filtra por situação: Proposto, Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado | PT1a |
 | PT3 | **No app, a cliente vê TUDO do plano** — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados — e **agenda as sessões em aberto**. A sessão de plano OU de pacote se agenda pelo app mesmo com o procedimento sem "Permitir auto agendamento" | — |
 | — | Mantém: as sessões com procedimento, preço e duração; "Cliente vai pensar"; a validade da proposta (só informação); o aviso de plano × avulso do mesmo procedimento; a sugestão do pacote equivalente; o cancelamento do plano por quem tem o Financeiro em Gerenciar; o "só os meus" | — |
+
+### Bloco: Marketing
+
+| # | O que muda | Depende de |
+|---|---|---|
+| MK1 | **A campanha é Imediata ou Agendada** (data e hora, ou a data de todo ano). Sai o tipo "Automática": cada gatilho dela (aniversário, lembrete de agenda N horas antes, pós-visita, vencimento de pacote, confirmação, cancelamento, pontos) vira um MODELO desligado nas Automações, com o mesmo aviso no celular — nada se perde. A frase "campanha × automação" das duas telas fica | **Automações** |
+| MK2 | **"Tags"** no público (era "Tags do CRM"); **sai o filtro "Unidades"** do público (as tags cobrem) | Tags |
+| — | Mantém: o aviso no celular (o WhatsApp fica para o futuro), o público por gênero, tags, procedimentos já feitos e "sem visita há N dias", o "Revisar" com quantas recebem, ativar/pausar/arquivar, os Anúncios e os Templates, só no portal da rede | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
