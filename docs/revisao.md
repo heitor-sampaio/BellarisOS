@@ -356,6 +356,25 @@ Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
   aparece ali logo abaixo da seleção do termo e do contrato, tá? Isso vale
   para os dois, tanto para o plano quanto para o pacote."
 
+- **PC10, esclarecimento (o Heitor, 13/11):** "quando for montar um plano ou
+  um pacote, quando puxar os documentos, ele vai puxar os termos dos
+  procedimentos e vai puxar também os outros documentos que tiver. Ele só não
+  puxa o contrato. Tá? E aí esses documentos que ele vai puxar todos, deve dar
+  para poder excluir o qual quiser, né? Então digamos que ele vai fazer aí 2
+  sessões de botox e 2 de massagem. Vai puxar o termo do botox e o termo da
+  massagem e os outros documentos que tiverem cadastrados nesses 2
+  procedimentos, com a possibilidade de excluir eles, tá? Do pacote, excluir
+  esses outros documentos do pacote ou do plano, porque depois a gente vai
+  enviar isso tudo para o cliente por um link só, onde o cliente com uma
+  assinatura já dá o assinado ali em todos os documentos de uma vez só."
+  - Puxa os TERMOS e os OUTROS documentos dos procedimentos; o contrato do
+    procedimento não (vale o de pacote / de plano).
+  - Qualquer documento puxado pode ser excluído (leitura do Claude: o termo
+    também; a corrigir se não for).
+  - **Um link só** para a cliente, e **uma assinatura** assina todos de uma
+    vez. Hoje é um link por documento (`gerarLinkDeAssinatura`: uso único, 7
+    dias, um ativo por documento) e cada documento se assina à parte.
+
 ## O PLANO DE ADAPTAÇÃO
 
 O Heitor, 13/11: "eu quero que os resultados da revisão de cada modulo
@@ -417,8 +436,9 @@ revisão, só se escreve o plano. Nada se implementa.
 | PC6 | Criar e editar pacote: quem tem Procedimentos em **Gerenciar**, e só isso (sai a exigência de ser da rede) | — |
 | PC7/PC8 | **No procedimento:** "Termo de consentimento" (opcional), "Contrato" (opcional, só no atendimento AVULSO) e "Outros documentos" (opcional, quantos quiser, qualquer documento criado ou anexado no sistema) | a revisão de **Documentos** |
 | PC9a | **Contrato de pacote**, novo: o equivalente do contrato de plano, um modelo da rede à parte, preenchido com os procedimentos, as sessões e o pagamento de cada pacote vendido. O contrato de plano fica como está | a revisão de **Documentos** (as variáveis do pacote) |
-| PC2/PC7 | **Na venda do pacote,** a cliente assina UMA vez: um termo de cada procedimento diferente (puxado sozinho), o contrato de pacote e os outros documentos que ficaram (PC9b). As sessões do pacote não emitem documento de novo. Hoje cada sessão emite o termo e o contrato do procedimento | PC7, PC9a |
-| PC9b | **No pop-up de criação do pacote e do plano,** logo abaixo da parte do termo e do contrato: a lista dos outros documentos dos procedimentos, cada um com manter ou excluir | PC7; **Plano de tratamento** |
+| PC2/PC7 | **Na venda do pacote,** a cliente assina UMA vez: o contrato de pacote e os documentos puxados que ficaram (PC9b/PC10). As sessões do pacote não emitem documento de novo. Hoje cada sessão emite o termo e o contrato do procedimento | PC7, PC9a |
+| PC9b/PC10 | **No pop-up de criação do pacote e do plano,** logo abaixo da parte do termo e do contrato: os documentos puxados dos procedimentos (o termo de cada procedimento diferente e os outros documentos deles; o contrato do procedimento NÃO), cada um com excluir | PC7; **Plano de tratamento** |
+| PC10 | **Um link só, uma assinatura:** os documentos do pacote ou do plano vão à cliente num link único, e uma assinatura assina todos de uma vez. Hoje é um link por documento e uma assinatura por documento | a revisão de **Documentos** |
 | — | Mantém: nome, procedimentos e sessões de cada um, validade em dias, "À venda", comissões de venda e de execução, Vendas → Pacotes (não aparece no Estoque) | — |
 
 ## O que já estava pendente, para entrar no módulo dele
