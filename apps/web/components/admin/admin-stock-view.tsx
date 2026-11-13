@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { Fragment, useState, useMemo, useRef, useEffect } from 'react'
-import { Search, X, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, PackageX, Settings, Barcode, Pencil, Plus } from 'lucide-react'
+import { Search, X, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, PackageX, PackagePlus, Barcode, Pencil, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { AdminStockManageModal } from './admin-stock-manage-modal'
 import { BarcodeEntryModal } from './barcode-entry-modal'
@@ -13,7 +13,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { BotaoAplicadoEm, LotesEsgotados } from '@/components/admin/aplicacoes-do-lote'
 import { useFuso } from '@/components/shared/fuso'
 import {
-  situacaoDoEstoque, saldoParaMostrar, minimoParaMostrar, emEmbalagens, estoqueBaixo,
+  situacaoDoEstoque, saldoParaMostrar, minimoParaMostrar, emEmbalagens, estoqueBaixo, minimoEhDoCadastro, rotuloDoMinimo,
   formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO,
   type MedidasDoProduto, type SituacaoDoEstoque,
 } from '@/lib/estoque/situacao'
@@ -28,6 +28,9 @@ export type LoteNaTela = {
   custoPorEmbalagem: number | null
   /** D4 da 11ª: o lote que o ajuste criou vale o último custo de então, e a tela diz. */
   origemDoCusto?: 'ENTRADA' | 'AJUSTE' | 'TRANSFERENCIA' | null
+  /** A14 da 14ª: o fornecedor e a nota da compra que criou o lote. */
+  fornecedor?: string | null
+  notaFiscal?: string | null
 }
 
 type BranchStock = {
@@ -227,8 +230,19 @@ function SeloInativo() {
   )
 }
 
-function GearButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
-  return <IconButton onClick={onClick} title="Gerenciar estoque"><Settings size={13} /></IconButton>
+/**
+ * A12 da 14ª (princípio 7): a entrada, a perda, o ajuste e o histórico moravam
+ * atrás de uma engrenagem sem texto, e a dona procurava "Entrada" pela tela. O
+ * botão diz o que abre; o `title` segue o nome da janela ("Gerenciar estoque").
+ */
+function EntradaEPerdaButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button type="button" className="btn-secondary" title="Gerenciar estoque"
+      onClick={e => { e.stopPropagation(); onClick(e) }}
+      style={{ padding: '4px 10px', fontSize: 'var(--text-xs-sz)', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <PackagePlus size={13} aria-hidden /> Entrada e perda
+    </button>
+  )
 }
 function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
@@ -471,7 +485,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                   <th style={thStyle}>{variasUnidades ? 'TOTAL REDE' : 'ESTOQUE'}</th>
                   {variasUnidades && <th style={thStyle}>ESTOQUE POR UNIDADE</th>}
                   <th style={{ ...thStyle, textAlign: 'right' }}>VALOR EM ESTOQUE</th>
-                  {!readOnly && <th style={{ ...thStyle, width: 68 }} />}
+                  {!readOnly && <th style={{ ...thStyle, width: 170 }} />}
                   <th style={{ ...thStyle, width: 36 }} />
                 </tr>
               </thead>
@@ -563,7 +577,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                           <td data-label="" style={{ padding: '13px 10px' }}>
                             <div style={{ display: 'flex', gap: 4 }}>
                               {podeEditarProduto && <PencilButton onClick={() => setEditing(p)} />}
-                              <GearButton   onClick={() => setManaging(p)} />
+                              <EntradaEPerdaButton onClick={() => setManaging(p)} />
                             </div>
                           </td>
                         )}
@@ -595,7 +609,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                                       <Saldo produto={p} quantidade={saldoParaMostrar(saldoDe(b), medidas(p))} forte={false} />
                                       {b.minStock > 0 && (
                                         <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                                          mín. {formatarQuantidadeComUnidade(minimoParaMostrar(saldoDe(b), medidas(p)))}
+                                          mín. {rotuloDoMinimo(minimoParaMostrar(saldoDe(b), medidas(p)), minimoEhDoCadastro(b.minStock, p.minimoDoCadastro))}
                                         </span>
                                       )}
                                       <StockBadge situacao={situacaoDe(p, b)} />
@@ -616,6 +630,9 @@ export function AdminStockView({ products, branches, categories, productCategori
                                             <span>{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {p.unit}</span>
                                             {podeVerAplicacoes && <BotaoAplicadoEm loteId={l.id} rotulo={`${p.name} · ${l.numero ? `lote ${l.numero}` : 'lote sem número'}`} />}
                                             <span>{l.custoPorEmbalagem != null ? `custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}${l.origemDoCusto === 'AJUSTE' ? ' (último custo)' : ''}` : 'custo —'}</span>
+                                            {(l.notaFiscal || l.fornecedor) && (
+                                              <span data-compra-do-lote>{[l.notaFiscal ? `NF ${l.notaFiscal}` : null, l.fornecedor].filter(Boolean).join(' · ')}</span>
+                                            )}
                                           </p>
                                         )
                                       })}
@@ -654,7 +671,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                   <th style={{ ...thStyle, textAlign: 'right' }}>MÍNIMO</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>VALOR</th>
                   <th style={thStyle}>STATUS</th>
-                  {!readOnly && <th style={{ ...thStyle, width: 68 }} />}
+                  {!readOnly && <th style={{ ...thStyle, width: 170 }} />}
                 </tr>
               </thead>
               <tbody>
@@ -690,7 +707,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                       </td>
                       <td data-label="Mínimo" data-par style={{ padding: '12px 16px', textAlign: 'right' }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-                          {row.branch.minStock > 0 ? formatarQuantidadeComUnidade(minimoParaMostrar(saldoDe(row.branch), medidas(row))) : '—'}
+                          {row.branch.minStock > 0 ? rotuloDoMinimo(minimoParaMostrar(saldoDe(row.branch), medidas(row)), minimoEhDoCadastro(row.branch.minStock, row.minimoDoCadastro)) : '—'}
                         </span>
                       </td>
                       {(
@@ -713,7 +730,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                         <td data-label="" style={{ padding: '12px 10px' }}>
                           <div style={{ display: 'flex', gap: 4 }}>
                             {podeEditarProduto && <PencilButton onClick={() => setEditing(row)} />}
-                            <GearButton   onClick={() => setManaging(row)} />
+                            <EntradaEPerdaButton onClick={() => setManaging(row)} />
                           </div>
                         </td>
                       )}
@@ -743,6 +760,7 @@ export function AdminStockView({ products, branches, categories, productCategori
           product={entradaDoLeitor}
           allBranches={branches}
           defaultBranchId={defaultBranchId}
+          origemSugerida={branchId || undefined}
           fornecedores={fornecedores}
           somenteEntrada
           onClose={() => setEntradaDoLeitor(null)}

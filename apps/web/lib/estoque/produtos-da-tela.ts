@@ -44,9 +44,13 @@ export async function produtosDoEstoque(tenantId: string): Promise<ProdutoDoEsto
     Number(s.current_stock) > 0 || Number(s.current_rendimento ?? 0) > 0))
 }
 
-/** C76: a lista de fornecedores da rede, sem os arquivados (eles saem das opções). */
-export async function fornecedoresDaRede(tenantId: string): Promise<{ id: string; nome: string }[]> {
-  return (await todosOsFornecedores(tenantId)).filter(f => !f.arquivado).map(({ id, nome }) => ({ id, nome }))
+/**
+ * C76: a lista de fornecedores das opções, sem os arquivados. As duas telas de
+ * estoque leem `todosOsFornecedores` uma vez (a janela de Fornecedores mostra os
+ * arquivados — A12 da 14ª) e tiram daqui a lista dos seletores.
+ */
+export function fornecedoresAtivos(todos: { id: string; nome: string; arquivado: boolean }[]): { id: string; nome: string }[] {
+  return todos.filter(f => !f.arquivado).map(({ id, nome }) => ({ id, nome }))
 }
 
 /** C76: a lista inteira, com os arquivados — para a janela de Fornecedores. */

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import {
   situacaoDoEstoque, estoqueBaixo, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO,
+  minimoEhDoCadastro, rotuloDoMinimo,
 } from './situacao'
 
 /**
@@ -27,7 +28,7 @@ export interface ItemAbaixoDoMinimo {
 type Num = number | string
 type Linha = {
   product_id: string; current_stock: Num; min_stock: Num; current_rendimento: Num | null; branch_id: string
-  products: { name: string; is_active: boolean; unit: string; consumption_unit: string | null; units_per_package: Num | null } | null
+  products: { name: string; is_active: boolean; unit: string; consumption_unit: string | null; units_per_package: Num | null; min_stock: Num | null } | null
   branches: { name: string; slug: string } | null
 }
 
@@ -35,7 +36,7 @@ export async function itensAbaixoDoMinimo(branchIds: string[], limite = 20): Pro
   if (!branchIds.length) return []
   const admin = createAdminClient()
   const linhas = await lerTodas<Linha>((de, ate) => admin.from('branch_product_stock')
-    .select('product_id, current_stock, min_stock, current_rendimento, branch_id, products!inner(name, is_active, unit, consumption_unit, units_per_package), branches(name, slug)')
+    .select('product_id, current_stock, min_stock, current_rendimento, branch_id, products!inner(name, is_active, unit, consumption_unit, units_per_package, min_stock), branches(name, slug)')
     .in('branch_id', branchIds)
     .gt('min_stock', 0)
     .eq('products.is_active', true)
@@ -55,7 +56,8 @@ export async function itensAbaixoDoMinimo(branchIds: string[], limite = 20): Pro
       branchName:  s.b.branches?.name ?? '—',
       branchSlug:  s.b.branches?.slug ?? '',
       saldo:       formatarQuantidadeComUnidade(saldoParaMostrar(s.saldo, s.medidas)),
-      minimo:      formatarQuantidadeComUnidade(minimoParaMostrar(s.saldo, s.medidas)),
+      // A15 da 14ª: o mínimo herdado do cadastro diz "(do cadastro)", como no Estoque.
+      minimo:      rotuloDoMinimo(minimoParaMostrar(s.saldo, s.medidas), minimoEhDoCadastro(s.saldo.minimo, s.b.products?.min_stock != null ? Number(s.b.products.min_stock) : null)),
       situacao:    ROTULO_DA_SITUACAO[s.situacao],
     }))
 }

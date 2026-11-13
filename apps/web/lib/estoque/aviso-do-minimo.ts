@@ -4,6 +4,7 @@ import { gravar, lerTodas } from '@/lib/db'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 import {
   situacaoDoEstoque, estoqueBaixo, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO,
+  minimoEhDoCadastro, rotuloDoMinimo,
 } from './situacao'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -32,11 +33,11 @@ export async function avisarEstoqueMinimo(admin: Admin, opcoes: { tenantId?: str
   type Linha = {
     product_id: string; branch_id: string; current_stock: Num; min_stock: Num; current_rendimento: Num | null
     minimo_avisado_em: string | null
-    products: { name: string; unit: string; consumption_unit: string | null; units_per_package: Num | null; tenant_id: string } | null
+    products: { name: string; unit: string; consumption_unit: string | null; units_per_package: Num | null; tenant_id: string; min_stock: Num | null } | null
   }
   const linhas = await lerTodas<Linha>((de, ate) => {
     let q = admin.from('branch_product_stock')
-      .select('product_id, branch_id, current_stock, min_stock, current_rendimento, minimo_avisado_em, products!inner(name, unit, consumption_unit, units_per_package, tenant_id, is_active)')
+      .select('product_id, branch_id, current_stock, min_stock, current_rendimento, minimo_avisado_em, products!inner(name, unit, consumption_unit, units_per_package, tenant_id, is_active, min_stock)')
       .gt('min_stock', 0)
       .eq('products.is_active', true)
     if (opcoes.tenantId) q = q.eq('products.tenant_id', opcoes.tenantId)
@@ -71,7 +72,8 @@ export async function avisarEstoqueMinimo(admin: Admin, opcoes: { tenantId?: str
 
     const produto = l.products?.name ?? 'Produto'
     const textoDoSaldo = formatarQuantidadeComUnidade(saldoParaMostrar(saldo, medidas))
-    const textoDoMinimo = formatarQuantidadeComUnidade(minimoParaMostrar(saldo, medidas))
+    // A15 da 14ª: o mínimo herdado do cadastro diz "(do cadastro)", como na tela.
+    const textoDoMinimo = rotuloDoMinimo(minimoParaMostrar(saldo, medidas), minimoEhDoCadastro(saldo.minimo, l.products?.min_stock != null ? Number(l.products.min_stock) : null))
     await notificarInteressados(admin,
       // Sem envolvido direto: estoque não é "de" ninguém. E sem ator: o saldo
       // pode ter caído por um atendimento de terceiros.

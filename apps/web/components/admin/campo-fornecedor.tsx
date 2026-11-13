@@ -16,7 +16,7 @@ const chave = (v: string) => v.trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt
  * (`nomeId`). A Entrada, o estoque inicial e o cadastro do produto usam este.
  */
 export function CampoFornecedor({
-  id, rotulo = 'Fornecedor', fornecedores, inicial, nomeId = 'fornecedor_id', nomeTexto = 'fornecedor',
+  id, rotulo = 'Fornecedor', fornecedores, inicial, nomeId = 'fornecedor_id', nomeTexto = 'fornecedor', dica,
 }: {
   id:           string
   rotulo?:      string
@@ -25,6 +25,11 @@ export function CampoFornecedor({
   inicial?:     { id?: string | null; nome?: string | null }
   nomeId?:      string
   nomeTexto?:   string
+  /**
+   * A14 da 14ª (princípio 7): o cadastro do produto tem DOIS fornecedores — o
+   * de costume e o desta entrada — e nada dizia a diferença. A dica, embaixo.
+   */
+  dica?:        { tipo: 'costume' | 'entrada'; texto: string }
 }) {
   const [escolha, setEscolha] = useState<string>(() => {
     if (inicial?.id && fornecedores.some(f => f.id === inicial.id)) return inicial.id
@@ -47,6 +52,9 @@ export function CampoFornecedor({
         <input name={nomeTexto} type="text" maxLength={120} className="field" required autoFocus={!inicial?.nome}
           aria-label="Nome do novo fornecedor" placeholder="Nome do novo fornecedor"
           value={novo} onChange={e => setNovo(e.target.value)} />
+      )}
+      {dica && (
+        <p data-dica-fornecedor={dica.tipo} style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{dica.texto}</p>
       )}
     </div>
   )

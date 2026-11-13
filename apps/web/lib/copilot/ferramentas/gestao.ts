@@ -7,7 +7,7 @@ import { rotaOportunidade } from '@/lib/rotas'
 import { loteVencido } from '@/lib/estoque/validade'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
-import { formatarQuantidade } from '@/lib/estoque/situacao'
+import { formatarQuantidade, minimoEhDoCadastro } from '@/lib/estoque/situacao'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, UUID, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 
@@ -103,7 +103,7 @@ export const lancamentos: FerramentaDeLeitura<{
  * UI"), não o `current_stock`, que conta a embalagem aberta inteira ("2
  * frasco"); a medida no plural.
  */
-type MedidasLidas = { unit: string | null; consumption_unit: string | null; units_per_package: number | string | null }
+type MedidasLidas = { unit: string | null; consumption_unit: string | null; units_per_package: number | string | null; min_stock?: number | string | null }
 function saldoDaPrateleira(l: { current_stock: number; current_rendimento: number | null }, p: MedidasLidas): string {
   const rende = p.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 0
   const un = p.unit ?? ''
@@ -115,7 +115,9 @@ function saldoDaPrateleira(l: { current_stock: number; current_rendimento: numbe
 function minimoNaRegua(minimo: number, p: MedidasLidas): string {
   const rende = p.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 0
   const un = p.unit ?? ''
-  return `${formatarQuantidade(minimo)} ${medidaNoPlural(un, minimo)}${rende ? ` (${formatarQuantidade(minimo * rende)} ${p.consumption_unit})` : ''}`.trim()
+  // A15 da 14ª: o mínimo herdado do cadastro do produto diz "(do cadastro)", como a tela.
+  const doCadastro = minimoEhDoCadastro(minimo, p.min_stock != null ? Number(p.min_stock) : null) ? ' (do cadastro)' : ''
+  return `${formatarQuantidade(minimo)} ${medidaNoPlural(un, minimo)}${rende ? ` (${formatarQuantidade(minimo * rende)} ${p.consumption_unit})` : ''}`.trim() + doCadastro
 }
 
 export const estoque: FerramentaDeLeitura<{
@@ -172,7 +174,7 @@ export const estoque: FerramentaDeLeitura<{
       // O rendimento e as medidas de cada linha, para dizer o saldo como a tela.
       const ids = [...new Set(criticos.map(l => l.product_id))]
       const extras = ids.length ? ((await ler(c.admin.from('branch_product_stock')
-        .select('product_id, branch_id, current_rendimento, products!inner(unit, consumption_unit, units_per_package, tenant_id)')
+        .select('product_id, branch_id, current_rendimento, products!inner(unit, consumption_unit, units_per_package, tenant_id, min_stock)')
         .in('product_id', ids).in('branch_id', unidades).eq('products.tenant_id', c.ctx.tenantId!), 'ler o rendimento do estoque crítico') as unknown as
         { product_id: string; branch_id: string; current_rendimento: number | null; products: MedidasLidas }[] | null) ?? []) : []
       const extra = new Map(extras.map(e => [`${e.product_id}:${e.branch_id}`, e]))
@@ -193,7 +195,7 @@ export const estoque: FerramentaDeLeitura<{
     }
 
     let q = c.admin.from('branch_product_stock')
-      .select('current_stock, current_rendimento, min_stock, branch_id, products!inner(id, name, unit, consumption_unit, units_per_package, tenant_id, is_active)')
+      .select('current_stock, current_rendimento, min_stock, branch_id, products!inner(id, name, unit, consumption_unit, units_per_package, tenant_id, is_active, min_stock)')
       .in('branch_id', unidades).eq('products.tenant_id', c.ctx.tenantId!).eq('products.is_active', true)
       .order('current_stock').limit(60)
     if (filtro === 'produto') {

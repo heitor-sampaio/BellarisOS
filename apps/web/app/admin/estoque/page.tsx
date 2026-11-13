@@ -16,7 +16,7 @@ import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativa
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
-import { produtosDoEstoque, todosOsFornecedores, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
+import { produtosDoEstoque, todosOsFornecedores, fornecedoresAtivos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
 import { catalogoDaRede } from '@/lib/estoque/catalogo'
 import { FornecedoresModal } from '@/components/admin/fornecedores-modal'
 import { CatalogoDeProdutosLinha } from '@/components/admin/catalogo-de-produtos'
@@ -179,7 +179,7 @@ export default async function AdminEstoquePage({
   // A36 da 10ª: o "Ver lotes esgotados" só onde há algum.
   const comLoteEsgotado = productIds.length > 0 ? await paresComLoteEsgotado(admin, unidadesDoRecorte) : []
 
-  const fornecedoresAtivos = fornecedores.filter(f => !f.arquivado).map(({ id, nome }) => ({ id, nome }))
+  const ativos = fornecedoresAtivos(fornecedores)
   const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()
 
   return (
@@ -210,7 +210,7 @@ export default async function AdminEstoquePage({
           {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
           {canEdit && products.length > 0 && (
             <StockProductModal
-              fornecedores={fornecedoresAtivos}
+              fornecedores={ativos}
               categories={categories}
               branches={ativas}
               trigger={
@@ -295,7 +295,7 @@ export default async function AdminEstoquePage({
         branches={branches}
         categories={stockCategories}
         productCategories={categories as { id: string; name: string }[]}
-        fornecedores={fornecedoresAtivos}
+        fornecedores={ativos}
         unidadeInicial={unidadeId}
         readOnly={!canEdit}
         podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}

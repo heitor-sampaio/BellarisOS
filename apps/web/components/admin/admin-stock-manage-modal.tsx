@@ -15,6 +15,7 @@ import { MOTIVOS_DA_PERDA } from '@/lib/estoque/perda'
 import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
 import { medidaNoPlural as pl } from '@/lib/estoque/medidas'
+import { minimoEhDoCadastro } from '@/lib/estoque/situacao'
 import { lerNotaDaEntradaAnterior, guardarNotaDaEntrada } from '@/lib/estoque/nota-da-entrada'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -61,7 +62,8 @@ interface Props {
   defaultBranchId?: string
   /**
    * A unidade filtrada na tela (F72): a origem já escolhida da transferência —
-   * o "Transferir o estoque" da janela de desativar chega aqui.
+   * o "Transferir o estoque" da janela de desativar chega aqui. E a unidade já
+   * marcada na Entrada, no Ajuste e na Perda (A16 da 14ª).
    */
   origemSugerida?: string
   /** C76: a lista de fornecedores da rede. */
@@ -107,6 +109,14 @@ function UnitSuffix({ unit }: { unit: string }) {
 
 /** A única unidade da lista, ou vazio quando há escolha a fazer. */
 const unicaUnidade = (lista: { id: string }[]) => lista.length === 1 ? lista[0]!.id : ''
+/**
+ * A unidade que já vem marcada (A16 da 14ª, princípio 7): com a tela filtrada
+ * numa unidade (`?unidade=`), a Entrada, o Ajuste e a Perda já vêm com ela —
+ * a dona filtrava a Pampulha e tinha de escolher a Pampulha de novo. Fora da
+ * lista (a desativada, na Entrada), vale a regra de sempre: a única, ou nenhuma.
+ */
+const unidadeSugerida = (lista: { id: string }[], sugerida?: string) =>
+  sugerida && lista.some(b => b.id === sugerida) ? sugerida : unicaUnidade(lista)
 
 function BranchSelect({
   name, branches, allBranches, label, required, onChange, defaultValue,
@@ -138,9 +148,11 @@ function BranchSelect({
 }
 
 // -- Formulário: Entrada -----------------------------------------------
-function EntradaForm({ product, allBranches, defaultBranchId, fornecedores = [], onClose, onSuccess }: {
+function EntradaForm({ product, allBranches, defaultBranchId, sugerida, fornecedores = [], onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
   defaultBranchId?: string
+  /** A unidade do filtro da tela (A16 da 14ª). */
+  sugerida?: string
   fornecedores?: FornecedorDaLista[]
   onClose: () => void; onSuccess: () => void
 }) {
@@ -185,7 +197,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, fornecedores = [],
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
         <BranchSelect name="branchId" branches={product.branches} allBranches={soAtivas(allBranches)}
-          label="Unidade de destino" required />
+          label="Unidade de destino" required defaultValue={unidadeSugerida(soAtivas(allBranches), sugerida)} />
       )}
 
       {/* A37 da 10ª: a Entrada diz a regra, como a Perda (D13 revisto, decisão do
@@ -240,7 +252,8 @@ function EntradaForm({ product, allBranches, defaultBranchId, fornecedores = [],
         <CampoFornecedor id="entrada-fornecedor" fornecedores={fornecedores}
           inicial={notaAnterior?.fornecedor
             ? { nome: notaAnterior.fornecedor }
-            : { id: product.fornecedorId ?? null, nome: product.supplier ?? null }} />
+            : { id: product.fornecedorId ?? null, nome: product.supplier ?? null }}
+          dica={{ tipo: 'entrada', texto: 'Vale só desta entrada; fica no histórico e no lote. O de costume é o do cadastro do produto.' }} />
         <FieldWrap>
           <Label htmlFor="entrada-nota">Nota fiscal</Label>
           <input id="entrada-nota" name="nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota"
@@ -377,16 +390,17 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, origemSugeri
 }
 
 // -- Formulário: Ajuste ------------------------------------------------
-function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess }: {
+function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
   defaultBranchId?: string
+  sugerida?: string
   onClose: () => void; onSuccess: () => void
 }) {
   // C24: a chave do envio — o duplo clique ajusta uma vez só.
   const envio = useEnvioUnico()
   const [error,     setError]     = useState<string>()
   const [pending,   setPending]   = useState(false)
-  const [branchId,  setBranchId]  = useState(defaultBranchId ?? unicaUnidade(allBranches))
+  const [branchId,  setBranchId]  = useState(defaultBranchId ?? unidadeSugerida(allBranches, sugerida))
   const [newQty,    setNewQty]    = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [loteDoAjuste, setLoteDoAjuste] = useState('')
@@ -466,7 +480,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
       {defaultBranchId ? (
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
-        <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches}
+        <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches} defaultValue={branchId}
           label="Unidade" required onChange={id => { setBranchId(id); setConfirmed(false) }} />
       )}
 
@@ -645,15 +659,16 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
 // D-7 (decisão do Heitor): o que saiu por vencido, quebrou, amostra ou uso
 // interno — pelo LOTE escolhido (o vencido sai dele, não do que vence
 // primeiro) e SEM despesa. A quantidade é em embalagens, como a entrada.
-function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }: {
+function PerdaForm({ product, allBranches, defaultBranchId, sugerida, onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
   defaultBranchId?: string
+  sugerida?: string
   onClose: () => void; onSuccess: () => void
 }) {
   const envio = useEnvioUnico()
   const [error,    setError]    = useState<string>()
   const [pending,  setPending]  = useState(false)
-  const [branchId, setBranchId] = useState(defaultBranchId ?? unicaUnidade(allBranches))
+  const [branchId, setBranchId] = useState(defaultBranchId ?? unidadeSugerida(allBranches, sugerida))
   const lotes = (product.lotes ?? []).filter(l => l.unidadeId === branchId)
   // est-03: com unidade de consumo, a perda também se digita nela ("30 UI").
   const rende = product.consumptionUnit && Number(product.unitsPerPackage) > 0 ? Number(product.unitsPerPackage) : null
@@ -695,7 +710,7 @@ function PerdaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }
       {defaultBranchId ? (
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
-        <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches}
+        <BranchSelect name="branchId" branches={product.branches} allBranches={allBranches} defaultValue={branchId}
           label="Unidade" required onChange={setBranchId} />
       )}
 
@@ -832,6 +847,12 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
                   Ainda sem estoque nesta unidade: vale o mínimo do cadastro do produto ({product.minimoDoCadastro!.toLocaleString('pt-BR')} {pl(product.unit, product.minimoDoCadastro!)}).
                 </p>
               )}
+              {/* A15 da 14ª: a linha diz "(do cadastro)"; aqui, o mesmo, dito por extenso. */}
+              {bs && minimoEhDoCadastro(Number(bs.minStock), product.minimoDoCadastro) && (
+                <p data-minimo-igual-ao-cadastro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
+                  O mesmo do cadastro do produto. Mudar aqui vale só nesta unidade.
+                </p>
+              )}
             </div>
 
             {/* Input */}
@@ -964,7 +985,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
 
       <div style={{ padding: '20px 22px 26px' }}>
         {somenteEntrada ? (
-          <EntradaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />
+          <EntradaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />
         ) : tab === 'movimentacoes' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Sub-tabs de operação */}
@@ -988,10 +1009,10 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
               ))}
             </div>
 
-            {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />}
+            {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'transferencia' && <TransferenciaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} origemSugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
-            {movOp === 'ajuste'        && <AjusteForm        product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
-            {movOp === 'perda'         && <PerdaForm         product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
+            {movOp === 'ajuste'        && <AjusteForm        product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
+            {movOp === 'perda'         && <PerdaForm         product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
           </div>
         ) : tab === 'historico' ? (
           <HistoricoTab product={product} defaultBranchId={defaultBranchId} onAlterou={() => router.refresh()} />
@@ -1184,6 +1205,12 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
                   style={{ marginTop: 4, fontSize: 'var(--text-2xs)', padding: '2px 6px', color: 'var(--danger)', fontWeight: 700 }}>
                   Desfazer perda
                 </button>
+              )}
+              {/* A13 da 14ª: a perda sem o botão diz por quê. */}
+              {m.perdaSemDesfazer && podeDesfazer && (
+                <p data-sem-desfazer style={{ marginTop: 4, fontSize: 'var(--text-overline)', color: 'var(--text-muted)', maxWidth: 220, marginLeft: 'auto' }}>
+                  {m.perdaSemDesfazer}
+                </p>
               )}
             </div>
           </div>

@@ -36,7 +36,7 @@ import { getClientesParaReativarDoRecorte, getClientesAtivos } from '@/lib/metri
 import { differenceInDays } from 'date-fns'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
 import type { LoteNoDashboard } from '@/components/shared/lotes-vencendo'
-import { situacaoDoEstoque, estoqueBaixo, contarSituacoes, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO } from '@/lib/estoque/situacao'
+import { situacaoDoEstoque, estoqueBaixo, contarSituacoes, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO, minimoEhDoCadastro, rotuloDoMinimo } from '@/lib/estoque/situacao'
 
 
 
@@ -50,7 +50,7 @@ type PlanoPendente = {
 }
 type SaldoLido = {
   product_id: string; current_stock: Num; min_stock: Num; current_rendimento: Num | null; branch_id: string
-  products: { name: string; is_active: boolean; unit: string; consumption_unit: string | null; units_per_package: Num | null } | null
+  products: { name: string; is_active: boolean; unit: string; consumption_unit: string | null; units_per_package: Num | null; min_stock?: Num | null } | null
   branches: { name: string; slug: string } | null
 }
 
@@ -273,7 +273,7 @@ export default async function AdminDashboardPage({
     // sumiam: "Estoque Saudável" com o Gel em −1.
     Promise.all([
       lerTodas((de, ate) => admin.from('branch_product_stock')
-        .select('product_id, current_stock, min_stock, current_rendimento, branch_id, products(name, is_active, unit, consumption_unit, units_per_package), branches(name, slug)')
+        .select('product_id, current_stock, min_stock, current_rendimento, branch_id, products(name, is_active, unit, consumption_unit, units_per_package, min_stock), branches(name, slug)')
         .in('branch_id', branchIds)
         .order('current_stock', { ascending: true }).order('product_id').order('branch_id')
         .range(de, ate), 'carregar os saldos de estoque'),
@@ -393,7 +393,8 @@ export default async function AdminDashboardPage({
       branchName:   s.b.branches?.name ?? '—',
       branchSlug:   s.b.branches?.slug ?? '',
       saldo:        formatarQuantidadeComUnidade(saldoParaMostrar(s.saldo, s.medidas)),
-      minimo:       formatarQuantidadeComUnidade(minimoParaMostrar(s.saldo, s.medidas)),
+      // A15 da 14ª: o mínimo herdado do cadastro diz "(do cadastro)", como no Estoque.
+      minimo:       rotuloDoMinimo(minimoParaMostrar(s.saldo, s.medidas), minimoEhDoCadastro(s.saldo.minimo, s.b.products?.min_stock != null ? Number(s.b.products.min_stock) : null)),
       situacao:     ROTULO_DA_SITUACAO[s.situacao],
     }))
 

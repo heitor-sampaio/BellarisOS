@@ -315,7 +315,8 @@ function ProductFields({
         {/* C76: o fornecedor de costume vem da lista da rede, com "+ Novo fornecedor". */}
         <CampoFornecedor id={id('fornecedor')} rotulo="Fornecedor de costume" fornecedores={fornecedores}
           nomeId="fornecedor_id" nomeTexto="supplier"
-          inicial={{ id: product?.fornecedor_id ?? null, nome: product?.supplier ?? null }} />
+          inicial={{ id: product?.fornecedor_id ?? null, nome: product?.supplier ?? null }}
+          dica={{ tipo: 'costume', texto: 'De quem a clínica costuma comprar: vem sugerido nas próximas entradas.' }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <Label htmlFor={id('minimo')}>Estoque mínimo</Label>
           <input id={id('minimo')} name="min_stock" type="number" step="0.001" min="0" className="field"
@@ -453,7 +454,8 @@ function ProductFields({
               <div className="form-2col">
                 <CampoFornecedor id={id('fornecedor-inicial')} rotulo="Fornecedor desta entrada" fornecedores={fornecedores}
                   nomeId="initial_fornecedor_id" nomeTexto="initial_fornecedor"
-                  inicial={{ id: product?.fornecedor_id ?? null, nome: product?.supplier ?? null }} />
+                  inicial={{ id: product?.fornecedor_id ?? null, nome: product?.supplier ?? null }}
+                  dica={{ tipo: 'entrada', texto: 'De quem veio este estoque inicial: vale só desta entrada; fica no histórico e no lote.' }} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <Label htmlFor={id('nota')}>Nota fiscal</Label>
                   <input id={id('nota')} name="initial_nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota" />

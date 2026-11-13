@@ -66,6 +66,21 @@ export function minimoParaMostrar(s: SaldoDaUnidade, p: MedidasDoProduto): Quant
   return { quantidade: s.minimo * upp, unidade: p.consumption_unit!.trim() }
 }
 
+/**
+ * O mínimo da unidade é o do CADASTRO do produto (A15 da 14ª, princípio 3)?
+ * A linha da unidade nasce com o mínimo do cadastro (`trg_bps_minimo_do_produto`,
+ * D11 da 12ª) e a unidade pode ter o dela; a tela diz qual dos dois vale. Igual
+ * ao do cadastro e acima de zero é "do cadastro" — sem mínimo, não há o que dizer.
+ */
+export function minimoEhDoCadastro(minimoDaUnidade: number, minimoDoCadastro: number | null | undefined): boolean {
+  return minimoDoCadastro != null && minimoDaUnidade > 0 && Number(minimoDaUnidade) === Number(minimoDoCadastro)
+}
+
+/** O mínimo como a tela o escreve: "5 seringas (do cadastro)" ou "3 seringas". Todo lugar que mostra o mínimo passa por aqui. */
+export function rotuloDoMinimo(q: Quantidade, doCadastro: boolean): string {
+  return `${formatarQuantidadeComUnidade(q)}${doCadastro ? ' (do cadastro)' : ''}`
+}
+
 /** A equivalência EXATA em embalagens (268 UI = 2,68 frasco) — nulo sem unidade de consumo. */
 export function emEmbalagens(quantidadeEmConsumo: number, p: MedidasDoProduto): Quantidade | null {
   const upp = rendePorEmbalagem(p)

@@ -17,7 +17,8 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
-import { produtosDoEstoque, fornecedoresDaRede, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
+import { produtosDoEstoque, todosOsFornecedores, fornecedoresAtivos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
+import { FornecedoresModal } from '@/components/admin/fornecedores-modal'
 import { catalogoDaRede, recusaDoCatalogo } from '@/lib/estoque/catalogo'
 import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 
@@ -52,9 +53,9 @@ export default async function BranchStockPage({
   // Produtos e categorias em paralelo
   // Por `ler`: consulta que falha PARA, em vez de virar um estoque vazio.
   // C26: os produtos em páginas; D1: o desativado com saldo continua (lib/estoque/produtos-da-tela).
-  const [raw, fornecedores, catalogo, categoriesRaw] = await Promise.all([
+  const [raw, todosFornecedores, catalogo, categoriesRaw] = await Promise.all([
     produtosDoEstoque(ctx.tenantId!),
-    fornecedoresDaRede(ctx.tenantId!),
+    todosOsFornecedores(ctx.tenantId!),
     catalogoDaRede(admin, ctx.tenantId!),
     ler(admin
       .from('product_categories')
@@ -62,6 +63,8 @@ export default async function BranchStockPage({
       .eq('tenant_id', ctx.tenantId!)
       .order('name'), 'carregar as categorias'),
   ])
+  // Os ativos são a lista dos seletores; a janela de Fornecedores mostra também os arquivados.
+  const fornecedores = fornecedoresAtivos(todosFornecedores)
 
   // Normaliza — filtra estoque apenas desta filial
   // D1: o desativado só aparece onde ainda tem saldo — nesta unidade.
@@ -198,6 +201,8 @@ export default async function BranchStockPage({
         {!readOnly && (
           <div style={{ display: 'flex', gap: 8 }}>
             {mexeNaConfigDaClinica(ctx) && <ProductCategoryModal categories={categories} />}
+            {/* A12 da 14ª: os Fornecedores ao lado das Categorias, como no /admin (C76) — para quem é da rede. */}
+            {mexeNaConfigDaClinica(ctx) && <FornecedoresModal fornecedores={todosFornecedores} />}
             {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
             {products.length > 0 && podeEditarProduto && (
               <StockProductModal

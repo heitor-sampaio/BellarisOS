@@ -828,6 +828,12 @@ export interface MovimentoDeEstoque {
    * O banco confere de novo (estoque_desfazer_perda).
    */
   perdaDesfazivel: boolean
+  /**
+   * A13 da 14ª (princípio 3): a perda que NÃO se desfaz diz por quê — só a
+   * última de cada unidade se desfaz (C69), e as outras ficavam sem botão e
+   * sem explicação. Nulo quando há o botão (ou não é perda).
+   */
+  perdaSemDesfazer: string | null
   /** C23: o brinde entregue pela fidelidade (o ajuste do voucher) — não é "Ajuste manual". */
   brinde: boolean
 }
@@ -1001,6 +1007,9 @@ export async function getProductMovements(
     ajusteDesfazivel: ajusteDesfazivel(m),
     desfazAjuste: desfazimentos.has(m.id),
     perdaDesfazivel: ultimaPerda.get(m.branch_id) === m.id,
+    perdaSemDesfazer: m.type === 'LOSS' && Number(m.quantity) < 0 && !m.desfeita_em && ultimaPerda.get(m.branch_id) !== m.id
+      ? 'Só a perda mais nova de cada unidade se desfaz: para desfazer esta, desfaça antes as mais novas desta unidade.'
+      : null,
     brinde: m.type === 'MANUAL_ADJUSTMENT' && (m.reference ?? '').startsWith('voucher:'),
   }))
 }
