@@ -58,7 +58,7 @@ superfícies em volta. A ordem é do Heitor.
 | Plano de tratamento | `treatment_plans` | ⬜ (já tem itens, vindos de Pacotes: PC7–PC9) |
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
-| Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | 🟡 (ver "Vendas: o PDV e as comandas") |
+| Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ o PDV (ver "Vendas: o PDV e as comandas"); recebimentos e fechamento do dia ⬜ |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ⬜ |
@@ -508,7 +508,7 @@ esquerda."
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Clientes".
 
-## Vendas: o PDV e as comandas 🟡
+## Vendas: o PDV e as comandas ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -565,14 +565,37 @@ mais se aproxima é o "A receber" do Financeiro e o Fechamento do dia.
 - **PDV-P3, respondida (o Heitor, 13/11):** "O vender da ficha sai e o do
   inbox ele pode sair, ele pode levar pro PDV, tá? Porque só vende pelo PDV."
   O "Vender" da ficha sai; o do inbox vira o caminho para o PDV.
-- **PDV-P4.** Os casos que a confirmação não cobre:
-  (a) o atendimento que acontece sem o agendamento ter sido confirmado (a
-  cliente chega e é atendida): a comanda aparece quando?
-  (b) a FALTA (não veio, sem cancelar): a comanda sai como no cancelamento?
-  (c) a remarcação pela equipe volta o agendamento a Agendado (H3): a
-  comanda sai do PDV até confirmar de novo, ou fica?
-  (d) o plano de tratamento: a comanda dele aparece quando a cliente aceita
-  o plano?
+- **PDV-P4, respondida (o Heitor, 13/11) — e ela REVÊ a P2:** "quando a
+  cliente chega na unidade, qualquer pessoa que seja de recepção ou o
+  profissional que vai atender, clica no horário dela na agenda e inicia o
+  atendimento. Quando inicia o atendimento, gera a comanda. Aí fica a
+  critério da clínica se precisa pagar primeiro ou se paga depois, que daí é
+  só a ordem que eles vão fazer qualquer coisa. E aí também já cria o
+  atendimento para profissional que vai realmente atender. A cliente que não
+  veio e ninguém cancelou, a comanda sai como no cancelamento. A remarcação
+  não faz diferença, porque daí ninguém efetivamente iniciou o atendimento,
+  só gera comanda quando inicia o atendimento. E no plano de tratamento e no
+  pacote, a comanda do plano aparece quando o cliente... Não, vai ter que ser
+  diferente. No plano de tratamento pode ser quando o cliente... Quando
+  inicia o primeiro atendimento do plano. E o pacote, ele vai ser vendido
+  como se fosse um produto. Então já faz ali na hora, porque normalmente isso
+  aí vai ser vendido até online."
+
+  Em resumo:
+  - **A comanda do atendimento nasce quando o atendimento é INICIADO** (não
+    na confirmação, como a P2 dizia): quem tem a permissão clica no horário
+    na agenda e inicia; nasce a comanda e o atendimento de quem vai atender.
+  - **Pagar antes ou depois** é só a ordem em que a unidade faz as coisas:
+    nada a configurar.
+  - **Falta e cancelamento:** nunca chegaram a iniciar, então não há comanda.
+    A remarcação não muda nada.
+  - **Plano de tratamento:** a comanda nasce ao iniciar o PRIMEIRO
+    atendimento do plano.
+  - **Pacote:** vendido como um produto, na hora, pelo PDV (e um dia online).
+
+### Bloco no plano: Vendas e PDV
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Vendas e PDV".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -670,6 +693,19 @@ revisão, só se escreve o plano. Nada se implementa.
 | CL2 | Sai o filtro "Unidade" da lista e o contador de ativas por unidade | T1 |
 | CL3 | **O portal da unidade vê todas as clientes da rede** (sai `getCachedBranchClients` pela tag; a busca "fora da unidade", A17 da 8ª, deixa de existir). Pela mesma regra, a "última visita" da lista é a da cliente na rede, não só naquela unidade | T1 |
 | — | Mantém: a página, a ficha e as abas | — |
+
+### Bloco: Vendas e PDV
+
+| # | O que muda | Depende de |
+|---|---|---|
+| PDV1 | **O PDV**: a tela de vender e de controlar as vendas e os pagamentos. Todo pagamento de venda passa por ele, seja do que for | o desenho da tela, mostrado ao Heitor antes de implementar |
+| PDV2 | **Uma venda, uma comanda**: o atendimento avulso, o pacote, o plano, a venda de produto — cada um na sua comanda | PDV1 |
+| PDV3 | **Iniciar o atendimento** (clicar no horário na agenda e iniciar, por quem tem a permissão) gera a comanda e o atendimento de quem vai atender. Pagar antes ou depois é só a ordem do trabalho. Agendar, confirmar e remarcar não geram comanda; falta e cancelamento não têm comanda | PDV2 |
+| PDV4 | **Plano de tratamento**: a comanda nasce ao iniciar o PRIMEIRO atendimento do plano. Sai o "Fechar checkout" como porta de pagamento | PDV2; **Plano de tratamento** |
+| PDV5 | **Pacote**: vendido como um produto, na hora, pelo PDV | PDV2 |
+| PDV6 | **Produto**: o PDV vende o que está marcado como Venda direta | E2 |
+| PDV7 | Sai o **"Vender" da ficha**; o do **inbox** leva ao PDV. Sai a cobrança da conclusão do atendimento como porta própria (vira a comanda) | PDV1–PDV3 |
+| — | Mantém, dentro da comanda: as formas de pagamento (à vista, entrada + parcelas, a receber, cartão em N vezes), o desconto, "Quem vendeu", o estorno e a devolução, as comissões | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
