@@ -71,7 +71,7 @@ superfícies em volta. A ordem é do Heitor.
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ✅ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ✅ (sem bloco: só o V1) |
 | Busca | `busca_universal` | ✅ |
-| Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ⬜ |
+| Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | 🟡 |
 | Site | `apps/site` | ⬜ |
 
 ## Estoque ✅
@@ -1500,6 +1500,40 @@ portais da equipe (Ctrl+K ou "/"; no celular, a lupa).
 ### Bloco no plano: Busca
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Busca".
+
+## Plataforma (sistema, suporte, assinaturas) 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/plataforma.md`. A equipe do BellarisOS, fora da rede,
+em dois apps com endereço próprio.
+- **O sistema** (admin.bellarisos.com): o painel, as redes (criar, ver,
+  bloquear), os planos, a cobrança pelo Asaas (assinaturas, faturas), a
+  equipe da plataforma, a auditoria da plataforma e as configurações. Quem
+  administra grava; quem só vê, vê.
+- **O suporte** (suporte.bellarisos.com): os chamados (a rede abre pela
+  Ajuda), a consulta e o diagnóstico de cada rede, reenviar o acesso,
+  reativar um membro e o "entrar como" — só com a rede autorizando
+  (Configurações → Suporte), sem ver o clínico e sem mandar nada à cliente;
+  o que ele faz fica registrado e a rede vê.
+- **As assinaturas**: o plano diz o que a rede USA (as funcionalidades, ligadas
+  ou não: agenda, prontuário, injetáveis, fichas, documentos, estoque, portal
+  da cliente, fidelidade, pacotes, pré-pago, planos de tratamento, inbox,
+  oportunidades, campanhas, templates, anúncios, automações, financeiro,
+  comissões, relatórios, cargos, Copilot) e os limites (unidades, membros,
+  números de WhatsApp, a cota do Copilot); o teste grátis ("tudo, menos o
+  Copilot"); os adicionais; a rede sem pagamento fica bloqueada (a tela
+  "conta suspensa").
+
+### Recomendação do Claude (aguarda o Heitor)
+
+- **PL1 — o que nasceu na revisão entra nos planos**: o **PDV** é de todo
+  plano (é por ele que entra o dinheiro, como Clientes, que não é opção); a
+  **Auditoria** também (é segurança da rede, não um extra). O resto fica.
 
 ## O PLANO DE ADAPTAÇÃO
 
