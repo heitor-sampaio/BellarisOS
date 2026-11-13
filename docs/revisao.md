@@ -58,7 +58,7 @@ superfícies em volta. A ordem é do Heitor.
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ |
 | Estoque | `stock` | 🟡 |
 | Relatórios e indicadores | `reports` | ⬜ |
-| Equipe | `team` | ⬜ |
+| Equipe | `team` | ⬜ (já tem item, vindo do Estoque: P3) |
 | Fichas (formulários, pré-atendimento) | `forms` | ⬜ |
 | Cargos e permissões | `roles` | ⬜ |
 | Configurações (rede e unidade) | `settings` | ⬜ |
@@ -129,8 +129,8 @@ Levantado no código das telas e das actions (`app/*/estoque`,
 
 | # | Diferença | Estado |
 |---|---|---|
-| E1 | **Marca não existe**: nem o cadastro de marcas com texto livre, nem o campo marca no produto | aberto |
-| E2 | **Onde está disponível**: o Heitor diz checkbox (Insumo e Venda direta); o sistema tem três opções "Insumo / Revenda / Os dois", e chama de "Revenda" | aberto |
+| E1 | **Marca não existe**: nem o cadastro de marcas com texto livre, nem o campo marca no produto | **Decidido:** cadastro de marcas com texto livre (lista do Heitor); a marca se escolhe na ENTRADA, não no produto (E10) |
+| E2 | **Onde está disponível**: o Heitor diz checkbox (Insumo e Venda direta); o sistema tem três opções "Insumo / Revenda / Os dois", e chama de "Revenda" | **Decidido:** "checkbox" — Insumo e Venda direta |
 | E3 | **Fornecedor sem autocomplete**: é lista suspensa com "+ Novo fornecedor" | **Decidido** no E6 |
 
 ### O sistema faz e não está na lista do Heitor (ele decide se fica)
@@ -148,21 +148,22 @@ Levantado no código das telas e das actions (`app/*/estoque`,
 | E12 | Nome repetido avisa e pede confirmação | **Decidido:** ok, mantém |
 | E13 | A regra "quem cadastra produto" (só a rede × as unidades também) | **Decidido:** "Quem cadastra é só quem tem permissão de gerenciar. Se for pessoa de uma unidade especifica, unidade vem pré-preenchida e não pode ser mudada. Se a pessoa tiver mais de uma unidade, a lista mostra apenas as unidades dela." (ver a pergunta P3) |
 
-### Perguntas em aberto (o Claude, sobre as decisões de 13/11)
+### Perguntas respondidas (13/11)
 
-- **P1 (E4):** "gerenciar/rede" é Gerenciar no Estoque **e** ser da rede, ou
-  Gerenciar **ou** ser da rede? Hoje é o primeiro: quem tem unidade fixa,
-  mesmo com Gerenciar, não mexe em categoria. E vale o mesmo para marca e
-  fornecedor? O E5 diz só "gerenciar".
-- **P2 (E10 × a lista):** a lista do Heitor põe "marca e fornecedor com
-  autocomplete" no cadastro do PRODUTO. O E10 diz que fornecedor e marca se
-  escolhem na ENTRADA. O produto tem marca e fornecedor, ou só a entrada tem?
-- **P3 (E13):** hoje um membro é da rede (todas as unidades) ou de UMA
-  unidade (`users.branch_id`). Não existe "pessoa com mais de uma unidade"
-  no acesso. A única lista de várias unidades por pessoa é o "Atende"
-  (`atende_em`), que não é permissão. O que define "as unidades dela"?
-- **E2** ainda sem decisão: checkbox Insumo / Venda direta × as três opções
-  de hoje.
+- **P1 (E4):** "quer dizer que só pode alterar quem tem permissão de
+  gerenciar". **P1 (E5):** "ta bem claro, é só quem tem permissão de
+  gerenciar, mesma regra para categoria, marca e fornecedor". Ou seja: ser
+  da rede NÃO conta. Hoje conta (H7): quem tem unidade fixa, mesmo com
+  Gerenciar, é recusado em categoria e em renomear/arquivar fornecedor.
+- **P2 (E10):** "marca e fornecedor só na entrada". O cadastro do PRODUTO
+  não tem marca nem fornecedor. Isto corrige a lista do começo, que os punha
+  no produto.
+- **P3 (E13):** "No cadastro da equipe, permitir linkar a pessoa em mais de
+  uma unidade, \"atende\" é um checkbox que permite que ela faça
+  atendimentos". Vai para a revisão da **Equipe**: hoje a pessoa é da rede ou
+  de UMA unidade, e o "Atende" é uma lista de unidades (decisão 2 da 8ª
+  simulação: "o atende vira um checklist com todas as unidades").
+- **E2:** "checkbox".
 
 ## O que já estava pendente, para entrar no módulo dele
 
