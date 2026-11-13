@@ -69,7 +69,7 @@ superfícies em volta. A ordem é do Heitor.
 | Copilot | `copilot` | ⏸ por último (a regra: acompanha tudo) |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ✅ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ✅ |
-| WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | 🟡 |
+| WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ✅ (sem bloco: só o V1) |
 | Busca | `busca_universal` | ⬜ |
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ⬜ |
 | Site | `apps/site` | ⬜ |
@@ -1442,11 +1442,11 @@ pessoa em várias redes, com o seletor na entrada.
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Portal da cliente".
 
-## WhatsApp e avisos (push) 🟡
+## WhatsApp e avisos (push) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+"Pode fechar" — fica como está.
 
 ### O que faz hoje (levantamento)
 
