@@ -100,6 +100,9 @@ export function PlanejamentoTratamento({
   const [carregando, setCarregando] = useState(!!idPedido)
   const [salvando,  setSalvando]   = useState(false)
   const [erro,      setErro]       = useState<string | null>(null)
+  // A24 da 14ª: o erro do "Aceitar plano" (e do "Cliente vai pensar", e do
+  // "Fechar checkout") aparece JUNTO do botão — no topo, a Débora não o via.
+  const [erroDoBotao, setErroDoBotao] = useState<string | null>(null)
   const [checkout,  setCheckout]   = useState<CheckoutPlan | null>(null)
 
   // Vínculo com cliente — um plano pode nascer só com nome e ganhar dono depois.
@@ -114,7 +117,7 @@ export function PlanejamentoTratamento({
   async function salvarOQueEstaNaTela(): Promise<boolean> {
     if (!aberto || !editorRef.current) return true
     const res = await salvarPlanoDoCliente(aberto.id, editorRef.current.getSessions(), editorRef.current.getNotes())
-    if (res.error) { setErro(res.error); return false }
+    if (res.error) { setErroDoBotao(res.error); return false }
     return true
   }
 
@@ -150,7 +153,7 @@ export function PlanejamentoTratamento({
       // aconteceu no clique, e reagir aqui apagaria o que o pai não pediu.
       if (controlado) setAberto(null)
     } else if (aberto?.id !== idPedido) {
-      setErro(null); setCarregando(true)
+      setErro(null); setErroDoBotao(null); setCarregando(true)
     }
   }
 
@@ -180,7 +183,7 @@ export function PlanejamentoTratamento({
   }
 
   async function abrirPlano(planId: string) {
-    setErro(null); setCarregando(true)
+    setErro(null); setErroDoBotao(null); setCarregando(true)
     aplicarPlano(await getPlanoParaEditar(planId))
   }
 
@@ -219,11 +222,11 @@ export function PlanejamentoTratamento({
 
   async function enviarParaRecepcao() {
     if (!aberto) return
-    setErro(null); setSalvando(true)
+    setErro(null); setErroDoBotao(null); setSalvando(true)
     if (aberto.status === 'DRAFT' && !(await salvarOQueEstaNaTela())) { setSalvando(false); return }
     const res = await proposeTreatmentPlan(aberto.id, slug)
     setSalvando(false)
-    if (res.error) { setErro(res.error); return }
+    if (res.error) { setErroDoBotao(res.error); return }
     await carregarLista()
     await abrirPlano(aberto.id)
   }
@@ -259,16 +262,16 @@ export function PlanejamentoTratamento({
     // Aceitar é quando vira venda: sem cliente não há a quem cobrar nem para
     // quem agendar. Em vez de recusar, pede o vínculo.
     if (!clienteLigado && !clientId) { setLigando(true); return }
-    setErro(null); setSalvando(true)
+    setErro(null); setErroDoBotao(null); setSalvando(true)
     // Só plano proposto entra no checkout — é a regra da própria action.
     if (aberto.status === 'DRAFT') {
       if (!(await salvarOQueEstaNaTela())) { setSalvando(false); return }
       const prop = await proposeTreatmentPlan(aberto.id, slug)
-      if (prop.error) { setSalvando(false); setErro(prop.error); return }
+      if (prop.error) { setSalvando(false); setErroDoBotao(prop.error); return }
     }
     const res = await getCheckoutPlan(aberto.id)
     setSalvando(false)
-    if (res.error || !res.plan) { setErro(res.error ?? 'Não foi possível abrir o checkout.'); return }
+    if (res.error || !res.plan) { setErroDoBotao(res.error ?? 'Não foi possível abrir o checkout.'); return }
     setCheckout(res.plan)
   }
 
@@ -443,14 +446,15 @@ export function PlanejamentoTratamento({
       )}
 
       {editavel && !ehNovo && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div data-botoes-do-plano style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Aceitar deixou de depender do caixa: a profissional fecha o plano
               na sala e o valor fica em aberto, para ser recebido no check-in.
               Quem também opera caixa pode cobrar ali mesmo, no wizard. */}
           <button type="button" onClick={fecharAgora} disabled={salvando} className="btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
             {salvando ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
-            Aceitar plano
+            {/* A24 da 14ª: o plano já aceito (o checkout ficou pela metade) continua de onde parou. */}
+            {aberto.status === 'PROPOSED' ? 'Continuar o checkout' : 'Aceitar plano'}
           </button>
           {aberto.status === 'DRAFT' && (
             <button type="button" onClick={enviarParaRecepcao} disabled={salvando} className="btn-ghost"
@@ -458,6 +462,7 @@ export function PlanejamentoTratamento({
               <Send size={14} /> Cliente vai pensar
             </button>
           )}
+          {erroDoBotao && <ErroDoBotao texto={erroDoBotao} />}
         </div>
       )}
 
@@ -466,7 +471,7 @@ export function PlanejamentoTratamento({
           do atendimento da avaliação, e a página do plano "Aguardando
           checkout" não tinha o que fazer). */}
       {!editavel && podeReceber && aberto.status === 'PROPOSED' && (
-        <div data-fechar-checkout style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div data-fechar-checkout data-botoes-do-plano style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <button type="button" onClick={fecharAgora} disabled={salvando} className="btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
             {salvando ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
@@ -475,6 +480,7 @@ export function PlanejamentoTratamento({
           <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             Aguardando o checkout: o pagamento, os documentos e o agendamento das sessões.
           </span>
+          {erroDoBotao && <ErroDoBotao texto={erroDoBotao} />}
         </div>
       )}
 
@@ -639,5 +645,14 @@ function ResumoDoPlano({ planId, onCancelado }: { planId: string; onCancelado?: 
       ))}
       {cancelando && <CancelarPlano planId={planId} onFechar={() => setCancelando(false)} onCancelado={onCancelado} />}
     </div>
+  )
+}
+
+/** O erro do botão, junto dele (A24 da 14ª) — o mesmo desenho do erro do topo. */
+function ErroDoBotao({ texto }: { texto: string }) {
+  return (
+    <p data-erro-do-botao role="alert" style={{ flexBasis: '100%', fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>
+      {texto}
+    </p>
   )
 }
