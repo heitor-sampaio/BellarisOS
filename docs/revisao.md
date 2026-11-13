@@ -57,7 +57,7 @@ superfícies em volta. A ordem é do Heitor.
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ⬜ |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ |
-| Estoque | `stock` | 🟡 (falta P4) |
+| Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ⬜ |
 | Equipe | `team` | ⬜ (já tem item, vindo do Estoque: P3) |
 | Fichas (formulários, pré-atendimento) | `forms` | ⬜ |
@@ -71,7 +71,7 @@ superfícies em volta. A ordem é do Heitor.
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ⬜ |
 | Site | `apps/site` | ⬜ |
 
-## Estoque 🟡
+## Estoque ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -179,9 +179,8 @@ perda, ajuste, lotes, validade e aviso de mínimo."
 | E14 | A Entrada pede o fornecedor da lista de hoje (a que vira marca, E5), com "+ Novo"; não pede marca | **Decidido:** a Entrada passa a pedir marca e fornecedor |
 | E15 | Filtros da tela hoje: busca, categoria, unidade, situação. Não há filtro de marca nem de fornecedor | **Decidido:** os 3 filtros, categorias, marca e fornecedores (ver P4) |
 
-- **P4 (E15), em aberto:** marca e fornecedor ficam na ENTRADA, não no
-  produto (E10). O filtro de marca mostra os produtos que têm alguma entrada
-  (lote) daquela marca? Ou é outra coisa?
+- **P4 (E15), respondida:** "o filtro de marca ou fornecedor mostra os
+  produtos que tem alguma entrada dessa marca/fornecedor".
 
 ## O que já estava pendente, para entrar no módulo dele
 
