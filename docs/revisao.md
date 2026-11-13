@@ -66,7 +66,7 @@ superfícies em volta. A ordem é do Heitor.
 | Fichas (formulários, pré-atendimento) | `forms` | ✅ |
 | Cargos e permissões | `roles` | ✅ |
 | Configurações (rede e unidade) | `settings` | ✅ |
-| Copilot | `copilot` | ⬜ |
+| Copilot | `copilot` | 🟡 |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ⬜ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ⬜ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ⬜ |
@@ -1334,6 +1334,35 @@ configuração da rede toda é de quem é da rede (H7).
 ### Bloco no plano: Configurações
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Configurações".
+
+## Copilot 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/copilot.md`. Um chat da equipe, flutuando sobre todas
+as telas da rede e da unidade (nunca no portal da cliente), por texto, voz,
+imagem e documento.
+- **Consulta e grava**: agenda, clientes, catálogo, indicadores, financeiro,
+  estoque e CRM. Toda gravação passa por um cartão com Confirmar/Cancelar;
+  consulta é livre.
+- **Nada clínico vai ao modelo** (prontuário, evolução, ficha de saúde, foto,
+  anotação clínica do plano).
+- **Quem usa**: o Copilot no plano da rede (sem plano não libera — custa por
+  uso; fora do plano, quem administra vê o aviso e o link para a Assinatura) e
+  no cargo: Ver (só consultas) ou Gerenciar (também gravações, e cada uma
+  ainda pede o módulo dela). Cota mensal por rede.
+
+### Recomendação do Claude (aguarda o Heitor)
+
+- **CP1 — as ferramentas acompanham o sistema adaptado**: vender e receber
+  pela comanda do PDV, o plano com o aceite (sem o checkout), "contato" e
+  "oportunidade", a "Ficha de saúde", as unidades da pessoa, os documentos
+  num link só. A gravação do Copilot entra na Auditoria como a de quem pediu,
+  com a marca "pelo Copilot".
 
 ## O PLANO DE ADAPTAÇÃO
 
