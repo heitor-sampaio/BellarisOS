@@ -1016,6 +1016,18 @@ tratamento, só inverte uma ordem, primeiro colhe assinatura, depois paga".
   plano sem o contrato assinado AVISA ("Falta assinar o contrato do plano",
   com "Colher as assinaturas"), não recusa.
 
+Revisão do aceite (o Heitor, 13/11, depois do fechamento): "essa parte de
+perguntar forma de pagamento no aceite não sei se é o ideal, pq esse aceite
+pode vir em outro momento, cliente em casa sozinha avaliando se faz ou não e ai
+já perguntar forma de pagamento pode ser intimidador e levar a desistencia,
+não acha?"
+- Proposta do Claude (a confirmar): o aceite é só "quero fazer", sem pergunta
+  de dinheiro — na clínica ou pelo app, em casa. Os termos e os outros
+  documentos se assinam quando a cliente quiser (até em casa, pelo app). O
+  CONTRATO e o pagamento andam juntos, no PDV: escolhe-se a forma → a cliente
+  assina o contrato, já com ela → recebe-se. A assinatura continua antes do
+  dinheiro.
+
 ### Bloco no plano: Plano de tratamento
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Plano de tratamento".
