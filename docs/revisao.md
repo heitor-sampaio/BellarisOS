@@ -54,7 +54,7 @@ superfícies em volta. A ordem é do Heitor.
 | Documentos (termos e contratos) | `documents` | ⬜ |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
 | Procedimentos | `procedures` | ✅ |
-| Pacotes | `procedures` (pacotes) | ⬜ |
+| Pacotes | `procedures` (pacotes) | 🟡 |
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ⬜ |
@@ -244,6 +244,53 @@ Levantado em `components/admin/procedure-form.tsx`,
   de procedimento e vale no checkout do plano? (b) As variáveis, hoje
   separadas por categoria, ficam todas valendo em todo documento? (c) "Quando
   nasce" e "bloqueia ou avisa" continuam de cada documento?
+
+## Pacotes 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+"Pacote é um tipo de produto que é um conjunto de procedimentos pre
+estabelecidos. Por exemplo, 4 sessoes de botox + 4 massagens, valor x. Então
+para montar um pacote, escolhe um nome, procedimentos, sessões de cada
+procedimento e valor. O valor base do pacote já puxa a soma dos valores dos
+procedimentos adicionados, mas com opção de alterar o valor. Precisamos achar
+uma solução de documentos para esse caso."
+
+### O que faz (levantamento pelo sistema)
+
+Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
+`docs/regras/vendas-financeiro.md` §9.3.1 e `docs/regras/documentos.md`.
+
+- **Onde:** Vendas → Pacotes, nos dois portais. Ver pede Procedimentos em
+  Ver; criar e editar, Procedimentos em Gerenciar **e** ser da rede.
+- **Cadastro:** Nome; Procedimentos (cada linha: procedimento + sessões;
+  "+ Adicionar procedimento"); **Preço do pacote**, que nasce VAZIO, com a
+  frase "N sessões no pacote · avulsas sairiam por R$ X" embaixo; Validade em
+  dias (vazio = sem validade); "À venda"; comissão de venda e de execução.
+- **Na venda,** o preço se reparte entre as sessões pelo preço de tabela de
+  cada procedimento (é a base da comissão de cada sessão).
+- **Documentos hoje:** vender o pacote não emite documento nenhum. Cada
+  SESSÃO agendada emite os documentos do procedimento dela, como um
+  atendimento avulso (o termo e o contrato do procedimento), a cada sessão.
+  Um pacote de 4 botox pede o termo do botox 4 vezes, e o contrato avulso 4
+  vezes. Para comparar: o plano fechado pede um termo por procedimento
+  distinto e UM contrato de plano, no checkout.
+
+### Diferenças
+
+| # | Diferença | Estado |
+|---|---|---|
+| PC1 | O preço nasce vazio; a soma aparece só como frase ("avulsas sairiam por") | **Decidido:** o valor base já vem com a soma dos procedimentos adicionados, e pode ser alterado |
+| PC2 | Documentos: nada na venda; os do procedimento a cada sessão | **Em aberto:** "precisamos achar uma solução de documentos para esse caso" |
+
+### O sistema faz e não está na lista do Heitor (ele decide se fica)
+
+| # | O quê | Estado |
+|---|---|---|
+| PC3 | Validade em dias (vazio = sem validade) | aberto |
+| PC4 | "À venda" (tirar o pacote da venda sem apagar) | aberto |
+| PC5 | Comissão de venda e de execução no cadastro do pacote | aberto |
+| PC6 | Criar e editar exige ser da rede (além de Procedimentos em Gerenciar) | aberto |
 
 ## O PLANO DE ADAPTAÇÃO
 
