@@ -70,7 +70,7 @@ superfícies em volta. A ordem é do Heitor.
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ✅ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ✅ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ✅ (sem bloco: só o V1) |
-| Busca | `busca_universal` | ⬜ |
+| Busca | `busca_universal` | 🟡 |
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ⬜ |
 | Site | `apps/site` | ⬜ |
 
@@ -1471,6 +1471,31 @@ Configurações → Integrações.
 ### Recomendação do Claude
 
 Nada a mudar além do vocabulário (sem "clínica" nos avisos — V1, CA1).
+
+## Busca 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/busca.md`. O campo no meio da barra do topo dos dois
+portais da equipe (Ctrl+K ou "/"; no celular, a lupa).
+- **Acha**: cliente (por nome, telefone, CPF — sem acento, palavras em
+  qualquer ordem, também a arquivada), conversa, oportunidade, contato sem
+  oportunidade, o próximo agendamento, membro, procedimento, pacote, produto
+  e as páginas e abas de Configurações pelo nome que as pessoas usam.
+- **Ações**: Novo agendamento, Cadastrar cliente; na linha da cliente,
+  Agendar, Vender e Reativar; no fim, "Cadastrar «termo» como cliente".
+- **Não abre exceção**: quem não acha um registro na tela dele não o acha
+  aqui; cada ação só aparece a quem a tela de destino libera.
+
+### Recomendação do Claude (aguarda o Heitor)
+
+- **BU1 — "Vender" na linha da cliente leva ao PDV** com ela escolhida (o
+  "Vender" da ficha sai — PDV7). As páginas novas (PDV, Auditoria) e os nomes
+  novos entram sozinhos, porque a busca lê o menu e as abas.
 
 ## O PLANO DE ADAPTAÇÃO
 
