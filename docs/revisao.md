@@ -72,7 +72,7 @@ superfícies em volta. A ordem é do Heitor.
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ✅ (sem bloco: só o V1) |
 | Busca | `busca_universal` | ✅ |
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ✅ |
-| Site | `apps/site` | ⬜ |
+| Site | `apps/site` | 🟡 |
 
 ## Estoque ✅
 
@@ -1538,6 +1538,50 @@ em dois apps com endereço próprio.
 ### Bloco no plano: Plataforma
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Plataforma".
+
+## Site (bellarisos.com) 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/site.md`. A página de quem ainda não conhece o
+sistema; a chamada é o teste grátis de 14 dias. Os preços são os do sistema
+(`planos_do_site()`), com a calculadora e o comparativo; o produto aparece em
+telas REAIS, fotografadas de uma rede fictícia (`e2e-capturas/`); SEO, GEO e
+`/llms.txt`; o movimento só no site.
+
+O texto (`components/conteudo.tsx`, `lib/telas.ts`) ainda fala o sistema de
+antes da revisão:
+- **nomes velhos**: "Termos e contratos" e "Termos assinados sem papel"
+  (DC1: Documentos), "anamnese" (PR3: Ficha de saúde), "Recebeu na recepção,
+  entrou no caixa" (o PDV);
+- **cargo como se fosse fixo**: "a recepção encontra o horário", "a agenda
+  que a recepção entende", "a recepção não tropeça no financeiro", "o que a
+  recepção faria de cabeça";
+- **o app da cliente** não diz o que a revisão deu a ele: aceitar o plano de
+  tratamento (PT1b), agendar as sessões do plano e do pacote (PT3/CA3),
+  assinar todos os documentos de uma vez (CA4);
+- **as telas fotografadas** mostram as telas de hoje — saem velhas depois do
+  plano.
+
+"Clínica de estética" no site é o MERCADO (é o que a dona procura no
+buscador), não a rede dentro do sistema.
+
+### Recomendação do Claude (aguarda o Heitor)
+
+- **SI1 — o texto fala o sistema adaptado**: Documentos, Ficha de saúde, PDV,
+  Oportunidades; nenhum cargo como se fosse fixo ("a recepção" vira "a
+  equipe", "quem atende"). "Clínica de estética" fica: é o mercado, não a
+  rede.
+- **SI2 — o app da cliente diz o que ganhou**: aceita o plano de tratamento
+  pelo celular, agenda as sessões do plano e do pacote, assina tudo de uma
+  vez. Continua sem prometer o que ele não faz (pagar). A Auditoria entra no
+  "Cada um vê o seu": "e tudo o que se faz fica registrado".
+- **SI3 — as telas são fotografadas de novo** no fim do plano, com o sistema
+  adaptado (a câmera da Aurora monta o que for preciso: PDV, plano aceito).
 
 ## O PLANO DE ADAPTAÇÃO
 
