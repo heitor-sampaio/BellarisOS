@@ -67,7 +67,7 @@ superfícies em volta. A ordem é do Heitor.
 | Cargos e permissões | `roles` | ✅ |
 | Configurações (rede e unidade) | `settings` | ✅ |
 | Copilot | `copilot` | ⏸ por último (a regra: acompanha tudo) |
-| Portal da rede × portal da unidade | `/admin`, `/[slug]` | ⬜ |
+| Portal da rede × portal da unidade | `/admin`, `/[slug]` | 🟡 |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ⬜ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ⬜ |
 | Busca | `busca_universal` | ⬜ |
@@ -1370,6 +1370,36 @@ imagem e documento.
 ### Bloco no plano: Copilot
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Copilot" — o último, depois do de Cargos.
+
+## Portal da rede × portal da unidade 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+CLAUDE.md §6 ("Portal não é filial").
+- **Dois portais**: o da REDE (`/admin`), que consolida todas as unidades, e o
+  da UNIDADE (`/<endereço da unidade>`). Quem é da rede entra no da rede; quem
+  é de uma unidade, no dela.
+- **As mesmas telas, o mesmo nome** nos dois (agenda, clientes, estoque…); na
+  rede, um filtro de unidade, e "ver esta unidade" é um filtro, não uma
+  troca de portal (a exceção: o cartão "Abrir unidade" do Dashboard).
+- **Só na rede**: Automações, Marketing (Notificações, Anúncios, Templates),
+  Unidades e Produtos. **Na unidade**: a aba Unidade das Configurações.
+- **A rede de UMA unidade** (o caso comum) esconde o que só faz sentido com
+  duas — e a tela troca "rede" por "clínica" (D-19, `useFala`).
+
+### Recomendações do Claude (aguardam o Heitor)
+
+- **PO1 — a pessoa de várias unidades** (EQ1) entra no portal da UNIDADE, com
+  um seletor no topo ("Unidade: Centro ▾") com as unidades dela; trocar leva à
+  mesma tela na outra unidade. Quem tem "A rede inteira" segue no da rede.
+- **PO2 — a rede de uma unidade não diz "clínica"** (Vocabulário V1): onde a
+  tela hoje troca "rede" por "clínica", ela usa o NOME da rede ("Estética
+  Bella") ou não precisa de palavra nenhuma (os filtros e seletores de
+  unidade já somem). O resto do "clínica" nas telas segue o V1.
 
 ## O PLANO DE ADAPTAÇÃO
 
