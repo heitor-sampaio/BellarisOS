@@ -1281,7 +1281,30 @@ Está no PLANO DE ADAPTAÇÃO, "Bloco: Cargos".
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+"Concordo [CF1 e CF2] e queria um lugar para auditoria, acho que como dos
+eventos, onde o admin pudesse ver tudo o que aconteceu".
+
+Hoje o rastro existe espalhado e não há uma tela que junte: os fatos do
+sistema (`domain_events`, 30 dias, para as automações — o pagamento e o
+estoque sem quem fez), quem abriu o prontuário (fim da aba Prontuário), a
+trilha de cada documento, o histórico do agendamento, a linha do tempo da
+oportunidade e da ficha, o que o suporte fez (aba Suporte). A plataforma tem a
+sua auditoria (`apps/sistema`), que não é da rede.
+
+Proposta do Claude (a confirmar):
+- **CF3 — "Auditoria"**, uma tela só de leitura: quando, QUEM (o nome, com a
+  marca "via suporte"), o QUÊ (em português: "Cancelou o agendamento de Ana,
+  dia 14 às 10h"), em qual registro (com o link), a unidade. Filtros: período,
+  pessoa, tipo de ação, unidade, cliente; o CSV.
+- **O que entra**: toda gravação que muda algo (criar, editar, cancelar,
+  estornar, apagar/arquivar, mudar permissão ou configuração), quem abriu o
+  prontuário, entradas no sistema (login) e o que o suporte fez. Nunca o
+  conteúdo clínico (só "abriu o prontuário de X").
+- **Guarda**: não se apaga nem se altera, enquanto a rede existir (os 30 dias
+  dos eventos são das automações).
+- **Quem vê**: uma linha nova em Cargos, **"Auditoria"** (Ver), que nasce
+  ligada só no Admin da rede; a rede dá a outro cargo se quiser. A pergunta:
+  CF3-P1.
 
 ### O que faz hoje (levantamento)
 
