@@ -50,7 +50,7 @@ superfícies em volta. A ordem é do Heitor.
 | Agenda | `agenda` | ✅ |
 | Clientes (ficha, tags, LGPD) | `clients` | ✅ |
 | Fidelidade | `loyalty` | ✅ |
-| Prontuário | `medical_records` | ⬜ |
+| Prontuário | `medical_records` | 🟡 |
 | Documentos (termos e contratos) | `documents` | ⬜ |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
 | Procedimentos | `procedures` | ✅ |
@@ -697,6 +697,43 @@ Fidelidade (`fidelidade-config.tsx`, o catálogo em `fidelidade-catalogo.tsx`).
 ### Bloco no plano: Fidelidade
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Fidelidade".
+
+## Prontuário 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/atendimento.md` §9.4. Onde aparece: a ficha da cliente
+(aba Prontuário), a tela do atendimento e, no menu, Planejamento →
+Injetáveis.
+- **O registro de cada atendimento**: a evolução (texto), a intercorrência e a
+  ficha do procedimento (o formulário montado em Configurações → Fichas e
+  ligado ao procedimento; a obrigatória barra o Finalizar). Cada atendimento
+  da aba diz o dia, o lote que a baixa tirou ("ver em quem o lote foi
+  aplicado") e quantas fotos há. Atendimento concluído sem nada escrito
+  entra assim mesmo ("Sem evolução registrada").
+- **A ficha de saúde (pré-atendimento)**: uma por rede, perguntas sobre a
+  pessoa (alergia Sim/Não com detalhe, gestação, medicamentos…), editável em
+  Configurações → Fichas. A cliente responde pelo app ou por um link (com CPF
+  ou nascimento antes), ou a equipe na clínica. Vale 6 meses (depois, "algo
+  mudou?"). O envio ao agendar é da rede e nasce desligado; o "Enviar a
+  ficha" está sempre na janela do agendamento. A alergia vira faixa de alerta
+  no atendimento, e quem atende é avisada quando a cliente responde.
+- **Fotos e anexos clínicos** (exame, laudo, foto, receita): a foto entra pela
+  tela do atendimento (antes, durante, depois) e fica na ficha da cliente,
+  aba Documentos → Foto clínica. Apagar só marca (fica o rastro). Nada vai ao
+  app da cliente sem "Enviar à cliente".
+- **Injetáveis**: o mapa do rosto com os pontos e os produtos do estoque; o
+  planejamento se faz antes, e a aplicação só se registra dentro do
+  atendimento (uma por mapa), ligada à baixa e ao lote.
+- **Quem vê**: só quem tem o Prontuário (Ver ou Gerenciar); com "só os
+  meus", só as clientes que a pessoa atende, e a tela diz que há o que ela
+  não vê. Todo acesso fica registrado, e a lista de quem abriu aparece a quem
+  tem o Prontuário em Gerenciar sem unidade fixa. A cliente não vê o
+  prontuário no app (só a ficha de saúde pendente e o que a clínica enviar).
 
 ## O PLANO DE ADAPTAÇÃO
 
