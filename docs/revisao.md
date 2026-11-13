@@ -71,7 +71,7 @@ superfícies em volta. A ordem é do Heitor.
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ✅ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ✅ (sem bloco: só o V1) |
 | Busca | `busca_universal` | ✅ |
-| Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | 🟡 |
+| Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ✅ |
 | Site | `apps/site` | ⬜ |
 
 ## Estoque ✅
@@ -1501,11 +1501,11 @@ portais da equipe (Ctrl+K ou "/"; no celular, a lupa).
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Busca".
 
-## Plataforma (sistema, suporte, assinaturas) 🟡
+## Plataforma (sistema, suporte, assinaturas) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+Fica como está, com o que nasceu na revisão em todo plano (PL1: "Sim").
 
 ### O que faz hoje (levantamento)
 
@@ -1529,11 +1529,15 @@ em dois apps com endereço próprio.
   Copilot"); os adicionais; a rede sem pagamento fica bloqueada (a tela
   "conta suspensa").
 
-### Recomendação do Claude (aguarda o Heitor)
+### Recomendação do Claude (o Heitor: "Sim")
 
 - **PL1 — o que nasceu na revisão entra nos planos**: o **PDV** é de todo
   plano (é por ele que entra o dinheiro, como Clientes, que não é opção); a
   **Auditoria** também (é segurança da rede, não um extra). O resto fica.
+
+### Bloco no plano: Plataforma
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Plataforma".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1818,6 +1822,13 @@ Heitor de que vale uma completa.
 |---|---|---|
 | BU1 | **"Vender" na linha da cliente leva ao PDV** com ela escolhida (`lib/busca/acoes.ts`; era `…/clients/<id>?acao=vender`). Aparece a quem vende no PDV (CG1). As páginas novas (PDV, Auditoria) e os nomes novos vêm do menu e das abas | PDV, CG1 |
 | — | Mantém: o que se acha, as outras ações, a regra de não abrir exceção | — |
+
+### Bloco: Plataforma
+
+| # | O que muda | Depende de |
+|---|---|---|
+| PL1 | **O PDV e a Auditoria são de todo plano**: nenhuma funcionalidade do catálogo (`packages/nucleo/src/lib/planos/recursos.ts`) cobre o `cashier` nem o módulo novo da Auditoria (CF3c), e um teste trava que nenhuma passe a cobrir — plano nenhum, nem o teste grátis, nem a rede bloqueada que volta, os tira. Os rótulos do catálogo (que o sistema, a tela de assinatura e o site mostram) seguem os nomes da revisão: "Documentos" (era "Termos e contratos"), "Fichas de atendimento", "Portal e app da cliente" | PDV, CF3c, DC1 |
+| — | Mantém: os dois apps, os planos e os limites, o teste grátis sem o Copilot, a cobrança pelo Asaas, o bloqueio, o suporte e o "entrar como" | — |
 
 ### Bloco: Cargos
 
