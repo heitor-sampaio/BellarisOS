@@ -49,7 +49,7 @@ superfícies em volta. A ordem é do Heitor.
 |---|---|---|
 | Agenda | `agenda` | ✅ |
 | Clientes (ficha, tags, LGPD) | `clients` | ✅ |
-| Fidelidade | `loyalty` | ⬜ |
+| Fidelidade | `loyalty` | 🟡 |
 | Prontuário | `medical_records` | ⬜ |
 | Documentos (termos e contratos) | `documents` | ⬜ |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
@@ -651,6 +651,46 @@ crédito"; o CSV. As comissões em página própria (Financeiro → Comissões).
 ### Bloco no plano: Financeiro
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Financeiro".
+
+## Fidelidade 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+"Eu acho que ta boa, mas aceito recomendação".
+
+### O que faz hoje (levantamento)
+
+O programa é da rede, nasce desligado e se monta em Configurações →
+Fidelidade (`fidelidade-config.tsx`, o catálogo em `fidelidade-catalogo.tsx`).
+- **Ganho**: por real pago ou por procedimento (`procedures.loyalty_points`).
+  O ponto nasce no PAGAMENTO (`trg_fidelidade_ganho`), e o estorno tira
+  exatamente o que aquele pagamento deu.
+- **Uso**: desconto no pagamento (valor do ponto, mínimo, teto em %) ou troca
+  por recompensa do catálogo (procedimento grátis, desconto em R$ ou %,
+  produto, brinde), que vira voucher com validade. A troca é feita pela equipe,
+  na ficha.
+- **Opcionais, todos desligados**: validade em N meses (com aviso no celular);
+  pontos só na unidade em que foram ganhos; bônus de aniversário e de
+  primeiro acesso; venda de produto pontuar; a cliente trocar pelo app; o
+  prêmio de quem indicou.
+- **Na ficha**: o saldo, o extrato, o que vence e os vouchers. Quem tem a
+  Fidelidade em Gerenciar ajusta à mão, com motivo.
+
+### Recomendações do Claude (aguardam o Heitor)
+
+- **FD1 — fica como está.** Ganhar por real gasto e trocar por desconto ou
+  recompensa é o modelo que as clínicas usam e que a cliente entende sem
+  explicação. Os opcionais nascem desligados (princípio 6) e não atrapalham
+  quem não usa.
+- **FD2 — o uso dos pontos passa pelo PDV** (decorre do PDV1–PDV7, sem
+  pergunta): o desconto em pontos e o voucher se aplicam na comanda; o ponto
+  nasce quando a comanda é paga; o pacote vendido como produto pontua na
+  venda. A tela deixa de dizer "Na recepção, ao confirmar o pagamento" (nome
+  de cargo, e o lugar mudou) e passa a dizer "No PDV, ao receber".
+- **FD3 — "pontos só na unidade" sai.** A cliente é da rede e qualquer
+  unidade a atende (CL3); um saldo separado por unidade contraria isso e
+  confunde a cliente ("tenho pontos, mas não aqui"). Com a opção fora, o saldo
+  é sempre um só, da rede.
 
 ## O PLANO DE ADAPTAÇÃO
 
