@@ -57,7 +57,7 @@ superfícies em volta. A ordem é do Heitor.
 | Pacotes | `procedures` (pacotes) | ✅ |
 | Plano de tratamento | `treatment_plans` | ✅ |
 | Marketing (campanhas) | `marketing` | ✅ |
-| Automações | `automations` | 🟡 |
+| Automações | `automations` | ✅ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ✅ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
@@ -1078,11 +1078,11 @@ Regras em `docs/regras/automacoes.md` (campanhas) e `whatsapp-push.md`
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Marketing".
 
-## Automações 🟡
+## Automações ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+"concordo, o resto fica como está" (o AU1).
 
 ### O que faz hoje (levantamento)
 
@@ -1106,13 +1106,17 @@ Automações), com o módulo Automações.
   qualquer tag (T4); saem as automações por unidade lidas pela tag (T1); os
   gatilhos da campanha automática viram modelos aqui (MK1).
 
-### Recomendação do Claude (aguarda o Heitor)
+### Recomendação do Claude (aprovada)
 
 - **AU1 — os modelos que chegam da campanha automática** (MK1): vencimento de
   pacote, confirmação do agendamento, cancelamento, pontos de fidelidade (o
   aniversário, o lembrete e o pós-visita já existem como modelo). Todos
   nascem em rascunho, desligados (princípio 6), e mandam pelo canal que a rede
   tem (WhatsApp na conversa aberta ou aviso no celular, como os de hoje).
+
+### Bloco no plano: Automações
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Automações".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1324,6 +1328,14 @@ e Agenda (AG1) com o DC1–DC4.
 | MK1 | **A campanha é Imediata ou Agendada** (data e hora, ou a data de todo ano). Sai o tipo "Automática": cada gatilho dela (aniversário, lembrete de agenda N horas antes, pós-visita, vencimento de pacote, confirmação, cancelamento, pontos) vira um MODELO desligado nas Automações, com o mesmo aviso no celular — nada se perde. A frase "campanha × automação" das duas telas fica | **Automações** |
 | MK2 | **"Tags"** no público (era "Tags do CRM"); **sai o filtro "Unidades"** do público (as tags cobrem) | Tags |
 | — | Mantém: o aviso no celular (o WhatsApp fica para o futuro), o público por gênero, tags, procedimentos já feitos e "sem visita há N dias", o "Revisar" com quantas recebem, ativar/pausar/arquivar, os Anúncios e os Templates, só no portal da rede | — |
+
+### Bloco: Automações
+
+| # | O que muda | Depende de |
+|---|---|---|
+| AU1 | **Modelos novos** em "Usar um modelo": vencimento de pacote, confirmação do agendamento, cancelamento, pontos de fidelidade (os gatilhos da campanha automática que sai — MK1). Nascem em rascunho; o canal é o que a rede tem. Cada um usa só fatos e passos do catálogo (`tests/automacoes-modelos.test.ts`) | MK1 |
+| T4 | A ação vira **"Adicionar tag"**, com qualquer tag registrada | Tags |
+| — | Mantém: o editor de fluxo, os gatilhos e os passos, os modelos de hoje, o "antes de ligar", o silêncio e o teto, o ensaio, as execuções e as versões, só no portal da rede | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
