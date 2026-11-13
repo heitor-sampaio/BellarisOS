@@ -15,6 +15,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - O texto que ainda diz "clínica" ou "filial" (telas, regras em
   `docs/regras/`, este arquivo) é pendência da revisão — não é regra.
 
+**A revisão do sistema, módulo por módulo, está em `docs/revisao.md`**
+(aberta pelo Heitor em 2026-11-13). Enquanto ela corre, nada se implementa.
+
 BellarisOS é o **ERP + CRM** de clínicas de estética — a ferramenta em que a
 clínica opera o dia inteiro: agenda, prontuário, clientes, conversas, estoque,
 comercial e financeiro. Não é um sistema financeiro com agenda em volta; o
