@@ -7,6 +7,7 @@ import { CalendarDays, ChevronRight, Clock3, User, Plus, MapPin } from 'lucide-r
 import { ler } from '@/lib/db'
 import { separarAgendaDoPortal, limiteParaAlterar, aindaDaParaAlterar, inicioDosProximos } from '@/lib/clientes/agenda-do-portal'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
+import { textoDoHorarioNoHistorico } from '@/lib/clientes/textos-do-app'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { valoresCobrados, type ValorCobrado } from '@/lib/appointments/valor-cobrado'
@@ -183,6 +184,7 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
   const dt    = new Date(appt.scheduled_at)
   // O dia e a hora no relógio da unidade do agendamento (F62).
   const fuso  = fusoValido(appt.branches?.fuso)
+  const concluidoEm = appt.status === 'COMPLETED' ? textoDoConcluido(appt.scheduled_at, appt.completed_at, fuso) : null
   const color = STATUS_COLOR[appt.status] ?? 'var(--text-muted)'
   // D8 da 7ª: pago, vale o cobrado (o preço menos o desconto da recepção).
   const valor = appt.cobrado ? appt.cobrado.cobrado : Number(appt.price)
@@ -245,11 +247,10 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <Clock3 size={11} />
-          {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso })}
-          {/* A hora real ao lado da agendada (J-34). */}
-          {appt.status === 'COMPLETED' && textoDoConcluido(appt.scheduled_at, appt.completed_at, fuso) && (
-            <span data-hora-real>· {textoDoConcluido(appt.scheduled_at, appt.completed_at, fuso)}</span>
-          )}
+          {/* A hora real ao lado da agendada (J-34), dizendo qual é a marcada (A31 da 14ª). */}
+          <span data-hora-real={concluidoEm ? '' : undefined}>
+            {textoDoHorarioNoHistorico(dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso }), concluidoEm)}
+          </span>
         </span>
         {appt.pagoAntes ? (
           <span data-pago-antes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)', marginLeft: 'auto' }}>

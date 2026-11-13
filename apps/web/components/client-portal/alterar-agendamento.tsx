@@ -7,6 +7,7 @@ import { gruposDeHorario } from '@/lib/appointments/periodos-do-dia'
 import { limiteParaAlterar } from '@/lib/clientes/agenda-do-portal'
 import { useFuso } from '@/components/shared/fuso'
 import { instanteNoFuso } from '@/lib/datetime'
+import { textoDoRemarcado } from '@/lib/clientes/textos-do-app'
 import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar } from '@/actions/portal-agendamentos'
 
 /** O dia no relógio da unidade (F62). */
@@ -140,8 +141,12 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     iniciar(async () => {
       const r = await remarcarPelaCliente(appointmentId, instanteNoFuso(dia, hora, fuso).toISOString(), semPreferencia, unidade || null)
       if ('error' in r) { setErro(r.error); return }
-      // A51 da 12ª: o remarcado diz com quem ficou e quando (a Sabrina passou da Eva à Fernanda calada).
-      setFeito(`Agendamento remarcado${r.quemAtende ? `: com ${r.quemAtende}` : ''}, ${diaPorExtenso(dia)} às ${hora}.`); setModo('nada'); router.refresh()
+      // A51 da 12ª: o remarcado diz com quem ficou e quando (a Sabrina passou da Eva à Fernanda calada);
+      // A29 da 14ª: e ONDE, quando mudou de unidade.
+      setFeito(textoDoRemarcado({
+        quemAtende: r.quemAtende ?? null, dia: diaPorExtenso(dia), hora,
+        unidadeNova: outraUnidade ? escolhida?.nome ?? null : null,
+      })); setModo('nada'); router.refresh()
     })
   }
 

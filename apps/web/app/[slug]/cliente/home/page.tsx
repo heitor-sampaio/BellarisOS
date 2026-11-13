@@ -23,6 +23,7 @@ import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 import { textoDoIndiqueUmaAmiga } from '@/lib/fidelidade/indicacao'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
+import { textoDoParaAvaliar } from '@/lib/clientes/textos-do-app'
 
 // -- Helpers --------------------------------------------------------
 /** No relógio da unidade (F62). */
@@ -42,6 +43,8 @@ type NextAppt = {
   professionals: { name: string } | null
   /** A unidade do agendamento (A53 da 8ª): pode não ser a do endereço. */
   branch_id?:   string
+  /** A hora real do concluído (A30 da 14ª: o cartão "para avaliar" diz a hora). */
+  completed_at?: string | null
   branches?:    { name: string; address: string | null; city: string | null; state: string | null; is_active?: boolean } | null
 }
 
@@ -104,7 +107,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .limit(1)
       .maybeSingle(), 'buscar o próximo agendamento'),
     ler(admin.from('appointments')
-      .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
+      .select('id, scheduled_at, completed_at, branch_id, branches(name, address, city, state), procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       .eq('status', 'COMPLETED')
       .is('client_confirmed_at', null)
@@ -351,7 +354,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     {a.procedures?.name ?? 'Procedimento'}
                   </p>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand-deep, var(--brand))', fontWeight: 600 }}>
-                    Concluído em {new Date(a.scheduled_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: fuso })} · toque para avaliar
+                    {/* A30 da 14ª: a hora e, com mais de uma unidade, onde — a sessão da Savassi e a da Pampulha eram iguais. */}
+                    {textoDoParaAvaliar({ agendadoEm: a.scheduled_at, concluidoEm: a.completed_at ?? null, unidade: variasUnidades ? a.branches?.name ?? null : null, fuso })}
                   </p>
                 </div>
                 <ChevronRight size={18} color="var(--brand)" style={{ flexShrink: 0 }} />
