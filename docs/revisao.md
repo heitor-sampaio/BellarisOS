@@ -52,7 +52,7 @@ superfícies em volta. A ordem é do Heitor.
 | Fidelidade | `loyalty` | ✅ |
 | Prontuário | `medical_records` | ✅ |
 | Documentos (termos e contratos) | `documents` | ✅ |
-| CRM (inbox, oportunidades, funis) | `crm` | 🟡 |
+| CRM (inbox, oportunidades, funis) | `crm` | ✅ |
 | Procedimentos | `procedures` | ✅ |
 | Pacotes | `procedures` (pacotes) | ✅ |
 | Plano de tratamento | `treatment_plans` | ⬜ (já tem itens, vindos de Pacotes: PC7–PC9) |
@@ -830,7 +830,7 @@ plano, as variáveis, "quando nasce" e "bloqueia").
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Documentos".
 
-## CRM (inbox, oportunidades, funis) 🟡
+## CRM (inbox, oportunidades, funis) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -875,7 +875,13 @@ Oportunidades; o funil e as origens se montam em Configurações.
 | # | Diferença | Estado |
 |---|---|---|
 | CR1 | A tela chama o card de "lead" ("Nenhum lead disponível", "Nenhum lead perdido com motivo", "LEAD", a atribuição de anúncio…) e também de "oportunidade" | **Decidido:** a PESSOA é "Contato", o card é "Oportunidade"; "lead" sai de todo texto que se lê (tela, aviso, Copilot, relatórios). O nome da tabela no código fica |
-| CR2 | O mesmo gesto tem dois nomes: "Cadastrar como cliente" (inbox) e "Converter em cliente" (quadro) | Recomendado: "Cadastrar como cliente" nos dois |
+| CR2 | O mesmo gesto tem dois nomes: "Cadastrar como cliente" (inbox) e "Converter em cliente" (quadro) | **Decidido** ("pode ser"): "Cadastrar como cliente" nos dois |
+
+O resto, o Heitor: "o resto fica como está".
+
+### Bloco no plano: CRM
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: CRM".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1057,6 +1063,14 @@ e Agenda (AG1) com o DC1–DC4.
 | DC3 | **Uma assinatura para todos, em todo canal**: o link único (um link por cliente e momento — o agendamento, o pacote, o plano —, com todos os documentos abertos dele), o aparelho entregue na clínica e o app. A cliente vê a lista, abre cada um, marca "li e concordo" (um aceite que diz os títulos) e assina uma vez. Cada documento ganha a sua evidência (a mesma imagem da assinatura, o hash DELE), o seu PDF e o seu QR. Documento com "faltam dados" não entra e a tela diz qual. O papel e o dispensar seguem por documento | AG1 |
 | DC4 | **Sai "quando nasce"**: todo documento do atendimento nasce ao agendar (o gatilho no INSERT; sai o do check-in e a emissão do início); o do pacote, na venda; o do plano, na criação. "Bloqueia o início ou só avisa" fica, por documento. O contrato com `pagamento.*` segue pedindo o "pagamento combinado" antes | — |
 | — | Mantém: o editor e as versões, o PDF pronto, "faltam dados", o responsável da menor, o papel, o dispensar com motivo, o PDF assinado com evidências e o `/verificar`, a segurança do link (CPF ou nascimento, tentativas, uso único, 7 dias), o envio pela conversa (opção da rede), a tela Documentos só de leitura e o "só os meus" | — |
+
+### Bloco: CRM
+
+| # | O que muda | Depende de |
+|---|---|---|
+| CR1 | **"Contato" e "Oportunidade" em todo texto que se lê**: sai "lead" das telas (inbox, quadro, atribuição de anúncio, relatórios, importações), dos avisos e das respostas do Copilot. Um teste varre os textos da tela atrás de "lead" | — |
+| CR2 | **"Cadastrar como cliente"** no quadro também (era "Converter em cliente") | — |
+| — | Mantém: o inbox, o quadro, o funil e as origens, o "só os meus" pela pessoa ou pela conversa, os números por cargo. Já entram por outros blocos: o "Agendar" com a caixa de unidade (AG2), o "Vender" levando ao PDV, as tags que o sistema punha sozinho (Tags) | AG2, PDV, Tags |
 
 ## O que já estava pendente, para entrar no módulo dele
 
