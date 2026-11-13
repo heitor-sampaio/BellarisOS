@@ -128,6 +128,13 @@ export function FinanceiroComissoes(p: PropsDaTela) {
         Cartão de crédito em várias vezes conta como pago. O que a cliente ainda deve à clínica fica “aguardando o pagamento integral”
         {p.totais.aguardando > 0 ? ` (${formatBRL(p.totais.aguardando)} no total)` : ''}, fora do a pagar.
       </p>
+      {/* A27 da 14ª: o fechamento é por profissional E unidade — quem atende em
+          duas tem dois fechamentos, e a tela não dizia. */}
+      {((p.unidades?.length ?? 0) > 1 || new Set(p.resumo.map(r => r.branchId)).size > 1) && (
+        <p data-fechamento-por-unidade style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          O fechamento é por unidade: quem atende em mais de uma tem um fechamento em cada, e cada um vira uma despesa paga no financeiro daquela unidade.
+        </p>
+      )}
 
       {p.resumo.length === 0 ? (
         <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
