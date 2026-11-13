@@ -68,7 +68,7 @@ superfícies em volta. A ordem é do Heitor.
 | Configurações (rede e unidade) | `settings` | ✅ |
 | Copilot | `copilot` | ⏸ por último (a regra: acompanha tudo) |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ✅ |
-| Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ⬜ |
+| Portal e app da cliente | `/[slug]/cliente`, `apps/native` | 🟡 |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ⬜ |
 | Busca | `busca_universal` | ⬜ |
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ⬜ |
@@ -1404,6 +1404,39 @@ CLAUDE.md §6 ("Portal não é filial").
 ### Bloco no plano: Portais
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Portais".
+
+## Portal e app da cliente 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+Já decidido em outros módulos: o plano no app (ver tudo, ACEITAR, agendar as
+sessões — PT1/PT3), a sessão de plano ou de pacote se agenda pelo app (PT3),
+assinar todos os documentos de uma vez (DC3), "Ficha de saúde" (PR3).
+
+### O que faz hoje (levantamento)
+
+`/<unidade>/cliente` no navegador e o MESMO portal no app Android (Capacitor,
+com o aviso no celular). Só a rede cria o acesso (e-mail + a senha inicial do
+CPF, passaporte ou RNE, trocada no primeiro acesso); um login para a mesma
+pessoa em várias redes, com o seletor na entrada.
+- **Início**: os próximos agendamentos, a ficha de saúde pendente, o plano
+  proposto.
+- **Agendar**: só os procedimentos com "Permitir auto agendamento", na unidade
+  do endereço (pergunta qual, havendo mais de uma).
+- **Agendamentos**, **Histórico** (procedimentos feitos, "Confirmar e
+  avaliar" — estrelas e comentário, o que se avalia é escolha da rede — e os
+  arquivos que a rede ENVIOU), **Documentos** (assinar e os assinados),
+  **Financeiro** (pagamentos, parcelas, o crédito), **Fidelidade** (saldo,
+  extrato, recompensas e a troca, se a rede ligou), **Perfil** (dados,
+  senha, LGPD).
+- O que ela nunca vê: o prontuário, a anotação da equipe.
+
+### Recomendação do Claude (aguarda o Heitor)
+
+- **CA1 — sem "clínica" no portal** (V1, como o PO2): "Crédito na clínica",
+  "Telefone da clínica", "A clínica enviou um documento" passam a usar o NOME
+  da rede ("Crédito na Estética Bella").
+- O resto, como está, com o que já foi decidido acima.
 
 ## O PLANO DE ADAPTAÇÃO
 
