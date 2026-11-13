@@ -48,7 +48,7 @@ superfícies em volta. A ordem é do Heitor.
 | Módulo | No sistema | Estado |
 |---|---|---|
 | Agenda | `agenda` | ✅ |
-| Clientes (ficha, tags, LGPD) | `clients` | ⬜ (as tags: ver "Tags") |
+| Clientes (ficha, tags, LGPD) | `clients` | 🟡 (as tags: ver "Tags") |
 | Fidelidade | `loyalty` | ⬜ |
 | Prontuário | `medical_records` | ⬜ |
 | Documentos (termos e contratos) | `documents` | ⬜ |
@@ -474,6 +474,34 @@ Está no PLANO DE ADAPTAÇÃO, "Bloco: Tags".
 ### Bloco no plano: Agenda
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Agenda".
+
+## Clientes 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+"Em clientes, pagina esta boa, mas o cliente não pertence a unidade,
+pertence a rede, então nao faz sentido aparecer a unidade na coluna
+esquerda."
+
+### O que faz (levantamento pelo sistema)
+
+- **A coluna esquerda** (`clients-sidebar.tsx`), no portal da rede, mostra em
+  cada cliente a unidade em que ela foi cadastrada (`clients.branch_id`).
+- **O filtro "Unidade"** da lista (portal da rede) recorta pela tag
+  "Unidade: X" (quem frequenta a unidade), e o contador de ativas acompanha.
+- **No portal da unidade,** a lista é só de quem tem a tag "Unidade: X" dela
+  (`getCachedBranchClients`); a busca acha também as clientes da rede fora
+  dessa lista (A17 da 8ª).
+- A tag "Unidade: X" sai (T1, Tags).
+
+### Diferenças
+
+- **CL1.** Sai a unidade da coluna esquerda.
+
+### Perguntas
+
+- **CL-P1.** Sem a tag "Unidade: X": o filtro "Unidade" da lista e a lista
+  do portal da unidade mostram o quê?
 
 ## O PLANO DE ADAPTAÇÃO
 
