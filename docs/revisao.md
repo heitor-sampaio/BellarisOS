@@ -58,7 +58,7 @@ superfícies em volta. A ordem é do Heitor.
 | Plano de tratamento | `treatment_plans` | ⬜ (já tem itens, vindos de Pacotes: PC7–PC9) |
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
-| Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ⬜ |
+| Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | 🟡 (ver "Vendas: o PDV e as comandas") |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ⬜ |
@@ -507,6 +507,57 @@ esquerda."
 ### Bloco no plano: Clientes
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Clientes".
+
+## Vendas: o PDV e as comandas 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+Começou pelo "Vender" da ficha: "Esse \"Vender\" dentro de cliente me
+incomoda, alias, me incomoda a maneira como uma venda acontece no geral.
+Precisamos melhorar isso." Depois:
+
+"vamos fazer um PDV. E aí tudo que foi relacionado a alguma coisa que tenha
+cobrança vira uma comanda. E aí o pagamento acontece por dentro desse PDV,
+seja do que for. É todo que for pacote, procedimento avulso, qualquer coisa
+que for ser cobrança, aí por exemplo, um agendamento gera uma comanda num PDV
+quando ele tiver algum procedimento já especificado, né? E aí a gente tem o
+controle desses pagamentos e um lugar para realmente vender. Fazer a venda,
+né? Controlar essa venda. E pelo PDV daí também dá para vender o que tiver de
+produto marcado como coisa que pode ser vendida."
+
+Em resumo:
+- **Um PDV**: o lugar de vender e de controlar as vendas e os pagamentos.
+- **Tudo que tem cobrança vira COMANDA**: pacote, procedimento avulso, plano,
+  produto, qualquer coisa.
+- **O pagamento acontece só pelo PDV**, seja do que for.
+- **O agendamento com procedimento especificado gera uma comanda** no PDV.
+- **O PDV vende produto** marcado como vendável (a "Venda direta" do E2).
+
+### O que faz hoje (levantamento pelo sistema)
+
+A venda tem cinco portas, cada uma com o seu fluxo:
+- **Agendar (avulso):** o preço entra no agendamento; a cobrança é a da
+  conclusão do atendimento.
+- **"Vender" da ficha e do painel do inbox** (`components/shared/vender.tsx`):
+  abas Procedimento (pré-pago), Pacote, Produto e Crédito na clínica;
+  pergunta a unidade; depois oferece "Agendar a 1ª sessão".
+- **Fim do atendimento:** a cobrança da conclusão, que pode abrir o "Vender"
+  dentro dela (`checkout-wizard.tsx`).
+- **Plano de tratamento:** nasce no planejamento e se vende no "Fechar
+  checkout" (`checkout-de-plano.tsx`), que também agenda as sessões.
+- **Produto:** a aba do "Vender", com estoque e devolução próprios.
+Não existe tela de comandas nem lista do que está aberto para cobrar; o que
+mais se aproxima é o "A receber" do Financeiro e o Fechamento do dia.
+
+### Perguntas
+
+- **PDV-P1.** A comanda é uma por agendamento, ou uma comanda aberta por
+  cliente que junta tudo dela (dois atendimentos no mesmo dia, o produto que
+  ela leva junto)?
+- **PDV-P2.** A comanda do agendamento aparece no PDV quando: ao agendar
+  (dá para pagar adiantado), no dia, ou quando o atendimento termina?
+- **PDV-P3.** O "Vender" da ficha e do inbox: sai (vende-se só pelo PDV), ou
+  vira um atalho que abre o PDV já com a cliente?
 
 ## O PLANO DE ADAPTAÇÃO
 
