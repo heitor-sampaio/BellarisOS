@@ -50,7 +50,7 @@ superfícies em volta. A ordem é do Heitor.
 | Agenda | `agenda` | ✅ |
 | Clientes (ficha, tags, LGPD) | `clients` | ✅ |
 | Fidelidade | `loyalty` | ✅ |
-| Prontuário | `medical_records` | 🟡 |
+| Prontuário | `medical_records` | ✅ |
 | Documentos (termos e contratos) | `documents` | ⬜ |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
 | Procedimentos | `procedures` | ✅ |
@@ -698,7 +698,7 @@ Fidelidade (`fidelidade-config.tsx`, o catálogo em `fidelidade-catalogo.tsx`).
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Fidelidade".
 
-## Prontuário 🟡
+## Prontuário ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -735,7 +735,7 @@ Injetáveis.
   tem o Prontuário em Gerenciar sem unidade fixa. A cliente não vê o
   prontuário no app (só a ficha de saúde pendente e o que a clínica enviar).
 
-### Recomendações do Claude (aguardam o Heitor)
+### Recomendações do Claude (o Heitor, 13/11: "Concordo com tudo")
 
 - **PR1 — as fotos e os anexos clínicos moram no Prontuário** (o Heitor já
   aprovou as fotos). A foto aparece no atendimento dela, na aba Prontuário; o
@@ -752,6 +752,10 @@ Injetáveis.
 - **PR3 — um nome só para a ficha de saúde.** A mesma coisa aparece como
   "ficha de pré-atendimento", "ficha de saúde" e "anamnese". Fica "Ficha de
   saúde", que a cliente entende (é ela quem responde).
+
+### Bloco no plano: Prontuário
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Prontuário".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -906,6 +910,18 @@ unidade.
 | FD2c | **A tela de Configurações → Fidelidade** diz "No PDV, ao receber" no lugar de "Na recepção, ao confirmar o pagamento" | — |
 | FD3 | **Sai "pontos só na unidade"**: o saldo é sempre um, da rede. Saem junto a escolha "Onde o bônus pode ser usado" e a C64. A coluna e o saldo por unidade no razão dos pontos saem das funções e da tela (banco zerado: não há saldo a migrar) | — |
 | — | Mantém: ganho por real ou por procedimento, o catálogo e os vouchers, o ajuste com motivo, a validade, os bônus, o prêmio da indicação, a troca pelo app — todos opcionais e desligados ao nascer | — |
+
+### Bloco: Prontuário
+
+| # | O que muda | Depende de |
+|---|---|---|
+| PR1a | **A foto do atendimento aparece no atendimento dela, na aba Prontuário** (miniatura que abre grande, o momento — antes/durante/depois —, "Enviar à cliente"/"Tirar do app"). Sai o "2 fotos em Documentos → Foto clínica"; o cartão vazio da tela do atendimento diz que a foto fica no prontuário | — |
+| PR1b | **"Anexos clínicos" na aba Prontuário**: exame, laudo, receita, foto e termo anexado sem atendimento — anexar, ver, apagar (só marca), enviar à cliente. A aba Documentos fica com o anexo comum (RG, comprovante, "outro"); o aviso de "anexos clínicos que o seu cargo não abre" vai junto | — |
+| PR2a | **Anotação depois do atendimento**: no atendimento concluído, "Acrescentar anotação" (quem tem o Prontuário em Gerenciar, com o alcance de hoje) grava um texto datado com o nome de quem escreveu (o do ctx, com a marca "via suporte"), que não se edita nem se apaga. Aparece no atendimento, na aba Prontuário, na ordem do tempo | — |
+| PR2b | **A correção guarda a versão de antes**: o "Editar registro" grava, antes de trocar, o que estava (evolução, intercorrência, ficha do procedimento), com quem e quando; o atendimento diz "editado por X em dd/mm — ver a anterior". Só o servidor grava; a versão não se altera (gatilho), como os acessos | — |
+| PR2c | **O pacote LGPD leva as anotações e as versões** | PR2a, PR2b |
+| PR3 | **"Ficha de saúde" em toda tela, mensagem e aviso** (a equipe, o app, o link, Configurações → Fichas, o Copilot): sai "pré-atendimento" e "anamnese" do texto que se lê. O nome no código e no banco fica | — |
+| — | Mantém: o registro de cada atendimento (evolução, intercorrência, ficha do procedimento, o lote), a ficha de saúde e o envio dela, os injetáveis, quem vê e o registro de quem abriu | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
