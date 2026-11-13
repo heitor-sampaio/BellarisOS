@@ -59,7 +59,7 @@ superfícies em volta. A ordem é do Heitor.
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ⬜ |
-| Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ (as comissões: ver "Comissões", 🟡) |
+| Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ⬜ |
 | Equipe | `team` | ⬜ (já tem item, vindo do Estoque: P3) |
@@ -442,55 +442,6 @@ sentido, certo?"
 ### Bloco no plano: Tags
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Tags".
-
-## Comissões 🟡
-
-### O que devia fazer (o Heitor, 2026-11-13)
-
-"Não é na pagina de equipe que se define comissão, comissão se define nos
-procedimentos e produtos"
-
-(Veio depois de ele pedir para tirar o atalho "É de propósito" da linha da
-Equipe, o que já foi feito em 13/11, commit `a0674151`.)
-
-### O que faz (levantamento pelo sistema)
-
-- **Na Equipe** (o chip "Comissão …"/"Sem comissão" na linha de quem atende
-  abre a janela "Comissão", `comissao-do-membro.tsx`): a **comissão padrão**
-  da pessoa (percentual, valor fixo ou nenhuma), as **exceções por
-  procedimento**, a **comissão de venda (%)** da pessoa e a caixa **"Sem
-  comissão, de propósito"**.
-- **No procedimento** (`comissao-do-procedimento.tsx`, no cadastro e no chip
-  da tabela): **"A mesma para todos"** (a geral, que vence tudo) ou **"Por
-  profissional"**, em que cada pessoa tem um valor ou fica em **"Padrão"** —
-  e "Padrão" é a comissão padrão DELA, da Equipe.
-- **No produto**: "Comissão na venda deste produto". Sem ela, vale o padrão
-  da rede em Configurações → Comissões → "Venda de produto".
-- **No pacote**: a comissão de venda e a de cada sessão, no próprio pacote.
-- **Plano e pré-pago**: a comissão de venda vem da pessoa que vendeu (a % da
-  Equipe) ou, sem ela, do padrão da rede em Configurações → Comissões.
-- **Configurações → Comissões**: o aviso "atende e não tem comissão
-  configurada" lista quem atende sem padrão na Equipe (a caixa "de propósito"
-  tira a pessoa do aviso).
-
-### Diferenças
-
-- **CM1.** Sai da Equipe a comissão da pessoa: o chip, a janela (padrão,
-  exceções, comissão de venda, "sem comissão, de propósito") e o aviso de
-  Configurações → Comissões que conta quem atende sem padrão.
-- **CM2.** A comissão de execução passa a viver só no procedimento ("A mesma
-  para todos" ou "Por profissional"). O "Padrão" do "Por profissional"
-  apontava para a Equipe — ver a pergunta CM-P1.
-- **CM3.** A comissão de venda passa a viver só no produto (e no pacote, que
-  já tem a sua). Plano e pré-pago não têm cadastro próprio — ver CM-P2.
-
-### Perguntas
-
-- **CM-P1.** No procedimento, em "Por profissional": quem fica sem valor
-  próprio ganha o quê?
-- **CM-P2.** A comissão de venda do plano e do pré-pago (hoje: a da pessoa ou
-  o padrão da rede) — e o padrão da rede para venda de produto, em
-  Configurações → Comissões: ficam lá, ou saem?
 
 ## O PLANO DE ADAPTAÇÃO
 
