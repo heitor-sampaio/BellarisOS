@@ -129,21 +129,30 @@ export function nomeDeTeste(o_que: string): string {
 }
 
 /**
- * A rede de verdade do banco de dev.
+ * O endereço da REDE DE TESTE — a que `scripts/rede-de-teste.mjs` cria
+ * (2026-11-13, com o banco zerado). `E2E_REDE` troca, se um dia for outra.
+ */
+export const SLUG_DA_REDE_DE_TESTE = process.env.E2E_REDE ?? 'rede-de-teste'
+
+/**
+ * A rede de teste: a que os specs leem como "a rede real".
  *
- * Era `limit(1)` sem critério — funcionava porque só existia uma rede. Desde
- * que os testes de isolamento criam uma SEGUNDA (`apoio/outra-rede.ts`), a
- * resposta passou a poder ser a de teste. Nunca uma rede `[e2e]`, e a mais
- * antiga entre as outras.
+ * Pelo ENDEREÇO, não por ordem: até 2026-11-13 era "a mais antiga que não é
+ * `[e2e]`", e as redes das simulações moram no mesmo banco — bastava a de
+ * teste ser recriada depois de uma delas para a suíte passar a mexer na rede
+ * da simulação.
  */
 export async function tenantId(): Promise<string> {
   const { data, error } = await banco().from('tenants').select('id')
-    .not('name', 'like', `${PREFIXO}%`)
-    .order('created_at', { ascending: true })
-    .limit(1).single()
+    .eq('slug', SLUG_DA_REDE_DE_TESTE)
+    .maybeSingle()
   // Com o banco fora do ar, o erro é o JSON do Cloudflare, sem `message`
   // (na completa de 04/11 saía "Não achei o tenant: undefined").
   if (error) throw new Error(`Não achei o tenant: ${error.message ?? JSON.stringify(error).slice(0, 300)}`)
+  if (!data) {
+    throw new Error(`O banco não tem a rede de teste (endereço "${SLUG_DA_REDE_DE_TESTE}"). ` +
+      'Crie com `node scripts/rede-de-teste.mjs` (de apps/web).')
+  }
   return data.id as string
 }
 

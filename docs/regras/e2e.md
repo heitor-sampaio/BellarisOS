@@ -30,9 +30,12 @@ só quando o Heitor pede) continuam no §15 do `CLAUDE.md`.
   `node apps/web/scripts/rede-de-teste.mjs` cria a "Rede de Teste" — a
   sessão do E2E (`admin@bellaris.com.br`, Admin da rede), duas unidades com
   salas, uma pessoa que atende e uma que não atende em cada, procedimentos,
-  clientes e produtos com saldo. É a rede mais antiga sem `[e2e]`, a que
-  `tenantId()` lê; o script recusa rodar se o banco já tiver outra. O que o
-  spec supõe além disso, ele cria (ou entra no script).
+  clientes e produtos com saldo. `tenantId()` a acha pelo ENDEREÇO
+  (`rede-de-teste`, ou `E2E_REDE`), nunca por ordem de criação — as redes
+  das simulações moram no mesmo banco. Os endereços das unidades levam o da
+  rede e ela não tem CNPJ: os dois são únicos no sistema, e não podem tomar
+  o de uma simulação. O script recusa rodar se ela já existe. O que o spec
+  supõe além disso, ele cria (ou entra no script).
 - ⚠️ **A rede de teste pode ter conexões REAIS no ar** — o Heitor liga nela o
   número da API oficial dele (assim era até o wipe, e volta a ser).
   Spec que grava numa caixa de WhatsApp da rede real, mesmo "restaurando" no

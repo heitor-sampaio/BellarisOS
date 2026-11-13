@@ -4,9 +4,9 @@
  *
  * O banco foi zerado em 2026-11-13 (o Heitor: "apagar tudo, criar uma rede de
  * testes para os testes automatizados"). Os specs leem "a rede de verdade"
- * por `tenantId()` (`e2e/apoio/banco.ts`): a rede mais antiga cujo nome não
- * começa com `[e2e]`. Este script cria essa rede, do zero, com o mínimo que a
- * suíte supõe existir e não cria sozinha:
+ * por `tenantId()` (`e2e/apoio/banco.ts`): a rede de endereço `rede-de-teste`
+ * (ou o de `E2E_REDE`). Este script cria essa rede, do zero, com o mínimo que
+ * a suíte supõe existir e não cria sozinha:
  *
  *  - a pessoa da sessão do E2E (`E2E_ADMIN_EMAIL`, padrão
  *    admin@bellaris.com.br) com o cargo de sistema Admin da rede e a
@@ -22,8 +22,10 @@
  * nova de verdade: pela tela, quando alguém configura. Os logins da equipe
  * são `@bellaris.invalid` e não têm senha.
  *
- * Uso (de apps/web): `node scripts/rede-de-teste.mjs`. Recusa rodar se o banco
- * já tem uma rede que não é `[e2e]` — a de teste tem de ser a MAIS ANTIGA.
+ * Uso (de apps/web): `node scripts/rede-de-teste.mjs`. Recusa rodar se a rede
+ * de teste já existe. Convive com as redes das simulações: os endereços das
+ * unidades levam o da rede (são únicos no sistema inteiro) e a rede não tem
+ * CNPJ (também único entre as redes).
  */
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
@@ -41,6 +43,7 @@ if (!url || !chave) {
 }
 const db = createClient(url, chave, { auth: { persistSession: false } })
 const EMAIL_ADMIN = (process.env.E2E_ADMIN_EMAIL ?? 'admin@bellaris.com.br').toLowerCase()
+const SLUG = process.env.E2E_REDE ?? 'rede-de-teste'
 
 function falhou(oQue, error) {
   throw new Error(`${oQue}: ${error?.message ?? JSON.stringify(error)}`)
@@ -83,17 +86,16 @@ async function membro({ tenantId, roleId, email, nome, branchId = null, atendeEm
 }
 
 async function main() {
-  const existentes = await um(db.from('tenants').select('id, name').not('name', 'like', '[e2e]%'), 'conferir as redes')
-  if (existentes.length) {
-    console.error(`O banco já tem rede(s): ${existentes.map(r => r.name).join(', ')}. A rede de teste tem de ser a mais antiga — nada foi criado.`)
+  const ja = await um(db.from('tenants').select('id').eq('slug', SLUG).maybeSingle(), 'conferir a rede de teste')
+  if (ja) {
+    console.error(`A rede de teste ("${SLUG}") já existe: ${ja.id}. Nada foi criado.`)
     process.exit(1)
   }
 
   // 1. A rede. Os gatilhos semeiam os cargos (o de sistema e os modelos), as
   //    categorias de procedimento, as origens e os motivos de perda.
   const rede = await um(db.from('tenants').insert({
-    name: 'Rede de Teste', slug: 'rede-de-teste', email: EMAIL_ADMIN,
-    document: '11222333000181', plan_status: 'active',
+    name: 'Rede de Teste', slug: SLUG, email: EMAIL_ADMIN, plan_status: 'active',
     onboarding_completed_at: new Date().toISOString(),
   }).select('id').single(), 'criar a rede')
   const tenantId = rede.id
@@ -108,11 +110,11 @@ async function main() {
 
   // 2. As unidades e as salas.
   const unidades = await um(db.from('branches').insert([
-    { tenant_id: tenantId, name: 'Unidade Centro', slug: 'centro', document: '11222333000181' },
-    { tenant_id: tenantId, name: 'Unidade Jardins', slug: 'jardins', document: '11222333000181' },
+    { tenant_id: tenantId, name: 'Unidade Centro', slug: `${SLUG}-centro` },
+    { tenant_id: tenantId, name: 'Unidade Jardins', slug: `${SLUG}-jardins` },
   ]).select('id, slug'), 'criar as unidades')
-  const centro = unidades.find(u => u.slug === 'centro').id
-  const jardins = unidades.find(u => u.slug === 'jardins').id
+  const centro = unidades.find(u => u.slug === `${SLUG}-centro`).id
+  const jardins = unidades.find(u => u.slug === `${SLUG}-jardins`).id
   await um(db.from('rooms').insert([
     { branch_id: centro, name: 'Sala 1' }, { branch_id: centro, name: 'Sala 2' },
     { branch_id: jardins, name: 'Sala 1' }, { branch_id: jardins, name: 'Sala 2' },
@@ -154,7 +156,7 @@ async function main() {
     { product_id: p.id, branch_id: jardins, current_stock: 50, min_stock: 5 },
   ])), 'dar saldo aos produtos')
 
-  console.log(`Rede de teste criada: ${tenantId} (unidades centro e jardins; sessão do E2E: ${EMAIL_ADMIN}).`)
+  console.log(`Rede de teste criada: ${tenantId} (unidades ${SLUG}-centro e ${SLUG}-jardins; sessão do E2E: ${EMAIL_ADMIN}).`)
 }
 
 main().catch(e => { console.error(e.message); process.exit(1) })
