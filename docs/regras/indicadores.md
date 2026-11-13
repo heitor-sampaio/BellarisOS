@@ -1214,8 +1214,12 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   conta nas duas linhas e uma vez no total.
 - **O total da rede conta a unidade desativada** (C45): o dashboard e o
   Financeiro da rede inteira somam todas as unidades — a desativada com
-  movimento já aparecia no "Por filial", e o total não fechava. O recorte de
-  uma unidade, as listas e os seletores seguem as ativas.
+  movimento já aparecia no "Por filial", e o total não fechava. Desde a F72
+  (H6; D1 da 14ª) o recorte de uma unidade, as listas e os filtros de LEITURA
+  também a alcançam enquanto ela tiver o que ficou ou movimento no período
+  (`unidadesParaLer`, `lib/unidades/da-tela.ts`, com o selo "Unidade
+  desativada"); só os seletores de coisa NOVA seguem as ativas
+  (`unidadesParaCriar`). Regra inteira em `plataforma.md` (H6).
 - **Comparações** (C46): `resolvePeriod` devolve `prevFullTo` (o fim do
   período anterior INTEIRO); o "A receber" e o "A pagar" do hub comparam com
   `getEmAberto` até ele (eram o período inteiro × o pedaço decorrido). O selo

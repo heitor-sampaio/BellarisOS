@@ -790,6 +790,44 @@ abaixo entraram na F70, 2026-11-12):
   pessoa não muda, e nunca "para a rede", que daria mais acesso); "Ver os
   agendamentos" abre a agenda dela, onde se remarca ou cancela. Prova:
   `e2e/permissoes-f70.spec.ts` ("C67").
+  - **A janela diz TUDO o que fica** (D2 e A32 da 14ª, F72): a equipe fixa,
+    os agendamentos futuros, o estoque com saldo (valor e itens), o a receber
+    (e os atendimentos concluídos sem pagamento, à parte) e a comissão a
+    pagar — cada número da MESMA conta da tela que o mostra
+    (`oQueFicaNaUnidade`). E leva a resolver cada um na tela que já existe
+    (`caminhosDoQueFica`, `components/admin/o-que-ficou.tsx`): "Ver os
+    agendamentos" (a agenda dela, no dia do primeiro), "Transferir o estoque"
+    (o estoque dela; a transferência abre com ela de origem), "Ver o a
+    receber" (`?aberto=todos` dela), "Fechar as comissões" (as dela). Sem
+    repasse em lote novo. Depois do clique, o cartão e o detalhe da
+    desativada continuam dizendo o que ficou, com os mesmos caminhos
+    (`[data-o-que-ficou]`).
+- **A unidade desativada continua CONTADA e ALCANÇÁVEL enquanto tiver o que
+  ficou** (H6, o Heitor; C45 em `indicadores.md`; princípio 3 — D1, D2 e A32
+  da 14ª, F72). A regra é uma, em `lib/unidades/da-tela.ts`:
+  - **para LER** — `unidadesParaLer(tenantId, { periodo?, colunas? })`: as
+    ativas e as desativadas com o que ficou (`temOQueFicou`: agenda futura,
+    estoque com saldo, a receber, comissão a pagar) ou com movimento no
+    período da tela (`periodoDaTela`). É o que usam o dashboard, os
+    Relatórios (e o CSV de vendas), a agenda, o estoque, o Financeiro, as
+    Comissões, o Fechamento e os Documentos da rede: o total a conta, o
+    `?unidade=` a alcança, e ela leva o selo "Unidade desativada"
+    (`nomeNaTela`, `SeloUnidadeDesativada`). "Uma unidade só" (D-19) é uma
+    nos NÚMEROS: com dado da desativada, o cabeçalho diz "Rede".
+  - **para CRIAR** — `unidadesParaCriar` / `quantasUnidadesAtivas`: só as
+    ativas. É o seletor de agendar, de dar entrada e transferir PARA, de
+    vender, de lançar, de cadastrar, de campanha, de equipe e o trocador de
+    unidade do portal. O servidor confere também: `conferirPecasDoAgendamento`
+    recusa agendamento novo ou horário novo na desativada, e o estoque recusa
+    entrada, estoque inicial e transferência PARA ela
+    (`unidadeDesativada`, `lib/estoque/movimentos.ts`) — tirar DELA
+    (transferir, ajustar, perda) continua, é resolver.
+  - **No app da cliente**, o cartão do agendamento numa unidade desativada
+    diz que ela foi desativada (`AvisoUnidadeDesativada`), e remarcar leva às
+    ativas ("Em qual unidade?"; o servidor não remarca mantendo a fechada).
+  - Nenhuma tela filtra `is_active` das unidades por conta própria:
+    `tests/unidades-da-tela.test.ts` trava. Prova:
+    `e2e/unidade-desativada-f72.spec.ts`.
 - **Só uma Admin autoriza o suporte a entrar na conta de uma Admin** (D19; a
   regra de 29/10, "somente admin pode alterar admin": entrar como ela é agir
   como ela). Para a própria conta, ela mesma; para a de outra Admin, outra

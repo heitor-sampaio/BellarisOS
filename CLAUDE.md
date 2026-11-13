@@ -709,6 +709,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ page.tsx sem assertPermission próprio, confiando no layout
 ❌ Rota de /api/* sem defesa própria (segredo, assinatura ou sessão + permissão) — o proxy não barra
 ❌ Somar/contar indicador na tela em vez de usar lib/metrics (trunca em 1000 linhas)
+❌ Tela que lê as unidades com o próprio .eq('is_active', true) — é unidadesParaLer (a desativada com o que ficou conta e se alcança) ou unidadesParaCriar (lib/unidades/da-tela; tests/unidades-da-tela trava)
 ❌ Ler uma LISTA que cresce sem paginar (lerTodas) — o PostgREST corta em 1000 em silêncio, e .limit(2000) também vira 1000; filtrar no app DEPOIS de ler um lote (aniversário, "sem retorno") é o mesmo corte — o filtro vai para o banco
 ❌ Somar dinheiro por uma regra própria em vez de partir de metrics_receitas_pagas
 ❌ Migration que cria função sem notify pgrst, 'reload schema' no fim

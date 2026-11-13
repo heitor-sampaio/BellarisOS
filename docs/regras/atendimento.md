@@ -2471,8 +2471,12 @@ indicada é a do consolidado do levantamento):
 - **Quem tem o Estoque em Ver vê o Valor e o Giro nos DOIS portais (D2;
   telas iguais nos dois portais, CLAUDE.md §6).** Quem não deve ver custo não
   recebe o módulo (princípio 1). (Feito na F66: os cartões e a coluna VALOR
-  nos dois portais; o total da rede soma só as unidades ATIVAS, as das
-  linhas.)
+  nos dois portais; o total da rede soma as unidades das linhas — desde a
+  F72, as ativas E a desativada que ainda tem saldo, com o selo "Unidade
+  desativada" (H6 + princípio 3; era "só as ATIVAS" na F66, e fechar a
+  Pampulha tirava R$ 894,80 do total sem nada ter saído). A desativada não
+  recebe entrada nem transferência; transferir DELA, ajustar e a perda
+  continuam — `plataforma.md`, H6.)
 - **O uso dos produtos antigos (est-01) não tem mais efeito (D3):** o wipe
   total de 02/11 apagou os produtos antigos. O produto novo continua nascendo
   Insumo.
