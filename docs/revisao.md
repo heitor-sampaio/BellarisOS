@@ -62,7 +62,7 @@ superfícies em volta. A ordem é do Heitor.
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ✅ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ✅ |
-| Equipe | `team` | 🟡 |
+| Equipe | `team` | ✅ |
 | Fichas (formulários, pré-atendimento) | `forms` | ⬜ |
 | Cargos e permissões | `roles` | ⬜ |
 | Configurações (rede e unidade) | `settings` | ⬜ |
@@ -1158,7 +1158,7 @@ Regras em `docs/regras/indicadores.md` §13.1 (todo número vem de
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Relatórios".
 
-## Equipe 🟡
+## Equipe ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -1181,7 +1181,7 @@ Regras no CLAUDE.md §11 e em `docs/regras/plataforma.md`. Gestão → Equipe.
   oferece repassar os agendamentos futuros e as oportunidades abertas;
   ninguém desativa a si mesmo; o login desativado é barrado.
 
-### Recomendação do Claude (aguarda o Heitor)
+### Recomendação do Claude (o Heitor: "Concord.")
 
 - **EQ1 — a pessoa ligada a VÁRIAS unidades (P3)**: no lugar da abrangência
   (rede OU uma unidade) e do "Atende" por unidade, o cadastro tem
@@ -1190,6 +1190,16 @@ Regras no CLAUDE.md §11 e em `docs/regras/plataforma.md`. Gestão → Equipe.
   atende nas unidades dela (aparece na agenda, no agendar, na comissão). Ela
   vê e opera só nas unidades dela; quem tem "A rede inteira" é "da rede"
   (a configuração da rede toda continua só dela — H7).
+
+Sobre a pessoa de duas unidades que atende só numa: "Eu não sei se pode
+acontecer, poder eu acho que pode, mas deve ser raro né." Pelo princípio 7
+(o caso comum aparece; o raro fica guardado), decidido pelo Claude: o
+"Atende" é UMA caixa; com mais de uma unidade marcada, um "Escolher em quais
+unidades atende" discreto abre a lista — fechado, vale em todas.
+
+### Bloco no plano: Equipe
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Equipe".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1417,6 +1427,20 @@ e Agenda (AG1) com o DC1–DC4.
 | RL1 | **A aba Vendas lista as comandas do PDV**: cada venda, do que for (atendimento avulso, pacote, plano, produto, crédito), com filtro por tipo; o CSV junto. O número continua vindo de `lib/metrics/` | PDV |
 | RL2 | **A aba "Funil comercial" se chama "Oportunidades"** (a aba, a dica na tela de Cargos, o texto da tela; sem "leads") | CR1 |
 | — | Mantém: as outras abas, o período e a unidade, as abas por cargo, o escopo de unidade × rede, o Dashboard, as regras dos números | — |
+
+### Bloco: Equipe
+
+Mexe no coração da autorização (a abrangência de hoje é `users.branch_id`,
+uma só, e `ctx.branchId`): pede o cuidado de arquivo compartilhado e AVISO ao
+Heitor de que vale uma completa.
+
+| # | O que muda | Depende de |
+|---|---|---|
+| EQ1a | **"Unidades"** no cadastro: "A rede inteira" (todas, inclusive as futuras) ou as marcadas, uma ou mais. Sai a abrangência rede OU uma unidade. A pessoa vê e opera só nas unidades dela (`alcancaUnidade`, os filtros das listas, a agenda, o PDV, as telas da unidade); com uma só, a tela se comporta como hoje | — |
+| EQ1b | **"Da rede" é quem tem "A rede inteira"**: a configuração da rede toda (H7), o portal da rede, a lista de quem abriu o prontuário. Quem tem duas unidades marcadas NÃO é da rede | EQ1a |
+| EQ1c | **"Atende" é uma caixa**: marcada, atende em todas as unidades dela (agenda, agendar, repasse, comissão, relatórios). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista | EQ1a |
+| EQ1d | **A unidade pré-preenchida** dos cadastros (o produto do Estoque, E13: "Se a pessoa tiver mais de uma unidade, a lista mostra apenas as unidades dela") segue as unidades da pessoa | EQ1a, E13 |
+| — | Mantém: a lista e os filtros, o cargo, o horário, o registro no conselho, a senha temporária, a comissão, as regras da Admin da rede e do "cargo acima", o desativar com repasse | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
