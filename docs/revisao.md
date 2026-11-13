@@ -58,7 +58,7 @@ superfícies em volta. A ordem é do Heitor.
 | Plano de tratamento | `treatment_plans` | ⬜ (já tem itens, vindos de Pacotes: PC7–PC9) |
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
-| Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ o PDV (ver "Vendas: o PDV e as comandas"); recebimentos e fechamento do dia ⬜ |
+| Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ⬜ |
@@ -597,6 +597,35 @@ mais se aproxima é o "A receber" do Financeiro e o Fechamento do dia.
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Vendas e PDV".
 
+## Caixa: recebimentos e fechamento do dia ✅
+
+### Como se decidiu (o Heitor, 2026-11-13)
+
+O Heitor: "o problema é que eu não entendo nada disso daí, dessa parte aí de
+fechamento, de financeiro, de contabilidade, então tu tem que me ajudar com
+isso aí. Como é que o pessoal usa normalmente, qual que é a regra geral, qual
+que é o modo mais fácil e intuitivo disso acontecer." O Claude explicou o uso
+comum (o caixa do balcão × o financeiro da gestão; "o que a cliente paga na
+sua frente passa pelo caixa, o resto é do financeiro") e propôs o desenho
+abaixo. O Heitor: "Blz pode ser assim".
+
+### O que faz hoje (levantamento)
+
+- **Recebimentos** (permissão `cashier`): recebe o atendimento na conclusão,
+  o plano no check-in, dá baixa nas parcelas e no "a receber", vê os
+  "Concluídos a receber" (agenda, Fechamento, ficha); é dele o "Vender".
+- **Fechamento do dia** (por unidade, sem caixa de abrir): por forma de
+  pagamento, entradas, saídas e saldo; o dinheiro esperado × contado, com
+  fundo de troco opcional; "Por quem recebeu"; os estornos do dia; seis
+  avisos (a receber, lançamento depois do fechamento, espécie negativa, taxas
+  da maquininha estimadas, venda sem taxa, o que a operadora vai depositar);
+  cada fechamento registrado, "Ainda não fechado", a rede vê todas as
+  unidades; CSV.
+
+### Bloco no plano: Caixa
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Caixa (recebimentos e fechamento do dia)".
+
 ## O PLANO DE ADAPTAÇÃO
 
 O Heitor, 13/11: "eu quero que os resultados da revisão de cada modulo
@@ -706,6 +735,21 @@ revisão, só se escreve o plano. Nada se implementa.
 | PDV6 | **Produto**: o PDV vende o que está marcado como Venda direta | E2 |
 | PDV7 | Sai o **"Vender" da ficha**; o do **inbox** leva ao PDV. Sai a cobrança da conclusão do atendimento como porta própria (vira a comanda) | PDV1–PDV3 |
 | — | Mantém, dentro da comanda: as formas de pagamento (à vista, entrada + parcelas, a receber, cartão em N vezes), o desconto, "Quem vendeu", o estorno e a devolução, as comissões | — |
+
+### Bloco: Caixa (recebimentos e fechamento do dia)
+
+A regra: **o que a cliente paga na frente de quem está no balcão passa pelo
+PDV; o resto é do Financeiro.**
+
+| # | O que muda | Depende de |
+|---|---|---|
+| CX1 | **O PDV recebe** toda comanda e também a **parcela do crediário** que a cliente veio pagar: abrir a cliente no PDV mostra as parcelas em aberto dela, e recebe-se ali | PDV1–PDV3 |
+| CX2 | **O Financeiro** tem a lista de tudo que falta receber, de todas as clientes, e dá baixa só no que entra sem passar pelo balcão (a transferência que caiu na conta) | — |
+| CX3 | Os **"Concluídos a receber"** viram as **comandas abertas** do PDV (sai a lista à parte na agenda, no Fechamento e na ficha) | PDV3 |
+| CX4 | **O Fechamento do dia mora no PDV** ("Fechar o dia"): uma linha por forma de pagamento, **o que o sistema registrou × o que foi conferido**; o fundo de troco segue opcional na linha do dinheiro | PDV1 |
+| CX5 | **Os avisos do Fechamento** ficam dois: **"há comanda aberta"** e **"entrou dinheiro depois do fechamento"**. "Por quem recebeu" e os estornos do dia ficam como detalhe recolhido | CX4 |
+| CX6 | **Vão para o Financeiro:** as taxas da maquininha estimadas, o que a operadora ainda vai depositar, a venda sem taxa cadastrada e a planilha da contadora (o CSV) | CX4 |
+| — | Mantém: cada fechamento registrado (vale o mais recente), "Ainda não fechado", a rede vendo o dia de todas as unidades. Sem "abrir caixa" e sem sangria (se um dia a unidade trabalhar com muito dinheiro vivo, entra como opção) | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
