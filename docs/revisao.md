@@ -69,7 +69,7 @@ superfícies em volta. A ordem é do Heitor.
 | Copilot | `copilot` | ⏸ por último (a regra: acompanha tudo) |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ✅ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ✅ |
-| WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ⬜ |
+| WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | 🟡 |
 | Busca | `busca_universal` | ⬜ |
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ⬜ |
 | Site | `apps/site` | ⬜ |
@@ -1441,6 +1441,36 @@ pessoa em várias redes, com o seletor na entrada.
 ### Bloco no plano: Portal da cliente
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Portal da cliente".
+
+## WhatsApp e avisos (push) 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/whatsapp-push.md`. Os números se ligam em
+Configurações → Integrações.
+- **Os números de WhatsApp da rede**: quantos a rede quiser, cada um com um
+  nome e as pessoas que falam por ele. Dois tipos convivendo: o **não
+  oficial** (uazapi, pelo QR Code) e o **oficial** da Meta — em
+  **coexistência** (o aplicativo WhatsApp Business continua funcionando) ou
+  **Cloud API** (o número passa só para o sistema). A unidade no número é só
+  um rótulo. Remover um número não junta as conversas. Ao ligar, puxa o
+  histórico (Ações em lote) e os modelos aprovados da conta. O custo da Meta
+  aparece antes de mandar um modelo e no mês de cada número.
+- **Os avisos no celular** (app e navegador, e o sino): à EQUIPE vai o que é
+  dela — quem atende (o agendamento dela) e quem tem o módulo em Gerenciar
+  na unidade (não quem só vê, nem quem está em "só os meus", nem quem fez a
+  ação): novo agendamento, cancelamento, remarcação, chegada (só a quem
+  atende), estoque no mínimo. À CLIENTE só vai o que a rede liga
+  (automações, campanhas, o documento enviado, os bônus da fidelidade) —
+  nada sai sozinho.
+
+### Recomendação do Claude
+
+Nada a mudar além do vocabulário (sem "clínica" nos avisos — V1, CA1).
 
 ## O PLANO DE ADAPTAÇÃO
 
