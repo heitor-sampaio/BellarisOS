@@ -702,7 +702,7 @@ Está no PLANO DE ADAPTAÇÃO, "Bloco: Fidelidade".
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+"pode trazer as fotos pro prontuário e aceito outras recomendações".
 
 ### O que faz hoje (levantamento)
 
@@ -734,6 +734,24 @@ Injetáveis.
   não vê. Todo acesso fica registrado, e a lista de quem abriu aparece a quem
   tem o Prontuário em Gerenciar sem unidade fixa. A cliente não vê o
   prontuário no app (só a ficha de saúde pendente e o que a clínica enviar).
+
+### Recomendações do Claude (aguardam o Heitor)
+
+- **PR1 — as fotos e os anexos clínicos moram no Prontuário** (o Heitor já
+  aprovou as fotos). A foto aparece no atendimento dela, na aba Prontuário; o
+  exame, o laudo e a receita sem atendimento ficam numa parte "Anexos
+  clínicos" da mesma aba. A aba Documentos fica com o que não é clínico (RG,
+  comprovante, "outro"). Quem vê e quem anexa não muda (já é o Prontuário).
+- **PR2 — o registro concluído não se reescreve sem rastro.** Hoje o "Editar
+  registro" troca o texto da evolução e da ficha, e o de antes some. O que se
+  escreve depois vira uma ANOTAÇÃO datada, com o nome de quem escreveu (a
+  cliente ligou três dias depois com vermelhidão), e a correção guarda a
+  versão de antes, à vista ("editado por X em dd/mm — ver a anterior"). É o
+  que os conselhos de saúde pedem do prontuário e o que protege a rede numa
+  reclamação.
+- **PR3 — um nome só para a ficha de saúde.** A mesma coisa aparece como
+  "ficha de pré-atendimento", "ficha de saúde" e "anamnese". Fica "Ficha de
+  saúde", que a cliente entende (é ela quem responde).
 
 ## O PLANO DE ADAPTAÇÃO
 
