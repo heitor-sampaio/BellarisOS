@@ -55,7 +55,7 @@ superfícies em volta. A ordem é do Heitor.
 | CRM (inbox, oportunidades, funis) | `crm` | ✅ |
 | Procedimentos | `procedures` | ✅ |
 | Pacotes | `procedures` (pacotes) | ✅ |
-| Plano de tratamento | `treatment_plans` | 🟡 |
+| Plano de tratamento | `treatment_plans` | ✅ |
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
@@ -883,7 +883,7 @@ O resto, o Heitor: "o resto fica como está".
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: CRM".
 
-## Plano de tratamento 🟡
+## Plano de tratamento ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -1004,7 +1004,21 @@ PT3 isso, se for uma sessão de plano ou pacote, pode agendar."
 - **PT3, confirmado**: a sessão de plano OU de pacote a cliente agenda pelo
   app (mesmo sem "Permitir auto agendamento").
 - **PT1**: o Heitor pediu o fluxo na prática, tela por tela — o Claude
-  propôs a TELA DO PLANO como o centro (a confirmar).
+  propôs a TELA DO PLANO como o centro.
+
+Fechamento (o Heitor, 13/11): "faz sentido, pode fechar o plano de
+tratamento, só inverte uma ordem, primeiro colhe assinatura, depois paga".
+- **A ordem é: aceitar → assinar → pagar → agendar** (agendar pode vir a
+  qualquer momento depois do aceite). Como o contrato de plano cita a forma de
+  pagamento (decisão de 2026-09-30), o "Aceitar plano" pergunta a forma
+  COMBINADA (à vista, entrada + parcelas…) — é o que vai no contrato e o que a
+  comanda do PDV traz pronto. Pela regra (princípio 2), o PDV que recebe o
+  plano sem o contrato assinado AVISA ("Falta assinar o contrato do plano",
+  com "Colher as assinaturas"), não recusa.
+
+### Bloco no plano: Plano de tratamento
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Plano de tratamento".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1110,7 +1124,7 @@ revisão, só se escreve o plano. Nada se implementa.
 | PDV1 | **O PDV**: a tela de vender e de controlar as vendas e os pagamentos. Todo pagamento de venda passa por ele, seja do que for | o desenho da tela, mostrado ao Heitor antes de implementar |
 | PDV2 | **Uma venda, uma comanda**: o atendimento avulso, o pacote, o plano, a venda de produto — cada um na sua comanda | PDV1 |
 | PDV3 | **Iniciar o atendimento** (clicar no horário na agenda e iniciar, por quem tem a permissão) gera a comanda e o atendimento de quem vai atender. Pagar antes ou depois é só a ordem do trabalho. Agendar, confirmar e remarcar não geram comanda; falta e cancelamento não têm comanda | PDV2 |
-| PDV4 | **Plano de tratamento**: a comanda nasce ao iniciar o PRIMEIRO atendimento do plano. Sai o "Fechar checkout" como porta de pagamento | PDV2; **Plano de tratamento** |
+| PDV4 | ~~**Plano de tratamento**: a comanda nasce ao iniciar o PRIMEIRO atendimento do plano.~~ **Revisto no Plano de tratamento (PT1):** a comanda do plano nasce no ACEITE, com o valor inteiro. Sai o "Fechar checkout" | PDV2; **Bloco: Plano de tratamento** |
 | PDV5 | **Pacote**: vendido como um produto, na hora, pelo PDV | PDV2 |
 | PDV6 | **Produto**: o PDV vende o que está marcado como Venda direta | E2 |
 | PDV7 | Sai o **"Vender" da ficha**; o do **inbox** leva ao PDV. Sai a cobrança da conclusão do atendimento como porta própria (vira a comanda) | PDV1–PDV3 |
@@ -1194,6 +1208,20 @@ e Agenda (AG1) com o DC1–DC4.
 | CR1 | **"Contato" e "Oportunidade" em todo texto que se lê**: sai "lead" das telas (inbox, quadro, atribuição de anúncio, relatórios, importações), dos avisos e das respostas do Copilot. Um teste varre os textos da tela atrás de "lead" | — |
 | CR2 | **"Cadastrar como cliente"** no quadro também (era "Converter em cliente") | — |
 | — | Mantém: o inbox, o quadro, o funil e as origens, o "só os meus" pela pessoa ou pela conversa, os números por cargo. Já entram por outros blocos: o "Agendar" com a caixa de unidade (AG2), o "Vender" levando ao PDV, as tags que o sistema punha sozinho (Tags) | AG2, PDV, Tags |
+
+### Bloco: Plano de tratamento
+
+| # | O que muda | Depende de |
+|---|---|---|
+| PT2 | **Monta quem atende, sem permissão própria** (sai a exigência do Prontuário em Gerenciar): na avaliação (o editor na tela do atendimento) ou DEPOIS, com calma — "Novo plano" na ficha (Planejamento → Tratamentos) e no menu Tratamentos, e "Montar plano desta avaliação" na avaliação concluída (o plano fica ligado a ela). A anotação clínica dentro do plano continua pedindo o Prontuário | — |
+| PT1a | **A página do plano é o centro**, com os passos à vista: ① Aceite ② Assinaturas ③ Pagamento ④ Sessões (X de N agendadas/realizadas). Sai o "Fechar checkout" (os quatro passos numa tela só) | — |
+| PT1b | **"Aceitar plano"** pergunta a forma de pagamento COMBINADA (à vista, entrada + parcelas, cartão em N vezes), o desconto e "Quem vendeu"; o plano fica Aceito, os documentos (contrato de plano com a forma, termos e os outros) ficam prontos, e a comanda do plano nasce no PDV com o valor INTEIRO (a soma das sessões) e o combinado | DC1–DC4, PDV |
+| PT1c | **Assinar antes de pagar**: na página do plano, "Colher as assinaturas" (aparelho, link único ou app — uma assinatura para todos). O PDV que recebe a comanda do plano sem o contrato assinado avisa, com o mesmo botão (não recusa — princípio 2). Trocar a forma no PDV depois de assinado: o contrato assinado não muda, e o PDV avisa que o combinado era outro (a regra de hoje do "contrato assinado para outro pagamento" — a decidir na implementação se avisa ou recusa) | PT1b |
+| PT1d | **Agendar as sessões** a qualquer momento depois do aceite: [Agendar] em cada sessão e "Agendar todas" na página do plano (a janela da agenda já com a cliente, o procedimento e a duração), o "+ Agendar" da agenda (já oferece as sessões do plano) e o app | — |
+| PT1e | **A sessão não cobra nada**; a parcela com a clínica que venceu aparece no PDV (CX) | CX |
+| PT1f | **Tratamentos** (menu) filtra por situação: Proposto, Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado | PT1a |
+| PT3 | **No app, a cliente vê TUDO do plano** — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados — e **agenda as sessões em aberto**. A sessão de plano OU de pacote se agenda pelo app mesmo com o procedimento sem "Permitir auto agendamento" | — |
+| — | Mantém: as sessões com procedimento, preço e duração; "Cliente vai pensar"; a validade da proposta (só informação); o aviso de plano × avulso do mesmo procedimento; a sugestão do pacote equivalente; o cancelamento do plano por quem tem o Financeiro em Gerenciar; o "só os meus" | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
