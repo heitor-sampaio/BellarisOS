@@ -62,7 +62,7 @@ superfícies em volta. A ordem é do Heitor.
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ✅ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ✅ |
-| Equipe | `team` | ⬜ (já tem item, vindo do Estoque: P3) |
+| Equipe | `team` | 🟡 |
 | Fichas (formulários, pré-atendimento) | `forms` | ⬜ |
 | Cargos e permissões | `roles` | ⬜ |
 | Configurações (rede e unidade) | `settings` | ⬜ |
@@ -1157,6 +1157,39 @@ Regras em `docs/regras/indicadores.md` §13.1 (todo número vem de
 ### Bloco no plano: Relatórios
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Relatórios".
+
+## Equipe 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+Já dito no Estoque (P3): "No cadastro da equipe, permitir linkar a pessoa em
+mais de uma unidade, \"atende\" é um checkbox que permite que ela faça
+atendimentos". Sobre a comissão na Equipe: "esquece, deixa como está".
+
+### O que faz hoje (levantamento)
+
+Regras no CLAUDE.md §11 e em `docs/regras/plataforma.md`. Gestão → Equipe.
+- **A lista**: nome, cargo, abrangência, a pílula da comissão, ativo ou
+  inativo; filtros por unidade, cargo e situação.
+- **O cadastro**: nome completo, e-mail, cargo, **abrangência** (a rede
+  inteira OU UMA unidade), **"Atende"** (a lista das unidades em que ela
+  atende — `atende_em`), horário de atendimento, registro no conselho
+  (opcional), a senha temporária (troca no primeiro acesso), a comissão
+  (padrão, de venda, exceções por procedimento).
+- **Regras**: ninguém dá um cargo com mais acesso que o próprio; só a Admin da
+  rede dá e mexe no cargo de Admin da rede (e a última não sai); desativar
+  oferece repassar os agendamentos futuros e as oportunidades abertas;
+  ninguém desativa a si mesmo; o login desativado é barrado.
+
+### Recomendação do Claude (aguarda o Heitor)
+
+- **EQ1 — a pessoa ligada a VÁRIAS unidades (P3)**: no lugar da abrangência
+  (rede OU uma unidade) e do "Atende" por unidade, o cadastro tem
+  **"Unidades"** — "A rede inteira" (todas, inclusive as que vierem) ou as
+  unidades marcadas, uma ou mais — e **"Atende"**, UMA caixa: marcada, ela
+  atende nas unidades dela (aparece na agenda, no agendar, na comissão). Ela
+  vê e opera só nas unidades dela; quem tem "A rede inteira" é "da rede"
+  (a configuração da rede toda continua só dela — H7).
 
 ## O PLANO DE ADAPTAÇÃO
 
