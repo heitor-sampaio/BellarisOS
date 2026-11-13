@@ -546,6 +546,11 @@ um muro que não depende de cada trava do código.
   mídia), campanha, pedido de assinatura e link de assinatura (gerar e pela
   conversa). O push ao cliente (`notifyClient`) não sai, e fato gravado na
   sessão não dispara automação (o evento fica, com `suporte_sessao_id`).
+  Também o fato que o GATILHO SQL cria (pagamento, estoque, comissão…): toda
+  escrita do cliente de serviço na requisição do suporte leva o cabeçalho
+  `x-bellaris-suporte-sessao`, e o gatilho de `domain_events` grava a marca
+  (F71; `automacoes.md`). O fato da equipe ou da cliente no mesmo período
+  dispara normalmente — o que o suporte cala é o que ELE fez.
   Também não sai, não troca senha e não registra aparelho de push.
   - ⚠️ **A marca "esta requisição é do suporte" vem do TOKEN**
     (`sessaoDeSuporteAtual`, `lib/suporte/requisicao.ts`), não só do `cache`
@@ -684,7 +689,13 @@ um muro que não depende de cada trava do código.
     `uq_quick_replies_titulo_da_pessoa`; a sessão não lê nem grava a tabela).
     Quem guarda é quem MANDA mensagem (o CRM em Gerenciar, como o envio).
     Deixaram de ser uma biblioteca da rede (C72, F69; a única linha da
-    produção tinha autor). Prova: `e2e/inbox-respostas-de-cada-pessoa.spec.ts`.
+    produção tinha autor). **Têm um lugar fixo** (A8 da 14ª, F71): o botão
+    "Minhas respostas rápidas" no topo da lista do Inbox, nos dois portais,
+    lista, cria, edita e apaga as suas — sem conversa aberta e sem canal
+    ligado (era só o ⚡/"/" de uma conversa, e a clínica sem WhatsApp não
+    tinha onde criá-las). É o mesmo editor; fora da conversa, o clique no
+    atalho o edita. Prova: `e2e/inbox-respostas-de-cada-pessoa.spec.ts`,
+    `e2e/inbox-minhas-respostas-rapidas.spec.ts`.
   - **As Importações são de quem é da rede**, e a importação escolhe a que
     unidade os registros pertencem (a ficha da cliente, os produtos). A
     gerente de unidade fixa não importa: a aba diz "Esta configuração é da

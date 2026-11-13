@@ -31,15 +31,36 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   a F69 a automação "Pagamento recebido → avisar" passava no ensaio e nunca
   disparava. O cron de 5 minutos (`despacharFatosDoBanco`,
   `lib/automacoes/cron.ts`) lê os de `origem = 'banco'` com `despachado_em`
-  nulo do último dia e REIVINDICA cada um (`despachado_em` de nulo para agora,
-  conferindo a linha devolvida) antes de `despacharEvento` — duas passagens
-  juntas criam uma execução só (e o índice único `(automation_id, evento_id)`
-  segura a segunda de qualquer jeito). Atraso: até 5 minutos. A migration
-  `20261112006901` marcou os fatos anteriores como despachados (não disparam
-  de uma vez). **O suporte**: o gatilho SQL não sabe que a gravação veio de
-  uma sessão de suporte (o servidor grava pelo cliente de serviço) — o fato
-  que ocorreu com uma sessão de suporte ATIVA na rede não dispara
-  (`suporteAtivoEm`). Prova: `e2e/automacoes-fatos-do-banco.spec.ts`.
+  nulo do último dia e REIVINDICA o lote (`despachado_em` de nulo para agora,
+  numa escrita só, contando as linhas devolvidas) antes de `despacharEvento` —
+  duas passagens juntas criam uma execução só (e o índice único
+  `(automation_id, evento_id)` segura a segunda de qualquer jeito). Atraso: até
+  5 minutos. A migration `20261112006901` marcou os fatos anteriores como
+  despachados (não disparam de uma vez).
+  - **A fila se DRENA, não é um lote por passagem** (F71, a completa de
+    2026-11-12): eram 50 fatos por passagem, do mais velho para o mais novo, e
+    com mais de 50 a cada 5 minutos a fila crescia sem fim e o fato novo nunca
+    disparava (115 parados no banco). As filas do cron passam por
+    `drenarEmLotes` (`lib/cron/drenar.ts`): lote atrás de lote até esvaziar ou
+    até o orçamento da passagem (15 s por fila). Os fatos e as retomadas usam
+    a mesma regra; nas retomadas, o run que falhou nesta passagem fica de fora
+    pelo `fim_em` (uma tentativa por passagem) e a rede bloqueada sai da busca.
+    O fato que nenhuma automação ligada assina não vai ao motor (uma leitura
+    das automações por lote). Prova: `tests/cron-drena-a-fila.test.ts`.
+  - **O suporte: só o fato que o SUPORTE gravou não dispara** (C2 que sobrou,
+    F71; CLAUDE.md §14). O suporte grava pelo cliente de serviço, e o gatilho
+    SQL não sabia quem gravou: até a F71 o cron calava todo fato ocorrido com
+    uma sessão de suporte ativa na rede, inclusive o pagamento que a recepção
+    recebeu no mesmo período. Agora toda ESCRITA do cliente de serviço numa
+    requisição da sessão de suporte leva o cabeçalho `x-bellaris-suporte-sessao`
+    (`comMarcaDoSuporte`, `packages/nucleo/src/lib/supabase/marca-do-suporte.ts`,
+    no `createAdminClient`), e o gatilho `trg_domain_events_marca_do_suporte`
+    (migration `20261112007102`) grava `suporte_sessao_id` no fato — só com a
+    chave de serviço e só para uma sessão da MESMA rede. O cron deixa de lado
+    o fato com a marca; o resto dispara.
+  Prova: `e2e/automacoes-fatos-do-banco.spec.ts`,
+  `e2e/automacoes-fatos-do-banco-suporte.spec.ts`,
+  `tests/suporte-marca-no-cliente-de-servico.test.ts`.
 - **`pagamento.estornado` é só do que estava PAGO** (achado da F2b,
   migration `20261101001003`): a parcela nunca paga que cai como
   `Estornada` (o crediário que o cancelamento do pacote derruba, a venda de
@@ -191,9 +212,18 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   a busca do passo "Buscar clientes" (com o teto) e, entre as achadas, as que
   têm a conversa (`publico_com_conversa`, a mesma régua do envio — §9.8.0 de
   `whatsapp-push.md`); sem o passo de busca, as clientes ativas da clínica. A
-  janela "Ligar a automação?" (`[data-antes-de-ligar]`) só abre quando o fluxo
-  manda WhatsApp; "Agora não" não liga. (C65 entregue na F69; o "Depois" segue
-  em aberto.) O "padrão da rede" de
+  janela "Ligar a automação?" (`[data-antes-de-ligar]`) abre para **todo fluxo
+  que chega à cliente** — o passo "Mandar mensagem" por qualquer canal, o
+  aviso no celular incluído (A10 da 14ª, F71: o modelo da rede sem WhatsApp
+  nasce em push e ligava calado); no push, a conta é de quem tem o aparelho
+  (`publico_com_aparelho`, a régua do disparo da campanha): "Hoje a busca
+  acharia 3 clientes, e 1 vai receber o aviso no celular." Avisar a equipe,
+  tag, etapa e anotar não chegam à cliente e ligam direto. A regra é UMA,
+  `lib/automacoes/antes-de-ligar.ts` (`canaisParaACliente`, o texto e a frase
+  de cada canal); "Agora não" não liga. Prova:
+  `e2e/automacoes-antes-de-ligar-push.spec.ts`,
+  `tests/automacoes-antes-de-ligar.test.ts`. (C65 entregue na F69; o
+  "Depois" segue em aberto.) O "padrão da rede" de
   `whatsapp-push.md` §9.8.0 ("é por ele que sai tudo que o SISTEMA inicia")
   não abre conversa pela automação enquanto essa opção estiver desligada.
 - **O gatilho "N horas antes de cada agendamento" lembra o agendado E o
@@ -383,6 +413,18 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   "Arquivar" eram ícones lado a lado): "Ver", "Ativar", "Pausar", "Arquivar"
   escritos no botão. Prova: `e2e/automacoes-atritos-da-11.spec.ts`,
   `tests/automacoes-atritos-da-11.test.ts`.
+- **A campanha e a automação dizem quando usar uma ou outra** (A9 da 14ª,
+  F71; princípio 7): a tela de campanhas diz "Campanha é um aviso a um público
+  de uma vez…; para reagir a um fato de cada cliente…, use as Automações", e
+  a de Automações a frase do outro lado, com o link quando a pessoa alcança a
+  outra tela (`[data-campanha-ou-automacao]`). O item dos anúncios (Meta e
+  Google) se chama **"Anúncios"** no menu e no título — "Marketing" é o nome
+  do grupo. O título da campanha diz o que o `{{first_name}}` faz. O painel
+  do passo fala português: o nome do passo "aparece na lista de campos dos
+  passos seguintes" (era `{{passos.…}}`), e a espera "até a data" diz o que o
+  motor faz com o momento que já passou ("Marcado com menos de 1 dia de
+  antecedência: sai na hora", A11). Prova:
+  `e2e/automacoes-campanhas-atritos-da-14.spec.ts`.
 - **Automações e Campanhas são da clínica, e ficam só no portal da rede**
   (D-2, decisão do Heitor, 2026-10-29: "a automação é da clínica, mesmo que o
   alvo seja a unidade"). Não há tela delas em `/[slug]`; quem tem unidade fixa
@@ -403,6 +445,9 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 ❌ Contar "quem receberia hoje" da campanha automática pelo público inteiro, ou escolher as clientes do gatilho fora de lib/notifications/gatilho-de-hoje (o cron e o detalhe dividem a escolha — D10 da 12ª)
 ❌ Trazer um gatilho de campanha já marcado, ou dizer quando ela sai fora de quandoDispara (a hora é a do cron, jaEhHoraDeDisparar — D8 da 11ª)
 ❌ Criar fato no banco (origem 'banco') e esperar que alguém o despache na hora — quem despacha é o cron (despacharFatosDoBanco), reivindicando despachado_em (C2)
+❌ Fila do cron com UM lote por passagem — passa por drenarEmLotes (lib/cron/drenar.ts), até esvaziar ou até o orçamento (F71: 115 fatos parados e a automação calada)
+❌ Calar o fato da equipe porque havia uma sessão de suporte na rede — só o fato com suporte_sessao_id não dispara (a marca vem do cabeçalho do cliente de serviço, F71)
+❌ Decidir a janela "Ligar a automação?" pelo canal à mão — é canaisParaACliente (lib/automacoes/antes-de-ligar.ts): todo fluxo que chega à cliente, push incluído (A10 da 14ª)
 ❌ Mandar campanha fora de enviarCampanha, ou ler os aparelhos pela ficha (push_tokens.client_id) — são os de todas as fichas do login, e o disparo é reivindicado por dia (C51/C56)
 ❌ Gravar o limite vazio da automação como undefined (some no JSON e o padrão volta) — é null (C54)
 ```
