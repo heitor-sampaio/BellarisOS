@@ -653,6 +653,15 @@
   no cartão da Agenda do app da cliente (`textoDoConcluido`,
   `lib/agenda/hora-real.ts`, Brasília). Prova:
   `e2e/agenda-concluido-hora-real.spec.ts`, `tests/agenda-hora-real.test.ts`.
+  No Histórico do app a marcada se diz: "marcado para 19:00 · concluído às
+  18:11" (A31 da 14ª, F73, `textoDoHorarioNoHistorico`). O cartão "Como foram
+  os seus atendimentos?" da home diz a hora (a real) e, com mais de uma
+  unidade, onde: "Concluído em 12/11 às 18:11 · Manacá Pampulha · toque para
+  avaliar" (A30, `textoDoParaAvaliar`). E o "Agendamento remarcado" do app diz
+  a unidade nova quando mudou: "… às 15:00, na Manacá Pampulha (outro
+  endereço)." (A29, `textoDoRemarcado`). Os três em
+  `lib/clientes/textos-do-app.ts`; prova:
+  `tests/textos-do-app-da-cliente-f73.test.ts`.
 - **"Não compareceu" só depois do início** do agendamento (a folha esconde, a
   action recusa). **E pergunta antes de gravar** (A25 da 7ª simulação,
   2026-11-05: gravava no clique): "Marcar que X não compareceu às 10:00? Os
@@ -1251,6 +1260,17 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   ou outro procedimento." A regra é UMA, `ofereceNaUnidade` /
   `recusaDoProcedimentoNaUnidade` (`lib/procedimentos/disponivel-na-unidade.ts`).
   Prova: `e2e/agenda-procedimento-e-quem-atende-na-unidade.spec.ts`.
+  **O plano: o catálogo é o da unidade DO PLANO** (D4 da 14ª, F73): o plano
+  da Pampulha aberto pela rede oferecia o Laser que só a Savassi faz, e o
+  servidor gravava. `procedimentosParaPlano` sempre com a unidade: a do plano
+  aberto (`getPlanoParaEditar` traz o `catalogo` dele; a tela do plano lê
+  `getCabecalhoDoPlano().unidadeId`), a do atendimento (a sessão de
+  atendimento) e, no plano NOVO, a unidade em que ele nasce (a filial da
+  ficha). O que já estava no plano e a unidade não faz continua à vista
+  ("X (não é feito nesta unidade)"). E o servidor recusa:
+  `recusaDosProcedimentosDoPlano`, em `gravarSessoes` (antes de apagar as
+  sessões antigas) e antes do `gerar_plano_da_avaliacao`. Prova:
+  `e2e/plano-unidade-do-plano-f73.spec.ts`, `tests/catalogo-do-plano.test.ts`.
 - **O preço vazio é R$ 0,00 — o procedimento gratuito** (A1 da 6ª simulação,
   2026-11-04; princípios 2 e 4): a avaliação grátis tinha só o "0,00" de
   exemplo, e o navegador recusava o campo vazio. O campo não é mais
@@ -1270,13 +1290,14 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   listas `getCachedBranchProcedures`, o app da cliente, o Copilot), o Vender
   (o pré-pago, na action e em `procedimento_vender*`; o rateio do pacote,
   `itensParaRateio`, e o pacote equivalente do checkout, `catalogoDePacotes`
-  com a unidade), o editor do plano (`procedimentosParaPlano` com a unidade,
-  a tela do atendimento — o preço do plano segue editável) e o catálogo da
+  com a unidade), o editor do plano (`procedimentosParaPlano` com a unidade
+  do plano, em todo portal — D4 da 14ª; o preço do plano segue editável) e o catálogo da
   unidade. A comissão sai do preço GRAVADO no agendamento/venda, então segue
   sozinha. A lista de procedimentos da rede diz embaixo do preço "R$ 590,00
   na Menino Deus" (`[data-preco-da-unidade]`). Sem unidade (a oportunidade, a
-  recompensa da fidelidade, a ficha da rede com várias unidades no editor do
-  plano), vale o da rede. Prova: `e2e/procedimento-preco-da-unidade.spec.ts`,
+  recompensa da fidelidade), vale o da rede. O editor do plano tem sempre a
+  unidade (D4 da 14ª, F73): o plano novo da ficha da rede nasce na filial da
+  ficha, e o catálogo e o preço são os dela. Prova: `e2e/procedimento-preco-da-unidade.spec.ts`,
   `tests/preco-na-unidade.test.ts`.
 - `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um
   procedimento. **É o histórico do preço DA REDE** (C15, F65; princípio 7): o
@@ -2923,6 +2944,8 @@ O resto do fluxo:
 ---
 
 ## O que nunca fazer aqui
+
+❌ Pedir o catálogo do editor do plano sem a unidade do plano (procedimentosParaPlano com unidade nula) ou gravar sessões de plano sem recusaDosProcedimentosDoPlano (F73, D4 da 14ª; tests/catalogo-do-plano trava)
 
 ```
 ❌ Atualizar currentStock diretamente sem criar StockMovement

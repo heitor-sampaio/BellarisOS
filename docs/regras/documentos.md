@@ -345,8 +345,15 @@ DEVLOG ("Termos e contratos").
   recusa ("O plano desta clínica não tem o portal do cliente…") sem gravar
   NOTIFICADO_PORTAL — antes respondia "Pedido enviado" e o `notifyClient`
   pulava o aviso calado. O "Enviar à cliente" do anexo recusa igual
-  (`enviarDocumentoACliente`). Prova:
-  `e2e/documentos-pedir-no-portal-sem-plano.spec.ts`.
+  (`enviarDocumentoACliente`) e, desde a F73, nem aparece — no anexo da ficha
+  e na foto do atendimento (`portalNoPlano`; o "Tirar do app" do que já foi
+  continua). Prova:
+  `e2e/documentos-pedir-no-portal-sem-plano.spec.ts`,
+  `e2e/documentos-anexo-sem-portal-f73.spec.ts`.
+  **"Faltam dados" diz onde completar** (A22 da 14ª, F73; princípio 7): em
+  Documentos, ao lado do "Falta: …", "Completar a ficha" leva à aba Dados da
+  cliente (`[data-completar-cadastro]`, o mesmo da janela do agendamento).
+  Prova: `e2e/documentos-completar-a-ficha-f73.spec.ts`.
   Quem agenda pelo portal e tem documento a assinar vai direto para ele.
   O detalhe do agendamento no portal tem "Documentos deste atendimento"
   (J-63, `documentosDoAgendamento`): o título e a situação — "Falta a sua

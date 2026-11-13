@@ -186,10 +186,18 @@
     **"Cadastrar" com a pergunta sem resposta diz o que falta** (A22 da 7ª
     simulação, 2026-11-05: o clique não fazia nada nem dizia por quê): o
     formulário não envia, rola até a pergunta e diz junto do botão
-    "Responda antes de cadastrar: é a mesma pessoa do lead X? (Sim ou Não,
-    logo abaixo do telefone)" (`oQueFaltaResponder`, `[data-falta-responder]`);
+    "Responda antes de cadastrar: é a mesma pessoa do lead X? (“Sim, é a
+    mesma pessoa” ou “Não, é outra pessoa”, logo abaixo do telefone e do
+    e-mail)" (`oQueFaltaResponder`, `[data-falta-responder]`);
     a resposta dada depois disso envia, como a que veio do clique. Prova:
     `e2e/ficha-cadastro-atritos-da-7.spec.ts` ("A22");
+    **o rodapé repete a pergunta da TELA** (D5 da 14ª, F73; princípio 3): os
+    botões com o nome que eles têm e só os que aparecem — pelo CPF não há
+    "Cadastrar mesmo assim" (`podeCadastrarMesmoAssim`), e o rodapé mandava
+    clicar nele. A pergunta do CPF e a do nome com o nascimento aparecem
+    logo abaixo do documento e do nascimento (`perguntaJuntoDoDocumento`),
+    a do telefone logo abaixo do telefone e do e-mail, e o rodapé diz o
+    lugar certo. Prova: `tests/falta-responder-no-cadastro.test.ts`;
   - **o cadastro grava uma vez** (D10): o mesmo envio (a chave da tela) é um
     cadastro só — o mecanismo de `convencoes.md` ("O envio que chega duas
     vezes"). Sem a chave, a trava calada dos 60 s SAIU (r2-cli-01): as
@@ -942,7 +950,11 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   F33 da 8ª simulação, 2026-11-06; princípio 3): nascia na primeira em ordem
   alfabética; agora "Selecione a unidade…" (`unidadeInicial`,
   `lib/unidades/unidade-inicial.ts` — com uma só, ela). Prova:
-  `tests/agenda-sobras-da-f33.test.ts`.
+  `tests/agenda-sobras-da-f33.test.ts`. **A tag "Unidade: X" do lead escolhe**
+  (A25 da 14ª, F73; "a unidade da cliente é a tag", F68): quando as tags do
+  lead (e do contato, no inbox) apontam UMA unidade da lista, a janela já vem
+  nela (`unidadeDaTag`); duas, ou a de uma unidade fora da lista, nenhuma.
+  Prova: `tests/unidade-da-tag.test.ts`.
 - **Os separadores de dia da conversa são do dia de Brasília** (sobra da F33):
   agrupavam por `created_at.slice(0, 10)`, o dia em UTC — a mensagem das
   23:30 caía no separador do dia seguinte. É `agruparPorDia`

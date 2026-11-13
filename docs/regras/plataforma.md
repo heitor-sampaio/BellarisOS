@@ -717,6 +717,14 @@ um muro que não depende de cada trava do código.
   dois portais). O `/admin/settings` de quem tem unidade fixa já levava à
   unidade com o aviso do portal da rede (J-29) — o aviso some da URL depois de
   mostrado. Prova: `e2e/configuracoes-atritos-da-12.spec.ts` ("A11").
+- **Quem ATENDE na outra unidade é levado à própria agenda** (A20 da 14ª,
+  F73; princípio 3): a Bianca, fixa na Savassi e marcada para atender na
+  Pampulha, abria `/pampulha/agenda` e lia "Você não tem acesso a essa
+  unidade". Agora o layout de `[slug]` a leva a `/<a dela>/agenda` com
+  "Os seus atendimentos nessa unidade estão na sua agenda, aqui." (a chave
+  `atende-em-outra-unidade`) — é lá que os dela de fora aparecem (§9.1). Quem
+  não atende ali segue com o aviso de sempre. Prova:
+  `e2e/abrangencia-atende-em-outra-unidade-f73.spec.ts`.
 - **O resumo do cargo diz QUAIS abas de Configurações** (A7 da 7ª simulação,
   2026-11-05; princípio 3): sem Configurações em Gerenciar, a pessoa chega à
   tela só pelas abas dos outros módulos, e "O que essa pessoa vai ver" diz

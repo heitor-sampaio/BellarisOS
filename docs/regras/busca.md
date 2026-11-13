@@ -128,6 +128,15 @@ URL — a busca não grava nada, e a tela de destino confere tudo de novo:
   (era a agenda vazia).
 - Prova: `e2e/busca-acoes.spec.ts` e `tests/busca-acoes.test.ts`.
 
+### A busca da lista de Planejamentos (F73)
+
+A sobra da F70: `listarPlanejamentos` filtrava com `toLowerCase().includes` e
+o telefone cru — "Jose" não achava o plano da "José". Agora é a regra da
+busca de cliente (`planoCasaComBusca`, `lib/busca/cliente.ts`): o nome do
+plano e o da cliente sem acento, o telefone pelos dígitos nacionais
+(`clienteCasaComBusca`), o documento por dígitos. Prova:
+`tests/planejamentos-busca.test.ts`.
+
 ---
 
 ## O que nunca fazer aqui

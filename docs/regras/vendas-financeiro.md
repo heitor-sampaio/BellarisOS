@@ -35,6 +35,28 @@ plano").
 - **Agendar uma sessão** usa o procedimento, a parte do preço e a duração DELA
   (`schedulePackageSession` recusa outro procedimento — o navegador não
   escolhe).
+- **O tratamento comprado é da CLÍNICA; o dinheiro dele, do caixa da unidade
+  da venda** (D3 da 14ª simulação, F73; H5, CLAUDE.md §5: "A cliente é da
+  clínica, pode agendar em qualquer unidade da clínica"). Vale para o pacote,
+  o plano fechado e o pré-pago. A recepção da Pampulha abria o pacote que a
+  Marina comprou na Savassi e via "0 / 6 sessões", sem erro: a lista e o
+  agendar estavam presos à unidade da venda. São DUAS regras, cada uma com o
+  seu nome (`lib/tratamento/alcance.ts`):
+  - **ver e agendar as sessões** — `alcancaOTratamento`: o registro é da rede
+    de quem chama (`getClientPackageSessions`, `getPlannedSessionAppointments`,
+    `schedulePackageSession`, `schedulePlanSession`, `agendarUnidadePrePaga`,
+    a ficha de tratamento do plano por `planoDaClinica`). A unidade do
+    AGENDAMENTO segue pelo alcance, no núcleo (`conferirPecasDoAgendamento`):
+    a recepção da Pampulha agenda na Pampulha, não na Savassi;
+  - **cancelar, estornar, fechar** — `alcancaOCaixaDoTratamento`: a rede E a
+    unidade da venda ao alcance (`pacoteDaClienteAoAlcance`,
+    `planoFechadoAoAlcance`, `unidadeAoAlcance` do pré-pago). O checkout e a
+    edição do plano (`planoDoTenant`) seguem na unidade do plano.
+  `tests/tratamento-da-clinica.test.ts` trava a action que voltar a decidir
+  por conta própria. A primeira janela do pacote na ficha ("Abrir para ver e
+  agendar as sessões") já lista as sessões, cada livre com "Agendar", que abre
+  o agendar DELA (A21 da 14ª; "Gerenciar sessões" continua). Prova:
+  `e2e/pacote-plano-da-clinica-f73.spec.ts`.
 
 - **Catálogo da rede** em Vendas → Pacotes (`/admin/pacotes` e
   `/[slug]/pacotes`, corpo em `app/_shared/pacotes.tsx`, `PacotesCatalogo`):
@@ -2190,6 +2212,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ---
 
 ## O que nunca fazer aqui
+
+❌ Prender ver ou agendar as sessões do pacote, do plano ou do pré-pago à unidade da VENDA (é alcancaOTratamento; o dinheiro é alcancaOCaixaDoTratamento — lib/tratamento/alcance.ts, F73)
 
 ```
 ❌ Criar FinancialTransaction fora de um Appointment concluído sem justificativa
