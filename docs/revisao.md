@@ -558,10 +558,21 @@ mais se aproxima é o "A receber" do Financeiro e o Fechamento do dia.
   pacote ou para um plano. Tudo que for uma venda gera uma comanda."
   Uma VENDA = uma comanda: o agendamento avulso, o pacote, o plano, cada um
   na sua.
-- **PDV-P2.** A comanda do agendamento aparece no PDV quando: ao agendar
-  (dá para pagar adiantado), no dia, ou quando o atendimento termina?
-- **PDV-P3.** O "Vender" da ficha e do inbox: sai (vende-se só pelo PDV), ou
-  vira um atalho que abre o PDV já com a cliente?
+- **PDV-P2, respondida (o Heitor, 13/11):** "A comanda ela aparece no PDV
+  quando o agendamento é confirmado. Aí ela aparece lá no PDV. Se o
+  agendamento for cancelado, aí sem ter sido realizado, aí automaticamente
+  exclui essa comanda aí."
+- **PDV-P3, respondida (o Heitor, 13/11):** "O vender da ficha sai e o do
+  inbox ele pode sair, ele pode levar pro PDV, tá? Porque só vende pelo PDV."
+  O "Vender" da ficha sai; o do inbox vira o caminho para o PDV.
+- **PDV-P4.** Os casos que a confirmação não cobre:
+  (a) o atendimento que acontece sem o agendamento ter sido confirmado (a
+  cliente chega e é atendida): a comanda aparece quando?
+  (b) a FALTA (não veio, sem cancelar): a comanda sai como no cancelamento?
+  (c) a remarcação pela equipe volta o agendamento a Agendado (H3): a
+  comanda sai do PDV até confirmar de novo, ou fica?
+  (d) o plano de tratamento: a comanda dele aparece quando a cliente aceita
+  o plano?
 
 ## O PLANO DE ADAPTAÇÃO
 
