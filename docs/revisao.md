@@ -436,8 +436,8 @@ sentido, certo?"
 - **T2/T3:** a regra basta — nenhuma origem vira tag. Não perguntar de novo
   nada que a regra já responde.
 - Ficam para a revisão de **Clientes**, sem pergunta nova agora: onde mais a
-  tag pode ser marcada além da pessoa, e as "Unidade: X" já gravadas (apagar
-  dado é com o Heitor presente).
+  tag pode ser marcada além da pessoa, e as "Unidade: X" já gravadas não importam (o banco
+  será zerado antes do lançamento).
 
 ### Bloco no plano: Tags
 
@@ -460,8 +460,12 @@ revisão, só se escreve o plano. Nada se implementa.
    código. A regra do módulo em `docs/regras/` é reescrita com as palavras do
    Heitor anotadas aqui. Teste que existe e contraria a decisão muda, porque a
    regra mudou; ele é citado no commit.
-3. Mudança destrutiva no banco (apagar, renomear coluna ou tabela, migrar
-   dado) só com o Heitor presente.
+3. **O dado gravado não importa** (o Heitor, 13/11: "Não se preocupa com o
+   que já está gravado, porque a gente vai fazer um wipe total do banco de
+   dados antes do lançamento"). Nada de migrar, converter ou preservar dado
+   antigo (os fornecedores que viram marcas, as "Unidade: X" gravadas…): o
+   plano muda o esquema e o código, sem backfill. A mudança destrutiva no
+   banco continua avisada ao Heitor antes de aplicar.
 4. **"O sistema todo funciona"** quer dizer, no fim, tudo verde:
    - typecheck e lint;
    - o vitest inteiro;
@@ -474,7 +478,7 @@ revisão, só se escreve o plano. Nada se implementa.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| E1/E5 | A lista que hoje se chama "Fornecedores" vira **Marcas**. Cadastro de **Fornecedores** novo, igual ao de marcas (texto livre). Os nomes já gravados como fornecedor viram marcas | — (migração do dado: com o Heitor) |
+| E1/E5 | A lista que hoje se chama "Fornecedores" vira **Marcas**. Cadastro de **Fornecedores** novo, igual ao de marcas (texto livre) | — (sem migrar dado: o banco será zerado antes do lançamento) |
 | E4/E5 | Categorias, marcas e fornecedores: criar, renomear, excluir. Quem pode: quem tem o Estoque em **Gerenciar**, e só isso (ser da rede deixa de contar). Hoje categoria não renomeia | — |
 | E6/E3 | Categoria, marca e fornecedor escolhidos numa lista **com campo de busca e autocomplete** | — |
 | E2 | "Onde está disponível": **checkbox** Insumo e Venda direta, no lugar de Insumo / Revenda / Os dois | — |
