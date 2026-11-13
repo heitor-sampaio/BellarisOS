@@ -6,6 +6,7 @@ import { NAO_REALIZA, quemRealizaOProcedimento, realiza } from '@/lib/procedimen
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { after } from 'next/server'
+import { alcancaOTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, alcancaOAgendamento, can, temRecurso, podeReceber } from '@/lib/auth'
 import { getAReceberVencido, parcelasVencidas } from '@/lib/metrics/vencidas'
 import { formatBRL } from '@estetica-os/utils'
@@ -1413,8 +1414,9 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
     .select('tenant_id')
     .eq('id', (plan as { branch_id: string }).branch_id)
     .maybeSingle(), 'buscar a unidade')
-  if ((branch as { tenant_id: string } | null)?.tenant_id !== ctx.tenantId
-    || !alcancaUnidade(ctx, (plan as { branch_id: string }).branch_id)) return { sessions: [] }
+  // O tratamento é da CLÍNICA (H5; F73, D3 da 14ª): a recepção de qualquer
+  // unidade da rede vê as sessões do plano vendido em outra.
+  if (!alcancaOTratamento(ctx, (branch as { tenant_id: string } | null)?.tenant_id)) return { sessions: [] }
 
   // Busca treatment_plan_sessions com appointment vinculado
   const rawSessions = await ler(admin
@@ -1494,7 +1496,9 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
     .maybeSingle(), 'buscar o pacote do cliente')
   if (!pkg) return { sessions: [] }
   const branch = (pkg as unknown as { branches: { tenant_id: string } | null }).branches
-  if (branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, pkg.branch_id as string)) return { sessions: [] }
+  // O pacote é da CLÍNICA (H5; F73, D3 da 14ª): a recepção da Pampulha via
+  // "0 / 6 sessões" no pacote vendido na Savassi — a lista vinha vazia, calada.
+  if (!alcancaOTratamento(ctx, branch?.tenant_id)) return { sessions: [] }
 
   const data = await ler(admin
     .from('package_sessions')
@@ -1567,7 +1571,9 @@ async function schedulePackageSessionInterno(params: {
   }
   const typedSess = sess as unknown as SessWithJoins
   const pacote = typedSess.client_packages
-  if (pacote?.branches?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, pacote.branch_id)) return { error: 'Sem permissão.' }
+  // Agendar a sessão vale em qualquer unidade da clínica (H5; F73): a unidade
+  // do AGENDAMENTO é que passa pelo alcance, no núcleo (conferirPecasDoAgendamento).
+  if (!pacote || !alcancaOTratamento(ctx, pacote.branches?.tenant_id)) return { error: 'Sessão não encontrada.' }
   if (typedSess.appointment_id) return { error: 'Sessão já está agendada.' }
   // O cliente é o DO PACOTE, e unidade, profissional e procedimento são da
   // rede: até 2026-09-28 os quatro iam do navegador direto para o insert.
@@ -1647,8 +1653,9 @@ async function schedulePlanSessionInterno(params: {
     .eq('id', params.planId)
     .maybeSingle(), 'buscar o plano de tratamento')
   if (!plan) return { error: 'Plano não encontrado.' }
-  if ((plan as unknown as { branches: { tenant_id: string } | null }).branches?.tenant_id !== ctx.tenantId
-    || !alcancaUnidade(ctx, plan.branch_id as string)) return { error: 'Sem permissão.' }
+  // Como a do pacote (H5; F73): o plano é da clínica, e a unidade do
+  // agendamento passa pelo alcance no núcleo.
+  if (!alcancaOTratamento(ctx, (plan as unknown as { branches: { tenant_id: string } | null }).branches?.tenant_id)) return { error: 'Plano não encontrado.' }
   // A sessão é DESTE plano e ainda não foi marcada; o cliente é o do plano; e
   // unidade, profissional e procedimento são da rede. Até 2026-09-28 qualquer
   // sessão servia, e os ids iam do navegador direto para o insert.

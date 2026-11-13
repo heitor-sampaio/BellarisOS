@@ -93,6 +93,9 @@ export function PlanejamentoTratamento({
   // Sem cliente não há lista: a tela geral já passa o plano a abrir.
   const planos = clientId ? planosLidos : []
   const [aberto,    setAberto]    = useState<ExistingPlan | null>(null)
+  // D4 da 14ª (F73): o plano aberto traz o catálogo da unidade DELE; o novo
+  // usa o da tela (a unidade em que ele vai nascer).
+  const [catalogoDoPlano, setCatalogoDoPlano] = useState<TreatmentProcedure[] | null>(null)
   // Nasce carregando quando há plano pedido; o efeito abaixo o busca.
   const [carregando, setCarregando] = useState(!!idPedido)
   const [salvando,  setSalvando]   = useState(false)
@@ -172,6 +175,7 @@ export function PlanejamentoTratamento({
   function aplicarPlano(res: Awaited<ReturnType<typeof getPlanoParaEditar>>) {
     setCarregando(false)
     if (res.error || !res.plano) { setErro(res.error ?? 'Não foi possível abrir o plano.'); return }
+    setCatalogoDoPlano(res.plano.catalogo)
     setAberto(res.plano as ExistingPlan)
   }
 
@@ -424,7 +428,7 @@ export function PlanejamentoTratamento({
         key={aberto.id}
         appointmentId=""
         slug={slug}
-        procedures={procedures}
+        procedures={!ehNovo && catalogoDoPlano ? catalogoDoPlano : procedures}
         availableProducts={availableProducts}
         existingPlan={aberto}
         hideActions

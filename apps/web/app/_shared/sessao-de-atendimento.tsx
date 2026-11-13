@@ -16,7 +16,7 @@ import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduc
 import type { LoteParaBaixa, ParteDaBaixa } from '@/lib/estoque/fefo'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
-import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
+import { unidadesDosInsumos, procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { unidadeDoInsumo } from '@/lib/estoque/unidade-de-consumo'
 import { paraAnamneseGeral, anamneseRespondida } from '@/lib/anamnese-geral'
 import { fichaDeSaudeVencida } from '@/lib/pre-atendimento/validade'
@@ -391,20 +391,10 @@ export async function SessaoDeAtendimento({
   // O editor do plano propõe o preço DA UNIDADE do atendimento (D2 da 9ª).
   const allProcs = await comPrecoDaUnidade(admin, branchId, (allProceduresRaw ?? []) as unknown as RawAllProc[])
 
-  const treatmentProcedures = allProcs.map(p => ({
-    id:          p.id,
-    name:        p.name,
-    category:    p.category,
-    durationMin: p.duration_min,
-    price:       Number(p.price),
-    products:    (p.procedure_products ?? [])
-      .filter(pp => pp.products !== null)
-      .map(pp => {
-        const pr   = pp.products!
-        const unit = unidadeDoInsumo(pr)
-        return { productId: pp.product_id, name: pr.name, unit, quantity: Number(pp.quantity) }
-      }),
-  }))
+  // O catálogo do editor do plano é o da unidade do atendimento — a do plano
+  // que nasce dele —, pela regra única (D4 da 14ª, F73): só o que ela FAZ, com
+  // o preço dela. Antes a lista era o catálogo da rede inteira.
+  const { procedures: treatmentProcedures } = await procedimentosParaPlano(ctx.tenantId!, branchId)
 
   // Mapa de insumos padrão por procedure_id
   const procedureProductsMap: Record<string, { productId: string; name: string; unit: string; quantity: number }[]> = {}

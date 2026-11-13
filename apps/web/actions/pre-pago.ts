@@ -13,6 +13,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { z } from 'zod'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
+import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assertRecurso } from '@/lib/auth'
 import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -153,8 +154,9 @@ async function unidadeAoAlcance(
     .select('id, procedure_sales!inner(tenant_id, branch_id, client_id)')
     .eq('id', unidadeId).maybeSingle(), 'buscar a unidade')
   const venda = unidade?.procedure_sales as unknown as { tenant_id: string; branch_id: string; client_id: string } | undefined
-  if (!unidade || venda?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, venda.branch_id)) return null
-  return { clientId: venda.client_id }
+  // Cancelar mexe no dinheiro: é do caixa da unidade da venda (F73).
+  if (!unidade || !alcancaOCaixaDoTratamento(ctx, venda?.tenant_id, venda?.branch_id)) return null
+  return { clientId: venda!.client_id }
 }
 
 /**
@@ -261,7 +263,8 @@ export async function agendarUnidadePrePaga(p: {
       .select('id, procedure_sales!inner(tenant_id, client_id)')
       .eq('id', p.unidadeId).maybeSingle(), 'buscar a unidade')
     const venda = unidade?.procedure_sales as unknown as { tenant_id: string; client_id: string } | undefined
-    if (!unidade || venda?.tenant_id !== ctx.tenantId) return { error: 'Unidade não encontrada.' }
+    // Agendar o que já foi pago vale em qualquer unidade da clínica (H5; F73).
+    if (!unidade || !venda || !alcancaOTratamento(ctx, venda.tenant_id)) return { error: 'Unidade não encontrada.' }
 
     const res = await createAppointmentCore(admin, ctx, {
       branchId: p.branchId, clientId: venda.client_id, procedureId: null,

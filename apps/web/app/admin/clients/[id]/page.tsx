@@ -453,9 +453,12 @@ export default async function AdminClientProfilePage({
     .sort((a, b) => b.date.localeCompare(a.date))
 
   // Procedimentos e insumos do editor de plano — a aba Planejamento monta o
-  // plano do cliente sem depender de nenhum atendimento.
-  // Com várias unidades, o plano não tem unidade aqui: o preço da rede (D2 da 9ª).
-  const planoProcs = await procedimentosParaPlano(ctx.tenantId!, perguntaAUnidade ? null : branchId || null)
+  // plano do cliente sem depender de nenhum atendimento. O catálogo e o preço
+  // são os da unidade em que o plano NOVO nasce (a filial efetiva, a mesma que
+  // a aba passa a `salvarPlanoNovo`): D4 da 14ª (F73), princípio 3 — com o
+  // catálogo da rede inteira, o editor oferecia o que o servidor recusa. O
+  // plano que já existe abre com o catálogo da unidade dele (`getPlanoParaEditar`).
+  const planoProcs = await procedimentosParaPlano(ctx.tenantId!, branchId || null)
 
   // Negociacoes desta pessoa: ser cliente nao encerra o funil -- reativacao e
   // abrir oportunidade nova para quem ja comprou.

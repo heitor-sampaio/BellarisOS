@@ -11,6 +11,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { z } from 'zod'
+import { alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso } from '@/lib/auth'
 import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -305,7 +306,9 @@ async function pacoteDaClienteAoAlcance(
     .select('id, branch_id, client_id, branches!inner(tenant_id)')
     .eq('id', id).maybeSingle(), 'buscar o pacote da cliente')
   const rede = (cp?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  if (!cp || rede !== ctx.tenantId || !alcancaUnidade(ctx, cp.branch_id as string)) return null
+  // Cancelar mexe no dinheiro: é do caixa da unidade da venda (F73). Ver e
+  // agendar as sessões, não — é da clínica (actions/appointments.ts).
+  if (!cp || !alcancaOCaixaDoTratamento(ctx, rede, cp.branch_id as string)) return null
   return { id: cp.id as string, branch_id: cp.branch_id as string, client_id: cp.client_id as string }
 }
 

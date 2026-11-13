@@ -72,6 +72,8 @@ interface Props {
   onCancelarPlano?: () => void
   /** A41 da 11ª: o crediário deste pacote ainda em aberto (só a quem recebe). */
   emAberto?: { valor: number; parcelas: number } | null
+  /** A21 da 14ª: aberta pelo "Agendar" de uma sessão da ficha de tratamento — já com o agendar dela aberto. */
+  agendarSessaoId?: string | null
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -315,14 +317,14 @@ export function TreatmentSessionsModal({
   clientPackageId, planId, planStatus,
   packageName, totalSessions,
   clientId, procedureId, procedureName, price, durationMin,
-  slug, branches, currentBranchId, onClose, onCancelarPlano, emAberto = null,
+  slug, branches, currentBranchId, onClose, onCancelarPlano, emAberto = null, agendarSessaoId = null,
 }: Props) {
   const fuso = useFuso()
   const router = useRouter()
   const pathname = usePathname()
   const [sessions,      setSessions]      = useState<Session[]>([])
   const [loading,       setLoading]       = useState(true)
-  const [schedulingId,  setSchedulingId]  = useState<string | null>(null)
+  const [schedulingId,  setSchedulingId]  = useState<string | null>(agendarSessaoId)
 
   const isPlanMode = !!planId && !clientPackageId
   const podeCancelarPlano = isPlanMode && planStatus === 'ACCEPTED' && !!onCancelarPlano

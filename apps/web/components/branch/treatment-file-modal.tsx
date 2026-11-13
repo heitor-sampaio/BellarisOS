@@ -7,6 +7,7 @@ import { rotaAtendimento } from '@/lib/rotas'
 import { X, User, Stethoscope, Calendar, CheckCircle2, Play, ChevronRight, Loader2, Settings } from 'lucide-react'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { getTreatmentPlanDetails } from '@/actions/treatment-plans'
+import { getClientPackageSessions } from '@/actions/appointments'
 import { TreatmentSessionsModal } from './treatment-sessions-modal'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import type { TreatmentFileDetails } from '@/actions/treatment-plans'
@@ -59,12 +60,14 @@ function Divider() {
 // -- Sessão item ---------------------------------------------------------------
 
 function SessionItem({
-  session, index, isLast, slug,
+  session, index, isLast, slug, onAgendar,
 }: {
   session:        TreatmentFileDetails['sessions'][number]
   index:          number
   isLast:         boolean
   slug:           string
+  /** A21 da 14ª: a sessão sem horário se agenda daqui mesmo (abre o agendar dela). */
+  onAgendar?:     () => void
 }) {
   const fuso = useFuso()
   const router     = useRouter()
@@ -81,7 +84,7 @@ function SessionItem({
   const procNames = session.procedures.map(p => p.name).join(' + ')
 
   return (
-    <div style={{ display: 'flex', gap: 14 }}>
+    <div data-sessao-na-ficha style={{ display: 'flex', gap: 14 }}>
       {/* Connector */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
         <div style={{
@@ -134,6 +137,12 @@ function SessionItem({
               <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: APPT_STATUS[apptStatus]?.color ?? 'var(--text-faint)' }}>
                 {APPT_STATUS[apptStatus]?.label ?? apptStatus}
               </span>
+            )}
+            {!appt && onAgendar && (
+              <button type="button" onClick={onAgendar}
+                style={{ padding: '4px 9px', borderRadius: 6, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer', background: 'var(--brand-soft)', color: 'var(--brand)', border: 'none' }}>
+                Agendar
+              </button>
             )}
             {(isDone || isBooked || isActive) && appt?.id && (
               <button
@@ -261,8 +270,20 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
   const [loading,      setLoading]      = useState(!!activePackage.planId)
   const [error,        setError]        = useState<string | null>(null)
   const [sessionsOpen, setSessionsOpen] = useState(false)
+  // A21 da 14ª: o "Agendar" de uma sessão da primeira janela abre o agendar DELA.
+  const [agendarSessao, setAgendarSessao] = useState<string | null>(null)
+  function abrirSessoes(sessaoId: string | null = null) { setAgendarSessao(sessaoId); setSessionsOpen(true) }
+  // O pacote (sem plano): as sessões já na primeira janela (A21), com "Agendar" na livre.
+  const [sessoesDoPacote, setSessoesDoPacote] = useState<Awaited<ReturnType<typeof getClientPackageSessions>>['sessions'] | null>(null)
 
   const hasPlan = !!activePackage.planId
+
+  useEffect(() => {
+    if (activePackage.planId || sessionsOpen) return
+    let vivo = true
+    getClientPackageSessions(activePackage.id).then(r => { if (vivo) setSessoesDoPacote(r.sessions) }).catch(() => { if (vivo) setSessoesDoPacote([]) })
+    return () => { vivo = false }
+  }, [activePackage.planId, activePackage.id, sessionsOpen])
 
   const aplicarDetalhes = useCallback((res: Awaited<ReturnType<typeof getTreatmentPlanDetails>>) => {
     if (res.data) setDetails(res.data)
@@ -336,6 +357,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
         canManageProcedures={canManageProcedures}
         isNetworkWide={isNetworkWide}
         onClose={() => setSessionsOpen(false)}
+        agendarSessaoId={agendarSessao}
         onCancelarPlano={onCancelarPlano}
         emAberto={activePackage.emAberto ?? null}
       />
@@ -525,7 +547,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                       <SectionTitle>Sessões do tratamento</SectionTitle>
                       <button
                         type="button"
-                        onClick={() => setSessionsOpen(true)}
+                        onClick={() => abrirSessoes()}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 6,
                           fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)',
@@ -536,7 +558,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                         <Settings size={12} /> Gerenciar
                       </button>
                     </div>
-                    <div>
+                    <div data-sessoes-na-ficha>
                       {details!.sessions.map((s, i) => (
                         <SessionItem
                           key={s.id}
@@ -544,6 +566,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                           index={i}
                           isLast={i === details!.sessions.length - 1}
                           slug={slug}
+                          onAgendar={activePackage.planStatus === 'ACCEPTED' ? () => abrirSessoes(s.id) : undefined}
                         />
                       ))}
                     </div>
@@ -565,7 +588,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                       <SectionTitle>Sessões do tratamento</SectionTitle>
                       <button
                         type="button"
-                        onClick={() => setSessionsOpen(true)}
+                        onClick={() => abrirSessoes()}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 6,
                           fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)',
@@ -579,6 +602,39 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                     <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                       {activePackage.usedSessions} de {activePackage.totalSessions} sessões realizadas.
                     </p>
+                    {/* A21 da 14ª: as sessões já aqui, cada livre com "Agendar" — antes esta janela só tinha o botão. */}
+                    {sessoesDoPacote && sessoesDoPacote.length > 0 && (
+                      <div data-sessoes-na-ficha style={{ marginTop: 12 }}>
+                        {sessoesDoPacote.map((s, i) => {
+                          const livre = !s.appointmentId && s.status === 'AVAILABLE'
+                          const usadaAntes = s.status === 'USED' && !s.appointmentId
+                          return (
+                            <div key={s.id} data-sessao-na-ficha style={{
+                              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+                              borderBottom: i === sessoesDoPacote.length - 1 ? 'none' : '1px solid var(--hairline)',
+                            }}>
+                              <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700 }}>
+                                Sessão {s.sessionNumber}
+                                {(s.procedureName ?? activePackage.procedureName) && (
+                                  <span style={{ fontWeight: 500, color: 'var(--text-muted)', marginLeft: 6 }}>· {s.procedureName ?? activePackage.procedureName}</span>
+                                )}
+                                <span style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginTop: 2 }}>
+                                  {s.scheduledAt ? fmtDateTime(s.scheduledAt, fuso) + (s.professionalName ? ` · ${s.professionalName}` : '')
+                                    : usadaAntes ? 'Usada antes do sistema'
+                                    : s.status === 'CANCELLED' ? 'Cancelada' : 'Sem agendamento'}
+                                </span>
+                              </span>
+                              {livre && (
+                                <button type="button" onClick={() => abrirSessoes(s.id)}
+                                  style={{ padding: '4px 9px', borderRadius: 6, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer', background: 'var(--brand-soft)', color: 'var(--brand)', border: 'none' }}>
+                                  Agendar
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                     {activePackage.deFora && (
                       // A57: o pacote trazido de fora — as usadas antes do sistema não somem.
                       <p data-usadas-antes style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4 }}>

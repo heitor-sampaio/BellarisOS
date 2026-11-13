@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
-import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
+import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
+import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, alcancaOAgendamento, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
@@ -12,7 +13,8 @@ import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, tentar, contar, mensagemDoErro, lerTodas } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
-import { unidadesDosInsumos } from '@/lib/checkout/procedimentos-do-plano'
+import { unidadesDosInsumos, procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
+import { recusaDosProcedimentosDoPlano } from '@/lib/procedimentos/disponivel-na-unidade'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
@@ -105,6 +107,11 @@ export interface PlanSessionForCheckout {
 /**
  * Regrava as sessões de um plano.
  *
+ * Só com o procedimento que a unidade DO PLANO faz (D4 da 14ª, F73): o editor
+ * já lista só esses, e a conferência mora aqui — antes de apagar as sessões
+ * antigas —, porque toda gravação de sessões de plano passa por esta função
+ * (a da avaliação, `gerar_plano_da_avaliacao`, confere antes do rpc).
+ *
  * ⚠️ Não é export: todo export de arquivo `'use server'` vira endpoint público,
  * e esta função não autoriza nada — quem chama já conferiu.
  */
@@ -112,7 +119,12 @@ async function gravarSessoes(
   admin: ReturnType<typeof createAdminClient>,
   planId: string,
   sessions: PlanSessionInput[],
+  plano: { tenantId: string; unidadeId: string },
 ): Promise<{ error?: string }> {
+  const naoFeito = await recusaDosProcedimentosDoPlano(admin, plano.tenantId, plano.unidadeId,
+    sessions.flatMap(s => s.procedures.map(p => p.procedureId)))
+  if (naoFeito) return { error: naoFeito }
+
   // Apaga as antigas (cascade leva os procedimentos junto)
   await gravar(admin.from('treatment_plan_sessions').delete().eq('plan_id', planId), 'limpar as sessões do plano')
 
@@ -186,11 +198,33 @@ async function planoDoTenant(
   return { ...data, slug: branch!.slug }
 }
 
-/** O agendamento é desta rede, e da unidade ao alcance? O essencial dele, ou null. */
+/**
+ * O plano para VER as sessões (a ficha de tratamento): da rede de quem chama,
+ * em qualquer unidade — o tratamento é da clínica (H5; F73, D3 da 14ª) —, e,
+ * com a agenda "só os meus", dela. Editar, fechar e cancelar seguem pelo
+ * `planoDoTenant` / `planoFechadoAoAlcance` (a unidade do plano ao alcance).
+ */
+async function planoDaClinica(
+  admin: ReturnType<typeof createAdminClient>,
+  planId: string,
+  ctx: TenantContext,
+) {
+  const data = await ler(admin
+    .from('treatment_plans')
+    .select('id, client_id, branch_id, professional_id, branches!branch_id(tenant_id)')
+    .eq('id', planId)
+    .maybeSingle(), 'buscar o plano')
+  const branch = data?.branches as unknown as { tenant_id: string } | null
+  if (!data || !alcancaOTratamento(ctx, branch?.tenant_id)) return null
+  if (!(await planoDaProfissional(admin, ctx, data))) return null
+  return data
+}
+
+/** O agendamento é desta rede, e ao alcance (a unidade dele, ou o agendamento DELA numa unidade em que ela atende — §11)? O essencial dele, ou null. */
 async function agendamentoDoTenant(
   admin: ReturnType<typeof createAdminClient>,
   appointmentId: string,
-  ctx: Pick<TenantContext, 'tenantId' | 'branchId'>,
+  ctx: TenantContext,
 ) {
   const data = await ler(admin
     .from('appointments')
@@ -198,7 +232,9 @@ async function agendamentoDoTenant(
     .eq('id', appointmentId)
     .maybeSingle(), 'buscar o agendamento')
   const rede = (data?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  if (!data || rede !== ctx.tenantId || !alcancaUnidade(ctx as TenantContext, data.branch_id as string)) return null
+  // A profissional que ATENDE na unidade alcança o agendamento DELA lá (§11,
+  // o "Atende" por unidade): o plano da avaliação que ela faz na outra unidade.
+  if (!data || rede !== ctx.tenantId || !alcancaOAgendamento(ctx, data.branch_id as string, data.professional_id as string | null)) return null
   return {
     id: data.id as string, status: data.status as string, branch_id: data.branch_id as string, client_id: data.client_id as string,
     professional_id: data.professional_id as string, procedure_id: (data.procedure_id as string | null) ?? null,
@@ -256,7 +292,7 @@ async function saveTreatmentPlanInterno(
     .single()
   if (planErr || !plan) return { error: `Erro ao salvar plano: ${planErr?.message}` }
 
-  const res = await gravarSessoes(admin, plan.id as string, sessions)
+  const res = await gravarSessoes(admin, plan.id as string, sessions, { tenantId: ctx.tenantId!, unidadeId: appt.branch_id as string })
   if (res.error) return res
 
   revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -518,6 +554,8 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
     id: string; nome: string; status: string
     cliente: { id: string; name: string } | null
     unidade: string | null
+    /** A unidade DO plano: o catálogo do editor é o dela (D4 da 14ª). */
+    unidadeId: string | null
     slug:    string
   }
   error?: string
@@ -531,7 +569,7 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
 
   const { data, error } = await admin
     .from('treatment_plans')
-    .select('id, name, status, clients(id, name), branches!branch_id(name, slug)')
+    .select('id, name, status, branch_id, clients(id, name), branches!branch_id(name, slug)')
     .eq('id', planId)
     .maybeSingle()
   // Erro de consulta não é "plano não existe": sem checar, a tela mandaria de
@@ -549,6 +587,7 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
       status:  data.status as string,
       cliente: cli ? { id: cli.id, name: cli.name } : null,
       unidade: branch?.name ?? null,
+      unidadeId: (data.branch_id as string | null) ?? null,
       slug:    branch?.slug ?? '',
     },
   }
@@ -712,6 +751,11 @@ export async function getPlanoParaEditar(planId: string): Promise<{
     sessions: { procedures: { procedureId: string; name: string; price: number; products?: { productId: string; name: string; unit: string; quantity: number }[] }[] }[]
     /** D4 da 12ª: o retrato do cancelado (a data, o motivo, o dinheiro), para a tela só de leitura. */
     cancelamento?: RetratoDoCancelamento | null
+    /**
+     * D4 da 14ª (F73): o catálogo da unidade DO plano — o editor lista só o
+     * que ela faz, em qualquer portal e unidade em que o plano é aberto.
+     */
+    catalogo: Awaited<ReturnType<typeof procedimentosParaPlano>>['procedures']
   }
   error?: string
 }> {
@@ -760,12 +804,14 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   const notes = podeVerClinico(ctx, (data.professional_id as string | null) ?? null) ? ((data.professional_notes as string | null) ?? null) : null
   // A anotação clínica foi à tela: fica no registro (lib/prontuario/acessos.ts).
   if (notes && data.client_id) await registrarAcessoAoProntuario(ctx, data.client_id as string, 'plano', data.id as string)
+  const { procedures: catalogo } = await procedimentosParaPlano(ctx.tenantId!, plan.branch_id as string)
   return {
     plano: {
       id:       data.id as string,
       status:   data.status as string,
       notes,
       sessions,
+      catalogo,
       cancelamento: retratoDoCancelamento(data as { cancelado_em?: string | null; cancelamento_motivo?: string | null; cancelamento?: unknown },
         await fusoDaUnidade(ctx.tenantId, plan.branch_id as string)),
     },
@@ -813,7 +859,7 @@ async function salvarPlanoDoClienteInterno(
     .eq('id', planId)
   if (error) return { error: error.message }
 
-  const res = await gravarSessoes(admin, planId, sessions)
+  const res = await gravarSessoes(admin, planId, sessions, { tenantId: ctx.tenantId!, unidadeId: plan.branch_id as string })
   if (res.error) return res
 
   revalidatePath(`/${plan.slug}/clients/${plan.client_id}`)
@@ -1039,7 +1085,8 @@ async function planoFechadoAoAlcance(
     .select('id, branch_id, client_id, branches!branch_id(tenant_id)')
     .eq('id', id).maybeSingle(), 'buscar o plano')
   const rede = (tp?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  if (!tp || rede !== ctx.tenantId || !alcancaUnidade(ctx, tp.branch_id as string)) return null
+  // Cancelar o plano mexe no dinheiro: é do caixa da unidade do plano (F73).
+  if (!tp || !alcancaOCaixaDoTratamento(ctx, rede, tp.branch_id as string)) return null
   return { id: tp.id as string, branch_id: tp.branch_id as string, client_id: (tp.client_id as string | null) ?? null }
 }
 
@@ -1240,6 +1287,11 @@ async function generateEvaluationPlanInterno(
     })
     if (falta) return { error: falta }
   }
+
+  // Só o que a unidade do atendimento (a do plano que nasce) faz (D4 da 14ª, F73).
+  const naoFeito = await recusaDosProcedimentosDoPlano(admin, ctx.tenantId!, appt.branch_id as string,
+    sessions.flatMap(s => s.procedures.map(p => p.procedureId)))
+  if (naoFeito) return { error: naoFeito }
 
   // ─── Grava, tudo ou nada ──────────────────────────────────────────────
   // A ficha, a anamnese, o plano com as sessões, as dores, a evolução e o
@@ -1901,7 +1953,8 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
     assertPermission(ctx, 'agenda', 'VIEW')
 
     const admin = createAdminClient()
-    if (!(await planoDoTenant(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
+    // Ver as sessões é da clínica (H5; F73): a recepção de outra unidade abre a ficha de tratamento.
+    if (!(await planoDaClinica(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
 
     // 1. Busca o plano (sem joins — evita erro de FK alias no PostgREST)
     const { data: plan, error: planErr } = await admin

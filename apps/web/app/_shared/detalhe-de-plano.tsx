@@ -23,11 +23,13 @@ export async function DetalheDePlano({
   assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'agenda', 'VIEW')
 
-  const [{ plano, error }, procs] = await Promise.all([
-    getCabecalhoDoPlano(planId),
-    // O preço da unidade da TELA, quando ela tem um (D2 da 9ª).
-    procedimentosParaPlano(ctx.tenantId!, branchId),
-  ])
+  const { plano, error } = await getCabecalhoDoPlano(planId)
+  // O catálogo e o preço são os da unidade DO PLANO (D4 da 14ª, F73; D2 da
+  // 9ª), não os da tela: aberto pela rede, o plano da Pampulha oferecia o
+  // Laser que só a Savassi faz. Sem plano, nada a listar.
+  const procs = plano?.unidadeId
+    ? await procedimentosParaPlano(ctx.tenantId!, plano.unidadeId)
+    : { procedures: [], products: [] }
 
   if (error || !plano) {
     return (

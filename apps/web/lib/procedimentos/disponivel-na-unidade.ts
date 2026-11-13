@@ -43,3 +43,30 @@ export async function recusaDoProcedimentoNaUnidade(
   if (!proc || ofereceNaUnidade(proc, unidadeId)) return null
   return `${proc.name} não é feito na unidade ${unidade?.name ?? 'escolhida'}. Escolha outra unidade ou outro procedimento.`
 }
+
+/**
+ * A recusa de pôr num PLANO o procedimento que a unidade do plano não faz (D4
+ * da 14ª simulação, F73) — nula quando todos são feitos lá. Uma leitura só,
+ * para as sessões inteiras: o editor do plano já lista só o catálogo da
+ * unidade do plano (`procedimentosParaPlano` com a unidade), e o servidor que
+ * grava as sessões confere de novo, porque a sessão que entra num plano
+ * precisa se agendar na unidade dele. O procedimento que não é da rede
+ * responde como inexistente.
+ */
+export async function recusaDosProcedimentosDoPlano(
+  admin: Admin, tenantId: string, unidadeId: string, procedureIds: string[],
+): Promise<string | null> {
+  const ids = [...new Set(procedureIds.filter(Boolean))]
+  if (!ids.length) return null
+  const [procs, unidade] = await Promise.all([
+    ler(admin.from('procedures').select(`id, name, ${COLUNAS_DA_OFERTA}`)
+      .in('id', ids).eq('tenant_id', tenantId), 'conferir onde os procedimentos do plano são feitos') as Promise<
+      { id: string; name: string; branch_id: string | null; procedure_branch_availability: { branch_id: string }[] | null }[] | null>,
+    ler(admin.from('branches').select('name').eq('id', unidadeId).eq('tenant_id', tenantId).maybeSingle(), 'buscar a unidade do plano') as Promise<{ name: string } | null>,
+  ])
+  const lidos = procs ?? []
+  if (lidos.length < ids.length) return 'Procedimento do plano não encontrado.'
+  const fora = lidos.find(p => !ofereceNaUnidade(p, unidadeId))
+  if (!fora) return null
+  return `${fora.name} não é feito na unidade ${unidade?.name ?? 'do plano'}. Escolha outra unidade ou outro procedimento.`
+}
