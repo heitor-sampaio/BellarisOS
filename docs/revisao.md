@@ -63,7 +63,7 @@ superfícies em volta. A ordem é do Heitor.
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ✅ |
 | Equipe | `team` | ✅ |
-| Fichas (formulários, pré-atendimento) | `forms` | 🟡 |
+| Fichas (formulários, pré-atendimento) | `forms` | ✅ |
 | Cargos e permissões | `roles` | ⬜ |
 | Configurações (rede e unidade) | `settings` | ⬜ |
 | Copilot | `copilot` | ⬜ |
@@ -1201,7 +1201,7 @@ unidades atende" discreto abre a lista — fechado, vale em todas.
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Equipe".
 
-## Fichas (formulários, ficha de saúde) 🟡
+## Fichas (formulários, ficha de saúde) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -1224,11 +1224,15 @@ Configurações → Fichas, para quem tem as Fichas em Gerenciar e é da rede.
   perguntas de injetáveis" põe um bloco pronto para a rede revisar. A
   validade (6 meses) e o envio ao agendar (desligado) ficam aqui também.
 
-### Recomendação do Claude (aguarda o Heitor)
+### Recomendação do Claude (o Heitor: "concordo, o resto fica como está")
 
 - **FC1 — os nomes da tela seguem os decididos**: "Fichas de atendimento" (as
   dos procedimentos) e "Ficha de saúde" (a da cliente), nas abas, nos botões e
   nas dicas. O resto fica.
+
+### Bloco no plano: Fichas
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Fichas".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1470,6 +1474,13 @@ Heitor de que vale uma completa.
 | EQ1c | **"Atende" é uma caixa**: marcada, atende em todas as unidades dela (agenda, agendar, repasse, comissão, relatórios). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista | EQ1a |
 | EQ1d | **A unidade pré-preenchida** dos cadastros (o produto do Estoque, E13: "Se a pessoa tiver mais de uma unidade, a lista mostra apenas as unidades dela") segue as unidades da pessoa | EQ1a, E13 |
 | — | Mantém: a lista e os filtros, o cargo, o horário, o registro no conselho, a senha temporária, a comissão, as regras da Admin da rede e do "cargo acima", o desativar com repasse | — |
+
+### Bloco: Fichas
+
+| # | O que muda | Depende de |
+|---|---|---|
+| FC1 | **"Fichas de atendimento"** (as dos procedimentos) e **"Ficha de saúde"** (a da cliente) em Configurações → Fichas: abas, botões, dicas. Junto com o PR3 (Prontuário) e o "Ficha de atendimento" do procedimento | PR3 |
+| — | Mantém: o construtor, os tipos de campo, o obrigatório, o "Mostrar só quando", uma ficha por procedimento, a ficha de saúde da rede (e o bloco de injetáveis), a validade e o envio | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
