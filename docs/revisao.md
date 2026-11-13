@@ -47,7 +47,7 @@ superfícies em volta. A ordem é do Heitor.
 
 | Módulo | No sistema | Estado |
 |---|---|---|
-| Agenda | `agenda` | 🟡 |
+| Agenda | `agenda` | ✅ |
 | Clientes (ficha, tags, LGPD) | `clients` | ⬜ (as tags: ver "Tags") |
 | Fidelidade | `loyalty` | ⬜ |
 | Prontuário | `medical_records` | ⬜ |
@@ -443,7 +443,7 @@ sentido, certo?"
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Tags".
 
-## Agenda 🟡
+## Agenda ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -461,15 +461,19 @@ Está no PLANO DE ADAPTAÇÃO, "Bloco: Tags".
 - **Remarcar e a confirmação:** H3 decidida (a cliente pelo app nasce
   Confirmada; a equipe e o Copilot voltam a Agendado).
 
-### Perguntas
+### Respostas (o Heitor, 13/11)
 
-- **AG-P1. Documentos do atendimento avulso.** Com o PC7, o procedimento tem
-  termo, contrato (só no avulso) e outros documentos. No atendimento avulso
-  eles vão num link só, com uma assinatura para todos (como o PC10 do pacote
-  e do plano), ou cada um no seu link, como hoje?
-- **AG-P2. A unidade do agendar pelo inbox.** Hoje o "Agendar" da conversa
-  vem com a unidade escolhida pela tag "Unidade: X" da pessoa. A tag sai
-  (T1). O agendar pelo inbox passa a vir com qual unidade?
+- **AG-P1, documentos:** "vai sempre tudo no mesmo link, tá? Todos os
+  documentos em um link único, a pessoa visualiza e assina uma vez só, a
+  assinatura dela vale para todos os documentos do link." Vale para o
+  atendimento avulso e para todo envio de documentos (é a regra do PC10,
+  agora geral). Hoje: um link e uma assinatura por documento.
+- **AG-P2, agendar pelo inbox:** "coloca uma caixa de seleção para a unidade,
+  simples." Sai a escolha pela tag "Unidade: X" (T1).
+
+### Bloco no plano: Agenda
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Agenda".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -550,6 +554,14 @@ revisão, só se escreve o plano. Nada se implementa.
 | T3 | A Importação não transforma a coluna "Origem" em tag | — |
 | T4 | A ação de automação vira **"Adicionar tag"**, com qualquer tag registrada no sistema | **Automações** |
 | — | Uma trava (teste) de que nenhum caminho do sistema grava tag sem ser a pessoa ou a ação "Adicionar tag" que a rede montou | — |
+
+### Bloco: Agenda
+
+| # | O que muda | Depende de |
+|---|---|---|
+| AG1 | **Documentos sempre num link só:** todo envio de documentos à cliente (o atendimento avulso, o pacote, o plano) vai num link único; ela visualiza todos e assina UMA vez, e a assinatura vale para todos os documentos do link. Hoje: um link e uma assinatura por documento | PC10; a revisão de **Documentos** |
+| AG2 | **O "Agendar" do inbox** tem uma caixa de seleção da unidade, simples. Sai a unidade escolhida pela tag "Unidade: X" (`unidadeDaTag`, `inbox-lead-panel.tsx`) | T1 |
+| — | Mantém: a tela da agenda e as funções. Ficam como estão, pelas regras já existentes: D20 (Gerenciar com "só os meus" remarca o próprio), H3 (a remarcação e a confirmação), a sessão de pacote e de plano sem documento (PC2), o "Atende" por unidade | **Equipe** (a pessoa em mais de uma unidade) |
 
 ## O que já estava pendente, para entrar no módulo dele
 
