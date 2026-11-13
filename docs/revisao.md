@@ -992,6 +992,20 @@ e também pode agendar sessões em aberto."
   pelo app mesmo com o procedimento sem "Permitir auto agendamento" (ele já
   foi avaliado e comprado).
 
+Mais respostas (o Heitor, 13/11): "Ta, se essa tela deixa de existir, como vai
+ficar esse fluxo na pratica dentro do sistema? Ta, sobre PT2, acho que podemos
+criar um lugar para se criar um novo plano de tratamento. A situação que eu
+pensei é que a dra pode realizar a avaliação e depois com calma montar o
+plano, mesmo com o atendimento de avaliação tendo sido concluido, o que acha?
+PT3 isso, se for uma sessão de plano ou pacote, pode agendar."
+- **PT2, revisto**: o plano se monta NA avaliação ou DEPOIS, com calma, num
+  lugar próprio de "Novo plano" — mesmo com a avaliação já concluída. Monta
+  quem atende (sem permissão própria).
+- **PT3, confirmado**: a sessão de plano OU de pacote a cliente agenda pelo
+  app (mesmo sem "Permitir auto agendamento").
+- **PT1**: o Heitor pediu o fluxo na prática, tela por tela — o Claude
+  propôs a TELA DO PLANO como o centro (a confirmar).
+
 ## O PLANO DE ADAPTAÇÃO
 
 O Heitor, 13/11: "eu quero que os resultados da revisão de cada modulo
