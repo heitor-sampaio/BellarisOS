@@ -8,6 +8,7 @@ import { SeloDaFicha } from '@/components/shared/selo-da-ficha'
 import { SeloDoMenor } from '@/components/shared/selo-do-menor'
 import { textoDoConcluido } from '@/lib/agenda/hora-real'
 import { rolagemDaGrade, estenderJanela } from '@/lib/agenda/grade'
+import { minutosDesenhados, liberouOHorario } from '@/lib/agenda/desenho'
 import { intervalosDoDia, diaDaSemana, forasDoHorario, textoDosIntervalos, type Horario } from '@/lib/agenda/horario'
 import { bloqueioNoDia, trechoDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { BlocoDoBloqueio, JanelaDoBloqueio } from '@/components/shared/bloqueio-da-agenda'
@@ -188,12 +189,23 @@ function ProfColumn({
       {events.map(ev => {
         // O cancelado (com "Mostrar cancelados") divide o horário com quem o
         // ocupou depois: o ativo à esquerda, o cancelado apagado à direita.
+        // A17 da 14ª: o concluído ADIANTADO também (a régua da recusa,
+        // fimDaOcupacao): ele é desenhado até a conclusão e, se ainda cruza na
+        // tela com quem ocupou o resto do horário, vai para a direita.
         const desmarcado = eventoDesmarcado(ev)
-        const ini = new Date(ev.start).getTime(), fimEv = ini + ev.durationMin * 60000
-        const divide = events.some(o => o.id !== ev.id && eventoDesmarcado(o) !== desmarcado
-          && new Date(o.start).getTime() < fimEv && new Date(o.start).getTime() + o.durationMin * 60000 > ini)
-        const top       = Math.max(0, timeToY(ev.start, g))
-        const height    = Math.max(32, (ev.durationMin / 60) * HOUR_PX - 4)
+        const solto = (e: CalendarEvent) => eventoDesmarcado(e) || (e.status === 'COMPLETED' && liberouOHorario(e))
+        const caixa = (e: CalendarEvent) => {
+          const t = Math.max(0, timeToY(e.start, g))
+          return { t, b: t + Math.max(32, (minutosDesenhados(e) / 60) * HOUR_PX - 4) }
+        }
+        const eu = caixa(ev), euSolto = solto(ev)
+        const divide = events.some(o => {
+          if (o.id === ev.id || solto(o) === euSolto) return false
+          const c = caixa(o)
+          return c.t < eu.b && c.b > eu.t
+        })
+        const top       = eu.t
+        const height    = eu.b - eu.t
         const isDragging = draggingId === ev.id
         const isProgress  = ev.status === 'IN_PROGRESS'
         const isConfirmed = ev.status === 'CONFIRMED' || ev.status === 'ARRIVED'
@@ -244,6 +256,7 @@ function ProfColumn({
           <div
             key={ev.id}
             data-agendamento={ev.id}
+            data-liberou={euSolto ? '' : undefined}
             // O cartão curto corta o texto (A23): a dica diz tudo.
             title={[timeStr, ev.clientName, ev.procedureName, ev.roomName, `${ev.durationMin} min`, passou ? TEXTO_DO_PASSOU : null].filter(Boolean).join(' · ')}
             draggable={isDraggable}
@@ -253,7 +266,7 @@ function ProfColumn({
             style={{
               position:   'absolute',
               top:        top + 2,
-              left:       4, right: divide ? '50%' : 4,
+              left:       divide && euSolto ? '50%' : 4, right: divide && !euSolto ? '50%' : 4,
               height,
               borderRadius: 8,
               padding:    compacto ? '3px 8px' : '5px 8px',

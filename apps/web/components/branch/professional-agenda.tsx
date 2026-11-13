@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { minutosDesenhados, ladoALado, liberouOHorario } from '@/lib/agenda/desenho'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -276,8 +277,17 @@ export function ProfessionalAgendaView({
     const d = parseISO(ev.start)
     return Math.max(0, (getHours(d) - DAY_START + getMinutes(d) / 60) * PX_PER_HOUR)
   }
+  // A17 da 14ª: até quando OCUPA (fimDaOcupacao, a régua da recusa) — o
+  // concluído adiantado é desenhado até a conclusão, e o que ainda se cruza
+  // na tela fica lado a lado (`ladoALado`).
   function evHeight(ev: CalendarEvent) {
-    return Math.max(44, ev.durationMin / 60 * PX_PER_HOUR)
+    return Math.max(44, minutosDesenhados(ev) / 60 * PX_PER_HOUR)
+  }
+  const lados = ladoALado(dayEvents, evTop, evHeight)
+  function evLados(ev: CalendarEvent): React.CSSProperties {
+    const l = lados.get(ev.id)
+    if (!l || l.total < 2) return { left: 58, right: 16 }
+    return { left: `calc(58px + (100% - 74px) * ${l.col} / ${l.total})`, width: `calc((100% - 74px) / ${l.total} - 4px)` }
   }
 
   // Slots livres ≥ 30 min entre atendimentos — tirado o que ela BLOQUEOU (D15
@@ -286,7 +296,8 @@ export function ProfessionalAgendaView({
   const freeSlots = useMemo(() => {
     if (dayEvents.length < 2) return []
     return dayEvents.slice(0, -1).flatMap((ev, i) => {
-      const endMs  = parseISO(ev.start).getTime() + ev.durationMin * 60000
+      // A17 da 14ª: o concluído adiantado libera o resto (a mesma régua do desenho).
+      const endMs  = parseISO(ev.start).getTime() + minutosDesenhados(ev) * 60000
       const nextMs = parseISO(dayEvents[i + 1]!.start).getTime()
       return livresEntre(endMs, nextMs, bloqueios).map(([de, ate]) => {
         const deDate  = new Date(de)
@@ -542,10 +553,10 @@ export function ProfessionalAgendaView({
                 if (height - 4 < 76) {
                   return (
                     <Link key={ev.id} href={`/${slug}/agenda/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                      <div data-cartao-minha-agenda={ev.id} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})}
+                      <div data-cartao-minha-agenda={ev.id} data-liberou={ev.status === 'COMPLETED' && liberouOHorario(ev) ? '' : undefined} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})}
                         title={[time, ev.clientName, ev.procedureName, `${ev.durationMin} min`, ev.unidade ? `Na unidade ${ev.unidade}` : null].filter(Boolean).join(' · ')}
                         style={{
-                          position: 'absolute', top: top + 2, left: 58, right: 16, height: height - 4,
+                          position: 'absolute', top: top + 2, ...evLados(ev), height: height - 4,
                           borderRadius: 10, background: st.bg,
                           border: `1.5px solid ${isIP ? 'var(--brand)' : 'var(--border)'}`, borderLeft: `3.5px solid ${st.dot}`,
                           padding: '3px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center',
@@ -573,8 +584,8 @@ export function ProfessionalAgendaView({
                 }
                 return (
                   <Link key={ev.id} href={`/${slug}/agenda/${ev.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                    <div data-cartao-minha-agenda={ev.id} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})} style={{
-                      position: 'absolute', top: top + 2, left: 58, right: 16, height: height - 4,
+                    <div data-cartao-minha-agenda={ev.id} data-liberou={ev.status === 'COMPLETED' && liberouOHorario(ev) ? '' : undefined} {...(ev.unidade ? { 'data-outra-unidade': ev.unidade } : {})} style={{
+                      position: 'absolute', top: top + 2, ...evLados(ev), height: height - 4,
                       borderRadius: 10,
                       background: st.bg,
                       border: `1.5px solid ${isIP ? 'var(--brand)' : 'var(--border)'}`,

@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { minutosDesenhados, ladoALado } from '@/lib/agenda/desenho'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
@@ -167,8 +168,10 @@ function apptTop(a: Appointment, inicio: number): number {
 
 // A altura É a duração (o piso só segura o de poucos minutos clicável); o texto
 // que não cabe é cortado, e a dica do bloco diz tudo — como na da unidade.
+// A17 da 14ª: a altura é até quando o agendamento OCUPA (fimDaOcupacao, a
+// régua da recusa) — o concluído adiantado é desenhado até a conclusão.
 function apptHeight(a: Appointment): number {
-  return Math.max(24, (apptDuration(a) / 60) * HOUR_H)
+  return Math.max(24, (minutosDesenhados({ start: a.scheduled_at, durationMin: apptDuration(a), status: a.status, completedAt: a.completed_at }) / 60) * HOUR_H)
 }
 
 // -- View Dia -----------------------------------------------------------------
@@ -290,21 +293,11 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
 
             // Detecção simples de sobreposição: agrupamos por slots sobrepostos
             // e dividimos a largura
-            const positioned: { appt: Appointment; col: number; totalCols: number }[] = []
-            for (const a of appts) {
-              const aStart = apptTop(a, inicio)
-              const aEnd   = aStart + apptHeight(a)
-              // Encontra quantos outros agendamentos sobrepõem este
-              const overlaps = appts.filter(other => {
-                if (other.id === a.id) return false
-                const oStart = apptTop(other, inicio)
-                const oEnd   = oStart + apptHeight(other)
-                return aStart < oEnd && aEnd > oStart
-              })
-              const col       = overlaps.filter(o => apptTop(o, inicio) < apptTop(a, inicio) || (apptTop(o, inicio) === apptTop(a, inicio) && o.id < a.id)).length
-              const totalCols = overlaps.length + 1
-              positioned.push({ appt: a, col, totalCols })
-            }
+            // (A17 da 14ª: a mesma conta das outras grades, `ladoALado`.)
+            const lados = ladoALado(appts, a => apptTop(a, inicio), apptHeight)
+            const positioned: { appt: Appointment; col: number; totalCols: number }[] = appts.map(a => ({
+              appt: a, col: lados.get(a.id)?.col ?? 0, totalCols: lados.get(a.id)?.total ?? 1,
+            }))
 
             // O fechado DESTA unidade, sombreado (A26): ao lado de uma 24 h, a
             // madrugada de quem abre às 10:00 parecia livre. O clique continua
