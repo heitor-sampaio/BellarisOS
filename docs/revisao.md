@@ -56,7 +56,7 @@ superfícies em volta. A ordem é do Heitor.
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ⬜ |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ |
-| Estoque | `stock` | ⬜ |
+| Estoque | `stock` | 🟡 |
 | Relatórios e indicadores | `reports` | ⬜ |
 | Equipe | `team` | ⬜ |
 | Fichas (formulários, pré-atendimento) | `forms` | ⬜ |
@@ -69,6 +69,84 @@ superfícies em volta. A ordem é do Heitor.
 | Busca | `busca_universal` | ⬜ |
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ⬜ |
 | Site | `apps/site` | ⬜ |
+
+## Estoque 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+"Deve ser possivel:
+- Cadastrar categorias com texto livre
+- Cadastrar marcas com texto livre
+- Cadastrar fornecedor com texto livre
+- Cadastrar produto, com nome, código de barras opcional com ou sem leitor de
+  codigo de barras, categoria, formato da embalagem, conteúdo da embalagem,
+  checkbox de onde o produto está disponivel(Insumo e Venda direta), marca e
+  fornecedor com autocomplete, estoque minimo e possibilidade de já cadastrar
+  um estoque inicial ao cadastrar o produto."
+
+### O que faz (levantamento pelo sistema)
+
+Levantado no código das telas e das actions (`app/*/estoque`,
+`components/branch/stock-product-modal.tsx`, `product-category-modal.tsx`,
+`fornecedores-modal.tsx`, `campo-fornecedor.tsx`, `actions/stock.ts`).
+
+- **Categorias:** botão "Categorias", com nome livre (Ex.: "Cosméticos,
+  Descartáveis…"). Cria e exclui; não renomeia. Nome repetido na rede é
+  recusado. Só quem é da rede vê o botão e grava; quem tem unidade fixa é
+  recusado (H7).
+- **Marcas:** não existem. Nenhum campo, lista ou tabela.
+- **Fornecedores:** botão "Fornecedores", com nome livre: novo, renomear,
+  arquivar, trazer de volta. O botão é só de quem é da rede, mas o
+  "+ Novo fornecedor" dentro do produto e da Entrada cria um fornecedor para
+  qualquer pessoa com Estoque em Gerenciar, inclusive de unidade fixa.
+- **Novo produto**, campos na ordem da tela:
+  - **Nome** *, obrigatório. Nome igual a um existente avisa, com
+    "Cadastrar mesmo assim".
+  - **SKU**, gerado sozinho (prefixo pela categoria e pelo uso + número). Não
+    se edita.
+  - **Código de barras**, opcional. Digita ou lê com leitor que funciona como
+    teclado (o Enter do leitor fecha o campo). Câmera não há.
+  - **Categoria**, opcional, numa lista suspensa das categorias.
+  - **Embalagem** *, obrigatória, numa lista fixa: un, U, UI, ml, L, g, kg,
+    cx, par, rolo, ampola, frasco, seringa.
+  - **Conteúdo da embalagem**, opcional: quantidade + medida (a mesma lista).
+  - **Uso do produto** *, três opções: Insumo / Revenda / Os dois. Revenda e
+    Os dois pedem **Preço de venda** * e mostram a **comissão de venda do
+    produto**.
+  - **Fornecedor de costume**, numa lista suspensa da rede, com
+    "+ Novo fornecedor".
+  - **Estoque mínimo**.
+  - **Adicionar estoque inicial**, chave opcional. Ligada, pede: a unidade
+    que recebe (só no portal da rede), quantidade *, custo por embalagem,
+    número do lote, validade, **Fornecedor desta entrada** (um segundo
+    fornecedor), nota fiscal, observações. Diz que não gera despesa.
+- **Quem cadastra produto:** existe a regra "catálogo de produtos" da rede
+  (só a rede, ou as unidades também; o padrão é a unidade cadastrar).
+- **Leitor na lista do estoque:** um botão lê o código, acha o produto e abre
+  a Entrada. Se não achar, deixa ligar o código a um produto existente.
+
+### Diferenças
+
+| # | Diferença | Estado |
+|---|---|---|
+| E1 | **Marca não existe**: nem o cadastro de marcas com texto livre, nem o campo marca no produto | aberto |
+| E2 | **Onde está disponível**: o Heitor diz checkbox (Insumo e Venda direta); o sistema tem três opções "Insumo / Revenda / Os dois", e chama de "Revenda" | aberto |
+| E3 | **Fornecedor sem autocomplete**: é lista suspensa com "+ Novo fornecedor" | aberto |
+
+### O sistema faz e não está na lista do Heitor (ele decide se fica)
+
+| # | O quê | Estado |
+|---|---|---|
+| E4 | Categoria: só quem é da rede cria e exclui. Não há renomear | aberto |
+| E5 | Fornecedor: "+ Novo" no produto/Entrada por quem tem unidade fixa; renomear e arquivar só a rede | aberto |
+| E6 | Categoria é lista suspensa (a lista do Heitor pede autocomplete só para marca e fornecedor) | aberto |
+| E7 | Formato da embalagem é lista FIXA de 13 medidas, não texto livre | aberto |
+| E8 | SKU gerado sozinho | aberto |
+| E9 | Preço de venda e comissão de venda no cadastro do produto | aberto |
+| E10 | Dois fornecedores no cadastro com estoque inicial: o "de costume" e o "desta entrada" | aberto |
+| E11 | Estoque inicial com lote, validade, nota fiscal, custo e observações | aberto |
+| E12 | Nome repetido avisa e pede confirmação | aberto |
+| E13 | A regra "quem cadastra produto" (só a rede × as unidades também) | aberto |
 
 ## O que já estava pendente, para entrar no módulo dele
 
