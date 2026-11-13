@@ -232,8 +232,8 @@ Levantado em `components/admin/procedure-form.tsx`,
 | PR1 | Categorias: hoje Gerenciar **e** ser da rede | **Decidido:** só quem tem Procedimentos em Gerenciar (a regra do Estoque) |
 | PR2 | A caixa se chama "Visível no app do cliente" | **Decidido:** "Permitir auto agendamento" |
 | PR3 | O campo se chama "Ficha" | **Decidido:** "Ficha de atendimento", mantém a lista |
-| PR4 | UM termo e UM contrato por procedimento, em dois campos | **Decidido:** seção "Documentos", com quantos documentos quiser, todos os que precisam da assinatura da cliente |
-| PR5 | Os documentos têm categorias (termo, contrato, contrato de plano) | **Decidido, para a revisão de Documentos:** sem categorias; todo documento é só um documento que se liga a um procedimento |
+| PR4 | UM termo e UM contrato por procedimento, em dois campos | ~~seção "Documentos" com quantos quiser~~ **Revisto no PC7 (Pacotes):** campo "Termo de consentimento", campo "Contrato" (só no avulso) e "outros documentos", quantos quiser |
+| PR5 | Os documentos têm categorias (termo, contrato, contrato de plano) | ~~sem categorias~~ **Revisto no PC7 (Pacotes):** termo e contrato voltam a ser papéis específicos; o resto para a revisão de Documentos |
 
 ### Perguntas
 
@@ -281,7 +281,7 @@ Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
 | # | Diferença | Estado |
 |---|---|---|
 | PC1 | O preço nasce vazio; a soma aparece só como frase ("avulsas sairiam por") | **Decidido:** o valor base já vem com a soma dos procedimentos adicionados, e pode ser alterado |
-| PC2 | Documentos: nada na venda; os do procedimento a cada sessão | **Decidido em parte:** "como o cliente comprou um pacote, nao faz sentido ele precisar assinar todas as vezes, ele assina pelo pacote. o ideal era funcionar como no plano de tratamento, mas removemos os documentos especificos antes né, talvez tenha que voltar naquele formato de linkar termo e contrato, especificamente, para facilitar essa parte." Assina UMA vez, pelo pacote. Em aberto: o formato (ver PC7) |
+| PC2 | Documentos: nada na venda; os do procedimento a cada sessão | **Decidido (ver PC7):** "como o cliente comprou um pacote, nao faz sentido ele precisar assinar todas as vezes, ele assina pelo pacote. o ideal era funcionar como no plano de tratamento, mas removemos os documentos especificos antes né, talvez tenha que voltar naquele formato de linkar termo e contrato, especificamente, para facilitar essa parte." Assina UMA vez, pelo pacote. Em aberto: o formato (ver PC7) |
 
 ### O sistema faz e não está na lista do Heitor (ele decide se fica)
 
@@ -295,9 +295,39 @@ Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
 - **"Tipo de produto"** (o Heitor): "Pacote tipo um produto que se vende,
   não aparece no estoque pq é um conjunto de procedimentos, não de itens."
   Fica em Vendas → Pacotes, como hoje.
-- **PC7, em aberto:** o formato dos documentos, que mexe também no PR4/PR5
-  (Procedimentos) e no plano de tratamento. O Heitor cogita voltar a ligar
-  "termo e contrato, especificamente" ao procedimento.
+- **PC7, decidido (o Heitor, 13/11)** — vale para Procedimentos, Pacotes e o
+  plano de tratamento:
+
+  "O seguinte, vai ser assim, o procedimento, a gente vai poder listar um termo
+  de consentimento do procedimento e vai poder adicionar um contrato para quando
+  esse procedimento for realizado avulso. Então, esses dois documentos que vão
+  no cadastro do procedimento, que são obrigatórios, que estão ali já
+  especificados, que é o termo de consentimento, e o contrato, sendo que o
+  contrato só vale para quando ele for um procedimento avulso, tá? Por quê?
+  Porque num plano de tratamento ou num pacote, esse contrato vai precisar
+  englobar os outros procedimentos também. E também nos procedimentos aí
+  permite adicionar outros documentos que a rede queira que seja assinado, e aí
+  qualquer documento que tenha sido criado ou anexado no sistema, tá? E aí para
+  o pacote, e aí vale a mesma coisa para o plano de tratamento, ele vai puxar
+  automaticamente um termo de consentimento de cada procedimento diferente, e o
+  contrato daí vai ser o contrato do pacote ou o contrato do plano de
+  tratamento."
+
+  Em resumo:
+  - **No procedimento:** um campo "Termo de consentimento", um campo
+    "Contrato" (só vale no atendimento AVULSO) e "outros documentos" que a
+    rede queira, quantos quiser, de qualquer documento criado ou anexado no
+    sistema.
+  - **No pacote e no plano:** puxa sozinho UM termo de cada procedimento
+    diferente; o contrato é o do pacote (ou o do plano), não o dos
+    procedimentos.
+  - Isto substitui o PR4 e o PR5 de Procedimentos.
+- **PC8, em aberto:** (a) "que são obrigatórios": o procedimento não se
+  salva sem termo e sem contrato, ou são os dois campos fixos que sempre
+  estão no cadastro? (b) O contrato do pacote é de CADA pacote (ligado no
+  cadastro dele) ou um contrato de pacote só, da rede, como o de plano hoje?
+  (c) Os "outros documentos" de um procedimento entram também na venda do
+  pacote e no plano (uma vez cada), ou só no avulso?
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -348,8 +378,8 @@ revisão, só se escreve o plano. Nada se implementa.
 | PR1/PR6 | Categorias de procedimento (criar, renomear, arquivar) **e** o próprio procedimento (criar, editar, ativar/desativar): quem tem Procedimentos em **Gerenciar**, e só isso. Sai a exigência de ser da rede (`assertRede`, `quemGerencia`) | — |
 | PR2 | "Visível no app do cliente" → **"Permitir auto agendamento"** (o rótulo e a dica) | — |
 | PR3 | "Ficha" → **"Ficha de atendimento"**, a mesma lista | — |
-| PR4 | Termo (um) e Contrato (um) → seção **"Documentos"**: liga quantos documentos quiser, os que precisam da assinatura da cliente. O que hoje nasce por `consent_template_id`/`contract_template_id` passa a nascer pela lista | **Documentos** (PR5 e as perguntas dela) |
-| PR5 | Os documentos **sem categorias**: todo documento é só um documento que se liga a procedimento | a revisão de **Documentos** |
+| PR4 | (Revisto no PC7) Mantém o campo **"Termo de consentimento"** e o campo **"Contrato"** (este só no atendimento avulso) e acrescenta **"outros documentos"**: quantos quiser, de qualquer documento criado ou anexado no sistema | PC8; a revisão de **Documentos** |
+| PR5 | (Revisto no PC7) Termo e contrato continuam papéis específicos; o que muda nos documentos fica para a revisão de Documentos | a revisão de **Documentos** |
 | — | Mantém: a tela, nome, categoria, duração, pontos de fidelidade, descrição, unidades, salas, insumos, quem realiza, comissão | — |
 
 ## O que já estava pendente, para entrar no módulo dele
