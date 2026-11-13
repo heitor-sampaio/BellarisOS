@@ -56,7 +56,7 @@ superfícies em volta. A ordem é do Heitor.
 | Procedimentos | `procedures` | ✅ |
 | Pacotes | `procedures` (pacotes) | ✅ |
 | Plano de tratamento | `treatment_plans` | ✅ |
-| Marketing (campanhas) | `marketing` | ⬜ |
+| Marketing (campanhas) | `marketing` | 🟡 |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ✅ |
@@ -1019,6 +1019,44 @@ tratamento, só inverte uma ordem, primeiro colhe assinatura, depois paga".
 ### Bloco no plano: Plano de tratamento
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Plano de tratamento".
+
+## Marketing (campanhas) 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+(a perguntar)
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/automacoes.md` (campanhas) e `whatsapp-push.md`
+(anúncios e modelos). Só no portal da rede; no menu, o grupo Marketing:
+- **Notificações (as campanhas)**: um aviso no CELULAR (push no app e no
+  navegador, e o sino do portal) — o WhatsApp ficou para o futuro (D-3, o
+  Heitor, 2026-10-29). Três tipos: Imediata, Agendada (data e hora, ou data
+  anual) e **Automática** (com "Gatilho da automação": aniversário, lembrete de
+  agenda N horas antes, pós-visita, vencimento de pacote, confirmação,
+  cancelamento, pontos…). Público: unidades, gênero, "Tags do CRM",
+  procedimentos que já fez, "sem visita há mais de N dias". "Revisar" mostra o
+  filtro, quantas no público e quantas RECEBEM (têm aparelho). Ativar,
+  pausar, arquivar.
+- **Anúncios**: de onde veio cada contato (Meta e Google — a campanha, o
+  click ID) e os sinais de compra devolvidos à Meta (API de Conversões).
+- **Templates**: os modelos do WhatsApp oficial (escrever, mandar à Meta
+  para aprovação), usados no inbox fora das 24 h e nas automações.
+
+### Diferenças e recomendações do Claude (aguardam o Heitor)
+
+- **MK1 — a campanha "Automática" é uma automação com outro nome.** A regra
+  escrita diz "Campanha ≠ automação: campanha é disparo em massa por
+  público; automação é reação a um fato" — e a campanha automática reage a
+  um fato de cada cliente (o agendamento de amanhã, a visita de ontem, o
+  aniversário dela). São dois lugares para a mesma coisa. Recomendação:
+  campanha fica Imediata ou Agendada (inclusive a data anual — Dia das
+  Mães); os gatilhos da Automática viram MODELOS desligados nas Automações
+  (princípio 6), onde já se reage a fatos. Nada se perde, muda de lugar.
+- **MK2 — "Tags do CRM" vira "Tags"** (a tag é da rede e filtra em todo
+  lugar). O filtro "Unidades" do público deixa de ler a tag "Unidade: X" (bloco
+  Tags) e passa a ser "atendidas na unidade".
 
 ## O PLANO DE ADAPTAÇÃO
 
