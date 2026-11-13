@@ -67,7 +67,7 @@ superfícies em volta. A ordem é do Heitor.
 | Cargos e permissões | `roles` | ✅ |
 | Configurações (rede e unidade) | `settings` | ✅ |
 | Copilot | `copilot` | ⏸ por último (a regra: acompanha tudo) |
-| Portal da rede × portal da unidade | `/admin`, `/[slug]` | 🟡 |
+| Portal da rede × portal da unidade | `/admin`, `/[slug]` | ✅ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ⬜ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ⬜ |
 | Busca | `busca_universal` | ⬜ |
@@ -1371,11 +1371,11 @@ imagem e documento.
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Copilot" — o último, depois do de Cargos.
 
-## Portal da rede × portal da unidade 🟡
+## Portal da rede × portal da unidade ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+"Sim" (PO1 e PO2; o resto fica como está).
 
 ### O que faz hoje (levantamento)
 
@@ -1391,7 +1391,7 @@ CLAUDE.md §6 ("Portal não é filial").
 - **A rede de UMA unidade** (o caso comum) esconde o que só faz sentido com
   duas — e a tela troca "rede" por "clínica" (D-19, `useFala`).
 
-### Recomendações do Claude (aguardam o Heitor)
+### Recomendações do Claude (aprovadas)
 
 - **PO1 — a pessoa de várias unidades** (EQ1) entra no portal da UNIDADE, com
   um seletor no topo ("Unidade: Centro ▾") com as unidades dela; trocar leva à
@@ -1400,6 +1400,10 @@ CLAUDE.md §6 ("Portal não é filial").
   tela hoje troca "rede" por "clínica", ela usa o NOME da rede ("Estética
   Bella") ou não precisa de palavra nenhuma (os filtros e seletores de
   unidade já somem). O resto do "clínica" nas telas segue o V1.
+
+### Bloco no plano: Portais
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Portais".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1659,6 +1663,14 @@ Heitor de que vale uma completa.
 | CF3b | **O registro da auditoria**: uma tabela própria, que não se altera nem se apaga (gatilho, como os acessos ao prontuário), gravada pelo servidor; entra toda gravação que muda algo (criar, editar, cancelar, estornar, arquivar, mudar permissão ou configuração), a abertura do prontuário (os acessos de hoje), a entrada no sistema e o que o suporte fez. Nunca o conteúdo clínico. Guardada enquanto a rede existir. O nome de quem agiu sai do ctx | — |
 | CF3c | **A permissão "Auditoria"** (Ver), a 19ª linha da matriz de Cargos (num grupo de `MODULE_GROUPS`), ligada ao nascer só no Admin da rede (que tem tudo); a rede dá a outro cargo se quiser. Na unidade, quem não é da rede vê só as suas unidades | EQ1 |
 | — | Mantém: cada aba como está, a aba Unidade no portal da unidade, a configuração da rede toda só de quem é da rede (H7) | — |
+
+### Bloco: Portais
+
+| # | O que muda | Depende de |
+|---|---|---|
+| PO1 | **A pessoa de várias unidades** entra no portal da unidade (a primeira das dela, ou a última usada), com o seletor "Unidade: X ▾" no topo; trocar leva à MESMA tela na outra unidade (`lib/rotas`). O layout da unidade aceita qualquer unidade dela (hoje confere UMA). Quem tem "A rede inteira" segue no portal da rede | EQ1 |
+| PO2 | **Sai o "clínica" da rede de uma unidade** (`useFala`, `lib/unidades/vocabulario.ts`): onde a palavra é necessária, o NOME da rede; onde não é, nenhuma | V1 |
+| — | Mantém: os dois portais, as mesmas telas com o mesmo sufixo, o filtro de unidade na rede, o que é só da rede, o "Abrir unidade" do Dashboard, o esconder do que só serve com duas unidades | — |
 
 ### Bloco: Cargos
 
