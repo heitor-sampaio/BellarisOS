@@ -63,7 +63,7 @@ superfícies em volta. A ordem é do Heitor.
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ✅ |
 | Equipe | `team` | ✅ |
-| Fichas (formulários, pré-atendimento) | `forms` | ⬜ |
+| Fichas (formulários, pré-atendimento) | `forms` | 🟡 |
 | Cargos e permissões | `roles` | ⬜ |
 | Configurações (rede e unidade) | `settings` | ⬜ |
 | Copilot | `copilot` | ⬜ |
@@ -1200,6 +1200,35 @@ unidades atende" discreto abre a lista — fechado, vale em todas.
 ### Bloco no plano: Equipe
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Equipe".
+
+## Fichas (formulários, ficha de saúde) 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+Já decidido: no procedimento, o campo "Ficha" se chama "Ficha de
+atendimento" (Procedimentos); a ficha de pré-atendimento/anamnese se chama
+"Ficha de saúde" em todo lugar (Prontuário).
+
+### O que faz hoje (levantamento)
+
+Configurações → Fichas, para quem tem as Fichas em Gerenciar e é da rede.
+- **O construtor**: campos de texto curto e longo, número, data, seleção,
+  escolha única, múltipla escolha, foto, planejador de injetáveis e
+  título/seção; obrigatório; "Mostrar só quando (opcional)" — o campo que só
+  aparece com uma resposta.
+- **As fichas de procedimento**: quantas a rede quiser; cada procedimento
+  liga UMA. Preenchida no atendimento; a obrigatória barra o Finalizar.
+- **A ficha de saúde**: UMA por rede, nasce com a rede (alergia Sim/Não com o
+  detalhe, gestação com "Não se aplica", medicamentos, condições de saúde),
+  sem foto nem injetáveis (a cliente responde pelo celular); "Acrescentar as
+  perguntas de injetáveis" põe um bloco pronto para a rede revisar. A
+  validade (6 meses) e o envio ao agendar (desligado) ficam aqui também.
+
+### Recomendação do Claude (aguarda o Heitor)
+
+- **FC1 — os nomes da tela seguem os decididos**: "Fichas de atendimento" (as
+  dos procedimentos) e "Ficha de saúde" (a da cliente), nas abas, nos botões e
+  nas dicas. O resto fica.
 
 ## O PLANO DE ADAPTAÇÃO
 
