@@ -65,7 +65,7 @@ superfícies em volta. A ordem é do Heitor.
 | Equipe | `team` | ✅ |
 | Fichas (formulários, pré-atendimento) | `forms` | ✅ |
 | Cargos e permissões | `roles` | ✅ |
-| Configurações (rede e unidade) | `settings` | 🟡 |
+| Configurações (rede e unidade) | `settings` | ✅ |
 | Copilot | `copilot` | ⬜ |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ⬜ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ⬜ |
@@ -1277,7 +1277,7 @@ definido".
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Cargos".
 
-## Configurações (rede e unidade) 🟡
+## Configurações (rede e unidade) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -1291,7 +1291,9 @@ trilha de cada documento, o histórico do agendamento, a linha do tempo da
 oportunidade e da ficha, o que o suporte fez (aba Suporte). A plataforma tem a
 sua auditoria (`apps/sistema`), que não é da rede.
 
-Proposta do Claude (a confirmar):
+Proposta do Claude — o Heitor: "Pode ser no menu" (a Auditoria é uma
+entrada do menu, em Gestão, ao lado de Relatórios; a permissão proposta não
+foi contestada):
 - **CF3 — "Auditoria"**, uma tela só de leitura: quando, QUEM (o nome, com a
   marca "via suporte"), o QUÊ (em português: "Cancelou o agendamento de Ana,
   dia 14 às 10h"), em qual registro (com o link), a unidade. Filtros: período,
@@ -1303,8 +1305,7 @@ Proposta do Claude (a confirmar):
 - **Guarda**: não se apaga nem se altera, enquanto a rede existir (os 30 dias
   dos eventos são das automações).
 - **Quem vê**: uma linha nova em Cargos, **"Auditoria"** (Ver), que nasce
-  ligada só no Admin da rede; a rede dá a outro cargo se quiser. A pergunta:
-  CF3-P1.
+  ligada só no Admin da rede; a rede dá a outro cargo se quiser.
 
 ### O que faz hoje (levantamento)
 
@@ -1319,7 +1320,7 @@ configuração da rede toda é de quem é da rede (H7).
 - **Ações em lote**: o que roda em segundo plano e demora (o histórico do
   WhatsApp…).
 
-### Recomendações do Claude (aguardam o Heitor)
+### Recomendações do Claude (o Heitor: "Concordo")
 
 - **CF1 — as abas em grupos** (princípio 7: nada sai, muda a organização):
   **A rede** (Geral, Unidades, Assinatura) · **Equipe e acesso** (Cargos,
@@ -1329,6 +1330,10 @@ configuração da rede toda é de quem é da rede (H7).
 - **CF2 — "Eventos" vai para as Automações** ("O que já aconteceu", ao lado
   das execuções): é de quem monta automação, e em Configurações ninguém o
   procura.
+
+### Bloco no plano: Configurações
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Configurações".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1577,6 +1582,17 @@ Heitor de que vale uma completa.
 |---|---|---|
 | FC1 | **"Fichas de atendimento"** (as dos procedimentos) e **"Ficha de saúde"** (a da cliente) em Configurações → Fichas: abas, botões, dicas. Junto com o PR3 (Prontuário) e o "Ficha de atendimento" do procedimento | PR3 |
 | — | Mantém: o construtor, os tipos de campo, o obrigatório, o "Mostrar só quando", uma ficha por procedimento, a ficha de saúde da rede (e o bloco de injetáveis), a validade e o envio | — |
+
+### Bloco: Configurações
+
+| # | O que muda | Depende de |
+|---|---|---|
+| CF1 | **As abas em grupos**: A rede (Geral, Unidades, Assinatura) · Equipe e acesso (Cargos, Suporte) · Atendimento (Fichas, Documentos) · Clientes (Tags, Fidelidade, Importações, LGPD) · Dinheiro (Comissões e taxas) · Conexões (Integrações) · Avançado (Ações em lote). Nada sai; a busca universal acompanha (`ABAS_DE_CONFIGURACAO`) | — |
+| CF2 | **"Eventos" vai para as Automações**, como "O que já aconteceu", ao lado das execuções (o mesmo módulo das Automações) | — |
+| CF3a | **Auditoria no menu** (Gestão, ao lado de Relatórios), só de leitura: quando, quem (com "via suporte"), o quê em português, o link do registro, a unidade; filtros por período, pessoa, tipo, unidade e cliente; CSV. Paginada no banco | CF3b |
+| CF3b | **O registro da auditoria**: uma tabela própria, que não se altera nem se apaga (gatilho, como os acessos ao prontuário), gravada pelo servidor; entra toda gravação que muda algo (criar, editar, cancelar, estornar, arquivar, mudar permissão ou configuração), a abertura do prontuário (os acessos de hoje), a entrada no sistema e o que o suporte fez. Nunca o conteúdo clínico. Guardada enquanto a rede existir. O nome de quem agiu sai do ctx | — |
+| CF3c | **A permissão "Auditoria"** (Ver), a 19ª linha da matriz de Cargos (num grupo de `MODULE_GROUPS`), ligada ao nascer só no Admin da rede (que tem tudo); a rede dá a outro cargo se quiser. Na unidade, quem não é da rede vê só as suas unidades | EQ1 |
+| — | Mantém: cada aba como está, a aba Unidade no portal da unidade, a configuração da rede toda só de quem é da rede (H7) | — |
 
 ### Bloco: Cargos
 
