@@ -1021,7 +1021,8 @@ perguntar forma de pagamento no aceite não sei se é o ideal, pq esse aceite
 pode vir em outro momento, cliente em casa sozinha avaliando se faz ou não e ai
 já perguntar forma de pagamento pode ser intimidador e levar a desistencia,
 não acha?"
-- Proposta do Claude (a confirmar): o aceite é só "quero fazer", sem pergunta
+- Proposta do Claude, **aprovada** ("SIm, pode liberar o aceite pelo app. A
+  cliente recebe o plano no app, analisa e aceita."): o aceite é só "quero fazer", sem pergunta
   de dinheiro — na clínica ou pelo app, em casa. Os termos e os outros
   documentos se assinam quando a cliente quiser (até em casa, pelo app). O
   CONTRATO e o pagamento andam juntos, no PDV: escolhe-se a forma → a cliente
@@ -1264,9 +1265,9 @@ e Agenda (AG1) com o DC1–DC4.
 | # | O que muda | Depende de |
 |---|---|---|
 | PT2 | **Monta quem atende, sem permissão própria** (sai a exigência do Prontuário em Gerenciar): na avaliação (o editor na tela do atendimento) ou DEPOIS, com calma — "Novo plano" na ficha (Planejamento → Tratamentos) e no menu Tratamentos, e "Montar plano desta avaliação" na avaliação concluída (o plano fica ligado a ela). A anotação clínica dentro do plano continua pedindo o Prontuário | — |
-| PT1a | **A página do plano é o centro**, com os passos à vista: ① Aceite ② Assinaturas ③ Pagamento ④ Sessões (X de N agendadas/realizadas). Sai o "Fechar checkout" (os quatro passos numa tela só) | — |
-| PT1b | **"Aceitar plano"** pergunta a forma de pagamento COMBINADA (à vista, entrada + parcelas, cartão em N vezes), o desconto e "Quem vendeu"; o plano fica Aceito, os documentos (contrato de plano com a forma, termos e os outros) ficam prontos, e a comanda do plano nasce no PDV com o valor INTEIRO (a soma das sessões) e o combinado | DC1–DC4, PDV |
-| PT1c | **Assinar antes de pagar**: na página do plano, "Colher as assinaturas" (aparelho, link único ou app — uma assinatura para todos). O PDV que recebe a comanda do plano sem o contrato assinado avisa, com o mesmo botão (não recusa — princípio 2). Trocar a forma no PDV depois de assinado: o contrato assinado não muda, e o PDV avisa que o combinado era outro (a regra de hoje do "contrato assinado para outro pagamento" — a decidir na implementação se avisa ou recusa) | PT1b |
+| PT1a | **A página do plano é o centro**, com os passos à vista: ① Aceite ② Documentos ③ Contrato e pagamento ④ Sessões (X de N agendadas/realizadas). Sai o "Fechar checkout" (os quatro passos numa tela só) | — |
+| PT1b | **"Aceitar plano" é só "quero fazer"**, sem pergunta de dinheiro — na clínica ou **pelo app** (a cliente recebe o plano, analisa e aceita; sai o "O aceite é feito na clínica"). Aceito, os documentos ficam prontos e a comanda do plano nasce no PDV com o valor INTEIRO (a soma das sessões). A equipe é avisada do aceite pelo app | DC1–DC4, PDV |
+| PT1c | **Os termos e os outros documentos** se assinam quando a cliente quiser — no app (até em casa), por link ou no aparelho da clínica. **O CONTRATO e o pagamento andam juntos, no PDV**: escolhe-se a forma (à vista, entrada + parcelas, cartão em N vezes; o desconto e "Quem vendeu") → o contrato sai com ela e a cliente assina → recebe-se. A assinatura vem antes do dinheiro; o PDV não confirma o recebimento do plano sem o contrato assinado ou dispensado (é a ordem do Heitor; o dispensar com motivo segue valendo) | PT1b |
 | PT1d | **Agendar as sessões** a qualquer momento depois do aceite: [Agendar] em cada sessão e "Agendar todas" na página do plano (a janela da agenda já com a cliente, o procedimento e a duração), o "+ Agendar" da agenda (já oferece as sessões do plano) e o app | — |
 | PT1e | **A sessão não cobra nada**; a parcela com a clínica que venceu aparece no PDV (CX) | CX |
 | PT1f | **Tratamentos** (menu) filtra por situação: Proposto, Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado | PT1a |
