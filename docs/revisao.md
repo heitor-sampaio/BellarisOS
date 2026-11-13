@@ -322,12 +322,28 @@ Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
     diferente; o contrato é o do pacote (ou o do plano), não o dos
     procedimentos.
   - Isto substitui o PR4 e o PR5 de Procedimentos.
-- **PC8, em aberto:** (a) "que são obrigatórios": o procedimento não se
-  salva sem termo e sem contrato, ou são os dois campos fixos que sempre
-  estão no cadastro? (b) O contrato do pacote é de CADA pacote (ligado no
-  cadastro dele) ou um contrato de pacote só, da rede, como o de plano hoje?
-  (c) Os "outros documentos" de um procedimento entram também na venda do
-  pacote e no plano (uma vez cada), ou só no avulso?
+- **PC8, respondido (o Heitor, 13/11):** "Eu me expressei errado ali, tá?
+  Não é obrigatório que aparece na tela do cadastro. Tá? Pode incluir ou pode
+  não incluir. Tá? Não é obrigatório. O contrato do pacote e do plano, sim,
+  cada um vai ter o seu específico daí, porque é um contrato, né? Então ele
+  precisa conter todos os procedimentos, as sessões e tudo mais. Então a
+  gente precisa construir um contrato específico por pacote e por plano. Tá?
+  E os outros documentos do procedimento, aí faz o seguinte: quando tiver
+  outros documentos, ele puxa essa lista dos documentos e mostra ali na tela
+  e ver se quer manter ou quer excluir aqueles outros documentos."
+  - (a) Termo e contrato no procedimento são **opcionais**.
+  - (b) **Um contrato específico por pacote e por plano**, com todos os
+    procedimentos, as sessões "e tudo mais".
+  - (c) Os **outros documentos** dos procedimentos: a tela do pacote (e a do
+    plano) puxa a lista e deixa manter ou excluir cada um.
+- **PC9, em aberto:** (a) Hoje o plano usa UM modelo de contrato de plano da
+  rede, preenchido com os procedimentos, as sessões e o pagamento de CADA
+  plano (as variáveis `plano.*` e `pagamento.*`): o contrato assinado já sai
+  com os procedimentos daquele plano. "Um contrato específico por plano" é
+  isso, ou cada plano escolhe o seu modelo de contrato? E no pacote: cada
+  pacote liga o SEU modelo no cadastro dele? (b) "Mostra ali na tela" os
+  outros documentos: no cadastro do pacote (vale para toda venda dele) ou na
+  venda para a cliente? No plano, é a tela de montar o plano?
 
 ## O PLANO DE ADAPTAÇÃO
 
