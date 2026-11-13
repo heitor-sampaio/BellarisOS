@@ -3,7 +3,8 @@ import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { notFound, redirect } from 'next/navigation'
 import { comAviso } from '@/lib/aviso-da-url'
-import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertUnidade, ownerFilter } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 
@@ -59,6 +60,10 @@ export default async function FinancialPage({
     .from('branches').select('id, name')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
+  // F75: os lançamentos se leem pelo SERVIDOR (a sessão não lê
+  // financial_transactions — a política dava o caixa da unidade a todo membro,
+  // sem o módulo). Daí o alcance conferido aqui, não pela RLS.
+  assertUnidade(ctx, branch.id as string)
   // A14 da 13ª simulação (F70): "?unidade=<outra>" aqui abria ESTA unidade
   // calado — a pessoa achava que via a outra. O filtro de unidade é do portal
   // da rede; aqui, o aviso (princípio 3) e a URL sem ele.
@@ -118,7 +123,7 @@ export default async function FinancialPage({
     ? doPeriodo(de, ate).lt('due_date', startOfDayTZ(new Date(), fuso).toISOString())
     : doPeriodo(de, ate), 'carregar os lançamentos')
   function doPeriodo(de: number, ate: number) {
-    return supabase
+    return createAdminClient()
     .from('financial_transactions')
     .select('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, maquininha_id, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno')
     .eq('branch_id', unidadeId)
