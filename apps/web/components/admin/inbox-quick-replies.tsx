@@ -9,12 +9,15 @@ import { erroParaTela } from '@/lib/erro-na-tela'
 import { JanelaModal } from '@/components/shared/janela-modal'
 
 /**
- * Respostas rápidas na conversa.
+ * As respostas rápidas da pessoa (cada uma tem as suas — H8, C72).
  *
- * Fica junto do compositor, e não numa tela de configuração, porque quem
- * escreve o atalho é quem atende: percebe que digitou a mesma coisa pela quinta
- * vez e guarda ali mesmo. Ter que sair da conversa para isso faz a biblioteca
- * nunca ser alimentada.
+ * Abre em dois lugares, com o mesmo editor:
+ *  - junto do compositor (⚡ ou "/"), porque quem escreve o atalho é quem
+ *    atende: percebe que digitou a mesma coisa pela quinta vez e guarda ali
+ *    mesmo — e o clique no atalho o põe na mensagem;
+ *  - no topo do Inbox ("Minhas respostas rápidas", A8 da 14ª simulação), sem
+ *    conversa aberta e sem canal ligado: o lugar fixo de listar, criar, editar
+ *    e apagar as suas. Ali não há onde inserir, e o clique no atalho o edita.
  */
 export function InboxQuickReplies({
   canEdit, busca, onEscolher, onClose,
@@ -22,7 +25,8 @@ export function InboxQuickReplies({
   canEdit:    boolean
   /** Texto digitado depois da `/`, para filtrar sem sair do compositor. */
   busca:      string
-  onEscolher: (texto: string) => void
+  /** Põe o texto na mensagem. Sem ele (fora da conversa), o clique no atalho o edita. */
+  onEscolher?: (texto: string) => void
   onClose:    () => void
 }) {
   const [itens,   setItens]   = useState<QuickReply[] | null>(null)
@@ -75,7 +79,7 @@ export function InboxQuickReplies({
   }
 
   return (
-    <JanelaModal onFechar={onClose} rotulo="Respostas rápidas" largura={520}>
+    <JanelaModal onFechar={onClose} rotulo="Minhas respostas rápidas" largura={520}>
       <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 48px)' }}>
         <div style={{
           padding: '13px 18px', borderBottom: '1px solid var(--hairline)',
@@ -84,7 +88,7 @@ export function InboxQuickReplies({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Zap size={15} color="var(--brand)" />
             <p style={{ margin: 0, fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
-              Respostas rápidas
+              Minhas respostas rápidas
             </p>
           </div>
           <button type="button" onClick={onClose} className="btn-ghost" style={{ height: 30, padding: '0 8px' }}>
@@ -153,6 +157,12 @@ export function InboxQuickReplies({
               )}
             </div>
 
+            {!onEscolher && (
+              <p data-como-usar-respostas style={{ margin: 0, padding: '10px 18px 0', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Só você vê as suas. Numa conversa, use o ⚡ ao lado do campo de mensagem ou digite / para inserir uma.
+              </p>
+            )}
+
             <div style={{ padding: 12, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {erro && <Erro texto={erro} />}
 
@@ -175,7 +185,10 @@ export function InboxQuickReplies({
                 >
                   <button
                     type="button"
-                    onClick={() => { onEscolher(q.content); onClose() }}
+                    onClick={() => {
+                      if (onEscolher) { onEscolher(q.content); onClose(); return }
+                      if (canEdit) setEditando({ id: q.id, title: q.title, content: q.content })
+                    }}
                     style={{
                       flex: 1, textAlign: 'left', border: 'none', background: 'none',
                       cursor: 'pointer', padding: 0, minWidth: 0,

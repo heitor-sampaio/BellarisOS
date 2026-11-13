@@ -1023,6 +1023,7 @@ export function CRMInbox({
   const [sendError,     setSendError]     = useState<string | null>(null)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showAtalhos,   setShowAtalhos]   = useState(false)
+  const [showMinhasRespostas, setShowMinhasRespostas] = useState(false)
   const [buscaAtalho,   setBuscaAtalho]   = useState('')
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   /** Mensagem sendo respondida (citação presa ao compositor). */
@@ -1673,6 +1674,12 @@ export function CRMInbox({
         />
       )}
 
+      {showMinhasRespostas && (
+        // A8 da 14ª (H8): o lugar fixo das respostas rápidas da pessoa, fora
+        // da conversa — também sem canal ligado.
+        <InboxQuickReplies canEdit={canEdit} busca="" onClose={() => setShowMinhasRespostas(false)} />
+      )}
+
       {showAtalhos && (
         <InboxQuickReplies
           canEdit={canEdit}
@@ -1761,6 +1768,18 @@ export function CRMInbox({
                 </button>
               )}
             </div>
+
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setShowMinhasRespostas(true)}
+                className="btn-ghost"
+                data-minhas-respostas
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', marginBottom: 8, padding: '4px 6px' }}
+              >
+                <Zap size={13} /> Minhas respostas rápidas
+              </button>
+            )}
 
             {/* A origem mudou para dentro do painel, junto dos outros cortes.
                 O que sobra aqui é o resumo do que está filtrando — e ele só

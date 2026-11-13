@@ -40,6 +40,7 @@ export const ISOLADOS = [
   'inbox-respostas-de-cada-pessoa.spec.ts',
   // A F71 (automações e comunicação — a 14ª simulação).
   'automacoes-antes-de-ligar-push.spec.ts',
+  'inbox-minhas-respostas-rapidas.spec.ts',
   'estoque-defeitos-da-12.spec.ts',
   'estoque-atritos-da-12.spec.ts',
   'fidelidade-atritos-da-12.spec.ts',
