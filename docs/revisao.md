@@ -51,7 +51,7 @@ superfícies em volta. A ordem é do Heitor.
 | Clientes (ficha, tags, LGPD) | `clients` | ✅ |
 | Fidelidade | `loyalty` | ✅ |
 | Prontuário | `medical_records` | ✅ |
-| Documentos (termos e contratos) | `documents` | ⬜ |
+| Documentos (termos e contratos) | `documents` | 🟡 |
 | CRM (inbox, oportunidades, funis) | `crm` | ⬜ |
 | Procedimentos | `procedures` | ✅ |
 | Pacotes | `procedures` (pacotes) | ✅ |
@@ -756,6 +756,75 @@ Injetáveis.
 ### Bloco no plano: Prontuário
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Prontuário".
+
+## Documentos (termos e contratos) 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+Já decidido nos outros módulos (PR4/PR5 de Procedimentos, PC2 e PC7–PC10 de
+Pacotes, AG1 da Agenda):
+- **No procedimento**: "Termo de consentimento" (opcional), "Contrato"
+  (opcional, só vale no atendimento AVULSO) e "outros documentos", quantos a
+  rede quiser, de qualquer documento criado ou anexado no sistema.
+- **No pacote e no plano**: puxam os termos e os outros documentos dos
+  procedimentos (não o contrato deles), e cada um pode ser excluído ali na
+  criação; o contrato é o do pacote ou o do plano. O contrato de plano fica
+  como está, e nasce o **contrato de pacote**, o equivalente.
+- **A sessão de pacote e de plano não pede documento** (assina-se uma vez,
+  pelo pacote ou pelo plano).
+- **Um link só**: todos os documentos vão à cliente num link único; ela vê
+  todos e assina UMA vez, e a assinatura vale para todos.
+
+### O que faz hoje (levantamento)
+
+Regras em `docs/regras/documentos.md` §9.4.1.
+- **Modelos** (Configurações → Documentos, quem tem as Fichas em Gerenciar e é
+  da rede): três tipos — termo, contrato (do procedimento) e contrato de
+  plano (um ativo por rede, trocado por "Tornar ativo") —, cada um com as
+  suas variáveis (catálogo fechado). Montado no editor (fontes, tabelas,
+  imagens, cabeçalho e rodapé) ou enviado em PDF pronto. Cada mudança no
+  texto vira uma versão nova; o modelo não se apaga, desativa.
+- **Emissão**: o procedimento liga UM termo e UM contrato. Cada documento
+  nasce "ao agendar" ou "no início do atendimento", e "bloqueia o início" sem
+  assinatura ou só avisa. Cancelar ou faltar cancela os abertos; trocar o
+  procedimento troca os documentos. O contrato que cita o pagamento pede o
+  "pagamento combinado" antes de assinar. Faltou dado obrigatório (CPF, o
+  responsável da menor): "faltam dados", não assina.
+- **Assinatura**: na clínica (o aparelho entregue à cliente, em tela cheia),
+  no papel, no app (para quem tem acesso) ou por link (CPF ou nascimento
+  antes, uso único, 7 dias, um link por documento; pelo WhatsApp do aparelho
+  ou, se a rede ligou, pela conversa). Cada documento se assina à parte. A
+  menor de idade: assina o responsável. Dispensar, com motivo, cumpre.
+- **Depois**: o PDF assinado com a página de evidências e o QR para conferir
+  (`/verificar`, público); no app da cliente, os assinados.
+- **A tela Documentos** (menu Atendimento): só leitura, todo documento do
+  período com a situação (faltam dados, a enviar, enviado, assinado,
+  dispensado, cancelado) e a trilha. Com o Prontuário "só os meus", só os das
+  clientes que a pessoa atende.
+
+### Recomendações do Claude (aguardam o Heitor)
+
+Fecham as três perguntas que ficaram de Procedimentos (o que é do contrato de
+plano, as variáveis, "quando nasce" e "bloqueia").
+- **DC1 — os tipos de documento**: Termo de consentimento, Contrato do
+  procedimento (avulso), Contrato de plano, Contrato de pacote (novo) e
+  **Documento** (novo: o "outro documento" — uma autorização de uso de
+  imagem, um regulamento —, no editor ou em PDF). O tipo diz em que campo o
+  documento se liga e quais variáveis ele usa; o "Documento" usa as do termo
+  (cliente, responsável, procedimento, rede e unidade, data).
+- **DC2 — toda rede nasce com um contrato de pacote padrão**, como já nasce
+  com o de plano.
+- **DC3 — uma assinatura para todos, em todo canal.** O link único (AG1) e
+  também o aparelho entregue na clínica e o app: a cliente vê a lista, abre
+  cada um, marca "li e concordo" e assina uma vez. Cada documento continua
+  com o seu PDF, a sua evidência e o seu QR — a mesma assinatura em todos.
+- **DC4 — "quando nasce" sai: todo documento do atendimento nasce ao
+  agendar** (o do pacote e o do plano, na venda/na criação). Com um link só,
+  um documento que nascesse depois, no início, pediria outro link e outra
+  assinatura; nascendo ao agendar, o link pode ir antes de a cliente chegar.
+  "Bloqueia o início ou só avisa" fica, por documento (princípio 1). O
+  contrato que cita o pagamento continua pedindo o "pagamento combinado"
+  antes (até lá, "faltam dados", e a tela diz).
 
 ## O PLANO DE ADAPTAÇÃO
 
