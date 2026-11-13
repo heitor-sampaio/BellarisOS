@@ -1774,6 +1774,23 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-13 — Revisão do sistema aberta, e o banco zerado
+
+O Heitor abriu a revisão módulo por módulo (`docs/revisao.md`): ele diz o que
+cada módulo deve fazer, e as diferenças viram o PLANO DE ADAPTAÇÃO, que roda
+no fim da revisão (até lá nada se implementa). Fechados no primeiro dia:
+vocabulário (rede e unidade; sem "clínica", "filial" nem nome de cargo),
+Estoque, Procedimentos, Pacotes e Tags.
+
+**O banco foi zerado** ("apagar tudo, criar uma rede de testes para os testes
+automatizados"): todo dado das redes saiu — as 24 redes, 427 logins e 248
+arquivos. Ficaram a estrutura, os planos e a configuração da plataforma, e a
+equipe da plataforma. Uma cópia de tudo ficou no schema
+`backup_wipe_20261113` (sem os arquivos), para sair quando o Heitor confirmar.
+A rede de teste agora nasce de `apps/web/scripts/rede-de-teste.mjs`
+(`docs/regras/e2e.md`). Por causa do wipe, o plano de adaptação não migra
+dado nenhum.
+
 ### 2026-11-11 — Décima segunda simulação: a clínica facial pequena da indicação e do crédito com bônus, e a clínica de laser dos planos
 
 É o mesmo ciclo pedido pelo Heitor, depois das F52–F57. A 7ª completa do ciclo não achou defeito do sistema (F57: as 6 falhas eram specs desatualizados).

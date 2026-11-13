@@ -26,8 +26,15 @@ só quando o Heitor pede) continuam no §15 do `CLAUDE.md`.
   derrubava a metade inteira antes do primeiro teste).
   Spec novo com rede própria entra na lista; migrar um compartilhado
   para rede própria é o que encurta a suíte.
-- ⚠️ **A rede de teste "Bellaris" tem conexões REAIS no ar** — desde
-  2026-10-09, o número da API oficial do Heitor (antes, uma caixa gerenciada).
+- **A rede de teste nasce de um script** (2026-11-13, com o banco zerado):
+  `node apps/web/scripts/rede-de-teste.mjs` cria a "Rede de Teste" — a
+  sessão do E2E (`admin@bellaris.com.br`, Admin da rede), duas unidades com
+  salas, uma pessoa que atende e uma que não atende em cada, procedimentos,
+  clientes e produtos com saldo. É a rede mais antiga sem `[e2e]`, a que
+  `tenantId()` lê; o script recusa rodar se o banco já tiver outra. O que o
+  spec supõe além disso, ele cria (ou entra no script).
+- ⚠️ **A rede de teste pode ter conexões REAIS no ar** — o Heitor liga nela o
+  número da API oficial dele (assim era até o wipe, e volta a ser).
   Spec que grava numa caixa de WhatsApp da rede real, mesmo "restaurando" no
   `finally`, troca a credencial de um número no ar e o webhook perde o dono
   dele no meio da rodada: é numa rede própria (`criarOutraRede`), como o
