@@ -10,6 +10,7 @@ import { CampoDaBandeira, CampoDaMaquininha } from '@/components/shared/campo-da
 import { useMaquininhas } from '@/components/shared/use-maquininhas'
 import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
+import { ROTULO_DO_CREDIARIO, limiteDoCrediarioEmTexto, rotuloDoMeioNoCrediario } from '@/lib/financeiro/parcelas-do-crediario'
 
 /**
  * Os campos de COMO vai ser pago — o vocabulário do fechamento do plano (no
@@ -46,7 +47,7 @@ const METODOS = [
 ]
 
 const ROTULOS: Record<FormaDoPagamento, string> = {
-  NADA_AGORA: 'No atendimento', AVISTA: 'À vista', PARCELADO: 'Entrada + parcelas', A_RECEBER: 'A receber',
+  NADA_AGORA: 'No atendimento', AVISTA: 'À vista', PARCELADO: ROTULO_DO_CREDIARIO, A_RECEBER: 'A receber',
 }
 
 // O dia de "hoje + N" no relógio da unidade (F62b).
@@ -101,8 +102,10 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
  * montar — o aviso é o de todo campo de dinheiro.
  */
 export function recusaDoPagamento(e: EstadoDoPagamento, total?: number, doQue = 'da venda'): string | null {
-  // A37: o que se recebe agora pede a forma — ela nasce vazia.
-  if ((e.forma === 'AVISTA' || e.forma === 'PARCELADO') && !e.metodo) return 'Escolha a forma de pagamento.'
+  // A37: o que se recebe agora pede a forma — ela nasce vazia. No crediário,
+  // o meio é o da ENTRADA: sem entrada, nada se recebe agora (A23 da 14ª).
+  if (e.forma === 'AVISTA' && !e.metodo) return 'Escolha a forma de pagamento.'
+  if (e.forma === 'PARCELADO' && !e.metodo && temEntrada(e)) return 'Escolha o meio de pagamento da entrada.'
   return recusaDaEntradaDoEstado(e, total, doQue)
 }
 
@@ -121,6 +124,12 @@ export function useRecusaDoPagamento(): (e: EstadoDoPagamento, total?: number, d
     const pagaAgora = e.forma === 'AVISTA' || (e.forma === 'PARCELADO' && 'valor' in entrada && entrada.valor > 0)
     return varias && pagaAgora && temBandeira(e.metodo) && !e.maquininha ? 'Escolha a maquininha do cartão.' : null
   }
+}
+
+/** O crediário tem entrada (um valor legível acima de zero)? */
+function temEntrada(e: EstadoDoPagamento): boolean {
+  const lida = lerEntrada(e.entrada)
+  return 'valor' in lida ? lida.valor > 0 : e.entrada.trim() !== ''
 }
 
 /** Só a entrada (a que aparece junto do campo). */
@@ -173,9 +182,11 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
       {forma !== 'NADA_AGORA' && (
         <div className="form-2col">
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={rotulo}>Meio de pagamento{forma === 'A_RECEBER' ? ' (opcional)' : ' *'}</span>
-            <select className="field" value={estado.metodo} onChange={e => mudar({ metodo: e.target.value })} aria-label="Meio de pagamento">
-              <option value="">{forma === 'A_RECEBER' ? 'Não informado' : 'Selecione…'}</option>
+            {/* A23 da 14ª: no crediário, o meio é o da ENTRADA — e sem entrada não precisa. */}
+            <span style={rotulo}>{forma === 'PARCELADO' ? rotuloDoMeioNoCrediario(temEntrada(estado)) : `Meio de pagamento${forma === 'A_RECEBER' ? ' (opcional)' : ' *'}`}</span>
+            <select className="field" value={estado.metodo} onChange={e => mudar({ metodo: e.target.value })}
+              aria-label={forma === 'PARCELADO' ? 'Meio de pagamento da entrada' : 'Meio de pagamento'}>
+              <option value="">{forma === 'A_RECEBER' || (forma === 'PARCELADO' && !temEntrada(estado)) ? 'Não informado' : 'Selecione…'}</option>
               {metodos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
             {estado.metodo === 'INTERNAL_CREDIT' && clienteId && total !== undefined && (
@@ -224,6 +235,10 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
               <select className="field" value={estado.parcelas} onChange={e => mudar({ parcelas: Number(e.target.value) })} aria-label="Parcelas">
                 {opcoesDeParcelas.map(n => <option key={n} value={n}>{n}x</option>)}
               </select>
+              {/* A23 da 14ª: a lista para no limite — e diz que é o da clínica. */}
+              <span data-limite-do-crediario style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                {limiteDoCrediarioEmTexto(opcoesDeParcelas.length)}
+              </span>
             </label>
           )}
           {forma === 'PARCELADO' && (

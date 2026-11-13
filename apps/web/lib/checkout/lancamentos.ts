@@ -56,7 +56,8 @@ const data = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'Data inválid
 export const EntradaDoPagamento = z.discriminatedUnion('forma', [
   z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA, maquininha: MAQUININHA }),
   z.object({
-    forma: z.literal('PARCELADO'), metodo: z.enum(METODOS),
+    // A23 da 14ª: o meio é o da ENTRADA — sem entrada, pode vir vazio (nada se recebe agora).
+    forma: z.literal('PARCELADO'), metodo: z.union([z.enum(METODOS), z.literal('')]),
     // C38: o limite é da rede (`recusaDasParcelasDaRede`); aqui, só o teto do registro.
     entrada: z.number().min(0), parcelas: z.number().int().min(1).max(TETO_DO_CREDIARIO), primeiroVencimento: data, bandeira: BANDEIRA, maquininha: MAQUININHA,
     /** D5: as vezes na maquininha da ENTRADA no crédito. */
@@ -66,6 +67,9 @@ export const EntradaDoPagamento = z.discriminatedUnion('forma', [
 ]).refine(
   p => p.forma === 'A_RECEBER' || !p.vezes || p.vezes === 1 || p.metodo === 'CREDIT_CARD',
   'Parcelar na maquininha só no cartão de crédito.',
+).refine(
+  p => p.forma !== 'PARCELADO' || p.metodo !== '' || !(p.entrada > 0),
+  'Escolha o meio de pagamento da entrada.',
 )
 
 const centavos = (v: number) => Math.round(v * 100) / 100

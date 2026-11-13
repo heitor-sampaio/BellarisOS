@@ -20,3 +20,24 @@ export function opcoesDeParcelas(maximo: number): number[] {
 export function recusaDasParcelas(parcelas: number, maximo: number): string | null {
   return parcelas > maximo ? `A clínica divide o crediário em até ${maximo}x. Escolha até ${maximo} parcelas.` : null
 }
+
+/**
+ * Os NOMES do crediário, um só em toda tela que vende nele (A23 da 14ª
+ * simulação, F75; princípio 7): a configuração dizia "Crediário da clínica" e o
+ * Vender, "Entrada + parcelas" — a Wanda e a Débora não ligavam um ao outro.
+ */
+export const ROTULO_DO_CREDIARIO = 'Crediário (entrada + parcelas)'
+
+/** "até 6x, o limite da clínica" — a lista parava em 6x sem dizer por quê (A23). */
+export function limiteDoCrediarioEmTexto(maximo: number): string {
+  return `até ${maximo}x, o limite da clínica`
+}
+
+/**
+ * O rótulo do meio no crediário (A23): ele é o da ENTRADA, e sem entrada não
+ * se cobra nada agora — "Meio de pagamento *" fazia parecer que algo saía em
+ * Pix hoje. As parcelas nascem sem meio (D6 da 6ª).
+ */
+export function rotuloDoMeioNoCrediario(temEntrada: boolean): string {
+  return temEntrada ? 'Meio de pagamento da entrada *' : 'Meio de pagamento da entrada (sem entrada, não precisa)'
+}

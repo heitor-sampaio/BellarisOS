@@ -1,4 +1,5 @@
 ﻿'use client'
+import { ROTULO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
 import { useFuso } from '@/components/shared/fuso'
 import { instanteNoFuso, dayKeyTZ, addDaysTZ, BUSINESS_TZ } from '@/lib/datetime'
 
@@ -733,7 +734,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             options={[
               { key: 'NADA_AGORA', label: 'Receber no atendimento' },
               { key: 'AVISTA',     label: 'À vista' },
-              { key: 'PARCELADO',  label: 'Entrada + parcelas' },
+              { key: 'PARCELADO',  label: ROTULO_DO_CREDIARIO },
               { key: 'A_RECEBER',  label: 'A receber' },
             ].filter(o => podeCobrar || o.key === 'NADA_AGORA')}
             value={formaPgto}
