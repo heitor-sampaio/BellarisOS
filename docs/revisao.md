@@ -59,7 +59,7 @@ superfícies em volta. A ordem é do Heitor.
 | Marketing (campanhas) | `marketing` | ⬜ |
 | Automações | `automations` | ⬜ |
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
-| Financeiro (lançamentos, taxas, comissões) | `financial` | ⬜ |
+| Financeiro (lançamentos, taxas, comissões) | `financial` | ✅ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ⬜ |
 | Equipe | `team` | ⬜ (já tem item, vindo do Estoque: P3) |
@@ -626,6 +626,32 @@ abaixo. O Heitor: "Blz pode ser assim".
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Caixa (recebimentos e fechamento do dia)".
 
+## Financeiro ✅
+
+### Como se decidiu (o Heitor, 2026-11-13)
+
+Como no Caixa, o Claude explicou o uso comum (as cinco perguntas de quem
+cuida do dinheiro: como foi o mês, quem me deve, o que eu devo, o extrato,
+as comissões) e propôs organizar o que já existe em abas. Sobre o "Conceder
+crédito", o Heitor perguntou "Pq precisaria do conceder credito?"; o Claude
+explicou (o saldo que a cliente trouxe de fora, e a cortesia ou compensação,
+sem dinheiro) e sugeriu levá-lo à ficha. O Heitor: "Blz pode manter e anotar
+no plano como voce sugeriu".
+
+### O que faz hoje (levantamento)
+
+Uma página só (`admin-financial-view.tsx`): o período e a unidade; sete
+cartões de números; a conta do resultado (competência); o fluxo de caixa dos
+próximos meses; as parcelas da operadora; uma lista única de lançamentos com
+as ações (marcar pago, receber no cartão, pagar despesa, estornar, cancelar e
+devolver parte da venda, recibo, remarcar vencimento); "Novo lançamento"
+(receita ou despesa, parcelada, recorrente, com "Contas"); "Conceder
+crédito"; o CSV. As comissões em página própria (Financeiro → Comissões).
+
+### Bloco no plano: Financeiro
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Financeiro".
+
 ## O PLANO DE ADAPTAÇÃO
 
 O Heitor, 13/11: "eu quero que os resultados da revisão de cada modulo
@@ -750,6 +776,22 @@ PDV; o resto é do Financeiro.**
 | CX5 | **Os avisos do Fechamento** ficam dois: **"há comanda aberta"** e **"entrou dinheiro depois do fechamento"**. "Por quem recebeu" e os estornos do dia ficam como detalhe recolhido | CX4 |
 | CX6 | **Vão para o Financeiro:** as taxas da maquininha estimadas, o que a operadora ainda vai depositar, a venda sem taxa cadastrada e a planilha da contadora (o CSV) | CX4 |
 | — | Mantém: cada fechamento registrado (vale o mais recente), "Ainda não fechado", a rede vendo o dia de todas as unidades. Sem "abrir caixa" e sem sangria (se um dia a unidade trabalhar com muito dinheiro vivo, entra como opção) | — |
+
+### Bloco: Financeiro
+
+Nada de recurso novo: o que já existe, organizado pelas cinco perguntas de
+quem cuida do dinheiro.
+
+| # | O que muda | Depende de |
+|---|---|---|
+| FI1 | **Abas**: Resumo · A receber · A pagar · Movimentações · Comissões. Abre no Resumo | — |
+| FI2 | **Resumo**: o período escolhido — entrou, saiu, resultado; embaixo, o que vem pela frente (a receber e a pagar dos próximos meses, o fluxo de caixa) | FI1 |
+| FI3 | **A receber**: das clientes (as atrasadas primeiro, com "remarcar vencimento") e da operadora do cartão (o que ela ainda vai depositar, vindo do Fechamento — CX6). A baixa do que entrou sem passar pelo balcão (CX2) | FI1, CX2 |
+| FI4 | **A pagar**: as despesas — lançar (avulsa, parcelada, recorrente, com as Contas), pagar, o que vence | FI1 |
+| FI5 | **Movimentações**: o extrato com filtro; o estorno, o recibo, a devolução e o cancelamento de venda, o CSV da contadora; como aviso, as taxas da maquininha estimadas e a venda sem taxa cadastrada (vindos do Fechamento — CX6) | FI1, CX6 |
+| FI6 | **Comissões**: como hoje, como aba | FI1 |
+| FI7 | **"Conceder crédito" vai para a ficha da cliente**, aba Financeiro, para quem tem o Financeiro em Gerenciar (como o "Trazer pacote de fora"). No topo do Financeiro fica só o "Novo lançamento" | — |
+| — | Mantém: o período, o filtro de unidade na rede, quem vê o quê pelas permissões. Fora, por ser mais do que uma clínica pequena precisa: conciliação com o extrato do banco e plano de contas contábil completo | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
