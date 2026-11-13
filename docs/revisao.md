@@ -61,7 +61,7 @@ superfícies em volta. A ordem é do Heitor.
 | Caixa (Vender, recebimentos, fechamento do dia) | `cashier` | ✅ (o PDV; recebimentos e fechamento do dia) |
 | Financeiro (lançamentos, taxas, comissões) | `financial` | ✅ |
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
-| Relatórios e indicadores | `reports` | 🟡 |
+| Relatórios e indicadores | `reports` | ✅ |
 | Equipe | `team` | ⬜ (já tem item, vindo do Estoque: P3) |
 | Fichas (formulários, pré-atendimento) | `forms` | ⬜ |
 | Cargos e permissões | `roles` | ⬜ |
@@ -1118,11 +1118,11 @@ Automações), com o módulo Automações.
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Automações".
 
-## Relatórios e indicadores 🟡
+## Relatórios e indicadores ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+"rl1 ok, rl2 apenas \"Oportunidades\"". O resto fica como está.
 
 ### O que faz hoje (levantamento)
 
@@ -1146,13 +1146,17 @@ Regras em `docs/regras/indicadores.md` §13.1 (todo número vem de
   dinheiro no dia em que entrou (princípio 5); período comparado com o mesmo
   pedaço do anterior; o fuso de Brasília.
 
-### Recomendações do Claude (aguardam o Heitor)
+### Recomendações do Claude
 
 - **RL1 — a aba Vendas lista as COMANDAS do PDV**: cada venda, do que for
   (atendimento avulso, pacote, plano, produto, crédito), com um filtro por
   tipo. Decorre do PDV (uma venda = uma comanda).
-- **RL2 — "Funil comercial" fala em oportunidades** (CR1): "Funil de
-  oportunidades", sem "leads".
+- **RL2 — "Funil comercial" fala em oportunidades** (CR1). **Decidido:** a
+  aba se chama só **"Oportunidades"**.
+
+### Bloco no plano: Relatórios
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Relatórios".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1372,6 +1376,14 @@ e Agenda (AG1) com o DC1–DC4.
 | AU1 | **Modelos novos** em "Usar um modelo": vencimento de pacote, confirmação do agendamento, cancelamento, pontos de fidelidade (os gatilhos da campanha automática que sai — MK1). Nascem em rascunho; o canal é o que a rede tem. Cada um usa só fatos e passos do catálogo (`tests/automacoes-modelos.test.ts`) | MK1 |
 | T4 | A ação vira **"Adicionar tag"**, com qualquer tag registrada | Tags |
 | — | Mantém: o editor de fluxo, os gatilhos e os passos, os modelos de hoje, o "antes de ligar", o silêncio e o teto, o ensaio, as execuções e as versões, só no portal da rede | — |
+
+### Bloco: Relatórios
+
+| # | O que muda | Depende de |
+|---|---|---|
+| RL1 | **A aba Vendas lista as comandas do PDV**: cada venda, do que for (atendimento avulso, pacote, plano, produto, crédito), com filtro por tipo; o CSV junto. O número continua vindo de `lib/metrics/` | PDV |
+| RL2 | **A aba "Funil comercial" se chama "Oportunidades"** (a aba, a dica na tela de Cargos, o texto da tela; sem "leads") | CR1 |
+| — | Mantém: as outras abas, o período e a unidade, as abas por cargo, o escopo de unidade × rede, o Dashboard, as regras dos números | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
