@@ -112,6 +112,8 @@ interface AdminTx {
   nota_fiscal?: string | null
   /** A44 da 12ª: a bandeira, o desconto em reais e a profissional — para o CSV da contadora. */
   cartao_bandeira?:   string | null
+  /** A18 da 14ª: o nome da maquininha (só com mais de uma na rede). */
+  maquininha_nome?:   string | null
   desconto_valor?:    number | null
   profissional_nome?: string | null
   vendedor_nome?: string | null
@@ -745,7 +747,7 @@ export function AdminFinancialView({
                       </span>
                     </td>}
                     <td data-label="Método" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                      {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes)
+                      {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes, { maquininha: t.maquininha_nome })
                         // A23 da 10ª: o R$ 0 pago todo com o voucher ou os pontos diz isso.
                         : t.pago_sem_dinheiro ? <span data-pago-sem-dinheiro>{t.pago_sem_dinheiro}</span> : '—'}
                     </td>

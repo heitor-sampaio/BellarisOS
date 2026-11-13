@@ -1,5 +1,7 @@
 'use client'
 
+import { ROTULO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
+import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { useActionState, useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -192,9 +194,10 @@ interface Props {
   canPayment:         boolean
   isProfessional:     boolean
   /** A39: com a bandeira, "Crédito Visa 5x". */
-  paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null } | null
+  /** `maquininha`: o NOME, só com mais de uma na rede (A18 da 14ª). */
+  paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null; maquininha?: string | null } | null
   /** O último recebimento ESTORNADO, quando não há outro vivo: a cobrança reabriu (D6, 2026-10-28). */
-  pagamentoEstornado?: { paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null; motivo: string | null } | null
+  pagamentoEstornado?: { paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null; maquininha?: string | null; motivo: string | null } | null
   /** Sessões livres de pacote da cliente, do mesmo procedimento: "Abater do pacote" (D9). */
   pacotesParaAbater?: PacoteParaAbater[]
   treatmentProcedures:   TreatmentProcedure[]
@@ -219,6 +222,8 @@ interface Props {
   podeReceber?:          boolean
   /** A35 da 12ª: quem recebe e não estorna — a quem pedir o estorno (os nomes de quemDesfazNoCaixa). */
   quemEstorna?:          string[] | null
+  /** A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos) vê o "Estornar" ao lado do Recibo — a janela do Financeiro. */
+  podeEstornar?:         boolean
   /** O pagamento combinado no contrato do procedimento (o recebimento já vem com o meio). */
   pagamentoCombinado?:   { metodo: string | null; rotulo: string } | null
   /**
@@ -929,7 +934,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
-                {([['AVISTA', 'À vista'], ['PARCELADO', 'Entrada + parcelas']] as const).map(([v, label]) => (
+                {([['AVISTA', 'À vista'], ['PARCELADO', ROTULO_DO_CREDIARIO]] as const).map(([v, label]) => (
                   <button key={v} type="button" onClick={() => setForma(v)}
                     className={forma === v ? 'btn-primary' : 'btn-secondary'}
                     style={{ flex: 1, padding: '9px 12px', fontSize: 'var(--text-sm-sz)', justifyContent: 'center' }}>
@@ -1252,7 +1257,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, quemEstorna = null, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, quemEstorna = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
 }: Props) {
   const router   = useRouter()
@@ -2328,14 +2333,19 @@ export function AppointmentSession({
                   ✓ Atendimento concluído em {formatarNoFuso(appointment.completedAt, "dd/MM/yyyy 'às' HH:mm", fuso)}
                 </p>
                 {paymentTransaction ? (
-                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span>Pagamento confirmado — {rotuloDaForma(paymentTransaction.paymentMethod, paymentTransaction.cartaoVezes, { bandeira: paymentTransaction.cartaoBandeira })} · {fmtBRL(paymentTransaction.amount)}</span>
+                  <div style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span>Pagamento confirmado — {rotuloDaForma(paymentTransaction.paymentMethod, paymentTransaction.cartaoVezes, { bandeira: paymentTransaction.cartaoBandeira, maquininha: paymentTransaction.maquininha })} · {fmtBRL(paymentTransaction.amount)}</span>
                     {/* r2-ven-13: o recibo do pagamento (PDF), para quem recebe. */}
                     {canPayment && (
                       <a href={`/api/recibos/${paymentTransaction.id}`} target="_blank" rel="noopener" title="Recibo (PDF): imprimir ou baixar"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
                         <FileText size={12} aria-hidden /> Recibo
                       </a>
+                    )}
+                    {/* A19 da 14ª: quem estorna, estorna daqui — a mesma janela do Financeiro e da ficha. */}
+                    {podeEstornar && (
+                      <AcoesDoLancamentoDaFicha slug={slug} podeEstornar podeReceber={false}
+                        lancamento={{ id: paymentTransaction.id, descricao: 'Atendimento concluído', valor: paymentTransaction.amount, pago: true, metodo: paymentTransaction.paymentMethod, doAtendimento: true }} />
                     )}
                     {/* A35 da 12ª: a recepção não estorna, e a página não dizia a quem pedir (a ficha dizia). */}
                     {quemEstorna && (
@@ -2344,7 +2354,7 @@ export function AppointmentSession({
                         {quemEstorna.length > 0 ? `: ${quemEstorna.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
                       </span>
                     )}
-                  </p>
+                  </div>
                 ) : isPartOfPlan ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
                     Pagamento realizado no checkout do plano de tratamento.
@@ -2370,7 +2380,7 @@ export function AppointmentSession({
                       // O estorno reabre a cobrança (D6, 2026-10-28): diz o que
                       // foi estornado, e o "Confirmar pagamento" volta a valer.
                       <p data-pagamento-estornado style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                        Pagamento estornado — {rotuloDaForma(pagamentoEstornado.paymentMethod, pagamentoEstornado.cartaoVezes, { bandeira: pagamentoEstornado.cartaoBandeira })} · {fmtBRL(pagamentoEstornado.amount)}
+                        Pagamento estornado — {rotuloDaForma(pagamentoEstornado.paymentMethod, pagamentoEstornado.cartaoVezes, { bandeira: pagamentoEstornado.cartaoBandeira, maquininha: pagamentoEstornado.maquininha })} · {fmtBRL(pagamentoEstornado.amount)}
                         {pagamentoEstornado.motivo ? ` (${pagamentoEstornado.motivo})` : ''}. O atendimento voltou a receber.
                       </p>
                     )}

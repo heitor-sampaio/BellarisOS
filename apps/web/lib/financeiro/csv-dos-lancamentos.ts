@@ -53,6 +53,8 @@ export interface LinhaDoCsv {
   profissional?: string | null
   /** A12 da 13ª: quem vendeu (pacote, pré-pago, produto, plano) — "Profissional" é quem atendeu. */
   vendedor?:     string | null
+  /** A18 da 14ª: o NOME da maquininha do cartão (só com mais de uma na rede) — vai na Forma, como na tela. */
+  maquininha?:   string | null
 }
 
 const SITUACAO: Record<LinhaDoCsv['situacao'], string> = { PAGO: 'Pago', EM_ABERTO: 'Em aberto', ESTORNADO: 'Estornado' }
@@ -81,7 +83,7 @@ export function csvDosLancamentos(linhas: LinhaDoCsv[], fuso?: string): string {
     return [
       dia(l.data, fuso), l.descricao, l.cliente ?? '', l.unidade ?? '', l.profissional ?? '', l.vendedor ?? '', l.categoria ?? '',
       l.estorno ? 'Estorno' : l.tipo === 'EXPENSE' ? 'Despesa' : 'Receita',
-      l.forma ? rotuloDaForma(l.forma, l.vezes) : '',
+      l.forma ? rotuloDaForma(l.forma, l.vezes, { maquininha: l.maquininha }) : '',
       (l.forma === 'CREDIT_CARD' || l.forma === 'DEBIT_CARD') && l.bandeira ? nomeDaBandeira(l.bandeira) : '',
       SITUACAO[l.situacao],
       (centavos / 100).toFixed(2).replace('.', ','), conta ? 'Sim' : 'Não',
@@ -116,6 +118,7 @@ export function linhaDoLancamento(t: {
   due_date?: string | null; paid_at?: string | null; fornecedor?: string | null; nota_fiscal?: string | null
   taxa?: number | null; liquido?: number | null; no_caixa?: number | null
   desconto_valor?: number | null; profissional_nome?: string | null; vendedor_nome?: string | null; unidade_nome?: string | null
+  maquininha_nome?: string | null
 }, unidade?: string | null): LinhaDoCsv {
   return {
     data: t.data_de_referencia ?? t.created_at, descricao: t.description, cliente: t.cliente?.name ?? null,
@@ -123,7 +126,7 @@ export function linhaDoLancamento(t: {
     situacao: t.notes === 'Estornada' ? 'ESTORNADO' : t.is_paid ? 'PAGO' : 'EM_ABERTO',
     valor: Number(t.amount), estorno: t.category === 'Estorno', unidade: unidade ?? t.unidade_nome ?? null,
     bandeira: t.cartao_bandeira ?? null, desconto: t.desconto_valor ?? null, profissional: t.profissional_nome ?? null,
-    vendedor: t.vendedor_nome ?? null,
+    vendedor: t.vendedor_nome ?? null, maquininha: t.maquininha_nome ?? null,
     taxa: t.taxa ?? null, liquido: t.liquido ?? null, vencimento: t.due_date ?? null, pagoEm: t.paid_at ?? null,
     fornecedor: t.fornecedor ?? null, nota: t.nota_fiscal ?? null,
     ...(t.no_caixa !== undefined ? { noCaixa: t.no_caixa } : {}),

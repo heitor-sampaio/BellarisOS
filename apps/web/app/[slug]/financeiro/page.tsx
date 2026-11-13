@@ -1,3 +1,5 @@
+import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
+import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { notFound, redirect } from 'next/navigation'
 import { comAviso } from '@/lib/aviso-da-url'
@@ -118,7 +120,7 @@ export default async function FinancialPage({
   function doPeriodo(de: number, ate: number) {
     return supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno')
+    .select('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, maquininha_id, is_paid, paid_at, due_date, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total, client_id, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno')
     .eq('branch_id', unidadeId)
     .or(soOEmAberto ? 'notes.is.null,notes.neq.Estornada' : 'is_paid.eq.true,amount.neq.0')
     // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
@@ -146,14 +148,17 @@ export default async function FinancialPage({
   // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
   // A44 da 12ª: o desconto em reais e a profissional de cada lançamento, para o CSV;
   // A43: todo o a pagar em aberto da unidade.
-  const [semDinheiro, taxas, extras, aPagarEmAberto] = await Promise.all([
+  const [semDinheiro, taxas, extras, aPagarEmAberto, maquininhas] = await Promise.all([
     pagosSemDinheiro((lancamentos ?? []) as LancamentoSemDinheiro[]),
     getTaxaDosLancamentos(ctx.tenantId!, (lancamentos ?? []).map(t => t.id as string)),
     extrasDoCsv(ctx.tenantId!, (lancamentos ?? []) as unknown as LancamentoParaOCsv[]),
     getAPagarEmAberto({ tenantId: ctx.tenantId!, branchIds: [unidadeId] }),
+    // A18 da 14ª: com mais de uma maquininha, a lista e o CSV dizem qual.
+    nomesDasMaquininhas(ctx.tenantId!),
   ])
-  const transactions = (lancamentos ?? []).map(({ client_id, ...t }) => ({
+  const transactions = (lancamentos ?? []).map(({ client_id, maquininha_id, ...t }) => ({
     ...t,
+    maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id as string | null),
     desconto_texto: descontos[t.id as string] ?? null,
     pago_sem_dinheiro: semDinheiro[t.id as string] ?? null,
     // A36 e A37 da 11ª: o pago e o estornado em parte; o uso do crédito não é receita.

@@ -1,5 +1,5 @@
 import type { TenantContext } from '@estetica-os/types'
-import { isOwnScope } from '@/lib/auth'
+import { can, isOwnScope } from '@/lib/auth'
 
 /**
  * C35 do levantamento das regras (F67, 2026-11-12): com o Financeiro em "só
@@ -13,4 +13,14 @@ export const RECUSA_DO_SO_OS_MEUS =
 
 export function recusaDoSoOsMeus(ctx: TenantContext): string | null {
   return isOwnScope(ctx, 'financial') ? RECUSA_DO_SO_OS_MEUS : null
+}
+
+/**
+ * Quem vê o "Estornar" na tela (A19 da 14ª, F75): o Financeiro em Gerenciar,
+ * de todos — a mesma trava de `reverseTransaction`. A ficha do cliente, o
+ * atendimento pago e o Financeiro perguntam AQUI (era a mesma conta repetida
+ * em cada página, e o atendimento pago nem a fazia).
+ */
+export function podeEstornar(ctx: TenantContext): boolean {
+  return can(ctx, 'financial', 'MANAGE') && !recusaDoSoOsMeus(ctx)
 }

@@ -31,6 +31,8 @@ export interface Transaction {
   payment_method: string | null
   /** Crédito em N vezes, pago na hora (A33: a lista dizia só "Crédito"). */
   cartao_vezes?:  number | null
+  /** A18 da 14ª: o nome da maquininha do cartão (só com mais de uma na rede). */
+  maquininha_nome?: string | null
   is_paid:        boolean
   paid_at:        string | null
   due_date:       string | null
@@ -368,7 +370,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                             background: pmStyle.bg, color: pmStyle.color,
                             border: `1px solid ${pmStyle.color}30`,
                           }}>
-                            {rotuloDaForma(tx.payment_method, tx.cartao_vezes)}
+                            {rotuloDaForma(tx.payment_method, tx.cartao_vezes, { maquininha: tx.maquininha_nome })}
                           </span>
                         ) : tx.pago_sem_dinheiro ? (
                           // A23 da 10ª: o R$ 0 pago todo com o voucher ou os pontos diz isso.

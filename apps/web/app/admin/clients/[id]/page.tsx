@@ -52,6 +52,7 @@ import { registrarAcessoAoProntuario, acessosAoProntuario } from '@/lib/prontuar
 import { nomeDosProcedimentos } from '@/lib/plano-de-tratamento/nome'
 import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
 import { abaDaFicha } from '@/lib/clientes/aba-da-ficha'
+import { podeEstornar } from '@/lib/financeiro/so-os-meus'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
 
@@ -538,7 +539,7 @@ export default async function AdminClientProfilePage({
       podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
         podeRemarcar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
         // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela (Recebimentos) na ficha.
-        podeEstornar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
+        podeEstornar={podeEstornar(ctx)}
         podeReceberParcela={ctx.permissions.cashier === 'MANAGE'}
         quemDesfaz={quemDesfaz}
         pagoComCredito={pagoComCredito}

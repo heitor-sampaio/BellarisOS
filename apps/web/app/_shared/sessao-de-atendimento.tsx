@@ -1,3 +1,5 @@
+import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
+import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
@@ -34,6 +36,7 @@ import { avisoDoBloqueioNoAtendimento } from '@/lib/agenda/bloqueio'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { FusoProvider } from '@/components/shared/fuso'
 import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
+import { podeEstornar } from '@/lib/financeiro/so-os-meus'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -160,7 +163,7 @@ export async function SessaoDeAtendimento({
       .from('financial_transactions')
       // Todos os lançamentos do atendimento: o estornado fica no histórico e o
       // recebimento de depois é outro lançamento (D6 da simulação de 2026-10-28).
-      .select('id, payment_method, amount, cartao_vezes, cartao_bandeira, is_paid, notes, estorno_motivo, created_at')
+      .select('id, payment_method, amount, cartao_vezes, cartao_bandeira, maquininha_id, is_paid, notes, estorno_motivo, created_at')
       .eq('appointment_id', id)
       .eq('type', 'INCOME')
       .order('created_at', { ascending: false }), 'carregar o pagamento do atendimento'),
@@ -544,17 +547,19 @@ export async function SessaoDeAtendimento({
   // recusado depois de a pessoa digitar tudo.
   const canEditRecords = canManage && can(ctx, 'medical_records', 'MANAGE')
 
-  type RawPayment = { id: string; payment_method: string; amount: number; cartao_vezes: number | null; cartao_bandeira: string | null; is_paid: boolean; notes: string | null; estorno_motivo: string | null }
+  type RawPayment = { id: string; payment_method: string; amount: number; cartao_vezes: number | null; cartao_bandeira: string | null; maquininha_id: string | null; is_paid: boolean; notes: string | null; estorno_motivo: string | null }
   const lancamentos = (paymentRaw ?? []) as RawPayment[]
   // "Pagamento confirmado" é o recebimento PAGO e vivo. O estornado reabre a
   // cobrança (D6, 2026-10-28): a tela diz que foi estornado e oferece receber.
   const pago      = lancamentos.find(l => l.is_paid && l.notes !== 'Estornada') ?? null
   const estornado = pago ? null : (lancamentos.find(l => l.notes === 'Estornada') ?? null)
+  // A18 da 14ª: com mais de uma maquininha na rede, o rótulo diz qual.
+  const maquininhas = pago || estornado ? await nomesDasMaquininhas(ctx.tenantId!) : null
   const paymentTransaction = pago
-    ? { id: pago.id, paymentMethod: pago.payment_method, amount: Number(pago.amount), cartaoVezes: pago.cartao_vezes, cartaoBandeira: pago.cartao_bandeira }
+    ? { id: pago.id, paymentMethod: pago.payment_method, amount: Number(pago.amount), cartaoVezes: pago.cartao_vezes, cartaoBandeira: pago.cartao_bandeira, maquininha: maquininhaDoRotulo(maquininhas, pago.maquininha_id) }
     : null
   const pagamentoEstornado = estornado
-    ? { paymentMethod: estornado.payment_method, amount: Number(estornado.amount), cartaoVezes: estornado.cartao_vezes, cartaoBandeira: estornado.cartao_bandeira, motivo: estornado.estorno_motivo }
+    ? { paymentMethod: estornado.payment_method, amount: Number(estornado.amount), cartaoVezes: estornado.cartao_vezes, cartaoBandeira: estornado.cartao_bandeira, maquininha: maquininhaDoRotulo(maquininhas, estornado.maquininha_id), motivo: estornado.estorno_motivo }
     : null
 
   // "Abater do pacote" (D9, 2026-10-28): o avulso concluído e a receber, com
@@ -652,6 +657,8 @@ export async function SessaoDeAtendimento({
         podeReceber={podeReceber(ctx)}
         // A35 da 12ª: quem recebe e não estorna lê, no pagamento confirmado, a quem pedir.
         quemEstorna={podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? await quemDesfazNoCaixa(ctx.tenantId!, branchId) : null}
+        // A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos — a régua da ficha) estorna daqui, pela mesma janela.
+        podeEstornar={podeEstornar(ctx)}
         pagamentoCombinado={canPayment ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, appointment.id) : null}
         abrirRecebimento={abrirRecebimento}
         planoEmAberto={planoEmAberto}

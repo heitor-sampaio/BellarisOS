@@ -1,3 +1,5 @@
+import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
+import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
@@ -26,7 +28,7 @@ import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 type LancamentoLido = {
   loyalty_discount?: number | string | null; fornecedor?: string | null; nota_fiscal?: string | null
   id: string; type: string; category: string | null; description: string; amount: number | string
-  payment_method: string | null; cartao_vezes: number | null; is_paid: boolean; paid_at: string | null; due_date: string | null
+  payment_method: string | null; cartao_vezes: number | null; maquininha_id?: string | null; is_paid: boolean; paid_at: string | null; due_date: string | null
   created_at: string; branch_id: string; notes: string | null
   cliente: { name: string } | null
 } & LancamentoComDesconto
@@ -94,7 +96,7 @@ export default async function AdminFinanceiroPage({
   // A lista do período (ou de todo o em aberto, A38 da 8ª), lida em páginas.
   const daLista = (de: number, ate: number) => admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno, cliente:clients!financial_transactions_client_id_fkey(name)')
+      .select('id, type, category, description, amount, payment_method, cartao_vezes, cartao_bandeira, maquininha_id, is_paid, paid_at, due_date, created_at, branch_id, notes, estorno_motivo, product_sale_id, credito_vendido_id, sale_discount, desconto_motivo, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id, data_de_referencia, parcela_numero, parcela_total, vencimentos_anteriores, loyalty_discount, fornecedor, nota_fiscal, valor_antes_do_estorno, cliente:clients!financial_transactions_client_id_fkey(name)')
       .in('branch_id', branchIds)
       // A38 da 8ª: "Ver e dar baixa" — todo o a receber em aberto, de qualquer
       // vencimento. Senão, o período é pela DATA DE REFERÊNCIA (2026-09-30): o
@@ -220,13 +222,16 @@ export default async function AdminFinanceiroPage({
   const descontos = await descontosDosLancamentos(txs)
   // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
   // A44 da 12ª: o desconto em reais e a profissional de cada lançamento, para o CSV.
-  const [semDinheiro, taxas, extras] = await Promise.all([
+  const [semDinheiro, taxas, extras, maquininhas] = await Promise.all([
     pagosSemDinheiro(txs as unknown as LancamentoSemDinheiro[]),
     getTaxaDosLancamentos(ctx.tenantId!, txs.map(t => t.id)),
     extrasDoCsv(ctx.tenantId!, txs as unknown as LancamentoParaOCsv[]),
+    // A18 da 14ª: com mais de uma maquininha, a lista e o CSV dizem qual.
+    nomesDasMaquininhas(ctx.tenantId!),
   ])
-  const transactions = txs.map(t => ({
+  const transactions = txs.map(({ maquininha_id, ...t }) => ({
     ...t,
+    maquininha_nome: maquininhaDoRotulo(maquininhas, maquininha_id),
     desconto_texto: descontos[t.id] ?? null,
     pago_sem_dinheiro: semDinheiro[t.id] ?? null,
     // A36 e A37 da 11ª: o pago e o estornado em parte; o uso do crédito não é receita.

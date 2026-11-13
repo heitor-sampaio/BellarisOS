@@ -60,3 +60,15 @@ export async function taxaDoPixDaRede(tenantId: string): Promise<number> {
     'ler a taxa do Pix') as { pix_taxa_pct: number | string | null } | null
   return Number(t?.pix_taxa_pct ?? 0)
 }
+
+/**
+ * A18 da 14ª (F75): os nomes das maquininhas da rede (as arquivadas também — o
+ * pagamento antigo foi nelas), para o rótulo do pagamento
+ * (`rotuloDaForma(…, { maquininha })`). Nulo com uma só ou nenhuma: o nome não
+ * vai ao rótulo (`maquininhaDoRotulo`).
+ */
+export async function nomesDasMaquininhas(tenantId: string): Promise<Record<string, string> | null> {
+  const lista = await maquininhasDaRede(tenantId)
+  if (lista.length < 2) return null
+  return Object.fromEntries(lista.map(m => [m.id, m.nome]))
+}

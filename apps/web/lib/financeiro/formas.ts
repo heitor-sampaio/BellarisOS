@@ -23,15 +23,30 @@ export const FORMAS_DA_DESPESA = ['PIX', 'BOLETO', 'CASH', 'DEBIT_CARD', 'CREDIT
  * "Crédito 3x", "Pix"… — `longo` para "Cartão de crédito 3x". Sem forma: "Sem
  * forma de pagamento". Com a `bandeira` do cartão, ela vai no nome — "Crédito
  * Visa 5x" (A39 da 6ª simulação: o recibo, a confirmação e o app não diziam).
+ * Com a `maquininha` (o NOME), ela vai no fim — "Débito Visa · Stone" (A18 da
+ * 14ª, F75: quem estornava não sabia de qual maquininha). Quem chama só passa
+ * o nome quando a rede tem MAIS DE UMA (`maquininhaDoRotulo`); com uma, nada.
  */
 export function rotuloDaForma(
-  metodo: string | null | undefined, vezes?: number | null, opcoes: { longo?: boolean; bandeira?: string | null } = {},
+  metodo: string | null | undefined, vezes?: number | null, opcoes: { longo?: boolean; bandeira?: string | null; maquininha?: string | null } = {},
 ): string {
   if (!metodo) return 'Sem forma de pagamento'
   const nome = (opcoes.longo ? LONGO : CURTO)[metodo] ?? metodo
-  const daBandeira = (metodo === 'CREDIT_CARD' || metodo === 'DEBIT_CARD') && opcoes.bandeira
+  const noCartao = metodo === 'CREDIT_CARD' || metodo === 'DEBIT_CARD'
+  const daBandeira = noCartao && opcoes.bandeira
     ? ` ${BANDEIRA[opcoes.bandeira] ?? opcoes.bandeira}` : ''
-  return metodo === 'CREDIT_CARD' && vezes && vezes > 1 ? `${nome}${daBandeira} ${vezes}x` : `${nome}${daBandeira}`
+  const daMaquininha = noCartao && opcoes.maquininha ? ` · ${opcoes.maquininha}` : ''
+  return (metodo === 'CREDIT_CARD' && vezes && vezes > 1 ? `${nome}${daBandeira} ${vezes}x` : `${nome}${daBandeira}`) + daMaquininha
+}
+
+/**
+ * O nome da maquininha que vai no rótulo do pagamento (A18 da 14ª): só quando
+ * a rede tem mais de uma (com uma só, o nome não diz nada — princípio 7).
+ * `nomes` vem de `nomesDasMaquininhas` (o servidor); nulo = uma só ou nenhuma.
+ */
+export function maquininhaDoRotulo(nomes: Record<string, string> | null | undefined, id: string | null | undefined): string | null {
+  if (!nomes || !id || Object.keys(nomes).length < 2) return null
+  return nomes[id] ?? null
 }
 
 /** O nome de cada bandeira (o espelho de BANDEIRAS, lib/financeiro/bandeiras — aqui sem zod, para o navegador e o banco). */
