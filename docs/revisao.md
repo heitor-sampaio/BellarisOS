@@ -19,8 +19,9 @@ Para cada módulo:
    "pelos princípios".
 
 Enquanto a revisão corre, nada é implementado: nenhuma frente, nenhum
-workflow, nenhuma mudança de código. Corrigir os itens vem depois, quando o
-Heitor mandar.
+workflow, nenhuma mudança de código. Cada módulo fechado vira um bloco do
+**plano de adaptação** (mais abaixo), que só roda no fim, quando o Heitor
+mandar.
 
 **Estado:** ⬜ não começado · 🟡 em revisão · ✅ revisado
 
@@ -181,6 +182,48 @@ perda, ajuste, lotes, validade e aviso de mínimo."
 
 - **P4 (E15), respondida:** "o filtro de marca ou fornecedor mostra os
   produtos que tem alguma entrada dessa marca/fornecedor".
+
+## O PLANO DE ADAPTAÇÃO
+
+O Heitor, 13/11: "eu quero que os resultados da revisão de cada modulo
+constituam um plano de revisão e adaptação do sistema pra se adequar ao que
+for revisado aqui. No final da revisão, você vai rodar esse plano e GARANTIR
+que o sistema todo funcione."
+
+**Como se monta:** ao fechar cada módulo, o que foi decidido vira um bloco
+aqui, com itens numerados (o mesmo número da diferença: E1, E2…). Durante a
+revisão, só se escreve o plano. Nada se implementa.
+
+**Como se executa (só no FIM da revisão, quando o Heitor mandar):**
+1. Item por item, na ordem dos blocos, respeitando as dependências marcadas.
+2. Cada item segue o TDD: o teste nasce antes, é visto falhando, depois vem o
+   código. A regra do módulo em `docs/regras/` é reescrita com as palavras do
+   Heitor anotadas aqui. Teste que existe e contraria a decisão muda, porque a
+   regra mudou; ele é citado no commit.
+3. Mudança destrutiva no banco (apagar, renomear coluna ou tabela, migrar
+   dado) só com o Heitor presente.
+4. **"O sistema todo funciona"** quer dizer, no fim, tudo verde:
+   - typecheck e lint;
+   - o vitest inteiro;
+   - a suíte E2E completa contra o build (GitHub Actions);
+   - um passeio pelas telas de cada módulo revisado, conferindo o que o
+     Heitor disse que devia fazer.
+   Falha não fica para trás: corrige-se e roda-se de novo até passar.
+
+### Bloco: Estoque
+
+| # | O que muda | Depende de |
+|---|---|---|
+| E1/E5 | A lista que hoje se chama "Fornecedores" vira **Marcas**. Cadastro de **Fornecedores** novo, igual ao de marcas (texto livre). Os nomes já gravados como fornecedor viram marcas | — (migração do dado: com o Heitor) |
+| E4/E5 | Categorias, marcas e fornecedores: criar, renomear, excluir. Quem pode: quem tem o Estoque em **Gerenciar**, e só isso (ser da rede deixa de contar). Hoje categoria não renomeia | — |
+| E6/E3 | Categoria, marca e fornecedor escolhidos numa lista **com campo de busca e autocomplete** | — |
+| E2 | "Onde está disponível": **checkbox** Insumo e Venda direta, no lugar de Insumo / Revenda / Os dois | — |
+| E10 | O cadastro do produto **não tem** marca nem fornecedor. Sai o "fornecedor de costume" e sai o segundo fornecedor do estoque inicial | E1/E5 |
+| E11 | Estoque inicial como está (lote, validade, nota, custo, observações), **dividido entre as unidades** | E13 |
+| E14 | A **Entrada** (e o estoque inicial) pede **marca e fornecedor** | E1/E5 |
+| E15 | Filtros da tela: **categorias, marca, fornecedores**. Marca e fornecedor mostram os produtos que têm alguma entrada daquela marca ou fornecedor | E14 |
+| E13 | **Quem cadastra produto:** quem tem o Estoque em Gerenciar. Sai a regra "catálogo só da rede × as unidades também". Quem é de uma unidade só: a unidade vem preenchida e travada. Quem é de mais de uma: a lista mostra só as unidades dela | **Equipe** (a pessoa em mais de uma unidade) |
+| — | Mantém: nome, SKU automático, código de barras (digitado ou leitor), categoria, embalagem (lista fixa), conteúdo da embalagem, preço e comissão de venda, estoque mínimo, aviso de nome repetido. A tela geral do estoque, a saída no atendimento, a transferência entre unidades, a perda, o ajuste, os lotes, a validade e o aviso de mínimo | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
