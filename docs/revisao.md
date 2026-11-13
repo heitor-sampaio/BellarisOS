@@ -281,16 +281,23 @@ Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
 | # | Diferença | Estado |
 |---|---|---|
 | PC1 | O preço nasce vazio; a soma aparece só como frase ("avulsas sairiam por") | **Decidido:** o valor base já vem com a soma dos procedimentos adicionados, e pode ser alterado |
-| PC2 | Documentos: nada na venda; os do procedimento a cada sessão | **Em aberto:** "precisamos achar uma solução de documentos para esse caso" |
+| PC2 | Documentos: nada na venda; os do procedimento a cada sessão | **Decidido em parte:** "como o cliente comprou um pacote, nao faz sentido ele precisar assinar todas as vezes, ele assina pelo pacote. o ideal era funcionar como no plano de tratamento, mas removemos os documentos especificos antes né, talvez tenha que voltar naquele formato de linkar termo e contrato, especificamente, para facilitar essa parte." Assina UMA vez, pelo pacote. Em aberto: o formato (ver PC7) |
 
 ### O sistema faz e não está na lista do Heitor (ele decide se fica)
 
 | # | O quê | Estado |
 |---|---|---|
-| PC3 | Validade em dias (vazio = sem validade) | aberto |
-| PC4 | "À venda" (tirar o pacote da venda sem apagar) | aberto |
-| PC5 | Comissão de venda e de execução no cadastro do pacote | aberto |
-| PC6 | Criar e editar exige ser da rede (além de Procedimentos em Gerenciar) | aberto |
+| PC3 | Validade em dias (vazio = sem validade) | **Decidido:** ok, mantém |
+| PC4 | "À venda" (tirar o pacote da venda sem apagar) | **Decidido:** ok, mantém |
+| PC5 | Comissão de venda e de execução no cadastro do pacote | **Decidido:** ok, mantém |
+| PC6 | Criar e editar exige ser da rede (além de Procedimentos em Gerenciar) | **Decidido:** "apenas gerenciar" |
+
+- **"Tipo de produto"** (o Heitor): "Pacote tipo um produto que se vende,
+  não aparece no estoque pq é um conjunto de procedimentos, não de itens."
+  Fica em Vendas → Pacotes, como hoje.
+- **PC7, em aberto:** o formato dos documentos, que mexe também no PR4/PR5
+  (Procedimentos) e no plano de tratamento. O Heitor cogita voltar a ligar
+  "termo e contrato, especificamente" ao procedimento.
 
 ## O PLANO DE ADAPTAÇÃO
 
