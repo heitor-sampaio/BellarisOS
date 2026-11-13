@@ -36,9 +36,9 @@ Anotado no CLAUDE.md, §1, em "Vocabulário".
 
 | # | Diferença | Estado |
 |---|---|---|
-| V0 | Nome de cargo usado como cargo fixo ("a gerente", "a recepção"), nas regras e no CLAUDE.md — o Heitor, 13/11: "o que define quem gerencia é permissão, ponto" (anotado no CLAUDE.md §1) | aberto |
-| V1 | "Clínica" aparece nas telas (inclusive no portal e no app da cliente: "Crédito na clínica", "Telefone da clínica"), na política de privacidade, nas regras (`docs/regras/`) e no CLAUDE.md | aberto |
-| V2 | "Filial" aparece no CLAUDE.md ("Portal Web Filial"), nas regras e em nomes internos do código (`filial`, `trocarFilial…`). Nas telas, a palavra é "unidade" | aberto |
+| V0 | Nome de cargo usado como cargo fixo ("a gerente", "a recepção"), nas regras e no CLAUDE.md — o Heitor, 13/11: "o que define quem gerencia é permissão, ponto" (anotado no CLAUDE.md §1) | decidido → "Bloco: Vocabulário" |
+| V1 | "Clínica" aparece nas telas (inclusive no portal e no app da cliente: "Crédito na clínica", "Telefone da clínica"), na política de privacidade, nas regras (`docs/regras/`) e no CLAUDE.md | decidido → "Bloco: Vocabulário" |
+| V2 | "Filial" aparece no CLAUDE.md ("Portal Web Filial"), nas regras e em nomes internos do código (`filial`, `trocarFilial…`). Nas telas, a palavra é "unidade" | decidido → "Bloco: Vocabulário" |
 
 ## Os módulos
 
@@ -66,13 +66,13 @@ superfícies em volta. A ordem é do Heitor.
 | Fichas (formulários, pré-atendimento) | `forms` | ✅ |
 | Cargos e permissões | `roles` | ✅ |
 | Configurações (rede e unidade) | `settings` | ✅ |
-| Copilot | `copilot` | ⏸ por último (a regra: acompanha tudo) |
+| Copilot | `copilot` | ✅ (acompanha as mudanças — o último bloco) |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ✅ |
 | Portal e app da cliente | `/[slug]/cliente`, `apps/native` | ✅ |
 | WhatsApp e avisos (push) | `lib/whatsapp`, `lib/notifications` | ✅ (sem bloco: só o V1) |
 | Busca | `busca_universal` | ✅ |
 | Plataforma (sistema, suporte, assinaturas) | `apps/sistema`, `apps/suporte` | ✅ |
-| Site | `apps/site` | 🟡 |
+| Site | `apps/site` | ✅ |
 
 ## Estoque ✅
 
@@ -1335,7 +1335,7 @@ configuração da rede toda é de quem é da rede (H7).
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Configurações".
 
-## Copilot ⏸ (por último)
+## Copilot ✅ (o último bloco)
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -1343,6 +1343,9 @@ Está no PLANO DE ADAPTAÇÃO, "Bloco: Configurações".
 nessa revisão, melhor deixar copilot por último, mas a orientação é a mesma,
 acompanha as mudanças". A regra está decidida (CP1); a conferência das
 ferramentas fica para o fim da revisão, depois do último módulo.
+
+No fim da revisão (13/11): "o copilot é só acompanhar as mudanças". Nada
+novo além do CP1.
 
 ### O que faz hoje (levantamento)
 
@@ -1539,11 +1542,11 @@ em dois apps com endereço próprio.
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Plataforma".
 
-## Site (bellarisos.com) 🟡
+## Site (bellarisos.com) ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
-(a perguntar)
+Fica como está, falando o sistema adaptado (SI1–SI3: "Sim para o site").
 
 ### O que faz hoje (levantamento)
 
@@ -1570,7 +1573,7 @@ antes da revisão:
 "Clínica de estética" no site é o MERCADO (é o que a dona procura no
 buscador), não a rede dentro do sistema.
 
-### Recomendação do Claude (aguarda o Heitor)
+### Recomendação do Claude (o Heitor: "Sim para o site")
 
 - **SI1 — o texto fala o sistema adaptado**: Documentos, Ficha de saúde, PDV,
   Oportunidades; nenhum cargo como se fosse fixo ("a recepção" vira "a
@@ -1582,6 +1585,10 @@ buscador), não a rede dentro do sistema.
   "Cada um vê o seu": "e tudo o que se faz fica registrado".
 - **SI3 — as telas são fotografadas de novo** no fim do plano, com o sistema
   adaptado (a câmera da Aurora monta o que for preciso: PDV, plano aceito).
+
+### Bloco no plano: Site
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Site".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -1874,6 +1881,26 @@ Heitor de que vale uma completa.
 | PL1 | **O PDV e a Auditoria são de todo plano**: nenhuma funcionalidade do catálogo (`packages/nucleo/src/lib/planos/recursos.ts`) cobre o `cashier` nem o módulo novo da Auditoria (CF3c), e um teste trava que nenhuma passe a cobrir — plano nenhum, nem o teste grátis, nem a rede bloqueada que volta, os tira. Os rótulos do catálogo (que o sistema, a tela de assinatura e o site mostram) seguem os nomes da revisão: "Documentos" (era "Termos e contratos"), "Fichas de atendimento", "Portal e app da cliente" | PDV, CF3c, DC1 |
 | — | Mantém: os dois apps, os planos e os limites, o teste grátis sem o Copilot, a cobrança pelo Asaas, o bloqueio, o suporte e o "entrar como" | — |
 
+### Bloco: Site
+
+| # | O que muda | Depende de |
+|---|---|---|
+| SI1 | **O texto fala o sistema adaptado** (`components/conteudo.tsx`, `lib/telas.ts`, `lib/perguntas.ts`, `/llms.txt`): Documentos, Ficha de saúde, PDV, Oportunidades; nenhum cargo como fixo ("a recepção" → "a equipe", "quem atende"). "Clínica de estética" fica: é o mercado | DC1, PR3, PDV, CR1 |
+| SI2 | **O app da cliente diz o que ganhou**: aceita o plano pelo celular, agenda as sessões do plano e do pacote, assina tudo de uma vez — sem prometer pagar. A Auditoria no "Cada um vê o seu" | PT1b, CA3, CA4, CF3 |
+| SI3 | **As telas fotografadas de novo** (`e2e-capturas/telas-do-site.spec.ts`), com o sistema adaptado, no fim do plano | todos os blocos |
+| — | Mantém: o teste grátis como chamada, os preços do sistema, a calculadora, o SEO/GEO, o movimento | — |
+
+### Bloco: Vocabulário (o sistema inteiro)
+
+Vai junto do de Cargos, no fim: os textos dos outros blocos já nascem certos,
+e este passa a limpo o que sobrou.
+
+| # | O que muda | Depende de |
+|---|---|---|
+| V0 | **Nenhum cargo como se fosse fixo** em tela, regra (`docs/regras/`), teste e CLAUDE.md: fala-se em permissão ("quem tem o Estoque em Gerenciar"). Os nomes dos cargos-modelo continuam nomes de cargos editáveis | — |
+| V1 | **"Clínica" sai** das telas (o portal e o app da cliente inclusive), dos avisos, da política de privacidade, das regras e do CLAUDE.md: é "a rede" ou o nome dela (PO2/CA1). Fica só no site, como mercado (SI1) | PO2, CA1 |
+| V2 | **"Filial" sai de vez**: do CLAUDE.md, das regras e dos nomes internos do código (`filial`, `trocarFilial…` → unidade) | — |
+
 ### Bloco: Cargos
 
 Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
@@ -1893,7 +1920,19 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 
 ## O que já estava pendente, para entrar no módulo dele
 
-Não foi decidido. Cada item entra na revisão do módulo indicado.
+**Onde cada item foi parar (fim da revisão, 13/11):**
+- H16 e a F77 → a regra das Tags (CLAUDE.md §1) e o "Bloco: Tags": sai o
+  gatilho da "Unidade: X" e toda leitura da tag como unidade (A26 junto).
+- D7 e o CSV do Fechamento → CX6: as taxas da maquininha e a planilha vão ao
+  Financeiro.
+- D20 → mantido no "Bloco: Agenda" ("só os meus" + Gerenciar remarca o próprio).
+- C64 → sai com o FD3.
+- A F76 e o teste "dois cliques fecham uma vez" → o "tudo verde" do fim do plano.
+- Sobram para o Heitor: a política antiga "Operacional acessa financeiro da
+  filial" (sem efeito) e o crediário sem entrada sem pedir o meio de
+  pagamento.
+
+O texto abaixo é o de antes da revisão.
 
 **Tags (Clientes / CRM): a regra H16.** As palavras do Heitor, de 13/11, são
 estas duas:
