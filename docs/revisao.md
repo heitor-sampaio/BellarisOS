@@ -64,7 +64,7 @@ superfícies em volta. A ordem é do Heitor.
 | Relatórios e indicadores | `reports` | ✅ |
 | Equipe | `team` | ✅ |
 | Fichas (formulários, pré-atendimento) | `forms` | ✅ |
-| Cargos e permissões | `roles` | ⬜ |
+| Cargos e permissões | `roles` | 🟡 |
 | Configurações (rede e unidade) | `settings` | ⬜ |
 | Copilot | `copilot` | ⬜ |
 | Portal da rede × portal da unidade | `/admin`, `/[slug]` | ⬜ |
@@ -1233,6 +1233,45 @@ Configurações → Fichas, para quem tem as Fichas em Gerenciar e é da rede.
 ### Bloco no plano: Fichas
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Fichas".
+
+## Cargos e permissões 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+A regra (CLAUDE.md §1): "o que define quem gerencia é permissão, ponto … a aba
+cargos é apenas para definir um conjunto de permissões para aplicar a um
+usuário".
+
+### O que faz hoje (levantamento)
+
+Configurações → Cargos (CLAUDE.md §11). A rede cria os cargos que quiser;
+nasce com quatro modelos editáveis e os de sistema "Admin da rede" e "Não
+definido".
+- **A matriz**: 18 linhas (os módulos), em seis grupos, cada uma com Nenhum /
+  Ver / Gerenciar (só os níveis que o módulo aceita) e o texto do que cada
+  nível libera.
+- **"Só os meus" × "todos"** em Agenda, Prontuário, Financeiro, CRM e
+  Relatórios (neste, "a minha unidade" × "a rede"). Desligar o módulo guarda o
+  escopo.
+- **Relatórios**: as abas que o cargo vê. **CRM**: o refino do inbox (pela
+  pessoa ou pela conversa, da rede) e as caixas de WhatsApp (todas ou só as
+  minhas, do cargo).
+- **"O que essa pessoa vai ver"**: o resumo do cargo. As notas "só funciona
+  para quem é da rede" em Marketing, Automações, Cargos e Configurações.
+- Ninguém dá um cargo acima do próprio; a Admin da rede é a exceção da regra.
+
+### Recomendações do Claude (aguardam o Heitor)
+
+- **CG1 — "Recebimentos" vira "PDV"**: a linha de quem vende e recebe no PDV
+  (as comandas, as parcelas que a cliente veio pagar, fechar o dia).
+- **CG2 — "Termos e contratos" vira "Documentos"**, o nome do menu e dos cinco
+  tipos (DC1).
+- **CG3 — o texto de cada linha segue o que a revisão decidiu**: a venda no
+  PDV (sai o "Vender" da ficha), "oportunidade" no lugar de "lead" (CRM,
+  Marketing), a aba "Oportunidades" (Relatórios), "Ficha de saúde" e as fotos
+  no Prontuário (e montar o plano não pede o Prontuário), as unidades da
+  pessoa (Equipe, "unidade fixa" → "as unidades dela"). Nenhuma permissão
+  muda — só o que a tela diz.
 
 ## O PLANO DE ADAPTAÇÃO
 
