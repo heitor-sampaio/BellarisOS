@@ -47,7 +47,7 @@ superfícies em volta. A ordem é do Heitor.
 
 | Módulo | No sistema | Estado |
 |---|---|---|
-| Agenda | `agenda` | ⬜ |
+| Agenda | `agenda` | 🟡 |
 | Clientes (ficha, tags, LGPD) | `clients` | ⬜ (as tags: ver "Tags") |
 | Fidelidade | `loyalty` | ⬜ |
 | Prontuário | `medical_records` | ⬜ |
@@ -442,6 +442,34 @@ sentido, certo?"
 ### Bloco no plano: Tags
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Tags".
+
+## Agenda 🟡
+
+### O que devia fazer (o Heitor, 2026-11-13)
+
+"a pagina da agenda ta boa e as funcoes me parecem boas"
+
+### O que fica pelas regras que já existem (sem pergunta)
+
+- **D20** (aberta desde a F65): quem tem a Agenda em Gerenciar com "só os
+  meus" remarca o PRÓPRIO atendimento. A regra das permissões responde:
+  Gerenciar nos próprios registros. A F75 já mostra o "Remarcar".
+- **Sessão de pacote e de plano** não emite documento (PC2/PC7: assina-se na
+  venda).
+- **A pessoa em mais de uma unidade** (P3, Equipe) vê e agenda nas unidades
+  dela; o "Atende" é por unidade (`atende_em`), como já é.
+- **Remarcar e a confirmação:** H3 decidida (a cliente pelo app nasce
+  Confirmada; a equipe e o Copilot voltam a Agendado).
+
+### Perguntas
+
+- **AG-P1. Documentos do atendimento avulso.** Com o PC7, o procedimento tem
+  termo, contrato (só no avulso) e outros documentos. No atendimento avulso
+  eles vão num link só, com uma assinatura para todos (como o PC10 do pacote
+  e do plano), ou cada um no seu link, como hoje?
+- **AG-P2. A unidade do agendar pelo inbox.** Hoje o "Agendar" da conversa
+  vem com a unidade escolhida pela tag "Unidade: X" da pessoa. A tag sai
+  (T1). O agendar pelo inbox passa a vir com qual unidade?
 
 ## O PLANO DE ADAPTAÇÃO
 
