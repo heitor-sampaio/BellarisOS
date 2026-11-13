@@ -336,14 +336,23 @@ Levantado em `components/admin/pacotes-catalogo.tsx`, `app/_shared/pacotes.tsx`,
     procedimentos, as sessões "e tudo mais".
   - (c) Os **outros documentos** dos procedimentos: a tela do pacote (e a do
     plano) puxa a lista e deixa manter ou excluir cada um.
-- **PC9, em aberto:** (a) Hoje o plano usa UM modelo de contrato de plano da
-  rede, preenchido com os procedimentos, as sessões e o pagamento de CADA
-  plano (as variáveis `plano.*` e `pagamento.*`): o contrato assinado já sai
-  com os procedimentos daquele plano. "Um contrato específico por plano" é
-  isso, ou cada plano escolhe o seu modelo de contrato? E no pacote: cada
-  pacote liga o SEU modelo no cadastro dele? (b) "Mostra ali na tela" os
-  outros documentos: no cadastro do pacote (vale para toda venda dele) ou na
-  venda para a cliente? No plano, é a tela de montar o plano?
+- **PC9 (a), respondido (o Heitor, 13/11):** "vamos manter esse contrato do
+  plano, tá? Ele é bom, ele já funciona bem. E vamos estender isso pro pacote
+  também. Estender não, vamos criar um equivalente disso pro pacote. Tá?
+  Então vai ter o contrato do plano, o contrato do pacote e os contratos
+  avulsos dos procedimentos, tá? Porque esse contrato do plano ali já
+  funcionava bem, a gente só cria uma versão adaptada dele pro pacote, né?
+  Para caso tenha alguma diferença de contrato entre um plano e um pacote,
+  que queira fazer alguma diferenciação, a gente consegue permitir isso."
+  - O **contrato de plano** fica como está: um modelo da rede, preenchido
+    com os procedimentos, as sessões e o pagamento de cada plano.
+  - Nasce o **contrato de pacote**, o equivalente: um modelo da rede, à
+    parte do de plano, preenchido com os procedimentos, as sessões e o
+    pagamento de cada pacote vendido.
+  - Três contratos: o de plano, o de pacote e o avulso de cada procedimento.
+- **PC9 (b), em aberto:** onde aparece a lista dos "outros documentos" para
+  manter ou excluir: no cadastro do pacote (vale para toda venda dele) ou na
+  venda à cliente? E no plano, na tela de montar o plano?
 
 ## O PLANO DE ADAPTAÇÃO
 
