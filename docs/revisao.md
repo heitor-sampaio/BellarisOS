@@ -48,7 +48,7 @@ superfícies em volta. A ordem é do Heitor.
 | Módulo | No sistema | Estado |
 |---|---|---|
 | Agenda | `agenda` | ✅ |
-| Clientes (ficha, tags, LGPD) | `clients` | 🟡 (as tags: ver "Tags") |
+| Clientes (ficha, tags, LGPD) | `clients` | ✅ |
 | Fidelidade | `loyalty` | ⬜ |
 | Prontuário | `medical_records` | ⬜ |
 | Documentos (termos e contratos) | `documents` | ⬜ |
@@ -475,7 +475,7 @@ Está no PLANO DE ADAPTAÇÃO, "Bloco: Tags".
 
 Está no PLANO DE ADAPTAÇÃO, "Bloco: Agenda".
 
-## Clientes 🟡
+## Clientes ✅
 
 ### O que devia fazer (o Heitor, 2026-11-13)
 
@@ -498,10 +498,15 @@ esquerda."
 
 - **CL1.** Sai a unidade da coluna esquerda.
 
-### Perguntas
+### Respostas (o Heitor, 13/11)
 
-- **CL-P1.** Sem a tag "Unidade: X": o filtro "Unidade" da lista e a lista
-  do portal da unidade mostram o quê?
+- **CL-P1:** "Não deve ter um filtro de unidade nem na lista nem no portal da
+  unidade. Como o cliente pertence à clínica, a unidade, o portal da unidade
+  vê todos os clientes."
+
+### Bloco no plano: Clientes
+
+Está no PLANO DE ADAPTAÇÃO, "Bloco: Clientes".
 
 ## O PLANO DE ADAPTAÇÃO
 
@@ -590,6 +595,15 @@ revisão, só se escreve o plano. Nada se implementa.
 | AG1 | **Documentos sempre num link só:** todo envio de documentos à cliente (o atendimento avulso, o pacote, o plano) vai num link único; ela visualiza todos e assina UMA vez, e a assinatura vale para todos os documentos do link. Hoje: um link e uma assinatura por documento | PC10; a revisão de **Documentos** |
 | AG2 | **O "Agendar" do inbox** tem uma caixa de seleção da unidade, simples. Sai a unidade escolhida pela tag "Unidade: X" (`unidadeDaTag`, `inbox-lead-panel.tsx`) | T1 |
 | — | Mantém: a tela da agenda e as funções. Ficam como estão, pelas regras já existentes: D20 (Gerenciar com "só os meus" remarca o próprio), H3 (a remarcação e a confirmação), a sessão de pacote e de plano sem documento (PC2), o "Atende" por unidade | **Equipe** (a pessoa em mais de uma unidade) |
+
+### Bloco: Clientes
+
+| # | O que muda | Depende de |
+|---|---|---|
+| CL1 | Sai a unidade da coluna esquerda (a cliente é da rede) | — |
+| CL2 | Sai o filtro "Unidade" da lista e o contador de ativas por unidade | T1 |
+| CL3 | **O portal da unidade vê todas as clientes da rede** (sai `getCachedBranchClients` pela tag; a busca "fora da unidade", A17 da 8ª, deixa de existir). Pela mesma regra, a "última visita" da lista é a da cliente na rede, não só naquela unidade | T1 |
+| — | Mantém: a página, a ficha e as abas | — |
 
 ## O que já estava pendente, para entrar no módulo dele
 
