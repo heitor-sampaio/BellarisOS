@@ -131,22 +131,38 @@ Levantado no código das telas e das actions (`app/*/estoque`,
 |---|---|---|
 | E1 | **Marca não existe**: nem o cadastro de marcas com texto livre, nem o campo marca no produto | aberto |
 | E2 | **Onde está disponível**: o Heitor diz checkbox (Insumo e Venda direta); o sistema tem três opções "Insumo / Revenda / Os dois", e chama de "Revenda" | aberto |
-| E3 | **Fornecedor sem autocomplete**: é lista suspensa com "+ Novo fornecedor" | aberto |
+| E3 | **Fornecedor sem autocomplete**: é lista suspensa com "+ Novo fornecedor" | **Decidido** no E6 |
 
 ### O sistema faz e não está na lista do Heitor (ele decide se fica)
 
 | # | O quê | Estado |
 |---|---|---|
-| E4 | Categoria: só quem é da rede cria e exclui. Não há renomear | aberto |
-| E5 | Fornecedor: "+ Novo" no produto/Entrada por quem tem unidade fixa; renomear e arquivar só a rede | aberto |
-| E6 | Categoria é lista suspensa (a lista do Heitor pede autocomplete só para marca e fornecedor) | aberto |
-| E7 | Formato da embalagem é lista FIXA de 13 medidas, não texto livre | aberto |
-| E8 | SKU gerado sozinho | aberto |
-| E9 | Preço de venda e comissão de venda no cadastro do produto | aberto |
-| E10 | Dois fornecedores no cadastro com estoque inicial: o "de costume" e o "desta entrada" | aberto |
-| E11 | Estoque inicial com lote, validade, nota fiscal, custo e observações | aberto |
-| E12 | Nome repetido avisa e pede confirmação | aberto |
-| E13 | A regra "quem cadastra produto" (só a rede × as unidades também) | aberto |
+| E4 | Categoria: só quem é da rede cria e exclui. Não há renomear | **Decidido:** "Precisa poder renomear, só quem tem permissão de gerenciar/rede pode criar/deletar/editar categoria." ("gerenciar/rede": ver a pergunta P1) |
+| E5 | Fornecedor: "+ Novo" no produto/Entrada por quem tem unidade fixa; renomear e arquivar só a rede | **Decidido:** "Botão de novo fornecedor só aparece para quem tem permissão gerenciar. Hoje o que é chamado de fornecedor vira marca. Adiciona cadastro de fornecedor, igual ao de marca." |
+| E6 | Categoria é lista suspensa (a lista do Heitor pede autocomplete só para marca e fornecedor) | **Decidido:** "Categoria, marca e fornecedor com lista e campo de busca com autocomplete." (resolve também o E3) |
+| E7 | Formato da embalagem é lista FIXA de 13 medidas, não texto livre | **Decidido:** mantém |
+| E8 | SKU gerado sozinho | **Decidido:** mantém |
+| E9 | Preço de venda e comissão de venda no cadastro do produto | **Decidido:** mantém |
+| E10 | Dois fornecedores no cadastro com estoque inicial: o "de costume" e o "desta entrada" | **Decidido:** "Não existe fornecedor de costume. Na entrada no estoque, escolhe fornecedor e marca." (ver a pergunta P2) |
+| E11 | Estoque inicial com lote, validade, nota fiscal, custo e observações | **Decidido:** "ok, mantem como está, mas com possibilidade de dividir a entrada entre as unidades." |
+| E12 | Nome repetido avisa e pede confirmação | **Decidido:** ok, mantém |
+| E13 | A regra "quem cadastra produto" (só a rede × as unidades também) | **Decidido:** "Quem cadastra é só quem tem permissão de gerenciar. Se for pessoa de uma unidade especifica, unidade vem pré-preenchida e não pode ser mudada. Se a pessoa tiver mais de uma unidade, a lista mostra apenas as unidades dela." (ver a pergunta P3) |
+
+### Perguntas em aberto (o Claude, sobre as decisões de 13/11)
+
+- **P1 (E4):** "gerenciar/rede" é Gerenciar no Estoque **e** ser da rede, ou
+  Gerenciar **ou** ser da rede? Hoje é o primeiro: quem tem unidade fixa,
+  mesmo com Gerenciar, não mexe em categoria. E vale o mesmo para marca e
+  fornecedor? O E5 diz só "gerenciar".
+- **P2 (E10 × a lista):** a lista do Heitor põe "marca e fornecedor com
+  autocomplete" no cadastro do PRODUTO. O E10 diz que fornecedor e marca se
+  escolhem na ENTRADA. O produto tem marca e fornecedor, ou só a entrada tem?
+- **P3 (E13):** hoje um membro é da rede (todas as unidades) ou de UMA
+  unidade (`users.branch_id`). Não existe "pessoa com mais de uma unidade"
+  no acesso. A única lista de várias unidades por pessoa é o "Atende"
+  (`atende_em`), que não é permissão. O que define "as unidades dela"?
+- **E2** ainda sem decisão: checkbox Insumo / Venda direta × as três opções
+  de hoje.
 
 ## O que já estava pendente, para entrar no módulo dele
 
