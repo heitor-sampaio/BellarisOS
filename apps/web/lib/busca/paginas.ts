@@ -1,5 +1,5 @@
 import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
-import { ADMIN_MENU, BRANCH_MENU, menuEntriesFor } from '@/lib/menu'
+import { ADMIN_MENU, BRANCH_MENU, SO_NO_MENU_DA_REDE, menuEntriesFor } from '@/lib/menu'
 import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada } from '@/lib/configuracoes/abas'
 import { casaComTermo } from '@/lib/busca/texto'
 import type { ResultadoDaBusca } from '@/lib/busca/tipos'
@@ -123,6 +123,15 @@ export function paginasDaBusca(
     href:     `${prefixo}${e.href}`,
     apelidos: APELIDOS[e.key] ?? [],
   }))
+
+  // A1 da 14ª: no portal da unidade, quem é da rede acha também as entradas
+  // que só o menu da rede tem (Automações, Notificações…), com o endereço da
+  // rede — a mesma lista do menu da unidade (`SO_NO_MENU_DA_REDE`).
+  if (!naRede && opcoes.daRede) {
+    for (const e of menuEntriesFor(SO_NO_MENU_DA_REDE, permissions, plano, scopes)) {
+      paginas.push({ key: e.key, titulo: e.label, href: e.href, apelidos: APELIDOS[e.key] ?? [] })
+    }
+  }
 
   // As abas de Configurações, com a regra da tela: o portal oferece a aba, e
   // o módulo dela em MANAGE a libera.

@@ -58,8 +58,10 @@ import { maquininhasDaRede, taxaDoPixDaRede } from '@/lib/financeiro/vezes-da-re
 import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import {
   ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_CLINICA_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
-  chaveDaAbaPedida, motivoDaAbaFechada,
+  chaveDaAbaPedida, motivoDaAbaFechada, linkDaAbaNaRede, abasSoDaRede,
 } from '@/lib/configuracoes/abas'
+import { quemMudaNaClinica } from '@/lib/equipe/quem-desfaz'
+import Link from 'next/link'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -166,11 +168,28 @@ export async function Configuracoes({
       })
     : null
 
+  // A1 da 14ª: a aba que só a rede tem leva a /admin, para quem é da rede.
+  const linkDaAbaFechada = abaFechada && requested
+    ? linkDaAbaNaRede(requested, { noPortal: abas, unidadeFixa: !mexeNaConfigDaClinica(ctx) })
+    : null
+  // A1 da 14ª (CLAUDE.md §1, "otimize para a clínica única"): no portal da
+  // unidade, quem é da rede tem à mão as abas que só a clínica toda tem
+  // (Comissões e taxas, Fidelidade, LGPD…) — antes, só pela busca ou pelo /admin.
+  const abasDaClinica = unidadeDaTela && mexeNaConfigDaClinica(ctx)
+    ? abasSoDaRede(m => can(ctx, m, 'MANAGE'), ctx.plano)
+    : []
+
   // H7 (decisão do Heitor, 2026-11-01): quem tem unidade fixa abre a aba da
   // configuração da clínica toda e lê de quem ela é — sem o editor, e sem ler
   // o que só o editor usa. A Geral mostra os dados, só para ler.
   const daClinicaToda = !mexeNaConfigDaClinica(ctx) && ABAS_DA_CLINICA_TODA.includes(activeTab)
   const conteudo: ChaveDeAba | null = daClinicaToda && activeTab !== 'general' ? null : activeTab
+  // A5 da 14ª (princípios 3 e 7): a aba da clínica toda diz QUEM muda, pelo
+  // nome — como o estorno diz quem estorna (A33 da 8ª).
+  const abaAtiva = TABS.find(t => t.key === activeTab)!
+  const quemMuda = daClinicaToda
+    ? await quemMudaNaClinica(ctx.tenantId!, [abaAtiva.module, ...((abaAtiva as { alternativas?: readonly AppModule[] }).alternativas ?? [])])
+    : []
 
   const supabase = await createClient()
   const admin    = createAdminClient()
@@ -398,6 +417,18 @@ export async function Configuracoes({
           paramName="tab"
           ariaLabel="Assunto das configurações"
         />
+        {/* A1 da 14ª: as abas que só a clínica toda tem, à mão no portal da unidade. */}
+        {abasDaClinica.length > 0 && (
+          <p data-abas-da-clinica style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10, lineHeight: 'var(--leading-snug)' }}>
+            {fala('Nas Configurações da rede:')}{' '}
+            {abasDaClinica.map((a, i) => (
+              <span key={a.key}>
+                {i > 0 && ' · '}
+                <Link href={a.href} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>{a.label}</Link>
+              </span>
+            ))}
+          </p>
+        )}
       </div>
 
       {abaFechada && (
@@ -405,9 +436,18 @@ export async function Configuracoes({
           <Lock size={15} aria-hidden style={{ color: 'var(--text-faint)', flexShrink: 0, marginTop: 2 }} />
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
             {fala(abaFechada)}
+            {linkDaAbaFechada && (
+              <>
+                {' '}
+                <Link href={linkDaAbaFechada.href} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
+                  {fala(linkDaAbaFechada.rotulo)}
+                </Link>
+              </>
+            )}
           </p>
         </div>
       )}
+
 
       {/* A configuração da clínica toda, para quem tem unidade fixa (H7). */}
       {daClinicaToda && (
@@ -415,6 +455,7 @@ export async function Configuracoes({
           <Lock size={15} aria-hidden style={{ color: 'var(--text-faint)', flexShrink: 0, marginTop: 2 }} />
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
             {CONFIG_DA_CLINICA}
+            {quemMuda.length > 0 && <> <span data-quem-muda>Quem muda: {quemMuda.join(', ')}.</span></>}
           </p>
         </div>
       )}

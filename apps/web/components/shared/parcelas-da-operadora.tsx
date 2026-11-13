@@ -119,7 +119,7 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 12 }}>
         A cliente já pagou tudo na maquininha e a receita entrou no dia da venda. Aqui está todo o em aberto que a
         operadora ainda deposita, por mês de depósito, e o que venceu no período: cada parcela a cada N dias da venda
-        (o prazo da operadora, em Configurações → Comissões). Cada parcela vira recebida sozinha na data.
+        (o prazo da operadora, em Configurações → Comissões e taxas). Cada parcela vira recebida sozinha na data.
       </p>
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-wrap">

@@ -12,7 +12,7 @@ export const PROXIMOS_PASSOS = [
   { titulo: 'Fichas', porque: 'A anamnese de cada procedimento: ele escolhe uma ficha que já existe.', href: '/admin/settings?tab=fichas', recurso: 'fichas' },
   { titulo: 'Termos e contratos', porque: 'O termo que o procedimento pede antes de começar — também escolhido de um que já existe.', href: '/admin/settings?tab=documentos', recurso: 'documentos' },
   { titulo: 'Procedimentos', porque: 'O catálogo, com quem realiza, os insumos, a ficha, o termo e o preço.', href: '/admin/procedures' },
-  { titulo: 'Taxas da maquininha', porque: 'O que a operadora desconta em cada forma e bandeira.', href: '/admin/settings?tab=comissoes' },
+  { titulo: 'Taxas da maquininha', porque: 'Em Configurações → Comissões e taxas: o que a operadora desconta em cada forma e bandeira.', href: '/admin/settings?tab=comissoes' },
   { titulo: 'Fidelidade', porque: 'Os pontos e as recompensas: o programa nasce desligado, e a clínica liga se quiser.', href: '/admin/settings?tab=fidelidade', recurso: 'fidelidade' },
   { titulo: 'Funil de oportunidades', porque: 'As etapas, as origens dos leads e os motivos de perda do comercial.', href: '/admin/oportunidades', recurso: 'oportunidades' },
   // A1 da 8ª simulação: a 2ª unidade e as salas não apareciam. A2 da 10ª: ela

@@ -620,6 +620,19 @@
 .menu-secao-titulo:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .menu-secao-seta { flex-shrink: 0; transition: transform 150ms ease; }
 .menu-secao-seta[data-fechada] { transform: rotate(-90deg); }
+/* A4 da 14ª: a lista do menu continua abaixo da dobra. Preso no pé da lista
+   (sticky), some quando o fim aparece. Ver `components/shared/menu-com-rolagem.tsx`. */
+.menu-continua {
+  position: sticky; bottom: 0; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: 4px; padding: 6px 12px;
+  background: var(--surface); border: none; border-top: 1px solid var(--hairline);
+  color: var(--text-muted); font: inherit; font-size: var(--text-xs-sz); font-weight: 700;
+  cursor: pointer;
+}
+.menu-continua:hover { color: var(--brand); }
+.menu-continua:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.menu-continua[data-recolhida] { background: transparent; border-top-color: transparent; color: var(--on-brand); }
 
 /* Tela que ocupa a altura toda e rola por dentro (inbox). O documento não rola;
    quem rola é a área de mensagens. Ver `components/shared/trava-rolagem.tsx`. */
@@ -1661,6 +1674,32 @@ input[type="search"].field {
   border-color: var(--brand-soft-border);
   color: var(--brand);
 }
+
+/* O interruptor dentro de um liga/desliga que muda uma configuração (A3 da 14ª:
+   a fidelidade dizia só "Programa desligado", e o texto parecia um botão de
+   ação). A trilha e a bolinha, com as cores do sistema. */
+.interruptor {
+  position: relative;
+  width: 30px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 150ms ease;
+}
+.interruptor::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: left 150ms ease;
+}
+.interruptor[data-ligado] { background: var(--brand); }
+.interruptor[data-ligado]::after { left: 16px; }
 
 /* Segmentado (<SegSelect>). A aparência morava em inline style dentro do
    componente, em duas variantes ("compacto" ou não) que cada tela escolhia —

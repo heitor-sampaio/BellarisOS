@@ -80,10 +80,12 @@ export function TeamMemberEdit(props: Props) {
         type="button"
         className="btn-ghost"
         onClick={() => setOpen(true)}
-        style={{ padding: '5px 8px', color: 'var(--brand)' }}
+        style={{ padding: '5px 8px', color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', whiteSpace: 'nowrap' }}
         title={`Editar ${member.name}`}
+        aria-label={`Editar ${member.name}`}
       >
-        <Pencil size={15} />
+        {/* A6 da 14ª (princípio 7): o lápis sozinho não dizia o que se edita. */}
+        <Pencil size={15} aria-hidden /> Cargo e unidade
       </button>
 
       {open && <EdicaoDoMembro {...props} onFechar={() => setOpen(false)} />}

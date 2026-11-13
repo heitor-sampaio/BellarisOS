@@ -39,7 +39,7 @@ export function RepasseDoAtende({ dados, escolhas, aoEscolher }: {
         fica com {n === 1 ? 'ele' : 'eles'}?
       </p>
       <p style={texto}>
-        O que ficar com {dados.nome} continua na agenda de {dados.unidades}, na coluna dela, até alguém remarcar ou trocar a profissional.
+        O que ficar com {dados.nome} continua na agenda de {dados.unidades}, na coluna dessa pessoa, até alguém remarcar ou trocar quem atende.
       </p>
       {!dados.podeRepassarAgendamentos ? (
         <p style={texto}>Seu cargo não repassa agendamentos (pede a Agenda em Gerenciar, de todos): eles ficam com {dados.nome}.</p>

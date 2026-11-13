@@ -9,6 +9,7 @@ import {
   FileSignature, Wallet,
 } from 'lucide-react'
 import { SecaoDoMenu } from '@/components/shared/secao-do-menu'
+import { MenuComRolagem } from '@/components/shared/menu-com-rolagem'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { useFala } from '@/components/shared/uma-unidade'
@@ -105,21 +106,15 @@ export function AdminSidebar({ permissions, scopes, plano = null }: { permission
           </div>
         )}
 
-        <nav
-          onClick={close}
-          style={{
-            display: 'flex', flexDirection: 'column', gap: 1,
-            flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
-            scrollbarWidth: 'thin',
-          }}
-        >
+        {/* A4 da 14ª: o "Mais abaixo" diz que a lista continua. */}
+        <MenuComRolagem onClick={close} recolhida={collapsed}>
           {/* Cada categoria recolhe pelo título; com a barra recolhida em
               ícones, o título vira um filete que ainda separa os blocos. */}
           {menuSectionsFor(ADMIN_MENU, permissions, plano, scopes).map(secao => (
             <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
               entradas={secao.entries} icones={ICONS} recolhida={collapsed} filete={separatorBg} />
           ))}
-        </nav>
+        </MenuComRolagem>
 
         {/* Rodapé: recolher (desktop) + logout */}
         <div style={{ paddingBottom: 10, borderTop: hairline, paddingTop: 8, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>

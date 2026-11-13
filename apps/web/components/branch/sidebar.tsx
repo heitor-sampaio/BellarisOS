@@ -7,12 +7,13 @@ import {
   Package, Ticket, CreditCard, LogOut, KeyRound, UserCircle, Layers, ClipboardList, BarChart3,
   ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight, Inbox, ClipboardCheck, Settings,
   Syringe,
-  FileSignature, Wallet,
+  FileSignature, Wallet, Bell, Megaphone, FileText, Workflow,
 } from 'lucide-react'
 import { SecaoDoMenu } from '@/components/shared/secao-do-menu'
+import { MenuComRolagem } from '@/components/shared/menu-com-rolagem'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
-import { BRANCH_MENU, menuSectionsFor } from '@/lib/menu'
+import { menuDaUnidadeFor } from '@/lib/menu'
 import type { ResolvedPermissions } from '@/lib/permissions'
 import type { ResolvedScopes } from '@estetica-os/types'
 
@@ -36,6 +37,11 @@ const ICONS: Record<string, React.ReactNode> = {
   stock:      <Package    size={18} />,
   team:       <UserCircle    size={18} />,
   settings:   <Settings      size={18} />,
+  // A1 da 14ª: as entradas da clínica (levam a /admin), para quem é da rede.
+  notificacoes: <Bell      size={18} />,
+  marketing:    <Megaphone size={18} />,
+  templates:    <FileText  size={18} />,
+  automations:  <Workflow  size={18} />,
 }
 
 interface BranchSidebarProps {
@@ -186,22 +192,17 @@ export function BranchSidebar({
         ))}
 
         {/* Navegação */}
-        <nav
-          onClick={close}
-          style={{
-            display: 'flex', flexDirection: 'column', gap: 1,
-            flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
-            scrollbarWidth: 'thin',
-          }}
-        >
+        {/* A4 da 14ª: o "Mais abaixo" diz que a lista continua. */}
+        <MenuComRolagem onClick={close} recolhida={collapsed}>
           {/* Cada categoria recolhe pelo título; com a barra recolhida em
               ícones, o título vira um filete. */}
-          {menuSectionsFor(BRANCH_MENU, permissions, plano, scopes).map(secao => (
+          {/* A1 da 14ª: quem é da rede vê também as entradas da clínica, levando a /admin. */}
+          {menuDaUnidadeFor(permissions, plano, scopes, { base, daRede: !!isNetworkAdmin }).map(secao => (
             <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
-              entradas={secao.entries.map(e => ({ ...e, href: `${base}${e.href}` }))}
+              entradas={secao.entries}
               icones={ICONS} recolhida={collapsed} filete={separatorBg} />
           ))}
-        </nav>
+        </MenuComRolagem>
 
         {/* Rodapé: recolher (desktop) + logout */}
         <div style={{ paddingBottom: 10, borderTop: hairline, paddingTop: 8, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>

@@ -61,13 +61,18 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   const router = useRouter()
   const [marcando, marcar] = useTransition()
   const [erroDoAtalho, setErroDoAtalho] = useState<string | null>(null)
-  function deProposito() {
+  // A6 da 14ª (princípio 7): o atalho é um toque só (a A4 da 12ª), e o
+  // "Desfazer" fica à vista logo depois — o toque errado se volta sem abrir a
+  // janela nem achar a caixa lá dentro.
+  const [acabouDeMarcar, setAcabouDeMarcar] = useState(false)
+  function deProposito(ligar: boolean) {
     setErroDoAtalho(null)
     marcar(async () => {
       const excecoesAtuais = regras.filter(r => r.procedure_id !== null)
         .map(r => ({ procedure_id: r.procedure_id!, tipo: r.tipo, valor: r.valor }))
-      const r = await salvarRegrasDoProfissional(membro.id, { padrao: null, excecoes: excecoesAtuais, semComissaoDeProposito: true })
+      const r = await salvarRegrasDoProfissional(membro.id, { padrao: null, excecoes: excecoesAtuais, semComissaoDeProposito: ligar })
       if (r.error) { setErroDoAtalho(r.error); return }
+      setAcabouDeMarcar(ligar)
       router.refresh()
     })
   }
@@ -83,10 +88,17 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
         {vendaPct != null && vendaPct > 0 && ` · venda ${paraTexto(vendaPct)}%`}
       </button>
       {semRegra && (
-        <button type="button" className="btn-ghost" data-de-proposito-atalho={membro.id} disabled={marcando} onClick={deProposito}
+        <button type="button" className="btn-ghost" data-de-proposito-atalho={membro.id} disabled={marcando} onClick={() => deProposito(true)}
           title="Sem comissão, de propósito (como a dona que atende): o aviso deixa de contar esta pessoa"
           style={{ fontSize: 'var(--text-2xs)', padding: '2px 6px' }}>
           {marcando ? 'Marcando…' : 'É de propósito'}
+        </button>
+      )}
+      {acabouDeMarcar && semDeProposito && !padrao && (
+        <button type="button" className="btn-ghost" data-desfazer-de-proposito={membro.id} disabled={marcando} onClick={() => deProposito(false)}
+          title="Volta a ser “Sem comissão”, e o aviso volta a contar esta pessoa"
+          style={{ fontSize: 'var(--text-2xs)', padding: '2px 6px' }}>
+          {marcando ? 'Desfazendo…' : 'Desfazer'}
         </button>
       )}
       {erroDoAtalho && <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)' }}>{erroDoAtalho}</span>}
@@ -200,7 +212,7 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, semDePro
           {tipo === 'NENHUMA'
             ? 'Sem padrão, só os procedimentos com exceção abaixo geram comissão.'
             : tipo === 'PERCENTAGE'
-              ? 'Sobre o valor de cada procedimento executado, conforme Configurações → Comissões.'
+              ? 'Sobre o valor de cada procedimento executado, conforme Configurações → Comissões e taxas.'
               : 'Um valor fixo por procedimento executado.'}
         </p>
         {/* A14 da 11ª (princípio 1): a dona que atende fica sem comissão de propósito — a clínica diz, e o aviso a deixa. */}
@@ -225,7 +237,7 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, semDePro
         </label>
         <p style={ajuda}>
           Sobre o vendido, quando ela está em “Quem vendeu”: pacote, plano, pré-pago e produto. A comissão de venda do próprio pacote
-          ou produto vence esta; sem as duas, vale a da clínica (Configurações → Comissões). O crédito na clínica não tem comissão de venda.
+          ou produto vence esta; sem as duas, vale a da clínica (Configurações → Comissões e taxas). O crédito na clínica não tem comissão de venda.
         </p>
       </div>
 

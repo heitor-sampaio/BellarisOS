@@ -42,6 +42,9 @@ export const ISOLADOS = [
   'automacoes-antes-de-ligar-push.spec.ts',
   'inbox-minhas-respostas-rapidas.spec.ts',
   'automacoes-campanhas-atritos-da-14.spec.ts',
+  // A F74 (configurações, menu, equipe e estoque — a 14ª simulação).
+  'configuracoes-atritos-da-14.spec.ts',
+  'estoque-atritos-da-14.spec.ts',
   'estoque-defeitos-da-12.spec.ts',
   'estoque-atritos-da-12.spec.ts',
   'fidelidade-atritos-da-12.spec.ts',

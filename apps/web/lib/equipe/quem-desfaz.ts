@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
+import type { AppModule } from '@estetica-os/types'
 
 /**
  * Quem DESFAZ no caixa — estorna, devolve a venda de produto, cancela o pacote
@@ -24,12 +25,24 @@ export async function quemTrocaPontos(tenantId: string, branchId: string | null)
   return quemTemEmGerenciar(tenantId, branchId, 'loyalty')
 }
 
-async function quemTemEmGerenciar(tenantId: string, branchId: string | null, modulo: 'financial' | 'loyalty'): Promise<string[]> {
+/**
+ * Quem MUDA a configuração da clínica toda (A5 da 14ª simulação; princípios 3
+ * e 7, como a A33 da 8ª): a gerente de unidade fixa lia "Esta configuração é da
+ * clínica toda" sem saber a quem pedir. São os da REDE (sem unidade fixa —
+ * `recusaDaConfigDaClinica`), ativos, com algum dos módulos da aba em
+ * Gerenciar; a Admin da rede entra sempre.
+ */
+export async function quemMudaNaClinica(tenantId: string, modulos: readonly AppModule[]): Promise<string[]> {
+  return quemTemEmGerenciar(tenantId, null, modulos)
+}
+
+async function quemTemEmGerenciar(tenantId: string, branchId: string | null, modulo: AppModule | readonly AppModule[]): Promise<string[]> {
   const admin = createAdminClient()
+  const modulos = typeof modulo === 'string' ? [modulo] : [...modulo]
   const [perms, admins] = await Promise.all([
     lerTodas((de, ate) => admin.from('role_permissions').select('role_id')
-      .eq('tenant_id', tenantId).eq('module', modulo).eq('level', 'MANAGE')
-      .order('role_id').range(de, ate), 'carregar os cargos que desfazem no caixa'),
+      .eq('tenant_id', tenantId).in('module', modulos).eq('level', 'MANAGE')
+      .order('role_id').order('module').range(de, ate), 'carregar os cargos que desfazem no caixa'),
     lerTodas((de, ate) => admin.from('tenant_roles').select('id')
       .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true)
       .order('id').range(de, ate), 'carregar o cargo de Admin da rede'),

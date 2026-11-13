@@ -181,6 +181,32 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   },
 ]
 
+/**
+ * As entradas que só o menu da REDE tem (Notificações, Anúncios, Templates,
+ * Automações…) — calculado, não escrito à mão: entrada nova da rede entra aqui
+ * sozinha. A1 da 14ª (princípio 7 e CLAUDE.md §1, "otimize para a clínica
+ * única"): a dona da clínica de uma unidade, no portal da unidade, não achava
+ * as automações nem as campanhas.
+ */
+export const SO_NO_MENU_DA_REDE: readonly MenuEntry[] =
+  ADMIN_MENU.filter(e => !BRANCH_MENU.some(b => b.key === e.key))
+
+/**
+ * O menu do portal da UNIDADE, com os endereços completos. Quem é da rede
+ * (`ctx.branchId === null`) vê também as entradas que só a rede tem, levando
+ * a `/admin` (A1 da 14ª); quem tem unidade fixa, não — ela não entra em
+ * `/admin`. A barra lateral e a busca da unidade leem daqui.
+ */
+export function menuDaUnidadeFor(
+  permissions: ResolvedPermissions,
+  plano: PlanoDoMenu,
+  scopes: Partial<ResolvedScopes> | undefined,
+  o: { base: string; daRede: boolean },
+): MenuSection[] {
+  const daUnidade = BRANCH_MENU.map(e => ({ ...e, href: `${o.base}${e.href}` }))
+  return menuSectionsFor([...daUnidade, ...(o.daRede ? SO_NO_MENU_DA_REDE : [])], permissions, plano, scopes)
+}
+
 export function menuEntriesFor(
   menu: readonly MenuEntry[],
   permissions: ResolvedPermissions,

@@ -43,6 +43,9 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, 
 }) {
   const fala = useFala()
   const [ligado,   setLigado]   = useState(inicial.enabled)
+  // A3 da 14ª (princípio 7): o liga/desliga só vale depois do "Salvar" do fim
+  // da página — o topo diz "Falta salvar" enquanto o estado da tela não é o gravado (não "Não salvo": o "Salvo" do fim da página é procurado pelo texto).
+  const [ligadoSalvo, setLigadoSalvo] = useState(inicial.enabled)
   const [modo,     setModo]     = useState<ModoDeGanho>(inicial.earn_mode)
   const [taxa,     setTaxa]     = useState(String(inicial.points_per_real).replace('.', ','))
   const [valorDoPonto, setValorDoPonto] = useState(String(inicial.redeem_points_value).replace('.', ','))
@@ -105,7 +108,7 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, 
           expiry_notice_days:  vencem && avisar ? numero(diasAviso) : null,
         })
         if (res.error) setErro(res.error)
-        else setSalvo(true)
+        else { setSalvo(true); setLigadoSalvo(ligado) }
       } catch (e) {
         setErro(erroParaTela(e, 'Não foi possível salvar.'))
       }
@@ -127,15 +130,25 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, 
             O cliente acumula pontos a cada pagamento. Desligado, nada de pontos aparece — nem para a equipe, nem para o cliente.
           </p>
         </div>
-        <button
-          type="button"
-          className={ligado ? 'filtro-toggle is-ativo' : 'filtro-toggle'}
-          aria-pressed={ligado}
-          disabled={!podeEditar}
-          onClick={() => setLigado(v => !v)}
-        >
-          {ligado ? 'Programa ligado' : 'Programa desligado'}
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <button
+            type="button"
+            className={ligado ? 'filtro-toggle is-ativo' : 'filtro-toggle'}
+            aria-pressed={ligado}
+            disabled={!podeEditar}
+            onClick={() => setLigado(v => !v)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+          >
+            {/* A3 da 14ª: o interruptor à vista — o texto dizia o estado e parecia um botão de ação. */}
+            <span aria-hidden className="interruptor" data-ligado={ligado || undefined} />
+            {ligado ? 'Programa ligado' : 'Programa desligado'}
+          </button>
+          {ligado !== ligadoSalvo && (
+            <span data-fidelidade-nao-salvo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-bold)' }}>
+              Falta salvar: vale depois do “Salvar”, no fim da página.
+            </span>
+          )}
+        </div>
       </div>
 
       <Bloco titulo="Como o cliente ganha pontos">
@@ -368,9 +381,9 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, 
 
       <Bloco titulo="Comissão quando o cliente usa pontos">
         {/* Mudou de casa em 2026-09-30: é política de comissão, e mora com as
-            outras (modo, descontos, período) em Configurações → Comissões. */}
+            outras (modo, descontos, período) em Configurações → Comissões e taxas. */}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          <Fala>Agora se define em Configurações → Comissões, junto com as outras regras de comissão da rede.</Fala>
+          <Fala>Agora se define em Configurações → Comissões e taxas, junto com as outras regras de comissão da rede.</Fala>
         </p>
       </Bloco>
 

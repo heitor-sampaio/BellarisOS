@@ -125,14 +125,15 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
             {dados && dados.agendamentos.length > 0 && (
               <section data-repasse="agendamentos" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <h3 style={titulo}>Agendamentos em aberto ({dados.agendamentos.length})</h3>
-                {/* A10 da 8ª: o que fica com ela, dito antes — os vencidos inclusive. */}
+                {/* A10 da 8ª: o que fica com a pessoa, dito antes — os vencidos inclusive.
+                    A7 da 14ª: neutro de gênero (a equipe tem homens). */}
                 <p data-o-que-fica style={texto}>
-                  O que ficar sem repasse continua no nome de {nome}, desativada: ela sai da lista de quem atende, e
+                  O que ficar sem repasse continua no nome de {nome}: a pessoa desativada sai da lista de quem atende, e
                   alguém precisa remarcar, cancelar ou fechar pela agenda.
                   {vencidos > 0 && <> {vencidos === 1 ? '1 já passou' : `${vencidos} já passaram`} sem ninguém fechar (marcar falta ou concluir).</>}
                 </p>
                 {!dados.podeRepassarAgendamentos ? (
-                  <p style={texto}>Seu cargo não repassa agendamentos: eles ficam com {nome} até alguém com a Agenda em Gerenciar trocar a profissional.</p>
+                  <p style={texto}>Seu cargo não repassa agendamentos: eles ficam com {nome} até alguém com a Agenda em Gerenciar trocar quem atende.</p>
                 ) : (
                   <>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, ...texto }}>
@@ -143,6 +144,10 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
                         <option value={CANCELAR}>Cancelar todos</option>
                       </select>
                     </label>
+                    {/* A7 da 14ª: o "todos para" é um atalho que preenche as linhas, não um segundo repasse. */}
+                    <p data-repassar-todos-explica style={{ marginTop: -4, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                      Preenche todas as linhas abaixo de uma vez; depois, cada linha muda só aquele agendamento. Nada é gravado antes do “Desativar”.
+                    </p>
                     <div>
                       {dados.agendamentos.map(a => (
                         <LinhaDoAgendamento key={a.id} a={a} nome={nome} valor={paraAg[a.id] ?? ''} aviso={avisoAg[a.id]} estilo={linha}
@@ -169,6 +174,9 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
                         {dados.quemTemCrm.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                       </select>
                     </label>
+                    <p style={{ marginTop: -4, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                      Preenche todas as linhas abaixo de uma vez; depois, cada linha muda só aquela oportunidade.
+                    </p>
                     <div>
                       {dados.oportunidades.map(o => (
                         <div key={o.id} data-oportunidade={o.id} style={linha}>
@@ -231,7 +239,7 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
         onChange={e => onEscolher(e.target.value)}>
         <option value="">Deixar com {nome} (sem repasse)</option>
         {a.livres.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-        {a.ocupadas.map(p => <option key={p.id} value={p.id} disabled>{p.nome} (ocupada no horário)</option>)}
+        {a.ocupadas.map(p => <option key={p.id} value={p.id} disabled>{p.nome} (com atendimento no horário)</option>)}
         <option value={CANCELAR}>Cancelar este agendamento</option>
       </select>
       {aviso && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>{aviso}</span>}
@@ -240,8 +248,8 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
           {/* A11 da 8ª: diz quem atende em outra unidade e como incluí-la. */}
           {a.emOutraUnidade.length
             ? <>Ninguém livre que atenda nesta unidade. Atende{a.emOutraUnidade.length > 1 ? 'm' : ''} em outra unidade:{' '}
-                {a.emOutraUnidade.map(p => `${p.nome} (${p.unidades.join(', ')})`).join('; ')}. Para repassar a ela, marque
-                “{a.unidade}” no “Atende clientes em” dela, na Equipe, e {deNovo} — ou cancele aqui.</>
+                {a.emOutraUnidade.map(p => `${p.nome} (${p.unidades.join(', ')})`).join('; ')}. Para repassar a essa pessoa, marque
+                “{a.unidade}” no “Atende clientes em” da ficha dela na Equipe, e {deNovo} — ou cancele aqui.</>
             : 'Ninguém livre que atenda nesta unidade: remarque pela agenda, ou cancele aqui.'}
         </span>
       )}

@@ -27,7 +27,10 @@ export const ABAS_DE_CONFIGURACAO = [
   { key: 'integrations',  label: 'Integrações',  module: 'settings' },
   { key: 'fidelidade',    label: 'Fidelidade',   module: 'settings',  recurso: 'fidelidade' },
   // Como a comissão acontece e as taxas da maquininha: é dinheiro, 'financial'.
-  { key: 'comissoes',     label: 'Comissões',    module: 'financial', recurso: 'comissoes' },
+  // A2 da 14ª (princípio 7): "Comissões" escondia as maquininhas, o Pix e o
+  // crediário, e o próximo passo do setup ("Taxas da maquininha") levava a uma
+  // aba de outro nome. O nome diz as duas coisas; nada saiu da aba.
+  { key: 'comissoes',     label: 'Comissões e taxas', module: 'financial', recurso: 'comissoes' },
   // Quem libera o prontuário do pacote (Prontuário em Gerenciar) também abre
   // a aba (C31, F70): o pedido com o prontuário avisava só Configurações, e
   // quem podia liberar não chegava ao botão.
@@ -108,10 +111,39 @@ export function rotuloDasAbasAlcancadas(
   if (gerencia('settings')) return null
   const nomes = ABAS_DE_CONFIGURACAO
     .filter(a => abas.includes(a.key) && abaLiberada(a, gerencia))
-    .map(a => (a.key === 'comissoes' ? 'Comissões e taxas' : a.label))
+    .map(a => a.label)
   if (!nomes.length) return null
   const lista = nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`
   return `Configurações (só ${lista})`
+}
+
+/**
+ * A aba pedida que só existe nas Configurações da REDE, para quem é da rede e
+ * está no portal da unidade (A1 da 14ª; princípio 7 e CLAUDE.md §1, "otimize
+ * para a clínica única"): a dona lia "A aba Comissões fica nas Configurações
+ * da clínica" sem link. Nulo = a aba abre aqui, ou quem pede tem unidade fixa
+ * (não entra em /admin).
+ */
+export function linkDaAbaNaRede(pedida: string, o: { noPortal: readonly ChaveDeAba[]; unidadeFixa: boolean }): { href: string; rotulo: string } | null {
+  const chave = chaveDaAbaPedida(pedida)
+  const aba = ABAS_DE_CONFIGURACAO.find(a => a.key === chave)
+  if (!aba || o.unidadeFixa || o.noPortal.includes(aba.key) || !ABAS_DA_REDE.includes(aba.key)) return null
+  return { href: `/admin/settings?tab=${aba.key}`, rotulo: `Abrir ${aba.label} nas Configurações da rede` }
+}
+
+/**
+ * As abas que só a REDE tem (as que o portal da unidade não oferece), com a
+ * permissão e o plano de cada uma — a lista "Na clínica toda" das
+ * Configurações da unidade, para quem é da rede (A1 da 14ª). É a mesma conta
+ * da busca (`SO_NA_REDE`, lib/busca/paginas.ts).
+ */
+export function abasSoDaRede(
+  gerencia: (m: AppModule) => boolean, plano: { funcionalidades: readonly string[] } | null | undefined,
+): { key: ChaveDeAba; label: string; href: string }[] {
+  return ABAS_DE_CONFIGURACAO
+    .filter(a => ABAS_DA_REDE.includes(a.key) && !ABAS_DA_UNIDADE.includes(a.key))
+    .filter(a => abaLiberada(a, gerencia) && abaNoPlano(a, plano))
+    .map(a => ({ key: a.key, label: a.label, href: `/admin/settings?tab=${a.key}` }))
 }
 
 /**

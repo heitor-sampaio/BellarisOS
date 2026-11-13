@@ -485,7 +485,7 @@ function AvisosDoDia({ resumo, aReceber, emAberto = 0, operadora = null, avisos,
     }).join('; ')
     lista.push({
       chave: 'sem-taxa',
-      texto: `Sem taxa da maquininha cadastrada — saiu sem desconto da operadora: ${formas}. Cadastre a taxa em Configurações → Comissões.`,
+      texto: `Sem taxa da maquininha cadastrada — saiu sem desconto da operadora: ${formas}. Cadastre a taxa em Configurações → Comissões e taxas.`,
     })
   }
   const taxas = avisos?.taxas ?? 0

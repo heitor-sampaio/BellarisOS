@@ -48,7 +48,7 @@ export function AvisoDaTaxa({ vezes, bandeira, total, maquininha }: {
       <span>
         {/* F16-2: sem a taxa exata, 0% — nunca a de outras vezes. */}
         Não há taxa da maquininha{naMaquininha} cadastrada para o crédito {rotulo}: a venda sai sem desconto da operadora (0%), também na comissão.
-        {' '}Cadastre em Configurações → Comissões.
+        {' '}Cadastre em Configurações → Comissões e taxas.
       </span>
     </p>
   )
@@ -68,7 +68,7 @@ export function AvisoDaTaxaDoDebito({ bandeira, total, maquininha }: { bandeira?
   if (taxa == null) {
     return (
       <p data-taxa-do-debito role="note" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-        Não há taxa da maquininha{naMaquininha} cadastrada para o débito: a venda sai sem desconto da operadora (0%). Cadastre em Configurações → Comissões.
+        Não há taxa da maquininha{naMaquininha} cadastrada para o débito: a venda sai sem desconto da operadora (0%). Cadastre em Configurações → Comissões e taxas.
       </p>
     )
   }
