@@ -13,7 +13,7 @@ import {
   variaveisDisponiveis, eventoDoGatilhoDe, rotulosUnicos, CAMPOS_DE_PROCEDIMENTO,
   type GrupoDeVariaveis, type CampoVisto,
 } from '@/lib/automacoes/disponiveis'
-import { nomeDoPasso, chaveDoPasso } from '@/lib/automacoes/passos'
+import { nomeDoPasso } from '@/lib/automacoes/passos'
 import { SITUACOES_DO_AGENDAMENTO, ehSituacaoDoAgendamento } from '@/lib/automacoes/resumo'
 import { conferirExpressao, ehCaminhoSimples, NOMES_DE_FUNCAO } from '@/lib/automacoes/expressao'
 import { amostraDoEvento, contarBuscaDeClientes } from '@/actions/automacoes'
@@ -130,10 +130,12 @@ export function PainelDoNo({
             onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
             placeholder={ROTULOS[no.tipo as TipoDeNo]}
           />
+          {/* A11 da 14ª: era jargão ({{passos.um_dia_antes.…}}). O que importa
+              a quem monta é que o nome aparece na lista de campos dos passos
+              seguintes. */}
           <Dica>
-            Os passos seguintes leem o que este produziu por{' '}
-            <code>{`{{passos.${chaveDoPasso(no, grafo)}.…}}`}</code>.
-            Renomear troca as referências junto.
+            Os passos seguintes usam o que este deixou pela lista de campos,
+            onde ele aparece com este nome. Renomear atualiza quem o usa.
           </Dica>
         </Campo>
 
@@ -592,10 +594,10 @@ export function PainelDoNo({
                 <option value="1440">1 dia depois</option>
                 <option value="4320">3 dias depois</option>
               </select>
-              <Dica>
-                Se o momento já tiver passado quando o fluxo chegar aqui, ele
-                segue na hora em vez de esperar um instante que não existe mais.
-              </Dica>
+              {/* A11 da 14ª: o motor segue na hora quando o momento já passou
+                  (quandoChegarEm, lib/automacoes/tempo.ts), e a tela não dizia —
+                  o lembrete de "1 dia antes" do agendamento marcado para hoje. */}
+              <Dica>{dicaDaEsperaAte(Number(c.minutos ?? -1440))}</Dica>
             </Campo>
           </>
         )}
@@ -749,6 +751,16 @@ function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode
       {children}
     </label>
   )
+}
+
+/** O que a espera "até a data" faz quando o momento já passou — dito em português. */
+function dicaDaEsperaAte(minutos: number): string {
+  const seguir = 'Se o momento já passou quando o fluxo chega aqui, ele segue sem esperar.'
+  if (!(minutos < 0)) return seguir
+  const m = Math.abs(minutos)
+  const [n, um, varios] = m % 1440 === 0 ? [m / 1440, 'dia', 'dias']
+    : m % 60 === 0 ? [m / 60, 'hora', 'horas'] : [m, 'minuto', 'minutos']
+  return `Marcado com menos de ${n} ${n === 1 ? um : varios} de antecedência: sai na hora. ${seguir}`
 }
 
 function Dica({ children }: { children: React.ReactNode }) {

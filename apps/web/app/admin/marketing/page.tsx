@@ -159,10 +159,10 @@ export default async function AdminMarketingPage({
             fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
             letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
           }}>
-            Marketing
+            Anúncios
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            Métricas de campanhas Meta Ads e Google Ads
+            O resultado dos anúncios no Meta Ads e no Google Ads. O aviso às clientes fica em Notificações.
           </p>
         </div>
 

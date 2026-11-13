@@ -366,7 +366,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
           </div>
 
           <div>
-            <SectionLabel>Título <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(suporta {'{{first_name}}'})</span></SectionLabel>
+            <SectionLabel>Título <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(para pôr o primeiro nome da cliente, escreva {'{{first_name}}'})</span></SectionLabel>
             <input
               className="field"
               placeholder="ex: Feliz aniversário, {{first_name}}! 🎂"

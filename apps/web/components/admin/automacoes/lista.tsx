@@ -21,8 +21,8 @@ import { NODES } from '@estetica-os/types'
  */
 
 export function ListaDeAutomacoes({
-  automacoes, podeEditar, erro, whatsappConectado = true,
-}: { automacoes: AutomacaoNaLista[]; podeEditar: boolean; erro?: string; whatsappConectado?: boolean }) {
+  automacoes, podeEditar, erro, whatsappConectado = true, veCampanhas = false,
+}: { automacoes: AutomacaoNaLista[]; podeEditar: boolean; erro?: string; whatsappConectado?: boolean; veCampanhas?: boolean }) {
   const router = useRouter()
   const [criando, criar] = useTransition()
   const [nome, setNome]  = useState('')
@@ -64,6 +64,14 @@ export function ListaDeAutomacoes({
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             Fluxos que reagem sozinhos ao que acontece na clínica.
+          </p>
+          {/* A9 da 14ª: a mesma frase do outro lado, nas campanhas. */}
+          <p data-campanha-ou-automacao style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 8, lineHeight: 1.5, maxWidth: 640 }}>
+            Automação reage a um fato de cada cliente (agendou, faltou, pagou) ou ao relógio;
+            para mandar um aviso a um público de uma vez, use as{' '}
+            {veCampanhas
+              ? <Link href="/admin/notificacoes" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>campanhas, em Notificações</Link>
+              : 'campanhas, em Notificações'}.
           </p>
         </div>
 

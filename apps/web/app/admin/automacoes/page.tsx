@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { listarAutomacoes } from '@/actions/automacoes'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { ListaDeAutomacoes } from '@/components/admin/automacoes/lista'
@@ -32,6 +32,7 @@ export default async function AutomacoesPage() {
         podeEditar={can(ctx, 'automations', 'MANAGE')}
         erro={error}
         whatsappConectado={whatsappConectado}
+        veCampanhas={temRecurso(ctx, 'campanhas') && can(ctx, 'marketing', 'VIEW')}
       />
     </>
   )

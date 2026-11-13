@@ -118,7 +118,9 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'procedures',   group: 'vendas',       label: 'Procedimentos', href: '/admin/procedures',     visible: p => has(p, 'procedures') },
   { key: 'pacotes', recurso: 'pacotes',      group: 'vendas',       label: 'Pacotes',       href: '/admin/pacotes',        visible: p => has(p, 'procedures') },
   { key: 'notificacoes', recurso: 'campanhas', group: 'marketing',      label: 'Notificações',  href: '/admin/notificacoes',   visible: p => has(p, 'marketing') },
-  { key: 'marketing', recurso: 'anuncios',    group: 'marketing',      label: 'Marketing',     href: '/admin/marketing',      visible: p => has(p, 'marketing') },
+  // "Anúncios" (A9 da 14ª): o item mostra só os anúncios (Meta e Google), e
+  // "Marketing" — o nome do grupo — fazia procurar ali as campanhas.
+  { key: 'marketing', recurso: 'anuncios',    group: 'marketing',      label: 'Anúncios',      href: '/admin/marketing',      visible: p => has(p, 'marketing') },
   // Templates do WhatsApp oficial. Ficam aqui, e não em Configurações, porque
   // quem escreve a mensagem é o time comercial — não quem conecta a API.
   { key: 'templates', recurso: 'templates',    group: 'marketing',      label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
