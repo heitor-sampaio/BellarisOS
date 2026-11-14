@@ -18,7 +18,7 @@ export async function fichasDoTelefoneDoLead(tenantId: string, telefone: string 
   const fone = telefoneDoCadastro(telefone)
   if (!fone || fone.digitos.length < 10) return []
   const linhas = (await ler(createAdminClient().rpc('fichas_do_telefone', { p_tenant: tenantId, p_digitos: fone.digitos }),
-    'conferir se o telefone do lead é de uma cliente')) as { id: string; nome: string; ativa: boolean }[] | null
+    'conferir se o telefone da oportunidade é de uma cliente')) as { id: string; nome: string; ativa: boolean }[] | null
   return (linhas ?? []).filter(f => f.ativa).map(f => ({ id: f.id, nome: f.nome }))
 }
 

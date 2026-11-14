@@ -34,9 +34,10 @@ describe('o que falta responder repete a pergunta da tela', () => {
     expect(t).toContain('“É outra pessoa”')
   })
 
-  it('o lead e o contato: "Sim, é a mesma pessoa" ou "Não, é outra pessoa"', () => {
+  // CR1 (2026-11-13): a pessoa é o CONTATO — com oportunidade ou só com a conversa.
+  it('a oportunidade e o contato: "Sim, é a mesma pessoa" ou "Não, é outra pessoa"', () => {
     const lead = oQueFaltaResponder({ tipo: 'lead', nome: 'Carla', ehLead: true })
-    expect(lead).toMatch(/^Responda antes de cadastrar: é a mesma pessoa do lead Carla\?/)
+    expect(lead).toMatch(/^Responda antes de cadastrar: é a mesma pessoa do contato Carla\?/)
     expect(lead).toContain('“Sim, é a mesma pessoa”')
     expect(lead).toContain('“Não, é outra pessoa”')
     expect(oQueFaltaResponder({ tipo: 'lead', nome: 'Carla', ehLead: false })).toContain('do contato Carla?')

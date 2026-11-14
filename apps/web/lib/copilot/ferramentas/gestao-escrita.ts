@@ -391,7 +391,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
   tipo: 'escrita',
   modulo: 'crm', nivel: 'MANAGE',
   recurso: 'oportunidades',
-  descricao: 'Cria uma oportunidade (lead) no funil: nome e ao menos um contato (telefone ou e-mail); origem, procedimentos de interesse, observação, funil (nome), valor estimado em reais e responsável (nome de um membro da equipe) opcionais. Nasce na primeira etapa; sem responsável, você é o responsável.',
+  descricao: 'Cria uma oportunidade no funil: nome e ao menos um contato (telefone ou e-mail); origem, procedimentos de interesse, observação, funil (nome), valor estimado em reais e responsável (nome de um membro da equipe) opcionais. Nasce na primeira etapa; sem responsável, você é o responsável.',
   parametros: z.object({
     nome: z.string().min(2).max(120),
     telefone: z.string().min(8).max(20).optional(),

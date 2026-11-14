@@ -51,7 +51,7 @@ export async function alcanceDoDono(admin: Admin, ctx: TenantContext): Promise<A
     // do PostgREST), e as conversas dos leads além disso sumiam sem aviso.
     const meus = await ler(
       admin.rpc('leads_do_dono', { p_tenant: tenantId, p_owner: owner }),
-      'carregar os leads do responsável',
+      'carregar as oportunidades do responsável',
     )
     return { modo, meusLeads: (meus ?? []) as string[] }
   }

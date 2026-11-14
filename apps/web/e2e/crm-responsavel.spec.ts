@@ -189,7 +189,7 @@ test('situação e período têm o marcador dos outros filtros, sem divisor ante
       return r
     }
     const daOrigem = await raio('Origem', 'Instagram')
-    expect(await raio('Situação', 'Todos os leads')).toBe(daOrigem)
+    expect(await raio('Situação', 'Todas as oportunidades')).toBe(daOrigem)
     expect(await raio('Período', 'Qualquer período')).toBe(daOrigem)
   })
 })

@@ -378,7 +378,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           }}>
             <div>
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-                {isEdit ? 'Editar lead' : 'Novo lead'}
+                {isEdit ? 'Editar oportunidade' : 'Nova oportunidade'}
               </h2>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                 {isEdit ? existing!.name : 'Adicionar contato ao funil de CRM'}
@@ -393,7 +393,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   type="button"
                   onClick={irParaConversa}
                   disabled={abrindoConversa}
-                  title="Abrir a conversa deste lead no Inbox"
+                  title="Abrir a conversa deste contato no Inbox"
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5,
                     padding: '7px 12px', borderRadius: 10, cursor: 'pointer',
@@ -623,7 +623,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   TAGS
                 </p>
                 <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
-                  Classifique o lead (origem manual, filial, campanha…)
+                  Classifique a oportunidade (origem manual, unidade, campanha…)
                 </p>
 
                 {/* Tags selecionadas */}
@@ -709,7 +709,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   </label>
                 </div>
                 <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                  No dia, quem é o responsável pelo lead recebe o lembrete no sino. O card não muda de etapa sozinho.
+                  No dia, quem é o responsável pela oportunidade recebe o lembrete no sino. O card não muda de etapa sozinho.
                 </p>
               </div>
 
@@ -735,7 +735,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               {state?.success && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 'var(--text-xs-sz)', fontWeight: 700 }}>
                   <CheckCircle2 size={14} />
-                  {isEdit ? 'Lead atualizado.' : 'Lead criado com sucesso.'}
+                  {isEdit ? 'Oportunidade atualizada.' : 'Oportunidade criada.'}
                 </div>
               )}
 
@@ -745,7 +745,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 </button>
                 <button type="submit" disabled={pending} className="btn-primary">
                   <UserPlus size={15} />
-                  {pending ? (isEdit ? 'Salvando…' : 'Criando…') : (isEdit ? 'Salvar' : 'Criar lead')}
+                  {pending ? (isEdit ? 'Salvando…' : 'Criando…') : (isEdit ? 'Salvar' : 'Criar oportunidade')}
                 </button>
               </div>
             </form>

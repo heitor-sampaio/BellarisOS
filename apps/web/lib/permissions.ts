@@ -51,7 +51,7 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   stock:           'Produtos, movimentações e transferências',
   financial:       'Lançamentos, relatórios, estorno e comissões',
   cashier:         'Receber o pagamento do atendimento e do plano',
-  crm:             'Leads, funil e conversas',
+  crm:             'Oportunidades, funil e conversas',
   marketing:       'Campanhas e notificações',
   reports:         'Indicadores e relatórios da rede',
   team:            'Membros da equipe',
@@ -67,7 +67,7 @@ export const SCOPE_LABELS: Record<ScopedModule, { own: string; all: string }> = 
   agenda:          { own: 'Só a própria agenda',      all: 'Agenda de todos' },
   medical_records: { own: 'Só os próprios pacientes', all: 'Todos os pacientes' },
   financial:       { own: 'Só as próprias comissões', all: 'Financeiro completo' },
-  crm:             { own: 'Só os próprios leads',     all: 'Todos os leads' },
+  crm:             { own: 'Só as próprias oportunidades', all: 'Todas as oportunidades' },
   // C60 (F70; princípio 3): para quem é da rede, o "próprio" de Relatórios é
   // uma unidade por vez (qualquer uma) — "Só a própria unidade" não dizia isso.
   reports:         { own: 'Uma unidade por vez',      all: 'A rede inteira' },
@@ -183,7 +183,7 @@ export const REPORT_TAB_LABELS: Record<ReportTab, string> = {
   procedimentos: 'Procedimentos',
   profissionais: 'Profissionais',
   estoque:       'Estoque',
-  comercial:     'Funil comercial',
+  comercial:     'Oportunidades',
 }
 
 /** O que cada aba entrega, para quem monta o cargo saber o que está liberando. */
@@ -196,7 +196,7 @@ export const REPORT_TAB_HINTS: Record<ReportTab, string> = {
   procedimentos: 'Execuções, margem e custo por procedimento.',
   profissionais: 'Produção e comissões por profissional.',
   estoque:       'Valor parado, giro, itens críticos e vencimentos.',
-  comercial:     'Funil de leads, conversão e ranking por vendedor.',
+  comercial:     'O funil das oportunidades, a conversão por origem e o ranking por vendedor.',
 }
 
 /**

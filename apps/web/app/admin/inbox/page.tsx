@@ -44,7 +44,7 @@ export default async function AdminInboxPage({
       .eq('tenant_id', ctx.tenantId!)
     if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
     return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
-  }, 'carregar os leads')
+  }, 'carregar as oportunidades')
 
   const inboxLeads = (leadsRaw ?? []).map(l => ({
     id:          l.id as string,

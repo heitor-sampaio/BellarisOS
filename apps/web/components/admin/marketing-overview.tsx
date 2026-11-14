@@ -128,10 +128,10 @@ export function MarketingOverview({
         <KpiCard label="Cliques"          value={totals.clicks}      format="int" />
         <KpiCard label="CTR médio"        value={ctr}                format="pct" sub={hasLinkClicks ? "cliques no link" : "todos os cliques"} />
         <KpiCard
-          label="CPL (custo por lead)"
+          label="Custo por oportunidade"
           value={cpl}
           format="brl"
-          sub={`${attributedLeadsCount} lead${attributedLeadsCount !== 1 ? 's' : ''} atribuído${attributedLeadsCount !== 1 ? 's' : ''}`}
+          sub={`${attributedLeadsCount} oportunidade${attributedLeadsCount !== 1 ? 's' : ''} atribuída${attributedLeadsCount !== 1 ? 's' : ''}`}
         />
         <KpiCard label="Conversões"       value={totals.conversions} format="int" />
       </div>
@@ -191,7 +191,7 @@ export function MarketingOverview({
               : '—'
             }
             <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginLeft: 4 }}>
-              clique → lead
+              clique → oportunidade
             </span>
           </p>
         </div>

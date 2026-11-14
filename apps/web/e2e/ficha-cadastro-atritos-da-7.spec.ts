@@ -95,9 +95,9 @@ test('A22: "Cadastrar" com a pergunta do lead sem resposta diz o que falta — e
   expect(error).toBeNull()
   await como(browser, async p => {
     await preencher(p, { nome: nome('A22'), telefone: `(71) 9${sufixo}-0001` })
-    await expect(p.getByText(/É a mesma pessoa do lead/)).toBeVisible()
+    await expect(p.getByText(/É a mesma pessoa do contato/)).toBeVisible()
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
-    await expect(p.locator('[data-falta-responder]')).toContainText('Responda antes de cadastrar: é a mesma pessoa do lead')
+    await expect(p.locator('[data-falta-responder]')).toContainText('Responda antes de cadastrar: é a mesma pessoa do contato')
   })
   expect(await fichasDe(nome('A22'))).toEqual([])
 })

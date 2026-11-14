@@ -18,7 +18,7 @@ export function ResumoDoQuadro({ stats }: { stats: ReturnType<typeof resumoDoFun
   const perdidos = `${stats.perdidos} ${stats.perdidos === 1 ? 'perdido' : 'perdidos'}`
   return (
     <span data-resumo-do-quadro>
-      {stats.total} {stats.total === 1 ? 'lead' : 'leads'} no funil
+      {stats.total} {stats.total === 1 ? 'oportunidade' : 'oportunidades'} no funil
       {stats.temGanho && ` · ${stats.ganhos} ${stats.ganhos === 1 ? 'ganho' : 'ganhos'}`}
       {stats.temPerda && <> · {stats.perdidos > 0 ? <IrParaOsPerdidos>{perdidos}</IrParaOsPerdidos> : perdidos}</>}
       {pct !== null && ` · ${pct}% de conversão: ${stats.ganhos} ${stats.ganhos === 1 ? 'ganha' : 'ganhas'} de ${stats.total} ${stats.total === 1 ? 'oportunidade' : 'oportunidades'} do funil (abertas, ganhas e perdidas)`}

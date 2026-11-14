@@ -230,7 +230,7 @@ test('AG2: o Agendar do card escolhe a unidade numa caixa simples — a tag não
   expect(error).toBeNull()
   await como(browser, gestao, async p => {
     await p.goto(`/admin/oportunidades?lead=${l!.id}`)
-    const card = p.getByRole('dialog').filter({ hasText: 'Editar lead' })
+    const card = p.getByRole('dialog').filter({ hasText: 'Editar oportunidade' })
     await card.getByRole('button', { name: 'Agendar', exact: true }).click()
     const janela = p.getByRole('dialog').filter({ hasText: 'Novo agendamento' })
     await expect(janela).toBeVisible()
@@ -247,7 +247,7 @@ test('AG2: com uma unidade só, a caixa da unidade não aparece', async ({ brows
   expect(error).toBeNull()
   await como(browser, comercialUnica, async p => {
     await p.goto(`/admin/oportunidades?lead=${l!.id}`)
-    const card = p.getByRole('dialog').filter({ hasText: 'Editar lead' })
+    const card = p.getByRole('dialog').filter({ hasText: 'Editar oportunidade' })
     await card.getByRole('button', { name: 'Agendar', exact: true }).click()
     const janela = p.getByRole('dialog').filter({ hasText: 'Novo agendamento' })
     await expect(janela).toBeVisible()

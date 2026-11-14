@@ -58,13 +58,13 @@ test.describe.serial('o CRM', () => {
       await p.goto(`/${slug}/oportunidades`)
       for (const nome of [`${PREFIXO} Lead A ${marca}`, `${PREFIXO} Lead B ${marca}`]) {
         await expect(async () => {
-          await p.getByRole('button', { name: /^Novo lead em / }).first().click({ timeout: 1000 })
+          await p.getByRole('button', { name: /^Nova oportunidade em / }).first().click({ timeout: 1000 })
           await expect(p.locator('dialog[open] input[name="name"]')).toBeVisible({ timeout: 1000 })
         }).toPass()
         const modal = p.locator('dialog[open]')
         await modal.locator('input[name="name"]').fill(nome)
         await modal.locator('input[name="phone"]').fill('489' + String(Date.now()).slice(-8))
-        await modal.getByRole('button', { name: 'Criar lead' }).click()
+        await modal.getByRole('button', { name: 'Criar oportunidade' }).click()
         await expect(p.locator('dialog[open]'), 'o modal fecha').toHaveCount(0)
         await expect(p.locator('[data-lead-card]').filter({ hasText: nome }), 'o card nasce com o nome').toBeVisible()
       }
@@ -86,7 +86,7 @@ test.describe.serial('o CRM', () => {
       await p.goto(`/${slug}/oportunidades`)
       const card = p.locator('[data-lead-card]').filter({ hasText: nome })
       await expect(card.getByText('Instagram', { exact: true })).toHaveCount(1)
-      await p.getByRole('button', { name: /^Novo lead em / }).first().click()
+      await p.getByRole('button', { name: /^Nova oportunidade em / }).first().click()
       await expect(p.locator('dialog[open] select[name="source"] option', { hasText: 'Telefone' })).toHaveCount(1)
     })
   })

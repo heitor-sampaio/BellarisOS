@@ -174,7 +174,7 @@ export function paginasDaBusca(
       key:      'oportunidades:funis',
       titulo:   'Oportunidades → Configurar funis',
       href:     `${quadro.href}?configurar=funis`,
-      apelidos: ['funil', 'funis', 'etapas', 'motivos de perda', 'origens dos leads'],
+      apelidos: ['funil', 'funis', 'etapas', 'motivos de perda', 'origens das oportunidades'],
     })
   }
 

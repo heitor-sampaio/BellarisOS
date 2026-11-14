@@ -59,7 +59,7 @@ test.afterAll(async () => {
 test('D11: o lead com o telefone de uma cliente pergunta se é ela e, com o "Sim", nasce ligado à ficha', async ({ browser }) => {
   await como(browser, sdr, async p => {
     await p.goto('/admin/oportunidades')
-    await p.getByRole('button', { name: 'Novo lead' }).click()
+    await p.getByRole('button', { name: 'Nova oportunidade' }).click()
     const janela = p.locator('dialog[open]')
     await janela.getByLabel('Nome *').fill(nome('Camila D. (repetida)'))
     await janela.getByLabel('Telefone').fill(foneDaCamila)
@@ -67,12 +67,12 @@ test('D11: o lead com o telefone de uma cliente pergunta se é ela e, com o "Sim
     await expect(pergunta).toContainText(`Este telefone é da ficha de ${nome('Camila Duarte')}`)
 
     // Sem responder, não cria — e diz o que falta.
-    await janela.getByRole('button', { name: 'Criar lead' }).click()
+    await janela.getByRole('button', { name: 'Criar oportunidade' }).click()
     await expect(janela).toContainText('Responda antes de criar')
     expect((await db().from('leads').select('id').eq('tenant_id', rede.tenantId).eq('name', nome('Camila D. (repetida)'))).data).toEqual([])
 
     await pergunta.getByRole('button', { name: 'Sim, é ela' }).click()
-    await janela.getByRole('button', { name: 'Criar lead' }).click()
+    await janela.getByRole('button', { name: 'Criar oportunidade' }).click()
     await expect(p.locator('dialog[open]')).toHaveCount(0)
   })
   await expect.poll(async () => (await db().from('leads').select('client_id')

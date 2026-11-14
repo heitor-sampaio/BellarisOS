@@ -1774,6 +1774,87 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco CRM (CR1, CR2) e RL2: "Contato" e "Oportunidade" em todo texto que se lê
+
+A revisão do Heitor (13/11): "leads e oportunidades sao entidades diferentes,
+pq lead é a pessoa" — e a tela chamava o CARD de "lead" porque a tabela das
+oportunidades se chama `leads`. A escolha dele: "contato e oportunidade".
+
+- **CR1 — "lead" saiu de todo texto que se lê.** O quadro ("Nova
+  oportunidade", "Nova oportunidade em <etapa>", "Editar oportunidade",
+  "Criar oportunidade", "Oportunidade criada.", "Ações da oportunidade",
+  "N oportunidades no funil", "Sem oportunidades", os filtros e a ordem), o
+  "Nova conversa" do inbox ("Oportunidade", "Nenhuma oportunidade
+  disponível"), o escopo do CRM no cargo ("Só as próprias oportunidades" /
+  "Todas as oportunidades"), as linhas do CRM e do Marketing na matriz, a
+  visibilidade do inbox, as origens ("Origens das oportunidades"), a
+  importação, a atribuição do Marketing ("Atribuição de oportunidades",
+  "Custo por oportunidade" no lugar do "CPL (custo por lead)", "clique →
+  oportunidade"), o dashboard ("Funil de oportunidades por etapa"), os
+  Relatórios, os desfechos (Em aberto / Perdido), os erros das actions
+  ("Oportunidade não encontrada.", "Este funil tem N oportunidade(s)…") e o
+  "Não consegui ___" do `ler`/`gravar`, que vai à tela. A pergunta do
+  cadastro pelo telefone diz "É a mesma pessoa do contato X?" nos dois casos
+  (com oportunidade ou só com a conversa). O Copilot: a descrição de
+  `criar_oportunidade` sem "(lead)" e uma linha no prompt — "a pessoa é o
+  contato e o card do funil é a oportunidade: use só esses dois nomes, mesmo
+  que a pessoa use outro". O nome no código e no banco FICOU (`leads`,
+  `lead_events`, `leadId`, `?lead=`, os `data-lead-*`).
+- **A trava**: `tests/oportunidade-no-texto.test.ts`, no molde da do PR3:
+  lê o texto pela árvore do TypeScript (JSX, strings de frase, `title`,
+  `aria-label`, `placeholder`, e a palavra solta que é resultado de ternário
+  — o plural `n === 1 ? 'lead' : 'leads'`, que a varredura por frase não
+  pegava). Fica de fora o que não vai à tela: comentário, identificador,
+  chave (`'lead'`, `'lead.criado'`), tipo (`'Lead'`, o evento da API de
+  Conversões da Meta), colunas de `.select`/`.or`, `lead:${id}`, `?lead=`, o
+  log. **Os sinônimos de cabeçalho da importação ficaram** ("lead", "nome do
+  lead", "origem do lead"…, em `lib/importacao/campos.ts`): é como a planilha
+  de outro sistema vem, não texto da tela; tirá-los faria a importação deixar
+  de reconhecer a coluna (princípio 7: simplificar não é tirar recurso).
+  Idem o apelido "leads" da busca do quadro (quem procura "leads" acha
+  Oportunidades).
+- **CR2 — "Cadastrar cliente" no quadro**: o botão do card era "Converter" e
+  a janela "Converter em cliente"; agora "Cadastrar cliente" →
+  "Cadastrar como cliente", como o painel do inbox.
+- **RL2 — a aba "Funil comercial" virou "Oportunidades"**: na tela de
+  Relatórios e nos relatórios liberados do cargo (o rótulo e a dica: "O
+  funil das oportunidades, a conversão por origem e o ranking por
+  vendedor."); dentro dela, "Oportunidades recebidas", "Funil de
+  oportunidades" e a coluna "Oportunidades" do ranking e da conversão por
+  origem. **Decidido pelo princípio 7**: só o RÓTULO mudou; a CHAVE
+  `comercial` fica (`role_report_tabs.tab` e `?tab=comercial`) — trocá-la
+  pediria migrar dado e quebraria link, sem nada a ganhar para quem usa.
+- **Sem migration**: nenhuma função do banco devolve texto com "lead"
+  (conferido no `pg_proc`: só nomes de tabela e a chave `leads` do JSON de
+  `metrics_comercial`, que a tela traduz).
+- **TDD**: a varredura falhou com 83 textos (86 depois de pegar o plural do
+  ternário e a escolha de nome, 82 com os sinônimos da importação fora); o
+  spec novo `e2e/crm-contato-e-oportunidade.spec.ts` falhou nos dois testes
+  (não achou "Nova oportunidade em …" nem a aba "Oportunidades").
+- **Specs que mudaram** (procuravam o texto velho na tela): `busca-universal-contato`,
+  `crm-agendar-liga-oportunidade`, `crm-atritos`, `crm-atritos-da-7`,
+  `crm-atritos-da-9`, `crm-atritos-da-11`, `crm-defeitos-da-11`,
+  `crm-modal-do-lead`, `crm-responsavel`, `ficha-cadastro-atritos-da-7`,
+  `ficha-cadastro-mesma-pessoa-do-lead`, `inbox-visibilidade`,
+  `indicadores-reativar-clientes`, `indicadores-uma-conta-so`,
+  `listas-sem-corte`, `relatorios-so-os-meus`, `tags-sem-unidade`,
+  `telefone-formatado`; e os vitest `aba-comercial-funil` e
+  `falta-responder-no-cadastro`.
+- **Resultados**: a varredura (3 testes) e o spec novo (2) passam; 54 specs
+  vizinhos em série (os 18 alterados, `crm-*`, `inbox-*`, `relatorios-*`,
+  `importacao-*`, `oportunidade-da-pessoa`, `quadro-tempo-real`,
+  `lead-nao-se-apaga`, `busca-universal*`, `configuracoes-atritos-da-12`):
+  52 verdes. Os 2 vermelhos NÃO são deste bloco: `inbox-cabecalho-mobile`
+  (abre "a primeira conversa real" da rede de teste, que depois do banco
+  zerado não tem nenhuma — "Nenhuma conversa ainda") e o teste do financeiro
+  de `listas-sem-corte` (procura o lançamento em `/financeiro`, que desde o
+  bloco Financeiro abre no Resumo; a lista está em `?aba=movimentacoes`) — a
+  parte deste bloco no mesmo spec ("Oportunidades recebidas") passou.
+  `pnpm typecheck`, `pnpm --filter web lint` (zero erro) e
+  `pnpm --filter web test` (283 arquivos, 2402 testes) verdes.
+- Regras em `docs/regras/crm-inbox.md` §9.2.1 e `indicadores.md` (que ganhou
+  o "O que nunca fazer aqui").
+
 ### 2026-11-14 — Bloco Documentos, leva 2 (DC3/AG1/PC10/CA4, DC1c/PC9b, PC2): um link e uma assinatura para todos, e o pacote com os documentos dele
 
 O resto da revisão de Documentos do Heitor (13/11): a cliente assina tudo de

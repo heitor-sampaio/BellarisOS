@@ -860,6 +860,27 @@ dela — e vê Configurações só com essa aba.
 
 ### 9.2.1 Contato, conversa, oportunidade e cliente — quem é quem
 
+**Os nomes na tela: "Contato" e "Oportunidade"** (CR1 do bloco CRM, a revisão
+do Heitor de 2026-11-13: "leads e oportunidades sao entidades diferentes, pq
+lead é a pessoa"; a escolha: "contato e oportunidade"). A PESSOA é o
+**contato**; o CARD no funil é a **oportunidade**. "Lead" não aparece em texto
+nenhum que se lê — tela, aviso, erro devolvido pela action, o "Não consegui
+___" do `ler`/`gravar`, rótulo de evento, relatório, importação, a resposta e
+a descrição das ferramentas do Copilot (o prompt manda usar só os dois nomes).
+O nome no código e no banco FICA (`leads`, `lead_events`, `leadId`,
+`?lead=`). A trava é `tests/oportunidade-no-texto.test.ts` (lê o texto pela
+árvore do TypeScript, como a do PR3); os sinônimos de cabeçalho da importação
+("nome do lead") ficam, porque são como a planilha de outro sistema vem.
+- No quadro: "Nova oportunidade", "Editar oportunidade", "Criar oportunidade",
+  "Ações da oportunidade", "N oportunidades no funil"; o escopo do CRM no
+  cargo é "Só as próprias oportunidades" / "Todas as oportunidades".
+- **"Cadastrar cliente" em todo lugar** (CR2): o card do quadro diz
+  "Cadastrar cliente" e abre "Cadastrar como cliente", como o painel do inbox
+  (era "Converter" / "Converter em cliente").
+- A pergunta do cadastro pelo telefone diz "É a mesma pessoa do contato X?"
+  nos dois casos (com oportunidade ou só com a conversa).
+Prova na tela: `e2e/crm-contato-e-oportunidade.spec.ts`.
+
 São quatro entidades e é fácil confundi-las. A regra é:
 
 | | O que é | Cardinalidade |
@@ -1344,6 +1365,8 @@ o contato junto.
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Mostrar o nome da conversa (contact_name) em vez do da pessoa (contacts.name)
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
+❌ Escrever "lead" em texto que se lê (tela, aviso, erro da action, o "Não consegui ___", rótulo, relatório, Copilot) — a pessoa é o "contato", o card é a "oportunidade" (CR1; tests/oportunidade-no-texto trava)
+❌ Chamar o cadastro da pessoa do card de "Converter" — é "Cadastrar cliente" / "Cadastrar como cliente", no quadro e no inbox (CR2)
 ❌ Mover o card sozinho por um fato do sistema (agendar, concluir, pagar) — "não existe movimento automático padrão nos funis": é a automação da clínica (crm-05)
 ❌ Levar lead a etapa perdida pela tela sem o motivo, ou gravar crm_stage_id fora de moverEtapaCore / camposDaPerda (o motivo e o perdido_em ficam velhos)
 ❌ Importar (planilha, lote) emitindo evento de domínio, ou trocando dado que a ficha já tem
@@ -1354,7 +1377,7 @@ o contato junto.
 ❌ Gravar telefone importado fora do formato do WhatsApp (55 + DDD + número, só dígitos) — a pessoa não se acha depois
 ❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
-❌ Ler o owner_id vazio sem a marca _responsavelNaTela como "Sem responsável", ou abrir o "Novo lead" com um Responsável diferente do que a tela vai mandar (D1 da 11ª)
+❌ Ler o owner_id vazio sem a marca _responsavelNaTela como "Sem responsável", ou abrir a "Nova oportunidade" com um Responsável diferente do que a tela vai mandar (D1 da 11ª)
 ❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
 ❌ Oferecer a origem do lead da lista fixa (LEAD_SOURCES) onde a clínica escolhe — são as origens dela (crm_origens: origensDaRede, useOrigensDaRede); LEAD_SOURCES fica para a atribuição do anúncio e o fallback (A14 da 7ª)
 ❌ Dizer "hoje"/"ontem" de um registro por 24 h corridas (differenceInDays) — é o dia de Brasília (idadeDoLead, dayKeyTZ — D12 da 12ª)

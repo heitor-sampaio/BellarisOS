@@ -129,7 +129,7 @@ export default async function BranchOportunidadesPage({
       // comum — aparece para todos até alguém assumir.
       if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
       return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
-    }, 'carregar os leads')) as unknown as LeadLido[]
+    }, 'carregar as oportunidades')) as unknown as LeadLido[]
   }
 
   // Os números do topo vêm de lib/metrics — a mesma conta do dashboard e dos
@@ -213,7 +213,7 @@ export default async function BranchOportunidadesPage({
             trigger={
               <button type="button" className="btn-primary">
                 <UserPlus size={15} />
-                Novo lead
+                Nova oportunidade
               </button>
             }
           />

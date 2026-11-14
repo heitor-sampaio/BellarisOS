@@ -205,7 +205,7 @@ test('o quadro de oportunidades, o inbox e o relatório comercial veem a 1011ª 
     await expect(p.locator('option', { hasText: `Zz Oportunidade antiga ${marca}` }), 'e no seletor da nova conversa').toHaveCount(1)
   })
   await abrir(browser, '/admin/reports?tab=comercial&period=month', async p => {
-    await expect(p.locator('.card', { hasText: 'Leads recebidos' }).first()).toContainText(/1\.011/)
+    await expect(p.locator('.card', { hasText: 'Oportunidades recebidas' }).first()).toContainText(/1\.011/)
   })
 })
 

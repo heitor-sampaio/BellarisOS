@@ -146,7 +146,7 @@ export async function criarOportunidadeCore(
   }).select('id, created_at').single()
   if (error || !lead) {
     console.error('[criarOportunidadeCore]', error?.message)
-    return { error: `Erro ao criar lead: ${error?.message ?? 'desconhecido'}` }
+    return { error: `Erro ao criar a oportunidade: ${error?.message ?? 'desconhecido'}` }
   }
 
   await salvarProcedimentosDeInteresse(admin, ctx.tenantId!, lead.id as string, o.procedureIds ?? [])

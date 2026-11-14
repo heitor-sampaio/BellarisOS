@@ -713,9 +713,9 @@ function NewConvModal({
         </div>
         <form onSubmit={handleSubmit} style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>LEAD</label>
+            <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>OPORTUNIDADE</label>
             <select className="field" value={leadId} onChange={e => setLeadId(e.target.value)} required>
-              {leads.length === 0 && <option value="">Nenhum lead disponível</option>}
+              {leads.length === 0 && <option value="">Nenhuma oportunidade disponível</option>}
               {leads.map(l => (
                 <option key={l.id} value={l.id}>
                   {l.name}{l.branch_name ? ` · ${l.branch_name}` : ''}

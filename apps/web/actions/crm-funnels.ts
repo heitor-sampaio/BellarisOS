@@ -269,7 +269,7 @@ export async function deleteFunnel(funnelId: string, slug: string): Promise<Resu
       if (erroLeads) return { error: `Erro ao excluir: ${erroLeads.message}` }
       if ((count ?? 0) > 0) {
         return {
-          error: `Este funil tem ${count} lead(s). Mova-os para outro funil ou arquive este.`,
+          error: `Este funil tem ${count} oportunidade(s). Mova-as para outro funil ou arquive este.`,
         }
       }
     }

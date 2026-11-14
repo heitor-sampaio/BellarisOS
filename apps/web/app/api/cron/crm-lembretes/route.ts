@@ -36,7 +36,7 @@ interface Dono { id: string; is_active: boolean; branch_id: string | null; branc
 async function donos(admin: Admin, ids: string[]): Promise<Map<string, Dono>> {
   if (!ids.length) return new Map()
   const linhas = await ler(admin.from('users').select('id, is_active, branch_id, branches(slug)').in('id', [...new Set(ids)]),
-    'ler os responsáveis dos leads') as unknown as Dono[] | null
+    'ler os responsáveis das oportunidades') as unknown as Dono[] | null
   return new Map((linhas ?? []).map(d => [d.id, d]))
 }
 

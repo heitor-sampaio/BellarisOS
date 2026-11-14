@@ -72,7 +72,7 @@ test('D1: três leads criados em sequência no mesmo modal nascem com quem criou
           await route.continue().catch(() => {})
         })
       }
-      await p.getByRole('button', { name: 'Novo lead' }).click()
+      await p.getByRole('button', { name: 'Nova oportunidade' }).click()
       const janela = p.locator('dialog[open]')
       await janela.getByLabel('Nome *').fill(nome(rotulo))
       await janela.getByLabel('E-mail').fill(`${rotulo.toLowerCase().replace(/ /g, '.')}.${marca}@bellaris.invalid`)
@@ -81,7 +81,7 @@ test('D1: três leads criados em sequência no mesmo modal nascem com quem criou
         // lido NA HORA, sem esperar a lista (que está atrasada).
         expect.soft(await janela.getByLabel('Responsável').inputValue(), 'o responsável na abertura').toBe(gestora.userId)
       }
-      await janela.getByRole('button', { name: 'Criar lead' }).click()
+      await janela.getByRole('button', { name: 'Criar oportunidade' }).click()
       await expect(p.locator('dialog[open]')).toHaveCount(0, { timeout: 30_000 })
       if (comAtraso) await p.unroute('**/admin/oportunidades**')
     }

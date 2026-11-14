@@ -1762,6 +1762,21 @@ revisão, só se escreve o plano. Nada se implementa.
   Plano:** o pop-up do PLANO com os documentos puxados (PC9b no plano) e, do
   DC4, "o do plano, na criação" — os do plano seguem nascendo no checkout
   (o link e a assinatura juntos já valem para eles).
+- ✅ Bloco CRM (14/11) — CR1, CR2; e do bloco Relatórios, RL2: "Contato" (a
+  pessoa) e "Oportunidade" (o card) em todo texto que se lê — o quadro ("Nova
+  oportunidade", "Editar oportunidade", "N oportunidades no funil"), o inbox,
+  a atribuição de anúncio do Marketing, os Relatórios e o dashboard, a
+  importação, o escopo do CRM no cargo, os avisos e erros das actions (e o
+  "Não consegui ___" do `ler`/`gravar`), a pergunta do cadastro ("É a mesma
+  pessoa do contato X?"), a descrição da ferramenta do Copilot e o prompt
+  dele (usa só os dois nomes). O card do quadro diz "Cadastrar cliente" e
+  abre "Cadastrar como cliente", como o inbox. A aba "Funil comercial" virou
+  "Oportunidades" (a tela e os relatórios liberados do cargo); a chave
+  `comercial` ficou (só o rótulo muda: sem migrar dado nem quebrar link). O
+  nome no código e no banco (`leads`, `lead_events`) ficou; nenhuma função
+  do banco devolvia texto com "lead" (conferido no `pg_proc`), então não há
+  migration. A trava: `tests/oportunidade-no-texto.test.ts`. Regras em
+  `crm-inbox.md` §9.2.1 e `indicadores.md`.
 
 ### Bloco: Estoque
 
@@ -1919,8 +1934,8 @@ e Agenda (AG1) com o DC1–DC4.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| CR1 | **"Contato" e "Oportunidade" em todo texto que se lê**: sai "lead" das telas (inbox, quadro, atribuição de anúncio, relatórios, importações), dos avisos e das respostas do Copilot. Um teste varre os textos da tela atrás de "lead" | — |
-| CR2 | **"Cadastrar como cliente"** no quadro também (era "Converter em cliente") | — |
+| CR1 | **"Contato" e "Oportunidade" em todo texto que se lê**: sai "lead" das telas (inbox, quadro, atribuição de anúncio, relatórios, importações), dos avisos e das respostas do Copilot. Um teste varre os textos da tela atrás de "lead" ✅ 14/11 | — |
+| CR2 | **"Cadastrar como cliente"** no quadro também (era "Converter em cliente") ✅ 14/11 | — |
 | — | Mantém: o inbox, o quadro, o funil e as origens, o "só os meus" pela pessoa ou pela conversa, os números por cargo. Já entram por outros blocos: o "Agendar" com a caixa de unidade (AG2), o "Vender" levando ao PDV, as tags que o sistema punha sozinho (Tags) | AG2, PDV, Tags |
 
 ### Bloco: Plano de tratamento
@@ -1958,7 +1973,7 @@ e Agenda (AG1) com o DC1–DC4.
 | # | O que muda | Depende de |
 |---|---|---|
 | RL1 | **A aba Vendas lista as comandas do PDV**: cada venda, do que for (atendimento avulso, pacote, plano, produto, crédito), com filtro por tipo; o CSV junto. O número continua vindo de `lib/metrics/` | PDV |
-| RL2 | **A aba "Funil comercial" se chama "Oportunidades"** (a aba, a dica na tela de Cargos, o texto da tela; sem "leads") | CR1 |
+| RL2 | **A aba "Funil comercial" se chama "Oportunidades"** (a aba, a dica na tela de Cargos, o texto da tela; sem "leads") ✅ 14/11 (só o rótulo: a chave `comercial` fica) | CR1 |
 | — | Mantém: as outras abas, o período e a unidade, as abas por cargo, o escopo de unidade × rede, o Dashboard, as regras dos números | — |
 
 ### Bloco: Equipe

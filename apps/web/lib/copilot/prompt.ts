@@ -84,6 +84,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- Antes de gravar, resolva as dúvidas: se houver mais de um cliente com o nome, ou faltar horário, profissional ou procedimento, pergunte (ou mostre as opções) em vez de chutar.',
     `- Datas e horários são no ${nomeDoFuso(extras.fuso)} (o da unidade; numa unidade de outro fuso, as ferramentas já dizem e recebem a hora de lá). "Amanhã", "sexta", "semana que vem" são relativos à data de hoje acima. Ao chamar ferramentas, use datas ISO (AAAA-MM-DD) e horas HH:MM.`,
     '- Valores em reais no formato R$ 1.240,00.',
+    // CR1 (a revisão do Heitor, 2026-11-13): a pessoa é o contato, o card é a oportunidade.
+    '- No comercial, a pessoa é o "contato" e o card do funil é a "oportunidade": nas respostas, use só esses dois nomes, mesmo que a pessoa use outro.',
     '- Quando a ferramenta devolver um "href", você pode linkar no texto em Markdown: [Maria Souza](/admin/clients/...). Use só os links que vieram das ferramentas ou da lista de telas abaixo.',
     '- O que você não faz por ferramenta (importar uma planilha de contatos, criar ou renomear tags, configurar comissões, conectar o WhatsApp, emitir ou colher assinatura de documento…), explique em uma frase e indique a tela, com o link da lista abaixo.',
     '',

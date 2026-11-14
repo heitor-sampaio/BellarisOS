@@ -1291,7 +1291,7 @@ function TabEstoque(p: ReportsBiProps) {
 // -----------------------------------------------------------------------------
 function TabComercial(p: ReportsBiProps) {
   const c = p.comercial
-  if (!c) return <SCard title="Comercial"><EmptyMsg /></SCard>
+  if (!c) return <SCard title={REPORT_TAB_LABELS.comercial}><EmptyMsg /></SCard>
 
   const fmtInt = (n: number) => new Intl.NumberFormat('pt-BR').format(n)
   const fmtPct = (n: number) => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
@@ -1302,7 +1302,7 @@ function TabComercial(p: ReportsBiProps) {
 
   const colunas: TableColumn[] = [
     { key: 'name',         label: 'Vendedor' },
-    { key: 'leads',        label: 'Leads',   align: 'right', width: 80, render: v => fmtInt(Number(v)) },
+    { key: 'leads',        label: 'Oportunidades', align: 'right', width: 110, render: v => fmtInt(Number(v)) },
     { key: 'conversao',    label: 'Conv.',   align: 'right', width: 80,
       // A conta vem de lib/metrics (ganhas ÷ oportunidades do vendedor): a tela só formata.
       render: (_v, row) => row.conversaoPct !== '' && row.conversaoPct != null
@@ -1315,7 +1315,7 @@ function TabComercial(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
         <KpiCard label="Conversão"             value={c.conversao} format="pct" />
-        <KpiCard label="Leads recebidos"       value={c.totalLeads} format="int" accent="var(--text)" />
+        <KpiCard label="Oportunidades recebidas" value={c.totalLeads} format="int" accent="var(--text)" />
         <KpiCard label="Agendados pelo comercial" value={c.comerciaisAgendados} format="int" accent="var(--text)" />
         <KpiCard label="Comparecimento"           value={c.comparecimento} format="pct" accent="var(--text)" />
       </div>
@@ -1329,7 +1329,7 @@ function TabComercial(p: ReportsBiProps) {
       </p>
 
       <div className="rg-2" style={{ gap: 16 }}>
-        <SCard title="Funil de leads">
+        <SCard title="Funil de oportunidades">
           {c.funis.length > 1 && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
               <FunnelSelect funnels={c.funis} activeId={c.funilAtivo} />
@@ -1371,7 +1371,7 @@ function TabComercial(p: ReportsBiProps) {
           <SimpleTable
             columns={[
               { key: 'origem',  label: 'Origem' },
-              { key: 'leads',   label: 'Leads',  align: 'right', width: 80, render: v => fmtInt(Number(v)) },
+              { key: 'leads',   label: 'Oportunidades', align: 'right', width: 110, render: v => fmtInt(Number(v)) },
               { key: 'ganhos',  label: 'Ganhas', align: 'right', width: 80, render: v => fmtInt(Number(v)) },
               { key: 'conversao', label: 'Conv.', align: 'right', width: 80,
                 render: (_v, row) => row.conversaoPct !== '' && row.conversaoPct != null

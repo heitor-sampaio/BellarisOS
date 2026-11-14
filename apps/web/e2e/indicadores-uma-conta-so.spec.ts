@@ -178,7 +178,7 @@ test.describe('D10: a conversão é da OPORTUNIDADE (ganhas ÷ do funil), uma co
   test('funil sem etapa de ganho: a conversão é "—", no quadro e no dashboard', async ({ browser }) => {
     await como(browser, gestor, async p => {
       await p.goto(`/admin/oportunidades?funil=${funilSemGanho}`)
-      await expect(resumoDoQuadro(p)).toContainText('1 lead no funil')
+      await expect(resumoDoQuadro(p)).toContainText('1 oportunidade no funil')
       await expect(resumoDoQuadro(p)).toContainText('conversão —')
       await expect(resumoDoQuadro(p)).not.toContainText('%')
 

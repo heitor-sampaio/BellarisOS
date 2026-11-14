@@ -45,9 +45,9 @@ export function OrigensDoLeadConfig({ origens }: { origens: OrigemConfiguravel[]
   return (
     <section data-origens-do-lead style={{ borderTop: '1px solid var(--hairline)', padding: '18px 24px 26px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
-        <h3 style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>Origens dos leads</h3>
+        <h3 style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>Origens das oportunidades</h3>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-          De onde a oportunidade veio — o que o lead, a importação e o Copilot oferecem. Desativar tira da lista sem apagar a origem de quem já tem. O lead do anúncio continua com a origem do anúncio (Meta Ads, Google Ads).
+          De onde a oportunidade veio — o que o card, a importação e o Copilot oferecem. Desativar tira da lista sem apagar a origem de quem já tem. A oportunidade do anúncio continua com a origem do anúncio (Meta Ads, Google Ads).
         </p>
       </div>
 

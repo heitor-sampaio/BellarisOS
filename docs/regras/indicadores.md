@@ -469,8 +469,8 @@
       "0%" em vez de "—". Prova: `e2e/relatorios-conversao-funis-ativos.spec.ts`.
     - **A conversão por ORIGEM** (A20 da 7ª simulação, 2026-11-05: "para quem
       decide onde investir em anúncio, é o número que falta"): Relatórios →
-      Funil comercial → "Conversão por origem", uma linha por `leads.source`
-      ("Sem origem" sem ela) com leads, ganhas e a conversão — as MESMAS
+      Oportunidades → "Conversão por origem", uma linha por `leads.source`
+      ("Sem origem" sem ela) com oportunidades, ganhas e a conversão — as MESMAS
       oportunidades do painel (criadas no período, funis ativos, o "só os
       meus"), contadas no banco (`metrics_conversao_por_origem`, migration
       `20261105003103`) e divididas por `conversaoDasOportunidades`
@@ -842,10 +842,17 @@ afastam um pouco em volta dele e o nome diz "(local aproximado)"; as que estão
 perto (~3 km) ficam onde estão, com os nomes em lados diferentes
 (`marcadoresDasUnidades`, puro). Prova: `tests/mapa-unidades-proximas.test.ts`.
 
-**A aba do funil se chama "Funil comercial"** (A9 da 6ª simulação,
-2026-11-04: "Comercial" não dizia que é o funil de oportunidades): o mesmo nome
-no cargo (`REPORT_TAB_LABELS.comercial`) e na tela de Relatórios, que o lê
-de lá. A chave continua `comercial`. Prova: `tests/aba-comercial-funil.test.ts`.
+**A aba do funil se chama "Oportunidades"** (RL2 do bloco Relatórios, com o
+CR1 — a revisão do Heitor de 2026-11-13; antes "Funil comercial", A9 da 6ª
+simulação, e antes ainda "Comercial"): o mesmo nome no cargo
+(`REPORT_TAB_LABELS.comercial`, e a dica `REPORT_TAB_HINTS`) e na tela de
+Relatórios, que o lê de lá. A tela fala em oportunidades: "Oportunidades
+recebidas", "Funil de oportunidades", a coluna "Oportunidades" do ranking e
+da conversão por origem; o dashboard, "Funil de oportunidades por etapa". A
+CHAVE continua `comercial` (no banco, `role_report_tabs.tab`, e na URL,
+`?tab=comercial`): trocar só o rótulo resolve, sem migrar dado nem quebrar
+link (princípio 7). Prova: `tests/aba-comercial-funil.test.ts`,
+`e2e/crm-contato-e-oportunidade.spec.ts`.
 
 **Taxa sem denominador é "—", não 0%** (ind-10, revisão de 2026-11-02:
 "0% diz que foi ruim; '—' diz que não houve"): a taxa de conclusão (no
@@ -1269,3 +1276,12 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   funis ativos, os motivos e a conversão por origem).
 Prova: `e2e/indicadores-f68-contas.spec.ts`, `e2e/indicadores-f68-telas.spec.ts`,
 `tests/indicadores-f68.test.ts`.
+
+---
+
+## O que nunca fazer aqui
+
+```
+❌ Escrever "lead" num número, rótulo, coluna ou dica da tela (Relatórios, dashboard, Marketing) — é "oportunidade" (CR1/RL2; tests/oportunidade-no-texto trava)
+❌ Trocar a CHAVE de uma aba de Relatórios para mudar o nome dela (role_report_tabs e a URL guardam a chave) — muda o rótulo em REPORT_TAB_LABELS
+```

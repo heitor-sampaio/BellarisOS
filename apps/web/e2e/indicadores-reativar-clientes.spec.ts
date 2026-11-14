@@ -51,7 +51,7 @@ test('o card do mês no dashboard da unidade: clientes no mês (não "funil de l
     const p = await ctx.newPage()
     await p.goto(`/${un!.slug}/dashboard`)
     await expect(p.getByRole('heading', { name: 'Clientes no mês' })).toBeVisible()
-    await expect(p.getByText('Funil de leads')).toHaveCount(0)
+    await expect(p.getByText('Funil de oportunidades')).toHaveCount(0)
     await expect(p.locator('[data-etapa="Agendamentos"]'), 'o número aparece, fora da barra').toContainText('1')
     await expect(p.locator('[data-etapa="Concluídos"]'), 'o zero também').toContainText('0')
   } finally {

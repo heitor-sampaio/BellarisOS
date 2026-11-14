@@ -69,7 +69,7 @@ export function SettingsVisibilidadeInbox({
       <div>
         <h3 id="titulo-visibilidade-inbox"
           style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
-          Inbox de quem vê só os próprios leads
+          Inbox de quem vê só as próprias oportunidades
         </h3>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
           Vale para cargos com o escopo &ldquo;só os meus&rdquo; no CRM. Quem vê tudo não muda.

@@ -104,7 +104,7 @@ test('A12/A13: a lista diz "Rascunho"; o editor tem o "Salvar" à vista e avisa 
   })
 })
 
-test('A14: a clínica nasce com as origens de sempre e cadastra a dela, que o "Novo lead" oferece', async ({ browser }) => {
+test('A14: a clínica nasce com as origens de sempre e cadastra a dela, que a "Nova oportunidade" oferece', async ({ browser }) => {
   const { data: padrao } = await db().from('crm_origens').select('nome').eq('tenant_id', rede.tenantId)
   expect((padrao ?? []).map(o => o.nome)).toEqual(expect.arrayContaining(['Meta Ads', 'Instagram', 'Indicação', 'Outro']))
   await como(browser, dona, async p => {
@@ -118,7 +118,7 @@ test('A14: a clínica nasce com as origens de sempre e cadastra a dela, que o "N
     await p.keyboard.press('Escape')
 
     await p.reload()
-    await p.getByRole('button', { name: 'Novo lead' }).click()
+    await p.getByRole('button', { name: 'Nova oportunidade' }).click()
     await expect(p.locator('dialog[open] select[name="source"] option', { hasText: 'Feira de noivas' })).toHaveCount(1)
   })
 })
@@ -205,7 +205,7 @@ test('A19: a 1440 px, perder pelo menu do card e pelo arraste, sem rolar até a 
     await p.goto('/admin/oportunidades')
     const card = p.locator(`[data-lead-id="${id}"]`)
     // O menu do card (o clique também espera a tela hidratar).
-    await card.getByTitle('Ações do lead').click()
+    await card.getByTitle('Ações da oportunidade').click()
     await card.getByRole('menuitem', { name: 'Marcar como perdido' }).click()
     await expect(p.getByRole('heading', { name: 'Por que perdeu?' })).toBeVisible()
     await p.getByRole('button', { name: 'Voltar' }).click()
@@ -222,7 +222,7 @@ test('A19: a 1440 px, perder pelo menu do card e pelo arraste, sem rolar até a 
   })
 })
 
-test('A20: o Funil comercial tem a conversão por origem', async ({ browser }) => {
+test('A20: a aba Oportunidades (era Funil comercial) tem a conversão por origem', async ({ browser }) => {
   await lead('Insta 1 A20', { source: 'Instagram', crm_stage_id: etapa.ganho })
   await lead('Insta 2 A20', { source: 'Instagram' })
   await lead('Indicação A20', { source: 'Indicação' })

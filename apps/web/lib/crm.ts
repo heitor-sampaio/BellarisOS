@@ -62,9 +62,9 @@ export const NEW_FUNNEL_STAGES: { name: string; color: string; outcome: StageOut
 ]
 
 export const OUTCOME_COPY: Record<StageOutcome, { label: string; hint: string }> = {
-  OPEN: { label: 'Em aberto', hint: 'O lead continua em negociação.' },
+  OPEN: { label: 'Em aberto', hint: 'A oportunidade continua em negociação.' },
   WON:  { label: 'Ganho',     hint: 'Fecha a oportunidade como ganha: é ela que conta na conversão do funil.' },
-  LOST: { label: 'Perdido',   hint: 'Encerra o lead sem conversão.' },
+  LOST: { label: 'Perdido',   hint: 'Encerra a oportunidade sem conversão.' },
 }
 
 export const OUTCOME_VALUES: StageOutcome[] = ['OPEN', 'WON', 'LOST']

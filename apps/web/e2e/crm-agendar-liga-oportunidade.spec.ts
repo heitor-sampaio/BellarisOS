@@ -227,7 +227,7 @@ test('A16: a oportunidade tem "Agendar" — o SDR agenda pelo card aberto no qua
 
   await como(browser, sdr!, async p => {
     await p.goto(`/${slug}/oportunidades?lead=${lead!.id}`)
-    const card = p.getByRole('dialog').filter({ hasText: 'Editar lead' })
+    const card = p.getByRole('dialog').filter({ hasText: 'Editar oportunidade' })
     await expect(card).toBeVisible()
     const agendar = card.getByRole('button', { name: 'Agendar', exact: true })
     await expect(agendar).toBeVisible()
@@ -277,7 +277,7 @@ test('D12: a sala sugerida que aparece na janela é a que grava, mesmo com a lis
         await rota.continue()
       })
       await p.goto(`/${slug}/oportunidades?lead=${lead!.id}`)
-      const card = p.getByRole('dialog').filter({ hasText: 'Editar lead' })
+      const card = p.getByRole('dialog').filter({ hasText: 'Editar oportunidade' })
       await card.getByRole('button', { name: 'Agendar', exact: true }).click()
       const janela = p.getByRole('dialog').filter({ hasText: 'Novo agendamento' })
       await janela.getByLabel('Procedimento').selectOption(rede!.procedureId)

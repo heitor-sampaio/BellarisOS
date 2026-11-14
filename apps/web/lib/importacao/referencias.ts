@@ -26,7 +26,7 @@ export async function referenciasDaRede(
     quais.procedimentos && ler(admin.from('procedures').select('id, name').eq('tenant_id', tenantId).eq('is_active', true),
       'listar os procedimentos').then(l => { refs.procedimentos = ((l ?? []) as { id: string; name: string }[]).map(x => ({ id: x.id, nome: x.name })) }),
     quais.origens && ler(admin.from('crm_origens').select('nome').eq('tenant_id', tenantId).eq('ativo', true),
-      'listar as origens do lead').then(l => { refs.origens = ((l ?? []) as { nome: string }[]).map(o => o.nome) }),
+      'listar as origens das oportunidades').then(l => { refs.origens = ((l ?? []) as { nome: string }[]).map(o => o.nome) }),
     quais.etapaId && (async () => {
       const etapa = await ler(admin.from('crm_stages').select('funnel_id').eq('id', quais.etapaId!).eq('tenant_id', tenantId).maybeSingle(), 'buscar a etapa')
       if (!etapa) { refs.etapas = []; return }

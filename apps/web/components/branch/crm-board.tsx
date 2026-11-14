@@ -4,7 +4,7 @@ import { PerguntaDaPerda, type OpcaoDeMotivo } from '@/components/branch/pergunt
 import { useState, useTransition, useRef, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
-  Plus, ArrowRight, ArrowRightLeft, Phone, Mail, X,
+  Plus, ArrowRight, ArrowRightLeft, UserCheck, Phone, Mail, X,
   MoreHorizontal, Trophy, XCircle, CalendarClock, BellRing,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -53,7 +53,7 @@ const DEFAULT_FILTERS: FiltersState = {
 }
 
 const SITUACOES: { valor: FiltersState['situation']; rotulo: string }[] = [
-  { valor: 'all',           rotulo: 'Todos os leads' },
+  { valor: 'all',           rotulo: 'Todas as oportunidades' },
   { valor: 'not_converted', rotulo: 'Ainda não é cliente' },
   { valor: 'converted',     rotulo: 'Já é cliente' },
 ]
@@ -241,7 +241,7 @@ function FiltersBar({
           opcoes={availableSources.map(s => ({ valor: s, rotulo: s }))}
           selecionadas={filters.sources}
           multiplo
-          textoListaVazia="Nenhuma origem nos leads carregados."
+          textoListaVazia="Nenhuma origem nas oportunidades carregadas."
           classeBotao={classeGatilho(filters.sources.length > 0)}
           onEscolher={toggleSource}
         />
@@ -253,7 +253,7 @@ function FiltersBar({
           opcoes={availableTags.map(t => ({ valor: t, rotulo: t }))}
           selecionadas={filters.tags}
           multiplo
-          textoListaVazia="Nenhuma tag nos leads carregados."
+          textoListaVazia="Nenhuma tag nas oportunidades carregadas."
           classeBotao={classeGatilho(filters.tags.length > 0)}
           onEscolher={toggleTag}
         />
@@ -267,7 +267,7 @@ function FiltersBar({
           }))}
           selecionadas={filters.owners}
           multiplo
-          textoListaVazia="Nenhum responsável nos leads carregados."
+          textoListaVazia="Nenhum responsável nas oportunidades carregadas."
           classeBotao={classeGatilho(filters.owners.length > 0)}
           onEscolher={toggleOwner}
         />
@@ -279,7 +279,7 @@ function FiltersBar({
           opcoes={availableProcs.map(p => ({ valor: p.id, rotulo: p.name }))}
           selecionadas={filters.procedureIds}
           multiplo
-          textoListaVazia="Nenhum procedimento nos leads carregados."
+          textoListaVazia="Nenhum procedimento nas oportunidades carregadas."
           classeBotao={classeGatilho(filters.procedureIds.length > 0)}
           onEscolher={toggleProcedure}
         />
@@ -291,7 +291,7 @@ function FiltersBar({
           opcoes={availableMotivos.map(m => ({ valor: m.id, rotulo: m.nome }))}
           selecionadas={filters.motivos}
           multiplo
-          textoListaVazia="Nenhum lead perdido com motivo."
+          textoListaVazia="Nenhuma oportunidade perdida com motivo."
           classeBotao={classeGatilho(filters.motivos.length > 0)}
           onEscolher={toggleMotivo}
         />
@@ -346,7 +346,7 @@ function FiltersBar({
 
       {/* Ordenação */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <select className="filtro-select" aria-label="Ordenar os leads"
+        <select className="filtro-select" aria-label="Ordenar as oportunidades"
           value={sort} onChange={e => onSortChange(e.target.value as SortOrder)}>
           <option value="newest">Mais recente</option>
           <option value="oldest">Mais antigo</option>
@@ -444,7 +444,7 @@ interface CRMBoardProps {
    * entra no card). Fora da lista carregada (alcance, outro funil), nada abre.
    */
   leadAberto?:  string | null
-  /** "Converter" o lead em cliente pede Clientes em Gerenciar (D4, 2026-11-01). */
+  /** "Cadastrar cliente" (CR2; era "Converter") pede Clientes em Gerenciar (D4, 2026-11-01). */
   podeCadastrarCliente?: boolean
   /** "Agendar" no card (A16 da 6ª simulação): o CRM em Gerenciar e a agenda no plano. */
   podeAgendar?: boolean
@@ -693,7 +693,7 @@ function LeadCard({
           </div>
 
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            O lead entra na primeira etapa do funil escolhido e sai deste quadro.
+            A oportunidade entra na primeira etapa do funil escolhido e sai deste quadro.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -770,7 +770,7 @@ function LeadCard({
           <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               type="button"
-              title="Ações do lead"
+              title="Ações da oportunidade"
               aria-haspopup="menu"
               aria-expanded={menuAberto}
               onClick={e => { e.stopPropagation(); setMenuAberto(v => !v) }}
@@ -1032,16 +1032,16 @@ function LeadCard({
                 borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
               }}
             >
-              <ArrowRight size={10} /> Converter
+              <UserCheck size={10} /> Cadastrar cliente
             </button>
           )}
         </div>
       </div>
 
       {convertOpen && (
-        <JanelaModal onFechar={() => setConvertOpen(false)} rotulo="Converter em cliente" largura={480}>
+        <JanelaModal onFechar={() => setConvertOpen(false)} rotulo="Cadastrar como cliente" largura={480}>
           <div style={{ padding: 'var(--card-pad)' }}>
-            <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>Converter em cliente</h3>
+            <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>Cadastrar como cliente</h3>
             <ClientForm
               branchId={branchId}
               slug={slug}
@@ -1374,7 +1374,7 @@ export function CRMBoard({
                 onLeadCreated={handleLeadCreated}
                 trigger={
                   // O nome diz a ETAPA (J-18): eram sete "Novo lead nesta etapa" iguais.
-                  <button type="button" aria-label={`Novo lead em ${stage.name}`} title={`Novo lead em ${stage.name}`} style={{
+                  <button type="button" aria-label={`Nova oportunidade em ${stage.name}`} title={`Nova oportunidade em ${stage.name}`} style={{
                     width: 24, height: 24, borderRadius: 7,
                     background: 'var(--bg-app)', border: '1px solid var(--border)',
                     color: 'var(--text-muted)',
@@ -1421,7 +1421,7 @@ export function CRMBoard({
                   transition: 'all 150ms',
                 }}>
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: isDraggingToThis ? stage.color : 'var(--text-faint)', fontWeight: isDraggingToThis ? 700 : 400 }}>
-                    {isDraggingToThis ? 'Soltar aqui' : 'Sem leads'}
+                    {isDraggingToThis ? 'Soltar aqui' : 'Sem oportunidades'}
                   </p>
                 </div>
               )}

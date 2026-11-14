@@ -66,7 +66,7 @@ export function oQueFaltaResponder(p: {
   motivo?: keyof typeof POR_QUE_JA_EXISTE; podeCadastrarMesmoAssim?: boolean
 }): string {
   if (p.tipo === 'lead') {
-    return `Responda antes de cadastrar: é a mesma pessoa do ${p.ehLead === false ? 'contato' : 'lead'} ${p.nome}? (“Sim, é a mesma pessoa” ou “Não, é outra pessoa”, ${ONDE})`
+    return `Responda antes de cadastrar: é a mesma pessoa do contato ${p.nome}? (“Sim, é a mesma pessoa” ou “Não, é outra pessoa”, ${ONDE})`
   }
   if (p.tipo === 'jaExiste') {
     const porQue = p.motivo ? ` ${POR_QUE_JA_EXISTE[p.motivo]}` : ''

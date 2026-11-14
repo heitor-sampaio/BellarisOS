@@ -121,12 +121,12 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   crm: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Vê o funil de leads, abre os cards e lê as conversas de WhatsApp.',
-    MANAGE: 'Tudo do Ver, mais criar e mover leads, responder no WhatsApp e agendar direto pelo CRM. Montar funis, etapas e motivos de perda é Configurações.',
+    VIEW:   'Vê o funil de oportunidades, abre os cards e lê as conversas de WhatsApp.',
+    MANAGE: 'Tudo do Ver, mais criar e mover oportunidades, responder no WhatsApp e agendar direto pelo CRM. Montar funis, etapas e motivos de perda é Configurações.',
   },
   marketing: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Vê o painel de anúncios: quanto foi investido, retorno e leads que vieram de cada campanha.',
+    VIEW:   'Vê o painel de anúncios: quanto foi investido, retorno e as oportunidades que vieram de cada campanha.',
     MANAGE: 'Tudo do Ver, mais criar, ativar, pausar e arquivar as campanhas de notificação.',
   },
   reports: {

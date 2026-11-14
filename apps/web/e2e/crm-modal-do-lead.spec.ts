@@ -47,10 +47,10 @@ test.afterAll(async () => {
   await sdr?.limpar(); await rede?.limpar()
 })
 
-test('cada "Novo lead" diz a etapa; o modal não sugere as origens como tag; Origem e Etapa ligados', async ({ browser }) => {
+test('cada "Nova oportunidade" diz a etapa; o modal não sugere as origens como tag; Origem e Etapa ligados', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto(`/${slug}/oportunidades`)
-    const botoes = p.getByRole('button', { name: /^Novo lead em / })
+    const botoes = p.getByRole('button', { name: /^Nova oportunidade em / })
     await expect(botoes.first()).toBeVisible()
     const nomes = await botoes.evaluateAll(bs => bs.map(b => b.getAttribute('aria-label')))
     expect(nomes.length, 'um botão por etapa').toBeGreaterThan(1)
@@ -73,7 +73,7 @@ test('o telefone do lead aparece com a máscara, e salvar sem mexer não troca o
   await como(browser, async p => {
     // Abrir o quadro cria o funil padrão; o lead entra na primeira etapa dele.
     await p.goto(`/${slug}/oportunidades`)
-    await expect(p.getByRole('button', { name: /^Novo lead/ }).first()).toBeVisible()
+    await expect(p.getByRole('button', { name: /^Nova oportunidade/ }).first()).toBeVisible()
     const { data: etapa } = await db().from('crm_stages').select('id').eq('tenant_id', rede!.tenantId).order('position').limit(1).single<{ id: string }>()
     const { error } = await db().from('leads').insert({
       tenant_id: rede!.tenantId, name: NOME, phone: FONE, source: 'Instagram', crm_stage_id: etapa!.id,

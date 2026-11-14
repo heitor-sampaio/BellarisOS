@@ -1295,7 +1295,7 @@ export async function openLeadConversation(
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
   // Sem isto, o card de outro dono abria (e até CRIAVA) a conversa da pessoa.
-  if (!(await leadAoAlcance(admin, ctx, leadId))) return { conversationId: null, error: 'Lead não encontrado.' }
+  if (!(await leadAoAlcance(admin, ctx, leadId))) return { conversationId: null, error: 'Oportunidade não encontrada.' }
 
   const { data: leadRow, error: erroLead } = await admin
     .from('leads')
@@ -1307,7 +1307,7 @@ export async function openLeadConversation(
     console.error('[openLeadConversation] lead:', erroLead.message)
     return { conversationId: null, error: 'Não foi possível abrir a conversa deste lead.' }
   }
-  if (!leadRow) return { conversationId: null, error: 'Lead não encontrado.' }
+  if (!leadRow) return { conversationId: null, error: 'Oportunidade não encontrada.' }
 
   const l = leadRow as { name: string; phone: string | null; branch_id: string | null; contato_id: string }
 
@@ -1600,7 +1600,7 @@ export async function createConversationForLead(
   assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
-  if (!(await leadAoAlcance(admin, ctx, leadId))) return { error: 'Lead não encontrado' }
+  if (!(await leadAoAlcance(admin, ctx, leadId))) return { error: 'Oportunidade não encontrada.' }
 
   // Return existing conversation if any
   const existing = await ler(admin
@@ -1620,7 +1620,7 @@ export async function createConversationForLead(
     .eq('tenant_id', ctx.tenantId!)
     .single(), 'buscar a oportunidade')
 
-  if (!lead) return { error: 'Lead não encontrado' }
+  if (!lead) return { error: 'Oportunidade não encontrada.' }
 
   // Mesmo cuidado de `openLeadConversation`: sem `contact_external_id` a
   // conversa nasce com a chave nula, fora do índice único, e a primeira

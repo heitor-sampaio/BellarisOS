@@ -16,5 +16,5 @@ export interface OrigemDoLead { id: string; nome: string; ativo: boolean }
 export async function origensDaRede(admin: Admin, tenantId: string, incluirInativas = false): Promise<OrigemDoLead[]> {
   let q = admin.from('crm_origens').select('id, nome, ativo').eq('tenant_id', tenantId)
   if (!incluirInativas) q = q.eq('ativo', true)
-  return ((await ler(q.order('posicao').order('nome'), 'carregar as origens do lead')) ?? []) as OrigemDoLead[]
+  return ((await ler(q.order('posicao').order('nome'), 'carregar as origens das oportunidades')) ?? []) as OrigemDoLead[]
 }

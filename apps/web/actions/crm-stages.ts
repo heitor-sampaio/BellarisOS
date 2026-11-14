@@ -222,7 +222,7 @@ export async function deleteStage(stageId: string, slug: string): Promise<Result
     if (erroLeads) return { error: `Erro ao excluir: ${erroLeads.message}` }
 
     if ((count ?? 0) > 0) {
-      return { error: `Esta etapa possui ${count} lead(s). Mova-os antes de excluir.` }
+      return { error: `Esta etapa possui ${count} oportunidade(s). Mova-as antes de excluir.` }
     }
 
     const { error } = await admin

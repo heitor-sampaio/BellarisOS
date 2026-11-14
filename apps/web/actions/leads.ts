@@ -149,7 +149,7 @@ export async function createLead(
       const t = await trocarResponsavelCore(createAdminClient(), ctx.tenantId!, r.leadId, responsavel, {
         actorUserId: ctx.internalUserId, actorName: ctx.userName || null,
       })
-      if (!t.trocado && t.motivo) return { error: `Lead criado, mas o responsável não mudou: ${t.motivo}` }
+      if (!t.trocado && t.motivo) return { error: `Oportunidade criada, mas o responsável não mudou: ${t.motivo}` }
     }
 
     revalidatePath(`/${slug}/oportunidades`)
@@ -210,7 +210,7 @@ export async function updateLead(
     const slug       = str(formData, '_slug') ?? ''
     const crmStageId = str(formData, 'crm_stage_id')
 
-    if (!leadId) return { error: 'Lead não identificado.' }
+    if (!leadId) return { error: 'Oportunidade não identificada.' }
     // C27 (F70): o alcance ANTES de tudo. O filtro do dono no update segurava
     // só a linha do card; o resto — o nome e o telefone da PESSOA, as
     // conversas, os procedimentos de interesse, a linha do tempo — rodava mesmo
@@ -258,7 +258,7 @@ export async function updateLead(
       patch.retornar_em = dia
       patch.retornar_obs = dia ? str(formData, 'retornar_obs') : null
       const atual = await ler(createAdminClient().from('leads').select('retornar_em')
-        .eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler o retorno do lead') as { retornar_em: string | null } | null
+        .eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler o retorno da oportunidade') as { retornar_em: string | null } | null
       if ((atual?.retornar_em ?? null) !== dia) patch.retorno_avisado_em = null
     }
 
@@ -309,7 +309,7 @@ export async function updateLead(
 
     if (error) {
       console.error('[updateLead]', error.message)
-      return { error: `Erro ao atualizar lead: ${error.message}` }
+      return { error: `Erro ao atualizar a oportunidade: ${error.message}` }
     }
     // Nenhuma linha = fora do alcance (ou apagada no meio): nada do resto roda.
     if (!gravadas?.length) return { error: 'Oportunidade não encontrada.' }
@@ -324,7 +324,7 @@ export async function updateLead(
       const mudouFone = digitosDoTelefone(phone) !== digitosDoTelefone(antes.campos.phone)
       if (mudouNome || mudouFone) {
         const dono = await ler(admin.from('leads').select('contato_id')
-          .eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a pessoa do lead')
+          .eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a pessoa da oportunidade')
         const contatoId = (dono as { contato_id: string | null } | null)?.contato_id
         if (contatoId) {
           await propagarDadosDaPessoa(admin, ctx, contatoId, {

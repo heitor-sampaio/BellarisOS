@@ -130,7 +130,7 @@ export default async function AdminMarketingPage({
       .or(attributionFilter)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
-      .limit(200), 'carregar os leads atribuídos'),
+      .limit(200), 'carregar as oportunidades atribuídas'),
 
     contar(// O CPL e a taxa de conversão precisam do total, não da amostra exibida:
     // com mais de 200 leads o CPL travava em `gasto / 200` e crescia junto
@@ -140,7 +140,7 @@ export default async function AdminMarketingPage({
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', ctx.tenantId!)
       .or(attributionFilter)
-      .gte('created_at', since), 'contar os leads atribuídos'),
+      .gte('created_at', since), 'contar as oportunidades atribuídas'),
   ])
 
   const leads = ((attributedLeads ?? []) as unknown as {
@@ -258,10 +258,10 @@ export default async function AdminMarketingPage({
             <h2 style={{
               fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)',
             }}>
-              Atribuição de leads
+              Atribuição de oportunidades
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 4 }}>
-              Leads captados com dados de origem de campanha (UTM / click ID)
+              Oportunidades captadas com dados de origem de campanha (UTM / click ID)
             </p>
           </div>
           <MarketingAttribution leads={leads} />

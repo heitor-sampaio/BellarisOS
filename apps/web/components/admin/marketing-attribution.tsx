@@ -86,7 +86,7 @@ export function MarketingAttribution({ leads }: { leads: AttributedLead[] }) {
         </div>
         <div style={{ display: 'flex', gap: 20, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <span>
-            <strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> leads
+            <strong style={{ color: 'var(--text)' }}>{filtered.length}</strong> {filtered.length === 1 ? 'oportunidade' : 'oportunidades'}
           </span>
           <span>
             <strong style={{ color: 'var(--success)' }}>{convertedCount}</strong> convertidos
@@ -102,7 +102,7 @@ export function MarketingAttribution({ leads }: { leads: AttributedLead[] }) {
           textAlign: 'center', padding: '40px 0',
           color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)',
         }}>
-          Nenhum lead com dados de atribuição encontrado.
+          Nenhuma oportunidade com dados de atribuição encontrada.
         </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
@@ -150,7 +150,7 @@ export function MarketingAttribution({ leads }: { leads: AttributedLead[] }) {
                         fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)',
                         color: 'var(--text-muted)', background: 'var(--hairline)',
                       }}>
-                        {lead.crm_stage ?? 'Lead'}
+                        {lead.crm_stage ?? 'Sem etapa'}
                       </span>
                     )}
                   </td>

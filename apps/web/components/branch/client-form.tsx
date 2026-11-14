@@ -565,7 +565,7 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
     <div role="alert" style={caixaDaPergunta}>
       <span>
         {pergunta.ehLead
-          ? <>Este telefone é de um lead do CRM{pergunta.perdida ? ' (a oportunidade está perdida)' : ''}. É a mesma pessoa do lead <b style={destaque}>{pergunta.nome}</b>?</>
+          ? <>Este telefone é de um contato com oportunidade no CRM{pergunta.perdida ? ' (a oportunidade está perdida)' : ''}. É a mesma pessoa do contato <b style={destaque}>{pergunta.nome}</b>?</>
           : <>Este telefone é de uma conversa do inbox. É a mesma pessoa do contato <b style={destaque}>{pergunta.nome}</b>?</>}
       </span>
       <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

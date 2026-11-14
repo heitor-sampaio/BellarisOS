@@ -99,7 +99,7 @@ export default async function AdminOportunidadesPage({
       // Lead sem dono fica no bolo comum: aparece para todos até alguém assumir.
       if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
       return leadsQuery.order('created_at', { ascending: false }).order('id').range(de, ate)
-    }, 'carregar os leads')) as unknown as LeadLido[]
+    }, 'carregar as oportunidades')) as unknown as LeadLido[]
   }
 
   // A atividade da PESSOA dona de cada lead — de todas as threads dela, não só
@@ -180,7 +180,7 @@ export default async function AdminOportunidadesPage({
                 trigger={
                   <button type="button" className="btn-primary">
                     <UserPlus size={15} />
-                    Novo lead
+                    Nova oportunidade
                   </button>
                 }
               />

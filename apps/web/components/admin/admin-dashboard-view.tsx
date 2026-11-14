@@ -1536,7 +1536,7 @@ export function AdminDashboardView({
             justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
           }}>
             <div>
-              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Funil de leads por estágio</span>
+              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Funil de oportunidades por etapa</span>
               <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginLeft: 10 }}>{monthLabel}</span>
             </div>
             {/* Um funil por vez: as etapas de funis diferentes não se sucedem. */}

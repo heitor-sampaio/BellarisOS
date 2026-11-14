@@ -111,7 +111,7 @@ async function inboxDoSdr(browser: Browser, sdr: MembroDeTeste) {
   return { ctx, page }
 }
 
-test.describe.serial('inbox com "só os próprios leads"', () => {
+test.describe.serial('inbox com "só as próprias oportunidades"', () => {
   let sdr: MembroDeTeste | null = null
   let cenario: Cenario | null = null
 
@@ -215,7 +215,7 @@ test('a escolha é feita na aba Cargos e fica gravada', async ({ page }) => {
     await page.goto('/admin/settings?tab=permissions')
     await page.waitForLoadState('networkidle')
 
-    const secao = page.getByRole('region', { name: /Inbox de quem vê só os próprios leads/ })
+    const secao = page.getByRole('region', { name: /Inbox de quem vê só as próprias oportunidades/ })
     await expect(secao).toBeVisible()
     await expect(secao.getByTestId('explicacao-visibilidade')).toContainText('todas as conversas dela')
 

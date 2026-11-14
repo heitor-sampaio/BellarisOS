@@ -459,6 +459,8 @@ export const ISOLADOS = [
   'documentos-tipos-e-nascimento.spec.ts',
   // Leva 2 (2026-11-14): o link único, uma assinatura para todos e o pacote.
   'documentos-link-unico-e-pacote.spec.ts',
+  // Bloco CRM (CR1, CR2) e RL2 (2026-11-14): "Contato" e "Oportunidade" na tela.
+  'crm-contato-e-oportunidade.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

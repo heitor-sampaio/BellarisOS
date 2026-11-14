@@ -72,7 +72,7 @@ test('A1: o "Agendar" do card traz o procedimento de interesse escolhido, e diz 
   expect((await db().from('lead_procedures').insert({ lead_id: id, procedure_id: bio })).error).toBeNull()
   await como(browser, tatiane, async p => {
     await p.goto(`/admin/oportunidades?lead=${id}`)
-    const card = p.getByRole('dialog').filter({ hasText: 'Editar lead' })
+    const card = p.getByRole('dialog').filter({ hasText: 'Editar oportunidade' })
     await card.getByRole('button', { name: 'Agendar', exact: true }).click()
     const janela = p.getByRole('dialog').filter({ hasText: 'Novo agendamento' })
     await expect(janela).toBeVisible()
@@ -94,7 +94,7 @@ test('A3: o menu "…" do card move para outra etapa aberta, no celular, sem arr
   const id = await lead('Larissa Etapa')
   await como(browser, tatiane, async p => {
     await p.goto('/admin/oportunidades')
-    await p.locator(`[data-lead-id="${id}"]`).getByTitle('Ações do lead').click()
+    await p.locator(`[data-lead-id="${id}"]`).getByTitle('Ações da oportunidade').click()
     const grupo = p.getByRole('group', { name: 'Mover para a etapa' })
     await expect(grupo.getByRole('menuitem')).toHaveText(['Avaliação'])
     await grupo.getByRole('menuitem', { name: 'Avaliação' }).click()

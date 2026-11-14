@@ -28,7 +28,7 @@ export async function getLeadEvents(leadId: string): Promise<LeadEvent[]> {
   if (owner) dono = dono.or(`owner_id.is.null,owner_id.eq.${owner}`)
   const { data: lead, error: erroLead } = await dono.maybeSingle()
 
-  if (erroLead) throw new Error(`Falha ao carregar o lead: ${erroLead.message}`)
+  if (erroLead) throw new Error(`Falha ao carregar a oportunidade: ${erroLead.message}`)
   if (!lead) return []
 
   const { data, error } = await admin

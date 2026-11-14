@@ -210,11 +210,11 @@ test('"só os meus": o estoque mostra só o insumo dela; o saldo não se atribui
 test('"só os meus" no CRM: o comercial é o dos leads dela e dos sem dono', async ({ browser }) => {
   await como(browser, ela!, async p => {
     const com = await aba(p, 'comercial')
-    await expect.soft(kpi(p, 'Leads recebidos')).toContainText(/^\D*2\D*$/)
+    await expect.soft(kpi(p, 'Oportunidades recebidas')).toContainText(/^\D*2\D*$/)
     await expect.soft(com, 'o ranking não traz a outra').not.toContainText(nomeDaOutra)
   })
   await como(browser, gestora!, async p => {
     await aba(p, 'comercial')
-    await expect(kpi(p, 'Leads recebidos')).toContainText(/^\D*3\D*$/)
+    await expect(kpi(p, 'Oportunidades recebidas')).toContainText(/^\D*3\D*$/)
   })
 })

@@ -84,7 +84,7 @@ test.afterAll(async () => {
 const fichaDe = async (n: string) => (await db().from('clients').select('id')
   .eq('tenant_id', rede!.tenantId).eq('name', n).maybeSingle<{ id: string }>()).data
 
-test('o telefone do lead PERDIDO que voltou: "É a mesma pessoa do lead X?" — Sim liga a oportunidade e a conversa', async ({ browser }) => {
+test('o telefone do lead PERDIDO que voltou: "É a mesma pessoa do contato X?" — Sim liga a oportunidade e a conversa', async ({ browser }) => {
   const nacional = `489${sufixo}0001`
   const { leadId, conversaId } = await leadComConversa('lead perdido', `55${nacional}`, etapaPerdida, true)
 
@@ -92,7 +92,7 @@ test('o telefone do lead PERDIDO que voltou: "É a mesma pessoa do lead X?" — 
     await preencher(p, { nome: nome('voltou'), telefone: nacional })
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
     const pergunta = p.getByRole('alert').filter({ hasText: 'É a mesma pessoa' })
-    await expect(pergunta).toContainText(`É a mesma pessoa do lead ${nome('lead perdido')}?`)
+    await expect(pergunta).toContainText(`É a mesma pessoa do contato ${nome('lead perdido')}?`)
     await expect(pergunta).toContainText('perdida')
     expect(await fichaDe(nome('voltou')), 'perguntar não cadastra').toBeNull()
 
@@ -145,7 +145,7 @@ test('A16: o lead criado à mão, com o telefone digitado "(48) 9…", também p
     await preencher(p, { nome: nome('do quadro'), telefone: nacional })
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
     const pergunta = p.getByRole('alert').filter({ hasText: 'É a mesma pessoa' })
-    await expect(pergunta).toContainText(`É a mesma pessoa do lead ${nome('lead do quadro')}?`)
+    await expect(pergunta).toContainText(`É a mesma pessoa do contato ${nome('lead do quadro')}?`)
     await pergunta.getByRole('button', { name: 'Sim, é a mesma pessoa' }).click()
     await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
   })
