@@ -2229,6 +2229,11 @@ do que a tela fazia saiu.
   `plano-checkout-uma-transacao` (3), `agenda-conflito-caminhos` (3),
   `plano-defeitos-da-12` (3) e `checkout-de-plano` (8) — o aceite pela
   página do plano e a prova pelo banco; todos verdes.
+- **Mais dois specs de fora dos blocos** (achados no bloco CRM):
+  `inbox-cabecalho-mobile` abria "a primeira conversa real" da rede de teste,
+  que foi zerada em 13/11 — agora cria a sua (4 verdes); `listas-sem-corte`
+  procurava o lançamento no Resumo do Financeiro — agora em
+  `?aba=movimentacoes` (9 verdes).
 - **O lint do web volta a zero**: `campo-da-lista.tsx` (do bloco Estoque)
   zerava o escolhido num `useEffect` (`set-state-in-effect`); agora o valor
   é derivado na renderização. `estoque-marcas-e-fornecedores` 6/6.

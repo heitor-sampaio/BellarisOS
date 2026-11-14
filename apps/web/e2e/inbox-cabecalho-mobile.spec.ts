@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test'
+import { banco, tenantId, nomeDeTeste, apagarConversas } from './apoio/banco'
 
 /**
  * Cabeçalho da conversa no celular: condensado, sem perder informação.
@@ -15,12 +16,28 @@ import { test, expect, type Page, type Locator } from '@playwright/test'
 /** Acima disto o cabeçalho voltou a crescer — provavelmente por quebra de linha. */
 const TETO_NO_CELULAR = 110
 
+// A conversa é do próprio spec: a rede de teste foi zerada em 2026-11-13 e
+// "a primeira conversa real do banco" deixou de existir.
+const nomeDaConversa = nomeDeTeste('Cabeçalho mobile')
+let conversaId = ''
+
+test.beforeAll(async () => {
+  const fone = '5548' + String(Date.now()).slice(-9)
+  const { data, error } = await banco().from('conversations').insert({
+    tenant_id: await tenantId(), channel: 'whatsapp', status: 'open', provider: 'uazapi',
+    contact_name: nomeDaConversa, contact_phone: fone, contact_external_id: fone, contact_aliases: [fone],
+    last_message_at: new Date().toISOString(), last_message: 'oi, tudo bem?', unread_count: 0,
+  }).select('id').single<{ id: string }>()
+  expect(error, 'criar a conversa').toBeNull()
+  conversaId = data!.id
+})
+
+test.afterAll(async () => { if (conversaId) await apagarConversas([conversaId]) })
+
 async function abrirPrimeiraConversa(page: Page) {
   await page.goto('/admin/inbox')
   await page.waitForLoadState('networkidle')
-  // A lista é de conversas reais do banco de desenvolvimento: pega a primeira,
-  // seja ela quem for, em vez de fixar um nome que some quando o dado muda.
-  await page.locator('.inbox-conversa').first().click()
+  await page.locator('.inbox-conversa', { hasText: nomeDaConversa }).first().click()
   await expect(page.locator('.inbox-cabecalho')).toBeVisible()
 }
 

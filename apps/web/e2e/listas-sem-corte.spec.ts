@@ -215,14 +215,17 @@ test('o financeiro da unidade traz o lançamento mais antigo do mês e as comiss
     description: i === 0 ? `${PREFIXO} Zz Lançamento antigo ${marca}` : `${PREFIXO} Despesa ${i} ${marca}`,
     paid_at: new Date(inicioDoMes.getTime() + 60_000 + i * 1000).toISOString(),
   })))
-  await abrir(browser, `/${slug}/financeiro`, async p => {
+  // A lista de lançamentos mora na aba Movimentações (bloco Financeiro, FI5).
+  await abrir(browser, `/${slug}/financeiro?aba=movimentacoes`, async p => {
     await expect(p.getByText(`Zz Lançamento antigo ${marca}`).first(), 'o lançamento mais antigo do mês').toBeVisible()
+  })
+  await abrir(browser, `/${slug}/financeiro`, async p => {
     // As 1010 comissões de R$ 1: o total do card soma todas.
     await expect(p.getByText(/R\$\s?1\.010,00/).first(), 'o total das comissões').toBeVisible()
   })
   // O extrato da rede tinha teto de 500. A tabela dele mostra as 100 primeiras
   // e AVISA quantas há — o aviso dizia "100 de 500" com 1011 no mês.
-  await abrir(browser, '/admin/financeiro', async p => {
+  await abrir(browser, '/admin/financeiro?aba=movimentacoes', async p => {
     await expect(p.getByText(`Exibindo 100 de ${LOTE + 1} registros`, { exact: false }), 'e no extrato da rede, todos').toBeVisible()
   })
 })
