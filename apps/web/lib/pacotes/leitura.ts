@@ -14,12 +14,14 @@ export interface PacoteDoCatalogoLido {
   isActive: boolean; itens: ItemDoCatalogo[]; composicao: string
   /** A comissão de venda e de execução do pacote (2026-10-30). */
   comissao: ComissaoDoPacote
+  /** Os documentos puxados dos procedimentos que a rede tirou deste pacote (DC1c). */
+  documentosExcluidos: string[]
 }
 
 /** O catálogo de pacotes: da rede (e os da unidade, quando houver), com os itens. */
 export async function catalogoDePacotes(tenantId: string, opcoes: { branchId?: string | null; soAtivos?: boolean } = {}): Promise<PacoteDoCatalogoLido[]> {
   let q = createAdminClient().from('service_packages')
-    .select('id, name, price, total_sessions, validity_days, is_active, comissao_venda_tipo, comissao_venda_valor, comissao_execucao, comissao_execucao_valor, comissao_responsavel_tipo, comissao_responsavel_valor, service_package_items(procedure_id, quantity, sort_order, procedures(name, price))')
+    .select('id, name, price, total_sessions, validity_days, is_active, comissao_venda_tipo, comissao_venda_valor, comissao_execucao, comissao_execucao_valor, comissao_responsavel_tipo, comissao_responsavel_valor, documentos_excluidos, service_package_items(procedure_id, quantity, sort_order, procedures(name, price))')
     .eq('tenant_id', tenantId)
     // O registro do pacote trazido de fora (F35) não é do catálogo.
     .eq('de_fora', false)
@@ -35,6 +37,7 @@ export async function catalogoDePacotes(tenantId: string, opcoes: { branchId?: s
     id: string; name: string; price: number; total_sessions: number; validity_days: number | null; is_active: boolean
     comissao_venda_tipo: string | null; comissao_venda_valor: number | null; comissao_execucao: string; comissao_execucao_valor: number | null
     comissao_responsavel_tipo: string | null; comissao_responsavel_valor: number | null
+    documentos_excluidos: string[] | null
     service_package_items: { procedure_id: string; quantity: number; sort_order: number; procedures: { name: string; price: number | null } | null }[]
   }[]).map(p => {
     const itens = [...(p.service_package_items ?? [])].sort((a, b) => a.sort_order - b.sort_order).map(i => ({
@@ -45,6 +48,7 @@ export async function catalogoDePacotes(tenantId: string, opcoes: { branchId?: s
       id: p.id, name: p.name, price: Number(p.price), totalSessions: p.total_sessions,
       validityDays: p.validity_days, isActive: p.is_active, itens, composicao: composicaoDoPacote(itens),
       comissao: comissaoDoPacoteDaLinha(p),
+      documentosExcluidos: p.documentos_excluidos ?? [],
     }
   })
 }

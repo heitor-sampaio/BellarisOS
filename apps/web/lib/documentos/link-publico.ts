@@ -1,9 +1,8 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
-import { sha256 } from './renderizar'
-import { documentoParaExibir } from './leitura'
-import { ipEAparelho, dadosDoAssinante, depoisDeAssinar, COLUNAS_ASSINAVEIS, type DocumentoAssinavel } from './assinar'
+import { abertosNaTela } from './momento'
+import { ipEAparelho, assinarJuntos, itensDaAssinatura, recusaDaImagem, COLUNAS_ASSINAVEIS, type DocumentoAssinavel } from './assinar'
 import { hashDoToken, tokenValido, soDigitos, dataIso, MENSAGEM_DO_ESTADO, type EstadoDoLink } from './link'
 import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 
@@ -21,21 +20,23 @@ export interface Espiada {
   estado:  EstadoDoLink
   clinica: string | null
   pede:    'CPF' | 'NASCIMENTO'
+  /** Quantos documentos o link pede (a página diz "2 documentos", sem os títulos). */
+  documentos: number
 }
 
-/** O que a página mostra antes da identidade: a clínica, e o que vai pedir. */
+/** O que a página mostra antes da identidade: a clínica, quantos documentos e o que vai pedir. */
 export async function espiarLink(token: string): Promise<Espiada> {
-  if (!tokenValido(token)) return { estado: 'invalido', clinica: null, pede: 'CPF' }
+  if (!tokenValido(token)) return { estado: 'invalido', clinica: null, pede: 'CPF', documentos: 1 }
   const admin = createAdminClient()
   const r = await ler(admin.rpc('documento_link_espiar', { p_token_hash: hashDoToken(token) }), 'abrir o link de assinatura') as
-    { estado: EstadoDoLink; clinica?: string | null; pede?: 'CPF' | 'NASCIMENTO' }
-  return { estado: r.estado, clinica: r.clinica ?? null, pede: r.pede ?? 'CPF' }
+    { estado: EstadoDoLink; clinica?: string | null; pede?: 'CPF' | 'NASCIMENTO'; documentos?: number }
+  return { estado: r.estado, clinica: r.clinica ?? null, pede: r.pede ?? 'CPF', documentos: Math.max(1, r.documentos ?? 1) }
 }
 
 export interface Identidade { token: unknown; cpf?: unknown; nascimento?: unknown }
 
 type Conferida =
-  | { ok: true; documento: string; tenant: string; link: string; metodo: 'CPF' | 'NASCIMENTO' }
+  | { ok: true; documentos: string[]; tenant: string; metodo: 'CPF' | 'NASCIMENTO' }
   | { ok: false; erro: string; status: number }
 
 const ERRO: Record<string, string> = {
@@ -48,6 +49,10 @@ const ERRO: Record<string, string> = {
 // não vale, 429 o limite do IP, 403 identidade que não confere.
 const STATUS: Record<string, number> = { invalido: 404, usado: 410, revogado: 410, vencido: 410, indisponivel: 410, limite: 429 }
 
+/**
+ * A identidade, conferida pelo banco para o LINK inteiro (DC3, leva 2): as
+ * tentativas contam no link, e a 5ª errada derruba todos os documentos dele.
+ */
 async function conferir(input: Identidade): Promise<Conferida> {
   if (!tokenValido(input.token)) return { ok: false, erro: ERRO.invalido!, status: 404 }
   const cpf = soDigitos(input.cpf)
@@ -57,8 +62,8 @@ async function conferir(input: Identidade): Promise<Conferida> {
   const admin = createAdminClient()
   const r = await gravar(admin.rpc('documento_link_abrir', {
     p_token_hash: hashDoToken(input.token), p_cpf: cpf, p_nascimento: nascimento, p_ip: ip, p_ua: ua,
-  }), 'conferir a identidade') as { ok?: true; erro?: string; restantes?: number; documento?: string; tenant?: string; link?: string; metodo?: 'CPF' | 'NASCIMENTO' }
-  if (r.ok) return { ok: true, documento: r.documento!, tenant: r.tenant!, link: r.link!, metodo: r.metodo! }
+  }), 'conferir a identidade') as { ok?: true; erro?: string; restantes?: number; documentos?: string[]; tenant?: string; metodo?: 'CPF' | 'NASCIMENTO' }
+  if (r.ok) return { ok: true, documentos: r.documentos ?? [], tenant: r.tenant!, metodo: r.metodo! }
   if (r.erro === 'identidade') {
     const n = r.restantes ?? 0
     return { ok: false, erro: `Os dados não conferem com o cadastro. ${n === 1 ? 'Resta 1 tentativa' : `Restam ${n} tentativas`} antes de o link ser bloqueado.`, status: 403 }
@@ -66,58 +71,52 @@ async function conferir(input: Identidade): Promise<Conferida> {
   return { ok: false, erro: ERRO[r.erro ?? 'invalido'] ?? ERRO.invalido!, status: STATUS[r.erro ?? 'invalido'] ?? 403 }
 }
 
-/** Confere a identidade e devolve o documento para ler e assinar. */
-export async function abrirPorLink(input: Identidade): Promise<{ erro?: string; status?: number; doc?: DocumentoNaTela }> {
+/**
+ * Confere a identidade e devolve os documentos do link para ler e assinar —
+ * todos os abertos dele, montados de novo (assina-se com os dados de agora).
+ * `doc` é o primeiro, para quem só conhece o link de um documento.
+ */
+export async function abrirPorLink(input: Identidade): Promise<{ erro?: string; status?: number; documentos?: DocumentoNaTela[]; doc?: DocumentoNaTela }> {
   const c = await conferir(input)
   if (!c.ok) return { erro: c.erro, status: c.status }
-  // Montado de novo ao abrir, como no portal: assina-se com os dados de agora.
-  const d = await documentoParaExibir(c.tenant, c.documento, { montarDeNovo: true })
-  if (!d || d.resumo.status !== 'PENDENTE') return { erro: ERRO.indisponivel, status: 410 }
-  return {
-    doc: {
-      id: d.resumo.id, titulo: d.resumo.titulo, tipo: d.resumo.tipo, status: d.resumo.status,
-      faltando: [], codigo: d.resumo.codigo, motivo: null,
-      cliente: { nome: d.cliente.nome, assinante: d.cliente.assinante }, conteudo: d.conteudo, pdfUrl: d.pdfUrl, imagens: d.imagens, assinatura: null,
-    },
-  }
+  const documentos = await abertosNaTela(c.tenant, c.documentos)
+  if (!documentos.length) return { erro: ERRO.indisponivel, status: 410 }
+  return { documentos, doc: documentos[0] }
 }
 
-/** Assina pelo link: confere de novo, e `documento_assinar` consome o link. */
+/**
+ * Assina pelo link: confere a identidade de novo, e `documentos_assinar`
+ * consome o link — os documentos assinados têm de ser exatamente os abertos
+ * dele (o banco recusa a mais e a menos). `itens` traz o hash de cada um; o
+ * `hashExibido` sozinho vale para o link de um documento só.
+ */
 export async function assinarPorLink(input: Identidade & {
-  assinatura: unknown; hashExibido: unknown; aceite: unknown
-}): Promise<{ erro?: string; status?: number; codigo?: string | null }> {
-  if (typeof input.assinatura !== 'string' || !input.assinatura.startsWith('data:image/png;base64,')) {
-    return { erro: 'Faça a sua assinatura antes de confirmar.', status: 400 }
-  }
-  if (input.assinatura.length > 400_000) return { erro: 'A imagem da assinatura ficou grande demais. Limpe e assine de novo.', status: 400 }
-  if (typeof input.hashExibido !== 'string') return { erro: 'Abra o documento de novo para assinar.', status: 400 }
+  assinatura: unknown; itens?: unknown; hashExibido?: unknown
+}): Promise<{ erro?: string; status?: number; codigo?: string | null; documentos?: { id: string; codigo: string | null }[] }> {
+  const recusa = recusaDaImagem(input.assinatura)
+  if (recusa) return { erro: recusa, status: 400 }
 
   const c = await conferir(input)
   if (!c.ok) return { erro: c.erro, status: c.status }
 
-  const admin = createAdminClient()
-  const doc = await ler(admin.from('issued_documents').select(COLUNAS_ASSINAVEIS)
-    .eq('id', c.documento).eq('tenant_id', c.tenant).single(), 'buscar o documento') as unknown as DocumentoAssinavel
-  const [assinante, rede] = await Promise.all([dadosDoAssinante(doc.client_id), ipEAparelho()])
-  const r = await gravar(admin.rpc('documento_assinar', {
-    p_doc:           doc.id,
-    p_tenant:        doc.tenant_id,
-    p_canal:         'LINK',
-    p_identidade:    c.metodo,
-    p_hash_exibido:  input.hashExibido,
-    p_png:           input.assinatura,
-    p_png_sha256:    sha256(input.assinatura),
-    p_nome:          assinante.nome,
-    p_documento:     assinante.documento,
-    p_ip:            rede.ip,
-    p_ua:            rede.ua,
-    p_conduzido_por: null,
-    p_link:          c.link,
-    p_scan_path:     null,
-    p_scan_sha256:   null,
-    p_aceite:        typeof input.aceite === 'string' ? input.aceite.slice(0, 300) || null : null,
-  }), 'registrar a assinatura') as { codigo: string | null }
+  const itens = input.itens != null
+    ? itensDaAssinatura(input.itens)
+    : typeof input.hashExibido === 'string' && c.documentos.length === 1
+      ? [{ id: c.documentos[0]!, hashExibido: input.hashExibido }]
+      : null
+  if (!itens) return { erro: 'Abra o documento de novo para assinar.', status: 400 }
 
-  await depoisDeAssinar(doc, null)
-  return { codigo: r.codigo }
+  const admin = createAdminClient()
+  const docs = (await ler(admin.from('issued_documents').select(COLUNAS_ASSINAVEIS)
+    .in('id', itens.map(i => i.id)).eq('tenant_id', c.tenant), 'buscar os documentos') ?? []) as unknown as DocumentoAssinavel[]
+  // Um id de fora do link (de outra cliente, de outra rede): nada se assina.
+  const doLink = new Set(c.documentos)
+  if (docs.length !== itens.length || !itens.every(i => doLink.has(i.id))) {
+    return { erro: 'Os documentos deste link mudaram. Abra o link de novo para assinar.', status: 409 }
+  }
+  const documentos = await assinarJuntos({
+    docs, itens, canal: 'LINK', identidade: c.metodo, assinatura: input.assinatura as string,
+    conduzidoPor: null, linkHash: hashDoToken(input.token as string), ator: null,
+  })
+  return { codigo: documentos[0]?.codigo ?? null, documentos }
 }

@@ -4,6 +4,10 @@ import { documentoParaExibir } from '@/lib/documentos/leitura'
 import { TelaDeAssinatura } from '@/components/shared/tela-de-assinatura'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
+import { caminhoInterno } from '@/lib/origem'
+import { documentosDoMomento, abertosNaTela } from '@/lib/documentos/momento'
+import type { JuntosNaAssinatura } from '@/components/shared/tela-de-assinatura'
 
 /**
  * Corpo da tela de um termo ou contrato do cliente — nos dois portais.
@@ -34,13 +38,31 @@ export async function AssinaturaDeDocumento({ id, base, voltar }: {
   const rotaDoCliente = `${base}/clients/${doc.clienteId}`
   // Só caminho interno: um `?voltar=https://…` levaria para fora do sistema,
   // e o navegador lê `//x` e `/\x` como outro domínio.
-  const destino = voltar && /^\/(?![/\\])/.test(voltar) ? voltar : `${rotaDoCliente}?aba=documentos`
+  const destino = caminhoInterno(voltar ?? null, `${rotaDoCliente}?aba=documentos`)
+
+  // DC3 (leva 2): quem vai colher entrega o aparelho com TODOS os abertos do
+  // momento (o agendamento, o pacote, o plano) — e vê os que ficam de fora.
+  let juntos: JuntosNaAssinatura | undefined
+  if (podeColher && doc.resumo.status === 'PENDENTE') {
+    const ancora = await ler(createAdminClient().from('issued_documents')
+      .select('id, client_id, appointment_id, treatment_plan_id, client_package_id')
+      .eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o momento do documento') as
+      { id: string; client_id: string; appointment_id: string | null; treatment_plan_id: string | null; client_package_id: string | null } | null
+    if (ancora) {
+      const momento = await documentosDoMomento(ctx.tenantId!, ancora)
+      juntos = {
+        documentos: await abertosNaTela(ctx.tenantId!, momento.abertos.map(d => d.id).filter(x => x !== id)),
+        fora: momento.fora,
+      }
+    }
+  }
 
   return (
     <TelaDeAssinatura
       podeColher={podeColher}
       voltar={destino}
       rotaDoCliente={rotaDoCliente}
+      juntos={juntos}
       doc={{
         id:         doc.resumo.id,
         titulo:     doc.resumo.titulo,

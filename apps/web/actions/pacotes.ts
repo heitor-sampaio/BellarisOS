@@ -38,6 +38,7 @@ import { notifyCancelledAppointment, getUserName } from '@/lib/appointments/avis
 import { EVENTOS } from '@estetica-os/types'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
+import { prepararDocumentosDoPacote } from '@/lib/documentos/pacote'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -54,6 +55,11 @@ const EntradaDoPacote = z.object({
   is_active:     z.boolean(),
   /** A comissão do pacote (2026-10-30). Ausente = não mexe nela. */
   comissao:      EntradaDaComissaoDoPacote.optional(),
+  /**
+   * DC1c/PC9b (leva 2): os documentos puxados dos procedimentos que a rede
+   * EXCLUIU deste pacote. Ausente = não mexe neles.
+   */
+  documentos_excluidos: z.array(z.string().uuid()).max(100).optional(),
 }).refine(p => p.itens.reduce((s, i) => s + i.quantity, 0) >= 2, 'Um pacote tem pelo menos 2 sessões.')
   .refine(p => p.itens.reduce((s, i) => s + i.quantity, 0) <= 100, 'No máximo 100 sessões num pacote.')
 
@@ -88,6 +94,7 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
       p_tenant: ctx.tenantId!, p_id: p.id ?? null, p_nome: p.name, p_preco: Math.round(p.price * 100) / 100,
       p_validade: p.validity_days, p_ativo: p.is_active, p_itens: itens,
       p_comissao: p.comissao ?? null,
+      p_documentos_excluidos: p.documentos_excluidos ?? null,
     }), 'salvar o pacote')
     revalidatePath('/admin/pacotes')
     revalidatePath('/[slug]/pacotes', 'page')
@@ -112,7 +119,15 @@ type ResultadoDaVendaDoPacote = {
   error?: string; clientPackageId?: string; confirmarSemResponsavel?: string; confirmarSemVendedor?: string
   /** A 1ª sessão do pacote vendido, para o "Agendar a 1ª sessão agora" (A47 da 7ª simulação). */
   primeiraSessao?: { id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null
+  /**
+   * PC2 (leva 2): os documentos que a venda emitiu, para a tela dizer o que
+   * ficou para assinar. A venda não espera por eles (princípios 2 e 6).
+   */
+  documentos?: DocumentoDaVenda[]
 }
+
+/** Um documento da venda do pacote, como a tela da venda o mostra. */
+export interface DocumentoDaVenda { id: string; titulo: string; status: string; faltando: string[] }
 
 /** A pergunta quando o pacote paga quem atende sobre o valor dele e ninguém foi marcado (com-04). */
 const PERGUNTA_SEM_RESPONSAVEL = 'Ninguém foi marcado como responsável: a comissão de quem atende deste pacote (sobre o valor dele) não vai para ninguém. Vender assim?'
@@ -224,11 +239,23 @@ async function venderPacoteUmaVez(
       ? { id: primeira.id as string, procedimento: { id: primeira.procedure_id as string, nome: procDaPrimeira?.name ?? 'Sessão', duracaoMin: Number(procDaPrimeira?.duration_min ?? 0) } }
       : null
 
+    // PC2: os documentos da venda, montados com o pagamento. A venda já está
+    // gravada: falhar aqui não a desfaz — os documentos se montam de novo ao
+    // abrir (a ficha, o link), e a tela diz que não deu.
+    let documentos: DocumentoDaVenda[] = []
+    try {
+      documentos = (await prepararDocumentosDoPacote(ctx.tenantId!, clientPackageId, lido.data, reais))
+        .filter(d => d.status === 'PENDENTE' || d.status === 'INCOMPLETO' || d.status === 'A_GERAR')
+        .map(d => ({ id: d.id, titulo: d.title, status: d.status, faltando: d.missing_fields ?? [] }))
+    } catch (e) {
+      console.error('[pacote] documentos da venda:', mensagemDoErro(e))
+    }
+
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')
     revalidatePath('/admin/financeiro')
     revalidatePath('/[slug]/financeiro', 'page')
-    return { clientPackageId, primeiraSessao }
+    return { clientPackageId, primeiraSessao, documentos }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

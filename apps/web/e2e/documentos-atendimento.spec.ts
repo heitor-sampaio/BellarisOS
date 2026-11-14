@@ -95,6 +95,7 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
 
 async function rabiscar(page: Page) {
   const quadro = page.locator('canvas').last()
+  await quadro.scrollIntoViewIfNeeded()
   const caixa = (await quadro.boundingBox())!
   await page.mouse.move(caixa.x + 40, caixa.y + 60)
   await page.mouse.down()
@@ -179,10 +180,15 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na clí
       expect(await coberto('[aria-label="Busca universal"]'), 'a busca da equipe fica coberta').toBe(true)
       expect(await coberto('nav'), 'o menu da equipe fica coberto').toBe(true)
 
-      await page.getByText(/li e concordo com este documento/).click()
+      // DC3 (Bloco Documentos, leva 2): entregue o aparelho, os abertos do
+      // agendamento vão juntos — o termo e o contrato — e uma assinatura vale
+      // para os dois. Ela abre cada um antes.
+      await page.getByRole('button', { name: `Ler ${TITULO_TERMO}` }).click()
+      await page.getByRole('button', { name: `Ler ${TITULO_CONTRATO}` }).click()
+      await page.getByText(/li e concordo com os documentos:/).click()
       await rabiscar(page)
-      await page.getByRole('button', { name: 'Assinar documento' }).click()
-      await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
+      await page.getByRole('button', { name: 'Assinar os 2 documentos' }).click()
+      await expect(page.getByRole('heading', { name: 'Documentos assinados' })).toBeVisible()
       await expect(page.getByText(doc!.verification_code!)).toBeVisible()
 
       // Com o termo assinado, a sessão libera o início — o contrato só avisa.

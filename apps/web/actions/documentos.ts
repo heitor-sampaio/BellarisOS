@@ -30,7 +30,11 @@ import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { garantirRenderizado, sha256 } from '@/lib/documentos/renderizar'
 import { prepararDocumentosDoPlano, contratoQueSeriaSubstituido } from '@/lib/documentos/plano'
-import { ipEAparelho, dadosDoAssinante, depoisDeAssinar, COLUNAS_ASSINAVEIS, type DocumentoAssinavel } from '@/lib/documentos/assinar'
+import {
+  ipEAparelho, dadosDoAssinante, depoisDeAssinar, assinarJuntos, itensDaAssinatura, recusaDaImagem,
+  COLUNAS_ASSINAVEIS, type DocumentoAssinavel,
+} from '@/lib/documentos/assinar'
+import { documentosDoMomento } from '@/lib/documentos/momento'
 import { notifyClient } from '@/lib/notifications/notify'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
 import { vezesNoCartao, maquininhaDoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
@@ -125,6 +129,43 @@ export async function assinarNaClinica(input: {
 
     await depoisDeAssinar(doc, ctx)
     return { codigo: r.codigo }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * DC3 (leva 2): o aparelho entregue na clínica, com TODOS os abertos do
+ * momento — a cliente lê cada um e assina uma vez. Cada id passa pelo mesmo
+ * portão de `assinarNaClinica` (rede, unidade, escopo, quem colhe), e o banco
+ * confere que são de uma cliente só.
+ */
+export async function assinarJuntosNaClinica(input: {
+  itens: { id: string; hashExibido: string }[]
+  assinatura: string
+  identidadeConferida: boolean
+}): Promise<{ error?: string; documentos?: { id: string; codigo: string | null }[] }> {
+  try {
+    const ctx = await getTenantContext()
+    const travado = bloqueioDoSuporte(ctx, 'colher assinatura')
+    if (travado) return { error: travado }
+    const itens = itensDaAssinatura(input?.itens)
+    if (!itens) return { error: 'Abra os documentos de novo para assinar.' }
+    const docs: DocumentoAssinavel[] = []
+    for (const i of itens) {
+      const doc = await documentoAoAlcance(ctx, i.id)
+      if (!doc) return { error: 'Documento não encontrado.' }
+      await assertPodeColher(ctx, doc)
+      docs.push(doc)
+    }
+    if (!input.identidadeConferida) return { error: 'Confira o documento de identidade do cliente antes de entregar o aparelho.' }
+    const recusa = recusaDaImagem(input.assinatura)
+    if (recusa) return { error: recusa }
+    const documentos = await assinarJuntos({
+      docs, itens, canal: 'CLINICA', identidade: 'PRESENCIAL', assinatura: input.assinatura,
+      conduzidoPor: ctx.internalUserId ?? null, linkHash: null, ator: ctx,
+    })
+    return { documentos }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
@@ -417,6 +458,10 @@ export interface LinkDeAssinatura {
   whatsapp:  string
   /** O que o cliente vai confirmar ao abrir. */
   pede:      'CPF' | 'NASCIMENTO'
+  /** DC3: os títulos que vão no link (todos os abertos prontos do momento). */
+  documentos: string[]
+  /** DC3: os do mesmo momento com "faltam dados" — não vão, e a tela diz o que falta. */
+  fora:      { titulo: string; faltando: string[] }[]
 }
 
 /**
@@ -433,9 +478,13 @@ export interface LinkDeAssinatura {
  * chama já conferiu o módulo, a rede e a unidade do documento.
  */
 async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{ error: string } | { link: LinkDeAssinatura }> {
-  const montado = await garantirRenderizado(ctx.tenantId!, doc.id)
-  if (montado?.status === 'INCOMPLETO') return { error: 'Faltam dados do cliente neste documento. Complete o cadastro antes de enviar o link.' }
-  if (montado?.status !== 'PENDENTE') return { error: 'Este documento não está esperando assinatura.' }
+  // DC3/AG1 (leva 2): o link é do MOMENTO — vai com todos os abertos prontos
+  // do agendamento (ou do pacote, ou do plano); o de "faltam dados" fica fora.
+  const { abertos, fora } = await documentosDoMomento(ctx.tenantId!, doc)
+  if (!abertos.some(d => d.id === doc.id)) {
+    if (fora.some(f => f.id === doc.id)) return { error: 'Faltam dados do cliente neste documento. Complete o cadastro antes de enviar o link.' }
+    return { error: 'Este documento não está esperando assinatura.' }
+  }
 
   const admin = createAdminClient()
   const cliente = await ler(admin.from('clients').select('name, document, birth_date, phone').eq('id', doc.client_id).single(), 'buscar o cliente')
@@ -447,8 +496,8 @@ async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{
 
   const { token, hash } = novoToken()
   const expiraEm = new Date(Date.now() + VALIDADE_DO_LINK_DIAS * 86_400_000).toISOString()
-  await gravar(admin.rpc('documento_link_criar', {
-    p_doc: doc.id, p_tenant: ctx.tenantId!, p_token_hash: hash, p_expira: expiraEm, p_ator: ctx.internalUserId ?? null,
+  await gravar(admin.rpc('documentos_link_criar', {
+    p_docs: abertos.map(d => d.id), p_tenant: ctx.tenantId!, p_token_hash: hash, p_expira: expiraEm, p_ator: ctx.internalUserId ?? null,
   }), 'gerar o link de assinatura')
 
   const [unidade, rede] = await Promise.all([
@@ -459,7 +508,8 @@ async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{
   const url = `${origemPublicaDe(await headers())}/assinar/${token}`
   // Genérica de propósito: a prévia do WhatsApp aparece na tela de bloqueio.
   const mensagem = mensagemDoLink({
-    nome: cliente?.name as string | null, pedido: `${clinica} pediu a sua assinatura em um documento.`,
+    nome: cliente?.name as string | null,
+    pedido: `${clinica} pediu a sua assinatura em ${abertos.length === 1 ? 'um documento' : `${abertos.length} documentos`}.`,
     acao: 'Para ler e assinar', temCpf, dias: VALIDADE_DO_LINK_DIAS, url,
   })
   const numero = telefoneParaWhatsApp(cliente?.phone as string | null)
@@ -467,7 +517,12 @@ async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{
 
   revalidatePath('/admin/clients/[id]', 'page')
   revalidatePath('/[slug]/clients/[id]', 'page')
-  return { link: { url, expiraEm, mensagem, whatsapp, pede: temCpf ? 'CPF' : 'NASCIMENTO' } }
+  return {
+    link: {
+      url, expiraEm, mensagem, whatsapp, pede: temCpf ? 'CPF' : 'NASCIMENTO',
+      documentos: abertos.map(d => d.title), fora: fora.map(f => ({ titulo: f.titulo, faltando: f.faltando })),
+    },
+  }
 }
 
 export async function gerarLinkDeAssinatura(id: string): Promise<{ error?: string; link?: LinkDeAssinatura }> {

@@ -1774,6 +1774,114 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Documentos, leva 2 (DC3/AG1/PC10/CA4, DC1c/PC9b, PC2): um link e uma assinatura para todos, e o pacote com os documentos dele
+
+O resto da revisão de Documentos do Heitor (13/11): a cliente assina tudo de
+uma vez, em todo canal, e a venda do pacote emite os documentos dele.
+
+- **DC3/AG1/PC10 — um link por cliente e momento.** O momento é o
+  agendamento, o pacote vendido ou o plano (`documentosDoMomento`,
+  `lib/documentos/momento.ts`). "Enviar link" leva todos os abertos prontos
+  dele; a ficha diz o que vai no link e o que fica de fora, com o que falta
+  ("Ficam de fora até completar o cadastro: Declaração — falta Endereço").
+  No banco, uma linha de `document_sign_links` por documento com o mesmo
+  `token_hash` (`documentos_link_criar`; gerar outro revoga o grupo antigo
+  inteiro; um grupo é de uma cliente só). A prova de quem assina vale para o
+  grupo: CPF ou nascimento, as tentativas contam em todas as linhas e 5 erros
+  revogam todas, uso único (assinar consome todas), 7 dias. O pedido de
+  assinar tem de trazer EXATAMENTE os documentos ativos do link — documento
+  de fora, de outra cliente ou só a metade: 409 e nada assinado.
+- **Uma assinatura para todos, nos três canais** (`AssinarJuntos`,
+  `components/shared/assinar-juntos.tsx`): a lista dos documentos, "Ler" em
+  cada um, o aceite que diz os títulos ("Eu, Ana, li e concordo com os
+  documentos: A e B." — montado no servidor, `textoDoAceite`) e o quadro; o
+  botão diz o que falta, inclusive os que ela não abriu. No link
+  (`/assinar/[token]`), no aparelho entregue na clínica ("Entregar ao
+  cliente" leva os abertos do momento juntos, `assinarJuntosNaClinica`) e no
+  app ("Assinar todos", `/[slug]/cliente/documentos/assinar`, CA4). Cada
+  documento com a SUA evidência: a mesma imagem, o hash dele, o seu código,
+  o seu PDF e o seu QR; `/verificar` segue por documento. Papel e "dispensar
+  com motivo" seguem por documento. Função única `documentos_assinar` (a
+  `documento_assinar` antiga virou o caso de um, e o link de um documento
+  só continua funcionando).
+- **DC1c/PC9b — o pop-up do pacote.** Abaixo do preço e da validade, o grupo
+  "Documentos do pacote": o contrato de pacote da rede e os documentos
+  puxados dos procedimentos distintos (o termo e os "Outros documentos"; o
+  contrato do procedimento não), cada um com "Excluir" / "Incluir de novo".
+  O pacote guarda o que a rede EXCLUIU (`service_packages.documentos_excluidos`):
+  documento novo ligado ao procedimento entra sozinho. Mesma regra no app
+  (`documentosPuxadosDoPacote`) e no banco (`private.modelos_do_pacote`).
+- **PC2 — a venda do pacote emite.** O gatilho da venda
+  (`trg_documentos_do_pacote_vendido`, menos o pacote trazido de fora) emite o
+  contrato de pacote e os puxados que ficaram, com `client_package_id` e o
+  momento `VENDA_PACOTE`; a action os monta com o pagamento da venda
+  (`pacote.*`, `pagamento.*`). A tela da venda diz o que ficou para assinar
+  e leva a colher. Cancelar o pacote cancela os abertos dele e revoga os
+  links. O "Bloqueia" do documento do pacote trava o início de cada SESSÃO
+  dele: `documentos_pendentes_do_atendimento` conta os abertos do pacote, e a
+  janela da agenda e a sessão de atendimento os mostram.
+- **Migrations** (aplicadas):
+  `20261115300001_documentos_link_unico_e_pacote` — **destrutiva**: sai a
+  UNIQUE `document_sign_links_token_hash_key` (vira índice comum + única por
+  token e documento), e `pacote_salvar` é recriada com
+  `p_documentos_excluidos` (drop da de 8 argumentos); novas
+  `documentos_link_criar`, `documentos_assinar`, `documentos_emitir_do_pacote`,
+  `private.modelos_do_pacote`, `private.documentos_do_pacote_vendido` +
+  gatilho; reescritas do corpo de produção `documento_link_espiar`,
+  `documento_link_abrir`, e `documento_link_criar`/`documento_assinar` como
+  invólucros; colunas `issued_documents.client_package_id` (FK para
+  `client_packages`, índice único por pacote e modelo) e
+  `service_packages.documentos_excluidos`; o momento `VENDA_PACOTE` no check.
+  Sem tabela nova e sem política nova; toda função sem execução para
+  public/anon/authenticated, e as públicas só para `service_role`.
+  `20261115300002_documentos_do_pacote_na_sessao` — `documentos_pendentes_do_atendimento`
+  passa a contar os abertos do pacote na sessão dele (não destrutiva).
+- **Decisões pelos princípios**: (1) a venda do pacote NÃO espera a
+  assinatura (2 e 6: o "assinatura antes do dinheiro", PT1c, foi dito do
+  plano; do pacote nada) — o "Bloqueia" passa a valer onde todo "Bloqueia"
+  vale, no início do atendimento: aqui, de cada sessão do pacote; a dica do
+  editor diz isso (dizia "A venda do pacote não é fechada sem o contrato
+  assinado", que nada fazia — princípio 3). (2) O pacote guarda o que a rede
+  exclui, não a lista que fica (3: o que a tela mostra é o que nasce, e o
+  documento ligado depois ao procedimento entra sozinho). (3) No documento do
+  pacote sem responsável, `profissional.*` sai vazio em vez de travar (2 e
+  4). (4) O link de um documento só (o legado) continua valendo; o grupo
+  revoga o antigo inteiro. (5) O pop-up do PLANO e "o do plano, na criação"
+  (DC4) ficam para o bloco Plano: o pop-up do plano é o próprio checkout, e
+  mudar quando os documentos dele nascem mexe na trava do checkout (PT1c) —
+  não é simples. O link e a assinatura juntos já valem para os documentos do
+  plano.
+- **Specs antigos que mudaram** (a regra nova): `documentos-atendimento`
+  ("Entregar ao cliente" agora leva o termo e o contrato do agendamento
+  juntos — abre os dois, "li e concordo com os documentos:", "Assinar os 2
+  documentos"); `documentos-tipos-e-nascimento` (a sessão de pacote não
+  emite nada seu, mas o "Bloqueia" dos documentos do PACOTE — emitidos na
+  venda — trava o início dela; em "Só avisa", segue). Os do link de um
+  documento e do checkout do plano seguem pelos invólucros, sem mudança.
+- **Testes**: TDD — o vitest novo (`tests/documentos-leva2.test.ts`, 8)
+  falhou antes ("Failed to resolve import '@/lib/documentos/aceite'"); o E2E
+  novo (`e2e/documentos-link-unico-e-pacote.spec.ts`, 12) caiu no primeiro
+  teste (`[data-vai-no-link]` não existia), e o da sessão do pacote
+  ("os abertos do pacote valem para a sessão": `[]`) antes da migration
+  `…300002`. Depois: 12/12. Vizinhos em
+  série, 52 specs (documentos-*, portal-cliente-documento*, api-sem-credencial,
+  pacote*/pacotes-venda, pdv que vende pacote, comissões e vendas de pacote,
+  checkout do plano, agenda-janela-termo e os que iniciam sessão de pacote):
+  205 passaram, 25 pularam (`planos-recursos` e 4 do `api-sem-credencial`,
+  sem a chave), e os 2 que caíram eram os specs acima, que contrariavam a
+  regra nova — corrigidos, passam (7/7 e 5/5). `tsc`, `eslint` e vitest
+  (2398) limpos.
+- **Para o Heitor**: (1) a migration `…300001` é **destrutiva** e já está no
+  banco (a UNIQUE do `token_hash` e a assinatura de `pacote_salvar`); (2) a
+  venda do pacote não espera a assinatura — decidido pelos princípios; se a
+  regra for "a venda espera", é a trava do checkout do plano trazida ao PDV;
+  (3) toda rede que tem o contrato de pacote ativo (todas: ele nasce com a
+  rede, em "Bloqueia") passa a ter as sessões dos pacotes vendidos travadas
+  até o contrato ser assinado; (4) mexi em leitura compartilhada (o link
+  público, a janela da agenda) — vale uma completa.
+- **Fica para o bloco Plano**: o pop-up do plano com os documentos puxados
+  (PC9b no plano) e, do DC4, "o do plano, na criação".
+
 ### 2026-11-14 — Bloco Documentos, leva 1 (DC1, DC1b, DC2, DC4): cinco tipos, "Outros documentos" e tudo nasce ao agendar
 
 O Heitor (revisão de 13/11, com PR4/PR5 de Procedimentos e PC2/PC7–PC9a de

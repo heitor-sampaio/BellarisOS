@@ -1742,6 +1742,26 @@ revisão, só se escreve o plano. Nada se implementa.
   pacote e os documentos dele — e com isso `pacote.*` ganha valor ao montar);
   e, do DC4, "o do pacote, na venda" e "o do plano, na criação" (hoje os do
   plano seguem nascendo no checkout).
+- ✅ Bloco Documentos, leva 2 (14/11) — DC3/AG1/PC10/CA4, DC1c/PC9b (o
+  pacote) e PC2: um link por cliente e momento (o agendamento, o pacote
+  vendido, o plano) com todos os abertos prontos dele; a cliente vê a lista,
+  abre cada um, marca o aceite que diz os títulos e assina UMA vez — no link,
+  no aparelho entregue na clínica e no app ("Assinar todos"); cada documento
+  com a sua evidência, o seu hash, o seu PDF e o seu QR; o de "faltam dados"
+  fica de fora e a tela diz o que falta. A segurança do link vale para o
+  grupo (CPF ou nascimento, tentativas, uso único, 7 dias). No pop-up do
+  pacote, o contrato de pacote e os documentos puxados dos procedimentos,
+  cada um com "Excluir". A venda do pacote emite o contrato de pacote
+  (`pacote.*` e `pagamento.*`) e os puxados que ficaram, e NÃO espera a
+  assinatura (princípios 2 e 6 — o "assinatura antes do dinheiro" foi dito do
+  plano); o "Bloqueia" do documento do pacote trava o início de cada sessão
+  dele; cancelar o pacote cancela os abertos. Migrations `20261115300001`
+  (destrutiva: sai a UNIQUE de `document_sign_links.token_hash`, e
+  `pacote_salvar` é recriada com um parâmetro a mais) e `20261115300002`.
+  Regra em `documentos.md` e `vendas-financeiro.md`. **Fica para o bloco
+  Plano:** o pop-up do PLANO com os documentos puxados (PC9b no plano) e, do
+  DC4, "o do plano, na criação" — os do plano seguem nascendo no checkout
+  (o link e a assinatura juntos já valem para eles).
 
 ### Bloco: Estoque
 
@@ -1777,9 +1797,9 @@ revisão, só se escreve o plano. Nada se implementa.
 | PC6 | Criar e editar pacote: quem tem Procedimentos em **Gerenciar**, e só isso (sai a exigência de ser da rede) | — |
 | PC7/PC8 | **No procedimento:** "Termo de consentimento" (opcional), "Contrato" (opcional, só no atendimento AVULSO) e "Outros documentos" (opcional, quantos quiser, qualquer documento criado ou anexado no sistema) ✅ 14/11 (Documentos, leva 1) | a revisão de **Documentos** |
 | PC9a | **Contrato de pacote**, novo: o equivalente do contrato de plano, um modelo da rede à parte, preenchido com os procedimentos, as sessões e o pagamento de cada pacote vendido. O contrato de plano fica como está ✅ 14/11 (o modelo, as variáveis e o padrão; preencher na venda é a leva 2) | a revisão de **Documentos** (as variáveis do pacote) |
-| PC2/PC7 | **Na venda do pacote,** a cliente assina UMA vez: o contrato de pacote e os documentos puxados que ficaram (PC9b/PC10). As sessões do pacote não emitem documento de novo. Hoje cada sessão emite o termo e o contrato do procedimento — a sessão de pacote já não pede documento ✅ 14/11; a venda emitir é a leva 2 | PC7, PC9a |
-| PC9b/PC10 | **No pop-up de criação do pacote e do plano,** logo abaixo da parte do termo e do contrato: os documentos puxados dos procedimentos (o termo de cada procedimento diferente e os outros documentos deles; o contrato do procedimento NÃO), cada um com excluir | PC7; **Plano de tratamento** |
-| PC10 | **Um link só, uma assinatura:** os documentos do pacote ou do plano vão à cliente num link único, e uma assinatura assina todos de uma vez. Hoje é um link por documento e uma assinatura por documento | a revisão de **Documentos** |
+| PC2/PC7 | **Na venda do pacote,** a cliente assina UMA vez: o contrato de pacote e os documentos puxados que ficaram (PC9b/PC10). As sessões do pacote não emitem documento de novo. Hoje cada sessão emite o termo e o contrato do procedimento — a sessão de pacote já não pede documento ✅ 14/11; a venda emite ✅ 14/11 (leva 2; não espera a assinatura — o "Bloqueia" trava a sessão) | PC7, PC9a |
+| PC9b/PC10 | **No pop-up de criação do pacote e do plano,** logo abaixo da parte do termo e do contrato: os documentos puxados dos procedimentos (o termo de cada procedimento diferente e os outros documentos deles; o contrato do procedimento NÃO), cada um com excluir — ✅ 14/11 no pacote (leva 2); no plano, fica para o bloco **Plano** | PC7; **Plano de tratamento** |
+| PC10 | **Um link só, uma assinatura:** os documentos do pacote ou do plano vão à cliente num link único, e uma assinatura assina todos de uma vez. Hoje é um link por documento e uma assinatura por documento — ✅ 14/11 (leva 2) | a revisão de **Documentos** |
 | — | Mantém: nome, procedimentos e sessões de cada um, validade em dias, "À venda", comissões de venda e de execução, Vendas → Pacotes (não aparece no Estoque) | — |
 
 ### Bloco: Tags (o sistema inteiro)
@@ -1796,7 +1816,7 @@ revisão, só se escreve o plano. Nada se implementa.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| AG1 | **Documentos sempre num link só:** todo envio de documentos à cliente (o atendimento avulso, o pacote, o plano) vai num link único; ela visualiza todos e assina UMA vez, e a assinatura vale para todos os documentos do link. Hoje: um link e uma assinatura por documento | PC10; a revisão de **Documentos** |
+| AG1 | **Documentos sempre num link só:** todo envio de documentos à cliente (o atendimento avulso, o pacote, o plano) vai num link único; ela visualiza todos e assina UMA vez, e a assinatura vale para todos os documentos do link. Hoje: um link e uma assinatura por documento — ✅ 14/11 (leva 2) | PC10; a revisão de **Documentos** |
 | AG2 | **O "Agendar" do inbox** tem uma caixa de seleção da unidade, simples. Sai a unidade escolhida pela tag "Unidade: X" (`unidadeDaTag`, `inbox-lead-panel.tsx`) | T1 |
 | — | Mantém: a tela da agenda e as funções. Ficam como estão, pelas regras já existentes: D20 (Gerenciar com "só os meus" remarca o próprio), H3 (a remarcação e a confirmação), a sessão de pacote e de plano sem documento (PC2), o "Atende" por unidade | **Equipe** (a pessoa em mais de uma unidade) |
 
@@ -1889,10 +1909,10 @@ e Agenda (AG1) com o DC1–DC4.
 |---|---|---|
 | DC1 | **Os tipos**: Termo de consentimento, Contrato do procedimento, Contrato de plano, Contrato de pacote e Documento. O tipo novo "Documento" (editor ou PDF) usa as variáveis do termo; o Contrato de pacote, as do de plano trocando `plano.*` por `pacote.*` (procedimentos, sessões, validade) mais `pagamento.*`. Um contrato de pacote ativo por rede, trocado por "Tornar ativo", como o de plano ✅ 14/11 | — |
 | DC1b | **O procedimento liga**: "Termo de consentimento" (opcional), "Contrato" (opcional, só no avulso) e "Outros documentos" (quantos quiser, do tipo Documento — ou termo/contrato já criados, a decidir na implementação pela regra do PC7: "qualquer documento criado ou anexado") ✅ 14/11 — decidido: Documento, Termo ou Contrato do procedimento da rede (os contratos de plano e de pacote não) | PR4, PC7 |
-| DC1c | **O pacote e o plano**: ao criar, puxam os termos e os outros documentos dos procedimentos distintos (não o contrato deles), listados logo abaixo da seleção do termo e do contrato, cada um com "excluir"; o contrato é o de pacote / de plano. A venda do pacote (no PDV) emite os dele; a sessão de pacote e a de plano não emitem — a sessão de pacote e a de plano não emitem ✅ 14/11; o resto é a leva 2 | PC8–PC10, PDV |
+| DC1c | **O pacote e o plano**: ao criar, puxam os termos e os outros documentos dos procedimentos distintos (não o contrato deles), listados logo abaixo da seleção do termo e do contrato, cada um com "excluir"; o contrato é o de pacote / de plano. A venda do pacote (no PDV) emite os dele; a sessão de pacote e a de plano não emitem — a sessão de pacote e a de plano não emitem ✅ 14/11; o pacote (o pop-up e a venda) ✅ 14/11 na leva 2; o pop-up do plano fica para o bloco Plano | PC8–PC10, PDV |
 | DC2 | **Toda rede nasce com o contrato de pacote padrão** (`documentos_modelos_padrao`), ao lado do de plano ✅ 14/11 (semeado também nas redes que já existiam) | DC1 |
-| DC3 | **Uma assinatura para todos, em todo canal**: o link único (um link por cliente e momento — o agendamento, o pacote, o plano —, com todos os documentos abertos dele), o aparelho entregue na clínica e o app. A cliente vê a lista, abre cada um, marca "li e concordo" (um aceite que diz os títulos) e assina uma vez. Cada documento ganha a sua evidência (a mesma imagem da assinatura, o hash DELE), o seu PDF e o seu QR. Documento com "faltam dados" não entra e a tela diz qual. O papel e o dispensar seguem por documento — leva 2 | AG1 |
-| DC4 | **Sai "quando nasce"**: todo documento do atendimento nasce ao agendar (o gatilho no INSERT; sai o do check-in e a emissão do início); o do pacote, na venda; o do plano, na criação. "Bloqueia o início ou só avisa" fica, por documento. O contrato com `pagamento.*` segue pedindo o "pagamento combinado" antes ✅ 14/11 para o atendimento; "o do pacote, na venda" e "o do plano, na criação" vão com a leva 2 e o bloco Plano | — |
+| DC3 | **Uma assinatura para todos, em todo canal**: o link único (um link por cliente e momento — o agendamento, o pacote, o plano —, com todos os documentos abertos dele), o aparelho entregue na clínica e o app. A cliente vê a lista, abre cada um, marca "li e concordo" (um aceite que diz os títulos) e assina uma vez. Cada documento ganha a sua evidência (a mesma imagem da assinatura, o hash DELE), o seu PDF e o seu QR. Documento com "faltam dados" não entra e a tela diz qual. O papel e o dispensar seguem por documento — ✅ 14/11 (leva 2) | AG1 |
+| DC4 | **Sai "quando nasce"**: todo documento do atendimento nasce ao agendar (o gatilho no INSERT; sai o do check-in e a emissão do início); o do pacote, na venda; o do plano, na criação. "Bloqueia o início ou só avisa" fica, por documento. O contrato com `pagamento.*` segue pedindo o "pagamento combinado" antes ✅ 14/11 para o atendimento; "o do pacote, na venda" ✅ 14/11 (leva 2); "o do plano, na criação" fica para o bloco Plano | — |
 | — | Mantém: o editor e as versões, o PDF pronto, "faltam dados", o responsável da menor, o papel, o dispensar com motivo, o PDF assinado com evidências e o `/verificar`, a segurança do link (CPF ou nascimento, tentativas, uso único, 7 dias), o envio pela conversa (opção da rede), a tela Documentos só de leitura e o "só os meus" | — |
 
 ### Bloco: CRM
@@ -1988,7 +2008,7 @@ Heitor de que vale uma completa.
 | CA1 | **Sem "clínica" no portal e no app**: "Crédito na clínica", "Telefone da clínica", "A clínica enviou um documento", os avisos no celular — o NOME da rede no lugar | V1 |
 | CA2 | **O plano no app** (PT1/PT3): ver tudo — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados —, ACEITAR e agendar as sessões | Plano de tratamento |
 | CA3 | **Agendar a sessão de plano ou de pacote** pelo app, mesmo com o procedimento sem "Permitir auto agendamento" | PT3 |
-| CA4 | **Assinar todos os documentos abertos de uma vez** (DC3) e "Ficha de saúde" (PR3) | DC3, PR3 |
+| CA4 | **Assinar todos os documentos abertos de uma vez** (DC3) e "Ficha de saúde" (PR3) — assinar todos ✅ 14/11 (leva 2 de Documentos) | DC3, PR3 |
 | — | Mantém: o acesso criado pela rede, o login único em várias redes, o início, o agendar, o histórico com "Confirmar e avaliar", o financeiro, a fidelidade, o perfil e a LGPD, o app Android como casca do portal | — |
 
 ### Bloco: Busca

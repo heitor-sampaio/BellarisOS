@@ -10,7 +10,8 @@ import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
 import { VisualizadorDePdf } from '@/components/shared/visualizador-de-pdf'
 import { SignaturePad } from '@/components/shared/signature-pad'
 import { lerConteudo, type DocumentoResolvido } from '@/lib/documentos/arvore'
-import { assinarNaClinica, marcarAssinadoEmPapel, montarDocumentoDeNovo } from '@/actions/documentos'
+import { assinarNaClinica, assinarJuntosNaClinica, marcarAssinadoEmPapel, montarDocumentoDeNovo } from '@/actions/documentos'
+import { AssinarJuntos } from '@/components/shared/assinar-juntos'
 import { assinarNoPortal } from '@/actions/documentos-portal'
 import { nomeParaSaudar } from '@/lib/saudacao'
 import { useFuso } from '@/components/shared/fuso'
@@ -56,8 +57,20 @@ async function hashDe(bytes: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTerminar, canal = 'CLINICA', assinarPorFora }: {
+/**
+ * DC3 (leva 2): os OUTROS documentos abertos do mesmo momento (o agendamento,
+ * o pacote, o plano), que a cliente assina junto — e os que ficam de fora por
+ * "faltam dados", que a tela diz quais e o que falta.
+ */
+export interface JuntosNaAssinatura {
+  documentos: DocumentoNaTela[]
+  fora:       { id: string; titulo: string; faltando: string[] }[]
+}
+
+export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTerminar, canal = 'CLINICA', assinarPorFora, juntos }: {
   doc:            DocumentoNaTela
+  /** Na clínica: os outros abertos do momento, assinados junto (DC3). */
+  juntos?:        JuntosNaAssinatura
   podeColher:     boolean
   /** Página inteira: para onde "Voltar" leva, e o link do cliente. */
   voltar?:        string
@@ -186,6 +199,25 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
       )}
     </div>
   )
+
+  // ── DC3: o aparelho entregue com todos os abertos do momento ──────────────
+  const comJuntos = canal === 'CLINICA' && !!juntos?.documentos.length
+  if (modo === 'cliente' && comJuntos) {
+    return (
+      <TelaCheiaDaCliente>
+        <AssinarJuntos
+          documentos={[doc, ...juntos!.documentos]}
+          assinante={assinante}
+          cabecalho={`${assinante}: leia os documentos e assine uma vez no fim.`}
+          final="Devolva o aparelho à equipe."
+          assinar={d => assinarJuntosNaClinica({ ...d, identidadeConferida: conferido })}
+          rodape={aoTerminar
+            ? <button type="button" className="btn-primary" onClick={aoTerminar}>Continuar</button>
+            : <Link href={voltar ?? '/'} className="btn-primary">Voltar</Link>}
+        />
+      </TelaCheiaDaCliente>
+    )
+  }
 
   // ── Modo do cliente: só o documento, o aceite e a assinatura ───────────────
   if (modo === 'cliente') {
@@ -317,6 +349,17 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
           {aberto && podeColher && modo === 'equipe' && (
             <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <p className="overline">Assinar na clínica</p>
+              {comJuntos && (
+                <div data-assinam-juntos style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)' }}>
+                    Uma assinatura vale para {juntos!.documentos.length + 1} documentos:
+                  </p>
+                  <ul style={{ paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', listStyle: 'disc' }}>
+                    <li>{doc.titulo}</li>
+                    {juntos!.documentos.map(d => <li key={d.id}>{d.titulo}</li>)}
+                  </ul>
+                </div>
+              )}
               <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
                 <input type="checkbox" checked={conferido} onChange={e => setConferido(e.target.checked)}
                   style={{ accentColor: 'var(--brand)', width: 16, height: 16, marginTop: 2 }} />
@@ -337,6 +380,16 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
                 <ShieldCheck size={13} style={{ flexShrink: 0 }} />
                 A assinatura é eletrônica e fica registrada com data, hora, aparelho e o código de verificação.
               </p>
+            </div>
+          )}
+
+          {canal === 'CLINICA' && podeColher && modo === 'equipe' && !!juntos?.fora.length && (
+            <div className="card" data-fora-do-link style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span className="chip chip-warning" style={{ alignSelf: 'flex-start' }}>Ficam de fora</span>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>Estes vão junto com este documento, mas faltam dados neles. Complete o cadastro para assinar:</p>
+              <ul style={{ paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', listStyle: 'disc' }}>
+                {juntos.fora.map(f => <li key={f.id}><strong style={{ color: 'var(--text)' }}>{f.titulo}</strong> — falta {f.faltando.join(', ') || 'um dado do cadastro'}</li>)}
+              </ul>
             </div>
           )}
 

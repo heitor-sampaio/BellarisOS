@@ -31,6 +31,8 @@ export default async function DocumentosDoClientePage({
   const paraAssinar = docs.filter(d => d.status === 'PENDENTE' || d.status === 'A_GERAR' || d.status === 'INCOMPLETO')
   const assinados = docs.filter(d => d.status === 'ASSINADO')
   const doAgendamento = agendamento ? paraAssinar.filter(d => d.agendamentoId === agendamento) : []
+  // CA4/DC3: com dois ou mais prontos, "Assinar todos" — uma assinatura para todos.
+  const prontos = paraAssinar.filter(d => d.status === 'PENDENTE').length
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -46,7 +48,14 @@ export default async function DocumentosDoClientePage({
       )}
 
       <section aria-label="Para assinar" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <p className="overline">Para assinar</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <p className="overline">Para assinar</p>
+          {prontos >= 2 && (
+            <Link href={`/${slug}/cliente/documentos/assinar`} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <FileSignature size={15} /> Assinar todos ({prontos})
+            </Link>
+          )}
+        </div>
         {paraAssinar.length === 0 ? (
           <div className="card" style={{ padding: '16px 18px' }}>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum documento esperando a sua assinatura.</p>

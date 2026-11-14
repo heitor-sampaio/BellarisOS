@@ -206,7 +206,14 @@ test.describe.serial('documentos: os cinco tipos e "nasce ao agendar"', () => {
     const depois = await docsDo(ap)
     expect(depois.map(d => d.status)).toEqual(['CANCELADO', 'CANCELADO', 'CANCELADO', 'CANCELADO'])
     expect(depois[0]!.closed_reason).toMatch(/pacote/)
-    // Sem documento aberto, o início segue — o termo é do pacote, não da sessão.
+    // Leva 2 (PC2): os documentos são os do PACOTE, emitidos na venda — e o
+    // "Bloqueia" deles trava o início da sessão até a assinatura.
+    const doPacote = ((await db().from('issued_documents').select('id, status, enforcement').eq('client_package_id', cp!.id)).data ?? []) as { id: string; status: string; enforcement: string }[]
+    expect(doPacote.length, 'a venda do pacote emitiu os dele').toBeGreaterThan(0)
+    const travado = await db().from('appointments').update({ status: 'IN_PROGRESS', started_at: new Date().toISOString() }).eq('id', ap)
+    expect(travado.error?.message ?? '', 'o "Bloqueia" do pacote trava a sessão').toMatch(/Falta assinar/)
+    // Em "Só avisa", o início segue — e a sessão não emite nada seu.
+    expect((await db().from('issued_documents').update({ enforcement: 'AVISA' }).eq('client_package_id', cp!.id)).error).toBeNull()
     expect((await db().from('appointments').update({ status: 'IN_PROGRESS', started_at: new Date().toISOString() }).eq('id', ap)).error).toBeNull()
     expect((await docsDo(ap)).filter(d => d.status !== 'CANCELADO'), 'iniciar não emite de novo').toEqual([])
 

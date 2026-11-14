@@ -13,7 +13,10 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { sha256 } from '@/lib/documentos/renderizar'
-import { ipEAparelho, dadosDoAssinante, depoisDeAssinar, COLUNAS_ASSINAVEIS, type DocumentoAssinavel } from '@/lib/documentos/assinar'
+import {
+  ipEAparelho, dadosDoAssinante, depoisDeAssinar, assinarJuntos, itensDaAssinatura, recusaDaImagem,
+  COLUNAS_ASSINAVEIS, type DocumentoAssinavel,
+} from '@/lib/documentos/assinar'
 
 export async function assinarNoPortal(input: {
   id: string
@@ -59,6 +62,37 @@ export async function assinarNoPortal(input: {
 
     await depoisDeAssinar(d, null)
     return { codigo: r.codigo }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * CA4/DC3 (leva 2): "Assinar todos" — os abertos da cliente, de uma vez, com
+ * uma assinatura. Cada id tem de ser dela (`ctx.clientId`, a ficha da clínica
+ * do endereço); o banco confere o hash de cada um.
+ */
+export async function assinarJuntosNoPortal(input: {
+  itens: { id: string; hashExibido: string }[]
+  assinatura: string
+}): Promise<{ error?: string; documentos?: { id: string; codigo: string | null }[] }> {
+  try {
+    const ctx = await getTenantContext()
+    assertClient(ctx)
+    const itens = itensDaAssinatura(input?.itens)
+    if (!itens) return { error: 'Abra os documentos de novo para assinar.' }
+    const recusa = recusaDaImagem(input.assinatura)
+    if (recusa) return { error: recusa }
+    const admin = createAdminClient()
+    const docs = (await ler(admin.from('issued_documents').select(COLUNAS_ASSINAVEIS)
+      .in('id', itens.map(i => i.id)).eq('client_id', ctx.clientId!), 'buscar os documentos') ?? []) as unknown as DocumentoAssinavel[]
+    // Algum não é dela: como se não existisse.
+    if (docs.length !== itens.length) return { error: 'Documento não encontrado.' }
+    const documentos = await assinarJuntos({
+      docs, itens, canal: 'PORTAL', identidade: 'SESSAO_PORTAL', assinatura: input.assinatura,
+      conduzidoPor: null, linkHash: null, ator: null,
+    })
+    return { documentos }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

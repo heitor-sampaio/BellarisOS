@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { FileText, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
 import { formatBRL, parseDinheiro } from '@estetica-os/utils'
 import { salvarPacote } from '@/actions/pacotes'
 import { contemSemAcento } from '@/lib/texto'
@@ -12,6 +12,7 @@ import {
   COMISSAO_DO_PACOTE_PADRAO, rotuloDaComissaoDoPacote,
   type ComissaoDoPacote, type ExecucaoDoPacote, type TipoDeRegra,
 } from '@/lib/comissoes/config'
+import { documentosPuxadosDoPacote, type ModeloAtivo, type ProcedimentoComDocumentos } from '@/lib/pacotes/documentos'
 
 /**
  * O catálogo de pacotes da rede (Vendas → Pacotes). Um pacote é um conjunto de
@@ -26,6 +27,16 @@ export interface PacoteDoCatalogo {
   itens: { procedureId: string; procedureName: string; quantidade: number; precoTabela: number }[]
   /** A comissão de venda e de execução (2026-10-30). */
   comissao: ComissaoDoPacote
+  /** Os documentos puxados que a rede tirou deste pacote (DC1c). */
+  documentosExcluidos: string[]
+}
+
+/** O que o pop-up precisa para mostrar os documentos do pacote (DC1c/PC9b) — nulo sem o recurso. */
+export interface DocumentosDoCatalogo {
+  /** O nome do contrato de pacote ativo da rede (nulo: nenhum). */
+  contrato: string | null
+  modelos: ModeloAtivo[]
+  procedimentos: ProcedimentoComDocumentos[]
 }
 
 interface ItemDoRascunho { procedureId: string; quantidade: string }
@@ -38,6 +49,8 @@ interface ComissaoDoRascunho {
 interface Rascunho {
   id?: string; name: string; itens: ItemDoRascunho[]; preco: string; validade: string; ativo: boolean
   comissao: ComissaoDoRascunho
+  /** Os documentos puxados que ficam fora do pacote. */
+  excluidos: string[]
 }
 
 const rascunhoDaComissao = (c: ComissaoDoPacote): ComissaoDoRascunho => ({
@@ -49,15 +62,17 @@ const rascunhoDaComissao = (c: ComissaoDoPacote): ComissaoDoRascunho => ({
 // Sem número de sessões escolhido por nós (2026-10-21: nascia com 5).
 const vazio = (procedureId: string): Rascunho => ({
   name: '', itens: [{ procedureId, quantidade: '' }], preco: '', validade: '', ativo: true,
-  comissao: rascunhoDaComissao(COMISSAO_DO_PACOTE_PADRAO),
+  comissao: rascunhoDaComissao(COMISSAO_DO_PACOTE_PADRAO), excluidos: [],
 })
 // O dinheiro como em todo campo (`parseDinheiro`: "1.400" é mil e quatrocentos — D3).
 const numero = (t: string) => parseDinheiro(t)
 
-export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, podeComissao = false, buscaInicial = '' }: {
+export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, podeComissao = false, buscaInicial = '', documentos = null }: {
   pacotes: PacoteDoCatalogo[]
   procedimentos: { id: string; name: string; price: number }[]
   podeEditar: boolean
+  /** Os documentos do pacote (DC1c/PC9b); nulo sem o recurso de documentos. */
+  documentos?: DocumentosDoCatalogo | null
   /** Quem é do financeiro (`financial: MANAGE`, da rede) vê e muda a comissão do pacote. */
   podeComissao?: boolean
   /** O `?q=` da URL — a busca universal abre a tela já filtrada. */
@@ -109,7 +124,7 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, podeComiss
       </div>
 
       {editando && !editando.id && (
-        <Formulario inicial={editando} procedimentos={procedimentos} podeComissao={podeComissao} aoTerminar={() => setEditando(null)} />
+        <Formulario inicial={editando} procedimentos={procedimentos} documentos={documentos} podeComissao={podeComissao} aoTerminar={() => setEditando(null)} />
       )}
 
       {pacotes.length === 0 && !editando && (
@@ -121,7 +136,7 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, podeComiss
       )}
 
       {visiveis.map(p => editando?.id === p.id ? (
-        <Formulario key={p.id} inicial={editando} procedimentos={procedimentos} podeComissao={podeComissao} aoTerminar={() => setEditando(null)} />
+        <Formulario key={p.id} inicial={editando} procedimentos={procedimentos} documentos={documentos} podeComissao={podeComissao} aoTerminar={() => setEditando(null)} />
       ) : (
         <div key={p.id} data-pacote={p.id}
           style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--hairline)', paddingTop: 10 }}>
@@ -143,7 +158,7 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, podeComiss
               id: p.id, name: p.name,
               itens: p.itens.map(i => ({ procedureId: i.procedureId, quantidade: String(i.quantidade) })),
               preco: String(p.price).replace('.', ','), validade: p.validityDays ? String(p.validityDays) : '', ativo: p.isActive,
-              comissao: rascunhoDaComissao(p.comissao),
+              comissao: rascunhoDaComissao(p.comissao), excluidos: p.documentosExcluidos,
             })}>
               <Pencil size={15} />
             </button>
@@ -154,8 +169,9 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, podeComiss
   )
 }
 
-function Formulario({ inicial, procedimentos, podeComissao, aoTerminar }: {
-  inicial: Rascunho; procedimentos: { id: string; name: string; price: number }[]; podeComissao: boolean; aoTerminar: () => void
+function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTerminar }: {
+  inicial: Rascunho; procedimentos: { id: string; name: string; price: number }[]
+  documentos: DocumentosDoCatalogo | null; podeComissao: boolean; aoTerminar: () => void
 }) {
   const router = useRouter()
   const [r, setR] = useState(inicial)
@@ -189,6 +205,8 @@ function Formulario({ inicial, procedimentos, podeComissao, aoTerminar }: {
         validity_days: r.validade.trim() ? Number(r.validade) : null, is_active: r.ativo,
         // Só quem pode manda a comissão: o campo ausente não mexe nela.
         ...(comissao ? { comissao: comissao.entrada } : {}),
+        // Sem o recurso de documentos, o campo ausente não mexe nos excluídos.
+        ...(documentos ? { documentos_excluidos: r.excluidos } : {}),
       })
       if (res.error) { setErro(res.error); return }
       aoTerminar()
@@ -245,6 +263,10 @@ function Formulario({ inicial, procedimentos, podeComissao, aoTerminar }: {
           <input className="field" type="number" min={1} aria-label="Validade do pacote" value={r.validade} onChange={e => mudar({ validade: e.target.value })} />
         </label>
       </div>
+      {documentos && (
+        <DocumentosDoPacote documentos={documentos} procedimentosDoPacote={r.itens.map(i => i.procedureId)}
+          excluidos={r.excluidos} mudar={excluidos => mudar({ excluidos })} />
+      )}
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
         <input type="checkbox" checked={r.ativo} onChange={e => mudar({ ativo: e.target.checked })} style={{ accentColor: 'var(--brand)', width: 16, height: 16 }} />
         <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>À venda</span>
@@ -255,6 +277,64 @@ function Formulario({ inicial, procedimentos, podeComissao, aoTerminar }: {
         <button type="button" className="btn-secondary" onClick={aoTerminar} disabled={salvando}>Cancelar</button>
         <button type="button" className="btn-primary" onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar pacote'}</button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Os documentos do pacote (DC1c/PC9b, Bloco Documentos leva 2): o contrato
+ * é o de pacote da rede; os demais vêm dos procedimentos do pacote — o termo
+ * e os outros documentos, uma vez cada, sem o contrato do procedimento. Cada
+ * um sai com "Excluir" e volta com "Incluir de novo". Nascem na venda.
+ */
+function DocumentosDoPacote({ documentos, procedimentosDoPacote, excluidos, mudar }: {
+  documentos: DocumentosDoCatalogo
+  procedimentosDoPacote: string[]
+  excluidos: string[]
+  mudar: (excluidos: string[]) => void
+}) {
+  const puxados = documentosPuxadosDoPacote(procedimentosDoPacote, documentos.procedimentos, documentos.modelos, excluidos)
+  const ajuda = { fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 } as const
+  const linha = { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 'var(--radius-field-token)', background: 'var(--surface)', border: '1px solid var(--border)' } as const
+  return (
+    <div role="group" aria-label="Documentos do pacote"
+      style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 12, borderTop: '1px solid var(--hairline)' }}>
+      <p className="overline">Documentos</p>
+      <p style={ajuda}>Nascem na venda do pacote, para a cliente assinar de uma vez.</p>
+      <div data-contrato-do-pacote style={linha}>
+        <FileText size={15} color="var(--brand)" aria-hidden style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', overflowWrap: 'anywhere' }}>
+            {documentos.contrato ?? 'Nenhum contrato de pacote ativo'}
+          </p>
+          <p style={ajuda}>{documentos.contrato ? 'Contrato de pacote da rede' : 'Crie um em Documentos, com o tipo “Contrato de pacote”.'}</p>
+        </div>
+      </div>
+      {puxados.length === 0 && <p style={ajuda}>Os procedimentos deste pacote não têm termo nem outros documentos.</p>}
+      {puxados.map(d => (
+        <div key={d.id} data-puxado={d.id} style={{ ...linha, opacity: d.excluido ? 0.6 : 1 }}>
+          <FileText size={15} color="var(--text-muted)" aria-hidden style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', overflowWrap: 'anywhere', textDecoration: d.excluido ? 'line-through' : 'none' }}>
+              {d.nome}
+            </p>
+            <p style={ajuda}>
+              {d.excluido ? 'Fora do pacote' : `${d.tipo === 'TERMO' ? 'Termo' : 'Documento'} de ${d.de.join(', ')}`}
+            </p>
+          </div>
+          {d.excluido ? (
+            <button type="button" className="btn-ghost" onClick={() => mudar(excluidos.filter(x => x !== d.id))}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <RotateCcw size={14} aria-hidden /> Incluir de novo
+            </button>
+          ) : (
+            <button type="button" className="btn-ghost" onClick={() => mudar([...excluidos, d.id])}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, color: 'var(--text-muted)' }}>
+              <Trash2 size={14} aria-hidden /> Excluir
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

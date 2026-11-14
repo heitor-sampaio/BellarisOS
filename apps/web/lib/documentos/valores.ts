@@ -41,6 +41,12 @@ export interface DadosDoDocumento {
   profissionalRegistro?: string | null
   /** Documento do fechamento do plano. */
   plano?:       { itens: { nome: string; sessoes: number; valor: number }[]; total: number; sessoes: number } | null
+  /**
+   * Documento da venda de um pacote (PC2, Bloco Documentos leva 2): o pacote
+   * VENDIDO — o nome, os procedimentos com as sessões de cada um, o total de
+   * sessões, a validade já por extenso (`validadeDoPacote`) e o valor.
+   */
+  pacote?:      { nome: string; itens: { nome: string; sessoes: number }[]; sessoes: number; validade: string; total: number } | null
   /** Termo do plano: os procedimentos do plano que usam este termo. */
   procedimentosDoTermo?: string[] | null
   /** As variáveis `pagamento.*`, já montadas (lib/checkout/pagamento.ts). */
@@ -101,6 +107,18 @@ export function linhaDoEndereco(c: DadosDoDocumento['cliente']): string | null {
   return `${rua}${numero ? `, ${numero}` : ''}${bairro ? ` — ${bairro}` : ''}`
 }
 
+/**
+ * A validade do pacote vendido: "180 dias, até 13/05/2027" — o último dia no
+ * fuso da unidade. Nunca vazia (a lição do D6 da 12ª, "Validade: ."): o
+ * pacote sem validade (PC3) diz "sem prazo de validade".
+ */
+export function validadeDoPacote(dias: number | null, expiraEm: string | null, fuso: string = FUSO): string {
+  if (!dias || !expiraEm) return 'sem prazo de validade'
+  return `${dias} ${dias === 1 ? 'dia' : 'dias'}, até ${formatDate(expiraEm, fuso)}`
+}
+
+const sessoesPorExtenso = (n: number) => `${n} ${n === 1 ? 'sessão' : 'sessões'}`
+
 export function valoresDoDocumento(d: DadosDoDocumento): Record<string, string | null> {
   const c = d.cliente
   const a = d.agendamento
@@ -151,6 +169,14 @@ export function valoresDoDocumento(d: DadosDoDocumento): Record<string, string |
       : null,
     'plano.total':         d.plano ? formatBRL(d.plano.total) : null,
     'plano.sessoes':       d.plano ? String(d.plano.sessoes) : null,
+
+    'pacote.nome':          vazio(d.pacote?.nome),
+    'pacote.procedimentos': d.pacote?.itens.length
+      ? d.pacote.itens.map(i => `${i.nome} — ${sessoesPorExtenso(i.sessoes)}`).join('; ')
+      : null,
+    'pacote.sessoes':       d.pacote ? String(d.pacote.sessoes) : null,
+    'pacote.validade':      d.pacote?.validade ?? null,
+    'pacote.total':         d.pacote ? formatBRL(d.pacote.total) : null,
     ...(d.pagamento ?? {}),
   }
 }

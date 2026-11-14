@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react'
 import { Lock } from 'lucide-react'
 import { TelaDeAssinatura, type DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
+import { AssinarJuntos } from '@/components/shared/assinar-juntos'
+import { nomeParaSaudar } from '@/lib/saudacao'
 
 /**
  * O cliente pelo link: primeiro confirma quem é (CPF, ou a data de
@@ -10,6 +12,9 @@ import { TelaDeAssinatura, type DocumentoNaTela } from '@/components/shared/tela
  *
  * A identidade fica só na memória desta página e vai de novo na assinatura —
  * a rota de assinar confere tudo outra vez, sem sessão para lembrar.
+ *
+ * DC3 (leva 2): o link é do momento (o agendamento, o pacote, o plano). Com
+ * mais de um documento, a cliente vê a lista, abre cada um e assina UMA vez.
  */
 
 function mascaraCpf(v: string): string {
@@ -26,11 +31,11 @@ async function postar<T>(rota: string, corpo: unknown): Promise<T & { erro?: str
   }
 }
 
-export function AssinarPorLink({ token, clinica, pede }: { token: string; clinica: string; pede: 'CPF' | 'NASCIMENTO' }) {
+export function AssinarPorLink({ token, clinica, pede, quantos }: { token: string; clinica: string; pede: 'CPF' | 'NASCIMENTO'; quantos: number }) {
   const [valor, setValor] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [bloqueado, setBloqueado] = useState(false)
-  const [doc, setDoc] = useState<DocumentoNaTela | null>(null)
+  const [docs, setDocs] = useState<DocumentoNaTela[] | null>(null)
   const [enviando, iniciar] = useTransition()
 
   const identidade = pede === 'CPF' ? { token, cpf: valor } : { token, nascimento: valor }
@@ -41,17 +46,34 @@ export function AssinarPorLink({ token, clinica, pede }: { token: string; clinic
     if (!pronto) return
     setErro(null)
     iniciar(async () => {
-      const r = await postar<{ doc?: DocumentoNaTela }>('/api/assinar/abrir', identidade)
-      if (r.erro || !r.doc) {
+      const r = await postar<{ documentos?: DocumentoNaTela[] }>('/api/assinar/abrir', identidade)
+      if (r.erro || !r.documentos?.length) {
         setErro(r.erro ?? 'Não consegui abrir o documento.')
         // Link revogado ou vencido no meio do caminho: não adianta tentar de novo.
         if (r.erro && !r.erro.startsWith('Os dados não conferem')) setBloqueado(true)
         return
       }
-      setDoc(r.doc)
+      setDocs(r.documentos)
     })
   }
 
+  if (docs && docs.length > 1) {
+    const assinante = docs[0]!.cliente.assinante ?? docs[0]!.cliente.nome
+    return (
+      <AssinarJuntos
+        documentos={docs}
+        assinante={assinante}
+        cabecalho={`${nomeParaSaudar(assinante) || assinante}, leia os documentos e assine uma vez no fim.`}
+        final="Tudo certo! A clínica já recebeu os documentos assinados."
+        assinar={async d => {
+          const r = await postar<{ documentos?: { id: string; codigo: string | null }[] }>('/api/assinar/assinar', { ...identidade, ...d })
+          return r.erro ? { error: r.erro } : { documentos: r.documentos ?? [] }
+        }}
+      />
+    )
+  }
+
+  const doc = docs?.[0]
   if (doc) {
     return (
       <TelaDeAssinatura
@@ -59,7 +81,9 @@ export function AssinarPorLink({ token, clinica, pede }: { token: string; clinic
         podeColher={false}
         doc={doc}
         assinarPorFora={async d => {
-          const r = await postar<{ codigo?: string | null }>('/api/assinar/assinar', { ...identidade, ...d })
+          const r = await postar<{ codigo?: string | null }>('/api/assinar/assinar', {
+            ...identidade, assinatura: d.assinatura, itens: [{ id: doc.id, hashExibido: d.hashExibido }],
+          })
           return r.erro ? { error: r.erro } : { codigo: r.codigo ?? null }
         }}
       />
@@ -69,14 +93,14 @@ export function AssinarPorLink({ token, clinica, pede }: { token: string; clinic
   return (
     <form onSubmit={continuar} className="card" style={{ padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
-        <p className="overline">Documento para assinar</p>
+        <p className="overline">{quantos === 1 ? 'Documento para assinar' : 'Documentos para assinar'}</p>
         <h1 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', marginTop: 4 }}>
-          {clinica} pediu a sua assinatura em um documento.
+          {clinica} pediu a sua assinatura em {quantos === 1 ? 'um documento' : `${quantos} documentos`}.
         </h1>
       </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8 }}>
         <Lock size={15} style={{ flexShrink: 0, marginTop: 2 }} />
-        Para proteger os seus dados, confirme {pede === 'CPF' ? 'o seu CPF' : 'a sua data de nascimento'} antes de ver o documento.
+        Para proteger os seus dados, confirme {pede === 'CPF' ? 'o seu CPF' : 'a sua data de nascimento'} antes de ver {quantos === 1 ? 'o documento' : 'os documentos'}.
       </p>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>

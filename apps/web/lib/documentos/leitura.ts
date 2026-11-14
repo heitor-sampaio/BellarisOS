@@ -136,8 +136,15 @@ export async function documentosDoCliente(tenantId: string, clientId: string): P
 /** Os documentos de um agendamento — o painel da sessão. */
 export async function documentosDoAgendamento(tenantId: string, appointmentId: string): Promise<ResumoDeDocumento[]> {
   const admin = createAdminClient()
+  // PC2 (leva 2): a sessão de pacote não tem documento seu — valem os do
+  // pacote vendido, e é por eles que o "Bloqueia" trava o início dela.
+  const sessao = await ler(admin.from('package_sessions').select('client_package_id')
+    .eq('appointment_id', appointmentId).maybeSingle(), 'buscar a sessão de pacote do atendimento') as { client_package_id: string } | null
+  const doAtendimento = sessao
+    ? `appointment_id.eq.${appointmentId},client_package_id.eq.${sessao.client_package_id}`
+    : `appointment_id.eq.${appointmentId}`
   const docs = await ler(admin.from('issued_documents').select(COLUNAS_DO_DOCUMENTO)
-    .eq('tenant_id', tenantId).eq('appointment_id', appointmentId)
+    .eq('tenant_id', tenantId).or(doAtendimento)
     .not('status', 'in', '(CANCELADO,SUBSTITUIDO)')
     .order('kind').order('title'), 'listar os documentos do atendimento')
   return resumirDocumentos(tenantId, (docs ?? []) as unknown as DocumentoEmitido[])

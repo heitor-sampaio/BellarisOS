@@ -9,7 +9,7 @@ import { marcacaoParaEditor } from './editor/da-marcacao'
 import { variavelObrigatoria } from './variaveis'
 import type { TipoDeDocumento } from './situacao'
 import { ehMenorDeIdade } from '@/lib/clients/menor'
-import { valoresDoDocumento, type DadosDoDocumento } from './valores'
+import { valoresDoDocumento, validadeDoPacote, type DadosDoDocumento } from './valores'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { gerarCodigoDeVerificacao } from './codigo'
@@ -40,6 +40,8 @@ export interface DocumentoEmitido {
   template_version_id: string | null
   appointment_id:      string | null
   treatment_plan_id:   string | null
+  /** O pacote vendido (PC2, leva 2): os documentos da venda do pacote. */
+  client_package_id:   string | null
   procedure_id:        string | null
   kind:                TipoDeDocumento
   source:              'EDITOR' | 'ARQUIVO'
@@ -63,7 +65,7 @@ export interface DocumentoEmitido {
 }
 
 export const COLUNAS_DO_DOCUMENTO =
-  'id, tenant_id, branch_id, client_id, template_id, template_version_id, appointment_id, treatment_plan_id, procedure_id, ' +
+  'id, tenant_id, branch_id, client_id, template_id, template_version_id, appointment_id, treatment_plan_id, client_package_id, procedure_id, ' +
   'kind, source, title, moment, enforcement, status, content, content_sha256, missing_fields, ' +
   'verification_code, signed_at, closed_reason, payment_snapshot, created_at'
 
@@ -104,6 +106,51 @@ async function dadosDoPlano(doc: DocumentoEmitido) {
   }
 }
 
+/**
+ * O que um documento da VENDA de um pacote acrescenta (PC2, leva 2): o pacote
+ * como foi vendido — as sessões que nasceram na venda (não o catálogo de
+ * hoje), a validade, o preço antes do desconto e a responsável, se houver —
+ * e, no termo, os procedimentos do pacote que usam este termo.
+ */
+async function dadosDoPacote(doc: DocumentoEmitido, fuso: string) {
+  const admin = createAdminClient()
+  const [vendido, sessoes] = await Promise.all([
+    ler(admin.from('client_packages')
+      .select('price, preco_tabela, desconto, expires_at, responsavel_id, service_packages(name, validity_days)')
+      .eq('id', doc.client_package_id!).maybeSingle(), 'buscar o pacote vendido do documento'),
+    ler(admin.from('package_sessions')
+      .select('procedure_id, procedures(name, consent_template_id, outros_documentos)')
+      .eq('client_package_id', doc.client_package_id!).order('session_number'), 'buscar as sessões do pacote do documento'),
+  ])
+  type Sessao = { procedure_id: string | null; procedures: { name: string; consent_template_id: string | null; outros_documentos: string[] | null } | null }
+  const porProcedimento = new Map<string, { nome: string; sessoes: number; usa: boolean }>()
+  for (const s of (sessoes ?? []) as unknown as Sessao[]) {
+    const chave = s.procedure_id ?? 'sem'
+    const atual = porProcedimento.get(chave) ?? {
+      nome: s.procedures?.name ?? 'Procedimento', sessoes: 0,
+      usa: !!doc.template_id && (s.procedures?.consent_template_id === doc.template_id || (s.procedures?.outros_documentos ?? []).includes(doc.template_id)),
+    }
+    atual.sessoes += 1
+    porProcedimento.set(chave, atual)
+  }
+  const itens = [...porProcedimento.values()]
+  const catalogo = (vendido?.service_packages as unknown as { name: string; validity_days: number | null } | null) ?? null
+  // O preço de ANTES do desconto: o desconto entra uma vez só, pelo combinado do pagamento.
+  const subtotal = Number(vendido?.preco_tabela ?? vendido?.price ?? 0) || 0
+  return {
+    subtotal,
+    responsavelId: (vendido?.responsavel_id as string | null | undefined) ?? null,
+    pacote: {
+      nome: catalogo?.name ?? 'Pacote',
+      itens: itens.map(i => ({ nome: i.nome, sessoes: i.sessoes })),
+      sessoes: itens.reduce((t, i) => t + i.sessoes, 0),
+      validade: validadeDoPacote(catalogo?.validity_days ?? null, (vendido?.expires_at as string | null) ?? null, fuso),
+      total: subtotal,
+    },
+    procedimentosDoTermo: doc.kind === 'TERMO' || doc.kind === 'DOCUMENTO' ? itens.filter(i => i.usa).map(i => i.nome) : null,
+  }
+}
+
 /** Tudo que as variáveis de um documento podem pedir. `desconto` em reais. */
 async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPlano | null, definido: boolean, desconto: number): Promise<DadosDoDocumento> {
   const admin = createAdminClient()
@@ -133,6 +180,11 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
       .eq('id', doc.treatment_plan_id).maybeSingle(), 'buscar a profissional do plano do documento')
     profissionalId = (plano?.professional_id as string | null) ?? null
   }
+  // F62: no relógio da unidade do documento; sem unidade, o comum da rede.
+  const fuso = unidade ? fusoValido((unidade as { fuso?: string | null }).fuso) : await fusoDaRede(doc.tenant_id)
+  // PC2: no documento da venda do pacote, quem atende é a responsável da venda (se houver).
+  const doPacote = doc.client_package_id && !doc.appointment_id ? await dadosDoPacote(doc, fuso) : null
+  if (!profissionalId && doPacote) profissionalId = doPacote.responsavelId
   if (profissionalId) {
     const u = await ler(admin.from('users').select('name, registro_conselho').eq('id', profissionalId).eq('tenant_id', doc.tenant_id).maybeSingle(), 'buscar o profissional')
     profissional = (u?.name as string) ?? null
@@ -142,10 +194,16 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
   // O total do plano é o que o cliente paga: o subtotal menos o desconto.
   const subtotal = doPlano?.plano.total ?? 0
   if (doPlano) doPlano.plano.total = Math.round((subtotal - Math.min(desconto, subtotal)) * 100) / 100
+  // O total do pacote é o que o cliente paga: o preço de tabela menos o desconto.
+  if (doPacote) doPacote.pacote.total = Math.round((doPacote.subtotal - Math.min(desconto, doPacote.subtotal)) * 100) / 100
   return {
     ...(doPlano ?? {}),
+    ...(doPacote ? { pacote: doPacote.pacote, procedimentosDoTermo: doPacote.procedimentosDoTermo } : {}),
     pagamento:    doPlano && doc.kind === 'CONTRATO_PLANO'
       ? valoresDoPagamento(pagamento, subtotal, desconto)
+      // O contrato de pacote: o pagamento da venda (PC2), sobre o preço de tabela.
+      : doPacote && doc.kind === 'CONTRATO_PACOTE'
+        ? (definido ? valoresDoPagamento(pagamento, doPacote.subtotal, desconto) : {})
       // Contrato do procedimento: sobre o valor do atendimento, e só depois de
       // a recepção definir. Sem isso as variáveis ficam vazias — e a
       // obrigatória (`pagamento.forma`) deixa o documento INCOMPLETO.
@@ -153,8 +211,7 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
         ? (definido ? valoresDoPagamento(pagamento, Number(agendamento.price), desconto) : {})
         : null,
     agora:        new Date(),
-    // F62: no relógio da unidade do documento; sem unidade, o comum da rede.
-    fuso:         unidade ? fusoValido((unidade as { fuso?: string | null }).fuso) : await fusoDaRede(doc.tenant_id),
+    fuso,
     cliente:      cliente as DadosDoDocumento['cliente'],
     rede:         rede as DadosDoDocumento['rede'],
     unidade:      (unidade as DadosDoDocumento['unidade']) ?? null,
@@ -223,7 +280,12 @@ export async function garantirRenderizado(
     // Na menor de idade, o nome e o CPF do responsável são obrigatórios: é ele
     // quem assina (decisão 2 do Heitor, 2026-11-05).
     const menor = ehMenorDeIdade(dados.cliente.birth_date)
-    const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null, v => !variavelObrigatoria(v, { menor }),
+    // PC2: na venda do pacote sem responsável, ninguém atende ainda — a
+    // profissional sai vazia (e a tela diz), em vez de travar o documento
+    // (princípios 2 e 4: não chutar um nome, avisar).
+    const semQuemAtende = !!doc.client_package_id && !dados.profissional
+    const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null,
+      v => !variavelObrigatoria(v, { menor }) || (semQuemAtende && v.startsWith('profissional.')),
       t => concordarComOGenero(t, dados.cliente.gender as SexoDaFicha))
     conteudo = formaCanonica(r.documento)
     texto = textoDoDocumento(r.documento)

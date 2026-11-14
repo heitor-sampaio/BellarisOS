@@ -47,9 +47,39 @@ DEVLOG ("Termos e contratos").
   `pacote.sessoes`, `pacote.validade` e `pacote.total`, mais `pagamento.*`; sem
   `profissional.*` (o pacote vendido não tem quem atende — princípio 4).
   `pacote.validade` é obrigatória e nunca sai vazia: o pacote sem validade
-  (PC3) diz "sem prazo de validade". ⚠️ **Ainda não é emitido**: a venda do
-  pacote emitir o contrato e os documentos puxados é a leva 2 do Bloco
-  Documentos (PC2, DC1c/PC9b), e é lá que `pacote.*` ganha valor ao montar.
+  (PC3) diz "sem prazo de validade"; com prazo, "180 dias, até 13/05/2027"
+  (`validadeDoPacote`, no fuso da unidade). Na venda (leva 2) o documento do
+  pacote sem responsável deixa `profissional.*` vazio em vez de travar
+  (princípios 2 e 4).
+- **A venda do pacote emite os documentos** (PC2, DC1c/PC9b — Bloco
+  Documentos, leva 2, 2026-11-14): o gatilho `trg_documentos_do_pacote_vendido`
+  (AFTER INSERT em `client_packages`, menos o trazido de fora) emite, com
+  `issued_documents.client_package_id` e o momento `VENDA_PACOTE`, o contrato
+  de pacote ativo da rede e os documentos PUXADOS dos procedimentos distintos
+  do pacote — o termo e os "Outros documentos" (TERMO e DOCUMENTO), uma vez
+  cada; o contrato do procedimento não (`private.modelos_do_pacote`). A action
+  da venda os monta com o pagamento da venda (`prepararDocumentosDoPacote`):
+  o contrato cita `pacote.*` e `pagamento.*`.
+  - **O pop-up do pacote mostra o que vai nascer** (Vendas → Pacotes,
+    `[role=group][aria-label="Documentos do pacote"]`): o contrato de pacote da
+    rede (`[data-contrato-do-pacote]`) e os puxados (`[data-puxado]`), cada um
+    com "Excluir" / "Incluir de novo". O pacote guarda o que a rede EXCLUIU
+    (`service_packages.documentos_excluidos`, por `pacote_salvar`): documento
+    novo ligado ao procedimento entra sozinho, e o que a tela mostra é o que
+    nasce (princípio 3). A lista é a mesma regra no app e no banco
+    (`documentosPuxadosDoPacote`, `lib/pacotes/documentos.ts`).
+  - **A venda NÃO espera a assinatura** (decisão pelos princípios 2 e 6: o
+    "assinatura antes do dinheiro" do Heitor, PT1c, foi dito do PLANO; do
+    pacote nada foi dito). A tela da venda diz o que ficou para assinar
+    (`[data-documentos-da-venda]`, ou a descrição do aviso) e leva a colher.
+  - **O "Bloqueia" do documento do pacote trava a SESSÃO** (o início de cada
+    sessão do pacote, como todo "Bloqueia"): `documentos_pendentes_do_atendimento`
+    conta, na sessão de pacote, os abertos do pacote vendido, e a janela e a
+    sessão de atendimento os mostram (`documentosDoAgendamento`). A sessão não
+    emite documento seu.
+  - **Cancelar o pacote cancela os abertos dele** ("Pacote cancelado") e
+    revoga os links.
+  - Prova: `e2e/documentos-link-unico-e-pacote.spec.ts`.
 - **O contrato de plano ativo se TROCA, não se desativa antes** (D-5, decisão
   do Heitor, 2026-10-29: "Fica o fluxo de trocar; sai o de criar outro e
   desativar o atual antes."). O contrato de plano novo nasce INATIVO quando a
@@ -236,10 +266,30 @@ DEVLOG ("Termos e contratos").
   a assinatura é na sessão, na ficha e, desde a A23 da 9ª, pelo link da
   janela (acima). Prova:
   `e2e/agenda-janela-termo.spec.ts`.
-- **Assinar é UMA função** para todos os canais (`documento_assinar`): trava,
-  confere hash, grava a evidência (`document_signatures`, imutável, sem
-  cascade) e o status numa transação. `termo.assinado` sai depois, em TS;
-  `termo.emitido` sai do banco.
+- **Assinar é UMA função** para todos os canais (`documentos_assinar`; a
+  `documento_assinar` antiga é a mesma, para um): trava, confere hash, grava a
+  evidência (`document_signatures`, imutável, sem cascade) e o status numa
+  transação. `termo.assinado` sai depois, em TS; `termo.emitido` sai do banco.
+- **Uma assinatura para todos, em todo canal** (DC3/AG1/PC10/CA4 — Bloco
+  Documentos, leva 2, 2026-11-14). O MOMENTO de um documento
+  (`documentosDoMomento`, `lib/documentos/momento.ts`) é o agendamento, o
+  pacote vendido ou o plano, de UMA cliente; os abertos prontos dele
+  (PENDENTE) vão juntos — no link, no aparelho entregue na clínica e no portal
+  ("Assinar todos", `/[slug]/cliente/documentos/assinar`).
+  - A tela (`AssinarJuntos`, `components/shared/assinar-juntos.tsx`) lista os
+    documentos; a cliente abre cada um ("Ler"), marca o aceite, que DIZ os
+    títulos ("Eu, Ana, li e concordo com os documentos: A, B e C." —
+    `textoDoAceite`, montado no SERVIDOR a partir dos títulos do banco), e
+    assina UMA vez. O botão diz o que falta, inclusive os que não abriu.
+  - Cada documento leva a SUA evidência: a mesma imagem da assinatura, o hash
+    DELE (calculado no navegador dos bytes que ela viu e conferido no banco),
+    o seu código, o seu PDF e o seu QR; `/verificar` continua por documento.
+  - O de "faltam dados" (INCOMPLETO) fica de fora, e a tela diz qual e o que
+    falta (`[data-fora-do-link]`). Papel e "dispensar com motivo" continuam
+    por documento.
+  - Na clínica, "Entregar ao cliente" leva os abertos do momento juntos
+    (`[data-assinam-juntos]`, `assinarJuntosNaClinica`); no portal,
+    `assinarJuntosNoPortal` (só os da ficha DELA).
 - **A tela de assinar tem UM gesto** (J-62, 2026-10-30): marcar "li e
   concordo", desenhar no quadro e "Assinar documento". O "Confirmar
   assinatura" do quadro saiu (`SignaturePad` entrega o desenho a cada traço,
@@ -406,7 +456,15 @@ DEVLOG ("Termos e contratos").
   motivo da dispensa ficam com a equipe. Prova:
   `e2e/portal-cliente-documentos-do-agendamento.spec.ts`.
 - **Link público** (`/assinar/[token]`, rota pública; `gerarLinkDeAssinatura`
-  na ficha): uso único, 7 dias, um ativo por documento (gerar outro revoga).
+  na ficha): uso único, 7 dias. **Um link por cliente e momento** (DC3, leva 2):
+  leva todos os abertos prontos do momento (`documentos_link_criar` — uma
+  linha de `document_sign_links` por documento, o mesmo `token_hash`; gerar
+  outro revoga o grupo antigo INTEIRO, e um grupo é de uma cliente só). A
+  prova de quem assina vale para o grupo: as tentativas contam em todas as
+  linhas e 5 erros revogam todas; assinar consome todas; o pedido tem de
+  trazer EXATAMENTE os documentos ativos do link (documento de fora ou a
+  metade deles: 409, nada assinado). A ficha diz o que vai no link
+  (`[data-vai-no-link]`) e o que fica de fora (`[data-fora-do-link]`).
   - **Só o SHA-256 do token vai para o banco** (`document_sign_links`) — o
     link se mostra UMA vez; perdeu, gera outro.
   - Antes de ver o documento o cliente confirma o CPF, ou a data de nascimento
@@ -601,6 +659,9 @@ DEVLOG ("Termos e contratos").
 ❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)
 ❌ Pôr nas dependências do efeito que relê o passo do checkout um objeto que vem do servidor (cada refresh traz um novo, e a tela volta ao Pagamento — F46)
 ❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir
+❌ Assinar vários documentos juntos fora de documentos_assinar, ou montar o texto do aceite no navegador (é textoDoAceite no servidor, com os títulos do banco)
+❌ Pôr no link, ou na assinatura de juntos, documento de outra cliente, de outro momento ou com "faltam dados"
+❌ Fazer a venda do pacote esperar a assinatura (o "Bloqueia" do pacote trava a SESSÃO, não a venda — PC2)
 ❌ Abrir no editor (ou gravar) o JSON do modelo sem normalizarListasDoEditor: a edição mostraria o que o documento não diz (A16 da 12ª)
 ❌ Montar o link de /verificar com NEXT_PUBLIC_APP_URL (é o do build) — é urlDaClinica() (D11)
 ❌ Registrar "notificado no portal" (ou dizer "enviado") quando o plano não tem o portal: o aviso não sai (C57a)

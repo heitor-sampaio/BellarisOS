@@ -31,7 +31,7 @@ export default async function AssinarPeloLinkPage({ params }: { params: Promise<
   return (
     <MolduraDaVerificacao marca={null}>
       {espiada.estado === 'valido'
-        ? <AssinarPorLink token={decodeURIComponent(token)} clinica={espiada.clinica ?? 'A clínica'} pede={espiada.pede} />
+        ? <AssinarPorLink token={decodeURIComponent(token)} clinica={espiada.clinica ?? 'A clínica'} pede={espiada.pede} quantos={espiada.documentos} />
         : (
           <div className="card" style={{ padding: '28px 22px', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
             <div style={{ width: 44, height: 44, borderRadius: '50%', background: espiada.estado === 'usado' ? 'var(--success-bg)' : 'var(--warning-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -40,7 +40,7 @@ export default async function AssinarPeloLinkPage({ params }: { params: Promise<
                 : <CircleAlert size={22} color="var(--warning)" />}
             </div>
             <h1 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
-              {espiada.estado === 'usado' ? 'Documento já assinado' : 'Link indisponível'}
+              {espiada.estado === 'usado' ? (espiada.documentos > 1 ? 'Documentos já assinados' : 'Documento já assinado') : 'Link indisponível'}
             </h1>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }} data-estado={espiada.estado}>
               {MENSAGEM_DO_ESTADO[espiada.estado]}

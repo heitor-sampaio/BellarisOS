@@ -218,8 +218,14 @@ plano").
   (`package_sessions.appointment_id`), os documentos abertos dela são
   cancelados (`trg_documentos_da_sessao_de_pacote`). O **contrato de pacote**
   é um modelo da rede, um só ativo, e toda rede nasce com o padrão (DC1/DC2,
-  `documentos.md`). A venda emitir o contrato de pacote e os documentos
-  puxados dos procedimentos é a leva 2 (DC1c/PC9b, PC2).
+  `documentos.md`). **A venda emite** (leva 2, 2026-11-14) o contrato de
+  pacote ativo (com `pacote.*` e o `pagamento.*` da venda) e os documentos
+  puxados dos procedimentos distintos — o termo e os "Outros documentos",
+  menos os que o pacote exclui no pop-up (`documentos_excluidos`). A venda
+  NÃO espera a assinatura (princípios 2 e 6): a tela da venda diz o que ficou
+  para assinar, e o "Bloqueia" do documento do pacote trava o início de cada
+  SESSÃO dele. Cancelar o pacote cancela os documentos abertos dele. Regra
+  inteira em `documentos.md`; prova: `e2e/documentos-link-unico-e-pacote.spec.ts`.
 - **Os itens** moram em `service_package_items` (procedimento + quantidade);
   `service_packages.total_sessions` é a soma e `procedure_id` o primeiro item
   (as leituras de "o procedimento do pacote" seguem certas). Pacote e itens se

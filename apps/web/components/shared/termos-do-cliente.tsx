@@ -272,6 +272,19 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
                   Link de uso único, vale até {formatDate(link.dados.expiraEm, fuso)} às {formatTime(link.dados.expiraEm, fuso)}. O cliente confirma {link.dados.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
                   Ele só aparece agora: se perder, gere outro.
                 </p>
+                {/* DC3: o link leva todos os abertos do momento; o de "faltam dados" fica fora, e a tela diz o que falta. */}
+                <div data-vai-no-link style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)' }}>
+                  <strong>{link.dados.documentos.length === 1 ? 'Vai no link:' : `Vão no link (${link.dados.documentos.length}, uma assinatura para todos):`}</strong>{' '}
+                  {link.dados.documentos.join(' · ')}
+                </div>
+                {link.dados.fora.length > 0 && (
+                  <div data-fora-do-link style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                    <p>Ficam de fora até completar o cadastro:</p>
+                    <ul style={{ paddingLeft: 16, listStyle: 'disc', fontWeight: 'var(--weight-regular)', color: 'var(--text)' }}>
+                      {link.dados.fora.map(f => <li key={f.titulo}><strong>{f.titulo}</strong> — falta {f.faltando.join(', ') || 'um dado do cadastro'}</li>)}
+                    </ul>
+                  </div>
+                )}
                 <input className="field" readOnly value={link.dados.url} aria-label="Link de assinatura" onFocus={e => e.currentTarget.select()} style={{ fontSize: 'var(--text-xs-sz)' }} />
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <button type="button" className="btn-secondary" onClick={() => copiar(link.dados.url)}

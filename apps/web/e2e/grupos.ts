@@ -457,6 +457,8 @@ export const ISOLADOS = [
   'portal-cliente-avaliacao-por-procedimento.spec.ts',
   // Bloco Documentos, leva 1 (2026-11-14): os cinco tipos e "nasce ao agendar".
   'documentos-tipos-e-nascimento.spec.ts',
+  // Leva 2 (2026-11-14): o link único, uma assinatura para todos e o pacote.
+  'documentos-link-unico-e-pacote.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

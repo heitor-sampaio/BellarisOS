@@ -225,7 +225,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
 
         <Campo rotulo="Sem assinatura" dica={exigencia === 'BLOQUEIA'
           ? (tipo === 'CONTRATO_PLANO' ? 'O plano não é fechado sem o contrato assinado.'
-            : tipo === 'CONTRATO_PACOTE' ? 'A venda do pacote não é fechada sem o contrato assinado.'
+            : tipo === 'CONTRATO_PACOTE' ? 'A venda não espera; as sessões do pacote não são iniciadas sem o contrato assinado.'
             : 'O atendimento não é iniciado sem o documento assinado.')
           : 'A equipe é avisada, mas nada é travado.'}>
           <SegSelect
