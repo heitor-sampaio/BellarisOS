@@ -672,8 +672,8 @@ um muro que não depende de cada trava do código.
   unidade do endereço (`updateBranch`, `actions/salas.ts`); o estoque dela
   (entrada, ajuste, perda, mínimo, transferência que sai dela); a equipe dela
   (e a comissão de quem é dela); os cadastros e a operação do dia.
-- **O catálogo, as categorias do estoque, as respostas rápidas e as
-  Importações** (H8 do levantamento das regras, respondida pelo Heitor em
+- **O catálogo, as categorias do estoque (revista em 2026-11-14, abaixo), as
+  respostas rápidas e as Importações** (H8 do levantamento das regras, respondida pelo Heitor em
   2026-11-11, na 2ª volta: "catalogo de produtos pode ser da rede ou da unidade, decisão da rede. Categorias de estoque é da rede, normalmente a rede usa o mesmo produto/fornecedor em todas unidades. Respostas rápidas, na verdade, o mais certo seria ser de cada usuário, cada usuário poder configurar as suas. Importações é da rede, ela que vai importar os seus clientes ou o que for, e na importação poder escolher se aquilo pertence a uma unidade."
   Era a decisão da F4 "para revisar", que deixava as quatro com a unidade;
   substitui a 1ª resposta, "Catalogo da unidade, o resto da clinica"):
@@ -691,15 +691,17 @@ um muro que não depende de cada trava do código.
     rede). Com "Só a rede", o Estoque da unidade não mostra "Novo produto" nem
     o lápis e diz `CATALOGO_DA_REDE` (`[data-catalogo-da-rede]`). Prova:
     `e2e/estoque-cadastro-f66.spec.ts` ("C63").
-  - **As categorias do estoque são da clínica toda** (a rede costuma usar o
-    mesmo produto e fornecedor em todas as unidades): criar, renomear e
-    apagar (`createCategory`…) recusam a gerente de unidade fixa com
-    `recusaDaConfigDaClinica`; ela escolhe as que existem. (C71 — feito na
-    F66: a janela de Categorias só aparece a quem é da rede. Prova:
-    `e2e/estoque-cadastro-f66.spec.ts` ("C71").) **Os Fornecedores seguem a
-    mesma regra** (D4, C76): a lista é da rede — renomear e arquivar recusam a
-    unidade fixa —, mas quem registra uma entrada cadastra um novo ali mesmo
-    (`atendimento.md` §9.5).
+  - **As categorias, as marcas e os fornecedores do estoque são de quem tem o
+    Estoque em Gerenciar, e só isso** (Bloco Estoque do plano de adaptação,
+    2026-11-14, o Heitor, 13/11: "é só quem tem permissão de gerenciar, mesma
+    regra para categoria, marca e fornecedor"). Substitui a C71 (as categorias
+    eram "da clínica toda" e recusavam a unidade fixa com
+    `recusaDaConfigDaClinica`) e a mesma regra dos Fornecedores (D4, C76): ser
+    da rede deixou de contar. As três listas são da rede (todas as unidades
+    usam as mesmas), e a gerente de uma unidade, com o Estoque em Gerenciar,
+    cria, renomeia e exclui (`criarItemDoEstoque`, `renomearItemDoEstoque`,
+    `excluirItemDoEstoque`). Regra em `atendimento.md` §9.5; prova:
+    `e2e/estoque-marcas-e-fornecedores.spec.ts`.
   - **As respostas rápidas são de cada pessoa** (`quick_replies`): cada membro
     cria, edita, apaga e vê só as suas, no inbox (`created_by` em toda leitura
     e gravação de `actions/quick-replies.ts`; o nome é único por pessoa,

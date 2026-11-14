@@ -23,7 +23,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 import { parseDecimal } from '@estetica-os/utils'
 import { useFuso } from '@/components/shared/fuso'
-import { CampoFornecedor, type FornecedorDaLista } from '@/components/admin/campo-fornecedor'
+import { CampoDaLista, type ItemDaLista } from '@/components/admin/campo-da-lista'
 
 type BranchStock = {
   branchId:     string
@@ -44,10 +44,6 @@ type ProductInfo = {
   /** A unidade de consumo (ml, UI) e quanto a embalagem rende: a perda aceita as duas (est-03). */
   consumptionUnit?: string | null
   unitsPerPackage?: number | null
-  /** O fornecedor do cadastro: a Entrada já o sugere (A37 da 10ª). */
-  supplier?:        string | null
-  /** C76: o fornecedor de costume, da lista da rede. */
-  fornecedorId?:    string | null
   /** O mínimo do cadastro do produto: vale na unidade que ainda não tem linha (D11 da 12ª). */
   minimoDoCadastro?: number | null
 }
@@ -66,8 +62,9 @@ interface Props {
    * marcada na Entrada, no Ajuste e na Perda (A16 da 14ª).
    */
   origemSugerida?: string
-  /** C76: a lista de fornecedores da rede. */
-  fornecedores?:   FornecedorDaLista[]
+  /** E14: as listas de marcas e de fornecedores da rede (a Entrada escolhe das duas). */
+  marcas?:         ItemDaLista[]
+  fornecedores?:   ItemDaLista[]
   /** C16: aberto pelo leitor de código de barras — só a Entrada. */
   somenteEntrada?: boolean
   onClose:         () => void
@@ -148,12 +145,13 @@ function BranchSelect({
 }
 
 // -- Formulário: Entrada -----------------------------------------------
-function EntradaForm({ product, allBranches, defaultBranchId, sugerida, fornecedores = [], onClose, onSuccess }: {
+function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas = [], fornecedores = [], onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
   defaultBranchId?: string
   /** A unidade do filtro da tela (A16 da 14ª). */
   sugerida?: string
-  fornecedores?: FornecedorDaLista[]
+  marcas?: ItemDaLista[]
+  fornecedores?: ItemDaLista[]
   onClose: () => void; onSuccess: () => void
 }) {
   const envio = useEnvioUnico()
@@ -179,7 +177,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, forneced
       if (res?.success) {
         envio.renovar()
         const idEscolhido = String(fd.get('fornecedor_id') ?? '')
-        const nomeDoFornecedor = String(fd.get('fornecedor') ?? '') || fornecedores.find(f => f.id === idEscolhido)?.nome || ''
+        const nomeDoFornecedor = fornecedores.find(f => f.id === idEscolhido)?.nome || ''
         guardarNotaDaEntrada(String(fd.get('nota_fiscal') ?? ''), nomeDoFornecedor)
         // A52 da 11ª: a entrada confirma — e diz o saldo DEPOIS (C16).
         const saldo = 'saldoAgora' in res && res.saldoAgora ? ` Saldo agora: ${res.saldoAgora}.` : ''
@@ -245,21 +243,20 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, forneced
         </p>
       )}
 
-      {/* A37 da 10ª: o fornecedor e a nota, estruturados (eram as Observações).
-          C76: o fornecedor vem da LISTA da rede — o da nota trazida da entrada
-          anterior primeiro (é a mesma nota), senão o de costume do produto. */}
+      {/* E14 (o Heitor, 13/11: "Não existe fornecedor de costume. Na entrada no
+          estoque, escolhe fornecedor e marca"): os dois das listas da rede, com
+          busca — o que falta se cria ali mesmo. O fornecedor da nota trazida da
+          entrada anterior vem escolhido (é a mesma nota, A54 da 11ª). */}
       <div className="form-2col">
-        <CampoFornecedor id="entrada-fornecedor" fornecedores={fornecedores}
-          inicial={notaAnterior?.fornecedor
-            ? { nome: notaAnterior.fornecedor }
-            : { id: product.fornecedorId ?? null, nome: product.supplier ?? null }}
-          dica={{ tipo: 'entrada', texto: 'Vale só desta entrada; fica no histórico e no lote. O de costume é o do cadastro do produto.' }} />
-        <FieldWrap>
-          <Label htmlFor="entrada-nota">Nota fiscal</Label>
-          <input id="entrada-nota" name="nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota"
-            defaultValue={notaAnterior?.nota ?? ''} />
-        </FieldWrap>
+        <CampoDaLista lista="marcas" rotulo="Marca" nome="marca_id" itens={marcas} placeholder="Buscar ou criar marca…" />
+        <CampoDaLista lista="fornecedores" rotulo="Fornecedor" nome="fornecedor_id" itens={fornecedores}
+          inicial={notaAnterior?.fornecedor ?? null} placeholder="Buscar ou criar fornecedor…" />
       </div>
+      <FieldWrap>
+        <Label htmlFor="entrada-nota">Nota fiscal</Label>
+        <input id="entrada-nota" name="nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota"
+          defaultValue={notaAnterior?.nota ?? ''} />
+      </FieldWrap>
       {notaAnterior && (
         <p data-nota-da-entrada-anterior style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
           A nota {notaAnterior.nota} veio da entrada anterior (outro produto da mesma nota) — apague se esta for outra.
@@ -905,7 +902,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
 }
 
 // -- Modal principal ---------------------------------------------------
-export function AdminStockManageModal({ product, allBranches, defaultBranchId, origemSugerida, fornecedores = [], somenteEntrada = false, onClose, onSuccess }: Props) {
+export function AdminStockManageModal({ product, allBranches, defaultBranchId, origemSugerida, marcas = [], fornecedores = [], somenteEntrada = false, onClose, onSuccess }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router = useRouter()
   const [tab,   setTab]   = useState<Tab>('movimentacoes')
@@ -985,7 +982,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
 
       <div style={{ padding: '20px 22px 26px' }}>
         {somenteEntrada ? (
-          <EntradaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />
+          <EntradaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} marcas={marcas} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />
         ) : tab === 'movimentacoes' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Sub-tabs de operação */}
@@ -1009,7 +1006,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
               ))}
             </div>
 
-            {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />}
+            {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} marcas={marcas} fornecedores={fornecedores} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'transferencia' && <TransferenciaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} origemSugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'ajuste'        && <AjusteForm        product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'perda'         && <PerdaForm         product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} sugerida={origemSugerida} onClose={onClose} onSuccess={onSuccess} />}
@@ -1133,10 +1130,10 @@ function HistoricoTab({ product, defaultBranchId, podeDesfazer = true, onAlterou
                   : (MOV_LABEL[m.type] ?? m.type)}
                 <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {m.branchName}</span>
               </p>
-              {/* A37 da 10ª: o fornecedor e a nota da entrada. */}
-              {(m.fornecedor || m.notaFiscal) && (
+              {/* A37 da 10ª + E14: a nota, a marca e o fornecedor da entrada (o nome gravado nela). */}
+              {(m.fornecedor || m.marca || m.notaFiscal) && (
                 <p data-nota-da-entrada style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
-                  {[m.notaFiscal ? `NF ${m.notaFiscal}` : null, m.fornecedor].filter(Boolean).join(' · ')}
+                  {[m.notaFiscal ? `NF ${m.notaFiscal}` : null, m.marca, m.fornecedor].filter(Boolean).join(' · ')}
                 </p>
               )}
               {m.desfeita && (

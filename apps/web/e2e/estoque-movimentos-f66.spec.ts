@@ -176,13 +176,10 @@ test('C76: o fornecedor da entrada vira a lista da rede — o mesmo nome, sem ca
   expect(movs).toHaveLength(2)
   for (const m of movs!) expect(m).toEqual({ fornecedor: 'Distribuidora Sul', fornecedor_id: lista![0]!.id })
 
-  // Editar e arquivar a lista é de quem é da rede.
+  // E4 do plano de adaptação (o Heitor, 13/11): renomear é de quem tem o Estoque
+  // em Gerenciar — a gerente de uma unidade também (era só quem é da rede).
   await como(browser, gerente, async p => {
-    const r = await chamarAcao(p, 'actions/stock.ts', 'arquivarFornecedor', rota(), [lista![0]!.id, true])
-    expect(r.texto).toContain('Esta configuração é da clínica toda')
-  })
-  await como(browser, dona, async p => {
-    const r = await chamarAcao(p, 'actions/stock.ts', 'renomearFornecedor', '/admin/estoque', [lista![0]!.id, 'Distribuidora Sul Ltda'])
+    const r = await chamarAcao(p, 'actions/stock.ts', 'renomearItemDoEstoque', rota(), ['fornecedores', lista![0]!.id, 'Distribuidora Sul Ltda'])
     expect(r.texto).toContain('"success":true')
   })
   expect((await db().from('fornecedores').select('nome').eq('id', lista![0]!.id).single<{ nome: string }>()).data!.nome).toBe('Distribuidora Sul Ltda')

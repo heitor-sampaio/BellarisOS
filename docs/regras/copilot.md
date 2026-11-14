@@ -214,8 +214,8 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   da prateleira ("1 frasco fechado + 1 aberto com 50 UI",
   `saldoNaPrateleira`), o mínimo na mesma régua (`minimoNaTela`) e a medida
   no plural — nunca o `current_stock`, que conta a embalagem aberta inteira.
-  `entrada_de_estoque` leva fornecedor (em texto: o banco o põe na lista da
-  rede, C76) e nota fiscal; o cartão diz "Não gera despesa", "+2 frascos (200
+  `entrada_de_estoque` leva fornecedor e marca (em texto: o banco os põe nas
+  listas da rede, C76 e E14 do Bloco Estoque) e nota fiscal; o cartão diz "Não gera despesa", "+2 frascos (200
   UI)" e avisa a validade que já passou, sem recusar; o resultado diz o
   "Saldo agora" da prateleira (`saldoAgoraEmTexto`, o mesmo da Entrada).
   `ajuste_de_estoque`: o cartão diz para onde vai a diferença (a menos é

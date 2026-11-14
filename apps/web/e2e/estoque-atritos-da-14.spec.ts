@@ -9,11 +9,13 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  *
  * - A12 (princípio 7): a entrada, a perda e o histórico moravam atrás de uma
  *   engrenagem sem texto — o botão diz "Entrada e perda"; e os Fornecedores
- *   ficam ao lado das Categorias para quem é da rede, nos DOIS portais (só o
- *   /admin os tinha: sobra da C76/F66).
+ *   ficam ao lado das Categorias nos DOIS portais (só o /admin os tinha: sobra
+ *   da C76/F66). Desde o Bloco Estoque (E4, 2026-11-14), para quem tem o
+ *   Estoque em Gerenciar — a gerente de uma unidade também.
  * - A13 (3): a perda que não tem "Desfazer perda" diz por quê.
- * - A14 (7): o "Fornecedor de costume" e o "Fornecedor desta entrada" dizem a
- *   diferença; a linha do lote mostra o fornecedor e a nota da entrada.
+ * - A14 (7): a linha do lote mostra o fornecedor e a nota da entrada. (A dica
+ *   "de costume" × "desta entrada" saiu com o Bloco Estoque, E10: o produto não
+ *   tem mais fornecedor — só a entrada.)
  * - A15 (3): o mínimo herdado do cadastro diz "(do cadastro)" na linha (sobra
  *   da D2 da 11ª: a nota morava só na aba "Estoque mínimo").
  * - A16 (7): com a tela filtrada numa unidade (`?unidade=`), a Entrada já vem
@@ -97,7 +99,7 @@ test.afterAll(async () => {
   await gerente?.limpar(); await dona?.limpar(); await rede?.limpar()
 })
 
-test('A12: o botão diz "Entrada e perda", e os Fornecedores ficam ao lado das Categorias nos dois portais — para quem é da rede', async ({ browser }) => {
+test('A12: o botão diz "Entrada e perda", e os Fornecedores ficam ao lado das Categorias nos dois portais — para quem tem o Estoque em Gerenciar', async ({ browser }) => {
   await como(browser, dona, async p => {
     for (const rota of [`/${slug}/estoque`, '/admin/estoque']) {
       await p.goto(rota)
@@ -108,11 +110,12 @@ test('A12: o botão diz "Entrada e perda", e os Fornecedores ficam ao lado das C
       await expect(p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })).toBeVisible()
     }
   })
-  // Quem tem unidade fixa não mexe na lista da rede (recusaDaConfigDaClinica).
+  // E4 (Bloco Estoque, o Heitor, 13/11: "é só quem tem permissão de gerenciar"):
+  // a gerente de uma unidade, com o Estoque em Gerenciar, também mexe na lista.
   await como(browser, gerente, async p => {
     await p.goto(`/${slug}/estoque`)
     await expect(linhaDo(p, nomeLuva).getByRole('button', { name: 'Entrada e perda' })).toBeVisible()
-    await expect(p.getByRole('button', { name: 'Fornecedores' })).toHaveCount(0)
+    await expect(p.getByRole('button', { name: 'Fornecedores' })).toBeVisible()
   })
 })
 
@@ -129,7 +132,7 @@ test('A13: a perda que não se desfaz diz por quê', async ({ browser }) => {
   })
 })
 
-test('A14: os dois fornecedores dizem a diferença, e a linha do lote mostra o fornecedor e a nota', async ({ browser }) => {
+test('A14: a linha do lote mostra o fornecedor e a nota; o produto não tem fornecedor de costume (E10)', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto(`/${slug}/estoque`)
     await linhaDo(p, nomeGel).click()
@@ -138,9 +141,11 @@ test('A14: os dois fornecedores dizem a diferença, e a linha do lote mostra o f
     await expect(lote).toContainText('Distribuidora Sul')
 
     await p.getByRole('button', { name: 'Novo produto' }).first().click()
-    await expect(p.locator('[data-dica-fornecedor="costume"]')).toContainText('vem sugerido nas próximas entradas')
-    await p.getByRole('switch', { name: /Adicionar estoque inicial/ }).click()
-    await expect(p.locator('[data-dica-fornecedor="entrada"]')).toContainText('só desta entrada')
+    const modal = p.locator('dialog[open]')
+    await expect(modal.getByText('Fornecedor de costume')).toHaveCount(0)
+    await modal.getByRole('switch', { name: /Adicionar estoque inicial/ }).click()
+    await expect(modal.getByRole('combobox', { name: 'Fornecedor', exact: true })).toBeVisible()
+    await expect(modal.getByRole('combobox', { name: 'Marca' })).toBeVisible()
   })
 })
 

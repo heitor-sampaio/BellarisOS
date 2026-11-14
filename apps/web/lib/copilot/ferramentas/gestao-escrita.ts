@@ -161,7 +161,7 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
   // dava baixa em qualquer lançamento da unidade.
   modulo: 'cashier', nivel: 'MANAGE',
   recurso: 'financeiro',
-  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; obrigatória quando o lançamento não tem forma, como a parcela do crediário) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a clínica tem mais de uma — sem ela, a ferramenta pergunta.',
+  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a clínica tem mais de uma — sem ela, a ferramenta pergunta.',
   parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional(), bandeira: z.string().max(30).optional(), vezes: z.number().int().min(1).max(12).optional(), maquininha: z.string().max(60).optional() }),
   async preparar(c, a) {
     const tx = await lancamentoAoAlcance(c.admin, c.ctx, a.lancamento)
@@ -171,7 +171,8 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
     const forma = formaDePagamento(a.forma)
     if (forma && typeof forma !== 'string') return forma
     // C34 (F67): sem meio no lançamento, a baixa pede a forma — como a tela.
-    if (!forma && !tx.payment_method) return { erro: 'Esse lançamento não tem forma de pagamento: pergunte como foi pago (dinheiro, Pix, débito, crédito ou boleto, na despesa).' }
+    // PDV8: a receita pede a forma SEMPRE (o meio combinado não é o que entrou).
+    if (!forma && (tx.type === 'INCOME' || !tx.payment_method)) return { erro: 'Pergunte como foi pago (dinheiro, Pix, débito, crédito ou boleto, na despesa): a baixa de uma receita sempre diz a forma.' }
     const bandeira = bandeiraDoPedido(a.bandeira, (forma as string | null) ?? tx.payment_method)
     if (bandeira && typeof bandeira !== 'string') return bandeira
     // F17-5: as vezes só no crédito da receita, até o limite da clínica (a regra da baixa da tela).
@@ -238,10 +239,10 @@ async function saldoDoAjuste(c: ContextoDaFerramenta, productId: string, branchI
   return { embalagens: Math.round(rend / rende * 10_000) / 10_000, consumo: prod!.consumption_unit!, rende }
 }
 
-interface ArgsEntrada { produto: string; quantidade: number; custoUnitario?: number; lote?: string; validade?: string; unidade?: string; observacao?: string; fornecedor?: string; notaFiscal?: string }
+interface ArgsEntrada { produto: string; quantidade: number; custoUnitario?: number; lote?: string; validade?: string; unidade?: string; observacao?: string; fornecedor?: string; marca?: string; notaFiscal?: string }
 interface PayloadEntrada {
   productId: string; branchId: string; quantidade: number; custoUnitario: number | null; lote: string | null; validade: string | null; observacao: string | null
-  fornecedor?: string | null; notaFiscal?: string | null
+  fornecedor?: string | null; marca?: string | null; notaFiscal?: string | null
 }
 
 /**
@@ -256,7 +257,7 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
   tipo: 'escrita',
   modulo: 'stock', nivel: 'MANAGE',
   recurso: 'estoque',
-  descricao: 'Registra a ENTRADA (compra/recebimento) de um produto numa unidade: quantidade em embalagens, custo unitário opcional, lote e validade (AAAA-MM-DD) opcionais, o fornecedor (o nome; entra na lista de Fornecedores da rede) e a nota fiscal, opcionais.',
+  descricao: 'Registra a ENTRADA (compra/recebimento) de um produto numa unidade: quantidade em embalagens, custo unitário opcional, lote e validade (AAAA-MM-DD) opcionais, o fornecedor e a marca (os nomes; entram nas listas de Fornecedores e de Marcas da rede) e a nota fiscal, opcionais.',
   parametros: z.object({
     produto: z.string().min(2).max(80),
     quantidade: z.number().positive().max(100_000),
@@ -266,6 +267,7 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
     unidade: z.string().max(80).optional(),
     observacao: z.string().max(200).optional(),
     fornecedor: z.string().max(120).optional(),
+    marca: z.string().max(120).optional(),
     notaFiscal: z.string().max(60).optional(),
   }),
   async preparar(c, a) {
@@ -282,6 +284,7 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
     // (avisa; a entrada vale assim, princípio 2).
     const vencida = !!a.validade && loteVencido(a.validade, new Date(), await fusoDaUnidade(c.ctx.tenantId, u.unidade!.id))
     const fornecedor = a.fornecedor?.trim().replace(/\s+/g, ' ') || null
+    const marca = a.marca?.trim().replace(/\s+/g, ' ') || null
     const nota = a.notaFiscal?.trim() || null
     return {
       resumo: {
@@ -291,6 +294,7 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
           { rotulo: 'Quantidade', valor: `+${num(a.quantidade)} ${medidaNoPlural(un, a.quantidade)}${rende ? ` (${num(a.quantidade * rende)} ${p.consumption_unit})` : ''}`.trim() },
           ...(a.custoUnitario ? [{ rotulo: 'Custo unitário', valor: dinheiro(a.custoUnitario) }] : []),
           ...(a.lote ? [{ rotulo: 'Lote', valor: `${a.lote}${a.validade ? ` · vence ${a.validade.split('-').reverse().join('/')}` : ''}` }] : []),
+          ...(marca ? [{ rotulo: 'Marca', valor: marca }] : []),
           ...(fornecedor ? [{ rotulo: 'Fornecedor', valor: fornecedor }] : []),
           ...(nota ? [{ rotulo: 'Nota fiscal', valor: nota }] : []),
           { rotulo: 'Unidade', valor: u.unidade!.name },
@@ -301,13 +305,13 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
       payload: {
         productId: p.id, branchId: u.unidade!.id, quantidade: a.quantidade, custoUnitario: a.custoUnitario ?? null,
         lote: a.lote?.trim() || null, validade: a.validade ?? null, observacao: a.observacao?.trim() || null,
-        fornecedor, notaFiscal: nota,
+        fornecedor, marca, notaFiscal: nota,
       },
     }
   },
   async efetivar(c, p) {
-    // O fornecedor vai em texto: o banco o resolve na lista da rede (o mesmo
-    // nome, sem caixa nem espaços, é o mesmo; o novo entra — C76).
+    // O fornecedor e a marca vão em texto: o banco os resolve nas listas da rede
+    // (o mesmo nome, sem caixa nem espaços, é o mesmo; o novo entra — C76, E14).
     const r = await entradaDeEstoqueCore(c.admin, c.ctx, p)
     if ('error' in r) return { erro: r.error }
     revalidar('estoque')

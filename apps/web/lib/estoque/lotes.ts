@@ -29,6 +29,8 @@ export interface LoteDoProduto {
   origemDoCusto: 'ENTRADA' | 'AJUSTE' | 'TRANSFERENCIA' | null
   /** A14 da 14ª: o fornecedor e a nota da ENTRADA (a compra) que criou o lote — nulos sem compra (ajuste, transferência). */
   fornecedor?: string | null
+  /** E14 (Bloco Estoque): a marca da entrada que criou o lote. */
+  marca?: string | null
   notaFiscal?: string | null
 }
 
@@ -63,15 +65,15 @@ export async function lotesComSaldo(
   }
   // A14 da 14ª (princípio 7): o fornecedor e a nota da compra do lote — moravam
   // só no Histórico, e a linha do lote não dizia de onde ele veio.
-  const daCompra = new Map<string, { fornecedor: string | null; notaFiscal: string | null }>()
+  const daCompra = new Map<string, { fornecedor: string | null; marca: string | null; notaFiscal: string | null }>()
   for (let i = 0; i < dosProdutos.length; i += 150) {
     const pedaco = dosProdutos.slice(i, i + 150).map(l => l.id)
     const ligs = await ler(admin.from('stock_movement_batches')
-      .select('batch_id, stock_movements!inner(type, fornecedor, nota_fiscal)')
+      .select('batch_id, stock_movements!inner(type, fornecedor, marca, nota_fiscal)')
       .in('batch_id', pedaco).eq('stock_movements.type', 'PURCHASE'), 'ler o fornecedor dos lotes') as unknown as
-      { batch_id: string; stock_movements: { fornecedor: string | null; nota_fiscal: string | null } | null }[] | null
+      { batch_id: string; stock_movements: { fornecedor: string | null; marca: string | null; nota_fiscal: string | null } | null }[] | null
     for (const g of ligs ?? []) {
-      if (g.stock_movements) daCompra.set(g.batch_id, { fornecedor: g.stock_movements.fornecedor, notaFiscal: g.stock_movements.nota_fiscal })
+      if (g.stock_movements) daCompra.set(g.batch_id, { fornecedor: g.stock_movements.fornecedor, marca: g.stock_movements.marca, notaFiscal: g.stock_movements.nota_fiscal })
     }
   }
   return dosProdutos.map(l => {
@@ -83,6 +85,7 @@ export async function lotesComSaldo(
       custoPorEmbalagem: custo != null && custo > 0 ? Math.round(custo * 100) / 100 : null,
       origemDoCusto: custo != null && custo > 0 ? c?.origem ?? null : null,
       fornecedor: daCompra.get(l.id)?.fornecedor ?? null,
+      marca: daCompra.get(l.id)?.marca ?? null,
       notaFiscal: daCompra.get(l.id)?.notaFiscal ?? null,
     }
   })

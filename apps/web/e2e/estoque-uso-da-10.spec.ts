@@ -61,11 +61,13 @@ test.beforeAll(async () => {
   slug = (await b.from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   dona = await criarMembro(`eu10d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   const produtos = await b.from('products').insert([
-    { tenant_id: rede.tenantId, name: nomeGel, unit: 'un', uso: 'INSUMO', supplier: 'Distribuidora Sul' },
+    { tenant_id: rede.tenantId, name: nomeGel, unit: 'un', uso: 'INSUMO' },
     { tenant_id: rede.tenantId, name: nomeLuva, unit: 'cx', uso: 'INSUMO' },
     { tenant_id: rede.tenantId, name: nomeMascara, unit: 'pote', uso: 'INSUMO' },
   ]).select('id, name')
   expect(produtos.error).toBeNull()
+  // E10/E14 (Bloco Estoque): o produto não tem fornecedor de costume; a Entrada o escolhe da lista da rede.
+  expect((await b.from('fornecedores').insert({ tenant_id: rede.tenantId, nome: 'Distribuidora Sul' })).error).toBeNull()
   const id = (nome: string) => produtos.data!.find(p => p.name === nome)!.id as string
   gel = id(nomeGel); luva = id(nomeLuva); mascara = id(nomeMascara)
   const entrada = async (produto: string, qtd: number, custo: number, lote: string | null, dias: number | null) =>
@@ -136,8 +138,9 @@ test('A37: a Entrada diz que não gera despesa e guarda o fornecedor e a nota', 
     await modal.getByLabel('Quantidade').fill('3')
     await modal.getByLabel('Custo unitário').fill('20')
     await modal.getByLabel('Nº do lote').fill(`UD-${marca}`)
-    // C76 (F66): o de costume vem escolhido na LISTA de fornecedores da rede.
-    await expect(modal.getByLabel('Fornecedor').locator('option:checked')).toHaveText('Distribuidora Sul')
+    // E14 (Bloco Estoque): o fornecedor se escolhe da LISTA da rede, pela busca.
+    await modal.getByRole('combobox', { name: 'Fornecedor', exact: true }).fill('distribuidora')
+    await modal.getByRole('option', { name: 'Distribuidora Sul' }).click()
     await modal.getByLabel('Nota fiscal').fill('004630')
     await modal.getByRole('button', { name: 'Registrar entrada' }).click()
     await expect.poll(() => saldo(gel)).toBe(antes + 3)

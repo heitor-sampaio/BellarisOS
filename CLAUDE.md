@@ -668,14 +668,17 @@ Regras:
   Heitor, 2026-11-01: "gerente de uma unidade só mexe no que é da unidade").
   Com os módulos em Gerenciar, quem tem unidade fixa (`ctx.branchId !== null`)
   não grava tags, funis, cargos, fichas, termos, integrações, automações,
-  campanhas, templates, as categorias do estoque, as Importações nem os
+  campanhas, templates, as Importações nem os
   dados da rede: a action devolve
   `recusaDaConfigDaClinica` (`lib/configuracao-da-rede.ts`) e a aba diz "Esta
   configuração é da clínica toda". Continua com a dela: a aba Unidade (dados,
   horário, salas), o estoque e a equipe. O catálogo de produtos é decisão da
   rede (padrão: a unidade cadastra), e as respostas rápidas são de cada
-  pessoa (H8 do levantamento das regras, 2026-11-11 — C63 e C71 na F66,
-  C72 na F69; a C73 ainda não entrou). A
+  pessoa (H8 do levantamento das regras, 2026-11-11 — C63 na F66,
+  C72 na F69; a C73 ainda não entrou). As categorias, as marcas e os
+  fornecedores do estoque são de quem tem o Estoque em Gerenciar, e só isso
+  (Bloco Estoque, 2026-11-14: "é só quem tem permissão de gerenciar"; a C71
+  saiu). A
   lista dos dois lados está em `docs/regras/plataforma.md`. Prova:
   `e2e/permissoes-gerente-de-unidade.spec.ts`.
 - **A abrangência se confere na ACTION, não só no layout.** Registro de

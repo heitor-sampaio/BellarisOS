@@ -8,7 +8,9 @@ import { BarcodeEntryModal } from './barcode-entry-modal'
 import { contemSemAcento } from '@/lib/texto'
 import { validadeNaTela, loteVencido } from '@/lib/estoque/validade'
 import { StockProductModal } from '../branch/stock-product-modal'
-import type { StockProduct, ProductCategory, StockProductModalHandle } from '../branch/stock-product-modal'
+import type { StockProduct, StockProductModalHandle } from '../branch/stock-product-modal'
+import type { ItemDaLista } from './campo-da-lista'
+import { rotuloDoUso } from '@/lib/estoque/uso'
 import { SegSelect } from '@/components/shared/seg-select'
 import { BotaoAplicadoEm, LotesEsgotados } from '@/components/admin/aplicacoes-do-lote'
 import { useFuso } from '@/components/shared/fuso'
@@ -28,8 +30,9 @@ export type LoteNaTela = {
   custoPorEmbalagem: number | null
   /** D4 da 11ª: o lote que o ajuste criou vale o último custo de então, e a tela diz. */
   origemDoCusto?: 'ENTRADA' | 'AJUSTE' | 'TRANSFERENCIA' | null
-  /** A14 da 14ª: o fornecedor e a nota da compra que criou o lote. */
+  /** A14 da 14ª: o fornecedor e a nota da compra que criou o lote (E14: e a marca). */
   fornecedor?: string | null
+  marca?: string | null
   notaFiscal?: string | null
 }
 
@@ -52,7 +55,6 @@ type ProductStock = {
   category:         string | null
   categoryId:       string | null
   unit:             string
-  supplier:         string | null
   costPrice:        number
   salePrice:        number | null
   /** O uso do produto (D-6): INSUMO, REVENDA ou AMBOS. */
@@ -70,28 +72,26 @@ type ProductStock = {
   lotes?:           LoteNaTela[]
   /** D1 do levantamento: o produto desativado com saldo continua na lista, marcado "Inativo". */
   isActive?:        boolean
-  /** C76: o fornecedor de costume, da lista da rede. */
-  fornecedorId?:    string | null
+  /** E15: as marcas e os fornecedores das entradas do produto (o filtro). */
+  marcaIds?:        string[]
+  fornecedorIds?:   string[]
 }
 
 /** `ativa: false` = a desativada com o que ficou (F72): aparece e se transfere DELA; não recebe. */
 type Branch = { id: string; name: string; slug: string; ativa?: boolean }
-export type Fornecedor = { id: string; nome: string }
 
 const medidas = (p: ProductStock): MedidasDoProduto =>
   ({ unit: p.unit, consumption_unit: p.consumptionUnit, units_per_package: p.unitsPerPackage })
 const saldoDe = (b: BranchStock) => ({ embalagens: b.currentStock, rendimento: b.currentRendimento, minimo: b.minStock })
 const situacaoDe = (p: ProductStock, b: BranchStock) => situacaoDoEstoque(saldoDe(b), medidas(p))
 const fmtBRLv = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-/** O uso na linha do produto (D-6): "Insumo", "Revenda" ou "Insumo e revenda". */
-const rotuloDoUso = (uso: string | null | undefined) =>
-  uso === 'REVENDA' ? 'Revenda' : uso === 'AMBOS' ? 'Insumo e revenda' : 'Insumo'
 
 interface Props {
   products:          ProductStock[]
   branches:          Branch[]
-  categories:        string[]
-  productCategories?: ProductCategory[]
+  /** E1/E15: as três listas da rede — o cadastro do produto, a Entrada e os três filtros. */
+  productCategories?: ItemDaLista[]
+  marcas?:           ItemDaLista[]
   defaultBranchId?:  string
   /**
    * Unidade já selecionada ao abrir (`?unidade=` na URL).
@@ -120,8 +120,7 @@ interface Props {
    * fixa movimenta o estoque (a engrenagem) e não edita o produto (o lápis some).
    */
   podeEditarProduto?: boolean
-  /** C76: a lista de fornecedores da rede (os arquivados ficam fora). */
-  fornecedores?:     Fornecedor[]
+  fornecedores?:     ItemDaLista[]
 }
 
 type ViewMode  = 'consolidado' | 'por-unidade'
@@ -248,7 +247,7 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, categories, productCategories, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null, podeEditarProduto = !readOnly, fornecedores = [] }: Props) {
+export function AdminStockView({ products, branches, productCategories = [], marcas = [], defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null, podeEditarProduto = !readOnly, fornecedores = [] }: Props) {
   const temLoteEsgotado = useMemo(() => new Set(comLoteEsgotado), [comLoteEsgotado])
   // O dia do "vencido" é o da unidade (F62b).
   const fuso = useFuso()
@@ -264,6 +263,8 @@ export function AdminStockView({ products, branches, categories, productCategori
     setSearch(buscaInicial)
   }
   const [category,   setCategory]   = useState('')
+  const [marca,      setMarca]      = useState('')
+  const [fornecedor, setFornecedor] = useState('')
   const [branchId,   setBranchId]   = useState(unidadeInicial)
   const [status,     setStatus]     = useState<StatusFilter>('all')
   const [expanded,   setExpanded]   = useState<Set<string>>(new Set())
@@ -300,7 +301,10 @@ export function AdminStockView({ products, branches, categories, productCategori
       .filter(p => {
         // Sem acento e também pelo código de barras: é o que a busca universal acha.
         if (!contemSemAcento([p.name, p.sku, p.barcode], search)) return false
-        if (category && p.category !== category) return false
+        // E15: os três filtros. Marca e fornecedor: o produto que teve alguma entrada deles.
+        if (category && p.categoryId !== category) return false
+        if (marca && !(p.marcaIds ?? []).includes(marca)) return false
+        if (fornecedor && !(p.fornecedorIds ?? []).includes(fornecedor)) return false
 
         // filtro por filial (só relevante na view por-unidade, mas aplica em ambas)
         if (branchId) {
@@ -325,7 +329,7 @@ export function AdminStockView({ products, branches, categories, productCategori
         const cmp = a.name.localeCompare(b.name, 'pt-BR')
         return sortDir === 'asc' ? cmp : -cmp
       })
-  }, [products, search, category, branchId, status, sortDir])
+  }, [products, search, category, marca, fornecedor, branchId, status, sortDir])
 
   // Para "por unidade": expande em linhas produto × filial
   const rowsByUnit = useMemo(() => {
@@ -388,13 +392,19 @@ export function AdminStockView({ products, branches, categories, productCategori
           )}
         </div>
 
-        {/* Categoria */}
-        {categories.length > 0 && (
-          <select className="filtro-select" value={category} onChange={e => setCategory(e.target.value)}>
-            <option value="">Todas as categorias</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        )}
+        {/* E15 (o Heitor: "Garanta que existam os 3 filtros: categorias, marca, fornecedores"). */}
+        <select className="filtro-select" aria-label="Filtrar por categoria" value={category} onChange={e => setCategory(e.target.value)}>
+          <option value="">Todas as categorias</option>
+          {productCategories.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>
+        <select className="filtro-select" aria-label="Filtrar por marca" value={marca} onChange={e => setMarca(e.target.value)}>
+          <option value="">Todas as marcas</option>
+          {marcas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+        </select>
+        <select className="filtro-select" aria-label="Filtrar por fornecedor" value={fornecedor} onChange={e => setFornecedor(e.target.value)}>
+          <option value="">Todos os fornecedores</option>
+          {fornecedores.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+        </select>
 
         {/* Filial */}
         {branches.length > 1 && (
@@ -451,8 +461,9 @@ export function AdminStockView({ products, branches, categories, productCategori
             {podeEditarProduto && (
               <div style={{ marginTop: 10 }}>
                 <StockProductModal
+                  marcas={marcas}
                   fornecedores={fornecedores}
-                  categories={productCategories ?? []}
+                  categories={productCategories}
                   // Na unidade, a da tela (D8 da 9ª); na rede, a escolha.
                   branches={(defaultBranchId ? branches.filter(x => x.id === defaultBranchId) : branches).filter(x => x.ativa !== false)}
                   trigger={
@@ -630,8 +641,8 @@ export function AdminStockView({ products, branches, categories, productCategori
                                             <span>{l.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} {p.unit}</span>
                                             {podeVerAplicacoes && <BotaoAplicadoEm loteId={l.id} rotulo={`${p.name} · ${l.numero ? `lote ${l.numero}` : 'lote sem número'}`} />}
                                             <span>{l.custoPorEmbalagem != null ? `custo ${fmtBRLv(l.custoPorEmbalagem)}/${p.unit}${l.origemDoCusto === 'AJUSTE' ? ' (último custo)' : ''}` : 'custo —'}</span>
-                                            {(l.notaFiscal || l.fornecedor) && (
-                                              <span data-compra-do-lote>{[l.notaFiscal ? `NF ${l.notaFiscal}` : null, l.fornecedor].filter(Boolean).join(' · ')}</span>
+                                            {(l.notaFiscal || l.marca || l.fornecedor) && (
+                                              <span data-compra-do-lote>{[l.notaFiscal ? `NF ${l.notaFiscal}` : null, l.marca, l.fornecedor].filter(Boolean).join(' · ')}</span>
                                             )}
                                           </p>
                                         )
@@ -749,6 +760,7 @@ export function AdminStockView({ products, branches, categories, productCategori
           allBranches={unidadesDaRede && unidadesDaRede.length > 0 ? unidadesDaRede : branches}
           defaultBranchId={defaultBranchId}
           origemSugerida={branchId || undefined}
+          marcas={marcas}
           fornecedores={fornecedores}
           onClose={() => setManaging(null)}
           onSuccess={() => { setManaging(null); router.refresh() }}
@@ -761,6 +773,7 @@ export function AdminStockView({ products, branches, categories, productCategori
           allBranches={branches}
           defaultBranchId={defaultBranchId}
           origemSugerida={branchId || undefined}
+          marcas={marcas}
           fornecedores={fornecedores}
           somenteEntrada
           onClose={() => setEntradaDoLeitor(null)}
@@ -779,7 +792,6 @@ export function AdminStockView({ products, branches, categories, productCategori
             category:          editing.category,
             category_id:       editing.categoryId,
             unit:              editing.unit,
-            supplier:          editing.supplier,
             cost_price:        editing.costPrice,
             sale_price:        editing.salePrice,
             uso:               editing.uso ?? null,
@@ -787,10 +799,8 @@ export function AdminStockView({ products, branches, categories, productCategori
             units_per_package: editing.unitsPerPackage,
             // C17: o mínimo do cadastro — era null, o campo mostrava 0 e salvar gravava 0.
             min_stock:         editing.minimoDoCadastro ?? null,
-            fornecedor_id:     editing.fornecedorId ?? null,
           } satisfies StockProduct}
-          fornecedores={fornecedores}
-          categories={productCategories ?? []}
+          categories={productCategories}
           onSuccess={() => { setEditing(null); router.refresh() }}
         />
       )}

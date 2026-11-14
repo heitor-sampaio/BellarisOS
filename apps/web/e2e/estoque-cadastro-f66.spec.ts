@@ -92,17 +92,22 @@ test('C24: a categoria de outra rede e o mínimo negativo são recusados', async
   })
 })
 
-test('C71: as categorias do estoque são da rede — a gerente de unidade não cria nem apaga', async ({ browser }) => {
+// Era o C71 (as categorias da rede, só para quem é da rede). O Bloco Estoque do
+// plano de adaptação (E4, o Heitor, 13/11: "é só quem tem permissão de gerenciar,
+// mesma regra para categoria, marca e fornecedor") o reverteu: quem tem o Estoque
+// em Gerenciar, de uma unidade só, cria e exclui. A prova inteira das três listas
+// está em e2e/estoque-marcas-e-fornecedores.spec.ts.
+test('E4 (revê o C71): a gerente de unidade, com o Estoque em Gerenciar, cria e exclui categoria', async ({ browser }) => {
   const nome = `${PREFIXO} Cat da gerente ${marca}`
   const { data: cat } = await db().from('product_categories').insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Cat da rede ${marca}` }).select('id').single<{ id: string }>()
   await como(browser, gerente, async p => {
-    const c = await chamarAcaoComFormulario(p, 'actions/stock.ts', 'createCategory', rota(), [undefined], { name: nome })
-    expect(c.texto).toContain('Esta configuração é da clínica toda')
-    const d = await chamarAcao(p, 'actions/stock.ts', 'deleteCategory', rota(), [cat!.id])
-    expect(d.texto).toContain('Esta configuração é da clínica toda')
+    const c = await chamarAcao(p, 'actions/stock.ts', 'criarItemDoEstoque', rota(), ['categorias', nome])
+    expect(c.texto).toContain('"id"')
+    const d = await chamarAcao(p, 'actions/stock.ts', 'excluirItemDoEstoque', rota(), ['categorias', cat!.id])
+    expect(d.texto).toContain('"success":true')
   })
-  expect((await db().from('product_categories').select('id').eq('tenant_id', rede.tenantId).eq('name', nome)).data).toHaveLength(0)
-  expect((await db().from('product_categories').select('id').eq('id', cat!.id)).data).toHaveLength(1)
+  expect((await db().from('product_categories').select('id').eq('tenant_id', rede.tenantId).eq('name', nome)).data).toHaveLength(1)
+  expect((await db().from('product_categories').select('id').eq('id', cat!.id)).data).toHaveLength(0)
 })
 
 test('C63: com "Só a rede", a gerente de unidade não cadastra nem edita produto — e a dona sim', async ({ browser }) => {

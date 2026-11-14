@@ -2202,10 +2202,21 @@ const procedures = await ler(
     5 ml a R$ 4,50 no movimento, no giro, no relatório, na margem e na
     comissão com "descontar insumos", o valor em estoque, ajuste e
     transferência, o histórico).
-- **O produto tem USO: Insumo, Revenda ou Os dois** (D-6, decisão do Heitor,
-  2026-10-29; `products.uso`, migration `20261029001302`). O cadastro
-  pergunta (segmentado "Uso do produto"); a revenda e "os dois" exigem preço
-  de venda (`usoEPrecoDoFormulario` e a restrição `products_uso_check`); o
+- **Onde o produto está disponível: Insumo e Venda direta** (E2 do Bloco
+  Estoque, 2026-11-14 — o Heitor, 13/11: "checkbox de onde o produto está
+  disponivel (Insumo e Venda direta)"). O cadastro tem DOIS checkboxes no
+  grupo "Onde o produto está disponível"; o produto novo nasce com Insumo
+  marcado. Os dois podem estar marcados; nenhum é recusado
+  (`RECUSA_SEM_USO`: o produto não estaria em lugar nenhum). O banco guarda o
+  mesmo `products.uso` de antes — é o contrato que o PDV e as listas de
+  insumo leem: só Insumo = `INSUMO`, só Venda direta = `REVENDA`, os dois =
+  `AMBOS` (`usoDosCheckboxes`, `lib/estoque/uso.ts`); a linha do produto diz
+  "Insumo", "Venda direta" ou "Insumo e venda direta" (`rotuloDoUso`). Prova:
+  `e2e/estoque-marcas-e-fornecedores.spec.ts` ("E2").
+  Antes (D-6, decisão do Heitor, 2026-10-29; `products.uso`, migration
+  `20261029001302`) era o segmentado "Uso do produto" (Insumo, Revenda, Os
+  dois). A Venda direta exige preço
+  de venda (`usoEPrecoDoFormulario` e a restrição `products_uso_check`); só o
   insumo grava o preço nulo. A regra é UMA, `lib/estoque/uso.ts` (`ehInsumo`,
   `ehRevenda`): o insumo aparece no procedimento (o que já está ligado a um
   procedimento continua na lista dele), no "Adicionar insumo" do atendimento
@@ -2442,9 +2453,8 @@ const procedures = await ler(
   `indicadores.md`). **A Entrada DIZ isso, e guarda o fornecedor e a nota**
   (A37 da 10ª, 2026-11-10: a Perda dizia "não gera despesa" e a Entrada não; o
   fornecedor e a nota iam nas Observações): "Não gera despesa: o custo é a
-  base…" (`[data-entrada-sem-despesa]`) e os campos "Fornecedor" (vem o do
-  cadastro do produto; vira a lista de Fornecedores da rede pela D4 do
-  levantamento, abaixo) e "Nota fiscal", gravados no movimento
+  base…" (`[data-entrada-sem-despesa]`) e os campos "Marca" e "Fornecedor"
+  (das listas da rede, Bloco Estoque, abaixo) e "Nota fiscal", gravados no movimento
   (`stock_movements.fornecedor`/`nota_fiscal`, `estoque_entrada` de 10
   argumentos — a de 8 chama ela; migration `20261110005101`) e mostrados no
   Histórico ("NF 004630 · Distribuidora Sul"). Prova:
@@ -2472,30 +2482,66 @@ const procedures = await ler(
 
 **Decididas no levantamento das regras** (o Heitor, 2026-11-11; a correção
 indicada é a do consolidado do levantamento):
-- **Fornecedores é um cadastro da rede, como as categorias do estoque** (D4,
-  4ª volta: "temos uma nova entrada 'Fornecedor' que funciona igual a categoria, mas fica disponível para escolha também na adição do estoque. Então deve poder cadastrar fornecedor também."; H8 — as categorias são da rede). Substitui
-  o texto livre de fornecedor (`products.supplier` e o "Fornecedor" da
-  entrada, `stock_movements.fornecedor`), que migra para a lista. (Correção
-  C76 — **feita na F66**, 2026-11-12: tabela `fornecedores`, ids
-  `products.fornecedor_id`/`stock_movements.fornecedor_id`; o gatilho
-  `private.fornecedor_da_lista` resolve o texto na lista — o mesmo nome sem
-  caixa nem espaços é o mesmo fornecedor, o novo entra — e o id escolhido
-  vence o texto. O texto antigo migrou e continua gravado: apagar a coluna é
-  destrutivo, fica para o Heitor. A janela "Fornecedores" fica ao lado de
-  Categorias no Estoque da rede; o campo é `CampoFornecedor`. Renomear muda o
-  nome nos produtos e mantém o texto dos movimentos já gravados. Prova:
-  `e2e/estoque-movimentos-f66.spec.ts` ("C76").)
-  - **Nos DOIS portais** (A12 da 14ª, F74, 2026-11-13): a janela
-    "Fornecedores" fica ao lado de Categorias também no Estoque da unidade,
-    para quem é da rede (`mexeNaConfigDaClinica`; a unidade fixa não a vê, e
-    a action já a recusava). As duas telas leem `todosOsFornecedores` uma vez
-    e tiram a lista das opções por `fornecedoresAtivos`.
-  - **Os dois campos dizem a diferença** (A14 da 14ª): o "Fornecedor de
-    costume" (o do produto, "vem sugerido nas próximas entradas") e o
-    "Fornecedor desta entrada" / o da Entrada ("vale só desta entrada; fica no
-    histórico e no lote"), pela `dica` do `CampoFornecedor`. E a LINHA DO LOTE
-    mostra a nota e o fornecedor da compra que o criou (`lotesComSaldo` lê o
-    movimento PURCHASE ligado ao lote; ajuste e transferência não têm).
+- **Categorias, marcas e fornecedores** (Bloco Estoque do plano de adaptação,
+  `docs/revisao.md`, 2026-11-14 — o Heitor, 13/11):
+  - **Três cadastros de texto livre da rede** (E1/E5): "Hoje o que é chamado
+    de fornecedor vira marca. Adiciona cadastro de fornecedor, igual ao de
+    marca." Tabelas `product_categories`, `marcas` e `fornecedores`
+    (migration `20261114500101`; o nome é único na rede sem caixa nem
+    espaços, `chave_do_nome`). As três janelas — **Categorias**, **Marcas** e
+    **Fornecedores** — ficam lado a lado no cabeçalho do Estoque, nos dois
+    portais (`CadastroDoEstoque`, `components/admin/cadastro-do-estoque.tsx`).
+  - **Criar, renomear, excluir: quem tem o Estoque em Gerenciar, e só isso**
+    (E4/E5: "é só quem tem permissão de gerenciar, mesma regra para
+    categoria, marca e fornecedor"). Ser da rede deixou de contar — a
+    `recusaDaConfigDaClinica` saiu dessas gravações (era a C71 e a D4/C76).
+    Uma action para as três listas: `criarItemDoEstoque`,
+    `renomearItemDoEstoque`, `excluirItemDoEstoque` (`actions/stock.ts`); a
+    sessão só LÊ (`marcas_select`), o servidor grava. Renomear a categoria
+    leva o nome aos produtos (o SKU não muda). **Excluir é excluir** (não há
+    mais "arquivar"): o produto da categoria fica sem categoria, e a entrada
+    da marca ou do fornecedor guarda o NOME que tinha — a ligação vira nula
+    (`on delete set null`), o Histórico continua dizendo de onde veio, e o
+    item sai do filtro. Renomear também mantém o nome já gravado nas entradas.
+  - **Lista e campo de busca com autocomplete** (E6/E3: "Categoria, marca e
+    fornecedor com lista e campo de busca com autocomplete"): o
+    `CampoDaLista` (`components/admin/campo-da-lista.tsx`, no desenho do
+    "Indicada por"): escreve parte do nome (sem acento conta), escolhe da
+    lista; o que não existe se cria ali mesmo ("+ Nova marca “…”"), sem
+    sair do formulário — só quem tem Gerenciar chega a esses formulários. É
+    o campo da categoria no cadastro do produto e da marca e do fornecedor no
+    estoque inicial e na Entrada (também a do leitor de código de barras).
+  - **O produto não tem marca nem fornecedor** (E10: "Não existe fornecedor
+    de costume. Na entrada no estoque, escolhe fornecedor e marca."):
+    `products.supplier`, `products.fornecedor_id` e o gatilho do produto
+    saíram (destrutivo, autorizado pelo Heitor; nada migrou — o banco será
+    zerado).
+  - **Toda entrada escolhe a marca e o fornecedor** (E14), opcionais
+    (princípio 7): a Entrada manual, o leitor, o estoque inicial
+    (`estoque_inicial` de 12 argumentos) e o Copilot (`marca` e `fornecedor`
+    em texto). `stock_movements.marca_id`/`marca` ao lado de
+    `fornecedor_id`/`fornecedor`; o gatilho
+    `private.marca_e_fornecedor_da_lista` resolve o texto na lista (o mesmo
+    nome sem caixa nem espaços é o mesmo; o novo entra) e confere que o id
+    escolhido é da rede; `estoque_entrada` de 11 argumentos (`p_marca`; a de
+    10 e a de 8 chamam ela). O Histórico e a linha do lote dizem "NF … ·
+    marca · fornecedor". A Entrada vem com o fornecedor da nota trazida da
+    entrada anterior (A54 da 11ª).
+  - **Os três filtros** (E15: "Garanta que existam os 3 filtros: categorias,
+    marca, fornecedores"), sempre à vista ao lado da busca: "Filtrar por
+    categoria", "Filtrar por marca", "Filtrar por fornecedor". Marca e
+    fornecedor mostram "os produtos que tem alguma entrada dessa
+    marca/fornecedor": a entrada (PURCHASE) não desfeita, somada no banco
+    (`estoque_marcas_e_fornecedores_dos_produtos`,
+    `marcasEFornecedoresDosProdutos`).
+  - Prova: `e2e/estoque-marcas-e-fornecedores.spec.ts`.
+  - **Fora deste bloco**: E11 e E13 dependem do bloco Equipe ("a pessoa em
+    mais de uma unidade") e ficaram para depois dele (`docs/revisao.md`).
+  - Antes (F66/F74, para a história): a D4/C76 fez dos fornecedores uma lista
+    da rede com o "fornecedor de costume" no produto, o "arquivar" e a
+    janela só para quem é da rede (A12 da 14ª); a A14 da 14ª distinguia
+    "de costume" × "desta entrada" (`CampoFornecedor`, que saiu). A linha do
+    lote que mostra a nota e o fornecedor da compra (`lotesComSaldo`) fica.
 - **O que a 14ª simulação corrigiu no Estoque** (F74, 2026-11-13):
   - O botão da linha diz **"Entrada e perda"** (A12; era uma engrenagem sem
     texto). A janela segue "Gerenciar estoque" (o `title` do botão também).
@@ -2516,17 +2562,6 @@ indicada é a do consolidado do levantamento):
     Entrada (se ativa), o Ajuste e a Perda já vêm com ela, também na entrada
     pelo leitor (`unidadeSugerida`, `admin-stock-manage-modal.tsx`).
   - Prova: `e2e/estoque-atritos-da-14.spec.ts`.
-  - **O produto escolhe o fornecedor de costume** da lista.
-  - **Toda entrada escolhe o fornecedor da lista** — os caminhos irmãos
-    juntos: a Entrada manual, o código de barras, o estoque inicial e o
-    Copilot. Vem preenchida com o fornecedor da nota trazida da entrada
-    anterior (A54), senão com o de costume do produto, e grava o DESTA
-    entrada, que o Histórico mostra.
-  - **Quem faz a entrada cadastra um fornecedor novo ali mesmo** ("+ Novo
-    fornecedor"; princípio 7, simples primeiro: a nota na mão não espera a
-    rede). Editar e arquivar a lista é de quem é da rede
-    (`recusaDaConfigDaClinica`), como as categorias; o arquivado sai das
-    opções e continua no que já foi gravado.
 - **O produto desativado com saldo (D1; princípios 3 e 2).** Continua no
   valor em estoque enquanto houver saldo — o frasco está lá —, a linha diz
   "Inativo", e desativar avisa quanto fica no estoque e no valor, sem
@@ -2534,7 +2569,8 @@ indicada é a do consolidado do levantamento):
   `lib/estoque/produtos-da-tela.ts`, em páginas, com o selo "Inativo"
   `[data-produto-inativo]`; na unidade, só onde ela tem saldo. O aviso ao
   desativar fica para quando a tela tiver o desativar: hoje nenhuma tela viva
-  desativa produto — o `AdminProductTable` que o fazia não é usado.)
+  desativa produto — o `AdminProductTable` que o fazia, sem uso, saiu no
+  Bloco Estoque, 2026-11-14.)
 - **Quem tem o Estoque em Ver vê o Valor e o Giro nos DOIS portais (D2;
   telas iguais nos dois portais, CLAUDE.md §6).** Quem não deve ver custo não
   recebe o módulo (princípio 1). (Feito na F66: os cartões e a coluna VALOR
@@ -2578,7 +2614,7 @@ indicada é a do consolidado do levantamento):
   lista, nota, "Não gera despesa" e "Saldo agora: 1 frasco fechado + 1
   aberto com 50 UI" (`saldoAgoraEmTexto`). O estoque inicial do cadastro
   também diz "Não gera despesa", avisa a validade vencida e grava fornecedor e
-  nota (`estoque_inicial` de 11 argumentos). O Copilot é o quarto caminho
+  nota (`estoque_inicial` de 11 argumentos; de 12, com a marca, desde o Bloco Estoque). O Copilot é o quarto caminho
   irmão (`copilot.md`).
 - **A lista em páginas, o Histórico de 80 em 80** (C26): `lerTodas` nos
   produtos (cortava em 1000); "Ver mais antigas" no Histórico; a tela da
@@ -3075,7 +3111,9 @@ O resto do fluxo:
 ❌ Corrigir uma perda lançada errada com um ajuste a mais (a perda fica em Perdas e o lote certo não volta): é "Desfazer perda" (estoque_desfazer_perda — C69)
 ❌ Conferir o disponível de uma transferência (ou de qualquer saída) pelo current_stock de produto com unidade de consumo — o frasco aberto conta inteiro; é o rendimento (C18)
 ❌ Gravar o custo do produto ao editar o cadastro (o custo vem das entradas — C17)
-❌ Campo de fornecedor em texto livre numa porta de entrada nova — é CampoFornecedor (a lista da rede, com "+ Novo fornecedor" — C76)
+❌ Campo de categoria, marca ou fornecedor em texto livre (ou num select sem busca) numa porta de entrada nova — é CampoDaLista (a lista da rede, com busca e "+ Nova …" — E6)
+❌ Pôr marca ou fornecedor no PRODUTO — são da entrada (E10)
+❌ Recusar a gerente de unidade nas categorias, marcas e fornecedores por ser de unidade — a regra é o Estoque em Gerenciar, e só isso (E4)
 ❌ Avisar um lote sem reivindicá-lo antes (vencimento_avisado_em — C25)
 ❌ Criar a linha da unidade (branch_product_stock) desligando o gatilho do mínimo, ou mostrar o custo de um lote por outra conta que não custo_do_lote (custos_dos_lotes — D2 e D4 da 11ª)
 ❌ Mostrar ou guardar o custo por unidade de consumo com 2 casas (R$ 0,038/g vira R$ 0,04 — D6 da 11ª)

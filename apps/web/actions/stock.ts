@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, lerTodas, tentar, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede, saldoAgoraEmTexto, unidadeDesativada, RECUSA_DA_UNIDADE_DESATIVADA } from '@/lib/estoque/movimentos'
-import { lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
+import { lerUso, RECUSA_SEM_USO, type UsoDoProduto } from '@/lib/estoque/uso'
 import { prefixoDoSku } from '@/lib/estoque/sku'
 import { lerMotivoDaPerda, rotuloDoMotivo } from '@/lib/estoque/perda'
 import { comissaoDoProdutoNoFormulario } from '@/lib/comissoes/gravacao'
@@ -52,19 +52,16 @@ async function categoriaDaRede(tenantId: string, categoryId: string | null): Pro
 }
 
 /**
- * O fornecedor de costume do produto (C76): o escolhido da lista (`fornecedor_id`)
- * ou o nome escrito ("+ Novo fornecedor"), que o banco liga à lista
- * (`private.fornecedor_da_lista`). `undefined` = o id não é desta rede.
+ * A marca ou o fornecedor ESCOLHIDO da lista (E14): o id é desta rede? Devolve
+ * o nome (o banco liga o movimento à lista por ele); null = sem; `undefined` =
+ * o id não é desta rede.
  */
-async function fornecedorDoFormulario(tenantId: string, fd: FormData, campoId = 'fornecedor_id', campoNome = 'supplier'): Promise<{ supplier: string | null; fornecedor_id: string | null } | undefined> {
-  const id = str(fd, campoId)
-  if (id) {
-    if (!/^[0-9a-f-]{36}$/i.test(id)) return undefined
-    const f = await ler(createAdminClient().from('fornecedores').select('nome')
-      .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o fornecedor') as { nome: string } | null
-    return f ? { supplier: f.nome, fornecedor_id: id } : undefined
-  }
-  return { supplier: str(fd, campoNome), fornecedor_id: null }
+async function nomeNaLista(tenantId: string, lista: 'marcas' | 'fornecedores', id: string | null): Promise<string | null | undefined> {
+  if (!id) return null
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return undefined
+  const linha = await ler(createAdminClient().from(lista).select('nome')
+    .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), `buscar ${lista === 'marcas' ? 'a marca' : 'o fornecedor'}`) as { nome: string } | null
+  return linha ? linha.nome : undefined
 }
 
 function num(fd: FormData, key: string): number | null {
@@ -77,17 +74,20 @@ function num(fd: FormData, key: string): number | null {
 // --- Catálogo de produtos ------------------------------------------
 
 /**
- * O uso do produto e o preço de venda (D-6): a revenda (e "os dois") precisa
- * de preço — não haveria por quanto vender; o insumo grava o preço nulo. Sem o
- * campo (um chamador antigo), vale o preço de venda: com ele, os dois.
+ * Onde o produto está disponível e o preço de venda (E2: os checkboxes Insumo e
+ * Venda direta, que a tela manda como `uso`): a Venda direta precisa de preço —
+ * não haveria por quanto vender; só Insumo grava o preço nulo. O campo vazio é
+ * nenhum dos dois marcado (recusado: o produto não estaria em lugar nenhum).
+ * Sem o campo (um chamador antigo), vale o preço de venda: com ele, os dois.
  */
 function usoEPrecoDoFormulario(fd: FormData): { uso: UsoDoProduto; preco: number | null } | { error: string } {
   const preco = num(fd, 'sale_price')
   const pedido = str(fd, 'uso')
+  if (fd.has('uso') && !pedido) return { error: RECUSA_SEM_USO }
   const uso = pedido == null ? (preco != null ? 'AMBOS' : 'INSUMO') : lerUso(pedido)
-  if (!uso) return { error: 'Uso do produto inválido.' }
+  if (!uso) return { error: RECUSA_SEM_USO }
   if (uso === 'INSUMO') return { uso, preco: null }
-  if (preco == null || !(preco > 0)) return { error: 'Informe o preço de venda: o produto de revenda é vendido por ele.' }
+  if (preco == null || !(preco > 0)) return { error: 'Informe o preço de venda: o produto de Venda direta é vendido por ele.' }
   return { uso, preco }
 }
 
@@ -139,11 +139,12 @@ async function createProductInterno(
     const cat = await categoriaDaRede(ctx.tenantId!, categoryId)
     if (cat === undefined) return { error: 'Categoria não encontrada.' }
     const categoryName = cat?.nome ?? null
-    const fornecedor = await fornecedorDoFormulario(ctx.tenantId!, formData)
-    if (!fornecedor) return { error: 'Fornecedor não encontrado.' }
-    // O fornecedor DESTA entrada (o estoque inicial), que vem com o de costume e pode mudar.
-    const fornecedorInicial = await fornecedorDoFormulario(ctx.tenantId!, formData, 'initial_fornecedor_id', 'initial_fornecedor')
-    if (!fornecedorInicial) return { error: 'Fornecedor não encontrado.' }
+    // E10/E14: o produto não tem marca nem fornecedor — quem os tem é a ENTRADA
+    // (aqui, a do estoque inicial), escolhidos das listas da rede.
+    const marcaInicial = await nomeNaLista(ctx.tenantId!, 'marcas', str(formData, 'initial_marca_id'))
+    if (marcaInicial === undefined) return { error: 'Marca não encontrada.' }
+    const fornecedorInicial = await nomeNaLista(ctx.tenantId!, 'fornecedores', str(formData, 'initial_fornecedor_id'))
+    if (fornecedorInicial === undefined) return { error: 'Fornecedor não encontrado.' }
 
     // A unidade do estoque inicial vem do formulário: da rede e ao alcance de
     // quem cria (§11). Até 2026-09-28 ia direto para o saldo, o movimento e a
@@ -196,10 +197,8 @@ async function createProductInterno(
       category:    categoryName,
       category_id: categoryId,
       unit,
-      supplier:    fornecedor.supplier,
-      fornecedor_id: fornecedor.fornecedor_id,
       barcode:           str(formData, 'barcode'),
-      cost_price:        num(formData, 'cost_price'),
+      cost_price:       num(formData, 'cost_price'),
       sale_price:        usoEPreco.preco,
       uso:               usoEPreco.uso,
       min_stock:         minStock,
@@ -227,10 +226,9 @@ async function createProductInterno(
           p_observacao: str(formData, 'initial_notes') ?? 'Estoque inicial',
           p_lote: str(formData, 'initial_batch'), p_validade: str(formData, 'initial_expires_at'),
           p_autor: ctx.internalUserId, p_minimo: minStock,
-          // C16 (caminho irmão da Entrada): o fornecedor e a nota desta entrada,
-          // estruturados — o escolhido no estoque inicial, senão o de costume.
-          p_fornecedor: fornecedorInicial.supplier ?? fornecedor.supplier,
-          p_nota_fiscal: str(formData, 'initial_nota_fiscal'),
+          // C16 + E14 (caminho irmão da Entrada): a marca, o fornecedor e a nota desta entrada.
+          p_fornecedor: fornecedorInicial, p_nota_fiscal: str(formData, 'initial_nota_fiscal'),
+          p_marca: marcaInicial,
         }), 'registrar o estoque inicial')
       } catch (e) {
         await desfazer()
@@ -282,8 +280,6 @@ export async function updateProduct(
     const cat = await categoriaDaRede(ctx.tenantId!, categoryId)
     if (cat === undefined) return { error: 'Categoria não encontrada.' }
     const categoryName = cat?.nome ?? null
-    const fornecedor = await fornecedorDoFormulario(ctx.tenantId!, formData)
-    if (!fornecedor) return { error: 'Fornecedor não encontrado.' }
 
     // Preserva SKU existente; gera novo somente se ainda não tem e uma categoria foi definida
     const current = await ler(admin.from('products').select('sku').eq('id', productId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto')
@@ -300,9 +296,7 @@ export async function updateProduct(
         category:    categoryName,
         category_id: categoryId,
         unit,
-        supplier:    fornecedor.supplier,
-        fornecedor_id: fornecedor.fornecedor_id,
-        barcode:           str(formData, 'barcode'),
+        barcode:          str(formData, 'barcode'),
         // C17: o custo NÃO se edita aqui — é o da última entrada (a base do
         // custo de consumo e do valor em estoque). O formulário de edição não
         // tem o campo, e gravar `num(…)` zerava o custo a cada edição.
@@ -391,65 +385,6 @@ async function toggleProductActiveInterno(productId: string, isActive: boolean) 
     // e o produto recém-criado não aparecia no "Novo procedimento" nem no
     // atendimento (simulação de 2026-10-20).
     revalidateTag(`products:${ctx.tenantId!}`, { expire: 0 })
-    return { success: true }
-  } catch (e) {
-    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
-  }
-}
-
-// --- Categorias de produto ---------------------------------------
-
-export async function createCategory(
-  _prev: { error?: string; success?: boolean } | undefined,
-  formData: FormData,
-) {
-  try {
-    const ctx = await getTenantContext()
-    assertPermission(ctx, 'stock', 'MANAGE')
-
-    // C71 (H8): as categorias do estoque são da rede.
-    const recusa = recusaDaConfigDaClinica(ctx)
-    if (recusa) return { error: recusa }
-
-    const name = (formData.get('name') as string | null)?.trim()
-    if (!name) return { error: 'Nome é obrigatório.' }
-
-    const admin = createAdminClient()
-    const { error } = await admin.from('product_categories').insert({
-      tenant_id: ctx.tenantId!,
-      name,
-    })
-
-    if (error) {
-      if (error.code === '23505') return { error: 'Já existe uma categoria com esse nome.' }
-      return { error: error.message }
-    }
-
-    revalidatePath('/admin/estoque')
-    revalidatePath('/*/stock')
-    return { success: true }
-  } catch (e) {
-    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
-  }
-}
-
-export async function deleteCategory(categoryId: string) {
-  try {
-    const ctx = await getTenantContext()
-    assertPermission(ctx, 'stock', 'MANAGE')
-    const recusa = recusaDaConfigDaClinica(ctx)
-    if (recusa) return { error: recusa }
-
-    const admin = createAdminClient()
-    const { error } = await admin.from('product_categories')
-      .delete()
-      .eq('id', categoryId)
-      .eq('tenant_id', ctx.tenantId!)
-
-    if (error) return { error: error.message }
-
-    revalidatePath('/admin/estoque')
-    revalidatePath('/*/stock')
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
@@ -564,9 +499,12 @@ async function adminAddStockInterno(
       observacao:    str(formData, 'notes'),
       lote:          str(formData, 'batch_number'),
       validade:      str(formData, 'expires_at'),
-      // A37 da 10ª: o fornecedor e a nota da compra, estruturados.
-      fornecedor:    str(formData, 'fornecedor'),
+      // A37 da 10ª + E14: a nota da compra; a marca e o fornecedor desta entrada, escolhidos das listas da rede.
+      marcaId:       str(formData, 'marca_id'),
       fornecedorId:  str(formData, 'fornecedor_id'),
+      // Sem o id, o nome (o banco o põe na lista da rede — o mesmo nome é o mesmo item).
+      marca:         str(formData, 'marca'),
+      fornecedor:    str(formData, 'fornecedor'),
       notaFiscal:    str(formData, 'nota_fiscal'),
     })
     if ('error' in r) return { error: r.error }
@@ -806,6 +744,8 @@ export interface MovimentoDeEstoque {
   lotes: { numero: string | null; validade: string | null }[]
   /** A37 da 10ª: o fornecedor e a nota fiscal da entrada. */
   fornecedor: string | null
+  /** E14: a marca da entrada (o nome gravado nela). */
+  marca: string | null
   notaFiscal: string | null
   /** A38 da 10ª: a entrada desfeita (quando e por quê). */
   desfeita: { em: string; motivo: string | null } | null
@@ -862,7 +802,7 @@ export async function getProductMovements(
   const admin = createAdminClient()
   let query = admin
     .from('stock_movements')
-    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, fornecedor, nota_fiscal, desfeita_em, desfeita_motivo, desfeita_pelo, branch_id, branches!inner(name, tenant_id), stock_movement_batches(quantity, product_batches(id, batch_number, expires_at, quantity))')
+    .select('id, type, quantity, balance_after, notes, reference, created_at, unit_cost, motivo_da_perda, fornecedor, marca, nota_fiscal, desfeita_em, desfeita_motivo, desfeita_pelo, branch_id, branches!inner(name, tenant_id), stock_movement_batches(quantity, product_batches(id, batch_number, expires_at, quantity))')
     .eq('product_id', productId)
     .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
@@ -895,7 +835,7 @@ export async function getProductMovements(
     notes: string | null; reference: string | null; created_at: string; branches: { name: string } | null
     unit_cost: number | string | null
     motivo_da_perda: string | null
-    fornecedor: string | null; nota_fiscal: string | null; desfeita_em: string | null; desfeita_motivo: string | null
+    fornecedor: string | null; marca: string | null; nota_fiscal: string | null; desfeita_em: string | null; desfeita_motivo: string | null
     desfeita_pelo: string | null
     branch_id: string
     stock_movement_batches: { quantity: number | string; product_batches: { id: string; batch_number: string | null; expires_at: string | null; quantity: number | string } | null }[] | null
@@ -1001,6 +941,7 @@ export async function getProductMovements(
     lotes: (m.stock_movement_batches ?? []).flatMap(l => l.product_batches
       ? [{ numero: l.product_batches.batch_number, validade: l.product_batches.expires_at }] : []),
     fornecedor:   m.fornecedor,
+    marca:        m.marca,
     notaFiscal:   m.nota_fiscal,
     desfeita:     m.desfeita_em ? { em: m.desfeita_em, motivo: m.desfeita_motivo } : null,
     desfazivel:   desfazivel(m),
@@ -1294,104 +1235,135 @@ export async function salvarCatalogoDeProdutos(regra: string): Promise<{ error?:
   }
 }
 
-// --- Fornecedores (C76, D4 do levantamento) -------------------------
+// --- Categorias, marcas e fornecedores (E1/E4/E5 do plano de adaptação) ---
+//
+// Três cadastros de texto livre da rede, com a MESMA regra (o Heitor, 13/11:
+// "é só quem tem permissão de gerenciar, mesma regra para categoria, marca e
+// fornecedor"): criar, renomear, excluir — quem tem o Estoque em Gerenciar, e
+// só isso. Ser da rede deixou de contar (era a recusaDaConfigDaClinica, H7).
 
-const nomeDoFornecedor = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : '')
-const chaveDoFornecedor = (v: string) => nomeDoFornecedor(v).toLocaleLowerCase('pt-BR')
+export type ListaDoEstoque = 'categorias' | 'marcas' | 'fornecedores'
+type DefinicaoDaLista = { tabela: 'product_categories' | 'marcas' | 'fornecedores'; coluna: 'name' | 'nome'; artigo: 'a' | 'o'; nome: string }
+const LISTAS: Record<ListaDoEstoque, DefinicaoDaLista> = {
+  categorias:   { tabela: 'product_categories', coluna: 'name', artigo: 'a', nome: 'categoria' },
+  marcas:       { tabela: 'marcas',             coluna: 'nome', artigo: 'a', nome: 'marca' },
+  fornecedores: { tabela: 'fornecedores',       coluna: 'nome', artigo: 'o', nome: 'fornecedor' },
+}
+const nomeLimpo = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : '')
+const chaveDoNome = (v: string) => nomeLimpo(v).toLocaleLowerCase('pt-BR')
+const ehUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v)
+const naoAchou = (l: DefinicaoDaLista) => `${l.nome[0]!.toUpperCase()}${l.nome.slice(1)} não encontrad${l.artigo}.`
+const jaExiste = (l: DefinicaoDaLista) => `Já existe ${l.artigo === 'a' ? 'uma' : 'um'} ${l.nome} com esse nome.`
 
-// O nome gravado é sempre o limpo (um espaço, sem as pontas — a action e o
-// gatilho `private.fornecedor_da_lista`): o ilike exato acha o mesmo sem caixa.
-async function fornecedorPeloNome(tenantId: string, nome: string) {
-  const parecidos = await ler(createAdminClient().from('fornecedores').select('id, nome, arquivado_em')
-    .eq('tenant_id', tenantId).ilike('nome', nome.replace(/[%_\\]/g, '\\$&')).limit(5),
-  'buscar o fornecedor') as { id: string; nome: string; arquivado_em: string | null }[] | null
-  return (parecidos ?? []).find(f => chaveDoFornecedor(f.nome) === chaveDoFornecedor(nome)) ?? null
+function listaPedida(lista: unknown): DefinicaoDaLista | null {
+  return typeof lista === 'string' && Object.hasOwn(LISTAS, lista) ? LISTAS[lista as ListaDoEstoque] : null
+}
+
+/** O item com o mesmo nome (sem caixa nem espaços) na lista da rede. */
+async function itemPeloNome(l: DefinicaoDaLista, tenantId: string, nome: string): Promise<{ id: string; nome: string } | null> {
+  const parecidos = await ler(createAdminClient().from(l.tabela).select(`id, ${l.coluna}`)
+    .eq('tenant_id', tenantId).ilike(l.coluna, nome.replace(/[%_\\]/g, '\\$&')).limit(5),
+  `buscar ${l.artigo} ${l.nome}`) as unknown as Record<string, string>[] | null
+  const achado = (parecidos ?? []).find(x => chaveDoNome(x[l.coluna] ?? '') === chaveDoNome(nome))
+  return achado ? { id: achado.id!, nome: achado[l.coluna]! } : null
+}
+
+function revalidarEstoque(tenantId: string, categoria: boolean) {
+  revalidatePath('/admin/estoque')
+  revalidatePath('/[slug]/estoque', 'page')
+  if (categoria) revalidateTag(`products:${tenantId}`, { expire: 0 })
 }
 
 /**
- * "+ Novo fornecedor" — na Entrada, no estoque inicial e no cadastro do
- * produto. Quem faz a entrada cadastra ali mesmo (D4: "a nota na mão não
- * espera a rede"); o nome que já existe (sem caixa nem espaços) é o mesmo
- * fornecedor — e, se arquivado, volta à lista.
+ * Criar na lista — a janela da lista e o "+ Nova …" do campo com busca (o
+ * produto, o estoque inicial, a Entrada). O nome que já existe (sem caixa nem
+ * espaços) é o mesmo item: volta com `jaExistia`.
  */
-export async function criarFornecedor(nome: string): Promise<{ error?: string; fornecedor?: { id: string; nome: string } }> {
+export async function criarItemDoEstoque(lista: ListaDoEstoque, nome: string): Promise<{ error?: string; item?: { id: string; nome: string }; jaExistia?: boolean }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
-    const limpo = nomeDoFornecedor(nome)
-    if (!limpo) return { error: 'Escreva o nome do fornecedor.' }
+    const l = listaPedida(lista)
+    if (!l) return { error: 'Lista desconhecida.' }
+    const limpo = nomeLimpo(nome)
+    if (!limpo) return { error: `Escreva o nome d${l.artigo} ${l.nome}.` }
     if (limpo.length > 120) return { error: 'O nome passa de 120 caracteres.' }
-    const admin = createAdminClient()
-    const mesmo = await fornecedorPeloNome(ctx.tenantId!, limpo)
-    if (mesmo) {
-      if (mesmo.arquivado_em) {
-        await gravar(admin.from('fornecedores').update({ arquivado_em: null }).eq('id', mesmo.id).eq('tenant_id', ctx.tenantId!)
-          .select('id').single(), 'trazer o fornecedor de volta')
-      }
-      return { fornecedor: { id: mesmo.id, nome: mesmo.nome } }
-    }
-    const { data, error } = await admin.from('fornecedores')
-      .insert({ tenant_id: ctx.tenantId!, nome: limpo, created_by: ctx.internalUserId })
-      .select('id, nome').single<{ id: string; nome: string }>()
+    const mesmo = await itemPeloNome(l, ctx.tenantId!, limpo)
+    if (mesmo) return { item: mesmo, jaExistia: true }
+    const linha: Record<string, string | null> = { tenant_id: ctx.tenantId!, [l.coluna]: limpo }
+    if (l.tabela !== 'product_categories') linha.created_by = ctx.internalUserId
+    const { data, error } = await createAdminClient().from(l.tabela).insert(linha).select('id').single<{ id: string }>()
     if (error?.code === '23505') {
       // Outra aba criou o mesmo ao mesmo tempo: é ele.
-      const outro = await fornecedorPeloNome(ctx.tenantId!, limpo)
-      if (outro) return { fornecedor: { id: outro.id, nome: outro.nome } }
+      const outro = await itemPeloNome(l, ctx.tenantId!, limpo)
+      if (outro) return { item: outro, jaExistia: true }
+      return { error: jaExiste(l) }
     }
-    if (error || !data) throw new Error(`Não consegui criar o fornecedor: ${error?.message}`)
-    revalidatePath('/admin/estoque')
-    return { fornecedor: data }
+    if (error || !data) throw new Error(`Não consegui criar ${l.artigo} ${l.nome}: ${error?.message}`)
+    revalidarEstoque(ctx.tenantId!, false)
+    return { item: { id: data.id, nome: limpo } }
   } catch (e) {
-    if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }
   }
 }
 
-/** Renomear um fornecedor da lista — de quem é da rede, como as categorias. O nome nos movimentos já gravados fica. */
-export async function renomearFornecedor(id: string, nome: string): Promise<{ error?: string; success?: true }> {
+/**
+ * Renomear. A categoria leva o nome novo aos produtos (o nome dela fica
+ * copiado no produto, e o SKU não muda); o nome gravado nas entradas já feitas
+ * fica (é o histórico), e o filtro segue pela ligação.
+ */
+export async function renomearItemDoEstoque(lista: ListaDoEstoque, id: string, nome: string): Promise<{ error?: string; success?: true }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
-    const recusa = recusaDaConfigDaClinica(ctx)
-    if (recusa) return { error: recusa }
-    if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return { error: 'Fornecedor não encontrado.' }
-    const limpo = nomeDoFornecedor(nome)
-    if (!limpo) return { error: 'Escreva o nome do fornecedor.' }
+    const l = listaPedida(lista)
+    if (!l) return { error: 'Lista desconhecida.' }
+    if (!ehUuid(id)) return { error: naoAchou(l) }
+    const limpo = nomeLimpo(nome)
+    if (!limpo) return { error: `Escreva o nome d${l.artigo} ${l.nome}.` }
     if (limpo.length > 120) return { error: 'O nome passa de 120 caracteres.' }
+    const mesmo = await itemPeloNome(l, ctx.tenantId!, limpo)
+    if (mesmo && mesmo.id !== id) return { error: jaExiste(l) }
     const admin = createAdminClient()
-    const { data, error } = await admin.from('fornecedores').update({ nome: limpo })
+    const { data, error } = await admin.from(l.tabela).update({ [l.coluna]: limpo })
       .eq('id', id).eq('tenant_id', ctx.tenantId!).select('id').maybeSingle()
-    if (error?.code === '23505') return { error: 'Já existe um fornecedor com esse nome.' }
-    if (error) throw new Error(`Não consegui renomear o fornecedor: ${error.message}`)
-    if (!data) return { error: 'Fornecedor não encontrado.' }
-    // O de costume dos produtos acompanha o nome novo (o texto é o espelho da lista).
-    await gravar(admin.from('products').update({ supplier: limpo }).eq('tenant_id', ctx.tenantId!).eq('fornecedor_id', id), 'atualizar o fornecedor dos produtos')
-    revalidatePath('/admin/estoque')
-    revalidatePath('/[slug]/estoque', 'page')
+    if (error?.code === '23505') return { error: jaExiste(l) }
+    if (error) throw new Error(`Não consegui renomear ${l.artigo} ${l.nome}: ${error.message}`)
+    if (!data) return { error: naoAchou(l) }
+    if (l.tabela === 'product_categories') {
+      await gravar(admin.from('products').update({ category: limpo }).eq('tenant_id', ctx.tenantId!).eq('category_id', id).select('id'),
+        'levar o nome novo da categoria aos produtos')
+    }
+    revalidarEstoque(ctx.tenantId!, l.tabela === 'product_categories')
     return { success: true }
   } catch (e) {
-    if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }
   }
 }
 
-/** Arquivar (ou trazer de volta) um fornecedor: sai das opções e continua no que já foi gravado. */
-export async function arquivarFornecedor(id: string, arquivar: boolean): Promise<{ error?: string; success?: true }> {
+/**
+ * Excluir. O que já foi gravado não se perde: o produto da categoria fica sem
+ * categoria (o SKU não muda), e a entrada da marca ou do fornecedor guarda o
+ * nome que tinha (só sai do filtro — a ligação vira nula no banco).
+ */
+export async function excluirItemDoEstoque(lista: ListaDoEstoque, id: string): Promise<{ error?: string; success?: true }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
-    const recusa = recusaDaConfigDaClinica(ctx)
-    if (recusa) return { error: recusa }
-    if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return { error: 'Fornecedor não encontrado.' }
-    const data = await gravar(createAdminClient().from('fornecedores')
-      .update({ arquivado_em: arquivar ? new Date().toISOString() : null })
-      .eq('id', id).eq('tenant_id', ctx.tenantId!).select('id').maybeSingle(), 'arquivar o fornecedor')
-    if (!data) return { error: 'Fornecedor não encontrado.' }
-    revalidatePath('/admin/estoque')
-    revalidatePath('/[slug]/estoque', 'page')
+    const l = listaPedida(lista)
+    if (!l) return { error: 'Lista desconhecida.' }
+    if (!ehUuid(id)) return { error: naoAchou(l) }
+    const admin = createAdminClient()
+    const existe = await ler(admin.from(l.tabela).select('id').eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), `buscar ${l.artigo} ${l.nome}`)
+    if (!existe) return { error: naoAchou(l) }
+    if (l.tabela === 'product_categories') {
+      await gravar(admin.from('products').update({ category: null, category_id: null }).eq('tenant_id', ctx.tenantId!).eq('category_id', id).select('id'),
+        'tirar a categoria dos produtos')
+    }
+    await gravar(admin.from(l.tabela).delete().eq('id', id).eq('tenant_id', ctx.tenantId!).select('id'), `excluir ${l.artigo} ${l.nome}`)
+    revalidarEstoque(ctx.tenantId!, l.tabela === 'product_categories')
     return { success: true }
   } catch (e) {
-    if ((e as { digest?: string })?.digest) throw e
     return { error: mensagemDoErro(e) }
   }
 }

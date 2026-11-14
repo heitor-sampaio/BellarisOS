@@ -3,7 +3,6 @@ import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loteDaUrl } from '@/lib/estoque/lote-da-url'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
-import { ProductCategoryModal } from '@/components/admin/product-category-modal'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { filiaisAtivas } from '@/lib/branches'
@@ -17,10 +16,9 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
-import { produtosDoEstoque, todosOsFornecedores, fornecedoresAtivos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
-import { FornecedoresModal } from '@/components/admin/fornecedores-modal'
+import { produtosDoEstoque, listasDoEstoque, marcasEFornecedoresDosProdutos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
+import { CadastroDoEstoque } from '@/components/admin/cadastro-do-estoque'
 import { catalogoDaRede, recusaDoCatalogo } from '@/lib/estoque/catalogo'
-import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -53,18 +51,13 @@ export default async function BranchStockPage({
   // Produtos e categorias em paralelo
   // Por `ler`: consulta que falha PARA, em vez de virar um estoque vazio.
   // C26: os produtos em páginas; D1: o desativado com saldo continua (lib/estoque/produtos-da-tela).
-  const [raw, todosFornecedores, catalogo, categoriesRaw] = await Promise.all([
+  const [raw, listas, marcasEFornecedores, catalogo] = await Promise.all([
     produtosDoEstoque(ctx.tenantId!),
-    todosOsFornecedores(ctx.tenantId!),
+    // E1/E15: as três listas da rede (categorias, marcas, fornecedores) e, de cada produto, as das entradas.
+    listasDoEstoque(ctx.tenantId!),
+    marcasEFornecedoresDosProdutos(ctx.tenantId!),
     catalogoDaRede(admin, ctx.tenantId!),
-    ler(admin
-      .from('product_categories')
-      .select('id, name')
-      .eq('tenant_id', ctx.tenantId!)
-      .order('name'), 'carregar as categorias'),
   ])
-  // Os ativos são a lista dos seletores; a janela de Fornecedores mostra também os arquivados.
-  const fornecedores = fornecedoresAtivos(todosFornecedores)
 
   // Normaliza — filtra estoque apenas desta filial
   // D1: o desativado só aparece onde ainda tem saldo — nesta unidade.
@@ -100,8 +93,9 @@ export default async function BranchStockPage({
       category:         p.category,
       categoryId:       p.category_id,
       unit:             p.unit,
-      supplier:         p.supplier,
-      fornecedorId:     p.fornecedor_id,
+      // E15: as marcas e os fornecedores das entradas do produto (o filtro).
+      marcaIds:         marcasEFornecedores[p.id]?.marcaIds ?? [],
+      fornecedorIds:    marcasEFornecedores[p.id]?.fornecedorIds ?? [],
       isActive:         p.is_active,
       costPrice:        Number(p.cost_price ?? 0),
       // D11 da 12ª: sem a linha da unidade, a aba "Estoque mínimo" mostra este.
@@ -121,7 +115,6 @@ export default async function BranchStockPage({
   // continua sendo a desta filial. Sem isto, a aba Transferência sumia — a
   // unidade não tinha para onde mandar produto.
   const unidadesDaRede = await filiaisAtivas(ctx.tenantId!)
-  const categories   = categoriesRaw ?? []
   const productIds   = products.map(p => p.id)
 
   const now          = new Date()
@@ -169,10 +162,8 @@ export default async function BranchStockPage({
   const comLoteEsgotado = productIds.length > 0 ? await paresComLoteEsgotado(admin, [branchId]) : []
 
   // C63: com "Só a rede", quem tem unidade fixa não cadastra nem edita produto; e
-  // C71: as categorias são da rede (a janela delas, só para quem é da rede).
   const recusaDoCadastro = recusaDoCatalogo(ctx, catalogo)
   const podeEditarProduto = !readOnly && !recusaDoCadastro
-  const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -199,15 +190,18 @@ export default async function BranchStockPage({
         </div>
 
         {!readOnly && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            {mexeNaConfigDaClinica(ctx) && <ProductCategoryModal categories={categories} />}
-            {/* A12 da 14ª: os Fornecedores ao lado das Categorias, como no /admin (C76) — para quem é da rede. */}
-            {mexeNaConfigDaClinica(ctx) && <FornecedoresModal fornecedores={todosFornecedores} />}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {/* E1/E4/E5 (o Heitor, 13/11): Categorias, Marcas e Fornecedores — cadastros
+                de texto livre, para quem tem o Estoque em Gerenciar (ser da rede deixou de contar). */}
+            <CadastroDoEstoque lista="categorias" itens={listas.categorias} />
+            <CadastroDoEstoque lista="marcas" itens={listas.marcas} />
+            <CadastroDoEstoque lista="fornecedores" itens={listas.fornecedores} />
             {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
             {products.length > 0 && podeEditarProduto && (
               <StockProductModal
-                fornecedores={fornecedores}
-                categories={categories}
+                categories={listas.categorias}
+                marcas={listas.marcas}
+                fornecedores={listas.fornecedores}
                 // O estoque inicial entra NESTA unidade (D8 da 9ª: quem é da rede
                 // ficava sem seletor e o estoque era recusado).
                 branches={[{ id: branch.id as string, name: branch.name as string }]}
@@ -292,9 +286,9 @@ export default async function BranchStockPage({
         }))}
         branches={branchData}
         unidadesDaRede={unidadesDaRede}
-        categories={stockCategories}
-        productCategories={categories as { id: string; name: string }[]}
-        fornecedores={fornecedores}
+        productCategories={listas.categorias}
+        marcas={listas.marcas}
+        fornecedores={listas.fornecedores}
         defaultBranchId={branchId}
         readOnly={readOnly}
         podeEditarProduto={podeEditarProduto}

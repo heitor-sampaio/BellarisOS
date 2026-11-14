@@ -67,7 +67,19 @@ export interface EntradaDeEstoque {
   fornecedor?: string | null
   /** C76 (D4 do levantamento): o fornecedor escolhido da lista da rede — vence o texto. */
   fornecedorId?: string | null
+  /** E14 (o Heitor, 13/11: "Na entrada no estoque, escolhe fornecedor e marca"): a marca, por nome ou pela lista. */
+  marca?: string | null
+  marcaId?: string | null
   notaFiscal?: string | null
+}
+
+/** O nome da linha escolhida da lista (conferida a rede), senão o texto; `undefined` = o id não é da rede. */
+async function nomeDaLista(admin: Admin, tenantId: string, lista: 'marcas' | 'fornecedores', id: string | null | undefined, texto: string | null | undefined): Promise<string | null | undefined> {
+  if (!id) return texto?.trim() || null
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return undefined
+  const linha = await ler(admin.from(lista).select('nome').eq('id', id).eq('tenant_id', tenantId).maybeSingle(),
+    lista === 'marcas' ? 'buscar a marca' : 'buscar o fornecedor') as { nome: string } | null
+  return linha ? linha.nome : undefined
 }
 
 /**
@@ -101,20 +113,19 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
   // entradas ao mesmo tempo (a tela e o Copilot) não se perdem mais.
   // Movimentação de estoque NUNCA gera despesa (D13 revisto, decisão do Heitor,
   // 2026-10-28): o custo fica no movimento, base do insumo, do custo e da margem.
-  let fornecedor = e.fornecedor?.trim() || null
-  if (e.fornecedorId) {
-    if (!/^[0-9a-f-]{36}$/i.test(e.fornecedorId)) return { error: 'Fornecedor não encontrado.' }
-    const f = await ler(admin.from('fornecedores').select('nome').eq('id', e.fornecedorId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
-      'buscar o fornecedor') as { nome: string } | null
-    if (!f) return { error: 'Fornecedor não encontrado.' }
-    fornecedor = f.nome
-  }
+  // E14: a marca e o fornecedor escolhidos da lista vencem o texto (o banco liga
+  // o movimento à lista pelo nome — a que existe ou uma nova).
+  const fornecedor = await nomeDaLista(admin, ctx.tenantId!, 'fornecedores', e.fornecedorId, e.fornecedor)
+  if (fornecedor === undefined) return { error: 'Fornecedor não encontrado.' }
+  const marca = await nomeDaLista(admin, ctx.tenantId!, 'marcas', e.marcaId, e.marca)
+  if (marca === undefined) return { error: 'Marca não encontrada.' }
 
   const saldo = await gravar(admin.rpc('estoque_entrada', {
     p_produto: e.productId, p_unidade: e.branchId, p_quantidade: e.quantidade,
     p_custo: e.custoUnitario ?? null, p_observacao: e.observacao ?? null,
     p_lote: e.lote || null, p_validade: e.validade || null, p_autor: ctx.internalUserId,
     p_fornecedor: fornecedor, p_nota_fiscal: e.notaFiscal?.trim() || null,
+    p_marca: marca,
   }), 'registrar a entrada de estoque') as number
   return { ok: true, saldo: Number(saldo) }
 }

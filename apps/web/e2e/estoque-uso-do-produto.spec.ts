@@ -29,7 +29,8 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
-async function novoProduto(p: Page, nome: string, uso: 'Insumo' | 'Revenda' | 'Os dois', preco?: string) {
+// E2 (Bloco Estoque, o Heitor, 13/11): o uso são dois checkboxes — Insumo e Venda direta.
+async function novoProduto(p: Page, nome: string, uso: 'Insumo' | 'Venda direta' | 'Os dois', preco?: string) {
   await p.goto('/admin/estoque')
   await expect(async () => {
     await p.getByRole('button', { name: 'Novo produto' }).click({ timeout: 1000 })
@@ -37,7 +38,9 @@ async function novoProduto(p: Page, nome: string, uso: 'Insumo' | 'Revenda' | 'O
   }).toPass()
   const modal = p.locator('dialog[open]')
   await modal.locator('input[name="name"]').fill(nome)
-  await modal.getByRole('group', { name: 'Uso do produto' }).getByRole('button', { name: uso, exact: true }).click()
+  const onde = modal.getByRole('group', { name: 'Onde o produto está disponível' })
+  await onde.getByRole('checkbox', { name: 'Insumo' }).setChecked(uso !== 'Venda direta')
+  await onde.getByRole('checkbox', { name: 'Venda direta' }).setChecked(uso !== 'Insumo')
   if (preco !== undefined) await modal.locator('input[name="sale_price"]').fill(preco)
   return modal
 }
@@ -77,7 +80,7 @@ test.describe.serial('o uso do produto', () => {
   test('o cadastro pergunta o uso; a revenda pede o preço de venda', async ({ browser }) => {
     await como(browser, async p => {
       // Revenda sem preço: recusa.
-      let modal = await novoProduto(p, revenda, 'Revenda')
+      let modal = await novoProduto(p, revenda, 'Venda direta')
       await modal.getByRole('button', { name: 'Criar produto' }).click()
       await expect(modal.getByText('Informe o preço de venda')).toBeVisible()
       await modal.locator('input[name="sale_price"]').fill('149')

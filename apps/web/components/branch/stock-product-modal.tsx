@@ -8,13 +8,12 @@ import { X, Package, Barcode } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
 import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
-import { USOS_DO_PRODUTO, lerUso, type UsoDoProduto } from '@/lib/estoque/uso'
+import { lerUso, usoDosCheckboxes } from '@/lib/estoque/uso'
 import { prefixoDoSku } from '@/lib/estoque/sku'
-import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
 import { ComissaoDoProduto } from '@/components/branch/comissao-do-produto'
 import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
-import { CampoFornecedor, type FornecedorDaLista } from '@/components/admin/campo-fornecedor'
+import { CampoDaLista, type ItemDaLista } from '@/components/admin/campo-da-lista'
 import { loteVencido, validadeNaTela } from '@/lib/estoque/validade'
 import { useFuso } from '@/components/shared/fuso'
 
@@ -28,7 +27,6 @@ export interface StockProduct {
   category:          string | null
   category_id:       string | null
   unit:              string
-  supplier:          string | null
   cost_price:        number | null
   sale_price:        number | null
   /** O uso (D-6); sem ele, vale pelo preço de venda. */
@@ -36,18 +34,15 @@ export interface StockProduct {
   min_stock:         number | null
   consumption_unit:  string | null
   units_per_package: number | null
-  /** C76: o fornecedor de costume, da lista da rede. */
-  fornecedor_id?:    string | null
 }
-
-export interface ProductCategory { id: string; name: string }
 
 interface Props {
   product?:    StockProduct
   trigger?:    React.ReactNode
-  /** C76: a lista de fornecedores da rede (o texto livre virou lista). */
-  fornecedores?: FornecedorDaLista[]
-  categories?: ProductCategory[]
+  /** E1/E6: as três listas da rede — categorias (no produto), marcas e fornecedores (no estoque inicial). */
+  categories?: ItemDaLista[]
+  marcas?: ItemDaLista[]
+  fornecedores?: ItemDaLista[]
   /**
    * Unidades da rede. Quando vem preenchida, o estoque inicial pergunta em qual
    * unidade ele entra — quem e da rede nao tem uma filial corrente, e sem ela o
@@ -76,11 +71,12 @@ function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: str
 
 // -- Campos compartilhados --------------------------------------------
 function ProductFields({
-  product, fornecedores = [], categories = [], branches = [], onClose, state, pending, submitLabel, isCreate = false, pergunta = null,
+  product, marcas = [], fornecedores = [], categories = [], branches = [], onClose, state, pending, submitLabel, isCreate = false, pergunta = null,
 }: {
   product?:    StockProduct
-  fornecedores?: FornecedorDaLista[]
-  categories:  ProductCategory[]
+  marcas?:     ItemDaLista[]
+  fornecedores?: ItemDaLista[]
+  categories:  ItemDaLista[]
   branches?:   { id: string; name: string }[]
   onClose:     () => void
   state:       { error?: string; success?: boolean } | undefined
@@ -97,11 +93,13 @@ function ProductFields({
   const [costPriceStr,     setCostPriceStr]     = useState(product?.cost_price != null ? String(product.cost_price) : '')
   const [unitsPerPkgStr,   setUnitsPerPkgStr]   = useState(product?.units_per_package != null ? String(product.units_per_package) : '')
   const [consumptionUnit,  setConsumptionUnit]  = useState(product?.consumption_unit ?? '')
-  // O uso do produto (D-6): o que já existia sem a coluna vale pelo preço de
-  // venda (com preço, os dois; sem, insumo) — a mesma regra da migração.
-  const [uso,              setUso]              = useState<UsoDoProduto>(
-    lerUso(product?.uso) ?? ((product?.sale_price ?? null) !== null ? 'AMBOS' : 'INSUMO'))
-  const vendaDireta = uso !== 'INSUMO'
+  // E2 (o Heitor, 13/11: "checkbox de onde o produto está disponivel (Insumo e
+  // Venda direta)"): dois checkboxes; o banco guarda o mesmo uso (D-6). O que já
+  // existia sem a coluna vale pelo preço de venda; o produto novo nasce Insumo.
+  const usoInicial = lerUso(product?.uso) ?? ((product?.sale_price ?? null) !== null ? 'AMBOS' : 'INSUMO')
+  const [insumo,           setInsumo]           = useState(usoInicial !== 'REVENDA')
+  const [vendaDireta,      setVendaDireta]      = useState(usoInicial !== 'INSUMO')
+  const uso = usoDosCheckboxes(insumo, vendaDireta)
   const [showStock,        setShowStock]        = useState(false)
   // C16: a validade do estoque inicial que já passou avisa (o dia da unidade, F62b).
   const fuso = useFuso()
@@ -111,7 +109,7 @@ function ProductFields({
   const selectedCat = useMemo(() => categories.find(c => c.id === categoryId), [categories, categoryId])
   const skuPreview  = useMemo(
     // O cadastro novo sem categoria também gera (A6 da 7ª: o que se vende ganha REV).
-    () => isCreate || selectedCat ? `${prefixoDoSku(selectedCat?.name, uso)}-NNN` : null,
+    () => isCreate || selectedCat ? `${prefixoDoSku(selectedCat?.nome, uso)}-NNN` : null,
     [selectedCat, isCreate, uso],
   )
 
@@ -209,22 +207,10 @@ function ProductFields({
       {/* Categoria + Unidade */}
       <div className="form-2col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <Label htmlFor={id('categoria')}>Categoria</Label>
-          <select
-            id={id('categoria')}
-            name="category_id"
-            className="field"
-            value={categoryId}
-            onChange={e => setCategoryId(e.target.value)}
-            disabled={categories.length === 0}
-          >
-            <option value="">
-              {categories.length === 0 ? 'Nenhuma categoria cadastrada' : 'Sem categoria'}
-            </option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          {/* E6/E3: a categoria com lista e busca; a que falta se cria ali mesmo. */}
+          <CampoDaLista lista="categorias" rotulo="Categoria" nome="category_id" itens={categories}
+            inicial={product?.category_id ?? null} aoMudar={c => setCategoryId(c?.id ?? '')}
+            placeholder="Buscar ou criar categoria…" />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <Label htmlFor={id('embalagem')}>Embalagem *</Label>
@@ -264,29 +250,40 @@ function ProductFields({
         </p>
       </div>
 
-      {/* O uso do produto (D-6, decisão do Heitor): o insumo aparece no
-          atendimento; a revenda, na venda de produto (a "Nova venda" do PDV). Três
-          opções fixas e curtas: segmentado. */}
+      {/* Onde o produto está disponível (E2): Insumo — aparece no atendimento e no
+          procedimento; Venda direta — aparece na venda do PDV, com preço. Os dois
+          podem estar marcados; nenhum, não (o servidor recusa). */}
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 10,
         border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
         background: vendaDireta ? 'var(--bg-app)' : 'transparent',
         transition: 'background 200ms',
       }}>
-        <div role="group" aria-label="Uso do produto" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-            Uso do produto *
+        <div role="group" aria-labelledby={id('onde')} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span id={id('onde')} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+            Onde o produto está disponível
           </span>
-          <SegSelect ariaLabel="Uso do produto" options={USOS_DO_PRODUTO} value={uso} onSelect={k => setUso(k as UsoDoProduto)} />
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={insumo} onChange={e => setInsumo(e.target.checked)} style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
+              Insumo
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={vendaDireta} onChange={e => setVendaDireta(e.target.checked)} style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
+              Venda direta
+            </label>
+          </div>
           <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
             {uso === 'INSUMO'
               ? 'Usado nos atendimentos: aparece como insumo do procedimento e da sessão.'
               : uso === 'REVENDA'
               ? 'Vendido à cliente: aparece na venda do PDV, e não como insumo.'
-              : 'Usado nos atendimentos e vendido à cliente.'}
+              : uso === 'AMBOS'
+              ? 'Usado nos atendimentos e vendido à cliente.'
+              : 'Marque ao menos um: sem nenhum, o produto não aparece em lugar nenhum.'}
           </span>
         </div>
-        <input type="hidden" name="uso" value={uso} />
+        <input type="hidden" name="uso" value={uso ?? ''} />
 
         {vendaDireta && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -310,13 +307,8 @@ function ProductFields({
         {vendaDireta && <ComissaoDoProduto productId={product?.id ?? null} />}
       </div>
 
-      {/* Fornecedor + Estoque mínimo */}
+      {/* E10: o produto não tem marca nem fornecedor — quem os tem é cada entrada. */}
       <div className="form-2col">
-        {/* C76: o fornecedor de costume vem da lista da rede, com "+ Novo fornecedor". */}
-        <CampoFornecedor id={id('fornecedor')} rotulo="Fornecedor de costume" fornecedores={fornecedores}
-          nomeId="fornecedor_id" nomeTexto="supplier"
-          inicial={{ id: product?.fornecedor_id ?? null, nome: product?.supplier ?? null }}
-          dica={{ tipo: 'costume', texto: 'De quem a clínica costuma comprar: vem sugerido nas próximas entradas.' }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <Label htmlFor={id('minimo')}>Estoque mínimo</Label>
           <input id={id('minimo')} name="min_stock" type="number" step="0.001" min="0" className="field"
@@ -449,23 +441,22 @@ function ProductFields({
                 </p>
               )}
 
-              {/* C16: o fornecedor e a nota DESTA entrada, estruturados, como na Entrada
-                  (o fornecedor vem o de costume escolhido acima, se nada mudar aqui). */}
+              {/* E14 (o Heitor, 13/11: "Na entrada no estoque, escolhe fornecedor e
+                  marca"): a marca e o fornecedor DESTA entrada, das listas da rede. */}
               <div className="form-2col">
-                <CampoFornecedor id={id('fornecedor-inicial')} rotulo="Fornecedor desta entrada" fornecedores={fornecedores}
-                  nomeId="initial_fornecedor_id" nomeTexto="initial_fornecedor"
-                  inicial={{ id: product?.fornecedor_id ?? null, nome: product?.supplier ?? null }}
-                  dica={{ tipo: 'entrada', texto: 'De quem veio este estoque inicial: vale só desta entrada; fica no histórico e no lote.' }} />
+                <CampoDaLista lista="marcas" rotulo="Marca" nome="initial_marca_id" itens={marcas} placeholder="Buscar ou criar marca…" />
+                <CampoDaLista lista="fornecedores" rotulo="Fornecedor" nome="initial_fornecedor_id" itens={fornecedores} placeholder="Buscar ou criar fornecedor…" />
+              </div>
+
+              <div className="form-2col">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <Label htmlFor={id('nota')}>Nota fiscal</Label>
                   <input id={id('nota')} name="initial_nota_fiscal" type="text" maxLength={60} className="field" placeholder="Número da nota" />
                 </div>
-              </div>
-
-              {/* Observações */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label htmlFor={id('obs')}>Observações</Label>
-                <input id={id('obs')} name="initial_notes" type="text" className="field" placeholder="Ex: compra inicial" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <Label htmlFor={id('obs')}>Observações</Label>
+                  <input id={id('obs')} name="initial_notes" type="text" className="field" placeholder="Ex: compra inicial" />
+                </div>
               </div>
             </>
           )}
@@ -509,9 +500,10 @@ function ProductFields({
 }
 
 // -- Form de criação ---------------------------------------------------
-function CreateForm({ fornecedores, categories, branches, onClose, onSuccess }: {
-  fornecedores: FornecedorDaLista[]
-  categories: ProductCategory[]
+function CreateForm({ marcas, fornecedores, categories, branches, onClose, onSuccess }: {
+  marcas: ItemDaLista[]
+  fornecedores: ItemDaLista[]
+  categories: ItemDaLista[]
   branches?:  { id: string; name: string }[]
   onClose:    () => void
   onSuccess:  () => void
@@ -546,7 +538,7 @@ function CreateForm({ fornecedores, categories, branches, onClose, onSuccess }: 
     <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <ProductFields
         isCreate
-        fornecedores={fornecedores} categories={categories} branches={branches} onClose={onClose}
+        marcas={marcas} fornecedores={fornecedores} categories={categories} branches={branches} onClose={onClose}
         state={error ? { error } : undefined}
         pending={pending} submitLabel="Criar produto"
         pergunta={pergunta ? {
@@ -564,10 +556,9 @@ function CreateForm({ fornecedores, categories, branches, onClose, onSuccess }: 
 }
 
 // -- Form de edição ---------------------------------------------------
-function EditForm({ product, fornecedores, categories, onClose, onSuccess }: {
+function EditForm({ product, categories, onClose, onSuccess }: {
   product:    StockProduct
-  fornecedores: FornecedorDaLista[]
-  categories: ProductCategory[]
+  categories: ItemDaLista[]
   onClose:    () => void
   onSuccess:  () => void
 }) {
@@ -593,7 +584,7 @@ function EditForm({ product, fornecedores, categories, onClose, onSuccess }: {
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <input type="hidden" name="_productId" value={product.id} />
       <ProductFields
-        product={product} fornecedores={fornecedores} categories={categories} onClose={onClose}
+        product={product} categories={categories} onClose={onClose}
         state={error ? { error } : undefined}
         pending={pending} submitLabel="Salvar"
       />
@@ -603,7 +594,7 @@ function EditForm({ product, fornecedores, categories, onClose, onSuccess }: {
 
 // -- Modal wrapper -----------------------------------------------------
 export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
-  function StockProductModal({ product, trigger, fornecedores = [], categories = [], branches = [], onSuccess }, ref) {
+  function StockProductModal({ product, trigger, marcas = [], fornecedores = [], categories = [], branches = [], onSuccess }, ref) {
     const isEdit    = !!product
     const dialogRef = useRef<HTMLDialogElement>(null)
     const router    = useRouter()
@@ -658,8 +649,8 @@ export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
 
           <div style={{ padding: '24px 24px 28px' }}>
             {isEdit
-              ? <EditForm key={`${product.id}-${formKey}`} product={product} fornecedores={fornecedores} categories={categories} onClose={close} onSuccess={handleSuccess} />
-              : <CreateForm key={formKey} fornecedores={fornecedores} categories={categories} branches={branches} onClose={close} onSuccess={handleSuccess} />
+              ? <EditForm key={`${product.id}-${formKey}`} product={product} categories={categories} onClose={close} onSuccess={handleSuccess} />
+              : <CreateForm key={formKey} marcas={marcas} fornecedores={fornecedores} categories={categories} branches={branches} onClose={close} onSuccess={handleSuccess} />
             }
           </div>
         </dialog>

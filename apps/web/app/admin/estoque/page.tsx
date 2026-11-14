@@ -2,7 +2,6 @@ import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loteDaUrl } from '@/lib/estoque/lote-da-url'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
-import { ProductCategoryModal } from '@/components/admin/product-category-modal'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
 import { startOfMonthTZ, endOfMonthTZ, addDaysTZ } from '@/lib/datetime'
@@ -16,9 +15,9 @@ import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativa
 import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto } from '@/lib/estoque/lotes'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
-import { produtosDoEstoque, todosOsFornecedores, fornecedoresAtivos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
+import { produtosDoEstoque, listasDoEstoque, marcasEFornecedoresDosProdutos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
 import { catalogoDaRede } from '@/lib/estoque/catalogo'
-import { FornecedoresModal } from '@/components/admin/fornecedores-modal'
+import { CadastroDoEstoque } from '@/components/admin/cadastro-do-estoque'
 import { CatalogoDeProdutosLinha } from '@/components/admin/catalogo-de-produtos'
 
 const fmtBRL = (v: number) =>
@@ -47,20 +46,14 @@ export default async function AdminEstoquePage({
   // F72 (D1 da 14ª; H6): as unidades de LEITURA — a desativada com saldo (ou
   // com o que ficou nela) entra no total, nas linhas e no `?unidade=`, com o
   // selo. Fechada a Pampulha, o total caía R$ 894,80 sem nada ter saído.
-  const [raw, fornecedores, catalogo, unidadesDeLeitura, { data: categoriesRaw, error: categoriasErr }] = await Promise.all([
+  const [raw, listas, marcasEFornecedores, catalogo, unidadesDeLeitura] = await Promise.all([
     produtosDoEstoque(ctx.tenantId!),
-    todosOsFornecedores(ctx.tenantId!),
+    // E1/E15: as três listas da rede (categorias, marcas, fornecedores) e, de cada produto, as das entradas.
+    listasDoEstoque(ctx.tenantId!),
+    marcasEFornecedoresDosProdutos(ctx.tenantId!),
     catalogoDaRede(admin, ctx.tenantId!),
     unidadesParaLer(ctx.tenantId!),
-
-    admin
-      .from('product_categories')
-      .select('id, name')
-      .eq('tenant_id', ctx.tenantId!)
-      .order('name'),
   ])
-
-  if (categoriasErr) throw new Error(`Não foi possível carregar as categorias: ${categoriasErr.message}`)
 
   const daLeitura = new Map(unidadesDeLeitura.map(u => [u.id, u]))
   // Normaliza produtos
@@ -94,8 +87,9 @@ export default async function AdminEstoquePage({
       category:         p.category,
       categoryId:       p.category_id,
       unit:             p.unit,
-      supplier:         p.supplier,
-      fornecedorId:     p.fornecedor_id,
+      // E15: as marcas e os fornecedores das entradas do produto (o filtro).
+      marcaIds:         marcasEFornecedores[p.id]?.marcaIds ?? [],
+      fornecedorIds:    marcasEFornecedores[p.id]?.fornecedorIds ?? [],
       isActive:         p.is_active,
       costPrice:        Number(p.cost_price ?? 0),
       // D11 da 12ª: sem a linha da unidade, a aba "Estoque mínimo" mostra este.
@@ -114,7 +108,6 @@ export default async function AdminEstoquePage({
   // Para CRIAR (o produto novo com estoque inicial, a entrada): só as ativas.
   const ativas     = branches.filter(b => b.ativa)
   const desativadas = new Set(branches.filter(b => !b.ativa).map(b => b.id))
-  const categories = categoriesRaw ?? []
   const productIds = products.map(p => p.id)
 
   // `?unidade=` (id ou slug) recorta a tela para uma filial. Os KPIs seguem o
@@ -179,8 +172,6 @@ export default async function AdminEstoquePage({
   // A36 da 10ª: o "Ver lotes esgotados" só onde há algum.
   const comLoteEsgotado = productIds.length > 0 ? await paresComLoteEsgotado(admin, unidadesDoRecorte) : []
 
-  const ativos = fornecedoresAtivos(fornecedores)
-  const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -204,14 +195,17 @@ export default async function AdminEstoquePage({
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {canEdit && <ProductCategoryModal categories={categories} />}
-          {/* C76: os fornecedores são um cadastro da rede, como as categorias. */}
-          {canEdit && <FornecedoresModal fornecedores={fornecedores} />}
+          {/* E1/E4/E5 (o Heitor, 13/11): Categorias, Marcas e Fornecedores — cadastros
+              de texto livre, para quem tem o Estoque em Gerenciar (ser da rede deixou de contar). */}
+          {canEdit && <CadastroDoEstoque lista="categorias" itens={listas.categorias} />}
+          {canEdit && <CadastroDoEstoque lista="marcas" itens={listas.marcas} />}
+          {canEdit && <CadastroDoEstoque lista="fornecedores" itens={listas.fornecedores} />}
           {/* Sem produto, o "Novo produto" é o do vazio (A2): dois primários iguais na tela, não. */}
           {canEdit && products.length > 0 && (
             <StockProductModal
-              fornecedores={ativos}
-              categories={categories}
+              categories={listas.categorias}
+              marcas={listas.marcas}
+              fornecedores={listas.fornecedores}
               branches={ativas}
               trigger={
                 <button type="button" className="btn-primary">
@@ -293,9 +287,9 @@ export default async function AdminEstoquePage({
           lotes:    lotes.filter(l => l.produtoId === p.id),
         }))}
         branches={branches}
-        categories={stockCategories}
-        productCategories={categories as { id: string; name: string }[]}
-        fornecedores={ativos}
+        productCategories={listas.categorias}
+        marcas={listas.marcas}
+        fornecedores={listas.fornecedores}
         unidadeInicial={unidadeId}
         readOnly={!canEdit}
         podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}
