@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>PDV — desenho para o Heitor</title>
+<!-- Os tokens da skill lumiere-design, copiados (o desenho abre sozinho). -->
+<style>
+/* Lumière webfonts — Hanken Grotesk (Google Fonts).
+   NOTE: served from the Google Fonts CDN; no local binaries are bundled.
+   To self-host, drop the .woff2 files here and replace this with @font-face rules. */
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* ─── Brand (rosé) ─────────────────────────────── */
+  --brand: #c34d6b;          /* primary — buttons, active nav, hero KPI, current bars, links */
+  --brand-deep: #a63a55;     /* hover / pressed primary; end of "pacote ativo" gradient */
+  --brand-soft: #fbe7ec;     /* tinted fills: chips, avatars, selected row bg */
+  --brand-soft-border: #f3c7d3; /* border of selected client row */
+  --brand-2: #dd7f96;        /* secondary rosé — secondary bars, "Em contato" funnel stage */
+  --brand-3: #eeb0bf;        /* light rosé — 3rd-level bars / funnel */
+
+  /* ─── Surfaces & neutrals (warm nude) ──────────── */
+  /* Off-white NEUTRO desde 2026-09-24 (era o nude #faf5f3). O fundo só
+     precisa separar o card branco do resto; o rosa ali disputava com o
+     acento da marca. O calor do sistema ficou nas bordas e divisórias. */
+  --bg-app: #f8f8f8;         /* app background, fields, inactive chips */
+  --surface: #ffffff;        /* cards, sidebar, topbar */
+  --border: #f0e6e3;         /* default card border */
+  --hairline: #f4ebe8;       /* thin dividers, table-row inner borders */
+  --track: #f7eaee;          /* progress-bar track */
+
+  /* ─── Text ─────────────────────────────────────── */
+  --text: #221619;           /* primary text */
+  --text-muted: #8a7a7e;     /* secondary text / labels */
+  --text-faint: #b7a8ac;     /* tertiary text / placeholders / timestamps */
+  --text-soft: #6b5d61;      /* observation paragraphs (anamnese) */
+
+  /* ─── Semantic ─────────────────────────────────── */
+  --success: #3f9b6f;        /* Confirmado / Pago / Fechado, positive deltas */
+  --success-soft: #e2f1ea;   /* success chip bg */
+  --success-bg: #f3faf5;     /* closed CRM card bg */
+  --success-border: #cfe9da; /* closed CRM card border */
+  --warning: #c98a1e;        /* Pendente text */
+  --warning-soft: #fbeed6;   /* Pendente chip bg */
+  --warning-border: #f0dcb4; /* Pendente chip border */
+  --gold: #c9a227;           /* "Proposta enviada" funnel dot */
+
+  /* ─── Erro e informação (2026-09-24) ───────────────
+     Faltavam, e a falta é que produziu a bagunça: sem um vermelho de sistema,
+     cada tela pegou o da paleta do Tailwind (red-600 #dc2626, 146 vezes) ou
+     inventou o seu — 143 tons distintos no total.
+
+     Os dois são terrosos/dessaturados de propósito. O vermelho do Tailwind é
+     frio e vibrante demais ao lado do nude quente; #b42318 tem a mesma
+     temperatura do resto do sistema. O azul é acinzentado pela mesma razão, e
+     tem um papel só: ESTADO INFORMATIVO NEUTRO (Agendado, Concluída, tipo de
+     documento). Nunca é dado — dado é rosé. */
+  --danger: #b42318;         /* erro, exclusão, saldo negativo */
+  --danger-soft: #fdecea;    /* fundo de chip/aviso de erro */
+  --danger-border: #f5cdc7;  /* borda do chip de erro */
+  --info: #3b6cbf;           /* estado informativo neutro */
+  --info-soft: #e7f0fc;      /* fundo de chip informativo */
+  --info-border: #c9dcf5;    /* borda do chip informativo */
+
+
+  /* ─── Escala categórica (2026-09-24) ───────────────
+     Para DISTINGUIR, não para significar: qual profissional ocupa o horário,
+     de qual canal veio a conversa. É a outra lacuna que produzia invenção —
+     seis tons de rosé seriam indistinguíveis à primeira vista, então cada
+     tela escolheu os seus.
+  
+     As três primeiras REUSAM os tokens semânticos de propósito: quem tem
+     quatro profissionais nunca chega nas outras, e a tela fica na paleta.
+     As três últimas são quentes e dessaturadas para conviver com o nude. */
+  --cat-1: var(--brand);        --cat-1-soft: var(--brand-soft);
+  --cat-2: var(--info);         --cat-2-soft: var(--info-soft);
+  --cat-3: var(--success);      --cat-3-soft: var(--success-soft);
+  --cat-4: #6a3baa;             --cat-4-soft: #f0e7fc;   /* ameixa */
+  --cat-5: #b85c1a;             --cat-5-soft: #fceee7;   /* terracota */
+  --cat-6: #1a8a73;             --cat-6-soft: #e7fcf8;   /* teal */
+  /* ─── Semantic aliases (prefer these in UI) ─────── */
+  --on-brand: #ffffff;       /* text/icon on a brand fill */
+  --text-body: var(--text);
+  --text-label: var(--text-muted);
+  --surface-card: var(--surface);
+  --surface-app: var(--bg-app);
+  --border-card: var(--border);
+  --accent: var(--brand);
+  /* O ÚNICO gradiente de fundo do sistema (2026-09-24).
+     Era regra de texto — "só o card Pacote ativo" — e virou string copiada
+     em cinco lugares: as duas barras laterais, a home do cliente, o avatar
+     da ficha e o cabeçalho do plano. Como token, a regra fica onde ela é
+     obedecida: superfície de MARCA pode usá-lo; fundo neutro, nunca. */
+  --gradient-brand: linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%);
+  --text-error: var(--danger);
+}
+
+:root {
+  /* ─── Families ─────────────────────────────────── */
+  --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; /* placeholder labels only */
+
+  /* ─── Sizes (px, as used across the app) ───────── */
+  --text-display: 30px;     /* dashboard greeting */
+  --text-title: 28px;       /* screen titles */
+  --text-name: 22px;        /* highlighted name (client file) */
+  --text-kpi: 28px;         /* KPI / metric numbers */
+  --text-card-title: 15px;  /* card & section titles */
+  --text-base: 13px;        /* row names, default body */
+  --text-sm: 12.5px;        /* in-line body, values, table cells */
+  --text-xs: 11.5px;        /* helper text */
+  --text-2xs: 11px;         /* timestamps, captions */
+  --text-overline: 10.5px;  /* uppercase labels (KPI / table head) */
+
+  /* ─── Weights ──────────────────────────────────── */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;  /* numbers, titles, emphasis */
+
+  /* ─── Tracking ─────────────────────────────────── */
+  --tracking-tight: -0.02em;     /* titles & big numbers */
+  --tracking-overline: 0.12em;   /* uppercase labels */
+  --tracking-wordmark: 0.3em;    /* "ESTÉTICA AVANÇADA" subtitle */
+
+  --leading-tight: 1;
+  --leading-snug: 1.4;
+  --leading-normal: 1.55;
+}
+
+:root {
+  /* ─── Spacing scale (4px base) ─────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;   /* default gap between cards / grid columns */
+  --space-5: 20px;
+  --space-6: 24px;   /* card inner padding (large cards) */
+  --space-7: 30px;   /* content vertical padding */
+  --space-8: 34px;   /* content horizontal padding */
+
+  /* ─── Layout constants ─────────────────────────── */
+  --sidebar-w: 244px;
+  --topbar-h: 68px;
+  --client-list-w: 336px;
+  --agenda-hour: 72px;       /* 1 hour = 72px in the day grid */
+  --content-pad-y: 30px;
+  --content-pad-x: 34px;
+  --card-pad: 24px;
+  --card-pad-sm: 20px;
+  --row-pad: 12px;
+}
+
+:root {
+  /* ─── Corner radii ─────────────────────────────── */
+  /* Escala revisada em 2026-09-21: o card estava em 18px e lia como curva
+     demais. O degrau entre card e campo é de propósito — o elemento de dentro
+     nunca mais redondo que o de fora.
+     Chip e avatar ficam fora da escala: 20px numa altura de 22px é pílula, e é
+     ela que distingue um badge de um botão à primeira vista. */
+  --radius-card: 12px;       /* primary cards, KPIs, modais, painéis */
+  --radius-card-sm: 11px;    /* CRM lead cards */
+  --radius-field: 10px;      /* inputs, buttons, unit selector, mini-cards */
+  --radius-row: 10px;        /* client rows, anamnese */
+  --radius-squircle: 14px;   /* large avatar (client file) */
+  --radius-chip: 20px;       /* status chips, filter chips — pílula */
+  --radius-full: 9999px;     /* circular avatars */
+}
+
+:root {
+  /* ─── Shadows ──────────────────────────────────── */
+  /* Brand-tinted, soft and directional. Neutral cards use a border, NOT a shadow. */
+  --shadow-brand-card: 0 16px 34px -14px rgba(195, 77, 107, .5);  /* hero KPI / brand cards */
+  --shadow-brand-btn: 0 10px 24px -8px rgba(195, 77, 107, .6);    /* primary buttons */
+  --shadow-nav-active: 0 8px 18px -6px rgba(195, 77, 107, .55);   /* active nav pill */
+  --shadow-agenda-card: 0 2px 8px -3px rgba(63, 155, 111, .25);   /* confirmed agenda block */
+  /* Elevação de overlay (2026-09-24) — a terceira lacuna.
+     "Superfície neutra usa borda, não sombra" vale para o que está NO plano
+     da página. O que flutua sobre ela — modal, dropdown, tooltip — precisa de
+     elevação, e sem token cada tela inventou a sua: sete sombras pretas
+     diferentes, de `rgba(0,0,0,.08)` a `rgba(0,0,0,.22)`.
+     Tingidas de rosé como todas as outras do sistema. */
+  --shadow-overlay: 0 18px 44px -14px rgba(122, 30, 61, .30);
+  --shadow-popover: 0 8px 22px -8px rgba(122, 30, 61, .22);
+
+}
+
+</style>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-app); font-family: var(--font-sans); color: var(--text); font-size: var(--text-base); }
+  .doc { max-width: 1440px; margin: 0 auto; padding: 40px 34px 80px; }
+  .doc > h1 { font-size: var(--text-display); font-weight: 800; letter-spacing: var(--tracking-tight); margin: 0 0 6px; }
+  .doc > p.intro { color: var(--text-muted); font-size: 14px; max-width: 860px; line-height: var(--leading-normal); margin: 0 0 34px; }
+  .tela { margin-bottom: 56px; }
+  .tela-cab { display: flex; gap: 14px; align-items: baseline; margin-bottom: 6px; }
+  .tela-num { font-size: var(--text-overline); font-weight: 700; letter-spacing: var(--tracking-overline); text-transform: uppercase; color: var(--brand); }
+  .tela-cab h2 { font-size: 20px; font-weight: 800; letter-spacing: var(--tracking-tight); margin: 0; }
+  .tela-nota { color: var(--text-muted); max-width: 900px; line-height: var(--leading-normal); margin: 0 0 14px; font-size: var(--text-sm); }
+  .tela-nota b { color: var(--text); }
+
+  /* moldura do sistema */
+  .app { display: grid; grid-template-columns: 220px 1fr; border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; background: var(--bg-app); min-height: 640px; }
+  .lado { background: var(--gradient-brand); color: var(--on-brand); padding: 22px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .marca { font-weight: 800; letter-spacing: var(--tracking-tight); font-size: 17px; padding: 0 10px 18px; }
+  .marca small { display: block; font-size: 10px; font-weight: 700; letter-spacing: var(--tracking-wordmark); opacity: .7; margin-top: 3px; }
+  .nav { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-field); font-weight: 600; font-size: var(--text-sm); opacity: .82; }
+  .nav svg { width: 17px; height: 17px; }
+  .nav.ativo { background: var(--surface); color: var(--brand); opacity: 1; font-weight: 800; }
+  .nav-grupo { font-size: 10px; font-weight: 700; letter-spacing: var(--tracking-overline); text-transform: uppercase; opacity: .6; padding: 14px 12px 4px; }
+  .corpo { display: flex; flex-direction: column; min-width: 0; }
+  .topo { height: 58px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; }
+  .topo .unidade { font-weight: 700; font-size: var(--text-sm); border: 1px solid var(--border); border-radius: var(--radius-field); padding: 7px 12px; display: flex; gap: 8px; align-items: center; }
+  .topo .busca { flex: 1; max-width: 360px; background: var(--bg-app); border-radius: var(--radius-field); padding: 8px 12px; color: var(--text-faint); font-size: var(--text-sm); display: flex; gap: 8px; align-items: center; }
+  .topo svg { width: 15px; height: 15px; }
+  .conteudo { padding: 22px 24px; flex: 1; min-width: 0; }
+
+  .cab-tela { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .cab-tela h3 { font-size: var(--text-title); font-weight: 800; letter-spacing: var(--tracking-tight); margin: 0; }
+  .cab-tela .resumo { color: var(--text-muted); font-size: var(--text-sm); font-weight: 600; }
+  .cab-tela .resumo b { color: var(--text); font-weight: 800; }
+  .esp { flex: 1; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: var(--radius-field); font: inherit; font-weight: 700; font-size: var(--text-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; }
+  .btn svg { width: 15px; height: 15px; }
+  .btn.prim { background: var(--brand); color: var(--on-brand); border-color: var(--brand); box-shadow: var(--shadow-brand-btn); }
+  .btn.grande { height: 44px; font-size: 14px; font-weight: 800; width: 100%; justify-content: center; }
+  .btn.off { background: var(--bg-app); color: var(--text-faint); border-color: var(--border); box-shadow: none; }
+  .link { color: var(--brand); font-weight: 700; font-size: var(--text-xs); text-decoration: none; }
+
+  .duas { display: grid; grid-template-columns: 380px 1fr; gap: 16px; align-items: start; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); }
+  .card-pad { padding: 18px 20px; }
+  .overline { font-size: var(--text-overline); font-weight: 700; letter-spacing: var(--tracking-overline); text-transform: uppercase; color: var(--text-muted); }
+
+  .seg { display: inline-flex; background: var(--bg-app); border-radius: var(--radius-field); padding: 3px; gap: 2px; height: 34px; }
+  .seg span { padding: 0 12px; display: flex; align-items: center; border-radius: 8px; font-weight: 700; font-size: var(--text-xs); color: var(--text-muted); }
+  .seg span.on { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .lista-barra { display: flex; gap: 8px; padding: 14px 14px 10px; }
+  .campo { height: 34px; border: 1px solid var(--border); border-radius: var(--radius-field); background: var(--bg-app); padding: 0 11px; display: flex; align-items: center; gap: 8px; color: var(--text-faint); font-size: var(--text-sm); flex: 1; }
+  .campo svg { width: 14px; height: 14px; }
+  .campo.cheio { color: var(--text); font-weight: 600; background: var(--surface); }
+
+  .comanda { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; padding: 12px 14px; border-top: 1px solid var(--hairline); }
+  .comanda.sel { background: var(--brand-soft); border: 1px solid var(--brand-soft-border); border-radius: var(--radius-row); margin: 0 8px; }
+  .comanda .nome { font-weight: 800; font-size: var(--text-base); }
+  .comanda .oque { color: var(--text-muted); font-size: var(--text-xs); }
+  .comanda .valor { font-weight: 800; text-align: right; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: var(--radius-chip); font-size: var(--text-2xs); font-weight: 700; white-space: nowrap; justify-self: end; }
+  .chip.warn { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning-border); }
+  .chip.ok { background: var(--success-soft); color: var(--success); }
+  .chip.info { background: var(--info-soft); color: var(--info); border: 1px solid var(--info-border); }
+  .chip.marca { background: var(--brand-soft); color: var(--brand); border: 1px solid var(--brand-soft-border); }
+  .chip.perigo { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger-border); }
+  .grupo-lista { padding: 12px 14px 4px; }
+
+  .det-cab { display: flex; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--hairline); }
+  .avatar { width: 42px; height: 42px; border-radius: var(--radius-full); background: var(--brand-soft); color: var(--brand); font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .det-cab .n { font-size: var(--text-name); font-weight: 800; letter-spacing: var(--tracking-tight); }
+  .det-cab .s { color: var(--text-muted); font-size: var(--text-xs); margin-top: 2px; }
+  .det-corpo { display: grid; grid-template-columns: 1fr 340px; }
+  .itens { padding: 18px 22px; border-right: 1px solid var(--hairline); }
+  .item { display: grid; grid-template-columns: 1fr 70px 100px; gap: 10px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--hairline); }
+  .item .t { font-weight: 700; }
+  .item .d { color: var(--text-muted); font-size: var(--text-xs); margin-top: 2px; }
+  .item .q { color: var(--text-muted); text-align: center; font-weight: 600; }
+  .item .v { text-align: right; font-weight: 800; }
+  .add { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .linha-conta { display: flex; justify-content: space-between; padding: 6px 0; font-size: var(--text-sm); color: var(--text-muted); font-weight: 600; }
+  .linha-conta b { color: var(--text); }
+  .linha-conta.desc b { color: var(--success); }
+  .total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 12px; margin-top: 8px; border-top: 1px solid var(--border); }
+  .total span { font-weight: 700; color: var(--text-muted); }
+  .total b { font-size: var(--text-kpi); font-weight: 800; letter-spacing: var(--tracking-tight); }
+
+  .receber { padding: 18px 20px; background: var(--surface); display: flex; flex-direction: column; gap: 12px; }
+  .formas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .forma { border: 1px solid var(--border); border-radius: var(--radius-field); padding: 9px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 700; font-size: var(--text-xs); color: var(--text-muted); background: var(--surface); }
+  .forma svg { width: 18px; height: 18px; }
+  .forma.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+  .rot { font-size: var(--text-xs); font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
+  .duas-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pontos { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-field); background: var(--bg-app); font-size: var(--text-xs); }
+  .pontos svg { width: 16px; height: 16px; color: var(--brand); }
+  .pontos .tx { flex: 1; } .pontos .tx b { display: block; font-size: var(--text-sm); }
+  .interr { width: 32px; height: 18px; border-radius: 10px; background: var(--brand); position: relative; flex: none; }
+  .interr::after { content: ''; position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); }
+  .interr.desl { background: var(--border); } .interr.desl::after { right: auto; left: 2px; }
+
+  .aviso { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--radius-field); font-size: var(--text-xs); line-height: var(--leading-snug); }
+  .aviso svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
+  .aviso b { display: block; font-size: var(--text-sm); }
+  .aviso.warn { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--text); }
+  .aviso.warn svg { color: var(--warning); }
+  .aviso.info { background: var(--info-soft); border: 1px solid var(--info-border); }
+  .aviso.info svg { color: var(--info); }
+
+  .passos { display: flex; flex-direction: column; gap: 8px; }
+  .passo { display: flex; gap: 11px; align-items: center; padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--radius-field); }
+  .passo .bola { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: var(--text-xs); background: var(--bg-app); color: var(--text-muted); flex: none; }
+  .passo.feito .bola { background: var(--success-soft); color: var(--success); }
+  .passo.agora { border-color: var(--brand-soft-border); background: var(--brand-soft); }
+  .passo.agora .bola { background: var(--brand); color: var(--on-brand); }
+  .passo .bola svg { width: 13px; height: 13px; }
+  .passo .tx { flex: 1; font-size: var(--text-xs); color: var(--text-muted); }
+  .passo .tx b { display: block; color: var(--text); font-size: var(--text-sm); }
+
+  .parcela { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--warning-border); background: var(--warning-soft); border-radius: var(--radius-field); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: var(--text-overline); font-weight: 700; letter-spacing: var(--tracking-overline); text-transform: uppercase; color: var(--text-muted); padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  td { padding: 13px 14px; border-bottom: 1px solid var(--hairline); font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  td .inp { display: inline-block; min-width: 110px; text-align: right; border: 1px solid var(--border); border-radius: var(--radius-field); padding: 7px 10px; font-weight: 800; background: var(--surface); }
+  td .sub { display: block; color: var(--text-muted); font-size: var(--text-2xs); font-weight: 600; margin-top: 3px; }
+  .dif-ok { color: var(--success); font-weight: 800; } .dif-mal { color: var(--danger); font-weight: 800; }
+  .recolhido { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--hairline); color: var(--text-muted); font-weight: 700; font-size: var(--text-sm); }
+  .recolhido svg { width: 15px; height: 15px; }
+
+  .catalogo { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+  .prod { border: 1px solid var(--border); border-radius: var(--radius-field); padding: 12px 13px; display: flex; align-items: center; gap: 10px; }
+  .prod .t { font-weight: 700; flex: 1; } .prod .t small { display: block; color: var(--text-muted); font-weight: 600; font-size: var(--text-2xs); margin-top: 2px; }
+  .prod .p { font-weight: 800; }
+  .mais { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--brand-soft-border); background: var(--brand-soft); color: var(--brand); display: flex; align-items: center; justify-content: center; }
+  .mais svg { width: 15px; height: 15px; }
+  .vazio { text-align: center; color: var(--text-faint); padding: 28px 10px; font-size: var(--text-sm); border: 1px dashed var(--border); border-radius: var(--radius-field); margin-top: 6px; }
+
+  .legenda { margin-top: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .legenda div { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 14px 16px; font-size: var(--text-sm); line-height: var(--leading-snug); color: var(--text-soft); }
+  .legenda b { color: var(--text); display: block; margin-bottom: 3px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <h1>PDV ✦ o desenho</h1>
+  <p class="intro">Quatro telas, todas no mesmo lugar do menu: <b>PDV</b>. O exemplo é a Unidade Centro num dia comum. À esquerda ficam as comandas, e à direita a comanda escolhida, com o "Receber" ao lado. Nada aqui é novo além do que você decidiu na revisão: a comanda nasce quando o atendimento é iniciado, o pacote e o produto se vendem na hora, o plano chega pelo aceite, os pontos se usam na comanda, todo pagamento tem forma (o Crediário é uma delas) e o fechamento do dia mora aqui.</p>
+
+  <!-- ═══════════ TELA 1 ═══════════ -->
+  <section class="tela">
+    <div class="tela-cab"><span class="tela-num">Tela 1</span><h2>O PDV aberto: receber um atendimento</h2></div>
+    <p class="tela-nota">A Mariana chegou às 14h e alguém iniciou o atendimento pela agenda: <b>a comanda nasceu sozinha</b>, com o procedimento e o preço. Na saída ela levou um sérum, que se acrescenta na mesma comanda. Ela tem pontos e decide usar, e paga no Pix. A forma de pagamento nasce em branco e o "Receber" não sai sem ela: não existe pagamento sem forma.</p>
+    <div class="app">
+      <aside class="lado">
+        <div class="marca">BellarisOS<small>UNIDADE CENTRO</small></div>
+        <div class="nav"><i data-lucide="layout-grid"></i>Painel</div>
+        <div class="nav"><i data-lucide="calendar"></i>Agenda</div>
+        <div class="nav ativo"><i data-lucide="shopping-bag"></i>PDV</div>
+        <div class="nav"><i data-lucide="user"></i>Clientes</div>
+        <div class="nav"><i data-lucide="message-circle"></i>Conversas</div>
+        <div class="nav"><i data-lucide="sparkles"></i>Tratamentos</div>
+        <div class="nav-grupo">Gestão</div>
+        <div class="nav"><i data-lucide="credit-card"></i>Financeiro</div>
+        <div class="nav"><i data-lucide="package"></i>Estoque</div>
+        <div class="nav"><i data-lucide="bar-chart-3"></i>Relatórios</div>
+      </aside>
+      <div class="corpo">
+        <div class="topo"><span class="unidade">Unidade Centro <i data-lucide="chevron-down"></i></span><span class="busca"><i data-lucide="search"></i>Buscar…  Ctrl+K</span></div>
+        <div class="conteudo">
+          <div class="cab-tela">
+            <h3>PDV</h3>
+            <span class="resumo">Hoje: <b>R$ 2.340,00</b> recebidos · <b>3</b> comandas abertas</span>
+            <span class="esp"></span>
+            <button class="btn"><i data-lucide="lock"></i>Fechar o dia</button>
+            <button class="btn prim"><i data-lucide="plus"></i>Nova venda</button>
+          </div>
+          <div class="duas">
+            <div class="card">
+              <div class="lista-barra">
+                <span class="seg"><span class="on">Abertas</span><span>Pagas hoje</span><span>Todas</span></span>
+                <span class="campo"><i data-lucide="search"></i>Cliente</span>
+              </div>
+              <div class="comanda sel">
+                <span class="nome">Mariana Costa</span><span class="valor">R$ 284,00</span>
+                <span class="oque">Limpeza de pele + Sérum · 14:00 · Dra. Ana Lima</span><span class="chip warn">Atendida, a pagar</span>
+              </div>
+              <div class="comanda">
+                <span class="nome">Juliana Prado</span><span class="valor">R$ 3.300,00</span>
+                <span class="oque">Plano Rejuvenescimento facial · aceito hoje</span><span class="chip marca">Plano aceito</span>
+              </div>
+              <div class="comanda">
+                <span class="nome">Patrícia Gomes</span><span class="valor">R$ 150,00</span>
+                <span class="oque">Drenagem linfática · 15:30 · Carla Nunes</span><span class="chip info">Em atendimento</span>
+              </div>
+              <div class="grupo-lista overline">Pagas hoje</div>
+              <div class="comanda">
+                <span class="nome">Renata Alves</span><span class="valor">R$ 900,00</span>
+                <span class="oque">Toxina botulínica · 10:00 · Pix</span><span class="chip ok">Paga</span>
+              </div>
+              <div class="comanda">
+                <span class="nome">Camila Rocha</span><span class="valor">R$ 1.200,00</span>
+                <span class="oque">Pacote 6 drenagens · Crediário, 4×</span><span class="chip ok">Paga</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="det-cab">
+                <div class="avatar">MC</div>
+                <div><div class="n">Mariana Costa</div><div class="s">Comanda nº 0412 · aberta às 14:02 ao iniciar o atendimento</div></div>
+                <span class="esp"></span>
+                <a class="link">Ver ficha</a>
+              </div>
+              <div class="det-corpo">
+                <div class="itens">
+                  <div class="overline" style="margin-bottom:4px">O que está na comanda</div>
+                  <div class="item"><div><div class="t">Limpeza de pele</div><div class="d">Atendimento das 14:00 · Dra. Ana Lima</div></div><span class="q">1</span><span class="v">R$ 180,00</span></div>
+                  <div class="item"><div><div class="t">Sérum de vitamina C</div><div class="d">Produto · sai do estoque da Unidade Centro</div></div><span class="q">1</span><span class="v">R$ 120,00</span></div>
+                  <div class="add">
+                    <button class="btn"><i data-lucide="plus"></i>Produto</button>
+                    <button class="btn"><i data-lucide="plus"></i>Procedimento</button>
+                    <button class="btn"><i data-lucide="plus"></i>Pacote</button>
+                    <button class="btn"><i data-lucide="percent"></i>Desconto</button>
+                  </div>
+                  <div style="margin-top:18px">
+                    <div class="linha-conta"><span>Subtotal</span><b>R$ 300,00</b></div>
+                    <div class="linha-conta desc"><span>Pontos (320 pts)</span><b>− R$ 16,00</b></div>
+                    <div class="linha-conta"><span>Quem vendeu</span><b>Dra. Ana Lima</b></div>
+                    <div class="total"><span>Total</span><b>R$ 284,00</b></div>
+                  </div>
+                </div>
+                <div class="receber">
+                  <div class="overline">Receber</div>
+                  <div class="pontos"><i data-lucide="star"></i><span class="tx"><b>Usar os pontos</b>320 pts valem R$ 16,00</span><span class="interr"></span></div>
+                  <div>
+                    <div class="rot">Forma de pagamento *</div>
+                    <div class="formas">
+                      <div class="forma on"><i data-lucide="qr-code"></i>Pix</div>
+                      <div class="forma"><i data-lucide="banknote"></i>Dinheiro</div>
+                      <div class="forma"><i data-lucide="credit-card"></i>Débito</div>
+                      <div class="forma"><i data-lucide="credit-card"></i>Crédito</div>
+                      <div class="forma"><i data-lucide="wallet"></i>Crédito na rede</div>
+                      <div class="forma"><i data-lucide="calendar-range"></i>Crediário</div>
+                    </div>
+                  </div>
+                  <span class="esp"></span>
+                  <button class="btn prim grande"><i data-lucide="check"></i>Receber R$ 284,00</button>
+                  <div style="text-align:center;font-size:var(--text-2xs);color:var(--text-faint)">Os pontos desta compra entram quando ela for paga</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><b>Sem "Vender" espalhado</b>O que se vende, se vende aqui. O "Vender" do inbox abre esta tela com a cliente já escolhida.</div>
+      <div><b>A comanda é uma venda</b>O atendimento avulso, o pacote, o plano e a venda de produto: cada um na sua comanda. Produto acrescentado vai junto do atendimento dela.</div>
+      <div><b>Pagar antes ou depois</b>A comanda está aqui desde o início do atendimento. Receber antes ou depois é só a ordem do trabalho.</div>
+    </div>
+  </section>
+
+  <!-- ═══════════ TELA 2 ═══════════ -->
+  <section class="tela">
+    <div class="tela-cab"><span class="tela-num">Tela 2</span><h2>Receber um plano: forma, contrato, dinheiro</h2></div>
+    <p class="tela-nota">A Juliana aceitou o plano pelo app ontem, em casa, e <b>a comanda nasceu no aceite</b> com o valor inteiro. Hoje ela veio pagar e escolheu o Crediário, com uma entrada no Pix. O contrato do plano cita a forma de pagamento, por isso <b>a assinatura vem depois da forma e antes do dinheiro</b>. O "Receber" só libera com o contrato assinado ou com a assinatura dispensada.</p>
+    <div class="app" style="min-height:560px">
+      <aside class="lado">
+        <div class="marca">BellarisOS<small>UNIDADE CENTRO</small></div>
+        <div class="nav"><i data-lucide="layout-grid"></i>Painel</div>
+        <div class="nav"><i data-lucide="calendar"></i>Agenda</div>
+        <div class="nav ativo"><i data-lucide="shopping-bag"></i>PDV</div>
+        <div class="nav"><i data-lucide="user"></i>Clientes</div>
+        <div class="nav"><i data-lucide="message-circle"></i>Conversas</div>
+        <div class="nav"><i data-lucide="sparkles"></i>Tratamentos</div>
+      </aside>
+      <div class="corpo">
+        <div class="topo"><span class="unidade">Unidade Centro <i data-lucide="chevron-down"></i></span><span class="busca"><i data-lucide="search"></i>Buscar…  Ctrl+K</span></div>
+        <div class="conteudo">
+          <div class="card">
+            <div class="det-cab">
+              <div class="avatar">JP</div>
+              <div><div class="n">Juliana Prado</div><div class="s">Comanda nº 0413 · Plano Rejuvenescimento facial · aceito pelo app em 12/11</div></div>
+              <span class="esp"></span>
+              <a class="link">Abrir o plano</a>
+            </div>
+            <div class="det-corpo" style="grid-template-columns: 1fr 380px">
+              <div class="itens">
+                <div class="overline" style="margin-bottom:4px">O que está na comanda</div>
+                <div class="item"><div><div class="t">Plano Rejuvenescimento facial</div><div class="d">3× Peeling químico · 2× Limpeza de pele · 1× Toxina botulínica · montado pela Dra. Ana Lima</div></div><span class="q">1</span><span class="v">R$ 3.300,00</span></div>
+                <div style="margin-top:18px">
+                  <div class="linha-conta"><span>Subtotal</span><b>R$ 3.300,00</b></div>
+                  <div class="linha-conta"><span>Quem vendeu</span><b>Dra. Ana Lima</b></div>
+                  <div class="total"><span>Total</span><b>R$ 3.300,00</b></div>
+                </div>
+                <div style="margin-top:22px" class="overline">Como vai ser pago</div>
+                <div style="margin-top:8px" class="formas">
+                  <div class="forma"><i data-lucide="qr-code"></i>Pix</div>
+                  <div class="forma"><i data-lucide="banknote"></i>Dinheiro</div>
+                  <div class="forma"><i data-lucide="credit-card"></i>Débito</div>
+                  <div class="forma"><i data-lucide="credit-card"></i>Crédito</div>
+                  <div class="forma"><i data-lucide="wallet"></i>Crédito na rede</div>
+                  <div class="forma on"><i data-lucide="calendar-range"></i>Crediário</div>
+                </div>
+                <div class="duas-col" style="margin-top:12px">
+                  <div><div class="rot">Entrada (opcional)</div><div class="campo cheio">R$ 300,00</div></div>
+                  <div><div class="rot">Forma da entrada *</div><div class="campo cheio">Pix <span class="esp"></span><i data-lucide="chevron-down"></i></div></div>
+                  <div><div class="rot">Parcelas</div><div class="campo cheio">3× de R$ 1.000,00</div></div>
+                  <div><div class="rot">1º vencimento</div><div class="campo cheio">15/12/2026</div></div>
+                </div>
+                <div class="aviso info" style="margin-top:12px"><i data-lucide="info"></i><span><b>Crediário: entrada de R$ 300,00 no Pix + 3 parcelas de R$ 1.000,00 com a rede</b>Cada parcela, quando a Juliana vier pagar, pede a forma dela.</span></div>
+              </div>
+              <div class="receber">
+                <div class="overline">Antes do dinheiro</div>
+                <div class="passos">
+                  <div class="passo feito"><span class="bola"><i data-lucide="check"></i></span><span class="tx"><b>Forma de pagamento</b>Crediário com entrada no Pix</span></div>
+                  <div class="passo agora"><span class="bola">2</span><span class="tx"><b>Contrato do plano</b>Já com a forma escolhida. A Juliana assina no aparelho ou pelo link.</span></div>
+                  <div class="passo"><span class="bola">3</span><span class="tx"><b>Receber a entrada</b>R$ 300,00 no Pix</span></div>
+                </div>
+                <button class="btn prim grande"><i data-lucide="pen-line"></i>Colher a assinatura</button>
+                <div style="display:flex;justify-content:center"><a class="link">Dispensar a assinatura</a></div>
+                <span class="esp"></span>
+                <button class="btn grande off"><i data-lucide="check"></i>Receber R$ 300,00</button>
+                <div class="aviso warn"><i data-lucide="alert-triangle"></i><span><b>Os termos ainda não foram assinados</b>2 termos do plano: a Juliana assina quando quiser, até pelo app. Não seguram o pagamento.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ TELA 3 ═══════════ -->
+  <section class="tela">
+    <div class="tela-cab"><span class="tela-num">Tela 3</span><h2>Nova venda: pacote, produto, procedimento, crédito</h2></div>
+    <p class="tela-nota">O "Nova venda" abre uma comanda vazia. Primeiro a cliente; depois, o que vai vender, num seletor de quatro: <b>Procedimento</b> (o pré-pago), <b>Pacote</b>, <b>Produto</b> (só o marcado como Venda direta) e <b>Crédito na rede</b>. Ao escolher a cliente, o PDV mostra <b>o que ela tem em aberto</b>, como a parcela do crediário que venceu, para receber ali mesmo.</p>
+    <div class="app" style="min-height:540px">
+      <aside class="lado">
+        <div class="marca">BellarisOS<small>UNIDADE CENTRO</small></div>
+        <div class="nav"><i data-lucide="layout-grid"></i>Painel</div>
+        <div class="nav"><i data-lucide="calendar"></i>Agenda</div>
+        <div class="nav ativo"><i data-lucide="shopping-bag"></i>PDV</div>
+        <div class="nav"><i data-lucide="user"></i>Clientes</div>
+      </aside>
+      <div class="corpo">
+        <div class="topo"><span class="unidade">Unidade Centro <i data-lucide="chevron-down"></i></span><span class="busca"><i data-lucide="search"></i>Buscar…  Ctrl+K</span></div>
+        <div class="conteudo">
+          <div class="cab-tela"><h3>Nova venda</h3><span class="esp"></span><button class="btn">Cancelar</button></div>
+          <div class="card">
+            <div class="det-cab">
+              <div class="avatar">FL</div>
+              <div><div class="n">Fernanda Lima</div><div class="s">(48) 99900-1001 · 1.180 pts</div></div>
+              <span class="esp"></span>
+              <a class="link">Trocar a cliente</a>
+            </div>
+            <div class="det-corpo">
+              <div class="itens">
+                <div class="parcela">
+                  <i data-lucide="alert-circle" style="width:18px;height:18px;color:var(--warning)"></i>
+                  <span style="flex:1;font-size:var(--text-xs)"><b style="display:block;font-size:var(--text-sm)">Parcela 2 de 3 do crediário: R$ 1.000,00</b>Venceu em 10/11 · Pacote 10 limpezas</span>
+                  <button class="btn">Receber esta parcela</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:18px">
+                  <span class="seg"><span>Procedimento</span><span class="on">Pacote</span><span>Produto</span><span>Crédito na rede</span></span>
+                  <span class="campo"><i data-lucide="search"></i>Buscar pacote</span>
+                </div>
+                <div class="catalogo">
+                  <div class="prod"><span class="t">10 limpezas de pele<small>vence em 12 meses</small></span><span class="p">R$ 1.500,00</span><span class="mais"><i data-lucide="plus"></i></span></div>
+                  <div class="prod"><span class="t">6 drenagens linfáticas<small>vence em 6 meses</small></span><span class="p">R$ 800,00</span><span class="mais"><i data-lucide="plus"></i></span></div>
+                  <div class="prod"><span class="t">4 peelings químicos<small>vence em 6 meses</small></span><span class="p">R$ 900,00</span><span class="mais"><i data-lucide="plus"></i></span></div>
+                  <div class="prod"><span class="t">Toxina, 2 aplicações<small>vence em 12 meses</small></span><span class="p">R$ 1.700,00</span><span class="mais"><i data-lucide="plus"></i></span></div>
+                </div>
+              </div>
+              <div class="receber">
+                <div class="overline">A comanda</div>
+                <div class="vazio">Nada ainda.<br>Escolha o que vai vender ao lado.</div>
+                <span class="esp"></span>
+                <div class="aviso info"><i data-lucide="file-signature"></i><span><b>O pacote tem contrato</b>Ao escolher a forma de pagamento, o contrato de pacote fica pronto para assinar, como no plano.</span></div>
+                <button class="btn grande off">Receber</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ TELA 4 ═══════════ -->
+  <section class="tela">
+    <div class="tela-cab"><span class="tela-num">Tela 4</span><h2>Fechar o dia</h2></div>
+    <p class="tela-nota">Uma linha por forma de pagamento: <b>o que o sistema registrou × o que foi conferido</b>. O dinheiro tem o fundo de troco, que é opcional. Avisos, só dois. Quem recebeu e os estornos ficam recolhidos embaixo. As taxas da maquininha e a planilha da contadora foram para o Financeiro.</p>
+    <div class="app" style="min-height:520px">
+      <aside class="lado">
+        <div class="marca">BellarisOS<small>UNIDADE CENTRO</small></div>
+        <div class="nav"><i data-lucide="layout-grid"></i>Painel</div>
+        <div class="nav"><i data-lucide="calendar"></i>Agenda</div>
+        <div class="nav ativo"><i data-lucide="shopping-bag"></i>PDV</div>
+        <div class="nav"><i data-lucide="user"></i>Clientes</div>
+      </aside>
+      <div class="corpo">
+        <div class="topo"><span class="unidade">Unidade Centro <i data-lucide="chevron-down"></i></span><span class="busca"><i data-lucide="search"></i>Buscar…  Ctrl+K</span></div>
+        <div class="conteudo">
+          <div class="cab-tela"><a class="link" style="font-size:var(--text-sm)">← PDV</a><h3>Fechar o dia</h3><span class="chip warn" style="justify-self:auto">Ainda não fechado</span><span class="esp"></span><span class="resumo">Sexta, 13/11/2026</span></div>
+          <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+            <div class="card">
+              <table>
+                <tr><th>Forma de pagamento</th><th class="num">O sistema registrou</th><th class="num">Conferido</th><th class="num">Diferença</th></tr>
+                <tr><td>Dinheiro<span class="sub">Fundo de troco: R$ 100,00 (opcional)</span></td><td class="num">R$ 250,00</td><td class="num"><span class="inp">R$ 350,00</span><span class="sub">com o fundo de troco</span></td><td class="num dif-ok">R$ 0,00</td></tr>
+                <tr><td>Pix</td><td class="num">R$ 1.200,00</td><td class="num"><span class="inp">R$ 1.200,00</span></td><td class="num dif-ok">R$ 0,00</td></tr>
+                <tr><td>Débito</td><td class="num">R$ 180,00</td><td class="num"><span class="inp">R$ 180,00</span></td><td class="num dif-ok">R$ 0,00</td></tr>
+                <tr><td>Crédito</td><td class="num">R$ 710,00</td><td class="num"><span class="inp">R$ 690,00</span></td><td class="num dif-mal">− R$ 20,00</td></tr>
+                <tr><td>Crédito na rede</td><td class="num">R$ 0,00</td><td class="num"><span class="sub">não entra dinheiro</span></td><td class="num">—</td></tr>
+                <tr><td>Crediário<span class="sub">vendido hoje, para receber nas parcelas</span></td><td class="num">R$ 1.200,00</td><td class="num"><span class="sub">não entra dinheiro hoje</span></td><td class="num">—</td></tr>
+              </table>
+              <div class="recolhido"><i data-lucide="chevron-right"></i>Por quem recebeu</div>
+              <div class="recolhido"><i data-lucide="chevron-right"></i>Estornos do dia (1)</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div class="aviso warn"><i data-lucide="alert-triangle"></i><span><b>Há 2 comandas abertas</b>Juliana Prado e Patrícia Gomes. Dá para fechar mesmo assim: elas ficam para amanhã.</span></div>
+              <div class="card card-pad" style="font-size:var(--text-xs);color:var(--text-muted);line-height:var(--leading-snug)">O outro aviso, <b style="color:var(--text)">"entrou dinheiro depois do fechamento"</b>, só aparece se alguém receber depois de o dia ter sido fechado. Então se fecha de novo, e vale o fechamento mais recente.</div>
+              <button class="btn prim grande"><i data-lucide="lock"></i>Registrar o fechamento</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<script>lucide.createIcons({ attrs: { 'stroke-width': 1.8 } });</script>
+</body>
+</html>
