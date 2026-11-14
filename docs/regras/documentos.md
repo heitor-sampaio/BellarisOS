@@ -80,6 +80,29 @@ DEVLOG ("Termos e contratos").
   - **Cancelar o pacote cancela os abertos dele** ("Pacote cancelado") e
     revoga os links.
   - Prova: `e2e/documentos-link-unico-e-pacote.spec.ts`.
+- **Os documentos do PLANO** (DC1c/PC9b e DC4 do plano — Bloco Plano de
+  tratamento, leva 2, 2026-11-14): o plano puxa dos procedimentos distintos
+  das sessões o termo e os "Outros documentos" (TERMO e DOCUMENTO), uma vez
+  cada; o contrato do procedimento NÃO — vale o contrato de plano da rede
+  (`private.modelos_do_plano`). A página do plano (e a ficha) mostra o bloco
+  "Documentos" (`DocumentosDoPlano`, `[data-documentos-do-plano]`): o
+  contrato de plano (`[data-contrato-do-plano]`, "nasce no PDV, com a forma de
+  pagamento") e os puxados (`[data-puxado]`), cada um com "Excluir" /
+  "Incluir de novo" para quem monta o plano, antes do aceite. O plano guarda o
+  que a rede EXCLUIU (`treatment_plans.documentos_excluidos`,
+  `salvarDocumentosExcluidosDoPlano`); a conta é a mesma do pacote
+  (`documentosPuxadosDoPlano`, `lib/plano-de-tratamento/documentos.ts`), ao
+  vivo sobre as sessões do editor.
+  - **Quando nascem** (decisão pelos princípios — DEVLOG, "Bloco Plano de
+    tratamento, leva 2"): os termos e os outros, no ACEITE
+    (`documentos_bloqueiam_plano` → `documentos_emitir_do_plano(plano,
+    false)`); o contrato de plano, no PDV com o pagamento (PT1c). O "na
+    criação" do DC4 foi lido como "nasce do plano, sem o check-in": o
+    rascunho e o proposto ainda mudam e podem nunca ser aceitos, e o PT1b diz
+    "Aceito, os documentos ficam prontos".
+  - A cliente os assina quando quiser — no app (também na página do plano),
+    pelo link único ou no aparelho da unidade.
+  - Prova: `e2e/plano-tratamento-leva-2.spec.ts`.
 - **O contrato de plano ativo se TROCA, não se desativa antes** (D-5, decisão
   do Heitor, 2026-10-29: "Fica o fluxo de trocar; sai o de criar outro e
   desativar o atual antes."). O contrato de plano novo nasce INATIVO quando a

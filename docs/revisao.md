@@ -1786,6 +1786,18 @@ revisão, só se escreve o plano. Nada se implementa.
   leva 2: PT1b (o aceite pelo app e o aviso à equipe), PT1c (o contrato com o
   pagamento no PDV, a assinatura antes do dinheiro), PT3, os documentos do
   plano no pop-up e nascendo na criação, os pontos na comanda do plano.
+- ✅ Bloco Plano de tratamento, leva 2 (14/11) — PT1b (a cliente aceita pelo
+  app, na página do plano; a equipe é avisada pela permissão: Agenda, Caixa
+  ou Financeiro em Gerenciar na unidade, e quem atende o plano), PT1c (o
+  contrato de plano nasce no PDV com a forma escolhida; o PDV não recebe sem
+  ele assinado ou dispensado), DC1c/PC9b no plano (os documentos puxados na
+  página do plano, cada um com "Excluir", guardados no plano), DC4 do plano
+  (os termos e os outros nascem no ACEITE — decisão pelos princípios, ver o
+  DEVLOG; o contrato, com o pagamento), PT3/CA2/CA3 (a página do plano no
+  app: as sessões, os pagamentos, os documentos e o "Agendar"; a sessão de
+  plano ou de pacote se agenda pelo app sem o "Permitir auto agendamento") e
+  FD2a/FD2b na comanda do plano (os pontos e o voucher no à vista; o ponto
+  nasce do que foi pago).
 
 ### Bloco: Estoque
 
@@ -1822,7 +1834,7 @@ revisão, só se escreve o plano. Nada se implementa.
 | PC7/PC8 | **No procedimento:** "Termo de consentimento" (opcional), "Contrato" (opcional, só no atendimento AVULSO) e "Outros documentos" (opcional, quantos quiser, qualquer documento criado ou anexado no sistema) ✅ 14/11 (Documentos, leva 1) | a revisão de **Documentos** |
 | PC9a | **Contrato de pacote**, novo: o equivalente do contrato de plano, um modelo da rede à parte, preenchido com os procedimentos, as sessões e o pagamento de cada pacote vendido. O contrato de plano fica como está ✅ 14/11 (o modelo, as variáveis e o padrão; preencher na venda é a leva 2) | a revisão de **Documentos** (as variáveis do pacote) |
 | PC2/PC7 | **Na venda do pacote,** a cliente assina UMA vez: o contrato de pacote e os documentos puxados que ficaram (PC9b/PC10). As sessões do pacote não emitem documento de novo. Hoje cada sessão emite o termo e o contrato do procedimento — a sessão de pacote já não pede documento ✅ 14/11; a venda emite ✅ 14/11 (leva 2; não espera a assinatura — o "Bloqueia" trava a sessão) | PC7, PC9a |
-| PC9b/PC10 | **No pop-up de criação do pacote e do plano,** logo abaixo da parte do termo e do contrato: os documentos puxados dos procedimentos (o termo de cada procedimento diferente e os outros documentos deles; o contrato do procedimento NÃO), cada um com excluir — ✅ 14/11 no pacote (leva 2); no plano, fica para o bloco **Plano** | PC7; **Plano de tratamento** |
+| PC9b/PC10 | **No pop-up de criação do pacote e do plano,** logo abaixo da parte do termo e do contrato: os documentos puxados dos procedimentos (o termo de cada procedimento diferente e os outros documentos deles; o contrato do procedimento NÃO), cada um com excluir — ✅ 14/11 no pacote (leva 2); no plano ✅ 14/11 (Plano, leva 2) | PC7; **Plano de tratamento** |
 | PC10 | **Um link só, uma assinatura:** os documentos do pacote ou do plano vão à cliente num link único, e uma assinatura assina todos de uma vez. Hoje é um link por documento e uma assinatura por documento — ✅ 14/11 (leva 2) | a revisão de **Documentos** |
 | — | Mantém: nome, procedimentos e sessões de cada um, validade em dias, "À venda", comissões de venda e de execução, Vendas → Pacotes (não aparece no Estoque) | — |
 
@@ -1906,7 +1918,7 @@ unidade.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| FD2a | **O desconto em pontos e o voucher se aplicam na comanda do PDV** — os dois caminhos que hoje existem fora dele (o pagamento do atendimento, a troca na ficha que vira desconto) passam a ser o PDV. ✅ fase 5b (14/11): na comanda do atendimento (sobre o total, com os produtos) e na "Nova venda" à vista; a comanda do plano fica | PDV1–PDV7 |
+| FD2a | **O desconto em pontos e o voucher se aplicam na comanda do PDV** — os dois caminhos que hoje existem fora dele (o pagamento do atendimento, a troca na ficha que vira desconto) passam a ser o PDV. ✅ fase 5b (14/11): na comanda do atendimento (sobre o total, com os produtos) e na "Nova venda" à vista; a comanda do plano ✅ 14/11 (Plano, leva 2) | PDV1–PDV7 |
 | FD2b | **O ponto nasce quando a comanda é paga**, pela regra que já existe (por real ou por procedimento; o pacote vendido como produto pontua na venda; o produto pontua se a rede ligou). O estorno da comanda tira o que ela deu. ✅ fase 5b (14/11) | PDV1 |
 | FD2c | **A tela de Configurações → Fidelidade** diz "No PDV, ao receber" no lugar de "Na recepção, ao confirmar o pagamento". ✅ fase 5b (14/11) | — |
 | FD3 | **Sai "pontos só na unidade"**: o saldo é sempre um, da rede. Saem junto a escolha "Onde o bônus pode ser usado" e a C64. A coluna e o saldo por unidade no razão dos pontos saem das funções e da tela (banco zerado: não há saldo a migrar). ✅ 14/11 (migration `20261114900001`; o `branch_id` do lançamento fica como o fato de onde aconteceu) | — |
@@ -1933,10 +1945,10 @@ e Agenda (AG1) com o DC1–DC4.
 |---|---|---|
 | DC1 | **Os tipos**: Termo de consentimento, Contrato do procedimento, Contrato de plano, Contrato de pacote e Documento. O tipo novo "Documento" (editor ou PDF) usa as variáveis do termo; o Contrato de pacote, as do de plano trocando `plano.*` por `pacote.*` (procedimentos, sessões, validade) mais `pagamento.*`. Um contrato de pacote ativo por rede, trocado por "Tornar ativo", como o de plano ✅ 14/11 | — |
 | DC1b | **O procedimento liga**: "Termo de consentimento" (opcional), "Contrato" (opcional, só no avulso) e "Outros documentos" (quantos quiser, do tipo Documento — ou termo/contrato já criados, a decidir na implementação pela regra do PC7: "qualquer documento criado ou anexado") ✅ 14/11 — decidido: Documento, Termo ou Contrato do procedimento da rede (os contratos de plano e de pacote não) | PR4, PC7 |
-| DC1c | **O pacote e o plano**: ao criar, puxam os termos e os outros documentos dos procedimentos distintos (não o contrato deles), listados logo abaixo da seleção do termo e do contrato, cada um com "excluir"; o contrato é o de pacote / de plano. A venda do pacote (no PDV) emite os dele; a sessão de pacote e a de plano não emitem — a sessão de pacote e a de plano não emitem ✅ 14/11; o pacote (o pop-up e a venda) ✅ 14/11 na leva 2; o pop-up do plano fica para o bloco Plano | PC8–PC10, PDV |
+| DC1c | **O pacote e o plano**: ao criar, puxam os termos e os outros documentos dos procedimentos distintos (não o contrato deles), listados logo abaixo da seleção do termo e do contrato, cada um com "excluir"; o contrato é o de pacote / de plano. A venda do pacote (no PDV) emite os dele; a sessão de pacote e a de plano não emitem — a sessão de pacote e a de plano não emitem ✅ 14/11; o pacote (o pop-up e a venda) ✅ 14/11 na leva 2; o pop-up do plano ✅ 14/11 (Plano, leva 2: na página do plano, "Excluir" guardado em `treatment_plans.documentos_excluidos`) | PC8–PC10, PDV |
 | DC2 | **Toda rede nasce com o contrato de pacote padrão** (`documentos_modelos_padrao`), ao lado do de plano ✅ 14/11 (semeado também nas redes que já existiam) | DC1 |
 | DC3 | **Uma assinatura para todos, em todo canal**: o link único (um link por cliente e momento — o agendamento, o pacote, o plano —, com todos os documentos abertos dele), o aparelho entregue na clínica e o app. A cliente vê a lista, abre cada um, marca "li e concordo" (um aceite que diz os títulos) e assina uma vez. Cada documento ganha a sua evidência (a mesma imagem da assinatura, o hash DELE), o seu PDF e o seu QR. Documento com "faltam dados" não entra e a tela diz qual. O papel e o dispensar seguem por documento — ✅ 14/11 (leva 2) | AG1 |
-| DC4 | **Sai "quando nasce"**: todo documento do atendimento nasce ao agendar (o gatilho no INSERT; sai o do check-in e a emissão do início); o do pacote, na venda; o do plano, na criação. "Bloqueia o início ou só avisa" fica, por documento. O contrato com `pagamento.*` segue pedindo o "pagamento combinado" antes ✅ 14/11 para o atendimento; "o do pacote, na venda" ✅ 14/11 (leva 2); "o do plano, na criação" fica para o bloco Plano | — |
+| DC4 | **Sai "quando nasce"**: todo documento do atendimento nasce ao agendar (o gatilho no INSERT; sai o do check-in e a emissão do início); o do pacote, na venda; o do plano, na criação. "Bloqueia o início ou só avisa" fica, por documento. O contrato com `pagamento.*` segue pedindo o "pagamento combinado" antes ✅ 14/11 para o atendimento; "o do pacote, na venda" ✅ 14/11 (leva 2); "o do plano, na criação" ✅ 14/11 (Plano, leva 2): os termos e os outros nascem no ACEITE do plano, o contrato de plano no PDV com o pagamento (decisão pelos princípios — DEVLOG) | — |
 | — | Mantém: o editor e as versões, o PDF pronto, "faltam dados", o responsável da menor, o papel, o dispensar com motivo, o PDF assinado com evidências e o `/verificar`, a segurança do link (CPF ou nascimento, tentativas, uso único, 7 dias), o envio pela conversa (opção da rede), a tela Documentos só de leitura e o "só os meus" | — |
 
 ### Bloco: CRM
@@ -1953,12 +1965,12 @@ e Agenda (AG1) com o DC1–DC4.
 |---|---|---|
 | PT2 | **Monta quem atende, sem permissão própria** (sai a exigência do Prontuário em Gerenciar): na avaliação (o editor na tela do atendimento) ou DEPOIS, com calma — "Novo plano" na ficha (Planejamento → Tratamentos) e no menu Tratamentos, e "Montar plano desta avaliação" na avaliação concluída (o plano fica ligado a ela). A anotação clínica dentro do plano continua pedindo o Prontuário ✅ 14/11 | — |
 | PT1a | **A página do plano é o centro**, com os passos à vista: ① Aceite ② Documentos ③ Contrato e pagamento ④ Sessões (X de N agendadas/realizadas). Sai o "Fechar checkout" (os quatro passos numa tela só) ✅ 14/11 | — |
-| PT1b | **"Aceitar plano" é só "quero fazer"**, sem pergunta de dinheiro — na clínica ou **pelo app** (a cliente recebe o plano, analisa e aceita; sai o "O aceite é feito na clínica"). Aceito, os documentos ficam prontos e a comanda do plano nasce no PDV com o valor INTEIRO (a soma das sessões). A equipe é avisada do aceite pelo app | DC1–DC4, PDV |
-| PT1c | **Os termos e os outros documentos** se assinam quando a cliente quiser — no app (até em casa), por link ou no aparelho da clínica. **O CONTRATO e o pagamento andam juntos, no PDV**: escolhe-se a forma (à vista, entrada + parcelas, cartão em N vezes; o desconto e "Quem vendeu") → o contrato sai com ela e a cliente assina → recebe-se. A assinatura vem antes do dinheiro; o PDV não confirma o recebimento do plano sem o contrato assinado ou dispensado (é a ordem do Heitor; o dispensar com motivo segue valendo) | PT1b |
+| PT1b | **"Aceitar plano" é só "quero fazer"**, sem pergunta de dinheiro — na clínica ou **pelo app** (a cliente recebe o plano, analisa e aceita; sai o "O aceite é feito na clínica"). Aceito, os documentos ficam prontos e a comanda do plano nasce no PDV com o valor INTEIRO (a soma das sessões). A equipe é avisada do aceite pelo app ✅ 14/11 (leva 2) | DC1–DC4, PDV |
+| PT1c | **Os termos e os outros documentos** se assinam quando a cliente quiser — no app (até em casa), por link ou no aparelho da clínica. **O CONTRATO e o pagamento andam juntos, no PDV**: escolhe-se a forma (à vista, entrada + parcelas, cartão em N vezes; o desconto e "Quem vendeu") → o contrato sai com ela e a cliente assina → recebe-se. A assinatura vem antes do dinheiro; o PDV não confirma o recebimento do plano sem o contrato assinado ou dispensado (é a ordem do Heitor; o dispensar com motivo segue valendo) ✅ 14/11 (leva 2: o contrato nasce no PDV, com a forma) | PT1b |
 | PT1d | **Agendar as sessões** a qualquer momento depois do aceite: [Agendar] em cada sessão e "Agendar todas" na página do plano (a janela da agenda já com a cliente, o procedimento e a duração), o "+ Agendar" da agenda (já oferece as sessões do plano) e o app ✅ 14/11 (o app fica no PT3) | — |
 | PT1e | **A sessão não cobra nada**; a parcela com a clínica que venceu aparece no PDV (CX) ✅ 14/11 | CX |
 | PT1f | **Tratamentos** (menu) filtra por situação: Proposto, Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado ✅ 14/11 | PT1a |
-| PT3 | **No app, a cliente vê TUDO do plano** — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados — e **agenda as sessões em aberto**. A sessão de plano OU de pacote se agenda pelo app mesmo com o procedimento sem "Permitir auto agendamento" | — |
+| PT3 | **No app, a cliente vê TUDO do plano** — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados — e **agenda as sessões em aberto**. A sessão de plano OU de pacote se agenda pelo app mesmo com o procedimento sem "Permitir auto agendamento" ✅ 14/11 (leva 2) | — |
 | — | Mantém: as sessões com procedimento, preço e duração; "Cliente vai pensar"; a validade da proposta (só informação); o aviso de plano × avulso do mesmo procedimento; a sugestão do pacote equivalente; o cancelamento do plano por quem tem o Financeiro em Gerenciar; o "só os meus" | — |
 
 ### Bloco: Marketing
@@ -2030,8 +2042,8 @@ Heitor de que vale uma completa.
 | # | O que muda | Depende de |
 |---|---|---|
 | CA1 | **Sem "clínica" no portal e no app**: "Crédito na clínica", "Telefone da clínica", "A clínica enviou um documento", os avisos no celular — o NOME da rede no lugar | V1 |
-| CA2 | **O plano no app** (PT1/PT3): ver tudo — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados —, ACEITAR e agendar as sessões | Plano de tratamento |
-| CA3 | **Agendar a sessão de plano ou de pacote** pelo app, mesmo com o procedimento sem "Permitir auto agendamento" | PT3 |
+| CA2 | **O plano no app** (PT1/PT3): ver tudo — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados —, ACEITAR e agendar as sessões ✅ 14/11 (Plano, leva 2) | Plano de tratamento |
+| CA3 | **Agendar a sessão de plano ou de pacote** pelo app, mesmo com o procedimento sem "Permitir auto agendamento" ✅ 14/11 (Plano, leva 2) | PT3 |
 | CA4 | **Assinar todos os documentos abertos de uma vez** (DC3) e "Ficha de saúde" (PR3) — assinar todos ✅ 14/11 (leva 2 de Documentos) | DC3, PR3 |
 | — | Mantém: o acesso criado pela rede, o login único em várias redes, o início, o agendar, o histórico com "Confirmar e avaliar", o financeiro, a fidelidade, o perfil e a LGPD, o app Android como casca do portal | — |
 

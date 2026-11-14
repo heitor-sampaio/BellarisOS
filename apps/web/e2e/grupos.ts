@@ -463,6 +463,8 @@ export const ISOLADOS = [
   'crm-contato-e-oportunidade.spec.ts',
   // Bloco Plano de tratamento, leva 1 (2026-11-14): quem atende monta, os passos e o agendar.
   'plano-tratamento-leva-1.spec.ts',
+  // Leva 2 (2026-11-14): o aceite pelo app, o contrato no PDV, os documentos puxados, tudo no app e os pontos.
+  'plano-tratamento-leva-2.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

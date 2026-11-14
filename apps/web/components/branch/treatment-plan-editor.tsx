@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useEffect, useTransition, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, useEffectEvent, useTransition, forwardRef, useImperativeHandle } from 'react'
 import { Plus, Trash2, Send, Save, Copy, ChevronDown, ChevronUp, FlaskConical, Package } from 'lucide-react'
 import { saveTreatmentPlan, proposeTreatmentPlan, pacotesParaODicaDoPlano } from '@/actions/treatment-plans'
 import { pacoteEquivalente, type PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
@@ -114,6 +114,11 @@ interface Props {
    * servidor também não a grava.
    */
   podeAnotar?:          boolean
+  /**
+   * Os procedimentos de cada sessão, a cada mudança — o bloco "Documentos"
+   * do plano (DC1c/PC9b) puxa os documentos deles ao vivo.
+   */
+  onMudarProcedimentos?: (procedimentosPorSessao: string[][]) => void
   /**
    * A unidade do plano: com ela, o editor busca os pacotes à venda e DIZ quando
    * as sessões batem com um (A28, 2026-10-27). O plano segue por procedimento;
@@ -437,9 +442,12 @@ function SessionCard({
 
 export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(function TreatmentPlanEditor({
   appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano, branchId, opcional = false,
-  podeAnotar = true,
+  podeAnotar = true, onMudarProcedimentos,
 }, ref) {
   const [sessions,  setSessions]  = useState<EditorSession[]>(() => fromExisting(existingPlan))
+  const avisarProcedimentos = useEffectEvent((lista: EditorSession[]) =>
+    onMudarProcedimentos?.(lista.map(s => s.procs.map(p => p.procedureId).filter(Boolean))))
+  useEffect(() => { avisarProcedimentos(sessions) }, [sessions])
   // Os pacotes à venda na unidade — só para a dica; sem eles, nada aparece.
   const [pacotes,   setPacotes]   = useState<PacoteParaComparar[]>([])
   useEffect(() => {

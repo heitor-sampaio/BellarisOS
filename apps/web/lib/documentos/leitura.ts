@@ -283,3 +283,18 @@ export async function documentoDoClienteParaExibir(clientId: string, docId: stri
   // Montado de novo ao abrir: o cliente assina com os dados de agora.
   return documentoParaExibir(dono.tenant_id as string, docId, { montarDeNovo: dono.status !== 'ASSINADO' })
 }
+
+/**
+ * Os documentos de UM plano no app da cliente (PT3, 2026-11-14: "ela vê o
+ * plano, os pagamentos, as sessões e os documentos assinados"): os da ficha
+ * dela e deste plano, para assinar ou assinados — o cancelado, o substituído e
+ * o dispensado não aparecem, como em `documentosNoPortal`.
+ */
+export async function documentosDoPlanoNoPortal(tenantId: string, clientId: string, planId: string): Promise<ResumoDeDocumento[]> {
+  const admin = createAdminClient()
+  const docs = await ler(admin.from('issued_documents').select(COLUNAS_DO_DOCUMENTO)
+    .eq('tenant_id', tenantId).eq('client_id', clientId).eq('treatment_plan_id', planId)
+    .in('status', ['A_GERAR', 'INCOMPLETO', 'PENDENTE', 'ASSINADO'])
+    .order('kind').order('title'), 'listar os documentos do plano da cliente')
+  return resumirDocumentos(tenantId, (docs ?? []) as unknown as DocumentoEmitido[])
+}

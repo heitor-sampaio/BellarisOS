@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { rotaNoPortal } from '@/lib/rotas'
 import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
 import {
-  getPlanosDoCliente, salvarPlanoNovo, salvarPlanoDoCliente, getPlanoParaEditar,
+  getPlanosDoCliente, salvarPlanoNovo, salvarPlanoDoCliente, getPlanoParaEditar, salvarDocumentosExcluidosDoPlano,
   proposeTreatmentPlan, aceitarPlano, vincularClienteAoPlano, buscarClientesParaPlano, getResumoDoPlano,
 } from '@/actions/treatment-plans'
 import type { FinanceiroDoPlano, LancamentoDoPlano } from '@/lib/metrics/plano'
@@ -19,6 +19,7 @@ import { rodapeDoPlanoFechado } from '@/lib/plano-de-tratamento/textos'
 import { CancelarPlano } from '@/components/shared/cancelar-pacote'
 import { useFuso } from '@/components/shared/fuso'
 import { PassosDoPlano } from '@/components/branch/passos-do-plano'
+import { DocumentosDoPlano } from '@/components/branch/documentos-do-plano'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -122,6 +123,11 @@ export function PlanejamentoTratamento({
   // A29 da 12ª: aceitar (ou mandar à recepção) usa o que está na tela — o editor
   // é lido e salvo antes, como o "Enviar para a recepção" da avaliação já fazia.
   const editorRef = useRef<TreatmentPlanEditorRef>(null)
+  // DC1c/PC9b: os procedimentos que estão no editor (o bloco "Documentos" puxa
+  // os documentos deles) e, no plano novo, o que a rede já excluiu antes de
+  // ele ter id — gravado logo depois de criado.
+  const [procsNaTela, setProcsNaTela] = useState<string[][]>([])
+  const excluidosDoNovo = useRef<string[]>([])
   async function salvarOQueEstaNaTela(): Promise<boolean> {
     if (!aberto || !editorRef.current) return true
     const res = await salvarPlanoDoCliente(aberto.id, editorRef.current.getSessions(), editorRef.current.getNotes())
@@ -215,8 +221,13 @@ export function PlanejamentoTratamento({
     setErro(null); setSalvando(true)
     if (ehNovo) {
       const novo = await salvarPlanoNovo(clientId, branchId, appointmentId ?? null, sessions, notes)
+      if (novo.error || !novo.planId) { setSalvando(false); setErro(novo.error ?? 'Não foi possível criar o plano.'); return }
+      if (excluidosDoNovo.current.length) {
+        const r = await salvarDocumentosExcluidosDoPlano(novo.planId, excluidosDoNovo.current)
+        if (r.error) setErro(r.error)
+        excluidosDoNovo.current = []
+      }
       setSalvando(false)
-      if (novo.error || !novo.planId) { setErro(novo.error ?? 'Não foi possível criar o plano.'); return }
       await carregarLista()
       if (controlado) onAbrir!(novo.planId)
       else await abrirPlano(novo.planId)
@@ -490,7 +501,15 @@ export function PlanejamentoTratamento({
         branchId={branchId}
         onSalvarPorPlano={editavel ? salvar : undefined}
         podeAnotar={podeAnotar}
+        onMudarProcedimentos={setProcsNaTela}
       />
+
+      {/* DC1c/PC9b e DC4: os documentos que o plano puxa dos procedimentos. */}
+      {aberto.status !== 'CANCELLED' && aberto.status !== 'REJECTED' && (
+        <DocumentosDoPlano key={`docs-${aberto.id}`} planId={aberto.id} procedimentosPorSessao={procsNaTela}
+          editavel={editavel} aceito={fechado}
+          onExcluidosDoNovo={l => { excluidosDoNovo.current = l }} />
+      )}
 
       {editavel && ehNovo && (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>

@@ -77,8 +77,9 @@ comanda (PDV-P1).
   intimidador e levar a desistencia"; e "primeiro colhe assinatura, depois
   paga"):
   - **Aceitar é só "quero fazer"** (`aceitarPlano` → `plano_aceitar`): o plano
-    vira ACCEPTED, os documentos ficam prontos e a comanda `PLANO` nasce no PDV
-    com o valor inteiro. Nenhum dinheiro, nenhum agendamento, nenhuma pergunta
+    vira ACCEPTED, os termos e os outros documentos ficam prontos (o contrato
+    de plano não: ele nasce no PDV, com a forma — DC4, leva 2) e a comanda
+    `PLANO` nasce no PDV com o valor inteiro. Nenhum dinheiro, nenhum agendamento, nenhuma pergunta
     de forma. Aceita quem monta o plano — quem ATENDE na unidade dele
     (`montaPlano`, PT2 de 2026-11-14; era o Prontuário em Gerenciar) — ou
     quem recebe. Na página do plano o botão é o do passo ① ("Aceite", PT1a);
@@ -86,6 +87,19 @@ comanda (PDV-P1).
     plano proposto (PROPOSED), para aceitar depois. Na página do plano, o
     passo ③ ("Contrato e pagamento") leva à comanda do plano no PDV
     ("Receber no PDV", `?unidade=…&comanda=…`).
+  - **A cliente aceita PELO APP** (PT1b, Bloco Plano de tratamento, leva 2,
+    2026-11-14 — o Heitor: "A cliente recebe o plano no app, analisa e
+    aceita."): a página do plano no app (`/[slug]/cliente/planos/[id]`) tem
+    "Aceitar o plano" (`aceitarPlanoPelaCliente`, `actions/plano-da-cliente.ts`)
+    — o MESMO `plano_aceitar`, sem pergunta de dinheiro. Só o plano DELA
+    (`ctx.clientId`, a ficha da rede do endereço), só o PROPOSTO e dentro da
+    validade (`tenants.plano_validade_dias`; vencido, a tela manda falar com a
+    equipe e a action recusa — princípio 3), não a arquivada, não na sessão de
+    suporte (`bloqueioDoSuporte`). **A equipe é avisada** (sino e push,
+    `user_notifications` tipo `plano_aceito`) pela PERMISSÃO: quem tem Agenda,
+    Caixa ou Financeiro em Gerenciar na unidade do plano ou na rede inteira
+    (`interessadosNoFato`), e quem atende o plano. O evento `plano.aceito` sai
+    com o ator `cliente`. Prova: `e2e/plano-tratamento-leva-2.spec.ts`.
   - **A sessão do plano não cobra nada** (PT1e): o dinheiro do plano é o da
     comanda dele; a parcela vencida do crediário aparece no PDV da cliente.
   - **O dinheiro é no PDV**: a comanda do plano tem "Receber o plano", o mesmo
@@ -96,6 +110,23 @@ comanda (PDV-P1).
   - **Só o contrato do plano trava o dinheiro** (`plano_checkout`: falta
     assinar um `CONTRATO_PLANO` → recusa). Os outros termos não travam mais o
     aceite (`documentos_bloqueiam_plano` só os emite).
+  - **O contrato e o pagamento andam juntos, no PDV** (PT1c, leva 2): no
+    "Receber o plano", escolhe-se a forma (o desconto e "Quem vendeu"
+    junto) → o contrato de plano NASCE com ela (`prepararDocumentosDoCheckout`
+    → `documentos_emitir_do_plano(plano)`, que emite também o contrato; o
+    aceite chama `(plano, false)`) e a cliente assina → recebe-se. Sem o
+    contrato assinado ou dispensado com motivo, o PDV não recebe
+    (`recusaDosDocumentosDoPlano` na action — que emite antes de conferir, e
+    quem chama direto não escapa — e `plano_checkout` no banco).
+  - **Os pontos e o voucher na comanda do plano** (FD2a/FD2b, leva 2): o
+    bloco "Fidelidade" do receber (`useFidelidadeNaVenda`, o das outras
+    vendas), no à vista, sobre o plano depois do desconto. A action confere
+    (`fidelidadeDaVenda`) e `plano_checkout_com_fidelidade` (só service_role)
+    lança o à vista em aberto, fecha o plano e passa por
+    `private.fidelidade_na_venda`, que abate, marca pago e tira os pontos. O
+    ponto nasce do que foi PAGO (o gatilho de sempre). O contrato cita o
+    valor do plano: os pontos são um meio de pagar (decisão pelos princípios,
+    DEVLOG).
   - O plano aceito se recebe UMA vez ("Este plano já foi recebido"); o
     proposto não se recebe ("Aceite o plano antes de receber"). O plano
     cancelado (ou recusado) leva a comanda que não foi paga.

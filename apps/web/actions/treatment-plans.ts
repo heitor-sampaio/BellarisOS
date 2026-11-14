@@ -1121,6 +1121,93 @@ async function recusaDoEnvioDoPlano(
   return null
 }
 
+// -- Os documentos do plano (DC1c/PC9b, DC4) -----------------------------------
+
+/** O que o bloco "Documentos" do plano precisa — nulo sem o recurso de documentos no plano da rede. */
+export interface DocumentosDoPlanoNaTela {
+  /** O contrato de plano ativo da rede (nulo: nenhum) — nasce no PDV, com o pagamento. */
+  contrato: string | null
+  modelos: { id: string; nome: string; tipo: string }[]
+  procedimentos: { id: string; nome: string; termo: string | null; contrato: string | null; outros: string[] }[]
+  /** Os puxados que a rede tirou deste plano. */
+  excluidos: string[]
+}
+
+/**
+ * Os documentos que o plano puxa dos procedimentos (DC1c/PC9b no plano, a
+ * revisão do Heitor de 2026-11-13): o catálogo da rede (os modelos ativos e os
+ * procedimentos com termo ou outros documentos) e o que este plano excluiu. A
+ * conta (`documentosPuxadosDoPlano`) é da tela, sobre as sessões que estão no
+ * editor; o banco aplica a mesma no aceite (`private.modelos_do_plano`).
+ * Sem plano (o novo, ainda sem id): o catálogo, sem exclusões.
+ */
+export async function getDocumentosDoPlano(planId: string | null): Promise<DocumentosDoPlanoNaTela | null> {
+  const ctx = await getTenantContext()
+  assertRecurso(ctx, 'planos_de_tratamento')
+  assertPermission(ctx, 'agenda', 'VIEW')
+  if (planId && !/^[0-9a-f-]{36}$/i.test(planId)) return null
+  if (!(await redeTemRecurso(ctx.tenantId!, 'documentos'))) return null
+  const admin = createAdminClient()
+  let excluidos: string[] = []
+  if (planId) {
+    const plan = await planoDaClinica(admin, planId, ctx)
+    if (!plan) return null
+    const linha = await ler(admin.from('treatment_plans').select('documentos_excluidos').eq('id', planId).maybeSingle(),
+      'ler os documentos excluídos do plano') as { documentos_excluidos: string[] | null } | null
+    excluidos = linha?.documentos_excluidos ?? []
+  }
+  const [modelos, procedimentos] = await Promise.all([
+    ler(admin.from('document_templates').select('id, name, kind')
+      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar os modelos de documento'),
+    lerTodas((de, ate) => admin.from('procedures')
+      .select('id, name, consent_template_id, contract_template_id, outros_documentos')
+      .eq('tenant_id', ctx.tenantId!).order('id').range(de, ate), 'carregar os documentos dos procedimentos'),
+  ])
+  const lista = (modelos ?? []) as { id: string; name: string; kind: string }[]
+  type Linha = { id: string; name: string; consent_template_id: string | null; contract_template_id: string | null; outros_documentos: string[] | null }
+  return {
+    contrato: lista.find(m => m.kind === 'CONTRATO_PLANO')?.name ?? null,
+    modelos: lista.map(m => ({ id: m.id, nome: m.name, tipo: m.kind })),
+    procedimentos: (procedimentos as Linha[])
+      .filter(p => p.consent_template_id || (p.outros_documentos ?? []).length)
+      .map(p => ({ id: p.id, nome: p.name, termo: p.consent_template_id, contrato: p.contract_template_id, outros: p.outros_documentos ?? [] })),
+    excluidos,
+  }
+}
+
+/**
+ * "Excluir" e "Incluir de novo" num documento puxado (DC1c/PC9b): grava a
+ * lista no plano. Quem pode é quem monta o plano (PT2, `montaPlano`), e só
+ * antes do aceite — aceito, os documentos já nasceram. Os ids passam pelos
+ * modelos da rede: o que não é dela não entra.
+ */
+export async function salvarDocumentosExcluidosDoPlano(planId: string, excluidos: string[]): Promise<{ error?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'planos_de_tratamento')
+    assertPermission(ctx, 'agenda', 'VIEW')
+    const admin = createAdminClient()
+    const plan = await planoDoTenant(admin, planId, ctx)
+    if (!plan) return { error: 'Plano não encontrado.' }
+    if (!montaPlano(ctx, plan.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
+    if (plan.status !== 'DRAFT' && plan.status !== 'PROPOSED') {
+      return { error: 'Este plano já foi aceito: os documentos dele já nasceram.' }
+    }
+    const pedidos = [...new Set((Array.isArray(excluidos) ? excluidos : []).filter(x => typeof x === 'string' && /^[0-9a-f-]{36}$/i.test(x)))]
+    const daRede = pedidos.length
+      ? ((await ler(admin.from('document_templates').select('id').eq('tenant_id', ctx.tenantId!).in('id', pedidos),
+          'conferir os documentos excluídos')) ?? []).map(t => t.id as string)
+      : []
+    await gravar(admin.from('treatment_plans').update({ documentos_excluidos: pedidos.filter(id => daRede.includes(id)), updated_at: new Date().toISOString() })
+      .eq('id', planId), 'gravar os documentos excluídos do plano')
+    revalidatePath(`/${plan.slug}/planejamentos/${planId}`)
+    revalidatePath(`/admin/planejamentos/${planId}`)
+    return {}
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
 // -- Aceitar (PT1b) -------------------------------------------------------------
 
 /**
@@ -1524,7 +1611,10 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
   )
   // A anotação clínica foi à tela: fica no registro (lib/prontuario/acessos.ts).
   if (checkout?.professionalNotes) await registrarAcessoAoProntuario(ctx, checkout.clientId, 'plano', planId)
-  return checkout ? { plan: checkout } : { error: error ?? 'Plano não encontrado.' }
+  if (!checkout) return { error: error ?? 'Plano não encontrado.' }
+  // FD2a/FD2b na comanda do plano: o saldo e os vouchers de desconto dela.
+  const fidelidade = checkout.clientId ? await fidelidadeParaAVenda(ctx.tenantId!, checkout.clientId, admin) : null
+  return { plan: { ...checkout, fidelidade } }
 }
 
 // -- Finalizar checkout (pagamento + agendamento de execução) ------------------
@@ -1561,6 +1651,8 @@ import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { fidelidadeDaVenda, fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
+import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1603,6 +1695,12 @@ async function checkoutTreatmentPlanInterno(
    * argumento (um chamador de antes), o plano sai sem comissão de venda.
    */
   equipe?:          QuemVendeuDaTela | null,
+  /**
+   * FD2a/FD2b na comanda do PLANO (2026-11-14): os pontos e o voucher de
+   * desconto, no pagamento à vista — a mesma regra das outras vendas
+   * (`fidelidadeDaVenda` aqui, `private.fidelidade_na_venda` no banco).
+   */
+  fidelidade?:      EscolhaDaFidelidade | null,
 ) {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
@@ -1666,6 +1764,16 @@ async function checkoutTreatmentPlanInterno(
   // O total é o do plano DEPOIS do desconto: o rateio (`precosComDesconto`)
   // fecha exatamente nele, e é o que `plano_checkout` confere.
   const total = Math.round((precos.subtotal - doDesconto.reais) * 100) / 100
+
+  // Os pontos e o voucher (FD2a/FD2b): conferidos aqui, sobre o total do plano
+  // depois do desconto, e de novo no banco. O lançamento nasce com o total; a
+  // função abate a fidelidade e o marca pago. O contrato cita o plano: os
+  // pontos são um meio de pagar.
+  const daFidelidade = await fidelidadeDaVenda({
+    tenantId: ctx.tenantId!, clienteId: plan.client_id as string, vendido: total,
+    escolha: fidelidade, aVista: pagamento.forma === 'AVISTA', admin,
+  })
+  if ('error' in daFidelidade) return { error: daFidelidade.error }
 
   // A47 da 6ª simulação: a descrição chega à cliente (o app, o recibo): sem
   // texto interno ("checkout novo paciente"). "Plano de tratamento — parcela 1/2".
@@ -1802,7 +1910,7 @@ async function checkoutTreatmentPlanInterno(
   // A função trava o plano e confere que está aceito e ainda não recebido: a
   // segunda aba ouve "Este plano já foi recebido", e uma falha no meio não
   // deixa nada gravado pela metade.
-  const fechado = await gravar(admin.rpc('plano_checkout', {
+  const argsDoFechamento = {
     p_tenant:       ctx.tenantId,
     p_plano:        planId,
     p_ator:         ctx.internalUserId ?? null,
@@ -1812,7 +1920,10 @@ async function checkoutTreatmentPlanInterno(
     p_agendamentos: agendamentos,
     p_com_comissao: equipe != null,
     p_vendedor:     vendedor,
-  }), 'fechar o plano') as { transacao: string | null; agendamento: string | null } | null
+  }
+  const fechado = await gravar(daFidelidade.dados
+    ? admin.rpc('plano_checkout_com_fidelidade', { ...argsDoFechamento, p_fidelidade: daFidelidade.dados })
+    : admin.rpc('plano_checkout', argsDoFechamento), 'fechar o plano') as { transacao: string | null; agendamento: string | null } | null
   const transactionId    = fechado?.transacao ?? null
   const newAppointmentId = fechado?.agendamento ?? null
 

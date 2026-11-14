@@ -38,8 +38,9 @@ function listaDeNumeros(ns: number[]): string {
  * A47 da 9ª: quem marca CADA sessão a agendar do plano, no app. O cartão dizia
  * "quem marca é a clínica" para o plano inteiro (havia sessões de
  * criolipólise, fora do app) e o app deixava a Luana marcar a drenagem. A regra
- * é a do agendar do app (`pagoParaAgendar`): pelo app vai a sessão cujo
- * primeiro procedimento a cliente agenda (`visible_on_client_app`).
+ * é a do agendar do app (`agendavelPeloApp`): pelo app vai a sessão do plano
+ * ACEITO (PT3, 2026-11-13), mesmo de procedimento fora do auto agendamento.
+ * O texto não diz "paga": o plano aceito pode ainda não ter sido recebido.
  */
 export function quemMarcaAsSessoes(aAgendar: { numero: number; peloApp: boolean }[]): string[] {
   const peloApp = aAgendar.filter(s => s.peloApp).map(s => s.numero)
@@ -47,8 +48,8 @@ export function quemMarcaAsSessoes(aAgendar: { numero: number; peloApp: boolean 
   const saida: string[] = []
   if (peloApp.length) {
     saida.push(peloApp.length === 1
-      ? `Sessão ${peloApp[0]}: agende pelo app em “Agendar” (já está paga no plano).`
-      : `Sessões ${listaDeNumeros(peloApp)}: agende pelo app em “Agendar” (já estão pagas no plano).`)
+      ? `Sessão ${peloApp[0]}: agende pelo app em “Agendar” (faz parte do seu plano).`
+      : `Sessões ${listaDeNumeros(peloApp)}: agende pelo app em “Agendar” (fazem parte do seu plano).`)
   }
   if (pelaClinica.length) {
     saida.push(`${pelaClinica.length === 1 ? 'Sessão' : 'Sessões'} ${listaDeNumeros(pelaClinica)}: quem marca é a clínica — fale com ela para escolher o dia.`)

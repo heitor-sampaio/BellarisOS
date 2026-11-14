@@ -121,8 +121,15 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   - A ficha diz, no voucher de desconto ativo, "Usa-se no PDV, ao receber"
     (`[data-voucher-no-pdv]`); Configurações → Fidelidade diz "No PDV, ao
     receber" (FD2c).
-  - Fica: os pontos na comanda do PLANO.
-  - Prova: `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`.
+  - **Na comanda do PLANO** (Bloco Plano de tratamento, leva 2, 2026-11-14):
+    o mesmo bloco no "Receber o plano", no à vista, sobre o plano depois do
+    desconto comercial; `checkoutTreatmentPlan` confere (`fidelidadeDaVenda`)
+    e `plano_checkout_com_fidelidade` (service_role) lança o à vista em aberto,
+    fecha o plano (`plano_checkout`) e passa pelo `private.fidelidade_na_venda`.
+    No crediário, a tela diz que os pontos são do à vista. O ponto nasce do
+    que foi pago (o mesmo gatilho). O contrato de plano cita o valor do plano.
+  - Prova: `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`,
+    `e2e/plano-tratamento-leva-2.spec.ts` ("FD2a/FD2b na comanda do PLANO").
 - **Pacote cancelado** (F2b, 2026-11-01; `vendas-financeiro.md` §9.3.1): os
   pontos seguem o estorno. Devolvido como ESTORNO, cada lançamento estornado
   inteiro tira o que deu (`estornar_transacao`), e o estornado EM PARTE tira

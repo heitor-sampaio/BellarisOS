@@ -10,7 +10,7 @@ import { normalizarHorario, resumoDoHorario } from '@/lib/agenda/horario'
 import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 import { AgendarComAClinica } from '@/components/client-portal/agendar-com-a-clinica'
-import { jaPagoNoApp } from '@/lib/creditos/pago-no-app'
+import { jaPagoNoApp, procedimentosComSessaoComprada } from '@/lib/creditos/pago-no-app'
 import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
 export default async function NewClientAppointmentPage({ params, searchParams }: {
@@ -52,6 +52,13 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
 
   const branchTyped = branch as { id: string; name: string; tenant_id: string }
 
+  // PT3 (a revisão do Heitor de 2026-11-13): além do "Permitir auto
+  // agendamento", a sessão JÁ COMPRADA — de um plano aceito ou de um pacote —
+  // se agenda pelo app (`agendavelPeloApp`; a action confere o mesmo).
+  const comprados = [...await procedimentosComSessaoComprada(admin, branchTyped.tenant_id, ctx.clientId!)]
+  const doApp = comprados.length
+    ? `visible_on_client_app.eq.true,id.in.(${comprados.join(',')})`
+    : 'visible_on_client_app.eq.true'
   const [rawProcedures, rawProfessionals] = await Promise.all([
     ler(admin
       .from('procedures')
@@ -59,7 +66,7 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
       .eq('tenant_id', branchTyped.tenant_id)
       .or(`branch_id.is.null,branch_id.eq.${branchTyped.id}`)
       .eq('is_active', true)
-      .eq('visible_on_client_app', true)
+      .or(doApp)
       .order('name'), 'listar os procedimentos'),
     // Filtrava por `users.role`, coluna removida na migração de cargos: a lista
     // vinha vazia e o cliente não tinha profissional para escolher.

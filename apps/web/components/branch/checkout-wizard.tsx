@@ -40,6 +40,8 @@ import { unicaOpcao } from '@/lib/uma-opcao'
 import { lerPassoDoCheckout, gravarPassoDoCheckout, limparPassoDoCheckout, type PassoDoCheckout } from '@/lib/checkout/passo-do-checkout'
 import { maskPhone } from '@estetica-os/utils'
 import { documentoNaTela } from '@/lib/clients/documento-na-tela'
+import { useFidelidadeNaVenda } from '@/components/shared/pontos-na-venda'
+import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -85,6 +87,8 @@ export interface CheckoutPlan {
   contratoAssinado?: { titulo: string; pagamento: PagamentoDoPlano | null; desconto: number; frase: string } | null
   /** A35 da 9ª: a rede tem contrato de plano e a ficha não tem CPF, passaporte nem RNE (só aviso — princípio 2). */
   contratoSemDocumento?: boolean
+  /** FD2a/FD2b: o saldo e os vouchers de desconto da cliente (nulo: nada a oferecer). */
+  fidelidade?: FidelidadeDaVenda | null
 }
 
 interface DaySlot {
@@ -218,6 +222,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [perguntaDoVendedor, setPerguntaDoVendedor] = useState<string | null>(null)
   const contaDesc = contaDoDesconto(total, desconto)
   const liquido   = contaDesc.liquido
+  // FD2a/FD2b na comanda do plano (2026-11-14): os pontos e o voucher, no à
+  // vista, sobre o plano depois do desconto — o mesmo bloco das outras vendas.
+  const fid = useFidelidadeNaVenda(plan.fidelidade, liquido, formaPgto)
 
   // A regra de todo campo de dinheiro (D3): "1.400,00" dava NaN e "1.400", R$ 1,40.
   // O ilegível NÃO vira R$ 0 calado (frente de cadastro, 2026-10-29): o aviso de
@@ -457,8 +464,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   }
 
   function handleFinish() {
-    setError(recusaDaEntrada)
-    if (recusaDaEntrada) return
+    setError(recusaDaEntrada ?? fid.recusa)
+    if (recusaDaEntrada || fid.recusa) return
     const semData = plan.sessions.map((s, i) => ({ s, n: i + 1 }))
       .filter(({ s }) => !(sessionDates[s.id]?.date && sessionDates[s.id]?.time && schedProfId && schedBranchId)).map(x => x.n)
     const schedules: SessionScheduleInput[] = plan.sessions
@@ -478,7 +485,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
     startSubmit(async () => {
       const result = await checkoutTreatmentPlan(plan.id, montarPagamento(), schedules, slug, descontoDoEstado(desconto),
-        temQuemVendeu ? { vendedorId: vendedorId || null, semVendedor } : undefined)
+        temQuemVendeu ? { vendedorId: vendedorId || null, semVendedor } : null, fid.paraEnviar)
       if (result.error) { setError(result.error); return }
       // O servidor pergunta o mesmo que a tela (a pergunta já foi respondida no pagamento).
       if ('confirmarSemVendedor' in result && result.confirmarSemVendedor) { setError(result.confirmarSemVendedor); return }
@@ -772,6 +779,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <div style={{ marginBottom: 16, maxWidth: 360 }}>
           <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={total} comMotivo />
         </div>
+        {podeCobrar && fid.bloco && (
+          <div style={{ marginBottom: 16, maxWidth: 420 }}>{fid.bloco}</div>
+        )}
 
         {plan.atendimentoDeHoje && (
           <div data-testid="atendimento-de-hoje-no-pagamento" style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
@@ -896,7 +906,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             {recebeHoje && ' (com o atendimento de hoje)'}
           </span>
           <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-            {fmtBRL((formaPgto === 'AVISTA' ? liquido : formaPgto === 'PARCELADO' ? entradaNum : 0) + (recebeHoje ? precoDeHoje : 0))}
+            {fmtBRL((formaPgto === 'AVISTA' ? fid.aPagar : formaPgto === 'PARCELADO' ? entradaNum : 0) + (recebeHoje ? precoDeHoje : 0))}
           </span>
         </div>
         {formaPgto !== 'AVISTA' && (

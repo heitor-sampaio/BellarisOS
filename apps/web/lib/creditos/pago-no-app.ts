@@ -41,7 +41,7 @@ function escolher(dados: OJaPago, procedureId: string): PagoParaAgendar | null {
       const preco = Math.round(procs.reduce((t, p) => t + Number(p.price ?? 0), 0) * 100) / 100
       return {
         tipo: 'PLANO', planId: plano.id, sessionId: s.id, preco,
-        texto: `Já pago pelo plano de tratamento${deQual('sessão', i + 1, sessoes.length)}`,
+        texto: `Faz parte do seu plano de tratamento${deQual('sessão', i + 1, sessoes.length)}`,
       }
     }
   }
@@ -58,10 +58,14 @@ function escolher(dados: OJaPago, procedureId: string): PagoParaAgendar | null {
  * pelo app (2026-10-21, decisão do Heitor). Nascia solto, com o preço de
  * tabela, e o checkout cobraria de novo.
  *
- * Primeiro a sessão livre de um plano VENDIDO (ACCEPTED), a mais antiga, cujo
+ * Primeiro a sessão livre de um plano ACEITO (ACCEPTED), a mais antiga, cujo
  * procedimento principal (o primeiro da sessão) é este — o preço é a soma da
  * sessão, já com o desconto rateado. Sem ela, o crédito de pacote ou de
  * pré-pago (`creditosDoCliente`), como a equipe usa. Nada: null (avulso).
+ *
+ * PT3 (2026-11-14): o plano aceito pode ainda não ter sido recebido no PDV,
+ * e por isso o texto do plano diz "Faz parte do seu plano", nunca "Já pago"
+ * (princípio 3).
  */
 export async function pagoParaAgendar(
   admin: Admin, tenantId: string, clientId: string, procedureId: string,
@@ -86,4 +90,27 @@ export async function jaPagoNoApp(
     if (pago) saida[id] = pago.texto
   }
   return saida
+}
+
+/**
+ * Os procedimentos que a cliente tem uma SESSÃO JÁ COMPRADA para agendar —
+ * a livre de um plano aceito (pelo primeiro procedimento da sessão) ou a de
+ * um pacote (PT3, a revisão do Heitor de 2026-11-13). É o que o agendar do app
+ * oferece além do "Permitir auto agendamento" (`agendavelPeloApp`). O
+ * pré-pago avulso não entra: segue a marca do procedimento.
+ */
+export async function procedimentosComSessaoComprada(
+  admin: Admin, tenantId: string, clientId: string,
+): Promise<Set<string>> {
+  const dados = await lerOJaPago(admin, tenantId, clientId)
+  const ids = new Set<string>()
+  for (const plano of dados.planos) {
+    for (const s of plano.treatment_plan_sessions ?? []) {
+      if (s.appointment_id) continue
+      const primeiro = [...(s.treatment_plan_session_procedures ?? [])].sort((a, b) => a.sort_order - b.sort_order)[0]
+      if (primeiro?.procedure_id) ids.add(primeiro.procedure_id)
+    }
+  }
+  for (const c of dados.creditos) if (c.tipo === 'PACOTE' && c.procedureId) ids.add(c.procedureId)
+  return ids
 }

@@ -1,6 +1,7 @@
 ﻿'use server'
 
 import { pagoParaAgendar } from '@/lib/creditos/pago-no-app'
+import { agendavelPeloApp } from '@/lib/clientes/agendavel-no-app'
 import { CLIENTE_ARQUIVADA, CLIENTE_ARQUIVADA_NO_APP } from '@/lib/clients/arquivada'
 import { NAO_REALIZA, quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { revalidatePath, revalidateTag } from 'next/cache'
@@ -1776,15 +1777,15 @@ export async function createClientAppointment(params: {
       .maybeSingle(), 'buscar a unidade')
     if (!branch) return { error: 'Unidade não encontrada.' }
 
-    // Catálogo da rede (branch_id nulo) ou local da unidade, ativo e marcado
-    // para o app — a mesma consulta da página.
+    // Catálogo da rede (branch_id nulo) ou local da unidade, ativo — a mesma
+    // consulta da página. A marca do app ("Permitir auto agendamento") se
+    // confere logo abaixo, com o que ela já comprou (PT3).
     const procedure = await ler(admin
       .from('procedures')
-      .select('id, price, duration_min')
+      .select('id, price, duration_min, visible_on_client_app')
       .eq('id', params.procedureId)
       .eq('tenant_id', branch.tenant_id as string)
       .eq('is_active', true)
-      .eq('visible_on_client_app', true)
       .or(`branch_id.is.null,branch_id.eq.${params.branchId}`)
       .maybeSingle(), 'buscar o procedimento')
     if (!procedure) return { error: 'Procedimento não disponível.' }
@@ -1798,6 +1799,13 @@ export async function createClientAppointment(params: {
     // ANTES da grade (sobra da F41): a sessão do plano dura a soma dos
     // procedimentos dela, e é essa a duração que tem de caber no horário.
     const pago = await pagoParaAgendar(admin, cliente.tenant_id as string, ctx.clientId!, params.procedureId)
+    // PT3 (a revisão do Heitor de 2026-11-13): fora do "Permitir auto
+    // agendamento", só a sessão JÁ COMPRADA — a livre de um plano aceito ou de
+    // um pacote. O pré-pago avulso segue a marca do procedimento.
+    const sessaoComprada = pago?.tipo === 'PLANO' || (pago?.tipo === 'CREDITO' && pago.credito.tipo === 'PACOTE')
+    if (!agendavelPeloApp({ visivelNoApp: procedure.visible_on_client_app === true, sessaoComprada })) {
+      return { error: 'Procedimento não disponível.' }
+    }
     const creditoDoPago = pago?.tipo === 'CREDITO' ? pago.credito
       : pago?.tipo === 'PLANO' ? { tipo: 'PLANO' as const, id: pago.sessionId } : null
     let duracao = Number(procedure.duration_min)

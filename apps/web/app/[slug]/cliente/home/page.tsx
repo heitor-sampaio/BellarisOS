@@ -21,6 +21,8 @@ import { getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { bonusDosCreditosDaCliente } from '@/lib/creditos/bonus-da-cliente'
 import { restantesDoPacoteDeFora } from '@/lib/pacotes/de-fora'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
+import { agendavelPeloApp } from '@/lib/clientes/agendavel-no-app'
+import { validoAteDaProposta } from '@/lib/plano-de-tratamento/validade'
 import { textoDoIndiqueUmaAmiga } from '@/lib/fidelidade/indicacao'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 import { textoDoParaAvaliar } from '@/lib/clientes/textos-do-app'
@@ -77,7 +79,7 @@ type ActivePlan = {
     sort_order: number | null
     /** O agendamento da sessão (A45: feita, agendada ou a agendar). */
     appointments?: { status: string; scheduled_at: string; completed_at: string | null } | null
-    treatment_plan_session_procedures: Array<{ price: number | string | null; sort_order?: number | null; procedures: { name: string; visible_on_client_app?: boolean | null } | null }>
+    treatment_plan_session_procedures: Array<{ price: number | string | null; sort_order?: number | null; procedures: { name: string; visible_on_client_app?: boolean | null; is_active?: boolean | null } | null }>
   }>
 }
 
@@ -121,7 +123,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('purchased_at', { ascending: false })
       .limit(5), 'buscar os pacotes'),
     ler(admin.from('treatment_plans')
-      .select('id, status, created_at, name, desconto, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(name, visible_on_client_app)))')
+      .select('id, status, created_at, name, desconto, treatment_plan_sessions(sort_order, appointments!treatment_plan_sessions_appointment_id_fkey(status, scheduled_at, completed_at), treatment_plan_session_procedures(price, sort_order, procedures(name, visible_on_client_app, is_active)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
@@ -436,12 +438,14 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
               const total = Number(pkg.total_sessions)
               const pct   = total > 0 ? Math.round((used / total) * 100) : 0
               // A63: a próxima sessão livre diz o procedimento a agendar — e
-              // se o app o agenda (visível, ativo, da rede ou desta unidade).
+              // se o app o agenda: a sessão do pacote já foi comprada, e se
+              // agenda pelo app mesmo fora do "Permitir auto agendamento" (PT3,
+              // 2026-11-14); basta o procedimento ativo, da rede ou desta unidade.
               const proxima = [...(pkg.package_sessions ?? [])]
                 .filter(s => s.status === 'AVAILABLE' && !s.appointment_id)
                 .sort((a, b) => a.session_number - b.session_number)[0]
               const proc = proxima?.procedures ?? null
-              const peloApp = !!proc && proc.visible_on_client_app && proc.is_active && (!proc.branch_id || proc.branch_id === unidadeDoEndereco?.id)
+              const peloApp = !!proc && agendavelPeloApp({ visivelNoApp: proc.visible_on_client_app, sessaoComprada: true }) && proc.is_active && (!proc.branch_id || proc.branch_id === unidadeDoEndereco?.id)
               return (
                 <div key={pkg.id} data-pacote className="card" style={{ padding: '14px 18px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -502,7 +506,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
             ))}
 
             {activePlans.filter(p => p.status === 'PROPOSED').map(plan => (
-              <PlanoProposto key={plan.id} plano={plan} validadeDias={validadeDias} whatsapp={aClinica?.whatsapp ?? null} telefone={aClinica?.telefone ?? null}
+              <PlanoProposto key={plan.id} plano={plan} slug={slug} validadeDias={validadeDias} whatsapp={aClinica?.whatsapp ?? null} telefone={aClinica?.telefone ?? null}
                 avulsos={avulsosPorPlano.get(plan.id) ?? []} />
             ))}
 
@@ -572,15 +576,15 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
  * procedimentos, o valor e a validade, e "Falar com a clínica". O app não
  * aceita: o aceite (e o pagamento) é na clínica.
  */
-function PlanoProposto({ plano, validadeDias, whatsapp, telefone, avulsos = [] }: {
-  plano: ActivePlan; validadeDias: number; whatsapp: string | null; telefone: string | null
+function PlanoProposto({ plano, slug, validadeDias, whatsapp, telefone, avulsos = [] }: {
+  plano: ActivePlan; slug: string; validadeDias: number; whatsapp: string | null; telefone: string | null
   /** O agendado à parte de um procedimento do plano (A68), em texto. */
   avulsos?: string[]
 }) {
   const sessoes = [...(plano.treatment_plan_sessions ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
   const itens = sessoes.flatMap(s => s.treatment_plan_session_procedures ?? [])
   const valor = itens.reduce((t, i) => t + Math.round(Number(i.price ?? 0) * 100), 0) / 100
-  const validoAte = new Date(new Date(plano.created_at).getTime() + validadeDias * 86_400_000)
+  const validoAte = validoAteDaProposta(plano.created_at, validadeDias)
   const vencido = jaPassou(validoAte)
   const dia = validoAte.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
   return (
@@ -608,8 +612,12 @@ function PlanoProposto({ plano, validadeDias, whatsapp, telefone, avulsos = [] }
         <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>{formatBRL(valor)}</span>
       </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: vencido ? 'var(--warning)' : 'var(--text-muted)', fontWeight: 600 }}>
-        {vencido ? `Proposta vencida em ${dia} — fale com a clínica para atualizar.` : `Válido até ${dia}.`} O aceite é feito na clínica.
+        {/* PT1b (2026-11-14): a cliente aceita pelo app, na página do plano. */}
+        {vencido ? `Proposta vencida em ${dia} — fale com a clínica para atualizar.` : `Válido até ${dia}.`}
       </p>
+      <Link href={`/${slug}/cliente/planos/${plano.id}`} prefetch={false} className={vencido ? 'btn-secondary' : 'btn-primary'} style={{ justifyContent: 'center' }}>
+        Ver o plano <ChevronRight size={14} aria-hidden="true" />
+      </Link>
       {avulsos.length > 0 && (
         <p data-avulso-do-plano style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
           {avulsos.join('; ')}: ele não faz parte deste plano. Fale com a clínica se ele deveria ser uma sessão do plano.
@@ -618,7 +626,7 @@ function PlanoProposto({ plano, validadeDias, whatsapp, telefone, avulsos = [] }
       {whatsapp ? (
         // A66: o WhatsApp abre com a mensagem pronta sobre ESTE plano.
         <a href={comMensagem(whatsapp, `Olá! Vi no app o plano de tratamento proposto (${sessoes.length} ${sessoes.length === 1 ? 'sessão' : 'sessões'}, ${formatBRL(valor)}) e quero conversar sobre ele.`)!}
-          target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ justifyContent: 'center' }}>
+          target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ justifyContent: 'center' }}>
           <MessageCircle size={14} aria-hidden="true" /> Falar com a clínica
         </a>
       ) : telefone ? (
@@ -648,12 +656,16 @@ function PlanoFechado({ plano, financeiro, slug, fuso }: { plano: ActivePlan; fi
     }
     return { texto: 'A agendar', cor: 'var(--text-muted)' }
   }
-  // A51 da 8ª e A47 da 9ª: cada sessão a agendar diz quem a marca — pelo app a
-  // que o agendar do app liga (`pagoParaAgendar`: o primeiro procedimento da
-  // sessão está no app); a outra, a clínica. Era uma frase para o plano inteiro,
-  // "quem marca é a clínica", e o app deixava a Luana marcar a drenagem.
-  const peloApp = (s: (typeof sessoes)[number]) => [...(s.treatment_plan_session_procedures ?? [])]
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0]?.procedures?.visible_on_client_app === true
+  // A51 da 8ª e A47 da 9ª: cada sessão a agendar diz quem a marca. PT3
+  // (2026-11-14): a sessão do plano aceito já foi comprada e se agenda pelo app
+  // mesmo fora do "Permitir auto agendamento" (`agendavelPeloApp`); só a de
+  // procedimento inativo fica com a clínica.
+  const peloApp = (s: (typeof sessoes)[number]) => {
+    const principal = [...(s.treatment_plan_session_procedures ?? [])]
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0]?.procedures
+    return !!principal && principal.is_active !== false
+      && agendavelPeloApp({ visivelNoApp: principal.visible_on_client_app === true, sessaoComprada: true })
+  }
   const aAgendar = sessoes.map((s, i) => ({ s, numero: i + 1 })).filter(({ s }) => situacao(s.appointments).texto === 'A agendar')
   const quemMarca = quemMarcaAsSessoes(aAgendar.map(({ s, numero }) => ({ numero, peloApp: peloApp(s) })))
   return (
@@ -700,9 +712,9 @@ function PlanoFechado({ plano, financeiro, slug, fuso }: { plano: ActivePlan; fi
             {proximo ? ` · próxima em ${formatDia(proximo)}` : ''}
           </span>
         </div>
-        <Link href={`/${slug}/cliente/financeiro`} prefetch={false}
+        <Link href={`/${slug}/cliente/planos/${plano.id}`} prefetch={false}
           style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 700 }}>
-          Ver os pagamentos
+          Ver o plano
         </Link>
       </div>
     </details>

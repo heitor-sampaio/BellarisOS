@@ -1774,6 +1774,110 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Plano de tratamento, leva 2 (PT1b, PT1c, DC1c/PC9b e DC4 do plano, PT3, FD2a/FD2b do plano): a cliente aceita pelo app, o contrato nasce no PDV, e o app mostra tudo do plano
+
+A revisão do Heitor (13/11): "SIm, pode liberar o aceite pelo app. A cliente
+recebe o plano no app, analisa e aceita."; "primeiro colhe assinatura, depois
+paga"; "se for uma sessão de plano ou pacote, pode agendar".
+
+- **PT1b — a cliente aceita pelo app.** A página do plano no app
+  (`/[slug]/cliente/planos/[id]`) tem "Aceitar o plano"
+  (`aceitarPlanoPelaCliente`, `actions/plano-da-cliente.ts`): o mesmo
+  `plano_aceitar` da equipe, sem pergunta de dinheiro. Só o plano DELA
+  (`ctx.clientId`), só o proposto dentro da validade, não a arquivada, não na
+  sessão de suporte. Sai o "O aceite é feito na clínica"; o cartão do Início
+  leva à página ("Ver o plano"). **A equipe é avisada** (sino e push, tipo
+  `plano_aceito`) pela PERMISSÃO: Agenda, Caixa ou Financeiro em Gerenciar na
+  unidade do plano ou na rede, e quem atende o plano (`interessadosNoFato`).
+- **PT1c — o contrato de plano nasce no PDV, com a forma.** O aceite emite só
+  os termos e os outros documentos; o contrato nasce quando o "Receber o
+  plano" escolhe a forma (`prepararDocumentosDoCheckout`), cita o pagamento e
+  segura o dinheiro até ser assinado ou dispensado com motivo (o que já
+  existia: `recusaDosDocumentosDoPlano` e `plano_checkout`).
+- **DC1c/PC9b no plano — os documentos puxados, com "Excluir".** A página do
+  plano (e a ficha) mostra o bloco "Documentos" (`DocumentosDoPlano`): o
+  contrato de plano da rede ("nasce no PDV, com a forma de pagamento") e os
+  documentos puxados dos procedimentos distintos das sessões — o termo e os
+  outros, nunca o contrato do procedimento —, ao vivo sobre o editor, cada um
+  com "Excluir" / "Incluir de novo" para quem monta o plano, antes do aceite.
+  O plano guarda o excluído (`treatment_plans.documentos_excluidos`); no plano
+  novo, a lista é gravada logo depois de ele nascer. A conta é a do pacote
+  (`documentosPuxadosDoPlano`), e o banco aplica a mesma
+  (`private.modelos_do_plano`).
+- **PT3/CA2/CA3 — no app, tudo do plano, e a sessão comprada se agenda.** A
+  página do plano no app mostra cada sessão (feita, agendada, a agendar) com o
+  "Agendar" da que está em aberto, os pagamentos (`getFinanceiroDoPlano`) e os
+  documentos do plano; a anotação clínica não sai do servidor. A sessão livre
+  de um plano ACEITO ou de um pacote se agenda pelo app mesmo fora do
+  "Permitir auto agendamento" (`agendavelPeloApp`): a tela do agendar
+  oferece o comprado (`procedimentosComSessaoComprada`), e
+  `createClientAppointment` recusa o resto e grava pelo
+  `createAppointmentCore` com o crédito. O pré-pago avulso segue a marca.
+- **FD2a/FD2b na comanda do plano.** O "Receber o plano" tem o bloco
+  "Fidelidade" (o das outras vendas), no à vista; `checkoutTreatmentPlan`
+  ganhou o 7º argumento (`fidelidade`), confere pelo `fidelidadeDaVenda` e
+  fecha por `plano_checkout_com_fidelidade` (só service_role), que lança o à
+  vista em aberto e passa por `private.fidelidade_na_venda`. O ponto nasce do
+  que foi pago (o gatilho de sempre).
+- **Decidido pelos princípios** (anotado aqui, não levado ao Heitor):
+  - **DC4, "o do plano, na criação"**: os termos e os outros nascem no
+    ACEITE, não ao salvar o rascunho. O rascunho e o proposto ainda mudam e
+    podem nunca ser aceitos (princípios 6 e 7: nada se move sozinho, simples
+    primeiro), e o PT1b diz "Aceito, os documentos ficam prontos" — li o "na
+    criação" como "nasce do plano, sem esperar o check-in". O contrato, com o
+    pagamento (PT1c).
+  - O aceite pelo app só dentro da validade da proposta: o cartão já dizia
+    "Proposta vencida — fale com a clínica" (princípio 3).
+  - Avisados do aceite: Agenda, Caixa e Financeiro em Gerenciar — é quem
+    agenda e quem recebe o que vem depois do aceite.
+  - O texto da sessão do plano no app deixou de dizer "já paga" ("faz parte
+    do seu plano"; o Confirmar, "Faz parte do seu plano de tratamento"): o
+    plano aceito pode ainda não ter sido recebido (princípio 3).
+  - Os pontos são um meio de pagar: o contrato de plano cita o valor do
+    plano, não o desconto em pontos; e só no à vista, como nas outras vendas.
+- **Specs antigos que mudaram, e por quê**: `portal-cliente-plano-proposto`
+  (o cartão não diz mais "O aceite é feito na clínica" e leva a "Ver o
+  plano"); `plano-atritos-da-9` (A47) e `portal-cliente-atritos-da-8` (A51) —
+  a sessão do plano de procedimento fora do app agora é "pelo app" (PT3);
+  `tests/textos-do-plano-da-9` — "faz parte do seu plano".
+- **TDD — as falhas antes** (`e2e/plano-tratamento-leva-2.spec.ts`, 7 de 7
+  falhando pelo motivo certo): o cartão ainda dizia "O aceite é feito na
+  clínica"; `aceitarPlanoPelaCliente` não existia em manifesto nenhum; sem
+  `[data-documentos-do-plano]` na tela do plano; o aceite emitia o contrato
+  de plano antes da forma de pagamento (esperado false, veio true); a página
+  do plano no app não existia (0 de 2 sessões); o procedimento da sessão de
+  pacote, fora do app, não aparecia no agendar; e o receber do plano não tinha
+  o bloco de pontos (`[data-pontos-da-venda]`). O vitest
+  (`tests/plano-leva-2.test.ts`) falhava por não resolver
+  `@/lib/clientes/agendavel-no-app`.
+- **Resultados**: o spec novo 7/7; os vizinhos, 76 specs em série (`plano-*`,
+  `planejamento*`, `checkout-*`, `portal-cliente-*`, `pdv-comanda-do-plano`,
+  `pdv-comanda-varios-itens-e-pontos`, `documentos-*` do plano, do link e do
+  portal, `fidelidade-*`, `comissoes-venda-do-plano`, `agendar-com-credito`,
+  `pacote-*agendar`, `planos-recursos`, `atendimento-plano-*`,
+  `relatorio-vendas-plano-de-quem-vendeu`): 75 passaram (257 testes), 1
+  falhou e não é desta leva — `relatorio-vendas-plano-de-quem-vendeu` insere
+  plano aceito SEM lançamento, e desde o PDV de 13/11 (`20261113008201`) o
+  plano só é venda quando recebido; ele precisa receber o plano. `pnpm
+  typecheck` limpo, `pnpm --filter web lint` sem erro, `pnpm --filter web
+  test` 2421/2421.
+- A página do plano no app (`/[slug]/cliente/planos/[id]`) tem o seu
+  `loading.tsx` (a regra de `tests/loading-fora-do-catch-all`): por ele, o
+  plano de outra cliente dá a tela "Página não encontrada" com HTTP 200 em
+  streaming, como os documentos do portal — o spec confere a tela, não o
+  status.
+- Mexeu em arquivo compartilhado (`lib/creditos/pago-no-app.ts`,
+  `actions/appointments.ts`, a home do app, o `checkout-wizard`): vale uma
+  completa quando o Heitor quiser.
+- **Para o Heitor**: a migration `20261115600001_plano_leva_2` foi aplicada.
+  ⚠️ **Destrutiva**: `documentos_emitir_do_plano(uuid)` saiu, e no lugar
+  entrou `documentos_emitir_do_plano(uuid, boolean default true)` (os mesmos
+  grants: só service_role) — a chamada de um argumento segue igual. Também:
+  a coluna `treatment_plans.documentos_excluidos`, o novo corpo de
+  `private.modelos_do_plano` (os outros documentos e as exclusões) e de
+  `private.documentos_bloqueiam_plano` (o aceite sem o contrato), e a função
+  `plano_checkout_com_fidelidade` (só service_role).
+
 ### 2026-11-14 — Bloco Plano de tratamento, leva 1 (PT2, PT1a, PT1d, PT1e, PT1f): quem atende monta, e a página do plano mostra os passos
 
 A revisão do Heitor (13/11): "quem monta o plano é quem atende, nem precisa de

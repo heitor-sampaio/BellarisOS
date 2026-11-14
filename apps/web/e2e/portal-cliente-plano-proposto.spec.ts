@@ -66,12 +66,16 @@ test('o plano proposto mostra procedimentos, valor e validade, e leva a falar co
     await expect(cartao).toContainText('2 sessões')
     // Proposto em 20/10 (Brasília), válido por 10 dias.
     await expect(cartao).toContainText('30/10/2026')
-    await expect(cartao).toContainText('O aceite é feito na clínica')
+    // PT1b (2026-11-14): a cliente aceita pelo app, na página do plano — o
+    // cartão leva até ela, e não diz mais "O aceite é feito na clínica".
+    await expect(cartao).not.toContainText('O aceite é feito na clínica')
+    await expect(cartao.getByRole('link', { name: /Ver o plano/ })).toHaveAttribute('href', new RegExp(`/cliente/planos/${plano}`))
     const falar = cartao.getByRole('link', { name: /Falar com a clínica/ })
     await expect(falar).toHaveAttribute('href', /wa\.me\/5541998765432/)
     // A66: o WhatsApp abre com a mensagem pronta sobre o plano.
     await expect(falar).toHaveAttribute('href', /\?text=.*plano/)
-    // Nem a anotação do plano nem a da sessão vão à cliente; e o app não aceita.
+    // Nem a anotação do plano nem a da sessão vão à cliente; o aceite não fica
+    // no cartão (é na página do plano).
     await expect(p.getByText(SEGREDO)).toHaveCount(0)
     expect(await p.content()).not.toContain(SEGREDO)
     await expect(cartao.getByRole('button', { name: /Aceitar/ })).toHaveCount(0)

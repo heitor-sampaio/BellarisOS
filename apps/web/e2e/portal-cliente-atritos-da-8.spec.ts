@@ -95,14 +95,18 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A51: a sessão "A agendar" do plano diz que quem marca é a clínica (o laser não se agenda pelo app)', async ({ browser }) => {
+// PT3 (a revisão do Heitor de 2026-11-13): a sessão do plano aceito se agenda
+// pelo app mesmo de procedimento fora do "Permitir auto agendamento" — o laser
+// deixou de ser "quem marca é a clínica".
+test('A51 + PT3: a sessão "A agendar" do plano diz quem marca — pelo app, mesmo o laser fora do app', async ({ browser }) => {
   await como(browser, cliente!, async p => {
     await p.goto(`/${slug}/cliente/home`)
     const cartao = p.locator('[data-plano-fechado]')
     await cartao.locator('summary').click()
     const detalhe = cartao.locator('[data-plano-detalhe]')
     await expect(detalhe).toContainText('A agendar')
-    await expect(detalhe.locator('[data-quem-marca-a-sessao]')).toContainText('quem marca é a clínica')
+    await expect(detalhe.locator('[data-quem-marca-a-sessao]')).toContainText('agende pelo app')
+    await expect(detalhe.locator('[data-quem-marca-a-sessao]')).not.toContainText('quem marca é a clínica')
   })
 })
 

@@ -175,7 +175,10 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
     })
   })
 
-  test('A47: no app, cada sessão a agendar diz se a cliente marca pelo app ou se quem marca é a clínica', async ({ browser }) => {
+  // PT3 (a revisão do Heitor de 2026-11-13): a sessão do plano aceito se agenda
+  // pelo app MESMO de procedimento fora do "Permitir auto agendamento" — a
+  // sessão 3 (fora do app), que era "quem marca é a clínica", agora é pelo app.
+  test('A47 + PT3: no app, cada sessão a agendar do plano aceito diz que se agenda pelo app — mesmo a de procedimento fora do app', async ({ browser }) => {
     // A sessão 2 (drenagem) volta a ficar livre: o D5 a agendou.
     const { data: s2 } = await db().from('treatment_plan_sessions').select('appointment_id').eq('id', sessoes[1]).single()
     if (s2?.appointment_id) {
@@ -187,10 +190,10 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
       await cartao.locator('summary').click()
       const detalhe = cartao.locator('[data-plano-detalhe]')
       await expect(detalhe.locator('[data-sessao-do-plano="2"]')).toContainText('A agendar · pelo app')
-      await expect(detalhe.locator('[data-sessao-do-plano="3"]')).toContainText('A agendar · quem marca é a clínica')
+      await expect(detalhe.locator('[data-sessao-do-plano="3"]')).toContainText('A agendar · pelo app')
       const quem = detalhe.locator('[data-quem-marca-a-sessao]')
-      await expect(quem).toContainText('Sessão 2: agende pelo app')
-      await expect(quem).toContainText('Sessão 3: quem marca é a clínica')
+      await expect(quem).toContainText('Sessões 2 e 3: agende pelo app')
+      await expect(quem).not.toContainText('quem marca é a clínica')
     })
   })
 

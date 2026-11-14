@@ -2,9 +2,9 @@
  * O nome e a cor de cada situação do plano de tratamento — UM lugar só (J-37,
  * 2026-10-30). O PROPOSED tinha dois nomes: "Aguardando aceite" em
  * Planejamentos e na tela do plano, "Aguardando checkout" no editor, no
- * dashboard e na tela do atendimento. Ficou "Aguardando checkout": o aceite
- * da cliente É o checkout (o app diz "O aceite é feito na clínica"), e é o
- * gesto que a recepção tem de fazer. O fechado no checkout é "Fechado" (era
+ * dashboard e na tela do atendimento. Ficou "Aguardando checkout" (depois
+ * "Proposto", PT1a: o aceite deixou de ser um checkout, e a cliente aceita
+ * também pelo app — PT1b, 2026-11-14). O fechado no checkout é "Fechado" (era
  * "Aceito", "Fechado", "Em execução" e "Em andamento", conforme a tela).
  */
 export interface SituacaoDoPlano { label: string; cor: string; fundo: string }

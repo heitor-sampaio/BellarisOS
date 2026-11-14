@@ -1091,6 +1091,29 @@
 - **O procedimento novo nasce FORA do app** (`visible_on_client_app` desligado,
   2026-10-21): só vai para o self-service o que a clínica marca. Nascia ligado,
   e a Toxina da simulação ficaria agendável pelo app.
+- **A sessão JÁ COMPRADA se agenda pelo app mesmo fora do "Permitir auto
+  agendamento"** (PT3/CA3, Bloco Plano de tratamento, leva 2, 2026-11-14 — o
+  Heitor: "se for uma sessão de plano ou pacote, pode agendar"): a sessão
+  livre de um plano ACEITO (pelo primeiro procedimento dela) ou de um pacote.
+  O pré-pago avulso segue a marca do procedimento. A regra é uma
+  (`agendavelPeloApp`, `lib/clientes/agendavel-no-app.ts`): a tela do agendar
+  oferece o marcado OU o comprado (`procedimentosComSessaoComprada`), a action
+  (`createClientAppointment`) recusa o resto ("Procedimento não disponível") e
+  grava só pelo `createAppointmentCore`, com o crédito. O cartão do pacote e o
+  do plano no Início dizem "pelo app"; só o procedimento inativo fica com a
+  equipe. O texto não diz "já paga": o plano aceito pode ainda não ter sido
+  recebido ("faz parte do seu plano"; o Confirmar diz "Faz parte do seu plano
+  de tratamento (sessão 2 de 3)" — princípio 3). Prova:
+  `e2e/plano-tratamento-leva-2.spec.ts`.
+- **O plano no app** (PT3/CA2, leva 2): `/[slug]/cliente/planos/[id]` — só o
+  plano DELA (`ctx.clientId`), proposto, aceito ou concluído; o resto é 404.
+  O proposto mostra as sessões e o valor, a validade e "Aceitar o plano"
+  (PT1b, `docs/regras/vendas-financeiro.md`); o aceito, cada sessão (feita,
+  agendada ou a agendar, `situacaoDaSessaoNoApp`) com o "Agendar" da que está
+  em aberto, os pagamentos (de `getFinanceiroDoPlano`) e os documentos do
+  plano (`documentosDoPlanoNoPortal`). Nada clínico: a anotação da
+  profissional não sai do servidor. Os cartões do Início levam a ela ("Ver o
+  plano").
 - **Todo agendamento tem procedimento.** A "avaliação" era a exceção que
   permitia marcar sem escolher um — ela deixou de ser entidade em 2026-09-25 e
   virou um procedimento como outro qualquer, com a ficha que precisar. Não há
