@@ -110,11 +110,11 @@ describe('menuSectionsFor', () => {
 
   it('Vendas é o funil e o que se vende; Marketing, a captação — nos dois portais', () => {
     const rede = menuSectionsFor(ADMIN_MENU, ALL_PERMISSIONS)
-    expect(rede.find(s => s.key === 'vendas')!.entries.map(e => e.key)).toEqual(['inbox', 'oportunidades', 'procedures', 'pacotes'])
+    expect(rede.find(s => s.key === 'vendas')!.entries.map(e => e.key)).toEqual(['pdv', 'inbox', 'oportunidades', 'procedures', 'pacotes'])
     expect(rede.find(s => s.key === 'marketing')!.entries.map(e => e.key)).toEqual(['notificacoes', 'marketing', 'templates'])
     expect(rede.find(s => s.key === 'gestao')!.entries.map(e => e.key)).not.toContain('procedures')
     const unidade = menuSectionsFor(BRANCH_MENU, ALL_PERMISSIONS)
-    expect(unidade.find(s => s.key === 'vendas')!.entries.map(e => e.key)).toEqual(['inbox', 'oportunidades', 'procedures', 'pacotes'])
+    expect(unidade.find(s => s.key === 'vendas')!.entries.map(e => e.key)).toEqual(['pdv', 'inbox', 'oportunidades', 'procedures', 'pacotes'])
   })
 
   it('Planejamento junta Tratamentos e Injetáveis', () => {
@@ -152,5 +152,28 @@ describe('o financeiro "só os meus" se chama "Minhas comissões"', () => {
       expect(menuEntriesFor(menu, p, undefined, { financial: 'ALL' }).find(e => e.key === 'financial')?.label).toBe('Financeiro')
     }
     expect(menuLabelsFor(BRANCH_MENU, p, { financial: 'OWN' })).toContain('Minhas comissões')
+  })
+})
+
+// PDV1 (a revisão do Heitor, 2026-11-13: "vamos fazer um PDV"): a tela de
+// vender e de receber, de quem recebe pagamento (`podeReceber`: o PDV em
+// Gerenciar ou o Financeiro em Gerenciar) — nos dois portais.
+describe('o PDV', () => {
+  it('aparece a quem recebe, em Vendas, nos dois portais', () => {
+    for (const [menu, href] of [[ADMIN_MENU, '/admin/pdv'], [BRANCH_MENU, '/pdv']] as const) {
+      for (const p of [com({ cashier: 'MANAGE' }), com({ financial: 'MANAGE' })]) {
+        const pdv = menuEntriesFor(menu, p).find(e => e.key === 'pdv')
+        expect(pdv?.href).toBe(href)
+        expect(pdv?.label).toBe('PDV')
+      }
+    }
+  })
+
+  it('não aparece a quem não recebe (o financeiro só em Ver, a agenda)', () => {
+    for (const menu of [ADMIN_MENU, BRANCH_MENU]) {
+      for (const p of [com({ financial: 'VIEW' }), com({ agenda: 'MANAGE', clients: 'MANAGE' })]) {
+        expect(menuEntriesFor(menu, p).map(e => e.key)).not.toContain('pdv')
+      }
+    }
   })
 })

@@ -111,6 +111,9 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // É clínico (vira registro de prontuário), daí o módulo ser outro.
   { key: 'injetaveis', recurso: 'injetaveis',   group: 'planejamento', label: 'Injetáveis',    href: '/admin/injetaveis',     visible: p => has(p, 'medical_records') },
 
+  // O PDV (PDV1, a revisão do Heitor de 2026-11-13): vender e receber, seja do que for.
+  // De quem recebe (o PDV ou o Financeiro em Gerenciar — `recebe`); de todo plano (PL1).
+  { key: 'pdv',          group: 'vendas',       label: 'PDV',           href: '/admin/pdv',            visible: recebe },
   { key: 'inbox', recurso: 'inbox',        group: 'vendas',       label: 'Inbox',         href: '/admin/inbox',          visible: p => has(p, 'crm') },
   { key: 'oportunidades', recurso: 'oportunidades',group: 'vendas',       label: 'Oportunidades', href: '/admin/oportunidades',  visible: p => has(p, 'crm') },
   // O que se vende: o catálogo de procedimentos e os pacotes (decisão do
@@ -156,6 +159,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   { key: 'planejamentos', recurso: 'planos_de_tratamento', group: 'planejamento', label: 'Tratamentos', href: '/planejamentos', visible: p => has(p, 'medical_records') || recebe(p) },
   { key: 'injetaveis', recurso: 'injetaveis',    group: 'planejamento', label: 'Injetáveis',  href: '/injetaveis',    visible: p => has(p, 'medical_records') },
 
+  { key: 'pdv',           group: 'vendas',      label: 'PDV',           href: '/pdv',           visible: recebe },
   { key: 'inbox', recurso: 'inbox',         group: 'vendas',      label: 'Inbox',         href: '/inbox',         visible: p => has(p, 'crm') },
   { key: 'oportunidades', recurso: 'oportunidades', group: 'vendas',      label: 'Oportunidades', href: '/oportunidades', visible: p => has(p, 'crm') },
   { key: 'procedures',    group: 'vendas',      label: 'Procedimentos', href: '/procedures',    visible: p => has(p, 'procedures') },

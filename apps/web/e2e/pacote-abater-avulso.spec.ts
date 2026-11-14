@@ -132,6 +132,9 @@ test('o "Receber" oferece "Abater do pacote": o atendimento vira sessão do paco
   const ap = await avulsoConcluido(bianca, drenagem)
   const cp = await venderPacote(bianca)
   expect(await extrato(ap), 'o avulso não pago aguarda o pagamento integral (H4)').toEqual([])
+  // O avulso concluído é uma comanda aberta do PDV (CX3)…
+  const comanda = async () => (await db().from('comandas').select('cancelada_em, cancelada_motivo').eq('appointment_id', ap).maybeSingle<{ cancelada_em: string | null; cancelada_motivo: string | null }>()).data
+  expect((await comanda())?.cancelada_em).toBeNull()
 
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${ap}`)
@@ -153,6 +156,8 @@ test('o "Receber" oferece "Abater do pacote": o atendimento vira sessão do paco
   expect(await aReceber(ap)).toBe(0)
   const { data: lanc } = await db().from('financial_transactions').select('id').eq('appointment_id', ap)
   expect(lanc ?? [], 'nenhuma cobrança nova').toEqual([])
+  // …e, virando sessão do pacote, sai sem cobrança, com o motivo.
+  expect((await comanda())?.cancelada_motivo).toBe('Sessão do pacote')
   // O preço do atendimento é a parte da sessão no pacote (a base da comissão dela).
   expect(n((await db().from('appointments').select('price').eq('id', ap).single()).data?.price)).toBe(120)
   // A comissão segue a da sessão de pacote: a do avulso sai, a do pacote (pago no Pix) entra.

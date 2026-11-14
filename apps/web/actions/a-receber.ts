@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { revalidatePath, revalidateTag } from 'next/cache'
@@ -32,10 +32,10 @@ export async function situacaoDaCobranca(appointmentId: string): Promise<{
   if (!appt || rede !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) return null
   if (appt.status !== 'COMPLETED') return null
 
-  const podeReceber = ctx.permissions.cashier === 'MANAGE'
-  if (!appt.treatment_plan_id && !(Number(appt.price) > 0)) return { situacao: 'SEM_COBRANCA', podeReceber }
+  const recebe = podeReceber(ctx)
+  if (!appt.treatment_plan_id && !(Number(appt.price) > 0)) return { situacao: 'SEM_COBRANCA', podeReceber: recebe }
   const { itens } = await getAtendimentosAReceber({ tenantId: ctx.tenantId!, agendamentoId: appointmentId })
-  return { situacao: itens.length > 0 ? 'A_RECEBER' : 'RESOLVIDO', podeReceber }
+  return { situacao: itens.length > 0 ? 'A_RECEBER' : 'RESOLVIDO', podeReceber: recebe }
 }
 
 /**
@@ -43,14 +43,14 @@ export async function situacaoDaCobranca(appointmentId: string): Promise<{
  * receber vira uma sessão do pacote da cliente — a Bianca fez a drenagem
  * avulsa e comprou o pacote na saída; o "Receber" cobrava R$ 150 de novo.
  *
- * Quem recebe (`cashier`, o mesmo de `confirmPayment`), no atendimento da rede
+ * Quem recebe (`podeReceber`, o mesmo de `confirmPayment` e do PDV), no atendimento da rede
  * e de unidade ao alcance. A sessão é conferida como crédito (`conferirCredito`:
  * desta cliente, livre, na validade, o mesmo procedimento) e a função do banco
  * faz tudo numa transação, conferindo de novo sob trava.
  */
 export async function abaterDoPacote(appointmentId: string, sessaoId: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'cashier', 'MANAGE')
+  if (!podeReceber(ctx)) return { error: 'Seu cargo não recebe pagamentos.' }
   try {
     const admin = createAdminClient()
     const appt = await ler(admin.from('appointments')

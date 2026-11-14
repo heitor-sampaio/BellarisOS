@@ -1774,6 +1774,34 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-13 — O plano de adaptação começou: o PDV, fase 1 (a comanda do atendimento)
+
+O Heitor aprovou o desenho (`docs/desenhos/pdv.html`): "implementa lá e se eu
+achar que precisa mudar algo te aviso". Esta é a primeira de cinco fases do
+PDV, que cobre o PDV1–PDV3, o CX1 (só a comanda; a parcela do crediário fica
+para depois) e o CX3.
+- **A tela PDV** (`/[slug]/pdv`, `/admin/pdv`) fica em Vendas, para quem recebe.
+  Mostra as comandas abertas, as pagas hoje e todas, e recebe em blocos de
+  forma de pagamento. O formulário é o mesmo do atendimento: foi extraído
+  para `components/shared/receber-atendimento.tsx`.
+- **`public.comandas`** guarda o cabeçalho da venda. "Paga" é o lançamento vivo
+  e pago, e o estorno reabre a comanda sozinho. Um gatilho a cria quando o
+  atendimento começa e a cancela, com o motivo, nos seguintes casos:
+  - a falta;
+  - o cancelamento;
+  - o "Abater do pacote";
+  - o pré-pago.
+- **Pagar antes de concluir**: `confirmar_pagamento_do_atendimento` passou a
+  aceitar também o atendimento em andamento.
+- **Quem recebe** passa a ser `podeReceber` (o caixa ou o Financeiro em
+  Gerenciar) em `confirmPayment`, `previaDoPagamento`, `abaterDoPacote` e
+  `situacaoDaCobranca`. Era só o caixa, diferente do menu.
+- Próximas fases:
+  - a venda nova no PDV, com a saída do "Vender" da ficha e o inbox levando ao PDV;
+  - a comanda do plano no aceite;
+  - o Fechamento do dia no PDV;
+  - o crediário como forma, os pontos e vários itens na comanda.
+
 ### 2026-11-13 — A revisão do sistema terminou: o plano de adaptação está pronto
 
 Os 26 itens da revisão (`docs/revisao.md`) estão fechados. Cada módulo virou

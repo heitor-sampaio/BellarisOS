@@ -1071,7 +1071,9 @@ export async function confirmPayment(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'cashier', 'MANAGE')
+    // Quem recebe no PDV: o PDV ou o Financeiro em Gerenciar (`podeReceber`,
+    // 2026-11-13) — o critério da tela, que a action não seguia (era só o PDV).
+    if (!podeReceber(ctx)) return { error: 'Seu cargo não recebe pagamentos.' }
 
     const appointmentId = (formData.get('appointment_id') as string)?.trim()
     const paymentMethod = (formData.get('payment_method') as string)?.trim() || null
@@ -1196,7 +1198,7 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
   vouchers:     { id: string; name: string; desconto: number; expires_at: string }[]
 } | null> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'cashier', 'MANAGE')
+  if (!podeReceber(ctx)) return null
   const admin = createAdminClient()
 
   const appt = await ler(admin

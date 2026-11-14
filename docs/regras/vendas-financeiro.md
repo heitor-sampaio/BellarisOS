@@ -1,9 +1,62 @@
-# Pacotes, procedimento pré-pago e financeiro
+# O PDV, pacotes, procedimento pré-pago e financeiro
 
 > Regras do BellarisOS para esta área, tiradas do `CLAUDE.md` em 2026-10-06
 > para ele caber no contexto (o índice está no §9 de lá). As regras gerais —
 > rede e RLS, permissões, `gravar`/`ler`/`tentar`, portais — continuam no
 > `CLAUDE.md` e valem aqui. Os números de seção são os de sempre.
+
+### O PDV e as comandas (PDV1–PDV3, CX1 e CX3 — a revisão do Heitor, 2026-11-13)
+
+O Heitor: "vamos fazer um PDV. E aí tudo que foi relacionado a alguma coisa
+que tenha cobrança vira uma comanda. E aí o pagamento acontece por dentro
+desse PDV, seja do que for." E: "Uma comanda para cada coisa" — uma venda, uma
+comanda (PDV-P1).
+
+- **A tela**: `/[slug]/pdv` e `/admin/pdv` (uma unidade por vez,
+  `?unidade=`), corpo em `app/_shared/pdv.tsx`. No menu, em Vendas, para quem
+  RECEBE (`podeReceber`: o caixa ou o Financeiro em Gerenciar). À esquerda as
+  comandas (Abertas / Pagas hoje / Todas, busca pela cliente); à direita a
+  comanda escolhida, com o "Receber" em blocos de forma de pagamento
+  (`FormasDePagamento`). No topo, o que entrou hoje (`getFechamentoDoDia`) e
+  quantas estão abertas.
+- **A comanda é o CABEÇALHO da venda** (`public.comandas`: rede, unidade,
+  cliente, número da rede, origem `ATENDIMENTO`/`PLANO`/`VENDA`). O dinheiro
+  continua nas tabelas e funções de sempre. "Paga" NÃO se grava: é o
+  lançamento vivo e pago da venda — o estorno a devolve a aberta sozinho. Só
+  se grava o cancelamento, com o motivo. A lista sai de `pdv_comandas`
+  (service_role; a action confere quem recebe e o alcance).
+- **A comanda do atendimento nasce ao INICIAR** (PDV-P4: "quando inicia o
+  atendimento, gera a comanda. Aí fica a critério da clínica se precisa pagar
+  primeiro ou se paga depois"). O gatilho em `appointments`
+  (`private.comanda_do_atendimento`) a cria quando o status vira IN_PROGRESS
+  ou COMPLETED (o que já chega concluído, como na importação), em todo
+  caminho — agenda, app, Copilot. Agendar, confirmar e remarcar não geram.
+  Não há comanda sem o que cobrar: R$ 0, sessão de plano, sessão de pacote,
+  pré-pago.
+- **Pagar antes ou depois é só a ordem do trabalho**: o atendimento EM
+  ANDAMENTO também se recebe (`confirmar_pagamento_do_atendimento` aceita
+  IN_PROGRESS e COMPLETED; o agendado ouve "O atendimento ainda não começou: a
+  comanda nasce quando ele é iniciado."). A conclusão confere o pagamento
+  que já existe, e a comissão da conclusão o enxerga.
+- **A comanda sai sem cobrança** — fica na lista "Todas" do dia, com o
+  motivo — na falta ("A cliente não compareceu"), no cancelamento
+  ("Atendimento cancelado") e quando o avulso passa a ser pago de outro jeito
+  ("Abater do pacote": "Sessão do pacote"; o pré-pago: "Procedimento
+  pré-pago"). A paga não sai: o dinheiro que entrou se desfaz pelo estorno.
+- **Quem recebe é `podeReceber`** em todo caminho do recebimento
+  (`confirmPayment`, `previaDoPagamento`, `abaterDoPacote`,
+  `situacaoDaCobranca`): o caixa OU o Financeiro em Gerenciar, a mesma régua
+  do menu. Era o caixa só, e o PDV abria para quem não podia receber nele.
+- **O "Receber" do PDV é o mesmo do atendimento** (`FormularioDeReceberAtendimento`,
+  `components/shared/receber-atendimento.tsx`): prévia, voucher, desconto e
+  motivo, pontos, maquininha, vezes, bandeira, saldo de crédito, o combinado
+  do plano. Não existe pagamento sem forma (PDV8): o botão "Receber R$ X"
+  espera a forma.
+- Ainda por vir (o plano de adaptação, `docs/revisao.md`): a venda nova no
+  PDV (pacote, produto, crédito) e a saída do "Vender" da ficha; a comanda do
+  plano no aceite; o Fechamento do dia no PDV; a parcela do crediário e os
+  pontos dentro da comanda.
+- Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`.
 
 ### 9.3.1 Pacotes (2026-09-30)
 
@@ -2274,6 +2327,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ## O que nunca fazer aqui
 
 ❌ Prender ver ou agendar as sessões do pacote, do plano ou do pré-pago à unidade da VENDA (é alcancaOTratamento; o dinheiro é alcancaOCaixaDoTratamento — lib/tratamento/alcance.ts, F73)
+
+❌ Gravar "paga" na comanda (a situação é o lançamento vivo pago da venda) ou criar a comanda do atendimento fora do gatilho comanda_do_atendimento
 
 ```
 ❌ Criar FinancialTransaction fora de um Appointment concluído sem justificativa

@@ -2782,3 +2782,69 @@ body:has(.copilot-botao:not([data-subir="sim"])) main {
 .copilot-botao.copilot-botao-fora:hover { background: var(--bg-app); }
 @media (min-width: 1024px) { .copilot-painel.copilot-painel-fora { height: auto; } }
 .copilot-painel-fora .copilot-vazio a { color: var(--brand); font-weight: var(--weight-bold); }
+
+/* As formas de pagamento em blocos (o PDV, PDV1 — 2026-11-13): três por linha,
+   o ícone em cima. Marcada, o rosé (a escolha é o que importa no balcão). */
+.formas-de-pagamento {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.forma-de-pagamento {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: var(--text-xs-sz);
+  cursor: pointer;
+}
+.forma-de-pagamento:hover { border-color: var(--brand-soft-border); color: var(--text); }
+.forma-de-pagamento.is-marcada {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+.forma-de-pagamento:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+
+/* O PDV: a lista das comandas à esquerda, a comanda escolhida à direita. No
+   celular, uma embaixo da outra. */
+.pdv-duas {
+  display: grid;
+  grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.pdv-comanda-corpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+}
+.pdv-comanda-corpo > .pdv-itens { border-right: 1px solid var(--hairline); }
+@media (max-width: 1100px) {
+  .pdv-comanda-corpo { grid-template-columns: minmax(0, 1fr); }
+  .pdv-comanda-corpo > .pdv-itens { border-right: none; border-bottom: 1px solid var(--hairline); }
+}
+@media (max-width: 860px) {
+  .pdv-duas { grid-template-columns: minmax(0, 1fr); }
+}
+.pdv-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--hairline);
+  text-decoration: none;
+  color: var(--text);
+}
+.pdv-linha:hover { background: var(--bg-app); }
+.pdv-linha.is-escolhida {
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-soft-border);
+  border-radius: var(--radius-row);
+  margin: 0 8px;
+}

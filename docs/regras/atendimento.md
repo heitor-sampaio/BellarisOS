@@ -2644,8 +2644,10 @@ Os pontos de fidelidade saíram daqui em 2026-09-28: nascem no pagamento (§9.2.
   e `e2e/atendimento-fechamento.spec.ts` (a tela).
 
 O resto do fluxo:
-- A **receita não nasce no fechamento**: é `confirmPayment`, na recepção, que a
-  lança já paga. Marcar "Concluído" na agenda (`completeAppointment`) exige o
+- A **receita não nasce no fechamento**: é `confirmPayment`, pela comanda do
+  PDV (`docs/regras/vendas-financeiro.md`, "O PDV e as comandas"), que a
+  lança já paga. A comanda nasce ao INICIAR o atendimento, e pagar antes ou
+  depois de concluir é só a ordem do trabalho (PDV-P4, 2026-11-13). Marcar "Concluído" na agenda (`completeAppointment`) exige o
   fechamento feito e só lança a conta a receber, se faltar — repetir é seguro.
   O de **R$ 0 não tem o que receber** (D9, 2026-10-27): nem conta a receber,
   nem "aguardando pagamento" — a tela diz "Sem cobrança". O concluído a
