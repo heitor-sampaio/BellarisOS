@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste } from './apoio/sessao'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
-import { abrirVendaNoPdv, euVendi, euVendiOPlano, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, euVendiOPlano, pagoNoPix, receberPlanoNoPdv } from './apoio/vender'
 
 /**
  * D5 e D6 da 6ª simulação (F20), e o A47.
@@ -109,16 +109,17 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
     test.setTimeout(150_000)
     const { planId } = await plano()
     await como(browser, async page => {
-      await page.goto(`/admin/checkout/${planId}`)
-      await page.getByRole('button', { name: 'Confirmar plano' }).click()
-      await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await page.getByRole('button', { name: 'Pix', exact: true }).click()
-      await page.getByLabel('Entrada', { exact: true }).fill('1728')
-      await page.getByLabel('Parcelas do saldo').selectOption('3')
-      await expect(page.locator('[data-parcelas-do-saldo]'), 'a tela diz as parcelas que vão ser gravadas')
+      // O receber do plano é no PDV (fase 3, PT1b).
+      const janela = await receberPlanoNoPdv(page, '/admin', planId)
+      await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+      await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+      await janela.getByLabel('Entrada', { exact: true }).fill('1728')
+      await janela.getByLabel('Parcelas do saldo').selectOption('3')
+      await expect(janela.locator('[data-parcelas-do-saldo]'), 'a tela diz as parcelas que vão ser gravadas')
         .toHaveText(/^2x de R\$\s890,66 \+ 1x de R\$\s890,68$/)
       await euVendiOPlano(page)
-      await page.getByRole('button', { name: 'Ir para a documentação' }).click()
+      await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
       await expect(page.getByText(/3 parcelas \(2x de R\$\s890,66 \+ 1x de R\$\s890,68\) com a clínica: R\$\s890,66 em \d\d\/\d\d\/\d{4}, R\$\s890,66 em \d\d\/\d\d\/\d{4} e R\$\s890,68 em \d\d\/\d\d\/\d{4}/),
@@ -127,13 +128,11 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
       await page.getByRole('button', { name: 'Continuar' }).click()
-      await page.getByRole('button', { name: 'Ir para o agendamento' }).click()
-      // A37 da 8ª: as sessões sem data ficam ditas ANTES de concluir, e concluir confirma.
-      await expect(page.locator('[data-sessoes-sem-data]')).toContainText('As sessões 1 e 2 ficam sem data')
-      await page.getByRole('button', { name: 'Concluir sem agendar' }).click()
-      await expect(page.getByText(/Plano fechado/)).toBeVisible({ timeout: 20_000 })
+      // Sem agendamento aqui (as sessões se agendam pelo plano): recebe.
+      await janela.getByRole('button', { name: 'Receber o plano' }).click()
+      await expect(janela).toHaveCount(0, { timeout: 20_000 })
     })
-    await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('ACCEPTED')
+    await expect.poll(async () => ((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data ?? []).length).toBe(4)
     const { data: fts } = await db().from('financial_transactions').select('amount, parcela_numero')
       .eq('treatment_plan_id', planId).not('parcela_numero', 'is', null).order('parcela_numero')
     expect((fts ?? []).map(f => n(f.amount)), 'o banco gravou o que a tela e o contrato disseram').toEqual([890.66, 890.66, 890.68])
@@ -143,17 +142,17 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
     test.setTimeout(150_000)
     const { planId } = await plano()
     await como(browser, async page => {
-      await page.goto(`/admin/checkout/${planId}`)
-      await page.getByRole('button', { name: 'Confirmar plano' }).click()
-      await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await page.getByRole('button', { name: 'Crédito', exact: true }).click()
-      await page.getByLabel('Entrada', { exact: true }).fill('1000')
-      await page.getByLabel('Parcelas do saldo').selectOption('2')
-      const vezes = page.getByLabel('Vezes no cartão', { exact: true })
+      const janela = await receberPlanoNoPdv(page, '/admin', planId)
+      await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+      await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      await janela.getByRole('button', { name: 'Crédito', exact: true }).click()
+      await janela.getByLabel('Entrada', { exact: true }).fill('1000')
+      await janela.getByLabel('Parcelas do saldo').selectOption('2')
+      const vezes = janela.getByLabel('Vezes no cartão', { exact: true })
       await vezes.selectOption('3')
-      await page.getByLabel('Bandeira').selectOption('ELO')
+      await janela.getByLabel('Bandeira').selectOption('ELO')
       await euVendiOPlano(page)
-      await page.getByRole('button', { name: 'Ir para a documentação' }).click()
+      await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
       await expect(page.getByText(/entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2 parcelas de R\$\s1\.700,00 com a clínica/)).toBeVisible()
@@ -161,10 +160,10 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
       await page.getByRole('button', { name: 'Continuar' }).click()
-      await page.getByRole('button', { name: 'Ir para o agendamento' }).click()
-      await page.getByRole('button', { name: 'Concluir sem agendar' }).click()
+      await janela.getByRole('button', { name: 'Receber o plano' }).click()
+      await expect(janela).toHaveCount(0, { timeout: 20_000 })
     })
-    await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('ACCEPTED')
+    await expect.poll(async () => ((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data ?? []).length).toBe(3)
 
     const { data: fts } = await db().from('financial_transactions')
       .select('id, amount, is_paid, payment_method, cartao_vezes, cartao_bandeira, description, parcela_numero')
@@ -192,7 +191,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacote as string)
       await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
       await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
-      await dlg.getByLabel('Entrada').fill('300')
+      await dlg.getByLabel('Entrada', { exact: true }).fill('300')
       await dlg.getByLabel('Parcelas').selectOption('2')
       await dlg.getByLabel('Vezes no cartão').selectOption('2')
       await expect(dlg.getByText(/2× R\$\s150,00/).first()).toBeVisible()

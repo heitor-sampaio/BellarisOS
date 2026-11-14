@@ -2855,6 +2855,15 @@ O resto do fluxo:
   agendamento cancelado e o plano já fechado (ACCEPTED/COMPLETED), e só o
   servidor a chama. A action confere também a agenda "só os meus" pelo id
   (`deOutroProfissional`). Prova: `e2e/atendimento-ficha-e-plano-juntos.spec.ts`.
+- **Os dois botões do plano na avaliação** (o PDV, fase 3 — 2026-11-13):
+  "Aceitar plano" (era o "Fechar agora": gera e ACEITA o plano, sem dinheiro;
+  a comanda do plano vai ao PDV, onde a cliente assina o contrato e paga) e
+  "Gerar plano · a cliente vai pensar" (era o "Gerar plano e enviar à
+  recepção": o plano fica proposto). O plano proposto mostra "A cliente vai
+  pensar" com o "Aceitar plano"; o aceito, "Plano aceito · R$ X" e o caminho
+  ao PDV. Não há mais checkout do plano dentro do atendimento. Onde o texto
+  abaixo diz "Fechar agora", "enviar à recepção" ou "checkout do plano", leia
+  o aceite e o receber no PDV (`vendas-financeiro.md`, "A comanda do plano").
 - **O botão é "Gerar plano e enviar à recepção"** (J-35, 2026-10-30): era
   "Enviar para a recepção" e, no atendimento avulso, parecia um segundo
   "concluir". Ele gera o plano; a tela diz que, sem plano, basta o "Finalizar

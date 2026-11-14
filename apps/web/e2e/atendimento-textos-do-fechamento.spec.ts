@@ -10,8 +10,9 @@ import { responderAnamnese } from './apoio/anamnese'
  *
  * J-35: no atendimento AVULSO (rede que monta plano), o botão "Enviar para a
  * recepção" parecia um segundo "concluir" — quem só queria encerrar o avulso
- * achava que precisava dele. Ele GERA O PLANO: chama-se "Gerar plano e enviar à
- * recepção", e a tela diz que sem plano basta o "Finalizar atendimento".
+ * achava que precisava dele. Ele GERA O PLANO: chama-se "Gerar plano · a cliente
+ * vai pensar" (era "Gerar plano e enviar à recepção" até a fase 3 do PDV, PT1b),
+ * e a tela diz que sem plano basta o "Finalizar atendimento".
  *
  * J-40: a sessão de um plano já pago abria o "Finalizar" com "O pagamento será
  * confirmado pela recepcionista", ao lado do "Nada a cobrar agora" do plano. A
@@ -73,7 +74,7 @@ test('J-35: no avulso, o botão diz que gera o plano, e a tela diz que basta o "
   const id = await emCurso(cliente)
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
-    await expect(p.getByRole('button', { name: 'Gerar plano e enviar à recepção' })).toBeVisible()
+    await expect(p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' })).toBeVisible()
     await expect(p.getByRole('button', { name: 'Enviar para a recepção', exact: true }), 'o nome antigo saiu').toHaveCount(0)
     await expect(p.locator('[data-dica-do-avulso]'), 'a tela diz que o avulso termina no "Finalizar"')
       .toContainText('basta o "Finalizar atendimento"')

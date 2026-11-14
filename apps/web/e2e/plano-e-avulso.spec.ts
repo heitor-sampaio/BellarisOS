@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO, apagarConversas } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { receberPlanoNoPdv } from './apoio/vender'
 
 /**
  * D-18 ("Reforça", item 12) e A68 da 5ª simulação: a Rosana via no app o
@@ -108,17 +109,18 @@ test('com o avulso agendado, o checkout do plano e o app da cliente avisam que e
   })).error).toBeNull()
   const dia = quando.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
 
-  await como(browser, recepcao, async p => {
-    await p.goto(`/${slug}/planejamentos/${planId}`)
-    await p.getByRole('button', { name: 'Fechar checkout' }).click()
-    const aviso = p.getByRole('dialog', { name: 'Checkout' }).locator('[data-avulso-do-plano]')
-    await expect(aviso).toContainText(`${procNome} agendado à parte em ${dia} às 16:00`)
-    await expect(aviso).toContainText('paga os dois')
-  })
   await como(browser, cliente, async p => {
     await p.goto(`/${slug}/cliente/home`)
     const aviso = p.locator('[data-plano-proposto] [data-avulso-do-plano]')
     await expect(aviso).toContainText(`${procNome} agendado à parte em ${dia} às 16:00`)
     await expect(aviso).toContainText('Fale com a clínica')
+  })
+  // O receber do plano é no PDV (fase 3, PT1b): aceito, a janela "Receber o
+  // plano" avisa do avulso antes do dinheiro.
+  await como(browser, recepcao, async p => {
+    const janela = await receberPlanoNoPdv(p, `/${slug}`, planId)
+    const aviso = janela.locator('[data-avulso-do-plano]')
+    await expect(aviso).toContainText(`${procNome} agendado à parte em ${dia} às 16:00`)
+    await expect(aviso).toContainText('paga os dois')
   })
 })

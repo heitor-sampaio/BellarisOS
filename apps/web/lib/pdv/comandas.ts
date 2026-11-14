@@ -16,6 +16,7 @@ interface Linha {
   client_id: string; cliente: string | null; appointment_id: string | null; procedimento: string | null
   profissional: string | null; agendado_para: string | null; atendimento_status: string | null
   valor: number | string; paga: boolean; paga_em: string | null; recebido: number | string | null; forma: string | null; estornada: boolean | null
+  treatment_plan_id: string | null
 }
 
 /** As comandas de UMA unidade na situação pedida; a janela é a do dia (pagas e canceladas). */
@@ -36,5 +37,6 @@ export async function comandasDoPdv(args: {
     procedimento: l.procedimento, profissional: l.profissional, agendadoPara: l.agendado_para,
     atendimento: l.atendimento_status, valor: Number(l.valor), paga: l.paga, pagaEm: l.paga_em,
     recebido: l.recebido == null ? null : Number(l.recebido), forma: l.forma, estornada: !!l.estornada,
+    planoId: l.treatment_plan_id,
   }))
 }

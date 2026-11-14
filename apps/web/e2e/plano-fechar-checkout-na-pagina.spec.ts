@@ -4,10 +4,13 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
- * A44 da 5ª simulação: a página do plano em Tratamentos ("Aguardando
- * checkout") não tinha "Fechar checkout" — o botão só existia na tela do
- * atendimento da avaliação. A recepção (quem recebe, sem o prontuário) abria
- * o plano proposto e não tinha o que fazer.
+ * A44 da 5ª simulação: a página do plano proposto em Tratamentos não tinha o
+ * que fazer para quem recebe sem o prontuário — o botão só existia na tela do
+ * atendimento da avaliação.
+ *
+ * Desde a fase 3 do PDV (a revisão do Heitor, 2026-11-13 — PT1b), o aceite é
+ * um gesto sem dinheiro, e quem recebe também aceita: da página do plano, o
+ * "Aceitar plano", e dali o "Receber no PDV" leva à comanda do plano.
  */
 
 const marca = Date.now().toString(36)
@@ -36,10 +39,18 @@ test.afterAll(async () => {
   await recepcao?.limpar(); await rede?.limpar()
 })
 
-test('A44: a recepção abre o plano proposto em Tratamentos e fecha o checkout dali', async ({ browser }) => {
+test('A44: quem recebe abre o plano proposto em Tratamentos, aceita dali e chega ao receber no PDV', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto(`/${slug}/planejamentos/${planId}`)
-    await p.getByRole('button', { name: 'Fechar checkout' }).click()
-    await expect(p.getByRole('dialog', { name: 'Checkout' })).toBeVisible()
+    await expect(p.getByRole('button', { name: 'Fechar checkout' })).toHaveCount(0)
+    await p.getByRole('button', { name: 'Aceitar plano' }).click()
+    const falta = p.locator('[data-plano-falta-receber]')
+    await expect(falta).toBeVisible({ timeout: 20_000 })
+    await falta.getByRole('link', { name: 'Receber no PDV' }).click()
+    await expect(p).toHaveURL(new RegExp(`/${slug}/pdv\\?unidade=`))
+    await p.getByRole('button', { name: 'Receber o plano' }).click()
+    await expect(p.getByRole('dialog', { name: 'Receber o plano' })).toBeVisible()
   })
+  expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data!.status).toBe('ACCEPTED')
+  expect((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data ?? [], 'o aceite não lança dinheiro').toHaveLength(0)
 })

@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
+import { receberPlanoNoPdv } from './apoio/vender'
 
 /**
  * O checkout do plano numa transação só (C32 do levantamento das regras,
@@ -89,18 +90,27 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('duas chegadas ao mesmo tempo: uma fecha o plano, a outra ouve que já foi fechado, e o dinheiro entra uma vez', async ({ browser }) => {
+/** O receber do plano mora no PDV (fase 3, PT1b): é a rota das actions dele. */
+const PDV = '/admin/pdv'
+
+async function aceitar(p: Page, planId: string) {
+  const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', PDV, [planId])
+  expect(r.texto, 'o aceite passou').not.toContain('"error"')
+}
+
+test('duas chegadas ao mesmo tempo: uma recebe o plano, a outra ouve que já foi recebido, e o dinheiro entra uma vez', async ({ browser }) => {
   test.setTimeout(150_000)
   const planId = await plano('Concorrente')
-  const rota = `/admin/checkout/${planId}`
+  const rota = PDV
   const respostas = await como(browser, async p => {
     await p.goto(rota)
+    await aceitar(p, planId)
     return Promise.all([1, 2].map(() => chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota,
       [planId, { forma: 'AVISTA', metodo: 'PIX' }, [], '', null, null])))
   })
   const textos = respostas.map(r => r!.texto)
-  expect(textos.filter(t => t.includes('"transactionId":"')), 'uma chegada fecha').toHaveLength(1)
-  expect(textos.filter(t => /já foi fechado|Apenas planos enviados/.test(t)), 'a outra ouve que o plano já foi fechado').toHaveLength(1)
+  expect(textos.filter(t => t.includes('"transactionId":"')), 'uma chegada recebe').toHaveLength(1)
+  expect(textos.filter(t => /já foi recebido/.test(t)), 'a outra ouve que o plano já foi recebido').toHaveLength(1)
   expect(await lancamentos(planId), 'R$ 2.000 uma vez, não duas').toEqual(['2000:true'])
   const { data: pl } = await db().from('treatment_plans').select('status').eq('id', planId).single()
   expect(pl?.status).toBe('ACCEPTED')
@@ -110,32 +120,33 @@ test('o checkout diz a comissão de venda de quem vendeu, e "Quem vendeu" volta 
   test.setTimeout(150_000)
   const planId = await plano('Retomada')
   await como(browser, async p => {
-    await p.goto(`/admin/checkout/${planId}`)
-    await p.getByRole('button', { name: 'Confirmar plano' }).click()
-    await p.getByLabel('Quem vendeu').selectOption(consultor!.userId)
+    const janela = await receberPlanoNoPdv(p, '/admin', planId)
+    await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+    await janela.getByLabel('Quem vendeu').selectOption(consultor!.userId)
     // C42: a regra antes de vender — a da clínica, porque o consultor não tem a dele.
-    await expect(p.locator('[data-comissao-da-venda]'))
+    await expect(janela.locator('[data-comissao-da-venda]'))
       .toHaveText(`Comissão de venda de ${nomeDoConsultor}: 5% do vendido — da clínica. Sai quando a venda estiver paga inteira.`)
-    await p.getByRole('button', { name: 'À vista' }).click()
-    await p.getByRole('button', { name: 'Pix', exact: true }).click()
-    await p.getByRole('button', { name: 'Ir para a documentação' }).click()
-    await expect(p.getByRole('button', { name: 'Ir para o agendamento' })).toBeVisible()
+    await janela.getByRole('button', { name: 'À vista' }).click()
+    await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+    await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
+    await expect(janela.getByRole('button', { name: 'Receber o plano' })).toBeEnabled()
   })
   // Outra aba (o sessionStorage é da aba): o que foi escolhido continua escolhido.
   await como(browser, async p => {
-    await p.goto(`/admin/checkout/${planId}`)
-    await p.getByRole('button', { name: 'Confirmar plano' }).click()
-    await expect(p.getByLabel('Quem vendeu'), 'A13: o vendedor escolhido volta').toHaveValue(consultor!.userId)
+    const janela = await receberPlanoNoPdv(p, '/admin', planId)
+    await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+    await expect(janela.getByLabel('Quem vendeu'), 'A13: o vendedor escolhido volta').toHaveValue(consultor!.userId)
   })
 })
 
 test('C38: o crediário do checkout vai até o limite da rede (padrão 12); acima, a venda é recusada', async ({ browser }) => {
   test.setTimeout(150_000)
   const planId = await plano('Crediario')
-  const rota = `/admin/checkout/${planId}`
+  const rota = PDV
   const venc = new Date(Date.now() + 30 * 86_400_000).toISOString()
   const r = await como(browser, async p => {
     await p.goto(rota)
+    await aceitar(p, planId)
     return chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota,
       [planId, { forma: 'PARCELADO', metodo: 'PIX', entrada: 200, parcelas: 13, primeiroVencimento: venc }, [], '', null, null])
   })

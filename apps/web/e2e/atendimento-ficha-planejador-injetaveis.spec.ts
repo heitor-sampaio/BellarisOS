@@ -300,7 +300,7 @@ test('atend-12: gerar o plano com o planejamento sem ponto também pergunta, e s
     await p.getByRole('button', { name: 'Nova sessão' }).click()
     await p.getByRole('button', { name: 'Adicionar procedimento' }).click()
     await p.locator('select').filter({ hasText: 'Selecionar procedimento…' }).selectOption({ label: `[e2e] Toxina ${marca}` })
-    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
+    await p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' }).click()
     await expect(p.getByRole('alertdialog').locator('[data-planejamento-vazio]')).toContainText(`O planejamento "[e2e] ${NOME}" não tem nenhum ponto. Continuar?`)
     expect((await db().from('treatment_plans').select('id').eq('evaluation_appointment_id', id)).data, 'sem a resposta, nada').toEqual([])
     await p.getByRole('button', { name: 'Continuar sem pontos' }).click()

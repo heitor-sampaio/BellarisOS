@@ -121,7 +121,10 @@ test('A14: o contrato de PLANO diz a profissional (a do plano)', async ({ browse
   const { planId, clientId } = await rede.criarPlanoProposto('Plano A14', { semTermo: true })
   expect((await db().from('clients').update({ document: '11144477735', birth_date: '1990-03-14' }).eq('id', clientId)).error).toBeNull()
   await como(browser, caixa, async p => {
-    const r = await chamarAcao(p, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', `/admin/checkout/${planId}`, [planId, { forma: 'AVISTA', metodo: 'PIX' }])
+    // Fase 3 do PDV (PT1b): o plano se aceita antes, e os documentos do receber se preparam no PDV.
+    const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', '/admin/pdv', [planId])
+    expect(aceite.texto).not.toContain('"error":"')
+    const r = await chamarAcao(p, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', '/admin/pdv', [planId, { forma: 'AVISTA', metodo: 'PIX' }])
     expect(r.texto).not.toContain('"error":"')
   })
   const { data } = await db().from('issued_documents').select('status, content, missing_fields')

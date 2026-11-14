@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { euVendiOPlano } from './apoio/vender'
+import { euVendiOPlano, receberPlanoNoPdv } from './apoio/vender'
 
 /**
  * D6 da 12ª simulação (2026-11-10/11, a Bianca da [sim] Clínica Acácia): o
@@ -54,13 +54,14 @@ test('D6: no checkout à vista, o contrato diz que a entrada, as parcelas e o ve
   const { planId, clientId } = await rede.criarPlanoProposto('Plano D6', { semTermo: true })
   expect((await db().from('clients').update({ document: '52998224725' }).eq('id', clientId)).error).toBeNull()
   await como(browser, async p => {
-    await p.goto(`/admin/checkout/${planId}`)
-    await p.getByRole('button', { name: 'Confirmar plano' }).click()
-    await p.getByRole('button', { name: 'À vista' }).click()
-    await p.getByRole('button', { name: 'Pix', exact: true }).click()
+    // O receber do plano é no PDV (fase 3, PT1b) — quem recebe também aceita.
+    const janela = await receberPlanoNoPdv(p, '/admin', planId)
+    await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+    await janela.getByRole('button', { name: 'À vista' }).click()
+    await janela.getByRole('button', { name: 'Pix', exact: true }).click()
     await euVendiOPlano(p)
-    await p.getByRole('button', { name: 'Ir para a documentação' }).click()
-    const contrato = p.locator('[data-documento]').filter({ hasText: 'Contrato do plano' })
+    await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
+    const contrato = janela.locator('[data-documento]').filter({ hasText: 'Contrato do plano' })
     await expect(contrato).toBeVisible()
     const aviso = contrato.locator('[data-variaveis-vazias]')
     await expect(aviso).toContainText('Valor da entrada')

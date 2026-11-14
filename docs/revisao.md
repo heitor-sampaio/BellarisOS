@@ -1627,7 +1627,13 @@ revisão, só se escreve o plano. Nada se implementa.
   (a parcela do crediário ainda não); CX3.
 - ✅ PDV fase 2 — a venda nova no PDV (PDV5, PDV6), o "Vender" da ficha sai e o
   do inbox leva ao PDV (PDV7).
-- ⬜ PDV fase 3 — a comanda do plano no aceite (PDV4 / PT1); sai o "Fechar checkout".
+- ✅ PDV fase 3 — a comanda do plano no aceite (PDV4 / PT1a–PT1c); sai o "Fechar
+  checkout"; o plano é venda quando é recebido.
+  Do PT1 ficam para o bloco do Plano de tratamento: o aceite pelo app e o
+  aviso à equipe (PT1b), a página do plano com os quatro passos (PT1a), o
+  [Agendar] em cada sessão e o "Agendar todas" (PT1d — hoje as sessões do
+  plano aceito se agendam pelo "+ Agendar" da agenda, que as oferece), PT1e,
+  PT1f e PT3.
 - ⬜ PDV fase 4 — o Fechamento do dia no PDV (CX4–CX6).
 - ⬜ PDV fase 5 — o crediário como forma (PDV8), os pontos dentro da comanda
   (FD2), vários itens numa comanda, e a parcela no PDV (o resto do CX1).

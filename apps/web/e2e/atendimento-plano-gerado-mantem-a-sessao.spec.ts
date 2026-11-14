@@ -81,7 +81,7 @@ test.afterAll(async () => {
   await profissional?.limpar(); await rede?.limpar()
 })
 
-test('depois de "Gerar plano e enviar", a evolução, a intercorrência e os insumos continuam — e vão ao Finalizar', async ({ browser }) => {
+test('depois de "Gerar plano · a cliente vai pensar", a evolução, a intercorrência e os insumos continuam — e vão ao Finalizar', async ({ browser }) => {
   const id = await avaliacaoEmCurso('Bia')
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
@@ -91,7 +91,7 @@ test('depois de "Gerar plano e enviar", a evolução, a intercorrência e os ins
     await p.getByRole('button', { name: 'Nova sessão' }).click()
     await p.getByRole('button', { name: 'Adicionar procedimento' }).click()
     await p.locator('select').filter({ hasText: 'Selecionar procedimento…' }).selectOption({ label: `${PREFIXO} Toxina ${marca}` })
-    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
+    await p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' }).click()
     await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('evaluation_appointment_id', id).maybeSingle()).data?.status,
       { timeout: 30_000 }).toBe('PROPOSED')
 
@@ -122,7 +122,7 @@ test('o Finalizar com a evolução em branco não apaga a evolução gravada', a
     await p.getByRole('button', { name: 'Nova sessão' }).click()
     await p.getByRole('button', { name: 'Adicionar procedimento' }).click()
     await p.locator('select').filter({ hasText: 'Selecionar procedimento…' }).selectOption({ label: `${PREFIXO} Toxina ${marca}` })
-    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
+    await p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' }).click()
     await expect.poll(async () => (await db().from('medical_record_entries').select('notes').eq('appointment_id', id).maybeSingle()).data?.notes,
       { timeout: 30_000 }).toBe(EVOLUCAO)
     // A evolução em branco na tela (o Finalizar não repete o campo — A29 da 8ª).
@@ -150,16 +150,21 @@ test('D7: gerar o plano com a evolução e recarregar na mesma aba mostra a evol
     await p.getByRole('button', { name: 'Nova sessão' }).click()
     await p.getByRole('button', { name: 'Adicionar procedimento' }).click()
     await p.locator('select').filter({ hasText: 'Selecionar procedimento…' }).selectOption({ label: `${PREFIXO} Toxina ${marca}` })
-    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
+    await p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' }).click()
     await expect.poll(async () => (await db().from('medical_record_entries').select('notes').eq('appointment_id', id).maybeSingle()).data?.notes,
       { timeout: 30_000 }).toBe(EVOLUCAO)
     await expect(p.locator('#atendimento-evolucao')).toHaveValue(EVOLUCAO, { timeout: 15_000 })
     await p.reload()
     await expect(p.locator('#atendimento-evolucao'), 'recarregar na mesma aba').toHaveValue(EVOLUCAO, { timeout: 15_000 })
-    // A recepção fechou o checkout do plano (a Sophie fechou às 09:08): a tela segue com a evolução.
-    expect((await db().from('treatment_plans').update({ status: 'ACCEPTED' }).eq('evaluation_appointment_id', id)).error).toBeNull()
+    // A cliente decidiu (a Sophie fechou às 09:08): o plano se aceita daqui
+    // (fase 3 do PDV, PT1b — sem dinheiro, a comanda vai ao PDV), e a tela
+    // segue com a evolução.
+    await p.locator('[data-plano-proposto]').getByRole('button', { name: 'Aceitar plano' }).click()
+    await expect(p.locator('[data-plano-aceito]')).toContainText('Plano aceito', { timeout: 20_000 })
+    await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('evaluation_appointment_id', id).single()).data?.status)
+      .toBe('ACCEPTED')
     await p.goto(`/${slug}/agenda/${id}`)
-    await expect(p.locator('#atendimento-evolucao'), 'com o plano fechado').toHaveValue(EVOLUCAO, { timeout: 15_000 })
+    await expect(p.locator('#atendimento-evolucao'), 'com o plano aceito').toHaveValue(EVOLUCAO, { timeout: 15_000 })
   })
   // Numa sessão nova do navegador (sem rascunho nenhum), também.
   await como(browser, async p => {

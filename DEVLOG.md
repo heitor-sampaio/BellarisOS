@@ -1774,6 +1774,38 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-13 — O PDV, fase 3: o plano é aceito sem dinheiro e recebido no PDV
+
+PDV4 e PT1a–PT1c (só a parte da clínica). O Heitor: "a partir do momento que a
+cliente aceita o plano, ela precisa daí pagar e agendar as sessões"; o aceite
+sem perguntar a forma ("pode ser intimidador e levar a desistencia"); e
+"primeiro colhe assinatura, depois paga".
+- **"Aceitar plano"** (a página do plano e a tela do atendimento, no lugar do
+  "Fechar checkout" e do "Fechar agora") só aceita: o plano vira ACCEPTED, os
+  documentos ficam prontos e a comanda do plano nasce no PDV com o valor
+  inteiro (`plano_aceitar`). Nenhum dinheiro, nenhum agendamento. Aceita quem
+  monta o plano ou quem recebe. "Gerar plano · a cliente vai pensar" deixa o
+  plano proposto.
+- **O PDV recebe o plano**: a comanda tem "Receber o plano", o mesmo assistente
+  do antigo checkout, sem o "Receber no atendimento" (todo pagamento tem
+  forma) e sem agendar sessões. Só o contrato do plano trava o dinheiro; os
+  outros termos não travam mais o aceite. O plano se recebe uma vez, e o
+  cancelado leva a comanda que não foi paga.
+- A página do plano aceito e não recebido diz "Falta receber" com o link ao
+  PDV; a rota antiga `/checkout/<plano>` leva ao plano (proposto) ou à comanda
+  (aceito).
+- **Decisão pelos princípios (3 e 5)**: o relatório de vendas conta o plano
+  quando ele é RECEBIDO (a data do primeiro lançamento), não no aceite. O
+  aceito que nunca se recebeu não é venda — os planos antigos aceitos "a
+  receber no check-in", sem lançamento, saíram do relatório.
+- As sessões do plano aceito se agendam pelo "+ Agendar" da agenda (já as
+  oferecia). O [Agendar] em cada sessão, o aceite pelo app e a página com os
+  quatro passos ficam para o bloco do Plano de tratamento.
+- Banco: migrations `20261113008201` (aceite, receber, comanda do plano,
+  `pdv_comandas`, `metrics_vendas`) e `20261113008202` (o desconto do plano no
+  receber), aplicadas pelo MCP.
+- Prova: `e2e/pdv-comanda-do-plano.spec.ts`.
+
 ### 2026-11-13 — O PDV, fase 2: a venda nova é no PDV (o "Vender" da ficha saiu)
 
 O PDV2, PDV5, PDV6, PDV7 e o BU1. O Heitor: "O vender da ficha sai e o do

@@ -117,7 +117,10 @@ test('A5: no termo do PLANO (sem agendamento), a profissional é a do plano — 
   const { planId, clientId } = await rede.criarPlanoProposto('Plano A5', { semTermo: true })
   expect((await db().from('clients').update({ document: '11144477735' }).eq('id', clientId)).error).toBeNull()
   await como(browser, caixa, async p => {
-    const r = await chamarAcao(p, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', `/admin/checkout/${planId}`, [planId, { forma: 'AVISTA', metodo: 'PIX' }])
+    // Fase 3 do PDV (PT1b): o plano se aceita antes, e os documentos do receber se preparam no PDV.
+    const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', '/admin/pdv', [planId])
+    expect(aceite.texto).not.toContain('"error":"')
+    const r = await chamarAcao(p, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', '/admin/pdv', [planId, { forma: 'AVISTA', metodo: 'PIX' }])
     expect(r.texto).not.toContain('"error":"')
   })
   const termo = await termoDe({ treatment_plan_id: planId })
@@ -127,7 +130,7 @@ test('A5: no termo do PLANO (sem agendamento), a profissional é a do plano — 
 
   // A8: e o caixa do checkout manda o link dele (era só quem tem os Termos).
   await como(browser, caixa, async p => {
-    const r = await chamarAcao(p, 'actions/documentos.ts', 'gerarLinkDeAssinatura', `/admin/checkout/${planId}`, [termo!.id])
+    const r = await chamarAcao(p, 'actions/documentos.ts', 'gerarLinkDeAssinatura', '/admin/pdv', [termo!.id])
     expect(r.texto).toContain('/assinar/')
   })
 })

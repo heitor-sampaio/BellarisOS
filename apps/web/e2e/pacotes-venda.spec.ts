@@ -165,7 +165,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
       await expect(dlg.locator('[data-resumo-do-pacote]')).toContainText('4 sessões')
       await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await dlg.getByLabel('Entrada').fill('100')
+      await dlg.getByLabel('Entrada', { exact: true }).fill('100')
       await dlg.getByLabel('Parcelas').selectOption('3')
       await pagoNoPix(dlg)
       await euVendi(dlg)
@@ -308,7 +308,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
       await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await dlg.getByLabel('Entrada').fill('1,400.50')
+      await dlg.getByLabel('Entrada', { exact: true }).fill('1,400.50')
       await expect(dlg.getByText('Valor não entendido: use vírgula para os centavos')).toBeVisible()
       // Com a entrada recusada, o "Vender por" fica desligado (ven-02, F11).
       await expect(dlg.getByRole('button', { name: /Vender por/ })).toBeDisabled()

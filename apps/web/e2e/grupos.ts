@@ -109,7 +109,6 @@ export const ISOLADOS = [
   'busca-de-cliente-uma-regra.spec.ts',
   'copilot-fora-do-plano.spec.ts',
   'checkout-de-plano.spec.ts',
-  'checkout-grade-de-horarios.spec.ts',
   'clinico-so-com-prontuario.spec.ts',
   'comissoes-calculo.spec.ts',
   'comissoes-configuracao.spec.ts',

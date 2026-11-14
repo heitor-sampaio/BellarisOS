@@ -1,7 +1,7 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { abrirVendaNoPdv } from './apoio/vender'
+import { abrirVendaNoPdv, receberPlanoNoPdv } from './apoio/vender'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
 
@@ -175,15 +175,15 @@ test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e esp
     await expect.poll(async () => (await db().from('financial_transactions').select('maquininha_id')
       .eq('appointment_id', ap!.id).eq('type', 'INCOME').maybeSingle()).data?.maquininha_id, { message: 'gravou na Stone' }).toBe(segunda)
 
-    // O checkout do plano.
-    await p.goto(`/admin/checkout/${pl!.id}`)
-    await p.getByRole('button', { name: 'Confirmar plano' }).click()
-    await p.getByRole('button', { name: 'À vista', exact: true }).click()
-    await p.getByRole('button', { name: 'Crédito', exact: true }).click()
-    await expect(p.getByLabel('Qual maquininha?')).toBeVisible()
-    await expect(p.getByRole('button', { name: 'Ir para a documentação' })).toBeDisabled()
-    await p.getByLabel('Qual maquininha?').selectOption({ label: 'Maquininha' })
-    await expect(p.getByRole('button', { name: 'Ir para a documentação' })).toBeEnabled()
+    // O receber do plano (no PDV desde a fase 3, PT1b).
+    const janela = await receberPlanoNoPdv(p, '/admin', pl!.id)
+    await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+    await janela.getByRole('button', { name: 'À vista', exact: true }).click()
+    await janela.getByRole('button', { name: 'Crédito', exact: true }).click()
+    await expect(janela.getByLabel('Qual maquininha?')).toBeVisible()
+    await expect(janela.getByRole('button', { name: 'Ir para a documentação' })).toBeDisabled()
+    await janela.getByLabel('Qual maquininha?').selectOption({ label: 'Maquininha' })
+    await expect(janela.getByRole('button', { name: 'Ir para a documentação' })).toBeEnabled()
 
     // A venda no PDV (era o "Vender" da ficha até o PDV7; pacote, pré-pago, produto, crédito e o contrato usam os mesmos campos).
     const vender = await abrirVendaNoPdv(p, '/admin', c, rede!.branchId)

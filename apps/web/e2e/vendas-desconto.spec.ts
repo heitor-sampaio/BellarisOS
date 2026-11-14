@@ -141,7 +141,10 @@ test.describe.serial('desconto nas vendas', () => {
     ])
 
     await comSessao(browser, async p => {
-      const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', `/admin/checkout/${pl!.id}`,
+      // Fase 3 do PDV (PT1b): aceito antes; o receber (com o desconto) é no PDV.
+      const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', '/admin/pdv', [pl!.id])
+      expect(aceite.texto, 'o aceite passa').not.toContain('"error"')
+      const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', '/admin/pdv',
         [pl!.id, { forma: 'AVISTA', metodo: 'PIX' }, [], slug, { tipo: 'PERCENTUAL', valor: 10 }])
       expect(r.texto, 'o checkout passa').toContain('transactionId')
     })
@@ -174,6 +177,9 @@ test.describe.serial('desconto nas vendas', () => {
       p_plano: pl!.id, p_tenant: rede!.tenantId, p_ator: null, p_desconto: desconto,
       p_precos: [{ id: a!.id, preco: precos[0] }, { id: b!.id, preco: precos[1] }],
     })
+    // Fase 3 do PDV: o desconto é do RECEBER, e o receber é do plano aceito.
+    expect((await aplicar(40, [270, 90])).error?.message, 'o proposto não ganha desconto').toMatch(/ao receber o plano aceito/)
+    expect((await db().from('treatment_plans').update({ status: 'ACCEPTED', aceito_em: new Date().toISOString() }).eq('id', pl!.id)).error).toBeNull()
     expect((await aplicar(40, [270, 80])).error?.message).toMatch(/não fecha/)
     expect((await aplicar(40, [310, 50])).error?.message).toMatch(/acima do preço/)
     expect((await aplicar(500, [0, 0])).error?.message).toMatch(/maior que o valor/)

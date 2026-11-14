@@ -35,4 +35,6 @@ export interface ComandaDoPdv {
   forma:         string | null
   /** A venda estornada inteira (nenhum lançamento vivo). */
   estornada:     boolean
+  /** A comanda do plano (PDV4): o plano que ela recebe. */
+  planoId:       string | null
 }

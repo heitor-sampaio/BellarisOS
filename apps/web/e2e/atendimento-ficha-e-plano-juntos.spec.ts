@@ -108,13 +108,13 @@ test.afterAll(async () => {
   await profissional?.limpar(); await rede?.limpar()
 })
 
-test('"Enviar para a recepção" grava a ficha e o plano juntos', async ({ browser }) => {
+test('"Gerar plano · a cliente vai pensar" grava a ficha e o plano juntos', async ({ browser }) => {
   const { id } = await avaliacaoEmCurso('Juntos')
   const proc = await procedimentoDoPlano('Peeling')
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
     await montarAvaliacao(p, `[e2e] Peeling ${marca}`)
-    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
+    await p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' }).click()
     // O envio terminou inteiro: o plano proposto e as dores no prontuário.
     await expect.poll(async () => [(await plano(id))?.status, (await fichaGravada(id))?.queixas], { timeout: 30_000 })
       .toEqual(['PROPOSED', DORES])
@@ -134,7 +134,7 @@ test('o plano falhou: a ficha não fica salva pela metade', async ({ browser }) 
     await montarAvaliacao(p, `[e2e] Some ${marca}`)
     // O procedimento escolhido some do banco antes do envio: a sessão do plano não grava.
     expect((await db().from('procedures').delete().eq('id', proc)).error).toBeNull()
-    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
+    await p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' }).click()
     await expect(p.getByText(/Não consegui salvar os procedimentos|Procedimento do plano não encontrado/), 'a tela diz que falhou').toBeVisible()
   })
   expect(await plano(id), 'nenhum plano').toBeNull()

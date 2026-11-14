@@ -4,12 +4,17 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
-import { euVendiOPlano } from './apoio/vender'
+import { euVendiOPlano, receberPlanoNoPdv } from './apoio/vender'
 
 /**
- * O checkout de um plano de tratamento, pela tela: plano → pagamento →
- * documentação → agendamento — e o que ele deixa no financeiro e nos
+ * O receber de um plano de tratamento, pela tela: plano → pagamento →
+ * documentação → receber — e o que ele deixa no financeiro e nos
  * documentos (termos e contratos, fase 3: migration 20260930000003).
+ *
+ * Desde a fase 3 do PDV (a revisão do Heitor, 2026-11-13 — PT1b/PT1c) o plano
+ * se ACEITA sem dinheiro e se RECEBE no PDV, na janela "Receber o plano" da
+ * comanda dele: sem agendamento ali (as sessões se agendam pelo plano), e só
+ * o contrato de plano segura o dinheiro.
  *
  * Numa rede `[e2e]` própria, com o contrato de plano PADRÃO que toda rede
  * ganha (`documentos_modelos_padrao`) e dois termos ligados aos procedimentos.
@@ -123,28 +128,40 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
+/** A rota em que o receber do plano mora (o PDV da rede) — é para ela que as actions se postam. */
+const PDV = '/admin/pdv'
+
+/** O aceite (PT1b): só "quero fazer", sem dinheiro — pela action, como a tela do plano. */
+async function aceitar(page: Page, planId: string) {
+  const r = await chamarAcao(page, 'actions/treatment-plans.ts', 'aceitarPlano', PDV, [planId])
+  expect(r.texto, 'o aceite passou').not.toContain('"error"')
+  expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('ACCEPTED')
+}
+
 test.describe.serial('checkout de plano', () => {
   test('pela tela: pagamento, os termos de cada procedimento e o contrato com o pagamento', async ({ browser }) => {
     test.setTimeout(150_000)
     const { planId } = await plano('tela')
     await como(browser, async page => {
       await page.addInitScript(() => { window.print = () => {} })
-      await page.goto(`/admin/checkout/${planId}`)
-      await page.getByRole('button', { name: 'Confirmar plano' }).click()
+      const janela = await receberPlanoNoPdv(page, '/admin', planId)
+      await janela.getByRole('button', { name: 'Confirmar plano' }).click()
 
       // Pagamento ANTES da documentação: o contrato cita o pagamento.
-      await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      // A37 (6ª simulação): a forma nasce vazia.
-      await page.getByRole('button', { name: 'Pix', exact: true }).click()
-      await page.getByLabel('Entrada', { exact: true }).fill('100')
+      await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      // A37 (6ª simulação): o meio nasce vazio.
+      await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+      await janela.getByLabel('Entrada', { exact: true }).fill('100')
       await euVendiOPlano(page)
-      await page.getByRole('button', { name: 'Ir para a documentação' }).click()
+      await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       // Dois procedimentos com o MESMO termo: um termo só.
-      const linhas = page.locator('[data-documento]')
+      const linhas = janela.locator('[data-documento]')
       await expect(linhas).toHaveCount(3)
-      const seguir = page.getByRole('button', { name: /^Falta assinar:/ })
+      // PT1c: o que segura o dinheiro é o contrato do plano (cita o pagamento).
+      const seguir = janela.getByRole('button', { name: /^Falta assinar:/ })
       await expect(seguir).toBeDisabled()
+      await expect(seguir).toHaveText(/Contrato/i)
 
       // Cada um assinado no papel, pela tela de assinatura embutida.
       for (let i = 0; i < 3; i++) {
@@ -161,14 +178,17 @@ test.describe.serial('checkout de plano', () => {
         await page.getByRole('button', { name: 'Continuar' }).click()
         await expect(linhas).toHaveCount(3)
       }
-      await expect(page.getByText('Assinado', { exact: false }).first()).toBeVisible()
+      await expect(janela.getByText('Assinado', { exact: false }).first()).toBeVisible()
 
-      await page.getByRole('button', { name: 'Ir para o agendamento' }).click()
-      await page.getByRole('button', { name: 'Concluir sem agendar' }).click()
+      // Sem agendamento aqui: as sessões se agendam depois, pelo plano.
+      await expect(janela.getByRole('button', { name: 'Ir para o agendamento' })).toHaveCount(0)
+      await janela.getByRole('button', { name: 'Receber o plano' }).click()
+      await expect(janela).toHaveCount(0)
     })
 
-    await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status,
-      { message: 'o plano aceito vira ACCEPTED' }).toBe('ACCEPTED')
+    await expect.poll(async () => ((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data ?? []).length,
+      { message: 'o receber lançou a entrada e as parcelas' }).toBe(4)
+    expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status, 'o receber não muda o status').toBe('ACCEPTED')
 
     const docs = await docsDoPlano(planId)
     expect(docs.map(d => d.kind).sort()).toEqual(['CONTRATO_PLANO', 'TERMO', 'TERMO'])
@@ -197,18 +217,21 @@ test.describe.serial('checkout de plano', () => {
     expect(Math.round(fts!.reduce((t, f) => t + Number(f.amount), 0) * 100) / 100, 'entrada + parcelas fecham o plano').toBe(TOTAL)
   })
 
-  test('sem assinar, chamando direto, nada é lançado — nem pelo banco', async ({ browser }) => {
+  // PT1c (o Heitor, 13/11: "primeiro colhe assinatura, depois paga"): o aceite
+  // não trava mais por documento — o que se trava é o RECEBER, sem o contrato.
+  test('sem assinar, chamando direto, nada é lançado', async ({ browser }) => {
     const { planId } = await plano('direto')
     await como(browser, async page => {
-      const r = await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', `/admin/checkout/${planId}`,
+      await aceitar(page, planId)
+      const semForma = await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', PDV,
         [planId, null, [], slug])
+      expect(semForma.texto).toContain('Escolha como vai ser pago')
+      const r = await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', PDV,
+        [planId, { forma: 'AVISTA', metodo: 'PIX' }, [], slug])
       expect(r.texto).toContain('Falta assinar')
     })
     expect((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data).toEqual([])
-    expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('PROPOSED')
-    // A segunda linha: o gatilho recusa o status mesmo sem passar pelo app.
-    const direto = await db().from('treatment_plans').update({ status: 'ACCEPTED' }).eq('id', planId)
-    expect(direto.error?.message).toContain('Falta assinar')
+    expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('ACCEPTED')
   })
 
   test('trocar o pagamento depois de assinar: o contrato é substituído, e o pagamento antigo é recusado', async ({ browser }) => {
@@ -216,7 +239,8 @@ test.describe.serial('checkout de plano', () => {
     const avista = { forma: 'AVISTA', metodo: 'PIX' }
     const parcelado = { forma: 'PARCELADO', metodo: 'CREDIT_CARD', entrada: 0, parcelas: 4, primeiroVencimento: new Date(Date.now() + 30 * 864e5).toISOString() }
     await como(browser, async page => {
-      const rota = `/admin/checkout/${planId}`
+      const rota = PDV
+      await aceitar(page, planId)
       const preparado = await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, avista])
       expect(preparado.texto).not.toContain('"error"')
       for (const d of await docsDoPlano(planId)) await assinarNoPapel(d.id)
@@ -255,17 +279,18 @@ test.describe.serial('checkout de plano', () => {
     test.setTimeout(150_000)
     const { planId } = await plano('aviso')
     await como(browser, async page => {
-      const rota = `/admin/checkout/${planId}`
+      const rota = PDV
+      await aceitar(page, planId)
       await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, { forma: 'AVISTA', metodo: 'PIX' }])
       for (const d of await docsDoPlano(planId)) await assinarNoPapel(d.id)
 
-      await page.goto(rota)
-      await page.getByRole('button', { name: 'Confirmar plano' }).click()
-      await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await page.getByRole('button', { name: 'Pix', exact: true }).click()
-      await page.getByLabel('Entrada', { exact: true }).fill('100')
+      const janela = await receberPlanoNoPdv(page, '/admin', planId)
+      await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+      await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+      await janela.getByLabel('Entrada', { exact: true }).fill('100')
       await euVendiOPlano(page)
-      await page.getByRole('button', { name: 'Ir para a documentação' }).click()
+      await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
       const aviso = page.locator('[data-substitui-contrato]')
       await expect(aviso).toContainText('já foi assinado para outro pagamento')
       await expect(aviso).toContainText('no Pix')
@@ -292,9 +317,9 @@ test.describe.serial('checkout de plano', () => {
 
     const avista = { forma: 'AVISTA', metodo: 'PIX' }
     await como(browser, async page => {
-      const rota = `/admin/checkout/${planId}`
-      await page.goto(rota)
-      await expect(page.getByTestId('atendimento-de-hoje')).toContainText(/R\$\s180,00/)
+      const rota = PDV
+      const janela = await receberPlanoNoPdv(page, '/admin', planId)
+      await expect(janela.getByTestId('atendimento-de-hoje')).toContainText(/R\$\s180,00/)
 
       await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, avista])
       for (const d of await docsDoPlano(planId)) await assinarNoPapel(d.id)
@@ -322,22 +347,25 @@ test.describe.serial('checkout de plano', () => {
     expect(eAp).toBeNull()
     await db().from('treatment_plans').update({ evaluation_appointment_id: ap!.id }).eq('id', planId)
     await como(browser, async page => {
-      await page.goto(`/admin/checkout/${planId}`)
-      const hoje = page.getByTestId('atendimento-de-hoje')
+      const janela = await receberPlanoNoPdv(page, '/admin', planId)
+      const hoje = janela.getByTestId('atendimento-de-hoje')
       await expect(hoje).toContainText('Ainda não foi recebido')
       await expect(hoje, 'o plano não promete nada antes da forma').not.toContainText(/entram juntos|entra junto|fica fora/)
-      await page.getByRole('button', { name: 'Confirmar plano' }).click()
-      const frase = page.getByTestId('atendimento-de-hoje-no-pagamento').locator('[data-hoje-entra]')
-      // "Receber no atendimento" (o padrão): não entra.
-      await expect(frase).toHaveAttribute('data-hoje-entra', 'nao')
-      await expect(frase).toHaveText('Não entra neste checkout: receba pela tela do atendimento.')
-      // À vista: entra, e o total diz.
-      await page.getByRole('button', { name: 'À vista', exact: true }).click()
+      await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+      const frase = janela.getByTestId('atendimento-de-hoje-no-pagamento').locator('[data-hoje-entra]')
+      // PT1b: no PDV a forma nasce "À vista" (sai o "Receber no atendimento"): entra, e o total diz.
       await expect(frase).toHaveAttribute('data-hoje-entra', 'sim')
       await expect(frase).toContainText(/Entra neste checkout: R\$\s180,00 cobrados junto/)
-      await expect(page.getByText('(com o atendimento de hoje)')).toBeVisible()
-      await expect(page.getByTestId('atendimento-de-hoje-no-pagamento')).toHaveCount(1)
-      await expect(page.getByText(/fica fora deste checkout|entra junto, à vista/)).toHaveCount(0)
+      await expect(janela.getByText('(com o atendimento de hoje)')).toBeVisible()
+      // "A receber": não entra, e diz onde receber.
+      await janela.getByRole('button', { name: 'A receber', exact: true }).click()
+      await expect(frase).toHaveAttribute('data-hoje-entra', 'nao')
+      await expect(frase).toHaveText('Não entra neste checkout: receba pela tela do atendimento.')
+      // De volta ao à vista: entra de novo.
+      await janela.getByRole('button', { name: 'À vista', exact: true }).click()
+      await expect(frase).toHaveAttribute('data-hoje-entra', 'sim')
+      await expect(janela.getByTestId('atendimento-de-hoje-no-pagamento')).toHaveCount(1)
+      await expect(janela.getByText(/fica fora deste checkout|entra junto, à vista/)).toHaveCount(0)
     })
   })
 
@@ -356,14 +384,15 @@ test.describe.serial('checkout de plano', () => {
       try {
         const page = await ctx.newPage()
         await page.addInitScript(() => { window.print = () => {} })
-        // O caixa da simulação era de UNIDADE: o checkout é o da unidade.
-        await page.goto(`/${slug}/checkout/${planId}`)
-        await page.getByRole('button', { name: 'Confirmar plano' }).click()
-        await page.getByRole('button', { name: 'À vista' }).click()
-        await page.getByRole('button', { name: 'Pix', exact: true }).click()
+        // O caixa da simulação era de UNIDADE: o receber é no PDV da unidade
+        // (quem recebe também aceita — PT1b).
+        const janela = await receberPlanoNoPdv(page, `/${slug}`, planId)
+        await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+        await janela.getByRole('button', { name: 'À vista' }).click()
+        await janela.getByRole('button', { name: 'Pix', exact: true }).click()
         await euVendiOPlano(page)
-        await page.getByRole('button', { name: 'Ir para a documentação' }).click()
-        const linhas = page.locator('[data-documento]')
+        await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
+        const linhas = janela.locator('[data-documento]')
         await expect(linhas).toHaveCount(3)
         for (let i = 0; i < 3; i++) {
           await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
@@ -396,7 +425,7 @@ test.describe.serial('checkout de plano', () => {
         const ctx2 = await browser.newContext({ storageState: caixa.estado })
         try {
           const p = await ctx2.newPage()
-          const r = await chamarAcao(p, 'actions/documentos.ts', 'documentoParaAssinar', `/${slug}/checkout/${planId}`, [avulso.id])
+          const r = await chamarAcao(p, 'actions/documentos.ts', 'documentoParaAssinar', `/${slug}/pdv`, [avulso.id])
           expect(r.texto).toContain('Seu cargo não libera esta ação.')
         } finally { await ctx2.close() }
       }
@@ -405,15 +434,18 @@ test.describe.serial('checkout de plano', () => {
     }
   })
 
-  test('o plano de outra rede: nem prepara nem fecha', async ({ browser }) => {
+  test('o plano de outra rede: nem aceita, nem prepara, nem recebe', async ({ browser }) => {
     const alheio = await alheia!.criarPlanoProposto('alheio', { semTermo: true })
-    const { planId: meu } = await plano('controle')
     await como(browser, async page => {
-      const rota = `/admin/checkout/${meu}`
+      const rota = PDV
+      const aceite = await chamarAcao(page, 'actions/treatment-plans.ts', 'aceitarPlano', rota, [alheio.planId])
+      expect(aceite.texto).toContain('Plano não encontrado')
       const preparar = await chamarAcao(page, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [alheio.planId, null])
       expect(preparar.texto).toContain('Plano não encontrado')
-      await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota, [alheio.planId, null, [], slug])
+      const receber = await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota, [alheio.planId, { forma: 'AVISTA', metodo: 'PIX' }, [], slug])
+      expect(receber.texto).toContain('Plano não encontrado')
     })
+    expect((await db().from('comandas').select('id').eq('treatment_plan_id', alheio.planId)).data ?? [], 'nenhuma comanda na outra rede').toEqual([])
     expect(await docsDoPlano(alheio.planId), 'nenhum documento plantado na outra rede').toEqual([])
     expect((await db().from('treatment_plans').select('status').eq('id', alheio.planId).single()).data?.status).toBe('PROPOSED')
     expect((await db().from('financial_transactions').select('id').eq('treatment_plan_id', alheio.planId)).data).toEqual([])

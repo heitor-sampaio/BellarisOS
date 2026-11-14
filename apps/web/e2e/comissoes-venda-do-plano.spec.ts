@@ -1,8 +1,9 @@
-import { test, expect, type Browser, type Page } from '@playwright/test'
+import { test, expect, type Browser, type Locator, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
+import { receberPlanoNoPdv } from './apoio/vender'
 
 /**
  * Decisão 4 do Heitor (7ª simulação, 2026-11-05: "concordo"): a comissão de
@@ -63,16 +64,20 @@ async function comissaoDaVenda(planId: string) {
   return linhas
 }
 
-/** Do passo "Plano" ao "Pagamento" do checkout. */
-async function abrirOPagamento(p: Page, planId: string) {
-  await p.goto(`/admin/checkout/${planId}`)
-  await p.getByRole('button', { name: 'Confirmar plano' }).click()
+/**
+ * Do passo "Plano" ao "Pagamento" do receber — no PDV desde a fase 3 (PT1b:
+ * o plano se aceita sem dinheiro, e a comanda dele se recebe no PDV).
+ */
+async function abrirOPagamento(p: Page, planId: string): Promise<Locator> {
+  const janela = await receberPlanoNoPdv(p, '/admin', planId)
+  await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+  return janela
 }
 
-/** Da documentação (sem documentos nesta rede) ao fim, sem agendar. */
-async function concluir(p: Page) {
-  await p.getByRole('button', { name: 'Ir para o agendamento' }).click()
-  await p.getByRole('button', { name: 'Concluir sem agendar' }).click()
+/** Da documentação (sem documentos nesta rede) ao fim: recebe (as sessões se agendam pelo plano). */
+async function concluir(janela: Locator) {
+  await janela.getByRole('button', { name: 'Receber o plano' }).click()
+  await expect(janela).toHaveCount(0, { timeout: 20_000 })
 }
 
 test.beforeAll(async () => {
@@ -136,14 +141,14 @@ test('o checkout pago à vista com "Quem vendeu": 5% de R$ 4.400 para o consulto
   test.setTimeout(150_000)
   const { planId } = await plano('Larissa')
   await como(browser, async p => {
-    await abrirOPagamento(p, planId)
-    const quem = p.getByLabel('Quem vendeu')
+    const j = await abrirOPagamento(p, planId)
+    const quem = j.getByLabel('Quem vendeu')
     await expect(quem, 'nasce vazio, como nas outras vendas').toHaveValue('')
     await quem.selectOption(consultor!.userId)
-    await p.getByRole('button', { name: 'À vista' }).click()
-    await p.getByRole('button', { name: 'Pix', exact: true }).click()
-    await p.getByRole('button', { name: 'Ir para a documentação' }).click()
-    await concluir(p)
+    await j.getByRole('button', { name: 'À vista' }).click()
+    await j.getByRole('button', { name: 'Pix', exact: true }).click()
+    await j.getByRole('button', { name: 'Ir para a documentação' }).click()
+    await concluir(j)
   })
   await expect.poll(async () => (await db().from('treatment_plans').select('status, vendido_por').eq('id', planId).single()).data)
     .toEqual({ status: 'ACCEPTED', vendido_por: consultor!.userId })
@@ -167,16 +172,18 @@ test('"Quem vendeu" vazio: a venda pergunta, e confirmada não gera comissão de
   test.setTimeout(150_000)
   const { planId } = await plano('Mariana')
   await como(browser, async p => {
-    await abrirOPagamento(p, planId)
-    await p.getByRole('button', { name: 'À vista' }).click()
-    await p.getByRole('button', { name: 'Pix', exact: true }).click()
-    await p.getByRole('button', { name: 'Ir para a documentação' }).click()
+    const j = await abrirOPagamento(p, planId)
+    await j.getByRole('button', { name: 'À vista' }).click()
+    await j.getByRole('button', { name: 'Pix', exact: true }).click()
+    await j.getByRole('button', { name: 'Ir para a documentação' }).click()
     const pergunta = p.locator('[data-pergunta-da-venda]')
     await expect(pergunta).toContainText('Ninguém foi marcado em “Quem vendeu”')
     await pergunta.getByRole('button', { name: 'Vender assim' }).click()
-    await concluir(p)
+    await concluir(j)
   })
-  await expect.poll(async () => (await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('ACCEPTED')
+  // O aceite já deixou o plano ACCEPTED: o que prova o receber é o dinheiro.
+  await expect.poll(async () => ((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data ?? []).length,
+    { message: 'o plano foi recebido' }).toBe(1)
   expect(await comissaoDaVenda(planId)).toEqual([])
 })
 
@@ -184,14 +191,14 @@ test('no crediário a comissão espera a última parcela (H4), e libera quando e
   test.setTimeout(150_000)
   const { planId } = await plano('Patrícia')
   await como(browser, async p => {
-    await abrirOPagamento(p, planId)
-    await p.getByLabel('Quem vendeu').selectOption(consultor!.userId)
-    await p.getByRole('button', { name: 'Entrada + parcelas' }).click()
-    await p.getByRole('button', { name: 'Pix', exact: true }).click()
-    await p.getByLabel('Entrada', { exact: true }).fill('1000')
-    await p.getByLabel('Parcelas do saldo').selectOption('2')
-    await p.getByRole('button', { name: 'Ir para a documentação' }).click()
-    await concluir(p)
+    const j = await abrirOPagamento(p, planId)
+    await j.getByLabel('Quem vendeu').selectOption(consultor!.userId)
+    await j.getByRole('button', { name: 'Entrada + parcelas' }).click()
+    await j.getByRole('button', { name: 'Pix', exact: true }).click()
+    await j.getByLabel('Entrada', { exact: true }).fill('1000')
+    await j.getByLabel('Parcelas do saldo').selectOption('2')
+    await j.getByRole('button', { name: 'Ir para a documentação' }).click()
+    await concluir(j)
   })
   // O ACCEPTED sai ANTES da comissão (`plano_comissao_de_venda`, outra
   // gravação, que marca o `vendido_por` na mesma transação da linha): esperar
@@ -216,12 +223,12 @@ test('o plano cancelado depois de vendido não é venda: a comissão de venda vo
   test.setTimeout(150_000)
   const { planId, cliente } = await plano('Renata')
   await como(browser, async p => {
-    await abrirOPagamento(p, planId)
-    await p.getByLabel('Quem vendeu').selectOption(consultor!.userId)
-    await p.getByRole('button', { name: 'À vista' }).click()
-    await p.getByRole('button', { name: 'Pix', exact: true }).click()
-    await p.getByRole('button', { name: 'Ir para a documentação' }).click()
-    await concluir(p)
+    const j = await abrirOPagamento(p, planId)
+    await j.getByLabel('Quem vendeu').selectOption(consultor!.userId)
+    await j.getByRole('button', { name: 'À vista' }).click()
+    await j.getByRole('button', { name: 'Pix', exact: true }).click()
+    await j.getByRole('button', { name: 'Ir para a documentação' }).click()
+    await concluir(j)
   })
   await expect.poll(async () => (await comissaoDaVenda(planId))[0]?.lancado).toBe(220)
   await como(browser, async p => {

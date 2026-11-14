@@ -63,8 +63,8 @@ test('A35: sem as dores, gerar o plano rola até o campo, foca e diz o que falta
   await como(browser, async p => {
     await p.setViewportSize({ width: 1280, height: 700 })
     await p.goto(`/${slug}/agenda/${id}`)
-    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).scrollIntoViewIfNeeded()
-    await p.getByRole('button', { name: 'Gerar plano e enviar à recepção' }).click()
+    await p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' }).scrollIntoViewIfNeeded()
+    await p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' }).click()
     const dores = p.locator('[data-campo="dores"]')
     await expect(dores).toHaveAttribute('data-invalido', 'true')
     await expect(dores.getByRole('alert')).toContainText('Registre as dores')

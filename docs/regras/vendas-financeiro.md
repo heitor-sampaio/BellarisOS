@@ -71,10 +71,42 @@ comanda (PDV-P1).
   seguintes não fazem outra. O pacote trazido de fora não é venda: não tem
   comanda. A venda nasce paga (vendida com a forma escolhida): aparece em
   "Pagas hoje" pela hora da venda; a estornada inteira diz "Estornada".
-- Ainda por vir (o plano de adaptação, `docs/revisao.md`): a comanda do plano
-  no aceite; o Fechamento do dia no PDV; o crediário como forma, a parcela do
-  crediário e os pontos dentro da comanda; vários itens numa comanda.
-- Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`, `e2e/pdv-nova-venda.spec.ts`.
+- **A comanda do plano nasce no ACEITE** (PDV4 e PT1a–PT1c; o Heitor: "a
+  partir do momento que a cliente aceita o plano, ela precisa daí pagar e
+  agendar as sessões"; sobre perguntar a forma no aceite: "pode ser
+  intimidador e levar a desistencia"; e "primeiro colhe assinatura, depois
+  paga"):
+  - **Aceitar é só "quero fazer"** (`aceitarPlano` → `plano_aceitar`): o plano
+    vira ACCEPTED, os documentos ficam prontos e a comanda `PLANO` nasce no PDV
+    com o valor inteiro. Nenhum dinheiro, nenhum agendamento, nenhuma pergunta
+    de forma. Aceita quem monta o plano (prontuário em Gerenciar) ou quem
+    recebe. Na página do plano e na tela do atendimento o botão é "Aceitar
+    plano"; "a cliente vai pensar" deixa o plano proposto (PROPOSED), para
+    aceitar depois.
+  - **O dinheiro é no PDV**: a comanda do plano tem "Receber o plano", o mesmo
+    assistente do antigo checkout (`CheckoutWizard`, `podeAgendar={false}`) —
+    desconto, "Quem vendeu", à vista ou crediário, o contrato e então o
+    recebimento. Sem "Receber no atendimento" (não existe pagamento sem forma,
+    PDV8) e sem agendar sessões ali: as sessões se agendam pelo plano/agenda.
+  - **Só o contrato do plano trava o dinheiro** (`plano_checkout`: falta
+    assinar um `CONTRATO_PLANO` → recusa). Os outros termos não travam mais o
+    aceite (`documentos_bloqueiam_plano` só os emite).
+  - O plano aceito se recebe UMA vez ("Este plano já foi recebido"); o
+    proposto não se recebe ("Aceite o plano antes de receber"). O plano
+    cancelado (ou recusado) leva a comanda que não foi paga.
+  - A comanda do plano está "Paga" quando o receber lançou o dinheiro (à
+    vista ou no crediário, como a venda), na hora do primeiro lançamento.
+  - **O plano é venda quando é RECEBIDO** (`metrics_vendas`, decisão pelos
+    princípios 3 e 5, 2026-11-13): a data da venda do plano é a do primeiro
+    lançamento de receita, não a do aceite — o aceito que nunca se recebeu não
+    vendeu nada. Plano antigo aceito sem lançamento algum sai do relatório.
+  - A rota antiga `/checkout/<plano>` leva aonde a coisa mora: proposto → o
+    plano; aceito → a comanda dele no PDV.
+- Ainda por vir (o plano de adaptação, `docs/revisao.md`): o Fechamento do dia
+  no PDV; o crediário como forma, a parcela do crediário e os pontos dentro da
+  comanda; vários itens numa comanda.
+- Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`, `e2e/pdv-nova-venda.spec.ts`,
+  `e2e/pdv-comanda-do-plano.spec.ts`.
 
 ### 9.3.1 Pacotes (2026-09-30)
 

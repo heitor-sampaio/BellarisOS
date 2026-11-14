@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { abrirVendaNoPdv } from './apoio/vender'
+import { abrirVendaNoPdv, receberPlanoNoPdv } from './apoio/vender'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -83,12 +83,12 @@ test('A41: a ficha e o agendar da sessão dizem os R$ 300,00 em aberto do pacote
   })
 })
 
-test('A45: o checkout mostra o CPF e o telefone com máscara', async ({ browser }) => {
+test('A45: o receber do plano (no PDV) mostra o CPF e o telefone com máscara', async ({ browser }) => {
   const plano = await rede.criarPlanoProposto('Checkout A45', { semTermo: true })
   expect((await db().from('clients').update({ document: '12345678909', phone: '31997000013' }).eq('id', plano.clientId)).error).toBeNull()
   await como(browser, recepcao, async p => {
-    await p.goto(`/${slug}/checkout/${plano.planId}`)
-    await expect(p.getByText('CPF 123.456.789-09 · (31) 99700-0013')).toBeVisible()
+    const janela = await receberPlanoNoPdv(p, `/${slug}`, plano.planId)
+    await expect(janela.getByText('CPF 123.456.789-09 · (31) 99700-0013')).toBeVisible()
   })
 })
 

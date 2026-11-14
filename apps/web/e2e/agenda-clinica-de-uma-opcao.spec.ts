@@ -2,14 +2,15 @@ import { test, expect } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
-import { euVendiOPlano } from './apoio/vender'
 
 /**
  * A2 da 10ª simulação (2026-11-10): a clínica de uma pessoa (uma profissional,
  * uma sala, uma unidade) escolhia à mão, em toda tela, a única opção que havia:
  * - o Agendar abria com a profissional em "Selecione…" e a sala em "Sem sala
  *   definida";
- * - o checkout do plano pedia "Escolher profissional";
+ * - o checkout do plano pedia "Escolher profissional" (a prova saiu na fase 3
+ *   do PDV: o receber do plano não agenda mais — as sessões se agendam pelo
+ *   plano depois);
  * - o app perguntava "Tem preferência de profissional?" com um cartão só;
  * - a importação e o Novo cliente perguntavam a unidade.
  * Pela clínica única (CLAUDE.md §1), a única opção vem escolhida — e a pergunta
@@ -25,7 +26,6 @@ let cliente: ClienteDeTeste | null = null
 let slug = ''
 let nomeDaUnidade = ''
 let salaId = ''
-let planId = ''
 
 test.beforeAll(async () => {
   test.setTimeout(150_000)
@@ -41,15 +41,6 @@ test.beforeAll(async () => {
   salaId = sala.data!.id
   dona = await criarMembro(`uod${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
   cliente = await clienteComSessao(`uoc${marca}`, { id: rede.branchId, slug }, { tenant: rede.tenantId })
-  const ficha = await rede.criarCliente('Plano')
-  const pl = await db().from('treatment_plans').insert({
-    branch_id: rede.branchId, professional_id: rede.professionalId, client_id: ficha,
-    status: 'PROPOSED', name: `${PREFIXO} Plano uma opção ${marca}`,
-  }).select('id').single<{ id: string }>()
-  expect(pl.error).toBeNull()
-  planId = pl.data!.id
-  const s = await db().from('treatment_plan_sessions').insert({ plan_id: planId, sort_order: 0 }).select('id').single<{ id: string }>()
-  expect((await db().from('treatment_plan_session_procedures').insert({ session_id: s.data!.id, procedure_id: rede.procedureId, price: 100 })).error).toBeNull()
 })
 
 test.afterAll(async () => {
@@ -65,21 +56,6 @@ test('A2: o Agendar já vem com a única profissional e a única sala', async ({
     await expect(janela).toBeVisible()
     await expect(janela.locator('#ag-profissional')).toHaveValue(rede!.professionalId)
     await expect(janela.locator('#ag-sala')).toHaveValue(salaId)
-  } finally { await ctx.close() }
-})
-
-test('A2: o checkout do plano já vem com a única profissional', async ({ browser }) => {
-  test.setTimeout(120_000)
-  const ctx = await browser.newContext({ storageState: dona!.estado })
-  try {
-    const p = await ctx.newPage()
-    await p.goto(`/admin/checkout/${planId}`)
-    await p.getByRole('button', { name: 'Confirmar plano' }).click()
-    await euVendiOPlano(p)
-    await p.getByRole('button', { name: 'Ir para a documentação' }).click()
-    await p.getByRole('button', { name: 'Ir para o agendamento' }).click()
-    await expect(p.getByLabel('Profissional do agendamento')).toHaveValue(rede!.professionalId)
-    await expect(p.getByText('Agendamento por sessão')).toBeVisible()
   } finally { await ctx.close() }
 })
 

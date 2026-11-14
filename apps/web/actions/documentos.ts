@@ -65,7 +65,7 @@ async function documentoAoAlcance(ctx: TenantContext, id: string): Promise<Docum
 
 /**
  * Quem COLHE a assinatura: o módulo de Termos — ou quem RECEBE, no documento
- * de um plano que está no checkout (decisão do Heitor, 2026-10-20). O caixa da
+ * de um plano aceito, no receber do PDV (decisão do Heitor, 2026-10-20). O caixa da
  * simulação de um dia de clínica travou em "Colher assinatura": fechar a venda
  * exigia um módulo que ele não tinha. Fora do checkout, os documentos
  * continuam do módulo de Termos.
@@ -75,7 +75,7 @@ async function assertPodeColher(ctx: TenantContext, doc: DocumentoAssinavel): Pr
   if (podeReceber(ctx) && doc.treatment_plan_id) {
     const plano = await ler(createAdminClient().from('treatment_plans').select('status')
       .eq('id', doc.treatment_plan_id).maybeSingle(), 'buscar o plano do documento') as { status: string } | null
-    if (plano?.status === 'PROPOSED') return
+    if (plano?.status === 'ACCEPTED') return  // no RECEBER do plano (PDV, PT1b)
   }
   throw semAcesso()
 }
@@ -252,7 +252,9 @@ export async function prepararDocumentosDoCheckout(
       .eq('id', planId).maybeSingle(), 'buscar o plano')
     const rede = (plano?.branches as unknown as { tenant_id: string } | null)?.tenant_id
     if (!plano || rede !== ctx.tenantId || !alcancaUnidade(ctx, plano.branch_id as string)) return { error: 'Plano não encontrado.' }
-    if (plano.status !== 'PROPOSED') return { error: 'Apenas planos enviados para recepção podem ser finalizados.' }
+    // O contrato do plano se colhe no RECEBER (no PDV), depois do aceite (PT1b).
+    if (plano.status === 'DRAFT' || plano.status === 'PROPOSED') return { error: 'Aceite o plano antes de receber.' }
+    if (plano.status !== 'ACCEPTED') return { error: 'Este plano não está aberto para receber.' }
 
     const precos = await precosDoPlano(planId)
     const doDesconto = descontoDoPlano(precos, d.data)
@@ -270,7 +272,7 @@ export async function prepararDocumentosDoCheckout(
       const vendeu = await quemVendeu(ctx.tenantId!, ctx.internalUserId ?? null, { vendedorId: opcoes.vendedorId ?? null, semVendedor: true }, plano.branch_id as string)
       if ('error' in vendeu) return { error: vendeu.error }
       if ('vendedor' in vendeu) await gravar(admin.from('treatment_plans').update({ vendido_por: vendeu.vendedor })
-        .eq('id', planId).eq('status', 'PROPOSED').select('id'), 'guardar quem vendeu o plano')
+        .eq('id', planId).eq('status', 'ACCEPTED').select('id'), 'guardar quem vendeu o plano')
     }
     const docs = await prepararDocumentosDoPlano(ctx.tenantId!, planId, pagamento, ctx.internalUserId ?? null, doDesconto.reais)
     return { itens: await resumirDocumentos(ctx.tenantId!, docs) }

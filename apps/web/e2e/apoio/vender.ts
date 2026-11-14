@@ -62,3 +62,32 @@ export async function escolherAUnidadeDaVenda(venda: Locator, nome?: string | Re
   await (nome ? opcoes.filter({ hasText: nome }).first() : opcoes.first()).click()
   await expect(venda.locator('[data-cliente-da-venda]')).toBeVisible({ timeout: 20_000 })
 }
+
+/**
+ * O plano se recebe no PDV (fase 3, PT1b — a revisão do Heitor de 2026-11-13):
+ * o aceite é um gesto (sem dinheiro), e a comanda do plano nasce no PDV, onde
+ * se escolhe a forma, a cliente assina o contrato e paga. Aqui: aceita o plano
+ * se ainda estiver proposto (ou em rascunho), abre a comanda dele no PDV do
+ * portal pedido (`/<slug>` ou `/admin`) e clica "Receber o plano". Devolve a
+ * janela "Receber o plano" — o mesmo assistente do antigo checkout, sem o
+ * "Receber no atendimento" e sem o agendamento (as sessões se agendam depois).
+ */
+export async function receberPlanoNoPdv(page: Page, portal: string, planId: string): Promise<Locator> {
+  const { banco } = await import('./banco')
+  const { chamarAcao } = await import('./acao-direta')
+  const { data: plano } = await banco().from('treatment_plans').select('status, branch_id').eq('id', planId)
+    .single<{ status: string; branch_id: string }>()
+  expect(plano, 'o plano existe').toBeTruthy()
+  if (plano!.status === 'DRAFT' || plano!.status === 'PROPOSED') {
+    const r = await chamarAcao(page, 'actions/treatment-plans.ts', 'aceitarPlano', `${portal}/pdv`, [planId])
+    expect(r.texto, 'o aceite passou').not.toContain('"error"')
+  }
+  const { data: comanda } = await banco().from('comandas').select('id').eq('treatment_plan_id', planId)
+    .is('cancelada_em', null).single<{ id: string }>()
+  expect(comanda, 'a comanda do plano nasceu no aceite').toBeTruthy()
+  await page.goto(`${portal}/pdv?unidade=${plano!.branch_id}&comanda=${comanda!.id}`)
+  await page.getByRole('button', { name: 'Receber o plano' }).click()
+  const janela = page.getByRole('dialog', { name: 'Receber o plano' })
+  await expect(janela).toBeVisible()
+  return janela
+}

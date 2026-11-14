@@ -74,7 +74,7 @@ test.beforeAll(async ({ browser }) => {
   }
 
   await como(browser, async p => {
-    for (const tela of [`/admin/agenda/${f!.noMesmoHorario}`, `/admin/clients/${cliente}`, `/admin/checkout/${planoCheckout}`]) {
+    for (const tela of [`/admin/agenda/${f!.noMesmoHorario}`, `/admin/clients/${cliente}`, '/admin/pdv']) {
       await p.goto(tela)
       await p.waitForLoadState('networkidle')
     }
@@ -137,10 +137,15 @@ test('marcar a sessão do plano num horário ocupado é recusado', async ({ brow
   expect(await agendamentosDoPlano(f!.plano), 'o livre marcou').toHaveLength(1)
 })
 
-test('o checkout do plano recusa horário ocupado ANTES do dinheiro', async ({ browser }) => {
+// Fase 3 do PDV (PT1b): o plano se aceita antes, e o receber (no PDV) pede a
+// forma. A tela não agenda mais ali, mas o receber ainda aceita as sessões
+// agendadas — e recusa o horário ocupado antes do dinheiro.
+test('o receber do plano recusa horário ocupado ANTES do dinheiro', async ({ browser }) => {
   await como(browser, async p => {
-    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', `/admin/checkout/${f!.planoCheckout}`, [
-      f!.planoCheckout, null,
+    const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', '/admin/pdv', [f!.planoCheckout])
+    expect(aceite.texto, 'o aceite passou').not.toContain('"error"')
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', '/admin/pdv', [
+      f!.planoCheckout, { forma: 'AVISTA', metodo: 'PIX' },
       [{ planSessionId: f!.sessaoCheckout, scheduledAt: horas(f!.t, 0.5), professionalId: f!.p2, branchId: f!.outra.branchId }],
       'admin',
     ])
@@ -150,5 +155,5 @@ test('o checkout do plano recusa horário ocupado ANTES do dinheiro', async ({ b
   const { data: txs } = await db().from('financial_transactions').select('id').eq('treatment_plan_id', f!.planoCheckout)
   expect(txs ?? [], 'nenhum lançamento').toHaveLength(0)
   const { data: pl } = await db().from('treatment_plans').select('status').eq('id', f!.planoCheckout).single()
-  expect(pl!.status, 'o plano segue proposto').toBe('PROPOSED')
+  expect(pl!.status, 'o plano segue aceito, sem receber').toBe('ACCEPTED')
 })

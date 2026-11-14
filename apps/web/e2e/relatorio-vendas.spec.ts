@@ -117,6 +117,23 @@ test.beforeAll(async () => {
     ...base, client_id: duda, status: 'COMPLETED', scheduled_at: '2021-03-25T12:00:00Z', price: 500,
     treatment_plan_id: plano.data!.id,
   })).error).toBeNull()
+  // Fase 3 do PDV (a revisão do Heitor, 2026-11-13): o plano é venda quando é
+  // RECEBIDO (o primeiro lançamento de receita), na data do receber — não no
+  // aceite. O aceite foi em 15/03; o receber, em 20/03.
+  expect((await db().from('treatment_plans').update({ aceito_em: '2021-03-15T15:00:00Z' }).eq('id', plano.data!.id)).error).toBeNull()
+  expect((await db().from('financial_transactions').insert({
+    branch_id: outra.branchId, client_id: duda, treatment_plan_id: plano.data!.id, type: 'INCOME',
+    category: 'Serviços', description: 'Plano de tratamento', amount: 800,
+    is_paid: true, paid_at: '2021-03-20T15:00:00Z', created_at: '2021-03-20T15:00:00Z', payment_method: 'PIX', created_by: outra.professionalId,
+  })).error, 'o receber do plano').toBeNull()
+  // Plano aceito e nunca recebido: não vendeu nada.
+  const naoRecebido = await db().from('treatment_plans').insert({
+    branch_id: outra.branchId, professional_id: outra.professionalId, client_id: duda,
+    status: 'ACCEPTED', name: nome('Aceito sem receber'), aceito_em: '2021-03-22T15:00:00Z',
+  }).select('id').single<{ id: string }>()
+  expect(naoRecebido.error).toBeNull()
+  const s3 = await db().from('treatment_plan_sessions').insert({ plan_id: naoRecebido.data!.id, sort_order: 0 }).select('id').single<{ id: string }>()
+  expect((await db().from('treatment_plan_session_procedures').insert({ session_id: s3.data!.id, procedure_id: outra.procedureId, price: 999 })).error).toBeNull()
   // Plano em rascunho: não é venda.
   expect((await db().from('treatment_plans').insert({
     branch_id: outra.branchId, professional_id: outra.professionalId, client_id: duda, status: 'DRAFT', name: nome('Rascunho'),

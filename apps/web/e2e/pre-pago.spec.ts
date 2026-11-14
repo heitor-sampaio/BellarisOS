@@ -114,7 +114,7 @@ test.describe.serial('procedimento pré-pago', () => {
       await dlg.getByRole('button', { name: '%', exact: true }).click()
       await dlg.getByLabel('Desconto', { exact: true }).fill('10')
       await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await dlg.getByLabel('Entrada').fill('210')
+      await dlg.getByLabel('Entrada', { exact: true }).fill('210')
       await dlg.getByLabel('Parcelas').selectOption('2')
       await pagoNoPix(dlg)
       await euVendi(dlg)

@@ -1,7 +1,7 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { abrirVendaNoPdv } from './apoio/vender'
+import { abrirVendaNoPdv, receberPlanoNoPdv } from './apoio/vender'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 
 /**
@@ -76,7 +76,7 @@ test('o "Confirmar pagamento" que o ?receber=1 abre não tem forma: nada se conf
   expect((await db().from('financial_transactions').select('id').eq('appointment_id', ap!.id)).data, 'nada foi gravado').toEqual([])
 })
 
-test('o checkout do plano e o "Vender" da ficha: a forma nasce vazia e o botão espera', async ({ browser }) => {
+test('o receber do plano no PDV e a venda no PDV: o meio nasce vazio e o botão espera', async ({ browser }) => {
   const c = await rede!.criarCliente('Paula')
   const { data: pl, error } = await db().from('treatment_plans').insert({
     branch_id: rede!.branchId, professional_id: rede!.professionalId, client_id: c, status: 'PROPOSED', name: `${PREFIXO} Plano ${marca}`,
@@ -85,14 +85,15 @@ test('o checkout do plano e o "Vender" da ficha: a forma nasce vazia e o botão 
   const { data: s } = await db().from('treatment_plan_sessions').insert({ plan_id: pl!.id, sort_order: 0 }).select('id').single<{ id: string }>()
   expect((await db().from('treatment_plan_session_procedures').insert({ session_id: s!.id, procedure_id: rede!.procedureId, price: 280 })).error).toBeNull()
   await como(browser, async p => {
-    await p.goto(`/admin/checkout/${pl!.id}`)
-    await p.getByRole('button', { name: 'Confirmar plano' }).click()
-    await p.getByRole('button', { name: 'À vista', exact: true }).click()
+    // O receber do plano é no PDV (fase 3, PT1b).
+    const janela = await receberPlanoNoPdv(p, '/admin', pl!.id)
+    await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+    await janela.getByRole('button', { name: 'À vista', exact: true }).click()
     // Nenhum meio escolhido: nenhum botão de meio marcado, e seguir é recusado.
-    await expect(p.locator('[data-meio-do-checkout][aria-pressed="true"]')).toHaveCount(0)
-    await expect(p.getByRole('button', { name: 'Ir para a documentação' })).toBeDisabled()
-    await p.getByRole('button', { name: 'Pix', exact: true }).click()
-    await expect(p.getByRole('button', { name: 'Ir para a documentação' })).toBeEnabled()
+    await expect(janela.locator('[data-meio-do-checkout][aria-pressed="true"]')).toHaveCount(0)
+    await expect(janela.getByRole('button', { name: 'Ir para a documentação' })).toBeDisabled()
+    await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+    await expect(janela.getByRole('button', { name: 'Ir para a documentação' })).toBeEnabled()
 
     // A venda no PDV (procedimento pré-pago; era o "Vender" da ficha até o PDV7): a forma nasce vazia.
     const dlg = await abrirVendaNoPdv(p, '/admin', c, rede!.branchId)
@@ -100,7 +101,7 @@ test('o checkout do plano e o "Vender" da ficha: a forma nasce vazia e o botão 
     await expect(dlg.getByLabel('Meio de pagamento')).toHaveValue('')
     await expect(dlg.getByRole('button', { name: /Vender por/ })).toBeDisabled()
   })
-  expect((await db().from('treatment_plans').select('status').eq('id', pl!.id).single()).data?.status).toBe('PROPOSED')
+  expect((await db().from('financial_transactions').select('id').eq('treatment_plan_id', pl!.id)).data ?? [], 'nada recebido').toEqual([])
 })
 
 test('o "Receber" do plano no check-in: a forma nasce vazia', async ({ browser }) => {

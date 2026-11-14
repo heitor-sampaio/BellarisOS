@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
-import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix, receberPlanoNoPdv } from './apoio/vender'
 
 /**
  * Os atritos do caixa da 7ª simulação (2026-11-05), da F32:
@@ -115,29 +115,31 @@ test('A44: o Fechamento do dia aponta o que a operadora ainda vai depositar, com
   })
 })
 
-test('A45: o checkout do plano volta ao passo em que estava ao recarregar', async ({ browser }) => {
+// Desde a fase 3 do PDV (PT1b) o plano se recebe na janela "Receber o plano"
+// da comanda dele: recarregar o PDV e reabrir a janela volta ao passo.
+test('A45: o receber do plano volta ao passo em que estava ao recarregar', async ({ browser }) => {
   const { planId } = await rede!.criarPlanoProposto('Recarregar', { semTermo: true })
   await como(browser, caixa!, async p => {
     // O passo guardado (sessionStorage, morre com a aba): a tela grava o que se escolhe.
     const guardado = () => p.evaluate(k => sessionStorage.getItem(k) ?? '', `bellaris:checkout-do-plano:${planId}`)
-    await p.goto(`/${slug}/checkout/${planId}`)
+    let janela = await receberPlanoNoPdv(p, `/${slug}`, planId)
     await expect.poll(guardado, { message: 'a tela hidratou e guarda o passo' }).toContain('"step":0')
-    await p.getByRole('button', { name: /Confirmar plano/ }).click()
-    await expect(p.locator('[data-passo-atual]')).toHaveAttribute('data-passo-atual', 'Pagamento')
-    await p.getByRole('button', { name: 'À vista', exact: true }).click()
-    await p.locator('[data-meio-do-checkout]', { hasText: 'Pix' }).click()
+    await janela.getByRole('button', { name: /Confirmar plano/ }).click()
+    await expect(janela.locator('[data-passo-atual]')).toHaveAttribute('data-passo-atual', 'Pagamento')
+    await janela.getByRole('button', { name: 'À vista', exact: true }).click()
+    await janela.locator('[data-meio-do-checkout]', { hasText: 'Pix' }).click()
     await expect.poll(guardado).toContain('"paymentMethod":"PIX"')
-    await p.reload()
-    await expect(p.locator('[data-passo-atual]'), 'recarregar não volta ao "Plano"').toHaveAttribute('data-passo-atual', 'Pagamento')
-    await expect(p.locator('[data-meio-do-checkout]', { hasText: 'Pix' }), 'o que foi escolhido fica').toHaveAttribute('aria-pressed', 'true')
+    janela = await receberPlanoNoPdv(p, `/${slug}`, planId)
+    await expect(janela.locator('[data-passo-atual]'), 'recarregar não volta ao "Plano"').toHaveAttribute('data-passo-atual', 'Pagamento')
+    await expect(janela.locator('[data-meio-do-checkout]', { hasText: 'Pix' }), 'o que foi escolhido fica').toHaveAttribute('aria-pressed', 'true')
     // Na documentação, recarregar volta à documentação.
-    await p.getByRole('button', { name: /Ir para a documentação/ }).click()
+    await janela.getByRole('button', { name: /Ir para a documentação/ }).click()
     // "Quem vendeu" vazio pergunta antes (decisão 4 da 7ª): aqui, vende assim.
     await p.getByRole('button', { name: 'Vender assim' }).click()
-    await expect(p.locator('[data-passo-atual]')).toHaveAttribute('data-passo-atual', 'Documentação')
+    await expect(janela.locator('[data-passo-atual]')).toHaveAttribute('data-passo-atual', 'Documentação')
     await expect.poll(guardado).toContain('"step":2')
-    await p.reload()
-    await expect(p.locator('[data-passo-atual]')).toHaveAttribute('data-passo-atual', 'Documentação')
+    janela = await receberPlanoNoPdv(p, `/${slug}`, planId)
+    await expect(janela.locator('[data-passo-atual]')).toHaveAttribute('data-passo-atual', 'Documentação')
   })
 })
 

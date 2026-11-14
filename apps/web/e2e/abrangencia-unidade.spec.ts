@@ -137,9 +137,9 @@ const TELA: Record<string, (x: Fx) => string> = {
   updateAppointmentStatus:      () => 'agenda',
   checkinAppointment:           x => `agenda/${x.apptA}`,
   reassignProfessional:         x => `agenda/${x.apptA}`,
-  getCheckoutPlan:              x => `agenda/${x.apptA}`,
-  getSchedulingDaySlots:        x => `checkout/${x.planoA}`,
-  cancelCheckout:               x => `checkout/${x.planoA}`,
+  getCheckoutPlan:              () => 'pdv',
+  getSchedulingDaySlots:        () => 'agenda',
+  aceitarPlano:                 x => `planejamentos/${x.planoA}`,
   markTransactionPaid:          () => 'financeiro',
   reverseTransaction:           () => 'financeiro',
   listarPlanejamentos:          () => 'planejamentos',
@@ -226,22 +226,26 @@ test.describe.serial('quem tem unidade fixa age só na dela', () => {
     expect((await linha('financial_transactions', f!.txPago)).notes, 'a rede estorna').toBe('Estornada')
   })
 
-  test('plano: não abre, não lista e não cancela o plano da B', async ({ browser }) => {
+  // Fase 3 do PDV (PT1b): o gesto no plano proposto é o ACEITE (era o
+  // "Cancelar checkout", que devolvia o proposto ao rascunho).
+  test('plano: não abre, não lista e não aceita o plano da B', async ({ browser }) => {
     await como(browser, 'recepcaoA', async p => {
       const aberto = await acao(p, 'recepcaoA', 'treatment-plans', 'getCheckoutPlan', [f!.plano])
       expect(aberto.texto).toContain('Plano não encontrado')
       const lista = await acao(p, 'recepcaoA', 'treatment-plans', 'listarPlanejamentos', [{ branchId: f!.outra.branchId }])
       expect(lista.texto, 'a lista da A não traz o plano da B').not.toContain(f!.nomePlano)
-      await acao(p, 'recepcaoA', 'treatment-plans', 'cancelCheckout', [f!.plano, 'invasão', f!.slugB])
+      const aceite = await acao(p, 'recepcaoA', 'treatment-plans', 'aceitarPlano', [f!.plano])
+      expect(aceite.texto).toContain('Plano não encontrado')
     })
     expect((await linha('treatment_plans', f!.plano)).status).toBe('PROPOSED')
+    expect((await db().from('comandas').select('id').eq('treatment_plan_id', f!.plano)).data ?? [], 'nenhuma comanda').toEqual([])
 
     await como(browser, 'rede', async p => {
       const lista = await acao(p, 'rede', 'treatment-plans', 'listarPlanejamentos', [{ branchId: f!.outra.branchId }])
       expect(lista.texto, 'a rede lista o plano da B').toContain(f!.nomePlano)
-      await acao(p, 'rede', 'treatment-plans', 'cancelCheckout', [f!.plano, 'controle', f!.slugB])
+      await acao(p, 'rede', 'treatment-plans', 'aceitarPlano', [f!.plano])
     })
-    expect((await linha('treatment_plans', f!.plano)).status, 'a rede cancela').not.toBe('PROPOSED')
+    expect((await linha('treatment_plans', f!.plano)).status, 'a rede aceita').toBe('ACCEPTED')
   })
 
   test('injetáveis: não abre nem renomeia o mapa da B', async ({ browser }) => {

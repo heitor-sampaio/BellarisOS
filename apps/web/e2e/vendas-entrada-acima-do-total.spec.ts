@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
-import { abrirVendaNoPdv } from './apoio/vender'
+import { abrirVendaNoPdv, receberPlanoNoPdv } from './apoio/vender'
 
 /**
  * ven-02 da revisão das decisões (2026-11-02, "mudar"): a entrada maior que o
@@ -73,14 +73,13 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('checkout do plano: a entrada acima do total avisa junto do campo e não segue', async ({ browser }) => {
+// O plano se recebe no PDV (fase 3, PT1b): aceito, a comanda dele abre a janela "Receber o plano".
+test('o receber do plano: a entrada acima do total avisa junto do campo e não segue', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/planejamentos/${planId}`)
-    await p.getByRole('button', { name: 'Fechar checkout' }).click()
-    const janela = p.getByRole('dialog', { name: 'Checkout' })
+    const janela = await receberPlanoNoPdv(p, `/${slug}`, planId)
     await janela.getByRole('button', { name: /Confirmar plano/ }).click()
     await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
-    await janela.getByLabel('Entrada').fill('60')
+    await janela.getByLabel('Entrada', { exact: true }).fill('60')
     await expect(janela.getByRole('alert').filter({ hasText: 'passa do total do plano' })).toContainText('R$ 50,00')
     // A37: a forma nasce vazia; escolhida, o que segura é a entrada.
     await janela.getByRole('button', { name: 'Pix', exact: true }).click()
@@ -89,21 +88,26 @@ test('checkout do plano: a entrada acima do total avisa junto do campo e não se
   })
 })
 
-test('checkout do plano: o servidor recusa a entrada acima do total (e aceita a que cabe)', async ({ browser }) => {
-  const rota = `/${slug}/planejamentos/${planId}`
+test('o receber do plano: o servidor recusa a entrada acima do total (e aceita a que cabe)', async ({ browser }) => {
+  const rota = `/${slug}/pdv`
   await como(browser, async p => {
     await p.goto(rota)
+    // Aceito antes (fase 3, PT1b) — se o teste de cima já aceitou, segue.
+    if ((await db().from('treatment_plans').select('status').eq('id', planId).single()).data!.status === 'PROPOSED') {
+      const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', rota, [planId])
+      expect(aceite.texto).not.toContain('"error"')
+    }
     const acima = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota,
       [planId, { forma: 'PARCELADO', metodo: 'PIX', entrada: 60, parcelas: 2, primeiroVencimento: vence() }, [], slug])
     expect(acima!.texto).toContain('passa do total do plano')
     const { data: nada } = await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)
     expect(nada ?? [], 'nenhum dinheiro gravado').toHaveLength(0)
-    expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data!.status).toBe('PROPOSED')
-    // Controle: a entrada que cabe fecha o plano.
+    // Controle: a entrada que cabe recebe o plano.
     const cabe = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota,
       [planId, { forma: 'PARCELADO', metodo: 'PIX', entrada: 20, parcelas: 2, primeiroVencimento: vence() }, [], slug])
     expect(cabe!.texto).not.toContain('passa do total')
-    expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data!.status).toBe('ACCEPTED')
+    const { data: lancado } = await db().from('financial_transactions').select('amount').eq('treatment_plan_id', planId)
+    expect((lancado ?? []).reduce((t, f) => t + Number(f.amount), 0), 'a entrada e as parcelas fecham os R$ 50').toBe(50)
   })
 })
 
@@ -115,7 +119,7 @@ test('a venda no PDV: a entrada acima do total avisa, desliga o "Vender" e o ser
     const aba = janela.getByRole('button', { name: 'Produto' })
     if (await aba.count()) await aba.click()
     await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
-    await janela.getByLabel('Entrada').fill('150')
+    await janela.getByLabel('Entrada', { exact: true }).fill('150')
     await expect(janela.getByRole('alert').filter({ hasText: 'passa do total da venda' })).toContainText('R$ 100,00')
     await expect(janela.getByRole('button', { name: /^Vender por/ })).toBeDisabled()
 

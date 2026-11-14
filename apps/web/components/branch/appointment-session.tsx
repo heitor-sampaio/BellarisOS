@@ -23,10 +23,8 @@ import {
   saveDraftNotes,
   reassignProfessional,
 } from '@/actions/appointments'
-import { generateEvaluationPlan, getCheckoutPlan, receberDoPlano } from '@/actions/treatment-plans'
-import { CheckoutWizard } from '@/components/branch/checkout-wizard'
+import { generateEvaluationPlan, aceitarPlano, receberDoPlano } from '@/actions/treatment-plans'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
-import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import { AnamneseGeralCartao, AnamneseNaAvaliacao, type AnamneseNaAvaliacaoHandle, type AnamneseGeralCartaoHandle } from '@/components/branch/anamnese-geral'
 import { alergiasDaAnamnese, anamneseRespondida, type AnamneseGeral, type FichaDePreAtendimento } from '@/lib/anamnese-geral'
 import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
@@ -1107,8 +1105,6 @@ export function AppointmentSession({
   const [perguntaDoPlano,        setPerguntaDoPlano]        = useState<{ texto: string; fecharAgora: boolean } | null>(null)
   const evalEditorRef = useRef<TreatmentPlanEditorRef>(null)
 
-  // Checkout aberto sobre a tela, quando quem atende também recebe.
-  const [checkoutPlan, setCheckoutPlan] = useState<CheckoutPlan | null>(null)
   // Aberto em qual aba: o "Planejamento" abre no plano de tratamento, e o "Mapa
   // de injetáveis" direto nos injetáveis (A10 da 9ª simulação).
   const [planejamentoAberto, setPlanejamentoAberto] = useState<false | 'tratamento' | 'injetaveis'>(false)
@@ -1122,9 +1118,10 @@ export function AppointmentSession({
   /**
    * Salva a avaliação inteira e decide o que fazer com o plano.
    *
-   * `fecharAgora` abre o checkout aqui mesmo; senão o plano fica `PROPOSED`, que
-   * é a fila da recepção. Desistir no meio do checkout não perde nada: o plano
-   * já está na fila de qualquer jeito.
+   * `fecharAgora`: a cliente quer fazer — o plano é ACEITO aqui mesmo, e a
+   * comanda dele vai ao PDV, onde ela assina o contrato e paga (PT1b, a
+   * revisão do Heitor de 2026-11-13: o aceite não pergunta de dinheiro). Sem
+   * ele, o plano fica `PROPOSED` ("a cliente vai pensar").
    */
   async function gerarPlano(fecharAgora: boolean, confirmarPlanejamentoVazio = false) {
     setGenError(null)
@@ -1177,25 +1174,20 @@ export function AppointmentSession({
       router.refresh()
       return
     }
-    const checkout = await getCheckoutPlan(res.planId)
+    const aceite = await aceitarPlano(res.planId)
     setGenerating(false)
-    if (checkout.error || !checkout.plan) {
-      setGenError(checkout.error ?? 'Plano gerado, mas o checkout não abriu. Ele está na fila da recepção.')
-      router.refresh()
-      return
-    }
-    setCheckoutPlan(checkout.plan)
+    if (aceite.error) setGenError(`Plano gerado, mas não foi aceito: ${aceite.error}`)
+    router.refresh()
   }
 
-  /** Abre o checkout de um plano que já está na fila. */
-  async function abrirCheckout(planId: string) {
+  /** Aceita o plano que estava esperando a cliente decidir. */
+  async function aceitarOPlano(planId: string) {
     setGenError(null)
-    const checkout = await getCheckoutPlan(planId)
-    if (checkout.error || !checkout.plan) {
-      setGenError(checkout.error ?? 'Não foi possível abrir o checkout.')
-      return
-    }
-    setCheckoutPlan(checkout.plan)
+    setGenerating(true)
+    const aceite = await aceitarPlano(planId)
+    setGenerating(false)
+    if (aceite.error) { setGenError(aceite.error); return }
+    router.refresh()
   }
 
   const selectedProfName = professionals.find(p => p.id === selectedProfId)?.name ?? appointment.professionalName
@@ -1624,32 +1616,6 @@ export function AppointmentSession({
               <button type="button" className="btn-secondary" onClick={() => setPerguntaDoPlano(null)}>Voltar</button>
               <button type="button" className="btn-primary" onClick={() => gerarPlano(perguntaDoPlano.fecharAgora, true)}>Continuar sem pontos</button>
             </div>
-          </div>
-        </JanelaModal>
-      )}
-
-      {/* Checkout sobre a tela do atendimento: o mesmo wizard da página, sem
-          tirar quem atende de perto do cliente. */}
-      {checkoutPlan && (
-        <JanelaModal onFechar={() => setCheckoutPlan(null)} rotulo="Checkout" largura={700} fechaNoFundo={false}>
-          <div style={{ padding: '22px 24px' }}>
-            <div className="esconde-impressao" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <div>
-                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Novo paciente
-                </p>
-                <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Checkout</h3>
-              </div>
-              <button type="button" onClick={() => setCheckoutPlan(null)} className="btn-ghost" style={{ padding: '6px 10px' }}>
-                Fechar
-              </button>
-            </div>
-            <CheckoutWizard
-              plan={checkoutPlan}
-              slug={slug}
-              podeAgendar={canCheckin}
-              onDone={() => { setCheckoutPlan(null); router.refresh() }}
-            />
           </div>
         </JanelaModal>
       )}
@@ -2224,35 +2190,40 @@ export function AppointmentSession({
                       </div>
                     </div>
                   )}
-                  {/* Plano já fechado: o que a tela precisa dizer é que a venda
-                      saiu, não convidar a fechar de novo. */}
+                  {/* Plano aceito: a venda saiu, e o dinheiro é no PDV (PT1b) —
+                      não convida a aceitar de novo. */}
                   {existingPlan?.status === 'ACCEPTED' && (
-                    <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--success-bg)', borderColor: 'var(--success-border)' }}>
+                    <div data-plano-aceito className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--success-bg)', borderColor: 'var(--success-border)' }}>
                       <CheckCircle2 size={18} style={{ color: 'var(--success)', flexShrink: 0 }} />
-                      <div>
+                      <div style={{ flex: 1, minWidth: 220 }}>
                         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--success)' }}>
-                          Plano fechado · {fmtBRL(totalDoPlano)}
+                          Plano aceito · {fmtBRL(totalDoPlano)}
                         </p>
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2 }}>
-                          O pagamento do plano foi registrado no checkout.
+                          A comanda do plano está no PDV: lá a cliente assina o contrato e paga.
                         </p>
                       </div>
+                      {podeReceber && (
+                        <Link href={`${rotaNoPortal(pathname, slug, '/pdv')}?unidade=${branchId}`} className="btn-secondary" style={{ textDecoration: 'none' }}>
+                          Abrir o PDV
+                        </Link>
+                      )}
                     </div>
                   )}
 
-                  {/* Plano na fila e quem está na tela pode receber: fecha aqui,
-                      sem ir até a lista da recepção. */}
-                  {podeReceber && existingPlan?.status === 'PROPOSED' && (
-                    <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  {/* A cliente ia pensar e decidiu: quem monta o plano ou quem
+                      recebe o aceita daqui. */}
+                  {(podeReceber || canEditRecords) && existingPlan?.status === 'PROPOSED' && (
+                    <div data-plano-proposto className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                       <div>
-                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Plano aguardando checkout</p>
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>A cliente vai pensar</p>
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                          Está na fila da recepção — você também pode fechar por aqui.
+                          Quando ela quiser fazer, aceite o plano: a comanda dele vai ao PDV.
                         </p>
                       </div>
-                      <button type="button" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}
-                        onClick={() => abrirCheckout(existingPlan.id)}>
-                        <CreditCard size={14} /> Fechar checkout
+                      <button type="button" className="btn-primary" disabled={generating} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}
+                        onClick={() => aceitarOPlano(existingPlan.id)}>
+                        {generating ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />} Aceitar plano
                       </button>
                     </div>
                   )}
@@ -2392,11 +2363,11 @@ export function AppointmentSession({
                       )}
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {/* Pago o atendimento, o "Fechar agora" (o checkout do plano aqui
-                            mesmo) sai: ao lado do "Pagamento confirmado" ele se lia como
-                            receber de novo (A51). O plano segue no "Gerar plano e enviar". */}
-                        {podeReceber && !(status === 'COMPLETED' && paymentTransaction) && (
+                        {/* "Aceitar plano": a cliente quer fazer. Sem dinheiro aqui — a
+                            comanda do plano vai ao PDV (PT1b). */}
+                        {(
                           <button
+                            data-aceitar-plano
                             type="button"
                             disabled={generating}
                             onClick={() => gerarPlano(true)}
@@ -2413,7 +2384,7 @@ export function AppointmentSession({
                           >
                             {generating
                               ? <><Loader2 size={16} className="animate-spin" /> Preparando…</>
-                              : <><CreditCard size={16} /> Fechar agora</>}
+                              : <><CheckCircle2 size={16} /> Aceitar plano</>}
                           </button>
                         )}
 
@@ -2421,24 +2392,15 @@ export function AppointmentSession({
                           type="button"
                           disabled={generating}
                           onClick={() => gerarPlano(false)}
-                          className={podeReceber ? 'btn-ghost' : undefined}
-                          style={podeReceber ? {
+                          className="btn-ghost"
+                          style={{
                             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                             padding: '12px 20px', fontSize: 'var(--text-base-sz)', fontWeight: 700,
-                          } : {
-                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                            padding: '14px 20px', borderRadius: 'var(--radius-field-token)', fontSize: 'var(--text-base-sz)', fontWeight: 800,
-                            background: generating ? 'var(--bg-app)' : 'var(--brand)',
-                            color:      generating ? 'var(--text-faint)' : 'var(--on-brand)',
-                            border:     generating ? '1px solid var(--border)' : 'none',
-                            cursor:     generating ? 'wait' : 'pointer',
-                            boxShadow:  generating ? 'none' : '0 2px 12px rgba(195,77,107,0.3)',
-                            letterSpacing: '-0.01em',
                           }}
                         >
                           {generating
                             ? <><Loader2 size={16} className="animate-spin" /> Gerando plano…</>
-                            : <><Send size={16} /> Gerar plano e enviar à recepção</>}
+                            : <><Send size={16} /> Gerar plano · a cliente vai pensar</>}
                         </button>
                       </div>
 
@@ -2450,13 +2412,8 @@ export function AppointmentSession({
                         </p>
                       )}
                       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 10 }}>
-                        {status === 'COMPLETED'
-                          ? (podeReceber
-                              ? 'Salva o plano. "Fechar agora" abre o checkout aqui mesmo; enviar deixa o plano na fila da recepção.'
-                              : 'Salva o plano e o envia para a recepção realizar o checkout.')
-                          : podeReceber
-                            ? 'Salva a avaliação e o plano. "Fechar agora" abre o checkout aqui mesmo; enviar deixa o plano na fila da recepção.'
-                            : 'Salva todas as informações e envia o plano para a recepção realizar o checkout.'}
+                        {status === 'COMPLETED' ? 'Salva o plano.' : 'Salva a avaliação e o plano.'}
+                        {' '}“Aceitar plano” manda a comanda ao PDV, onde a cliente assina o contrato e paga; “a cliente vai pensar” deixa o plano proposto, para aceitar depois.
                       </p>
                     </div>
                   )}

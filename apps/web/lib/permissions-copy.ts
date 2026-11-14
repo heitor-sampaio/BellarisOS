@@ -240,7 +240,7 @@ export function avisaSemMinhasComissoes(niveis: Partial<Record<'agenda' | 'medic
  */
 export function quemVendeNoResumo(niveis: Partial<Record<'procedures' | 'crm' | 'clients' | 'cashier' | 'financial', string>>): string | null {
   if (niveis.cashier === 'MANAGE' || niveis.financial === 'MANAGE') {
-    return 'Vende no PDV (procedimento, pacote, produto, crédito na rede).'
+    return 'Vende no PDV (procedimento, pacote, produto e crédito).'
   }
   if ((['procedures', 'crm', 'clients'] as const).some(m => niveis[m] === 'MANAGE')) {
     return 'Não vende no PDV: vender é de Recebimentos (ou do Financeiro em Gerenciar).'

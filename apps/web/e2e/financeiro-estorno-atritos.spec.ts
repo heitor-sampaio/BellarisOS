@@ -103,7 +103,10 @@ test('A51: recebido de novo pela tela do atendimento, a URL perde o ?receber=1 e
     await janela.getByRole('button', { name: 'Confirmar pagamento' }).click()
     await expect(p.getByText(/Pagamento confirmado/).first()).toBeVisible({ timeout: 20_000 })
     await expect(p).not.toHaveURL(/receber=1/)
-    await expect(p.getByRole('button', { name: 'Fechar agora' }), 'pago, o "Fechar agora" não se confunde com receber').toHaveCount(0)
-    await expect(p.getByRole('button', { name: /Gerar plano e enviar à recepção/ }), 'o plano continua a um clique').toBeVisible()
+    // Fase 3 do PDV (PT1b): o "Fechar agora" (que cobrava) saiu; o que ficou é
+    // o "Aceitar plano", sem dinheiro — e não se lê como receber de novo.
+    await expect(p.getByRole('button', { name: 'Fechar agora' }), 'pago, nada que se confunda com receber').toHaveCount(0)
+    await expect(p.locator('[data-aceitar-plano]'), 'o aceite não cobra').not.toContainText(/Receber|Cobrar|Fechar/)
+    await expect(p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' }), 'o plano continua a um clique').toBeVisible()
   })
 })

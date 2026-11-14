@@ -43,8 +43,18 @@ export async function montarCheckoutPlan(
     .maybeSingle(), 'carregar o plano do checkout')
 
   if (!planRaw) return { error: 'Plano não encontrado.' }
-  if (planRaw.status === 'ACCEPTED' || planRaw.status === 'COMPLETED') {
+  // O receber do plano é no PDV, depois do aceite (PT1b): só o plano aceito e
+  // ainda não recebido se recebe.
+  if (planRaw.status === 'DRAFT' || planRaw.status === 'PROPOSED') {
+    return { error: 'Aceite o plano antes de receber.', clientId: planRaw.client_id as string }
+  }
+  if (planRaw.status !== 'ACCEPTED') {
     return { error: 'Este plano já foi fechado.', clientId: planRaw.client_id as string }
+  }
+  const jaRecebido = await ler(admin.from('financial_transactions').select('id').eq('treatment_plan_id', planId)
+    .eq('type', 'INCOME').is('estorno_de', null).or('notes.is.null,notes.neq.Estornada').limit(1), 'conferir se o plano foi recebido')
+  if ((jaRecebido ?? []).length) {
+    return { error: 'Este plano já foi recebido.', clientId: planRaw.client_id as string }
   }
 
   type RawClient = { name: string; document: string | null; documento_numero: string | null; phone: string | null }

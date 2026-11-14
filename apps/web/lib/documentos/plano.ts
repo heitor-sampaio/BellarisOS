@@ -127,7 +127,10 @@ export async function recusaDosDocumentosDoPlano(
   const admin = createAdminClient()
   await gravar(admin.rpc('documentos_emitir_do_plano', { p_plano: planId }), 'emitir os documentos do plano')
   const pendentes = await ler(admin.rpc('documentos_pendentes_do_plano', { p_plano: planId }), 'conferir os documentos do plano')
-  const travam = ((pendentes ?? []) as { title: string; enforcement: string }[]).filter(p => p.enforcement === 'BLOQUEIA')
+  // PT1c (o Heitor, 13/11: "primeiro colhe assinatura, depois paga"): o que
+  // segura o dinheiro é o contrato de plano (assinado ou dispensado); os
+  // termos se assinam quando a cliente quiser.
+  const travam = ((pendentes ?? []) as { title: string; kind: string }[]).filter(p => p.kind === 'CONTRATO_PLANO')
   if (travam.length) return `Falta assinar: ${travam.map(t => t.title).join(', ')}.`
 
   const normalizado = pagamentoNormalizado(pagamento, desconto)

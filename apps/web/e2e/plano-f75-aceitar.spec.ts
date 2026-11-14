@@ -8,8 +8,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * - o erro do "Aceitar plano" aparecia no TOPO da página, longe do botão — a
  *   Débora clicava, nada mudava ali, e ela clicava de novo. O erro do botão
  *   aparece junto dele.
- * - o plano já aceito (PROPOSED: o checkout ficou pela metade) seguia dizendo
- *   "Aceitar plano". Diz "Continuar o checkout".
+ * - o plano já aceito seguia dizendo "Aceitar plano". Desde a fase 3 do PDV, o
+ *   aceito diz que falta receber, e leva ao PDV.
  *
  * Numa rede [e2e] própria.
  */
@@ -67,12 +67,22 @@ test('A24: o erro do "Aceitar plano" aparece junto do botão', async ({ browser 
   })
 })
 
-test('A24: o plano já aceito diz "Continuar o checkout"', async ({ browser }) => {
+// Desde a fase 3 do PDV (PT1b, a revisão do Heitor de 2026-11-13) o plano
+// proposto é o "a cliente vai pensar" — diz "Aceitar plano" —, e o aceito é o
+// que não pede aceite de novo: ele diz onde receber.
+test('A24: o plano já aceito não pede aceite de novo — diz que falta receber, no PDV', async ({ browser }) => {
   test.setTimeout(120_000)
   const id = await plano('PROPOSED', true)
   await como(browser, async p => {
     await p.goto(`/${slug}/planejamentos/${id}`)
-    await expect(p.getByRole('button', { name: 'Continuar o checkout' })).toBeVisible({ timeout: 30_000 })
+    await p.getByRole('button', { name: 'Aceitar plano' }).click()
+    const falta = p.locator('[data-plano-falta-receber]')
+    await expect(falta).toBeVisible({ timeout: 30_000 })
+    await expect(falta.getByRole('link', { name: 'Receber no PDV' })).toBeVisible()
+    await p.reload()
+    await expect(p.locator('[data-plano-falta-receber]')).toBeVisible({ timeout: 30_000 })
     await expect(p.getByRole('button', { name: 'Aceitar plano' })).toHaveCount(0)
+    await expect(p.getByRole('button', { name: 'Continuar o checkout' })).toHaveCount(0)
   })
+  expect((await db().from('treatment_plans').select('status').eq('id', id).single()).data!.status).toBe('ACCEPTED')
 })

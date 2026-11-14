@@ -10,6 +10,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { FormularioDeReceberAtendimento, type PacoteParaAbater } from '@/components/shared/receber-atendimento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { rotaCliente } from '@/lib/rotas'
+import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
 import { SITUACOES_DO_PDV, type ComandaDoPdv, type SituacaoDoPdv } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 
@@ -197,7 +198,9 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
         <div style={{ minWidth: 0 }}>
           <p style={{ fontSize: 'var(--text-name)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{c.cliente}</p>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>
-            Comanda nº {String(c.numero).padStart(4, '0')} · {c.origem === 'VENDA' ? `venda das ${hora(c.abertaEm)}` : `aberta às ${hora(c.abertaEm)} ao iniciar o atendimento`}
+            Comanda nº {String(c.numero).padStart(4, '0')} · {c.origem === 'VENDA' ? `venda das ${hora(c.abertaEm)}`
+              : c.origem === 'PLANO' ? `aberta às ${hora(c.abertaEm)} no aceite do plano`
+              : `aberta às ${hora(c.abertaEm)} ao iniciar o atendimento`}
           </p>
         </div>
         <span style={{ flex: 1 }} />
@@ -212,6 +215,8 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>
                 {c.origem === 'VENDA'
                   ? ['Venda', c.profissional ? `vendida por ${c.profissional}` : null].filter(Boolean).join(' · ')
+                  : c.origem === 'PLANO'
+                  ? ['Plano de tratamento', c.profissional ? `de ${c.profissional}` : null].filter(Boolean).join(' · ')
                   : [c.agendadoPara ? `Atendimento das ${hora(c.agendadoPara)}` : 'Atendimento', c.profissional].filter(Boolean).join(' · ')}
               </p>
             </div>
@@ -235,8 +240,10 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
             </p>
           ) : c.paga ? (
             <p data-comanda-paga style={{ color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
-              {c.origem === 'VENDA' ? 'Vendida' : 'Paga'} às {hora(c.pagaEm)} · {rotuloDaForma(c.forma)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
+              {c.origem === 'VENDA' ? 'Vendida' : c.origem === 'PLANO' ? 'Recebido' : 'Paga'} às {hora(c.pagaEm)} · {rotuloDaForma(c.forma)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
             </p>
+          ) : aReceber && c.planoId ? (
+            <ReceberOPlano key={c.id} planoId={c.planoId} slug={slugDaUnidade} aoReceber={aoReceber} />
           ) : aReceber && c.agendamentoId ? (
             <FormularioDeReceberAtendimento key={c.id} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}
               clienteId={c.clienteId} pagamentoCombinado={e.pagamentoCombinado} pacotesParaAbater={e.pacotesParaAbater}

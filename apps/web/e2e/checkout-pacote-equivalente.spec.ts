@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { receberPlanoNoPdv } from './apoio/vender'
 
 /**
  * O checkout SUGERE o pacote equivalente (2026-10-21, decisão do Heitor):
@@ -63,9 +64,10 @@ test.afterAll(async () => {
 
 test('o checkout sugere o pacote e aplica o preço dele como desconto', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/admin/checkout/${planId}`)
-    await p.getByRole('button', { name: 'Confirmar plano' }).click()
-    const sugestao = p.locator('[data-pacote-equivalente]')
+    // O receber do plano é no PDV (fase 3, PT1b) — quem recebe também aceita.
+    const janela = await receberPlanoNoPdv(p, '/admin', planId)
+    await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+    const sugestao = janela.locator('[data-pacote-equivalente]')
     await expect(sugestao).toContainText(`Pacote ${marca}`)
     await expect(sugestao).toContainText('700,00')
     await expect(sugestao).toContainText('economia de R$')

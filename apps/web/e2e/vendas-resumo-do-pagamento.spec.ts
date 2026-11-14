@@ -55,7 +55,7 @@ test('A46: "Entrada + parcelas" mostra o resumo antes de vender; A47: o crédito
     await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
 
     await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
-    await dlg.getByLabel('Entrada').fill('300')
+    await dlg.getByLabel('Entrada', { exact: true }).fill('300')
     await dlg.getByLabel('Parcelas').selectOption('3')
     await expect(dlg.locator('[data-resumo-do-pagamento]')).toHaveText(/Entrada R\$\s300,00 \+ 3× R\$\s1\.000,00/)
 

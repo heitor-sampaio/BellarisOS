@@ -724,6 +724,8 @@ export async function getResumoDoPlano(planId: string): Promise<{
   podeCancelar?: boolean
   /** O plano está fechado e ainda se cancela (ACCEPTED). */
   cancelavel?: boolean
+  /** PT1b: aceito e ainda não recebido — a comanda do plano no PDV. */
+  faltaReceber?: { comandaId: string | null; branchId: string; podeReceber: boolean } | null
   error?: string
 }> {
   const ctx = await getTenantContext()
@@ -737,7 +739,16 @@ export async function getResumoDoPlano(planId: string): Promise<{
     gerencia ? Promise.resolve(null) : quemDesfazNoCaixa(ctx.tenantId!, plan.branch_id as string),
   ])
   const cancelavel = plan.status === 'ACCEPTED'
-  return { resumo, quemRecebe, cancelavel, podeCancelar: cancelavel && gerencia }
+  let faltaReceber: { comandaId: string | null; branchId: string; podeReceber: boolean } | null = null
+  if (plan.status === 'ACCEPTED') {
+    const [vivo, comanda] = await Promise.all([
+      ler(admin.from('financial_transactions').select('id').eq('treatment_plan_id', planId).eq('type', 'INCOME')
+        .is('estorno_de', null).or('notes.is.null,notes.neq.Estornada').limit(1), 'conferir se o plano foi recebido'),
+      ler(admin.from('comandas').select('id').eq('treatment_plan_id', planId).is('cancelada_em', null).maybeSingle(), 'buscar a comanda do plano'),
+    ])
+    if (!(vivo ?? []).length) faltaReceber = { comandaId: (comanda?.id as string | undefined) ?? null, branchId: plan.branch_id as string, podeReceber: podeReceber(ctx) }
+  }
+  return { resumo, quemRecebe, cancelavel, podeCancelar: cancelavel && gerencia, faltaReceber }
 }
 
 export async function getPlanoParaEditar(planId: string): Promise<{
@@ -956,10 +967,39 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
   if (!plan)               return { error: 'Plano não encontrado.' }
   if (plan.status !== 'DRAFT') return { error: 'Apenas planos em rascunho podem ser enviados.' }
 
+  const recusa = await recusaDoEnvioDoPlano(admin, plan)
+  if (recusa) return { error: recusa }
+
+  const { error } = await admin
+    .from('treatment_plans')
+    .update({ status: 'PROPOSED', updated_at: new Date().toISOString() })
+    .eq('id', planId)
+
+  if (error) return { error: error.message }
+
+  await planoProposto(planId, ctx)
+
+  revalidatePath(`/${slug}/agenda`)
+  if (plan.evaluation_appointment_id) {
+    revalidatePath(`/${slug}/agenda/${plan.evaluation_appointment_id}`)
+  }
+  return {}
+}
+
+/**
+ * O que o plano precisa ter para sair do rascunho — mandado à cliente ("vai
+ * pensar") ou aceito (PT1b): as observações, uma sessão, e, vindo de uma
+ * avaliação, as dores e a anamnese.
+ */
+async function recusaDoEnvioDoPlano(
+  admin: ReturnType<typeof createAdminClient>,
+  plan: { id: string; evaluation_appointment_id: string | null; professional_notes: string | null; client_id: string | null },
+): Promise<string | null> {
+  const planId = plan.id
   // 1. Observações da profissional
   if (!plan.professional_notes?.trim()) {
     // A29 da 12ª: o botão é "Aceitar plano" (ou "Cliente vai pensar") — a frase diz os dois.
-    return { error: 'Preencha as observações da profissional antes de aceitar o plano ou mandá-lo à recepção.' }
+    return 'Preencha as observações da profissional antes de aceitar o plano ou mandá-lo à cliente.'
   }
 
   // 2. Pelo menos 1 sessão
@@ -968,7 +1008,7 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
     .select('id', { count: 'exact', head: true })
     .eq('plan_id', planId), 'contar as sessões do plano')
   if (itemCount === 0) {
-    return { error: 'Adicione ao menos uma sessão ao plano antes de enviar.' }
+    return 'Adicione ao menos uma sessão ao plano antes de enviar.'
   }
 
   // 3. Dores do cliente: no prontuário do atendimento (desde o D3 de
@@ -980,7 +1020,7 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
         'buscar as dores do atendimento'),
     ])
     if (!entrada?.queixas?.trim() && !appt?.notes?.trim()) {
-      return { error: 'Registre as dores/queixas do cliente antes de enviar.' }
+      return 'Registre as dores/queixas do cliente antes de enviar.'
     }
   }
 
@@ -998,24 +1038,51 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
       .eq('client_id', plan.client_id)
       .maybeSingle(), 'abrir o prontuário do cliente')
     if (!medRecord?.general_anamnesis) {
-      return { error: 'Preencha a anamnese do cliente antes de enviar.' }
+      return 'Preencha a anamnese do cliente antes de enviar.'
     }
   }
+  return null
+}
 
-  const { error } = await admin
-    .from('treatment_plans')
-    .update({ status: 'PROPOSED', updated_at: new Date().toISOString() })
-    .eq('id', planId)
+// -- Aceitar (PT1b) -------------------------------------------------------------
 
-  if (error) return { error: error.message }
-
-  await planoProposto(planId, ctx)
-
-  revalidatePath(`/${slug}/agenda`)
-  if (plan.evaluation_appointment_id) {
-    revalidatePath(`/${slug}/agenda/${plan.evaluation_appointment_id}`)
+/**
+ * O aceite do plano (PT1b, a revisão do Heitor de 2026-11-13): só "quero
+ * fazer" — sem pergunta de dinheiro ("pode ser intimidador e levar a
+ * desistencia"). O plano vira aceito, os documentos ficam prontos e a comanda
+ * do plano nasce no PDV com o valor inteiro. O dinheiro é no PDV: a forma, o
+ * contrato com ela, e só então o recebimento ("primeiro colhe assinatura,
+ * depois paga").
+ */
+export async function aceitarPlano(planId: string): Promise<{ error?: string; comandaId?: string | null }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'planos_de_tratamento')
+    assertPodeFecharPlano(ctx)
+    const admin = createAdminClient()
+    const alvo = await planoDoTenant(admin, planId, ctx)
+    if (!alvo) return { error: 'Plano não encontrado.' }
+    if (alvo.status === 'DRAFT') {
+      const plan = await ler(admin.from('treatment_plans')
+        .select('id, evaluation_appointment_id, professional_notes, client_id').eq('id', planId).single(), 'buscar o plano')
+      const recusa = plan ? await recusaDoEnvioDoPlano(admin, plan) : 'Plano não encontrado.'
+      if (recusa) return { error: recusa }
+    }
+    const { data, error } = await admin.rpc('plano_aceitar', { p_tenant: ctx.tenantId, p_plano: planId })
+    if (error) return { error: error.message }
+    // Plano aceito é o fato comercial mais forte do sistema: virou venda.
+    await planoAceito(planId, ctx)
+    revalidatePath(`/${alvo.slug}/pdv`)
+    revalidatePath('/admin/pdv')
+    revalidatePath(`/${alvo.slug}/planejamentos/${planId}`)
+    if (alvo.evaluation_appointment_id) {
+      revalidatePath(`/${alvo.slug}/agenda/${alvo.evaluation_appointment_id}`)
+      revalidatePath(`/admin/agenda/${alvo.evaluation_appointment_id}`)
+    }
+    return { comandaId: (data as string | null) ?? null }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
   }
-  return {}
 }
 
 // -- Cancelar checkout (PROPOSED → DRAFT) -------------------------------------
@@ -1448,9 +1515,9 @@ async function checkoutTreatmentPlanInterno(
 ) {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  // Aceitar é gesto de quem monta o plano; receber, de quem recebe na recepção.
-  if (pagamento) assertPodeReceber(ctx)
-  else           assertPodeFecharPlano(ctx)
+  // É o RECEBER do plano (no PDV): o aceite é outro gesto (`aceitarPlano`).
+  assertPodeReceber(ctx)
+  if (!pagamento) return { error: 'Escolha como vai ser pago.' }
   const admin = createAdminClient()
 
   // Aceitar o plano lança receita, cria agendamentos e muda o status: com o id
@@ -1471,8 +1538,9 @@ async function checkoutTreatmentPlanInterno(
     .eq('id', planId)
     .single(), 'buscar o plano')
 
-  if (!plan)                      return { error: 'Plano não encontrado.' }
-  if (plan.status !== 'PROPOSED') return { error: 'Apenas planos enviados para recepção podem ser finalizados.' }
+  if (!plan) return { error: 'Plano não encontrado.' }
+  if (plan.status === 'DRAFT' || plan.status === 'PROPOSED') return { error: 'Aceite o plano antes de receber.' }
+  if (plan.status !== 'ACCEPTED') return { error: 'Este plano não está aberto para receber.' }
 
   // Quem vendeu, conferido ANTES do dinheiro (com-06): da equipe, ativa e ao
   // alcance da unidade; vazio só com a confirmação.
@@ -1547,13 +1615,7 @@ async function checkoutTreatmentPlanInterno(
   // O que foi RECEBIDO agora e o que ficou A RECEBER são transações separadas:
   // `revenueCash` conta INCOME pago com eixo em `paid_at`, então uma transação
   // única marcada como não paga faria a entrada sumir do caixa do dia.
-  if (!pagamento) {
-    // Aceito sem cobrar: o valor nasce a receber, sem vencimento, esperando o
-    // check-in do primeiro atendimento. Preço congelado no aceite — o que a
-    // recepção cobrar depois é este número, não o da tabela do dia.
-    lancar({ amount: total, is_paid: false, notes: 'Plano aceito — a receber no check-in' })
-
-  } else if (pagamento.forma === 'AVISTA') {
+  if (pagamento.forma === 'AVISTA') {
     // No cartão de crédito em N vezes a maquininha paga a clínica: pago na
     // hora, e as vezes ficam no lançamento para a taxa da comissão.
     const vezes = vezesNoCartao(pagamento)
@@ -1644,10 +1706,10 @@ async function checkoutTreatmentPlanInterno(
   }
 
   // 3. Tudo numa transação só (C32 do levantamento, 2026-11-12): o desconto,
-  // o dinheiro, os agendamentos, as sessões, o ACCEPTED e a comissão de VENDA
-  // (decisão 4 da 7ª: à vista libera na hora, o crediário espera a última
-  // parcela — H4). A função trava o plano e confere que ainda é PROPOSED: a
-  // segunda aba ouve "Este plano já foi fechado", e uma falha no meio não
+  // o dinheiro, os agendamentos que vierem e a comissão de VENDA (decisão 4
+  // da 7ª: à vista libera na hora, o crediário espera a última parcela — H4).
+  // A função trava o plano e confere que está aceito e ainda não recebido: a
+  // segunda aba ouve "Este plano já foi recebido", e uma falha no meio não
   // deixa nada gravado pela metade.
   const fechado = await gravar(admin.rpc('plano_checkout', {
     p_tenant:       ctx.tenantId,
@@ -1662,9 +1724,6 @@ async function checkoutTreatmentPlanInterno(
   }), 'fechar o plano') as { transacao: string | null; agendamento: string | null } | null
   const transactionId    = fechado?.transacao ?? null
   const newAppointmentId = fechado?.agendamento ?? null
-
-  // Plano aceito é o fato comercial mais forte do sistema: virou venda.
-  await planoAceito(planId, ctx)
 
   // 4. Log no appointment de avaliação
   if (plan.evaluation_appointment_id) {

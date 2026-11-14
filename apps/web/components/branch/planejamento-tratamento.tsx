@@ -1,19 +1,19 @@
 'use client'
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CreditCard, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
+import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
+import { rotaNoPortal } from '@/lib/rotas'
+import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
 import {
   getPlanosDoCliente, salvarPlanoNovo, salvarPlanoDoCliente, getPlanoParaEditar,
-  proposeTreatmentPlan, getCheckoutPlan, vincularClienteAoPlano, buscarClientesParaPlano, getResumoDoPlano,
+  proposeTreatmentPlan, aceitarPlano, vincularClienteAoPlano, buscarClientesParaPlano, getResumoDoPlano,
 } from '@/actions/treatment-plans'
 import type { FinanceiroDoPlano, LancamentoDoPlano } from '@/lib/metrics/plano'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { endOfDayTZ } from '@/lib/datetime'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, ExistingPlan, AvailableProduct, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
-import { CheckoutWizard, type CheckoutPlan } from '@/components/branch/checkout-wizard'
-import { JanelaModal } from '@/components/shared/janela-modal'
 import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
 import { rodapeDoPlanoFechado } from '@/lib/plano-de-tratamento/textos'
 import { CancelarPlano } from '@/components/shared/cancelar-pacote'
@@ -100,10 +100,9 @@ export function PlanejamentoTratamento({
   const [carregando, setCarregando] = useState(!!idPedido)
   const [salvando,  setSalvando]   = useState(false)
   const [erro,      setErro]       = useState<string | null>(null)
-  // A24 da 14ª: o erro do "Aceitar plano" (e do "Cliente vai pensar", e do
-  // "Fechar checkout") aparece JUNTO do botão — no topo, a Débora não o via.
+  // A24 da 14ª: o erro do "Aceitar plano" (e do "Cliente vai pensar") aparece
+  // JUNTO do botão — no topo, a Débora não o via.
   const [erroDoBotao, setErroDoBotao] = useState<string | null>(null)
-  const [checkout,  setCheckout]   = useState<CheckoutPlan | null>(null)
 
   // Vínculo com cliente — um plano pode nascer só com nome e ganhar dono depois.
   const [ligando,       setLigando]       = useState(false)
@@ -257,22 +256,24 @@ export function PlanejamentoTratamento({
     router.refresh()
   }
 
-  async function fecharAgora() {
+  /**
+   * O aceite (PT1b, a revisão do Heitor de 2026-11-13): só "quero fazer", sem
+   * dinheiro. A comanda do plano nasce no PDV, onde se escolhe a forma, a
+   * cliente assina o contrato e se recebe.
+   */
+  async function aceitarAgora() {
     if (!aberto) return
     // Aceitar é quando vira venda: sem cliente não há a quem cobrar nem para
     // quem agendar. Em vez de recusar, pede o vínculo.
     if (!clienteLigado && !clientId) { setLigando(true); return }
     setErro(null); setErroDoBotao(null); setSalvando(true)
-    // Só plano proposto entra no checkout — é a regra da própria action.
-    if (aberto.status === 'DRAFT') {
-      if (!(await salvarOQueEstaNaTela())) { setSalvando(false); return }
-      const prop = await proposeTreatmentPlan(aberto.id, slug)
-      if (prop.error) { setSalvando(false); setErroDoBotao(prop.error); return }
-    }
-    const res = await getCheckoutPlan(aberto.id)
+    if (aberto.status === 'DRAFT' && !(await salvarOQueEstaNaTela())) { setSalvando(false); return }
+    const res = await aceitarPlano(aberto.id)
     setSalvando(false)
-    if (res.error || !res.plan) { setErroDoBotao(res.error ?? 'Não foi possível abrir o checkout.'); return }
-    setCheckout(res.plan)
+    if (res.error) { setErroDoBotao(res.error); return }
+    await carregarLista()
+    await abrirPlano(aberto.id)
+    router.refresh()
   }
 
   // -- Lista -------------------------------------------------------------------
@@ -450,11 +451,10 @@ export function PlanejamentoTratamento({
           {/* Aceitar deixou de depender do caixa: a profissional fecha o plano
               na sala e o valor fica em aberto, para ser recebido no check-in.
               Quem também opera caixa pode cobrar ali mesmo, no wizard. */}
-          <button type="button" onClick={fecharAgora} disabled={salvando} className="btn-primary"
+          <button type="button" onClick={aceitarAgora} disabled={salvando} className="btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
-            {salvando ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
-            {/* A24 da 14ª: o plano já aceito (o checkout ficou pela metade) continua de onde parou. */}
-            {aberto.status === 'PROPOSED' ? 'Continuar o checkout' : 'Aceitar plano'}
+            {salvando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+            Aceitar plano
           </button>
           {aberto.status === 'DRAFT' && (
             <button type="button" onClick={enviarParaRecepcao} disabled={salvando} className="btn-ghost"
@@ -466,19 +466,18 @@ export function PlanejamentoTratamento({
         </div>
       )}
 
-      {/* Quem recebe e não escreve no plano (a recepção) fecha o checkout do
-          plano proposto daqui (A44 da 5ª simulação: o botão só existia na tela
-          do atendimento da avaliação, e a página do plano "Aguardando
-          checkout" não tinha o que fazer). */}
+      {/* Quem recebe e não escreve no plano aceita o plano proposto daqui,
+          quando a cliente diz que quer (A44 da 5ª: a página do plano proposto
+          não tinha o que fazer). O dinheiro é no PDV (PT1b). */}
       {!editavel && podeReceber && aberto.status === 'PROPOSED' && (
-        <div data-fechar-checkout data-botoes-do-plano style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button type="button" onClick={fecharAgora} disabled={salvando} className="btn-primary"
+        <div data-botoes-do-plano style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <button type="button" onClick={aceitarAgora} disabled={salvando} className="btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
-            {salvando ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
-            Fechar checkout
+            {salvando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+            Aceitar plano
           </button>
           <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-            Aguardando o checkout: o pagamento, os documentos e o agendamento das sessões.
+            A cliente quer fazer? Aceite: a comanda do plano vai ao PDV, onde ela assina o contrato e paga.
           </span>
           {erroDoBotao && <ErroDoBotao texto={erroDoBotao} />}
         </div>
@@ -509,32 +508,10 @@ export function PlanejamentoTratamento({
       {/* D5 da 12ª: cancelado aqui, a tela relê o plano e a lista (o refresh não
           chega ao estado do navegador, e o "Cancelar plano" ficava na tela). */}
       {fechado && aberto.status !== 'CANCELLED' && (
-        <ResumoDoPlano key={`resumo-${aberto.id}`} planId={aberto.id}
+        <ResumoDoPlano key={`resumo-${aberto.id}`} planId={aberto.id} slug={slug}
           onCancelado={() => { void carregarLista(); void abrirPlano(aberto.id) }} />
       )}
 
-      {/* Checkout sobre o planejamento, como na tela do atendimento. */}
-      {checkout && (
-        <JanelaModal onFechar={() => setCheckout(null)} rotulo="Checkout" largura={700} fechaNoFundo={false}>
-          <div style={{ padding: '22px 24px' }}>
-            <div className="esconde-impressao" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Checkout</h3>
-              <button type="button" onClick={() => setCheckout(null)} className="btn-ghost" style={{ padding: '6px 10px' }}>Fechar</button>
-            </div>
-            <CheckoutWizard
-              plan={checkout}
-              slug={slug}
-              podeCobrar={podeReceber}
-              onDone={async () => {
-                setCheckout(null)
-                await carregarLista()
-                await abrirPlano(aberto.id)
-                router.refresh()
-              }}
-            />
-          </div>
-        </JanelaModal>
-      )}
 
     </div>
   )
@@ -564,8 +541,11 @@ function situacaoDoLancamento(l: LancamentoDoPlano, fuso = 'America/Sao_Paulo'):
     : { texto: `A vencer em ${diaNoFuso(new Date(l.vencimento), fuso)}`, cor: 'var(--text-muted)' }
 }
 
-function ResumoDoPlano({ planId, onCancelado }: { planId: string; onCancelado?: () => void }) {
+function ResumoDoPlano({ planId, slug, onCancelado }: { planId: string; slug: string; onCancelado?: () => void }) {
   const fuso = useFuso()
+  const pathname = usePathname()
+  // PT1b: aceito e ainda não recebido — a comanda está no PDV.
+  const [faltaReceber, setFaltaReceber] = useState<{ comandaId: string | null; branchId: string; podeReceber: boolean } | null>(null)
   const [resumo, setResumo] = useState<FinanceiroDoPlano | null>(null)
   // A28 da 9ª: a quem a recepção sem o Financeiro pede a parcela que vence depois.
   const [quemRecebe, setQuemRecebe] = useState<string[] | null>(null)
@@ -576,7 +556,7 @@ function ResumoDoPlano({ planId, onCancelado }: { planId: string; onCancelado?: 
   useEffect(() => {
     let vivo = true
     getResumoDoPlano(planId)
-      .then(res => { if (vivo) { if (res.resumo) { setResumo(res.resumo); setQuemRecebe(res.quemRecebe ?? null); setCancelamento({ cancelavel: !!res.cancelavel, podeCancelar: !!res.podeCancelar }) } else setErro(res.error ?? 'Não foi possível ler o plano.') } })
+      .then(res => { if (vivo) { if (res.resumo) { setResumo(res.resumo); setFaltaReceber(res.faltaReceber ?? null); setQuemRecebe(res.quemRecebe ?? null); setCancelamento({ cancelavel: !!res.cancelavel, podeCancelar: !!res.podeCancelar }) } else setErro(res.error ?? 'Não foi possível ler o plano.') } })
       .catch(() => { if (vivo) setErro('Não foi possível ler o pagamento do plano.') })
     return () => { vivo = false }
   }, [planId])
@@ -602,6 +582,19 @@ function ResumoDoPlano({ planId, onCancelado }: { planId: string; onCancelado?: 
 
   return (
     <div data-resumo-do-plano className="card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {faltaReceber && (
+        <div data-plano-falta-receber style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)' }}>
+          <p style={{ flex: 1, minWidth: 220, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+            <b>Plano aceito. Falta receber:</b> a comanda do plano está no PDV — lá se escolhe a forma, a cliente assina o contrato e paga.
+          </p>
+          {faltaReceber.podeReceber && (
+            <Link className="btn-primary" style={{ textDecoration: 'none' }}
+              href={`${rotaNoPortal(pathname, slug, '/pdv')}?unidade=${faltaReceber.branchId}${faltaReceber.comandaId ? `&comanda=${faltaReceber.comandaId}` : ''}`}>
+              Receber no PDV
+            </Link>
+          )}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {caixa('valor', 'Valor do plano', resumo.valor, { 'data-plano-valor': '' })}
         {caixa('recebido', 'Recebido', resumo.recebido, { 'data-plano-recebido': '' })}

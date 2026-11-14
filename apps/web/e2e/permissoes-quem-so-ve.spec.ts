@@ -19,7 +19,8 @@ import { apagarAgendamentos, apagarDocumentosEmitidos } from './apoio/limpeza'
  * - D7: "Novo lançamento" no Financeiro da rede para Financeiro = Ver, e a
  *   recusa "Forbidden", em inglês.
  * - D8: o termo que bloqueia, sem saída para o médico que não colhe assinatura.
- * - D9: "Fechar agora" e a dica do J-35 para quem tem o prontuário só em Ver.
+ * - D9: "Fechar agora" (desde a fase 3 do PDV, "Aceitar plano") e a dica do
+ *   J-35 para quem tem o prontuário só em Ver.
  * - A39: "Editar registro" com o texto "Apenas gerentes podem editar".
  * - A43: "Só a administração da rede vê esta lista" ao médico da rede.
  * - A5: o cargo com Relatórios em Ver e nenhuma aba some do resumo sem dizer.
@@ -198,7 +199,7 @@ test('D8: o médico que não colhe assinatura lê quem colhe o termo que bloquei
   })
 })
 
-test('D9, A39: com o prontuário só em Ver, nada de "Fechar agora", da dica do J-35 nem de "Editar registro"', async ({ browser }) => {
+test('D9, A39: com o prontuário só em Ver, nada de "Aceitar plano" (era o "Fechar agora"), da dica do J-35 nem de "Editar registro"', async ({ browser }) => {
   const emCurso = await agendamento({
     status: 'IN_PROGRESS', scheduled_at: new Date(Date.now() - 30 * 60_000).toISOString(), started_at: new Date(Date.now() - 20 * 60_000).toISOString(),
   })
@@ -209,7 +210,10 @@ test('D9, A39: com o prontuário só em Ver, nada de "Fechar agora", da dica do 
   // Controle: o médico, que escreve no prontuário, gera o plano e edita o registro dele.
   await como(browser, medico!, async p => {
     await p.goto(`/${slug}/agenda/${emCurso}`)
-    await expect(p.getByRole('button', { name: 'Gerar plano e enviar à recepção' })).toBeVisible()
+    // Fase 3 do PDV (PT1b): "Fechar agora" virou "Aceitar plano" (sem dinheiro),
+    // e "Gerar plano e enviar à recepção", "Gerar plano · a cliente vai pensar".
+    await expect(p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' })).toBeVisible()
+    await expect(p.locator('[data-aceitar-plano]')).toBeVisible()
     await p.goto(`/${slug}/agenda/${concluido}`)
     await expect(p.getByText('Registro bloqueado para edição')).toBeVisible()
     await expect(p.getByRole('button', { name: 'Editar registro' })).toBeVisible()
@@ -218,8 +222,8 @@ test('D9, A39: com o prontuário só em Ver, nada de "Fechar agora", da dica do 
   await como(browser, gerente!, async p => {
     await p.goto(`/${slug}/agenda/${emCurso}`)
     await expect(p.getByText('Quem conclui é o profissional (concluir grava o prontuário).')).toBeVisible()
-    await expect(p.getByRole('button', { name: 'Fechar agora' })).toHaveCount(0)
-    await expect(p.getByRole('button', { name: 'Gerar plano e enviar à recepção' })).toHaveCount(0)
+    await expect(p.locator('[data-aceitar-plano]')).toHaveCount(0)
+    await expect(p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' })).toHaveCount(0)
     await expect(p.locator('[data-dica-do-avulso]')).toHaveCount(0)
     await p.goto(`/${slug}/agenda/${concluido}`)
     await expect(p.getByText('Registro bloqueado para edição')).toBeVisible()

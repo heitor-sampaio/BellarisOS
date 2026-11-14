@@ -40,6 +40,7 @@ export default async function AdminCheckoutPage({
       branchName={branch.name}
       slug={branch.slug}
       planId={planId}
+      portal="/admin"
     />
   )
 }

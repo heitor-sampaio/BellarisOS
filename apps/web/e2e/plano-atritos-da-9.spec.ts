@@ -4,6 +4,7 @@ import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste 
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
+import { receberPlanoNoPdv } from './apoio/vender'
 
 /**
  * O plano e o pacote da 9ª simulação (F41), numa rede [e2e] própria.
@@ -196,34 +197,40 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
   test('A35: o checkout avisa antes de emitir que o contrato vai sem o documento da cliente, e deixa seguir', async ({ browser }) => {
     const { planId } = await planoProposto('sem CPF')
     await comSessao(browser, gestor!.estado, async p => {
-      await p.goto(`/admin/checkout/${planId}`)
-      const aviso = p.locator('[data-contrato-sem-documento]')
+      // O receber do plano é no PDV (fase 3, PT1b).
+      const janela = await receberPlanoNoPdv(p, '/admin', planId)
+      const aviso = janela.locator('[data-contrato-sem-documento]')
       await expect(aviso).toContainText('não tem CPF')
       await expect(aviso).toContainText('o contrato do plano sai sem esse documento')
-      await p.getByRole('button', { name: 'Confirmar plano' }).click()
-      await expect(p.locator('[data-contrato-sem-documento]'), 'repete antes da documentação').toBeVisible()
-      await expect(p.getByRole('button', { name: /Ir para a documentação/ })).toBeEnabled()
+      await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+      await expect(janela.locator('[data-contrato-sem-documento]'), 'repete antes da documentação').toBeVisible()
+      // No PDV a forma nasce "À vista" e o meio, vazio (A37): escolhido o meio, o aviso não segura.
+      await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+      await expect(janela.getByRole('button', { name: /Ir para a documentação/ })).toBeEnabled()
     })
   })
 
   test('A36: reabrir o checkout com o contrato assinado traz o pagamento assinado e diz que mudar pede um contrato novo', async ({ browser }) => {
     const { planId } = await planoProposto('assinado')
     await comSessao(browser, gestor!.estado, async p => {
-      const rota = `/admin/checkout/${planId}`
+      const rota = '/admin/pdv'
       await p.goto(rota)
+      // Fase 3 do PDV (PT1b): o plano se aceita antes de receber.
+      const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', rota, [planId])
+      expect(aceite.texto).not.toContain('"error"')
       const preparado = await chamarAcao(p, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', rota, [planId, { forma: 'AVISTA', metodo: 'PIX' }])
       expect(preparado.texto).not.toContain('"error"')
       const { data: docs } = await db().from('issued_documents').select('id').eq('treatment_plan_id', planId)
       for (const d of docs ?? []) await assinarNoPapel(d.id as string)
 
-      await p.goto(rota)
-      await p.getByRole('button', { name: 'Confirmar plano' }).click()
-      const aviso = p.locator('[data-contrato-assinado-com]')
+      const janela = await receberPlanoNoPdv(p, '/admin', planId)
+      await janela.getByRole('button', { name: 'Confirmar plano' }).click()
+      const aviso = janela.locator('[data-contrato-assinado-com]')
       await expect(aviso).toContainText('já foi assinado com este pagamento')
       await expect(aviso).toContainText('À vista, no Pix')
       await expect(aviso).toContainText('Mudar as condições pede um contrato novo')
-      await expect(p.getByRole('button', { name: 'À vista' })).toHaveAttribute('aria-pressed', 'true')
-      await expect(p.getByRole('button', { name: 'Pix', exact: true })).toHaveAttribute('aria-pressed', 'true')
+      await expect(janela.getByRole('button', { name: 'À vista' })).toHaveAttribute('aria-pressed', 'true')
+      await expect(janela.getByRole('button', { name: 'Pix', exact: true })).toHaveAttribute('aria-pressed', 'true')
     })
   })
 })

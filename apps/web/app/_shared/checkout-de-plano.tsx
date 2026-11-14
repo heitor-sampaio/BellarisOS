@@ -1,51 +1,46 @@
 import { notFound, redirect } from 'next/navigation'
-import { getTenantContext, assertPodeReceber, can, podeVerClinico } from '@/lib/auth'
-import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
-import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
-import { CheckoutWizard } from '@/components/branch/checkout-wizard'
+import { getTenantContext, assertPodeReceber } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 
 /**
- * Checkout de um plano de tratamento — a mesma tela nos dois portais.
+ * O antigo "Checkout" do plano — a mesma rota nos dois portais. Desde o PDV
+ * (fase 3, PT1b: a revisão do Heitor de 2026-11-13) o plano não se fecha mais
+ * aqui: o aceite é no plano, e o dinheiro, na comanda do plano no PDV. A rota
+ * fica (links velhos, a fila dos propostos) e leva aonde a coisa mora agora:
+ * - proposto (ou rascunho) → o plano, onde se aceita;
+ * - aceito → a comanda dele no PDV;
+ * - o resto → a ficha da cliente.
  *
- * Quem chama resolve a filial: pelo slug da URL na unidade, pelo próprio plano
- * na rede. A consulta continua exigindo o `branch_id`, então o recorte não
- * afrouxou por existir no portal da rede.
+ * Quem chama resolve a unidade: pelo slug da URL na unidade, pelo próprio
+ * plano na rede. A consulta exige o `branch_id`.
  */
 export async function CheckoutDePlano({
-  branchId, branchName, slug, planId,
+  branchId, slug, planId, portal,
 }: {
   branchId:   string
   branchName: string
   slug:       string
   planId:     string
-}) {
+  /** Onde a pessoa está: `/admin` na rede; sem ele, o portal da unidade. */
+  portal?:    string
+}): Promise<null> {
   const ctx = await getTenantContext()
   assertPodeReceber(ctx)
 
-  const { plan, clientId } = await montarCheckoutPlan(planId, branchId, branchName, ctx.tenantId!,
-    prof => podeVerClinico(ctx, prof), ctx.internalUserId ?? null, veComissaoDeTodos(ctx))
+  const admin = createAdminClient()
+  const plano = await ler(admin.from('treatment_plans').select('id, status, client_id, branch_id')
+    .eq('id', planId).eq('branch_id', branchId).maybeSingle(), 'buscar o plano') as
+    { id: string; status: string; client_id: string | null; branch_id: string } | null
+  if (!plano) notFound()
 
-  if (!plan) {
-    // Plano já fechado volta para a ficha do cliente; o resto é 404.
-    if (clientId) redirect(`${slug ? `/${slug}` : '/admin'}/clients/${clientId}`)
-    notFound()
+  const base = portal ?? `/${slug}`
+  if (plano.status === 'DRAFT' || plano.status === 'PROPOSED') redirect(`${base}/planejamentos/${plano.id}`)
+  if (plano.status === 'ACCEPTED') {
+    const comanda = await ler(admin.from('comandas').select('id').eq('treatment_plan_id', plano.id)
+      .is('cancelada_em', null).maybeSingle(), 'buscar a comanda do plano') as { id: string } | null
+    redirect(`${base}/pdv?unidade=${plano.branch_id}${comanda ? `&comanda=${comanda.id}` : ''}`)
   }
-
-  return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 4px 40px' }}>
-      <div style={{ marginBottom: 28 }} className="esconde-impressao">
-        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-          Novo paciente
-        </p>
-        <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-          Checkout
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          {plan.clientName} · {branchName}
-        </p>
-      </div>
-
-      <CheckoutWizard plan={plan} slug={slug} podeAgendar={can(ctx, 'agenda', 'MANAGE')} />
-    </div>
-  )
+  if (plano.client_id) redirect(`${base}/clients/${plano.client_id}`)
+  return notFound()
 }

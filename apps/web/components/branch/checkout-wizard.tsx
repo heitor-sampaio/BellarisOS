@@ -172,7 +172,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   }, [plan.id])
 
   const aberto = (d: ResumoDeDocumento) => d.status === 'A_GERAR' || d.status === 'PENDENTE' || d.status === 'INCOMPLETO'
-  const documentosQueTravam = (docs ?? []).filter(d => aberto(d) && d.exigencia === 'BLOQUEIA')
+  // PT1c (o Heitor, 13/11: "primeiro colhe assinatura, depois paga"): o que
+  // segura o RECEBER é o contrato de plano, que cita o pagamento; os termos se
+  // assinam quando a cliente quiser.
+  const documentosQueTravam = (docs ?? []).filter(d => aberto(d) && d.tipo === 'CONTRATO_PLANO')
 
   // Pagamento — plano de milhares de reais raramente é à vista, então a forma
   // vem antes do método: nada agora, à vista, entrada + parcelas, ou a receber.
@@ -183,7 +186,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // caixa — ou o plano a ficar parado numa fila esperando a recepção.
   // A37 da 6ª simulação: a forma nasce VAZIA — o Pix era o padrão calado.
   const [paymentMethod, setPaymentMethod] = useState('')
-  const [formaPgto,     setFormaPgto]     = useState<'NADA_AGORA' | 'AVISTA' | 'PARCELADO' | 'A_RECEBER'>('NADA_AGORA')
+  const [formaPgto,     setFormaPgto]     = useState<'NADA_AGORA' | 'AVISTA' | 'PARCELADO' | 'A_RECEBER'>('AVISTA')
   const [entrada,       setEntrada]       = useState('')
   const [parcelas,      setParcelas]      = useState(3)
   // À vista no cartão de crédito: em quantas vezes na maquininha (pago na hora).
@@ -367,7 +370,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       // O dia do vencimento: o "AAAA-MM-DD" do campo passa como veio; a âncora
       // do meio-dia (vencimentoDoDia) se lê em Brasília (F64).
       const dia = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : dayKeyTZ(iso, BUSINESS_TZ)
-      if (!p) setFormaPgto('NADA_AGORA')
+      if (!p) setFormaPgto('AVISTA')
       else {
         setFormaPgto(p.forma)
         setPaymentMethod(p.metodo ?? '')
@@ -401,7 +404,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- a retomada roda uma vez, depois de o pagamento guardado voltar ao estado */
     setRetomada(null)
     irParaDocumentos(false, retomada.semVendedor, itens => {
-      if (alvo === 3 && podeAgendar && !itens.some(d => aberto(d) && d.exigencia === 'BLOQUEIA')) setStep(3)
+      if (alvo === 3 && podeAgendar && !itens.some(d => aberto(d) && d.tipo === 'CONTRATO_PLANO')) setStep(3)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só quando a retomada chega
   }, [retomada])
@@ -512,7 +515,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     </div>
   ) : null
 
-  const cancelBlock = showCancel ? (
+  // O "Cancelar checkout" devolvia o plano PROPOSTO ao rascunho; o plano agora
+  // chega aqui já aceito (PT1b), e cancelá-lo é do Financeiro, pela página dele.
+  const cancelBlock = plan.status !== 'PROPOSED' ? null : showCancel ? (
     <div style={{ marginTop: 24, padding: '18px 20px', borderRadius: 'var(--radius-field-token)', border: '1.5px solid var(--danger-border)', background: 'var(--danger-soft)' }}>
       <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--danger)', marginBottom: 10 }}>
         Cancelar checkout
@@ -736,7 +741,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               { key: 'AVISTA',     label: 'À vista' },
               { key: 'PARCELADO',  label: ROTULO_DO_CREDIARIO },
               { key: 'A_RECEBER',  label: 'A receber' },
-            ].filter(o => podeCobrar || o.key === 'NADA_AGORA')}
+            // PT1b (o Heitor, 13/11): aceitar não cobra — o plano já chega aceito, e
+            // aqui é o RECEBER (no PDV). Sai o "Receber no atendimento".
+            ].filter(o => o.key !== 'NADA_AGORA' && podeCobrar)}
             value={formaPgto}
             onSelect={k => setFormaPgto(k as typeof formaPgto)}
             ariaLabel="Como vai ser pago"
@@ -1036,7 +1043,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           style={{ width: '100%', padding: '14px', fontSize: 'var(--text-card-title)', justifyContent: 'center', gap: 8 }}
         >
           {podeSeguir
-            ? (podeAgendar ? 'Ir para o agendamento' : formaPgto === 'NADA_AGORA' ? 'Aceitar plano' : 'Confirmar')
+            ? (podeAgendar ? 'Ir para o agendamento' : 'Receber o plano')
             : `Falta assinar: ${documentosQueTravam.map(d => d.titulo).join(', ')}`}
           <ChevronRight size={18} />
         </button>

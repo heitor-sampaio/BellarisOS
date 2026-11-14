@@ -130,7 +130,8 @@ test('A29: "Aceitar plano" leva a observação que está na tela', async ({ brow
     await p.getByLabel('Observações da profissional').fill('Sem ácidos na semana anterior.')
     await p.getByRole('button', { name: 'Aceitar plano' }).click()
     await expect(p.getByText(/Preencha as observações/)).toHaveCount(0)
+    // Fase 3 do PDV: aceitar leva o plano a ACEITO (antes, a PROPOSTO).
     await expect.poll(async () => (await db().from('treatment_plans').select('status, professional_notes').eq('id', pl!.id)
-      .single<{ status: string; professional_notes: string | null }>()).data).toEqual({ status: 'PROPOSED', professional_notes: 'Sem ácidos na semana anterior.' })
+      .single<{ status: string; professional_notes: string | null }>()).data).toEqual({ status: 'ACCEPTED', professional_notes: 'Sem ácidos na semana anterior.' })
   })
 })

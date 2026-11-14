@@ -150,8 +150,13 @@ test('D8: o checkout do plano põe a sessão na sala única do procedimento; ocu
   expect(eOcupa).toBeNull()
   const { plano, sessoes } = await planoProposto('Plano D8')
   await como(browser, gestor, async p => {
-    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', `/admin/checkout/${plano}`, [
-      plano, null,
+    // Fase 3 do PDV (PT1b): o plano se aceita antes, e o receber (no PDV) pede a
+    // forma. A tela não agenda mais ali, mas o receber ainda aceita as sessões
+    // agendadas — e a regra da sala é dele.
+    const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', '/admin/pdv', [plano])
+    expect(aceite.texto, 'o aceite passou').not.toContain('"error"')
+    const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', '/admin/pdv', [
+      plano, { forma: 'AVISTA', metodo: 'PIX' },
       [
         { planSessionId: sessoes[0], scheduledAt: as('10:00'), professionalId: rede.professionalId, branchId: rede.branchId },
         { planSessionId: sessoes[1], scheduledAt: as('14:00'), professionalId: rede.professionalId, branchId: rede.branchId },
