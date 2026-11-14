@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
-import { pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, pagoNoPix } from './apoio/vender'
 
 /**
  * D1 e A14 da 8ª simulação (2026-11-06): na ficha da rede (`/admin`), a venda
@@ -14,7 +14,8 @@ import { pagoNoPix } from './apoio/vender'
  *
  * Agora, com mais de uma unidade, o "Vender" pergunta "Unidade da venda"
  * (nenhuma escolhida), e o catálogo, o estoque e a equipe são os da escolhida;
- * a venda grava nela. O agendar e o cadastro também nascem sem unidade
+ * a venda grava nela. Desde o PDV7 (2026-11-13) só se vende pelo PDV, e a
+ * unidade da venda é a do PDV (`?unidade=`): o select saiu. O agendar e o cadastro também nascem sem unidade
  * (H5: "nada se prende a clients.branch_id"; princípio 3).
  *
  * Numa rede [e2e] própria, com duas unidades.
@@ -73,24 +74,17 @@ test.afterAll(async () => {
   await debora?.limpar(); await recepcao?.limpar(); await rede?.limpar()
 })
 
-test('D1: o "Vender" da ficha da rede pergunta a unidade, e a venda sai da escolhida — estoque, equipe e caixa', async ({ browser }) => {
+test('D1: no PDV da rede, a venda sai da unidade do PDV (?unidade=) — estoque, equipe e caixa', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/admin/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
-    const unidade = dlg.getByLabel('Unidade da venda')
-    // Nenhuma pré-escolhida: nem a de cadastro (Água Verde), nem a primeira da lista.
-    await expect(unidade).toHaveValue('')
-    await expect(dlg.getByLabel('Produto'), 'sem a unidade, nada a vender ainda').toHaveCount(0)
-
     // Na Água Verde, a equipe é a dela: o hidratante sem estoque, e a Débora (do Batel) fora.
-    await unidade.selectOption({ label: NOME_A })
-    await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
-    await expect(dlg.getByLabel('Produto').locator('option', { hasText: PRODUTO })).toContainText('sem estoque')
-    await expect(dlg.getByLabel('Quem vendeu').locator('option', { hasText: '(você)' }), 'a lista da Água Verde está lá').toHaveCount(1)
-    await expect(dlg.getByLabel('Quem vendeu').locator('option', { hasText: 'Debora' })).toHaveCount(0)
+    const naAguaVerde = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
+    await naAguaVerde.getByRole('button', { name: 'Produto', exact: true }).click()
+    await expect(naAguaVerde.getByLabel('Produto').locator('option', { hasText: PRODUTO })).toContainText('sem estoque')
+    await expect(naAguaVerde.getByLabel('Quem vendeu').locator('option', { hasText: '(você)' }), 'a lista da Água Verde está lá').toHaveCount(1)
+    await expect(naAguaVerde.getByLabel('Quem vendeu').locator('option', { hasText: 'Debora' })).toHaveCount(0)
 
-    await unidade.selectOption({ label: NOME_B })
+    // No PDV do Batel (a cliente é da Água Verde, de cadastro: não importa).
+    const dlg = await abrirVendaNoPdv(p, '/admin', cliente, batel)
     await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
     await expect(dlg.getByLabel('Produto').locator('option', { hasText: PRODUTO })).toContainText('4 un em estoque')
     // A equipe é a do Batel: a Débora está em "Quem vendeu" — e é ela quem vende.

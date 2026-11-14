@@ -49,7 +49,7 @@ const saldo = async (id: string) => n((await db().from('branch_product_stock').s
 async function vender(p: Page, itens: { produtoId: string; quantidade: number }[], pagamento: Record<string, unknown>) {
   const rota = `/${slug}/clients/${cliente}`
   await p.goto(rota)
-  const r = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota,
+  const r = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', `/${slug}/pdv`,
     [cliente, itens, rede!.branchId, null, pagamento, null, null, { vendedorId: caixa!.userId }])
   expect(r.texto, 'vender').toContain('"vendaId"')
   const { data } = await db().from('product_sales').select('id').eq('tenant_id', rede!.tenantId)

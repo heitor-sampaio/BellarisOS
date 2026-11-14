@@ -1,6 +1,7 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
 
@@ -184,10 +185,8 @@ test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e esp
     await p.getByLabel('Qual maquininha?').selectOption({ label: 'Maquininha' })
     await expect(p.getByRole('button', { name: 'Ir para a documentação' })).toBeEnabled()
 
-    // O "Vender" da ficha (pacote, pré-pago, produto, crédito e o contrato usam os mesmos campos).
-    await p.goto(`/admin/clients/${c}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const vender = p.getByRole('dialog', { name: 'Vender' })
+    // A venda no PDV (era o "Vender" da ficha até o PDV7; pacote, pré-pago, produto, crédito e o contrato usam os mesmos campos).
+    const vender = await abrirVendaNoPdv(p, '/admin', c, rede!.branchId)
     await vender.getByLabel('Procedimento', { exact: true }).selectOption(rede!.procedureId)
     await vender.getByLabel('Meio de pagamento').selectOption('DEBIT_CARD')
     await expect(vender.getByLabel('Qual maquininha?')).toBeVisible()

@@ -4,7 +4,7 @@ import { instanteNoFuso } from '@/lib/datetime'
 
 import { PerguntaDaPerda } from '@/components/branch/pergunta-da-perda'
 import { useEffect, useEffectEvent, useState, useTransition, useRef, useCallback } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { rotaCliente, rotaOportunidades, rotaNoPortal } from '@/lib/rotas'
 import {
   UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown, Package, ShoppingBag,
@@ -43,7 +43,6 @@ import {
 } from '@/actions/crm-scheduling'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { SegSelect } from '@/components/shared/seg-select'
-import { Vender } from '@/components/shared/vender'
 import { creditosParaAgendar } from '@/actions/creditos'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { formatBRL, maskPhone } from '@estetica-os/utils'
@@ -195,15 +194,17 @@ export function InboxLeadPanel({
   onAbrirConversa?: (conversationId: string) => void
 }) {
   const pathname = usePathname()
+  const router = useRouter()
+  /** A venda no PDV do portal em que a pessoa está, com a cliente escolhida (PDV7). */
+  const rotaDaVenda = (clienteId: string) => `${rotaNoPortal(pathname, slug, '/pdv')}?nova=1&cliente=${encodeURIComponent(clienteId)}`
   const [card,    setCard]    = useState<ConversationCard | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving,  startSave]  = useTransition()
   const [scheduling,  setScheduling]  = useState<string | null>(null)   // leadId ou '' para contato
   const [convertOpen, setConvertOpen] = useState(false)
   // "Vender" para quem ainda não é cliente: primeiro o cadastro, e a
-  // venda abre sozinha quando ele termina (pedido do Heitor).
+  // venda abre no PDV quando ele termina (pedido do Heitor).
   const [venderAposCadastro, setVenderAposCadastro] = useState(false)
-  const [abrirVenda, setAbrirVenda] = useState(0)
   const [historicoKey, setHistoricoKey] = useState(0)
   const [expandida, setExpandida] = useState<string | null>(null)
   const [mostrarConcluidas, setMostrarConcluidas] = useState(false)
@@ -270,7 +271,6 @@ export function InboxLeadPanel({
     setErro(null)
     setAviso(null)
     setVenderAposCadastro(false)
-    setAbrirVenda(0)
   }
 
   useEffect(() => {
@@ -360,10 +360,8 @@ export function InboxLeadPanel({
       setHistoricoKey(k => k + 1)
       onLeadChanged?.()
       if (!vender) return
-      // A unidade da venda é a que o cadastro escolheu: só agora se sabe se
-      // ela tem pacote à venda.
-      if (novo?.cliente && (novo.venda?.unidades?.length || (novo.venda?.branchId && (novo.venda.pacotes.length || novo.venda.procedimentos.length)))) setAbrirVenda(n => n + 1)
-      else setErro('Cliente cadastrado, mas a unidade dele não tem nada à venda.')
+      // Cadastrada, a venda abre no PDV com ela escolhida.
+      if (novo?.cliente) router.push(rotaDaVenda(novo.cliente.id))
     })
   }
 
@@ -477,15 +475,13 @@ export function InboxLeadPanel({
                 <UserCheck size={12} /> Cadastrar cliente
               </button>
             ) : null}
+            {/* Só se vende pelo PDV (PDV7, a revisão do Heitor de 2026-11-13: "o do
+                inbox… pode levar pro PDV"): o Vender abre a venda lá, com a cliente. */}
             {card.venda && (cliente ? (
-              // Rede de duas ou mais unidades, para quem é da rede: a venda pergunta a unidade (H5).
-              card.venda.unidades?.length ? (
-                <Vender compacto clienteId={cliente.id} branchId="" unidades={card.venda.unidades}
-                  pacotes={[]} procedimentos={[]} abrirSinal={abrirVenda} />
-              ) : card.venda.branchId && (
-                <Vender compacto clienteId={cliente.id} branchId={card.venda.branchId}
-                  pacotes={card.venda.pacotes} procedimentos={card.venda.procedimentos} produtos={card.venda.produtos} equipe={card.venda.equipe} abrirSinal={abrirVenda} />
-              )
+              <a href={rotaDaVenda(cliente.id)} className="btn-ghost"
+                style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px', textDecoration: 'none' }}>
+                <ShoppingBag size={12} aria-hidden /> Vender
+              </a>
             ) : card.podeCadastrarCliente && (
               // Sem ficha, a venda passa pelo cadastro: o mesmo Clientes em Gerenciar.
               <button type="button" className="btn-ghost"
@@ -694,7 +690,7 @@ export function InboxLeadPanel({
         <JanelaDeCadastro onFechar={fecharCadastro}>
           {venderAposCadastro && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 14 }}>
-              Para vender, primeiro o cadastro. Ao salvar, a venda abre em seguida.
+              Para vender, primeiro o cadastro. Ao salvar, a venda abre no PDV.
             </p>
           )}
           <ClientForm

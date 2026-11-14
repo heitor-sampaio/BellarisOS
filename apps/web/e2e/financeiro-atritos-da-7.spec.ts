@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * Os atritos do caixa da 7ª simulação (2026-11-05), da F32:
@@ -188,20 +188,19 @@ test('A46: assinado no papel, a tela não manda devolver o aparelho; no aparelho
   expect((await db().from('procedures').update({ consent_template_id: null }).eq('id', rede!.procedureId)).error).toBeNull()
 })
 
-test('A46: a tela de Pacotes manda ao "Vender" da ficha, o nome do botão', async ({ browser }) => {
+test('A46: a tela de Pacotes manda à "Nova venda" do PDV, o nome do botão', async ({ browser }) => {
+  // Só se vende pelo PDV (PDV7, 2026-11-13): o texto aponta a "Nova venda".
   await como(browser, caixa!, async p => {
     await p.goto(`/${slug}/pacotes`)
-    await expect(p.getByText(/A venda é na ficha do cliente/)).toContainText('“Vender”')
+    await expect(p.getByText(/A venda é no PDV/)).toContainText('“Nova venda”')
     await expect(p.getByText(/Vender pacote/)).toHaveCount(0)
   })
 })
 
-test('A47: vendido o pacote, a janela oferece agendar a 1ª sessão agora', async ({ browser }) => {
+test('A47: vendido o pacote, a venda oferece agendar a 1ª sessão agora', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Pacote')
   await como(browser, caixa!, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
     await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
     await pagoNoPix(dlg)

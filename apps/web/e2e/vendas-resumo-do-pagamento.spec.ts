@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 
 /**
  * A46 e A47 da 5ª simulação:
@@ -49,9 +50,7 @@ test.afterAll(async () => {
 
 test('A46: "Entrada + parcelas" mostra o resumo antes de vender; A47: o crédito diz "até 4x" e o valor da parcela', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
     await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
 

@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { escolherAUnidadeDaVenda } from './apoio/vender'
 
 /**
  * As AÇÕES da busca universal (fase 2, 2026-10-08): "Novo agendamento" e
@@ -77,13 +78,16 @@ test('no cliente achado: "Agendar" abre o modal com ele escolhido', async ({ bro
   })
 })
 
-test('no cliente achado: "Vender" abre a venda na ficha dele', async ({ browser }) => {
+// Só se vende pelo PDV (PDV7, 2026-11-13): o "Vender" da busca abre a venda no PDV.
+test('no cliente achado: "Vender" abre a venda no PDV, com ele escolhido', async ({ browser }) => {
   await como(browser, dono, async p => {
     await p.goto('/admin/dashboard')
     const lista = await buscar(p, 'Acoes Rita')
     await lista.getByRole('option', { name: `Vender para ${nomeDoCliente}` }).click()
-    await expect(p).toHaveURL(new RegExp(`/admin/clients/${clienteId}`))
-    await expect(p.getByRole('dialog', { name: 'Vender' })).toBeVisible()
+    await expect(p).toHaveURL(new RegExp(`/admin/pdv\\?nova=1&cliente=${clienteId}`))
+    const venda = p.getByRole('region', { name: 'Vender' })
+    await escolherAUnidadeDaVenda(venda)
+    await expect(venda.locator('[data-cliente-da-venda]')).toContainText(nomeDoCliente)
   })
 })
 

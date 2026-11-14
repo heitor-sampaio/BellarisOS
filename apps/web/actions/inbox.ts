@@ -2,15 +2,8 @@
 
 import { moverEtapaCore } from '@/lib/crm/oportunidade'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
-import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assertRecurso, temRecurso, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, podeReceber, assertRecurso, temRecurso, can } from '@/lib/auth'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
-import { pacotesAVenda } from '@/lib/pacotes/leitura'
-import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
-import type { PacoteAVenda } from '@/components/shared/vender-pacote'
-import type { ProcedimentoAVenda, ProdutoAVenda, MembroDaVenda, VendaDaUnidade } from '@/components/shared/vender'
-import { produtosAVenda } from '@/lib/produtos/leitura'
-import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
-import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { idsDaPaginaDoInbox } from '@/lib/inbox/pagina'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -711,18 +704,10 @@ export interface ConversationCard {
   contato:    ContatoDaConversa
   cliente:    ClienteDoContato | null
   /**
-   * Vender pela conversa (pedido do Heitor) — procedimento pré-pago ou pacote —,
-   * para quem recebe dinheiro. A unidade é a de quem atende, senão a do
-   * cliente, senão a única da rede. Sem ficha, o botão aparece do mesmo jeito
-   * e a venda vem DEPOIS do cadastro. Por isso `branchId` pode ser nulo: rede
-   * com várias unidades e contato sem ficha só sabe a unidade quando o
-   * cadastro a escolhe. Nesse caso as listas vêm vazias: é só o sinal.
+   * Vender pela conversa (pedido do Heitor), para quem recebe: o botão leva
+   * ao PDV com a cliente (PDV7). Sem ficha, a venda vem DEPOIS do cadastro.
    */
-  venda: {
-    branchId: string | null; pacotes: PacoteAVenda[]; procedimentos: ProcedimentoAVenda[]; produtos: ProdutoAVenda[]; equipe?: MembroDaVenda[]
-    /** A rede com duas ou mais unidades, para quem é da rede: a venda pergunta a unidade (H5, a ficha é da clínica). */
-    unidades?: VendaDaUnidade[]
-  } | null
+  venda: { podeVender: true } | null
   /** O plano da rede inclui oportunidades? Sem elas, o painel é só contato e cliente. */
   comOportunidades: boolean
   /** E a agenda? Sem ela, a conversa não marca horário. */
@@ -844,44 +829,9 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   const abertas    = oportunidades.filter(o => o.outcome === 'OPEN')
   const concluidas = oportunidades.filter(o => o.outcome !== 'OPEN')
 
-  let venda: ConversationCard['venda'] = null
-  if (podeReceber(ctx)) {
-    // A unidade da venda é a de quem atende (a fixa) ou a única da rede. Na
-    // rede com duas ou mais, quem é da rede ESCOLHE — nada se prende a
-    // `clients.branch_id` (H5; sobra da F33 da 8ª simulação: a venda saía da
-    // unidade de cadastro da cliente, sem perguntar).
-    let unidade = ctx.branchId ?? null
-    let ativas: { id: string; name: string }[] = []
-    if (!unidade) {
-      ativas = ((await ler(admin.from('branches').select('id, name')
-        .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as unidades')) ?? []) as { id: string; name: string }[]
-      unidade = ativas.length === 1 ? ativas[0]!.id : null
-    }
-    if (!unidade && cliente && ativas.length > 1) {
-      const unidades = await Promise.all(ativas.map(async u => {
-        const [pacotes, procs, produtos, equipe] = await Promise.all([
-          pacotesAVenda(ctx.tenantId!, u.id), procedimentosAVenda(ctx.tenantId!, u.id), produtosAVenda(ctx.tenantId!, u.id),
-          equipeDaVenda(ctx.tenantId!, u.id, ctx.internalUserId, veComissaoDeTodos(ctx)),
-        ])
-        return { id: u.id, nome: u.name, pacotes, procedimentos: procs, produtos, equipe }
-      }))
-      if (unidades.some(u => u.pacotes.length || u.procedimentos.length || u.produtos.length)) {
-        venda = { branchId: null, pacotes: [], procedimentos: [], produtos: [], unidades }
-      }
-    } else if (unidade && alcancaUnidade(ctx, unidade)) {
-      // O produto (D4) exige a cliente: sem ficha, o botão abre o cadastro
-      // primeiro, como o pacote e o pré-pago.
-      const [pacotes, procs, produtos, equipe] = await Promise.all([
-        pacotesAVenda(ctx.tenantId!, unidade), procedimentosAVenda(ctx.tenantId!, unidade), produtosAVenda(ctx.tenantId!, unidade),
-        equipeDaVenda(ctx.tenantId!, unidade, ctx.internalUserId, veComissaoDeTodos(ctx)),
-      ])
-      if (pacotes.length || procs.length || produtos.length) venda = { branchId: unidade, pacotes, procedimentos: procs, produtos, equipe }
-    } else if (!unidade && !cliente) {
-      const algum = await ler(admin.from('procedures').select('id')
-        .eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(1), 'conferir se há o que vender')
-      if ((algum ?? []).length) venda = { branchId: null, pacotes: [], procedimentos: [], produtos: [] }
-    }
-  }
+  // O Vender do painel leva ao PDV (PDV7, a revisão do Heitor de 2026-11-13):
+  // o catálogo e a unidade da venda são os do PDV — aqui só o sinal de quem recebe.
+  const venda: ConversationCard['venda'] = podeReceber(ctx) ? { podeVender: true } : null
 
   return {
     contato: {

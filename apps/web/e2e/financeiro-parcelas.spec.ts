@@ -75,7 +75,7 @@ test('parcelado: a entrada no dia, cada parcela no mês dela, e o "Pagar" quita 
   const [m1, m2] = [mes(1), mes(2)]
   await comSessao(browser, async p => {
     // Entrada de 200 + 3 parcelas de 200, a primeira no dia 15 do mês que vem.
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/admin/clients/${cliente}`, [
+    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', '/admin/pdv', [
       cliente, pacoteId, rede!.branchId,
       { forma: 'PARCELADO', metodo: 'CREDIT_CARD', entrada: 200, parcelas: 3, primeiroVencimento: new Date(`${m1.dia15}T12:00:00-03:00`).toISOString() },
     ])

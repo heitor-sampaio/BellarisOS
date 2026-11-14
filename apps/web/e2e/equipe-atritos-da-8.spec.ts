@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 import { diaEmQueAUnidadeAbre } from './apoio/datas'
 
 /**
@@ -204,9 +205,7 @@ test('A15: "Quem vendeu" traz quem atende e quem recebe primeiro — e quem não
   // A Débora pode ter saído no A10: volta para atender.
   expect((await db().from('users').update({ is_active: true, atende_em: [rede!.branchId] }).eq('id', debora!.userId)).error).toBeNull()
   await como(browser, dona!.estado, async p => {
-    await p.goto(`/${slugA}/clients/${clienteId}`)
-    await p.getByRole('button', { name: 'Vender' }).first().click()
-    const janela = p.getByRole('dialog', { name: 'Vender' })
+    const janela = await abrirVendaNoPdv(p, `/${slugA}`, clienteId)
     // A rede de teste não tem produto: a janela abre no Procedimento, que tem o mesmo campo.
     const grupos = janela.getByLabel('Quem vendeu').locator('optgroup')
     await expect(grupos.nth(0)).toHaveAttribute('label', 'Quem atende')

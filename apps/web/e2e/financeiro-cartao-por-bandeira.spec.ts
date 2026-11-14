@@ -4,7 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 import { primeiraMaquininha, taxasDaPrimeira, taxaDoPix, seletorDaBandeira } from './apoio/maquininha'
 
 /**
@@ -221,9 +221,7 @@ test.describe.serial('o cartão por bandeira', () => {
 
   test('a venda de pacote pela ficha ("Vender") tem "Bandeira" no cartão, e a grava', async ({ browser }) => {
     await como(browser, gestor!, async p => {
-      await p.goto(`/admin/clients/${cliente}`)
-      await p.getByRole('button', { name: 'Vender', exact: true }).click()
-      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      const dlg = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
       await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacote)
       await dlg.getByRole('button', { name: 'À vista', exact: true }).click()

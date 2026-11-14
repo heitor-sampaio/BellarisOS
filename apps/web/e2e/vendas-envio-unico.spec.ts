@@ -110,11 +110,11 @@ test('a venda de produto: o mesmo envio duas vezes ao mesmo tempo vende UMA vez'
     await p.goto(rota)
     const k = chave()
     const args = [cliente, serum, rede!.branchId, 1, PIX, null, k]
-    const [a, b] = await Promise.all([1, 2].map(() => chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota, args)))
+    const [a, b] = await Promise.all([1, 2].map(() => chamarAcao(p, 'actions/produtos.ts', 'venderProduto', '/admin/pdv', args)))
     expect(a!.texto + b!.texto).toContain('vendaId')
     expect(await contar('product_sales', { tenant_id: rede!.tenantId })).toBe(1)
     // Controle: um envio novo vende de novo.
-    await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota, [cliente, serum, rede!.branchId, 1, PIX, null, chave()])
+    await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', '/admin/pdv', [cliente, serum, rede!.branchId, 1, PIX, null, chave()])
     expect(await contar('product_sales', { tenant_id: rede!.tenantId })).toBe(2)
   })
 })
@@ -124,7 +124,7 @@ test('a venda de procedimento pré-pago: o mesmo envio vende UMA vez', async ({ 
   await como(browser, async p => {
     await p.goto(rota)
     const args = [cliente, rede!.procedureId, rede!.branchId, 1, null, PIX, null, chave()]
-    await Promise.all([1, 2].map(() => chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', rota, args)))
+    await Promise.all([1, 2].map(() => chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', '/admin/pdv', args)))
     expect(await contar('procedure_sales', { tenant_id: rede!.tenantId })).toBe(1)
   })
 })

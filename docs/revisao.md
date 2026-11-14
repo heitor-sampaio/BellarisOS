@@ -1625,7 +1625,7 @@ revisão, só se escreve o plano. Nada se implementa.
 "implementa lá e se eu achar que precisa mudar algo te aviso"):
 - ✅ PDV fase 1 — PDV1, PDV2 e PDV3 para o atendimento; CX1 só para a comanda
   (a parcela do crediário ainda não); CX3.
-- ⬜ PDV fase 2 — a venda nova no PDV (PDV5, PDV6), o "Vender" da ficha sai e o
+- ✅ PDV fase 2 — a venda nova no PDV (PDV5, PDV6), o "Vender" da ficha sai e o
   do inbox leva ao PDV (PDV7).
 - ⬜ PDV fase 3 — a comanda do plano no aceite (PDV4 / PT1); sai o "Fechar checkout".
 - ⬜ PDV fase 4 — o Fechamento do dia no PDV (CX4–CX6).

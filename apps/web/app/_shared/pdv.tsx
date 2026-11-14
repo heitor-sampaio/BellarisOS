@@ -10,6 +10,14 @@ import { ler } from '@/lib/db'
 import { FusoProvider } from '@/components/shared/fuso'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { PdvTela, type ComandaEscolhida } from '@/components/shared/pdv/pdv-tela'
+import type { VendaDoPdv } from '@/components/shared/pdv/nova-venda'
+import { can } from '@/lib/auth'
+import { pacotesAVenda } from '@/lib/pacotes/leitura'
+import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
+import { produtosAVenda } from '@/lib/produtos/leitura'
+import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
+import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
+import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 
 /**
  * O PDV, o corpo dos dois portais (PDV1, a revisão do Heitor de 2026-11-13:
@@ -18,7 +26,7 @@ import { PdvTela, type ComandaEscolhida } from '@/components/shared/pdv/pdv-tela
  * (`?unidade=`). À esquerda as comandas (`?ver=` Abertas, Pagas hoje,
  * Todas); à direita a escolhida (`?comanda=`), com o "Receber".
  */
-export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, ver, comandaId }: {
+export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, ver, comandaId, nova, clienteId, unidadeEscolhida = true }: {
   ctx:        TenantContext
   unidades:   { id: string; name: string }[]
   unidadeId:  string
@@ -27,6 +35,14 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
   basePath:   string
   ver?:       string
   comandaId?: string
+  /** `?nova=1`: a "Nova venda" aberta; `?cliente=` é a cliente dela (a busca e o inbox chegam assim). */
+  nova?:      string
+  clienteId?: string
+  /**
+   * A unidade veio na URL (ou só há uma). Sem ela, a "Nova venda" na rede
+   * pergunta "Em qual unidade?" antes — não vende calada na primeira (F33).
+   */
+  unidadeEscolhida?: boolean
 }) {
   // O dia no relógio da UNIDADE (F62), como o Fechamento.
   const fuso = await fusoDaUnidade(ctx.tenantId, unidadeId)
@@ -65,6 +81,31 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     }
   }
 
+  // A "Nova venda" (PDV2): o catálogo, o estoque e "Quem vendeu" são os da
+  // unidade do PDV. A cliente é da rede (H5): o id da URL se confere na rede.
+  let novaVenda: { dados: VendaDoPdv | null; aviso?: string; perguntaAUnidade?: boolean } | null = null
+  if (nova === '1' && !unidadeEscolhida) {
+    novaVenda = { dados: null, perguntaAUnidade: true }
+  } else if (nova === '1') {
+    const admin = createAdminClient()
+    const cliente = clienteId && /^[0-9a-f-]{36}$/i.test(clienteId)
+      ? await ler(admin.from('clients').select('id, name, phone, is_active')
+          .eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a cliente da venda') as
+          { id: string; name: string; phone: string | null; is_active: boolean } | null
+      : null
+    if (!cliente) novaVenda = { dados: null }
+    // A arquivada não compra (princípio 3: a tela diz por quê, não volta calada à busca).
+    else if (!cliente.is_active) novaVenda = { dados: null, aviso: `${cliente.name} está arquivada. Para vender, reative a cliente na ficha.` }
+    else {
+      const [pacotes, procedimentos, produtos, equipe, aReceber] = await Promise.all([
+        pacotesAVenda(ctx.tenantId!, unidadeId), procedimentosAVenda(ctx.tenantId!, unidadeId), produtosAVenda(ctx.tenantId!, unidadeId),
+        equipeDaVenda(ctx.tenantId!, unidadeId, ctx.internalUserId, veComissaoDeTodos(ctx)),
+        getAtendimentosAReceber({ tenantId: ctx.tenantId!, clienteId: cliente.id }),
+      ])
+      novaVenda = { dados: { cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens, podeAgendar: can(ctx, 'agenda', 'MANAGE') } }
+    }
+  }
+
   return (
     <>
       <RealtimeRefresher tables={['financeiro_sinais', 'appointments']} />
@@ -79,6 +120,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
           recebidoHoje={resumo.total.entradas}
           escolhida={escolhida}
           slugDaUnidade={slugDaUnidade}
+          novaVenda={novaVenda}
         />
       </FusoProvider>
     </>

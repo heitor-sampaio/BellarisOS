@@ -83,7 +83,7 @@ test.beforeAll(async ({ browser }) => {
   expect((await b.from('service_package_items').insert({ tenant_id: rede.tenantId, package_id: pacote, procedure_id: rede.procedureId, quantity: 3 })).error).toBeNull()
   // A venda na SAVASSI (a unidade A).
   await como(browser, gestor, async p => {
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/admin/clients/${cliente}`, [
+    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', '/admin/pdv', [
       cliente, pacote, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: null, semVendedor: true, semResponsavel: true },
     ])
     expect(r.texto).toContain('clientPackageId')

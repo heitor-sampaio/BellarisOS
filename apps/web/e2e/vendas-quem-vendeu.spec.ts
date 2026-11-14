@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
-import { pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, pagoNoPix } from './apoio/vender'
 
 /**
  * com-06 da revisão das decisões (2026-11-02). O Heitor: "às vezes quem vai
@@ -91,9 +91,7 @@ test.afterAll(async () => {
 
 test('a recepção registra e a profissional vendeu: a venda é dela, e a comissão também', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender' }).first().click()
-    const janela = p.getByRole('dialog', { name: 'Vender' })
+    const janela = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await janela.getByRole('button', { name: 'Produto' }).click()
     // r2-ven-12 (o Heitor: "nasce sempre vazio"): em toda venda, o campo nasce vazio.
     await expect(janela.getByLabel('Quem vendeu'), 'o produto: nasce vazio').toHaveValue('')
@@ -118,9 +116,7 @@ test('a recepção registra e a profissional vendeu: a venda é dela, e a comiss
 test('"Quem vendeu" vazio: a venda pergunta, nada grava antes da resposta, e confirmada não gera comissão', async ({ browser }) => {
   const antes = (await db().from('product_sales').select('id').eq('tenant_id', rede!.tenantId)).data!.length
   await como(browser, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender' }).first().click()
-    const janela = p.getByRole('dialog', { name: 'Vender' })
+    const janela = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await janela.getByRole('button', { name: 'Produto' }).click()
     // Vazio, como nasce: vender pergunta.
     await pagoNoPix(janela)
@@ -141,9 +137,9 @@ test('o servidor: pergunta sem quem vendeu, e recusa quem não é da equipe da r
   const rota = `/${slug}/clients/${cliente}`
   await como(browser, async p => {
     await p.goto(rota)
-    const pergunta = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota, [cliente, serum, rede!.branchId, 1, PIX, null, null, { vendedorId: null }])
+    const pergunta = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', `/${slug}/pdv`, [cliente, serum, rede!.branchId, 1, PIX, null, null, { vendedorId: null }])
     expect(pergunta!.texto).toContain('confirmarSemVendedor')
-    const alheio = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota,
+    const alheio = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', `/${slug}/pdv`,
       [cliente, serum, rede!.branchId, 1, PIX, null, null, { vendedorId: outra!.professionalId }])
     expect(alheio!.texto).toContain('não é da equipe desta clínica')
   })
@@ -153,13 +149,13 @@ test('o pacote e o pré-pago também: quem vendeu leva a venda (e a comissão de
   const rota = `/${slug}/clients/${cliente}`
   await como(browser, async p => {
     await p.goto(rota)
-    const r1 = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota,
+    const r1 = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
       [cliente, pacote, rede!.branchId, PIX, null, null, { vendedorId: rede!.professionalId }])
     expect(r1!.texto).toContain('clientPackageId')
-    const r2 = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', rota,
+    const r2 = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', `/${slug}/pdv`,
       [cliente, rede!.procedureId, rede!.branchId, 1, null, PIX, null, null, { vendedorId: rede!.professionalId }])
     expect(r2!.texto).toContain('saleId')
-    const semNinguem = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', rota,
+    const semNinguem = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', `/${slug}/pdv`,
       [cliente, rede!.procedureId, rede!.branchId, 1, null, PIX, null, null, { vendedorId: null }])
     expect(semNinguem!.texto).toContain('confirmarSemVendedor')
   })

@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -11,7 +12,8 @@ import { chamarAcao } from './apoio/acao-direta'
  * (fora do caixa): os R$ 300 não entraram no caixa, no fechamento nem no
  * faturamento.
  *
- * - "Crédito na clínica" no Vender, para quem recebe, com a forma de pagamento;
+ * - "Crédito na clínica" no Vender (desde o PDV7, 2026-11-13, a aba "Crédito
+ *   na rede" da venda no PDV), para quem recebe, com a forma de pagamento;
  * - entra no caixa, no fechamento e no faturamento no dia do dinheiro
  *   (princípio 5), e o uso depois não é receita de novo;
  * - os pontos saem na VENDA, pelo dinheiro pago, e não no uso;
@@ -84,10 +86,8 @@ test.afterAll(async () => {
 
 test('decisão 1: a recepção vende R$ 300 de crédito na clínica no Pix — caixa, fechamento, pontos e saldo, sem comissão', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
-    await p.goto(`/${slug}/clients/${rosana}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
-    await dlg.getByRole('button', { name: 'Crédito na clínica', exact: true }).click()
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, rosana)
+    await dlg.getByRole('button', { name: 'Crédito na rede', exact: true }).click()
     // A tela diz a regra (princípio 3): entra no caixa hoje, o uso não conta de novo.
     await expect(dlg.locator('[data-regra-do-credito]')).toContainText('Entra no caixa hoje')
     await expect(dlg.locator('[data-regra-do-credito]')).toContainText('não conta como receita de novo')
@@ -157,9 +157,11 @@ test('decisão 1: o estorno do lançamento solto é recusado — a venda do cré
 
 test('decisão 1: quem não recebe não vende crédito (a action recusa)', async ({ browser }) => {
   await como(browser, soVe!, async p => {
-    await p.goto(`/${slug}/clients/${rosana}`)
-    await expect(p.getByRole('button', { name: 'Vender', exact: true })).toHaveCount(0)
-    const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'venderCredito', `/${slug}/clients/${rosana}`,
+    // Só se vende pelo PDV (PDV7, 2026-11-13), e o PDV é de quem recebe.
+    await p.goto(`/${slug}/pdv?nova=1&cliente=${rosana}`)
+    await expect(p.getByText('Você não tem acesso a esta área')).toBeVisible()
+    await expect(p.getByRole('region', { name: 'Vender' })).toHaveCount(0)
+    const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'venderCredito', `/${slug}/pdv`,
       [rosana, rede!.branchId, '50', { forma: 'AVISTA', metodo: 'PIX' }, null])
     expect(r.texto).not.toContain('"ok":true')
   })

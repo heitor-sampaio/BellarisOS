@@ -49,7 +49,7 @@ test.beforeAll(async ({ browser }) => {
   fabiana = await criarMembro(`fin11f${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Fabiana', permissoes })
   rosana = await rede.criarCliente('Rosana')
   // As duas vendas do dia: R$ 100 no Pix pela Elaine, R$ 50 em dinheiro pela Fabiana.
-  const rota = `/${slug}/clients/${rosana}`
+  const rota = `/${slug}/pdv`
   await como(browser, elaine, async p => {
     const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'venderCredito', rota, [rosana, rede.branchId, '100', { forma: 'AVISTA', metodo: 'PIX' }, null])
     expect(r.texto).toContain('vendaId')

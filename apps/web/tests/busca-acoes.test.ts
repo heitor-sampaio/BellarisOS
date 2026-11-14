@@ -41,7 +41,7 @@ describe('acoesDoCliente', () => {
     const a = acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ agenda: 'MANAGE', cashier: 'MANAGE' }), agendaPropria: false }, 'c1')
     expect(a.map(x => [x.id, x.href])).toEqual([
       ['agendar', '/admin/agenda?novo=1&cliente=c1'],
-      ['vender', '/admin/clients/c1?acao=vender'],
+      ['vender', '/admin/pdv?nova=1&cliente=c1'],
     ])
   })
   it('vender é de quem recebe (caixa ou financeiro em Gerenciar)', () => {

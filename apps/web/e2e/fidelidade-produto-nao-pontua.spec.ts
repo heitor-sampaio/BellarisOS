@@ -81,7 +81,7 @@ test('a venda de produto paga, com a fidelidade ligada e sem pontuar: a ficha e 
   await como(browser, recepcao!.estado, async p => {
     const rota = `/admin/clients/${cliente!.clientId}`
     await p.goto(rota)
-    const r = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota,
+    const r = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', '/admin/pdv',
       [cliente!.clientId, produto, rede!.branchId, 1, { forma: 'AVISTA', metodo: 'PIX' }, null])
     expect(r.texto).toContain('vendaId')
     await p.goto(`${rota}?aba=financeiro`)

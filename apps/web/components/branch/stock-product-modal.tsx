@@ -265,7 +265,7 @@ function ProductFields({
       </div>
 
       {/* O uso do produto (D-6, decisão do Heitor): o insumo aparece no
-          atendimento; a revenda, na venda de produto ("Vender" da ficha). Três
+          atendimento; a revenda, na venda de produto (a "Nova venda" do PDV). Três
           opções fixas e curtas: segmentado. */}
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 10,
@@ -282,7 +282,7 @@ function ProductFields({
             {uso === 'INSUMO'
               ? 'Usado nos atendimentos: aparece como insumo do procedimento e da sessão.'
               : uso === 'REVENDA'
-              ? 'Vendido à cliente: aparece em "Vender" na ficha, e não como insumo.'
+              ? 'Vendido à cliente: aparece na venda do PDV, e não como insumo.'
               : 'Usado nos atendimentos e vendido à cliente.'}
           </span>
         </div>

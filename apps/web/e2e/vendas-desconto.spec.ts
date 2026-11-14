@@ -4,7 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * Desconto em todas as vendas (decisão do Heitor, 2026-09-30 — migration
@@ -86,9 +86,7 @@ test.describe.serial('desconto nas vendas', () => {
   test('pacote pela tela: 10% — vendido 720, sessões e dinheiro fecham com ele', async ({ browser }) => {
     const cliente = await rede!.criarCliente('Pacote')
     await comSessao(browser, async p => {
-      await p.goto(`/admin/clients/${cliente}`)
-      await p.getByRole('button', { name: 'Vender', exact: true }).click()
-      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      const dlg = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
       await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await dlg.getByRole('button', { name: '%', exact: true }).click()
       await dlg.getByLabel('Desconto', { exact: true }).fill('10')
@@ -113,7 +111,7 @@ test.describe.serial('desconto nas vendas', () => {
   test('pacote: desconto maior que o preço é recusado pela action e pela função', async ({ browser }) => {
     const cliente = await rede!.criarCliente('Pacote recusa')
     await comSessao(browser, async p => {
-      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/admin/clients/${cliente}`,
+      const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', '/admin/pdv',
         [cliente, pacoteId, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, { tipo: 'VALOR', valor: 900 }])
       expect(r.texto).toContain('maior que o valor')
     })

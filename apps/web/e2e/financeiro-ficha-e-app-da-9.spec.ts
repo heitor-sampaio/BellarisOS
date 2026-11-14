@@ -127,7 +127,7 @@ test('A40: a devolução de uma venda que não pontuou não fala em tirar pontos
   await como(browser, dona!, async p => {
     const rota = `/admin/clients/${marina}`
     await p.goto(rota)
-    const r = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota,
+    const r = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', '/admin/pdv',
       [marina, [{ produtoId: serum, quantidade: 2 }], rede!.branchId, null, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: dona!.userId }])
     expect(r.texto, 'vender').toContain('"vendaId"')
     await p.goto(`/${slug}/financeiro`)

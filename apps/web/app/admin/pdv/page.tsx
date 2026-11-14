@@ -6,7 +6,7 @@ import { Pdv } from '@/app/_shared/pdv'
 
 /** O PDV, no portal da rede: uma unidade de cada vez (`?unidade=`), como o Fechamento. */
 export default async function PdvDaRedePage({ searchParams }: {
-  searchParams: Promise<{ ver?: string; comanda?: string; unidade?: string }>
+  searchParams: Promise<{ ver?: string; comanda?: string; nova?: string; cliente?: string; unidade?: string }>
 }) {
   const ctx = await getTenantContext()
   if (!podeReceber(ctx)) throw semAcesso()
@@ -25,7 +25,8 @@ export default async function PdvDaRedePage({ searchParams }: {
       {!atual.ativa && <div style={{ marginBottom: 12 }}><SeloUnidadeDesativada /></div>}
       <Pdv ctx={ctx} unidades={unidades.map(u => ({ id: u.id, name: nomeNaTela(u) }))}
         unidadeId={atual.id} slugDaUnidade={atual.slug} basePath="/admin/pdv"
-        ver={sp.ver} comandaId={sp.comanda} />
+        ver={sp.ver} comandaId={sp.comanda} nova={sp.nova} clienteId={sp.cliente}
+        unidadeEscolhida={unidades.length === 1 || unidades.some(u => u.id === sp.unidade || u.slug === sp.unidade)} />
     </>
   )
 }

@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -50,7 +51,7 @@ test.beforeAll(async ({ browser }) => {
   pacote = sp!.id
   expect((await b.from('service_package_items').insert({ tenant_id: rede.tenantId, package_id: pacote, procedure_id: rede.procedureId, quantity: 6 })).error).toBeNull()
   // A venda no crediário: entrada de R$ 150 no Pix e 3 × R$ 100 a receber.
-  const rota = `/${slug}/clients/${cliente}`
+  const rota = `/${slug}/pdv`
   await como(browser, recepcao, async p => {
     const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [
       cliente, pacote, rede.branchId,
@@ -93,9 +94,7 @@ test('A45: o checkout mostra o CPF e o telefone com máscara', async ({ browser 
 
 test('A46: o "Quem vendeu" vazio cabe no celular — a explicação fica embaixo', async ({ browser }) => {
   await como(browser, recepcao, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).first().click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await expect(dlg.getByLabel('Quem vendeu').locator('option[value=""]')).toHaveText('Escolha quem vendeu')
     await expect(dlg.locator('[data-quem-vendeu-vazio]')).toContainText('sem comissão de venda')
   }, { width: 412, height: 860 })

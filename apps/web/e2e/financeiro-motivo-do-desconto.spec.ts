@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * fin-01 da revisão das decisões (2026-11-02, "mudar"): "a Bruna dá R$ 20 de
@@ -86,9 +86,7 @@ test('a lista do Financeiro diz o desconto e o motivo embaixo do valor (unidade 
 
 test('a venda de produto com desconto tem o motivo (opcional), e ele vai ao lançamento e à lista', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender' }).first().click()
-    const janela = p.getByRole('dialog', { name: 'Vender' })
+    const janela = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     const aba = janela.getByRole('button', { name: 'Produto' })
     if (await aba.count()) await aba.click()
     await expect(janela.getByLabel('Motivo do desconto'), 'sem desconto, sem o campo').toHaveCount(0)

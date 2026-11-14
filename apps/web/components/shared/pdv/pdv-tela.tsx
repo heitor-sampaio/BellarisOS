@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
-import { Lock, Search, ShoppingBag } from 'lucide-react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { Lock, Plus, Search, ShoppingBag } from 'lucide-react'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { SegSelect } from '@/components/shared/seg-select'
 import { useFuso } from '@/components/shared/fuso'
@@ -11,6 +11,7 @@ import { FormularioDeReceberAtendimento, type PacoteParaAbater } from '@/compone
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { rotaCliente } from '@/lib/rotas'
 import { SITUACOES_DO_PDV, type ComandaDoPdv, type SituacaoDoPdv } from '@/lib/pdv/situacoes'
+import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 
 export interface ComandaEscolhida {
   comanda:            ComandaDoPdv
@@ -24,6 +25,7 @@ const horaNo = (fuso: string) => (iso: string | null) => iso
 
 /** A situação da comanda, como o balcão a lê. */
 function selo(c: ComandaDoPdv): { texto: string; tom: 'ok' | 'warn' | 'info' | 'perigo' } {
+  if (c.estornada) return { texto: 'Estornada', tom: 'perigo' }
   if (c.canceladaEm) return c.canceladaMotivo === 'Sessão do pacote' || c.canceladaMotivo === 'Procedimento pré-pago'
     ? { texto: c.canceladaMotivo, tom: 'ok' } : { texto: 'Cancelada', tom: 'perigo' }
   if (c.paga) return { texto: 'Paga', tom: 'ok' }
@@ -54,7 +56,7 @@ function Selo({ c }: { c: ComandaDoPdv }) {
  * e o "Receber". Não existe pagamento sem forma (PDV8): o "Receber" espera a
  * forma escolhida.
  */
-export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, recebidoHoje, escolhida, slugDaUnidade }: {
+export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, recebidoHoje, escolhida, slugDaUnidade, novaVenda }: {
   basePath:      string
   unidades:      { id: string; name: string }[]
   unidadeId:     string
@@ -64,9 +66,12 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
   recebidoHoje:  number
   escolhida:     ComandaEscolhida | null
   slugDaUnidade: string
+  /** A "Nova venda" aberta (`?nova=1`), com a cliente já escolhida ou não. */
+  novaVenda:     { dados: VendaDoPdv | null; aviso?: string; perguntaAUnidade?: boolean } | null
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const clienteDaUrl = useSearchParams().get('cliente')
   const hora = horaNo(useFuso())
   const [busca, setBusca] = useState('')
 
@@ -78,6 +83,16 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
     for (const [k, v] of Object.entries(mais)) q.set(k, v)
     const s = q.toString()
     return s ? `${basePath}?${s}` : basePath
+  }
+  // Trocar a unidade leva junto a venda que está aberta (com a cliente).
+  const hrefNaUnidade = (id: string) => {
+    const q = new URLSearchParams({ unidade: id })
+    if (novaVenda) {
+      q.set('nova', '1')
+      if (novaVenda.dados) q.set('cliente', novaVenda.dados.cliente.id)
+      else if (clienteDaUrl) q.set('cliente', clienteDaUrl)
+    }
+    return `${basePath}?${q.toString()}`
   }
   const visiveis = useMemo(() => {
     const t = busca.trim().toLocaleLowerCase('pt-BR')
@@ -94,8 +109,11 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
         <span style={{ flex: 1 }} />
         {naRede && (
           <SegSelect options={unidades.map(u => ({ key: u.id, label: u.name }))} value={unidadeId}
-            onSelect={k => router.push(`${basePath}?unidade=${k}`)} ariaLabel="Unidade" />
+            onSelect={k => router.push(hrefNaUnidade(k))} ariaLabel="Unidade" />
         )}
+        <Link href={href({ nova: '1' })} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Plus size={15} aria-hidden /> Nova venda
+        </Link>
         <Link href={basePath.replace(/\/pdv$/, '/fechamento') + (naRede ? `?unidade=${unidadeId}` : '')} className="btn-secondary"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <Lock size={14} /> Fechar o dia
@@ -137,11 +155,17 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
           )}
         </div>
 
-        <div className="card" data-comanda-aberta={escolhida ? escolhida.comanda.id : undefined}>
-          {!escolhida ? (
+        <div className="card" data-comanda-aberta={!novaVenda && escolhida ? escolhida.comanda.id : undefined}>
+          {novaVenda ? (
+            <NovaVenda unidadeId={unidadeId} venda={novaVenda.dados} aviso={novaVenda.aviso}
+              unidades={novaVenda.perguntaAUnidade ? unidades.map(u => ({ ...u, href: hrefNaUnidade(u.id) })) : null}
+              hrefDaCliente={id => href(id ? { nova: '1', cliente: id } : { nova: '1' })}
+              hrefCancelar={href({})}
+              aoVender={() => { router.push(href({ ver: 'PAGAS' })); router.refresh() }} />
+          ) : !escolhida ? (
             <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-faint)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <ShoppingBag size={28} aria-hidden />
-              <p style={{ fontSize: 'var(--text-sm-sz)' }}>Escolha uma comanda à esquerda para ver o que está nela e receber.</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)' }}>Escolha uma comanda à esquerda para ver o que está nela e receber, ou comece uma nova venda.</p>
             </div>
           ) : (
             <ComandaNaTela e={escolhida} hora={hora} slugDaUnidade={slugDaUnidade}
@@ -173,7 +197,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
         <div style={{ minWidth: 0 }}>
           <p style={{ fontSize: 'var(--text-name)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{c.cliente}</p>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>
-            Comanda nº {String(c.numero).padStart(4, '0')} · aberta às {hora(c.abertaEm)} ao iniciar o atendimento
+            Comanda nº {String(c.numero).padStart(4, '0')} · {c.origem === 'VENDA' ? `venda das ${hora(c.abertaEm)}` : `aberta às ${hora(c.abertaEm)} ao iniciar o atendimento`}
           </p>
         </div>
         <span style={{ flex: 1 }} />
@@ -186,7 +210,9 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
             <div style={{ minWidth: 0 }}>
               <p style={{ fontWeight: 700, color: 'var(--text)' }}>{c.procedimento ?? 'Atendimento'}</p>
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>
-                {[c.agendadoPara ? `Atendimento das ${hora(c.agendadoPara)}` : 'Atendimento', c.profissional].filter(Boolean).join(' · ')}
+                {c.origem === 'VENDA'
+                  ? ['Venda', c.profissional ? `vendida por ${c.profissional}` : null].filter(Boolean).join(' · ')
+                  : [c.agendadoPara ? `Atendimento das ${hora(c.agendadoPara)}` : 'Atendimento', c.profissional].filter(Boolean).join(' · ')}
               </p>
             </div>
             <span style={{ color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>1</span>
@@ -199,13 +225,17 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
         </div>
         <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p className="overline">Receber</p>
-          {c.canceladaEm ? (
+          {c.estornada ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+              Venda estornada: o dinheiro dela voltou. Não há o que receber.
+            </p>
+          ) : c.canceladaEm ? (
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
               Sem cobrança desde as {hora(c.canceladaEm)}: {(c.canceladaMotivo ?? 'Atendimento cancelado').toLocaleLowerCase('pt-BR')}. Não há o que receber.
             </p>
           ) : c.paga ? (
             <p data-comanda-paga style={{ color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
-              Paga às {hora(c.pagaEm)} · {rotuloDaForma(c.forma)} · <b>{brl(c.recebido ?? 0)}</b>
+              {c.origem === 'VENDA' ? 'Vendida' : 'Paga'} às {hora(c.pagaEm)} · {rotuloDaForma(c.forma)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
             </p>
           ) : aReceber && c.agendamentoId ? (
             <FormularioDeReceberAtendimento key={c.id} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}

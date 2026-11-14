@@ -1774,6 +1774,30 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-13 — O PDV, fase 2: a venda nova é no PDV (o "Vender" da ficha saiu)
+
+O PDV2, PDV5, PDV6, PDV7 e o BU1. O Heitor: "O vender da ficha sai e o do
+inbox ele pode sair, ele pode levar pro PDV, tá? Porque só vende pelo PDV."
+- **"Nova venda"** no topo do PDV: primeiro a cliente (busca por nome ou
+  telefone, na rede inteira), depois o que vender (procedimento, pacote,
+  produto, crédito na rede) e como paga. O formulário de cada tipo é o mesmo
+  que estava na ficha (`VendaNaTela`, em `components/shared/vender.tsx`).
+- **Toda venda é uma comanda**: um gatilho no PRIMEIRO lançamento de receita
+  da venda cria a comanda "VENDA", ligada a ela (pacote, pré-pago, produto ou
+  crédito). Vale para todo caminho que vende, o Copilot inclusive. A venda
+  nasce paga (à vista ou no crediário): fica nas "Pagas hoje".
+- **Saiu o "Vender" da ficha.** O do inbox e o da busca levam ao PDV com a
+  cliente (`?nova=1&cliente=`). Na rede com mais de uma unidade, a venda que
+  chega sem a unidade pergunta "Em qual unidade é a venda?" (não vende calada
+  na primeira, como a F33 pedia). Trocar a unidade leva a venda junto. A
+  cliente arquivada não compra, e a tela diz por quê.
+- O "Crédito na clínica" da venda virou "Crédito na rede".
+- ~40 specs que vendiam pela ficha passaram a vender pelo PDV. Duas provas
+  saíram por a regra ter mudado: "o Vender desligado na ficha arquivada" (A19)
+  e "nenhuma unidade pré-escolhida na janela da ficha" (agora é a pergunta do
+  PDV, em `pdv-nova-venda` e `agenda-atritos-da-8`).
+- Prova: `e2e/pdv-nova-venda.spec.ts`.
+
 ### 2026-11-13 — O plano de adaptação começou: o PDV, fase 1 (a comanda do atendimento)
 
 O Heitor aprovou o desenho (`docs/desenhos/pdv.html`): "implementa lá e se eu

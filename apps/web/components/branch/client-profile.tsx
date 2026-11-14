@@ -1,7 +1,6 @@
 ﻿'use client'
 
 import React, { useActionState, useEffect, useEffectEvent, useState, useRef } from 'react'
-import { toast } from 'sonner'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Phone, Mail, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, FileDown, ShieldCheck, type LucideIcon } from 'lucide-react'
@@ -35,8 +34,6 @@ import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { formatarNoFuso, diaRelativo } from '@/lib/formatar-no-fuso'
 import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
 import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
-import type { PacoteAVenda } from '@/components/shared/vender-pacote'
-import { Vender, type ProcedimentoAVenda, type ProdutoAVenda, type MembroDaVenda, type VendaDaUnidade } from '@/components/shared/vender'
 import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
 import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
 import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/acessos-ao-prontuario'
@@ -296,8 +293,6 @@ interface Props {
    * alfabética.
    */
   perguntaAUnidade?:     boolean
-  /** O catálogo à venda de CADA unidade, para o "Vender" que pergunta a unidade (D1). */
-  vendaPorUnidade?:      VendaDaUnidade[]
   clientHistory:         ClientHistoryEvent[]
   /** Procedimentos que podem entrar num plano de tratamento (sem os de avaliação). */
   planProcedures?:       { id: string; name: string; category: string; price: number; durationMin: number; products?: { productId: string; name: string; unit: string; quantity: number }[] }[]
@@ -305,14 +300,6 @@ interface Props {
   planProducts?:         { id: string; name: string; unit: string }[]
   /** Pode receber: habilita fechar o plano ali mesmo. */
   podeReceber?:          boolean
-  /** O catálogo de pacotes à venda (só para quem recebe). */
-  pacotesAVenda?:        PacoteAVenda[]
-  /** Os procedimentos à venda como pré-pago (só para quem recebe). */
-  procedimentosAVenda?:  ProcedimentoAVenda[]
-  /** Os produtos de revenda à venda (D4; só para quem recebe). */
-  produtosAVenda?:       ProdutoAVenda[]
-  /** A equipe da unidade, para a venda (com-04: a responsável do pacote; com-06: quem vendeu). */
-  equipeDaVenda?:        MembroDaVenda[]
   /** Os procedimentos pré-pagos do cliente, com as unidades. */
   prePagos?:             PrePagoDoCliente[]
   /** Pode agendar (agenda: MANAGE): a unidade pré-paga se agenda da ficha, e o "+ Agendar" (A23). */
@@ -1536,9 +1523,9 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, vendaPorUnidade = [], clientHistory, opportunities = [],
-  planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], produtosAVenda = [], equipeDaVenda = [], prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
+  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, clientHistory, opportunities = [],
+  planProcedures = [], planProducts = [], podeReceber = false, termos = null,
+  prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -1552,25 +1539,6 @@ export function ClientProfile({
    * portal da rede pelo de uma unidade sem ninguém ter pedido.
    */
   const params = useSearchParams()
-
-  // `?acao=vender` (a busca universal, 2026-10-08): abre a venda ao chegar e
-  // tira o parâmetro da URL (recarregar não reabre). O sinal sai da própria
-  // URL: o Vender abre quando ele passa de 0 a 1. Sem nada a vender aqui, ou
-  // sem poder receber, avisa em vez de não fazer nada.
-  const acaoDaUrl = params.get('acao')
-  // Com a unidade a perguntar (D1), há o que vender se alguma unidade tem.
-  const podeVenderAqui = podeReceber && (perguntaAUnidade
-    ? vendaPorUnidade.some(u => u.pacotes.length > 0 || u.procedimentos.length > 0 || u.produtos.length > 0)
-    : !!currentBranchId && (pacotesAVenda.length > 0 || procedimentosAVenda.length > 0 || produtosAVenda.length > 0))
-  const sinalDaVenda = acaoDaUrl === 'vender' && podeVenderAqui ? 1 : 0
-  const aoPedirVenda = useEffectEvent(() => {
-    if (!podeVenderAqui) toast.info(podeReceber ? 'Não há procedimento, pacote nem produto à venda para este cliente.' : 'Seu cargo não recebe pagamentos.')
-    const q = new URLSearchParams(params.toString())
-    q.delete('acao')
-    const resto = q.toString()
-    router.replace(resto ? `${pathname}?${resto}` : pathname, { scroll: false })
-  })
-  useEffect(() => { if (acaoDaUrl === 'vender') aoPedirVenda() }, [acaoDaUrl])
 
   // Cancelar o pacote em andamento (F2b): a janela da conta.
   const [cancelandoPacote, setCancelandoPacote] = useState(false)
@@ -1605,6 +1573,7 @@ export function ClientProfile({
   const agendamentosAoArquivar = avisoDosAgendamentosAoArquivar(upcomingAppointments, undefined, fuso)
 
   // O `?acao=reativar` sai da URL (recarregar não reabre o menu).
+  const acaoDaUrl = params.get('acao')
   const aoPedirReativar = useEffectEvent(() => {
     const q = new URLSearchParams(params.toString())
     q.delete('acao')
@@ -1762,15 +1731,9 @@ export function ClientProfile({
             </div>
           </div>
 
-          {/* Actions — vender à esquerda do agendar (pedido do Heitor): vender é o
-              que o cliente compra e como paga; agendar, quando ele vem. */}
+          {/* Actions. O "Vender" saiu da ficha (PDV7, a revisão do Heitor de
+              2026-11-13: "O vender da ficha sai… só vende pelo PDV"). */}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-            {podeReceber && (currentBranchId || perguntaAUnidade) && (
-              <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda} produtos={produtosAVenda} equipe={equipeDaVenda}
-                unidades={perguntaAUnidade ? vendaPorUnidade : null}
-                podeAgendar={podeAgendar} abrirSinal={arquivada ? 0 : sinalDaVenda} aReceber={aReceber.itens}
-                desativadoPorque={arquivada ? motivoDoArquivo : null} />
-            )}
             {/* Sem a Agenda em Gerenciar, "+ Agendar" levava à tela de bloqueio (A23). */}
             {podeAgendar && (
             <button

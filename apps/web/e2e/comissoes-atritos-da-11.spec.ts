@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { abrirVendaNoPdv } from './apoio/vender'
 
 /**
  * As comissões da 11ª simulação (2026-11-10), numa rede [e2e] própria:
@@ -103,7 +104,7 @@ test('A17: a dona dá "Comissão de venda (%)" à Tatiane, que não atende — v
 
 test('A17: o pacote sem "De venda" usa a da pessoa; o que tem, o dele (a regra do item vence)', async ({ browser }) => {
   expect((await db().from('users').update({ comissao_venda_pct: 3 }).eq('id', tatiane.userId)).error).toBeNull()
-  const rota = `/${slug}/clients/${cliente}`
+  const rota = `/${slug}/pdv`
   let semRegra = '', comRegra = ''
   await como(browser, dona, async p => {
     const a = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
@@ -118,7 +119,7 @@ test('A17: o pacote sem "De venda" usa a da pessoa; o que tem, o dele (a regra d
 
 test('A17: o produto e o pré-pago — a da pessoa vence a da clínica; o pré-pago ganha a linha de venda', async ({ browser }) => {
   expect((await db().from('users').update({ comissao_venda_pct: 3 }).eq('id', tatiane.userId)).error).toBeNull()
-  const rota = `/${slug}/clients/${cliente}`
+  const rota = `/${slug}/pdv`
   let venda = '', prePago = ''
   await como(browser, dona, async p => {
     const a = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota, [cliente, produto, rede.branchId, 1, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
@@ -155,7 +156,7 @@ test('A17 e A43: o extrato diz de onde veio o percentual, e a venda do plano diz
   // pela pessoa (3%), pelo pacote (10%) e o plano pela clínica (5%).
   const b = db()
   expect((await b.from('users').update({ comissao_venda_pct: 3 }).eq('id', tatiane.userId)).error).toBeNull()
-  const rota = `/${slug}/clients/${cliente}`
+  const rota = `/${slug}/pdv`
   await como(browser, dona, async p => {
     await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
     await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [cliente, pacoteComRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: tatiane.userId }])
@@ -177,11 +178,10 @@ test('A17 e A43: o extrato diz de onde veio o percentual, e a venda do plano diz
 })
 
 test('A42: "Quem vendeu" traz quem tem Vendas, sem a estoquista — e o servidor recusa quem não vende', async ({ browser }) => {
-  const rota = `/${slug}/clients/${cliente}`
+  // Só se vende pelo PDV (PDV7, 2026-11-13): a venda e a action são as de lá.
+  const rota = `/${slug}/pdv`
   await como(browser, dona, async p => {
-    await p.goto(rota)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
     const campo = dlg.getByLabel('Quem vendeu')
     await expect(campo.locator('option', { hasText: 'Tatiane' })).toHaveCount(1)

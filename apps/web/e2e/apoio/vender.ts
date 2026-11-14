@@ -32,3 +32,33 @@ export async function pagoNoPix(janela: Locator) {
 export async function euVendiOPlano(page: Page) {
   await euVendi(page.locator('[data-quem-vendeu-do-plano]'))
 }
+
+/**
+ * Só se vende pelo PDV (PDV7, a revisão do Heitor de 2026-11-13): a "Nova
+ * venda" abre com a cliente escolhida (`?nova=1&cliente=`), no portal pedido
+ * (`/<slug>` ou `/admin`). No portal da rede com mais de uma unidade, a
+ * unidade da venda é a do PDV (`unidadeId` → `?unidade=`). Devolve a região
+ * "Vender", que tem o mesmo conteúdo da antiga janela da ficha.
+ */
+export async function abrirVendaNoPdv(page: Page, portal: string, clienteId: string, unidadeId?: string | null): Promise<Locator> {
+  const q = new URLSearchParams({ nova: '1', cliente: clienteId })
+  if (unidadeId) q.set('unidade', unidadeId)
+  await page.goto(`${portal}/pdv?${q.toString()}`)
+  const venda = page.getByRole('region', { name: 'Vender' })
+  await expect(venda.locator('[data-cliente-da-venda]')).toBeVisible()
+  return venda
+}
+
+/**
+ * Na rede com mais de uma unidade, a "Nova venda" que chega sem `?unidade=`
+ * (o inbox, a busca) pergunta "Em qual unidade?" antes (F33). Escolhe a
+ * unidade pelo nome (ou a primeira) quando a pergunta aparece.
+ */
+export async function escolherAUnidadeDaVenda(venda: Locator, nome?: string | RegExp) {
+  const pergunta = venda.locator('[data-unidade-da-venda]')
+  await expect(pergunta.or(venda.locator('[data-cliente-da-venda]')).first()).toBeVisible({ timeout: 20_000 })
+  if (await pergunta.count() === 0) return
+  const opcoes = pergunta.getByRole('button')
+  await (nome ? opcoes.filter({ hasText: nome }).first() : opcoes.first()).click()
+  await expect(venda.locator('[data-cliente-da-venda]')).toBeVisible({ timeout: 20_000 })
+}

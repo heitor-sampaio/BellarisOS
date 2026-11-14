@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * A VENDA DE PRODUTO (D4, decisão do Heitor, 2026-10-29): "Produto entra no
@@ -37,9 +37,7 @@ async function como<T>(browser: Browser, fn: (p: Page) => Promise<T>) {
   try { return await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 async function abrirVendaDeProduto(p: Page) {
-  await p.goto(`/admin/clients/${cliente}`)
-  await p.getByRole('button', { name: 'Vender', exact: true }).click()
-  const dlg = p.getByRole('dialog', { name: 'Vender' })
+  const dlg = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
   await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
   return dlg
 }
@@ -202,9 +200,9 @@ test.describe.serial('a venda de produto', () => {
       const rota = `/admin/clients/${cliente}`
       await p.goto(rota)
       const pagamento = { forma: 'AVISTA', metodo: 'PIX' }
-      const semCliente = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota, ['', serum, rede!.branchId, 1, pagamento, null])
+      const semCliente = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', '/admin/pdv', ['', serum, rede!.branchId, 1, pagamento, null])
       expect(semCliente.texto).toMatch(/cliente/i)
-      const outra = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota, ['00000000-0000-4000-8000-000000000000', serum, rede!.branchId, 1, pagamento, null])
+      const outra = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', '/admin/pdv', ['00000000-0000-4000-8000-000000000000', serum, rede!.branchId, 1, pagamento, null])
       expect(outra.texto).toMatch(/Cliente não encontrad/i)
     })
     expect((await vendas()).length).toBe(1)

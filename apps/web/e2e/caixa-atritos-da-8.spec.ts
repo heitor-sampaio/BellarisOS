@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { euVendi } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi } from './apoio/vender'
 
 /**
  * Os atritos do caixa da 8ª simulação (2026-11-06), da F38:
@@ -91,9 +91,7 @@ test('A43: a ficha diz que ela pagou com crédito na clínica (fora do investido
 
 test('A36 + A46: o crédito interno mostra o saldo e o que sobra, e a venda concluída avisa', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
     const produto = dlg.getByLabel('Produto', { exact: true })
     await produto.selectOption((await produto.locator('option', { hasText: SERUM }).getAttribute('value'))!)
@@ -110,9 +108,7 @@ test('A36 + A46: o crédito interno mostra o saldo e o que sobra, e a venda conc
 test('A40: ao escolher o cartão e as vezes, a tela diz a taxa e o líquido; a linha das vezes diz o que fazer', async ({ browser }) => {
   // A19 da 12ª: a taxa e o líquido são de quem vê o financeiro da clínica (a dona); a recepção que só recebe não os vê.
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
     const produto = dlg.getByLabel('Produto', { exact: true })
     await produto.selectOption((await produto.locator('option', { hasText: SERUM }).getAttribute('value'))!)

@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * com-04 da revisão das decisões (2026-11-02). O Heitor: "a comissão devida é
@@ -114,9 +114,7 @@ test('o cadastro do pacote: a comissão de quem atende "Valor do pacote", em %',
 
 test('a venda pela ficha escolhe a responsável; no Pix, os 10% de R$ 900 (R$ 90) são dela na hora — e as sessões não geram comissão', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender' }).first().click()
-    const janela = p.getByRole('dialog', { name: 'Vender' })
+    const janela = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     const aba = janela.getByRole('button', { name: 'Pacote', exact: true })
     if (await aba.count()) await aba.click()
     await janela.getByLabel('Pacote', { exact: true }).selectOption(pacote)
@@ -141,7 +139,7 @@ test('no crediário (entrada + 2 parcelas), a comissão da responsável aguarda 
   let cpId = ''
   await como(browser, async p => {
     await p.goto(rota)
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota, [
+    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`, [
       cliente, pacote, rede!.branchId, { forma: 'PARCELADO', metodo: 'PIX', entrada: 300, parcelas: 2, primeiroVencimento: vence() }, null, null,
       { responsavelId: rede!.professionalId },
     ])
@@ -163,11 +161,11 @@ test('sem responsável, a venda pergunta; confirmada, vende — e ninguém receb
   const antes = (await db().from('client_packages').select('id').eq('client_id', cliente)).data!.length
   await como(browser, async p => {
     await p.goto(rota)
-    const pergunta = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota,
+    const pergunta = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
       [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, {}])
     expect(pergunta!.texto).toContain('Ninguém foi marcado como responsável')
     expect((await db().from('client_packages').select('id').eq('client_id', cliente)).data!.length, 'sem a resposta, não vende').toBe(antes)
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', rota,
+    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
       [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { semResponsavel: true }])
     expect(r!.texto).toContain('clientPackageId')
   })

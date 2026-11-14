@@ -9,7 +9,7 @@ import { TERMO_MINIMO } from '@/lib/busca/tipos'
  * o modal que já existe, por URL — a busca não grava nada, e a tela de
  * destino confere tudo de novo (a action dela, como sempre):
  *  - `…/agenda?novo=1[&cliente=]` abre o novo agendamento (com o cliente);
- *  - `…/clients/<id>?acao=vender` abre a venda na ficha;
+ *  - `…/pdv?nova=1&cliente=<id>` abre a venda no PDV, com ela escolhida (PDV7);
  *  - `…/clients/new[?nome=|?telefone=]` abre o cadastro preenchido.
  *
  * Só aparece para quem a tela de destino libera: a busca não oferece o que a
@@ -61,7 +61,8 @@ export function acoesDoCliente(q: QuemAge, clienteId: string): AcaoDaBusca[] {
   const acoes: AcaoDaBusca[] = []
   const id = encodeURIComponent(clienteId)
   if (podeAgendar(q)) acoes.push({ id: 'agendar', rotulo: 'Agendar', href: `${rotaAgenda(q.pathname, q.slug)}?novo=1&cliente=${id}` })
-  if (recebe(q.permissoes)) acoes.push({ id: 'vender', rotulo: 'Vender', href: `${rotaCliente(q.pathname, q.slug, clienteId)}?acao=vender` })
+  // Só se vende pelo PDV (PDV7/BU1, a revisão do Heitor de 2026-11-13): a venda abre lá, com ela escolhida.
+  if (recebe(q.permissoes)) acoes.push({ id: 'vender', rotulo: 'Vender', href: `${rotaNoPortal(q.pathname, q.slug, '/pdv')}?nova=1&cliente=${id}` })
   return acoes
 }
 

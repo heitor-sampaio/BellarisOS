@@ -18,17 +18,17 @@ describe('D1 da 12ª: a venda é de Recebimentos, e a tela diz', () => {
   const nada = { procedures: 'NONE', crm: 'NONE', clients: 'NONE', cashier: 'NONE', financial: 'NONE' } as const
   it('o resumo do cargo diz que o comercial sem Recebimentos não vende', () => {
     expect(quemVendeNoResumo({ ...nada, procedures: 'MANAGE', crm: 'MANAGE', clients: 'MANAGE' }))
-      .toBe('Não vende pelo “Vender” da ficha: vender é de Recebimentos (ou do Financeiro em Gerenciar).')
+      .toBe('Não vende no PDV: vender é de Recebimentos (ou do Financeiro em Gerenciar).')
   })
   it('com Recebimentos (ou o Financeiro em Gerenciar), vende', () => {
-    expect(quemVendeNoResumo({ ...nada, cashier: 'MANAGE' })).toMatch(/^Vende pelo “Vender” da ficha/)
-    expect(quemVendeNoResumo({ ...nada, financial: 'MANAGE' })).toMatch(/^Vende pelo “Vender” da ficha/)
+    expect(quemVendeNoResumo({ ...nada, cashier: 'MANAGE' })).toMatch(/^Vende no PDV/)
+    expect(quemVendeNoResumo({ ...nada, financial: 'MANAGE' })).toMatch(/^Vende no PDV/)
   })
   it('quem nem vende nem mexe no comercial não lê nada', () => {
     expect(quemVendeNoResumo({ ...nada })).toBeNull()
   })
-  it('a tela de Pacotes diz que o “Vender” é de quem tem Recebimentos', () => {
-    expect(TEXTO_DA_VENDA_DO_PACOTE).toMatch(/“Vender”/)
+  it('a tela de Pacotes diz que a venda é no PDV, de quem tem Recebimentos (PDV7)', () => {
+    expect(TEXTO_DA_VENDA_DO_PACOTE).toMatch(/no PDV/)
     expect(TEXTO_DA_VENDA_DO_PACOTE).toMatch(/Recebimentos/)
   })
 })

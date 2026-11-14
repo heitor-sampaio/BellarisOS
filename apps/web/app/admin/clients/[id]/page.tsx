@@ -24,11 +24,7 @@ import { pedidoLgpdDaFicha } from '@/lib/lgpd/aviso-do-pedido'
 import { eventosDeConfirmacaoEChegada, eventoDaAvaliacao, comAutores } from '@/lib/clients/historico-do-agendamento'
 import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 import { historicoDosAgendamentos } from '@/lib/clients/autores-do-historico'
-import { pacotesAVenda } from '@/lib/pacotes/leitura'
-import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
-import { produtosAVenda } from '@/lib/produtos/leitura'
-import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
-import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
+import { prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -193,15 +189,6 @@ export default async function AdminClientProfilePage({
   // estoque"), e só deu entrando pelo portal do Batel.
   const unidadesAtivas = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
   const perguntaAUnidade = unidadesAtivas.length > 1
-  const vendaPorUnidade = perguntaAUnidade && podeReceber(ctx)
-    ? await Promise.all(unidadesAtivas.map(async u => {
-        const [pacotes, procedimentos, produtos, equipe] = await Promise.all([
-          pacotesAVenda(ctx.tenantId!, u.id), procedimentosAVenda(ctx.tenantId!, u.id),
-          produtosAVenda(ctx.tenantId!, u.id), equipeDaVenda(ctx.tenantId!, u.id, ctx.internalUserId, veComissaoDeTodos(ctx)),
-        ])
-        return { id: u.id, nome: u.name, pacotes, procedimentos, produtos, equipe }
-      }))
-    : []
 
   // KPIs
   // O dinheiro do cliente vem do banco, pela regra do sistema (§13.1): LTV é
@@ -468,14 +455,10 @@ export default async function AdminClientProfilePage({
   // O resto do que a ficha mostra, de uma vez (C77): eram leituras uma atrás
   // da outra no meio da montagem da tela.
   const veTermos = can(ctx, 'documents', 'VIEW')
-  const [pedidoLgpd, termosItens, pelaConversa, pacotesVenda, procedimentosVenda, produtosVenda, equipeVenda, prePagos, quemDesfaz, pagoComCredito] = await Promise.all([
+  const [pedidoLgpd, termosItens, pelaConversa, prePagos, quemDesfaz, pagoComCredito] = await Promise.all([
     pedidoLgpdDaFicha(ctx, id),
     veTermos && veDocumentos ? documentosDoCliente(ctx.tenantId!, id) : Promise.resolve([]),
     veTermos ? envioPelaConversaLigado(ctx.tenantId!) : Promise.resolve(false),
-    podeReceber(ctx) && !perguntaAUnidade ? pacotesAVenda(ctx.tenantId!, branchId || null) : Promise.resolve([]),
-    podeReceber(ctx) && !perguntaAUnidade ? procedimentosAVenda(ctx.tenantId!, branchId || null) : Promise.resolve([]),
-    podeReceber(ctx) && !perguntaAUnidade ? produtosAVenda(ctx.tenantId!, branchId || null) : Promise.resolve([]),
-    podeReceber(ctx) && !perguntaAUnidade ? equipeDaVenda(ctx.tenantId!, branchId || null, ctx.internalUserId, veComissaoDeTodos(ctx)) : Promise.resolve([]),
     prePagosDoCliente(ctx.tenantId!, id),
     podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? quemDesfazNoCaixa(ctx.tenantId!, ctx.branchId ?? null) : Promise.resolve(null),
     getPagoComCreditoDoCliente(ctx.tenantId!, id),
@@ -525,12 +508,7 @@ export default async function AdminClientProfilePage({
         podeReceber={podeReceber(ctx)}
         aReceber={aReceber}
         podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
-        pacotesAVenda={pacotesVenda}
-        procedimentosAVenda={procedimentosVenda}
-        produtosAVenda={produtosVenda}
-        equipeDaVenda={equipeVenda}
         perguntaAUnidade={perguntaAUnidade}
-        vendaPorUnidade={vendaPorUnidade}
         prePagos={prePagos}
         podeAgendar={can(ctx, 'agenda', 'MANAGE')}
         podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}

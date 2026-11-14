@@ -52,11 +52,29 @@ comanda (PDV-P1).
   motivo, pontos, maquininha, vezes, bandeira, saldo de crédito, o combinado
   do plano. Não existe pagamento sem forma (PDV8): o botão "Receber R$ X"
   espera a forma.
-- Ainda por vir (o plano de adaptação, `docs/revisao.md`): a venda nova no
-  PDV (pacote, produto, crédito) e a saída do "Vender" da ficha; a comanda do
-  plano no aceite; o Fechamento do dia no PDV; a parcela do crediário e os
-  pontos dentro da comanda.
-- Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`.
+- **Só se vende pelo PDV** (PDV-P3: "O vender da ficha sai e o do inbox ele
+  pode sair, ele pode levar pro PDV, tá? Porque só vende pelo PDV."). A
+  "Nova venda" (`?nova=1`) escolhe a cliente (busca na rede inteira,
+  `buscarClientesParaVender`) e mostra os MESMOS formulários do antigo
+  "Vender" (`VendaNaTela`, `components/shared/vender.tsx`): procedimento
+  pré-pago, pacote, produto e crédito na rede, com desconto, "Quem vendeu" e
+  pagamento. A unidade da venda é a do PDV — não há mais "Unidade da venda".
+  A ficha não tem o "Vender"; o "Vender" do inbox e o da busca universal levam
+  a `/<portal>/pdv?nova=1&cliente=<id>` (no inbox, a pessoa sem ficha passa
+  pelo cadastro e chega lá).
+  ⚠️ Onde este arquivo ainda diz o "Vender" (da ficha, do inbox), leia a
+  "Nova venda" do PDV: o formulário e as regras são os mesmos.
+- **Toda venda é uma comanda** (PDV2): o gatilho `comanda_da_venda`, no
+  primeiro lançamento de receita da venda (pacote, pré-pago, produto, crédito
+  vendido), cria a comanda `VENDA` ligada a ela (uma coluna por tipo, única) —
+  vale em todo caminho que vende (tela, action, Copilot). As parcelas
+  seguintes não fazem outra. O pacote trazido de fora não é venda: não tem
+  comanda. A venda nasce paga (vendida com a forma escolhida): aparece em
+  "Pagas hoje" pela hora da venda; a estornada inteira diz "Estornada".
+- Ainda por vir (o plano de adaptação, `docs/revisao.md`): a comanda do plano
+  no aceite; o Fechamento do dia no PDV; o crediário como forma, a parcela do
+  crediário e os pontos dentro da comanda; vários itens numa comanda.
+- Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`, `e2e/pdv-nova-venda.spec.ts`.
 
 ### 9.3.1 Pacotes (2026-09-30)
 

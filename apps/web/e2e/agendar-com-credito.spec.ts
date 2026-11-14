@@ -4,7 +4,7 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * Agendar usando o que o cliente já pagou (fase 3 de "Vender", 2026-09-30):
@@ -127,9 +127,7 @@ test.describe.serial('agendar com crédito', () => {
     const cliente = await rede!.criarCliente('Agora')
     const { dia } = amanha('09:00')
     await comSessao(browser, async p => {
-      await p.goto(`/admin/clients/${cliente}`)
-      await p.getByRole('button', { name: 'Vender', exact: true }).click()
-      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      const dlg = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
       await dlg.getByRole('button', { name: 'Procedimento', exact: true }).click()
       await dlg.getByLabel('Procedimento', { exact: true }).selectOption(rede!.procedureId)
       await pagoNoPix(dlg)

@@ -80,7 +80,7 @@ test.describe.serial('parcelas no crédito', () => {
 
   test('o servidor recusa acima do limite (venda de pré-pago em 6x), e aceita 3x', async ({ browser }) => {
     await como(browser, recepcao!, async p => {
-      const rota = `/${slug}/clients/${cliente}`
+      const rota = `/${slug}/pdv`
       const r = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', rota,
         [cliente, rede!.procedureId, rede!.branchId, 1, null, { forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 6 }, null])
       expect(r.texto).toContain('em até 3x')

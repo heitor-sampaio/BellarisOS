@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste } from './apoio/sessao'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
-import { euVendi, euVendiOPlano, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, euVendiOPlano, pagoNoPix } from './apoio/vender'
 
 /**
  * D5 e D6 da 6ª simulação (F20), e o A47.
@@ -187,9 +187,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
     expect(error, 'criar o pacote').toBeNull()
     const cliente = await rede!.criarCliente('Márcia')
     await como(browser, async p => {
-      await p.goto(`/admin/clients/${cliente}`)
-      await p.getByRole('button', { name: 'Vender', exact: true }).click()
-      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      const dlg = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
       await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacote as string)
       await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()

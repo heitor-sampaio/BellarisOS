@@ -5,7 +5,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * Procedimento pré-pago (decisão do Heitor, 2026-09-30 — migration
@@ -107,9 +107,7 @@ test.describe.serial('procedimento pré-pago', () => {
   test('venda pela ficha: 3× com 10% e entrada + parcelas — unidades, dinheiro e o card', async ({ browser }) => {
     cliente = await rede!.criarCliente('Pré-pago')
     await comSessao(browser, gestor!, async p => {
-      await p.goto(`/admin/clients/${cliente}`)
-      await p.getByRole('button', { name: 'Vender', exact: true }).click()
-      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      const dlg = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
       await dlg.getByLabel('Procedimento', { exact: true }).selectOption(rede!.procedureId)
       await dlg.getByLabel('Quantidade').fill('3')
       await expect(dlg.locator('[data-resumo-do-procedimento]')).toContainText('900,00')
@@ -124,6 +122,7 @@ test.describe.serial('procedimento pré-pago', () => {
       // Quem agenda vê o "Agendar agora" (fase 3); aqui fica para depois.
       await dlg.locator('[data-agendar-agora]').getByRole('button', { name: 'Cancelar' }).click()
       await expect(dlg).toBeHidden({ timeout: 15_000 })
+      await p.goto(`/admin/clients/${cliente}`)
       await expect(p.locator('[data-procedimentos-pagos]')).toContainText('3 para agendar')
     })
     const { data: v } = await db().from('procedure_sales').select('id, quantity, preco_tabela, desconto, price, sold_by').eq('client_id', cliente).single()
@@ -230,7 +229,7 @@ test.describe.serial('procedimento pré-pago', () => {
     const { data: u } = await db().from('procedure_sale_units').select('id').eq('sale_id', v).single()
     await comSessao(browser, soVe!, async p => {
       const rota = `/admin/clients/${c}`
-      const r = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', rota,
+      const r = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', '/admin/pdv',
         [c, rede!.procedureId, rede!.branchId, 1, null, { forma: 'AVISTA', metodo: 'PIX' }, null])
       expect(r.texto).not.toContain('saleId')
       const x = await chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', rota,
@@ -274,7 +273,7 @@ test('um procedimento de outra rede não se vende', async ({ browser }) => {
   const outra = await criarOutraRede(`ppo${marca}`)
   try {
     await comSessao(browser, gestor!, async p => {
-      const r = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', `/admin/clients/${c}`,
+      const r = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', '/admin/pdv',
         [c, outra.procedureId, rede!.branchId, 1, null, { forma: 'AVISTA', metodo: 'PIX' }, null])
       expect(r.texto).toContain('Procedimento não encontrado')
     })

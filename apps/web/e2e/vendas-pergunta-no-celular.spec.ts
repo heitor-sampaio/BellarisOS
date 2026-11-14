@@ -2,6 +2,7 @@ import { test, expect, devices, type Browser, type Page } from '@playwright/test
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 
 /**
  * A1 da 10ª simulação (2026-11-10), da F49: no Vender a 412 px, tocar em
@@ -45,9 +46,7 @@ test.afterAll(async () => {
 
 test('A1: sem "Quem vendeu", a pergunta do Vender aparece inteira na tela do celular, e "Vender assim" vende', async ({ browser }) => {
   await noCelular(browser, dona!, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await dlg.getByLabel('Meio de pagamento').selectOption('PIX')
     await expect(dlg.getByLabel('Quem vendeu')).toHaveValue('')
     await dlg.getByRole('button', { name: /^Vender por R\$\s220,00/ }).click()

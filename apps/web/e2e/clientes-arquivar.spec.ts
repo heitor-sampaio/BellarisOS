@@ -20,6 +20,9 @@ import { apagarAgendamentos } from './apoio/limpeza'
  * futuro, que continuava "Agendado"; a busca não achava a arquivada e
  * oferecia "Cadastrar … como cliente" (a duplicata); o "Vender" desligado
  * parecia ativo; e o menu "Mais ações" ficava aberto sobre o cabeçalho.
+ *
+ * PDV7 (2026-11-13): o "Vender" saiu da ficha — só se vende pelo PDV, que não
+ * abre a venda para a arquivada.
  */
 
 const marca = Date.now().toString(36)
@@ -110,7 +113,9 @@ test.describe.serial('arquivar a cliente', () => {
     } finally { await ctx.close() }
   })
 
-  test('quem recebe vê o Vender desligado na ficha arquivada', async ({ browser }) => {
+  // Só se vende pelo PDV (PDV7, 2026-11-13): a ficha não tem mais o "Vender".
+  // A prova nova é que o PDV não abre a venda para a arquivada (volta a pedir a cliente).
+  test('quem recebe não abre a venda da arquivada no PDV', async ({ browser }) => {
     const id = await rede!.criarCliente('Arquivada no caixa')
     expect((await db().from('clients').update({ is_active: false }).eq('id', id)).error).toBeNull()
     const ctx = await browser.newContext({ storageState: caixa!.estado })
@@ -118,7 +123,12 @@ test.describe.serial('arquivar a cliente', () => {
       const p = await ctx.newPage()
       await p.goto(`/${slug}/clients/${id}`)
       const topo = p.locator('.card').filter({ has: p.locator('h1') }).first()
-      await expect(topo.getByRole('button', { name: 'Vender' })).toBeDisabled()
+      await expect(topo.getByText('Arquivada', { exact: true })).toBeVisible()
+      await expect(topo.getByRole('button', { name: 'Vender' })).toHaveCount(0)
+      await p.goto(`/${slug}/pdv?nova=1&cliente=${id}`)
+      const venda = p.getByRole('region', { name: 'Vender' })
+      await expect(venda.getByLabel('Cliente da venda')).toBeVisible()
+      await expect(venda.locator('[data-cliente-da-venda]')).toHaveCount(0)
     } finally { await ctx.close() }
   })
 
@@ -134,7 +144,7 @@ test.describe.serial('arquivar a cliente', () => {
         professional_id: rede!.professionalId, scheduled_at: new Date(`${dia}T10:00:00-03:00`).toISOString(), notes: '',
       })
       expect(agendar.texto).toContain('arquivada')
-      const vender = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', `/${slug}/clients/${id}`,
+      const vender = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', `/${slug}/pdv`,
         [id, rede!.procedureId, rede!.branchId, 1, null, { forma: 'AVISTA', metodo: 'PIX' }, null])
       expect(vender.texto).toContain('arquivada')
     } finally { await ctx.close() }
@@ -172,20 +182,8 @@ test.describe.serial('arquivar a cliente', () => {
     }
   })
 
-  test('A19: o Vender desligado PARECE desligado', async ({ browser }) => {
-    const id = await rede!.criarCliente('Arquivada aparência')
-    expect((await db().from('clients').update({ is_active: false }).eq('id', id)).error).toBeNull()
-    const ctx = await browser.newContext({ storageState: caixa!.estado })
-    try {
-      const p = await ctx.newPage()
-      await p.goto(`/${slug}/clients/${id}`)
-      const vender = p.locator('.card').filter({ has: p.locator('h1') }).first().getByRole('button', { name: 'Vender' })
-      await expect(vender).toBeDisabled()
-      const estilo = await vender.evaluate(b => ({ opacidade: Number(getComputedStyle(b).opacity), cursor: getComputedStyle(b).cursor }))
-      expect(estilo.opacidade).toBeLessThan(1)
-      expect(estilo.cursor).toBe('not-allowed')
-    } finally { await ctx.close() }
-  })
+  // "A19: o Vender desligado PARECE desligado" saiu: a ficha não tem mais o
+  // "Vender" (PDV7, 2026-11-13 — só se vende pelo PDV).
 
   test('A19: a busca acha a arquivada e oferece "Reativar", não "Cadastrar … como cliente"', async ({ browser }) => {
     const nome = `Valdir Busca ${marca}`

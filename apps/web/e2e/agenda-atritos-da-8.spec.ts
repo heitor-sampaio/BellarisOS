@@ -5,6 +5,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcaoComFormulario } from './apoio/acao-direta'
 import { cartaoNaGradeDoDia } from './apoio/agenda'
 import { addDaysTZ, dayKeyTZ } from '../lib/datetime'
+import { escolherAUnidadeDaVenda } from './apoio/vender'
 
 /**
  * Os atritos da agenda da 8ª simulação (2026-11-06), da F37:
@@ -22,7 +23,8 @@ import { addDaysTZ, dayKeyTZ } from '../lib/datetime'
  * - A58/A32: o seletor de horários livres só na sessão do pacote (não no modal
  *   Agendar), e a sala da sessão só aparecia depois do horário.
  * - Sobra da F33: o "Vender" do inbox numa rede de duas unidades saía da
- *   unidade de cadastro da cliente, sem perguntar.
+ *   unidade de cadastro da cliente, sem perguntar. Desde o PDV7 (2026-11-13)
+ *   ele leva ao PDV, e a unidade da venda é a do PDV.
  *
  * Numa rede [e2e] própria, de duas unidades 24 h.
  */
@@ -361,7 +363,9 @@ test('A32/A58: o agendar da sessão do pacote pede a sala desde o início', asyn
   })
 })
 
-test('sobra da F33: o "Vender" do inbox, na rede de duas unidades, pergunta a unidade', async ({ browser }) => {
+// Só se vende pelo PDV (PDV7, 2026-11-13): o "Vender" do inbox leva ao PDV com a
+// cliente, e a unidade da venda é a do PDV — com duas, o seletor dele está à vista.
+test('sobra da F33: o "Vender" do inbox, na rede de duas unidades, leva ao PDV, que mostra a unidade', async ({ browser }) => {
   const { data, error } = await db().from('conversations').insert({
     tenant_id: rede!.tenantId, status: 'open', channel: 'whatsapp', provider: 'uazapi', client_id: bruna,
     last_message_at: new Date().toISOString(), last_message: 'oi', contact_name: `${PREFIXO} Conversa ${marca}`,
@@ -371,8 +375,14 @@ test('sobra da F33: o "Vender" do inbox, na rede de duas unidades, pergunta a un
   conversas.push(data!.id)
   await como(browser, daRede!, async p => {
     await p.goto(`/admin/inbox?c=${data!.id}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
-    await expect(dlg.locator('[data-unidade-da-venda] select'), 'nenhuma unidade vem escolhida').toHaveValue('')
+    const vender = p.getByRole('link', { name: 'Vender', exact: true })
+    await expect(vender).toHaveAttribute('href', `/admin/pdv?nova=1&cliente=${bruna}`)
+    await vender.click()
+    // F33: a venda não nasce calada numa unidade — pergunta em qual.
+    const venda = p.getByRole('region', { name: 'Vender' })
+    await expect(venda.locator('[data-unidade-da-venda]')).toContainText('Em qual unidade')
+    await expect(venda.locator('[data-cliente-da-venda]'), 'nenhuma unidade escolhida sozinha').toHaveCount(0)
+    await escolherAUnidadeDaVenda(venda, `${PREFIXO} Batel ${marca}`)
+    await expect(p).toHaveURL(/unidade=/)
   })
 })

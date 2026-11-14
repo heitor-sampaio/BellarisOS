@@ -114,7 +114,7 @@ test('D2: o agendar lista e grava o preço da unidade (a Menino Deus a R$ 590, a
 
 test('D2: o Vender cobra o preço da unidade — o pré-pago e o rateio do pacote', async ({ browser }) => {
   await como(browser, dona!.estado, async p => {
-    const rota = `/admin/clients/${cliente}`
+    const rota = '/admin/pdv'
     const v = await chamarAcao(p, 'actions/pre-pago.ts', 'venderProcedimento', rota,
       [cliente, rede!.procedureId, menino, 1, null, { forma: 'AVISTA', metodo: 'PIX' }, null, null, {}])
     expect(v.texto, 'vendeu o pré-pago').toContain('saleId')

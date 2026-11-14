@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -50,10 +51,9 @@ async function pacote(nome: string, regra: { tipo: string; valor: number } | nul
   return data!.id
 }
 
-async function abrirVender(p: Page) {
-  await p.goto(`/${slug}/clients/${cliente}`)
-  await p.getByRole('button', { name: 'Vender', exact: true }).click()
-  return p.getByRole('dialog', { name: 'Vender' })
+// Só se vende pelo PDV (PDV7, 2026-11-13): a venda abre lá, com a cliente.
+function abrirVender(p: Page) {
+  return abrirVendaNoPdv(p, `/${slug}`, cliente)
 }
 
 test.beforeAll(async () => {
@@ -164,7 +164,7 @@ test('A21: o Enter na busca do "Indicada por" não envia o cadastro', async ({ b
 
 test('A22: a sessão do pacote diz que os horários aparecem depois da profissional e da data', async ({ browser }) => {
   await como(browser, dona, async p => {
-    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/clients/${cliente}`,
+    const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
       [cliente, pacoteSemRegra, rede.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: dona.userId }])
     expect(r.texto).toContain('clientPackageId')
     await p.goto(`/${slug}/clients/${cliente}`)

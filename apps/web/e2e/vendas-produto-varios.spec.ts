@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
-import { euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
 
 /**
  * ven-04 da revisão das decisões (2026-11-02, "mudar"): "a Carla leva 2 séruns
@@ -83,9 +83,7 @@ test.afterAll(async () => {
 
 test('o kit pela ficha: 2 séruns + 1 protetor, um pagamento só — a venda, a baixa de cada um, o dinheiro e a comissão', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
-    await p.getByRole('button', { name: 'Vender' }).first().click()
-    const janela = p.getByRole('dialog', { name: 'Vender' })
+    const janela = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     const aba = janela.getByRole('button', { name: 'Produto' })
     if (await aba.count()) await aba.click()
     await janela.getByLabel('Produto', { exact: true }).selectOption(serum)
@@ -125,7 +123,7 @@ test('sem estoque de UM dos produtos, a venda inteira é recusada — e nada é 
   const antes = (await vendas()).length
   await como(browser, async p => {
     await p.goto(rota)
-    const r = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', rota,
+    const r = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', `/${slug}/pdv`,
       [cliente, [{ produtoId: serum, quantidade: 1 }, { produtoId: protetor, quantidade: 9 }], rede!.branchId, null, { forma: 'AVISTA', metodo: 'PIX' }, null, null])
     expect(r!.texto).toContain('Estoque insuficiente')
   })

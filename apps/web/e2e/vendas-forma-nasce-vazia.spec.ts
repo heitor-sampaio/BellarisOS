@@ -1,6 +1,7 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 
 /**
@@ -93,10 +94,8 @@ test('o checkout do plano e o "Vender" da ficha: a forma nasce vazia e o botão 
     await p.getByRole('button', { name: 'Pix', exact: true }).click()
     await expect(p.getByRole('button', { name: 'Ir para a documentação' })).toBeEnabled()
 
-    // O "Vender" da ficha (procedimento pré-pago): a forma nasce vazia.
-    await p.goto(`/admin/clients/${c}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
+    // A venda no PDV (procedimento pré-pago; era o "Vender" da ficha até o PDV7): a forma nasce vazia.
+    const dlg = await abrirVendaNoPdv(p, '/admin', c, rede!.branchId)
     await dlg.getByLabel('Procedimento', { exact: true }).selectOption(rede!.procedureId)
     await expect(dlg.getByLabel('Meio de pagamento')).toHaveValue('')
     await expect(dlg.getByRole('button', { name: /Vender por/ })).toBeDisabled()

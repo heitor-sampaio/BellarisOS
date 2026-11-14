@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { abrirVendaNoPdv } from './apoio/vender'
 
 /**
  * ven-02 da revisão das decisões (2026-11-02, "mudar"): a entrada maior que o
@@ -10,7 +11,7 @@ import { chamarAcao } from './apoio/acao-direta'
  * R$ 1.000; grava R$ 900 sem dizer nada". Agora a tela avisa "a entrada passa
  * do total" junto do campo e não deixa seguir, e o servidor recusa com a mesma
  * frase ("regras de negócio devem ser sempre validadas em backend").
- * No checkout do plano e na venda da ficha. Numa rede [e2e] própria.
+ * No checkout do plano e na venda (no PDV desde o PDV7). Numa rede [e2e] própria.
  */
 
 test.describe.configure({ mode: 'serial' })
@@ -106,12 +107,11 @@ test('checkout do plano: o servidor recusa a entrada acima do total (e aceita a 
   })
 })
 
-test('a venda da ficha: a entrada acima do total avisa, desliga o "Vender" e o servidor recusa', async ({ browser }) => {
-  const rota = `/${slug}/clients/${cliente}`
+// Só se vende pelo PDV (PDV7, 2026-11-13): a venda e a action são as de lá.
+test('a venda no PDV: a entrada acima do total avisa, desliga o "Vender" e o servidor recusa', async ({ browser }) => {
+  const rota = `/${slug}/pdv`
   await como(browser, async p => {
-    await p.goto(rota)
-    await p.getByRole('button', { name: 'Vender' }).first().click()
-    const janela = p.getByRole('dialog', { name: 'Vender' })
+    const janela = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     const aba = janela.getByRole('button', { name: 'Produto' })
     if (await aba.count()) await aba.click()
     await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()

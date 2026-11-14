@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 
 /**
  * O atendimento concluído e não pago tem caminho pela tela (D5 da simulação
@@ -142,7 +143,7 @@ test.describe.serial('o atendimento concluído a receber', () => {
     })
   })
 
-  test('D5: a ficha mostra o atendimento a receber, e o "Vender" avisa do mesmo procedimento', async ({ browser }) => {
+  test('D5: a ficha mostra o atendimento a receber, e a venda no PDV avisa do mesmo procedimento', async ({ browser }) => {
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/clients/${joana}`)
       const card = p.locator('[data-a-receber]')
@@ -150,8 +151,8 @@ test.describe.serial('o atendimento concluído a receber', () => {
       await expect(card).toContainText('180,00')
       await expect(card.getByRole('link', { name: 'Receber' })).toHaveAttribute('href', `/${slug}/agenda/${limpeza}?receber=1`)
 
-      await p.getByRole('button', { name: 'Vender', exact: true }).click()
-      const venda = p.getByRole('dialog', { name: 'Vender' })
+      // Só se vende pelo PDV (PDV7, 2026-11-13): o aviso segue no formulário de lá.
+      const venda = await abrirVendaNoPdv(p, `/${slug}`, joana)
       await venda.getByLabel('Procedimento').selectOption(procLimpeza)
       await expect(venda.locator('[data-aviso-a-receber]')).toContainText(/a receber/i)
       await expect(venda.locator('[data-aviso-a-receber]')).toContainText('180,00')

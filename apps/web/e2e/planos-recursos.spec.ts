@@ -244,7 +244,7 @@ const SUBFUNCIONALIDADES: {
   { chave: 'pacotes', menu: 'Pacotes', tela: '/admin/pacotes',
     acao: { arquivo: 'actions/pacotes.ts', funcao: 'salvarPacote', rota: '/admin/pacotes', args: () => [{}] } },
   { chave: 'pre_pago',
-    acao: { arquivo: 'actions/pre-pago.ts', funcao: 'venderProcedimento', rota: '/admin/inbox',
+    acao: { arquivo: 'actions/pre-pago.ts', funcao: 'venderProcedimento', rota: '/admin/pdv',
       args: o => [ZERO, ZERO, o.branchId, 1, null, {}] } },
   { chave: 'planos_de_tratamento', menu: 'Tratamentos', tela: '/admin/planejamentos',
     acao: { arquivo: 'actions/treatment-plans.ts', funcao: 'criarPlanoDoCliente', rota: '/admin/planejamentos', args: o => [null, o.branchId] } },

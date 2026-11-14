@@ -8,7 +8,7 @@ import { Pdv } from '@/app/_shared/pdv'
 /** O PDV, no portal da unidade (PDV1): de quem recebe — o PDV ou o Financeiro em Gerenciar. */
 export default async function PdvDaUnidadePage({ params, searchParams }: {
   params:       Promise<{ slug: string }>
-  searchParams: Promise<{ ver?: string; comanda?: string }>
+  searchParams: Promise<{ ver?: string; comanda?: string; nova?: string; cliente?: string }>
 }) {
   const { slug } = await params
   const ctx = await getTenantContext()
@@ -22,6 +22,6 @@ export default async function PdvDaUnidadePage({ params, searchParams }: {
   return (
     <Pdv ctx={ctx} unidades={[{ id: unidade.id as string, name: unidade.name as string }]}
       unidadeId={unidade.id as string} slugDaUnidade={slug} basePath={`/${slug}/pdv`}
-      ver={sp.ver} comandaId={sp.comanda} />
+      ver={sp.ver} comandaId={sp.comanda} nova={sp.nova} clienteId={sp.cliente} />
   )
 }

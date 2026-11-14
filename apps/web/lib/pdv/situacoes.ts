@@ -33,4 +33,6 @@ export interface ComandaDoPdv {
   pagaEm:        string | null
   recebido:      number | null
   forma:         string | null
+  /** A venda estornada inteira (nenhum lançamento vivo). */
+  estornada:     boolean
 }

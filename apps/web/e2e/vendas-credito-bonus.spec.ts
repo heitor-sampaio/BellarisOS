@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { abrirVendaNoPdv } from './apoio/vender'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -79,10 +80,8 @@ test.afterAll(async () => {
 
 test('A20: R$ 500 pagos + R$ 50 de bônus — o caixa e os pontos sobre o pago, o saldo de R$ 550, a ficha e o app dizem', async ({ browser }) => {
   await como(browser, recepcao.estado, async p => {
-    await p.goto(`/${slug}/clients/${daniela.clientId}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
-    await dlg.getByRole('button', { name: 'Crédito na clínica', exact: true }).click()
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, daniela.clientId)
+    await dlg.getByRole('button', { name: 'Crédito na rede', exact: true }).click()
     // Vazio por padrão.
     await expect(dlg.getByLabel('Bônus (opcional)')).toHaveValue('')
     // A55: a Daniela tem acesso ao app — nada a avisar.
@@ -154,7 +153,7 @@ test('A20: no estorno o bônus sai junto — na proporção, a clínica escolhe;
 })
 
 test('A20: o bônus inteiro — e sem escolher, o estorno com bônus recusa', async ({ browser }) => {
-  const rota = `/${slug}/clients/${rosana}`
+  const rota = `/${slug}/pdv`
   await como(browser, recepcao.estado, async p => {
     const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'venderCredito', rota, [rosana, rede.branchId, '200', { forma: 'AVISTA', metodo: 'PIX' }, null, '20'])
     expect(r.texto).toContain('vendaId')
@@ -174,10 +173,8 @@ test('A20: o bônus inteiro — e sem escolher, o estorno com bônus recusa', as
 
 test('A55: a venda do crédito avisa que a cliente não tem acesso ao app', async ({ browser }) => {
   await como(browser, recepcao.estado, async p => {
-    await p.goto(`/${slug}/clients/${rosana}`)
-    await p.getByRole('button', { name: 'Vender', exact: true }).click()
-    const dlg = p.getByRole('dialog', { name: 'Vender' })
-    await dlg.getByRole('button', { name: 'Crédito na clínica', exact: true }).click()
+    const dlg = await abrirVendaNoPdv(p, `/${slug}`, rosana)
+    await dlg.getByRole('button', { name: 'Crédito na rede', exact: true }).click()
     const aviso = dlg.locator('[data-sem-acesso-ao-app]')
     await expect(aviso).toContainText('não tem acesso ao app')
     await expect(aviso.getByRole('link', { name: /Dar acesso ao app/ })).toHaveAttribute('href', new RegExp(`/clients/${rosana}\\?aba=dados`))
