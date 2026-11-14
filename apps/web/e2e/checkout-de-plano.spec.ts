@@ -133,8 +133,8 @@ const PDV = '/admin/pdv'
 
 /** O aceite (PT1b): só "quero fazer", sem dinheiro — pela action, como a tela do plano. */
 async function aceitar(page: Page, planId: string) {
-  const r = await chamarAcao(page, 'actions/treatment-plans.ts', 'aceitarPlano', PDV, [planId])
-  expect(r.texto, 'o aceite passou').not.toContain('"error"')
+  // O aceite é da página do plano (é ela que carrega a action); a prova é o banco.
+  await chamarAcao(page, 'actions/treatment-plans.ts', 'aceitarPlano', `/admin/planejamentos/${planId}`, [planId])
   expect((await db().from('treatment_plans').select('status').eq('id', planId).single()).data?.status).toBe('ACCEPTED')
 }
 

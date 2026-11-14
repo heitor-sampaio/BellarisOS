@@ -142,8 +142,9 @@ test('marcar a sessão do plano num horário ocupado é recusado', async ({ brow
 // agendadas — e recusa o horário ocupado antes do dinheiro.
 test('o receber do plano recusa horário ocupado ANTES do dinheiro', async ({ browser }) => {
   await como(browser, async p => {
-    const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', '/admin/pdv', [f!.planoCheckout])
-    expect(aceite.texto, 'o aceite passou').not.toContain('"error"')
+    // O aceite é da página do plano (é ela que carrega a action); a prova é o banco.
+    await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', `/admin/planejamentos/${f!.planoCheckout}`, [f!.planoCheckout])
+    expect((await db().from('treatment_plans').select('status').eq('id', f!.planoCheckout).single()).data?.status, 'o aceite passou').toBe('ACCEPTED')
     const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', '/admin/pdv', [
       f!.planoCheckout, { forma: 'AVISTA', metodo: 'PIX' },
       [{ planSessionId: f!.sessaoCheckout, scheduledAt: horas(f!.t, 0.5), professionalId: f!.p2, branchId: f!.outra.branchId }],

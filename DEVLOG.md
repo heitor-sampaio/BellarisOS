@@ -2035,6 +2035,11 @@ do que a tela fazia saiu.
   `receberPlanoNoPdv` (`e2e/apoio/vender.ts`) tinha os dois defeitos e foi
   corrigido junto; vizinhos `checkout-de-plano` (8) e `plano-e-avulso` (3)
   verdes.
+- **Os outros seis specs com o mesmo defeito** (achados pela leva 1 de
+  Documentos): `documentos-atritos-da-11` (3), `-da-12` (5),
+  `plano-checkout-uma-transacao` (3), `agenda-conflito-caminhos` (3),
+  `plano-defeitos-da-12` (3) e `checkout-de-plano` (8) — o aceite pela
+  página do plano e a prova pelo banco; todos verdes.
 - **O lint do web volta a zero**: `campo-da-lista.tsx` (do bloco Estoque)
   zerava o escolhido num `useEffect` (`set-state-in-effect`); agora o valor
   é derivado na renderização. `estoque-marcas-e-fornecedores` 6/6.

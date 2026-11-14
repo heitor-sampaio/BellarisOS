@@ -94,8 +94,11 @@ test.afterAll(async () => {
 const PDV = '/admin/pdv'
 
 async function aceitar(p: Page, planId: string) {
-  const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', PDV, [planId])
-  expect(r.texto, 'o aceite passou').not.toContain('"error"')
+  // O aceite é da página do plano (é ela que carrega a action). A resposta vem
+  // como payload RSC, com a árvore da página: a prova é o banco.
+  await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', `/admin/planejamentos/${planId}`, [planId])
+  const { data } = await db().from('treatment_plans').select('status').eq('id', planId).single<{ status: string }>()
+  expect(data!.status, 'o aceite passou').toBe('ACCEPTED')
 }
 
 test('duas chegadas ao mesmo tempo: uma recebe o plano, a outra ouve que já foi recebido, e o dinheiro entra uma vez', async ({ browser }) => {

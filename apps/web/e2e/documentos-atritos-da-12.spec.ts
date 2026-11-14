@@ -122,10 +122,12 @@ test('A14: o contrato de PLANO diz a profissional (a do plano)', async ({ browse
   expect((await db().from('clients').update({ document: '11144477735', birth_date: '1990-03-14' }).eq('id', clientId)).error).toBeNull()
   await como(browser, caixa, async p => {
     // Fase 3 do PDV (PT1b): o plano se aceita antes, e os documentos do receber se preparam no PDV.
-    const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', '/admin/pdv', [planId])
-    expect(aceite.texto).not.toContain('"error":"')
-    const r = await chamarAcao(p, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', '/admin/pdv', [planId, { forma: 'AVISTA', metodo: 'PIX' }])
-    expect(r.texto).not.toContain('"error":"')
+    // O aceite é da página do plano (é ela que carrega a action). A resposta
+    // vem como payload RSC, com a árvore da página: a prova é o banco.
+    await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', `/admin/planejamentos/${planId}`, [planId])
+    const { data: aceito } = await db().from('treatment_plans').select('status').eq('id', planId).single<{ status: string }>()
+    expect(aceito!.status, 'o aceite passa').toBe('ACCEPTED')
+    await chamarAcao(p, 'actions/documentos.ts', 'prepararDocumentosDoCheckout', '/admin/pdv', [planId, { forma: 'AVISTA', metodo: 'PIX' }])
   })
   const { data } = await db().from('issued_documents').select('status, content, missing_fields')
     .eq('treatment_plan_id', planId).eq('kind', 'CONTRATO_PLANO').not('status', 'in', '(CANCELADO,SUBSTITUIDO)')

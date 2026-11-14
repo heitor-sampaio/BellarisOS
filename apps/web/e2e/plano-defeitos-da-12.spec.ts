@@ -153,8 +153,9 @@ test('D8: o checkout do plano põe a sessão na sala única do procedimento; ocu
     // Fase 3 do PDV (PT1b): o plano se aceita antes, e o receber (no PDV) pede a
     // forma. A tela não agenda mais ali, mas o receber ainda aceita as sessões
     // agendadas — e a regra da sala é dele.
-    const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', '/admin/pdv', [plano])
-    expect(aceite.texto, 'o aceite passou').not.toContain('"error"')
+    // O aceite é da página do plano (é ela que carrega a action); a prova é o banco.
+    await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', `/admin/planejamentos/${plano}`, [plano])
+    expect((await db().from('treatment_plans').select('status').eq('id', plano).single()).data?.status, 'o aceite passou').toBe('ACCEPTED')
     const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', '/admin/pdv', [
       plano, { forma: 'AVISTA', metodo: 'PIX' },
       [
