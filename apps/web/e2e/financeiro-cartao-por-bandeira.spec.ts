@@ -309,7 +309,7 @@ test.describe.serial('o cartão por bandeira', () => {
   // Elo em 4x sai com 0% (era os 4,5% do 3x da geral), e a sem bandeira também.
   // Nada é recusado. E a clínica fica sabendo: a linha do 4x nas "Taxas da
   // maquininha" e o Fechamento do dia avisam.
-  test('F16-2: sem a taxa exata das vezes (nem na Elo nem na geral), a venda Elo 4x sai com 0% — e a tela e o Fechamento avisam', async ({ browser }) => {
+  test('F16-2: sem a taxa exata das vezes (nem na Elo nem na geral), a venda Elo 4x sai com 0% — e a tela e o Financeiro avisam', async ({ browser }) => {
     expect((await db().from('tenants').update({ cartao_por_bandeira: { ELO: { prazo: 32, taxas: { 'CREDIT_CARD:3': 3 } } } }).eq('id', rede!.tenantId)).error).toBeNull()
     expect((await db().from('payment_fees').delete().eq('tenant_id', rede!.tenantId)).error).toBeNull()
     expect((await db().from('payment_fees').insert([
@@ -348,9 +348,10 @@ test.describe.serial('o cartão por bandeira', () => {
     })
 
     await como(browser, gestor!, async p => {
-      await p.goto(`/${slug}/fechamento`)
-      const aviso = p.locator('[data-aviso="sem-taxa"]')
-      await expect(aviso, 'o Fechamento do dia avisa a venda no cartão sem taxa').toContainText('Sem taxa da maquininha')
+      // CX6 (2026-11-14): o aviso passou do Fechamento do dia ao Financeiro.
+      await p.goto(`/${slug}/financeiro?period=today`)
+      const aviso = p.locator('[data-aviso-sem-taxa]')
+      await expect(aviso, 'o Financeiro avisa a venda no cartão sem taxa').toContainText('Sem taxa da maquininha')
       await expect(aviso).toContainText('Crédito 4x (Elo)')
       await expect(aviso).toContainText('Configurações → Comissões')
     })
@@ -551,10 +552,10 @@ test.describe.serial('o cartão por bandeira', () => {
     const naElo = await atendimentoConcluido()
     expect((await parcelasDa(await pagar(naElo, 'ELO'))).map(x => x.taxa_pct)[0], 'a Elo do 12x: 150%').toBe(150)
 
-    // O Fechamento do dia abre, com a estimativa das taxas.
+    // O Financeiro abre, com a estimativa das taxas (CX6: saiu do Fechamento do dia).
     await como(browser, gestor!, async p => {
-      await p.goto(`/${slug}/fechamento`)
-      await expect(p.locator('[data-taxas-do-dia]')).toContainText('Taxas da maquininha no dia')
+      await p.goto(`/${slug}/financeiro?period=today`)
+      await expect(p.locator('[data-taxas-estimadas]')).toContainText('Taxas da maquininha no período')
     })
   })
 

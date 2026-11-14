@@ -5,18 +5,21 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
  * J-49 (simulação de 2026-10-30): o Fechamento do dia não avisava de nada.
- * Quatro avisos, todos com os números do banco:
- * 1. há dinheiro a receber (os atendimentos concluídos sem pagamento);
- * 2. houve movimento DEPOIS do último fechamento (fechar de novo);
- * 3. saiu em dinheiro mais do que entrou (o esperado na gaveta é negativo);
- * 4. uma linha só informativa com as taxas da maquininha do dia (a tabela de
- *    Configurações → Comissões), que não saem do saldo.
+ * Desde a CX5 (o PDV, fase 4 — a revisão do Heitor, 2026-11-13) os avisos
+ * ficam DOIS, com os números do banco:
+ * 1. há comanda aberta (era "há dinheiro a receber": os concluídos sem
+ *    pagamento viraram as comandas abertas do PDV, CX3);
+ * 2. entrou dinheiro DEPOIS do último fechamento (fechar de novo).
+ * O "saiu mais dinheiro em espécie do que entrou" virou a linha do Dinheiro
+ * (o registrado negativo), e as taxas da maquininha estimadas foram para o
+ * Financeiro (CX6), no período dele.
  */
 
 const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede | null = null
 let recepcao: MembroDeTeste | null = null
+let financeiro: MembroDeTeste | null = null
 let slug = ''
 let cliente = ''
 let atendimento = ''
@@ -38,6 +41,9 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   recepcao = await criarMembro(`favr${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Recepção', permissoes: [{ modulo: 'cashier', nivel: 'MANAGE' }],
+  })
+  financeiro = await criarMembro(`favf${marca}`, {
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Financeiro', permissoes: [{ modulo: 'financial', nivel: 'VIEW' }],
   })
   // A taxa do Pix e do crédito em 3x (Configurações → Comissões).
   expect((await db().rpc('comissao_taxas_definir', { p_tenant: rede.tenantId, p_taxas: [
@@ -67,20 +73,21 @@ test.afterAll(async () => {
     await db().from('payment_fees').delete().eq('tenant_id', rede.tenantId)
     if (atendimento) await db().from('appointments').delete().eq('id', atendimento)
   }
-  await recepcao?.limpar(); await rede?.limpar()
+  await recepcao?.limpar(); await financeiro?.limpar(); await rede?.limpar()
 })
 
 test.describe.serial('os avisos do fechamento do dia', () => {
-  test('a receber, dinheiro a mais saindo e as taxas; depois de fechar, o movimento novo', async ({ browser }) => {
+  test('a comanda aberta e, depois de fechar, o dinheiro que entrou; a espécie negativa na linha do Dinheiro', async ({ browser }) => {
     await como(recepcao!, browser, async p => {
-      await p.goto(`/${slug}/fechamento`)
+      await p.goto(`/${slug}/pdv?fechar=1`)
       const avisos = p.locator('[data-avisos-do-fechamento]')
-      await expect(avisos.locator('[data-aviso="a-receber"]')).toContainText('R$ 180,00 a receber')
-      await expect(avisos.locator('[data-aviso="dinheiro-negativo"]')).toContainText('Saiu mais dinheiro em espécie do que entrou')
-      await expect(avisos.locator('[data-aviso="dinheiro-negativo"]')).toContainText('R$ 50,00')
-      // Informativo: R$ 2 do Pix + R$ 15 do crédito 3x.
-      await expect(p.locator('[data-taxas-do-dia]')).toContainText('Taxas da maquininha no dia (estimadas): R$ 17,00')
-      await expect(avisos.locator('[data-aviso="movimento-depois"]')).toHaveCount(0)
+      // O atendimento concluído e não pago é uma comanda aberta (CX3/CX5).
+      await expect(avisos.locator('[data-aviso="comandas-abertas"]')).toContainText('Há 1 comanda aberta')
+      await expect(avisos.locator('[data-aviso]')).toHaveCount(1)
+      // Saiu R$ 50 em espécie sem entrada: a linha do Dinheiro diz −R$ 50,00 na gaveta.
+      await expect(p.locator('[data-forma="CASH"] [data-registrado]')).toContainText('-R$ 50,00')
+      // As taxas estimadas moram no Financeiro (CX6).
+      await expect(p.locator('[data-taxas-do-dia]')).toHaveCount(0)
 
       await p.getByLabel('Dinheiro contado (R$)').fill('0')
       await p.getByRole('button', { name: 'Fechar o dia' }).click()
@@ -91,8 +98,16 @@ test.describe.serial('os avisos do fechamento do dia', () => {
     // Um recebimento depois do fechamento.
     await lancar([{ type: 'INCOME', description: `Depois ${marca}`, amount: 80, payment_method: 'CASH' }])
     await como(recepcao!, browser, async p => {
-      await p.goto(`/${slug}/fechamento`)
-      await expect(p.locator('[data-aviso="movimento-depois"]')).toContainText('1 lançamento depois do fechamento')
+      await p.goto(`/${slug}/pdv?fechar=1`)
+      await expect(p.locator('[data-aviso="movimento-depois"]')).toContainText(/Entrou dinheiro depois do fechamento das \d{2}:\d{2}: confira e feche de novo/)
+    })
+  })
+
+  test('CX6: as taxas da maquininha estimadas estão no Financeiro, no período', async ({ browser }) => {
+    await como(financeiro!, browser, async p => {
+      await p.goto(`/${slug}/financeiro?period=today`)
+      // Informativo: R$ 2 do Pix + R$ 15 do crédito 3x.
+      await expect(p.locator('[data-taxas-estimadas]')).toContainText('Taxas da maquininha no período (estimadas): R$ 17,00')
     })
   })
 })

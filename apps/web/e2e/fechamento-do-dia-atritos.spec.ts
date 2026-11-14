@@ -47,7 +47,7 @@ test.afterAll(async () => {
 
 test('sem dinheiro em espécie, fecha sem digitar 0; e avisa que o dia ainda está aberto', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/fechamento`)
+    await p.goto(`/${slug}/pdv?fechar=1`)
     await expect(p.locator('[data-dia-aberto]')).toContainText('A unidade atende até 24:00')
     await expect(p.locator('[data-dia-aberto]')).toContainText('o dia ainda está aberto')
     await expect(p.getByLabel(/Dinheiro contado/)).toHaveValue('')

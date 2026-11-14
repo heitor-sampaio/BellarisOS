@@ -10,7 +10,8 @@ import { abrirVendaNoPdv, euVendi, pagoNoPix, receberPlanoNoPdv } from './apoio/
  * - A43: o recibo do atendimento dizia só "Atendimento concluído" — sem o
  *   procedimento nem as vezes no cartão.
  * - A44: o Fechamento do dia não apontava o que a operadora do cartão ainda vai
- *   depositar (está no Financeiro, F20 D3).
+ *   depositar (está no Financeiro, F20 D3). O aviso saiu do fechamento no CX5
+ *   (2026-11-14): os recebíveis da operadora moram só no Financeiro.
  * - A45: o checkout do plano voltava ao passo "Plano" ao recarregar.
  * - A46: "Devolva o aparelho à equipe" depois de "o cliente assinou o papel";
  *   a tela de Pacotes falava em "Vender pacote", e o botão se chama "Vender".
@@ -92,26 +93,6 @@ test('A43: o recibo do atendimento diz o procedimento, quando foi e as vezes no 
     expect(pdf, 'o procedimento do atendimento').toContain(nomeDoProc)
     expect(pdf, 'a forma com as vezes').toContain('Crédito 2x')
     expect(pdf, 'as parcelas do cartão').toContain('2x de R$ 550,00')
-  })
-})
-
-test('A44: o Fechamento do dia aponta o que a operadora ainda vai depositar, com o caminho do Financeiro', async ({ browser }) => {
-  const cliente = await rede!.criarCliente('Operadora')
-  const agora = new Date().toISOString()
-  const ag = await db().from('appointments').insert({
-    branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
-    status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 900, scheduled_at: agora, completed_at: agora,
-  }).select('id').single<{ id: string }>()
-  expect(ag.error).toBeNull()
-  expect((await db().rpc('confirmar_pagamento_do_atendimento', {
-    p_agendamento: ag.data!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: 'e2e',
-    p_dados: { metodo: 'CREDIT_CARD', cartao_vezes: 3, pontos: 0, desconto: 0, valor_final: 900 },
-  })).error).toBeNull()
-  await como(browser, caixa!, async p => {
-    await p.goto(`/${slug}/fechamento`)
-    const aviso = p.locator('[data-aviso="a-receber-da-operadora"]')
-    await expect(aviso).toContainText('A operadora do cartão ainda vai depositar')
-    await expect(aviso.getByRole('link', { name: 'Ver no Financeiro' })).toHaveAttribute('href', `/${slug}/financeiro#recebiveis-da-operadora`)
   })
 })
 

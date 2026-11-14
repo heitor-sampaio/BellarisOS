@@ -69,7 +69,7 @@ test.describe.serial('as formas de pagamento', () => {
       // A lista da operadora (D3, 6ª simulação) também tem linhas da venda: o lançamento é o da lista do financeiro.
       await expect(p.locator('tr[data-lancamento]', { hasText: `Peeling ${marca}` })).toContainText('Crédito 3x')
 
-      await p.goto(`/${slug}/fechamento`)
+      await p.goto(`/${slug}/pdv?fechar=1`)
       await expect(p.locator('[data-forma="CREDIT_CARD:3"]')).toContainText('Cartão de crédito 3x')
       await expect(p.locator('[data-forma="CREDIT_CARD:3"]')).toContainText('300,00')
 
@@ -80,7 +80,7 @@ test.describe.serial('as formas de pagamento', () => {
 
   test('A35: a saída sem forma diz "Sem forma de pagamento", e não "(pontos)"', async ({ browser }) => {
     await como(browser, async p => {
-      await p.goto(`/${slug}/fechamento`)
+      await p.goto(`/${slug}/pdv?fechar=1`)
       const semForma = p.locator('[data-forma="SEM_FORMA"]')
       await expect(semForma).toContainText('Sem forma de pagamento')
       await expect(semForma).toContainText('90,00')

@@ -536,6 +536,46 @@ export async function getAvisosDoFechamento(args: {
   return { taxas: n(r.taxas), movimentosDepois: n(r.movimentos_depois), vendasSemTaxa }
 }
 
+/** As taxas da maquininha estimadas e as vendas sem taxa cadastrada, num recorte. */
+export interface TaxasDoPeriodo {
+  /** As taxas da maquininha estimadas (só para conferência: não saem do saldo). */
+  taxas:         number
+  /** F16-2: as vendas no cartão sem taxa cadastrada (saíram sem desconto da operadora). */
+  vendasSemTaxa: AvisosDoFechamento['vendasSemTaxa']
+}
+
+/**
+ * CX6 do plano de adaptação (2026-11-14): os dois avisos que eram do
+ * Fechamento do dia — as taxas da maquininha estimadas e a venda sem taxa
+ * cadastrada — no PERÍODO do Financeiro e nas unidades dele. A conta é a do
+ * Fechamento (`metrics_avisos_do_fechamento`, `metrics_vendas_sem_taxa_do_fechamento`),
+ * uma unidade por vez; o total da rede soma aqui, em centavos — a tela não soma.
+ */
+export async function getTaxasDoPeriodo(args: {
+  tenantId: string; branchIds: string[]; from: Date; to: Date
+}): Promise<{ total: TaxasDoPeriodo; porUnidade: Record<string, TaxasDoPeriodo> }> {
+  const porUnidade = Object.fromEntries(await Promise.all(args.branchIds.map(async id => {
+    const a = await getAvisosDoFechamento({ tenantId: args.tenantId, branchId: id, from: args.from, to: args.to, desde: null })
+    return [id, { taxas: a.taxas, vendasSemTaxa: a.vendasSemTaxa }] as const
+  })))
+  const c = (v: number) => Math.round(v * 100)
+  let taxas = 0
+  const semTaxa = new Map<string, TaxasDoPeriodo['vendasSemTaxa'][number]>()
+  for (const u of Object.values(porUnidade)) {
+    taxas += c(u.taxas)
+    for (const v of u.vendasSemTaxa) {
+      const chave = `${v.metodo}|${v.vezes}|${v.bandeira ?? ''}`
+      const ja = semTaxa.get(chave)
+      semTaxa.set(chave, ja
+        ? { ...ja, vendas: ja.vendas + v.vendas, valor: (c(ja.valor) + c(v.valor)) / 100 }
+        : { ...v })
+    }
+  }
+  const vendasSemTaxa = [...semTaxa.values()].sort((x, y) =>
+    x.metodo.localeCompare(y.metodo) || x.vezes - y.vezes || (x.bandeira ?? '').localeCompare(y.bandeira ?? ''))
+  return { total: { taxas: taxas / 100, vendasSemTaxa }, porUnidade }
+}
+
 export interface ComposicaoFinanceira {
   /** Receita paga por forma de pagamento (método do banco: PIX, CASH…). */
   formas:   { chave: string; valor: number }[]

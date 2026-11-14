@@ -102,11 +102,21 @@ comanda (PDV-P1).
     vendeu nada. Plano antigo aceito sem lançamento algum sai do relatório.
   - A rota antiga `/checkout/<plano>` leva aonde a coisa mora: proposto → o
     plano; aceito → a comanda dele no PDV.
-- Ainda por vir (o plano de adaptação, `docs/revisao.md`): o Fechamento do dia
-  no PDV; o crediário como forma, a parcela do crediário e os pontos dentro da
-  comanda; vários itens numa comanda.
+- **O Fechamento do dia mora no PDV** (CX4, fase 4, 2026-11-14): "Fechar o
+  dia", no topo do PDV, abre `/<portal>/pdv?fechar=1` (com `dia=` e, na rede,
+  `unidade=`), com o cabeçalho do PDV e "Voltar às comandas". A trava da
+  página é `podeVerFechamento` com `?fechar=1` e `podeReceber` sem ele.
+  `/[slug]/fechamento` e `/admin/fechamento` são redirect de uma linha (levam
+  o dia e a unidade), e o item "Fechamento do dia" do menu aponta para
+  `/pdv?fechar=1`. As regras do fechamento estão em §9.6, "Fechamento do dia".
+- **Os textos da fila do antigo checkout** (fase 4): "Planos propostos" / "a
+  cliente vai pensar", com o link à página do plano
+  (`/<portal>/planejamentos/<id>`). As rotas não mudaram.
+- Ainda por vir (o plano de adaptação, `docs/revisao.md`): o crediário como
+  forma, a parcela do crediário e os pontos dentro da comanda; vários itens
+  numa comanda.
 - Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`, `e2e/pdv-nova-venda.spec.ts`,
-  `e2e/pdv-comanda-do-plano.spec.ts`.
+  `e2e/pdv-comanda-do-plano.spec.ts`, `e2e/pdv-fechar-o-dia.spec.ts`.
 
 ### 9.3.1 Pacotes (2026-09-30)
 
@@ -897,6 +907,19 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     nova de lançamento é pelo servidor. Prova:
     `e2e/rls-f75-financeiro-pela-sessao.spec.ts` (com o token de cada membro).
   - Prova do resto: `e2e/financeiro-f67.spec.ts`, `tests/vendas-f67.test.ts`.
+- **O que era do Fechamento do dia e é do Financeiro** (CX6, fase 4 do PDV,
+  2026-11-14): nos dois Financeiros (`/admin/financeiro` e
+  `/[slug]/financeiro`), para quem vê o financeiro de todos
+  (`can(financial, VIEW)` e não "só os próprios"), no período e nas unidades
+  da tela: o aviso "Sem taxa da maquininha cadastrada…" (`[data-aviso-sem-taxa]`)
+  e a linha "Taxas da maquininha no período (estimadas): R$ X — só para
+  conferência; não saem do saldo." (`[data-taxas-estimadas]`), as duas de
+  `getTaxasDoPeriodo` (`lib/metrics/queries.ts`: as contas do fechamento por
+  unidade, somadas em centavos); o a receber da operadora já estava aqui; e o
+  botão "CSV do fechamento do dia" (abaixo, "O CSV das movimentações"). O
+  "Exportar CSV" dos lançamentos fica. Componentes em
+  `components/shared/caixa-no-financeiro.tsx`. Prova:
+  `e2e/pdv-fechar-o-dia.spec.ts` ("CX6"), `e2e/fechamento-do-dia-avisos.spec.ts`.
 - **Não existe caixa de ABRIR** (o fechamento do dia, abaixo, é outra coisa:
   conferência, não gaveta aberta). O caixa de abrir e fechar foi removido em 2026-09-18: quase
   nada é recebido em dinheiro vivo (a rede opera em Pix e cartão), e a
@@ -907,12 +930,31 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   continuam no banco com o histórico do que já passou por lá; nada novo é
   escrito nelas. Registro financeiro não se apaga.
 - **O FECHAMENTO DO DIA** (2026-10-21, decisão do Heitor — sem abertura):
-  Dinheiro e estoque → "Fechamento do dia" (`/[slug]/fechamento` e
-  `/admin/fechamento?unidade=`, corpo em `app/_shared/fechamento-do-dia.tsx`).
+  desde a fase 4 do PDV (CX4, 2026-11-14) mora DENTRO do PDV:
+  `/[slug]/pdv?fechar=1` e `/admin/pdv?fechar=1&unidade=` ("Fechar o dia" no
+  topo do PDV; o item "Fechamento do dia" do menu leva lá; os caminhos antigos
+  `/[slug]/fechamento` e `/admin/fechamento` são redirect), corpo em
+  `app/_shared/fechamento-do-dia.tsx` e `components/shared/fechamento-do-dia-tela.tsx`.
   O dia da unidade por forma de pagamento — entradas (a regra de
   `metrics_receitas_pagas`), saídas pagas e saldo, com o total, tudo de
   `metrics_fechamento_do_dia` (`getFechamentoDoDia`) —, o dinheiro em espécie
   esperado (o saldo de `CASH`), a contagem e quem fechou.
+  - **A conferência por forma** (CX4): uma tabela, uma linha por forma —
+    Registrado × Conferido × Diferença. O registrado do Dinheiro é o esperado
+    na gaveta (com o fundo de troco, que fica na linha do Dinheiro); o das
+    outras formas, o saldo do dia. O Dinheiro é obrigatório (em branco = R$ 0
+    quando não houve dinheiro, A50); as outras formas são OPCIONAIS — em
+    branco é "não conferido" (princípio 4: nunca vira zero nem o registrado).
+    `fecharODia` recebe os conferidos (forma → valor ou nulo), confere que a
+    forma é do dia (`conferidoValido`, `lib/financeiro/conferencia-do-fechamento.ts`)
+    e grava só os preenchidos em `fechamentos_do_dia.conferido` (jsonb,
+    migration `20261113008301`; o Dinheiro segue em `contado_dinheiro`). Os
+    pontos e o "Sem forma" não se conferem. Depois de fechar, cada linha
+    mostra o último conferido e a diferença contra o registrado do RETRATO
+    daquele fechamento ("Bateu", "Faltou R$ X", "Sobrou R$ X", "não
+    conferido"); "Fechar de novo" reabre com os valores do último. A tela não
+    calcula a diferença ao digitar (a conta é a do servidor, ao fechar).
+    Prova: `e2e/pdv-fechar-o-dia.spec.ts`.
   - É o dinheiro da UNIDADE inteira (D6 da simulação de 2026-10-27): vê
     quem recebe (`cashier`) ou o financeiro com escopo de TODOS
     (`podeVerFechamento` em `lib/auth.ts`, `veFechamento` em `lib/menu.ts`
@@ -925,21 +967,20 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   - Cada fechamento é um REGISTRO em `fechamentos_do_dia` (com o retrato do
     resumo, refeito no servidor; a diferença é coluna gerada). Fechar de novo
     não apaga o anterior — vale o mais recente. Dia futuro não fecha.
-  - **Os avisos** (J-49, 2026-10-30), acima da tabela, todos com número do
-    banco: (1) há dinheiro a receber — os concluídos a receber da unidade
-    (o total da lista `atendimentos_a_receber`); (2) houve lançamento DEPOIS
-    do último fechamento (pago depois de `fechado_em`: feche de novo); (3)
-    saiu em espécie mais do que entrou (o esperado na gaveta é negativo — não
-    há caixa de abrir, então é "pagou em dinheiro mais do que recebeu em
-    dinheiro"); e (4) uma linha só INFORMATIVA com as taxas da maquininha
-    estimadas do dia (cada recebimento × a taxa da forma, a tabela de
-    Configurações → Comissões — `comissao_taxa_pct`), que não saem do saldo.
-    (2) e (4) são `metrics_avisos_do_fechamento` (`getAvisosDoFechamento`;
-    migration `20261029001504`). E (5), F16-2: a venda no cartão do dia sem
-    taxa da maquininha cadastrada para a forma, as vezes e a bandeira — saiu
-    sem desconto da operadora (`metrics_vendas_sem_taxa_do_fechamento`, §9.6
-    "Sem a taxa EXATA"). Prova: `e2e/fechamento-do-dia-avisos.spec.ts`,
-    `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F16-2").
+  - **Os avisos são DOIS** (CX5, 2026-11-14; eram cinco desde a J-49):
+    (1) "Há N comanda(s) aberta(s)" — as comandas abertas do PDV da unidade
+    (`comandasDoPdv`), com o link para `?ver=ABERTAS` a quem recebe; e (2)
+    "Entrou dinheiro depois do fechamento das HH:MM: confira e feche de novo"
+    — movimento pago depois de `fechado_em` (`metrics_avisos_do_fechamento`,
+    `getAvisosDoFechamento`). Saíram do fechamento: a lista "Concluídos a
+    receber" (o concluído sem pagamento é comanda aberta, CX3), as parcelas
+    em aberto, a espécie negativa (a linha do Dinheiro já mostra o registrado
+    negativo), o a receber da operadora, a venda sem taxa e as taxas
+    estimadas — as duas últimas moram no Financeiro (CX6, abaixo), e o a
+    receber da operadora já morava lá. "Por quem recebeu" e "Estornos do dia"
+    ficam num `<details>` recolhido, "Detalhes do dia"
+    (`[data-detalhes-do-dia]`). Prova: `e2e/fechamento-do-dia-avisos.spec.ts`,
+    `e2e/pdv-fechar-o-dia.spec.ts`.
   - **Sem dinheiro em espécie, não se digita 0; e o dia aberto avisa** (A50
     da 5ª simulação). Nada esperado e nenhum movimento em dinheiro no dia: o
     "Dinheiro contado" é opcional, e em branco fecha com R$ 0,00. Hoje,
@@ -958,22 +999,17 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     em dinheiro do dia ("R$ 100,00 de fundo de troco − R$ 50,00 do dia em
     espécie"), e a conta é de `getFechamentoDoDia` (`lib/metrics`,
     `fundoDeTroco`/`saldoDinheiro`/`esperadoDinheiro`, em centavos); o
-    aviso "saiu mais dinheiro em espécie do que entrou" só aparece quando o
-    esperado COM o fundo fica negativo, e o fechamento guarda o fundo no
+    registrado do Dinheiro só fica negativo quando o esperado COM o fundo
+    fica negativo, e o fechamento guarda o fundo no
     retrato (`fechamentos_do_dia.fundo_de_troco`). Sem fundo, tudo segue
-    como antes. A taxa da maquininha estimada continua a linha informativa
-    de sempre: não sai do saldo nem do fundo. Migration `20261101001108`.
+    como antes. Migration `20261101001108`.
     Prova: `e2e/fechamento-do-dia-fundo-de-troco.spec.ts`.
-  - **E aponta o que a operadora do cartão ainda vai depositar** (A44 da 7ª
-    simulação, 2026-11-05; o a receber da operadora mora no Financeiro, F20 D3):
-    "A operadora do cartão ainda vai depositar R$ 1.100,00 (o próximo, R$ 550,00
-    em 05/12/2026)…" — o em aberto de `getAReceberDaOperadora` da unidade (aviso
-    `a-receber-da-operadora`), com "Ver no Financeiro" (a lista das parcelas,
-    `#recebiveis-da-operadora`) a quem abre o Financeiro da unidade inteira. Só
-    informação: não mexe no saldo. Prova: `e2e/financeiro-atritos-da-7.spec.ts` ("A44").
+  - O que a operadora do cartão ainda vai depositar (A44 da 7ª simulação)
+    saiu do fechamento no CX5: mora só no Financeiro
+    (`#recebiveis-da-operadora`, F20 D3).
   - **Os atritos do Fechamento da 8ª simulação** (2026-11-06; princípio 3):
-    - **Os estornos do dia aparecem** (A42): "Estornos do dia · R$ 397,00"
-      (`[data-estornos-do-dia]`) lista cada estorno pago no dia (a descrição,
+    - **Os estornos do dia aparecem** (A42; nos "Detalhes do dia" desde o
+      CX5): "Estornos do dia · R$ 397,00" (`[data-estornos-do-dia]`) lista cada estorno pago no dia (a descrição,
       a forma e o motivo), com o total de `getEstornosDoDia`
       (`lib/metrics/fechamento-extra.ts`, em centavos).
     - **O estorno sai no dia em que o dinheiro sai** (D2 da 12ª simulação,
@@ -988,7 +1024,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       (`[data-estorno-do-dia]`, `[data-de-outro-dia]`), e o texto diz quanto
       das saídas são estornos de outros dias (`metrics_estornos_das_clientes_do_dia`:
       `pago_em`, `mesmo_dia`, `total_de_outros_dias`). O CSV do Fechamento
-      traz "Pagamento de" e "Nas saídas do dia". Prova:
+      (no Financeiro, CX6) traz "Pagamento de" e "Nas saídas do dia". Prova:
       `e2e/financeiro-dinheiro-da-12.spec.ts`.
     - **Os estornos do dia são o que voltou às CLIENTES** (D3 da 12ª; sobra da
       F38): o estorno de uma DESPESA (a energia paga duas vezes) aparecia como
@@ -1002,20 +1038,18 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       despesa** (A39 da 12ª): as saídas aparecem só pela forma; a descrição e
       o motivo da despesa ficam no Financeiro, de quem o tem. Prova: o mesmo
       spec ("D3", "A39").
-    - **O da rede abre na unidade com movimento e mostra a clínica toda**
-      (A45): com duas ou mais, "O dia na clínica" (`[data-fechamento-da-rede]`)
+    - **O da rede abre na unidade com movimento e mostra a rede toda**
+      (A45): com duas ou mais, "O dia na rede" (`[data-fechamento-da-rede]`)
       — cada unidade com as entradas e as saídas do dia (ou "Sem movimento"),
-      a aberta marcada, e o "Total da clínica" (`getMovimentoDasUnidades`, a
+      a aberta marcada, e o "Total da rede" (`getMovimentoDasUnidades`, a
       conta do Fechamento por unidade); sem `?unidade=`, abre na primeira que
       teve movimento (era a primeira em ordem alfabética). Fechar continua por
       unidade.
-    - **Num dia passado, o "a receber" diz que é o de hoje** (A48; a regra D5
-      de 27/10 fica): "Os concluídos a receber abaixo são os de hoje, de
-      qualquer dia (até alguém receber) — não só os deste dia."
-      (`[data-a-receber-de-qualquer-dia]`), e o título "Concluídos a receber
-      hoje, de qualquer dia".
+    - O "a receber de qualquer dia" (A48) saiu com a lista dos concluídos
+      a receber (CX5).
     - Prova: `e2e/financeiro-atritos-da-8.spec.ts`.
-  - **Por quem recebeu** (A40 da 11ª simulação, 2026-11-10; princípio 3: a
+  - **Por quem recebeu** (A40 da 11ª simulação, 2026-11-10; nos "Detalhes do
+    dia" desde o CX5; princípio 3: a
     Elaine e a Fabiana no caixa da Azaleia, e cada uma precisava saber o que
     entrega): o quadro "Por quem recebeu" (`[data-por-quem-recebeu]`) lista as
     entradas do dia de cada pessoa, por forma, e o total dela — o mesmo conjunto
@@ -1049,8 +1083,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   - a janela da agenda (`situacaoDaCobranca`, `actions/a-receber.ts`):
     "Receber pagamento", que leva à tela do atendimento com `?receber=1` (a
     janela do pagamento já aberta), pelos dois portais (`lib/rotas`);
-  - o Fechamento do dia: "Concluídos a receber" da unidade, de QUALQUER dia
-    (cliente, procedimento, valor, "Receber"), com o total do banco;
+  - (o Fechamento do dia listava os "Concluídos a receber" até o CX5,
+    2026-11-14: hoje o concluído sem pagamento é comanda aberta do PDV, e o
+    fechamento só avisa quantas há);
   - a ficha da cliente ("Atendimentos a receber") e o "Vender" da ficha, que
     avisa quando há um a receber do MESMO procedimento (cobraria duas vezes).
   O botão "Receber" é de quem tem `cashier` (o mesmo de `confirmPayment`).
@@ -1255,8 +1290,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   exportam também o **DRE** (Relatórios → Financeiro, "Exportar o DRE (CSV)":
   as linhas do DRE e o que fica FORA do resultado — as compras no estoque, ao
   custo, com fornecedor e nota, e as perdas —, `csvDoDre`) e o **Fechamento do
-  dia** ("Exportar CSV": as formas, o total, o esperado em espécie e os
-  estornos, `csvDoFechamento`; os dois em `lib/financeiro/csv-da-contadora.ts`).
+  dia** (as formas, o total, o esperado em espécie e os estornos,
+  `csvDoFechamento`; os dois em `lib/financeiro/csv-da-contadora.ts`). Desde o
+  CX6 (2026-11-14) o CSV do Fechamento sai do FINANCEIRO, não do fechamento:
+  o botão "CSV do fechamento do dia" (ao lado do "Exportar CSV", nos dois
+  portais) abre uma janela com o Dia (e a Unidade, quando há mais de uma) e
+  baixa pelo servidor (`csvDoFechamentoDoDia`, `actions/fechamento.ts` — a
+  mesma conta de antes; vê quem tem o Financeiro de todos em Ver,
+  `can(financial, VIEW)` e não "só os próprios"; unidade ao alcance).
   A compra e a perda chegam à contadora, que não abre o Estoque: embaixo do DRE,
   "Fora do resultado no período: compras no estoque R$ X · perdas R$ Y"
   (`[data-fora-do-resultado]`, `metrics_entradas_de_estoque` →
@@ -1528,10 +1569,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
         própria — a mesma conta da linha "Taxas da maquininha no dia",
         separada (`metrics_taxas_por_maquininha`, migration
         `20261113007502`; `getTaxasPorMaquininha`). Só a quem vê o
-        financeiro da clínica: para quem só recebe, o servidor nem a busca.
-        ⚠️ É o D7 (escrito para o VENDER) estendido ao CSV pela F75, a
-        confirmar com o Heitor — a linha "Taxas da maquininha no dia" da TELA
-        do Fechamento segue à vista da recepção (`fechamento-do-dia-avisos:82`).
+        financeiro da rede (`veComissaoDeTodos`). Desde o CX6 (2026-11-14) o
+        CSV mora no Financeiro, e a linha das taxas estimadas saiu da tela do
+        fechamento — quem só recebe não vê taxa nenhuma (o D7 vale inteiro).
         Prova: `e2e/fechamento-f75-taxas-por-maquininha.spec.ts`.
       - **O Pix tem um campo próprio na tela de Taxas, fora das
         maquininhas** (o Heitor, 2026-11-11, sobre a C75: "A taxa do pix fica em algum lugar nessas configurações e o aviso sem taxa acho que nem precisa na verdade"),
@@ -1576,10 +1616,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       operadora." (`data-sem-taxa`) —, menos o Pix (sem taxa é comum) e o
       crédito acima do "Parcelar no crédito até" (não se vende ali; decisões
       da F17). Com as maquininhas (C75), esse destaque SAI: o campo vazio
-      mostra "0%" (acima); e o Fechamento do dia com venda no
-      cartão sem taxa diz "Sem taxa da maquininha cadastrada — saiu sem
+      mostra "0%" (acima); e o Financeiro (desde o CX6, 2026-11-14; era o
+      Fechamento do dia), com venda no cartão sem taxa no período e nas
+      unidades da tela, diz "Sem taxa da maquininha cadastrada — saiu sem
       desconto da operadora: Crédito 4x (Elo): 1 venda, R$ 1.100,00…"
-      (`metrics_vendas_sem_taxa_do_fechamento`, aviso `sem-taxa`). Prova:
+      (`metrics_vendas_sem_taxa_do_fechamento` por unidade, somado em
+      `getTaxasDoPeriodo`; `[data-aviso-sem-taxa]`). Prova:
       `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F16-2"),
       `tests/financeiro-formas.test.ts`, `tests/cartao-por-bandeira.test.ts`.
     - **"Preencher pela taxa por parcela"** (r4-f15-01; o Heitor: "a taxa é

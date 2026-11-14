@@ -835,13 +835,13 @@ export function AdminDashboardView({
       {((can('procedures') && pendingPlans.length > 0) || (can('stock') && lowStockItems.length > 0)) && (
         <div className={(can('procedures') && pendingPlans.length > 0) && (can('stock') && lowStockItems.length > 0) ? 'rg-2' : undefined} style={{ gap: 16 }}>
 
-          {/* Planos aguardando checkout */}
+          {/* Planos propostos: a cliente vai pensar (o aceite é na página do plano; o dinheiro, no PDV) */}
           {can('procedures') && pendingPlans.length > 0 && (
             <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1.5px solid var(--warning-border)' }}>
               <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--warning-border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--warning-soft)' }}>
                 <ClipboardList size={14} color="var(--warning)" />
                 <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--warning)' }}>
-                  Planos aguardando checkout
+                  Planos propostos — a cliente vai pensar
                 </span>
                 <span style={{
                   marginLeft: 'auto', fontSize: 'var(--text-2xs)', fontWeight: 800,
@@ -870,10 +870,10 @@ export function AdminDashboardView({
                       </p>
                     </div>
                     <a
-                      href={`/admin/checkout/${p.id}`}
+                      href={`/admin/planejamentos/${p.id}`}
                       style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--warning)', textDecoration: 'none', whiteSpace: 'nowrap' }}
                     >
-                      Checkout →
+                      Ver o plano →
                     </a>
                   </div>
                 ))}

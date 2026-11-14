@@ -292,9 +292,9 @@ test.describe('o Fechamento do dia', () => {
 
   test('o pagamento das 23:30 de Manaus fecha no dia de Manaus, não no seguinte', async ({ browser }) => {
     await como(browser, recepcao!, async p => {
-      await p.goto(`/${slugF}/fechamento?dia=${ONTEM}`)
+      await p.goto(`/${slugF}/pdv?fechar=1&dia=${ONTEM}`)
       await expect(p.locator('[data-forma="TOTAL"]')).toContainText('77,00')
-      await p.goto(`/${slugF}/fechamento`)
+      await p.goto(`/${slugF}/pdv?fechar=1`)
       await expect(p.locator('[data-forma="TOTAL"]')).toBeVisible()
       await expect(p.locator('[data-forma="TOTAL"]')).not.toContainText('77,00')
     })

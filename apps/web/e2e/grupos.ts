@@ -170,6 +170,8 @@ export const ISOLADOS = [
   'estrutura-endereco-da-unidade.spec.ts',
   'fechamento-do-dia-avisos.spec.ts',
   'fechamento-escopo-proprio.spec.ts',
+  // O PDV, fase 4 (CX4–CX6): o Fechamento do dia no PDV, numa rede própria.
+  'pdv-fechar-o-dia.spec.ts',
   'ficha-acesso-sem-cpf.spec.ts',
   'ficha-cadastro-atritos-da-7.spec.ts',
   'ficha-cadastro-documento.spec.ts',

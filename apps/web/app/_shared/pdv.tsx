@@ -11,7 +11,7 @@ import { FusoProvider } from '@/components/shared/fuso'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { PdvTela, type ComandaEscolhida } from '@/components/shared/pdv/pdv-tela'
 import type { VendaDoPdv } from '@/components/shared/pdv/nova-venda'
-import { can } from '@/lib/auth'
+import { can, podeVerFechamento } from '@/lib/auth'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import { produtosAVenda } from '@/lib/produtos/leitura'
@@ -121,6 +121,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
           escolhida={escolhida}
           slugDaUnidade={slugDaUnidade}
           novaVenda={novaVenda}
+          podeVerFechamento={podeVerFechamento(ctx)}
         />
       </FusoProvider>
     </>

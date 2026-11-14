@@ -244,7 +244,7 @@ test('"só os meus": o dashboard da UNIDADE mostra o faturamento DELA nos 6 mese
     await expect.soft(p.locator('[data-etapa="Agendamentos"]'), 'os agendamentos dela').toContainText(/1$/)
     await expect.soft(reativar(p), 'a cliente dela a reativar').toContainText('Sumida dela')
     await expect.soft(reativar(p), 'não a da outra').not.toContainText('Sumida da outra')
-    await expect.soft(main, 'o plano dela aguardando checkout').toContainText('1 paciente aguardando checkout')
+    await expect.soft(main, 'o plano dela proposto').toContainText('1 plano proposto')
   })
   await como(browser, gestora!, async p => {
     await p.goto(`/${slug}/dashboard`)
@@ -254,7 +254,7 @@ test('"só os meus": o dashboard da UNIDADE mostra o faturamento DELA nos 6 mese
     await expect(card(p, 'Procedimentos mais procurados')).toContainText(outroProc)
     await expect(p.locator('[data-etapa="Novos clientes"]')).toContainText(/4$/)
     await expect(reativar(p)).toContainText('Sumida da outra')
-    await expect(p.locator('main')).toContainText('2 pacientes aguardando checkout')
+    await expect(p.locator('main')).toContainText('2 planos propostos')
   })
 })
 

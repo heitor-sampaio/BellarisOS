@@ -91,7 +91,7 @@ test.describe.serial('o dinheiro da unidade é de quem vê a unidade inteira', (
     await como(financeiro!, browser, async p => {
       await p.goto(`/${slug}/dashboard`)
       await p.getByRole('navigation').getByText('Fechamento do dia').click()
-      await expect(p).toHaveURL(new RegExp(`/${slug}/fechamento`))
+      await expect(p).toHaveURL(new RegExp(`/${slug}/pdv\\?fechar=1`))
       await expect(p.locator('[data-forma="TOTAL"]')).toBeVisible()
     })
   })

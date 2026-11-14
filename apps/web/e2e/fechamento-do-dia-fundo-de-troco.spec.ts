@@ -48,7 +48,7 @@ test.afterAll(async () => {
 
 test('sem fundo, segue como hoje: o campo é opcional e o esperado é só o dia', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/fechamento`)
+    await p.goto(`/${slug}/pdv?fechar=1`)
     await expect(p.locator('[data-fundo-de-troco]')).toContainText('Sem fundo de troco')
     await expect(p.locator('[data-esperado]')).toHaveText('R$ 0,00')
   })
@@ -60,9 +60,10 @@ test('com R$ 100 de fundo, o troco de R$ 50 em espécie não é "saída a mais":
     type: 'EXPENSE', category: 'Outros', description: `Troco ${marca}`, amount: 50, payment_method: 'CASH',
   })).error).toBeNull()
   await como(browser, async p => {
-    await p.goto(`/${slug}/fechamento`)
-    // Sem fundo: a espécie saiu a mais.
-    await expect(p.locator('[data-aviso="dinheiro-negativo"]')).toBeVisible()
+    await p.goto(`/${slug}/pdv?fechar=1`)
+    // Sem fundo: a espécie saiu a mais — o registrado do Dinheiro fica negativo
+    // (o aviso "espécie saindo a mais" saiu no CX5, 2026-11-14: a linha já diz).
+    await expect(p.locator('[data-esperado]')).toHaveText('-R$ 50,00')
     const fundo = p.locator('[data-fundo-de-troco]')
     await fundo.getByRole('button', { name: 'Informar fundo de troco' }).click()
     await fundo.getByLabel('Fundo de troco (R$)').fill('100')
@@ -70,7 +71,6 @@ test('com R$ 100 de fundo, o troco de R$ 50 em espécie não é "saída a mais":
     await expect(fundo).toContainText('Fundo de troco: R$ 100,00')
     await expect(p.locator('[data-esperado]')).toHaveText('R$ 50,00')
     await expect(p.locator('[data-esperado-conta]')).toContainText('R$ 100,00 de fundo')
-    await expect(p.locator('[data-aviso="dinheiro-negativo"]'), 'com o fundo, não sai a mais').toHaveCount(0)
     await p.getByLabel(/Dinheiro contado/).fill('50')
     await p.getByRole('button', { name: 'Fechar o dia' }).click()
     await expect.poll(async () => (await db().from('fechamentos_do_dia')
@@ -82,10 +82,10 @@ test('com R$ 100 de fundo, o troco de R$ 50 em espécie não é "saída a mais":
 
 test('o servidor recusa fundo negativo e confere a unidade', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/fechamento`)
-    const r = await chamarAcao(p, 'actions/fechamento.ts', 'informarFundoDeTroco', `/${slug}/fechamento`, [rede.branchId, hoje(), -10])
+    await p.goto(`/${slug}/pdv?fechar=1`)
+    const r = await chamarAcao(p, 'actions/fechamento.ts', 'informarFundoDeTroco', `/${slug}/pdv`, [rede.branchId, hoje(), -10])
     expect(r!.texto).toContain('Informe o fundo de troco')
-    const outra = await chamarAcao(p, 'actions/fechamento.ts', 'informarFundoDeTroco', `/${slug}/fechamento`, ['00000000-0000-4000-8000-000000000000', hoje(), 10])
+    const outra = await chamarAcao(p, 'actions/fechamento.ts', 'informarFundoDeTroco', `/${slug}/pdv`, ['00000000-0000-4000-8000-000000000000', hoje(), 10])
     expect(outra!.texto).toContain('Unidade não encontrada')
   })
   const { data } = await db().from('fundos_de_troco').select('valor').eq('branch_id', rede.branchId)

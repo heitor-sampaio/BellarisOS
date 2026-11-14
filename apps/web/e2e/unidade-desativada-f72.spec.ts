@@ -127,7 +127,7 @@ test('D1: as telas de leitura contam a desativada e a alcançam pelo ?unidade=, 
     // Comissões e fechamento: a Pampulha está no filtro.
     await p.goto(`/admin/financeiro/comissoes?unidade=${pampulha}`)
     await expect(p.locator('[data-selo-unidade-desativada]').first()).toBeVisible({ timeout: 20_000 })
-    await p.goto(`/admin/fechamento?unidade=${pampulha}`)
+    await p.goto(`/admin/pdv?fechar=1&unidade=${pampulha}`)
     await expect(p.locator('[data-selo-unidade-desativada]').first()).toBeVisible({ timeout: 20_000 })
 
     // Dashboard: o recorte da desativada não cai na rede.

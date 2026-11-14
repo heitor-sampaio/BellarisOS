@@ -23,6 +23,8 @@ import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
 import type { EmAberto } from '@/lib/metrics/queries'
 import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
 import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcelas-da-operadora'
+import { AvisosDasTaxas, CsvDoFechamentoDoDia } from '@/components/shared/caixa-no-financeiro'
+import type { TaxasDoPeriodo } from '@/lib/metrics/queries'
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { AReceberVencido } from '@/lib/metrics/vencidas'
@@ -115,6 +117,8 @@ interface Props {
   /** Cargo com alcance "só as próprias comissões": some tudo que é da filial. */
   ownScope:         boolean
   clients:          { id: string; name: string }[]
+  /** CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período (eram do Fechamento do dia). */
+  taxasDoPeriodo?:  TaxasDoPeriodo
 }
 
 // --- Helpers ------------------------------------------------------
@@ -526,6 +530,7 @@ export function FinancialHub({
   canPay,
   ownScope,
   clients,
+  taxasDoPeriodo,
 }: Props) {
   const router              = useRouter()
   const [, startTransition] = useTransition()
@@ -837,11 +842,18 @@ export function FinancialHub({
       {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
       {!ownScope && <ParcelasDaOperadora parcelas={parcelasDaOperadora} podeMarcar={canWrite} slug={slug} />}
 
+      {/* CX6: a venda sem taxa e as taxas estimadas do período (eram do Fechamento do dia). */}
+      {!ownScope && <AvisosDasTaxas dados={taxasDoPeriodo} />}
+
       {/* Transactions */}
       {!ownScope && <div id="lancamentos">
-        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 12 }}>
-          Lançamentos
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+            Lançamentos
+          </p>
+          {/* CX6: a planilha do Fechamento do dia (era o "Exportar CSV" do Fechamento). */}
+          <CsvDoFechamentoDoDia unidades={[{ id: branchId, name: branchName }]} unidadeInicial={branchId} />
+        </div>
         {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
         {soOEmAberto && (
           <p data-so-o-em-aberto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', marginBottom: 12 }}>

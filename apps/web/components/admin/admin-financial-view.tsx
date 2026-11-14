@@ -34,6 +34,8 @@ import type { ResultadoDoPeriodo } from '@/lib/metrics/resultado'
 import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { useFuso } from '@/components/shared/fuso'
+import { AvisosDasTaxas, CsvDoFechamentoDoDia } from '@/components/shared/caixa-no-financeiro'
+import type { TaxasDoPeriodo } from '@/lib/metrics/queries'
 
 // --- Types -------------------------------------------------------------------
 
@@ -152,6 +154,11 @@ interface Props {
   debitoNoPeriodo?: number
   /** D8 da 13ª: o débito do período de cada unidade (o recorte do filtro). */
   debitoPorUnidade?: Record<string, number>
+  /**
+   * CX6 (2026-11-14): as taxas da maquininha estimadas e a venda sem taxa
+   * cadastrada, no período — o total e cada unidade (eram do Fechamento do dia).
+   */
+  taxasDoPeriodo?: { total: TaxasDoPeriodo; porUnidade: Record<string, TaxasDoPeriodo> }
   /** As parcelas da operadora: todo o em aberto e o que vence no período (D3). */
   parcelasDaOperadora: ParcelaDaOperadora[]
   /** r2-fin-04: o fluxo de caixa dos próximos meses — o do recorte e o de cada unidade. */
@@ -280,7 +287,7 @@ function KpiCard({
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
   totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, soAPagar = false, totalMovimentacoes,
-  aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0, debitoPorUnidade = {},
+  aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0, debitoPorUnidade = {}, taxasDoPeriodo,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
   branchStats, umaUnidade = false, transactions, soOEmAberto = false, soAsVencidas = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
@@ -627,6 +634,9 @@ export function AdminFinancialView({
       <ParcelasDaOperadora parcelas={parcelasVisiveis} podeMarcar={canWrite}
         unidades={umaUnidade ? undefined : Object.fromEntries(branches.map(b => [b.id, b.name]))} />
 
+      {/* CX6: a venda sem taxa e as taxas estimadas do período (eram do Fechamento do dia). */}
+      {taxasDoPeriodo && <AvisosDasTaxas dados={filterBranch === 'all' ? taxasDoPeriodo.total : taxasDoPeriodo.porUnidade[filterBranch]} />}
+
       {/* Movimentações */}
       {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
       {soOEmAberto && (
@@ -656,6 +666,8 @@ export function AdminFinancialView({
               visibleTxs.map(t => linhaDoLancamento(t, branches.find(b => b.id === t.branch_id)?.name ?? null)), fuso))}>
             <Download size={14} aria-hidden /> Exportar CSV
           </button>
+          {/* CX6: a planilha do Fechamento do dia (era o "Exportar CSV" do Fechamento). */}
+          <CsvDoFechamentoDoDia unidades={branches.map(b => ({ id: b.id, name: b.name }))} unidadeInicial={filterBranch !== 'all' ? filterBranch : null} />
 
           {/* Filtro por filial — só com mais de uma unidade (D-19). */}
           {!umaUnidade && <select

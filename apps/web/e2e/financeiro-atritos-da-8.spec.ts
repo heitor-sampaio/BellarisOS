@@ -14,7 +14,9 @@ import { addDaysTZ, dayKeyTZ } from '../lib/datetime'
  * - A45: o Fechamento da rede abria na primeira unidade em ordem alfabética
  *   (sem movimento), uma por vez, sem o total da clínica.
  * - A48: no Fechamento de um dia passado, o "a receber" não dizia que é o de
- *   hoje, de qualquer dia (a regra D5 de 27/10).
+ *   hoje, de qualquer dia (a regra D5 de 27/10). A lista do a receber saiu
+ *   do fechamento no CX5 (2026-11-14) — o concluído é comanda aberta do PDV —,
+ *   e a prova saiu com ela.
  *
  * Numa rede [e2e] própria, de duas unidades: o movimento é só na que vem
  * DEPOIS em ordem alfabética.
@@ -79,31 +81,26 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A45: o Fechamento da rede abre na unidade com movimento e mostra a clínica toda', async ({ browser }) => {
+test('A45: o Fechamento da rede abre na unidade com movimento e mostra a rede toda', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto('/admin/fechamento')
+    await p.goto('/admin/pdv?fechar=1')
     const daRede = p.locator('[data-fechamento-da-rede]')
     await expect(daRede).toContainText(BATEL)
     await expect(daRede).toContainText(unidadeNome)
-    await expect(daRede).toContainText('Total da clínica')
+    await expect(daRede).toContainText('Total da rede')
     await expect(daRede.locator('[aria-current="true"]'), 'abre na unidade que teve movimento').toContainText(unidadeNome)
   })
 })
 
 test('A42: o Fechamento mostra o estorno do dia', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/fechamento`)
+    await p.goto(`/${slug}/pdv?fechar=1`)
+    // CX5: os estornos moram nos "Detalhes do dia", recolhidos.
+    await p.locator('[data-detalhes-do-dia] summary').click()
     const estornos = p.locator('[data-estornos-do-dia]')
     await expect(estornos).toContainText('R$ 397,00')
     await expect(estornos).toContainText('A cliente devolveu lacrado')
     await expect(estornos).toContainText('Dinheiro')
-  })
-})
-
-test('A48: no Fechamento de um dia passado, o "a receber" diz que é o de hoje, de qualquer dia', async ({ browser }) => {
-  await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/fechamento?dia=${ontem}`)
-    await expect(p.locator('[data-a-receber-de-qualquer-dia]')).toContainText('de qualquer dia')
   })
 })
 

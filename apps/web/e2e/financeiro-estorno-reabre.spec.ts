@@ -115,15 +115,18 @@ test.describe('o estorno reabre a cobrança', () => {
     expect(await totaisDaCliente()).toEqual({ pago: 0, aReceber: PRECO })
   })
 
-  test('a tela do atendimento diz que o pagamento foi estornado e oferece receber de novo; o Fechamento o lista', async ({ browser }) => {
+  test('a tela do atendimento diz que o pagamento foi estornado e oferece receber de novo; o Fechamento avisa da comanda aberta', async ({ browser }) => {
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/agenda/${ap}`)
       await expect(p.getByText(/Pagamento estornado/).first()).toBeVisible()
       await expect(p.getByText(/Pagamento confirmado/)).toHaveCount(0)
       await expect(p.getByRole('button', { name: 'Confirmar pagamento' })).toBeVisible()
 
-      await p.goto(`/${slug}/fechamento`)
-      await expect(p.locator(`[data-a-receber] [data-agendamento="${ap}"]`)).toBeVisible()
+      // O Fechamento do dia (no PDV) não lista mais o a receber (CX5,
+      // 2026-11-14): o atendimento reaberto é uma comanda aberta, e o
+      // fechamento avisa dela.
+      await p.goto(`/${slug}/pdv?fechar=1`)
+      await expect(p.locator('[data-aviso="comandas-abertas"]')).toBeVisible()
     })
   })
 

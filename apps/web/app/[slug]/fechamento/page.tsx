@@ -1,27 +1,9 @@
-import { notFound } from 'next/navigation'
-import { getTenantContext, podeVerFechamento, alcancaUnidade } from '@/lib/auth'
-import { semAcesso } from '@/lib/sem-acesso'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
-import { FechamentoDoDia } from '@/app/_shared/fechamento-do-dia'
+import { redirect } from 'next/navigation'
 
-/** O fechamento do dia, no portal da unidade: quem recebe fecha; o financeiro de todos vê. */
+/** O Fechamento do dia mora no PDV (CX4, 2026-11-14): o caminho antigo leva para lá, com o dia. */
 export default async function FechamentoDaUnidadePage({ params, searchParams }: {
-  params:       Promise<{ slug: string }>
-  searchParams: Promise<{ dia?: string }>
+  params: Promise<{ slug: string }>; searchParams: Promise<{ dia?: string }>
 }) {
-  const { slug } = await params
-  const ctx = await getTenantContext()
-  // A unidade inteira: quem recebe ou o financeiro de todos (D6, 2026-10-27).
-  if (!podeVerFechamento(ctx)) throw semAcesso()
-  const sp = await searchParams
-
-  const unidade = await ler(createAdminClient().from('branches').select('id, name')
-    .eq('slug', slug).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
-  if (!unidade || !alcancaUnidade(ctx, unidade.id as string)) notFound()
-
-  return (
-    <FechamentoDoDia ctx={ctx} unidades={[{ id: unidade.id as string, name: unidade.name as string }]}
-      unidadeId={unidade.id as string} diaPedido={sp.dia} basePath={`/${slug}/fechamento`} />
-  )
+  const [{ slug }, { dia }] = await Promise.all([params, searchParams])
+  redirect(`/${slug}/pdv?${new URLSearchParams({ fechar: '1', ...(dia ? { dia } : {}) })}`)
 }

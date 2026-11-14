@@ -10,7 +10,7 @@ import { dayKeyTZ, startOfDayTZ } from '@/lib/datetime'
 import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
 import { getAReceberVencido } from '@/lib/metrics/vencidas'
 import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
-import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto, getComposicaoFinanceira } from '@/lib/metrics'
+import { resolvePeriod, getCore, getByBranch, getMovimentacoes, getEmAberto, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto, getComposicaoFinanceira, getTaxasDoPeriodo } from '@/lib/metrics'
 import { extrasDoCsv, type LancamentoParaOCsv } from '@/lib/financeiro/extras-do-csv'
 import { lerTodas } from '@/lib/db'
 import { umaUnidadeSo } from '@/lib/unidades/uma-so'
@@ -175,6 +175,8 @@ export default async function AdminFinanceiroPage({
   const emAbertoDaRede = await getEmAberto({ tenantId: ctx.tenantId!, branchIds: null, from: start, to: fimDoPeriodo })
   // A43 da 12ª: todo o a pagar em aberto, de qualquer vencimento — o total e cada unidade.
   const aPagarEmAberto = await getAPagarEmAberto({ tenantId: ctx.tenantId!, branchIds: null })
+  // CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período, o total e cada unidade.
+  const taxasDoPeriodo = await getTaxasDoPeriodo({ tenantId: ctx.tenantId!, branchIds, from: start, to: end })
 
   const txs = (txsRaw ?? []) as unknown as LancamentoLido[]
   // O resultado da rede e as parcelas dele (D8 da 8ª: a conta embaixo do cartão).
@@ -274,6 +276,7 @@ export default async function AdminFinanceiroPage({
         aReceberDaOperadora={operadora}
         debitoNoPeriodo={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0}
         debitoPorUnidade={debitoDe}
+        taxasDoPeriodo={taxasDoPeriodo}
         parcelasDaOperadora={parcelasDaOperadora}
         fluxoDeCaixa={await getFluxoDeCaixa({ tenantId: ctx.tenantId!, branchIds, porUnidade: true, meses: 12 })}
         totalProximoAReceber={emAbertoDaRede.proximoAReceber}

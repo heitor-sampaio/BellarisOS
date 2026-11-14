@@ -149,8 +149,11 @@ test('A31: o DRE e o Fechamento do dia se exportam, com a compra e a perda do es
     expect(dre).toContain('Receita paga;1000,00')
     expect(dre).toContain('Compras no estoque (entradas, ao custo)')
     expect(dre).toContain('Perdas no período')
-    await p.goto(`/${slug}/fechamento`)
-    const fechamento = await baixado(p, () => p.getByRole('button', { name: 'Exportar CSV' }).click())
+    // O CSV do Fechamento do dia mora no Financeiro desde o CX6 (2026-11-14); o dia vem como hoje.
+    await p.goto(`/${slug}/financeiro`)
+    await p.getByRole('button', { name: 'CSV do fechamento do dia' }).click()
+    const janela = p.getByRole('dialog', { name: 'CSV do fechamento do dia' })
+    const fechamento = await baixado(p, () => janela.getByRole('button', { name: 'Baixar' }).click())
     expect(fechamento).toContain('Forma;Entradas;Saídas;Saldo;Lançamentos')
     expect(fechamento).toMatch(/Pix;1000,00;14000,00;-13000,00/)
   })

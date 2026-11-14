@@ -86,7 +86,9 @@ test('A40: o Fechamento do dia separa o que cada pessoa recebeu, por forma', asy
   })
 
   await como(browser, dona, async p => {
-    await p.goto(`/${slug}/fechamento`)
+    await p.goto(`/${slug}/pdv?fechar=1`)
+    // CX5: o quadro mora nos "Detalhes do dia", fechados até a pessoa abrir.
+    await p.locator('[data-detalhes-do-dia] summary').click()
     const quadro = p.locator('[data-por-quem-recebeu]')
     await expect(quadro).toBeVisible()
     const daElaine = quadro.locator(`[data-quem-recebeu="${elaine.userId}"]`)

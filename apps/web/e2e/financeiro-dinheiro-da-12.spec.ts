@@ -228,12 +228,14 @@ test('D2 e A33: o pagamento fica no dia dele, e o estorno é saída do dia em qu
 
 test('D2 e D3: o Fechamento de ontem não muda; o de hoje mostra a saída e diz de que dia era o pagamento', async ({ browser }) => {
   await como(browser, dona, async p => {
-    await p.goto(`/${slug}/fechamento?dia=${ontem}`)
+    await p.goto(`/${slug}/pdv?fechar=1&dia=${ontem}`)
     await expect(p.locator('[data-forma="PIX"]')).toContainText('R$ 400,00')
     await expect(p.locator('[data-forma="TOTAL"]')).toContainText('R$ 600,00')
 
-    await p.goto(`/${slug}/fechamento?dia=${hoje}`)
+    await p.goto(`/${slug}/pdv?fechar=1&dia=${hoje}`)
     await expect(p.locator('[data-forma="PIX"]')).toContainText(/R\$\s736,36/)
+    // CX5: os estornos moram nos "Detalhes do dia", recolhidos.
+    await p.locator('[data-detalhes-do-dia] summary').click()
     const estornos = p.locator('[data-estornos-do-dia]')
     // D3: o que voltou às clientes — sem a despesa estornada.
     await expect(estornos).toContainText(/R\$\s1\.025,36/)
@@ -243,8 +245,12 @@ test('D2 e D3: o Fechamento de ontem não muda; o de hoje mostra a saída e diz 
     await expect(daCarla).toContainText(`Pagamento de ${ddmm(ontem)}`)
     await expect(estornos.locator('[data-estorno-do-dia]', { hasText: 'Venda de hoje' })).toContainText('Pagamento deste dia')
 
-    // O CSV do Fechamento: o estorno com o dia do pagamento.
-    const [arquivo] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'Exportar CSV' }).click()])
+    // O CSV do Fechamento (no Financeiro desde o CX6): o estorno com o dia do pagamento.
+    await p.goto(`/${slug}/financeiro?period=today`)
+    await p.getByRole('button', { name: 'CSV do fechamento do dia' }).click()
+    const janela = p.getByRole('dialog', { name: 'CSV do fechamento do dia' })
+    await janela.getByLabel('Dia').fill(hoje)
+    const [arquivo] = await Promise.all([p.waitForEvent('download'), janela.getByRole('button', { name: 'Baixar' }).click()])
     const fs = await import('node:fs/promises')
     const texto = await fs.readFile((await arquivo.path())!, 'utf8')
     expect(texto).toContain('Descrição;Forma;Valor;Motivo;Pagamento de')
@@ -254,7 +260,7 @@ test('D2 e D3: o Fechamento de ontem não muda; o de hoje mostra a saída e diz 
 
 test('A39: quem só tem Recebimentos vê a saída pela forma, sem a descrição nem o motivo da despesa', async ({ browser }) => {
   await como(browser, caixa, async p => {
-    await p.goto(`/${slug}/fechamento?dia=${hoje}`)
+    await p.goto(`/${slug}/pdv?fechar=1&dia=${hoje}`)
     await expect(p.locator('[data-forma="TOTAL"]')).toBeVisible()
     await expect(p.getByText('Energia elétrica duplicada')).toHaveCount(0)
     await expect(p.getByText('Conta paga duas vezes')).toHaveCount(0)

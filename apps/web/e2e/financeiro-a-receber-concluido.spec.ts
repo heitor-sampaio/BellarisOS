@@ -128,18 +128,14 @@ test.describe.serial('o atendimento concluído a receber', () => {
     })
   })
 
-  test('D5: o Fechamento do dia lista os concluídos a receber (e não o de R$ 0)', async ({ browser }) => {
+  test('CX5: o Fechamento do dia (no PDV) não lista mais os concluídos — avisa das comandas abertas', async ({ browser }) => {
+    // A lista "Concluídos a receber" saiu do fechamento (CX5, 2026-11-14): o
+    // concluído sem pagamento é uma comanda aberta do PDV (CX3), e o
+    // fechamento só avisa quantas há, com o link para elas.
     await como(recepcao!, browser, async p => {
-      await p.goto(`/${slug}/fechamento`)
-      const lista = p.locator('[data-a-receber]')
-      await expect(lista).toBeVisible()
-      const linha = lista.locator(`[data-agendamento="${limpeza}"]`)
-      await expect(linha).toContainText(`Joana ar${marca}`)
-      await expect(linha).toContainText(`Limpeza ${marca}`)
-      await expect(linha).toContainText('180,00')
-      await expect(lista.locator(`[data-agendamento="${avaliacao}"]`)).toHaveCount(0)
-      await linha.getByRole('link', { name: 'Receber' }).click()
-      await expect(p).toHaveURL(new RegExp(`/${slug}/agenda/${limpeza}\\?receber=1`))
+      await p.goto(`/${slug}/pdv?fechar=1`)
+      await expect(p.locator('[data-aviso="comandas-abertas"]')).toBeVisible()
+      await expect(p.locator('[data-a-receber]')).toHaveCount(0)
     })
   })
 
@@ -166,8 +162,6 @@ test.describe.serial('o atendimento concluído a receber', () => {
     })
     expect(error).toBeNull()
     await como(recepcao!, browser, async p => {
-      await p.goto(`/${slug}/fechamento`)
-      await expect(p.locator(`[data-a-receber] [data-agendamento="${limpeza}"]`)).toHaveCount(0)
       await p.goto(`/${slug}/clients/${joana}`)
       await expect(p.locator(`[data-a-receber] [data-agendamento="${limpeza}"]`)).toHaveCount(0)
     })

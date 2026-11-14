@@ -1634,7 +1634,12 @@ revisão, só se escreve o plano. Nada se implementa.
   [Agendar] em cada sessão e o "Agendar todas" (PT1d — hoje as sessões do
   plano aceito se agendam pelo "+ Agendar" da agenda, que as oferece), PT1e,
   PT1f e PT3.
-- ⬜ PDV fase 4 — o Fechamento do dia no PDV (CX4–CX6).
+- ✅ PDV fase 4 — o Fechamento do dia no PDV (CX4–CX6): a conferência por
+  forma (Registrado × Conferido × Diferença), dois avisos, os detalhes
+  recolhidos; as taxas, a venda sem taxa e o CSV do fechamento no
+  Financeiro; os textos da fila do checkout ("Planos propostos").
+  Fica: o item "Fechamento do dia" do menu não se acende sozinho (o menu
+  compara só o caminho, e o PDV acende no lugar).
 - ⬜ PDV fase 5 — o crediário como forma (PDV8), os pontos dentro da comanda
   (FD2), vários itens numa comanda, e a parcela no PDV (o resto do CX1).
 

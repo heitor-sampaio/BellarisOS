@@ -8,9 +8,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * cartão por bandeira, e a Ivone conciliava com cada operadora sem a TAXA nem
  * o LÍQUIDO de cada maquininha. O CSV leva "Taxa e líquido por maquininha" —
  * a mesma conta da linha "Taxas da maquininha no dia"
- * (`metrics_taxas_por_maquininha`) — e só a quem vê o financeiro da clínica
+ * (`metrics_taxas_por_maquininha`) — e só a quem vê o financeiro da rede
  * (D7, 2026-11-11: quem só recebe não vê a taxa nem o líquido; o servidor nem
- * os busca).
+ * os busca). Desde o CX6 (2026-11-14) o CSV do fechamento mora no Financeiro,
+ * e quem só recebe (o Caixa sem o Financeiro) nem chega a ele.
  *
  * Numa rede [e2e] própria: a "Maquininha" com que ela nasce (débito 2%), uma
  * "Stone" (débito 3%) e o Pix a 1%.
@@ -25,12 +26,18 @@ let slug = ''
 let dona: MembroDeTeste | null = null
 let recepcao: MembroDeTeste | null = null
 
+const hoje = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+
+// O CSV do Fechamento do dia mora no Financeiro desde o CX6 (2026-11-14).
 async function csvDe(m: MembroDeTeste, browser: Browser): Promise<string> {
   const ctx = await browser.newContext({ storageState: m.estado })
   try {
     const p: Page = await ctx.newPage()
-    await p.goto(`/${slug}/fechamento`)
-    const [arquivo] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'Exportar CSV' }).click({ timeout: 30_000 })])
+    await p.goto(`/${slug}/financeiro?period=today`)
+    await p.getByRole('button', { name: 'CSV do fechamento do dia' }).click({ timeout: 30_000 })
+    const janela = p.getByRole('dialog', { name: 'CSV do fechamento do dia' })
+    await janela.getByLabel('Dia').fill(hoje())
+    const [arquivo] = await Promise.all([p.waitForEvent('download'), janela.getByRole('button', { name: 'Baixar' }).click()])
     const fs = await import('node:fs/promises')
     return (await fs.readFile((await arquivo.path())!, 'utf8')).replace(/^﻿/, '')
   } finally { await ctx.close() }
@@ -75,9 +82,18 @@ test('A28: o CSV do Fechamento traz a taxa e o líquido de cada maquininha a que
   expect(linhas).toContain('Pix;50,00;0,50;49,50')
 })
 
-test('A28 e D7: quem só recebe exporta o Fechamento sem a taxa nem o líquido', async ({ browser }) => {
+test('A28 e D7: quem só recebe não chega ao CSV do Fechamento (ele mora no Financeiro, CX6)', async ({ browser }) => {
   test.setTimeout(120_000)
-  const texto = await csvDe(recepcao!, browser)
-  expect(texto).toContain('Fechamento do dia')
-  expect(texto).not.toContain('Taxa e líquido por maquininha')
+  const ctx = await browser.newContext({ storageState: recepcao!.estado })
+  try {
+    const p = await ctx.newPage()
+    // Fecha o dia no PDV, sem o CSV ali...
+    await p.goto(`/${slug}/pdv?fechar=1`)
+    await expect(p.locator('[data-forma="TOTAL"]')).toBeVisible()
+    await expect(p.getByRole('button', { name: /CSV/ })).toHaveCount(0)
+    // ... e o Financeiro, onde o CSV mora, não abre a quem só recebe.
+    await p.goto(`/${slug}/financeiro?period=today`)
+    await expect(p.getByText('Você não tem acesso a esta área')).toBeVisible()
+    await expect(p.getByRole('button', { name: 'CSV do fechamento do dia' })).toHaveCount(0)
+  } finally { await ctx.close() }
 })

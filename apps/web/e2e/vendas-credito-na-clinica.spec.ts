@@ -122,7 +122,7 @@ test('decisão 1: a recepção vende R$ 300 de crédito na clínica no Pix — c
 
   // O Fechamento do dia mostra os R$ 300 no Pix.
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/fechamento`)
+    await p.goto(`/${slug}/pdv?fechar=1`)
     await expect(p.locator('[data-forma="PIX"]').first()).toContainText(/R\$\s300,00/)
   })
 })

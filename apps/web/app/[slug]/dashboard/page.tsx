@@ -428,10 +428,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
-                {pendingCheckouts} paciente{(pendingCheckouts ?? 0) !== 1 ? 's' : ''} aguardando checkout
+                {pendingCheckouts} {(pendingCheckouts ?? 0) !== 1 ? 'planos propostos' : 'plano proposto'} — a cliente vai pensar
               </p>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', opacity: 0.75, marginTop: 2 }}>
-                Clique para revisar e finalizar os planos de tratamento
+                Veja os planos de tratamento que esperam a decisão da cliente
               </p>
             </div>
             <ChevronRight size={16} style={{ color: 'var(--brand)', flexShrink: 0 }} />

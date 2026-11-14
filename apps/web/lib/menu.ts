@@ -130,7 +130,8 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
 
   { key: 'financial',    group: 'dinheiro',     label: rotuloDoFinanceiro, href: '/admin/financeiro',  visible: p => has(p, 'financial') },
   // O fechamento do dia (2026-10-21): quem recebe fecha; o financeiro de TODOS vê (D6).
-  { key: 'fechamento',   group: 'dinheiro',     label: 'Fechamento do dia', href: '/admin/fechamento', visible: veFechamento },
+  // Mora no PDV desde a CX4 (2026-11-14): o item abre a vista de fechar dele.
+  { key: 'fechamento',   group: 'dinheiro',     label: 'Fechamento do dia', href: '/admin/pdv?fechar=1', visible: veFechamento },
   { key: 'stock',        group: 'dinheiro',     label: 'Estoque',       href: '/admin/estoque',        visible: p => has(p, 'stock') },
 
   // O funil comercial era uma entrada à parte (`/admin/comercial`). Virou a aba
@@ -170,7 +171,8 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   // tela própria dele: quem só recebe entrava aqui e via a tela vazia.
   { key: 'financial',     group: 'dinheiro',    label: rotuloDoFinanceiro, href: '/financeiro', visible: p => has(p, 'financial') },
   // A tela de quem RECEBE (cashier): o fechamento do dia (2026-10-21) — e do financeiro de todos (D6).
-  { key: 'fechamento',    group: 'dinheiro',    label: 'Fechamento do dia', href: '/fechamento', visible: veFechamento },
+  // Mora no PDV desde a CX4 (2026-11-14): o item abre a vista de fechar dele.
+  { key: 'fechamento',    group: 'dinheiro',    label: 'Fechamento do dia', href: '/pdv?fechar=1', visible: veFechamento },
   { key: 'stock',         group: 'dinheiro',    label: 'Estoque',       href: '/estoque',       visible: p => has(p, 'stock') },
 
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },

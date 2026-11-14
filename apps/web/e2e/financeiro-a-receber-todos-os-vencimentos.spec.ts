@@ -98,10 +98,9 @@ test('"Reforça", item 4: o Financeiro mostra o atendimento concluído sem pagam
       await expect(cartao.locator('[data-concluidos-sem-pagamento]'), tela)
         .toContainText(/Atendimentos concluídos sem pagamento:\s*R\$\s*650,00/)
     }
-    // O Fechamento: além dos 650, cita as parcelas e os lançamentos em aberto.
-    await p.goto(`/${slug}/fechamento`)
-    await expect(p.locator('[data-aviso="a-receber"]')).toContainText('650,00')
-    await expect(p.locator('[data-aviso="parcelas-em-aberto"]')).toContainText('450,00')
+    // O Fechamento do dia não cita mais o a receber nem as parcelas em aberto
+    // (CX5, 2026-11-14): o concluído sem pagamento é comanda aberta no PDV, e
+    // o em aberto mora no cartão acima.
   })
 })
 

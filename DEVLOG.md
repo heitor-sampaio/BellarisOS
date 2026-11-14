@@ -1774,6 +1774,51 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — O PDV, fase 4: o Fechamento do dia no PDV
+
+CX4–CX6 do plano de adaptação (`docs/revisao.md`).
+- **CX4 — o fechamento mora no PDV**: "Fechar o dia", no topo do PDV, abre
+  `/<portal>/pdv?fechar=1` (com o dia e, na rede, a unidade), com o cabeçalho
+  do PDV e "Voltar às comandas". `/[slug]/fechamento` e `/admin/fechamento`
+  viraram redirect; o menu "Fechamento do dia" aponta para lá. Vê quem vê o
+  fechamento (o Financeiro de todos em Ver vê sem fechar); o PDV sem
+  `fechar=1` segue de quem recebe.
+- **A conferência por forma**: uma linha por forma — Registrado × Conferido ×
+  Diferença. O Dinheiro (com o fundo de troco na linha) é obrigatório; as
+  outras formas são opcionais, e em branco é "não conferido" (princípio 4).
+  Os conferidos vão para `fechamentos_do_dia.conferido` (jsonb, migration
+  `20261113008301`, aplicada pelo MCP; a sessão continua sem ler nem gravar a
+  tabela). Fechado, cada linha diz "Bateu", "Faltou R$ X", "Sobrou R$ X" ou
+  "não conferido", contra o retrato daquele fechamento.
+- **CX5 — dois avisos só**: "Há N comanda(s) aberta(s)" (com o link para as
+  abertas) e "Entrou dinheiro depois do fechamento das HH:MM: confira e feche
+  de novo". Saíram a lista dos concluídos a receber (são comandas abertas), as
+  parcelas em aberto, a espécie negativa, o a receber da operadora, a venda
+  sem taxa e as taxas estimadas. "Por quem recebeu" e os estornos ficam em
+  "Detalhes do dia", recolhido.
+- **CX6 — o Financeiro**: o aviso da venda sem taxa da maquininha e as taxas
+  estimadas do PERÍODO (por unidade, somadas em `getTaxasDoPeriodo`), e o
+  botão "CSV do fechamento do dia" (janela com o dia e a unidade; o mesmo CSV
+  de antes, a taxa por maquininha só a quem vê o financeiro de todos). O
+  "Exportar CSV" dos lançamentos fica.
+- **De quebra**: a fila do antigo checkout diz "Planos propostos" / "a cliente
+  vai pensar", com o link à página do plano (as rotas não mudaram).
+- Decisões pelos princípios: a diferença das outras formas é contra o saldo
+  do retrato gravado no mesmo fechamento; pontos e "Sem forma" não se
+  conferem; a tela não calcula a diferença ao digitar (a conta é do servidor,
+  ao fechar); o link das comandas abertas só aparece a quem recebe.
+- Specs: as provas do que saiu (a lista do a receber no fechamento, A44, A48,
+  a espécie negativa como aviso) foram tiradas ou trocadas pelo aviso das
+  comandas abertas; o CSV do fechamento passou a ser baixado pelo Financeiro.
+- Prova: `e2e/pdv-fechar-o-dia.spec.ts`, `e2e/fechamento-do-dia-avisos.spec.ts`.
+- Fica para o bloco das Tags: `fuso-da-unidade` "a cliente 'desde 10/03' é
+  nova em 10/03 de Manaus" falha, e não por esta fase. `metrics_by_branch`
+  conta as novas clientes pela tag "Unidade: X" (a A26). O teste grava
+  `tags: [TAG]`, que tira a da unidade, e a conta dá 0. Quem resolve é o
+  bloco das Tags, quando a contagem deixar a tag.
+- Sobra: no menu, o "Fechamento do dia" não fica marcado como ativo em
+  `/pdv?fechar=1`.
+
 ### 2026-11-13 — O PDV, fase 3: o plano é aceito sem dinheiro e recebido no PDV
 
 PDV4 e PT1a–PT1c (só a parte da clínica). O Heitor: "a partir do momento que a

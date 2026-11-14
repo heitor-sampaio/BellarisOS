@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Lock, Plus, Search, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, Lock, Plus, Search, ShoppingBag } from 'lucide-react'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { SegSelect } from '@/components/shared/seg-select'
 import { useFuso } from '@/components/shared/fuso'
@@ -52,12 +52,53 @@ function Selo({ c }: { c: ComandaDoPdv }) {
 }
 
 /**
+ * O topo do PDV (PDV1; CX4): o título, o que entrou hoje e quantas comandas
+ * estão abertas. Nas comandas, o "Fechar o dia" abre o fechamento DENTRO do
+ * PDV (`?fechar=1`); no fechamento, "Voltar às comandas" (a quem recebe).
+ */
+export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoje, abertas, podeReceber = true, podeVerFechamento = true, children }: {
+  basePath:     string
+  unidadeId:    string
+  naRede:       boolean
+  vista:        'comandas' | 'fechar'
+  recebidoHoje: number
+  abertas:      number
+  podeReceber?: boolean
+  podeVerFechamento?: boolean
+  children?:    React.ReactNode
+}) {
+  const daUnidade = naRede ? `unidade=${unidadeId}` : ''
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+      <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>PDV</h1>
+      <span data-resumo-do-pdv style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>
+        Hoje: <b style={{ color: 'var(--text)' }}>{brl(recebidoHoje)}</b> recebidos · <b style={{ color: 'var(--text)' }}>{abertas}</b> {abertas === 1 ? 'comanda aberta' : 'comandas abertas'}
+      </span>
+      <span style={{ flex: 1 }} />
+      {children}
+      {vista === 'comandas' && podeVerFechamento && (
+        <Link href={`${basePath}?fechar=1${daUnidade ? `&${daUnidade}` : ''}`} className="btn-secondary"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Lock size={14} aria-hidden /> Fechar o dia
+        </Link>
+      )}
+      {vista === 'fechar' && podeReceber && (
+        <Link href={daUnidade ? `${basePath}?${daUnidade}` : basePath} className="btn-secondary"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <ArrowLeft size={14} aria-hidden /> Voltar às comandas
+        </Link>
+      )}
+    </div>
+  )
+}
+
+/**
  * A tela do PDV (PDV1, o desenho aprovado pelo Heitor em 2026-11-13): as
  * comandas da unidade à esquerda; a escolhida à direita, com o que está nela
  * e o "Receber". Não existe pagamento sem forma (PDV8): o "Receber" espera a
  * forma escolhida.
  */
-export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, recebidoHoje, escolhida, slugDaUnidade, novaVenda }: {
+export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, recebidoHoje, escolhida, slugDaUnidade, novaVenda, podeVerFechamento = true }: {
   basePath:      string
   unidades:      { id: string; name: string }[]
   unidadeId:     string
@@ -69,6 +110,8 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
   slugDaUnidade: string
   /** A "Nova venda" aberta (`?nova=1`), com a cliente já escolhida ou não. */
   novaVenda:     { dados: VendaDoPdv | null; aviso?: string; perguntaAUnidade?: boolean } | null
+  /** Vê o Fechamento do dia (`podeVerFechamento`): o "Fechar o dia" do topo. */
+  podeVerFechamento?: boolean
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -102,12 +145,8 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>PDV</h1>
-        <span data-resumo-do-pdv style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>
-          Hoje: <b style={{ color: 'var(--text)' }}>{brl(recebidoHoje)}</b> recebidos · <b style={{ color: 'var(--text)' }}>{abertas}</b> {abertas === 1 ? 'comanda aberta' : 'comandas abertas'}
-        </span>
-        <span style={{ flex: 1 }} />
+      <CabecalhoDoPdv basePath={basePath} unidadeId={unidadeId} naRede={naRede} vista="comandas"
+        recebidoHoje={recebidoHoje} abertas={abertas} podeVerFechamento={podeVerFechamento}>
         {naRede && (
           <SegSelect options={unidades.map(u => ({ key: u.id, label: u.name }))} value={unidadeId}
             onSelect={k => router.push(hrefNaUnidade(k))} ariaLabel="Unidade" />
@@ -115,11 +154,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
         <Link href={href({ nova: '1' })} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <Plus size={15} aria-hidden /> Nova venda
         </Link>
-        <Link href={basePath.replace(/\/pdv$/, '/fechamento') + (naRede ? `?unidade=${unidadeId}` : '')} className="btn-secondary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <Lock size={14} /> Fechar o dia
-        </Link>
-      </div>
+      </CabecalhoDoPdv>
 
       <div className="pdv-duas">
         <div className="card" data-lista-de-comandas>

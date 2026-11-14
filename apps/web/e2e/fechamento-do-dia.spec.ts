@@ -51,7 +51,7 @@ test.describe.serial('o fechamento do dia', () => {
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/dashboard`)
       await p.getByRole('navigation').getByText('Fechamento do dia').click()
-      await expect(p).toHaveURL(new RegExp(`/${slug}/fechamento`))
+      await expect(p).toHaveURL(new RegExp(`/${slug}/pdv\\?fechar=1`))
 
       const dinheiro = p.locator('[data-forma="CASH"]')
       await expect(dinheiro).toContainText('100,00')
@@ -74,7 +74,7 @@ test.describe.serial('o fechamento do dia', () => {
 
   test('a rede vê o fechamento da unidade, sem fechar', async ({ browser }) => {
     await como(daRede!, browser, async p => {
-      await p.goto(`/admin/fechamento?unidade=${rede!.branchId}`)
+      await p.goto(`/admin/pdv?fechar=1&unidade=${rede!.branchId}`)
       await expect(p.locator('[data-forma="TOTAL"]')).toContainText('320,00')
       await expect(p.getByText(/Fechado por/)).toBeVisible()
       await expect(p.getByRole('button', { name: 'Fechar o dia' })).toHaveCount(0)

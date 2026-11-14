@@ -13,7 +13,7 @@ import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { dayKeyTZ } from '@/lib/datetime'
 import { nomeDoCsvDosLancamentos } from '@/lib/financeiro/csv-dos-lancamentos'
-import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getEmAberto, getTicketMedio, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto } from '@/lib/metrics'
+import { resolvePeriod, getCommissionsDetail, getCore, getComposicaoFinanceira, getSeries, getEmAberto, getTicketMedio, getResultadoDoEstoque, getAReceberEmAberto, getAPagarEmAberto, getTaxasDoPeriodo } from '@/lib/metrics'
 import { extrasDoCsv, type LancamentoParaOCsv } from '@/lib/financeiro/extras-do-csv'
 import { granularidadeDoPeriodo } from '@/lib/financeiro/barras'
 import { ler, lerTodas } from '@/lib/db'
@@ -266,6 +266,8 @@ export default async function FinancialPage({
         canWrite={canWrite}
         canPay={canPay}
         ownScope={!!ownFinancial}
+        // CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período, da unidade.
+        taxasDoPeriodo={ownFinancial ? undefined : (await getTaxasDoPeriodo({ ...argsDoNucleo, from: start, to: end })).total}
         clients={clients}
       />
     </>

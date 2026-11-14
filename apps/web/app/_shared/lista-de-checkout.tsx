@@ -9,7 +9,9 @@ import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { vocabulario } from '@/lib/unidades/vocabulario'
 
 /**
- * Planos de tratamento aguardando checkout — a mesma lista nos dois portais.
+ * Os planos de tratamento PROPOSTOS — "a cliente vai pensar" (PDV4, fase 3:
+ * o plano se aceita na página dele e o dinheiro é no PDV) — a mesma lista nos
+ * dois portais. Cada linha leva à página do plano.
  *
  * Sem nome de filial é a rede inteira: quem opera a rede vê o que está parado
  * em qualquer unidade sem entrar no portal de cada uma. Aí cada linha diz de
@@ -88,10 +90,10 @@ export async function ListaDeCheckout({
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-          Checkout de novos pacientes
+          Planos propostos
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          {branchName ?? fala('Rede')} · {plans.length} aguardando
+          {branchName ?? fala('Rede')} · {plans.length} {plans.length === 1 ? 'plano' : 'planos'} — a cliente vai pensar
         </p>
       </div>
 
@@ -103,9 +105,9 @@ export async function ListaDeCheckout({
           <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ClipboardList size={24} style={{ color: 'var(--text-faint)' }} />
           </div>
-          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum checkout pendente</p>
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum plano proposto</p>
           <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', textAlign: 'center' }}>
-            Quando uma profissional enviar um plano de tratamento para a recepção, ele aparecerá aqui.
+            Quando a cliente quiser pensar antes de aceitar um plano de tratamento, ele aparece aqui.
           </p>
           <Link href={`${base}/agenda`} style={{ fontSize: 'var(--text-base-sz)', color: 'var(--brand)', fontWeight: 700, textDecoration: 'none', marginTop: 4 }}>
             ← Voltar para agenda
@@ -114,7 +116,7 @@ export async function ListaDeCheckout({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {plans.map(plan => (
-            <Link key={plan.id} href={`${base}/checkout/${plan.id}`} style={{ textDecoration: 'none' }}>
+            <Link key={plan.id} href={`${base}/planejamentos/${plan.id}`} style={{ textDecoration: 'none' }}>
               <div
                 className="card card-hover"
                 style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}
@@ -129,7 +131,7 @@ export async function ListaDeCheckout({
                   <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{plan.name}</p>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                     {ehRede && plan.unidade ? `${plan.unidade} · ` : ""}
-                    {plan.phone ?? 'Sem telefone'} · aguardando {formatDistanceToNow(new Date(plan.waitingSince), { locale: ptBR, addSuffix: false })}
+                    {plan.phone ?? 'Sem telefone'} · proposto há {formatDistanceToNow(new Date(plan.waitingSince), { locale: ptBR, addSuffix: false })}
                   </p>
                   {plan.notes && (
                     <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -142,7 +144,7 @@ export async function ListaDeCheckout({
                     {plan.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)' }}>Iniciar checkout</span>
+                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)' }}>Ver o plano</span>
                     <ChevronRight size={14} style={{ color: 'var(--brand)' }} />
                   </div>
                 </div>
