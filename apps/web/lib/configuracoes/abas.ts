@@ -39,7 +39,6 @@ export const ABAS_DE_CONFIGURACAO = [
   { key: 'assinatura',    label: 'Assinatura',   module: 'settings' },
   // O suporte do BellarisOS: autorizar o acesso e ver o que ele fez. Da rede.
   { key: 'suporte',       label: 'Suporte',      module: 'settings' },
-  { key: 'eventos',       label: 'Eventos',      module: 'settings' },
   // O que roda em segundo plano e demora (o histórico do WhatsApp…). Da rede.
   { key: 'lotes',         label: 'Ações em lote', module: 'settings' },
   // O importador de contatos (CSV, 2026-10-13): quem cadastra clientes OU
@@ -49,6 +48,31 @@ export const ABAS_DE_CONFIGURACAO = [
   { key: 'importacoes',   label: 'Importações',  module: 'clients',   alternativas: ['crm'] },
   { key: 'general',       label: 'Geral',        module: 'settings' },
 ] as const satisfies readonly { key: string; label: string; module: AppModule; recurso?: string; alternativas?: readonly AppModule[] }[]
+
+/**
+ * As abas em GRUPOS (CF1, docs/revisao.md — o Heitor, 2026-11-13: "Concordo";
+ * princípio 7: nada sai, muda a organização). Cada aba continua pedindo o
+ * módulo dela; o grupo sem nenhuma aba visível some. No portal da unidade, a
+ * aba Unidade fica em "A rede", ao lado de Geral: é o mesmo assunto (os dados
+ * de quem a pessoa é), e um grupo só para ela seria um grupo de uma aba.
+ * O "Eventos" saiu (CF2): mora nas Automações, como "O que já aconteceu".
+ */
+export const GRUPOS_DE_ABAS: readonly { key: string; label: string; abas: readonly ChaveDeAba[] }[] = [
+  { key: 'rede',        label: 'A rede',          abas: ['unidade', 'general', 'unidades', 'assinatura'] },
+  { key: 'equipe',      label: 'Equipe e acesso', abas: ['permissions', 'suporte'] },
+  { key: 'atendimento', label: 'Atendimento',     abas: ['fichas', 'documentos'] },
+  { key: 'clientes',    label: 'Clientes',        abas: ['tags', 'fidelidade', 'importacoes', 'lgpd'] },
+  { key: 'dinheiro',    label: 'Dinheiro',        abas: ['comissoes'] },
+  { key: 'conexoes',    label: 'Conexões',        abas: ['integrations'] },
+  { key: 'avancado',    label: 'Avançado',        abas: ['lotes'] },
+]
+
+/** As abas visíveis, nos grupos e na ordem deles; grupo vazio não volta. */
+export function abasEmGrupos<T extends { key: string }>(abas: readonly T[]): { key: string; label: string; abas: T[] }[] {
+  return GRUPOS_DE_ABAS
+    .map(g => ({ key: g.key, label: g.label, abas: g.abas.flatMap(k => abas.filter(a => a.key === k)) }))
+    .filter(g => g.abas.length > 0)
+}
 
 /**
  * A aba abre para quem tem o módulo dela em MANAGE — ou um dos alternativos

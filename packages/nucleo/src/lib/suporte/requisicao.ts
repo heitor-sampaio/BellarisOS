@@ -34,32 +34,52 @@ export function sessaoDeSuporteDaRequisicao(): string | null {
 export async function sessaoDeSuporteAtual(): Promise<string | null> {
   const marcada = sessaoDeSuporteDaRequisicao()
   if (marcada) return marcada
+  return (await quemEscreveNaRequisicao()).sessaoId
+}
+
+/**
+ * O login (auth id) de quem faz esta requisição, ou nulo — fora de requisição
+ * (cron, webhook, script) e sem sessão. É o que o cliente de serviço manda ao
+ * banco como `x-bellaris-ator` em toda escrita, para a auditoria (CF3b) dizer
+ * QUEM gravou o que o servidor gravou em nome da pessoa.
+ */
+export async function loginDaRequisicaoAtual(): Promise<string | null> {
+  return (await quemEscreveNaRequisicao()).authId
+}
+
+type QuemEscreve = { sessaoId: string | null; authId: string | null }
+const NINGUEM: QuemEscreve = { sessaoId: null, authId: null }
+
+async function quemEscreveNaRequisicao(): Promise<QuemEscreve> {
   try {
     // Toda ESCRITA do cliente de serviço pergunta por aqui (a marca do
-    // suporte no fato do banco, F71): a resposta fica guardada por token,
-    // 15 s, como o cache da sessão — sem isto cada escrita conferiria o token.
+    // suporte no fato do banco, F71; o autor na auditoria, CF3b): a resposta
+    // fica guardada por token, 15 s, como o cache da sessão — sem isto cada
+    // escrita conferiria o token.
     const chave = await chaveDoToken()
-    if (chave === null) return null
+    if (chave === null) return NINGUEM
     const guardada = MEMO.get(chave)
-    if (guardada && guardada.ate > Date.now()) return guardada.id
+    if (guardada && guardada.ate > Date.now()) return guardada.quem
 
     const { createClient } = await import('../supabase/server')
     const { data } = await (await createClient()).auth.getClaims()
-    const sid = (data?.claims as { session_id?: string } | undefined)?.session_id
+    const claims = data?.claims as { session_id?: string; sub?: string } | undefined
+    const sid = claims?.session_id
     let id: string | null = null
     if (sid) {
       const { sessaoDeSuporte } = await import('./sessao')
       id = (await sessaoDeSuporte(sid))?.id ?? null
     }
+    const quem: QuemEscreve = { sessaoId: id, authId: claims?.sub ?? null }
     if (MEMO.size >= MEMO_MAX) MEMO.clear()
-    MEMO.set(chave, { id, ate: Date.now() + 15_000 })
-    return id
+    MEMO.set(chave, { quem, ate: Date.now() + 15_000 })
+    return quem
   } catch {
-    return null
+    return NINGUEM
   }
 }
 
-const MEMO = new Map<string, { id: string | null; ate: number }>()
+const MEMO = new Map<string, { quem: QuemEscreve; ate: number }>()
 const MEMO_MAX = 500
 
 /**

@@ -137,6 +137,8 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // O funil comercial era uma entrada à parte (`/admin/comercial`). Virou a aba
   // "Comercial" daqui: mesmo módulo, mesmo assunto, um destino só.
   { key: 'reports',      group: 'gestao',       label: 'Relatórios',    href: '/admin/reports',        visible: p => has(p, 'reports') },
+  // CF3a (2026-11-14): o que mudou, quem mudou e quando — ao lado de Relatórios.
+  { key: 'auditoria',    group: 'gestao',       label: 'Auditoria',     href: '/admin/auditoria',      visible: p => has(p, 'audit') },
   { key: 'team',         group: 'gestao',       label: 'Equipe',        href: '/admin/team',           visible: p => has(p, 'team') },
   // Só na rede: a automação reage a fatos de todas as unidades, e uma versão
   // por filial prometeria um recorte que o motor não faz.
@@ -176,6 +178,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   { key: 'stock',         group: 'dinheiro',    label: 'Estoque',       href: '/estoque',       visible: p => has(p, 'stock') },
 
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },
+  { key: 'auditoria',     group: 'gestao',      label: 'Auditoria',     href: '/auditoria',     visible: p => has(p, 'audit') },
   { key: 'team',          group: 'gestao',      label: 'Equipe',        href: '/team',          visible: p => has(p, 'team') },
   // Mesma tela da rede, e pelo mesmo motivo do `/admin`: uma entrada, três
   // módulos. Quem tem unidade fixa não entra em `/admin`, então sem esta linha

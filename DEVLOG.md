@@ -1774,6 +1774,118 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — Bloco Configurações (CF1, CF2, CF3a–CF3c): as abas em grupos, "O que já aconteceu" nas Automações e a Auditoria
+
+A revisão do Heitor (13/11), no plano de adaptação aprovado: as abas de
+Configurações agrupadas por assunto (CF1), o Eventos nas Automações (CF2) e
+"um lugar para auditoria [...] onde o admin pudesse ver tudo o que aconteceu"
+— "Pode ser no menu" (CF3a–CF3c).
+
+- **CF1 — as abas em grupos.** `GRUPOS_DE_ABAS` + `abasEmGrupos`
+  (`lib/configuracoes/abas.ts`): A rede (Unidade, Geral, Unidades,
+  Assinatura) · Equipe e acesso (Cargos, Suporte) · Atendimento (Fichas,
+  Documentos) · Clientes (Tags, Fidelidade, Importações, LGPD) · Dinheiro
+  (Comissões e taxas) · Conexões (Integrações) · Avançado (Ações em lote). A
+  tela (`app/_shared/configuracoes.tsx`) desenha
+  `nav[data-grupos-de-abas]`, um bloco por grupo (`[data-grupo-de-abas]`, o
+  rótulo em overline e as abas em chips; no celular, um embaixo do outro).
+  Nada saiu: cada aba segue com o módulo dela, o grupo sem aba visível some e
+  o portal da unidade mantém a aba Unidade (no grupo "A rede", que na rede de
+  uma unidade só diz "A clínica" pelo `fala` da F8).
+- **CF2 — "O que já aconteceu" nas Automações.** A aba Eventos saiu das
+  Configurações e virou `/admin/automacoes/eventos`, com o módulo Automações
+  em Ver (`actions/eventos.ts` também passou a conferir `automations`). As
+  Automações ganharam as duas vistas no topo (`VistasDasAutomacoes`:
+  "Automações" · "O que já aconteceu"). `?tab=eventos` vira `redirect` nos
+  dois portais, e a busca acha "Automações → O que já aconteceu" (apelidos
+  eventos, log, gatilhos disparados, fatos).
+- **CF3b — a tabela `auditoria`, só do servidor e imutável.**
+  - Gravada por GATILHO (statement-level, com as tabelas de transição) em 88
+    tabelas: toda escrita que muda alguma coisa, sem depender de a action
+    lembrar. As aberturas do prontuário vêm de `prontuario_acessos`
+    ("abriu"); as entradas, de `auditoria_registrar_entrada` (só service
+    role), chamada pelo login (a tela e `/api/auth/session`) — só membro.
+  - **Nunca o conteúdo clínico**: nas tabelas clínicas fica só QUAIS colunas
+    mudaram (sem valores); nas de segredo (integrações, números, links de
+    assinatura), também. Nas outras, uns poucos valores sem dado pessoal (o
+    nome da tag, da sala), para a frase.
+  - **Quem fez**: pela sessão, o `sub` do token; pelo cliente de serviço, o
+    cabeçalho `x-bellaris-ator` que o `createAdminClient` manda em toda
+    escrita (`comAtor`, `lib/supabase/ator-da-escrita.ts`, lendo o login da
+    requisição) mais o da sessão de suporte → "Nome (via suporte: Fulano)".
+    Sem login (cron, webhook, `after()` sem cookie): "O sistema".
+  - **Imutável**: UPDATE, DELETE e TRUNCATE recusados ("A auditoria não se
+    altera nem se apaga."), salvo o cascade da rede apagada. A sessão não lê
+    (RLS ligada, zero políticas, sem privilégio); só o servidor.
+  - **Leve e sem derrubar a escrita**: um gatilho por comando; se a
+    auditoria falhar, grava uma linha "incompleta" e um aviso, e a escrita
+    principal segue.
+- **CF3c — a permissão `audit` (Auditoria, só Ver)**, o 19º módulo, no grupo
+  Gestão ao lado de Relatórios (`MODULE_LEVELS`: NONE/VIEW). Nasce só na
+  Admin da rede (que tem tudo); os quatro modelos não a têm, e nenhum cargo
+  existente ganhou (sem backfill). Quem tem unidades vê só o que aconteceu
+  nelas. CLAUDE.md §11 e `tests/permissions.test.ts` atualizados.
+- **CF3a — a tela Auditoria** (menu Gestão, depois de Relatórios; os dois
+  portais, corpo em `app/_shared/auditoria.tsx`, cada `page.tsx` com o seu
+  `assertPermission`). Só leitura: quando, quem (com o "via suporte"), o quê
+  em português (`lib/auditoria/frase.ts`, pura) com um link, e a unidade.
+  Filtros: período, pessoa, tipo (criou, editou, apagou, abriu, entrou),
+  unidade e cliente. Paginada no banco (`.range`, 50 por página, "Mais
+  antigas"/"Mais recentes"). "Baixar CSV" em `/api/auditoria/csv` (sessão +
+  `audit`, os mesmos filtros; em `e2e/api-sem-credencial`).
+- **Decidido pelos princípios** (anotado aqui, não levado ao Heitor):
+  - **A linha sem unidade é da rede** (a tag, o cargo, a ficha da cliente):
+    quem tem unidade fixa não a vê — a regra do `alcancaUnidade`. No portal
+    da unidade a tela mostra tudo o que a pessoa alcança (o filtro de unidade
+    recorta).
+  - **"Tipo" é a ação** (criou, editou, apagou, abriu, entrou) — o filtro
+    simples; o "do quê" está na frase (princípio 7).
+  - **O nome da cliente e do membro se lê na hora**, não se guarda (LGPD: a
+    anonimizada sai anonimizada também aqui).
+  - **Só a entrada da equipe** fica registrada (a da cliente pelo portal,
+    não: não é o "o que aconteceu no sistema" que se pediu).
+  - **O CSV para em 20 mil linhas** e diz isso na última linha (com filtro,
+    se pega o resto).
+  - **A `audit` não depende do plano** (nenhuma funcionalidade a cobre).
+  - O período padrão é o mês (como os relatórios).
+- **Specs antigos que mudaram**: `eventos-painel`, `render-limpo` e
+  `rede-de-uma-unidade` abrem `/admin/automacoes/eventos`;
+  `configuracoes-atritos-da-14` (A2) procura a aba no
+  `[data-grupos-de-abas]`. `e2e/apoio/sessao.ts` conhece `audit`.
+- **TDD — as falhas antes**: `e2e/configuracoes-grupos-e-eventos.spec.ts`,
+  6 de 6 falhando (`[data-grupos-de-abas]` não existia nos três; a URL
+  ficava em `/admin/settings?tab=eventos`; sem o título "O que já
+  aconteceu"; a busca sem "Automações → O que já aconteceu").
+  `e2e/auditoria.spec.ts`, 16 de 16 (PGRST205 "Could not find the table
+  'public.auditoria'" nos do banco; sem a entrada no menu, sem a tela, sem
+  a busca; o CSV em 404; a paginação com 0 linhas de 50).
+- **Resultados**: os dois specs novos, 6 de 6 e 16 de 16. Os vizinhos
+  (api-sem-credencial, eventos-painel, rede-de-uma-unidade,
+  seletores-padronizados, busca-configuracoes, busca-universal,
+  configuracoes-atritos-da-14 e -da-10, permissoes-gerente-de-unidade,
+  permissoes-config-atritos, prontuario-acessos, rls-sessao-so-le,
+  automacoes-fatos-do-banco-suporte, equipe-dona-que-atende, autenticacao):
+  92 passaram, 4 pulados, 1 falhou — o A2, que procurava a barra antiga;
+  corrigido, ele e o render-limpo: 36 de 36. `typecheck` e `lint` limpos
+  (web, sistema, suporte); vitest 290 arquivos, 2480 testes, todos passando
+  (o PR3 pegou "pré-atendimento" em duas frases da auditoria — viraram
+  "ficha de saúde").
+- ⚠️ **Mexeu em arquivo compartilhado** (`packages/nucleo/.../supabase/admin.ts`
+  — o cabeçalho do ator em toda escrita do servidor —, `suporte/requisicao.ts`,
+  `lib/permissions.ts`, `globals.css`, `e2e/apoio/sessao.ts`): vale uma
+  completa quando o Heitor quiser.
+- **Para o Heitor**: a migration `20261116000001_auditoria` foi aplicada.
+  **Não é destrutiva**: só cria (a tabela `auditoria`, as funções
+  `private.auditar`, `private.auditoria_imutavel`,
+  `private.auditoria_sem_truncate`, `private.auditoria_recorte` e
+  `public.auditoria_registrar_entrada` — esta só service_role —, e os
+  gatilhos `auditoria_ins/upd/del` em 88 tabelas). As tabelas de fila,
+  sinal, mensagem, log e histórico próprio ficaram de fora (a lista está no
+  comentário da migration). O CLAUDE.md §11 diz os 19 módulos.
+  Proposta de regra permanente (não entrou no §14): "gravação pelo servidor
+  usa o `createAdminClient` do núcleo — é ele que leva quem agiu à
+  auditoria".
+
 ### 2026-11-15 — Bloco Estoque (E11, E13), o EQ1d da Equipe e o Bloco Fichas (FC1): o produto pelas unidades da pessoa, o estoque inicial dividido e "Fichas de atendimento"
 
 A revisão do Heitor (13/11), no plano de adaptação aprovado: "Quem cadastra é

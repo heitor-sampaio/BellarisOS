@@ -27,6 +27,12 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
   todas as palavras em qualquer ordem (`private.tem_todas`), telefone e CPF por
   dígitos. Procedimento respeita a disponibilidade por unidade; oportunidade de
   funil arquivado fica de fora.
+- **As páginas que não são do menu** entram em `paginasDaBusca` partindo da
+  entrada do menu de que dependem (a mesma visibilidade): o "Automações → O que
+  já aconteceu" (CF2, 2026-11-16) só aparece com as Automações no menu, e
+  "Configurações → Eventos" saiu com a aba. A Auditoria (CF3a) é entrada do
+  menu (`auditoria`, módulo `audit`) e se acha por "auditoria", "quem fez",
+  "quem alterou".
 - **Tipo novo** entra em três lugares: `busca_universal`, `tiposPermitidos`
   (`lib/busca/tipos.ts`) e `destinoDoResultado` (`lib/busca/destino.ts`).
 - **Páginas vêm do menu e das abas** (`lib/menu.ts`,

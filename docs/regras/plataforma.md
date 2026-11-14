@@ -947,6 +947,65 @@ RLS (claim velha) a escondia, e o `.single()` lançava.
   não pegar. A action segue pelo banco, como antes.
 - Prova: `e2e/equipe-unidade-da-9.spec.ts` ("D9"), `tests/claims-velhas.test.ts`.
 
+### Auditoria (CF3a–CF3c, docs/revisao.md — 2026-11-16)
+
+"Queria um lugar para auditoria [...] onde o admin pudesse ver tudo o que
+aconteceu" (o Heitor, 2026-11-13). A tela (menu → Gestão, ao lado de
+Relatórios; `/admin/auditoria` e `/[slug]/auditoria`, corpo em
+`app/_shared/auditoria.tsx`) é só de leitura: quando, quem, o quê em
+português, o link e a unidade; filtros de período (`resolvePeriod`, até o
+`fullTo`), pessoa, ação, unidade e cliente; CSV em `/api/auditoria/csv`.
+
+- **O registro é `public.auditoria`** (migration `20261116000001`): uma linha
+  por registro que um comando mudou (`criou`, `editou`, `apagou`), mais a
+  abertura do prontuário (`abriu`, o insert em `prontuario_acessos`) e a
+  entrada no sistema (`entrou`, `auditoria_registrar_entrada` no
+  `loginAction` e no `/api/auth/session`; só membro).
+- **Quem grava é o gatilho** `private.auditar`, por COMANDO (`for each
+  statement`, com as tabelas de transição): um insert por comando, por mais
+  linhas que o comando mude. A lista das tabelas (e as que ficam de fora, com
+  o porquê) está na migration. Tabela nova que guarda o que alguém FAZ entra
+  na lista; a que só registra andamento (fila, sinal, cache, log) não.
+- **Quem agiu sai da requisição, nunca do corpo.** Pela sessão (role
+  `authenticated`), o dono do token. Pelo servidor (`service_role`), o
+  cabeçalho `x-bellaris-ator` — o login da requisição, que o
+  `createAdminClient` põe em toda ESCRITA (`comAtor`,
+  `packages/nucleo/src/lib/supabase/ator-da-escrita.ts`, com o mesmo memo por
+  token da marca do suporte) — e o `x-bellaris-suporte-sessao`. O banco só lê
+  os cabeçalhos com a chave de serviço: pela sessão, o forjado não vale. Sem
+  ninguém (cron, webhook, script, SQL): "O sistema". O nome é o do `ctx`: o
+  membro, e na sessão de suporte "Fulana (via suporte: Atendente)" — a conta
+  de `nomeComSuporte`, refeita no banco.
+- **Nunca o conteúdo.** Das tabelas clínicas (`medical_records`,
+  `medical_record_entries`, `prontuario_anotacoes`, injetáveis,
+  pré-atendimento, documentos da cliente, termos) e das de credencial
+  (`integration_configs`, `whatsapp_numbers`, links de assinatura) vão só os
+  NOMES das colunas mudadas. Das outras, os nomes e uma lista curta de valores
+  sem dado pessoal (situação, datas, valores, o nome da sala ou da tag). O nome
+  da cliente e do membro se lê na hora de mostrar (`lib/auditoria/frase.ts`):
+  anonimizada pela LGPD, sai anonimizada aqui também.
+- **Não se altera nem se apaga — nem pelo servidor** (`auditoria_imutavel`,
+  e o `truncate` recusado). Sai só com a rede (a cascata de `tenants`) e na
+  limpeza da rede de teste (`bellaris.apagando_rede`, que também cala o
+  gatilho). Nenhuma linha antiga entrou: a auditoria começa na migration.
+- **A sessão não lê**: nenhuma política permissiva e nenhum privilégio para
+  `anon`/`authenticated` (as restritivas `suporte_sem_escrita_*` estão lá
+  mesmo assim). A tela e o CSV leem pelo servidor (`lib/auditoria/leitura.ts`),
+  paginado no banco (`.range`, 50 na tela, 1000 por vez no CSV com teto dito).
+- **A permissão é "Auditoria"** (`audit`, a 19ª linha da matriz, no grupo de
+  Gestão; Sem acesso ou Ver). Nasce só no Admin da rede (que tem tudo); os
+  modelos não a têm; nenhuma funcionalidade do plano a cobre. Quem tem
+  unidades vê só as linhas DELAS (`unidadesDoContexto`); a linha sem unidade
+  (a tag, o cargo, a ficha da cliente) é da rede — como no `alcancaUnidade`. A
+  unidade pedida na URL não vence a abrangência.
+- **A falha do registro não derruba a gravação.** O gatilho segura o erro,
+  grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:
+  trancar a venda porque o registro dela falhou seria pior; calar esconderia o
+  buraco — a linha incompleta aparece na tela como "(registro incompleto)".
+- Prova: `e2e/auditoria.spec.ts` (o registro, o ator pela sessão e pelo
+  servidor, o suporte, o texto clínico ausente, a imutabilidade, a sessão que
+  não lê, a permissão, a tela, os filtros, as unidades, o CSV, a paginação).
+
 ---
 
 ## O que nunca fazer aqui
@@ -995,4 +1054,6 @@ RLS (claim velha) a escondia, e o `.single()` lançava.
 ❌ Action ou tela que grava configuração da clínica toda sem recusaDaConfigDaClinica / mexeNaConfigDaClinica (a gerente de unidade fixa mudava para todas — H7), ou decidir isso pelo nome do cargo
 ❌ Chamar assinaturas_aplicar_regras em teste sem p_tenant (vale para as redes reais)
 ❌ Ler pela SESSÃO a unidade do membro que vem do banco (ctx.branchId) com .single(): com a claim velha a RLS a esconde e a tela dá 500 (D9 da 9ª) — é pelo servidor, com a rede
+❌ Abrir a leitura da auditoria pela sessão, gravar nela fora do gatilho/da função, ou pôr nela o TEXTO de um registro clínico ou de credencial (só os nomes das colunas)
+❌ Escrever pelo servidor com um cliente de serviço que não seja o createAdminClient (sem o x-bellaris-ator, a auditoria diz "O sistema" no lugar da pessoa)
 ```

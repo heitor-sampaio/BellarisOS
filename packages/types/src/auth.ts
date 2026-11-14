@@ -42,6 +42,9 @@ export const APP_MODULES = [
   // Ver só consulta, Gerenciar também prepara gravações (cada uma ainda exige
   // o módulo dela).
   'copilot',
+  // A Auditoria (CF3c, 2026-11-14): ler o que mudou, quem mudou e quando. Só
+  // Ver — o registro não se edita. Nasce só no Admin da rede.
+  'audit',
 ] as const
 
 export type AppModule = typeof APP_MODULES[number]

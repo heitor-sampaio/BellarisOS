@@ -74,8 +74,10 @@ const TELAS_DA_DONA = [
   '/admin/estoque', '/admin/financeiro', '/admin/documentos', '/admin/planejamentos', '/admin/checkout',
   '/admin/reports',
   ...['unidades', 'permissions', 'fichas', 'documentos', 'integrations', 'fidelidade', 'comissoes', 'lgpd',
-    'assinatura', 'general', 'tags', 'importacoes', 'eventos', 'lotes']
+    'assinatura', 'general', 'tags', 'importacoes', 'lotes']
     .map(aba => `/admin/settings?tab=${aba}`),
+  // CF2: o Eventos saiu de Configurações — é o "O que já aconteceu" das Automações.
+  '/admin/automacoes/eventos',
 ]
 const telasDaUnidade = () => [
   `/${slug}/dashboard`, `/${slug}/agenda`, `/${slug}/clients`, `/${slug}/clients/new`, `/${slug}/team`,
@@ -181,7 +183,7 @@ test.describe.serial('a clínica de uma unidade só', () => {
       await expect(p.getByText('Unidade do crédito *', { exact: true }), 'sem a pergunta da unidade').toHaveCount(0)
 
       // r2-cfg-02: a dica dos eventos que nunca ocorreram ("Nunca ocorreu nesta rede").
-      await p.goto('/admin/settings?tab=eventos')
+      await p.goto('/admin/automacoes/eventos')
       await p.getByRole('button', { name: /que nunca ocorreram/ }).click()
       achados.push(...await dicasDeRede(p, 'Eventos → os que nunca ocorreram'))
 

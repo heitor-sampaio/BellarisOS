@@ -5,7 +5,7 @@ import {
   LayoutGrid, Calendar, BarChart3,
   Settings, LogOut, KeyRound, Sparkles, Ticket, Boxes, Contact, CreditCard, Layers, Megaphone,
   UsersRound, Bell, ChevronLeft, ChevronRight, Inbox, FileText, ClipboardCheck, ClipboardList,
-  Syringe, Workflow,
+  Syringe, Workflow, ScrollText,
   FileSignature, Wallet,
 } from 'lucide-react'
 import { SecaoDoMenu } from '@/components/shared/secao-do-menu'
@@ -29,6 +29,7 @@ const ICONS: Record<string, React.ReactNode> = {
   injetaveis:   <Syringe      size={18} />,
   checkout:     <ClipboardCheck size={18} />,
   reports:      <BarChart3  size={18} />,
+  auditoria:    <ScrollText size={18} />,
   financial:    <CreditCard size={18} />,
   fechamento: <Wallet size={18} />,
   stock:        <Boxes      size={18} />,

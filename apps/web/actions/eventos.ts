@@ -42,7 +42,8 @@ export async function listarEventosDeDominio(
   filtros: FiltrosDeEventos = {},
 ): Promise<{ eventos: EventoNaLista[]; fim: boolean; error?: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'settings', 'MANAGE')
+  // CF2 (2026-11-14): o que já aconteceu mora nas Automações, com o módulo delas.
+  assertPermission(ctx, 'automations', 'VIEW')
 
   const limite = Math.min(filtros.limite ?? LIMITE_PADRAO, 200)
 
@@ -112,7 +113,8 @@ export async function resumoDoCatalogo(): Promise<{
   error?: string
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'settings', 'MANAGE')
+  // CF2 (2026-11-14): o que já aconteceu mora nas Automações, com o módulo delas.
+  assertPermission(ctx, 'automations', 'VIEW')
 
   // Agregação no banco, nunca em JS: contar no cliente significaria trazer no
   // máximo 1000 linhas (teto do PostgREST) e subcontar em silêncio quando a

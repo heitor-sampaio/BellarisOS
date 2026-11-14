@@ -18,6 +18,14 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **Acrescentar nome ao catálogo sem emissor quebra o teste** — de propósito:
   catálogo prometendo evento que ninguém emite faz a automação ser montada e
   nunca disparar.
+- **"O que já aconteceu" mora nas Automações** (CF2, docs/revisao.md —
+  2026-11-16): a corrente e o catálogo (quantas vezes cada fato ocorreu, os
+  que nunca ocorreram) em `/admin/automacoes/eventos`, ao lado da lista das
+  automações (`VistasDasAutomacoes`), com o módulo DELAS (`automations` em
+  Ver — `listarEventosDeDominio` e `resumoDoCatalogo` conferem isso). Era a
+  aba Eventos de Configurações (`settings` em Gerenciar); `?tab=eventos` nos
+  dois portais leva para lá (`redirect`), e a busca acha "Automações → O que
+  já aconteceu". Prova: `e2e/configuracoes-grupos-e-eventos.spec.ts`.
 - **Retenção de 30 dias.** A corrente é uma janela, não arquivo: automação que
   precise olhar mais para trás consulta o dado de negócio.
 - **Eventos clínicos não carregam conteúdo clínico**, e o contexto da automação

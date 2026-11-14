@@ -100,7 +100,7 @@ test('A1: na unidade, a aba da clínica vira link, as abas da clínica ficam à 
 test('A2: a aba das maquininhas se chama "Comissões e taxas"', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=comissoes')
-    await expect(p.locator('.seg-desktop').first().getByRole('link', { name: 'Comissões e taxas', exact: true })).toBeVisible()
+    await expect(p.locator('[data-grupos-de-abas]').getByRole('link', { name: 'Comissões e taxas', exact: true })).toBeVisible()
     await expect(p.locator('[aria-label="Taxas da maquininha"]')).toBeVisible()
   })
 })

@@ -1749,6 +1749,59 @@ input[type="search"].field {
   color: var(--on-brand);
 }
 
+/* As abas de Configurações em GRUPOS (CF1, 2026-11-14): cada grupo é um
+   segmentado com o nome em cima (.overline). Não usa .seg-desktop porque ele
+   some no celular (vira o botão de menu do <SegSelect>); aqui os grupos
+   empilham e os chips quebram em linha, à vista. */
+.grupos-de-abas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px 18px;
+}
+.grupo-de-abas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.grupo-de-abas-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-height: var(--altura-controle);
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-field-token) + 3px);
+}
+@media (max-width: 639px) {
+  .grupos-de-abas { gap: 12px; }
+  .grupo-de-abas, .grupo-de-abas-chips { width: 100%; }
+}
+
+/* A lista da Auditoria (CF3a, 2026-11-14): quando · quem · o quê · unidade.
+   No celular, cada linha empilha (o quê em cima, o resto embaixo). */
+.auditoria-cabecalho,
+.auditoria-linha {
+  display: grid;
+  grid-template-columns: 130px minmax(140px, 1fr) minmax(220px, 2.4fr) minmax(100px, 0.8fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 16px;
+}
+.auditoria-cabecalho { border-bottom: 1px solid var(--border); padding-top: 12px; padding-bottom: 8px; }
+.auditoria-linha { border-bottom: 1px solid var(--border); font-size: var(--text-sm-sz); color: var(--text); }
+.auditoria-linha:last-child { border-bottom: none; }
+.auditoria-quando, .auditoria-unidade { color: var(--text-muted); font-size: var(--text-xs-sz); }
+.auditoria-quem { font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
+.auditoria-o-que { overflow-wrap: anywhere; line-height: var(--leading-snug); }
+@media (max-width: 639px) {
+  .auditoria-cabecalho { display: none; }
+  .auditoria-linha { grid-template-columns: 1fr auto; gap: 4px 10px; }
+  .auditoria-o-que { grid-column: 1 / -1; order: -1; }
+}
+
 /* Gatilho do segmentado no celular — mesma altura dos outros controles. */
 .seg-mobile {
   align-items: center;

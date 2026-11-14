@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { VistasDasAutomacoes } from '@/components/admin/automacoes/vistas'
 import { toast } from 'sonner'
 import { Workflow, Plus, Zap, AlertCircle, ChevronRight, LayoutTemplate, X } from 'lucide-react'
 import { criarAutomacao, criarAutomacaoDeModelo, type AutomacaoNaLista } from '@/actions/automacoes'
@@ -51,6 +52,7 @@ export function ListaDeAutomacoes({
 
   return (
     <div>
+      <VistasDasAutomacoes ativa="automacoes" />
       <div style={{
         display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
         gap: 14, flexWrap: 'wrap', marginBottom: 24,

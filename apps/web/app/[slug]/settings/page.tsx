@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getTenantContext, assertAnyPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
@@ -28,14 +28,15 @@ export default async function BranchSettingsPage({
   searchParams: Promise<{ tab?: string; meta_step?: string; meta_error?: string; meta_error_reason?: string }>
 }) {
   const { slug } = await params
+  const { tab, meta_step, meta_error, meta_error_reason } = await searchParams
+  // CF2: o Eventos é o "O que já aconteceu" das Automações (que são da rede).
+  if (tab === 'eventos') redirect('/admin/automacoes/eventos')
   const ctx = await getTenantContext()
   assertAnyPermission(ctx, MODULOS_DAS_ABAS.filter(m => m !== 'financial'), 'MANAGE')
   // A unidade da tela: é para ela que a aba Importações cadastra os clientes.
   const unidade = await ler(createAdminClient().from('branches').select('id, name')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
   if (!unidade || !alcancaUnidade(ctx, unidade.id as string)) notFound()
-
-  const { tab, meta_step, meta_error, meta_error_reason } = await searchParams
 
   return (
     <Configuracoes

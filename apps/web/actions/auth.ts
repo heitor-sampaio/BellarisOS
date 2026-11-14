@@ -13,6 +13,7 @@ import { destinoPelosClaims, contaSemVinculo } from '@/lib/destino-da-sessao'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 import { semearRede, fimDoTesteParaHoje } from '@/lib/redes/criar'
 import { comLoginNovo } from '@/lib/login-novo'
+import { registrarEntradaNaAuditoria } from '@/lib/auditoria/entrada'
 
 export async function registerAction(
   _prevState: { error: string } | { needsConfirmation: boolean } | undefined,
@@ -116,6 +117,9 @@ export async function loginAction(
     await supabase.auth.signOut({ scope: 'local' })
     return { error: 'Esta conta não tem acesso a nenhuma clínica.' }
   }
+
+  // A entrada fica na auditoria (CF3b) — só a do membro; acessória, nunca impede.
+  if (user && !clienteId) await registrarEntradaNaAuditoria(user.id)
 
   // A senha dada por outra pessoa se troca antes de tudo (o proxy também leva lá).
   if ((user?.app_metadata as { senha_provisoria?: boolean } | undefined)?.senha_provisoria === true) {

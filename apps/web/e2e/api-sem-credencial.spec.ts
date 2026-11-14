@@ -69,6 +69,11 @@ test('a exportação do relatório de vendas exige sessão', async ({ request })
   expect(r.status()).toBe(401)
 })
 
+test('a exportação da auditoria (CSV) exige sessão', async ({ request }) => {
+  const r = await request.get('/api/auditoria/csv', { maxRedirects: 0 })
+  expect(r.status()).toBe(401)
+})
+
 test('o PDF de um documento assinado exige sessão', async ({ request }) => {
   const r = await request.get('/api/documentos/00000000-0000-4000-8000-000000000000/pdf', { maxRedirects: 0 })
   expect(r.status()).toBe(401)

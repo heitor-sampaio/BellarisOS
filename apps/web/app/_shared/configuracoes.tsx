@@ -25,15 +25,11 @@ import type { IntegrationConfig } from '@/actions/integrations'
 import { listarNumerosWhatsApp, opcoesDeVinculoDoNumero } from '@/actions/integrations'
 import { SettingsLgpd } from '@/components/admin/settings-lgpd'
 import { listDataRequests } from '@/actions/lgpd'
-import { SettingsEventos } from '@/components/admin/settings-eventos'
 import { SettingsAcoesEmLote } from '@/components/admin/settings-acoes-em-lote'
 import { ImportarContatos } from '@/app/_shared/importar-contatos'
 import { SettingsTags } from '@/components/admin/settings-tags'
 import { listarTagsComUso } from '@/actions/tags'
 import { acoesEmLote } from '@/lib/lotes/acoes'
-import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
-import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { SegSelect } from '@/components/shared/seg-select'
 import { SettingsGeral } from '@/components/admin/settings-geral'
 import { enderecosDoAppDaClinica } from '@/lib/unidades/app-da-cliente'
 import { lerDadosDaRede, lerVisibilidadeDoInbox } from '@/actions/rede'
@@ -58,7 +54,7 @@ import { maquininhasDaRede, taxaDoPixDaRede } from '@/lib/financeiro/vezes-da-re
 import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import {
   ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_CLINICA_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
-  chaveDaAbaPedida, motivoDaAbaFechada, linkDaAbaNaRede, abasSoDaRede,
+  chaveDaAbaPedida, motivoDaAbaFechada, linkDaAbaNaRede, abasSoDaRede, abasEmGrupos,
 } from '@/lib/configuracoes/abas'
 import { quemMudaNaClinica } from '@/lib/equipe/quem-desfaz'
 import Link from 'next/link'
@@ -305,11 +301,6 @@ export async function Configuracoes({
     : null
   const visibilidadeDoInbox = wantsRoles ? await lerVisibilidadeDoInbox() : null
 
-  // A corrente de eventos, idem. São duas consultas (o resumo agregado e as
-  // últimas linhas) e nenhuma outra aba as usa.
-  const [resumo, primeiraPagina] = conteudo === 'eventos'
-    ? await Promise.all([resumoDoCatalogo(), listarEventosDeDominio()])
-    : [null, null]
   const lotes = conteudo === 'lotes' ? await acoesEmLote(ctx.tenantId!) : null
   const tagsDaRede = conteudo === 'tags' ? await listarTagsComUso() : null
 
@@ -399,23 +390,35 @@ export async function Configuracoes({
         </div>
       )}
 
-      {/* Escolher o assunto da tela é escolha exclusiva, e no sistema isso é
-          `<SegSelect>` — é o que Relatórios já usa para as abas dele. Aqui eram
-          abas sublinhadas, com outra altura e outro jeito de mostrar o
-          escolhido: a mesma pergunta com duas caras. Pedido do Heitor em
-          2026-09-25.
-
-          Em modo LINK (`basePath` + `paramName`), porque esta tela é Server
-          Component e a aba mora na URL. E no celular o segmentado vira um
-          botão que abre menu — melhor que a fila de abas rolando de lado. */}
+      {/* As abas em grupos (CF1, 2026-11-14 — princípio 7: nada saiu, mudou a
+          organização). Cada grupo é um segmentado (a escolha é exclusiva, como
+          era o `<SegSelect>`), com o nome do grupo em cima; o grupo sem aba
+          visível não aparece. A aba mora na URL (`?tab=`): esta tela é Server
+          Component, e cada chip é um link. No celular os grupos empilham e os
+          chips quebram em linha — dezesseis abas num menu suspenso escondiam
+          o que existe. */}
       <div style={{ marginBottom: 28 }}>
-        <SegSelect
-          options={tabs.map(t => ({ key: t.key, label: rotuloDaAba(t) }))}
-          value={activeTab}
-          basePath={basePath}
-          paramName="tab"
-          ariaLabel="Assunto das configurações"
-        />
+        <nav aria-label="Assunto das configurações" data-grupos-de-abas className="grupos-de-abas">
+          {abasEmGrupos(tabs).map(g => (
+            // "A rede" fala "A clínica" na rede de uma unidade (F8), como o resto da tela.
+            <div key={g.key} data-grupo-de-abas={fala(g.label)} className="grupo-de-abas">
+              <span className="overline">{fala(g.label)}</span>
+              <div className="grupo-de-abas-chips">
+                {g.abas.map(t => (
+                  <Link
+                    key={t.key}
+                    href={`${basePath}?tab=${t.key}`}
+                    data-aba={t.key}
+                    aria-current={t.key === activeTab ? 'page' : undefined}
+                    className={`seg-chip${t.key === activeTab ? ' is-ativo' : ''}`}
+                  >
+                    {rotuloDaAba(t)}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
         {/* A1 da 14ª: as abas que só a clínica toda tem, à mão no portal da unidade. */}
         {abasDaClinica.length > 0 && (
           <p data-abas-da-clinica style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10, lineHeight: 'var(--leading-snug)' }}>
@@ -582,21 +585,6 @@ export async function Configuracoes({
       {conteudo === 'tags' && tagsDaRede && <SettingsTags iniciais={tagsDaRede} />}
 
       {conteudo === 'importacoes' && <ImportarContatos unidadeFixa={unidadeDaTela ?? null} />}
-
-      {conteudo === 'eventos' && resumo && primeiraPagina && (
-        <>
-          {/* A corrente cresce enquanto a tela está aberta — quem veio conferir
-              se um gatilho dispara quer ver o fato chegando, não recarregar. */}
-          <RealtimeRefresher tables={['domain_events']} debounceMs={1500} />
-          <SettingsEventos
-            linhasIniciais={resumo.linhas}
-            eventosIniciais={primeiraPagina.eventos}
-            fimInicial={primeiraPagina.fim}
-            desdeQuando={resumo.desdeQuando}
-            erro={resumo.error ?? primeiraPagina.error}
-          />
-        </>
-      )}
 
       {conteudo === 'fidelidade' && configFidelidade && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

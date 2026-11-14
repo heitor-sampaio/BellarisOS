@@ -43,6 +43,7 @@ const APELIDOS: Record<string, readonly string[]> = {
   fechamento:    ['caixa', 'fechar o caixa', 'conferência do dia'],
   stock:         ['produtos', 'insumos', 'lotes'],
   reports:       ['indicadores', 'métricas'],
+  auditoria:     ['histórico de alterações', 'quem fez', 'quem mexeu', 'quem alterou', 'registro'],
   team:          ['usuários', 'membros', 'funcionários', 'profissionais'],
   automations:   ['fluxos', 'gatilhos'],
   settings:      ['ajustes', 'preferências'],
@@ -64,7 +65,6 @@ const APELIDOS_DA_ABA: Record<string, readonly string[]> = {
   comissoes:    ['taxas', 'maquininha', 'comissão'],
   lgpd:         ['privacidade', 'exportação'],
   suporte:      ['ajuda', 'acesso do suporte', 'autorizar suporte', 'bellarisos'],
-  eventos:      ['log'],
   assinatura:   ['plano do sistema', 'fatura', 'mensalidade'],
   lotes:        ['histórico do whatsapp', 'tarefas em segundo plano'],
   tags:         ['etiquetas', 'marcadores'],
@@ -131,6 +131,18 @@ export function paginasDaBusca(
     for (const e of menuEntriesFor(SO_NO_MENU_DA_REDE, permissions, plano, scopes)) {
       paginas.push({ key: e.key, titulo: e.label, href: e.href, apelidos: APELIDOS[e.key] ?? [] })
     }
+  }
+
+  // O que já aconteceu (CF2, 2026-11-14): era a aba Eventos de Configurações;
+  // mora nas Automações, com o módulo delas — onde as Automações se acham.
+  const automacoes = paginas.find(p => p.key === 'automations')
+  if (automacoes) {
+    paginas.push({
+      key:      'automations:eventos',
+      titulo:   'Automações → O que já aconteceu',
+      href:     `${automacoes.href}/eventos`,
+      apelidos: ['eventos', 'log', 'gatilhos disparados', 'fatos'],
+    })
   }
 
   // As abas de Configurações, com a regra da tela: o portal oferece a aba, e

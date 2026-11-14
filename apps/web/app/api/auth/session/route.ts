@@ -7,6 +7,7 @@ import type { JwtClaims } from '@estetica-os/types'
 import { destinoDaCliente } from '@/lib/clientes/destino'
 import { slugDaUnidadeDeEntrada } from '@/lib/unidades/de-entrada'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
+import { registrarEntradaNaAuditoria } from '@/lib/auditoria/entrada'
 
 // Troca um par de tokens por cookies de sessão (httpOnly) e devolve o destino.
 // Era a volta do espelho nativo do app (saiu em 2026-10-06); hoje serve ao
@@ -72,6 +73,8 @@ export async function POST(req: NextRequest) {
     await supabase.auth.signOut({ scope: 'local' })
     return NextResponse.json({ error: 'A equipe da plataforma entra pelos apps dela.' }, { status: 403 })
   }
+  // A entrada fica na auditoria (CF3b) — só a do membro; acessória, nunca impede.
+  if (!claims.client_id) await registrarEntradaNaAuditoria(usuario.id)
   try {
     if (claims.client_id) {
       // Uma clínica, várias, o seletor ou a última usada (lib/clientes/entrada.ts).

@@ -49,6 +49,9 @@ export const ISOLADOS = [
   'estoque-marcas-e-fornecedores.spec.ts',
   // E11/E13 do Bloco Estoque e o EQ1d do Bloco Equipe (2026-11-15): o produto e o estoque inicial pelas unidades da pessoa.
   'estoque-produto-por-unidades.spec.ts',
+  // O Bloco Configurações do plano de adaptação (2026-11-16): as abas em grupos, os Eventos nas Automações e a auditoria.
+  'configuracoes-grupos-e-eventos.spec.ts',
+  'auditoria.spec.ts',
   'estoque-defeitos-da-12.spec.ts',
   'estoque-atritos-da-12.spec.ts',
   'fidelidade-atritos-da-12.spec.ts',

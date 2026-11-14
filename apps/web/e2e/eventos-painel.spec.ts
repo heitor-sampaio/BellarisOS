@@ -24,7 +24,8 @@ test('a aba Eventos mostra o catálogo inteiro e a corrente, com detalhe do payl
     .maybeSingle()
   test.skip(!exemplo, 'a corrente está vazia neste banco')
 
-  await page.goto('/admin/settings?tab=eventos')
+  // CF2 (2026-11-14): o Eventos mora nas Automações, como "O que já aconteceu".
+  await page.goto('/admin/automacoes/eventos')
   await expect(page.getByRole('heading', { name: 'Eventos do sistema' })).toBeVisible()
 
   // O catálogo INTEIRO está acessível, não só o que já ocorreu — é a

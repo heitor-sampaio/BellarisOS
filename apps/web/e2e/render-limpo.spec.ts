@@ -53,7 +53,7 @@ const TELAS: { rota: string; abrir?: string }[] = [
   { rota: '/admin/procedures' },
   { rota: '/admin/automacoes' },
   { rota: '/admin/settings' },
-  { rota: '/admin/settings?tab=eventos' },
+  { rota: '/admin/automacoes/eventos' },
   { rota: '/admin/settings?tab=general' },
 ]
 

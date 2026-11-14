@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   LayoutGrid, Calendar, Users, Sparkles,
-  Package, Ticket, CreditCard, LogOut, KeyRound, UserCircle, Layers, ClipboardList, BarChart3,
+  Package, Ticket, CreditCard, LogOut, KeyRound, UserCircle, Layers, ClipboardList, BarChart3, ScrollText,
   ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight, Inbox, ClipboardCheck, Settings,
   Syringe,
   FileSignature, Wallet, Bell, Megaphone, FileText, Workflow,
@@ -30,6 +30,7 @@ const ICONS: Record<string, React.ReactNode> = {
   inbox:        <Inbox    size={18} />,
   oportunidades:<Layers   size={18} />,
   reports:    <BarChart3  size={18} />,
+  auditoria:  <ScrollText size={18} />,
   financial:  <CreditCard size={18} />,
   fechamento: <Wallet size={18} />,
   procedures: <Sparkles   size={18} />,

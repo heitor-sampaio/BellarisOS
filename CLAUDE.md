@@ -581,9 +581,10 @@ sem agenda tinha o OWN esmaecido da agenda gravado, e o dashboard a recortava
 quem lê o escopo é que o ignora enquanto o módulo está em NONE.
 Prova: `e2e/permissoes-escopo-sem-modulo.spec.ts`.
 
-Os 18 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `documents`,
+Os 19 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `documents`,
 `procedures`, `stock`, `financial`, `cashier`, `crm`, `marketing`, `reports`, `team`,
-`forms`, `roles`, `settings`, `automations`, `copilot`. Módulo novo entra num grupo
+`forms`, `roles`, `settings`, `automations`, `copilot` e `audit` (a Auditoria, só
+Ver, 2026-11-16 — nasce só no Admin da rede; regra em `docs/regras/plataforma.md`). Módulo novo entra num grupo
 de `MODULE_GROUPS` (`lib/permissions-copy.ts`) — fora de grupo ele não aparece na
 tela de Cargos (`tests/permissions.test.ts` trava). Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
 (`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só

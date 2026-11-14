@@ -121,9 +121,17 @@ describe('MODULE_LEVELS', () => {
     }
   })
 
-  it('declara níveis para os 18 módulos, sem sobra', () => {
+  it('declara níveis para os 19 módulos, sem sobra', () => {
     expect(Object.keys(MODULE_LEVELS).sort()).toEqual([...ALL_MODULES].sort())
-    expect(ALL_MODULES).toHaveLength(18)
+    expect(ALL_MODULES).toHaveLength(19)
+  })
+
+  it('a Auditoria (CF3c) só se lê: Sem acesso ou Ver, no grupo de Gestão, ao lado de Relatórios', () => {
+    expect(ALL_MODULES).toContain('audit')
+    expect(MODULE_LEVELS.audit).toEqual(['NONE', 'VIEW'])
+    expect(LEVEL_COPY.audit.VIEW).toBeTruthy()
+    const gestao = MODULE_GROUPS.find(g => g.key === 'gestao')!.modules
+    expect(gestao.indexOf('audit')).toBe(gestao.indexOf('reports') + 1)
   })
 
   it('o Copilot é um módulo do cargo: Sem acesso, Ver (consultas) e Gerenciar (gravações)', () => {
