@@ -105,7 +105,7 @@ test.describe('a sessão só lê: a escrita é do servidor', () => {
     const s = comToken(daRede!.accessToken)
 
     const titulo = `${PREFIXO} campanha plantada ${marca}`
-    await s.from('notification_campaigns').insert({ tenant_id: tenant, name: titulo, type: 'MANUAL', title: titulo, body: 'e2e' })
+    await s.from('notification_campaigns').insert({ tenant_id: tenant, name: titulo, type: 'IMMEDIATE', title: titulo, body: 'e2e' })
     limpar.push(() => db.from('notification_campaigns').delete().eq('tenant_id', tenant).eq('name', titulo))
     const { data: campanha } = await db.from('notification_campaigns').select('id').eq('tenant_id', tenant).eq('name', titulo)
     expect(campanha ?? [], 'sem Marketing, a campanha não nasce').toEqual([])

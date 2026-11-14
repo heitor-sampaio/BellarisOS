@@ -870,12 +870,14 @@ export async function contarBuscaDeClientes(cfg: unknown): Promise<{ quantas: nu
 async function buscaDoPasso(tenantId: string, cfg: unknown): Promise<{ cfg: ConfigBuscarClientes; fuso: string } | { error: string }> {
   const c = (cfg && typeof cfg === 'object' ? cfg : {}) as Record<string, unknown>
   const dias = Number(c.semRetornoHaDias)
+  const vence = Number(c.pacoteVenceEmDias)
   const limite = Number(c.limite)
   const tags = Array.isArray(c.tags) ? (c.tags as unknown[]).filter((t): t is string => typeof t === 'string').slice(0, 50) : undefined
   return {
     cfg: {
       semRetornoHaDias: Number.isFinite(dias) && dias > 0 ? Math.floor(dias) : undefined,
       aniversarioHoje: c.aniversarioHoje === true,
+      pacoteVenceEmDias: Number.isFinite(vence) && vence > 0 ? Math.min(Math.floor(vence), 3650) : undefined,
       tags,
       limite: Number.isFinite(limite) && limite > 0 ? Math.min(Math.floor(limite), 500) : 200,
     },

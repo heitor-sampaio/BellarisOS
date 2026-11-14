@@ -1,45 +1,33 @@
 import { FUSO_PADRAO, nomeDoFuso } from '@/lib/unidades/fuso'
 
 /**
- * Quando a campanha AUTOMÁTICA dispara — a regra do cron
+ * Quando a campanha AGENDADA de todo ano dispara — a regra do cron
  * (`app/api/cron/notification-campaigns`) e o texto que a revisão e os
  * detalhes mostram, num lugar só (D8 da 11ª simulação, 2026-11-10; princípio
- * 3: a "Reativação 60 dias" da Marta nasceu com o gatilho de aniversário, e a
- * tela não dizia quando ela sairia).
+ * 3: a tela diz quando a campanha sai).
  *
- * Os gatilhos do DIA (aniversário, data comemorativa, depois da visita, antes
- * de o pacote vencer) saem a partir das 09:00 do relógio da rede (F62) — na primeira
- * passada do cron (de hora em hora) depois disso; até 2026-11-10 saíam logo
- * depois da meia-noite, e o aviso tocava o celular da cliente de madrugada
- * (a regra do lembrete do CRM, que só avisa a partir das 7h). O lembrete do
- * agendamento é de hora em hora, pela antecedência.
+ * A data de todo ano sai a partir das 09:00 do relógio da rede (F62) — na
+ * primeira passada do cron (de hora em hora) depois disso; nunca de
+ * madrugada. Os gatilhos de cada cliente (aniversário, lembrete, pós-visita,
+ * vencimento de pacote) saíram da campanha em 2026-11-14 (MK1): são modelos
+ * nas Automações, com o silêncio noturno delas.
  */
-export type GatilhoDaCampanha = 'BIRTHDAY' | 'ANNUAL_DATE' | 'DAYS_AFTER_VISIT' | 'DAYS_BEFORE_EXPIRY' | 'BEFORE_APPOINTMENT'
+export type GatilhoDaCampanha = 'ANNUAL_DATE'
 
 export const HORA_DAS_CAMPANHAS_DO_DIA = 9
 
-const DO_DIA: GatilhoDaCampanha[] = ['BIRTHDAY', 'ANNUAL_DATE', 'DAYS_AFTER_VISIT', 'DAYS_BEFORE_EXPIRY']
-
-/** O cron pode disparar este gatilho nesta hora de Brasília (0–23)? */
-export function jaEhHoraDeDisparar(gatilho: GatilhoDaCampanha, horaEmBrasilia: number): boolean {
-  return !DO_DIA.includes(gatilho) || horaEmBrasilia >= HORA_DAS_CAMPANHAS_DO_DIA
+/** O cron pode disparar a data de todo ano nesta hora da rede (0–23)? */
+export function jaEhHoraDeDisparar(_gatilho: GatilhoDaCampanha, horaNaRede: number): boolean {
+  return horaNaRede >= HORA_DAS_CAMPANHAS_DO_DIA
 }
 
 const doisDigitos = (n: number) => String(n).padStart(2, '0')
 const aPartirDasHora = `a partir das ${doisDigitos(HORA_DAS_CAMPANHAS_DO_DIA)}:00`
 
-/** "no dia do aniversário da cliente, a partir das 09:00" — o que a revisão e os detalhes dizem. */
-export function quandoDispara(gatilho: GatilhoDaCampanha | null | undefined, config?: { days?: number; hours?: number; month?: number; day?: number; vespera_se_madrugada?: boolean } | null, fuso?: string): string {
+/** "todo ano em 08/03, a partir das 09:00" — o que a revisão e os detalhes dizem. */
+export function quandoDispara(gatilho: GatilhoDaCampanha | string | null | undefined, config?: { month?: number; day?: number } | null, fuso?: string): string {
   // A campanha roda no relógio da rede (F62); fora de Brasília, a tela diz qual (A7 da 13ª).
   const aPartirDas = `${aPartirDasHora}${fuso && fuso !== FUSO_PADRAO ? ` (${nomeDoFuso(fuso)})` : ''}`
-  switch (gatilho) {
-    case 'BIRTHDAY':           return `no dia do aniversário da cliente, ${aPartirDas}`
-    case 'ANNUAL_DATE':        return `todo ano em ${doisDigitos(config?.day ?? 0)}/${doisDigitos(config?.month ?? 0)}, ${aPartirDas}`
-    case 'DAYS_AFTER_VISIT':   return `${config?.days ?? '?'} dias depois do último atendimento da cliente, ${aPartirDas}`
-    case 'DAYS_BEFORE_EXPIRY': return `${config?.days ?? '?'} dias antes de o pacote da cliente vencer, ${aPartirDas}`
-    // "Agendado ou confirmado" é o que o cron faz (C54/D15, F69): a tela dizia
-    // só "confirmado". Com a véspera ligada (C74), a madrugada vai às 20:00.
-    case 'BEFORE_APPOINTMENT': return `${config?.hours ?? 24} horas antes de cada agendamento, agendado ou confirmado (conferido de hora em hora)${config?.vespera_se_madrugada ? '; o que cairia de madrugada sai na véspera às 20:00' : ''}`
-    default:                   return 'escolha o gatilho'
-  }
+  if (gatilho === 'ANNUAL_DATE') return `todo ano em ${doisDigitos(config?.day ?? 0)}/${doisDigitos(config?.month ?? 0)}, ${aPartirDas}`
+  return 'escolha a data'
 }

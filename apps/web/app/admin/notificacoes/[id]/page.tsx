@@ -1,11 +1,11 @@
 ﻿import Link from 'next/link'
 import { idOu404 } from '@/lib/id-da-rota'
 import { notFound } from 'next/navigation'
-import { ChevronLeft, Zap, Clock, RefreshCw, Users, Send, BookOpen, Pencil } from 'lucide-react'
+import { ChevronLeft, Zap, Clock, Users, Send, BookOpen, Pencil } from 'lucide-react'
 import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/auth'
 import { AudiencePreview } from '@/components/admin/audience-preview'
 import { getCampaign, activateCampaign, pauseCampaign, archiveCampaign, deleteCampaign } from '@/actions/notification-campaigns'
-import type { CampaignStatus, CampaignType, TriggerType } from '@/actions/notification-campaigns'
+import type { CampaignStatus, CampaignType } from '@/actions/notification-campaigns'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { DeleteCampaignButton } from '@/components/admin/delete-campaign-button'
 import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
@@ -28,15 +28,6 @@ const STATUS_CFG: Record<CampaignStatus, { label: string; color: string }> = {
 const TYPE_ICON: Record<CampaignType, React.ElementType> = {
   IMMEDIATE: Zap,
   SCHEDULED: Clock,
-  AUTOMATED: RefreshCw,
-}
-
-const TRIGGER_LABELS: Record<TriggerType, string> = {
-  BIRTHDAY:           'Aniversário do cliente',
-  ANNUAL_DATE:        'Data comemorativa anual',
-  DAYS_AFTER_VISIT:   'Dias após última visita',
-  DAYS_BEFORE_EXPIRY: 'Dias antes do vencimento de pacote',
-  BEFORE_APPOINTMENT: 'Lembrete de agendamento',
 }
 
 export default async function CampanhaDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -60,10 +51,10 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
   // A campanha é da rede: as horas no relógio comum das unidades (F64, D4).
   const fuso = await fusoDaRede(ctx.tenantId)
   const statusCfg = STATUS_CFG[campaign.status] ?? STATUS_CFG.DRAFT
-  // D10 da 12ª: na automática, "Quem receberia hoje" é o GATILHO de hoje (a
+  // D10 da 12ª: na de todo ano, "Quem receberia hoje" é a DATA de hoje (a
   // escolha do cron) — o público inteiro fica numa linha à parte.
   const mostraQuemReceberia = can(ctx, 'marketing', 'MANAGE') && !['ARCHIVED', 'COMPLETED'].includes(campaign.status)
-  const deHoje = mostraQuemReceberia && campaign.type === 'AUTOMATED' ? await quemReceberiaHoje(campaign) : null
+  const deHoje = mostraQuemReceberia ? await quemReceberiaHoje(campaign) : null
   const TypeIcon  = TYPE_ICON[campaign.type] ?? Zap
   const readRate  = campaign.total_sent > 0
     ? Math.round(campaign.total_read / campaign.total_sent * 100)
@@ -120,7 +111,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
               </button>
             </form>
           )}
-          {campaign.status === 'ACTIVE' && campaign.type === 'AUTOMATED' && (
+          {campaign.status === 'ACTIVE' && (
             <form action={async () => { 'use server'; await pauseCampaign(id) }}>
               <button type="submit" className="btn-secondary">Pausar</button>
             </form>
@@ -156,30 +147,15 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
             <TypeIcon size={16} color="var(--brand)" />
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Conteúdo</h2>
           </div>
-          <InfoRow label="Tipo"  value={{ IMMEDIATE: 'Imediata', SCHEDULED: 'Agendada', AUTOMATED: 'Automática' }[campaign.type]} />
+          <InfoRow label="Tipo"  value={{ IMMEDIATE: 'Imediata', SCHEDULED: 'Agendada' }[campaign.type] ?? campaign.type} />
           {campaign.type === 'SCHEDULED' && campaign.scheduled_at && (
             <InfoRow label="Agendada para" value={`${formatarNoFuso(campaign.scheduled_at, "dd/MM/yyyy 'às' HH:mm", fuso)}${fuso === FUSO_PADRAO ? '' : ` (${nomeDoFuso(fuso)})`}`} />
           )}
-          {campaign.trigger_type && (
-            <InfoRow label="Gatilho" value={TRIGGER_LABELS[campaign.trigger_type] ?? campaign.trigger_type} />
-          )}
-          {/* D8 da 11ª: quando ela sai, com a hora — a mesma regra do cron. */}
-          {campaign.type === 'AUTOMATED' && campaign.trigger_type && (
+          {/* D8 da 11ª: quando a de todo ano sai, com a hora — a mesma regra do cron. */}
+          {campaign.trigger_type === 'ANNUAL_DATE' && (
             <div data-quando-dispara>
-              <InfoRow label="Dispara" value={quandoDispara(campaign.trigger_type, campaign.trigger_config as { days?: number; hours?: number; month?: number; day?: number } | null, fuso)} />
+              <InfoRow label="Dispara" value={quandoDispara('ANNUAL_DATE', campaign.trigger_config as { month?: number; day?: number } | null, fuso)} />
             </div>
-          )}
-          {campaign.trigger_config && campaign.trigger_type === 'BEFORE_APPOINTMENT' && (
-            <InfoRow label="Antecedência" value={`${(campaign.trigger_config as { hours?: number }).hours ?? 24}h antes`} />
-          )}
-          {campaign.trigger_config && campaign.trigger_type !== 'BIRTHDAY' && campaign.trigger_type !== 'ANNUAL_DATE' && campaign.trigger_type !== 'BEFORE_APPOINTMENT' && (
-            <InfoRow label="Configuração" value={`${(campaign.trigger_config as { days?: number }).days ?? '?'} dias`} />
-          )}
-          {campaign.trigger_config && campaign.trigger_type === 'ANNUAL_DATE' && (
-            <InfoRow
-              label="Data"
-              value={`${(campaign.trigger_config as { day?: number }).day}/${(campaign.trigger_config as { month?: number }).month}`}
-            />
           )}
           <InfoRow label="Título"   value={campaign.title} />
           <InfoRow label="Mensagem" value={campaign.body} />

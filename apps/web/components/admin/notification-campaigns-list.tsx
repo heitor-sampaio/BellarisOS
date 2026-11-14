@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Archive, Eye, Pause, Play, Clock, Zap, RefreshCw } from 'lucide-react'
+import { Plus, Archive, Eye, Pause, Play, Clock, Zap } from 'lucide-react'
 import { archiveCampaign, pauseCampaign, activateCampaign } from '@/actions/notification-campaigns'
 import type { NotificationCampaign, CampaignStatus, CampaignType } from '@/actions/notification-campaigns'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -22,15 +22,11 @@ const STATUS_CFG: Record<CampaignStatus, { label: string; color: string }> = {
 const TYPE_CFG: Record<CampaignType, { label: string; Icon: React.ElementType; color: string }> = {
   IMMEDIATE: { label: 'Imediata',   Icon: Zap,        color: 'var(--cat-4)' },
   SCHEDULED: { label: 'Agendada',   Icon: Clock,      color: 'var(--info)' },
-  AUTOMATED: { label: 'Automática', Icon: RefreshCw,  color: 'var(--brand)' },
 }
 
+// MK1: a agendada de todo ano diz a data; a campanha não tem outro gatilho.
 const TRIGGER_LABELS: Record<string, string> = {
-  BIRTHDAY:           'Aniversário',
-  ANNUAL_DATE:        'Data comemorativa',
-  BEFORE_APPOINTMENT: 'Lembrete de agenda',
-  DAYS_AFTER_VISIT:   'Pós-visita',
-  DAYS_BEFORE_EXPIRY: 'Venc. de pacote',
+  ANNUAL_DATE: 'Todo ano',
 }
 
 // -- Component ----------------------------------------------------------
@@ -247,7 +243,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                               onClick={() => handleAction(c.id, () => activateCampaign(c.id))}
                             />
                           )}
-                          {c.status === 'ACTIVE' && c.type === 'AUTOMATED' && (
+                          {c.status === 'ACTIVE' && (
                             <IconBtn
                               icon={<Pause size={14} />}
                               title="Pausar"

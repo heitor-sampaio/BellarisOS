@@ -21,7 +21,7 @@ import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { rotuloDoMotivo } from '@/lib/estoque/perda'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
 import {
-  TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda,
+  TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda, comandaDaVenda,
 } from '@/lib/metrics/vendas-comum'
 import type { SemReceita } from '@/lib/metrics/fechamento-extra'
 import { notasDoTop5 } from '@/lib/relatorios/nota-do-top5'
@@ -556,13 +556,17 @@ function TabFinanceiro(p: ReportsBiProps) {
 const vendasNoPlural = (n: number) => `${n.toLocaleString('pt-BR')} ${n === 1 ? 'venda' : 'vendas'}`
 
 const PLURAL_DO_TIPO = {
-  PROCEDIMENTO: 'Procedimentos', PACOTE: 'Pacotes', PRE_PAGO: 'Pré-pagos', PLANO: 'Planos', PRODUTO: 'Produtos',
+  PROCEDIMENTO: 'Atendimentos avulsos', PACOTE: 'Pacotes', PRE_PAGO: 'Pré-pagos', PLANO: 'Planos', PRODUTO: 'Produtos',
+  CREDITO: 'Créditos',
 } as const
 
+const COR_DO_TIPO = { PROCEDIMENTO: 'gray', PACOTE: 'blue', PRE_PAGO: 'blue', PLANO: 'green', PRODUTO: 'blue', CREDITO: 'amber' } as const
+
 /**
- * Cada venda do período, uma linha (pedido do Heitor, 2026-10-14). A lista e
- * o total vêm do banco (`metrics_vendas`): a tela não soma — o total do
- * rodapé é o do resumo, no mesmo recorte da lista.
+ * Cada venda do período, uma linha (pedido do Heitor, 2026-10-14) — as
+ * COMANDAS do PDV, com o número de cada uma (RL1, 2026-11-14). A lista e o
+ * total vêm do banco (`metrics_vendas`): a tela não soma — o total do rodapé
+ * é o do resumo, no mesmo recorte da lista.
  */
 function TabVendas(p: ReportsBiProps) {
   const fuso = useFuso()
@@ -574,7 +578,11 @@ function TabVendas(p: ReportsBiProps) {
   const nomeDaUnidade = nomesDasUnidades(p.branches)
   const comUnidade = p.branches.length > 1
   const doFiltro = v.tipo ? resumo.porTipo[v.tipo] : resumo.geral
-  const inicio = doFiltro.quantidade === 0 ? 0 : (v.pagina - 1) * POR_PAGINA + 1
+  // Sem filtro a lista tem todas as linhas — o crédito também, que o Total
+  // vendido não soma (RL1).
+  const linhasDoFiltro = v.tipo ? doFiltro.quantidade : resumo.linhas
+  const credito = resumo.porTipo.CREDITO
+  const inicio = linhasDoFiltro === 0 ? 0 : (v.pagina - 1) * POR_PAGINA + 1
   const fim = (v.pagina - 1) * POR_PAGINA + v.linhas.length
 
   const ir = (mudar: Record<string, string | null>) => router.push(mesclarParams(searchParams, mudar))
@@ -615,7 +623,8 @@ function TabVendas(p: ReportsBiProps) {
       <p data-ponte-vendas-caixa style={{ margin: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
         O Total vendido é a venda, no dia em que foi feita; o caixa do período é o dinheiro, no dia em que entrou:{' '}
         <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito na
-        clínica vendido entra no caixa e não aqui (aqui entra o que for pago com ele, quando a cliente usar); o pacote e o plano entram aqui
+        clínica vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
+        cliente usar); o pacote e o plano entram aqui
         inteiros, no dia da venda, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo.
       </p>
 
@@ -642,6 +651,7 @@ function TabVendas(p: ReportsBiProps) {
               <thead>
                 <tr>
                   <th style={th()}>Data</th>
+                  <th style={th()}>Comanda</th>
                   <th style={th()}>Tipo</th>
                   <th style={th()}>Descrição</th>
                   <th style={th()}>Cliente</th>
@@ -655,7 +665,8 @@ function TabVendas(p: ReportsBiProps) {
                   <tr key={`${l.tipo}-${l.id}`} data-venda={l.tipo}
                     style={{ borderBottom: i < v.linhas.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
                     <td data-label="Data" data-par style={{ ...td(), whiteSpace: 'nowrap' }}>{new Date(l.data).toLocaleDateString('pt-BR', { timeZone: fuso })}</td>
-                    <td data-label="Tipo" data-par style={td()}><Badge label={ROTULO_DO_TIPO[l.tipo]} color={l.tipo === 'PROCEDIMENTO' ? 'gray' : l.tipo === 'PLANO' ? 'green' : 'blue'} /></td>
+                    <td data-label="Comanda" data-par data-comanda style={{ ...td(), whiteSpace: 'nowrap', color: l.comanda == null ? 'var(--text-faint)' : 'var(--text)' }}>{comandaDaVenda(l)}</td>
+                    <td data-label="Tipo" data-par style={td()}><Badge label={ROTULO_DO_TIPO[l.tipo]} color={COR_DO_TIPO[l.tipo]} /></td>
                     <td data-label="" style={{ ...td(), fontWeight: 600, minWidth: 180 }}>{descricaoDaVenda(l)}</td>
                     <td data-label="Cliente" style={td()}>{l.cliente ?? '—'}</td>
                     <td data-label="Profissional" style={td()}>{l.profissional ?? '—'}</td>
@@ -674,11 +685,18 @@ function TabVendas(p: ReportsBiProps) {
         }}>
           <p data-total-vendas style={{ margin: 0, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             {vendasNoPlural(doFiltro.quantidade)} · <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(doFiltro.total)}</strong>
+            {/* RL1: o crédito está na lista e fora do total — a tela diz (princípio 3). */}
+            {!v.tipo && credito.quantidade > 0 && (
+              <span data-credito-fora-do-total style={{ display: 'block', marginTop: 2, fontSize: 'var(--text-xs-sz)' }}>
+                Fora do total: {credito.quantidade.toLocaleString('pt-BR')} {credito.quantidade === 1 ? 'crédito na clínica vendido' : 'créditos na clínica vendidos'},{' '}
+                {fmtBRLFull(credito.total)} — a venda é o que for pago com ele.
+              </span>
+            )}
           </p>
           {v.paginas > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                {inicio}–{fim} de {doFiltro.quantidade.toLocaleString('pt-BR')}
+                {inicio}–{fim} de {linhasDoFiltro.toLocaleString('pt-BR')}
               </span>
               <button type="button" className="btn-ghost" disabled={v.pagina <= 1}
                 onClick={() => ir({ pagina: v.pagina - 1 > 1 ? String(v.pagina - 1) : null })}>Anterior</button>
@@ -688,8 +706,8 @@ function TabVendas(p: ReportsBiProps) {
           )}
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele). A sessão de pacote,
-          de plano ou pré-paga não aparece de novo — já foi vendida.
+          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele); o crédito na
+          clínica não tem. A sessão de pacote, de plano ou pré-paga não aparece de novo — já foi vendida. A venda de antes do PDV não tem comanda (—).
         </p>
       </SCard>
     </div>

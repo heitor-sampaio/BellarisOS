@@ -1,11 +1,11 @@
 ﻿'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Zap, Clock, RefreshCw, Gift, CalendarHeart, Package,
+  Zap, Clock, CalendarHeart, Package, Workflow,
   Bell, CheckCircle2, CalendarDays, Star, Sparkles, AlertCircle, ChevronRight, ChevronLeft,
-  AlarmClock,
 } from 'lucide-react'
 import { createCampaign, updateCampaign, activateCampaign } from '@/actions/notification-campaigns'
 import { AudiencePreview } from '@/components/admin/audience-preview'
@@ -13,12 +13,12 @@ import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { filtrosDoPublico } from '@/lib/notifications/resumo-do-publico'
-import { avisoDeMadrugada } from '@/lib/notifications/lembrete-de-madrugada'
 import { quandoDispara } from '@/lib/notifications/quando-dispara'
+import { GATILHOS_QUE_VIRARAM_MODELO } from '@/lib/notifications/tipo-da-campanha'
 import { campoDaCampanha } from '@/lib/notifications/hora-da-campanha'
 import { nomeDoFuso } from '@/lib/unidades/fuso'
 import { useFuso, RelogioDaRede } from '@/components/shared/fuso'
-import type { CampaignType, TriggerType, AudienceRules, CreateCampaignInput, NotificationCampaign } from '@/actions/notification-campaigns'
+import type { CampaignType, AudienceRules, CreateCampaignInput, NotificationCampaign } from '@/actions/notification-campaigns'
 
 // -- Types --------------------------------------------------------------
 
@@ -40,11 +40,13 @@ interface Props {
   procedures: Procedure[]
   /** Editar em vez de criar. O TIPO fica travado: o servidor não o muda (é outra campanha). */
   existing?:  NotificationCampaign
+  /** Quem vê as Automações ganha o link para onde os gatilhos de cada cliente foram (MK1). */
+  podeVerAutomacoes?: boolean
 }
 
 type Step = 1 | 2 | 3 | 4
 
-export function NotificationCampaignForm({ procedures, existing }: Props) {
+export function NotificationCampaignForm({ procedures, existing, podeVerAutomacoes = false }: Props) {
   const router = useRouter()
   // A campanha é da rede: a hora digitada é a do relógio comum das unidades (F64, D4).
   const fuso   = useFuso()
@@ -61,19 +63,16 @@ export function NotificationCampaignForm({ procedures, existing }: Props) {
   useEffect(() => { if (destino) router.push(destino) }, [destino, router])
 
   // Step 1
-  const gatilho = (existing?.trigger_config ?? {}) as { days?: number; hours?: number; month?: number; day?: number; vespera_se_madrugada?: boolean }
+  const gatilho = (existing?.trigger_config ?? {}) as { month?: number; day?: number }
   const regras  = existing?.audience_rules ?? {}
+  // MK1 (2026-11-14): a campanha é Imediata ou Agendada; a agendada sai numa
+  // data e hora (uma vez) ou todo ano numa data (o Dia das Mães).
   const [campType,      setCampType]      = useState<CampaignType>(existing?.type ?? 'IMMEDIATE')
-  // D8 da 11ª (princípios 3 e 6): o gatilho começa SEM escolha — a dona
-  // escolhe. Nascia "Aniversário", e a "Reativação 60 dias" saiu assim.
-  const [triggerType,   setTriggerType]   = useState<TriggerType | null>(existing?.trigger_type ?? null)
+  const [todoAno,       setTodoAno]       = useState(existing?.trigger_type === 'ANNUAL_DATE')
   const [scheduledAt,   setScheduledAt]   = useState(campoDaCampanha(existing?.scheduled_at, fuso))
-  const [triggerDays,   setTriggerDays]   = useState(gatilho.days ?? 30)
-  const [triggerHours,  setTriggerHours]  = useState(gatilho.hours ?? 24)
-  // C74 (D17, F69): desligada por padrão — a regra de sempre é "N horas antes".
-  const [vespera,       setVespera]       = useState(gatilho.vespera_se_madrugada === true)
   const [annualMonth,   setAnnualMonth]   = useState(gatilho.month ?? 3)
   const [annualDay,     setAnnualDay]     = useState(gatilho.day ?? 8)
+  const ehTodoAno = campType === 'SCHEDULED' && todoAno
 
   // Step 2
   const [name,          setName]          = useState(existing?.name ?? '')
@@ -105,18 +104,10 @@ export function NotificationCampaignForm({ procedures, existing }: Props) {
   const usaNome = /\{\{first_name\}\}/.test(title)
   const previewTitle = title.replace(/\{\{first_name\}\}/g, NOME_DE_EXEMPLO)
 
-  function getTriggerConfig(): Record<string, unknown> | undefined {
-    if (campType !== 'AUTOMATED') return undefined
-    if (triggerType === 'ANNUAL_DATE')       return { month: annualMonth, day: annualDay }
-    if (triggerType === 'BIRTHDAY')          return undefined
-    if (triggerType === 'BEFORE_APPOINTMENT') return { hours: triggerHours, ...(vespera && { vespera_se_madrugada: true }) }
-    return { days: triggerDays }
-  }
-
   function canAdvance(): boolean {
     if (step === 1) {
-      if (campType === 'SCHEDULED' && !scheduledAt) return false
-      if (campType === 'AUTOMATED' && !triggerType) return false
+      if (campType === 'SCHEDULED' && !todoAno && !scheduledAt) return false
+      if (ehTodoAno && !(annualDay >= 1 && annualDay <= 31)) return false
       return true
     }
     if (step === 2) return name.trim().length > 0 && title.trim().length > 0 && body.trim().length > 0
@@ -134,10 +125,10 @@ export function NotificationCampaignForm({ procedures, existing }: Props) {
         notification_type: notifType,
         audience_rules:    audienceRules,
         channels:          ['in_app'],
-        ...(campType === 'SCHEDULED' && { scheduled_at: scheduledAt }),
-        ...(campType === 'AUTOMATED' && triggerType && {
-          trigger_type:   triggerType,
-          trigger_config: getTriggerConfig(),
+        ...(campType === 'SCHEDULED' && !todoAno && { scheduled_at: scheduledAt }),
+        ...(ehTodoAno && {
+          trigger_type:   'ANNUAL_DATE' as const,
+          trigger_config: { month: annualMonth, day: annualDay },
         }),
       }
 
@@ -180,9 +171,8 @@ export function NotificationCampaignForm({ procedures, existing }: Props) {
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {([
-              { type: 'IMMEDIATE', label: 'Imediata',   desc: 'Disparada agora para todos os clientes selecionados', Icon: Zap,       color: 'var(--cat-4)' },
-              { type: 'SCHEDULED', label: 'Agendada',   desc: 'Disparada em uma data e hora específica',              Icon: Clock,     color: 'var(--info)' },
-              { type: 'AUTOMATED', label: 'Automática', desc: 'Recorrente, disparada por evento ou data',             Icon: RefreshCw, color: 'var(--brand)' },
+              { type: 'IMMEDIATE', label: 'Imediata', desc: 'Sai ao ativar, para todo o público escolhido', Icon: Zap,   color: 'var(--cat-4)' },
+              { type: 'SCHEDULED', label: 'Agendada', desc: 'Sai numa data e hora, ou todo ano numa data',  Icon: Clock, color: 'var(--info)' },
             ] as { type: CampaignType; label: string; desc: string; Icon: React.ElementType; color: string }[]).map(opt => (
               <button
                 key={opt.type}
@@ -212,142 +202,100 @@ export function NotificationCampaignForm({ procedures, existing }: Props) {
             ))}
           </div>
 
-          {/* Scheduled: datetime */}
+          {/* Agendada: numa data e hora (uma vez), ou todo ano numa data. */}
           {campType === 'SCHEDULED' && (
-            <div>
-              <SectionLabel>Data e hora do disparo</SectionLabel>
-              <input
-                type="datetime-local"
-                className="field"
-                aria-label="Data e hora do disparo"
-                value={scheduledAt}
-                onChange={e => setScheduledAt(e.target.value)}
-                style={{ maxWidth: 280 }}
-              />
-              <p style={{ marginTop: 6 }}><RelogioDaRede fuso={fuso} /></p>
-            </div>
-          )}
-
-          {/* Automated: trigger selector */}
-          {campType === 'AUTOMATED' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <SectionLabel>Gatilho da automação</SectionLabel>
-              {!triggerType && (
-                <p data-escolha-o-gatilho style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: -8 }}>
-                  Escolha quando a campanha sai: nenhum gatilho vem marcado.
-                </p>
-              )}
-              <div role="group" aria-label="Gatilho da automação" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div role="group" aria-label="Quando a campanha sai" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {([
-                  { t: 'BIRTHDAY',           label: 'Aniversário',        desc: 'No dia do aniversário do cliente',          Icon: Gift },
-                  { t: 'ANNUAL_DATE',        label: 'Data comemorativa',  desc: 'Toda vez que uma data específica chegar',   Icon: CalendarHeart },
-                  { t: 'BEFORE_APPOINTMENT', label: 'Lembrete de agenda', desc: 'N horas antes do agendamento (agendado ou confirmado)', Icon: AlarmClock },
-                  { t: 'DAYS_AFTER_VISIT',   label: 'Pós-visita',         desc: 'N dias após o último atendimento',          Icon: CalendarDays },
-                  { t: 'DAYS_BEFORE_EXPIRY', label: 'Venc. de pacote',    desc: 'N dias antes do pacote vencer',             Icon: Package },
-                ] as { t: TriggerType; label: string; desc: string; Icon: React.ElementType }[]).map(opt => (
-                  <button
-                    key={opt.t}
-                    type="button"
-                    aria-pressed={triggerType === opt.t}
-                    onClick={() => setTriggerType(opt.t)}
-                    style={{
-                      flex:        '1 1 140px',
-                      padding:     '14px 16px',
-                      borderRadius: 10,
-                      border:      triggerType === opt.t ? '2px solid var(--brand)' : '1px solid var(--border)',
-                      background:  triggerType === opt.t ? 'var(--brand-soft)' : 'var(--surface)',
-                      cursor:      'pointer',
-                      textAlign:   'left',
-                    }}
-                  >
-                    <opt.Icon size={16} color={triggerType === opt.t ? 'var(--brand)' : 'var(--text-muted)'} style={{ marginBottom: 6 }} />
-                    <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: triggerType === opt.t ? 'var(--brand)' : 'var(--text)', marginBottom: 3 }}>
+                  { anual: false, label: 'Numa data e hora',   Icon: CalendarDays },
+                  { anual: true,  label: 'Todo ano numa data', Icon: CalendarHeart },
+                ]).map(opt => {
+                  const ativo = todoAno === opt.anual
+                  return (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      aria-pressed={ativo}
+                      onClick={() => setTodoAno(opt.anual)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '8px 14px', borderRadius: 10,
+                        border:     ativo ? '2px solid var(--brand)' : '1px solid var(--border)',
+                        background: ativo ? 'var(--brand-soft)' : 'var(--surface)',
+                        color:      ativo ? 'var(--brand)' : 'var(--text-muted)',
+                        fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer',
+                      }}
+                    >
+                      <opt.Icon size={14} />
                       {opt.label}
-                    </p>
-                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.3 }}>{opt.desc}</p>
-                  </button>
-                ))}
+                    </button>
+                  )
+                })}
               </div>
 
-              {(triggerType === 'DAYS_AFTER_VISIT' || triggerType === 'DAYS_BEFORE_EXPIRY') && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <SectionLabel style={{ marginBottom: 0 }}>
-                    {triggerType === 'DAYS_AFTER_VISIT' ? 'Dias após visita' : 'Dias antes do vencimento'}
-                  </SectionLabel>
+              {!todoAno && (
+                <div>
+                  <SectionLabel>Data e hora do disparo</SectionLabel>
                   <input
-                    type="number"
+                    type="datetime-local"
                     className="field"
-                    value={triggerDays}
-                    min={1}
-                    max={365}
-                    onChange={e => setTriggerDays(Number(e.target.value))}
-                    style={{ width: 80 }}
+                    aria-label="Data e hora do disparo"
+                    value={scheduledAt}
+                    onChange={e => setScheduledAt(e.target.value)}
+                    style={{ maxWidth: 280 }}
                   />
-                  {/* A6 da 12ª: o 30 é sugestão (princípio 3). */}
-                  {gatilho.days == null && (
-                    <span data-dias-sugestao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-                      {triggerType === 'DAYS_AFTER_VISIT' ? '30 dias é uma sugestão: ajuste ao retorno dos seus procedimentos.' : '30 dias é uma sugestão: ajuste ao seu prazo.'}
-                    </span>
-                  )}
+                  <p style={{ marginTop: 6 }}><RelogioDaRede fuso={fuso} /></p>
                 </div>
               )}
 
-              {triggerType === 'BEFORE_APPOINTMENT' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <SectionLabel style={{ marginBottom: 0 }}>Enviar quantas horas antes?</SectionLabel>
-                  <div role="group" aria-label="Horas antes" style={{ display: 'flex', gap: 6 }}>
-                    {[2, 6, 12, 24, 48].map(h => (
-                      <button
-                        key={h}
-                        type="button"
-                        aria-pressed={triggerHours === h}
-                        onClick={() => setTriggerHours(h)}
-                        style={{
-                          padding: '6px 14px', borderRadius: 8,
-                          border:     triggerHours === h ? '2px solid var(--brand)' : '1px solid var(--border)',
-                          background: triggerHours === h ? 'var(--brand-soft)' : 'var(--surface)',
-                          color:      triggerHours === h ? 'var(--brand)' : 'var(--text-muted)',
-                          fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer',
-                        }}
-                      >
-                        {h}h
-                      </button>
-                    ))}
+              {todoAno && (
+                <div>
+                  <SectionLabel>Todo ano em</SectionLabel>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <input
+                      type="number"
+                      className="field"
+                      aria-label="Dia"
+                      value={annualDay}
+                      min={1}
+                      max={31}
+                      onChange={e => setAnnualDay(Number(e.target.value))}
+                      style={{ width: 80 }}
+                    />
+                    <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>de</span>
+                    <select className="field" aria-label="Mês" value={annualMonth} onChange={e => setAnnualMonth(Number(e.target.value))} style={{ width: 150 }}>
+                      {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+                        .map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                    </select>
                   </div>
-                </div>
-                {/* C74 (D17): o aviso de quais agendamentos têm o lembrete de
-                    madrugada, e a opção — desligada — de mandar na véspera. */}
-                <p data-lembrete-de-madrugada style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                  {avisoDeMadrugada(triggerHours)}
-                </p>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={vespera} onChange={e => setVespera(e.target.checked)} />
-                  Se cair de madrugada, mandar na véspera às 20:00
-                </label>
-                </div>
-              )}
-
-              {triggerType === 'ANNUAL_DATE' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <SectionLabel style={{ marginBottom: 0 }}>Data anual (mês / dia)</SectionLabel>
-                  <select className="field" value={annualMonth} onChange={e => setAnnualMonth(Number(e.target.value))} style={{ width: 130 }}>
-                    {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
-                      .map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                  </select>
-                  <input
-                    type="number"
-                    className="field"
-                    value={annualDay}
-                    min={1}
-                    max={31}
-                    onChange={e => setAnnualDay(Number(e.target.value))}
-                    style={{ width: 70 }}
-                  />
+                  <p style={{ marginTop: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    Sai no dia, a partir das 09:00, e fica ativa para o ano que vem.
+                  </p>
                 </div>
               )}
             </div>
           )}
+
+          {/* MK1: os gatilhos de cada cliente da campanha "automática" de antes
+              são modelos nas Automações (AU1) — a tela diz onde eles estão. */}
+          <div
+            data-gatilhos-nas-automacoes
+            style={{
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+              padding: '12px 14px', borderRadius: 10,
+              background: 'var(--bg)', border: '1px solid var(--hairline)',
+            }}
+          >
+            <Workflow size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Para avisar cada cliente no momento dela — {GATILHOS_QUE_VIRARAM_MODELO.map(g => g.rotulo).join(', ').replace(/, ([^,]*)$/, ' e $1')} —,
+              use um modelo pronto nas{' '}
+              {podeVerAutomacoes
+                ? <Link href="/admin/automacoes" style={{ color: 'var(--brand)', fontWeight: 700 }}>Automações</Link>
+                : <strong>Automações</strong>}
+              . Ele nasce desligado: você liga quando quiser.
+            </p>
+          </div>
         </div>
       )}
 
@@ -526,24 +474,15 @@ export function NotificationCampaignForm({ procedures, existing }: Props) {
           <h2 className="card-title">Revisar campanha</h2>
 
           <ReviewRow label="Nome"       value={name} />
-          <ReviewRow label="Tipo"       value={{ IMMEDIATE: 'Imediata', SCHEDULED: 'Agendada', AUTOMATED: 'Automática' }[campType]} />
-          {campType === 'SCHEDULED' && scheduledAt && (
+          <ReviewRow label="Tipo"       value={{ IMMEDIATE: 'Imediata', SCHEDULED: 'Agendada' }[campType]} />
+          {campType === 'SCHEDULED' && !todoAno && scheduledAt && (
             <ReviewRow label="Agendada para" value={`${scheduledAt.slice(8, 10)}/${scheduledAt.slice(5, 7)}/${scheduledAt.slice(0, 4)} às ${scheduledAt.slice(11, 16)} (${nomeDoFuso(fuso)})`} />
           )}
-          {campType === 'AUTOMATED' && triggerType && (
-            <>
-              <ReviewRow label="Gatilho" value={{
-                BIRTHDAY: 'Aniversário do cliente',
-                ANNUAL_DATE: `${annualDay}/${annualMonth} todo ano`,
-                DAYS_AFTER_VISIT: `${triggerDays} dias após última visita`,
-                DAYS_BEFORE_EXPIRY: `${triggerDays} dias antes do vencimento`,
-                BEFORE_APPOINTMENT: `${triggerHours}h antes do agendamento${vespera ? ' (de madrugada, na véspera às 20:00)' : ''}`,
-              }[triggerType]} />
-              {/* D8 da 11ª: quando ela sai, com a hora — a mesma regra do cron. */}
-              <div data-quando-dispara>
-                <ReviewRow label="Dispara" value={quandoDispara(triggerType, getTriggerConfig() as { days?: number; hours?: number; month?: number; day?: number; vespera_se_madrugada?: boolean } | undefined, fuso)} />
-              </div>
-            </>
+          {ehTodoAno && (
+            /* D8 da 11ª: quando ela sai, com a hora — a mesma regra do cron. */
+            <div data-quando-dispara>
+              <ReviewRow label="Dispara" value={quandoDispara('ANNUAL_DATE', { month: annualMonth, day: annualDay }, fuso)} />
+            </div>
           )}
           <ReviewRow label={usaNome ? `Título (exemplo com o nome ${NOME_DE_EXEMPLO})` : 'Título'} value={previewTitle} />
           <ReviewRow label="Mensagem"   value={body} />
@@ -585,7 +524,7 @@ export function NotificationCampaignForm({ procedures, existing }: Props) {
               onClick={() => handleSubmit(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              {isPending ? 'Aguarde…' : existing ? 'Salvar e ativar' : campType === 'IMMEDIATE' ? 'Ativar e enviar agora' : campType === 'SCHEDULED' ? 'Agendar envio' : 'Ativar automação'}
+              {isPending ? 'Aguarde…' : existing ? 'Salvar e ativar' : campType === 'IMMEDIATE' ? 'Ativar e enviar agora' : ehTodoAno ? 'Ativar todo ano' : 'Agendar envio'}
             </button>
           </div>
         </div>

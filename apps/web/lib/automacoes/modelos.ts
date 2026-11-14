@@ -141,6 +141,97 @@ export const MODELOS_DE_AUTOMACAO: readonly ModeloDeAutomacao[] = [
       ],
     }),
   },
+  // AU1 (a revisão do Heitor, 2026-11-13: "concordo"): os gatilhos da
+  // campanha "automática" que saiu (MK1) que ainda não tinham modelo. Cada um
+  // usa só fatos e passos do catálogo e nasce RASCUNHO (princípio 6).
+  {
+    // O pacote cancelado não vence (F2b): a busca só acha o que está de pé —
+    // a regra da campanha de antes. Pelo relógio, como o aniversário: o
+    // vencimento é uma data, não um fato que acontece.
+    chave: 'vencimento-de-pacote',
+    nome: 'Vencimento de pacote',
+    descricao: 'Todo dia às 9h, busca as clientes com pacote vencendo daqui a 7 dias e avisa para agendar as sessões que faltam.',
+    revisar: 'Quantos dias antes, o horário e o texto.',
+    grafo: () => ({
+      nos: [
+        { id: 'n_venc_relogio', tipo: NODES.GATILHO_AGENDA, nome: 'Todo dia às 9h', pos: { x: 80, y: 120 },
+          config: { frequencia: 'diaria', hora: '09:00' } },
+        { id: 'n_venc_busca', tipo: NODES.BUSCAR_CLIENTES, nome: 'Pacote vencendo', pos: { x: 360, y: 120 },
+          config: { pacoteVenceEmDias: 7, limite: 200 } },
+        { id: 'n_venc_msg', tipo: NODES.ACAO_MENSAGEM, nome: 'Aviso do vencimento', pos: { x: 640, y: 120 },
+          config: {
+            canal: 'whatsapp',
+            // Sem o número de dias no texto: a rede muda a busca, e a
+            // mensagem não pode passar a mentir (princípio 3).
+            texto: 'Oi, {{cliente.nome}}! Seu pacote está perto de vencer. Que tal agendar as sessões que faltam? É só responder esta mensagem.',
+          } },
+      ],
+      ligacoes: [
+        { id: 'l_venc_1', de: 'n_venc_relogio', para: 'n_venc_busca' },
+        { id: 'l_venc_2', de: 'n_venc_busca', para: 'n_venc_msg' },
+      ],
+    }),
+  },
+  {
+    chave: 'confirmacao-do-agendamento',
+    nome: 'Confirmação do agendamento',
+    descricao: 'Quando um agendamento é confirmado, manda à cliente a confirmação com o procedimento e o horário.',
+    revisar: 'O texto.',
+    grafo: () => ({
+      nos: [
+        { id: 'n_conf_fato', tipo: NODES.GATILHO_EVENTO, nome: 'Agendamento confirmado', pos: { x: 80, y: 120 },
+          config: { evento: 'agendamento.confirmado' } },
+        { id: 'n_conf_msg', tipo: NODES.ACAO_MENSAGEM, nome: 'Confirmação', pos: { x: 360, y: 120 },
+          config: {
+            canal: 'whatsapp',
+            texto: 'Oi, {{cliente.nome}}! Seu horário de {{agendamento.procedimento}} em {{agendamento.data}} está confirmado. Até lá!',
+          } },
+      ],
+      ligacoes: [
+        { id: 'l_conf_1', de: 'n_conf_fato', para: 'n_conf_msg' },
+      ],
+    }),
+  },
+  {
+    chave: 'cancelamento-do-agendamento',
+    nome: 'Cancelamento do agendamento',
+    descricao: 'Quando um agendamento é cancelado, avisa a cliente e convida para remarcar.',
+    revisar: 'O texto.',
+    grafo: () => ({
+      nos: [
+        { id: 'n_canc_fato', tipo: NODES.GATILHO_EVENTO, nome: 'Agendamento cancelado', pos: { x: 80, y: 120 },
+          config: { evento: 'agendamento.cancelado' } },
+        { id: 'n_canc_msg', tipo: NODES.ACAO_MENSAGEM, nome: 'Aviso do cancelamento', pos: { x: 360, y: 120 },
+          config: {
+            canal: 'whatsapp',
+            texto: 'Oi, {{cliente.nome}}! Seu horário de {{agendamento.procedimento}} em {{agendamento.data}} foi cancelado. Quer remarcar? É só responder esta mensagem.',
+          } },
+      ],
+      ligacoes: [
+        { id: 'l_canc_1', de: 'n_canc_fato', para: 'n_canc_msg' },
+      ],
+    }),
+  },
+  {
+    chave: 'pontos-de-fidelidade',
+    nome: 'Pontos de fidelidade',
+    descricao: 'Quando a cliente ganha pontos num pagamento, avisa quantos ganhou e o saldo dela.',
+    revisar: 'O texto.',
+    grafo: () => ({
+      nos: [
+        { id: 'n_pts_fato', tipo: NODES.GATILHO_EVENTO, nome: 'Cliente ganhou pontos', pos: { x: 80, y: 120 },
+          config: { evento: 'fidelidade.pontos_ganhos' } },
+        { id: 'n_pts_msg', tipo: NODES.ACAO_MENSAGEM, nome: 'Aviso dos pontos', pos: { x: 360, y: 120 },
+          config: {
+            canal: 'whatsapp',
+            texto: 'Oi, {{cliente.nome}}! Você ganhou {{evento.dados.pontos}} pontos. Seu saldo agora é de {{evento.dados.saldo}} pontos.',
+          } },
+      ],
+      ligacoes: [
+        { id: 'l_pts_1', de: 'n_pts_fato', para: 'n_pts_msg' },
+      ],
+    }),
+  },
   {
     // crm-05 (revisão do Heitor de 2026-11-02): "não existe movimento
     // automático padrão nos funis; caso queiram, podem fazer isso através do

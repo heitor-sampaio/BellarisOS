@@ -116,7 +116,7 @@ const CASOS: Caso[] = [
     gravou: q => conta('automations', 'nome', nome('Automação', q)) },
   { nome: 'campanhas', nada: 0,
     chamar: (p, q) => chamarAcao(p, 'actions/notification-campaigns.ts', 'createCampaign', '/admin/notificacoes/nova', [{
-      name: nome('Campanha', q), type: 'manual', title: 'x', body: 'x', notification_type: 'promo', audience_rules: {},
+      name: nome('Campanha', q), type: 'IMMEDIATE', title: 'x', body: 'x', notification_type: 'promo', audience_rules: {},
     }]),
     gravou: q => conta('notification_campaigns', 'name', nome('Campanha', q)) },
 ]

@@ -249,6 +249,12 @@ export interface ConfigGatilhoAgenda {
 export interface ConfigBuscarClientes {
   semRetornoHaDias?: number
   aniversarioHoje?:  boolean
+  /**
+   * Quem tem pacote (não cancelado) vencendo no dia de daqui a N dias, no
+   * relógio da rede (AU1, 2026-11-14: o "vencimento de pacote" da campanha
+   * automática que saiu).
+   */
+  pacoteVenceEmDias?: number
   tags?:             string[]
   /** Teto de segurança por execução. */
   limite?:           number

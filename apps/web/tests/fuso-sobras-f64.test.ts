@@ -105,9 +105,9 @@ describe('o relógio das automações e das campanhas (A7, D4)', () => {
     expect(resumoDoNo(NODES.GATILHO_AGENDA, { frequencia: 'diaria', hora: '09:00' }, 'America/Sao_Paulo')).toBe('Todo dia às 09:00')
     expect(resumoDoNo(NODES.GATILHO_AGENDA, { frequencia: 'diaria', hora: '09:00' })).toBe('Todo dia às 09:00')
   })
-  it('a campanha automática diz "a partir das 09:00" no relógio da rede', () => {
-    expect(quandoDispara('BIRTHDAY', null, ACRE)).toBe('no dia do aniversário da cliente, a partir das 09:00 (horário de Rio Branco)')
-    expect(quandoDispara('BIRTHDAY', null)).toBe('no dia do aniversário da cliente, a partir das 09:00')
+  it('a campanha de todo ano diz "a partir das 09:00" no relógio da rede', () => {
+    expect(quandoDispara('ANNUAL_DATE', { day: 10, month: 5 }, ACRE)).toBe('todo ano em 10/05, a partir das 09:00 (horário de Rio Branco)')
+    expect(quandoDispara('ANNUAL_DATE', { day: 10, month: 5 })).toBe('todo ano em 10/05, a partir das 09:00')
   })
   it('a campanha agendada: a hora digitada é a do relógio da rede', () => {
     expect(instanteDaCampanha('2026-11-12T09:00', ACRE)).toBe('2026-11-12T14:00:00.000Z')

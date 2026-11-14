@@ -29,7 +29,13 @@ export interface FiltrosDoPublico {
   cliente_desde_antes?: string
   /** Ao menos N atendimentos concluídos. */
   min_visitas?:       number
-  /** Só estas fichas (o recorte do fato, nas campanhas automáticas). */
+  /**
+   * Tem um pacote NÃO cancelado que vence neste intervalo (ISO, os dois
+   * juntos) — o "Pacote vence daqui a N dias" das Automações (AU1).
+   */
+  pacote_vence_de?:   string
+  pacote_vence_ate?:  string
+  /** Só estas fichas (o recorte de um fato). */
   client_ids?:        string[]
 }
 

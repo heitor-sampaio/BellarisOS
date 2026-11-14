@@ -1,20 +1,33 @@
 /**
  * O vocabulário do relatório de vendas, sem nada de servidor: a tela usa os
  * rótulos, e `lib/metrics/vendas.ts` (server-only) faz a leitura.
+ *
+ * RL1 (a revisão do Heitor, 2026-11-13: "rl1 ok"): a aba Vendas lista as
+ * COMANDAS do PDV — cada venda, do que for: atendimento avulso, pacote,
+ * pré-pago, plano, produto e crédito na clínica —, com o número da comanda.
  */
 
 import { dayKeyTZ } from '@/lib/datetime'
 
-export const TIPOS_DE_VENDA = ['PROCEDIMENTO', 'PACOTE', 'PRE_PAGO', 'PLANO', 'PRODUTO'] as const
+export const TIPOS_DE_VENDA = ['PROCEDIMENTO', 'PACOTE', 'PRE_PAGO', 'PLANO', 'PRODUTO', 'CREDITO'] as const
 export type TipoDeVenda = typeof TIPOS_DE_VENDA[number]
 
 export const ROTULO_DO_TIPO: Record<TipoDeVenda, string> = {
-  PROCEDIMENTO: 'Procedimento',
+  PROCEDIMENTO: 'Atendimento avulso',
   PACOTE:       'Pacote',
   PRE_PAGO:     'Pré-pago',
   PLANO:        'Plano',
   PRODUTO:      'Produto',
+  CREDITO:      'Crédito na clínica',
 }
+
+/**
+ * Os tipos que a lista mostra e o "Total vendido" NÃO soma: o crédito na
+ * clínica vendido. O que se paga com ele (o atendimento, o pacote…) é que é a
+ * venda — somar os dois contaria o mesmo dinheiro duas vezes. A conta mora no
+ * banco (`metrics_vendas_resumo`); isto é o que a tela diz.
+ */
+export const FORA_DO_TOTAL = ['CREDITO'] as const satisfies readonly TipoDeVenda[]
 
 export const POR_PAGINA = 50
 
@@ -31,12 +44,38 @@ export interface Venda {
   profissional: string | null
   branchId:     string
   valor:        number
+  /** O número da comanda do PDV; nulo na venda de antes do PDV. */
+  comanda:      number | null
 }
 
 export interface ResumoDeVendas {
-  /** O total de todos os tipos. */
+  /** O "Total vendido": todos os tipos, MENOS os de `FORA_DO_TOTAL`. */
   geral:   { quantidade: number; total: number }
   porTipo: Record<TipoDeVenda, { quantidade: number; total: number }>
+  /** Quantas linhas a lista tem sem filtro (o crédito também) — a paginação. */
+  linhas:  number
+}
+
+/** "Nº 12" — a comanda da linha; "—" na venda de antes do PDV. */
+export function comandaDaVenda(v: Pick<Venda, 'comanda'>): string {
+  return v.comanda == null ? '—' : `Nº ${v.comanda}`
+}
+
+/** O cabeçalho do CSV de vendas (`;` — como o Excel brasileiro abre). */
+export const CABECALHO_DO_CSV_DE_VENDAS = 'Data;Comanda;Tipo;Descrição;Cliente;Profissional;Unidade;Valor'
+
+/** As colunas de uma venda no CSV, na ordem do cabeçalho (sem escapar). */
+export function colunasDoCsvDeVendas(v: Venda, o: { fuso?: string; unidade: string }): string[] {
+  return [
+    dayKeyTZ(v.data, o.fuso).split('-').reverse().join('/'),
+    v.comanda == null ? '' : String(v.comanda),
+    ROTULO_DO_TIPO[v.tipo],
+    descricaoDaVenda(v),
+    v.cliente ?? '',
+    v.profissional ?? '',
+    o.unidade,
+    v.valor.toFixed(2).replace('.', ','),
+  ]
 }
 
 export const ehTipoDeVenda = (v: unknown): v is TipoDeVenda =>

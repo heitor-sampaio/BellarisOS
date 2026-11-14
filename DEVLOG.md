@@ -1774,6 +1774,141 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — MK1, AU1 e RL1: a campanha é Imediata ou Agendada, os gatilhos de cada cliente viram modelos nas Automações, e a aba Vendas lista as comandas
+
+A revisão do Heitor (13/11): "mk1 ok", "concordo, o resto fica como está"
+(o AU1) e "rl1 ok".
+
+- **MK1 — a campanha é Imediata ou Agendada.** A Agendada sai numa data e
+  hora (uma vez) ou **todo ano numa data** (o Dia das Mães: "Todo ano numa
+  data", dia e mês; sai no dia a partir das 09:00 da rede e fica ativa para o
+  ano seguinte). O tipo "Automática" saiu da tela, das actions e do banco:
+  `recusaDoTipoDaCampanha` (`lib/notifications/tipo-da-campanha.ts`) em
+  `createCampaign`, `updateCampaign` e `activateCampaign` (depois de
+  `recusaDaConfigDaClinica`; o `bloqueioDoSuporte` do ativar segue), e os
+  checks `notification_campaigns_tipo` e `notification_campaigns_gatilho`. A
+  tela da campanha diz onde foram os gatilhos de cada cliente — aniversário,
+  lembrete do agendamento, pós-visita, vencimento de pacote, confirmação,
+  cancelamento e pontos de fidelidade: "use um modelo pronto nas Automações.
+  Ele nasce desligado" (`[data-gatilhos-nas-automacoes]`, com o link para quem
+  vê as Automações). A frase "campanha × automação" das duas telas fica (a da
+  campanha diz "agora, numa data, ou todo ano numa data"). O detalhe da
+  campanha de todo ano diz "Hoje é a data: N clientes…" ou "Hoje não é
+  DD/MM" (`quemReceberiaHoje`), e "Pausar" vale para toda campanha ativa.
+  - O cron `notification-campaigns` **fica** (a Agendada usa: a numa data e
+    hora sai e conclui; a de todo ano sai no dia e segue ativa), sem os
+    ramos das automáticas. `lib/notifications/gatilho-de-hoje.ts` ficou com
+    `ehADataDeTodoAno` e `quemReceberiaHoje`; `lembrete-de-madrugada.ts`
+    saiu.
+- **AU1 — os modelos novos** em "Usar um modelo" (`lib/automacoes/modelos.ts`),
+  todos em RASCUNHO e com o canal que a rede tem (`semWhatsapp` → push):
+  **Vencimento de pacote** (todo dia às 09:00 → "Buscar clientes" com o
+  pacote vencendo daqui a 7 dias → mensagem), **Confirmação do agendamento**
+  (`agendamento.confirmado`), **Cancelamento do agendamento**
+  (`agendamento.cancelado`) e **Pontos de fidelidade**
+  (`fidelidade.pontos_ganhos`, com `{{evento.dados.pontos}}` e
+  `{{evento.dados.saldo}}`). O passo "Buscar clientes" ganhou "Pacote vence
+  daqui a (dias)" (`pacoteVenceEmDias` → `pacote_vence_de/ate` em
+  `filtrosDaBusca`, no relógio da rede → `clientes_do_publico`), com a
+  contagem "Hoje, a busca acharia N clientes". Os outros três gatilhos da
+  campanha (aniversário, lembrete, pós-visita) já tinham modelo.
+- **RL1 — a aba Vendas lista as comandas do PDV.** Cada linha leva o número
+  da comanda (coluna "Comanda" na tela e no CSV: `Data;Comanda;Tipo;…`); o
+  produto vendido dentro do atendimento leva o número da comanda do
+  atendimento. "Procedimento" virou **"Atendimento avulso"**, e o **crédito
+  na clínica** vendido é uma linha (tipo `CREDITO`, filtro "Créditos"). Os
+  números seguem de `lib/metrics/` (`metrics_vendas`, `_pagina`, `_resumo`);
+  o período, a unidade, o "só os meus" e as abas do cargo
+  (`podeVerRelatorio`) não mudaram.
+
+**Decisões pelos princípios** (sem levar ao Heitor):
+- **As campanhas "Automáticas" que existiam** (princípios 6 e 3): não havia
+  nenhuma no banco. A migration converte mesmo assim: a de data comemorativa
+  vira Agendada de todo ano (o mesmo comportamento); as de gatilho de cliente
+  ficariam ARQUIVADAS — nada liga sozinho no lugar delas (6), e a tela não
+  mostraria um tipo que não existe mais (3).
+- **A data de todo ano fica na Agendada** (o "ou a data de todo ano" do MK1),
+  e não vira modelo: é aviso a um público numa data, não reação a um fato.
+- **O crédito na clínica é linha, mas fica FORA do "Total vendido"**
+  (princípio 3 e a regra de sempre, `indicadores.md`): o que se paga com ele
+  é que é a venda; somar os dois contaria o mesmo dinheiro duas vezes. A
+  tela diz "Fora do total: 1 crédito na clínica vendido, R$ X — a venda é o
+  que for pago com ele." (`[data-credito-fora-do-total]`); a paginação conta as linhas todas
+  (`metrics_vendas_resumo.linhas`). No "só os meus" o crédito não entra (não
+  tem quem vendeu).
+- **O vencimento de pacote é relógio + "Buscar clientes"**, não um fato novo
+  no catálogo: o modelo usa só nodes e campos que já existiam (a regra do
+  AU1), e a busca é a mesma do motor, da contagem e do "antes de ligar".
+- **A "véspera às 20:00" do lembrete (C74)** era só da campanha; no modelo
+  de lembrete quem segura a madrugada é o silêncio noturno da automação.
+- **O "Pós-visita"** é o modelo "Retorno depois do atendimento" que já
+  existia (não ganhou um segundo).
+
+- **Specs antigos que mudaram, e por quê:**
+  - `campanha-aniversario` **saiu**: era a campanha automática de aniversário
+    e o D1 das automáticas pelo cron; a de todo ano pelo cron é
+    `campanha-data-anual` (novo), e o aniversário é o modelo.
+  - `campanha-defeitos-da-11` (D8): o gatilho sem escolha era da
+    "Automática"; agora a Agendada sem data não avança e a de todo ano diz
+    "todo ano em 08/03, a partir das 09:00".
+  - `campanha-defeitos-da-12` (D10): o "Quem receberia hoje" do aniversário
+    e do pós-visita virou o da data de todo ano (hoje é / não é a data).
+  - `campanha-defeitos-do-levantamento`: saíram o C52 (pós-visita) e o C74
+    (lembrete de madrugada), que eram da "Automática"; o C56 usa uma
+    campanha Agendada (o banco recusa a AUTOMATED).
+  - `configuracoes-atritos-da-12` (A6/A24): saiu a parte dos "30 dias são
+    sugestão" do Pós-visita da campanha.
+  - `relatorio-vendas`: "Procedimento" → "Atendimento avulso"; o cabeçalho
+    do CSV ganhou "Comanda".
+  - `permissoes-acoes`, `permissoes-gerente-de-unidade` e `rls-sessao-so-le`:
+    criavam campanha do tipo `manual`/`MANUAL`, que o banco e a action agora
+    recusam — passaram a `IMMEDIATE`, para a prova seguir sendo a permissão
+    (e o controle seguir gravando).
+  - Vitest: `f69-comunicacao` (saíram o C54 da campanha e o C74),
+    `campanha-quando-dispara` e `fuso-sobras-f64` (só a data de todo ano),
+    `campanha-filtros-chegam-ao-disparo`.
+- **TDD — as falhas antes**: `campanha-imediata-ou-agendada.spec.ts` 3/3
+  (o botão "Automática" existia — 1 encontrado; a action gravou as 2
+  campanhas automáticas; o banco aceitou o AUTOMATED);
+  `campanha-data-anual.spec.ts` (o cron não mandava a Agendada de todo ano:
+  esperado [a cliente da tag], veio []); `automacoes-modelos-da-campanha.spec.ts`
+  2/2 (a janela de modelos sem `[data-modelo="confirmacao-do-agendamento"]`;
+  `clientes_do_publico` com `pacote_vence_de/ate` devolvia as três clientes);
+  `relatorio-vendas-comandas.spec.ts` (1 linha onde deviam ser 2: o crédito
+  não era linha). Vitest: `tests/campanha-imediata-ou-agendada.test.ts` (o
+  módulo não existia), `tests/automacoes-modelos.test.ts` (8: os modelos,
+  o `filtrosDaBusca` sem `pacote_vence_de`, o resumo "todos os clientes"),
+  `tests/relatorio-vendas-comandas.test.ts` (4: sem CREDITO, sem
+  `FORA_DO_TOTAL`, `comandaDaVenda` e o cabeçalho).
+- **Resultados**: os quatro specs novos passam (3 + 1 + 2 + 2 testes). Os
+  vizinhos, 68 specs em série (`campanha-*`, `notificacoes-*`,
+  `anuncios-integracao`, `automacoes-*`, `relatorio-vendas*`, `relatorios-*`,
+  os `indicadores-*` de vendas, `vendas-produto*`, `vendas-credito-na-clinica`,
+  `pacote-cancelar`, `pacote-de-fora`, `plano-cancelar`,
+  `financeiro-estorno-reabre`, `financeiro-uso-da-10` e os specs mudados):
+  todos passaram. Dois falharam na primeira passada por motivo de fora e
+  passaram ao repetir sozinhos: `plano-cancelar` (ECONNRESET com o Supabase
+  ao abrir a sessão: 401 no `/api/auth/session`) e `permissoes-acoes` (o
+  controle de "fichas: criar ficha", 15s de espera; o caso da campanha
+  passou nas duas). `planos-recursos` pula fora do build (só contra a
+  plataforma no ar). `pnpm typecheck` limpo, `pnpm --filter web lint` sem
+  erro, `pnpm --filter web test` 2449/2449 (287 arquivos, com
+  `tests/actions-sem-rede-por-parametro.test.ts`).
+- **Para o Heitor**: as três migrations foram aplicadas.
+  - `20261115700001_campanha_imediata_ou_agendada` — ⚠️ **destrutiva**:
+    converte/arquiva as campanhas AUTOMATED (zero linhas hoje) e põe os checks
+    `notification_campaigns_tipo` (`IMMEDIATE`/`SCHEDULED`) e
+    `notification_campaigns_gatilho` (só `ANNUAL_DATE`, só na Agendada).
+  - `20261115700002_busca_pacote_vencendo` — novo corpo de
+    `clientes_do_publico` (o filtro do pacote vencendo; só service_role).
+  - `20261115700003_vendas_comandas` — ⚠️ **destrutiva**: `metrics_vendas`,
+    `metrics_vendas_pagina` e `metrics_vendas_resumo` saíram e voltaram com o
+    tipo de retorno novo (`comanda`; o resumo com `linhas` e o geral sem o
+    crédito), os mesmos grants (só service_role).
+  - Mexeu em arquivo compartilhado (o cron `notification-campaigns`,
+    `lib/metrics/vendas*`, `clientes_do_publico`): vale uma completa quando o
+    Heitor quiser.
+
 ### 2026-11-14 — Bloco Plano de tratamento, leva 2 (PT1b, PT1c, DC1c/PC9b e DC4 do plano, PT3, FD2a/FD2b do plano): a cliente aceita pelo app, o contrato nasce no PDV, e o app mostra tudo do plano
 
 A revisão do Heitor (13/11): "SIm, pode liberar o aceite pelo app. A cliente

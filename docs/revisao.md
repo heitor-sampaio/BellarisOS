@@ -1798,6 +1798,16 @@ revisão, só se escreve o plano. Nada se implementa.
   plano ou de pacote se agenda pelo app sem o "Permitir auto agendamento") e
   FD2a/FD2b na comanda do plano (os pontos e o voucher no à vista; o ponto
   nasce do que foi pago).
+- ✅ MK1, AU1 e RL1 (14/11) — a campanha é Imediata ou Agendada (numa data e
+  hora, ou todo ano numa data, que sai no dia a partir das 09:00 e segue
+  ativa); o tipo "Automática" saiu, e a tela da campanha diz que os gatilhos
+  de cada cliente são modelos nas Automações (o banco não aceita mais o tipo
+  nem o gatilho; nenhuma campanha existia para converter). Os modelos novos:
+  vencimento de pacote ("Buscar clientes" com o pacote vencendo daqui a N
+  dias), confirmação, cancelamento e pontos de fidelidade — em rascunho, no
+  canal que a rede tem. A aba Vendas lista as comandas (a coluna "Comanda", o
+  "Atendimento avulso", o crédito na clínica como linha e fora do "Total
+  vendido"; o filtro "Créditos"; o CSV com a comanda).
 
 ### Bloco: Estoque
 
@@ -1977,7 +1987,7 @@ e Agenda (AG1) com o DC1–DC4.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| MK1 | **A campanha é Imediata ou Agendada** (data e hora, ou a data de todo ano). Sai o tipo "Automática": cada gatilho dela (aniversário, lembrete de agenda N horas antes, pós-visita, vencimento de pacote, confirmação, cancelamento, pontos) vira um MODELO desligado nas Automações, com o mesmo aviso no celular — nada se perde. A frase "campanha × automação" das duas telas fica | **Automações** |
+| MK1 | **A campanha é Imediata ou Agendada** (data e hora, ou a data de todo ano). Sai o tipo "Automática": cada gatilho dela (aniversário, lembrete de agenda N horas antes, pós-visita, vencimento de pacote, confirmação, cancelamento, pontos) vira um MODELO desligado nas Automações, com o mesmo aviso no celular — nada se perde. A frase "campanha × automação" das duas telas fica ✅ 14/11 | **Automações** |
 | MK2 | **"Tags"** no público (era "Tags do CRM"); **sai o filtro "Unidades"** do público (as tags cobrem) | Tags |
 | — | Mantém: o aviso no celular (o WhatsApp fica para o futuro), o público por gênero, tags, procedimentos já feitos e "sem visita há N dias", o "Revisar" com quantas recebem, ativar/pausar/arquivar, os Anúncios e os Templates, só no portal da rede | — |
 
@@ -1985,7 +1995,7 @@ e Agenda (AG1) com o DC1–DC4.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| AU1 | **Modelos novos** em "Usar um modelo": vencimento de pacote, confirmação do agendamento, cancelamento, pontos de fidelidade (os gatilhos da campanha automática que sai — MK1). Nascem em rascunho; o canal é o que a rede tem. Cada um usa só fatos e passos do catálogo (`tests/automacoes-modelos.test.ts`) | MK1 |
+| AU1 | **Modelos novos** em "Usar um modelo": vencimento de pacote, confirmação do agendamento, cancelamento, pontos de fidelidade (os gatilhos da campanha automática que sai — MK1). Nascem em rascunho; o canal é o que a rede tem. Cada um usa só fatos e passos do catálogo (`tests/automacoes-modelos.test.ts`) ✅ 14/11 | MK1 |
 | T4 | A ação vira **"Adicionar tag"**, com qualquer tag registrada | Tags |
 | — | Mantém: o editor de fluxo, os gatilhos e os passos, os modelos de hoje, o "antes de ligar", o silêncio e o teto, o ensaio, as execuções e as versões, só no portal da rede | — |
 
@@ -1993,7 +2003,7 @@ e Agenda (AG1) com o DC1–DC4.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| RL1 | **A aba Vendas lista as comandas do PDV**: cada venda, do que for (atendimento avulso, pacote, plano, produto, crédito), com filtro por tipo; o CSV junto. O número continua vindo de `lib/metrics/` | PDV |
+| RL1 | **A aba Vendas lista as comandas do PDV**: cada venda, do que for (atendimento avulso, pacote, plano, produto, crédito), com filtro por tipo; o CSV junto. O número continua vindo de `lib/metrics/` ✅ 14/11 | PDV |
 | RL2 | **A aba "Funil comercial" se chama "Oportunidades"** (a aba, a dica na tela de Cargos, o texto da tela; sem "leads") ✅ 14/11 (só o rótulo: a chave `comercial` fica) | CR1 |
 | — | Mantém: as outras abas, o período e a unidade, as abas por cargo, o escopo de unidade × rede, o Dashboard, as regras dos números | — |
 

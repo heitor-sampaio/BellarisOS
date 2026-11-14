@@ -39,7 +39,7 @@
     grade da agenda trabalha "na parede" (`naParede`/`daParede`), e a hora
     escolhida vira o instante por `instanteNoFuso`. A tela diz o relógio
     quando não é o de Brasília (`NotaDoFuso`, princípio 3).
-  - A campanha automática é da REDE (não tem unidade): roda no fuso comum.
+  - A campanha (a agendada e a de todo ano) é da REDE (não tem unidade): roda no fuso comum.
   - Helper novo com dia ou hora recebe o fuso como parâmetro opcional (padrão
     o de Brasília) — nunca lê `America/Sao_Paulo` fixo. Componente com data
     ou hora passa `timeZone: fuso` (`useFuso`) mesmo onde o navegador
@@ -637,9 +637,10 @@ KPI que não fazia nenhum dos dois.
   `vendas-financeiro.md` §9.3.4): o lançamento pago da venda do "vale"
   (`credito_vendido_id`) é receita paga com cliente — a regra única o conta
   sem mudança (caixa, Fechamento, faturamento, ticket, LTV). O uso depois é
-  o pagamento com crédito interno, fora da receita (acima). Não entra em
-  Relatórios → Vendas (`metrics_vendas`): a venda é a do que for pago com
-  ele. Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
+  o pagamento com crédito interno, fora da receita (acima). Em Relatórios →
+  Vendas ele é uma LINHA (a comanda dele, desde o RL1, 2026-11-14), mas fica
+  FORA do "Total vendido": a venda é a do que for pago com ele. Prova:
+  `e2e/vendas-credito-na-clinica.spec.ts`, `e2e/relatorio-vendas-comandas.spec.ts`.
 - **LTV é o que o cliente PAGOU**, desde sempre (`metrics_do_cliente`,
   `metrics_top_clients`). Não é "preço dos atendimentos": atendimento concluído
   e não pago não é dinheiro que entrou.
@@ -702,7 +703,25 @@ comissão e a receita sem o atendimento pago com crédito, sem nota. Prova:
 linha — `metrics_vendas` (migration `20261014000001`), paginada por
 `metrics_vendas_pagina` e totalizada por `metrics_vendas_resumo` (por tipo e
 geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
-- **Procedimento** avulso: atendimento concluído, com preço, que não consumiu
+- **Cada linha é uma COMANDA do PDV** (RL1 da revisão do Heitor, 2026-11-14:
+  "rl1 ok"): atendimento avulso, pacote, pré-pago, plano, produto e crédito na
+  clínica, com o número da comanda (`metrics_vendas.comanda`, coluna
+  "Comanda" na tela e no CSV; "—" na venda de antes do PDV). O produto vendido
+  dentro do atendimento leva o número da comanda do atendimento
+  (`comanda_itens.product_sale_id`). O filtro por tipo tem os seis
+  ("Atendimentos avulsos", "Pacotes", "Pré-pagos", "Planos", "Produtos",
+  "Créditos"). Migration `20261115700003`.
+- **O crédito na clínica vendido** (`creditos_vendidos`, tipo `CREDITO`, na
+  data da venda, o valor menos o devolvido; o estornado inteiro sai) aparece
+  na lista e no CSV, mas o "Total vendido" NÃO o soma: o que se paga com ele
+  é que é a venda, e somar os dois contaria o mesmo dinheiro duas vezes. A
+  conta mora no banco — `metrics_vendas_resumo` devolve o geral sem o crédito
+  e `linhas` (quantas linhas a lista tem, a paginação); a tela diz "R$ X em
+  crédito na clínica, fora do total" (`[data-credito-fora-do-total]`,
+  princípio 3; `FORA_DO_TOTAL`, `lib/metrics/vendas-comum.ts`). O crédito não
+  tem quem vendeu: no "só os meus" ele não entra. Prova:
+  `e2e/relatorio-vendas-comandas.spec.ts`, `tests/relatorio-vendas-comandas.test.ts`.
+- **Atendimento avulso** (era "Procedimento"): atendimento concluído, com preço, que não consumiu
   nada já vendido. A sessão de pacote, a unidade pré-paga e a sessão de plano
   não são venda de novo. Data `aconteceu_em` (o dia em que aconteceu — D13; o eixo de `serviceRevenue`);
   vale o preço menos o desconto comercial da recepção (`sale_discount`; ponto
@@ -747,7 +766,8 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   pessoa (migration `20261106003404`). Prova:
   `e2e/relatorio-vendas-plano-de-quem-vendeu.spec.ts`.
 - A lista e o total fecham no `fullTo`. A exportação (`/api/relatorios/vendas`,
-  CSV) leva o mesmo recorte sem página e se defende sozinha: sessão, a aba no
+  CSV: `Data;Comanda;Tipo;Descrição;Cliente;Profissional;Unidade;Valor`,
+  `colunasDoCsvDeVendas`) leva o mesmo recorte sem página e se defende sozinha: sessão, a aba no
   cargo, a unidade ao alcance; a rede inteira só para quem vê o consolidado.
   O NOME do arquivo diz o primeiro e o último dia no fuso do negócio
   (`nomeDoCsvDeVendas`, J-53 de 2026-10-30): outubro é

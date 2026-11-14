@@ -57,7 +57,7 @@ const CASOS: Caso[] = [
     rota: f => `/admin/automacoes/${f.automacao}`, args: f => [f.automacao, 'PAUSADA'], estado: f => campo('automations', 'status', f.automacao) },
   { nome: 'marketing: criar campanha', arquivo: 'actions/notification-campaigns.ts', funcao: 'createCampaign',
     rota: () => '/admin/notificacoes/nova',
-    args: () => [{ name: `${PREFIXO} campanha invasora ${marca}`, type: 'manual', title: 'x', body: 'x', notification_type: 'promo', audience_rules: {} }],
+    args: () => [{ name: `${PREFIXO} campanha invasora ${marca}`, type: 'IMMEDIATE', title: 'x', body: 'x', notification_type: 'promo', audience_rules: {} }],
     estado: async () => (await db().from('notification_campaigns').select('id').eq('name', `${PREFIXO} campanha invasora ${marca}`)).data?.length },
   { nome: 'fichas: criar ficha', arquivo: 'actions/fichas.ts', funcao: 'criarFicha',
     rota: () => '/admin/settings?tab=fichas', args: () => [{ name: `${PREFIXO} ficha invasora ${marca}`, schema: { fields: [{ id: 'q', type: 'text', label: 'Pergunta' }] } }],

@@ -266,7 +266,9 @@ export async function ReportsBiSection({
         // A venda é dinheiro: segue o financeiro (com ele "só os meus", as dela).
         const doPeriodo = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo, professionalId: profDinheiro }
         const resumo = await getResumoDeVendas(doPeriodo)
-        const totalDoFiltro = tipo ? resumo.porTipo[tipo].quantidade : resumo.geral.quantidade
+        // Sem filtro, a lista tem TODAS as linhas — o crédito também (RL1),
+        // que o "Total vendido" não soma.
+        const totalDoFiltro = tipo ? resumo.porTipo[tipo].quantidade : resumo.linhas
         const paginas = Math.max(1, Math.ceil(totalDoFiltro / POR_PAGINA))
         const pagina  = Math.min(paginas, Math.max(1, Number.parseInt(rawPagina ?? '1', 10) || 1))
         const linhas  = await getVendas({ ...doPeriodo, tipo, offset: (pagina - 1) * POR_PAGINA })

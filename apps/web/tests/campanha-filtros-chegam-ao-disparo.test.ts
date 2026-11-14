@@ -49,10 +49,13 @@ describe('as regras da campanha viram os filtros do público', () => {
   })
 
   it('a prévia, o disparo e o cron montam o público por ela', () => {
-    // O cron escolhe as clientes do gatilho por lib/notifications/gatilho-de-hoje
-    // (D10 da 12ª: a mesma escolha do "Quem receberia hoje" do detalhe).
+    // O cron decide a data de todo ano por lib/notifications/gatilho-de-hoje
+    // (D10 da 12ª: a mesma conta do "Quem receberia hoje" do detalhe) e manda
+    // ao público pelo disparo (MK1, 2026-11-14: o gatilho de cada cliente
+    // saiu da campanha).
     const cron = fs.readFileSync(path.resolve(__dirname, '..', 'app/api/cron/notification-campaigns/route.ts'), 'utf8')
-    expect(cron, 'o cron escolhe pelo gatilho-de-hoje').toContain("from '@/lib/notifications/gatilho-de-hoje'")
+    expect(cron, 'o cron decide a data pelo gatilho-de-hoje').toContain("from '@/lib/notifications/gatilho-de-hoje'")
+    expect(cron, 'e manda pelo disparo da campanha').toContain('dispatchCampaignInline(')
     for (const arquivo of ['actions/notification-campaigns.ts', 'lib/notifications/disparo-de-campanha.ts', 'lib/notifications/gatilho-de-hoje.ts']) {
       const fonte = fs.readFileSync(path.resolve(__dirname, '..', arquivo), 'utf8')
       expect(fonte, arquivo).toContain('filtrosDaCampanha(')

@@ -12,12 +12,15 @@ import { filtrosDaCampanha } from '@/lib/notifications/filtros-da-campanha'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { instanteDaCampanha } from '@/lib/notifications/hora-da-campanha'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { recusaDoTipoDaCampanha, type TipoDeCampanha } from '@/lib/notifications/tipo-da-campanha'
 
 // -- Types --------------------------------------------------------------
 
 export type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ARCHIVED'
-export type CampaignType   = 'IMMEDIATE' | 'SCHEDULED' | 'AUTOMATED'
-export type TriggerType    = 'BIRTHDAY' | 'ANNUAL_DATE' | 'DAYS_AFTER_VISIT' | 'DAYS_BEFORE_EXPIRY' | 'BEFORE_APPOINTMENT'
+/** MK1 (2026-11-14): Imediata ou Agendada — lib/notifications/tipo-da-campanha. */
+export type CampaignType   = TipoDeCampanha
+/** A agendada de todo ano numa data; a campanha não tem outro gatilho (MK1). */
+export type TriggerType    = 'ANNUAL_DATE'
 
 /** O público (MK2 do Bloco Tags, 2026-11-14: sem filtro de unidade — a cliente é da rede). */
 export type AudienceRules = {
@@ -135,6 +138,10 @@ export async function createCampaign(
   // A campanha é da clínica toda (H7): quem tem unidade fixa não muda.
   const daClinica = recusaDaConfigDaClinica(ctx)
   if (daClinica) return { error: daClinica }
+  // MK1: Imediata ou Agendada (numa data e hora, ou todo ano numa data). O
+  // gatilho de cada cliente é um modelo nas Automações.
+  const doTipo = recusaDoTipoDaCampanha(input)
+  if (doTipo) return { error: doTipo }
 
   // F64 (D4): a hora digitada é a do relógio da REDE — ia crua e o banco a lia como UTC.
   let agendada: string | null = null
@@ -189,13 +196,21 @@ export async function updateCampaign(
   // encontrado", não exceção dentro de `ler` (erro 500).
   const existing = await ler(admin
     .from('notification_campaigns')
-    .select('status, tenant_id')
+    .select('status, tenant_id, type, scheduled_at, trigger_type, trigger_config')
     .eq('id', id)
     .maybeSingle(), 'buscar a campanha')
 
   if (!existing || existing.tenant_id !== ctx.tenantId!) return { error: 'Não encontrado' }
   if (!['DRAFT', 'PAUSED'].includes(existing.status))
     return { error: 'Apenas campanhas em rascunho ou pausadas podem ser editadas' }
+  // MK1: a campanha como fica depois da edição (o tipo não muda).
+  const doTipo = recusaDoTipoDaCampanha({
+    type:           existing.type as string,
+    scheduled_at:   input.scheduled_at !== undefined ? input.scheduled_at : (input.trigger_type ? null : existing.scheduled_at as string | null),
+    trigger_type:   input.trigger_type !== undefined ? input.trigger_type : (input.scheduled_at ? null : existing.trigger_type as string | null),
+    trigger_config: input.trigger_config !== undefined ? input.trigger_config : existing.trigger_config as Record<string, unknown> | null,
+  })
+  if (doTipo) return { error: doTipo }
 
   // F64 (D4): a hora digitada é a do relógio da REDE (a mesma conta do criar).
   let agendada: string | null | undefined = input.scheduled_at
@@ -212,8 +227,11 @@ export async function updateCampaign(
       ...(input.title             !== undefined && { title: input.title.trim() }),
       ...(input.body              !== undefined && { body: input.body.trim() }),
       ...(input.notification_type !== undefined && { notification_type: input.notification_type }),
+      // A agendada é numa data e hora OU todo ano: escolher uma limpa a outra.
       ...(input.scheduled_at      !== undefined && { scheduled_at: agendada || null }),
+      ...(input.scheduled_at && input.trigger_type === undefined && { trigger_type: null, trigger_config: null }),
       ...(input.trigger_type      !== undefined && { trigger_type: input.trigger_type }),
+      ...(input.trigger_type && input.scheduled_at === undefined && { scheduled_at: null }),
       ...(input.trigger_config    !== undefined && { trigger_config: input.trigger_config }),
       ...(input.audience_rules    !== undefined && { audience_rules: input.audience_rules }),
       ...(input.channels          !== undefined && { channels: input.channels }),
@@ -250,6 +268,9 @@ export async function activateCampaign(id: string): Promise<{ error?: string }> 
 
   if (!camp) return { error: 'Campanha não encontrada' }
   if (!['DRAFT', 'PAUSED'].includes(camp.status)) return { error: 'Campanha já está ativa ou arquivada' }
+  // MK1: só a Imediata e a Agendada (a data já guardada) se ativam.
+  const doTipo = recusaDoTipoDaCampanha(camp as { type: string; scheduled_at: string | null; trigger_type: string | null; trigger_config: Record<string, unknown> | null })
+  if (doTipo) return { error: doTipo }
 
   if (camp.type === 'IMMEDIATE') {
     // Dispatch inline

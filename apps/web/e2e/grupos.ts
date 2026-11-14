@@ -465,6 +465,11 @@ export const ISOLADOS = [
   'plano-tratamento-leva-1.spec.ts',
   // Leva 2 (2026-11-14): o aceite pelo app, o contrato no PDV, os documentos puxados, tudo no app e os pontos.
   'plano-tratamento-leva-2.spec.ts',
+  // MK1, AU1 e RL1 (2026-11-14): a campanha Imediata ou Agendada, os modelos
+  // que vieram da campanha automática e as comandas na aba Vendas.
+  'campanha-imediata-ou-agendada.spec.ts',
+  'automacoes-modelos-da-campanha.spec.ts',
+  'relatorio-vendas-comandas.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

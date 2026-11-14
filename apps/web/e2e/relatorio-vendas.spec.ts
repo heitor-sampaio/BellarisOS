@@ -190,7 +190,7 @@ test('lista cada venda do período — procedimento, pacote, pré-pago e plano �
     expect(texto[1]).toContain('R$ 300,00')
     expect(texto[2]).toContain('Pacote'); expect(texto[2]).toContain(nome('Pacote Glow')); expect(texto[2]).toContain(cliente('Bia'))
     expect(texto[2]).toContain('R$ 450,00')
-    expect(texto[3]).toContain('10/03/2021'); expect(texto[3]).toContain('Procedimento')
+    expect(texto[3]).toContain('10/03/2021'); expect(texto[3]).toContain('Atendimento avulso')
     expect(texto[3]).toContain(`${PREFIXO} Proc vnd${marca}`); expect(texto[3]).toContain(cliente('Ana'))
     expect(texto[3]).toContain(prof); expect(texto[3]).toContain('R$ 180,00')
 
@@ -223,7 +223,8 @@ test('pagina de 50 em 50, e a exportação leva todas as vendas do período', as
     // J-53: o nome diz o último dia DO PERÍODO, no fuso (era o fim em UTC: 2021-05-01).
     expect(r.headers()['content-disposition']).toContain('vendas-2021-04-01-a-2021-04-30.csv')
     const csv = (await r.text()).replace(/^﻿/, '').trim().split(/\r?\n/)
-    expect(csv[0]).toBe('Data;Tipo;Descrição;Cliente;Profissional;Unidade;Valor')
+    // RL1: a coluna da comanda do PDV, e o atendimento avulso com esse nome.
+    expect(csv[0]).toBe('Data;Comanda;Tipo;Descrição;Cliente;Profissional;Unidade;Valor')
     expect(csv).toHaveLength(54)
     // Da mais recente para a mais antiga: o pacote de 2/4 é a última.
     expect(csv[1]).toContain('Pré-pago')

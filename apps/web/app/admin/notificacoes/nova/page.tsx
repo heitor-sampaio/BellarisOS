@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/auth'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { NotificationCampaignForm } from '@/components/admin/notification-campaign-form'
 
@@ -39,6 +39,7 @@ export default async function NovaCampanhaPage() {
 
       <NotificationCampaignForm
         procedures={(procedures ?? []) as { id: string; name: string; category: string | null }[]}
+        podeVerAutomacoes={can(ctx, 'automations', 'VIEW')}
       />
     </div>
   )

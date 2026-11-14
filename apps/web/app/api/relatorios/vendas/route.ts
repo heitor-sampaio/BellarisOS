@@ -4,10 +4,8 @@ import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-te
 import { resolvePeriod } from '@/lib/metrics'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
-import {
-  getTodasAsVendas, ehTipoDeVenda, descricaoDaVenda, ROTULO_DO_TIPO,
-} from '@/lib/metrics/vendas'
-import { nomeDoCsvDeVendas } from '@/lib/metrics/vendas-comum'
+import { getTodasAsVendas, ehTipoDeVenda } from '@/lib/metrics/vendas'
+import { nomeDoCsvDeVendas, CABECALHO_DO_CSV_DE_VENDAS, colunasDoCsvDeVendas } from '@/lib/metrics/vendas-comum'
 
 /**
  * O relatório de vendas inteiro, em CSV (2026-10-14): o MESMO recorte da aba
@@ -25,7 +23,6 @@ const celula = (v: string | number) => {
   const t = String(v)
   return /[;"\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
 }
-const reais = (v: number) => v.toFixed(2).replace('.', ',')
 
 export async function GET(req: NextRequest) {
   let ctx
@@ -71,17 +68,10 @@ export async function GET(req: NextRequest) {
     professionalId: recorteDosModulos(ctx).financeiro,
   })
 
-  // `;` e BOM: é como o Excel brasileiro abre sem perguntar nada.
-  const linhas = vendas.map(v => [
-    new Date(v.data).toLocaleDateString('pt-BR', { timeZone: fuso }),
-    ROTULO_DO_TIPO[v.tipo],
-    descricaoDaVenda(v),
-    v.cliente ?? '',
-    v.profissional ?? '',
-    nomeDe.get(v.branchId) ?? '',
-    reais(v.valor),
-  ].map(celula).join(';'))
-  const corpo = '﻿' + ['Data;Tipo;Descrição;Cliente;Profissional;Unidade;Valor', ...linhas].join('\r\n')
+  // `;` e BOM: é como o Excel brasileiro abre sem perguntar nada. Cada linha
+  // é uma comanda do PDV, com o número dela (RL1).
+  const linhas = vendas.map(v => colunasDoCsvDeVendas(v, { fuso, unidade: nomeDe.get(v.branchId) ?? '' }).map(celula).join(';'))
+  const corpo = '﻿' + [CABECALHO_DO_CSV_DE_VENDAS, ...linhas].join('\r\n')
   // O último dia do período no fuso do negócio (J-53): o de outubro saía "…-a-2026-11-01".
   const nome = nomeDoCsvDeVendas(periodo.from, periodo.fullTo, fuso)
   return new NextResponse(corpo, {

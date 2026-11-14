@@ -1,4 +1,4 @@
-import { partsInTZ, startOfDayTZ } from '@/lib/datetime'
+import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ } from '@/lib/datetime'
 import { valorDoCampo } from './condicoes'
 import { PASSO_DO_CRON_MIN, INTERVALO_MINIMO_MIN } from '@estetica-os/types'
 import type {
@@ -165,14 +165,17 @@ export interface ClienteEncontrado {
  * Uma régua só: a busca do motor, a contagem do passo e o aviso antes de
  * ligar (C65) leem por aqui.
  */
-export function filtrosDaBusca(cfg: ConfigBuscarClientes, fuso?: string): FiltrosDoPublico {
+export function filtrosDaBusca(cfg: ConfigBuscarClientes, fuso?: string, agora = new Date()): FiltrosDoPublico {
   // Dia e mês no fuso do NEGÓCIO. Comparar com `getMonth()` cru usaria o fuso
   // do processo (UTC no container) e erraria por um dia quem faz aniversário
   // na virada.
-  const hoje = partsInTZ(new Date(), fuso)
+  const hoje = partsInTZ(agora, fuso)
   const corte = cfg.semRetornoHaDias
-    ? new Date(Date.now() - cfg.semRetornoHaDias * 24 * 3600 * 1000).toISOString()
+    ? new Date(agora.getTime() - cfg.semRetornoHaDias * 24 * 3600 * 1000).toISOString()
     : undefined
+  // AU1: o pacote que vence no dia de daqui a N dias — o dia inteiro, no
+  // relógio da rede (a regra da campanha de antes).
+  const vence = cfg.pacoteVenceEmDias && cfg.pacoteVenceEmDias > 0 ? addDaysTZ(agora, cfg.pacoteVenceEmDias, fuso) : null
   return {
     tags: cfg.tags?.length ? cfg.tags : undefined,
     aniversario: cfg.aniversarioHoje ? { mes: hoje.month, dia: hoje.day } : undefined,
@@ -182,6 +185,8 @@ export function filtrosDaBusca(cfg: ConfigBuscarClientes, fuso?: string): Filtro
     // não é a cliente que se cadastrou anteontem — o "Sentimos sua falta" ia a
     // quem acabou de chegar. Cliente desde = a data informada, senão o cadastro.
     cliente_desde_antes: corte,
+    pacote_vence_de:  vence ? startOfDayTZ(vence, fuso).toISOString() : undefined,
+    pacote_vence_ate: vence ? endOfDayTZ(vence, fuso).toISOString() : undefined,
   }
 }
 

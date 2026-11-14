@@ -9,7 +9,8 @@ export * from '@/lib/metrics/vendas-comum'
 
 /**
  * O relatório de vendas (2026-10-14): cada venda do período, uma linha —
- * procedimento avulso, pacote, procedimento pré-pago e plano.
+ * atendimento avulso, pacote, procedimento pré-pago, plano, produto e (RL1,
+ * 2026-11-14) o crédito na clínica —, com o número da comanda do PDV.
  *
  * A regra do que é venda, da data e do valor de cada tipo mora no Postgres
  * (`metrics_vendas`, migration `20261014000001`); aqui só se pede a página e
@@ -33,13 +34,14 @@ interface Recorte {
 type Linha = {
   id: string; tipo: string; data: string; descricao: string; quantidade: number | null
   cliente_id: string | null; cliente: string | null; profissional: string | null
-  branch_id: string; valor: number | string
+  branch_id: string; valor: number | string; comanda: number | null
 }
 
 const daLinha = (l: Linha): Venda => ({
   id: l.id, tipo: l.tipo as TipoDeVenda, data: l.data, descricao: l.descricao,
   quantidade: Number(l.quantidade ?? 1), clienteId: l.cliente_id, cliente: l.cliente,
   profissional: l.profissional, branchId: l.branch_id, valor: Number(l.valor ?? 0),
+  comanda: l.comanda == null ? null : Number(l.comanda),
 })
 
 export async function getVendas(r: Recorte & { tipo?: TipoDeVenda | null; limite?: number; offset?: number }): Promise<Venda[]> {
@@ -67,16 +69,18 @@ export async function getResumoDeVendas(r: Recorte): Promise<ResumoDeVendas> {
     p_tenant: r.tenantId, p_branch_ids: r.branchIds,
     p_from: r.from.toISOString(), p_to: r.to.toISOString(),
     p_professional_id: r.professionalId ?? null,
-  }), 'resumir as vendas do período') as { tipo: string | null; quantidade: number | string; total: number | string }[] | null
+  }), 'resumir as vendas do período') as { tipo: string | null; quantidade: number | string; total: number | string; linhas: number | string }[] | null
 
   const vazio = { quantidade: 0, total: 0 }
   const resumo: ResumoDeVendas = {
     geral: vazio,
-    porTipo: { PROCEDIMENTO: vazio, PACOTE: vazio, PRE_PAGO: vazio, PLANO: vazio, PRODUTO: vazio },
+    porTipo: { PROCEDIMENTO: vazio, PACOTE: vazio, PRE_PAGO: vazio, PLANO: vazio, PRODUTO: vazio, CREDITO: vazio },
+    linhas: 0,
   }
   for (const l of linhas ?? []) {
     const valor = { quantidade: Number(l.quantidade), total: Number(l.total) }
-    if (l.tipo === null) resumo.geral = valor
+    // O geral (tipo nulo) já vem SEM o crédito: o "Total vendido" (RL1).
+    if (l.tipo === null) { resumo.geral = valor; resumo.linhas = Number(l.linhas ?? 0) }
     else if (ehTipoDeVenda(l.tipo)) resumo.porTipo[l.tipo] = valor
   }
   return resumo

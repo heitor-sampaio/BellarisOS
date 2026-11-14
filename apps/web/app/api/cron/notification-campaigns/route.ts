@@ -7,10 +7,8 @@ import { relogioDaCampanha } from '@/lib/notifications/relogio-da-campanha'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
-import { enviarCampanha } from '@/lib/notifications/envio-da-campanha'
-import { dayKeyTZ } from '@/lib/datetime'
-import { jaEhHoraDeDisparar, type GatilhoDaCampanha } from '@/lib/notifications/quando-dispara'
-import { aniversariantes, concluiramNoDia, pacotesVencendoNoDia, lembretesNaJanela, type Destinatario } from '@/lib/notifications/gatilho-de-hoje'
+import { jaEhHoraDeDisparar } from '@/lib/notifications/quando-dispara'
+import { ehADataDeTodoAno } from '@/lib/notifications/gatilho-de-hoje'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -25,18 +23,19 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
   const now   = new Date()
-  // D8 da 11ª: os gatilhos do DIA saem a partir das 09:00 — do relógio da
-  // CLÍNICA (F62; sem fuso, o de Brasília): `relogioDaCampanha`, por campanha.
+  // A campanha AGENDADA (MK1, 2026-11-14: a campanha é Imediata ou Agendada).
+  // A de todo ano sai a partir das 09:00 — do relógio da REDE (D8 da 11ª, F62;
+  // sem fuso, o de Brasília): `relogioDaCampanha`, por campanha.
   // `?hora=` é a costura do teste (só com o segredo).
   const horaPedida = Number(req.nextUrl.searchParams.get('hora'))
   const horaDoTeste = Number.isInteger(horaPedida) && horaPedida >= 0 && horaPedida <= 23 && req.nextUrl.searchParams.has('hora') ? horaPedida : null
 
-  // Fetch all active automated campaigns + scheduled ones due now
+  // As agendadas ativas: a de data e hora (uma vez) e a de todo ano.
   const { data: campaigns, error } = await admin
     .from('notification_campaigns')
     .select('*')
     .eq('status', 'ACTIVE')
-    .in('type', ['SCHEDULED', 'AUTOMATED'])
+    .eq('type', 'SCHEDULED')
 
   if (error) {
     console.error('[cron] fetch campaigns error', error)
@@ -53,116 +52,47 @@ export async function GET(req: NextRequest) {
     // Campanhas fora do PLANO da rede: nada sai, e a campanha espera (como a da rede bloqueada).
     if (!(await redeTemRecurso(camp.tenant_id, 'campanhas'))) { results.push({ id: camp.id, type: camp.type, sent: 0, skipped: true }); continue }
 
-    // O relógio da clínica (F62): a campanha é da rede — o fuso comum das unidades.
+    // O relógio da rede (F62): a campanha é da rede — o fuso comum das unidades.
     const fuso = await fusoDaRede(camp.tenant_id)
     const relogio = relogioDaCampanha(now, fuso)
-    const today = relogio.hoje
     const hora = horaDoTeste ?? relogio.hora
-    // Um disparo por campanha, cliente e DIA do relógio da clínica (C56).
-    const dia = dayKeyTZ(now, fuso)
-    const enviar = async (clientes: Destinatario[]) => clientes.length ? enviarCampanha(admin, camp, clientes, dia) : 0
 
-    // -- SCHEDULED --------------------------------------------
-    if (camp.type === 'SCHEDULED') {
-      if (!camp.scheduled_at) continue
-      const scheduledAt = new Date(camp.scheduled_at)
-      if (scheduledAt > now) { results.push({ id: camp.id, type: 'SCHEDULED', sent: 0, skipped: true }); continue }
-      // Already ran?
-      if (camp.last_run_at) { results.push({ id: camp.id, type: 'SCHEDULED', sent: 0, skipped: true }); continue }
-
-      const { sent, error: dispErr } = await dispatchCampaignInline(camp, camp.tenant_id)
-      await gravar(admin
-        .from('notification_campaigns')
-        .update({ status: 'COMPLETED', last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id), 'atualizar a campanha')
-
-      results.push({ id: camp.id, type: 'SCHEDULED', sent, skipped: false })
-      if (dispErr) console.error(`[cron] SCHEDULED ${camp.id}`, dispErr)
-      continue
-    }
-
-    // -- AUTOMATED ---------------------------------------------
-    if (!camp.trigger_type) continue
-    if (!jaEhHoraDeDisparar(camp.trigger_type as GatilhoDaCampanha, hora)) {
-      results.push({ id: camp.id, type: camp.trigger_type, sent: 0, skipped: true }); continue
-    }
-
-    // -- BIRTHDAY ---------------------------------------------
-    if (camp.trigger_type === 'BIRTHDAY') {
-      // A escolha (as aniversariantes do público, no banco) é a do "Quem
-      // receberia hoje" do detalhe da campanha (D10 da 12ª).
-      const sent = await enviar(await aniversariantes(camp, today))
-      await gravar(admin
-        .from('notification_campaigns')
-        .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id), 'atualizar a campanha')
-      results.push({ id: camp.id, type: 'BIRTHDAY', sent, skipped: false })
-      continue
-    }
-
-    // -- ANNUAL_DATE -------------------------------------------
+    // -- Todo ano numa data --------------------------------------
+    // Sai no dia, a partir das 09:00, ao público inteiro — uma vez no dia (o
+    // envio reivindica um disparo por campanha, cliente e dia, C56) — e segue
+    // ATIVA para o ano que vem.
     if (camp.trigger_type === 'ANNUAL_DATE') {
-      const cfg = camp.trigger_config as { month?: number; day?: number } | null
-      if (!cfg?.month || !cfg?.day) continue
-      if (cfg.month !== today.month || cfg.day !== today.day) {
+      if (!ehADataDeTodoAno(camp.trigger_config, relogio.hoje) || !jaEhHoraDeDisparar('ANNUAL_DATE', hora)) {
         results.push({ id: camp.id, type: 'ANNUAL_DATE', sent: 0, skipped: true }); continue
       }
-      // Check if already ran today
       if (camp.last_run_at && relogio.mesmoDia(new Date(camp.last_run_at), now)) {
         results.push({ id: camp.id, type: 'ANNUAL_DATE', sent: 0, skipped: true }); continue
       }
-
-      const { sent } = await dispatchCampaignInline(camp, camp.tenant_id)
+      const { sent, error: dispErr } = await dispatchCampaignInline(camp, camp.tenant_id)
       await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
         .eq('id', camp.id), 'atualizar a campanha')
       results.push({ id: camp.id, type: 'ANNUAL_DATE', sent, skipped: false })
+      if (dispErr) console.error(`[cron] ANNUAL_DATE ${camp.id}`, dispErr)
       continue
     }
 
-    // -- DAYS_AFTER_VISIT --------------------------------------
-    if (camp.trigger_type === 'DAYS_AFTER_VISIT') {
-      const cfg = camp.trigger_config as { days?: number } | null
-      if (!cfg?.days) continue
+    // -- Numa data e hora (uma vez) -------------------------------
+    if (!camp.scheduled_at) continue
+    const scheduledAt = new Date(camp.scheduled_at)
+    if (scheduledAt > now) { results.push({ id: camp.id, type: 'SCHEDULED', sent: 0, skipped: true }); continue }
+    // Already ran?
+    if (camp.last_run_at) { results.push({ id: camp.id, type: 'SCHEDULED', sent: 0, skipped: true }); continue }
 
-      const targetDate = relogio.daquiA(-cfg.days)
-      const sent = await enviar(await concluiramNoDia(admin, camp, targetDate, fuso))
-      await gravar(admin
-        .from('notification_campaigns')
-        .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id), 'atualizar a campanha')
-      results.push({ id: camp.id, type: 'DAYS_AFTER_VISIT', sent, skipped: false })
-      continue
-    }
+    const { sent, error: dispErr } = await dispatchCampaignInline(camp, camp.tenant_id)
+    await gravar(admin
+      .from('notification_campaigns')
+      .update({ status: 'COMPLETED', last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
+      .eq('id', camp.id), 'atualizar a campanha')
 
-    // -- DAYS_BEFORE_EXPIRY ------------------------------------
-    if (camp.trigger_type === 'DAYS_BEFORE_EXPIRY') {
-      const cfg = camp.trigger_config as { days?: number } | null
-      if (!cfg?.days) continue
-
-      const targetDate = relogio.daquiA(cfg.days)
-      const sent = await enviar(await pacotesVencendoNoDia(admin, camp, targetDate, fuso))
-      await gravar(admin
-        .from('notification_campaigns')
-        .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id), 'atualizar a campanha')
-      results.push({ id: camp.id, type: 'DAYS_BEFORE_EXPIRY', sent, skipped: false })
-      continue
-    }
-
-    // -- BEFORE_APPOINTMENT ------------------------------------
-    if (camp.trigger_type === 'BEFORE_APPOINTMENT') {
-      // Os lembretes que SAEM nesta hora: "N horas antes" do agendamento — e,
-      // com a opção da véspera (C74), o que cairia de madrugada às 20:00.
-      const sent = await enviar(await lembretesNaJanela(admin, camp, now, new Date(now.getTime() + 3_600_000), fuso))
-      await gravar(admin
-        .from('notification_campaigns')
-        .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id), 'atualizar a campanha')
-      results.push({ id: camp.id, type: 'BEFORE_APPOINTMENT', sent, skipped: false })
-      continue
-    }
+    results.push({ id: camp.id, type: 'SCHEDULED', sent, skipped: false })
+    if (dispErr) console.error(`[cron] SCHEDULED ${camp.id}`, dispErr)
   }
 
   return NextResponse.json({ ok: true, processed: results.length, results })

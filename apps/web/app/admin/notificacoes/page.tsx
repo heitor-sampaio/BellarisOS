@@ -27,11 +27,12 @@ export default async function AdminNotificacoesPage() {
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
           Campanhas de aviso no celular para as clientes
         </p>
-        {/* A9 da 14ª: as campanhas automáticas (lembrete, pós-visita) pareciam
-            repetir as Automações, e nada dizia a diferença. */}
+        {/* A9 da 14ª: a campanha parecia repetir as Automações, e nada dizia a
+            diferença. Desde o MK1 (2026-11-14) o gatilho de cada cliente
+            (aniversário, lembrete, pós-visita…) é um modelo nas Automações. */}
         <p data-campanha-ou-automacao style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 8, lineHeight: 1.5 }}>
-          Campanha é um aviso a um público de uma vez (todas as clientes, uma tag, as aniversariantes do dia);
-          para reagir a um fato de cada cliente (agendou, faltou, pagou), use as{' '}
+          Campanha é um aviso a um público de uma vez — agora, numa data, ou todo ano numa data (todas as clientes, uma tag);
+          para reagir a um fato de cada cliente (aniversário, agendou, faltou, pagou), use as{' '}
           {veAutomacoes
             ? <Link href="/admin/automacoes" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>Automações</Link>
             : 'Automações'}.

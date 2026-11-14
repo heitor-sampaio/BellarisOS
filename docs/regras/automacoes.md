@@ -80,6 +80,23 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   quem quer avisar é o do próprio agendamento.
 - **Campanha ≠ automação.** Campanha é disparo em massa por público; automação
   é reação a um fato. São dois produtos, e nada migra de um para o outro.
+- **A campanha é Imediata ou Agendada** (MK1 da revisão do Heitor,
+  2026-11-14). A Agendada sai numa data e hora (uma vez) ou TODO ANO numa
+  data (o Dia das Mães: `trigger_type = 'ANNUAL_DATE'`, sai no dia a partir
+  das 09:00 da rede e segue ativa para o ano seguinte). O tipo "Automática"
+  saiu: cada gatilho de cliente dela (aniversário, lembrete do agendamento,
+  pós-visita, vencimento de pacote, confirmação, cancelamento, pontos de
+  fidelidade) é um MODELO nas Automações, que nasce desligado (princípio 6) —
+  a tela da campanha diz onde eles estão (`[data-gatilhos-nas-automacoes]`,
+  `GATILHOS_QUE_VIRARAM_MODELO`, com o link a quem vê as Automações). A regra
+  mora em `recusaDoTipoDaCampanha` (`lib/notifications/tipo-da-campanha.ts`),
+  que `createCampaign`, `updateCampaign` e `activateCampaign` chamam, e no
+  banco (`notification_campaigns_tipo` e `notification_campaigns_gatilho`,
+  migration `20261115700001`, que também converteu as antigas: a data anual
+  "Automática" virou Agendada todo ano; as de gatilho de cliente foram
+  arquivadas — não havia nenhuma). Prova:
+  `e2e/campanha-imediata-ou-agendada.spec.ts`, `e2e/campanha-data-anual.spec.ts`,
+  `tests/campanha-imediata-ou-agendada.test.ts`.
 - **A fila do motor é `automation_runs`**, no Postgres — não há broker no
   projeto. O disparo é imediato (`after()`); o cron recolhe o que espera, o que
   falhou e o que é de tempo.
@@ -178,8 +195,13 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **Modelos prontos são OPÇÃO, ao lado do "Nova automação"** (D-4, decisão do
   Heitor, 2026-10-29): "Nova automação" continua começando vazia; "Usar um
   modelo" lista `MODELOS_DE_AUTOMACAO` (`lib/automacoes/modelos.ts` —
-  aniversário, retorno depois do atendimento, lembrete antes do agendamento e,
-  desde o crm-05, "Agendou: o card muda de etapa") e
+  aniversário, retorno depois do atendimento, lembrete antes do agendamento,
+  reativação, desde o crm-05 "Agendou: o card muda de etapa" e, desde o AU1
+  (2026-11-14), os que vieram da campanha automática: **vencimento de
+  pacote** (todo dia às 09:00, "Buscar clientes" com o pacote vencendo daqui
+  a 7 dias), **confirmação** (`agendamento.confirmado`), **cancelamento**
+  (`agendamento.cancelado`) e **pontos de fidelidade**
+  (`fidelidade.pontos_ganhos`, com os pontos e o saldo do fato)) e
   `criarAutomacaoDeModelo` grava o grafo DO SERVIDOR (o navegador manda só a
   chave), em RASCUNHO, para a clínica revisar. O procedimento fica no passo
   "Se", nunca no gatilho. Modelo novo usa só nodes e eventos do catálogo, e
@@ -257,22 +279,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   pacientes. Pausar e editar o fluxo com os mesmos limites, o suporte pode —
   é como ele para uma automação que está mandando errado (F63; a D18 é "não
   liga nem muda limites"). Prova (contra o build): `e2e/suporte-credenciais.spec.ts`.
-- **O lembrete do agendamento da campanha e a madrugada** (D17 do
-  levantamento das regras, o Heitor, 2026-11-11: "a + c opcional";
-  princípios 2 e 6). O lembrete sai na antecedência que a clínica escolheu,
-  mesmo de madrugada, e a tela avisa quando a antecedência o faz cair entre
-  21:00 e 08:00 ("Com 2 horas de antecedência, o lembrete dos agendamentos
-  entre 23:00 e 10:00 sai de madrugada" — `avisoDeMadrugada`,
-  `[data-lembrete-de-madrugada]`). E a campanha tem a opção "Se cair de
-  madrugada, mandar na véspera às 20:00" (`trigger_config.vespera_se_madrugada`),
-  DESLIGADA por padrão: ligada, o lembrete que cairia entre 21:00 e 08:00 sai
-  às 20:00 — a noite até 23:59 às 20:00 do mesmo dia, a madrugada às 20:00 da
-  véspera (`envioDoLembrete`, `lib/notifications/lembrete-de-madrugada.ts`),
-  no relógio da rede (o da campanha, F62). O cron e o "Quem receberia hoje"
-  escolhem por `lembretesNaJanela` (`gatilho-de-hoje.ts`): os lembretes que
-  SAEM na janela. Sem silêncio automático nas campanhas. Prova:
-  `e2e/campanha-defeitos-do-levantamento.spec.ts` ("C74"),
-  `tests/f69-comunicacao.test.ts`.
+- **O lembrete do agendamento e a madrugada** (D17 do levantamento das
+  regras, 2026-11-11). Era da campanha "Automática" ("a + c opcional": o aviso
+  de madrugada e a véspera às 20:00); com o MK1 (2026-11-14) o lembrete é o
+  modelo "Lembrete antes do agendamento" das Automações, e quem segura a
+  madrugada é o silêncio noturno da automação (que a rede ajusta). O
+  `lembrete-de-madrugada.ts` saiu com a campanha automática.
 - **"Sem visita há N dias" não é quem acabou de chegar** (C53, F69): a busca
   do passo "Buscar clientes" corta também pela data de cliente
   (`cliente_desde_antes` = o mesmo corte; cliente desde = a informada, senão
@@ -280,6 +292,13 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   cadastrou anteontem. Os filtros moram em `filtrosDaBusca`
   (`lib/automacoes/tempo.ts`): o motor, a contagem do passo e a conta antes de
   ligar leem por ela.
+- **"Buscar clientes" acha quem tem pacote vencendo** (AU1, 2026-11-14): o
+  campo "Pacote vence daqui a (dias)" (`ConfigBuscarClientes.pacoteVenceEmDias`)
+  busca quem tem um pacote NÃO cancelado vencendo naquele dia do relógio da
+  rede (`pacote_vence_de`/`pacote_vence_ate` em `filtrosDaBusca`, o filtro em
+  `clientes_do_publico`, migration `20261115700002`). É o modelo de
+  vencimento de pacote — o "antes do pacote vencer" da campanha automática.
+  Prova: `e2e/automacoes-modelos-da-campanha.spec.ts`.
 - **"Buscar clientes" é da rede, sem unidade** (T1 do Bloco Tags, 2026-11-14:
   a cliente é da REDE — não existe tag de unidade, e `clients.branch_id` não
   decide nada). O campo "Unidade" do passo saiu, e o dia do aniversário é o
@@ -295,13 +314,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   `tests/tags-so-quem-marca.test.ts`. O anel de automações
   (`e2e/automacoes-anel.spec.ts`) passou a se fechar por "Mover de etapa"
   (etapa 2 ↔ etapa 3): a tag só cresce, e não fecha anel.
-- **O "N dias depois do ÚLTIMO atendimento" da campanha** (C52, F69) não pega
-  quem concluiu no dia-alvo e voltou depois (`concluiramNoDia` tira quem tem
-  concluído depois do fim daquele dia). Prova:
-  `e2e/campanha-defeitos-do-levantamento.spec.ts` ("C52").
+- **O "N dias depois do ÚLTIMO atendimento"** (C52, F69) era da campanha
+  "Automática"; com o MK1 é o modelo "Retorno depois do atendimento" das
+  Automações.
 - **O envio da campanha é um só** (C51/C56, F69): `enviarCampanha`
   (`lib/notifications/envio-da-campanha.ts`) — o disparo imediato, o agendado
-  e os automáticos do cron. Os aparelhos são os de TODAS as fichas do login
+  e a data de todo ano do cron. Os aparelhos são os de TODAS as fichas do login
   (`aparelhos_das_clientes`; a conta "vai receber no celular",
   `publico_com_aparelho`, também), e o disparo é REIVINDICADO antes de mandar:
   um por campanha, cliente e dia do relógio da rede (índice único
@@ -356,11 +374,8 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   iria a TODA cliente, e o "Revisar" dizia "Vieram nos últimos 60 dias"). A
   conta é UMA, `filtrosDaCampanha` (`lib/notifications/filtros-da-campanha.ts`),
   usada pela prévia (`previewAudienceCount`), pelo disparo
-  (`dispatchCampaignInline`: a imediata, a agendada e a data anual) e pelo
-  cron das automáticas: o aniversário lê todas as regras (lia só a unidade e o
-  app), e o "dias depois da visita", o "antes do agendamento" e o "antes do
-  pacote vencer" passam as clientes do fato por `clientes_do_publico` com
-  `client_ids` (não liam regra nenhuma). **"Sem visita há mais de N dias"** =
+  (`dispatchCampaignInline`: a imediata, a agendada e a de todo ano — as
+  automáticas de antes saíram com o MK1). **"Sem visita há mais de N dias"** =
   nenhum atendimento concluído desde N dias atrás (nem a última visita do
   sistema de antes) E cliente da clínica de antes disso
   (`cliente_desde_antes`: `coalesce(cliente_desde, created_at)` — a cadastrada
@@ -369,30 +384,18 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   concluídos. Migration `20261107004301`. Regra nova em `AudienceRules` sem
   leitor em `filtrosDaCampanha` quebra
   `tests/campanha-filtros-chegam-ao-disparo.test.ts`. Prova (uma regra por
-  teste, a prévia e o disparo): `e2e/campanha-cada-filtro-chega.spec.ts`; as
-  automáticas pelo cron: `e2e/campanha-aniversario.spec.ts` ("D1").
-- **O gatilho da campanha automática começa SEM escolha, e a tela diz quando
-  ela sai** (D8 da 11ª simulação, 2026-11-10; princípios 3 e 6: a
-  "Reativação 60 dias" da Marta nasceu com o gatilho "Aniversário", que vinha
-  marcado, e só sairia no aniversário de quem sumiu). Nenhum gatilho vem
-  marcado (`aria-pressed`, "Escolha quando a campanha sai…",
-  `[data-escolha-o-gatilho]`), e o "Próximo" espera a escolha. A revisão e os
-  detalhes da campanha dizem "Dispara: 60 dias depois do último atendimento da
-  cliente, a partir das 09:00" (`[data-quando-dispara]`, `quandoDispara`,
-  `lib/notifications/quando-dispara.ts`). E a hora é verdade: os gatilhos do
-  DIA (aniversário, data comemorativa, depois da visita, antes de o pacote
-  vencer) saem a partir das 09:00 da clínica (F62b: o fuso da rede;
-  o silêncio noturno e o teto, o da unidade da mensagem; o "aniversário
-  hoje" do contexto, o da unidade da cliente) (`jaEhHoraDeDisparar`, no cron
-  `notification-campaigns`; `?hora=` é a costura do teste) — saíam logo
-  depois da meia-noite, e o aviso tocava o celular da cliente de madrugada. O
-  lembrete do agendamento segue de hora em hora. Prova:
+  teste, a prévia e o disparo): `e2e/campanha-cada-filtro-chega.spec.ts`; a
+  de todo ano pelo cron: `e2e/campanha-data-anual.spec.ts`.
+- **A campanha de todo ano diz quando sai** (D8 da 11ª simulação,
+  2026-11-10; refeito no MK1): a revisão e os detalhes dizem "Dispara: todo
+  ano em 08/03, a partir das 09:00" (`[data-quando-dispara]`, `quandoDispara`,
+  `lib/notifications/quando-dispara.ts`), e a hora é verdade: o cron
+  `notification-campaigns` a manda no dia a partir das 09:00 da rede
+  (`jaEhHoraDeDisparar`; `?hora=` é a costura do teste) — sem isso o aviso
+  tocava o celular da cliente de madrugada. "Agendada" sem data não avança.
+  (O gatilho sem escolha e os "30 dias são sugestão" do Pós-visita — A6 da
+  12ª — eram da campanha "Automática", que saiu.) Prova:
   `e2e/campanha-defeitos-da-11.spec.ts`, `tests/campanha-quando-dispara.test.ts`.
-  **Os 30 dias que o "Pós-visita" e o "antes do vencimento" trazem dizem que
-  são sugestão** (A6 da 12ª simulação, 2026-11-11; princípio 3): "30 dias é
-  uma sugestão: ajuste ao retorno dos seus procedimentos."
-  (`[data-dias-sugestao]`, na campanha nova). Prova:
-  `e2e/configuracoes-atritos-da-12.spec.ts` ("A6/A24").
 - **O construtor fala português, e o modelo dito pronto não avisa à toa** (A18
   da 11ª simulação, 2026-11-10; princípio 3: o "Lembrete antes do agendamento"
   dizia "Esperar até 1d antes de evento.dados.agendadoPara" e "não é nenhum de
@@ -418,21 +421,14 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   "Hoje, a busca acharia N clientes" (`contarBuscaDeClientes`, só LÊ, a
   `buscarClientes` do motor — `[data-quem-acharia-hoje]`). E a prévia do título
   da campanha diz que "Ana" é um nome de EXEMPLO (`[data-previa-do-titulo]`).
-- **Na campanha automática, "Quem receberia hoje" é o GATILHO de hoje** (D10 da
-  12ª simulação, 2026-11-11; princípio 3: o Aniversário e o Pós-visita 7 dias
-  diziam "12 clientes no público" — o público inteiro — quando ninguém fazia
-  aniversário nem fez 7 dias da visita). O detalhe diz quantas o gatilho escolhe
-  HOJE e quantas têm o app ("1 aniversariante hoje · 1 vai receber o aviso no
-  celular", ou "Hoje ninguém do público faz aniversário: a campanha não sai para
-  ninguém hoje." — `[data-receberiam-hoje]`), e o público inteiro fica numa
-  linha à parte, "Público da campanha" (`AudiencePreview`). A escolha é UMA, a
-  do cron: `lib/notifications/gatilho-de-hoje.ts` (`aniversariantes`,
-  `concluiramNoDia`, `pacotesVencendoNoDia`, `agendadosNaJanela`, todas pelo
-  público da campanha) — o cron `notification-campaigns` passou a usá-las, e o
-  detalhe lê `quemReceberiaHoje`. O lembrete do agendamento conta o resto do dia
-  (de agora ao fim de hoje, mais a antecedência); a data comemorativa, o público
-  inteiro só no dia dela. A imediata e a agendada seguem com o público.
-  Prova: `e2e/campanha-defeitos-da-12.spec.ts`.
+- **Na campanha de todo ano, "Quem receberia hoje" diz se hoje é a data**
+  (D10 da 12ª simulação, 2026-11-11; refeito no MK1): "Hoje é a data: N
+  clientes no público · M vão receber o aviso no celular", ou "Hoje não é
+  08/03: a campanha não sai hoje." (`[data-receberiam-hoje]`,
+  `quemReceberiaHoje`, `lib/notifications/gatilho-de-hoje.ts` — a mesma
+  `ehADataDeTodoAno` do cron), e o público inteiro fica na linha "Público da
+  campanha" (`AudiencePreview`). A imediata e a agendada numa data seguem com
+  o público. Prova: `e2e/campanha-defeitos-da-12.spec.ts`.
 - **As ações da lista de campanhas têm nome** (A22 da 11ª: "Ativar" e
   "Arquivar" eram ícones lado a lado): "Ver", "Ativar", "Pausar", "Arquivar"
   escritos no botão. Prova: `e2e/automacoes-atritos-da-11.spec.ts`,
@@ -466,8 +462,9 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 ```
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
 ❌ Montar o filtro do público da campanha à mão (genders: rules.genders…) — é filtrosDaCampanha, senão a regra nova fica sem leitor e a campanha vai a todas (D1 da 9ª)
-❌ Contar "quem receberia hoje" da campanha automática pelo público inteiro, ou escolher as clientes do gatilho fora de lib/notifications/gatilho-de-hoje (o cron e o detalhe dividem a escolha — D10 da 12ª)
-❌ Trazer um gatilho de campanha já marcado, ou dizer quando ela sai fora de quandoDispara (a hora é a do cron, jaEhHoraDeDisparar — D8 da 11ª)
+❌ Decidir "hoje é a data" da campanha de todo ano fora de lib/notifications/gatilho-de-hoje (o cron e o detalhe dividem a escolha — D10 da 12ª)
+❌ Dizer quando a campanha de todo ano sai fora de quandoDispara (a hora é a do cron, jaEhHoraDeDisparar — D8 da 11ª)
+❌ Trazer de volta o gatilho de cliente na campanha (aniversário, lembrete, pós-visita…) — é modelo nas Automações; recusaDoTipoDaCampanha e o check do banco travam (MK1)
 ❌ Criar fato no banco (origem 'banco') e esperar que alguém o despache na hora — quem despacha é o cron (despacharFatosDoBanco), reivindicando despachado_em (C2)
 ❌ Fila do cron com UM lote por passagem — passa por drenarEmLotes (lib/cron/drenar.ts), até esvaziar ou até o orçamento (F71: 115 fatos parados e a automação calada)
 ❌ Calar o fato da equipe porque havia uma sessão de suporte na rede — só o fato com suporte_sessao_id não dispara (a marca vem do cabeçalho do cliente de serviço, F71)

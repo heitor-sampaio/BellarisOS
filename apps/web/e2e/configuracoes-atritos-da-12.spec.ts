@@ -160,7 +160,7 @@ test('A5: o "De venda" do pacote diz que vence a comissão de venda de cada pess
   })
 })
 
-test('A6/A24: o prêmio da indicação e a pós-visita dizem que o número é sugestão; a indicação diz o que conta', async ({ browser }) => {
+test('A6/A24: o prêmio da indicação diz que o número é sugestão e o que conta', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=fidelidade')
     const bloco = p.getByTestId('opcional-indicacao')
@@ -171,11 +171,8 @@ test('A6/A24: o prêmio da indicação e a pós-visita dizem que o número é su
     await expect(bloco).toContainText('pacote')
     await expect(bloco).toContainText('crédito na clínica')
     await expect(bloco).toContainText('o estorno de uma parte não tira o prêmio')
-
-    await p.goto('/admin/notificacoes/nova')
-    await p.getByRole('button', { name: /Automática/ }).click()
-    await p.getByRole('group', { name: 'Gatilho da automação' }).getByRole('button').filter({ hasText: 'Pós-visita' }).click()
-    await expect(p.locator('[data-dias-sugestao]')).toContainText('sugestão')
+    // A pós-visita da campanha "Automática" saiu em 2026-11-14 (MK1): é o
+    // modelo "Retorno depois do atendimento" das Automações.
   })
 })
 

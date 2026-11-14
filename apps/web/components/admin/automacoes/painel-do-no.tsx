@@ -503,6 +503,19 @@ export function PainelDoNo({
                 Só quem faz aniversário hoje
               </span>
             </label>
+            <Campo rotulo="Pacote vence daqui a (dias)">
+              <input
+                type="number" min={1} className="field"
+                value={String(c.pacoteVenceEmDias ?? '')}
+                disabled={somenteLeitura}
+                onChange={e => set({ pacoteVenceEmDias: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="deixe vazio para não filtrar"
+              />
+              <Dica>
+                Quem tem um pacote, não cancelado, que vence exatamente nesse
+                dia (no relógio da rede).
+              </Dica>
+            </Campo>
             <Campo rotulo="No máximo">
               <input
                 type="number" min={1} max={500} className="field"
@@ -1118,7 +1131,7 @@ function agruparEventos(): [string, string[]][] {
  * pedida 600 ms depois da última mudança do passo.
  */
 function QuemAchariaHoje({ cfg }: { cfg: Record<string, unknown> }) {
-  const chave = JSON.stringify({ d: cfg.semRetornoHaDias, a: cfg.aniversarioHoje, t: cfg.tags, l: cfg.limite })
+  const chave = JSON.stringify({ d: cfg.semRetornoHaDias, a: cfg.aniversarioHoje, p: cfg.pacoteVenceEmDias, t: cfg.tags, l: cfg.limite })
   const [conta, setConta] = useState<{ chave: string; texto: string } | null>(null)
   useEffect(() => {
     let vivo = true

@@ -125,6 +125,7 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>, fuso
       const partes: string[] = []
       if (c.semRetornoHaDias) partes.push(`sem retorno há ${quantos(c.semRetornoHaDias, 'dias')}`)
       if (c.aniversarioHoje)  partes.push('aniversariantes de hoje')
+      if (c.pacoteVenceEmDias) partes.push(`pacote vencendo daqui a ${quantos(c.pacoteVenceEmDias, 'dias')}`)
       if (Array.isArray(c.tags) && c.tags.length) partes.push(`tags: ${(c.tags as string[]).join(', ')}`)
       return partes.length ? partes.join(' · ') : 'todos os clientes'
     }
