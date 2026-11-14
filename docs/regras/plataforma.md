@@ -680,6 +680,11 @@ um muro que não depende de cada trava do código.
   2026-11-11, na 2ª volta: "catalogo de produtos pode ser da rede ou da unidade, decisão da rede. Categorias de estoque é da rede, normalmente a rede usa o mesmo produto/fornecedor em todas unidades. Respostas rápidas, na verdade, o mais certo seria ser de cada usuário, cada usuário poder configurar as suas. Importações é da rede, ela que vai importar os seus clientes ou o que for, e na importação poder escolher se aquilo pertence a uma unidade."
   Era a decisão da F4 "para revisar", que deixava as quatro com a unidade;
   substitui a 1ª resposta, "Catalogo da unidade, o resto da clinica"):
+  - **Saiu em 2026-11-15 (E13 do Bloco Estoque, o Heitor, 13/11: "Quem
+    cadastra é só quem tem permissão de gerenciar"):** quem cria e edita
+    produto é quem tem o Estoque em Gerenciar, na rede ou numa unidade; a
+    configuração abaixo e a coluna `tenants.catalogo_de_produtos` saíram
+    (`atendimento.md` §9.5). Para a história:
   - **O catálogo de produtos é decisão da REDE** (princípio 1): uma
     configuração da rede, "Quem cadastra e edita os produtos", com "A unidade"
     (a gerente de unidade fixa cria e edita, `createProduct`/`updateProduct`;

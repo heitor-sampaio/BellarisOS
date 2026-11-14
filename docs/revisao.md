@@ -1671,7 +1671,7 @@ revisão, só se escreve o plano. Nada se implementa.
   Estoque em Gerenciar), o campo com busca e "+ Nova …", Insumo e Venda
   direta em checkbox (o `products.uso` de antes, que o PDV lê), a marca e o
   fornecedor na entrada (não no produto) e os três filtros. Ficaram de fora
-  **E11 e E13**: dependem do bloco Equipe (a pessoa em mais de uma unidade).
+  **E11 e E13**: dependem do bloco Equipe (a pessoa em mais de uma unidade) — entraram em 15/11 (abaixo).
   Regra em `docs/regras/atendimento.md` §9.5.
 - ✅ Bloco Tags (14/11) — T1–T4, CL1–CL3, AG2 e MK2: a tag de unidade sai do
   sistema. Saíram o gatilho da "Unidade: X" e toda leitura dela como "a
@@ -1808,6 +1808,23 @@ revisão, só se escreve o plano. Nada se implementa.
   canal que a rede tem. A aba Vendas lista as comandas (a coluna "Comanda", o
   "Atendimento avulso", o crédito na clínica como linha e fora do "Total
   vendido"; o filtro "Créditos"; o CSV com a comanda).
+- ✅ Bloco Estoque, E11 e E13, com o EQ1d da Equipe (15/11) — quem cadastra
+  produto é quem tem o Estoque em Gerenciar, e só isso: a configuração "Quem
+  cadastra e edita os produtos" (A unidade × Só a rede, a C63) saiu, com a
+  coluna `tenants.catalogo_de_produtos` (nenhuma rede tinha "Só a rede"). A
+  unidade do estoque inicial segue as unidades da pessoa: uma só, escrita e
+  travada; mais de uma, a lista só com as dela (a do endereço já escolhida);
+  a rede inteira, todas. O estoque inicial (lote, validade, nota, custo,
+  observações, marca e fornecedor, como estava) se divide entre as unidades
+  ("Dividir com outra unidade"), e o produto com as linhas nasce numa
+  transação só (`produto_cadastrar`): uma linha recusada e nada fica. Regra em
+  `atendimento.md` §9.5.
+- ✅ Bloco Fichas, FC1 (15/11) — Configurações → Fichas diz "Fichas de
+  atendimento" (o título da seção, "Nova ficha de atendimento", o vazio, as
+  dicas de editar e excluir, o construtor: "Nome da ficha de atendimento",
+  "Criar/Salvar ficha de atendimento") e "Ficha de saúde" (o construtor dela
+  diz "Salvar ficha de saúde"). O resto ficou. A trava:
+  `tests/ficha-de-saude-no-texto.test.ts` ("FC1").
 
 ### Bloco: Estoque
 
@@ -1818,10 +1835,10 @@ revisão, só se escreve o plano. Nada se implementa.
 | E6/E3 | Categoria, marca e fornecedor escolhidos numa lista **com campo de busca e autocomplete** | — |
 | E2 | "Onde está disponível": **checkbox** Insumo e Venda direta, no lugar de Insumo / Revenda / Os dois | — |
 | E10 | O cadastro do produto **não tem** marca nem fornecedor. Sai o "fornecedor de costume" e sai o segundo fornecedor do estoque inicial | E1/E5 |
-| E11 | Estoque inicial como está (lote, validade, nota, custo, observações), **dividido entre as unidades** | E13 |
+| E11 | Estoque inicial como está (lote, validade, nota, custo, observações), **dividido entre as unidades** ✅ 15/11 | E13 |
 | E14 | A **Entrada** (e o estoque inicial) pede **marca e fornecedor** | E1/E5 |
 | E15 | Filtros da tela: **categorias, marca, fornecedores**. Marca e fornecedor mostram os produtos que têm alguma entrada daquela marca ou fornecedor | E14 |
-| E13 | **Quem cadastra produto:** quem tem o Estoque em Gerenciar. Sai a regra "catálogo só da rede × as unidades também". Quem é de uma unidade só: a unidade vem preenchida e travada. Quem é de mais de uma: a lista mostra só as unidades dela | **Equipe** (a pessoa em mais de uma unidade) |
+| E13 | **Quem cadastra produto:** quem tem o Estoque em Gerenciar. Sai a regra "catálogo só da rede × as unidades também". Quem é de uma unidade só: a unidade vem preenchida e travada. Quem é de mais de uma: a lista mostra só as unidades dela ✅ 15/11 | **Equipe** (a pessoa em mais de uma unidade) |
 | — | Mantém: nome, SKU automático, código de barras (digitado ou leitor), categoria, embalagem (lista fixa), conteúdo da embalagem, preço e comissão de venda, estoque mínimo, aviso de nome repetido. A tela geral do estoque, a saída no atendimento, a transferência entre unidades, a perda, o ajuste, os lotes, a validade e o aviso de mínimo | — |
 
 ### Bloco: Procedimentos
@@ -2018,14 +2035,14 @@ Heitor de que vale uma completa.
 | EQ1a | **"Unidades"** no cadastro: "A rede inteira" (todas, inclusive as futuras) ou as marcadas, uma ou mais. Sai a abrangência rede OU uma unidade. A pessoa vê e opera só nas unidades dela (`alcancaUnidade`, os filtros das listas, a agenda, o PDV, as telas da unidade); com uma só, a tela se comporta como hoje ✅ 14/11 | — |
 | EQ1b | **"Da rede" é quem tem "A rede inteira"**: a configuração da rede toda (H7), o portal da rede, a lista de quem abriu o prontuário. Quem tem duas unidades marcadas NÃO é da rede ✅ 14/11 | EQ1a |
 | EQ1c | **"Atende" é uma caixa**: marcada, atende em todas as unidades dela (agenda, agendar, repasse, comissão, relatórios). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista ✅ 14/11 | EQ1a |
-| EQ1d | **A unidade pré-preenchida** dos cadastros (o produto do Estoque, E13: "Se a pessoa tiver mais de uma unidade, a lista mostra apenas as unidades dela") segue as unidades da pessoa | EQ1a, E13 |
+| EQ1d | **A unidade pré-preenchida** dos cadastros (o produto do Estoque, E13: "Se a pessoa tiver mais de uma unidade, a lista mostra apenas as unidades dela") segue as unidades da pessoa ✅ 15/11 | EQ1a, E13 |
 | — | Mantém: a lista e os filtros, o cargo, o horário, o registro no conselho, a senha temporária, a comissão, as regras da Admin da rede e do "cargo acima", o desativar com repasse | — |
 
 ### Bloco: Fichas
 
 | # | O que muda | Depende de |
 |---|---|---|
-| FC1 | **"Fichas de atendimento"** (as dos procedimentos) e **"Ficha de saúde"** (a da cliente) em Configurações → Fichas: abas, botões, dicas. Junto com o PR3 (Prontuário) e o "Ficha de atendimento" do procedimento | PR3 |
+| FC1 | **"Fichas de atendimento"** (as dos procedimentos) e **"Ficha de saúde"** (a da cliente) em Configurações → Fichas: abas, botões, dicas. Junto com o PR3 (Prontuário) e o "Ficha de atendimento" do procedimento ✅ 15/11 | PR3 |
 | — | Mantém: o construtor, os tipos de campo, o obrigatório, o "Mostrar só quando", uma ficha por procedimento, a ficha de saúde da rede (e o bloco de injetáveis), a validade e o envio | — |
 
 ### Bloco: Configurações

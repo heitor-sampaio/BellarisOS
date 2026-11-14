@@ -116,10 +116,15 @@ interface Props {
   /** A33 da 11ª: o lote da URL (`?lote=`, da ficha da paciente) — o "Aplicado em" dele abre sozinho. */
   loteInicial?:      { id: string; rotulo: string } | null
   /**
-   * C63: quem cadastra e edita os produtos. Com "Só a rede", quem tem unidade
-   * fixa movimenta o estoque (a engrenagem) e não edita o produto (o lápis some).
+   * Quem cadastra e edita os produtos: o Estoque em Gerenciar, e só isso (E13;
+   * a regra "Só a rede", C63, saiu).
    */
   podeEditarProduto?: boolean
+  /**
+   * As unidades do estoque inicial do produto novo: as ativas que a pessoa
+   * alcança (E13 + EQ1d, `unidadesDoCadastro`). Sem isto, as da tela.
+   */
+  unidadesDoProduto?: Branch[]
   fornecedores?:     ItemDaLista[]
 }
 
@@ -247,7 +252,7 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, productCategories = [], marcas = [], defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null, podeEditarProduto = !readOnly, fornecedores = [] }: Props) {
+export function AdminStockView({ products, branches, productCategories = [], marcas = [], defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '', podeVerAplicacoes = false, comLoteEsgotado = [], loteInicial = null, podeEditarProduto = !readOnly, fornecedores = [], unidadesDoProduto }: Props) {
   const temLoteEsgotado = useMemo(() => new Set(comLoteEsgotado), [comLoteEsgotado])
   // O dia do "vencido" é o da unidade (F62b).
   const fuso = useFuso()
@@ -464,8 +469,9 @@ export function AdminStockView({ products, branches, productCategories = [], mar
                   marcas={marcas}
                   fornecedores={fornecedores}
                   categories={productCategories}
-                  // Na unidade, a da tela (D8 da 9ª); na rede, a escolha.
-                  branches={(defaultBranchId ? branches.filter(x => x.id === defaultBranchId) : branches).filter(x => x.ativa !== false)}
+                  // As unidades dela, com a da tela escolhida (E13 + EQ1d; D8 da 9ª); na rede, a escolha.
+                  branches={(unidadesDoProduto ?? (defaultBranchId ? branches.filter(x => x.id === defaultBranchId) : branches)).filter(x => x.ativa !== false)}
+                  unidadeAtual={defaultBranchId}
                   trigger={
                     <button type="button" className="btn-primary">
                       <Plus size={15} /> Novo produto

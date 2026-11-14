@@ -164,7 +164,9 @@ test.describe.serial('a clínica de uma unidade só', () => {
 
       await p.goto('/admin/team')
       await p.getByRole('button', { name: 'Adicionar membro' }).click()
-      await expect(p.locator('dialog[open] #tm-branch'), 'o membro novo vem com a unidade').toHaveValue(rede!.branchId)
+      // EQ1a (2026-11-14): "Unidades" no lugar do select; numa rede de uma
+      // unidade, ela já vem marcada.
+      await expect(p.locator('dialog[open] [data-unidades-do-membro] input[type="checkbox"]').first(), 'o membro novo vem com a unidade').toBeChecked()
       achados.push(...await falasDoModal(p, 'Equipe → Adicionar membro'))
 
       await p.goto('/admin/procedures')

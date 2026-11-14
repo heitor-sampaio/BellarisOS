@@ -56,11 +56,11 @@ function dentroDoLog(no: ts.Node): boolean {
   return false
 }
 
-function achados(arquivo: string, texto: string): string[] {
+function achados(arquivo: string, texto: string, nomeVelho: RegExp = NOME_VELHO): string[] {
   const fonte = ts.createSourceFile(arquivo, texto, ts.ScriptTarget.Latest, true, arquivo.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const saida: string[] = []
   const anotar = (no: ts.Node, s: string) => {
-    if (!NOME_VELHO.test(s)) return
+    if (!nomeVelho.test(s)) return
     const { line } = fonte.getLineAndCharacterOfPosition(no.getStart())
     saida.push(`${line + 1}: ${s.replace(/\s+/g, ' ').trim().slice(0, 120)}`)
   }
@@ -104,5 +104,38 @@ describe('PR3: "Ficha de saúde" em todo texto que se lê', { timeout: 60_000 },
     ].join('\n')
     const r = achados('exemplo.tsx', exemplo)
     expect(r.map(l => l.split(':')[0])).toEqual(['1', '2', '3'])
+  })
+})
+
+/**
+ * FC1 do Bloco Fichas (o Heitor, 2026-11-13): em Configurações → Fichas, as
+ * fichas dos procedimentos se chamam "Fichas de atendimento" — nas abas, nos
+ * botões e nas dicas — e a da cliente, "Ficha de saúde" (a trava de cima). O
+ * nome velho, "ficha do procedimento", sai do texto que se lê nesta tela.
+ */
+const TELA_DE_FICHAS = [
+  'components/admin/settings-fichas.tsx',
+  'components/admin/construtor-de-ficha.tsx',
+  'components/admin/settings-pre-atendimento.tsx',
+].map(f => join(RAIZ, f))
+
+const FICHA_DO_PROCEDIMENTO = /fichas? d[eo]s? procedimentos?/i
+
+describe('FC1: "Fichas de atendimento" em Configurações → Fichas', () => {
+  it('a tela não diz "ficha do procedimento" no texto que se lê', () => {
+    const errados = TELA_DE_FICHAS.flatMap(f => achados(f, readFileSync(f, 'utf8'), FICHA_DO_PROCEDIMENTO).map(a => `${relative(RAIZ, f)}:${a}`))
+    expect(errados).toEqual([])
+  })
+
+  it('o título, o botão de criar, o vazio e as dicas dizem "ficha de atendimento"', () => {
+    const lista = readFileSync(TELA_DE_FICHAS[0]!, 'utf8')
+    for (const texto of ['Fichas de atendimento', 'Nova ficha de atendimento', 'Nenhuma ficha de atendimento ainda',
+      'title="Editar a ficha de atendimento"', 'title="Excluir a ficha de atendimento"']) {
+      expect(lista, texto).toContain(texto)
+    }
+    const construtor = readFileSync(TELA_DE_FICHAS[1]!, 'utf8')
+    expect(construtor).toContain('Nome da ficha de atendimento')
+    expect(construtor).not.toMatch(/'(Salvar|Criar) ficha'/)
+    expect(readFileSync(TELA_DE_FICHAS[2]!, 'utf8'), 'o construtor da ficha de saúde fala dela').toContain('nomeDaFicha="ficha de saúde"')
   })
 })

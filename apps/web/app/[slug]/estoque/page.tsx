@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, unidadesDoContexto } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loteDaUrl } from '@/lib/estoque/lote-da-url'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
@@ -18,7 +18,7 @@ import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
 import { produtosDoEstoque, listasDoEstoque, marcasEFornecedoresDosProdutos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
 import { CadastroDoEstoque } from '@/components/admin/cadastro-do-estoque'
-import { catalogoDaRede, recusaDoCatalogo } from '@/lib/estoque/catalogo'
+import { unidadesDoCadastro } from '@/lib/estoque/estoque-inicial'
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -51,12 +51,11 @@ export default async function BranchStockPage({
   // Produtos e categorias em paralelo
   // Por `ler`: consulta que falha PARA, em vez de virar um estoque vazio.
   // C26: os produtos em páginas; D1: o desativado com saldo continua (lib/estoque/produtos-da-tela).
-  const [raw, listas, marcasEFornecedores, catalogo] = await Promise.all([
+  const [raw, listas, marcasEFornecedores] = await Promise.all([
     produtosDoEstoque(ctx.tenantId!),
     // E1/E15: as três listas da rede (categorias, marcas, fornecedores) e, de cada produto, as das entradas.
     listasDoEstoque(ctx.tenantId!),
     marcasEFornecedoresDosProdutos(ctx.tenantId!),
-    catalogoDaRede(admin, ctx.tenantId!),
   ])
 
   // Normaliza — filtra estoque apenas desta filial
@@ -115,6 +114,10 @@ export default async function BranchStockPage({
   // continua sendo a desta filial. Sem isto, a aba Transferência sumia — a
   // unidade não tinha para onde mandar produto.
   const unidadesDaRede = await filiaisAtivas(ctx.tenantId!)
+  // E13 + EQ1d: o estoque inicial do produto novo oferece as unidades ATIVAS
+  // que a pessoa alcança — uma só, escrita e travada; mais, a lista com as
+  // dela, já com esta (a do endereço). A action confere de novo.
+  const unidadesDoProduto = unidadesDoCadastro(unidadesDaRede, unidadesDoContexto(ctx))
   const productIds   = products.map(p => p.id)
 
   const now          = new Date()
@@ -161,9 +164,9 @@ export default async function BranchStockPage({
   // A36 da 10ª: o "Ver lotes esgotados" só onde há algum.
   const comLoteEsgotado = productIds.length > 0 ? await paresComLoteEsgotado(admin, [branchId]) : []
 
-  // C63: com "Só a rede", quem tem unidade fixa não cadastra nem edita produto; e
-  const recusaDoCadastro = recusaDoCatalogo(ctx, catalogo)
-  const podeEditarProduto = !readOnly && !recusaDoCadastro
+  // E13 (o Heitor, 13/11): quem cadastra e edita produto é quem tem o Estoque
+  // em Gerenciar, e só isso — a regra "Só a rede" (C63) saiu.
+  const podeEditarProduto = !readOnly
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -182,11 +185,6 @@ export default async function BranchStockPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {branch.name}
           </p>
-          {!readOnly && recusaDoCadastro && (
-            <p data-catalogo-da-rede style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 4, maxWidth: 560 }}>
-              {recusaDoCadastro}
-            </p>
-          )}
         </div>
 
         {!readOnly && (
@@ -202,9 +200,10 @@ export default async function BranchStockPage({
                 categories={listas.categorias}
                 marcas={listas.marcas}
                 fornecedores={listas.fornecedores}
-                // O estoque inicial entra NESTA unidade (D8 da 9ª: quem é da rede
-                // ficava sem seletor e o estoque era recusado).
-                branches={[{ id: branch.id as string, name: branch.name as string }]}
+                // O estoque inicial: as unidades dela, com esta escolhida (E13 + EQ1d;
+                // D8 da 9ª: quem é da rede ficava sem seletor e o estoque era recusado).
+                branches={unidadesDoProduto}
+                unidadeAtual={branchId}
                 trigger={
                   <button type="button" className="btn-primary">
                     <Package size={15} />
@@ -290,6 +289,7 @@ export default async function BranchStockPage({
         marcas={listas.marcas}
         fornecedores={listas.fornecedores}
         defaultBranchId={branchId}
+        unidadesDoProduto={unidadesDoProduto}
         readOnly={readOnly}
         podeEditarProduto={podeEditarProduto}
         podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}

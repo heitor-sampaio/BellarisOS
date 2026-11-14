@@ -1,4 +1,5 @@
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, unidadesDoContexto } from '@/lib/auth'
+import { unidadesDoCadastro } from '@/lib/estoque/estoque-inicial'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loteDaUrl } from '@/lib/estoque/lote-da-url'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
@@ -16,9 +17,7 @@ import { lotesComSaldo, lotesVencendo, paresComLoteEsgotado, type LoteDoProduto 
 import { CartoesDoEstoque, linhasDaValidade, loteNoCartao, type CartaoDoEstoque } from '@/components/shared/cartoes-do-estoque'
 import { contarSituacoes, DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 import { produtosDoEstoque, listasDoEstoque, marcasEFornecedoresDosProdutos, type ProdutoDoEstoque } from '@/lib/estoque/produtos-da-tela'
-import { catalogoDaRede } from '@/lib/estoque/catalogo'
 import { CadastroDoEstoque } from '@/components/admin/cadastro-do-estoque'
-import { CatalogoDeProdutosLinha } from '@/components/admin/catalogo-de-produtos'
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -46,12 +45,11 @@ export default async function AdminEstoquePage({
   // F72 (D1 da 14ª; H6): as unidades de LEITURA — a desativada com saldo (ou
   // com o que ficou nela) entra no total, nas linhas e no `?unidade=`, com o
   // selo. Fechada a Pampulha, o total caía R$ 894,80 sem nada ter saído.
-  const [raw, listas, marcasEFornecedores, catalogo, unidadesDeLeitura] = await Promise.all([
+  const [raw, listas, marcasEFornecedores, unidadesDeLeitura] = await Promise.all([
     produtosDoEstoque(ctx.tenantId!),
     // E1/E15: as três listas da rede (categorias, marcas, fornecedores) e, de cada produto, as das entradas.
     listasDoEstoque(ctx.tenantId!),
     marcasEFornecedoresDosProdutos(ctx.tenantId!),
-    catalogoDaRede(admin, ctx.tenantId!),
     unidadesParaLer(ctx.tenantId!),
   ])
 
@@ -107,6 +105,9 @@ export default async function AdminEstoquePage({
   const branches   = unidadesDeLeitura.map(b => ({ id: b.id, name: nomeNaTela(b), slug: b.slug, ativa: b.ativa }))
   // Para CRIAR (o produto novo com estoque inicial, a entrada): só as ativas.
   const ativas     = branches.filter(b => b.ativa)
+  // E13 + EQ1d: o estoque inicial do produto novo — as ativas que a pessoa
+  // alcança (no portal da rede, quem tem a rede inteira: todas).
+  const unidadesDoProduto = unidadesDoCadastro(ativas, unidadesDoContexto(ctx))
   const desativadas = new Set(branches.filter(b => !b.ativa).map(b => b.id))
   const productIds = products.map(p => p.id)
 
@@ -190,8 +191,6 @@ export default async function AdminEstoquePage({
               : umaUnidadeSo(branches.length) ? 'Estoque da clínica'
               : `Visão consolidada da rede · ${branches.length} unidades`}
           </p>
-          {/* C63 (H8): quem cadastra e edita os produtos — decisão da rede. */}
-          {canEdit && <CatalogoDeProdutosLinha regra={catalogo} />}
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -206,7 +205,7 @@ export default async function AdminEstoquePage({
               categories={listas.categorias}
               marcas={listas.marcas}
               fornecedores={listas.fornecedores}
-              branches={ativas}
+              branches={unidadesDoProduto}
               trigger={
                 <button type="button" className="btn-primary">
                   <Package size={15} />
@@ -291,6 +290,7 @@ export default async function AdminEstoquePage({
         marcas={listas.marcas}
         fornecedores={listas.fornecedores}
         unidadeInicial={unidadeId}
+        unidadesDoProduto={unidadesDoProduto}
         readOnly={!canEdit}
         podeVerAplicacoes={can(ctx, 'clients', 'VIEW')}
         comLoteEsgotado={comLoteEsgotado}

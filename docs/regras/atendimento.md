@@ -2637,6 +2637,47 @@ const procedures = await ler(
   com "Cadastrar mesmo assim" (`_nomeRepetido=sim`, `[data-nome-repetido]`), e o
   seletor de insumo diz o SKU (o cadastro do procedimento e o "Adicionar
   insumo" do atendimento). Prova: `e2e/estoque-unidade-da-9.spec.ts`.
+- **Quem cadastra produto, e em qual unidade entra o estoque inicial** (E13 do
+  Bloco Estoque e o EQ1d do Bloco Equipe, plano de adaptação, 2026-11-15 — o
+  Heitor, 13/11: "Quem cadastra é só quem tem permissão de gerenciar. Se for
+  pessoa de uma unidade especifica, unidade vem pré-preenchida e não pode ser
+  mudada. Se a pessoa tiver mais de uma unidade, a lista mostra apenas as
+  unidades dela."):
+  - **Cria, edita e desativa produto quem tem o Estoque em Gerenciar, e só
+    isso**, na rede ou numa unidade (`createProduct`, `updateProduct`,
+    `toggleProductActive`). Saiu a configuração da rede "Quem cadastra e edita
+    os produtos" (A unidade × Só a rede — a C63 da F66): a linha do cabeçalho
+    do Estoque da rede, o aviso `[data-catalogo-da-rede]` da unidade, a action
+    `salvarCatalogoDeProdutos`, `lib/estoque/catalogo.ts` e a coluna
+    `tenants.catalogo_de_produtos` (migration `20261115900001`, destrutiva;
+    nenhuma rede tinha "Só a rede"). Nada dela ficou: o catálogo é um só, da
+    rede, e o produto aparece em todas as unidades, como antes.
+  - **A unidade do estoque inicial segue as unidades da pessoa**
+    (`unidadesDoCadastro`, `lib/estoque/estoque-inicial.ts`: as ATIVAS que ela
+    alcança): de UMA unidade, ela vem escrita e travada
+    (`[data-unidade-travada]`, sem lista); de mais de uma, a lista só com as
+    dela, já com a unidade em que ela está (a do endereço); a rede inteira,
+    todas — no portal da rede, nenhuma escolhida com duas ou mais (sobra da
+    F33); no da unidade, a do endereço. A tela esconder não basta: a action
+    confere cada unidade com `alcancaUnidade`, e a da outra rede é recusada.
+- **O estoque inicial se DIVIDE entre as unidades** (E11, o Heitor, 13/11:
+  "ok, mantem como está, mas com possibilidade de dividir a entrada entre as
+  unidades"). Fica como estava — o lote, a validade, a nota fiscal, o custo,
+  as observações, a marca e o fornecedor (E14), iguais em todas as linhas —, e
+  cada linha é uma unidade com a quantidade dela ("Dividir com outra
+  unidade", `[data-linha-do-estoque-inicial]`; a lista de cada linha não
+  oferece a unidade já escolhida em outra). O formulário manda `_branchId` e
+  `initial_qty` repetidos, na mesma ordem (`linhasDoEstoqueInicial`: a linha
+  sem quantidade não conta; sem `_branchId`, vale a unidade em que a pessoa
+  está; a unidade repetida é recusada). **Uma transação só**: o app calcula
+  (o SKU, o uso e o preço, a comissão, as unidades ao alcance) e
+  `produto_cadastrar` (migration `20261115900001`, só service_role) grava o
+  produto e um `estoque_inicial` por linha — a unidade de outra rede, a
+  desativada ou a repetida derruba tudo, e nada fica, nem o produto. Era o
+  produto gravado pelo app, uma unidade só e o produto apagado à mão se o
+  estoque falhasse (D8 da 9ª). O lote nasce em cada unidade (o lote é DA
+  UNIDADE). Prova: `e2e/estoque-produto-por-unidades.spec.ts`,
+  `tests/estoque-inicial-por-unidades.test.ts`.
 
 **Decididas no levantamento das regras** (o Heitor, 2026-11-11; a correção
 indicada é a do consolidado do levantamento):
@@ -2693,8 +2734,9 @@ indicada é a do consolidado do levantamento):
     (`estoque_marcas_e_fornecedores_dos_produtos`,
     `marcasEFornecedoresDosProdutos`).
   - Prova: `e2e/estoque-marcas-e-fornecedores.spec.ts`.
-  - **Fora deste bloco**: E11 e E13 dependem do bloco Equipe ("a pessoa em
-    mais de uma unidade") e ficaram para depois dele (`docs/revisao.md`).
+  - **E11 e E13** ficaram para depois do bloco Equipe ("a pessoa em mais de
+    uma unidade") e entraram em 2026-11-15, com o EQ1d (acima, depois do
+    estoque inicial do cadastro do produto).
   - Antes (F66/F74, para a história): a D4/C76 fez dos fornecedores uma lista
     da rede com o "fornecedor de costume" no produto, o "arquivar" e a
     janela só para quem é da rede (A12 da 14ª); a A14 da 14ª distinguia
@@ -3288,6 +3330,8 @@ O resto do fluxo:
 ❌ Campo de categoria, marca ou fornecedor em texto livre (ou num select sem busca) numa porta de entrada nova — é CampoDaLista (a lista da rede, com busca e "+ Nova …" — E6)
 ❌ Pôr marca ou fornecedor no PRODUTO — são da entrada (E10)
 ❌ Recusar a gerente de unidade nas categorias, marcas e fornecedores por ser de unidade — a regra é o Estoque em Gerenciar, e só isso (E4)
+❌ Decidir quem cadastra produto por ser da rede ou de unidade (era a C63) — é o Estoque em Gerenciar, e só isso; a unidade do estoque inicial é das que a pessoa alcança, conferida na action (E13)
+❌ Gravar o produto e o estoque inicial em passos soltos (o produto ficava se o estoque falhasse) — é produto_cadastrar, uma transação com todas as linhas (E11)
 ❌ Avisar um lote sem reivindicá-lo antes (vencimento_avisado_em — C25)
 ❌ Criar a linha da unidade (branch_product_stock) desligando o gatilho do mínimo, ou mostrar o custo de um lote por outra conta que não custo_do_lote (custos_dos_lotes — D2 e D4 da 11ª)
 ❌ Mostrar ou guardar o custo por unidade de consumo com 2 casas (R$ 0,038/g vira R$ 0,04 — D6 da 11ª)

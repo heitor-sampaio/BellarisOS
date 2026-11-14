@@ -47,6 +47,8 @@ export const ISOLADOS = [
   'estoque-atritos-da-14.spec.ts',
   // O Bloco Estoque do plano de adaptação (2026-11-14): marcas, fornecedores, Insumo e Venda direta.
   'estoque-marcas-e-fornecedores.spec.ts',
+  // E11/E13 do Bloco Estoque e o EQ1d do Bloco Equipe (2026-11-15): o produto e o estoque inicial pelas unidades da pessoa.
+  'estoque-produto-por-unidades.spec.ts',
   'estoque-defeitos-da-12.spec.ts',
   'estoque-atritos-da-12.spec.ts',
   'fidelidade-atritos-da-12.spec.ts',

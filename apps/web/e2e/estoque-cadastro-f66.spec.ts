@@ -10,8 +10,8 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  *   campo, e `updateProduct` gravava `cost_price: null`. E o mínimo do cadastro
  *   chegava 0 ao formulário (a lista passava `min_stock: null`).
  * - C24: a categoria de OUTRA rede entrava no produto; o mínimo negativo era aceito.
- * - C63 (H8): "Quem cadastra e edita os produtos" — com "Só a rede", a gerente
- *   de unidade fixa não cria nem edita produto.
+ * - C63 (H8) — revisto no E13 do Bloco Estoque (2026-11-15): quem tem o Estoque
+ *   em Gerenciar cria e edita produto, na rede ou numa unidade.
  * - C71: as categorias do estoque são da rede — a gerente de unidade não cria
  *   nem apaga.
  * Numa rede [e2e] própria, de uma unidade.
@@ -110,37 +110,25 @@ test('E4 (revê o C71): a gerente de unidade, com o Estoque em Gerenciar, cria e
   expect((await db().from('product_categories').select('id').eq('id', cat!.id)).data).toHaveLength(0)
 })
 
-test('C63: com "Só a rede", a gerente de unidade não cadastra nem edita produto — e a dona sim', async ({ browser }) => {
-  // O padrão é a unidade: a gerente edita.
+// Era o C63 ("Quem cadastra e edita os produtos": A unidade × Só a rede). O
+// Bloco Estoque do plano de adaptação (E13, o Heitor, 13/11: "Quem cadastra é só
+// quem tem permissão de gerenciar") o tirou: a gerente de unidade, com o Estoque
+// em Gerenciar, cria e edita produto, e a regra não existe mais. A prova da
+// unidade do estoque inicial está em e2e/estoque-produto-por-unidades.spec.ts.
+test('E13 (revê o C63): a gerente de unidade, com o Estoque em Gerenciar, cria e edita produto', async ({ browser }) => {
+  const nome = `${PREFIXO} Novo da gerente ${marca}`
   await como(browser, gerente, async p => {
-    const r = await chamarAcaoComFormulario(p, 'actions/stock.ts', 'updateProduct', rota(), [undefined], edicao())
+    const r = await chamarAcaoComFormulario(p, 'actions/stock.ts', 'updateProduct', rota(), [undefined], edicao({ name: `${nomeSerum} pela gerente` }))
     expect(r.texto).toContain('"success":true')
-  })
-  await como(browser, dona, async p => {
-    const r = await chamarAcao(p, 'actions/stock.ts', 'salvarCatalogoDeProdutos', '/admin/estoque', ['REDE'])
-    expect(r.texto).toContain('"success":true')
-  })
-  expect((await db().from('tenants').select('catalogo_de_produtos').eq('id', rede.tenantId).single<{ catalogo_de_produtos: string }>()).data!.catalogo_de_produtos).toBe('REDE')
-  await como(browser, gerente, async p => {
-    const r = await chamarAcaoComFormulario(p, 'actions/stock.ts', 'updateProduct', rota(), [undefined], edicao({ name: 'não pode' }))
-    expect(r.texto).toContain('O catálogo de produtos é da rede')
     const c = await chamarAcaoComFormulario(p, 'actions/stock.ts', 'createProduct', rota(), [undefined], {
-      name: `${PREFIXO} Novo da gerente ${marca}`, unit: 'un', uso: 'INSUMO',
+      name: nome, unit: 'un', uso: 'INSUMO',
     })
-    expect(c.texto).toContain('O catálogo de produtos é da rede')
-    // A tela diz por quê, no lugar do "Novo produto".
+    expect(c.texto).toContain('"success":true')
     await p.goto(rota())
-    await expect(p.locator('[data-catalogo-da-rede]')).toContainText('O catálogo de produtos é da rede')
-    await expect(p.getByRole('button', { name: 'Novo produto' })).toHaveCount(0)
+    await expect(p.locator('[data-catalogo-da-rede]'), 'o aviso "O catálogo de produtos é da rede" saiu').toHaveCount(0)
+    await expect(p.getByRole('button', { name: 'Novo produto' }).first()).toBeVisible()
   })
-  expect((await produto()).name).toBe(nomeSerum)
-  // A gerente não muda a regra.
-  await como(browser, gerente, async p => {
-    const r = await chamarAcao(p, 'actions/stock.ts', 'salvarCatalogoDeProdutos', rota(), ['UNIDADE'])
-    expect(r.texto).toContain('Esta configuração é da clínica toda')
-  })
-  await como(browser, dona, async p => {
-    const r = await chamarAcaoComFormulario(p, 'actions/stock.ts', 'updateProduct', rota(), [undefined], edicao())
-    expect(r.texto).toContain('"success":true')
-  })
+  expect((await produto()).name).toBe(`${nomeSerum} pela gerente`)
+  expect((await db().from('products').select('id').eq('tenant_id', rede.tenantId).eq('name', nome)).data).toHaveLength(1)
+  await db().from('products').update({ name: nomeSerum }).eq('id', serum)
 })

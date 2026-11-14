@@ -4,7 +4,7 @@ import { useId,
   useRef, useCallback, useState, useMemo,
   forwardRef, useImperativeHandle,
 } from 'react'
-import { X, Package, Barcode } from 'lucide-react'
+import { X, Package, Barcode, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createProduct, updateProduct } from '@/actions/stock'
 import { MEDIDAS_DO_PRODUTO } from '@/lib/estoque/medidas'
@@ -13,6 +13,7 @@ import { prefixoDoSku } from '@/lib/estoque/sku'
 import { Fala } from '@/components/shared/uma-unidade'
 import { ComissaoDoProduto } from '@/components/branch/comissao-do-produto'
 import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
+import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoDaLista, type ItemDaLista } from '@/components/admin/campo-da-lista'
 import { loteVencido, validadeNaTela } from '@/lib/estoque/validade'
 import { useFuso } from '@/components/shared/fuso'
@@ -44,12 +45,18 @@ interface Props {
   marcas?: ItemDaLista[]
   fornecedores?: ItemDaLista[]
   /**
-   * Unidades da rede. Quando vem preenchida, o estoque inicial pergunta em qual
-   * unidade ele entra — quem e da rede nao tem uma filial corrente, e sem ela o
-   * lancamento era descartado em silencio.
+   * As unidades que o estoque inicial oferece: as que a pessoa alcança (E13 e
+   * EQ1d — `unidadesDoCadastro`). Uma só: escrita e travada; mais: a lista, e o
+   * estoque inicial se divide entre elas (E11). Sem a unidade, o lançamento era
+   * descartado em silêncio (quem é da rede não tem uma unidade corrente).
    */
   branches?:   { id: string; name: string }[]
   onSuccess?:  () => void
+  /**
+   * A unidade em que a pessoa está (o portal da unidade): o estoque inicial
+   * já vem com ela (EQ1d). No portal da rede, nenhuma (com duas ou mais).
+   */
+  unidadeAtual?: string
 }
 
 
@@ -71,13 +78,14 @@ function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: str
 
 // -- Campos compartilhados --------------------------------------------
 function ProductFields({
-  product, marcas = [], fornecedores = [], categories = [], branches = [], onClose, state, pending, submitLabel, isCreate = false, pergunta = null,
+  product, marcas = [], fornecedores = [], categories = [], branches = [], unidadeAtual, onClose, state, pending, submitLabel, isCreate = false, pergunta = null,
 }: {
   product?:    StockProduct
   marcas?:     ItemDaLista[]
   fornecedores?: ItemDaLista[]
   categories:  ItemDaLista[]
   branches?:   { id: string; name: string }[]
+  unidadeAtual?: string
   onClose:     () => void
   state:       { error?: string; success?: boolean } | undefined
   pending:     boolean
@@ -89,7 +97,6 @@ function ProductFields({
   const [categoryId,       setCategoryId]       = useState(product?.category_id ?? '')
   const [barcodeValue,     setBarcodeValue]     = useState(product?.barcode ?? '')
   const [barcodeReady,     setBarcodeReady]     = useState(false)
-  const [initialQtyStr,    setInitialQtyStr]    = useState('')
   const [costPriceStr,     setCostPriceStr]     = useState(product?.cost_price != null ? String(product.cost_price) : '')
   const [unitsPerPkgStr,   setUnitsPerPkgStr]   = useState(product?.units_per_package != null ? String(product.units_per_package) : '')
   const [consumptionUnit,  setConsumptionUnit]  = useState(product?.consumption_unit ?? '')
@@ -362,35 +369,15 @@ function ProductFields({
 
           {showStock && (
             <>
-              {/* Em qual unidade o estoque entra. Só aparece no portal da rede:
-                  estoque é da filial, e sem dizer qual o lançamento inteiro era
-                  descartado em silêncio — sem movimento, sem saldo, sem despesa. */}
-              {branches.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label htmlFor={id('unidade')}>Unidade que recebe o estoque *</Label>
-                  <select id={id('unidade')} name="_branchId" required className="field" defaultValue={unidadeInicial(branches)}>
-                    {/* Sobra da F33 (8ª simulação; princípio 3): com duas ou mais, nenhuma vem escolhida. */}
-                    {branches.length > 1 && <option value="">Selecione a unidade…</option>}
-                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                </div>
-              )}
+              {/* E11 + E13/EQ1d (o Heitor, 13/11): a unidade segue as unidades da
+                  pessoa — uma só, escrita e travada; mais de uma, a lista só com as
+                  dela — e o estoque inicial se divide entre elas, uma linha por
+                  unidade. O resto da entrada (custo, lote, validade, marca,
+                  fornecedor, nota, observações) vale para todas as linhas. */}
+              <EstoqueInicialPorUnidade branches={branches} unidadeAtual={unidadeAtual} id={id} />
 
-              {/* Quantidade + Preço de custo por embalagem */}
+              {/* Preço de custo por embalagem */}
               <div className="form-2col">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label htmlFor={id('qtd-inicial')}>Quantidade *</Label>
-                  <input
-                    id={id('qtd-inicial')}
-                    name="initial_qty"
-                    type="number" step="0.001" min="0.001"
-                    required
-                    value={initialQtyStr}
-                    onChange={e => setInitialQtyStr(e.target.value)}
-                    className="field"
-                    placeholder="0"
-                  />
-                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                     <Label htmlFor={id('custo')}>Custo por embalagem</Label>
@@ -499,12 +486,103 @@ function ProductFields({
   )
 }
 
+// -- O estoque inicial por unidade (E11, E13 e EQ1d) -------------------
+function EstoqueInicialPorUnidade({ branches, unidadeAtual, id }: {
+  branches:      { id: string; name: string }[]
+  unidadeAtual?: string
+  id:            (campo: string) => string
+}) {
+  const proxima = useRef(1)
+  const [linhas, setLinhas] = useState<{ chave: number; unidade: string }[]>(
+    () => [{ chave: 0, unidade: unidadeInicial(branches, unidadeAtual) }],
+  )
+  const escolhidas = new Set(linhas.map(l => l.unidade).filter(Boolean))
+  const sobram = branches.filter(b => !escolhidas.has(b.id))
+
+  function dividir() {
+    // Com uma unidade sobrando, ela vem escolhida (unicaOpcao); com mais, nenhuma.
+    setLinhas(ls => [...ls, { chave: proxima.current++, unidade: unicaOpcao(sobram) }])
+  }
+
+  // Uma unidade só (ou o chamador sem unidades, que grava na unidade do contexto): sem lista.
+  if (branches.length <= 1) {
+    return (
+      <div className="form-2col">
+        {branches.length === 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <span className="field-label" style={{ textAlign: 'left', letterSpacing: '0.04em' }}>Unidade que recebe o estoque</span>
+            <input type="hidden" name="_branchId" value={branches[0]!.id} />
+            <p data-unidade-travada className="field" aria-readonly="true"
+              style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)', cursor: 'default' }}>
+              {branches[0]!.name}
+            </p>
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <Label htmlFor={id('qtd-0')}>Quantidade *</Label>
+          <input id={id('qtd-0')} name="initial_qty" type="number" step="0.001" min="0.001" required className="field" placeholder="0" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div role="group" aria-label="Unidades que recebem o estoque" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {linhas.map((linha, i) => {
+        const outras = new Set(linhas.filter(l => l.chave !== linha.chave).map(l => l.unidade).filter(Boolean))
+        return (
+          <div key={linha.chave} data-linha-do-estoque-inicial style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '2 1 0', minWidth: 0 }}>
+              {i === 0 && <Label htmlFor={id(`unidade-${linha.chave}`)}>Unidade que recebe o estoque *</Label>}
+              <select id={id(`unidade-${linha.chave}`)} name="_branchId" required className="field"
+                aria-label={i === 0 ? undefined : 'Unidade que recebe o estoque'}
+                value={linha.unidade}
+                onChange={e => { const v = e.target.value; setLinhas(ls => ls.map(l => l.chave === linha.chave ? { ...l, unidade: v } : l)) }}>
+                {/* Sobra da F33 (8ª simulação; princípio 3): sem unidade escolhida, a pessoa escolhe. */}
+                <option value="">Selecione a unidade…</option>
+                {branches.filter(b => !outras.has(b.id)).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '1 1 0', minWidth: 0 }}>
+              {i === 0 && <Label htmlFor={id(`qtd-${linha.chave}`)}>Quantidade *</Label>}
+              <input id={id(`qtd-${linha.chave}`)} name="initial_qty" type="number" step="0.001" min="0.001" required className="field" placeholder="0"
+                aria-label={i === 0 ? undefined : 'Quantidade'} />
+            </div>
+            {i > 0 && (
+              <button type="button" aria-label="Tirar esta unidade" title="Tirar esta unidade"
+                onClick={() => setLinhas(ls => ls.filter(l => l.chave !== linha.chave))}
+                style={{
+                  width: 'var(--altura-controle)', height: 'var(--altura-controle)', flexShrink: 0, marginBottom: 2,
+                  borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--surface)',
+                  color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                }}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        )
+      })}
+      {sobram.length > 0 && (
+        <button type="button" className="btn-secondary" onClick={dividir} style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}>
+          <Plus size={13} /> Dividir com outra unidade
+        </button>
+      )}
+      {linhas.length > 1 && (
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Cada unidade recebe a quantidade da linha dela, com o mesmo custo, lote, validade, marca, fornecedor e nota.
+        </p>
+      )}
+    </div>
+  )
+}
+
 // -- Form de criação ---------------------------------------------------
-function CreateForm({ marcas, fornecedores, categories, branches, onClose, onSuccess }: {
+function CreateForm({ marcas, fornecedores, categories, branches, unidadeAtual, onClose, onSuccess }: {
   marcas: ItemDaLista[]
   fornecedores: ItemDaLista[]
   categories: ItemDaLista[]
   branches?:  { id: string; name: string }[]
+  unidadeAtual?: string
   onClose:    () => void
   onSuccess:  () => void
 }) {
@@ -538,7 +616,7 @@ function CreateForm({ marcas, fornecedores, categories, branches, onClose, onSuc
     <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <ProductFields
         isCreate
-        marcas={marcas} fornecedores={fornecedores} categories={categories} branches={branches} onClose={onClose}
+        marcas={marcas} fornecedores={fornecedores} categories={categories} branches={branches} unidadeAtual={unidadeAtual} onClose={onClose}
         state={error ? { error } : undefined}
         pending={pending} submitLabel="Criar produto"
         pergunta={pergunta ? {
@@ -594,7 +672,7 @@ function EditForm({ product, categories, onClose, onSuccess }: {
 
 // -- Modal wrapper -----------------------------------------------------
 export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
-  function StockProductModal({ product, trigger, marcas = [], fornecedores = [], categories = [], branches = [], onSuccess }, ref) {
+  function StockProductModal({ product, trigger, marcas = [], fornecedores = [], categories = [], branches = [], unidadeAtual, onSuccess }, ref) {
     const isEdit    = !!product
     const dialogRef = useRef<HTMLDialogElement>(null)
     const router    = useRouter()
@@ -650,7 +728,7 @@ export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
           <div style={{ padding: '24px 24px 28px' }}>
             {isEdit
               ? <EditForm key={`${product.id}-${formKey}`} product={product} categories={categories} onClose={close} onSuccess={handleSuccess} />
-              : <CreateForm key={formKey} marcas={marcas} fornecedores={fornecedores} categories={categories} branches={branches} onClose={close} onSuccess={handleSuccess} />
+              : <CreateForm key={formKey} marcas={marcas} fornecedores={fornecedores} categories={categories} branches={branches} unidadeAtual={unidadeAtual} onClose={close} onSuccess={handleSuccess} />
             }
           </div>
         </dialog>

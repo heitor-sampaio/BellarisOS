@@ -87,7 +87,7 @@ export async function chamarAcao(
  * `apoio/acao.ts`).
  */
 export async function chamarAcaoComFormulario(
-  page: Page, arquivo: string, funcao: string, rota: string, antes: unknown[], campos: Record<string, string>,
+  page: Page, arquivo: string, funcao: string, rota: string, antes: unknown[], campos: Record<string, string | string[]>,
 ): Promise<RespostaDeAcao> {
   const { id, destino } = await acaoNaRota(page, arquivo, funcao, rota)
   const raiz = JSON.stringify([...antes.map(a => (a === undefined ? '$undefined' : a)), '$K1'])
@@ -96,7 +96,9 @@ export async function chamarAcaoComFormulario(
   // formulário chegava vazio. Num objeto comum a chave '0' (numérica) seria
   // enumerada primeiro: por isso um FormData, que guarda a ordem.
   const multipart = new FormData()
-  for (const [k, v] of Object.entries(campos)) multipart.append(`_1_${k}`, v)
+  // Uma lista repete o campo (várias linhas do mesmo formulário, como o
+  // estoque inicial dividido entre as unidades — E11): o servidor lê com getAll.
+  for (const [k, v] of Object.entries(campos)) for (const um of Array.isArray(v) ? v : [v]) multipart.append(`_1_${k}`, um)
   multipart.append('0', raiz)
   const r = await page.request.post(destino, {
     headers: { 'next-action': id, accept: 'text/x-component' },

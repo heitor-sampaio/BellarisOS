@@ -51,6 +51,7 @@ export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePerson
           updateAction={salvarFichaDePreAtendimento}
           tiposFora={TIPOS_FORA_DO_PRE_ATENDIMENTO}
           nomeFixo
+          nomeDaFicha="ficha de saúde"
           // A30 da 11ª: o modelo de injetáveis é OPÇÃO — a clínica acrescenta (princípio 6).
           modelos={[{ rotulo: 'Acrescentar as perguntas de injetáveis', rows: PERGUNTAS_DE_INJETAVEIS }]}
         />

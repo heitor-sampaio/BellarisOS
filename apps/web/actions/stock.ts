@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, lerTodas, tentar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, lerTodas, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede, saldoAgoraEmTexto, unidadeDesativada, RECUSA_DA_UNIDADE_DESATIVADA } from '@/lib/estoque/movimentos'
 import { lerUso, RECUSA_SEM_USO, type UsoDoProduto } from '@/lib/estoque/uso'
@@ -13,8 +13,7 @@ import { comissaoDoProdutoNoFormulario } from '@/lib/comissoes/gravacao'
 import { aplicacoesDoLote as aplicacoesDoLoteCore, type AplicacaoDoLote } from '@/lib/estoque/aplicacoes-do-lote'
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { notaDaTransferencia, notaDeTransferenciaSemNome } from '@/lib/estoque/transferencia'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
-import { catalogoDaRede, recusaDoCatalogo, lerCatalogo } from '@/lib/estoque/catalogo'
+import { linhasDoEstoqueInicial } from '@/lib/estoque/estoque-inicial'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -130,9 +129,9 @@ async function createProductInterno(
     if (comissao.error) return { error: comissao.error }
 
     const admin = createAdminClient()
-    // C63: com "Só a rede", quem tem unidade fixa não cadastra produto.
-    const recusa = recusaDoCatalogo(ctx, await catalogoDaRede(admin, ctx.tenantId!))
-    if (recusa) return { error: recusa }
+    // E13 (o Heitor, 13/11: "Quem cadastra é só quem tem permissão de
+    // gerenciar"): o Estoque em Gerenciar, acima, e só isso — a regra "Só a
+    // rede" (C63) saiu.
 
     const categoryId = str(formData, 'category_id')
     // Resolve o nome da categoria para geração do SKU e campo denormalizado
@@ -146,32 +145,26 @@ async function createProductInterno(
     const fornecedorInicial = await nomeNaLista(ctx.tenantId!, 'fornecedores', str(formData, 'initial_fornecedor_id'))
     if (fornecedorInicial === undefined) return { error: 'Fornecedor não encontrado.' }
 
-    // A unidade do estoque inicial vem do formulário: da rede e ao alcance de
-    // quem cria (§11). Até 2026-09-28 ia direto para o saldo, o movimento e a
-    // DESPESA — inclusive numa unidade de outra clínica. Conferida antes de o
-    // produto nascer, para a recusa não deixar um produto sem estoque para trás.
-    const filialPedida = str(formData, '_branchId')
-    if (filialPedida) {
-      const daRede = await ler(admin.from('branches').select('id')
-        .eq('id', filialPedida).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
-      if (!daRede || !alcancaUnidade(ctx, filialPedida)) return { error: 'Unidade não encontrada.' }
+    // O estoque inicial, dividido entre as unidades (E11: "com possibilidade de
+    // dividir a entrada entre as unidades"): uma linha por unidade, com a
+    // quantidade dela. Sem unidade no formulário, vale a unidade em que a
+    // pessoa está (o chamador de uma unidade só). Cada unidade é da rede, ATIVA
+    // e ao alcance de quem cadastra (E13 + EQ1d: a tela mostra só as dela, e
+    // esconder na tela não basta) — conferido ANTES de o produto nascer (D8 da 9ª).
+    const pedido = linhasDoEstoqueInicial(formData, ctx.branchId)
+    if ('error' in pedido) return { error: pedido.error }
+    const linhas = pedido.linhas
+    if (linhas.length > 0) {
+      const ids = linhas.map(l => l.unidade)
+      if (!ids.every(u => /^[0-9a-f-]{36}$/i.test(u))) return { error: 'Unidade não encontrada.' }
+      const daRede = await ler(admin.from('branches').select('id, is_active')
+        .in('id', ids).eq('tenant_id', ctx.tenantId!), 'conferir as unidades do estoque inicial') as { id: string; is_active: boolean }[] | null
+      const achadas = new Map((daRede ?? []).map(b => [b.id, b]))
+      for (const u of ids) {
+        if (!achadas.has(u) || !alcancaUnidade(ctx, u)) return { error: 'O estoque inicial vai só para as suas unidades.' }
+        if (achadas.get(u)!.is_active === false) return { error: RECUSA_DA_UNIDADE_DESATIVADA }
+      }
     }
-
-    // Estoque inicial.
-    //
-    // A unidade vem do formulário, não do contexto: quem é da REDE não tem
-    // `ctx.branchId`, e a condição antiga (`&& ctx.branchId`) descartava tudo em
-    // silêncio — o produto nascia sem movimento, sem saldo na filial, sem lote e
-    // sem a despesa, com a tela dizendo que deu certo. O modal pede a unidade
-    // quando quem cria é da rede; na unidade ela já vem do contexto (ou da tela).
-    // Tudo conferido ANTES de o produto nascer (D8 da 9ª simulação: a recusa
-    // vinha depois do insert, e repetir criava o OUT-002).
-    const initialQty    = num(formData, 'initial_qty')
-    const initialCost   = num(formData, 'initial_cost')
-    const filialEstoque = str(formData, '_branchId') || ctx.branchId
-    const comEstoque    = !!initialQty && initialQty > 0
-    if (comEstoque && !filialEstoque) return { error: 'Escolha a unidade que vai receber o estoque inicial.' }
-    if (comEstoque && !alcancaUnidade(ctx, filialEstoque)) return { error: 'O estoque inicial é só da sua unidade.' }
 
     // O nome repetido AVISA, sem recusar (A6 da 9ª; princípio 2): dois "Manta
     // térmica" iguais apareciam em dobro no seletor de insumo, sem nada que os
@@ -187,53 +180,42 @@ async function createProductInterno(
     }
 
     const sku = await nextSku(ctx.tenantId!, categoryName, usoEPreco.uso)
-
     const minStock = num(formData, 'min_stock') ?? 0
+    const initialCost = num(formData, 'initial_cost')
 
-    const { data: newProduct, error } = await admin.from('products').insert({
-      tenant_id:   ctx.tenantId!,
-      name,
-      sku,
-      category:    categoryName,
-      category_id: categoryId,
-      unit,
-      barcode:           str(formData, 'barcode'),
-      cost_price:       num(formData, 'cost_price'),
-      sale_price:        usoEPreco.preco,
-      uso:               usoEPreco.uso,
-      min_stock:         minStock,
-      consumption_unit:  str(formData, 'consumption_unit'),
-      units_per_package: num(formData, 'units_per_package'),
-      ...(comissao.patch ?? {}),
-    }).select('id').single()
-
-    if (error) return { error: error.message }
-
-    if (comEstoque && filialEstoque && newProduct) {
-      // Numa transação só (estoque_inicial, sobre estoque_entrada — 2026-10-21):
-      // movimento, saldo com o mínimo, lote e custo. Eram quatro gravações
-      // soltas. Sem despesa: movimentação de estoque nunca gera despesa (D13
-      // revisto, decisão do Heitor, 2026-10-28). Se o estoque não entra, o
-      // produto recém-nascido sai (sem movimento nenhum): nada pela metade (D8 da 9ª).
-      const desfazer = () => tentar(admin.from('products').delete().eq('id', newProduct.id).eq('tenant_id', ctx.tenantId!), 'desfazer o produto sem o estoque inicial')
-      const unidadeDaRede = await produtoEUnidadesDaRede(admin, ctx.tenantId!, newProduct.id, [filialEstoque])
-      if (!unidadeDaRede) { await desfazer(); return { error: 'A unidade do estoque inicial não é desta rede.' } }
-      if (await unidadeDesativada(admin, ctx.tenantId!, filialEstoque)) { await desfazer(); return { error: RECUSA_DA_UNIDADE_DESATIVADA } }
-      try {
-        await gravar(admin.rpc('estoque_inicial', {
-          p_produto: newProduct.id, p_unidade: filialEstoque, p_quantidade: initialQty,
-          p_custo: initialCost && initialCost > 0 ? initialCost : null,
-          p_observacao: str(formData, 'initial_notes') ?? 'Estoque inicial',
-          p_lote: str(formData, 'initial_batch'), p_validade: str(formData, 'initial_expires_at'),
-          p_autor: ctx.internalUserId, p_minimo: minStock,
-          // C16 + E14 (caminho irmão da Entrada): a marca, o fornecedor e a nota desta entrada.
-          p_fornecedor: fornecedorInicial, p_nota_fiscal: str(formData, 'initial_nota_fiscal'),
-          p_marca: marcaInicial,
-        }), 'registrar o estoque inicial')
-      } catch (e) {
-        await desfazer()
-        return { error: `O produto não foi criado: o estoque inicial não entrou (${mensagemDoErro(e)}).` }
-      }
+    // UMA transação (E11; o padrão do projeto: o app calcula, uma função
+    // grava): o produto e o estoque inicial de cada unidade — movimento, saldo
+    // com o mínimo, lote e custo (estoque_inicial). Uma linha que falha (a
+    // unidade de outra rede, a desativada, a repetida — o banco confere de
+    // novo) e nada fica, nem o produto. Sem despesa: movimentação de estoque
+    // nunca gera despesa (D13 revisto, 2026-10-28).
+    try {
+      await gravar(admin.rpc('produto_cadastrar', {
+        p_tenant: ctx.tenantId!,
+        p_produto: {
+          name, sku, category: categoryName, category_id: categoryId, unit,
+          barcode:           str(formData, 'barcode'),
+          cost_price:        num(formData, 'cost_price'),
+          sale_price:        usoEPreco.preco,
+          uso:               usoEPreco.uso,
+          min_stock:         minStock,
+          consumption_unit:  str(formData, 'consumption_unit'),
+          units_per_package: num(formData, 'units_per_package'),
+          ...(comissao.patch ?? {}),
+        },
+        p_linhas: linhas,
+        p_custo: initialCost && initialCost > 0 ? initialCost : null,
+        p_observacao: str(formData, 'initial_notes') ?? 'Estoque inicial',
+        p_lote: str(formData, 'initial_batch'), p_validade: str(formData, 'initial_expires_at'),
+        p_autor: ctx.internalUserId,
+        // C16 + E14 (caminho irmão da Entrada): a marca, o fornecedor e a nota desta entrada.
+        p_fornecedor: fornecedorInicial, p_nota_fiscal: str(formData, 'initial_nota_fiscal'),
+        p_marca: marcaInicial,
+      }), 'cadastrar o produto')
+    } catch (e) {
+      return { error: linhas.length > 0
+        ? `O produto não foi criado: o estoque inicial não entrou (${mensagemDoErro(e)}).`
+        : mensagemDoErro(e) }
     }
 
     revalidatePath('/admin/produtos')
@@ -272,9 +254,6 @@ export async function updateProduct(
     if (comissao.error) return { error: comissao.error }
 
     const admin = createAdminClient()
-    // C63: com "Só a rede", quem tem unidade fixa não edita produto.
-    const recusa = recusaDoCatalogo(ctx, await catalogoDaRede(admin, ctx.tenantId!))
-    if (recusa) return { error: recusa }
 
     const categoryId = str(formData, 'category_id')
     const cat = await categoriaDaRede(ctx.tenantId!, categoryId)
@@ -373,8 +352,6 @@ async function toggleProductActiveInterno(productId: string, isActive: boolean) 
     assertPermission(ctx, 'stock', 'MANAGE')
 
     const admin = createAdminClient()
-    const recusa = recusaDoCatalogo(ctx, await catalogoDaRede(admin, ctx.tenantId!))
-    if (recusa) return { error: recusa }
     await gravar(admin.from('products')
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
       .eq('id', productId)
@@ -1206,28 +1183,6 @@ export async function desfazerPerdaDeEstoque(movimentoId: string, motivo: string
     }
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath('/*/stock')
-    return { success: true }
-  } catch (e) {
-    if ((e as { digest?: string })?.digest) throw e
-    return { error: mensagemDoErro(e) }
-  }
-}
-
-/**
- * "Quem cadastra e edita os produtos" (C63, H8): a unidade (o padrão) ou só a
- * rede. É configuração da clínica toda: quem é da rede, com o Estoque em Gerenciar.
- */
-export async function salvarCatalogoDeProdutos(regra: string): Promise<{ error?: string; success?: true }> {
-  try {
-    const ctx = await getTenantContext()
-    assertPermission(ctx, 'stock', 'MANAGE')
-    const recusa = recusaDaConfigDaClinica(ctx)
-    if (recusa) return { error: recusa }
-    if (regra !== 'UNIDADE' && regra !== 'REDE') return { error: 'Escolha quem cadastra os produtos.' }
-    await gravar(createAdminClient().from('tenants').update({ catalogo_de_produtos: lerCatalogo(regra) })
-      .eq('id', ctx.tenantId!).select('id').single(), 'salvar quem cadastra os produtos')
-    revalidatePath('/admin/estoque')
-    revalidatePath('/[slug]/estoque', 'page')
     return { success: true }
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e

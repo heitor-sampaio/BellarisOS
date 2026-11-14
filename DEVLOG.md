@@ -1774,11 +1774,114 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-15 — Bloco Estoque (E11, E13), o EQ1d da Equipe e o Bloco Fichas (FC1): o produto pelas unidades da pessoa, o estoque inicial dividido e "Fichas de atendimento"
+
+A revisão do Heitor (13/11), no plano de adaptação aprovado: "Quem cadastra é
+só quem tem permissão de gerenciar. Se for pessoa de uma unidade especifica,
+unidade vem pré-preenchida e não pode ser mudada. Se a pessoa tiver mais de
+uma unidade, a lista mostra apenas as unidades dela." (E13 e o EQ1d); o
+estoque inicial "mantem como está, mas com possibilidade de dividir a entrada
+entre as unidades" (E11); e, nas Fichas, os nomes decididos (FC1).
+
+- **E13 — quem cadastra produto é o Estoque em Gerenciar, e só isso.** Saiu a
+  configuração da rede "Quem cadastra e edita os produtos" (A unidade × Só a
+  rede, a C63 da F66): a linha do cabeçalho do Estoque da rede
+  (`CatalogoDeProdutosLinha`), o aviso `[data-catalogo-da-rede]` da unidade,
+  a action `salvarCatalogoDeProdutos`, `lib/estoque/catalogo.ts` e a coluna
+  `tenants.catalogo_de_produtos`. `createProduct`, `updateProduct` e
+  `toggleProductActive` conferem só o `assertPermission`.
+- **E13 + EQ1d — a unidade do estoque inicial segue as unidades da pessoa**
+  (`unidadesDoCadastro`, `lib/estoque/estoque-inicial.ts`: as ATIVAS que ela
+  alcança, por `unidadesDoContexto`). De UMA unidade: escrita e travada
+  (`[data-unidade-travada]`, sem lista). De mais de uma: a lista só com as
+  dela, já com a do endereço. A rede inteira: todas (no portal da rede,
+  nenhuma escolhida com duas ou mais — sobra da F33; no da unidade, a do
+  endereço). Os dois portais e o "Novo produto" do Estoque vazio passam a
+  lista (`unidadesDoProduto` no `AdminStockView`). A action confere cada
+  unidade com `alcancaUnidade` (e a rede, e se está ativa) antes de gravar.
+- **E11 — o estoque inicial se divide entre as unidades.** Fica tudo como
+  estava (lote, validade, nota fiscal, custo, observações, marca e fornecedor
+  — iguais em todas as linhas); cada linha é uma unidade e a quantidade dela,
+  com "Dividir com outra unidade" (a lista de cada linha não repete a unidade
+  de outra; a linha a mais tem "Tirar esta unidade"). O formulário manda
+  `_branchId` e `initial_qty` repetidos (`linhasDoEstoqueInicial`).
+  **Numa transação só**: o app calcula (SKU, uso e preço, comissão, as
+  unidades ao alcance) e `produto_cadastrar` grava o produto e um
+  `estoque_inicial` por linha. A unidade de outra rede, a desativada ou a
+  repetida derruba tudo — nem o produto fica. Era o produto gravado pelo app,
+  uma unidade só, e o produto apagado à mão se o estoque falhasse (D8 da 9ª).
+- **FC1 — "Fichas de atendimento" e "Ficha de saúde" em Configurações →
+  Fichas.** A lista das fichas dos procedimentos ganhou o título "Fichas de
+  atendimento" (`[data-fichas-de-atendimento]`) e o texto "escolha uma em
+  cada procedimento, no campo “Ficha de atendimento”"; o botão é "Nova ficha
+  de atendimento", o vazio "Nenhuma ficha de atendimento ainda", as dicas
+  "Editar/Excluir a ficha de atendimento" e o "Excluir…" diz "ficha de
+  atendimento". O construtor fala da ficha que está montando (`nomeDaFicha`):
+  "Nome da ficha de atendimento", "Criar/Salvar ficha de atendimento",
+  "Voltar às fichas de atendimento"; o da ficha de saúde, "Salvar ficha de
+  saúde". O resto ficou (o construtor, os tipos, o obrigatório, o "Mostrar só
+  quando", uma ficha por procedimento, a ficha de saúde da rede com o bloco de
+  injetáveis, a validade e o envio). A aba continua "Fichas" (são as duas).
+- **Decidido pelos princípios** (anotado aqui, não levado ao Heitor):
+  - **Da configuração "Só a rede" não fica nada** (princípio 7, e o E13 diz
+    que é "só quem tem permissão de gerenciar"): nenhuma rede a usava (todas
+    em "A unidade"), e uma regra a mais escondida atrás de "Mudar" contraria
+    o "o que define quem gerencia é permissão, ponto". A coluna saiu
+    (destrutiva — abaixo).
+  - **Editar e desativar o produto seguem a mesma regra** do cadastrar (o
+    Estoque em Gerenciar): o catálogo é um só, da rede, e o E13 tirou a regra
+    inteira (era "cadastra e edita").
+  - **A pessoa da rede inteira, no portal de uma unidade, escolhe entre todas**,
+    com a do endereço já escolhida (E13: "quem tem a rede inteira: todas").
+    Era só a unidade da tela (D8 da 9ª), que continua o padrão.
+  - **A unidade repetida no estoque dividido é recusada**, não somada: a tela
+    não a oferece duas vezes, e somar calado seria uma conta que a tela não
+    mostra (princípio 3).
+  - **O custo, o lote, a validade, a marca, o fornecedor e a nota valem para
+    todas as linhas** (a nota é uma; o lote, um número — e o lote é DA
+    UNIDADE, então nasce um em cada). O caso de um custo diferente por
+    unidade fica na Entrada, depois (princípio 7: o comum aparece).
+  - Fora do FC1, e de propósito: a tela do atendimento ("Ficha do
+    procedimento" no cartão), o prontuário e o LGPD ainda dizem "ficha do
+    procedimento" — o FC1 é a tela de Configurações → Fichas. Fica anotado
+    para a revisão dessas telas.
+- **Specs antigos que mudaram**: `estoque-cadastro-f66` ("C63" virou "E13
+  (revê o C63)": a gerente de unidade cria e edita produto, e o aviso saiu).
+  O `chamarAcaoComFormulario` (`e2e/apoio/acao-direta.ts`) aceita uma lista
+  num campo (o campo repetido, como o navegador manda).
+- **TDD — as falhas antes** (`e2e/estoque-produto-por-unidades.spec.ts`, 6
+  de 7 falhando pelo motivo certo; o que passou foi "quem só vê não
+  cadastra", que já valia): o estoque dividido entre A e B só entrou em A
+  ("B recebe 2": `undefined`); a linha em C (fora do alcance) e a unidade de
+  outra rede deixaram o produto (esperado `false`, veio `true` — só a primeira
+  linha era lida); a pessoa de uma unidade não tinha a unidade travada
+  (`[data-unidade-travada]` não existia); a de A e B, no portal de B, via só B
+  (a lista tinha 1 de 2); e o `[data-catalogo-de-produtos]` ainda estava no
+  Estoque da rede. O vitest do FC1 (`tests/ficha-de-saude-no-texto.test.ts`,
+  "FC1") falhava nos dois casos: "Monte a ficha do procedimento…" na tela e
+  nenhum "Fichas de atendimento".
+- **Resultados**: o spec novo, 7 de 7 (46s). Os vizinhos (estoque-*, lotes-baixa,
+  fase3-estoque, ficha-unica, ficha-pre-atendimento,
+  configuracoes-textos-e-estados-vazios, planos-recursos, estrutura-da-rede,
+  equipe-varias-unidades, rede-de-uma-unidade): 146 passaram, 21 pulados, 1
+  falhou e 5 não rodaram — o `rede-de-uma-unidade` F8 procura `#tm-branch` no
+  "Adicionar membro", que o bloco Equipe (5b848320) tirou: falha de antes,
+  sem relação com este bloco (os 5 são o resto do mesmo describe em série).
+  `typecheck` e `lint` limpos; vitest 289 arquivos, 2471 testes, todos passando.
+- Mexeu em arquivo compartilhado do E2E (`e2e/apoio/acao-direta.ts`, só
+  acrescenta a lista): vale uma completa quando o Heitor quiser.
+- **Para o Heitor**: a migration `20261115900001_estoque_produto_por_unidades`
+  foi aplicada. ⚠️ **Destrutiva**: saiu a coluna
+  `tenants.catalogo_de_produtos` (e a restrição dela) — nenhuma rede tinha "Só
+  a rede". Entrou a função `produto_cadastrar` (só service_role). O CLAUDE.md
+  §11 foi atualizado: o cadastro de produtos é de quem tem o Estoque em
+  Gerenciar (a C63 saiu).
+
 ### 2026-11-14 — Bloco Equipe (EQ1a, EQ1b, EQ1c) e PO1 dos Portais: a pessoa de várias unidades
 
 A revisão do Heitor (13/11): "permitir linkar a pessoa em mais de uma
 unidade", e a recomendação do Claude ("Concord."). O EQ1d (a unidade
-pré-preenchida dos cadastros) fica para o bloco do Estoque (E11/E13).
+pré-preenchida dos cadastros) fica para o bloco do Estoque (E11/E13) — entrou em 15/11 (acima).
 
 - **EQ1a — "Unidades" no cadastro da Equipe**: "A rede inteira" (todas,
   inclusive as que vierem) ou as unidades marcadas, uma ou mais

@@ -44,6 +44,11 @@ interface Props {
    * do "Salvar".
    */
   modelos?: { rotulo: string; rows: AnamnesisRow[] }[]
+  /**
+   * O nome da ficha na tela (FC1 do Bloco Fichas, o Heitor, 2026-11-13): a do
+   * procedimento é a "ficha de atendimento"; a da cliente, a "ficha de saúde".
+   */
+  nomeDaFicha?: 'ficha de atendimento' | 'ficha de saúde'
 }
 
 const TYPE_ICON: Record<AnamnesisFieldType, ComponentType<{ size?: number }>> = {
@@ -60,7 +65,7 @@ function newField(type: AnamnesisFieldType = 'text'): AnamnesisField {
   return { id: newId(), type, label: '', required: false, ...(OPTION_TYPES.includes(type) ? { options: [''] } : {}) }
 }
 
-export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, updateAction, semInjetaveis = false, tiposFora = [], nomeFixo = false, modelos = [] }: Props) {
+export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, updateAction, semInjetaveis = false, tiposFora = [], nomeFixo = false, modelos = [], nomeDaFicha = 'ficha de atendimento' }: Props) {
   const tipos = FIELD_TYPES.filter(t => !tiposFora.includes(t.value) && !(semInjetaveis && t.value === 'injectable_map'))
   const createFn = createAction ?? criarFicha
   const updateFn = updateAction ?? atualizarFicha
@@ -194,8 +199,8 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
   // -- salvar --
   async function save() {
     setError(null)
-    if (!name.trim()) { setError('Informe um nome para a ficha.'); return }
-    if (rows.length === 0) { setError('Adicione ao menos um campo à ficha.'); return }
+    if (!name.trim()) { setError(`Informe um nome para a ${nomeDaFicha}.`); return }
+    if (rows.length === 0) { setError(`Adicione ao menos um campo à ${nomeDaFicha}.`); return }
     const cleanRows = rows.map(r => ({
       id: r.id,
       fields: r.fields.map(f => ({
@@ -241,7 +246,7 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={onDone} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-          <ChevronLeft size={16} /> Voltar às fichas
+          <ChevronLeft size={16} /> {nomeDaFicha === 'ficha de saúde' ? 'Voltar às fichas' : 'Voltar às fichas de atendimento'}
         </button>
         <button type="button" onClick={() => setShowPreview(true)} className="btn-secondary" style={{ fontSize: 'var(--text-base-sz)' }}>
           <Eye size={15} /> Pré-visualizar
@@ -262,7 +267,7 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
 
       {!nomeFixo && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Nome da ficha *</label>
+          <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Nome da ficha de atendimento *</label>
           <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Ficha da toxina botulínica" />
         </div>
       )}
@@ -402,7 +407,7 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
         <button type="button" onClick={onDone} className="btn-secondary" disabled={saving}>Cancelar</button>
         <button type="button" onClick={save} className="btn-primary" disabled={saving}>
-          <CheckCircle2 size={15} /> {saving ? 'Salvando…' : (existing ? 'Salvar ficha' : 'Criar ficha')}
+          <CheckCircle2 size={15} /> {saving ? 'Salvando…' : `${existing ? 'Salvar' : 'Criar'} ${nomeDaFicha}`}
         </button>
       </div>
 

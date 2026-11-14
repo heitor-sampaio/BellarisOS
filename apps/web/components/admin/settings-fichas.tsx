@@ -8,7 +8,9 @@ import { criarFicha, atualizarFicha, apagarFicha, definirFichaAtiva } from '@/ac
 import type { AnamnesisRow } from '@/lib/anamnesis'
 
 /**
- * Configurações → Fichas.
+ * Configurações → Fichas → "Fichas de atendimento" (FC1 do Bloco Fichas, o
+ * Heitor, 2026-11-13: as dos procedimentos se chamam "Fichas de atendimento";
+ * a da cliente, logo acima, é a "Ficha de saúde").
  *
  * Eram DUAS telas idênticas — "Anamnese" e "Atendimento" —, as duas casca fina
  * em volta do mesmo componente genérico, diferindo só nos rótulos. Quem montava
@@ -49,7 +51,7 @@ export function SettingsFichas({ forms, semInjetaveis = false }: Props) {
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Excluir a ficha "${name}"? Procedimentos que a usam ficarão sem ficha.`)) return
+    if (!confirm(`Excluir a ficha de atendimento "${name}"? Os procedimentos que a usam ficam sem ficha de atendimento.`)) return
     setBusy(id)
     await apagarFicha(id)
     setBusy(null)
@@ -72,21 +74,26 @@ export function SettingsFichas({ forms, semInjetaveis = false }: Props) {
           createAction={criarFicha}
           updateAction={atualizarFicha}
           semInjetaveis={semInjetaveis}
+          nomeDaFicha="ficha de atendimento"
         />
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', maxWidth: 520 }}>
-          Monte a ficha do procedimento e ligue uma a ele ao criar ou editar. Ela é
-          preenchida pelo profissional durante o atendimento — se o procedimento
-          for uma avaliação, os campos são os da avaliação.
-        </p>
+    <section data-fichas-de-atendimento aria-labelledby="titulo-fichas-de-atendimento" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 560 }}>
+          <h3 id="titulo-fichas-de-atendimento" style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
+            Fichas de atendimento
+          </h3>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
+            Monte a ficha de atendimento e escolha uma em cada procedimento, no campo “Ficha de atendimento”. Quem
+            atende a preenche durante o atendimento — se o procedimento for uma avaliação, os campos são os da avaliação.
+          </p>
+        </div>
         <button type="button" className="btn-primary" onClick={() => setView({ mode: 'new' })}>
-          <Plus size={15} /> Nova ficha
+          <Plus size={15} /> Nova ficha de atendimento
         </button>
       </div>
 
@@ -95,8 +102,8 @@ export function SettingsFichas({ forms, semInjetaveis = false }: Props) {
           <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
             <ClipboardList size={22} color="var(--brand)" />
           </div>
-          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Nenhuma ficha ainda</p>
-          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Crie a primeira ficha.</p>
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Nenhuma ficha de atendimento ainda</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Crie a primeira e escolha-a no procedimento.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -122,20 +129,20 @@ export function SettingsFichas({ forms, semInjetaveis = false }: Props) {
                 {f.isActive ? 'Ativa' : 'Inativa'}
               </button>
               <button
-                type="button" title="Editar"
+                type="button" title="Editar a ficha de atendimento"
                 onClick={() => setView({ mode: 'edit', form: { id: f.id, name: f.name, rows: f.rows } })}
                 style={iconBtn}
               >
                 <Pencil size={14} />
               </button>
-              <button type="button" title="Excluir" onClick={() => handleDelete(f.id, f.name)} disabled={busy === f.id} style={{ ...iconBtn, color: 'var(--danger)' }}>
+              <button type="button" title="Excluir a ficha de atendimento" onClick={() => handleDelete(f.id, f.name)} disabled={busy === f.id} style={{ ...iconBtn, color: 'var(--danger)' }}>
                 <Trash2 size={14} />
               </button>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </section>
   )
 }
 
