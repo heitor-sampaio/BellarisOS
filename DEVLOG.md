@@ -2415,6 +2415,10 @@ do que a tela fazia saiu.
   que foi zerada em 13/11 — agora cria a sua (4 verdes); `listas-sem-corte`
   procurava o lançamento no Resumo do Financeiro — agora em
   `?aba=movimentacoes` (9 verdes).
+- **`relatorio-vendas-plano-de-quem-vendeu`** (achado na leva 2 do Plano)
+  inseria um plano aceito sem recebimento; desde o PDV de 13/11 o plano é
+  venda quando RECEBIDO (`metrics_vendas` data pelo primeiro lançamento de
+  entrada dele). O spec grava o recebimento — verde.
 - **O lint do web volta a zero**: `campo-da-lista.tsx` (do bloco Estoque)
   zerava o escolhido num `useEffect` (`set-state-in-effect`); agora o valor
   é derivado na renderização. `estoque-marcas-e-fornecedores` 6/6.

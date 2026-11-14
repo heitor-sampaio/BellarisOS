@@ -32,6 +32,12 @@ async function plano(nome: string, vendidoPor: string | null) {
   const s = await db().from('treatment_plan_sessions').insert({ plan_id: data!.id, sort_order: 0 }).select('id').single<{ id: string }>()
   expect(s.error).toBeNull()
   expect((await db().from('treatment_plan_session_procedures').insert({ session_id: s.data!.id, procedure_id: rede!.procedureId, price: 900, sort_order: 0 })).error).toBeNull()
+  // Desde o PDV de 13/11 o plano é venda quando é RECEBIDO: o primeiro
+  // lançamento de entrada dele é o dia da venda (metrics_vendas).
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede!.branchId, type: 'INCOME', category: 'e2e', amount: 900, is_paid: true, created_by: 'e2e',
+    description: `${PREFIXO} Recebimento ${nome} ${marca}`, paid_at: agora, treatment_plan_id: data!.id,
+  })).error).toBeNull()
   planos.push(data!.id)
 }
 
@@ -46,6 +52,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   for (const id of planos) {
+    await db().from('financial_transactions').delete().eq('treatment_plan_id', id)
     const { data: ss } = await db().from('treatment_plan_sessions').select('id').eq('plan_id', id)
     const ids = (ss ?? []).map(s => s.id as string)
     if (ids.length) await db().from('treatment_plan_session_procedures').delete().in('session_id', ids)
