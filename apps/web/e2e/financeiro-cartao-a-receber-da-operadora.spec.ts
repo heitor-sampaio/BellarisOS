@@ -241,7 +241,7 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     const hoje = hojeSP()
     const ate = maisMeses(hoje, 4)
     await comSessao(browser, gestor!.estado, async p => {
-      await p.goto(`/admin/financeiro?period=custom&from=${hoje}&to=${ate}`)
+      await p.goto(`/admin/financeiro?aba=a-receber&period=custom&from=${hoje}&to=${ate}`)
       await expect(p.locator('[data-kpi="a-receber"]')).toContainText('A receber da cliente')
       const kpi = p.locator('[data-kpi="a-receber-operadora"]')
       await expect(kpi).toContainText('A receber da operadora')
@@ -283,7 +283,7 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
       await expect(kpi).toContainText('R$ 733,34')
 
       // O financeiro da unidade mostra o mesmo.
-      await p.goto(`/${slug}/financeiro?period=custom&from=${hoje}&to=${ate}`)
+      await p.goto(`/${slug}/financeiro?aba=a-receber&period=custom&from=${hoje}&to=${ate}`)
       await expect(p.locator('[data-kpi="a-receber-operadora"]')).toContainText('R$ 733,34')
       await expect(p.locator('[data-recebiveis-da-operadora] [data-parcela-da-operadora]')).toHaveCount(3)
     })
@@ -300,7 +300,7 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     try {
       const hoje = hojeSP()
       await comSessao(browser, leitor.estado, async p => {
-        await p.goto(`/admin/financeiro?period=custom&from=${hoje}&to=${maisMeses(hoje, 4)}`)
+        await p.goto(`/admin/financeiro?aba=a-receber&period=custom&from=${hoje}&to=${maisMeses(hoje, 4)}`)
         await expect(p.locator('[data-recebiveis-da-operadora] [data-parcela-da-operadora]')).toHaveCount(3)
         await expect(p.locator('[data-recebiveis-da-operadora]').getByRole('button', { name: 'Marcar recebida' })).toHaveCount(0)
         await expect(p.locator('[data-recebiveis-da-operadora]').getByRole('button', { name: 'Desfazer' })).toHaveCount(0)
@@ -479,7 +479,12 @@ test.describe('F20: a sobra da taxa e a lista da operadora', () => {
     for (const rota of ['/admin/financeiro', `/${slug}/financeiro`]) {
       await comSessao(browser, gestor!.estado, async p => {
         // O período padrão (o mês): as duas parcelas vencem nos próximos meses.
+        // FI3: no Resumo, o "Ver as parcelas" leva à aba A receber, na lista da operadora.
         await p.goto(rota)
+        const doResumo = p.locator('[data-kpi="a-receber-operadora"]').getByRole('link', { name: 'Ver as parcelas' })
+        await expect(doResumo).toHaveAttribute('href', new RegExp(`^${rota}[?]aba=a-receber(&period=[a-z]+)?#recebiveis-da-operadora$`))
+        await doResumo.click()
+        await expect(p).toHaveURL(/aba=a-receber(&period=[a-z]+)?#recebiveis-da-operadora$/)
         const kpi = p.locator('[data-kpi="a-receber-operadora"]')
         const link = kpi.getByRole('link', { name: 'Ver as parcelas' })
         await expect(link).toHaveAttribute('href', '#recebiveis-da-operadora')

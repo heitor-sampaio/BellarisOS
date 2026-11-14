@@ -342,7 +342,7 @@ test.describe.serial('a venda de produto', () => {
     const ctxFin = await browser.newContext({ storageState: financeiro!.estado })
     try {
       const p = await ctxFin.newPage()
-      await p.goto('/admin/financeiro')
+      await p.goto('/admin/financeiro?aba=movimentacoes')
       const linha = p.locator('tr', { hasText: `3× ${nomeSerum}` })
       await linha.getByTitle('Estornar').click()
       const dlg = p.getByRole('dialog', { name: 'Estornar esta venda de produto?' })
@@ -455,7 +455,7 @@ test.describe.serial('a venda de produto', () => {
     const ctxFin = await browser.newContext({ storageState: financeiro!.estado })
     try {
       const p = await ctxFin.newPage()
-      await p.goto('/admin/financeiro')
+      await p.goto('/admin/financeiro?aba=movimentacoes')
       const linha = p.locator('tr', { hasText: sufixo })
       await expect(linha.getByTitle('Cancelar venda')).toBeVisible()
       await expect(linha.getByTitle('Estornar'), 'nada pago: não é estorno').toHaveCount(0)

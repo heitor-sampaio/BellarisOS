@@ -121,7 +121,7 @@ test('A36 e A37: o pagamento estornado em parte diz o que foi pago e o que volto
   expect(n(depois!.valor_antes_do_estorno)).toBe(100)
 
   await como(browser, dona, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const linha = p.locator('[data-lancamento]', { hasText: 'Crédito na clínica' }).filter({ hasText: '70,00' }).first()
     await expect(linha.locator('[data-estorno-parcial-do-lancamento]')).toContainText(/Pago\s*R\$\s100,00\s*·\s*R\$\s30,00 estornados/)
     const doUso = p.locator('[data-lancamento]', { hasText: 'Drenagem paga com crédito' }).first()

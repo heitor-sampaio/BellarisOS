@@ -96,7 +96,7 @@ export function caminhosDoQueFica(branchId: string, o: OQueFicaNaUnidade): { cha
     chave: 'a-receber',
     texto: 'O a receber continua no Financeiro, para dar baixa quando o dinheiro entrar.',
     rotulo: 'Ver o a receber',
-    href: `/admin/financeiro?unidade=${branchId}&aberto=todos`,
+    href: `/admin/financeiro?aba=a-receber&unidade=${branchId}`,
   })
   if (o.comissaoAPagar > 0) c.push({
     chave: 'comissoes',

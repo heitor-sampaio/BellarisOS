@@ -229,7 +229,7 @@ test('PDV8/CX2: a baixa no Financeiro pede a forma sempre — também a do a rec
     amount: 120, is_paid: false, payment_method: 'PIX', due_date: amanha(), created_by: 'e2e',
   }).select('id').single<{ id: string }>()
   await como(financeiro!, browser, async p => {
-    await p.goto(`/${slug}/financeiro?aberto=todos`)
+    await p.goto(`/${slug}/financeiro?aba=a-receber`)
     const r = await chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', `/${slug}/financeiro`, [tx!.id, slug])
     expect(r.texto, 'a action não dá baixa sem a forma').toContain('Escolha a forma de pagamento.')
     const linha = p.locator('tr', { hasText: `combinado ${marca}` })

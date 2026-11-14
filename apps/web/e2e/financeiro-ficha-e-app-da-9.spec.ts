@@ -93,8 +93,10 @@ test.afterAll(async () => {
 
 test('A31: o Financeiro diz qual "resultado" é o do período e qual é o caixa da lista; o Relatório diz que a despesa é a paga', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     await expect(p.locator('[data-total-da-lista]')).toContainText('caixa da lista')
+    // FI2: o resultado do período mora no Resumo.
+    await p.goto(`/${slug}/financeiro`)
     await expect(p.locator('[data-base-do-resultado]').first()).toContainText('pelo que foi pago')
     await p.goto('/admin/financeiro')
     await expect(p.locator('[data-base-do-resultado]').first()).toContainText('pelo que foi pago')
@@ -130,7 +132,7 @@ test('A40: a devolução de uma venda que não pontuou não fala em tirar pontos
     const r = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', '/admin/pdv',
       [marina, [{ produtoId: serum, quantidade: 2 }], rede!.branchId, null, { forma: 'AVISTA', metodo: 'PIX' }, null, null, { vendedorId: dona!.userId }])
     expect(r.texto, 'vender').toContain('"vendaId"')
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     await p.locator('tr', { hasText: `2× ${nomeSerum}` }).first().getByTitle('Estornar').click()
     await p.getByRole('dialog', { name: 'Estornar esta venda de produto?' }).getByRole('button', { name: 'Devolver só parte da venda' }).click()
     const parte = p.getByRole('dialog', { name: 'Devolver parte da venda' })

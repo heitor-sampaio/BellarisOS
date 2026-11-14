@@ -34,6 +34,7 @@ export default async function ComissoesDaRedePage({
       // manda para cá.
       voltarPara={ownerFilter(ctx, 'financial') ? '/admin/dashboard' : '/admin/financeiro'}
       periodoPedido={sp.periodo}
+      abas={{ base: '/admin/financeiro', titulo: unidades.length > 1 ? 'Financeiro da Rede' : 'Financeiro' }}
     />
   )
 }

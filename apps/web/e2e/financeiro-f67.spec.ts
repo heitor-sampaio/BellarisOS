@@ -132,7 +132,7 @@ test('C33: o check-in do plano é de Recebimentos — o Financeiro em Gerenciar 
   expect(r.texto).toContain('Seu cargo não libera esta ação.')
   // E a lista do Financeiro da rede não mostra a baixa a quem não tem Recebimentos.
   await como(browser, financeiro!, async p => {
-    await p.goto('/admin/financeiro?aberto=todos#movimentacoes')
+    await p.goto('/admin/financeiro?aba=a-receber#movimentacoes')
     await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Dar baixa é de quem tem Recebimentos (o caixa) no cargo.')
     await expect(p.getByRole('button', { name: /Pagar|Receber/ }).filter({ hasText: /^(Pagar|Receber)$/ })).toHaveCount(0)
   })

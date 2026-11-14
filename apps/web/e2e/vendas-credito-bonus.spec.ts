@@ -125,7 +125,7 @@ test('A20: no estorno o bônus sai junto — na proporção, a clínica escolhe;
   })).error).toBeNull()
   expect(await saldoDe(daniela.clientId)).toBe(420)
   await como(browser, dona.estado, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const linha = p.locator('[data-lancamento]', { hasText: 'Crédito na clínica' }).filter({ hasText: '500,00' }).first()
     await linha.getByRole('button', { name: 'Estornar' }).click()
     const dlg = p.getByRole('dialog', { name: 'Estornar a venda de crédito na clínica?' })

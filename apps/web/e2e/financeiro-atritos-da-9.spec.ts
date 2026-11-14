@@ -69,7 +69,7 @@ test('A14: a despesa tem "Boleto" entre as formas, e a parcelada pede um vencime
 
 test('A15: o "Pagar" da despesa pergunta a forma (com o Boleto) e grava', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro#lancamentos`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes#lancamentos`)
     await p.locator(`[data-lancamento="${despesa}"]`).getByRole('button', { name: 'Pagar' }).click()
     const dlg = p.getByRole('dialog', { name: 'Pagar despesa' })
     await expect(dlg.getByRole('button', { name: 'Confirmar pagamento' })).toBeDisabled()
@@ -148,9 +148,9 @@ test('A34: o débito com a bandeira "Não informada" diz a taxa que vai valer', 
 
 test('A32: o "Estornar" da linha tem texto, nos dois financeiros', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro#lancamentos`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes#lancamentos`)
     await expect(p.locator(`[data-lancamento="${receita}"] [data-estornar]`)).toHaveText(/Estornar/)
-    await p.goto('/admin/financeiro#movimentacoes')
+    await p.goto('/admin/financeiro?aba=movimentacoes#movimentacoes')
     await expect(p.locator(`[data-lancamento="${receita}"] [data-estornar]`)).toHaveText(/Estornar/)
   })
 })

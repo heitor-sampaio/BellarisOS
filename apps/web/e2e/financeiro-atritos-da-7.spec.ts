@@ -88,7 +88,7 @@ test('A43: o recibo do atendimento diz o procedimento, quando foi e as vezes no 
   })
   expect(error, 'pagar o atendimento').toBeNull()
   await como(browser, caixa!, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const pdf = textoDoPdf(await (await p.request.get(`/api/recibos/${tx as string}`)).body())
     expect(pdf, 'o procedimento do atendimento').toContain(nomeDoProc)
     expect(pdf, 'a forma com as vezes').toContain('Crédito 2x')

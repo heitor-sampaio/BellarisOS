@@ -56,7 +56,7 @@ test.describe.serial('o estorno com motivo', () => {
 
   test('a tela pede o motivo, o estorno herda a forma, e o motivo aparece', async ({ browser }) => {
     await como(browser, async p => {
-      await p.goto(`/${slug}/financeiro`)
+      await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
       const linha = p.locator('tr').filter({ hasText: descricao }).first()
       await linha.getByTitle('Estornar').click()
       const janela = p.getByRole('dialog', { name: 'Estornar este lançamento?' })

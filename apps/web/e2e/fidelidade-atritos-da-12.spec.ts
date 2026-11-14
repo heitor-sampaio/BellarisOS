@@ -74,7 +74,7 @@ test.afterAll(async () => {
 
 test('A30: o estorno do pagamento da indicada diz os pontos dela e o prêmio de quem indicou', async ({ browser }) => {
   await como(browser, dona, async p => {
-    await p.goto(`/${slug}/financeiro?period=today`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=today`)
     await p.locator(`[data-lancamento="${pagamentoDaCarla}"]`).getByRole('button', { name: 'Estornar' }).click()
     const janela = p.getByRole('dialog', { name: 'Estornar este lançamento?' })
     const pontos = janela.locator('[data-pontos-do-estorno]')

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import type { TenantContext } from '@estetica-os/types'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
 import { FinanceiroComissoes } from '@/components/shared/financeiro-comissoes'
 import { periodosRecentes, periodoDaChave } from '@/lib/comissoes/periodo'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
@@ -19,7 +20,7 @@ import {
  * Quem tem `financial` com escopo "só os meus" vê só a própria linha e não
  * fecha — é a tela que o financeiro da rede prometia a essa pessoa.
  */
-export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath, voltarPara, periodoPedido }: {
+export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath, voltarPara, periodoPedido, abas }: {
   ctx:           TenantContext
   /** As unidades ao alcance desta tela (no portal da unidade, uma). */
   unidades:      { id: string; name: string; ativa?: boolean }[]
@@ -28,6 +29,12 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
   basePath:      string
   voltarPara:    string
   periodoPedido?: string
+  /**
+   * FI6: a aba Comissões do Financeiro — o `/financeiro` do portal e o título
+   * dele. Quem só vê as próprias comissões não tem as outras abas (o
+   * Financeiro dele é esta tela), e fica sem a barra.
+   */
+  abas?: { base: string; titulo: string }
 }) {
   const config = await configDeComissaoDaRede(ctx.tenantId!)
   const agora = new Date()
@@ -64,10 +71,18 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
   // por profissional e unidade) — a soma é a de lib/metrics (C46/C-17 da F68).
   const totais = totaisDoResumoDasComissoes(resumo)
 
+  const comAbas = !!abas && !soAsProprias
   return (
     <>
       <RealtimeRefresher tables={['comissoes_sinais']} />
+      {comAbas && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
+          <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>{abas.titulo}</h1>
+          <AbasDoFinanceiro base={abas.base} atual="comissoes" manter={{ unidade: unidadeAtual }} />
+        </div>
+      )}
       <FinanceiroComissoes
+        dentroDasAbas={comAbas}
         titulo={soAsProprias ? 'Minhas comissões' : 'Comissões'}
         basePath={basePath}
         voltarPara={voltarPara}

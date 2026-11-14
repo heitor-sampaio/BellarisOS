@@ -943,6 +943,46 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 
 ### 9.6 Financeiro
 
+- **A tela são cinco abas** (Bloco Financeiro do plano de adaptação, FI1–FI8,
+  2026-11-14 — o Heitor: "Nada de recurso novo: o que já existe, organizado
+  pelas cinco perguntas de quem cuida do dinheiro"). Nos dois portais
+  (`/admin/financeiro` e `/[slug]/financeiro`), a aba mora na URL
+  (`?aba=`, `lib/financeiro/abas.ts`; a barra é `AbasDoFinanceiro`,
+  `components/shared/abas-do-financeiro.tsx`), e a troca leva o período e a
+  unidade da tela:
+  - **Resumo** (o padrão, sem `?aba=`): o que entrou, o que saiu e o
+    resultado do período (os cartões de sempre, de `lib/metrics/`); embaixo,
+    "O que vem pela frente" — o a receber da cliente, o da operadora e o a
+    pagar, cada um com o link para a aba dele —, o fluxo de caixa, a evolução,
+    as formas e as categorias (na rede, "Por unidade"). O Resumo não lê a
+    lista de lançamentos.
+  - **A receber** (`?aba=a-receber`): todo o a receber em aberto das
+    clientes, de qualquer vencimento, do mais antigo para o mais novo (as
+    vencidas primeiro), com "Pagar"/"Receber" (CX2) e "Remarcar vencimento"
+    na linha; "Só as vencidas" é `&aberto=vencidas`. Embaixo, as parcelas da
+    operadora (`#recebiveis-da-operadora`, CX6).
+  - **A pagar** (`?aba=a-pagar`): toda conta a pagar em aberto, de qualquer
+    mês, do vencimento mais próximo; o "Novo lançamento" lança a avulsa, a
+    parcelada e a recorrente (e as Contas).
+  - **Movimentações** (`?aba=movimentacoes`): o extrato do período, com o
+    filtro, o estorno, o recibo, a devolução, o cancelamento da venda, o
+    "Exportar CSV" e o "CSV do fechamento do dia"; os avisos das taxas
+    (`[data-aviso-sem-taxa]`, `[data-taxas-estimadas]`, CX6) moram aqui.
+  - **Comissões**: a página dela (`/financeiro/comissoes`), com a mesma barra;
+    some quando o plano da rede não tem comissões (`temRecurso`).
+  - **O topo só tem "Novo lançamento"** (FI7), para quem tem o Financeiro em
+    Gerenciar. O crédito interno se concede na ficha da cliente, aba
+    Financeiro ("Conceder crédito", `GrantCreditForm`, Financeiro em
+    Gerenciar) — o modal "Crédito para cliente" do Financeiro saiu.
+  - **Link antigo leva à aba nova** (redirect no servidor, `abaDoFinanceiro`):
+    `?aberto=todos` → A receber, `?aberto=vencidas` → A receber só com as
+    vencidas, `?aberto=a-pagar` → A pagar; `/[slug]/financial` segue para
+    `/[slug]/financeiro`. Link novo para o Financeiro é `?aba=`.
+  - O período, o filtro de unidade da rede e as permissões não mudaram:
+    quem só vê lê as abas sem lançar, dar baixa nem remarcar; o "só os meus"
+    vai às comissões dele, como antes.
+  - Prova: `e2e/financeiro-abas.spec.ts`, `tests/financeiro-abas.test.ts`.
+
 - **O que a F67 fechou (2026-11-12) — a régua de quem mexe no dinheiro**:
   - **O checkout do plano é UMA transação** (C32): o app confere (permissão,
     documentos, peças da agenda, horário, quem vendeu) e MONTA os lançamentos
@@ -985,8 +1025,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     recebimento falso. A lista do Financeiro da unidade lê pelo cliente de
     serviço, depois do `assertPermission`, do "só os meus" e do alcance
     (`assertUnidade`); a política RESTRITIVA `financeiro_so_pelo_servidor`
-    (migration `20261113007503`, depois do deploy) fecha a sessão. Leitura
-    nova de lançamento é pelo servidor. Prova:
+    (migration `20261113007503`, depois do deploy) fecha a sessão; a
+    política antiga saiu de vez em 2026-11-14 (FI8, migration
+    `20261115000001`). Leitura nova de lançamento é pelo servidor. Prova:
     `e2e/rls-f75-financeiro-pela-sessao.spec.ts` (com o token de cada membro).
   - Prova do resto: `e2e/financeiro-f67.spec.ts`, `tests/vendas-f67.test.ts`.
 - **O que era do Fechamento do dia e é do Financeiro** (CX6, fase 4 do PDV,
@@ -1303,8 +1344,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   Lançamentos (a lista é do período, pela data de referência), e não se via
   onde dar baixa. O cartão "A receber da cliente" diz "Ver e dar baixa", que
   abre a lista com TODO o a receber em aberto, de qualquer vencimento
-  (`?aberto=todos`, `[data-so-o-em-aberto]`, nos dois financeiros), com o
-  "Pagar" na linha e "Voltar ao período". O período da lista não mudou.
+  (desde o FI3, a aba A receber, `?aba=a-receber`; `[data-so-o-em-aberto]`,
+  nos dois financeiros), com o "Pagar" na linha.
   **A quem só vê, "Ver a lista"** (A42 da 12ª simulação, 2026-11-11; princípio
   3: a Ivone, contadora, lia "Ver e dar baixa" e "use “Pagar” na linha" sem
   botão nenhum): sem a baixa (`canPay`), o link é "Ver a lista" e a faixa diz
@@ -1313,7 +1354,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   "Em aberto, todos os vencimentos: R$ 5.200,00 · Ver e pagar" (ou "Ver a
   lista") — `metrics_a_pagar_em_aberto` → `getAPagarEmAberto` (migration
   `20261111006103`), o espelho do a receber —, que abre a lista de toda conta a
-  pagar em aberto, de qualquer mês (`?aberto=a-pagar`, nos dois financeiros).
+  pagar em aberto, de qualquer mês (a aba A pagar, `?aba=a-pagar`, nos dois financeiros).
   Prova: `e2e/financeiro-atritos-da-12.spec.ts` ("A42 e A43").
 - **A parcela VENCIDA tem nome, filtro e aviso** (D13 da 9ª simulação,
   2026-11-07; decidido pelo princípio 3): a 1ª parcela da Mariana venceu em
@@ -1329,7 +1370,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     a situação "Vencidas" no filtro.
   - O cartão "A receber da cliente" diz "Vencidas: R$ 1.294,00 (1 parcela,
     desde 05/11) · Ver as vencidas" (`[data-vencidas]`), que abre a lista só
-    das vencidas, de qualquer mês (`?aberto=vencidas`, nos dois financeiros).
+    das vencidas, de qualquer mês (`?aba=a-receber&aberto=vencidas`, nos dois financeiros).
   - O dashboard (da unidade e da rede, a quem vê o financeiro inteiro) avisa
     "1 parcela vencida da cliente: R$ 1.294,00 (a mais antiga venceu em
     05/11)… Ver no Financeiro" (`ParcelasVencidas`, `[data-parcelas-vencidas]`).
@@ -2582,4 +2623,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Somar o "caixa da lista" (ou a coluna do CSV) por uma regra própria: é o no_caixa de metrics_caixa_dos_lancamentos (D9 e A45 da 12ª)
 ❌ Pôr o desconto de uma venda em cada parcela do CSV (ele sai UMA vez por venda — extrasDoCsv, A44 da 12ª)
 ❌ Dizer "Ver e dar baixa" ou "use Pagar na linha" a quem não tem a baixa (a contadora só vê — A42 da 12ª)
+❌ Link para o Financeiro com ?aberto=todos ou ?aberto=a-pagar: é ?aba=a-receber / ?aba=a-pagar (linkDaAba, lib/financeiro/abas.ts — FI1)
+❌ Pôr no topo do Financeiro outro botão além do "Novo lançamento" (o crédito interno é da ficha da cliente — FI7)
+❌ Ler a lista de lançamentos no Resumo (ele é feito dos números de lib/metrics; a lista é das abas — FI2)
+❌ Recriar uma política de leitura ou escrita em financial_transactions para a sessão (saiu no FI8; a lista é do servidor)
 ```

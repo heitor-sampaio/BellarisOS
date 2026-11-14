@@ -402,7 +402,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
       <AbertosDeAntes base={`/${slug}/agenda`} abertos={abertos.abertos} semChegada={abertos.semChegada} />
 
-      {vencidas && <ParcelasVencidas vencidas={vencidas} href={`/${slug}/financeiro?aberto=vencidas#lancamentos`} />}
+      {vencidas && <ParcelasVencidas vencidas={vencidas} href={`/${slug}/financeiro?aba=a-receber&aberto=vencidas#lancamentos`} />}
 
       {/* Os lotes que vencem em 30 dias (A41 da 7ª), a quem tem o Estoque. */}
       <LotesVencendo lotes={lotesVencendo} agora={now.toISOString()} fuso={fuso} />

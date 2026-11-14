@@ -2,7 +2,8 @@ import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { redirect } from 'next/navigation'
-import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, isOwnScope, temRecurso } from '@/lib/auth'
+import { abaDoFinanceiro } from '@/lib/financeiro/abas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -39,12 +40,16 @@ export default async function AdminFinanceiroPage({
   searchParams: Promise<Record<string, string>>
 }) {
   const sp     = await searchParams
-  /** A38 da 8ª: a lista de todo o a receber em aberto, de qualquer vencimento. */
+  // FI1 (a revisão do Heitor, 2026-11-13): as abas Resumo · A receber · A
+  // pagar · Movimentações (· Comissões, a página dela). Abre no Resumo.
+  const pedida = abaDoFinanceiro(sp)
+  const aba = pedida.aba
+  /** A38 da 8ª / FI3: o A receber é todo o a receber em aberto, de qualquer vencimento. */
   // D13 da 9ª: ou só as VENCIDAS (o vencimento antes de hoje), de qualquer mês.
-  const soAsVencidas = sp.aberto === 'vencidas'
-  // A43 da 12ª: ou todo o A PAGAR em aberto, de qualquer vencimento (a despesa).
-  const soAPagar = sp.aberto === 'a-pagar'
-  const soOEmAberto = sp.aberto === 'todos' || soAsVencidas || soAPagar
+  const soAsVencidas = pedida.soAsVencidas
+  // A43 da 12ª / FI4: o A pagar é todo o a pagar em aberto, de qualquer vencimento (a despesa).
+  const soAPagar = aba === 'a-pagar'
+  const soOEmAberto = aba === 'a-receber' || soAPagar
   const period = sp.period ?? 'month'
   // Janela e comparação vêm da camada de métricas: no fuso do negócio e com o
   // período anterior de mesma duração. A resolução local antes montava "custom"
@@ -88,6 +93,8 @@ export default async function AdminFinanceiroPage({
   // números com cara de total que não são total. A pessoa vai para as
   // comissões dela — a tela para a qual este aviso apontava não existia.
   if (soAsProprias) redirect('/admin/financeiro/comissoes')
+  // Os links antigos (`?aberto=todos|vencidas|a-pagar`) levam à aba nova (FI1).
+  if (pedida.destino) redirect(`/admin/financeiro${pedida.destino}`)
   // C45 (F68): os TOTAIS da rede contam todas as unidades — a desativada que
   // ainda tem movimento aparece no "Por filial" (getByBranch), e o total não
   // fechava com a soma das linhas. A lista e o seletor seguem as ativas.
@@ -115,7 +122,7 @@ export default async function AdminFinanceiroPage({
       .order('data_de_referencia', { ascending: soOEmAberto }).order('id')
       .range(de, ate)
 
-  const [core, prevCore, branchMetrics, txsRaw, clientsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento, composicao] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, movimentacoes, emAbertoPorUnidade, estoqueNoResultado, estoquePorUnidade, aReceberEmAberto, operadora, parcelasDaOperadora, concluidosSemPagamento, composicao] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -123,16 +130,10 @@ export default async function AdminFinanceiroPage({
     // A lista de lançamentos continua sendo lida direto — é extrato, não KPI.
     // Inteira, em páginas (2026-10-22): tinha teto de 500. Consulta que falha
     // PARA, em vez de virar um extrato vazio.
-    lerTodas((de, ate) => soAsVencidas
+    // FI2: o Resumo não tem a lista — só as outras abas a leem.
+    aba === 'resumo' ? Promise.resolve([]) : lerTodas((de, ate) => soAsVencidas
       ? daLista(de, ate).lt('due_date', startOfDayTZ(new Date(), fuso).toISOString())
       : daLista(de, ate), 'carregar os lançamentos da rede'),
-
-    // Clientes da rede, para o crédito interno. Só quem recebe precisa.
-    ctx.permissions.financial === 'MANAGE'
-      ? lerTodas((de, ate) => admin.from('clients').select('id, name')
-          .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
-          .order('name').order('id').range(de, ate), 'carregar os clientes da rede')
-      : Promise.resolve([] as { id: string; name: string }[]),
 
     // As movimentações com a regra da LISTA (data de referência até o fim do
     // período): a coluna da unidade e o total contam o mesmo (D34).
@@ -272,7 +273,6 @@ export default async function AdminFinanceiroPage({
         totalConcluidosSemPagamento={concluidosSemPagamento}
         totalAPagar={emAbertoDaRede.aPagar}
         totalAPagarEmAberto={aPagarEmAberto.total}
-        soAPagar={soAPagar}
         aReceberDaOperadora={operadora}
         debitoNoPeriodo={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0}
         debitoPorUnidade={debitoDe}
@@ -288,7 +288,6 @@ export default async function AdminFinanceiroPage({
         // D-19 nos NÚMEROS (F72): a desativada com dado aqui faz a tela falar de rede.
         umaUnidade={umaUnidadeSo(branches.length)}
         transactions={transactions}
-        soOEmAberto={soOEmAberto}
         soAsVencidas={soAsVencidas}
         nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start, fuso), dayKeyTZ(fimDoPeriodo, fuso))}
         branchSlugMap={branchSlugMap}
@@ -298,9 +297,9 @@ export default async function AdminFinanceiroPage({
         // C33 (F67): a baixa é de Recebimentos (o caixa) em todo caminho — a action
         // (`markTransactionPaid`) recusava quem só tinha o Financeiro em Gerenciar.
         canPay={operaCaixa}
-        podeDarCredito={ctx.permissions.financial === 'MANAGE'}
         canReverse={ctx.permissions.financial === 'MANAGE'}
-        clients={(clientsRaw ?? []) as { id: string; name: string }[]}
+        aba={aba}
+        comComissoes={temRecurso(ctx, 'comissoes')}
       />
     </>
   )

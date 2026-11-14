@@ -248,7 +248,7 @@ test.describe.serial('o cartão por bandeira', () => {
     }).select('id').single<{ id: string }>()
     expect(error).toBeNull()
     await como(browser, gestor!, async p => {
-      await p.goto(`/${slug}/financeiro`)
+      await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
       const linha = p.getByRole('row').filter({ hasText: `Parcela no débito ${marca}` })
       await linha.getByTitle('Marcar como pago').click()
       const janela = p.getByRole('dialog', { name: 'Receber no cartão' })
@@ -348,7 +348,7 @@ test.describe.serial('o cartão por bandeira', () => {
 
     await como(browser, gestor!, async p => {
       // CX6 (2026-11-14): o aviso passou do Fechamento do dia ao Financeiro.
-      await p.goto(`/${slug}/financeiro?period=today`)
+      await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=today`)
       const aviso = p.locator('[data-aviso-sem-taxa]')
       await expect(aviso, 'o Financeiro avisa a venda no cartão sem taxa').toContainText('Sem taxa da maquininha')
       await expect(aviso).toContainText('Crédito 4x (Elo)')
@@ -553,7 +553,7 @@ test.describe.serial('o cartão por bandeira', () => {
 
     // O Financeiro abre, com a estimativa das taxas (CX6: saiu do Fechamento do dia).
     await como(browser, gestor!, async p => {
-      await p.goto(`/${slug}/financeiro?period=today`)
+      await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=today`)
       await expect(p.locator('[data-taxas-estimadas]')).toContainText('Taxas da maquininha no período')
     })
   })
@@ -638,7 +638,7 @@ test.describe.serial('o cartão por bandeira', () => {
     const noCredito = await pendente(`${PREFIXO} Pendente no crédito ${marca}`, 'CREDIT_CARD')
     const noDebito = await pendente(`${PREFIXO} Pendente no débito ${marca}`, 'DEBIT_CARD')
     await como(browser, gestor!, async p => {
-      await p.goto(`/${slug}/financeiro`)
+      await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
       // O débito: 1x, sem a pergunta.
       await p.getByRole('row').filter({ hasText: `Pendente no débito ${marca}` }).getByTitle('Marcar como pago').click()
       let janela = p.getByRole('dialog', { name: 'Receber no cartão' })

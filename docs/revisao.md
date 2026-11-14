@@ -1699,6 +1699,18 @@ revisão, só se escreve o plano. Nada se implementa.
   a C64. O `branch_id` do lançamento fica, como o fato de onde aconteceu.
   Migration `20261114900001` (destrutiva, "aplica e anota"). A trava:
   `tests/fidelidade-saldo-da-rede.test.ts`. Regra em `fidelidade.md`.
+- ✅ Bloco Financeiro (14/11) — FI1–FI8: o Financeiro dos dois portais virou
+  cinco abas (`?aba=`), abrindo no Resumo — o que entrou, o que saiu, o
+  resultado e "O que vem pela frente" (a receber da cliente e da operadora, a
+  pagar, o fluxo de caixa); A receber (todo o em aberto, as vencidas
+  primeiro, "Pagar", "Remarcar vencimento", "Só as vencidas" e as parcelas da
+  operadora); A pagar (toda conta em aberto); Movimentações (o extrato, o
+  estorno, o recibo, a devolução, o CSV, o CSV do fechamento e os avisos das
+  taxas); Comissões com a mesma barra. O "Crédito para cliente" saiu do topo
+  (o "Conceder crédito" da ficha, aba Financeiro, já existia); os links
+  antigos (`?aberto=`) levam à aba nova. Saiu a política "Operacional acessa
+  financeiro da filial" (migration `20261115000001`, destrutiva, "aplica e
+  anota"). Nada de recurso novo. Regra em `vendas-financeiro.md` §9.6.
 
 ### Bloco: Estoque
 
@@ -1788,7 +1800,7 @@ PDV; o resto é do Financeiro.**
 | # | O que muda | Depende de |
 |---|---|---|
 | CX1 | **O PDV recebe** toda comanda e também a **parcela do crediário** que a cliente veio pagar: abrir a cliente no PDV mostra as parcelas em aberto dela, e recebe-se ali. ✅ a comanda na fase 1, a parcela na fase 5a (14/11) | PDV1–PDV3 |
-| CX2 | **O Financeiro** tem a lista de tudo que falta receber, de todas as clientes, e dá baixa só no que entra sem passar pelo balcão (a transferência que caiu na conta). A baixa pedindo a forma sempre: ✅ fase 5a (14/11); a lista é o FI3 | — |
+| CX2 | **O Financeiro** tem a lista de tudo que falta receber, de todas as clientes, e dá baixa só no que entra sem passar pelo balcão (a transferência que caiu na conta). A baixa pedindo a forma sempre: ✅ fase 5a (14/11); a lista: ✅ FI3 (14/11) | — |
 | CX3 | Os **"Concluídos a receber"** viram as **comandas abertas** do PDV (sai a lista à parte na agenda, no Fechamento e na ficha) | PDV3 |
 | CX4 | **O Fechamento do dia mora no PDV** ("Fechar o dia"): uma linha por forma de pagamento, **o que o sistema registrou × o que foi conferido**; o fundo de troco segue opcional na linha do dinheiro | PDV1 |
 | CX5 | **Os avisos do Fechamento** ficam dois: **"há comanda aberta"** e **"entrou dinheiro depois do fechamento"**. "Por quem recebeu" e os estornos do dia ficam como detalhe recolhido | CX4 |
@@ -1802,14 +1814,14 @@ quem cuida do dinheiro.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| FI1 | **Abas**: Resumo · A receber · A pagar · Movimentações · Comissões. Abre no Resumo | — |
-| FI2 | **Resumo**: o período escolhido — entrou, saiu, resultado; embaixo, o que vem pela frente (a receber e a pagar dos próximos meses, o fluxo de caixa) | FI1 |
-| FI3 | **A receber**: das clientes (as atrasadas primeiro, com "remarcar vencimento") e da operadora do cartão (o que ela ainda vai depositar, vindo do Fechamento — CX6). A baixa do que entrou sem passar pelo balcão (CX2) | FI1, CX2 |
-| FI4 | **A pagar**: as despesas — lançar (avulsa, parcelada, recorrente, com as Contas), pagar, o que vence | FI1 |
-| FI5 | **Movimentações**: o extrato com filtro; o estorno, o recibo, a devolução e o cancelamento de venda, o CSV da contadora; como aviso, as taxas da maquininha estimadas e a venda sem taxa cadastrada (vindos do Fechamento — CX6) | FI1, CX6 |
-| FI6 | **Comissões**: como hoje, como aba | FI1 |
-| FI7 | **"Conceder crédito" vai para a ficha da cliente**, aba Financeiro, para quem tem o Financeiro em Gerenciar (como o "Trazer pacote de fora"). No topo do Financeiro fica só o "Novo lançamento" | — |
-| FI8 | **Sai a política antiga "Operacional acessa financeiro da filial"**: já não tem efeito (o Heitor, 13/11: "ok") | — |
+| FI1 | **Abas**: Resumo · A receber · A pagar · Movimentações · Comissões. Abre no Resumo. ✅ 14/11 | — |
+| FI2 | **Resumo**: o período escolhido — entrou, saiu, resultado; embaixo, o que vem pela frente (a receber e a pagar dos próximos meses, o fluxo de caixa). ✅ 14/11 | FI1 |
+| FI3 | **A receber**: das clientes (as atrasadas primeiro, com "remarcar vencimento") e da operadora do cartão (o que ela ainda vai depositar, vindo do Fechamento — CX6). A baixa do que entrou sem passar pelo balcão (CX2). ✅ 14/11 | FI1, CX2 |
+| FI4 | **A pagar**: as despesas — lançar (avulsa, parcelada, recorrente, com as Contas), pagar, o que vence. ✅ 14/11 | FI1 |
+| FI5 | **Movimentações**: o extrato com filtro; o estorno, o recibo, a devolução e o cancelamento de venda, o CSV da contadora; como aviso, as taxas da maquininha estimadas e a venda sem taxa cadastrada (vindos do Fechamento — CX6). ✅ 14/11 | FI1, CX6 |
+| FI6 | **Comissões**: como hoje, como aba. ✅ 14/11 | FI1 |
+| FI7 | **"Conceder crédito" vai para a ficha da cliente**, aba Financeiro, para quem tem o Financeiro em Gerenciar (como o "Trazer pacote de fora"). No topo do Financeiro fica só o "Novo lançamento". ✅ 14/11 | — |
+| FI8 | **Sai a política antiga "Operacional acessa financeiro da filial"**: já não tem efeito (o Heitor, 13/11: "ok"). ✅ 14/11 (migration `20261115000001`) | — |
 | — | Mantém: o período, o filtro de unidade na rede, quem vê o quê pelas permissões. Fora, por ser mais do que uma clínica pequena precisa: conciliação com o extrato do banco e plano de contas contábil completo | — |
 
 ### Bloco: Fidelidade
@@ -2011,7 +2023,7 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 - C64 → sai com o FD3. ✅ Saiu em 14/11 (ver "Andamento").
 - A F76 e o teste "dois cliques fecham uma vez" → o "tudo verde" do fim do plano.
 - A política antiga "Operacional acessa financeiro da filial" sai (o Heitor:
-  "ok") → FI8.
+  "ok") → FI8. ✅ Saiu em 14/11 (ver "Andamento").
 - O crediário sem entrada sem forma de pagamento → PDV8 (o Heitor: "não existe
   pagamento sem forma de pagamento", e o crediário é uma delas).
 

@@ -51,6 +51,8 @@ test('na rede: "A receber", "A pagar" e de quem é o lançamento', async ({ brow
     await p.goto('/admin/financeiro')
     await expect(p.locator('[data-kpi="a-receber"]')).toContainText('150,00')
     await expect(p.locator('[data-kpi="a-pagar"]')).toContainText('90,00')
+    // FI5: a lista é a aba Movimentações.
+    await p.goto('/admin/financeiro?aba=movimentacoes')
     const linha = p.locator('tr').filter({ hasText: `Parcela ${marca}` })
     await expect(linha.locator('[data-label="Cliente"]')).toHaveText(nomeDaCliente)
   })
@@ -58,7 +60,7 @@ test('na rede: "A receber", "A pagar" e de quem é o lançamento', async ({ brow
 
 test('na unidade: a lista também diz de quem é', async ({ browser }) => {
   await como(daUnidade!, browser, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const linha = p.locator('tr').filter({ hasText: `Parcela ${marca}` })
     await expect(linha.locator('[data-label="Cliente"]')).toHaveText(nomeDaCliente)
   })

@@ -108,7 +108,7 @@ describe('os caminhos para resolver o que ficou (as telas que já existem)', () 
     expect(c.map(x => x.href)).toEqual([
       '/admin/agenda?unidade=u1&date=2026-11-20',
       '/admin/estoque?unidade=u1',
-      '/admin/financeiro?unidade=u1&aberto=todos',
+      '/admin/financeiro?aba=a-receber&unidade=u1',
       '/admin/financeiro/comissoes?unidade=u1',
     ])
   })

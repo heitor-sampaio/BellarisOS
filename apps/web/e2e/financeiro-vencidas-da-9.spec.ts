@@ -77,7 +77,7 @@ test.afterAll(async () => {
 
 test('D13: o Financeiro da unidade diz "Vencida em", soma as vencidas no cartão e filtra só elas', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro?aberto=todos#lancamentos`)
+    await p.goto(`/${slug}/financeiro?aba=a-receber#lancamentos`)
     await expect(p.locator(`[data-lancamento="${vencida}"]`)).toContainText(`Vencida em ${ddmm(venceuEm)}`)
     await expect(p.locator(`[data-lancamento="${aVencer}"]`)).not.toContainText('Vencida')
     const cartao = p.locator('[data-kpi="a-receber"]')
@@ -92,7 +92,7 @@ test('D13: o Financeiro da unidade diz "Vencida em", soma as vencidas no cartão
 
 test('D13: o Financeiro da rede, a ficha e o dashboard dizem a vencida', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto('/admin/financeiro?aberto=todos#movimentacoes')
+    await p.goto('/admin/financeiro?aba=a-receber#movimentacoes')
     await expect(p.locator(`[data-lancamento="${vencida}"]`)).toContainText(`Vencida em ${ddmm(venceuEm)}`)
     await p.goto(`/${slug}/clients/${mariana!.clientId}?aba=financeiro`)
     await expect(p.locator('[data-transacao-da-ficha]', { hasText: 'parcela 1/4' })).toContainText(`Vencida em ${ddmm(venceuEm)}`)
@@ -127,7 +127,7 @@ test('A37: o Financeiro em Gerenciar remarca o vencimento, com o histórico; a r
   })
   const novo = meioDia(10)
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro?aberto=todos#lancamentos`)
+    await p.goto(`/${slug}/financeiro?aba=a-receber#lancamentos`)
     const linha = p.locator(`[data-lancamento="${vencida}"]`)
     await linha.getByRole('button', { name: 'Remarcar vencimento' }).click()
     const dlg = p.getByRole('dialog', { name: 'Remarcar vencimento' })

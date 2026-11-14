@@ -65,7 +65,7 @@ test.afterAll(async () => {
 test.describe.serial('as formas de pagamento', () => {
   test('A33: o crédito em 3x aparece como "Crédito 3x" no financeiro, no fechamento e na ficha', async ({ browser }) => {
     await como(browser, async p => {
-      await p.goto(`/${slug}/financeiro`)
+      await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
       // A lista da operadora (D3, 6ª simulação) também tem linhas da venda: o lançamento é o da lista do financeiro.
       await expect(p.locator('tr[data-lancamento]', { hasText: `Peeling ${marca}` })).toContainText('Crédito 3x')
 

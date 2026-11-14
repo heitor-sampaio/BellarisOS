@@ -87,7 +87,7 @@ test('D2/A32: a janela de desativar diz a agenda, o estoque e o a receber, e lev
     await expect(janela).toContainText(/R\$\s*330,00 a receber/)
     await expect(janela.locator(`a[href="/admin/agenda?unidade=${pampulha}&date=${dia}"]`)).toBeVisible()
     await expect(janela.locator(`a[href="/admin/estoque?unidade=${pampulha}"]`)).toBeVisible()
-    await expect(janela.locator(`a[href="/admin/financeiro?unidade=${pampulha}&aberto=todos"]`)).toBeVisible()
+    await expect(janela.locator(`a[href="/admin/financeiro?aba=a-receber&unidade=${pampulha}"]`)).toBeVisible()
 
     await janela.getByRole('button', { name: 'Desativar mesmo assim' }).click()
     await expect(janela).toHaveCount(0, { timeout: 20_000 })
@@ -121,7 +121,7 @@ test('D1: as telas de leitura contam a desativada e a alcançam pelo ?unidade=, 
     await expect(p.locator('[data-selo-unidade-desativada]').first()).toBeVisible()
 
     // Financeiro: a lista do a receber da Pampulha abre nela.
-    await p.goto(`/admin/financeiro?unidade=${pampulha}&aberto=todos`)
+    await p.goto(`/admin/financeiro?aba=a-receber&unidade=${pampulha}`)
     await expect(p.getByText(`[e2e] parcela f72 ${marca}`)).toBeVisible({ timeout: 20_000 })
 
     // Comissões e fechamento: a Pampulha está no filtro.

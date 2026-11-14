@@ -246,7 +246,7 @@ test('D2 e D3: o Fechamento de ontem não muda; o de hoje mostra a saída e diz 
     await expect(estornos.locator('[data-estorno-do-dia]', { hasText: 'Venda de hoje' })).toContainText('Pagamento deste dia')
 
     // O CSV do Fechamento (no Financeiro desde o CX6): o estorno com o dia do pagamento.
-    await p.goto(`/${slug}/financeiro?period=today`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=today`)
     await p.getByRole('button', { name: 'CSV do fechamento do dia' }).click()
     const janela = p.getByRole('dialog', { name: 'CSV do fechamento do dia' })
     await janela.getByLabel('Dia').fill(hoje)
@@ -269,7 +269,7 @@ test('A39: quem só tem Recebimentos vê a saída pela forma, sem a descrição 
 
 test('D3, D9 e A45: a linha diz "Anula a despesa estornada"; o caixa da lista é o caixa; o CSV diz o que conta', async ({ browser }) => {
   await como(browser, dona, async p => {
-    await p.goto(`/${slug}/financeiro?period=today`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=today`)
     await expect(p.locator(`[data-lancamento="${contraDaEnergia}"]`)).toContainText('Anula a despesa estornada')
     // O caixa da lista de hoje é o saldo do Fechamento de hoje: o uso do
     // crédito (R$ 180 da Bruna, R$ 40 da Débora) não é caixa.
@@ -291,7 +291,7 @@ test('D3, D9 e A45: a linha diz "Anula a despesa estornada"; o caixa da lista é
 
 test('A31: o estorno do crédito com bônus diz quanto foi usado e quanto disso foi do bônus', async ({ browser }) => {
   await como(browser, dona, async p => {
-    await p.goto(`/${slug}/financeiro?period=7d`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=7d`)
     await p.locator(`[data-lancamento="${pagamentoDaAna}"]`).getByRole('button', { name: 'Estornar' }).click()
     const dlg = p.getByRole('dialog', { name: 'Estornar a venda de crédito na clínica?' })
     await dlg.locator('[data-como-sai-o-bonus]').getByRole('radio', { name: /proporção/ }).check()

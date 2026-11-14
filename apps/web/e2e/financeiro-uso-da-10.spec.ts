@@ -62,7 +62,7 @@ test.afterAll(async () => {
 
 test('A22: "Remarcar vencimento" com a palavra na lista, e a parcela da ficha também o tem', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const linha = p.getByRole('row').filter({ hasText: 'parcela 2/3' }).first()
     await expect(linha.getByRole('button', { name: 'Remarcar vencimento' })).toHaveText(/Remarcar vencimento/)
     await p.goto(`/${slug}/clients/${ana}?aba=financeiro`)
@@ -73,7 +73,7 @@ test('A22: "Remarcar vencimento" com a palavra na lista, e a parcela da ficha ta
 
 test('A23: o pagamento de R$ 0 diz que foi pago com pontos, e o estorno diz o que faz', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const linha = p.getByRole('row').filter({ hasText: 'Drenagem' }).first()
     await expect(linha.locator('[data-pago-sem-dinheiro]')).toContainText('Pago com pontos')
     await expect(linha.locator('[data-pago-sem-dinheiro]')).toContainText('R$ 180,00')
@@ -128,7 +128,7 @@ test('A31: o CSV de lançamentos tem a taxa, o líquido, o vencimento, o pagamen
   })
   expect((await db().from('financial_transactions').update({ fornecedor: 'Imobiliária Centro', nota_fiscal: 'NF-77' }).eq('id', ids['Folha de novembro'])).error).toBeNull()
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const csv = await baixado(p, () => p.getByRole('button', { name: 'Exportar CSV' }).first().click())
     const [cabecalho, ...linhas] = csv.replace(/^﻿/, '').split('\r\n')
     expect(cabecalho).toContain('Taxa da maquininha;Líquido')
@@ -150,7 +150,7 @@ test('A31: o DRE e o Fechamento do dia se exportam, com a compra e a perda do es
     expect(dre).toContain('Compras no estoque (entradas, ao custo)')
     expect(dre).toContain('Perdas no período')
     // O CSV do Fechamento do dia mora no Financeiro desde o CX6 (2026-11-14); o dia vem como hoje.
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     await p.getByRole('button', { name: 'CSV do fechamento do dia' }).click()
     const janela = p.getByRole('dialog', { name: 'CSV do fechamento do dia' })
     const fechamento = await baixado(p, () => janela.getByRole('button', { name: 'Baixar' }).click())

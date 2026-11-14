@@ -45,7 +45,7 @@ for (const rodada of [1, 2, 3]) {
     if (error) throw new Error(`não criei a receita: ${error.message}`)
     criadas.push(data!.id as string)
 
-    await page.goto('/admin/financeiro')
+    await page.goto('/admin/financeiro?aba=movimentacoes')
     await expect(page.locator('tr').filter({ hasText: texto }).first()).toBeVisible()
   })
 }

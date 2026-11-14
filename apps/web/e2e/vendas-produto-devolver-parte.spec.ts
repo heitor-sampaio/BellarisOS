@@ -82,7 +82,7 @@ test('A34: devolver 1 de 2 séruns pagos no Pix — o estoque volta 1, o Pix fic
     vendaPix = await vender(p, [{ produtoId: serum, quantidade: 2 }, { produtoId: protetor, quantidade: 1 }], { forma: 'AVISTA', metodo: 'PIX' })
     expect(await saldo(serum)).toBe(3)
 
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const linha = p.locator('tr', { hasText: `2× ${nomeSerum}` }).first()
     await linha.getByTitle('Estornar').click()
     const janela = p.getByRole('dialog', { name: 'Estornar esta venda de produto?' })
@@ -134,7 +134,7 @@ test('A34 + A41: no cartão, o pagamento volta inteiro e o que fica é lançado 
   let venda = ''
   await como(browser, async p => {
     venda = await vender(p, [{ produtoId: serum, quantidade: 2 }], { forma: 'AVISTA', metodo: 'CREDIT_CARD', vezes: 3 })
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const linha = p.locator('tr', { hasText: `2× ${nomeSerum}` }).filter({ hasText: /Crédito 3x/ }).first()
     await linha.getByTitle('Estornar').click()
     await p.getByRole('dialog', { name: 'Estornar esta venda de produto?' }).getByRole('button', { name: 'Devolver só parte da venda' }).click()

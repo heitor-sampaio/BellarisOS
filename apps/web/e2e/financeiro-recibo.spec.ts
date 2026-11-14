@@ -87,7 +87,7 @@ test.afterAll(async () => {
 
 test('a recepção tira o recibo do pagamento pela lista do Financeiro: um PDF com quem pagou, quanto, o quê e como', async ({ browser }) => {
   await como(browser, caixa.estado, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const link = p.locator(`[data-lancamento="${pago}"]`).getByRole('link', { name: 'Recibo' })
     await expect(link).toHaveAttribute('href', `/api/recibos/${pago}`)
     await expect(p.locator(`[data-lancamento="${aberto}"]`).getByRole('link', { name: 'Recibo' }), 'do a receber, não').toHaveCount(0)
@@ -119,7 +119,7 @@ test('r2-ven-13: o "Recibo" também na aba Financeiro da ficha e na tela do aten
 
 test('quem é de outra rede não tira o recibo', async ({ browser }) => {
   await como(browser, alheio.estado, async p => {
-    await p.goto('/admin/financeiro')
+    await p.goto('/admin/financeiro?aba=movimentacoes')
     expect((await p.request.get(`/api/recibos/${pago}`)).status()).toBe(404)
   })
 })

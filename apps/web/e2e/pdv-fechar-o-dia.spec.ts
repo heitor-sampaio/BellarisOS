@@ -154,7 +154,7 @@ test('CX5: só dois avisos — a comanda aberta e o dinheiro depois do fechament
 
 test('CX6: o Financeiro avisa da venda sem taxa, estima as taxas e baixa o CSV do fechamento do dia', async ({ browser }) => {
   await como(contadora!, browser, async p => {
-    await p.goto(`/admin/financeiro?period=today&unidade=${rede!.branchId}`)
+    await p.goto(`/admin/financeiro?aba=movimentacoes&period=today&unidade=${rede!.branchId}`)
     await expect(p.locator('[data-aviso-sem-taxa]')).toContainText('Sem taxa da maquininha cadastrada')
     // R$ 150 no Pix a 1%.
     await expect(p.locator('[data-taxas-estimadas]')).toContainText('R$ 1,50')

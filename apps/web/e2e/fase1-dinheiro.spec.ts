@@ -67,7 +67,7 @@ test('lançar receita na unidade escolhida e dar baixa — tudo pelo /admin', as
   criadas.push(pendente.id)
   expect(pendente.is_paid).toBe(false)
 
-  await page.goto('/admin/financeiro')
+  await page.goto('/admin/financeiro?aba=movimentacoes')
   const linhaPendente = page.locator('tr').filter({ hasText: descricaoPendente }).first()
   await expect(linhaPendente).toBeVisible()
   await linhaPendente.getByTitle('Marcar como pago').click()

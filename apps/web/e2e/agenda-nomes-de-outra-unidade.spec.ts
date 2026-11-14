@@ -129,7 +129,7 @@ test('a esteticista fixa em B vê o nome da cliente de A na "Minha agenda"', asy
 
 test('o Financeiro de B mostra a cliente de A no lançamento', async ({ browser }) => {
   await como(browser, gerenteDeB!.estado, async p => {
-    await p.goto(`/${slugB}/financeiro`)
+    await p.goto(`/${slugB}/financeiro?aba=movimentacoes`)
     const linha = p.locator('tr', { hasText: descricaoDoLancamento })
     await expect(linha).toBeVisible()
     await expect(linha.locator('td[data-label="Cliente"]')).toHaveText(nomeDaCliente)

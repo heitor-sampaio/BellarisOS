@@ -172,10 +172,11 @@ test.describe.serial('a clínica de uma unidade só', () => {
       achados.push(...await falasDoModal(p, 'Procedimentos → Novo'))
       await expect(p.locator('dialog[open]').getByText('DISPONÍVEL NAS UNIDADES')).toHaveCount(0)
 
-      await p.goto('/admin/financeiro')
-      await p.getByRole('button', { name: 'Crédito para cliente' }).click()
-      achados.push(...await falasDoModal(p, 'Financeiro → Crédito para cliente'))
-      await expect(p.locator('dialog[open]').getByText('Unidade *', { exact: true }), 'sem a pergunta da unidade').toHaveCount(0)
+      // FI7 (2026-11-14): o crédito se concede na ficha (aba Financeiro), não mais num modal do Financeiro.
+      await p.goto(`/admin/clients/${clienteId}?aba=financeiro`)
+      await p.getByRole('button', { name: 'Conceder crédito' }).click()
+      await expect(p.getByLabel('Valor (R$) *').first()).toBeVisible()
+      await expect(p.getByText('Unidade do crédito *', { exact: true }), 'sem a pergunta da unidade').toHaveCount(0)
 
       // r2-cfg-02: a dica dos eventos que nunca ocorreram ("Nunca ocorreu nesta rede").
       await p.goto('/admin/settings?tab=eventos')

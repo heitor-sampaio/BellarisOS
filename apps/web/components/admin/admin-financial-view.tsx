@@ -1,16 +1,14 @@
 ﻿'use client'
 
 import { NotaDoDebito } from '@/components/shared/nota-do-debito'
-import { useState, useTransition, useRef } from 'react'
-import Link from 'next/link'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet, Users,
   ArrowUpRight, ArrowDownRight,
-  Plus, CheckCircle2, Clock, RotateCcw, Gift, XCircle, CreditCard, FileText, Download,
+  Plus, CheckCircle2, Clock, RotateCcw, XCircle, CreditCard, FileText, Download,
 } from 'lucide-react'
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
-import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
@@ -35,6 +33,8 @@ import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeir
 import { useFuso } from '@/components/shared/fuso'
 import { AvisosDasTaxas, CsvDoFechamentoDoDia } from '@/components/shared/caixa-no-financeiro'
 import type { TaxasDoPeriodo } from '@/lib/metrics/queries'
+import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
+import { linkDaAba, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
 
 // --- Types -------------------------------------------------------------------
 
@@ -142,8 +142,6 @@ interface Props {
   totalAPagar:      number
   /** A43 da 12ª: todo o a pagar em aberto da rede, de qualquer vencimento (getAPagarEmAberto). */
   totalAPagarEmAberto?: number
-  /** A43 da 12ª: a lista é todo o a pagar em aberto (`?aberto=a-pagar`). */
-  soAPagar?:        boolean
   /**
    * F2c: o cartão em N vezes que a OPERADORA ainda deposita (a cliente já
    * pagou tudo) — o total das ativas e cada unidade (lib/metrics/operadora).
@@ -173,9 +171,7 @@ interface Props {
   /** A rede tem UMA unidade ativa (D-19): sem "Por filial", "Total rede" nem o filtro de filial. */
   umaUnidade?:      boolean
   transactions:     AdminTx[]
-  /** A38 da 8ª: a lista é todo o a receber em aberto, de qualquer vencimento (`?aberto=todos`). */
-  soOEmAberto?:     boolean
-  /** D13 da 9ª: só as VENCIDAS (`?aberto=vencidas`). */
+  /** D13 da 9ª: o A receber só com as VENCIDAS (`?aba=a-receber&aberto=vencidas`). */
   soAsVencidas?:    boolean
   /** A44 da 8ª: o nome do CSV das movimentações. */
   nomeDoCsv?:       string
@@ -195,10 +191,10 @@ interface Props {
   canPay?:          boolean
   /** Estorna: só `financial: Gerenciar` — estorno mexe em lançamento fechado. */
   canReverse?:      boolean
-  /** Concede crédito interno — exige financial: Gerenciar, como a action. */
-  podeDarCredito?:  boolean
-  /** Clientes da rede, para o crédito interno. */
-  clients?:         { id: string; name: string }[]
+  /** FI1: a aba aberta (Comissões é a página dela). */
+  aba:              Exclude<AbaDoFinanceiro, 'comissoes'>
+  /** O plano da rede tem comissões: a aba aparece. */
+  comComissoes:     boolean
 }
 
 // --- Helpers -----------------------------------------------------------------
@@ -285,12 +281,12 @@ function KpiCard({
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
-  totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, soAPagar = false, totalMovimentacoes,
+  totalRevenue, totalExpenses, totalResult, totalConta, totalCommissions, totalAReceber, totalAReceberEmAberto, totalVencidas, totalConcluidosSemPagamento, totalAPagar, totalAPagarEmAberto = 0, totalMovimentacoes,
   aReceberDaOperadora, parcelasDaOperadora, fluxoDeCaixa, debitoNoPeriodo = 0, debitoPorUnidade = {}, taxasDoPeriodo,
   totalProximoAReceber = null, totalProximoAPagar = null,
   prevRevenue, prevExpenses,
-  branchStats, umaUnidade = false, transactions, soOEmAberto = false, soAsVencidas = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
-  canWrite = false, canPay = false, canReverse = false, podeDarCredito = false, clients = [],
+  branchStats, umaUnidade = false, transactions, soAsVencidas = false, nomeDoCsv = 'lancamentos.csv', branchSlugMap, branches, unidadeInicial = '',
+  canWrite = false, canPay = false, canReverse = false, aba, comComissoes,
 }: Props) {
   const fuso = useFuso()
   const router      = useRouter()
@@ -301,7 +297,6 @@ export function AdminFinancialView({
   // Decisão 1 da 9ª: o estorno da venda de crédito na clínica (volta o saldo não usado).
   const [creditoAEstornar, setCreditoAEstornar] = useState<{ id: string; descricao: string } | null>(null)
   const [aEstornar, setAEstornar] = useState<{ id: string; slug: string; descricao: string; valor: number; vendaDeProduto?: boolean; cancelarVenda?: boolean; doAtendimento?: boolean; pagoSemDinheiro?: string | null } | null>(null)
-  const creditModalRef = useRef<ClientCreditModalHandle>(null)
 
   // A unidade da ação vem da própria transação — não há o que perguntar.
   // O resultado das actions não pode ser descartado: as duas falham devolvendo
@@ -332,9 +327,13 @@ export function AdminFinancialView({
   const [customF, setCustomF] = useState(customFrom ?? '')
   const [customT, setCustomT] = useState(customTo   ?? '')
 
+  // O período (ou a unidade) muda e a aba fica (FI1).
   function navigate(p: string, f?: string, t?: string, unidade: string = filterBranch) {
     startT(() => {
-      const q = new URLSearchParams({ period: p })
+      const q = new URLSearchParams()
+      if (aba !== 'resumo') q.set('aba', aba)
+      if (aba === 'a-receber' && soAsVencidas) q.set('aberto', 'vencidas')
+      q.set('period', p)
       if (p === 'custom' && f) q.set('from', f)
       if (p === 'custom' && t) q.set('to',   t)
       if (unidade && unidade !== 'all') q.set('unidade', unidade)
@@ -384,6 +383,298 @@ export function AdminFinancialView({
   // Sort branchStats by revenue desc for the table
   const sortedStats = [...branchStats].sort((a, b) => b.revenue - a.revenue)
 
+  /** Uma linha da lista (receber e estornar sem sair do portal da rede). */
+  function linhaDaTabela(t: AdminTx, ultima: boolean) {
+    const isIncome  = t.type === 'INCOME'
+    const estornada = t.notes === 'Estornada'
+    const slugDaTx  = branchSlugMap[t.branch_id] ?? ''
+    return (
+      <tr
+        key={t.id}
+        data-lancamento={t.id}
+        style={{
+          borderBottom: ultima ? 'none' : '1px solid var(--hairline)',
+          transition: 'background 0.1s',
+          opacity: estornada ? 0.5 : 1,
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
+        onMouseLeave={e => (e.currentTarget.style.background = '')}
+      >
+        <td data-label="Data" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+          {!t.is_paid && t.due_date
+            ? `Vence ${new Date(t.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+            : new Date(t.data_de_referencia ?? t.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
+        </td>
+        {/* A36 da 12ª: a 1440 px a tabela passava do cartão e cortava as ações. A descrição
+            quebra em até duas linhas (o nowrap fazia dela a largura mínima da coluna), e o
+            limite mora no span — o maxWidth do td a tabela ignora. */}
+        <td data-label="" style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)' }}>
+          <span title={t.description || undefined} style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxWidth: 280, overflowWrap: 'anywhere' }}>
+            {t.description || '—'}
+          </span>
+          {/* A52: o contra-lançamento diz o que é — não é despesa, anula a receita.
+              D3 da 12ª: o de uma DESPESA (a entrada) anula a despesa. */}
+          {t.category === 'Estorno' && (t.type === 'INCOME'
+            ? <span data-anula-a-despesa style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Anula a despesa estornada</span>
+            : <span data-anula-a-receita style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Anula a receita estornada</span>
+          )}
+          <VencimentoRemarcado historico={t.vencimentos_anteriores} />
+          {t.estorno_motivo && (
+            <span data-motivo-do-estorno style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Motivo: {t.estorno_motivo}</span>
+          )}
+        </td>
+        <td data-label="Cliente" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: t.clienteNome ? 'var(--text)' : 'var(--text-faint)' }}>
+          <span style={{ display: 'block', maxWidth: 200 }}>{t.clienteNome ?? '—'}</span>
+        </td>
+        {!umaUnidade && <td data-label="Unidade" data-par style={{ padding: '11px 16px' }}>
+          <span style={{
+            fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-field-token)',
+            background: 'var(--bg-app)', color: 'var(--text-muted)',
+            border: '1px solid var(--border)',
+          }}>
+            {t.branchName}
+          </span>
+        </td>}
+        <td data-label="Método" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes, { maquininha: t.maquininha_nome })
+            // A23 da 10ª: o R$ 0 pago todo com o voucher ou os pontos diz isso.
+            : t.pago_sem_dinheiro ? <span data-pago-sem-dinheiro>{t.pago_sem_dinheiro}</span> : '—'}
+        </td>
+        <td data-label="Tipo" data-par style={{ padding: '11px 16px' }}>
+          <span data-tipo-do-lancamento className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
+            {t.category === 'Estorno' ? 'Estorno' : isIncome ? 'Receita' : 'Despesa'}
+          </span>
+        </td>
+        {/* Situação — a tabela da rede era só leitura e nem dizia se
+            o lançamento estava pago. */}
+        <td data-label="Situação" data-par style={{ padding: '11px 16px' }}>
+          {estornada ? (
+            <span className="chip chip-muted" style={{ fontSize: 'var(--text-overline)' }}>Estornada</span>
+          ) : t.is_paid ? (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+              background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)',
+            }}>
+              <CheckCircle2 size={10} /> Pago
+            </span>
+          ) : (
+            <SituacaoDoEmAberto vencida={t.vencida} vencimento={t.due_date} />
+          )}
+        </td>
+
+        <td data-label="Valor" data-par style={{ padding: '11px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isIncome ? 'var(--success)' : 'var(--text)', whiteSpace: 'nowrap' }}>
+          {isIncome ? '+' : '−'} {fmtBRL(t.amount)}
+          {t.desconto_texto && (
+            <span data-desconto-do-lancamento style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
+              {t.desconto_texto}
+            </span>
+          )}
+          {t.estorno_parcial_texto && (
+            <span data-estorno-parcial-do-lancamento style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
+              {t.estorno_parcial_texto}
+            </span>
+          )}
+          {t.uso_de_credito_texto && (
+            <span data-uso-de-credito style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
+              {t.uso_de_credito_texto}
+            </span>
+          )}
+        </td>
+
+        {/* Receber e estornar sem sair do portal da rede. */}
+        <td data-label="" style={{ padding: '11px 16px', width: 1 }}>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap', minWidth: 120 }}>
+            {!t.is_paid && !estornada && canPay && (
+              <button type="button" onClick={() => t.type === 'INCOME'
+                ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method ?? null, valor: Number(t.amount) })
+                : t.type === 'EXPENSE' && !t.payment_method
+                ? setDespesaAPagar({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Despesa', valor: Number(t.amount) })
+                : marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
+                border: '1.5px solid var(--success)', background: 'var(--success-bg)',
+                color: 'var(--success)', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>
+                <CheckCircle2 size={12} /> Pagar
+              </button>
+            )}
+            {/* A37 da 9ª: remarcar o vencimento do que está em aberto. */}
+            {!t.is_paid && !estornada && canWrite && (
+              <RemarcarVencimento lancamento={{ id: t.id, descricao: t.description, valor: Number(t.amount), vencimento: t.due_date }} />
+            )}
+            {/* ven-06: o recibo do que foi pago (PDF — imprimir ou baixar). */}
+            {isIncome && t.is_paid && !estornada && t.category !== 'Estorno' && (
+              <a href={`/api/recibos/${t.id}`} target="_blank" rel="noopener" aria-label="Recibo" title="Recibo (PDF): imprimir ou baixar" style={{
+                width: 30, height: 30, borderRadius: 7,
+                border: '1px solid var(--border)', background: 'var(--surface)',
+                color: 'var(--text-faint)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <FileText size={12} />
+              </a>
+            )}
+            {/* Estorno não se estorna (o banco também recusa): desfazer é
+                coisa do financeiro, não um segundo clique. */}
+            {t.is_paid && !estornada && t.category !== 'Estorno' && canReverse && (
+              // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
+              <button type="button" data-estornar title={t.pago_sem_dinheiro ? 'Desfazer o pagamento' : 'Estornar'} onClick={() => t.credito_vendido_id
+                ? setCreditoAEstornar({ id: t.id, descricao: t.description })
+                : setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: !!t.product_sale_id, doAtendimento: !!t.appointment_id, pagoSemDinheiro: t.pago_sem_dinheiro ?? null })} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
+                border: '1px solid var(--border)', background: 'var(--surface)',
+                color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>
+                <RotateCcw size={12} aria-hidden /> {t.pago_sem_dinheiro ? 'Desfazer o pagamento' : 'Estornar'}
+              </button>
+            )}
+            {/* A venda de produto toda a receber não tem o que estornar: se
+                CANCELA (a mesma pergunta do produto, produto_estornar_venda). */}
+            {!t.is_paid && !estornada && !!t.product_sale_id && canReverse && (
+              <button type="button" onClick={() => setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: true, cancelarVenda: true })} title="Cancelar venda" aria-label="Cancelar venda" style={{
+                width: 30, height: 30, borderRadius: 7,
+                border: '1px solid var(--border)', background: 'var(--surface)',
+                color: 'var(--text-faint)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <XCircle size={12} />
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
+  // FI1: o link de cada aba guarda o período e a unidade; a mudança de período guarda a aba.
+  const base = '/admin/financeiro'
+  const manter = {
+    period,
+    from: period === 'custom' ? customFrom : undefined,
+    to:   period === 'custom' ? customTo : undefined,
+    unidade: filterBranch !== 'all' ? filterBranch : undefined,
+  }
+  const daAba = (a: AbaDoFinanceiro, extra: Record<string, string> = {}) => linkDaAba(base, a, manter, extra)
+  // A42 da 12ª: quem só vê o Financeiro lia "use Pagar na linha" sem botão nenhum.
+  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) no cargo.'
+  const faixa: React.CSSProperties = { fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', margin: 0 }
+
+  // A receber e a pagar (2026-10-21): a unidade mostrava, a rede não.
+  const cartaoAReceber = (naAba: boolean) => (
+    <KpiCard
+      chave="a-receber"
+      label="A receber da cliente"
+      value={fmtBRL(aReceber)}
+      nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
+        hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
+        vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
+      icon={<Clock size={16} color="var(--brand)" />}
+    />
+  )
+  // F2c: o que a operadora ainda deposita do cartão em N vezes — não é
+  // dívida da cliente (ela pagou tudo na maquininha).
+  const cartaoDaOperadora = (naAba: boolean) => (
+    <KpiCard
+      chave="a-receber-operadora"
+      label="A receber da operadora"
+      value={fmtBRL(operadora.aReceber)}
+      nota={<>
+        <NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto}
+          bruto={{ periodo: operadora.aReceberBruto, emAberto: operadora.emAbertoBruto }} />
+        {/* D3: o cartão leva à lista das parcelas (no A receber). */}
+        <LinkDasParcelas temParcelas={parcelasVisiveis.length > 0} href={naAba ? undefined : daAba('a-receber')} />
+        {/* A38 da 11ª: o débito conta como recebido no dia. */}
+        <NotaDoDebito debito={statDaUnidade ? debitoPorUnidade[statDaUnidade.id] ?? 0 : debitoNoPeriodo} />
+      </>}
+      icon={<CreditCard size={16} color="var(--brand)" />}
+    />
+  )
+  const cartaoAPagar = (naAba: boolean) => (
+    <KpiCard
+      chave="a-pagar"
+      label="A pagar"
+      value={fmtBRL(aPagar)}
+      nota={<NotaDoVencimento valor={aPagar} proximo={proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
+        hrefDaBaixa={naAba ? undefined : daAba('a-pagar')} />}
+      icon={<Clock size={16} color="var(--brand)" />}
+    />
+  )
+
+  /** A lista dos lançamentos (A receber, A pagar e Movimentações): a mesma tabela, com o título de cada aba. */
+  const tabela = (titulo: string) => (
+    <div id="movimentacoes" className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
+          {titulo}
+          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>
+            {visibleTxs.length} registro{visibleTxs.length !== 1 ? 's' : ''}
+          </span>
+        </span>
+
+        {/* A44 da 8ª: o CSV de todas as movimentações do recorte (a tela mostra as 100 primeiras). */}
+        <button type="button" className="btn-secondary" disabled={visibleTxs.length === 0} style={{ marginLeft: 'auto' }}
+          onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(
+            visibleTxs.map(t => linhaDoLancamento(t, branches.find(b => b.id === t.branch_id)?.name ?? null)), fuso))}>
+          <Download size={14} aria-hidden /> Exportar CSV
+        </button>
+        {/* CX6: a planilha do Fechamento do dia (era o "Exportar CSV" do Fechamento) — é do extrato. */}
+        {aba === 'movimentacoes' && (
+          <CsvDoFechamentoDoDia unidades={branches.map(b => ({ id: b.id, name: b.name }))} unidadeInicial={filterBranch !== 'all' ? filterBranch : null} />
+        )}
+
+        {/* Filtro por unidade — só com mais de uma (D-19). Vai à URL: as abas o levam junto. */}
+        {!umaUnidade && <select
+          className="filtro-select"
+          aria-label="Unidade"
+          value={filterBranch}
+          onChange={e => verUnidade(e.target.value)}
+          style={{ width: 200 }}
+        >
+          <option value="all">Todas as unidades</option>
+          {branchStats.map(b => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </select>}
+      </div>
+
+      {visibleTxs.length === 0 ? (
+        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
+          {aba === 'movimentacoes' ? 'Nenhuma movimentação no período.' : 'Nada em aberto.'}
+        </div>
+      ) : (
+        <div className="table-wrap">
+        {/* Oito colunas: no celular cada movimentacao vira um bloco. */}
+        <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+              {/* A36 da 12ª: a 1440 px a linha cortava "Remarcar vencimento" e "Estornar" —
+                  a coluna Unidade sai na rede de uma unidade, e as ações quebram a linha. */}
+              {['Data', 'Descrição', 'Cliente', ...(umaUnidade ? [] : ['Unidade']), 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
+                <th key={h} style={{
+                  padding: '10px 16px', textAlign: h === 'Valor' ? 'right' : 'left',
+                  fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
+                  letterSpacing: '0.06em', textTransform: 'uppercase',
+                }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleTxs.slice(0, 100).map((t, i) => linhaDaTabela(t, i >= Math.min(visibleTxs.length, 100) - 1))}
+          </tbody>
+        </table>
+        </div>
+      )}
+      {visibleTxs.length > 100 && (
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--hairline)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', textAlign: 'center' }}>
+          Exibindo 100 de {visibleTxs.length} registros. Use o filtro de unidade para refinar.
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
@@ -406,7 +697,7 @@ export function AdminFinancialView({
           aoConfirmar={(b, v, f, m) => marcarPago(noCartao.id, noCartao.slug, b, v, f, m)} aoFechar={() => setNoCartao(null)} />
       )}
 
-      {/* Header: título (esquerda) + seletores e botão (direita) */}
+      {/* Header: título (esquerda) + período e o "Novo lançamento" (direita) — FI7: só ele no topo. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
@@ -426,7 +717,6 @@ export function AdminFinancialView({
             onSelect={(k) => navigate(k)}
             ariaLabel="Selecionar período"
           />
-          <Link href="/admin/financeiro/comissoes" className="btn-secondary">Comissões</Link>
           {period === 'custom' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <input type="date" value={customF} onChange={e => setCustomF(e.target.value)} className="field" style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }} />
@@ -436,18 +726,6 @@ export function AdminFinancialView({
                 Aplicar
               </button>
             </div>
-          )}
-          {/* Crédito interno saía só pelo financeiro da unidade — quem opera a
-              rede tinha de entrar no portal dela para devolver um valor. */}
-          {podeDarCredito && clients.length > 0 && (
-            <button
-              type="button" className="btn-secondary"
-              onClick={() => creditModalRef.current?.open()}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 8 }}
-            >
-              <Gift size={14} />
-              Crédito para cliente
-            </button>
           )}
           {/* Com o Financeiro em Ver, o botão aparecia e a recusa chegava em inglês (D7). */}
           {canWrite && <FinancialTransactionModal
@@ -462,243 +740,80 @@ export function AdminFinancialView({
         </div>
       </div>
 
-      {/* KPI Cards consolidados — A37 da 12ª: o resultado do período numa linha (sem esticar
-          os vizinhos do "Resultado líquido", que tem a conta embaixo) e o em aberto noutra,
-          os três juntos (o "A pagar" ficava sozinho numa segunda linha). */}
-      <div className="kpi-grid" style={{ gap: 14, alignItems: 'start' }}>
-        <KpiCard
-          label={statDaUnidade ? 'Receita da unidade' : 'Receita total'}
-          value={fmtBRL(revenue)}
-          delta={deltaRevenue}
-          icon={<TrendingUp size={16} color={iconColor(true)} />}
-          brand
-        />
-        {/* A24 da 10ª: o cartão é o CAIXA (com a compra de estoque e o pagamento das comissões). */}
-        <KpiCard
-          chave="despesas"
-          label={statDaUnidade ? 'Despesas pagas da unidade (caixa)' : 'Despesas pagas (caixa)'}
-          nota={<span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o Resultado líquido usa a despesa operacional (veja a conta nele).</span>}
-          value={fmtBRL(expenses)}
-          delta={deltaExpenses}
-          icon={<TrendingDown size={16} color="var(--brand)" />}
-        />
-        <KpiCard
-          chave="resultado"
-          label="Resultado líquido"
-          value={fmtBRL(result)}
-          nota={<ContaDoResultado receita={revenue} resultado={conta} despesasDoCaixa={expenses} aPagar={aPagar} />}
-          icon={<Wallet size={16} color="var(--brand)" />}
-        />
-        <KpiCard
-          label="Comissões"
-          value={fmtBRL(commissions)}
-          icon={<Users size={16} color="var(--brand)" />}
-        />
-      </div>
-      <div className="rg-3" style={{ gap: 14, alignItems: 'start' }}>
-        {/* A receber e a pagar (2026-10-21): a unidade mostrava, a rede não. */}
-        <KpiCard
-          chave="a-receber"
-          label="A receber da cliente"
-          value={fmtBRL(aReceber)}
-          nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
-            hrefDaBaixa={`/admin/financeiro?aberto=todos${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`} podeDarBaixa={canPay}
-            vencidas={vencidas} hrefDasVencidas={`/admin/financeiro?aberto=vencidas${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`} />}
-          icon={<Clock size={16} color="var(--brand)" />}
-        />
-        {/* F2c: o que a operadora ainda deposita do cartão em N vezes — não é
-            dívida da cliente (ela pagou tudo na maquininha). */}
-        <KpiCard
-          chave="a-receber-operadora"
-          label="A receber da operadora"
-          value={fmtBRL(operadora.aReceber)}
-          nota={<>
-            <NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto}
-              bruto={{ periodo: operadora.aReceberBruto, emAberto: operadora.emAbertoBruto }} />
-            {/* D3: o cartão leva à lista das parcelas. */}
-            <LinkDasParcelas temParcelas={parcelasVisiveis.length > 0} />
-            {/* A38 da 11ª: o débito conta como recebido no dia. */}
-            <NotaDoDebito debito={statDaUnidade ? debitoPorUnidade[statDaUnidade.id] ?? 0 : debitoNoPeriodo} />
-          </>}
-          icon={<CreditCard size={16} color="var(--brand)" />}
-        />
-        <KpiCard
-          chave="a-pagar"
-          label="A pagar"
-          value={fmtBRL(aPagar)}
-          nota={<NotaDoVencimento valor={aPagar} proximo={proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
-            hrefDaBaixa={`/admin/financeiro?aberto=a-pagar${filterBranch !== 'all' ? `&unidade=${filterBranch}` : ''}#movimentacoes`} />}
-          icon={<Clock size={16} color="var(--brand)" />}
-        />
-      </div>
+      {/* FI1: as cinco perguntas de quem cuida do dinheiro. */}
+      <AbasDoFinanceiro base={base} atual={aba} manter={manter} comComissoes={comComissoes} />
 
-
-      {/* Por filial — só com mais de uma unidade (D-19). */}
-      {!umaUnidade && (
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Por unidade</span>
-          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{periodLabel}</span>
+      {/* -- Resumo (FI2): o período — entrou, saiu, resultado — e, embaixo, o que vem pela frente. */}
+      {aba === 'resumo' && <>
+        {/* A37 da 12ª: o resultado do período numa linha (sem esticar os vizinhos do
+            "Resultado líquido", que tem a conta embaixo) e o em aberto noutra. */}
+        <div className="kpi-grid" style={{ gap: 14, alignItems: 'start' }} data-aba-do-financeiro="resumo">
+          <KpiCard
+            chave="receita"
+            label={statDaUnidade ? 'Receita da unidade' : 'Receita total'}
+            value={fmtBRL(revenue)}
+            delta={deltaRevenue}
+            icon={<TrendingUp size={16} color={iconColor(true)} />}
+            brand
+          />
+          {/* A24 da 10ª: o cartão é o CAIXA (com a compra de estoque e o pagamento das comissões). */}
+          <KpiCard
+            chave="despesas"
+            label={statDaUnidade ? 'Despesas pagas da unidade (caixa)' : 'Despesas pagas (caixa)'}
+            nota={<span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o Resultado líquido usa a despesa operacional (veja a conta nele).</span>}
+            value={fmtBRL(expenses)}
+            delta={deltaExpenses}
+            icon={<TrendingDown size={16} color="var(--brand)" />}
+          />
+          <KpiCard
+            chave="resultado"
+            label="Resultado líquido"
+            value={fmtBRL(result)}
+            nota={<ContaDoResultado receita={revenue} resultado={conta} despesasDoCaixa={expenses} aPagar={aPagar} />}
+            icon={<Wallet size={16} color="var(--brand)" />}
+          />
+          <KpiCard
+            chave="comissoes"
+            label="Comissões"
+            value={fmtBRL(commissions)}
+            icon={<Users size={16} color="var(--brand)" />}
+          />
         </div>
 
-        <div className="table-wrap">
-        {/* Sete colunas nao cabem em 390px: no celular cada filial vira um
-            bloco de rotulo e valor, em vez de a tabela rolar dentro do card. */}
-        <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Unidade', 'Receita', 'Despesas', 'Resultado', 'Comissões', 'Movim.', ''].map(h => (
-                <th key={h} style={{
-                  padding: '10px 16px', textAlign: h === 'Unidade' ? 'left' : 'right',
-                  fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
-                  letterSpacing: '0.06em', textTransform: 'uppercase',
-                  width: h === '' ? 80 : undefined,
-                }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sortedStats.map((b, i) => (
-              <tr
-                key={b.id}
-                style={{
-                  borderBottom: i < sortedStats.length - 1 ? '1px solid var(--hairline)' : 'none',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
-                onMouseLeave={e => (e.currentTarget.style.background = '')}
-              >
-                <td data-label="" style={{ padding: '13px 16px' }}>
-                  <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{b.name}</span>
-                </td>
-                <td data-label="Receita" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--success)' }}>
-                  {fmtBRL(b.revenue)}
-                </td>
-                <td data-label="Despesas" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
-                  {fmtBRL(b.expenses)}
-                </td>
-                <td data-label="Resultado" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: b.result >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                  {fmtBRL(b.result)}
-                </td>
-                <td data-label="Comissões" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
-                  {fmtBRL(b.commissions)}
-                </td>
-                <td data-label="Movim." data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>
-                  {b.txCount}
-                </td>
-                <td data-label="" style={{ padding: '13px 16px', textAlign: 'right' }}>
-                  {/* Recorta a própria tela, em vez de abrir o portal da
-                      unidade: quem está na rede continua na rede. */}
-                  <button
-                    type="button"
-                    onClick={() => verUnidade(b.id === filterBranch ? 'all' : b.id)}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      fontSize: 'var(--text-2xs)', fontWeight: 700,
-                      color: b.id === filterBranch ? 'var(--text-muted)' : 'var(--brand)',
-                      background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                  >
-                    {b.id === filterBranch ? 'Ver a rede' : 'Ver'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          {/* Totais */}
-          <tfoot>
-            <tr style={{ borderTop: '2px solid var(--border)', background: 'var(--bg-app)' }}>
-              <td style={{ padding: '13px 16px', fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total rede</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--success)' }}>{fmtBRL(totalRevenue)}</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalExpenses)}</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: totalResult >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtBRL(totalResult)}</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalCommissions)}</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-faint)' }}>{totalMovimentacoes}</td>
-              <td />
-            </tr>
-          </tfoot>
-        </table>
-        </div>{/* end table-wrap */}
-      </div>
-      )}
-
-      {/* r2-fin-04: o fluxo de caixa dos próximos meses (o da unidade filtrada, ou o do recorte). */}
-      {fluxoDeCaixa && (
-        <FluxoDeCaixa meses={filterBranch === 'all' ? fluxoDeCaixa.total : (fluxoDeCaixa.porUnidade[filterBranch] ?? [])} />
-      )}
-
-      {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
-      <ParcelasDaOperadora parcelas={parcelasVisiveis} podeMarcar={canWrite}
-        unidades={umaUnidade ? undefined : Object.fromEntries(branches.map(b => [b.id, b.name]))} />
-
-      {/* CX6: a venda sem taxa e as taxas estimadas do período (eram do Fechamento do dia). */}
-      {taxasDoPeriodo && <AvisosDasTaxas dados={filterBranch === 'all' ? taxasDoPeriodo.total : taxasDoPeriodo.porUnidade[filterBranch]} />}
-
-      {/* Movimentações */}
-      {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
-      {soOEmAberto && (
-        <p data-so-o-em-aberto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px' }}>
-          {soAPagar
-            ? 'Todas as contas a pagar em aberto, de qualquer vencimento.'
-            : soAsVencidas
-            ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
-            : 'Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive.'}{' '}
-          {/* A42 da 12ª: a contadora, que só vê, lia "use Pagar na linha" sem botão nenhum. */}
-          {canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) no cargo.'}{' '}
-          <a href={`/admin/financeiro?period=${period}#movimentacoes`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Voltar ao período</a>
+        {/* O que vem pela frente: o a receber e o a pagar, e o fluxo de caixa dos próximos meses. */}
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: -12 }}>
+          O que vem pela frente
         </p>
-      )}
-      <div id="movimentacoes" className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
-            Movimentações
-            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>
-              {visibleTxs.length} registro{visibleTxs.length !== 1 ? 's' : ''}
-            </span>
-          </span>
-
-          {/* A44 da 8ª: o CSV de todas as movimentações do recorte (a tela mostra as 100 primeiras). */}
-          <button type="button" className="btn-secondary" disabled={visibleTxs.length === 0} style={{ marginLeft: 'auto' }}
-            onClick={() => baixarCsv(nomeDoCsv, csvDosLancamentos(
-              visibleTxs.map(t => linhaDoLancamento(t, branches.find(b => b.id === t.branch_id)?.name ?? null)), fuso))}>
-            <Download size={14} aria-hidden /> Exportar CSV
-          </button>
-          {/* CX6: a planilha do Fechamento do dia (era o "Exportar CSV" do Fechamento). */}
-          <CsvDoFechamentoDoDia unidades={branches.map(b => ({ id: b.id, name: b.name }))} unidadeInicial={filterBranch !== 'all' ? filterBranch : null} />
-
-          {/* Filtro por filial — só com mais de uma unidade (D-19). */}
-          {!umaUnidade && <select
-            className="filtro-select"
-            value={filterBranch}
-            onChange={e => setFilterBranch(e.target.value)}
-            style={{ width: 200 }}
-          >
-            <option value="all">Todas as unidades</option>
-            {branchStats.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>}
+        <div className="rg-3" style={{ gap: 14, alignItems: 'start' }}>
+          {cartaoAReceber(false)}
+          {cartaoDaOperadora(false)}
+          {cartaoAPagar(false)}
         </div>
+        {/* r2-fin-04: o fluxo de caixa dos próximos meses (o da unidade filtrada, ou o do recorte). */}
+        {fluxoDeCaixa && (
+          <FluxoDeCaixa meses={filterBranch === 'all' ? fluxoDeCaixa.total : (fluxoDeCaixa.porUnidade[filterBranch] ?? [])} />
+        )}
 
-        {visibleTxs.length === 0 ? (
-          <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
-            Nenhuma movimentação no período.
+        {/* Por unidade — só com mais de uma unidade (D-19). */}
+        {!umaUnidade && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Por unidade</span>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{periodLabel}</span>
           </div>
-        ) : (
+
           <div className="table-wrap">
-          {/* Oito colunas: no celular cada movimentacao vira um bloco. */}
+          {/* Sete colunas nao cabem em 390px: no celular cada unidade vira um
+              bloco de rotulo e valor, em vez de a tabela rolar dentro do card. */}
           <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {/* A36 da 12ª: a 1440 px a linha cortava "Remarcar vencimento" e "Estornar" —
-                    a coluna Unidade sai na clínica de uma unidade, e as ações quebram a linha. */}
-                {['Data', 'Descrição', 'Cliente', ...(umaUnidade ? [] : ['Unidade']), 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
+                {['Unidade', 'Receita', 'Despesas', 'Resultado', 'Comissões', 'Movim.', ''].map(h => (
                   <th key={h} style={{
-                    padding: '10px 16px', textAlign: h === 'Valor' ? 'right' : 'left',
+                    padding: '10px 16px', textAlign: h === 'Unidade' ? 'left' : 'right',
                     fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                     letterSpacing: '0.06em', textTransform: 'uppercase',
+                    width: h === '' ? 80 : undefined,
                   }}>
                     {h}
                   </th>
@@ -706,186 +821,115 @@ export function AdminFinancialView({
               </tr>
             </thead>
             <tbody>
-              {visibleTxs.slice(0, 100).map((t, i) => {
-                const isIncome  = t.type === 'INCOME'
-                const estornada = t.notes === 'Estornada'
-                const slugDaTx  = branchSlugMap[t.branch_id] ?? ''
-                return (
-                  <tr
-                    key={t.id}
-                    data-lancamento={t.id}
-                    style={{
-                      borderBottom: i < Math.min(visibleTxs.length, 100) - 1 ? '1px solid var(--hairline)' : 'none',
-                      transition: 'background 0.1s',
-                      opacity: estornada ? 0.5 : 1,
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '')}
-                  >
-                    <td data-label="Data" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {!t.is_paid && t.due_date
-                        ? `Vence ${new Date(t.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
-                        : new Date(t.data_de_referencia ?? t.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
-                    </td>
-                    {/* A36 da 12ª: a 1440 px a tabela passava do cartão e cortava as ações. A descrição
-                        quebra em até duas linhas (o nowrap fazia dela a largura mínima da coluna), e o
-                        limite mora no span — o maxWidth do td a tabela ignora. */}
-                    <td data-label="" style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)' }}>
-                      <span title={t.description || undefined} style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', maxWidth: 280, overflowWrap: 'anywhere' }}>
-                        {t.description || '—'}
-                      </span>
-                      {/* A52: o contra-lançamento diz o que é — não é despesa, anula a receita.
-                          D3 da 12ª: o de uma DESPESA (a entrada) anula a despesa. */}
-                      {t.category === 'Estorno' && (t.type === 'INCOME'
-                        ? <span data-anula-a-despesa style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Anula a despesa estornada</span>
-                        : <span data-anula-a-receita style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Anula a receita estornada</span>
-                      )}
-                      <VencimentoRemarcado historico={t.vencimentos_anteriores} />
-                      {t.estorno_motivo && (
-                        <span data-motivo-do-estorno style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)' }}>Motivo: {t.estorno_motivo}</span>
-                      )}
-                    </td>
-                    <td data-label="Cliente" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: t.clienteNome ? 'var(--text)' : 'var(--text-faint)' }}>
-                      <span style={{ display: 'block', maxWidth: 200 }}>{t.clienteNome ?? '—'}</span>
-                    </td>
-                    {!umaUnidade && <td data-label="Unidade" data-par style={{ padding: '11px 16px' }}>
-                      <span style={{
-                        fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-field-token)',
-                        background: 'var(--bg-app)', color: 'var(--text-muted)',
-                        border: '1px solid var(--border)',
-                      }}>
-                        {t.branchName}
-                      </span>
-                    </td>}
-                    <td data-label="Método" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                      {t.payment_method ? rotuloDaForma(t.payment_method, t.cartao_vezes, { maquininha: t.maquininha_nome })
-                        // A23 da 10ª: o R$ 0 pago todo com o voucher ou os pontos diz isso.
-                        : t.pago_sem_dinheiro ? <span data-pago-sem-dinheiro>{t.pago_sem_dinheiro}</span> : '—'}
-                    </td>
-                    <td data-label="Tipo" data-par style={{ padding: '11px 16px' }}>
-                      <span data-tipo-do-lancamento className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
-                        {t.category === 'Estorno' ? 'Estorno' : isIncome ? 'Receita' : 'Despesa'}
-                      </span>
-                    </td>
-                    {/* Situação — a tabela da rede era só leitura e nem dizia se
-                        o lançamento estava pago. */}
-                    <td data-label="Situação" data-par style={{ padding: '11px 16px' }}>
-                      {estornada ? (
-                        <span className="chip chip-muted" style={{ fontSize: 'var(--text-overline)' }}>Estornada</span>
-                      ) : t.is_paid ? (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                          background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)',
-                        }}>
-                          <CheckCircle2 size={10} /> Pago
-                        </span>
-                      ) : (
-                        <SituacaoDoEmAberto vencida={t.vencida} vencimento={t.due_date} />
-                      )}
-                    </td>
-
-                    <td data-label="Valor" data-par style={{ padding: '11px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isIncome ? 'var(--success)' : 'var(--text)', whiteSpace: 'nowrap' }}>
-                      {isIncome ? '+' : '−'} {fmtBRL(t.amount)}
-                      {t.desconto_texto && (
-                        <span data-desconto-do-lancamento style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
-                          {t.desconto_texto}
-                        </span>
-                      )}
-                      {t.estorno_parcial_texto && (
-                        <span data-estorno-parcial-do-lancamento style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
-                          {t.estorno_parcial_texto}
-                        </span>
-                      )}
-                      {t.uso_de_credito_texto && (
-                        <span data-uso-de-credito style={{ display: 'block', fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'normal', maxWidth: 220, marginLeft: 'auto' }}>
-                          {t.uso_de_credito_texto}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Receber e estornar sem sair do portal da rede. */}
-                    <td data-label="" style={{ padding: '11px 16px', width: 1 }}>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap', minWidth: 120 }}>
-                        {!t.is_paid && !estornada && canPay && (
-                          <button type="button" onClick={() => t.type === 'INCOME'
-                            ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method ?? null, valor: Number(t.amount) })
-                            : t.type === 'EXPENSE' && !t.payment_method
-                            ? setDespesaAPagar({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Despesa', valor: Number(t.amount) })
-                            : marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                            fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
-                            border: '1.5px solid var(--success)', background: 'var(--success-bg)',
-                            color: 'var(--success)', cursor: 'pointer', whiteSpace: 'nowrap',
-                          }}>
-                            <CheckCircle2 size={12} /> Pagar
-                          </button>
-                        )}
-                        {/* A37 da 9ª: remarcar o vencimento do que está em aberto. */}
-                        {!t.is_paid && !estornada && canWrite && (
-                          <RemarcarVencimento lancamento={{ id: t.id, descricao: t.description, valor: Number(t.amount), vencimento: t.due_date }} />
-                        )}
-                        {/* ven-06: o recibo do que foi pago (PDF — imprimir ou baixar). */}
-                        {isIncome && t.is_paid && !estornada && t.category !== 'Estorno' && (
-                          <a href={`/api/recibos/${t.id}`} target="_blank" rel="noopener" aria-label="Recibo" title="Recibo (PDF): imprimir ou baixar" style={{
-                            width: 30, height: 30, borderRadius: 7,
-                            border: '1px solid var(--border)', background: 'var(--surface)',
-                            color: 'var(--text-faint)', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <FileText size={12} />
-                          </a>
-                        )}
-                        {/* Estorno não se estorna (o banco também recusa): desfazer é
-                            coisa do financeiro, não um segundo clique. */}
-                        {t.is_paid && !estornada && t.category !== 'Estorno' && canReverse && (
-                          // A32 da 9ª: o "Estornar" com texto (era só o ícone de 30 px).
-                          <button type="button" data-estornar title={t.pago_sem_dinheiro ? 'Desfazer o pagamento' : 'Estornar'} onClick={() => t.credito_vendido_id
-                            ? setCreditoAEstornar({ id: t.id, descricao: t.description })
-                            : setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: !!t.product_sale_id, doAtendimento: !!t.appointment_id, pagoSemDinheiro: t.pago_sem_dinheiro ?? null })} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                            fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
-                            border: '1px solid var(--border)', background: 'var(--surface)',
-                            color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap',
-                          }}>
-                            <RotateCcw size={12} aria-hidden /> {t.pago_sem_dinheiro ? 'Desfazer o pagamento' : 'Estornar'}
-                          </button>
-                        )}
-                        {/* A venda de produto toda a receber não tem o que estornar: se
-                            CANCELA (a mesma pergunta do produto, produto_estornar_venda). */}
-                        {!t.is_paid && !estornada && !!t.product_sale_id && canReverse && (
-                          <button type="button" onClick={() => setAEstornar({ id: t.id, slug: slugDaTx, descricao: t.description, valor: Number(t.amount), vendaDeProduto: true, cancelarVenda: true })} title="Cancelar venda" aria-label="Cancelar venda" style={{
-                            width: 30, height: 30, borderRadius: 7,
-                            border: '1px solid var(--border)', background: 'var(--surface)',
-                            color: 'var(--text-faint)', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <XCircle size={12} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+              {sortedStats.map((b, i) => (
+                <tr
+                  key={b.id}
+                  style={{
+                    borderBottom: i < sortedStats.length - 1 ? '1px solid var(--hairline)' : 'none',
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '')}
+                >
+                  <td data-label="" style={{ padding: '13px 16px' }}>
+                    <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{b.name}</span>
+                  </td>
+                  <td data-label="Receita" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--success)' }}>
+                    {fmtBRL(b.revenue)}
+                  </td>
+                  <td data-label="Despesas" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
+                    {fmtBRL(b.expenses)}
+                  </td>
+                  <td data-label="Resultado" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: b.result >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                    {fmtBRL(b.result)}
+                  </td>
+                  <td data-label="Comissões" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
+                    {fmtBRL(b.commissions)}
+                  </td>
+                  <td data-label="Movim." data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>
+                    {b.txCount}
+                  </td>
+                  <td data-label="" style={{ padding: '13px 16px', textAlign: 'right' }}>
+                    {/* Recorta a própria tela, em vez de abrir o portal da
+                        unidade: quem está na rede continua na rede. */}
+                    <button
+                      type="button"
+                      onClick={() => verUnidade(b.id === filterBranch ? 'all' : b.id)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 'var(--text-2xs)', fontWeight: 700,
+                        color: b.id === filterBranch ? 'var(--text-muted)' : 'var(--brand)',
+                        background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >
+                      {b.id === filterBranch ? 'Ver a rede' : 'Ver'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
+            {/* Totais */}
+            <tfoot>
+              <tr style={{ borderTop: '2px solid var(--border)', background: 'var(--bg-app)' }}>
+                <td style={{ padding: '13px 16px', fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total rede</td>
+                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--success)' }}>{fmtBRL(totalRevenue)}</td>
+                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalExpenses)}</td>
+                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: totalResult >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtBRL(totalResult)}</td>
+                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalCommissions)}</td>
+                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-faint)' }}>{totalMovimentacoes}</td>
+                <td />
+              </tr>
+            </tfoot>
           </table>
-          </div>
+          </div>{/* end table-wrap */}
+        </div>
         )}
-        {visibleTxs.length > 100 && (
-          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--hairline)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', textAlign: 'center' }}>
-            Exibindo 100 de {visibleTxs.length} registros. Use filtro de filial para refinar.
-          </div>
-        )}
-      </div>
+      </>}
 
-      <ClientCreditModal
-        ref={creditModalRef}
-        branchId={filterBranch !== 'all' && branches.find(b => b.id === filterBranch)?.ativa !== false ? filterBranch : ''}
-        slug=""
-        clients={clients}
-        branches={branches.filter(b => b.ativa !== false)}
-      />
+      {/* -- A receber (FI3): das clientes (as atrasadas primeiro) e da operadora do cartão. */}
+      {aba === 'a-receber' && <>
+        <div className="rg-2" style={{ gap: 14, alignItems: 'start' }} data-aba-do-financeiro="a-receber">
+          {cartaoAReceber(true)}
+          {cartaoDaOperadora(true)}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: -12 }}>
+          <SegSelect
+            ariaLabel="Quais a receber"
+            value={soAsVencidas ? 'vencidas' : 'todas'}
+            onSelect={k => startT(() => { router.push(daAba('a-receber', k === 'vencidas' ? { aberto: 'vencidas' } : {})) })}
+            options={[{ key: 'todas', label: 'Todas' }, { key: 'vencidas', label: 'Só as vencidas' }]}
+          />
+        </div>
+        <p data-so-o-em-aberto style={faixa}>
+          {soAsVencidas
+            ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
+            : 'Todo o a receber em aberto, de qualquer vencimento — as atrasadas primeiro, as parcelas do crediário inclusive.'}{' '}
+          {fraseDaBaixa}
+        </p>
+        {tabela('Das clientes')}
+        {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
+        <ParcelasDaOperadora parcelas={parcelasVisiveis} podeMarcar={canWrite}
+          unidades={umaUnidade ? undefined : Object.fromEntries(branches.map(b => [b.id, b.name]))} />
+      </>}
+
+      {/* -- A pagar (FI4): as despesas em aberto, a que vence primeiro no topo. */}
+      {aba === 'a-pagar' && <>
+        <div className="rg-3" style={{ gap: 14, alignItems: 'start' }} data-aba-do-financeiro="a-pagar">
+          {cartaoAPagar(true)}
+        </div>
+        <p data-so-o-em-aberto style={faixa}>
+          Todas as contas a pagar em aberto, de qualquer vencimento — a que vence primeiro no topo.{' '}
+          {fraseDaBaixa}
+        </p>
+        {tabela('Contas a pagar')}
+      </>}
+
+      {/* -- Movimentações (FI5): o extrato do período, os CSVs e os avisos das taxas (CX6). */}
+      {aba === 'movimentacoes' && <>
+        {/* CX6: a venda sem taxa e as taxas estimadas do período (eram do Fechamento do dia). */}
+        {taxasDoPeriodo && <AvisosDasTaxas dados={filterBranch === 'all' ? taxasDoPeriodo.total : taxasDoPeriodo.porUnidade[filterBranch]} />}
+        <div data-aba-do-financeiro="movimentacoes">{tabela('Movimentações')}</div>
+      </>}
     </div>
   )
 }

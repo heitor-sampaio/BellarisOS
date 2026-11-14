@@ -65,7 +65,7 @@ test('o Financeiro aberto mostra o lançamento novo sozinho, pelo sinal', async 
   const ctx = await browser.newContext({ storageState: membro!.estado })
   try {
     const p = await ctx.newPage()
-    await p.goto(`/${b!.slug}/financeiro`)
+    await p.goto(`/${b!.slug}/financeiro?aba=movimentacoes`)
     await expect(p.getByRole('heading', { level: 1 }).first()).toBeVisible()
     // O canal ligado (o Postgres respondeu ao postgres_changes) antes de gravar.
     await p.waitForTimeout(3_000)

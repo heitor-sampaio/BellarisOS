@@ -105,7 +105,7 @@ test.describe.serial('os avisos do fechamento do dia', () => {
 
   test('CX6: as taxas da maquininha estimadas estão no Financeiro, no período', async ({ browser }) => {
     await como(financeiro!, browser, async p => {
-      await p.goto(`/${slug}/financeiro?period=today`)
+      await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=today`)
       // Informativo: R$ 2 do Pix + R$ 15 do crédito 3x.
       await expect(p.locator('[data-taxas-estimadas]')).toContainText('Taxas da maquininha no período (estimadas): R$ 17,00')
     })

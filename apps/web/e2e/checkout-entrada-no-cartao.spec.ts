@@ -239,7 +239,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
         // O Financeiro: "Pagar" pergunta a forma (nasce vazia) antes de dar baixa.
         const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
         const ate = new Date(Date.now() + 40 * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-        await p.goto(`/${un!.slug}/financeiro?period=custom&from=${hoje}&to=${ate}`)
+        await p.goto(`/${un!.slug}/financeiro?aba=movimentacoes&period=custom&from=${hoje}&to=${ate}`)
         await p.getByRole('row').filter({ hasText: `Pacote crediário ${marca}` }).getByRole('button', { name: 'Pagar' }).click()
         const dlg = p.getByRole('dialog', { name: 'Receber' })
         const forma = dlg.getByLabel('Forma de pagamento')

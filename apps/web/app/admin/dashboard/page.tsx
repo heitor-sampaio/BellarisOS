@@ -699,7 +699,7 @@ export default async function AdminDashboardPage({
           <AbertosDeAntes base="/admin/agenda" abertos={abertos.abertos} semChegada={abertos.semChegada} mostrarUnidade={branches.length > 1} />
           {/* D13 da 9ª: as parcelas vencidas, a quem vê o financeiro inteiro. */}
           {vencidasDoRecorte && <ParcelasVencidas vencidas={vencidasDoRecorte}
-            href={`/admin/financeiro?aberto=vencidas${unidadeId ? `&unidade=${unidadeId}` : ''}#movimentacoes`} />}
+            href={`/admin/financeiro?aba=a-receber&aberto=vencidas${unidadeId ? `&unidade=${unidadeId}` : ''}#movimentacoes`} />}
         </>}
         userName={ctx.userName}
         leadFunnel={leadFunnel}

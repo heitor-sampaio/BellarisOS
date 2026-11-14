@@ -170,7 +170,7 @@ test('decisão 1: quem não recebe não vende crédito (a action recusa)', async
 
 test('decisão 1: estornar a venda do crédito devolve só o saldo não usado (estorno parcial no Pix)', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const linha = p.locator('[data-lancamento]', { hasText: 'Crédito na clínica' }).filter({ hasText: '300,00' }).first()
     // A32: o "Estornar" tem texto, não só o ícone.
     await linha.getByRole('button', { name: 'Estornar' }).click()

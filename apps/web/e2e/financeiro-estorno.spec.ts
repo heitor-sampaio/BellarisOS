@@ -58,7 +58,7 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
   criadas.push(original!.id as string)
 
   // -- Estornar pela tela ----------------------------------------------------
-  await page.goto('/admin/financeiro')
+  await page.goto('/admin/financeiro?aba=movimentacoes')
   const linha = page.locator('tr').filter({ hasText: descricao }).first()
   await expect(linha).toBeVisible()
   await linha.getByTitle('Estornar', { exact: true }).click()
@@ -125,7 +125,7 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
   })
   expect(estornoDoEstorno?.message ?? '', 'o banco tem de recusar estornar um estorno').toContain('não se estorna')
 
-  await page.goto('/admin/financeiro')
+  await page.goto('/admin/financeiro?aba=movimentacoes')
   const linhaDoEstorno = page.locator('tr').filter({ hasText: `Estorno: ${descricao}` }).first()
   await expect(linhaDoEstorno).toBeVisible()
   await expect(linhaDoEstorno.getByTitle('Estornar', { exact: true }), 'a linha do estorno não oferece estornar').toHaveCount(0)

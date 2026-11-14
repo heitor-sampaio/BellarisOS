@@ -94,7 +94,7 @@ test('o controle: a tela do Financeiro continua mostrando o lançamento a quem t
   const ctx = await browser.newContext({ storageState: gestor!.estado })
   try {
     const p: Page = await ctx.newPage()
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     await expect(p.getByText(`Caixa da unidade ${marca}`).first()).toBeVisible({ timeout: 30_000 })
   } finally { await ctx.close() }
 })

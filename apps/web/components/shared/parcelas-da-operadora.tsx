@@ -31,10 +31,14 @@ import { useFuso } from '@/components/shared/fuso'
 export const ANCORA_DAS_PARCELAS = 'recebiveis-da-operadora'
 
 /** "Ver as parcelas" no cartão do "A receber da operadora" (D3): leva à lista. */
-export function LinkDasParcelas({ temParcelas }: { temParcelas: boolean }) {
+export function LinkDasParcelas({ temParcelas, href = '' }: {
+  temParcelas: boolean
+  /** FI3: as parcelas moram no A receber; de outra aba, o link leva até lá. */
+  href?: string
+}) {
   if (!temParcelas) return null
   return (
-    <a href={`#${ANCORA_DAS_PARCELAS}`} data-link-das-parcelas
+    <a href={`${href}#${ANCORA_DAS_PARCELAS}`} data-link-das-parcelas
       style={{ display: 'inline-block', marginTop: 4, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)' }}>
       Ver as parcelas
     </a>

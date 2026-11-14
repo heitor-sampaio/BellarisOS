@@ -118,7 +118,7 @@ test('A38: o "Em aberto" leva às parcelas, com a baixa na linha', async ({ brow
 
 test('A44: o Financeiro exporta as movimentações em CSV', async ({ browser }) => {
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const [arquivo] = await Promise.all([
       p.waitForEvent('download'),
       p.getByRole('button', { name: 'Exportar CSV' }).first().click(),

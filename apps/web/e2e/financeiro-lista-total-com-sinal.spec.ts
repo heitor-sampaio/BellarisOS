@@ -39,7 +39,7 @@ test('o total da lista diz o sinal: entrou R$ 300, saiu R$ 2.700 — resultado �
   const ctx = await browser.newContext({ storageState: financeiro!.estado })
   try {
     const p = await ctx.newPage()
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     await expect(p.locator('[data-total-da-lista]')).toHaveText('2 lançamentos · caixa da lista −R$ 2.400,00')
   } finally { await ctx.close() }
 })

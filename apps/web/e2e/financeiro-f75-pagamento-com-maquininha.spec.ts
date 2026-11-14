@@ -90,7 +90,7 @@ test('A18 e A19: o atendimento pago diz a maquininha e mostra o "Estornar" a que
 test('A18: a lista do Financeiro diz a maquininha', async ({ browser }) => {
   test.setTimeout(120_000)
   await como(browser, async page => {
-    await page.goto('/admin/financeiro')
+    await page.goto('/admin/financeiro?aba=movimentacoes')
     await expect(page.getByText(/Débito( Visa)? · Stone/).first()).toBeVisible({ timeout: 30_000 })
   })
 })

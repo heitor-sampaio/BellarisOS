@@ -1,19 +1,17 @@
 ﻿'use client'
 
 import { NotaDoDebito } from '@/components/shared/nota-do-debito'
-import { useMemo, useTransition, useRef } from 'react'
+import { useMemo, useTransition } from 'react'
 import { montarBarras, type BarDatum, type PontoDaSerie } from '@/lib/financeiro/barras'
 import { useFuso } from '@/components/shared/fuso'
 import type { ComposicaoFinanceira } from '@/lib/metrics'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet,
   Clock, BarChart2, Plus, ArrowUpRight, ArrowDownRight,
-  Gift, CreditCard,
+  CreditCard,
 } from 'lucide-react'
 import { FinancialTransactionModal }                        from './financial-transaction-modal'
-import { ClientCreditModal, ClientCreditModalHandle }       from './client-credit-modal'
 import { FinancialTable, Transaction }                      from './financial-table'
 import { SegSelect }                                        from '@/components/shared/seg-select'
 import { iniciaisDoNome } from '@estetica-os/utils'
@@ -29,6 +27,8 @@ import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/oper
 import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { AReceberVencido } from '@/lib/metrics/vencidas'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
+import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
+import { linkDaAba, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
 
 // --- Types --------------------------------------------------------
 
@@ -91,12 +91,8 @@ interface Props {
   customFrom?:      string
   customTo?:        string
   transactions:     Transaction[]
-  /** A38 da 8ª: a lista é todo o a receber em aberto, de qualquer vencimento (`?aberto=todos`). */
-  soOEmAberto?:     boolean
-  /** D13 da 9ª: a lista é só das VENCIDAS (`?aberto=vencidas`). */
+  /** D13 da 9ª: o A receber só com as VENCIDAS (`?aba=a-receber&aberto=vencidas`). */
   soAsVencidas?:    boolean
-  /** A43 da 12ª: a lista é todo o a pagar em aberto (`?aberto=a-pagar`). */
-  soAPagar?:        boolean
   /** A43 da 12ª: todo o a pagar em aberto da unidade, de qualquer vencimento. */
   aPagarEmAberto?:  number
   /** D13 da 9ª: o a receber da cliente que já venceu (getAReceberVencido). */
@@ -114,9 +110,12 @@ interface Props {
   canReverse:       boolean
   canWrite:         boolean
   canPay:           boolean
-  /** Cargo com alcance "só as próprias comissões": some tudo que é da filial. */
+  /** Cargo com alcance "só as próprias comissões": some tudo que é da unidade. */
   ownScope:         boolean
-  clients:          { id: string; name: string }[]
+  /** FI1: a aba aberta (Comissões é a página dela). */
+  aba:              Exclude<AbaDoFinanceiro, 'comissoes'>
+  /** O plano da rede tem comissões: a aba aparece. */
+  comComissoes:     boolean
   /** CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período (eram do Fechamento do dia). */
   taxasDoPeriodo?:  TaxasDoPeriodo
 }
@@ -523,21 +522,28 @@ export function FinancialHub({
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
-  transactions, soOEmAberto = false, soAsVencidas = false, soAPagar = false, aPagarEmAberto = 0, vencidas, nomeDoCsv, serie, emAberto, emAbertoAnterior,
+  transactions, soAsVencidas = false, aPagarEmAberto = 0, vencidas, nomeDoCsv, serie, emAberto, emAbertoAnterior,
   commissions,
   canReverse,
   canWrite,
   canPay,
   ownScope,
-  clients,
   taxasDoPeriodo,
+  aba,
+  comComissoes,
 }: Props) {
   const router              = useRouter()
   const [, startTransition] = useTransition()
-  const creditModalRef      = useRef<ClientCreditModalHandle>(null)
 
-  function navigatePeriod(p: string) {
-    startTransition(() => { router.push(`?period=${p}`) })
+  // O período muda e a aba fica (FI1).
+  function navigatePeriod(p: string, from?: string, to?: string) {
+    const q = new URLSearchParams()
+    if (aba !== 'resumo') q.set('aba', aba)
+    if (aba === 'a-receber' && soAsVencidas) q.set('aberto', 'vencidas')
+    q.set('period', p)
+    if (p === 'custom' && from) q.set('from', from)
+    if (p === 'custom' && to) q.set('to', to)
+    startTransition(() => { router.push(`?${q.toString()}`) })
   }
 
   // -- KPIs ------------------------------------------------------
@@ -592,12 +598,77 @@ export function FinancialHub({
   const incomeCategories  = comoItens(composicao.receitas, income)
   const expenseCategories = comoItens(composicao.despesas, expense)
 
+  // FI1: o link de cada aba guarda o período; a mudança de período guarda a aba.
+  const base = `/${slug}/financeiro`
+  const manter = { period, from: period === 'custom' ? customFrom : undefined, to: period === 'custom' ? customTo : undefined }
+  const daAba = (a: AbaDoFinanceiro, extra: Record<string, string> = {}) => linkDaAba(base, a, manter, extra)
+  const cartaoAReceber = (naAba: boolean) => (
+    <KpiCardFull
+      chave="a-receber"
+      nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
+        hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
+        vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
+      label="A receber da cliente"
+      curr={pendingIncome} prev={prevPendingIncome}
+      icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
+      iconBg="var(--success-bg)"
+      valueColor={pendingIncome > 0 ? 'var(--success)' : 'var(--text)'}
+    />
+  )
+  // F2c: o que a OPERADORA ainda deposita do cartão em N vezes — a cliente já
+  // pagou tudo; não é dívida dela (lib/metrics/operadora).
+  const cartaoDaOperadora = (naAba: boolean) => (
+    <KpiCardFull
+      chave="a-receber-operadora"
+      nota={<>
+        <NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto}
+          bruto={{ periodo: aReceberDaOperadora.aReceberBruto, emAberto: aReceberDaOperadora.emAbertoBruto }} />
+        {/* D3: o cartão leva à lista das parcelas (no A receber). */}
+        <LinkDasParcelas temParcelas={parcelasDaOperadora.length > 0} href={naAba ? undefined : daAba('a-receber')} />
+        {/* A38 da 11ª: o débito conta como recebido no dia. */}
+        <NotaDoDebito debito={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0} />
+      </>}
+      label="A receber da operadora"
+      curr={aReceberDaOperadora.aReceber} prev={0}
+      icon={<CreditCard size={13} style={{ color: 'var(--success)' }} />}
+      iconBg="var(--success-bg)"
+      valueColor={aReceberDaOperadora.aReceber > 0 ? 'var(--success)' : 'var(--text)'}
+    />
+  )
+  const cartaoAPagar = (naAba: boolean) => (
+    <KpiCardFull
+      chave="a-pagar"
+      nota={<NotaDoVencimento valor={pendingExpense} proximo={emAberto.proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
+        hrefDaBaixa={naAba ? undefined : daAba('a-pagar')} />}
+      label="A Pagar"
+      curr={pendingExpense} prev={prevPendingExpense}
+      icon={<Clock size={13} style={{ color: 'var(--warning)' }} />}
+      iconBg="var(--warning-soft)"
+      valueColor={pendingExpense > 0 ? 'var(--warning)' : 'var(--text)'}
+      invertDelta
+    />
+  )
+  // A42 da 12ª: quem só vê o financeiro não tem o "Pagar" na linha.
+  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) no cargo.'
+  const tabela = (ordemInicial: 'asc' | 'desc') => (
+    <FinancialTable
+      nomeDoCsv={nomeDoCsv}
+      transactions={transactions}
+      branchId={branchId}
+      slug={slug}
+      canReverse={canReverse}
+      canPay={canPay}
+      podeRemarcar={canWrite}
+      ordemInicial={ordemInicial}
+    />
+  )
+  const faixa: React.CSSProperties = { fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', margin: 0 }
+  const tituloDeSecao: React.CSSProperties = { fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      <ClientCreditModal ref={creditModalRef} branchId={branchId} slug={slug} clients={clients} />
-
-      {/* Header: título (esquerda) + seletores e botões (direita) */}
+      {/* Header: título (esquerda) + período e o "Novo lançamento" (direita) — FI7: só ele no topo. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
@@ -615,17 +686,12 @@ export function FinancialHub({
             onSelect={(k) => navigatePeriod(k)}
             ariaLabel="Selecionar período"
           />
-          <Link href={`/${slug}/financeiro/comissoes`} className="btn-secondary">Comissões</Link>
           {period === 'custom' && (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 type="date"
                 defaultValue={customFrom}
-                onChange={e => {
-                  const from = e.target.value
-                  const to   = customTo ?? new Date().toISOString().slice(0, 10)
-                  router.push(`?period=custom&from=${from}&to=${to}`)
-                }}
+                onChange={e => navigatePeriod('custom', e.target.value, customTo ?? new Date().toISOString().slice(0, 10))}
                 className="field"
                 style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}
               />
@@ -633,250 +699,206 @@ export function FinancialHub({
               <input
                 type="date"
                 defaultValue={customTo}
-                onChange={e => {
-                  const to   = e.target.value
-                  const from = customFrom ?? new Date().toISOString().slice(0, 10)
-                  router.push(`?period=custom&from=${from}&to=${to}`)
-                }}
+                onChange={e => navigatePeriod('custom', customFrom ?? new Date().toISOString().slice(0, 10), e.target.value)}
                 className="field"
                 style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}
               />
             </div>
           )}
           {canWrite && (
-            <>
-              <button
-                type="button" className="btn-secondary"
-                onClick={() => creditModalRef.current?.open()}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}
-              >
-                <Gift size={14} />
-                Crédito para cliente
-              </button>
-              <FinancialTransactionModal
-                branchId={branchId}
-                slug={slug}
-                trigger={<button type="button" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Plus size={15} />Novo lançamento</button>}
-              />
-            </>
+            <FinancialTransactionModal
+              branchId={branchId}
+              slug={slug}
+              trigger={<button type="button" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Plus size={15} />Novo lançamento</button>}
+            />
           )}
         </div>
       </div>
 
+      {/* FI1: as cinco perguntas de quem cuida do dinheiro. */}
+      <AbasDoFinanceiro base={base} atual={aba} manter={manter} comComissoes={comComissoes} />
 
-      {/* KPI grid — 6 cards em linha */}
-      {!ownScope && <div className="kpi-grid-auto">
-        <KpiCardFull
-          chave="lucro"
-          label="Lucro Líquido"
-          curr={saldo} prev={prevSaldo}
-          // D8 da 8ª: a conta do resultado, para ele se explicar na tela.
-          nota={<ContaDoResultado receita={income} resultado={resultado} despesasDoCaixa={expense} aPagar={pendingExpense} />}
-          icon={<Wallet size={13} style={{ color: 'var(--on-brand)' }} />}
-          iconBg="rgba(255,255,255,0.18)"
-          highlight
-        />
-        <KpiCardFull
-          label="Receita Bruta"
-          curr={income} prev={prevIncome}
-          icon={<TrendingUp size={13} style={{ color: 'var(--success)' }} />}
-          iconBg="var(--success-bg)"
-          valueColor="var(--success)"
-        />
-        {/* A24 da 10ª: o cartão é o CAIXA — com a compra de estoque e o pagamento
-            das comissões, que ficam fora do lucro. Sem dizer, Receita − Despesas
-            não dava o Lucro, e parecia erro. */}
-        <KpiCardFull
-          chave="despesas"
-          label="Despesas pagas (caixa)"
-          nota={<span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o Lucro Líquido usa a despesa operacional (veja a conta nele).</span>}
-          curr={expense} prev={prevExpense}
-          icon={<TrendingDown size={13} style={{ color: 'var(--danger)' }} />}
-          iconBg="var(--danger-soft)"
-          valueColor="var(--danger)"
-          invertDelta
-        />
-        {/* Denominador explícito no rótulo: aqui é por LANÇAMENTO de receita.
-            "Ticket médio" por atendimento é o do dashboard, e o mesmo nome
-            para as duas contas fazia parecer que uma delas estava errada. */}
-        <KpiCardFull
-          // O rótulo mudou junto com a conta: era "Receita por lançamento"
-          // (receita ÷ nº de lançamentos) e passou a ser o ticket médio do
-          // §13.1, o mesmo que a rede mostra. Deixar o nome antigo sobre a
-          // conta nova seria trocar a divergência de número por uma de
-          // vocabulário — dois nomes para a mesma coisa em telas vizinhas.
-          label="Ticket médio"
-          curr={avgTicket} prev={0}
-          icon={<BarChart2 size={13} style={{ color: 'var(--info)' }} />}
-          iconBg="var(--info-soft)"
-          valueColor="var(--info)"
-        />
-        <KpiCardFull
-          chave="a-receber"
-          nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
-            hrefDaBaixa={`/${slug}/financeiro?aberto=todos#lancamentos`} podeDarBaixa={canPay}
-            vencidas={vencidas} hrefDasVencidas={`/${slug}/financeiro?aberto=vencidas#lancamentos`} />}
-          label="A receber da cliente"
-          curr={pendingIncome} prev={prevPendingIncome}
-          icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
-          iconBg="var(--success-bg)"
-          valueColor={pendingIncome > 0 ? 'var(--success)' : 'var(--text)'}
-        />
-        {/* F2c: o que a OPERADORA ainda deposita do cartão em N vezes — a
-            cliente já pagou tudo; não é dívida dela (lib/metrics/operadora). */}
-        <KpiCardFull
-          chave="a-receber-operadora"
-          nota={<>
-            <NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto}
-              bruto={{ periodo: aReceberDaOperadora.aReceberBruto, emAberto: aReceberDaOperadora.emAbertoBruto }} />
-            {/* D3: o cartão leva à lista das parcelas. */}
-            <LinkDasParcelas temParcelas={parcelasDaOperadora.length > 0} />
-            {/* A38 da 11ª: o débito conta como recebido no dia. */}
-            <NotaDoDebito debito={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0} />
-          </>}
-          label="A receber da operadora"
-          curr={aReceberDaOperadora.aReceber} prev={0}
-          icon={<CreditCard size={13} style={{ color: 'var(--success)' }} />}
-          iconBg="var(--success-bg)"
-          valueColor={aReceberDaOperadora.aReceber > 0 ? 'var(--success)' : 'var(--text)'}
-        />
-        <KpiCardFull
-          chave="a-pagar"
-          nota={<NotaDoVencimento valor={pendingExpense} proximo={emAberto.proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
-            hrefDaBaixa={`/${slug}/financeiro?aberto=a-pagar#lancamentos`} />}
-          label="A Pagar"
-          curr={pendingExpense} prev={prevPendingExpense}
-          icon={<Clock size={13} style={{ color: 'var(--warning)' }} />}
-          iconBg="var(--warning-soft)"
-          valueColor={pendingExpense > 0 ? 'var(--warning)' : 'var(--text)'}
-          invertDelta
-        />
-      </div>}
+      {/* -- Resumo (FI2): o período — entrou, saiu, resultado — e, embaixo, o que vem pela frente. */}
+      {aba === 'resumo' && !ownScope && <>
+        <div className="kpi-grid-auto" data-aba-do-financeiro="resumo">
+          <KpiCardFull
+            chave="lucro"
+            label="Lucro Líquido"
+            curr={saldo} prev={prevSaldo}
+            // D8 da 8ª: a conta do resultado, para ele se explicar na tela.
+            nota={<ContaDoResultado receita={income} resultado={resultado} despesasDoCaixa={expense} aPagar={pendingExpense} />}
+            icon={<Wallet size={13} style={{ color: 'var(--on-brand)' }} />}
+            iconBg="rgba(255,255,255,0.18)"
+            highlight
+          />
+          <KpiCardFull
+            chave="receita"
+            label="Receita Bruta"
+            curr={income} prev={prevIncome}
+            icon={<TrendingUp size={13} style={{ color: 'var(--success)' }} />}
+            iconBg="var(--success-bg)"
+            valueColor="var(--success)"
+          />
+          {/* A24 da 10ª: o cartão é o CAIXA — com a compra de estoque e o pagamento
+              das comissões, que ficam fora do lucro. */}
+          <KpiCardFull
+            chave="despesas"
+            label="Despesas pagas (caixa)"
+            nota={<span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o Lucro Líquido usa a despesa operacional (veja a conta nele).</span>}
+            curr={expense} prev={prevExpense}
+            icon={<TrendingDown size={13} style={{ color: 'var(--danger)' }} />}
+            iconBg="var(--danger-soft)"
+            valueColor="var(--danger)"
+            invertDelta
+          />
+          {/* O ticket médio do §13.1, o mesmo que a rede mostra. */}
+          <KpiCardFull
+            label="Ticket médio"
+            curr={avgTicket} prev={0}
+            icon={<BarChart2 size={13} style={{ color: 'var(--info)' }} />}
+            iconBg="var(--info-soft)"
+            valueColor="var(--info)"
+          />
+        </div>
 
-      {/* Charts row — evolução | comissões | formas de pagamento */}
-      <div className={ownScope ? undefined : 'rg-3'}>
-        {/* Evolution */}
-        {!ownScope && <div className="card" style={{ padding: '20px 20px 12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div>
-              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-                Evolução financeira
-              </p>
-              <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
-                Receitas vs despesas realizadas
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--success)' }} />
-                <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Receitas</span>
+        {/* O que vem pela frente: o a receber e o a pagar, e o fluxo de caixa dos próximos meses. */}
+        <p style={{ ...tituloDeSecao, marginBottom: -8 }}>O que vem pela frente</p>
+        <div className="rg-3" style={{ gap: 14, alignItems: 'start' }}>
+          {cartaoAReceber(false)}
+          {cartaoDaOperadora(false)}
+          {cartaoAPagar(false)}
+        </div>
+        {/* r2-fin-04: o fluxo de caixa dos próximos meses. */}
+        {fluxoDeCaixa && <FluxoDeCaixa meses={fluxoDeCaixa} />}
+
+        {/* Os detalhes do período — evolução | comissões | formas de pagamento */}
+        <div className="rg-3">
+          <div className="card" style={{ padding: '20px 20px 12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <p style={tituloDeSecao}>Evolução financeira</p>
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Receitas vs despesas realizadas
+                </p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--danger)' }} />
-                <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Despesas</span>
-              </div>
-            </div>
-          </div>
-          <EvolutionChart data={barData} />
-        </div>}
-
-        {/* Comissões */}
-        <CommissionsCard entries={commissions} />
-
-        {/* Formas de pagamento */}
-        {!ownScope && <div className="card" style={{ padding: '20px' }}>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 4 }}>
-            Formas de pagamento
-          </p>
-          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 16 }}>Receitas por método</p>
-
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <DonutChart segments={paymentSegments} total={paymentTotal} />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {paymentSegments.map(seg => (
-              <div key={seg.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{seg.label}</span>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--success)' }} />
+                  <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Receitas</span>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>
-                    {paymentTotal > 0 ? ((seg.value / paymentTotal) * 100).toFixed(0) : 0}%
-                  </span>
-                  <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginLeft: 4 }}>
-                    {fmtBRL(seg.value)}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--danger)' }} />
+                  <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Despesas</span>
                 </div>
               </div>
-            ))}
-            {paymentSegments.length === 0 && (
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center' }}>Sem receitas pagas</p>
-            )}
+            </div>
+            <EvolutionChart data={barData} />
           </div>
-        </div>}
-      </div>
 
-      {/* Category breakdown */}
-      {!ownScope && <div className="rg-2">
-        <div className="card" style={{ padding: '20px' }}>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
-            Categorias de receita
-          </p>
-          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 16 }}>Top 6 categorias</p>
-          <CategoryBars items={incomeCategories} color="var(--success)" />
+          <CommissionsCard entries={commissions} />
+
+          <div className="card" style={{ padding: '20px' }}>
+            <p style={{ ...tituloDeSecao, marginBottom: 4 }}>Formas de pagamento</p>
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 16 }}>Receitas por método</p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <DonutChart segments={paymentSegments} total={paymentTotal} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {paymentSegments.map(seg => (
+                <div key={seg.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{seg.label}</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>
+                      {paymentTotal > 0 ? ((seg.value / paymentTotal) * 100).toFixed(0) : 0}%
+                    </span>
+                    <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginLeft: 4 }}>
+                      {fmtBRL(seg.value)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {paymentSegments.length === 0 && (
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center' }}>Sem receitas pagas</p>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="card" style={{ padding: '20px' }}>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
-            Categorias de despesa
-          </p>
-          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 16 }}>Top 6 categorias</p>
-          <CategoryBars items={expenseCategories} color="var(--danger)" />
+
+        {/* Category breakdown */}
+        <div className="rg-2">
+          <div className="card" style={{ padding: '20px' }}>
+            <p style={{ ...tituloDeSecao, marginBottom: 4 }}>Categorias de receita</p>
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 16 }}>Top 6 categorias</p>
+            <CategoryBars items={incomeCategories} color="var(--success)" />
+          </div>
+          <div className="card" style={{ padding: '20px' }}>
+            <p style={{ ...tituloDeSecao, marginBottom: 4 }}>Categorias de despesa</p>
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 16 }}>Top 6 categorias</p>
+            <CategoryBars items={expenseCategories} color="var(--danger)" />
+          </div>
         </div>
-      </div>}
+      </>}
 
-      {/* r2-fin-04: o fluxo de caixa dos próximos meses (não com "só os meus": é da unidade). */}
-      {!ownScope && fluxoDeCaixa && <FluxoDeCaixa meses={fluxoDeCaixa} />}
-
-      {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
-      {!ownScope && <ParcelasDaOperadora parcelas={parcelasDaOperadora} podeMarcar={canWrite} slug={slug} />}
-
-      {/* CX6: a venda sem taxa e as taxas estimadas do período (eram do Fechamento do dia). */}
-      {!ownScope && <AvisosDasTaxas dados={taxasDoPeriodo} />}
-
-      {/* Transactions */}
-      {!ownScope && <div id="lancamentos">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-            Lançamentos
-          </p>
-          {/* CX6: a planilha do Fechamento do dia (era o "Exportar CSV" do Fechamento). */}
-          <CsvDoFechamentoDoDia unidades={[{ id: branchId, name: branchName }]} unidadeInicial={branchId} />
+      {/* -- A receber (FI3): das clientes (as atrasadas primeiro) e da operadora do cartão. */}
+      {aba === 'a-receber' && !ownScope && <>
+        <div className="rg-2" style={{ gap: 14, alignItems: 'start' }} data-aba-do-financeiro="a-receber">
+          {cartaoAReceber(true)}
+          {cartaoDaOperadora(true)}
         </div>
-        {/* A38 da 8ª: o a receber de qualquer vencimento, com a baixa na linha. */}
-        {soOEmAberto && (
-          <p data-so-o-em-aberto style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', marginBottom: 12 }}>
-            {soAPagar
-              ? 'Todas as contas a pagar em aberto, de qualquer vencimento.'
-              : soAsVencidas
+        <div id="lancamentos" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <p style={tituloDeSecao}>Das clientes</p>
+            <SegSelect
+              ariaLabel="Quais a receber"
+              value={soAsVencidas ? 'vencidas' : 'todas'}
+              onSelect={k => startTransition(() => { router.push(daAba('a-receber', k === 'vencidas' ? { aberto: 'vencidas' } : {})) })}
+              options={[{ key: 'todas', label: 'Todas' }, { key: 'vencidas', label: 'Só as vencidas' }]}
+            />
+          </div>
+          <p data-so-o-em-aberto style={faixa}>
+            {soAsVencidas
               ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
-              : 'Todo o a receber em aberto, de qualquer vencimento — as parcelas do crediário inclusive.'}{' '}
-            {/* A42 da 12ª: quem só vê o financeiro não tem o "Pagar" na linha. */}
-            {canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) no cargo.'}{' '}
-            <a href={`/${slug}/financeiro?period=${period}#lancamentos`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Voltar ao período</a>
+              : 'Todo o a receber em aberto, de qualquer vencimento — as atrasadas primeiro, as parcelas do crediário inclusive.'}{' '}
+            {fraseDaBaixa}
           </p>
-        )}
-        <FinancialTable
-          nomeDoCsv={nomeDoCsv}
-          transactions={transactions}
-          branchId={branchId}
-          slug={slug}
-          canReverse={canReverse}
-          canPay={canPay}
-          podeRemarcar={canWrite}
-        />
-      </div>}
+          {tabela('asc')}
+        </div>
+        {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
+        <ParcelasDaOperadora parcelas={parcelasDaOperadora} podeMarcar={canWrite} slug={slug} />
+      </>}
+
+      {/* -- A pagar (FI4): as despesas em aberto, a que vence primeiro no topo. */}
+      {aba === 'a-pagar' && !ownScope && <>
+        <div className="rg-3" style={{ gap: 14, alignItems: 'start' }} data-aba-do-financeiro="a-pagar">
+          {cartaoAPagar(true)}
+        </div>
+        <div id="lancamentos" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p data-so-o-em-aberto style={faixa}>
+            Todas as contas a pagar em aberto, de qualquer vencimento — a que vence primeiro no topo.{' '}
+            {fraseDaBaixa}
+          </p>
+          {tabela('asc')}
+        </div>
+      </>}
+
+      {/* -- Movimentações (FI5): o extrato do período, os CSVs e os avisos das taxas (CX6). */}
+      {aba === 'movimentacoes' && !ownScope && <>
+        {/* CX6: a venda sem taxa e as taxas estimadas do período (eram do Fechamento do dia). */}
+        <AvisosDasTaxas dados={taxasDoPeriodo} />
+        <div id="lancamentos" data-aba-do-financeiro="movimentacoes">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+            <p style={tituloDeSecao}>Lançamentos</p>
+            {/* CX6: a planilha do Fechamento do dia (era o "Exportar CSV" do Fechamento). */}
+            <CsvDoFechamentoDoDia unidades={[{ id: branchId, name: branchName }]} unidadeInicial={branchId} />
+          </div>
+          {tabela('desc')}
+        </div>
+      </>}
     </div>
   )
 }

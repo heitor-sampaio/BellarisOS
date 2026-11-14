@@ -71,7 +71,7 @@ test.afterAll(async () => {
 
 test('A51: a janela diz que a cobrança reabre, e o estorno entra no histórico do agendamento', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     await p.getByRole('button', { name: 'Estornar' }).first().click()
     const janela = p.getByRole('dialog', { name: 'Estornar este lançamento?' })
     await expect(janela).toContainText('O atendimento volta a receber')
@@ -86,11 +86,11 @@ test('A51: a janela diz que a cobrança reabre, e o estorno entra no histórico 
 test('A52: na lista do Financeiro (unidade e rede), o estorno se chama "Estorno" e diz que anula a receita', async ({ browser }) => {
   const { data: contra } = await db().from('financial_transactions').select('id').eq('branch_id', rede.branchId).eq('category', 'Estorno').single<{ id: string }>()
   await como(browser, async p => {
-    await p.goto('/admin/financeiro')
+    await p.goto('/admin/financeiro?aba=movimentacoes')
     const linha = p.locator(`[data-lancamento="${contra!.id}"]`)
     await expect(linha.locator('[data-tipo-do-lancamento]')).toHaveText('Estorno')
     await expect(linha).toContainText('Anula a receita estornada')
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     await expect(p.locator(`[data-lancamento="${contra!.id}"]`)).toContainText('Anula a receita estornada')
   })
 })

@@ -33,7 +33,7 @@ async function csvDe(m: MembroDeTeste, browser: Browser): Promise<string> {
   const ctx = await browser.newContext({ storageState: m.estado })
   try {
     const p: Page = await ctx.newPage()
-    await p.goto(`/${slug}/financeiro?period=today`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=today`)
     await p.getByRole('button', { name: 'CSV do fechamento do dia' }).click({ timeout: 30_000 })
     const janela = p.getByRole('dialog', { name: 'CSV do fechamento do dia' })
     await janela.getByLabel('Dia').fill(hoje())
@@ -92,7 +92,7 @@ test('A28 e D7: quem só recebe não chega ao CSV do Fechamento (ele mora no Fin
     await expect(p.locator('[data-forma="TOTAL"]')).toBeVisible()
     await expect(p.getByRole('button', { name: /CSV/ })).toHaveCount(0)
     // ... e o Financeiro, onde o CSV mora, não abre a quem só recebe.
-    await p.goto(`/${slug}/financeiro?period=today`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=today`)
     await expect(p.getByText('Você não tem acesso a esta área')).toBeVisible()
     await expect(p.getByRole('button', { name: 'CSV do fechamento do dia' })).toHaveCount(0)
   } finally { await ctx.close() }

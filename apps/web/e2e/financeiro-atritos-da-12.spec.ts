@@ -136,7 +136,8 @@ test('A35: a recepção recebe a parcela na ficha e, no atendimento pago, lê a 
 
 test('A36, A37 e A38: a 1440 px as ações da linha cabem, o "A pagar" fica na linha dos a receber, e o Copilot não cobre o fim', async ({ browser }) => {
   await como(browser, dona, async p => {
-    await p.goto('/admin/financeiro?period=month')
+    // FI5: a lista é a aba Movimentações; os cartões, o Resumo.
+    await p.goto('/admin/financeiro?aba=movimentacoes&period=month')
     const tabela = p.locator('#movimentacoes')
     const estornar = tabela.locator('[data-estornar]').first()
     await expect(estornar).toBeVisible()
@@ -147,6 +148,7 @@ test('A36, A37 e A38: a 1440 px as ações da linha cabem, o "A pagar" fica na l
     const caixaDoRemarcar = (await remarcar.boundingBox())!
     expect(caixaDoRemarcar.x + caixaDoRemarcar.width, 'o "Remarcar vencimento" dentro do cartão').toBeLessThanOrEqual(caixaDaTabela.x + caixaDaTabela.width + 1)
 
+    await p.goto('/admin/financeiro?period=month')
     const aPagar = (await p.locator('[data-kpi="a-pagar"]').boundingBox())!
     const aReceber = (await p.locator('[data-kpi="a-receber"]').boundingBox())!
     expect(Math.abs(aPagar.y - aReceber.y), 'na mesma linha').toBeLessThan(2)
@@ -164,7 +166,7 @@ test('A42 e A43: a contadora lê "Ver a lista"; as contas a pagar de qualquer m�
     const aReceber = p.locator('[data-kpi="a-receber"] [data-em-aberto]')
     await expect(aReceber.getByRole('link', { name: 'Ver a lista' })).toBeVisible()
     await expect(aReceber).not.toContainText('dar baixa')
-    await p.goto('/admin/financeiro?aberto=todos')
+    await p.goto('/admin/financeiro?aba=a-receber')
     await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Dar baixa é de quem tem Recebimentos')
     await expect(p.locator('[data-so-o-em-aberto]')).not.toContainText('use “Pagar” na linha')
 
@@ -173,7 +175,7 @@ test('A42 e A43: a contadora lê "Ver a lista"; as contas a pagar de qualquer m�
     const aPagar = p.locator('[data-kpi="a-pagar"] [data-em-aberto]')
     await expect(aPagar).toContainText(/R\$\s1\.300,00/)
     await aPagar.getByRole('link', { name: 'Ver a lista' }).click()
-    await expect(p).toHaveURL(/aberto=a-pagar/)
+    await expect(p).toHaveURL(/aba=a-pagar/)
     const tabela = p.locator('#movimentacoes')
     await expect(tabela).toContainText(`Energia ${marca}`)
     await expect(tabela).toContainText(`Aluguel ${marca}`)
@@ -183,7 +185,7 @@ test('A42 e A43: a contadora lê "Ver a lista"; as contas a pagar de qualquer m�
 
 test('A44 e A47: o CSV com bandeira, desconto, profissional e unidade; o Fechamento por bandeira e "Ainda não fechado"', async ({ browser }) => {
   await como(browser, dona, async p => {
-    await p.goto('/admin/financeiro?period=today')
+    await p.goto('/admin/financeiro?aba=movimentacoes&period=today')
     const texto = await baixar(p, p.locator('#movimentacoes').getByRole('button', { name: 'Exportar CSV' }))
     const linhas = texto.split('\r\n').map(l => l.split(';'))
     const cab = linhas[0]!
@@ -204,7 +206,7 @@ test('A44 e A47: o CSV com bandeira, desconto, profissional e unidade; o Fechame
     await expect(doCartao).toContainText(/Mastercard\s+R\$\s600,00/)
     await expect(p.locator('[data-ainda-nao-fechado]')).toContainText('Ainda não fechado')
     // O CSV do fechamento mora no Financeiro desde o CX6 (2026-11-14).
-    await p.goto(`/${slug}/financeiro?period=today`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=today`)
     await p.getByRole('button', { name: 'CSV do fechamento do dia' }).click()
     const janela = p.getByRole('dialog', { name: 'CSV do fechamento do dia' })
     await janela.getByLabel('Dia').fill(hoje)

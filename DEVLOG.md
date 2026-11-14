@@ -1774,6 +1774,74 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Financeiro (FI1–FI8): cinco abas, o crédito na ficha, a política antiga fora
+
+O Heitor (revisão de 13/11): "Nada de recurso novo: o que já existe,
+organizado pelas cinco perguntas de quem cuida do dinheiro." Os dois
+Financeiros (`/admin/financeiro` e `/[slug]/financeiro`) viraram abas, e nada
+do que a tela fazia saiu.
+
+- **FI1 — as abas**: Resumo · A receber · A pagar · Movimentações ·
+  Comissões, abrindo no Resumo. A aba mora na URL (`?aba=`,
+  `lib/financeiro/abas.ts`; a barra é `AbasDoFinanceiro`, em
+  `components/shared/`), e a troca leva o período e a unidade. Comissões
+  segue na página dela (`/financeiro/comissoes`), com a mesma barra, e some
+  sem o recurso no plano. Os links antigos levam à aba nova por redirect no
+  servidor: `?aberto=todos` → A receber, `?aberto=vencidas` → A receber só
+  com as vencidas, `?aberto=a-pagar` → A pagar. Os links do dashboard e do
+  "o que ficou" da unidade desativada já nascem com `?aba=`.
+- **FI2 — Resumo**: os cartões do período (o que entrou, o que saiu, o
+  resultado, o ticket; na rede, as comissões e "Por unidade") e "O que vem
+  pela frente" — o a receber da cliente, o da operadora e o a pagar, cada um
+  com o link para a aba dele —, o fluxo de caixa, a evolução, as formas e as
+  categorias. Tudo de `lib/metrics/`, como antes; o Resumo não lê a lista
+  de lançamentos (fica mais leve).
+- **FI3 — A receber**: todo o a receber em aberto das clientes, de qualquer
+  vencimento, do mais antigo para o mais novo (as vencidas primeiro), com
+  "Pagar"/"Receber" e "Remarcar vencimento" na linha e "Todas / Só as
+  vencidas"; embaixo, as parcelas da operadora (CX6).
+- **FI4 — A pagar**: toda conta a pagar em aberto, do vencimento mais
+  próximo, com o "Pagar". O lançar (avulsa, parcelada, recorrente, Contas)
+  é o "Novo lançamento" do topo, como era.
+- **FI5 — Movimentações**: o extrato do período (a lista de antes, a mais
+  nova primeiro), com o filtro, o estorno, o recibo, a devolução, o
+  cancelamento da venda, o "Exportar CSV" e o "CSV do fechamento do dia"; os
+  avisos das taxas da maquininha (CX6) moram aqui.
+- **FI6 — Comissões** como aba: a página das comissões ganhou a barra e o
+  título "Financeiro" (o "← Financeiro" saiu); quem tem o "só os meus" segue
+  vendo só as próprias comissões, sem as abas.
+- **FI7 — o crédito na ficha**: o "Crédito para cliente" saiu do topo dos
+  dois Financeiros (com o `client-credit-modal.tsx`, que mais nada usava). O
+  "Conceder crédito" da ficha, aba Financeiro, já existia para quem tem o
+  Financeiro em Gerenciar, e a action já recusava o "só os meus". No topo
+  fica só o "Novo lançamento".
+- **FI8 — a política antiga fora**: migration
+  `20261115000001_fi8_sai_a_politica_antiga_do_financeiro` — **destrutiva,
+  aplicada** ("aplica e anota"): `drop policy "Operacional acessa financeiro
+  da filial" on financial_transactions`. Ela não tinha efeito desde a F75
+  (a restritiva `financeiro_so_pelo_servidor` fecha a sessão); ficam
+  `financeiro_so_pelo_servidor` e as três `suporte_sem_escrita_*`. Nenhum
+  dado apagado. A trava: `tests/financeiro-abas.test.ts` (a última migration
+  que toca a política é a que a derruba).
+- **Decidido pelos princípios** (§1): a aba na URL da mesma página, e não
+  rotas novas (o período e a unidade vão juntos, e os dois portais têm o
+  mesmo sufixo); "Só as vencidas" ficou como filtro dentro do A receber
+  (princípio 7: o caso raro guardado); A receber e A pagar em ordem de
+  vencimento crescente (a pergunta é "o que vence primeiro"), Movimentações
+  na ordem de antes; os dois corpos das telas (`FinancialHub` e
+  `AdminFinancialView`) não se unificaram — só a barra é comum (mudar o
+  corpo seria mais que organizar). O texto do "caixa da lista" diz "o Lucro,
+  no Resumo" (era "acima").
+- **Specs antigos que mudaram** (a regra nova): os que abriam o Financeiro e
+  liam a lista, o estorno, o CSV, os avisos das taxas ou as parcelas da
+  operadora abrem a aba (`?aba=movimentacoes` / `?aba=a-receber`); os que
+  usavam `?aberto=` usam `?aba=`; `rede-de-uma-unidade` confere a pergunta
+  da unidade no "Conceder crédito" da ficha (o modal saiu);
+  `unidades-da-tela.test.ts` espera o link novo do "o que ficou".
+- **Testes**: `e2e/financeiro-abas.spec.ts` 6/6 (antes da tela: 4 falharam — sem a barra "Abas do Financeiro", e o `?aberto=todos` ficava na URL; o "só os meus" e o FI7 já passavam). Vizinhos, em série (os 41 `financeiro-*`/`credito-*`/`vendas-credito-*`, oito `comissoes-*` que abrem a tela, e os specs mexidos ou que abrem o Financeiro — 75 arquivos): 360 passaram, 1 falhou e 21 pularam (os `planos-recursos`, só contra o build). A falha era do meu ajuste no spec do D3 (o link do Resumo leva o período, `&period=month`): corrigido, `financeiro-cartao-a-receber-da-operadora` 11/11. `tsc` (11 pacotes) verde, eslint do web zero, vitest 279 arquivos / 2.378 testes.
+- **Para o Heitor**: a migration do FI8 é destrutiva (só derruba a política,
+  sem dado) e já está no banco. Vale uma completa: a tela mexe em ~50 specs.
+
 ### 2026-11-14 — Limpeza do banco e as sobras dos blocos
 
 - **Limpeza do banco** (o Heitor, 13/11: "aplica e anota"), migration

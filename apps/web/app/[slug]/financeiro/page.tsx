@@ -3,7 +3,8 @@ import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { notFound, redirect } from 'next/navigation'
 import { comAviso } from '@/lib/aviso-da-url'
-import { getTenantContext, assertPermission, assertUnidade, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertUnidade, ownerFilter, temRecurso } from '@/lib/auth'
+import { abaDoFinanceiro } from '@/lib/financeiro/abas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -39,12 +40,16 @@ export default async function FinancialPage({
   const { slug } = await params
   const sp       = await searchParams
   const period   = sp.period ?? 'month'
-  /** A38 da 8ª: a lista de todo o a receber em aberto, de qualquer vencimento. */
+  // FI1 (a revisão do Heitor, 2026-11-13): as abas Resumo · A receber · A
+  // pagar · Movimentações (· Comissões, a página dela). Abre no Resumo.
+  const pedida = abaDoFinanceiro(sp)
+  const aba = pedida.aba
+  /** A38 da 8ª / FI3: o A receber é todo o a receber em aberto, de qualquer vencimento. */
   // D13 da 9ª: ou só as VENCIDAS (o vencimento antes de hoje), de qualquer mês.
-  const soAsVencidas = sp.aberto === 'vencidas'
-  // A43 da 12ª: ou todo o A PAGAR em aberto, de qualquer vencimento (a despesa).
-  const soAPagar = sp.aberto === 'a-pagar'
-  const soOEmAberto = sp.aberto === 'todos' || soAsVencidas || soAPagar
+  const soAsVencidas = pedida.soAsVencidas
+  // A43 da 12ª / FI4: o A pagar é todo o a pagar em aberto, de qualquer vencimento (a despesa).
+  const soAPagar = aba === 'a-pagar'
+  const soOEmAberto = aba === 'a-receber' || soAPagar
 
   const ctx = await getTenantContext()
   // `cashier` governa RECEBER — no atendimento e no checkout do plano. Esta
@@ -53,6 +58,8 @@ export default async function FinancialPage({
   // Com o financeiro "só os meus", o financeiro é só "Minhas comissões" (A52,
   // como o da rede): o consolidado meio filtrado não existe.
   if (ownerFilter(ctx, 'financial')) redirect(`/${slug}/financeiro/comissoes`)
+  // Os links antigos (`?aberto=todos|vencidas|a-pagar`) levam à aba nova (FI1).
+  if (pedida.destino) redirect(`/${slug}/financeiro${pedida.destino}`)
 
   const supabase = await createSupabase()
 
@@ -119,7 +126,8 @@ export default async function FinancialPage({
   // Em páginas (2026-10-22): o PostgREST corta em 1000, e o extrato do período
   // perdia os lançamentos mais antigos — a busca e os filtros da lista também.
   const unidadeId = branch.id as string
-  const lancamentos = await lerTodas((de, ate) => soAsVencidas
+  // FI2: o Resumo não tem a lista — só as outras abas a leem.
+  const lancamentos = aba === 'resumo' ? [] : await lerTodas((de, ate) => soAsVencidas
     ? doPeriodo(de, ate).lt('due_date', startOfDayTZ(new Date(), fuso).toISOString())
     : doPeriodo(de, ate), 'carregar os lançamentos')
   function doPeriodo(de: number, ate: number) {
@@ -210,21 +218,6 @@ export default async function FinancialPage({
   const canReverse = canWrite
   const canPay     = ctx.permissions.cashier === 'MANAGE'
 
-  // Por `ler`: sem checar o erro, uma falha virava "nenhum cliente" no
-  // lançamento de crédito, sem nada acusando.
-  // Todas as clientes ativas da unidade (eram as 300 primeiras do alfabeto).
-  const clientsRaw = canWrite
-    ? await lerTodas((de, ate) => supabase
-        .from('clients')
-        .select('id, name')
-        .eq('branch_id', unidadeId)
-        .eq('is_active', true)
-        .order('name').order('id')
-        .range(de, ate), 'carregar os clientes da unidade')
-    : []
-
-  const clients = ((clientsRaw ?? []) as { id: string; name: string }[]).map(c => ({ id: c.id, name: c.name }))
-
   type Props = ComponentProps<typeof FinancialHub>
 
   return (
@@ -252,9 +245,7 @@ export default async function FinancialPage({
         customFrom={sp.from}
         customTo={sp.to}
         transactions={transactions as unknown as Props['transactions']}
-        soOEmAberto={soOEmAberto}
         soAsVencidas={soAsVencidas}
-        soAPagar={soAPagar}
         aPagarEmAberto={aPagarEmAberto.total}
         vencidas={vencidas.total}
         nomeDoCsv={soOEmAberto ? nomeDoCsvDosLancamentos(null, null) : nomeDoCsvDosLancamentos(dayKeyTZ(start, fuso), dayKeyTZ(fimDoPeriodo, fuso))}
@@ -268,7 +259,8 @@ export default async function FinancialPage({
         ownScope={!!ownFinancial}
         // CX6 (2026-11-14): as taxas estimadas e a venda sem taxa do período, da unidade.
         taxasDoPeriodo={ownFinancial ? undefined : (await getTaxasDoPeriodo({ ...argsDoNucleo, from: start, to: end })).total}
-        clients={clients}
+        aba={aba}
+        comComissoes={temRecurso(ctx, 'comissoes')}
       />
     </>
   )

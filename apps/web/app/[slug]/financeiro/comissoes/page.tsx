@@ -43,6 +43,7 @@ export default async function ComissoesDaUnidadePage({
       basePath={`/${slug}/financeiro/comissoes`}
       voltarPara={`/${slug}/financeiro`}
       periodoPedido={sp.periodo}
+      abas={{ base: `/${slug}/financeiro`, titulo: 'Financeiro' }}
     />
   )
 }

@@ -87,18 +87,18 @@ test('parcelado: a entrada no dia, cada parcela no mês dela, e o "Pagar" quita 
     const linhas = p.locator('tbody tr[data-lancamento]').filter({ hasText: `${PREFIXO} Pacote ${marca}` })
 
     // Este mês: só a entrada (a venda não joga o parcelado inteiro aqui).
-    await p.goto('/admin/financeiro?period=month')
+    await p.goto('/admin/financeiro?aba=movimentacoes&period=month')
     await expect(linhas).toHaveCount(1)
     await expect(linhas.first()).toContainText('— entrada')
 
     // Mês que vem: a parcela 1/3, com o vencimento.
-    await p.goto(`/admin/financeiro?period=custom&from=${m1.de}&to=${m1.ate}`)
+    await p.goto(`/admin/financeiro?aba=movimentacoes&period=custom&from=${m1.de}&to=${m1.ate}`)
     await expect(linhas).toHaveCount(1)
     await expect(linhas.first()).toContainText('parcela 1/3')
     await expect(linhas.first()).toContainText(`Vence ${m1.br15}`)
 
     // O mês seguinte: a 2/3.
-    await p.goto(`/admin/financeiro?period=custom&from=${m2.de}&to=${m2.ate}`)
+    await p.goto(`/admin/financeiro?aba=movimentacoes&period=custom&from=${m2.de}&to=${m2.ate}`)
     await expect(linhas).toHaveCount(1)
     await expect(linhas.first()).toContainText('parcela 2/3')
 

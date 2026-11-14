@@ -52,6 +52,8 @@ export const ISOLADOS = [
   'fidelidade-atritos-da-12.spec.ts',
   'portal-cliente-atritos-da-12.spec.ts',
   'financeiro-atritos-da-12.spec.ts',
+  // O Bloco Financeiro do plano de adaptação (2026-11-14): as cinco abas (FI1–FI8).
+  'financeiro-abas.spec.ts',
   'plano-defeitos-da-12.spec.ts',
   'campanha-defeitos-da-12.spec.ts',
   // A F62 (o fuso da clínica: a unidade de Manaus).

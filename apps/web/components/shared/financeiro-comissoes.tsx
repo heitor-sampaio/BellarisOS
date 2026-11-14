@@ -56,6 +56,11 @@ export interface PropsDaTela {
   fechamentos:   Fechamento[]
   podeFechar:    boolean
   soAsProprias:  boolean
+  /**
+   * FI6: a tela é a aba Comissões do Financeiro — o cabeçalho com as abas vem
+   * de cima, o título vira subtítulo e o "← Financeiro" some (as abas levam).
+   */
+  dentroDasAbas?: boolean
 }
 
 export function FinanceiroComissoes(p: PropsDaTela) {
@@ -95,12 +100,18 @@ export function FinanceiroComissoes(p: PropsDaTela) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-        <div>
-          <Link href={p.voltarPara} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>← Financeiro</Link>
-          <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', marginTop: 4 }}>
+        {p.dentroDasAbas ? (
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
             {p.titulo}
-          </h1>
-        </div>
+          </h2>
+        ) : (
+          <div>
+            <Link href={p.voltarPara} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>← Financeiro</Link>
+            <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', marginTop: 4 }}>
+              {p.titulo}
+            </h1>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <select className="filtro-select" aria-label="Período" value={p.periodoAtual} onChange={e => navegar(e.target.value)}>
             {p.periodos.map(x => <option key={x.chave} value={x.chave}>{x.rotulo}</option>)}

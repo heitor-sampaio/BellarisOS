@@ -79,6 +79,11 @@ interface Props {
   podeRemarcar?: boolean
   /** A44 da 8ª: o nome do CSV das movimentações (o recorte da tela). */
   nomeDoCsv?:   string
+  /**
+   * A ordem ao abrir (FI3/FI4): o A receber e o A pagar abrem pelo vencimento
+   * mais antigo — as atrasadas primeiro; as Movimentações, pelo mais recente.
+   */
+  ordemInicial?: 'asc' | 'desc'
 }
 
 const PM_COLORS: Record<string, { bg: string; color: string }> = {
@@ -102,12 +107,12 @@ function fmtDatetime(iso: string, fuso = 'America/Sao_Paulo') {
 type FilterType = 'all' | 'INCOME' | 'EXPENSE'
 type SortDir    = 'asc' | 'desc'
 
-export function FinancialTable({ transactions, slug, canReverse, canPay, podeRemarcar = false, nomeDoCsv = 'lancamentos.csv' }: Props) {
+export function FinancialTable({ transactions, slug, canReverse, canPay, podeRemarcar = false, nomeDoCsv = 'lancamentos.csv', ordemInicial = 'desc' }: Props) {
   const fuso = useFuso()
   const [search,     setSearch]     = useState('')
   const [filterType, setFilterType] = useState<FilterType>('all')
   const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all')
-  const [sortDir,    setSortDir]    = useState<SortDir>('desc')
+  const [sortDir,    setSortDir]    = useState<SortDir>(ordemInicial)
 
   const router        = useRouter()
   const [estornando, startTx] = useTransition()
@@ -253,7 +258,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
 
         {/* Resultado filtrado */}
         {/* A31 da 9ª: é o CAIXA da lista (o pago que entrou − o que saiu), não o resultado do período (o Lucro). */}
-        <span data-total-da-lista title="O caixa do que está na lista: o pago que entrou menos o pago que saiu. O resultado do período (o Lucro, acima) é outra conta." style={{
+        <span data-total-da-lista title="O caixa do que está na lista: o pago que entrou menos o pago que saiu. O resultado do período (o Lucro, no Resumo) é outra conta." style={{
           marginLeft: 'auto', fontSize: 'var(--text-sm-sz)', fontWeight: 800,
           color: totalFiltered >= 0 ? 'var(--success)' : 'var(--danger)',
         }}>

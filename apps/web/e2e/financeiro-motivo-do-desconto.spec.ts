@@ -76,10 +76,10 @@ test('a lista do Financeiro diz o desconto e o motivo embaixo do valor (unidade 
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
   await como(browser, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const linha = p.locator(`[data-lancamento="${tx!.id}"]`)
     await expect(linha.locator('[data-desconto-do-lancamento]')).toHaveText('Desconto R$ 20,00 · cliente antiga')
-    await p.goto('/admin/financeiro')
+    await p.goto('/admin/financeiro?aba=movimentacoes')
     await expect(p.locator(`[data-lancamento="${tx!.id}"] [data-desconto-do-lancamento]`)).toHaveText('Desconto R$ 20,00 · cliente antiga')
   })
 })
@@ -102,7 +102,7 @@ test('a venda de produto com desconto tem o motivo (opcional), e ele vai ao lan�
     return (data ?? []).map(t => t.desconto_motivo)
   }).toEqual(['Kit da casa'])
   await como(browser, async p => {
-    await p.goto(`/${slug}/financeiro`)
+    await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     await expect(p.locator('[data-desconto-do-lancamento]').filter({ hasText: 'Kit da casa' })).toHaveText('Desconto R$ 10,00 · Kit da casa')
   })
 })
