@@ -205,6 +205,7 @@ export const ISOLADOS = [
   'fidelidade-ganho.spec.ts',
   'fidelidade-painel-atualiza.spec.ts',
   'fidelidade-vouchers.spec.ts',
+  'fidelidade-saldo-da-rede.spec.ts',
   'inbox-paginado.spec.ts',
   'indicadores-avaliacao-com-uma-nota.spec.ts',
   'indicadores-lucro-desconta-taxas-e-comissoes.spec.ts',

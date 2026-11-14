@@ -63,7 +63,7 @@ async function dar(cliente: string, pontos: number) {
   expect(error, 'dar pontos').toBeNull()
 }
 const saldoDePontos = async (cliente: string) =>
-  n((await db().rpc('saldo_de_pontos', { p_cliente: cliente, p_unidade: null })).data)
+  n((await db().rpc('saldo_de_pontos', { p_cliente: cliente })).data)
 const estoque = async (produto: string) => n((await db().from('branch_product_stock').select('current_stock')
   .eq('product_id', produto).eq('branch_id', rede!.branchId).single()).data!.current_stock)
 const itensDa = async (comanda: string) =>

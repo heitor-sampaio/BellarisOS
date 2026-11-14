@@ -79,7 +79,7 @@ async function pagarPelaFuncao(ap: string, dados: Record<string, unknown>) {
   })
 }
 
-const saldo = async (c: string) => Number((await db().rpc('saldo_de_pontos', { p_cliente: c, p_unidade: null })).data)
+const saldo = async (c: string) => Number((await db().rpc('saldo_de_pontos', { p_cliente: c })).data)
 const tx = async (ap: string) => (await db().from('financial_transactions')
   .select('id, amount, loyalty_discount, is_paid, payment_method').eq('appointment_id', ap).maybeSingle()).data
 /** A comissão do atendimento: a soma do extrato (liberação + ajustes). */

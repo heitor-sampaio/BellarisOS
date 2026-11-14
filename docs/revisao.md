@@ -1688,6 +1688,17 @@ revisão, só se escreve o plano. Nada se implementa.
   `tests/tags-so-quem-marca.test.ts`. Fica: MK1/AU1 (outro bloco); as
   "Unidade: …" já gravadas ficam como tags comuns (o banco é zerado antes do
   lançamento). Regras em `crm-inbox.md`, `automacoes.md`, `indicadores.md`.
+- ✅ Bloco Fidelidade, FD3 (14/11) — "pontos só na unidade" saiu: o saldo é
+  um só, da rede, e o ponto ganho numa unidade se usa em todas (desconto no
+  pagamento e no PDV, troca pela equipe e pelo app, ajuste, voucher trocado
+  em outra unidade). Saíram a escolha "Onde os pontos valem"
+  (`loyalty_configs.scope_per_branch`, dropada), o saldo por unidade
+  (`saldos_por_unidade`, e a linha por unidade da ficha e do app) e a unidade
+  das contas do saldo (`saldo_de_pontos`, `pontos_expirando`,
+  `fidelidade_a_expirar`); com eles, o "Onde o bônus pode ser usado" (H10) e
+  a C64. O `branch_id` do lançamento fica, como o fato de onde aconteceu.
+  Migration `20261114900001` (destrutiva, "aplica e anota"). A trava:
+  `tests/fidelidade-saldo-da-rede.test.ts`. Regra em `fidelidade.md`.
 
 ### Bloco: Estoque
 
@@ -1811,7 +1822,7 @@ unidade.
 | FD2a | **O desconto em pontos e o voucher se aplicam na comanda do PDV** — os dois caminhos que hoje existem fora dele (o pagamento do atendimento, a troca na ficha que vira desconto) passam a ser o PDV. ✅ fase 5b (14/11): na comanda do atendimento (sobre o total, com os produtos) e na "Nova venda" à vista; a comanda do plano fica | PDV1–PDV7 |
 | FD2b | **O ponto nasce quando a comanda é paga**, pela regra que já existe (por real ou por procedimento; o pacote vendido como produto pontua na venda; o produto pontua se a rede ligou). O estorno da comanda tira o que ela deu. ✅ fase 5b (14/11) | PDV1 |
 | FD2c | **A tela de Configurações → Fidelidade** diz "No PDV, ao receber" no lugar de "Na recepção, ao confirmar o pagamento". ✅ fase 5b (14/11) | — |
-| FD3 | **Sai "pontos só na unidade"**: o saldo é sempre um, da rede. Saem junto a escolha "Onde o bônus pode ser usado" e a C64. A coluna e o saldo por unidade no razão dos pontos saem das funções e da tela (banco zerado: não há saldo a migrar) | — |
+| FD3 | **Sai "pontos só na unidade"**: o saldo é sempre um, da rede. Saem junto a escolha "Onde o bônus pode ser usado" e a C64. A coluna e o saldo por unidade no razão dos pontos saem das funções e da tela (banco zerado: não há saldo a migrar). ✅ 14/11 (migration `20261114900001`; o `branch_id` do lançamento fica como o fato de onde aconteceu) | — |
 | — | Mantém: ganho por real ou por procedimento, o catálogo e os vouchers, o ajuste com motivo, a validade, os bônus, o prêmio da indicação, a troca pelo app — todos opcionais e desligados ao nascer | — |
 
 ### Bloco: Prontuário
@@ -1997,7 +2008,7 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 - D7 e o CSV do Fechamento → CX6: as taxas da maquininha e a planilha vão ao
   Financeiro.
 - D20 → mantido no "Bloco: Agenda" ("só os meus" + Gerenciar remarca o próprio).
-- C64 → sai com o FD3.
+- C64 → sai com o FD3. ✅ Saiu em 14/11 (ver "Andamento").
 - A F76 e o teste "dois cliques fecham uma vez" → o "tudo verde" do fim do plano.
 - A política antiga "Operacional acessa financeiro da filial" sai (o Heitor:
   "ok") → FI8.

@@ -186,12 +186,19 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   - A baixa é o cron `fidelidade` (`expirar_pontos`, lança
     EXPIRACAO "Pontos vencidos"). Ficha e portal mostram "vencem nos próximos
     30 dias" (`pontos_expirando`) e o "vence em" de cada linha.
-- **Abrangência** (fase 4): rede inteira (padrão) ou só na unidade
-  (`scope_per_branch`). Todo lançamento sempre levou `branch_id`; "só na
-  unidade" é o saldo filtrado por ela — pagamento, troca de recompensa e
-  débito só usam o saldo da unidade onde acontecem (`saldos_por_unidade`
-  para a ficha). **A troca é recusada depois do primeiro lançamento da rede**
-  (action e tela travada): mudaria em silêncio o saldo de quem já tem.
+- **O saldo é UM, da rede** (FD3 do plano de adaptação, o Heitor, 2026-11-13:
+  "concordo"; migration `20261114900001`). A cliente é da rede e qualquer
+  unidade a atende (CL3): o ponto ganho numa unidade se usa em todas — no
+  desconto do pagamento, na troca por recompensa (pela equipe e pelo app), no
+  ajuste e no voucher trocado em outra unidade. "Pontos só na unidade"
+  (`scope_per_branch`, fase 4) SAIU, com o saldo por unidade
+  (`saldos_por_unidade`, a linha "Unidade A: … · Unidade B: …" da ficha e do
+  app) e a unidade das contas do saldo (`saldo_de_pontos(p_cliente)`,
+  `pontos_expirando(p_cliente, p_ate)`, `fidelidade_a_expirar(p_conta,
+  p_ate)`). O `branch_id` de cada lançamento e de cada voucher FICA: é o fato
+  de onde ele aconteceu (o extrato diz "· Unidade X"), nunca um recorte do
+  saldo. Prova: `e2e/fidelidade-saldo-da-rede.spec.ts`; a trava,
+  `tests/fidelidade-saldo-da-rede.test.ts`.
 - **Opcionais da rede** (decisão do Heitor, 2026-09-29) — todos nascem
   DESLIGADOS e se ligam na aba Fidelidade:
   - **Bônus de aniversário** (`birthday_bonus`) e **de primeiro acesso**
@@ -205,19 +212,11 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     (`clients.app_account_created_at`, marcado por `fidelidade_primeiro_acesso`
     no `loginAction` e na sessão do app); quem já tinha entrado antes da
     opção existir não ganha.
-  - **O bônus é da cliente, e a clínica decide onde ele se usa** (H10 do
-    levantamento das regras, o Heitor, 2026-11-11: "O bônus é da cliente. A
-    cliente é da rede(clinica). A clinica decide onde pode ser usado."; e a
-    H5 de 02/11, nada se prende à unidade de cadastro). Com a abrangência
-    "só na unidade", o bônus de aniversário e o de primeiro acesso — os que
-    não vêm de um pagamento — não caem na unidade de cadastro da ficha: a aba
-    Fidelidade tem "Onde o bônus pode ser usado", com as unidades da rede
-    marcáveis, e o padrão é TODAS (princípio 1). O saldo do bônus aparece e se
-    usa em cada unidade marcada; a ficha e o app de cada uma o mostram. Com a
-    abrangência "rede inteira", nada muda. (Correção C64: hoje o bônus vai à
-    unidade de cadastro, e a Maria, cadastrada no Batel e atendida na Água
-    Verde, não vê nem usa os 100 pontos de aniversário.) O prêmio da indicação
-    continua na unidade do pagamento.
+  - **O bônus é da cliente e vale em qualquer unidade** (H10 do levantamento
+    das regras, o Heitor, 2026-11-11: "O bônus é da cliente. A cliente é da
+    rede"). Com o saldo um só (FD3), o "Onde o bônus pode ser usado" e a
+    correção C64 (o bônus preso à unidade de cadastro) saíram: não há o que
+    escolher. O lançamento do bônus guarda uma unidade só como registro.
   - **A venda de produto pontua?** (`pontua_venda_de_produto`, D4,
     2026-10-30 — "os pontos são configuráveis pela clínica"): nasce
     DESLIGADO. Ligado, a venda de produto paga dá pontos por real pago
@@ -233,8 +232,8 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     fidelidade desligada, nada. Prova: `e2e/fidelidade-produto-nao-pontua.spec.ts`.
   - **Troca pelo portal** (`client_redeem`): o cliente troca pontos por
     recompensa em `/[slug]/cliente/fidelidade` (`actions/fidelidade-portal.ts`),
-    com o saldo da unidade daquele portal quando a abrangência é por unidade.
-    Desligada, só a equipe troca, na ficha.
+    com o saldo da rede (a unidade do portal é só onde a troca fica
+    registrada). Desligada, só a equipe troca, na ficha.
   - **A recompensa fora do alcance diz quanto falta** (J-52, 2026-10-30):
     "Faltam 120 pontos" embaixo do "Trocar" desabilitado, no app e na ficha —
     o texto é UM, `faltamPontos` (`lib/fidelidade/formato.ts`). Sem a troca pelo
@@ -356,4 +355,5 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
 ❌ Dar o prêmio por indicação no TypeScript, ou sem o pagamento da indicada (é o gatilho do pagamento, private.indicacao_premiar — uma vez por indicada)
 ❌ Gravar "Indicada por" como texto livre na tela, ou com o id do navegador sem conferirIndicadaPor (a ficha é da clínica e não é a própria)
 ❌ Deixar a cliente cadastrar a amiga pelo app (só a clínica cria ficha — CLAUDE.md §5)
+❌ Recortar o saldo de pontos ou os vouchers por unidade, ou trazer de volta uma opção "só na unidade" (o saldo é um só, da rede — FD3; tests/fidelidade-saldo-da-rede.test.ts trava)
 ```

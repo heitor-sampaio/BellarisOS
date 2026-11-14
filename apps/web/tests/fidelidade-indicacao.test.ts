@@ -28,7 +28,7 @@ describe('a indicação que premia: os textos', () => {
 describe('a configuração do prêmio por indicação', () => {
   const valida = {
     enabled: true, earn_mode: 'POR_REAL', points_per_real: 1, redeem_points_value: 0.01, redeem_min_points: 0,
-    redeem_max_pct: 100, expiry_months: null, scope_per_branch: false, birthday_bonus: 0, first_access_bonus: 0,
+    redeem_max_pct: 100, expiry_months: null, birthday_bonus: 0, first_access_bonus: 0,
     client_redeem: false, expiry_notice_days: null,
   }
   it('nasce desligado para o chamador que não manda o campo', () => {

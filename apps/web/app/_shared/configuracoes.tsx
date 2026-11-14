@@ -51,7 +51,7 @@ import { vocabulario } from '@/lib/unidades/vocabulario'
 import { FidelidadeConfig } from '@/components/admin/fidelidade-config'
 import { FidelidadeCatalogo } from '@/components/admin/fidelidade-catalogo'
 import { catalogoDeRecompensas } from '@/actions/fidelidade'
-import { configDaRede, redeTemLancamentos } from '@/lib/fidelidade/leitura'
+import { configDaRede } from '@/lib/fidelidade/leitura'
 import { SettingsComissoes } from '@/components/admin/settings-comissoes'
 import { configDeComissaoDaRede, profissionaisSemComissao, comissoesDosProdutos } from '@/lib/comissoes/leitura'
 import { maquininhasDaRede, taxaDoPixDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -299,7 +299,6 @@ export async function Configuracoes({
   // A fidelidade é da rede: a aba só existe no portal da rede (ABAS_DA_UNIDADE não a tem).
   const configFidelidade = conteudo === 'fidelidade' ? await configDaRede(ctx.tenantId!) : null
   const catalogo = conteudo === 'fidelidade' ? await catalogoDeRecompensas() : null
-  const temLancamentos = conteudo === 'fidelidade' ? await redeTemLancamentos(ctx.tenantId!) : false
   // As comissões também são da rede (a aba não está em ABAS_DA_UNIDADE).
   const comissoes = conteudo === 'comissoes'
     ? await Promise.all([configDeComissaoDaRede(ctx.tenantId!), maquininhasDaRede(ctx.tenantId!), profissionaisSemComissao(ctx.tenantId!), taxaDoPixDaRede(ctx.tenantId!), comissoesDosProdutos(ctx.tenantId!), maximoDeParcelasDaRede(ctx.tenantId!)])
@@ -602,8 +601,7 @@ export async function Configuracoes({
       {conteudo === 'fidelidade' && configFidelidade && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <FidelidadeConfig inicial={configFidelidade} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
-            recompensas={(catalogo?.recompensas ?? []).map(r => ({ id: r.id, name: r.name, is_active: r.is_active }))}
-            temLancamentos={temLancamentos} />
+            recompensas={(catalogo?.recompensas ?? []).map(r => ({ id: r.id, name: r.name, is_active: r.is_active }))} />
           {catalogo && (
             <FidelidadeCatalogo inicial={catalogo} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
               trocaPeloPortal={configFidelidade.client_redeem} valorDoPonto={configFidelidade.redeem_points_value} />

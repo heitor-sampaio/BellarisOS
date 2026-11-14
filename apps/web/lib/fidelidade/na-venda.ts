@@ -13,23 +13,24 @@ type Admin = ReturnType<typeof createAdminClient>
  * cliente pode usar da fidelidade nesta venda — o saldo e as regras dos
  * pontos, e os vouchers de DESCONTO dela (o de procedimento paga o
  * atendimento daquele procedimento; o de produto é entregue). Nula: nada a
- * oferecer (programa desligado, sem saldo e sem voucher).
+ * oferecer (programa desligado, sem saldo e sem voucher). O saldo e os
+ * vouchers são os da REDE, em qualquer unidade (FD3).
  */
 export async function fidelidadeParaAVenda(
-  tenantId: string, clienteId: string, branchId: string, admin: Admin = createAdminClient(),
+  tenantId: string, clienteId: string, admin: Admin = createAdminClient(),
 ): Promise<FidelidadeDaVenda | null> {
   const cfg = await configDaRede(tenantId, admin)
   if (!cfg.enabled) return null
   const [saldoLido, meus] = await Promise.all([
-    saldoDoCliente(clienteId, cfg.scope_per_branch ? branchId : null, admin),
+    saldoDoCliente(clienteId, admin),
     ler(admin.from('loyalty_vouchers')
-      .select('id, name, type, status, expires_at, procedure_id, discount_value, branch_id')
+      .select('id, name, type, status, expires_at, procedure_id, discount_value')
       .eq('client_id', clienteId).eq('tenant_id', tenantId).eq('status', 'ATIVO')
       .in('type', ['DESCONTO_VALOR', 'DESCONTO_PERCENTUAL']), 'buscar os vouchers da cliente'),
   ])
   const agora = Date.now()
-  const vouchers = ((meus ?? []) as (VoucherParaCalculo & { id: string; name: string; branch_id: string })[])
-    .filter(v => (!cfg.scope_per_branch || v.branch_id === branchId) && new Date(v.expires_at).getTime() > agora)
+  const vouchers = ((meus ?? []) as (VoucherParaCalculo & { id: string; name: string })[])
+    .filter(v => new Date(v.expires_at).getTime() > agora)
     .map(v => ({ id: v.id, name: v.name, type: v.type, status: v.status, expires_at: v.expires_at, procedure_id: v.procedure_id, discount_value: v.discount_value }))
   const saldo = cfg.redeem_points_value > 0 ? Math.max(0, saldoLido) : 0
   if (saldo <= 0 && vouchers.length === 0) return null
@@ -43,7 +44,7 @@ export async function fidelidadeParaAVenda(
  * novo, dentro da transação. Nulo = nada pedido.
  */
 export async function fidelidadeDaVenda(args: {
-  tenantId: string; clienteId: string; branchId: string; vendido: number
+  tenantId: string; clienteId: string; vendido: number
   escolha: EscolhaDaFidelidade | null | undefined; aVista: boolean; admin?: Admin
 }): Promise<{ error: string } | { dados: { pontos: number; desconto: number; voucher_id: string | null; desconto_voucher: number } | null }> {
   const pedido = Math.trunc(Number(args.escolha?.pontos ?? 0) || 0)
@@ -73,7 +74,7 @@ export async function fidelidadeDaVenda(args: {
   }
   let pontos = 0, desconto = 0
   if (pedido > 0) {
-    const saldo = await saldoDoCliente(args.clienteId, cfg.scope_per_branch ? args.branchId : null, admin)
+    const saldo = await saldoDoCliente(args.clienteId, admin)
     const r = calcularDescontoComPontos({
       saldo, preco: base, pedido,
       regras: { valorDoPonto: cfg.redeem_points_value, minimo: cfg.redeem_min_points, tetoPct: cfg.redeem_max_pct },

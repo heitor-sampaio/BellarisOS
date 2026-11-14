@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { fusoValido } from '@/lib/unidades/fuso'
 import {
-  configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede, pontosVencendo, saldosPorUnidade,
+  configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede, pontosVencendo,
 } from '@/lib/fidelidade/leitura'
 import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
 import { formatarPontos, rotuloDoLancamento, faltamPontos, jaPodeTrocar } from '@/lib/fidelidade/formato'
@@ -33,13 +33,12 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
   const cfg = cliente?.tenant_id ? await configDaRede(cliente.tenant_id, admin) : null
   if (!cfg?.enabled) redirect(`/${slug}/cliente/home`)
 
-  const [saldo, extrato, vouchers, recompensas, vencendo, porUnidade] = await Promise.all([
-    saldoDoCliente(ctx.clientId!, null, admin),
+  const [saldo, extrato, vouchers, recompensas, vencendo] = await Promise.all([
+    saldoDoCliente(ctx.clientId!, admin),
     extratoDoCliente(ctx.clientId!, { limite: 100 }, admin),
     vouchersDoCliente(ctx.clientId!, admin),
     recompensasDaRede(cliente!.tenant_id!, true, admin),
-    cfg.expiry_months ? pontosVencendo(ctx.clientId!, 30, null, admin) : Promise.resolve(0),
-    cfg.scope_per_branch ? saldosPorUnidade(ctx.clientId!, admin) : Promise.resolve([]),
+    cfg.expiry_months ? pontosVencendo(ctx.clientId!, 30, admin) : Promise.resolve(0),
   ])
   const ativos = vouchers.filter(v => situacaoDoVoucher(v) === 'ATIVO')
   // A recompensa do prêmio por indicação só vale ativa: a arquivada não sai (o banco não a dá), e a tela não a promete.
@@ -47,14 +46,8 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
     premio: cfg.indicacao_premio, pontos: cfg.indicacao_pontos,
     recompensa: recompensas.find(r => r.id === cfg.indicacao_recompensa_id)?.name ?? null,
   })
-  // O saldo que paga uma troca aqui: com abrangência por unidade, o da unidade
-  // deste portal (a troca acontece nela).
-  let saldoParaTrocar = saldo
-  if (cfg.client_redeem && cfg.scope_per_branch) {
-    const unidade = await ler(admin.from('branches').select('id').eq('slug', slug).eq('tenant_id', cliente!.tenant_id!).maybeSingle(),
-      'buscar a unidade') as { id: string } | null
-    saldoParaTrocar = porUnidade.find(u => u.branch_id === unidade?.id)?.saldo ?? 0
-  }
+  // O saldo que paga uma troca aqui é o da REDE, em qualquer unidade (FD3).
+  const saldoParaTrocar = saldo
   // O dia no relógio da unidade do endereço (F62b).
   const fuso = fusoValido((await ler(admin.from('branches').select('fuso').eq('slug', slug).maybeSingle(),
     'buscar o fuso da unidade') as { fuso: string | null } | null)?.fuso)
@@ -91,11 +84,6 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
         {vencendo > 0 && (
           <p data-testid="vencendo-no-portal" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, marginTop: 6, opacity: 0.9 }}>
             {formatarPontos(vencendo)} vencem nos próximos 30 dias
-          </p>
-        )}
-        {porUnidade.length > 0 && (
-          <p style={{ fontSize: 'var(--text-xs-sz)', marginTop: 6, opacity: 0.9 }}>
-            {porUnidade.map(u => `${u.nome}: ${formatarPontos(u.saldo)}`).join(' · ')}
           </p>
         )}
       </div>

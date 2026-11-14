@@ -44,7 +44,7 @@ async function extrato(clientId: string) {
 }
 
 async function saldo(clientId: string) {
-  const { data, error } = await db().rpc('saldo_de_pontos', { p_cliente: clientId, p_unidade: null })
+  const { data, error } = await db().rpc('saldo_de_pontos', { p_cliente: clientId })
   expect(error).toBeNull()
   return Number(data)
 }

@@ -137,7 +137,7 @@ async function venderProdutoUmaVez(
     if ('pergunta' in vendeu) return { confirmarSemVendedor: vendeu.pergunta }
 
     // FD2a: os pontos e o voucher (à vista), conferidos aqui e de novo no banco.
-    const fid = await fidelidadeDaVenda({ tenantId: ctx.tenantId!, clienteId, branchId, vendido, escolha: fidelidade, aVista: lido.data.forma === 'AVISTA', admin })
+    const fid = await fidelidadeDaVenda({ tenantId: ctx.tenantId!, clienteId, vendido, escolha: fidelidade, aVista: lido.data.forma === 'AVISTA', admin })
     if ('error' in fid) return { error: fid.error }
     const args = {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_unidade: branchId,

@@ -261,7 +261,7 @@ test.describe.serial('procedimento pré-pago', () => {
       { amount: 300, payment_method: 'PIX', is_paid: true },
       { amount: 300, payment_method: 'PIX', is_paid: false },
     ])
-    const saldo = async () => n((await db().rpc('saldo_de_pontos', { p_cliente: c, p_unidade: null })).data)
+    const saldo = async () => n((await db().rpc('saldo_de_pontos', { p_cliente: c })).data)
     // 300 de 600 pagos: metade dos 2 × 40.
     await expect.poll(saldo).toBe(40)
     await db().from('loyalty_configs').update({ enabled: false }).eq('tenant_id', rede!.tenantId)

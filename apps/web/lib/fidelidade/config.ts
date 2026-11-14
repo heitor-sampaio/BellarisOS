@@ -33,7 +33,6 @@ export interface ConfigFidelidade {
   redeem_max_pct:      number
   /** Nulo = os pontos não vencem. */
   expiry_months:       number | null
-  scope_per_branch:    boolean
   // Opcionais da rede (2026-09-29), todos desligados de fábrica.
   /** Pontos no aniversário. 0 = desligado. */
   birthday_bonus:      number
@@ -62,7 +61,6 @@ export const CONFIG_PADRAO: ConfigFidelidade = {
   redeem_min_points:   0,
   redeem_max_pct:      100,
   expiry_months:       null,
-  scope_per_branch:    false,
   birthday_bonus:      0,
   first_access_bonus:  0,
   client_redeem:       false,
@@ -89,13 +87,13 @@ export const EntradaDaConfig = z.object({
   redeem_max_pct: z.coerce.number()
     .min(1, 'Os pontos precisam pagar ao menos 1% do valor.')
     .max(100, 'Os pontos pagam no máximo 100% do valor.'),
-  // Validade e abrangência (fase 4). Nulo = os pontos não vencem.
+  // Validade (fase 4). Nulo = os pontos não vencem. O saldo é sempre um, da
+  // rede (FD3, 2026-11-14: "pontos só na unidade" saiu).
   expiry_months: z.union([
     z.null(),
     z.coerce.number().int('A validade é um número inteiro de meses.')
       .min(1, 'A validade é de pelo menos 1 mês.').max(120, 'A validade é de no máximo 120 meses.'),
   ]),
-  scope_per_branch: z.boolean(),
   // Opcionais. Bônus 0 = desligado; aviso nulo = não avisa.
   birthday_bonus: z.coerce.number().int('O bônus é um número inteiro de pontos.')
     .min(0, 'O bônus não pode ser negativo.').max(1_000_000, 'Bônus alto demais.'),
@@ -139,7 +137,6 @@ export function configDaLinha(linha: Record<string, unknown> | null | undefined)
     redeem_min_points:   num(linha.redeem_min_points, 0),
     redeem_max_pct:      num(linha.redeem_max_pct, 100),
     expiry_months:       linha.expiry_months == null ? null : num(linha.expiry_months, 0) || null,
-    scope_per_branch:    linha.scope_per_branch === true,
     birthday_bonus:      num(linha.birthday_bonus, 0),
     first_access_bonus:  num(linha.first_access_bonus, 0),
     client_redeem:       linha.client_redeem === true,

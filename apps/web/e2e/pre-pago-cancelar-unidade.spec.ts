@@ -107,7 +107,7 @@ async function lancamentos(venda: string) {
     .map(t => ({ ...t, amount: n(t.amount) }))
     .sort((a, b) => ordem(a) - ordem(b) || b.amount - a.amount)
 }
-const pontos = async (cliente: string) => n((await db().rpc('saldo_de_pontos', { p_cliente: cliente, p_unidade: null })).data)
+const pontos = async (cliente: string) => n((await db().rpc('saldo_de_pontos', { p_cliente: cliente })).data)
 async function recebiveis(tx: string) {
   const { data } = await db().from('recebiveis_do_cartao').select('valor, cancelada_em').eq('transaction_id', tx).order('parcela_numero')
   return (data ?? []).map(r => [n(r.valor), r.cancelada_em ? 'CANCELADA' : 'VIVA'])

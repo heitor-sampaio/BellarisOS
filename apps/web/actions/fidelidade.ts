@@ -7,7 +7,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDaConfig, type ConfigFidelidade } from '@/lib/fidelidade/config'
 import {
-  configDaRede, redeTemLancamentos, saldoDoCliente, extratoDoCliente as lerExtrato, recompensasDaRede, vouchersDoCliente,
+  configDaRede, saldoDoCliente, extratoDoCliente as lerExtrato, recompensasDaRede, vouchersDoCliente,
   type LinhaDoExtrato, type Recompensa, type VoucherDoCliente,
 } from '@/lib/fidelidade/leitura'
 import { EntradaDaRecompensa } from '@/lib/fidelidade/recompensa'
@@ -45,13 +45,7 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
   if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
   const c = lido.data
 
-  // A abrangência só muda antes do primeiro lançamento: depois, trocar
-  // reescreveria em silêncio o saldo de cada unidade (os pontos de uma unidade
-  // passariam a valer nas outras, ou o contrário).
   const atual = await configDaRede(ctx.tenantId!)
-  if (atual.scope_per_branch !== c.scope_per_branch && await redeTemLancamentos(ctx.tenantId!)) {
-    return { error: 'A abrangência não muda depois que a rede já tem pontos lançados.' }
-  }
 
   // O prêmio por indicação em recompensa: a recompensa é desta rede (o id vem do navegador).
   if (c.indicacao_premio === 'RECOMPENSA') {
@@ -73,7 +67,6 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
         redeem_min_points:   c.redeem_min_points,
         redeem_max_pct:      c.redeem_max_pct,
         expiry_months:       c.expiry_months,
-        scope_per_branch:    c.scope_per_branch,
         birthday_bonus:      c.birthday_bonus,
         first_access_bonus:  c.first_access_bonus,
         client_redeem:       c.client_redeem,
@@ -161,7 +154,7 @@ export async function extratoDoCliente(clientId: string, antes?: string | null):
   if (!cliente) return null
 
   const [saldo, pagina] = await Promise.all([
-    saldoDoCliente(clientId, null, admin),
+    saldoDoCliente(clientId, admin),
     lerExtrato(clientId, { antes }, admin),
   ])
   return { saldo, ...pagina }

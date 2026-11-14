@@ -119,7 +119,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
         // CX1: as parcelas do crediário e os a receber dela no caixa DESTA unidade.
         parcelasEmAbertoDaCliente({ branchId: unidadeId, clienteId: cliente.id, fuso }),
         // FD2a: os pontos e os vouchers de desconto dela, para usar na venda à vista.
-        fidelidadeParaAVenda(ctx.tenantId!, cliente.id, unidadeId),
+        fidelidadeParaAVenda(ctx.tenantId!, cliente.id),
       ])
       novaVenda = { dados: { cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens, podeAgendar: can(ctx, 'agenda', 'MANAGE'), emAberto, fidelidade } }
     }

@@ -127,7 +127,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('created_at', { ascending: false })
       .limit(3), 'buscar os planos'),
     // O saldo é a soma do extrato — não mais loyalty_accounts.balance.
-    saldoDoCliente(ctx.clientId!, null, admin),
+    saldoDoCliente(ctx.clientId!, admin),
     // Procedimentos pré-pagos (2026-09-30): o que ele ainda tem para agendar.
     ler(admin.from('procedure_sales')
       .select('id, quantity, expires_at, procedures(name), procedure_sale_units(status, appointment_id)')

@@ -6,7 +6,7 @@ describe('EntradaDaConfig', () => {
   const valida = {
     enabled: true, earn_mode: 'POR_REAL', points_per_real: '1.5',
     redeem_points_value: '0.01', redeem_min_points: '0', redeem_max_pct: '100',
-    expiry_months: null as string | null, scope_per_branch: false,
+    expiry_months: null as string | null,
     birthday_bonus: '0', first_access_bonus: '0', client_redeem: false, expiry_notice_days: null as string | null,
   }
 

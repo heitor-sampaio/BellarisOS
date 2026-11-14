@@ -47,7 +47,7 @@ async function dar(c: string, pontos: number) {
   })
   expect(error).toBeNull()
 }
-const saldo = async (c: string) => Number((await db().rpc('saldo_de_pontos', { p_cliente: c, p_unidade: null })).data)
+const saldo = async (c: string) => Number((await db().rpc('saldo_de_pontos', { p_cliente: c })).data)
 async function recompensa(linha: Record<string, unknown>) {
   const { data, error } = await db().from('loyalty_rewards').insert({ tenant_id: rede!.tenantId, validity_days: 30, ...linha })
     .select('id').single<{ id: string }>()

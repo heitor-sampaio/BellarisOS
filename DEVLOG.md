@@ -1774,6 +1774,84 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Fidelidade (FD3): o saldo de pontos é um só, da rede
+
+Do plano de adaptação (a revisão do Heitor de 2026-11-13, FD3: "concordo").
+"Pontos só na unidade" sai: a cliente é da rede e qualquer unidade a atende
+(CL3); o saldo é sempre um, da rede. O resto do programa fica (FD1).
+
+- **No banco** (migration `20261114900001_fidelidade_saldo_da_rede`,
+  aplicada): ⚠️ DESTRUTIVA ("aplica e anota") — `alter table loyalty_configs
+  drop column scope_per_branch`; `drop function saldos_por_unidade(uuid)`; as
+  contas do saldo perdem a unidade (drop das assinaturas antigas):
+  `saldo_de_pontos(uuid, uuid)` → `saldo_de_pontos(p_cliente)`,
+  `pontos_expirando(uuid, uuid, timestamptz)` → `(p_cliente, p_ate)`,
+  `fidelidade_a_expirar(uuid, uuid, timestamptz)` → `(p_conta, p_ate)`.
+  Recriadas sem a abrangência, do corpo da produção (`pg_get_functiondef`),
+  com as assinaturas e os grants de antes (só o `service_role`; o
+  `private.fidelidade_na_venda`, só o dono): `ajustar_pontos`,
+  `resgatar_recompensa`, `entregar_voucher_produto` (sai "Este voucher é da
+  outra unidade"), `expirar_pontos` (vence por conta, não por unidade),
+  `avisos_de_vencimento`, `on_transaction_loyalty_earn`,
+  `confirmar_pagamento_do_atendimento`, `private.fidelidade_na_venda`,
+  `fidelidade_pontos_do_conjunto`, `fidelidade_pontos_do_estorno`. Sem
+  backfill (o banco é zerado antes do lançamento).
+- **Na tela**: Configurações → Fidelidade perdeu o bloco "Onde os pontos
+  valem" (e a trava "não muda depois do primeiro lançamento", com o
+  `redeTemLancamentos`); a ficha e o app perderam a linha "Unidade A: … ·
+  Unidade B: …"; o app troca com o saldo da rede no portal de qualquer
+  unidade. O "Onde o bônus pode ser usado" (H10) nunca chegou ao código, e a
+  C64 sai com ele: com um saldo só, não há o que escolher.
+- **No servidor**: `saldoDoCliente(clientId, admin)` e
+  `pontosVencendo(clientId, dias, admin)` sem unidade; o pagamento do
+  atendimento, a "Nova venda" do PDV (`fidelidadeParaAVenda`,
+  `fidelidadeDaVenda`, sem o `branchId`) e o Copilot leem o saldo e os
+  vouchers da rede.
+- **Decidido pelos princípios**: o `branch_id` de cada lançamento e de cada
+  voucher FICA — é o fato de onde aconteceu (o extrato diz "· Unidade X"),
+  como a "unidade é o fato" do bloco Tags; derrubá-lo mexeria em toda função
+  que lança pontos sem mudar nada que a cliente vê. A expiração lança na
+  unidade do último movimento (o mesmo de antes para o saldo da rede). O
+  bloco "Onde os pontos valem" saiu inteiro, sem uma frase no lugar
+  (princípio 7: não há escolha a explicar).
+- **A trava**: `tests/fidelidade-saldo-da-rede.test.ts` — o código não fala
+  de `scope_per_branch`/`saldos_por_unidade`/`redeTemLancamentos`, nenhuma
+  rpc do saldo leva `p_unidade`, e a ÚLTIMA definição de cada função nas
+  migrations não lê a abrangência.
+- **TDD** (vistos falhando antes): o vitest, 5 de 5 ("expected [ …(10) ] to
+  deeply equal []" no código; "função que ainda recorta o saldo por unidade:
+  expected [ …(9) ]"; "uma migration dropa loyalty_configs.scope_per_branch:
+  expected undefined"); o E2E `fidelidade-saldo-da-rede` (3): o banco
+  ("received value must be a string" — a coluna ainda existia), o uso em B
+  ("o débito em B usa o saldo da rede": "Saldo insuficiente: o cliente tem 0
+  pontos.") e a tela (o botão "Só na unidade": expected 0, received 1).
+- **Specs que mudaram**: `fidelidade-validade` perdeu o "só na unidade: o
+  saldo de A não vale em B" e a trava da abrangência (a regra saiu; o
+  contrário é o spec novo) e ficou com a validade; 12 specs chamavam
+  `saldo_de_pontos` com `p_unidade: null` e passaram a chamar sem
+  (`fidelidade-ajuste`, `-desconto-no-pagamento`, `-ganho`, `-opcionais`,
+  `-vouchers`, `financeiro-estorno-reabre`, `pdv-comanda-varios-itens-e-pontos`,
+  `pre-pago`, `pre-pago-cancelar-unidade`, `vendas-credito-bonus`,
+  `vendas-credito-na-clinica`, `vendas-desconto`); os vitest
+  `fidelidade-config` e `fidelidade-indicacao` perderam o campo.
+- **Prova**: `e2e/fidelidade-saldo-da-rede.spec.ts` (3, isolado — rede
+  própria com duas unidades). Vizinhos, um por vez: 28 specs, 154 testes —
+  146 passaram, 4 pulados (`copilot-leituras` só roda contra o build, com a OpenAI falsa), 1
+  falhou e 3 não rodaram (o serial): `vendas-desconto` › "plano: 10%
+  rateado…" falha ANTES de qualquer ponto, no `chamarAcao` de
+  `aceitarPlano` em `/admin/pdv` ("não existe em /admin/pdv") — a página do
+  PDV não carrega mais essa action desde a fase 3; o FD3 não mexeu nos
+  imports dela. Fica para quem mexer no spec (pendência do PDV, não da
+  fidelidade). `tsc` (os 11 pacotes) verde; vitest 278 arquivos / 2.372
+  verdes; eslint do web com 1 erro que já estava na `main`
+  (`components/admin/campo-da-lista.tsx:55`, `set-state-in-effect`, do bloco
+  Estoque).
+- **Para o Heitor**: (1) a migration é destrutiva (a coluna
+  `scope_per_branch`, a função `saldos_por_unidade` e três assinaturas
+  antigas) e já está no banco — o app no ar, até este código subir, quebra
+  ao ler a configuração da fidelidade (ele pede a coluna que saiu); (2) vale
+  uma completa: mexeu no pagamento do atendimento, no PDV e no Copilot.
+
 ### 2026-11-14 — Bloco Tags: a tag de unidade sai do sistema, e só a pessoa marca tag
 
 Do plano de adaptação (a revisão do Heitor de 2026-11-13: H16 e a regra das
@@ -11191,7 +11269,7 @@ O relatório inteiro está fora do git, em `apps/web/.sim/relatorio.md`. A 11ª 
   - a frase do A27 só com mais de uma unidade (com uma, não há o que separar — princípio 7).
 - **Prova:** vitest `agenda-desenho-ate-a-ocupacao`, `rotulo-do-pagamento-com-maquininha`, `crediario-nomes-e-entrada`, `fechamento-csv-taxas-por-maquininha`; e2e `financeiro-f75-pagamento-com-maquininha`, `plano-f75-aceitar`, `indicadores-f75-recortes-ditos`, `agenda-f75-remarcar-o-proprio`, `fechamento-f75-taxas-por-maquininha`, `rls-f75-financeiro-pela-sessao` — todos vistos falhando antes. Vizinhos verdes: histórico da forma, financeiro-dinheiro-da-12, fechamento-do-dia-avisos, agenda-atritos-da-12, plano-novo-so-ao-salvar, plano-fechar-checkout-na-pagina, agenda-remarcar-avisa, agenda-guardas-de-status, indicadores-uma-conta-so; `comissoes-fechamento` › "dois cliques fecham uma vez" falha no next dev com e sem a mudança (já conhecido). Vitest inteiro verde (2356). Nenhum teste existente alterado.
 - **Fica de fora:**
-  - **C64** (o bônus da fidelidade em várias unidades, saindo primeiro do saldo que vence antes): é o razão dos pontos inteiro — a conta do bônus fora da unidade, a escolha "Onde o bônus pode ser usado" e o débito por vencimento entre os saldos — em dez funções (`confirmar_pagamento_do_atendimento`, `resgatar_recompensa`, ajuste, expiração, `fidelidade_a_expirar`, saldos, bônus, estornos, cancelamento). Precisa de frente própria, com o cenário escrito à mão antes;
+  - ~~**C64**~~ (saiu com o FD3 em 14/11: o saldo é um só, da rede) (o bônus da fidelidade em várias unidades, saindo primeiro do saldo que vence antes): é o razão dos pontos inteiro — a conta do bônus fora da unidade, a escolha "Onde o bônus pode ser usado" e o débito por vencimento entre os saldos — em dez funções (`confirmar_pagamento_do_atendimento`, `resgatar_recompensa`, ajuste, expiração, `fidelidade_a_expirar`, saldos, bônus, estornos, cancelamento). Precisa de frente própria, com o cenário escrito à mão antes;
   - o "Remarcar" da "Minha agenda" (o "só os meus" na unidade): ela não tem a janela do agendamento — o cartão leva à página do atendimento; o D20 vale onde a janela existe (a agenda da rede e a da unidade com "todos");
   - a linha "Taxas da maquininha no dia" da TELA do Fechamento segue à vista de quem só recebe (ver "Para o Heitor").
 - **Para o Heitor:**

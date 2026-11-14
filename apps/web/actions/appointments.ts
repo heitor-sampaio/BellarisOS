@@ -1142,7 +1142,7 @@ export async function confirmPayment(
       valorFinal = Math.round((valorFinal - descontoVenda) * 100) / 100
 
       if (pedido > 0 && cfg) {
-        const saldo = await saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? apptBranch.id : null, admin)
+        const saldo = await saldoDoCliente(appt.client_id as string, admin)
         const r = calcularDescontoComPontos({
           saldo, preco: valorFinal, pedido,
           regras: { valorDoPonto: cfg.redeem_points_value, minimo: cfg.redeem_min_points, tetoPct: cfg.redeem_max_pct },
@@ -1219,14 +1219,14 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
   // PDV, fase 5b (FD2a): o voucher de desconto e os pontos valem sobre o total da comanda.
   const total = Math.round((preco + await valorDosItensDoAtendimento(ctx.tenantId!, appointmentId, admin)) * 100) / 100
   const [saldoLido, meus] = await Promise.all([
-    saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? appt.branch_id as string : null, admin),
+    saldoDoCliente(appt.client_id as string, admin),
     ler(admin.from('loyalty_vouchers')
-      .select('id, name, type, status, expires_at, procedure_id, discount_value, branch_id')
+      .select('id, name, type, status, expires_at, procedure_id, discount_value')
       .eq('client_id', appt.client_id as string).eq('tenant_id', ctx.tenantId!).eq('status', 'ATIVO'),
       'buscar os vouchers do cliente'),
   ])
-  const vouchers = ((meus ?? []) as (VoucherParaCalculo & { id: string; name: string; branch_id: string })[])
-    .filter(v => !cfg.scope_per_branch || v.branch_id === appt.branch_id)
+  // O saldo e os vouchers são os da REDE, em qualquer unidade (FD3).
+  const vouchers = ((meus ?? []) as (VoucherParaCalculo & { id: string; name: string })[])
     .map(v => ({ v, d: descontoDoVoucher(v, { procedureId: appt.procedure_id as string | null, preco, total }) }))
     .filter(({ d }) => !d.motivo && d.desconto > 0)
     .map(({ v, d }) => ({ id: v.id, name: v.name, desconto: d.desconto, expires_at: v.expires_at }))

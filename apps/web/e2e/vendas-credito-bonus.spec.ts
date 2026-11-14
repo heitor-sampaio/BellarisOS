@@ -45,7 +45,7 @@ const saldoDe = async (cliente: string) => {
   return Math.round((data ?? []).reduce((s, r) => s + n(r.amount), 0) * 100) / 100
 }
 const pontosDe = async (cliente: string) => {
-  const { data, error } = await db().rpc('saldo_de_pontos', { p_cliente: cliente, p_unidade: null })
+  const { data, error } = await db().rpc('saldo_de_pontos', { p_cliente: cliente })
   expect(error).toBeNull()
   return n(data)
 }

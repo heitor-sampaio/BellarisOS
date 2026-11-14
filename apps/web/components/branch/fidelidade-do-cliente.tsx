@@ -93,11 +93,6 @@ export function FidelidadeDoCliente({
                 {formatarPontos(fidelidade.vencendo)} vencem nos próximos 30 dias
               </p>
             )}
-            {fidelidade.porUnidade && fidelidade.porUnidade.length > 0 && (
-              <p data-testid="saldo-por-unidade" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                {fidelidade.porUnidade.map(u => `${u.nome}: ${formatarPontos(u.saldo)}`).join(' · ')}
-              </p>
-            )}
             {saldo < 0 && (
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)' }}>
                 Saldo negativo: um pagamento que gerou pontos foi estornado depois de os pontos serem usados.

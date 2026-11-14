@@ -44,7 +44,7 @@ async function configurar(campos: Record<string, unknown>) {
   expect(error, 'configurar a fidelidade da rede').toBeNull()
 }
 const conta = async (c: string) => (await db().rpc('fidelidade_conta', { p_cliente: c })).data as string
-const saldo = async (c: string) => Number((await db().rpc('saldo_de_pontos', { p_cliente: c, p_unidade: null })).data)
+const saldo = async (c: string) => Number((await db().rpc('saldo_de_pontos', { p_cliente: c })).data)
 async function bonus(c: string) {
   const { data } = await db().from('loyalty_transactions').select('points, bonus_ref, description')
     .eq('loyalty_account_id', await conta(c)).eq('kind', 'BONUS').order('created_at')

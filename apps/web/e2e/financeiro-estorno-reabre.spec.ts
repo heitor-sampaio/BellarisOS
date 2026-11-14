@@ -53,7 +53,7 @@ async function totaisDaCliente() {
   const t = (data as { pago: number; a_receber: number }[])[0]
   return { pago: n(t?.pago), aReceber: n(t?.a_receber) }
 }
-const pontos = async () => n((await db().rpc('saldo_de_pontos', { p_cliente: cliente!.clientId, p_unidade: null })).data)
+const pontos = async () => n((await db().rpc('saldo_de_pontos', { p_cliente: cliente!.clientId })).data)
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`er${marca}`)

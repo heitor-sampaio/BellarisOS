@@ -19,41 +19,25 @@ type Admin = ReturnType<typeof createAdminClient>
 export async function configDaRede(tenantId: string, admin: Admin = createAdminClient()): Promise<ConfigFidelidade> {
   const linha = await ler(admin
     .from('loyalty_configs')
-    .select('enabled, earn_mode, points_per_real, redeem_points_value, redeem_min_points, redeem_max_pct, expiry_months, scope_per_branch, birthday_bonus, first_access_bonus, client_redeem, expiry_notice_days, pontua_venda_de_produto, indicacao_premio, indicacao_pontos, indicacao_recompensa_id')
+    .select('enabled, earn_mode, points_per_real, redeem_points_value, redeem_min_points, redeem_max_pct, expiry_months, birthday_bonus, first_access_bonus, client_redeem, expiry_notice_days, pontua_venda_de_produto, indicacao_premio, indicacao_pontos, indicacao_recompensa_id')
     .eq('tenant_id', tenantId)
     .maybeSingle(), 'ler a configuração da fidelidade')
   return configDaLinha(linha as Record<string, unknown> | null)
 }
 
-/** Quantos pontos do cliente vencem nos próximos `dias` (validade, fase 4). */
-export async function pontosVencendo(clientId: string, dias = 30, unidade: string | null = null, admin: Admin = createAdminClient()): Promise<number> {
+/** Quantos pontos do cliente vencem nos próximos `dias` (validade, fase 4). Da rede: o saldo é um só (FD3). */
+export async function pontosVencendo(clientId: string, dias = 30, admin: Admin = createAdminClient()): Promise<number> {
   const ate = new Date(Date.now() + dias * 86_400_000).toISOString()
-  const n = await ler(admin.rpc('pontos_expirando', { p_cliente: clientId, p_unidade: unidade, p_ate: ate }), 'ler os pontos a vencer')
+  const n = await ler(admin.rpc('pontos_expirando', { p_cliente: clientId, p_ate: ate }), 'ler os pontos a vencer')
   return Number(n ?? 0)
 }
 
-/** O saldo de cada unidade, com o nome — abrangência por unidade. */
-export async function saldosPorUnidade(clientId: string, admin: Admin = createAdminClient()): Promise<{ branch_id: string; nome: string; saldo: number }[]> {
-  const linhas = await ler(admin.rpc('saldos_por_unidade', { p_cliente: clientId }), 'ler o saldo por unidade') as { branch_id: string; saldo: number }[] | null
-  if (!linhas?.length) return []
-  const unidades = await ler(admin.from('branches').select('id, name').in('id', linhas.map(l => l.branch_id)), 'buscar as unidades')
-  const nomes = new Map(((unidades ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
-  return linhas.map(l => ({ branch_id: l.branch_id, nome: nomes.get(l.branch_id) ?? 'Unidade', saldo: Number(l.saldo) }))
-    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
-}
-
-/** A rede já tem algum ponto lançado? (trava a troca de abrangência) */
-export async function redeTemLancamentos(tenantId: string, admin: Admin = createAdminClient()): Promise<boolean> {
-  const linhas = await ler(admin.from('loyalty_transactions')
-    .select('id, branches!inner(tenant_id)')
-    .eq('branches.tenant_id', tenantId)
-    .limit(1), 'conferir se a rede tem pontos lançados')
-  return (linhas ?? []).length > 0
-}
-
-/** Saldo do cliente — da rede inteira, ou de uma unidade (abrangência por unidade). */
-export async function saldoDoCliente(clientId: string, branchId: string | null = null, admin: Admin = createAdminClient()): Promise<number> {
-  const saldo = await ler(admin.rpc('saldo_de_pontos', { p_cliente: clientId, p_unidade: branchId }), 'ler o saldo de pontos')
+/**
+ * Saldo do cliente — sempre o da REDE (FD3, 2026-11-14: "pontos só na
+ * unidade" saiu; a cliente é da rede e qualquer unidade a atende).
+ */
+export async function saldoDoCliente(clientId: string, admin: Admin = createAdminClient()): Promise<number> {
+  const saldo = await ler(admin.rpc('saldo_de_pontos', { p_cliente: clientId }), 'ler o saldo de pontos')
   return Number(saldo ?? 0)
 }
 
@@ -81,8 +65,6 @@ export interface FidelidadeDoPerfil {
   recompensas:  Recompensa[]
   /** Pontos que vencem nos próximos 30 dias (0 sem validade). */
   vencendo:     number
-  /** Abrangência por unidade: o saldo de cada uma. Nulo = saldo único da rede. */
-  porUnidade:   { branch_id: string; nome: string; saldo: number }[] | null
   /** A38 da 9ª: quem troca os pontos (a Fidelidade em Gerenciar), para quem só vê. Nulo para quem troca. */
   quemTroca?:   string[] | null
 }
@@ -145,18 +127,17 @@ export async function fidelidadeDoPerfil(ctx: TenantContext, clientId: string): 
   const admin = createAdminClient()
   const cfg = await configDaRede(ctx.tenantId!, admin)
   if (!cfg.enabled) return null
-  const [saldo, extrato, vouchers, recompensas, vencendo, porUnidade] = await Promise.all([
-    saldoDoCliente(clientId, null, admin),
+  const [saldo, extrato, vouchers, recompensas, vencendo] = await Promise.all([
+    saldoDoCliente(clientId, admin),
     extratoDoCliente(clientId, {}, admin),
     vouchersDoCliente(clientId, admin),
     recompensasDaRede(ctx.tenantId!, true, admin),
-    cfg.expiry_months ? pontosVencendo(clientId, 30, null, admin) : Promise.resolve(0),
-    cfg.scope_per_branch ? saldosPorUnidade(clientId, admin) : Promise.resolve(null),
+    cfg.expiry_months ? pontosVencendo(clientId, 30, admin) : Promise.resolve(0),
   ])
   const podeAjustar = can(ctx, 'loyalty', 'MANAGE')
   // A38 da 9ª: quem só vê lê a quem pedir a troca e o ajuste.
   const quemTroca = podeAjustar ? null : await quemTrocaPontos(ctx.tenantId!, ctx.branchId ?? null)
-  return { saldo, valorDoPonto: cfg.redeem_points_value, extrato, podeAjustar, vouchers, recompensas, vencendo, porUnidade, quemTroca }
+  return { saldo, valorDoPonto: cfg.redeem_points_value, extrato, podeAjustar, vouchers, recompensas, vencendo, quemTroca }
 }
 
 /** O extrato, do mais recente para o mais antigo, em páginas. */

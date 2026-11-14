@@ -49,7 +49,7 @@ async function como(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Prom
 }
 
 async function saldo(clientId: string) {
-  const { data } = await db().rpc('saldo_de_pontos', { p_cliente: clientId, p_unidade: null })
+  const { data } = await db().rpc('saldo_de_pontos', { p_cliente: clientId })
   return Number(data)
 }
 

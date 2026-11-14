@@ -30,8 +30,7 @@ export async function trocarPontosNoPortal(entrada: { slug: string; rewardId: st
   if (!cfg.enabled || !cfg.client_redeem) return { error: 'A troca pelo portal não está disponível. Fale com a recepção.' }
 
   // A unidade é a do portal em que o cliente está, procurada DENTRO da rede
-  // dele (o slug não é único entre redes). Com abrangência por unidade, é o
-  // saldo dela que paga a troca.
+  // dele: é onde a troca fica registrada. O saldo que paga é o da rede (FD3).
   const unidade = await ler(admin.from('branches').select('id')
     .eq('slug', entrada.slug).eq('tenant_id', cliente.tenant_id).eq('is_active', true).maybeSingle(),
     'buscar a unidade') as { id: string } | null

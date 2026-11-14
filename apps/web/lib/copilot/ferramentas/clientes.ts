@@ -77,11 +77,11 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
       podeReceber(c.ctx) || can(c.ctx, 'financial', 'VIEW')
         ? ler(c.admin.from('internal_credits').select('amount, branch_id').eq('client_id', ficha.id), 'ler o crédito interno')
         : Promise.resolve(null),
-      // Pontos por unidade quando a rede configurou assim (a mesma regra da agenda).
+      // Os pontos da rede: o saldo é um só, em qualquer unidade (FD3).
       can(c.ctx, 'loyalty', 'VIEW') && temRecurso(c.ctx, 'fidelidade')
         // C5: com o programa desligado, nenhum sinal de pontos (fidelidade.md).
         ? configDaRede(c.ctx.tenantId!, c.admin).then(cfg => cfg.enabled
-            ? saldoDoCliente(ficha.id, cfg.scope_per_branch ? (c.ctx.branchId ?? null) : null, c.admin) : null)
+            ? saldoDoCliente(ficha.id, c.admin) : null)
         : Promise.resolve(null),
     ])
     type Ag = { id: string; scheduled_at: string; status: string; procedure_id: string; professional_id: string | null; branch_id: string }

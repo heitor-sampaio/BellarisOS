@@ -159,7 +159,7 @@ test.describe.serial('desconto nas vendas', () => {
     const { data: txs } = await db().from('financial_transactions').select('amount, is_paid').eq('treatment_plan_id', pl!.id)
     expect((txs ?? []).map(t => [n(t.amount), t.is_paid])).toEqual([[360, true]])
     // Pago inteiro (360 de 360): os 2 × 40 pontos do plano.
-    await expect.poll(async () => n((await db().rpc('saldo_de_pontos', { p_cliente: cliente, p_unidade: null })).data)).toBe(80)
+    await expect.poll(async () => n((await db().rpc('saldo_de_pontos', { p_cliente: cliente })).data)).toBe(80)
   })
 
   test('plano: a função recusa rateio que não fecha e preço acima do de antes', async () => {
