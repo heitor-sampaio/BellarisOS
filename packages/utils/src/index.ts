@@ -3,10 +3,6 @@ export { cpfValido, telefoneNacional, telefoneInternacional, telefoneDoCadastro,
 export { iniciaisDoNome } from './iniciais'
 export {
   CLIENT_TAGS,
-  UNIT_TAG_PREFIX,
-  unitTag,
-  isUnitTag,
-  unitTagName,
   type ClientTag,
 } from './client-tags'
 export {

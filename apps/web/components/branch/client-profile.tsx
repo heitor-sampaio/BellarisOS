@@ -28,7 +28,7 @@ import type { LoteDoAtendimento } from '@/lib/prontuario/lotes-dos-atendimentos'
 import { CampoIndicadaPor, type FichaQueIndicou } from '@/components/shared/campo-indicada-por'
 import type { IndicacaoDaFicha } from '@/lib/clientes/indicacao-da-ficha'
 import { rotaComParams } from '@/lib/query-params'
-import { isUnitTag, unitTag, unitTagName, iniciaisDoNome, maskPhone, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
+import { iniciaisDoNome, maskPhone, TIPOS_DE_DOCUMENTO } from '@estetica-os/utils'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { formatarNoFuso, diaRelativo } from '@/lib/formatar-no-fuso'
@@ -701,8 +701,8 @@ function applyCepMask(v: string) {
   return d.replace(/(\d{5})(\d)/, '$1-$2')
 }
 
-function DadosTab({ client, slug, branches, podeEditar }: {
-  client: ProfileClient; slug: string; branches: { id: string; name: string }[]
+function DadosTab({ client, slug, podeEditar }: {
+  client: ProfileClient; slug: string
   /** Clientes em Gerenciar. Sem isso, os campos só se leem (D5, 2026-11-01). */
   podeEditar: boolean
 }) {
@@ -1002,56 +1002,6 @@ function DadosTab({ client, slug, branches, podeEditar }: {
         </div>
       </div>
 
-      {/* Unidades que frequenta (tags "Unidade: <nome>"). Com uma unidade só
-          não há o que escolher (A21 da 5ª simulação). */}
-      {branches.length > 1 && <div>
-        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Unidades que frequenta</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {branches.map(b => {
-            const tag = unitTag(b.name)
-            const active = selectedTags.includes(tag)
-            return (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => {
-                  setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
-                  setSaved(false)
-                }}
-                style={{
-                  padding: '5px 12px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-sm-sz)', fontWeight: 600,
-                  cursor: 'pointer', border: active ? '1.5px solid var(--info)' : '1px solid var(--border)',
-                  background: active ? 'var(--info-soft)' : 'var(--surface)',
-                  color: active ? 'var(--info)' : 'var(--text-muted)',
-                  transition: 'all 0.12s',
-                }}
-              >
-                {b.name}
-              </button>
-            )
-          })}
-        </div>
-        {/* Unit tags sem filial correspondente (renomeada/inativa) — removíveis */}
-        {(() => {
-          const orphans = selectedTags.filter(t => isUnitTag(t) && !branches.some(b => unitTag(b.name) === t))
-          if (orphans.length === 0) return null
-          return (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {orphans.map(tag => (
-                <TagBadge
-                  key={tag}
-                  label={unitTagName(tag)}
-                  style={{ bg: 'var(--info-soft)', color: 'var(--info)' }}
-                  onRemove={() => {
-                    setSelectedTags(prev => prev.filter(t => t !== tag))
-                    setSaved(false)
-                  }}
-                />
-              ))}
-            </div>
-          )
-        })()}
-      </div>}
 
       {/* "Indicada por" (decisão do Heitor, 2026-11-10): a ficha de quem indicou — é por ela que o prêmio por indicação chega. */}
       <div>
@@ -1696,9 +1646,6 @@ export function ClientProfile({
                 {/* A menor de idade (decisão 2 do Heitor, 2026-11-05). */}
                 {ehMenorDeIdade(client.birthDate) && <span data-menor className="chip chip-brand">Menor de idade</span>}
                 {client.tags.map(tag => {
-                  if (isUnitTag(tag)) {
-                    return <TagBadge key={tag} label={unitTagName(tag)} size="xs" style={{ bg: 'var(--info-soft)', color: 'var(--info)' }} />
-                  }
                   if (tag === 'VIP') {
                     return <TagBadge key={tag} label="VIP · Ouro" size="xs" style={{ bg: 'var(--brand-soft)', color: 'var(--brand)' }} />
                   }
@@ -2302,7 +2249,7 @@ export function ClientProfile({
 
       {/* -- Tab: Dados ------------------------------------------------ */}
       {tab === 'dados' && (
-        <DadosTab client={client} slug={slug} branches={branches} podeEditar={podeEditarCadastro} />
+        <DadosTab client={client} slug={slug} podeEditar={podeEditarCadastro} />
       )}
 
       {/* -- Tab: Financeiro ------------------------------------------- */}

@@ -10,7 +10,7 @@
 // Sem `'use server'`: é regra de negócio compartilhada pela agenda e pelo CRM.
 // Quem chama já autorizou.
 
-import { unitTag, telefoneDoCadastro } from '@estetica-os/utils'
+import { telefoneDoCadastro } from '@estetica-os/utils'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { EVENTOS } from '@estetica-os/types'
 import type { TenantContext } from '@estetica-os/types'
@@ -189,9 +189,6 @@ export async function garantirClienteRapido(
       branch_id: input.branchId,
       name:      nome,
       phone:     telefone,
-      // A unidade de cadastro entra como tag porque é por ela que a lista de
-      // clientes de cada filial filtra.
-      tags:      [unitTag(branch.name as string)],
       is_active: true,
       ...(input.complemento?.email ? { email: input.complemento.email } : {}),
       ...(input.complemento?.document ? { document: input.complemento.document } : {}),

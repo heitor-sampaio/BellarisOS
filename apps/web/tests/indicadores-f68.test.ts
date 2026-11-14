@@ -106,12 +106,12 @@ describe('D10: os números "Meus" de quem atende em mais de uma unidade', () => 
 
 describe('A10: cada quadro de clientes diz o seu recorte', () => {
   it('o vazio do "Reativar" diz de quais clientes fala', () => {
-    const texto = (vazioDoReativar as (a: number, b: number, recorte?: string) => string)(3, 5, 'que frequentam a unidade')
-    expect(texto).toContain('5 clientes que frequentam a unidade, cadastradas nos últimos 90 dias')
+    const texto = (vazioDoReativar as (a: number, b: number, recorte?: string) => string)(3, 5, 'atendidas na unidade')
+    expect(texto).toContain('5 clientes atendidas na unidade, cadastradas nos últimos 90 dias')
   })
 
-  it('o "Clientes no mês" da unidade diz que são as que frequentam a unidade', () => {
-    expect(ler('app/[slug]/dashboard/page.tsx')).toMatch(/que frequentam a unidade/)
+  it('o "Clientes no mês" da unidade diz que são as atendidas na unidade', () => {
+    expect(ler('app/[slug]/dashboard/page.tsx')).toMatch(/atendidas na unidade/)
   })
 })
 

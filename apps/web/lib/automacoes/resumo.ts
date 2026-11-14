@@ -173,7 +173,7 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>, fuso
       return (c.desfecho as string) === 'perdido' ? 'marcar como perdido' : 'marcar como ganho'
 
     case NODES.ACAO_TAG_CLIENTE:
-      return `${c.modo === 'remover' ? 'remover' : 'adicionar'} "${(c.tag as string) ?? '…'}"`
+      return `"${(c.tag as string) ?? '…'}"`
 
     case NODES.ACAO_ATRIBUIR:
       return c.usuarioNome ? `para ${c.usuarioNome}` : 'tirar o responsável'

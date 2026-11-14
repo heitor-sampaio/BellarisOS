@@ -7,8 +7,7 @@ import { addClient, conferirTelefoneDoCadastro, type ResultadoDoCadastro } from 
 import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { TagBadge } from '@/components/shared/tag-badge'
-import { isUnitTag, unitTagName, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, TIPOS_DE_DOCUMENTO, documentoEstrangeiro } from '@estetica-os/utils'
+import { maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro, TIPOS_DE_DOCUMENTO, documentoEstrangeiro } from '@estetica-os/utils'
 import { ResponsavelLegal, RESPONSAVEL_VAZIO, type CamposDoResponsavel } from '@/components/shared/responsavel-legal'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
@@ -375,19 +374,6 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
             )
           })}
         </div>
-        {/* Unidades que o cliente frequenta (tags "Unidade: <nome>") — removíveis */}
-        {selectedTags.some(isUnitTag) && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-            {selectedTags.filter(isUnitTag).map(tag => (
-              <TagBadge
-                key={tag}
-                label={unitTagName(tag)}
-                style={{ bg: 'var(--info-soft)', color: 'var(--info)' }}
-                onRemove={() => toggleTag(tag)}
-              />
-            ))}
-          </div>
-        )}
       </Field>
 
       {/* Observações */}

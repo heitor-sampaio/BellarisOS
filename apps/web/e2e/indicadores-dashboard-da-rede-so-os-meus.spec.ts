@@ -76,7 +76,7 @@ async function sumida(rotulo: string, professionalId: string, tag: string) {
     status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: diasAtras(150), completed_at: diasAtras(150),
   })
   expect(error).toBeNull()
-  // O gatilho da tag de unidade pode reescrever as tags: a da unidade fica.
+  // A tag é só uma tag (o Bloco Tags tirou o gatilho que a reescrevia).
   expect((await db().from('clients').update({ tags: [tag] }).eq('id', c)).error).toBeNull()
 }
 

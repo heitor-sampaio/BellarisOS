@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { origensDaRede } from '@/lib/crm/origens'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
@@ -89,10 +88,6 @@ export default async function BranchOportunidadesPage({
       return av.some(a => a.branch_id === branch.id)
     })
     .map(p => ({ id: p.id, name: p.name }))
-
-  // Unidades da rede — alimentam as sugestões de tag do modal.
-  // A tag de unidade da oportunidade nova: as ATIVAS (lib/unidades/da-tela).
-  const unidades = (await unidadesParaCriar(ctx.tenantId!)).map(b => ({ id: b.id, name: b.name }))
 
   // Leads do funil aberto.
   //
@@ -209,8 +204,6 @@ export default async function BranchOportunidadesPage({
           <CRMLeadModal
             branchId={branch.id}
             slug={slug}
-            branchName={branch.name}
-            unidades={unidades}
             stages={allStages}
             funnels={ativos}
             funnelId={selecionado?.id ?? ''}
@@ -236,7 +229,6 @@ export default async function BranchOportunidadesPage({
         allStages={allStages}
         funnels={ativos}
         funnelId={selecionado?.id ?? ''}
-        unidades={unidades}
         procedures={procedures}
         branchId={branch.id}
         branchName={branch.name}

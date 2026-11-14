@@ -8,7 +8,6 @@ import { darAcessoAoCliente, documentoDoAcesso, type DocumentoDoAcesso } from '@
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, rotuloDoAtualizar, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { rotuloDoUsar } from '@/lib/clients/ja-existe-texto'
-import { isUnitTag } from '@estetica-os/utils'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { temTag } from '@/lib/tags/escolha'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
@@ -290,14 +289,12 @@ export const marcarTags: FerramentaDeEscrita<ArgsTags, PayloadTags> = {
     const vocabulario = await tagsAtivasDaRede(c.ctx.tenantId!)
     const adicionar: string[] = []
     for (const pedida of a.adicionar ?? []) {
-      if (isUnitTag(pedida)) return { erro: 'A tag de unidade é do sistema: ela segue a unidade que o cliente frequenta.' }
       const nome = vocabulario.find(v => temTag([v], pedida))
       if (!nome) return { erro: `A tag "${pedida}" não existe na rede — crie em Configurações → Tags. Tags: ${vocabulario.join(', ') || 'nenhuma'}.` }
       if (!temTag(atuais, nome) && !temTag(adicionar, nome)) adicionar.push(nome)
     }
     const remover: string[] = []
     for (const pedida of a.remover ?? []) {
-      if (isUnitTag(pedida)) return { erro: 'A tag de unidade é do sistema: ela segue a unidade que o cliente frequenta.' }
       const tem = atuais.find(t => temTag([t], pedida))
       if (tem && !temTag(remover, tem)) remover.push(tem)
     }

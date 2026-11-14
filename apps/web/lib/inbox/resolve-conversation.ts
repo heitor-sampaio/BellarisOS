@@ -40,7 +40,7 @@ function normalizePhone(raw: string): string {
  * um dia foi feito aqui.
  *
  * Regras:
- * - contato nasce na REDE (`branch_id` null); a unidade vira tag depois
+ * - contato nasce na REDE (`branch_id` null), sem tag nenhuma (T2)
  * - a origem vem do referral do anúncio (click-to-WhatsApp) ou Orgânico, e fica
  *   em `attribution` esperando a oportunidade que talvez venha
  *
@@ -189,7 +189,7 @@ export async function resolveConversation(
     .from('conversations')
     .insert({
       tenant_id:           tenantId,
-      branch_id:           null,      // rede — a unidade vira tag depois
+      branch_id:           null,      // a conversa é da rede
       lead_id:             leadId,
       channel,
       status:              'open',
@@ -203,7 +203,7 @@ export async function resolveConversation(
       // mensagem e a oportunidade criada depois — e é esse rastro que liga a
       // venda à campanha em `lib/metrics`.
       attribution:         atribuicao,
-      tags:                derived.tags ?? [],
+      // Sem tag (T2 do Bloco Tags): a origem do anúncio é a origem, não tag.
     })
     .select('id')
     .single()

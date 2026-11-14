@@ -72,7 +72,6 @@ export const ISOLADOS = [
   'equipe-atende-por-unidade.spec.ts',
   'equipe-atritos-da-8.spec.ts',
   'configuracoes-atritos-da-8.spec.ts',
-  'clientes-da-clinica-na-unidade.spec.ts',
   'busca-configuracoes.spec.ts',
   // A F37 (os atritos da agenda e do atendimento da 8ª simulação).
   'agenda-atritos-da-8.spec.ts',
@@ -227,7 +226,8 @@ export const ISOLADOS = [
   'indicadores-retencao-clinica-inteira.spec.ts',
   'indicadores-custo-um-nome-so.spec.ts',
   'comissoes-sem-quem-atende.spec.ts',
-  'clientes-contador-da-unidade.spec.ts',
+  // O Bloco Tags do plano de adaptação (2026-11-14): sem tag de unidade.
+  'tags-sem-unidade.spec.ts',
   'indicadores-dashboard-da-rede-so-os-meus.spec.ts',
   'notificacoes-so-os-meus.spec.ts',
   'lead-nao-se-apaga.spec.ts',

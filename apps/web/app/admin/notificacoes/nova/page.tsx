@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
@@ -14,11 +13,8 @@ export default async function NovaCampanhaPage() {
   assertPermission(ctx, 'marketing', 'MANAGE')
 
 
-  const [branches, procedures] = await Promise.all([
-    // A campanha nova mira as unidades ATIVAS (lib/unidades/da-tela).
-    unidadesParaCriar<{ city: string | null }>(ctx.tenantId!, 'city'),
-    getCachedNetworkProcedures(ctx.tenantId!),
-  ])
+  // O público é da rede, sem filtro de unidade (MK2 do Bloco Tags).
+  const procedures = await getCachedNetworkProcedures(ctx.tenantId!)
 
   return (
     <div>
@@ -42,7 +38,6 @@ export default async function NovaCampanhaPage() {
       </div>
 
       <NotificationCampaignForm
-        branches={(branches ?? []) as { id: string; name: string; city: string | null }[]}
         procedures={(procedures ?? []) as { id: string; name: string; category: string | null }[]}
       />
     </div>

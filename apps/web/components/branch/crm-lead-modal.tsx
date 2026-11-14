@@ -17,7 +17,7 @@ import { MotivoDaPerdaCampos, type OpcaoDeMotivo } from './pergunta-da-perda'
 import { listarMotivosDePerda } from '@/actions/crm-motivos'
 import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
-import { LEAD_SOURCES, unitTag, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
+import { LEAD_SOURCES, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
@@ -54,15 +54,8 @@ interface CRMLeadModalProps {
   /** Modo filial: passar branchId + slug diretamente */
   branchId?:       string
   slug?:           string
-  /** Portal da unidade: lead novo já nasce com a tag desta unidade. */
-  branchName?:     string
   /** Modo rede: a presença desta lista é o que liga o modo rede do card. */
   branches?:       CRMBranch[]
-  /**
-   * Unidades da rede, oferecidas como sugestão de tag. Separado de `branches`
-   * de propósito: o portal da unidade precisa das sugestões sem virar modo rede.
-   */
-  unidades?:       { id: string; name: string }[]
   /** Todas as etapas da rede: é o que permite mover o lead para outro funil. */
   stages:          CRMStage[]
   /** Funis ativos, para agrupar as etapas do seletor. */
@@ -109,7 +102,7 @@ function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: str
 export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
   function CRMLeadModal(
     {
-      slug, branchName, branches, unidades, stages, funnels, funnelId, procedures,
+      slug, branches, stages, funnels, funnelId, procedures,
       initialStageId, existing, trigger, onLeadCreated, agendar, novoDaPessoa,
     },
     ref,
@@ -212,15 +205,10 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
     /**
      * Sugestões de tag: as da rede (Configurações → Tags — lidas só ao abrir:
-     * o quadro monta um modal por card) e as unidades. As ORIGENS saíram
-     * (J-17, 2026-10-30): repetiam o campo Origem logo acima, e a mesma coisa
-     * virava tag e origem ao mesmo tempo.
-     *
-     * A unidade é uma tag como outra qualquer — não é dona do lead e não decide
-     * quem o enxerga. Ela existe como sugestão só para não virar texto digitado
-     * à mão ("Unidade: centro" minúsculo não casa com a métrica por unidade).
-     * Quem decide de quem é o lead são as pessoas, pela tag e pelo dono; a
-     * distribuição automática fica para as automações.
+     * o quadro monta um modal por card). As ORIGENS saíram (J-17, 2026-10-30):
+     * repetiam o campo Origem logo acima, e a mesma coisa virava tag e origem
+     * ao mesmo tempo. As unidades saíram no Bloco Tags (2026-11-14): não existe
+     * tag de unidade, e o sistema não põe tag sozinho.
      */
     const vocabulario = useTagsDaRede(aberto)
     // A14 da 7ª simulação: as origens são da clínica (Configurar funis); sem
@@ -232,10 +220,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [origem, setOrigem] = useState(existing?.source ?? '')
     /** Origem gravada que não está na lista da clínica (desativada, base legada). */
     const origemForaDaLista = origem && !origens.includes(origem) ? origem : null
-    const suggestedTags = useMemo(() => [...new Set([
-      ...(vocabulario ?? []),
-      ...(unidades ?? []).map(u => unitTag(u.name)),
-    ])], [unidades, vocabulario])
+    const suggestedTags = useMemo(() => [...new Set(vocabulario ?? [])], [vocabulario])
 
     const networkMode = !!branches && branches.length > 0
     // Sem filial no lead, o portal da rede não tem slug de unidade para
@@ -253,11 +238,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
       setOrigem(existing?.source ?? '')
       setMotivoId(''); setMotivoObs('')
-      // Lead novo no portal da unidade já nasce marcado com ela — quem cria
-      // ali está trabalhando aquela unidade.
-      const tagsIniciais = existing?.tags
-        ?? (branchName ? [unitTag(branchName)] : [])
-      setTags(tagsIniciais)
+      // O lead novo nasce sem tag: quem marca é a pessoa (Bloco Tags).
+      setTags(existing?.tags ?? [])
       setTagDraft('')
       setErroConversa(null)
       // D1 da 11ª: o lead novo abre JÁ com quem o cria. Da 2ª abertura em
@@ -277,7 +259,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           if (!existing && !escolheuResponsavel.current) setOwnerId(r.eu ?? '')
         })
         .catch(() => setResponsaveis(null))
-    }, [existing, initialStageId, stages, branchName, pessoa, responsaveis])
+    }, [existing, initialStageId, stages, pessoa, responsaveis])
 
     const close = useCallback(() => dialogRef.current?.close(), [])
 
@@ -778,7 +760,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
             clienteId={agendar.clienteId}
             contatoInicial={{ nome: existing.name, telefone: telefoneDoCampo(existing.phone) }}
             procedimentosDeInteresse={(existing.lead_procedures ?? []).map(lp => lp.procedure_id)}
-            tags={tags}
             branches={agendar.unidades}
             onClose={() => setAgendando(false)}
             onScheduled={() => { setAgendando(false); router.refresh() }}

@@ -287,8 +287,9 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function AudienceRow({ rules }: { rules: Record<string, unknown> }) {
   const items: { label: string; value: string }[] = []
 
+  // Sem "Unidades" (MK2 do Bloco Tags): o público é da rede, e uma regra
+  // de unidade gravada antes não vale mais no disparo — a tela não a mostra.
   const r = rules as {
-    branch_ids?: string[]
     genders?: string[]
     procedure_ids?: string[]
     tags?: string[]
@@ -296,12 +297,11 @@ function AudienceRow({ rules }: { rules: Record<string, unknown> }) {
     max_days_since_visit?: number
   }
 
-  if (!r.branch_ids?.length && !r.genders?.length
+  if (!r.genders?.length
       && !r.procedure_ids?.length && !r.tags?.length && !r.has_app_account && !r.max_days_since_visit) {
     return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Todos os clientes ativos da rede</p>
   }
 
-  if (r.branch_ids?.length)       items.push({ label: 'Unidades',   value: `${r.branch_ids.length} selecionada(s)` })
   if (r.genders?.length)          items.push({ label: 'Gênero',     value: r.genders.join(', ') })
   if (r.procedure_ids?.length)    items.push({ label: 'Procedimentos', value: `${r.procedure_ids.length} selecionado(s)` })
   if (r.tags?.length)             items.push({ label: 'Tags',       value: r.tags.join(', ') })

@@ -80,14 +80,15 @@ export function oQueFaltaResponder(p: {
 }
 
 /**
- * A explicação ao lado da unidade de cadastro (J-24). "O cliente pode ser
- * atendido em qualquer unidade" enganava: a lista de Clientes de cada unidade
- * mostra só as cadastradas nela — as outras unidades a acham pela busca do
- * Agendar. Numa clínica de uma unidade só não há outra (D-19): nada a dizer.
+ * A explicação ao lado da unidade de cadastro (J-24). A cliente é da REDE
+ * (H5; H16 e CL3 do Bloco Tags, 2026-11-14): a lista de Clientes de toda
+ * unidade a mostra, e qualquer unidade a atende — a unidade de cadastro é só
+ * onde a ficha nasceu. Numa rede de uma unidade só não há outra (D-19): nada
+ * a dizer.
  */
 export function avisoDaUnidadeDeCadastro(variasUnidades: boolean): string | null {
   return variasUnidades
-    ? 'Ela aparece na lista de Clientes desta unidade. As outras unidades a acham pela busca do Agendar e a atendem normalmente.'
+    ? 'A cliente é da rede: aparece na lista de Clientes de todas as unidades, e qualquer uma a atende.'
     : null
 }
 

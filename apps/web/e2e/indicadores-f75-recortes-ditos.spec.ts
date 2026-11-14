@@ -5,8 +5,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
  * A26 e A27 da 14ª simulação (F75) — o recorte dito na tela (princípio 3):
- * - A26: o "Novos" do ranking de unidades conta as clientes que frequentam a
- *   unidade (a tag "Unidade: <nome>", C6 da F68) — a mesma cliente conta em
+ * - A26: o "Novos" do ranking de unidades conta as clientes atendidas na
+ *   unidade (desde o Bloco Tags; era a tag "Unidade: <nome>") — a mesma cliente conta em
  *   cada unidade em que foi atendida, e a coluna somava mais que o cartão
  *   "Novos clientes". O ranking diz isso.
  * - A27: o fechamento das comissões é por unidade — quem atende em duas tem
@@ -46,7 +46,7 @@ test('A26: o ranking de unidades diz que a cliente conta em cada unidade em que 
   await como(browser, async p => {
     await p.goto('/admin/dashboard')
     await expect(p.getByText('Ranking de unidades')).toBeVisible({ timeout: 30_000 })
-    await expect(p.locator('[data-recorte-do-ranking]')).toContainText('conta em cada unidade')
+    await expect(p.locator('[data-recorte-do-ranking]')).toContainText('atendida em duas unidades conta em cada uma')
   })
 })
 

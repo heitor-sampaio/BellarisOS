@@ -174,7 +174,6 @@ export function filtrosDaBusca(cfg: ConfigBuscarClientes, fuso?: string): Filtro
     ? new Date(Date.now() - cfg.semRetornoHaDias * 24 * 3600 * 1000).toISOString()
     : undefined
   return {
-    branch_ids: cfg.unidadeId ? [cfg.unidadeId] : undefined,
     tags: cfg.tags?.length ? cfg.tags : undefined,
     aniversario: cfg.aniversarioHoje ? { mes: hoje.month, dia: hoje.day } : undefined,
     // Quem TEVE atendimento concluído depois do corte sai da lista.

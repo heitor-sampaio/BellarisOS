@@ -597,18 +597,19 @@ isso** (sobra da F35): "Última visita há 120 dias · antes do sistema"
 qualquer dado real). `relatorios-coerencia` prova que tela e RPC concordam;
 aquele prova que estão CERTOS. Mexeu numa `metrics_*`, o cenário tem de continuar
 batendo — ou mudar junto, com o porquê. `new_clients` da UNIDADE são as
-clientes que a frequentam — a tag "Unidade: <nome>" (C6 da F68, migration
-`20261112006801`); a clínica inteira (nulo ou todas as unidades ativas,
-`public.recorte_e_a_clinica`) conta todas. Era `clients.branch_id` (a unidade
-de cadastro) mais as sem unidade.
+clientes novas ATENDIDAS nela — com agendamento não cancelado na unidade (T1
+do Bloco Tags, 2026-11-14, migration `20261114800001`; decisão por H16 e
+princípio 3: é o FATO, não a tag nem o cadastro). A clínica inteira (nulo ou
+todas as unidades ativas, `public.recorte_e_a_clinica`) conta todas — também
+a nova ainda sem agendamento. Foi `clients.branch_id` (a unidade de cadastro)
+até a F68 e a tag "Unidade: <nome>" de 2026-11-12 (C6 da F68) a 2026-11-14.
 **E o ranking de unidades diz que a mesma cliente conta em cada unidade** (A26
 da 14ª, F75; princípio 3): a coluna "Novos" somava mais que o cartão "Novos
-clientes", calada. Embaixo do título: "Novos: as clientes novas que frequentam
-a unidade. Quem foi atendida em duas unidades conta em cada unidade em que foi
-atendida…" (`[data-recorte-do-ranking]`). O número não mudou. ⚠️ A conta de
-hoje se apoia na marca "Unidade: X" que a H16 (13/11, `crm-inbox.md`) desfaz;
-a frase descreve o FATO que a H16 manda contar (a cliente atendida na unidade)
-e não deve ser lida como apoio à marca. Prova: `e2e/indicadores-f75-recortes-ditos.spec.ts`.
+clientes", calada. Embaixo do título: "Novos: as clientes novas atendidas na
+unidade (com agendamento nela). Quem foi atendida em duas unidades conta em
+cada uma…" (`[data-recorte-do-ranking]`). Desde o Bloco Tags a conta é a
+desse FATO (antes era a marca "Unidade: X"). Prova:
+`e2e/indicadores-f75-recortes-ditos.spec.ts`, `e2e/tags-sem-unidade.spec.ts`.
 
 **Uma regra de receita, e toda soma de dinheiro parte dela.**
 `metrics_receitas_pagas` (migration `20260927000011`) é o conjunto canônico —
@@ -811,10 +812,10 @@ uma unidade só, e "Ver a rede inteira" volta guardando o período. A
 abrangência vence o pedido (`ctx.branchId ?? unidade`); valor desconhecido cai
 na rede; com uma unidade só (D-19) não há recorte. O nome da filial no
 "Ranking de filiais" leva a esse recorte. O funil de oportunidades continua o
-da rede. Clientes do /admin abre com o filtro de unidade já escolhido, e o contador
-acompanha o recorte ("2 ativos na Zona Sul" — A24 da 5ª, 2026-11-02;
-`getClientesAtivos`, `lib/metrics/unidade.ts`, contado no banco pela tag da
-unidade, o mesmo critério do filtro; prova: `e2e/clientes-contador-da-unidade.spec.ts`).
+da rede. Clientes do /admin NÃO recorta: a cliente é da rede (CL2 do Bloco
+Tags, 2026-11-14) — sem filtro nem contador por unidade; o contador é o da
+rede (`getClientesAtivos`, contado no banco; o "2 ativos na Zona Sul" da A24
+da 5ª saiu com a tag). Prova: `e2e/tags-sem-unidade.spec.ts` ("CL1/CL2").
 Os **Relatórios** também (A57 da 5ª, 2026-11-02): `?unidade=<id|endereço>`,
 com `?branch=<id>` como apelido, e o seletor de unidade grava `?unidade=`
 (prova: `e2e/relatorios-unidade-na-url.spec.ts`). **E o endereço em português
@@ -897,10 +898,11 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   migration `20261102000702`): quem foi a outra unidade não está sumida —,
   com a unidade de cada uma (a da última visita concluída; quem nunca veio,
   a do cadastro). Recortada a uma unidade pelo `?unidade=`, é o quadro da
-  unidade (`metrics_clientes_para_reativar`, pela tag dela). **Na clínica de
+  unidade (`metrics_clientes_para_reativar`: as clientes atendidas nela —
+  agendamento não cancelado —, T1 do Bloco Tags; era a tag). **Na clínica de
   UMA unidade, é o da clínica** (r2-ind-03, o Heitor, 2026-11-03: "na clínica
   de uma unidade, a clínica e a unidade são a mesma coisa"): todas as
-  clientes ativas, não só as com a tag "Unidade: X" — no /admin e no
+  clientes ativas, também as nunca atendidas — no /admin e no
   dashboard da unidade (`redeTemUmaUnidade` → `getClientesParaReativarDaRede`).
   Prova: `e2e/indicadores-reativar-clientes-da-rede.spec.ts` ("r2-ind-03").
   **O vazio diz o que é** (D16 da 8ª simulação, 2026-11-06): o quadro conta
@@ -1216,10 +1218,11 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
 - **Réguas** (C49): os motivos de perda só dos funis ATIVOS; o comercial conta
   o agendamento por `aconteceu_em`; o "Reativar" da unidade mostra a última
   visita NA unidade.
-- **A unidade da cliente é a tag** (C6/C45): o público das campanhas e do
-  "Buscar clientes" das automações (`clientes_do_publico`), as novas clientes
-  do cartão, da série e do "Por filial". A cliente que frequenta duas unidades
-  conta nas duas linhas e uma vez no total.
+- ~~A unidade da cliente é a tag~~ (C6/C45) — desfeito no Bloco Tags
+  (2026-11-14, H16): as novas clientes do cartão, da série e do "Por filial"
+  de uma unidade são as ATENDIDAS nela (a que foi atendida em duas conta nas
+  duas linhas e uma vez no total), e o público das campanhas e do "Buscar
+  clientes" (`clientes_do_publico`) não tem mais filtro de unidade (MK2).
 - **O total da rede conta a unidade desativada** (C45): o dashboard e o
   Financeiro da rede inteira somam todas as unidades — a desativada com
   movimento já aparecia no "Por filial", e o total não fechava. Desde a F72
@@ -1257,7 +1260,7 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   tela está recortada (unidade ou "só os meus"). O "só os meus" da agenda não
   recorta a ficha.
 - **Cada quadro de clientes diz o seu recorte** (A10 da 13ª):
-  `deQuemSaoAsClientes` — "que frequentam a unidade", "da clínica", "que você
+  `deQuemSaoAsClientes` — "atendidas na unidade", "da clínica", "que você
   atendeu" — no subtítulo do "Clientes no mês" e no "Reativar".
 - **O Copilot usa as funções da tela** (C5): o "a receber" é o do Financeiro
   (`getEmAberto` até o fim do período), a aba agenda vai até o fim do período,

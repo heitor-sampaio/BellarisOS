@@ -36,7 +36,6 @@ export function configPadrao(tipo: string): Record<string, unknown> {
     case 'acao.notificar_equipe': return { alvo: 'unidade', alvoId: null, titulo: '', corpo: '' }
     case 'acao.anotar':           return { texto: '' }
     case 'acao.mensagem':         return { canal: 'whatsapp', texto: '' }
-    case 'acao.tag_cliente':      return { modo: 'adicionar' }
     case 'acao.desfecho':         return { desfecho: 'ganho' }
     case 'gatilho.agenda':        return { frequencia: 'diaria', hora: '09:00' }
     case 'espera.duracao':        return { quantidade: 1, unidade: 'dias' }

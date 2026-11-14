@@ -1,7 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { COLUNAS_DA_OFERTA, ofereceNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { unitTag } from '@estetica-os/utils'
 import { ler, lerTodas } from '@/lib/db'
 import type { FichaDoLogin } from '@/lib/clientes/ficha-da-requisicao'
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
@@ -116,35 +115,6 @@ export function getCachedFichasDoLogin(authId: string) {
 // núcleo: a clínica e a plataforma usam).
 export { getCachedRede, tagDaRede, getCachedRedeDoCliente, type CachedRede } from '@/lib/redes/cache'
 
-// ─── Branch: clientes que FREQUENTAM a filial (via unit tag "Unidade: <nome>") ─
-// Cliente pertence à REDE; a unidade é uma TAG. Listamos quem tem a tag da filial.
-export function getCachedBranchClients(branchId: string, tenantId: string) {
-  return unstable_cache(
-    async () => {
-      const admin = createAdminClient()
-      const branch = await ler(admin
-        .from('branches')
-        .select('name')
-        .eq('id', branchId)
-        .eq('tenant_id', tenantId)
-        .maybeSingle(), 'buscar a unidade')
-      if (!branch?.name) return []
-      // Todas, em páginas: o PostgREST corta em 1000, e a lista parava numa
-      // letra do alfabeto — a busca da barra (em memória) não achava o resto.
-      const nome = branch.name
-      return lerTodas((de, ate) => admin
-        .from('clients')
-        .select('id, name, phone, tags, is_active, created_at, cliente_desde')
-        .eq('tenant_id', tenantId)
-        .contains('tags', [unitTag(nome)])
-        .order('name').order('id')
-        .range(de, ate), 'carregar os clientes')
-    },
-    [`branch-clients-v2-${branchId}`],
-    { revalidate: 120, tags: [`clients:${tenantId}`] },
-  )()
-}
-
 // ─── A última visita de cada cliente (a lista de clientes) ───────────────────
 // Agregada no banco (`ultimas_visitas`, 2026-10-22). Era a lista dos 800
 // (unidade) ou 1000 (rede) concluídos mais recentes: quem não tinha vindo
@@ -163,20 +133,22 @@ export function getCachedUltimasVisitas(tenantId: string, branchId: string | nul
   )()
 }
 
-// ─── Network (admin): todos os clientes da rede ───────────────────────────────
+// ─── Todos os clientes da rede (os dois portais) ───────────────────────────────
 export function getCachedNetworkClients(tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      // Todas, em páginas (ver getCachedBranchClients).
+      // Todas, em páginas: o PostgREST corta em 1000, e a lista parava numa
+      // letra do alfabeto — a busca da barra (em memória) não achava o resto.
+      // A cliente é da REDE (H16): é esta a lista dos dois portais (CL3).
       return lerTodas((de, ate) => admin
         .from('clients')
-        .select('id, name, phone, tags, is_active, created_at, cliente_desde, branch_id, branches!branch_id(id, name)')
+        .select('id, name, phone, tags, is_active, created_at, cliente_desde')
         .eq('tenant_id', tenantId)
         .order('name').order('id')
         .range(de, ate), 'carregar os clientes')
     },
-    [`network-clients-v2-${tenantId}`],
+    [`network-clients-v3-${tenantId}`],
     { revalidate: 120, tags: [`clients:${tenantId}`] },
   )()
 }

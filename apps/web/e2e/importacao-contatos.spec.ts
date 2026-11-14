@@ -179,12 +179,13 @@ test('importar como clientes: completa o vazio de quem existe, cria o novo e rel
   expect(String(ana!.birth_date)).toContain('1990-03-15')
   expect([...(ana!.tags as string[])].sort()).toEqual(['antiga', 'vip'])
 
-  // A nova: com a unidade (a tag é por onde a lista filtra), a acentuação
-  // certa, a conta de fidelidade — e sem acesso ao portal.
+  // A nova: com a unidade, a acentuação certa, a conta de fidelidade — e sem
+  // acesso ao portal. As tags são só as da planilha: o sistema não põe a
+  // "Unidade: X" (T1 do Bloco Tags, 2026-11-14).
   const { data: nova } = await db().from('clients').select('id, name, phone, branch_id, tags, auth_id')
     .eq('tenant_id', outra.tenantId).eq('document', '16899535009').single()
   expect(nova).toMatchObject({ name: `${PREFIXO} Conceição ${marca}`, branch_id: outra.branchId, auth_id: null })
-  expect(nova!.tags).toEqual(expect.arrayContaining(['botox', 'retorno', `Unidade: ${unidadeNome}`]))
+  expect([...(nova!.tags as string[])].sort()).toEqual(['botox', 'retorno'])
   const { count: contas } = await db().from('loyalty_accounts').select('client_id', { count: 'exact', head: true }).eq('client_id', nova!.id)
   expect(contas).toBe(1)
 
@@ -286,9 +287,10 @@ test('quem só tem o CRM importa contatos; "Sem responsável" vale; e o contato 
 })
 
 // D-10 (decisão do Heitor, frente de cadastro de 2026-10-29): (a) a linha que
-// só tem e-mail entra como contato; (b) o telefone repetido JUNTA as tags e a
-// origem à pessoa que já existe, sem trocar os outros campos.
-test('contatos: a linha só com e-mail entra, e o telefone repetido junta tags e origem à pessoa', async ({ browser }) => {
+// só tem e-mail entra como contato; (b) o telefone repetido JUNTA as tags à
+// pessoa que já existe, sem trocar os outros campos. A origem é do card, e não
+// vira tag da pessoa (T3 do Bloco Tags, 2026-11-14).
+test('contatos: a linha só com e-mail entra, e o telefone repetido junta as tags à pessoa (a origem não vira tag)', async ({ browser }) => {
   const s4 = sufixo.slice(-4)
   const emailSo = `e2e-so-email-${marca}@bellaris.invalid`
   const nome = `email-e-repetido-${marca}.csv`
@@ -312,13 +314,13 @@ test('contatos: a linha só com e-mail entra, e o telefone repetido junta tags e
   expect(await importacao(nome)).toMatchObject({ com_erro: 0, novas: 2, completadas: 1, oportunidades: 2 })
 
   // (b) A Lia é UMA pessoa: o nome da primeira linha fica, o e-mail vazio é
-  // completado, e as tags e as origens das duas linhas se juntam.
+  // completado, e as tags das duas linhas se juntam — as origens, não (T3).
   const { data: lia } = await db().from('contacts').select('id, name, email, tags')
     .eq('tenant_id', outra.tenantId).overlaps('identifiers', [`552196666${s4}`])
   expect(lia).toHaveLength(1)
   expect(lia![0]!.name).toBe(`${PREFIXO} Lia ${marca}`)
   expect(lia![0]!.email).toBe(`lia-${marca}@bellaris.invalid`)
-  expect([...(lia![0]!.tags as string[])].sort()).toEqual(['Indicação', 'Instagram', 'botox', 'vip'])
+  expect([...(lia![0]!.tags as string[])].sort()).toEqual(['botox', 'vip'])
   const { count: leadsDaLia } = await db().from('leads').select('id', { count: 'exact', head: true }).eq('contato_id', lia![0]!.id)
   expect(leadsDaLia, 'a oportunidade aberta não se duplica').toBe(1)
 
@@ -327,7 +329,7 @@ test('contatos: a linha só com e-mail entra, e o telefone repetido junta tags e
     .eq('tenant_id', outra.tenantId).eq('email', emailSo)
   expect(soEmail).toHaveLength(1)
   expect(soEmail![0]).toMatchObject({ phone: null, identifiers: [] })
-  expect([...(soEmail![0]!.tags as string[])].sort()).toEqual(['Evento', 'feira'])
+  expect([...(soEmail![0]!.tags as string[])].sort()).toEqual(['feira'])
   const { data: leadEmail } = await db().from('leads').select('contato_id, email').eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Só Email ${marca}`)
   expect(leadEmail).toEqual([{ contato_id: soEmail![0]!.id, email: emailSo }])
 })
@@ -455,11 +457,11 @@ test('clientes com a unidade e a situação de cada linha', async ({ browser }) 
   const { data: nortista } = await db().from('clients').select('branch_id, is_active, tags')
     .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Nortista ${marca}`).single()
   expect(nortista).toMatchObject({ branch_id: unidadeNorte, is_active: false })
-  expect(nortista!.tags).toContain(`Unidade: ${NORTE}`)
+  expect(nortista!.tags ?? [], 'sem tag de unidade (T1)').toEqual([])
   const { data: padrao } = await db().from('clients').select('branch_id, is_active, tags')
     .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Padrão ${marca}`).single()
   expect(padrao).toMatchObject({ branch_id: outra.branchId, is_active: true })
-  expect(padrao!.tags).toContain(`Unidade: ${unidadeNome}`)
+  expect(padrao!.tags ?? [], 'sem tag de unidade (T1)').toEqual([])
 })
 
 test('a coluna de responsável pede o "todos" do CRM (o "só os meus" não distribui leads)', async ({ browser }) => {

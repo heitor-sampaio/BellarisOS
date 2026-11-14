@@ -2,7 +2,6 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { unitTag } from '@estetica-os/utils'
 import { haMinutosHoje } from './apoio/datas'
 
 /**
@@ -63,8 +62,7 @@ test.beforeAll(async () => {
   await atendimento(await cliente('Marlene', 200), segunda, diasAtras(120))
   // Carla: sumiu da primeira unidade, mas veio à Segunda há 10 dias — não está sumida da clínica.
   const carla = await cliente('Carla', 200)
-  // A da unidade lê a tag da unidade (o critério do filtro de Clientes).
-  expect((await db().from('clients').update({ tags: [unitTag(nomeDaPrimeira)] }).eq('id', carla)).error).toBeNull()
+  // A da unidade é de quem foi atendida nela (T1 do Bloco Tags: o fato, não a tag).
   await atendimento(carla, rede.branchId, diasAtras(120))
   await atendimento(carla, segunda, diasAtras(10))
   // Nunca veio: cadastrada há 200 dias na primeira unidade, sem atendimento.
@@ -120,7 +118,7 @@ test('com ?unidade=, o quadro é o da unidade (a Carla sumiu da primeira)', asyn
   })
 })
 
-test('r2-ind-03: na clínica de UMA unidade, o quadro conta todas as clientes ativas — não só as com a tag da unidade', async ({ browser }) => {
+test('r2-ind-03: na clínica de UMA unidade, o quadro conta todas as clientes ativas — também a que nunca foi atendida', async ({ browser }) => {
   // O Heitor (revisão de 03/11): "na clínica de uma unidade, a clínica e a unidade são a mesma coisa".
   const umaSo = await criarOutraRede(`rcu${marca}`)
   let donaDaUma: MembroDeTeste | null = null
@@ -128,7 +126,7 @@ test('r2-ind-03: na clínica de UMA unidade, o quadro conta todas as clientes at
     expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', umaSo.tenantId)).error).toBeNull()
     const slug = (await db().from('branches').select('slug').eq('id', umaSo.branchId).single<{ slug: string }>()).data!.slug
     donaDaUma = await criarMembro(`rcud${marca}`, { tenant: umaSo.tenantId, donoDaRede: true, permissoes: [] })
-    // Cadastrada há 200 dias, sem a tag "Unidade: …" e sem nenhuma visita.
+    // Cadastrada há 200 dias, sem tag e sem nenhuma visita.
     const semTag = await umaSo.criarCliente('Sem a tag')
     expect((await db().from('clients').update({ created_at: diasAtras(200), tags: [] }).eq('id', semTag)).error).toBeNull()
     const ctx = await browser.newContext({ storageState: donaDaUma.estado })
@@ -138,7 +136,7 @@ test('r2-ind-03: na clínica de UMA unidade, o quadro conta todas as clientes at
         await p.goto(rota)
         const quadro = p.locator('[data-reativar-clientes]')
         await expect(quadro, rota).toBeVisible()
-        await expect(quadro.locator('[data-cliente]', { hasText: `${PREFIXO} Sem a tag` }), `${rota}: a cliente sem a tag da unidade`).toBeVisible()
+        await expect(quadro.locator('[data-cliente]', { hasText: `${PREFIXO} Sem a tag` }), `${rota}: a cliente nunca atendida`).toBeVisible()
       }
     } finally { await ctx.close() }
   } finally {

@@ -309,6 +309,39 @@ Onde uma tela ou conta precisa de "a cliente nesta unidade", vale o FATO: a
 cliente atendida (agendamento) naquela unidade — nunca uma tag nem o
 cadastro. A lista de Clientes da unidade é a da clínica (a cliente é da rede).
 
+**Feito no Bloco Tags do plano de adaptação (2026-11-14, T1–T4, CL1–CL3,
+AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
+- **T1** — o gatilho e `on_appointment_add_unit_tag` saíram (drop), e
+  `registrar_tags` registra também a "Unidade: …". `tags_das_unidades` saiu.
+  As novas clientes de uma unidade (`metrics_core`, `metrics_new_clients_series`,
+  `metrics_by_branch`) e o "Reativar" da unidade
+  (`metrics_clientes_para_reativar`, sem o `p_tag`) são as clientes com
+  agendamento NÃO CANCELADO na unidade; o recorte que é a clínica inteira
+  (`recorte_e_a_clinica`: nulo, ou todas as unidades ativas — a rede de uma
+  unidade só) conta todas. Quem foi atendida em duas conta em cada uma, e uma
+  vez no total (o ranking diz isso). A tela diz "atendidas na unidade".
+- **T2** — a conversa que chega de anúncio e a oportunidade criada à mão não
+  ganham a origem como tag (`deriveLeadSource`/`resolveLeadSource` não têm
+  mais `tags`): a origem é a ORIGEM.
+- **T3** — a importação não transforma a coluna "Origem" em tag (ver
+  "Importação").
+- **T4** — a ação da automação é "Adicionar tag" (`automacoes.md`).
+- **A trava**: `tests/tags-so-quem-marca.test.ts` — nenhum caminho grava
+  `tags` fora da lista de quem pode (a pessoa, ou a ação "Adicionar tag"),
+  ninguém monta nem lê "Unidade: X", e as contas do banco não leem tag.
+  Prova no banco e na tela: `e2e/tags-sem-unidade.spec.ts`.
+- **CL1–CL3** — a lista de Clientes é a da REDE nos dois portais
+  (`getCachedNetworkClients`; `getCachedBranchClients` saiu): sem a unidade
+  na linha, sem o filtro "Unidade", sem contador por unidade
+  (`getClientesAtivos` conta só a rede), e a última visita é a da rede. A
+  busca "fora da unidade" (A17 da 8ª) saiu com `actions/clientes-da-clinica.ts`.
+  A ficha não tem mais "Unidades que frequenta"; o lead não tem mais o evento
+  "Unidade" (`UNIT_CHANGED` fica só para os antigos).
+- **AG2** — o "Agendar" do card e do inbox escolhe a unidade numa caixa
+  simples, que só aparece com mais de uma unidade (com uma, ela já vem
+  escolhida); a tag não escolhe nada (`unidadeDaTag` saiu).
+- **MK2** — ver `automacoes.md` (o público da campanha sem "Unidades").
+
 **As tags da rede** (2026-10-13, pedido do Heitor; **Configurações → Tags**,
 nos dois portais, para quem tem `clients` OU `crm` em Gerenciar — e é da rede:
 quem tem unidade fixa lê "Esta configuração é da clínica toda", e
@@ -322,7 +355,8 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (`tagsAtivasDaRede`, `useTagsDaRede` no navegador). A ficha mostra também a
   tag que o cliente já tem fora do vocabulário (`opcoesDeTag`).
 - ⚠️ **O vocabulário cresce por GATILHO** (`trg_registrar_tags` em clients,
-  contacts e leads): toda tag gravada entra, fora as `Unidade: …`. Gravar tag
+  contacts e leads): toda tag gravada entra, também as `Unidade: …` (desde o
+  Bloco Tags, 2026-11-14 — antes eram puladas). Gravar tag
   por um caminho novo não precisa registrar nada — e não deve.
 - **Um nome por rede, sem caixa** (índice em `lower(nome)`): "VIP" e "vip" são
   a mesma. Marcar usa o nome do vocabulário; desmarcar tira qualquer grafia
@@ -368,16 +402,11 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   de `clients`, que recorta pela unidade de cadastro, o recusava com "Esta cliente é de outra
   unidade."). A RLS não foi alargada. Prova: `e2e/ficha-de-outra-unidade.spec.ts`,
   `e2e/abrangencia-unidade.spec.ts`.
-  **E a lista da unidade diz quem é da clínica e não está nela** (A17 da 8ª
-  simulação, 2026-11-06): a lista de Clientes do portal da unidade é de quem
-  tem a tag dela, e a recepção fixa do Batel não achava a Helena da Água
-  Verde. A busca, abaixo da lista, diz "Não está nesta unidade? 1 cliente da
-  clínica com esse nome:" com o link da ficha (`[data-da-clinica-fora-da-unidade]`,
-  `clientesDaClinicaForaDaUnidade`, a regra de `buscar_clientes`), e a ficha
-  aberta pela URL aparece no topo da lista, marcada, com a unidade de
-  cadastro (`[data-aberta-fora-da-unidade]`, `actions/clientes-da-clinica.ts`).
-  A lista continua sendo a da tag (quem frequenta). Prova:
-  `e2e/clientes-da-clinica-na-unidade.spec.ts`.
+  **E a lista da unidade é a da rede** (CL3 do Bloco Tags, 2026-11-14): o
+  portal de qualquer unidade lista TODAS as clientes da rede — a recepção
+  fixa do Batel acha a Helena da Água Verde na própria lista. A busca "Não
+  está nesta unidade?" da A17 da 8ª (2026-11-06), que remendava a lista pela
+  tag, saiu junto. Prova: `e2e/tags-sem-unidade.spec.ts` (CL3).
 - **As abas da ficha são ABAS** (`tablist` "Abas da ficha" / `tab`, a escolhida com
   `aria-selected`; continuam links, a aba mora na URL — A17 da 5ª simulação):
   a aba "Oportunidades" e o "Oportunidades" do menu lateral (o quadro geral)
@@ -678,18 +707,17 @@ dela — e vê Configurações só com essa aba.
   (`clients.phone` é NOT NULL).
 - **No contato, o telefone repetido JUNTA** (D-10): não é "Repetida na
   planilha" — a segunda linha completa o vazio da pessoa que a primeira
-  criou e junta as tags; a ORIGEM da linha (`op_origem`) entra como tag da
-  pessoa (como a do anúncio, `deriveLeadSource`), também na pessoa nova. Na
+  criou e junta as tags (as da coluna de tags da planilha). A ORIGEM da
+  linha NÃO vira tag (T3 do Bloco Tags, 2026-11-14): com oportunidade, ela é
+  a origem da oportunidade; sem oportunidade, não há coluna de origem. Na
   ficha (clientes) a repetida continua recusada (mesmo CPF, ou sem CPF o
   mesmo telefone COM O MESMO NOME). Prova: `e2e/importacao-contatos.spec.ts` ("só com e-mail").
-  **A coluna da origem se mapeia também SEM oportunidade** (A16 da 7ª
-  simulação, 2026-11-05; princípio 3: a coluna "origem" não se oferecia no
-  contato, e a prévia dizia que "a origem se junta"): "Origem (vira tag da
-  pessoa)" no grupo da pessoa (`camposDoDestino`). A prévia diz como cada
-  valor entra — "A origem de cada linha entra como tag da pessoa: facebook →
-  Meta Ads · Feira de noivas" (`OrigensDaPlanilha`, `data-origens-da-planilha`)
-  —, e o texto do telefone repetido diz a regra inteira: "as tags se juntam (a
-  origem entra como tag), e o nome e o e-mail que ficam são os da primeira
+  **A coluna da origem** (A16 da 7ª simulação, 2026-11-05, revista no Bloco
+  Tags): a "Origem (vira tag da pessoa)" sem oportunidade saiu com o T3 — o
+  contato sem oportunidade não tem coluna de origem ("Não importar"). Com
+  oportunidade, a prévia diz "A origem de cada linha é a origem da
+  oportunidade:" (`OrigensDaPlanilha`), e o texto do telefone repetido diz
+  "as tags se juntam, e o nome e o e-mail que ficam são os da primeira
   linha". **E o e-mail que se perde** (A17): "— o e-mail desta linha (joana@…)
   não entra: fica o da linha 2 (marta@…)"; com quem já existe, "o e-mail
   desta linha só entra se X ainda não tiver um". A regra D-10/A14 não mudou.
@@ -710,7 +738,8 @@ dela — e vê Configurações só com essa aba.
   `marcarRepetidas` (a prévia) e `processarImportacao` (o servidor) dividem a
   regra. Prova: `e2e/importacao-previa-cruzamento.spec.ts` ("A14"),
   `tests/importacao.test.ts`.
-- **Cliente novo**: tag da unidade (é por ela que a lista filtra) e conta de
+- **Cliente novo**: só as tags da planilha (a tag de unidade saiu no Bloco
+  Tags, 2026-11-14) e conta de
   fidelidade (`fidelidade_conta`); **SEM acesso ao portal** (cria-se na ficha).
   A importação de clientes não cria contato do CRM: a ficha se liga à pessoa
   quando a conversa começar, como no cadastro manual.
@@ -887,7 +916,8 @@ contato (`atualizarContato`). Não propagam: a oportunidade tem a SUA cópia
 **As TAGS são da pessoa** (`contacts.tags`), e sempre eram — o comentário em
 `conversations.tags` já dizia "Tags do CONTATO: descrevem a pessoa, não o
 negócio". `conversations.tags` sobrevive como **semente**: escrita uma vez no
-nascimento da thread (é de onde vêm as tags derivadas da origem), lida pelo
+nascimento da thread (desde o Bloco Tags, 2026-11-14, nasce vazia: a origem
+do anúncio não vira tag — T2), lida pelo
 gatilho que a leva para a pessoa, e **nunca lida pelo app**. **Fica** — decisão
 do Heitor em 2026-09-28: tirá-la obrigaria cada ponto que cria conversa a
 escrever na pessoa, que é o que o gatilho existe para evitar (comentário na
@@ -975,11 +1005,11 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   F33 da 8ª simulação, 2026-11-06; princípio 3): nascia na primeira em ordem
   alfabética; agora "Selecione a unidade…" (`unidadeInicial`,
   `lib/unidades/unidade-inicial.ts` — com uma só, ela). Prova:
-  `tests/agenda-sobras-da-f33.test.ts`. **A tag "Unidade: X" do lead escolhe**
-  (A25 da 14ª, F73; "a unidade da cliente é a tag", F68): quando as tags do
-  lead (e do contato, no inbox) apontam UMA unidade da lista, a janela já vem
-  nela (`unidadeDaTag`); duas, ou a de uma unidade fora da lista, nenhuma.
-  Prova: `tests/unidade-da-tag.test.ts`.
+  `tests/agenda-sobras-da-f33.test.ts`. **A unidade é uma caixa simples**
+  (AG2 do Bloco Tags, 2026-11-14): aparece só com mais de uma unidade — com
+  uma, ela já vem escolhida e a caixa some. A tag do lead não escolhe nada (o
+  A25 da 14ª, `unidadeDaTag`, saiu: não existe tag de unidade). Prova:
+  `e2e/tags-sem-unidade.spec.ts` ("AG2").
 - **Os separadores de dia da conversa são do dia de Brasília** (sobra da F33):
   agrupavam por `created_at.slice(0, 10)`, o dia em UTC — a mensagem das
   23:30 caía no separador do dia seguinte. É `agruparPorDia`
@@ -1288,6 +1318,9 @@ o contato junto.
 ## O que nunca fazer aqui
 
 ```
+❌ Pôr tag sozinho (gatilho, origem, unidade, importação de outra coluna) — só a pessoa marca, ou a ação "Adicionar tag" que a rede montou (tests/tags-so-quem-marca trava)
+❌ Ler uma tag como "a unidade da cliente" — não existe tag de unidade (H16); "a cliente nesta unidade" é a atendida nela
+❌ Recortar a lista de Clientes por unidade — a cliente é da rede (CL1–CL3)
 ❌ Gerar exportação de LGPD dentro do request — usar after() + o cron de retomada
 ❌ Entregar pacote de LGPD com consulta que falhou em silêncio — no export, erro aborta
 ❌ Ler os insumos do atendimento de medical_record_entries.products_used (nada grava ali) — moram no estoque: o movimento PROCEDURE_USAGE do appointment_id (D18 da 8ª)

@@ -1,9 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { isUnitTag, unitTagName } from '@estetica-os/utils'
 
 export type LeadEventType =
   | 'CREATED'
   | 'STAGE_CHANGED'
+  // Só os eventos antigos: a "Unidade: X" é uma tag comum desde o Bloco Tags.
   | 'UNIT_CHANGED'
   | 'UPDATED'
   | 'APPOINTMENT_CREATED'
@@ -122,8 +122,6 @@ export const CAMPOS_LEAD: Record<string, string> = {
 /** Estado do lead antes de uma edição, para comparar depois. */
 export interface EstadoLead {
   crm_stage_id: string | null
-  /** Unidades marcadas, como lista legível. Podem ser mais de uma: é tag. */
-  unidades:     string
   campos:       Record<string, string | null>
 }
 
@@ -201,7 +199,6 @@ export async function estadoAtualDoLead(
 
   return {
     crm_stage_id: l.crm_stage_id,
-    unidades:     listaLegivel(tags.filter(isUnitTag).map(unitTagName)),
     campos: {
       name:         l.name,
       phone:        l.phone,
@@ -209,9 +206,7 @@ export async function estadoAtualDoLead(
       social_media: l.social_media,
       source:       l.source,
       notes:        l.notes,
-      // A unidade sai das tags: ela tem evento próprio, senão apareceria duas
-      // vezes na linha do tempo.
-      tags:         listaLegivel(tags.filter(t => !isUnitTag(t))),
+      tags:         listaLegivel(tags),
       // Nome, não id: "Botox → Botox, Preenchimento" se lê; uma lista de UUID não.
       procedures:   listaLegivel((l.lead_procedures ?? []).map(p => {
         const proc = Array.isArray(p.procedures) ? p.procedures[0] : p.procedures

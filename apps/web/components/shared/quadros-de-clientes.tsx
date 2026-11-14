@@ -100,7 +100,7 @@ export interface ClienteSumida {
  * Os números vêm de lib/metrics (`comVisita`, `recentesSemVisita`).
  */
 export function vazioDoReativar(comVisita: number, recentesSemVisita: number, deQuem?: string): string {
-  // A10 da 13ª: o texto diz DE QUAIS clientes fala ("que frequentam a unidade",
+  // A10 da 13ª: o texto diz DE QUAIS clientes fala ("atendidas na unidade",
   // "da clínica"), senão o "5 cadastradas" daqui brigava com o "4 novos" do lado.
   const quem = deQuem ? ` ${deQuem},` : ''
   const recentes = recentesSemVisita === 1
@@ -118,11 +118,12 @@ export function vazioDoReativar(comVisita: number, recentesSemVisita: number, de
 /**
  * De quais clientes os quadros falam (A10 da 13ª simulação): o "Clientes no
  * mês" e o "Reativar" contam universos diferentes conforme o recorte, e cada
- * um diz o seu. A unidade é a TAG da cliente (a que ela frequenta — H5/C6).
+ * um diz o seu. As da unidade são as atendidas nela (agendamento não
+ * cancelado — T1 do Bloco Tags; era a tag "Unidade: X").
  */
 export function deQuemSaoAsClientes(r: { daUnidade: boolean; dela: boolean }): string {
   if (r.dela) return 'que você atendeu'
-  return r.daUnidade ? 'que frequentam a unidade' : 'da clínica'
+  return r.daUnidade ? 'atendidas na unidade' : 'da clínica'
 }
 
 /** As clientes sem visita há mais de 90 dias (o total e as há mais tempo sem vir). */

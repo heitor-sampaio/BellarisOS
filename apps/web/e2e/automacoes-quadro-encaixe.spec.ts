@@ -107,7 +107,7 @@ test('num fluxo comprido, o passo que acabou de nascer fica à vista, fora do pa
   await comoMembro(browser, async page => {
     await novaAutomacao(page, nomeDeTeste(`Comprido ${marca}`))
 
-    const passos = ['Quando acontecer', 'Esperar', 'Avisar a equipe', 'Anotar na oportunidade', 'Marcar com tag', 'Definir responsável']
+    const passos = ['Quando acontecer', 'Esperar', 'Avisar a equipe', 'Anotar na oportunidade', 'Adicionar tag', 'Definir responsável']
     for (const passo of passos) {
       await paleta(page).getByRole('button', { name: passo, exact: true }).click()
       await expect(page.getByLabel('Configuração do node')).toBeVisible()

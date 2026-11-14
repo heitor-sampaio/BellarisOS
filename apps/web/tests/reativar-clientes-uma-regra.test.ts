@@ -6,8 +6,8 @@ import { join, relative, sep } from 'node:path'
  * r3-f13-10 (o Heitor, revisão de 2026-11-03: "os dois têm de dar a mesma
  * resposta"): o "Reativar clientes" do dashboard (os dois portais) e o do
  * Copilot ("quem eu devo reativar?") são UMA regra — na clínica de uma
- * unidade, todas as clientes ativas, com ou sem a tag da unidade; com várias,
- * a unidade escolhida pela tag dela, ou a clínica inteira (sem visita em
+ * unidade, todas as clientes ativas; com várias, as atendidas na unidade
+ * escolhida (T1 do Bloco Tags — era a tag dela), ou a clínica inteira (sem visita em
  * nenhuma unidade). A regra mora em `getClientesParaReativarDoRecorte`
  * (`lib/metrics/unidade.ts`), e ninguém fora de lá escolhe entre a conta da
  * unidade e a da rede — era assim que o Copilot ficou de fora do r2-ind-03.

@@ -47,11 +47,12 @@ describe('avisoDoAcessoCriado', () => {
 })
 
 describe('avisoDaUnidadeDeCadastro', () => {
-  it('com outras unidades: diz onde ela aparece e como as outras a acham', () => {
+  // CL3 do Bloco Tags (2026-11-14): a lista de toda unidade mostra a cliente.
+  it('com outras unidades: diz que a cliente é da rede e aparece em todas', () => {
     const t = avisoDaUnidadeDeCadastro(true)!
-    expect(t).not.toMatch(/qualquer unidade/)
-    expect(t).toMatch(/lista de Clientes desta unidade/)
-    expect(t).toMatch(/busca do Agendar/)
+    expect(t).toMatch(/é da rede/)
+    expect(t).toMatch(/todas as unidades/)
+    expect(t).not.toMatch(/desta unidade|busca do Agendar/)
   })
   it('numa clínica de uma unidade só, não há o que dizer (D-19)', () => {
     expect(avisoDaUnidadeDeCadastro(false)).toBeNull()

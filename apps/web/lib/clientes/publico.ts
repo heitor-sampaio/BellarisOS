@@ -3,7 +3,9 @@ import { contar, lerTodas } from '@/lib/db'
 
 /**
  * O público de uma campanha ou de um fluxo de automação, filtrado NO BANCO
- * (`clientes_do_publico`, 2026-10-22). Só clientes ativos da rede.
+ * (`clientes_do_publico`, 2026-10-22). Só clientes ativos da rede — a cliente
+ * é da rede, e o público não tem filtro de unidade (MK2 do Bloco Tags,
+ * 2026-11-14: as tags e o filtro de tag já cobrem o caso).
  *
  * Era lido pelo app — 1000 (ou 501) clientes, sem ordem, por causa do teto do
  * PostgREST — e o aniversário, o "sem retorno" e o procedimento eram
@@ -14,7 +16,6 @@ import { contar, lerTodas } from '@/lib/db'
  * Fora de `actions/`: recebe a rede por parâmetro, e quem chama já conferiu.
  */
 export interface FiltrosDoPublico {
-  branch_ids?:        string[]
   genders?:           string[]
   tags?:              string[]
   has_app_account?:   boolean

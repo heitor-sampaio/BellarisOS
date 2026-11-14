@@ -69,10 +69,10 @@ test.describe.serial('o CRM', () => {
         await expect(p.locator('[data-lead-card]').filter({ hasText: nome }), 'o card nasce com o nome').toBeVisible()
       }
     })
-    const { data: un } = await db().from('branches').select('name').eq('id', rede!.branchId).single<{ name: string }>()
     const { data: leads } = await db().from('leads').select('tags').eq('tenant_id', rede!.tenantId).like('name', `%Lead _ ${marca}`)
     expect(leads, 'os dois leads').toHaveLength(2)
-    for (const l of leads!) expect(l.tags, 'nascem com a tag da unidade do portal').toContain(`Unidade: ${un!.name}`)
+    // O sistema não põe tag sozinho (Bloco Tags, 2026-11-14): sem tag de unidade.
+    for (const l of leads!) expect(l.tags ?? [], 'nascem sem tag').toEqual([])
   })
 
   test('a origem não aparece duas vezes no card, e "Telefone" é uma origem', async ({ browser }) => {

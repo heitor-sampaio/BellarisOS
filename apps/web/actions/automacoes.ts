@@ -19,7 +19,7 @@ import { ler, tentar } from '@/lib/db'
 import { buscarClientes } from '@/lib/automacoes/tempo'
 import { contarPublico, contarPublicoComConversa, contarPublicoComAparelho } from '@/lib/clientes/publico'
 import type { CanalParaACliente, ContaAntesDeLigar } from '@/lib/automacoes/antes-de-ligar'
-import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
 /**
  * As automações, pela tela.
@@ -866,25 +866,20 @@ export async function contarBuscaDeClientes(cfg: unknown): Promise<{ quantas: nu
   return { quantas: clientes.length, truncado }
 }
 
-/** A config do passo "Buscar clientes" vinda da tela, conferida (a unidade é da rede). */
+/** A config do passo "Buscar clientes" vinda da tela, conferida. A busca é da rede (sem unidade — T1 do Bloco Tags). */
 async function buscaDoPasso(tenantId: string, cfg: unknown): Promise<{ cfg: ConfigBuscarClientes; fuso: string } | { error: string }> {
   const c = (cfg && typeof cfg === 'object' ? cfg : {}) as Record<string, unknown>
   const dias = Number(c.semRetornoHaDias)
   const limite = Number(c.limite)
   const tags = Array.isArray(c.tags) ? (c.tags as unknown[]).filter((t): t is string => typeof t === 'string').slice(0, 50) : undefined
-  const unidade = typeof c.unidadeId === 'string' && /^[0-9a-f-]{36}$/i.test(c.unidadeId) ? c.unidadeId : null
-  if (unidade) {
-    const daRede = await ler(createAdminClient().from('branches').select('id').eq('id', unidade).eq('tenant_id', tenantId).maybeSingle(), 'conferir a unidade da busca')
-    if (!daRede) return { error: 'Unidade não encontrada.' }
-  }
   return {
     cfg: {
       semRetornoHaDias: Number.isFinite(dias) && dias > 0 ? Math.floor(dias) : undefined,
       aniversarioHoje: c.aniversarioHoje === true,
-      tags, unidadeId: unidade,
+      tags,
       limite: Number.isFinite(limite) && limite > 0 ? Math.min(Math.floor(limite), 500) : 200,
     },
-    fuso: unidade ? await fusoDaUnidade(tenantId, unidade) : await fusoDaRede(tenantId),
+    fuso: await fusoDaRede(tenantId),
   }
 }
 

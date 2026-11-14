@@ -19,8 +19,8 @@ export type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ARCH
 export type CampaignType   = 'IMMEDIATE' | 'SCHEDULED' | 'AUTOMATED'
 export type TriggerType    = 'BIRTHDAY' | 'ANNUAL_DATE' | 'DAYS_AFTER_VISIT' | 'DAYS_BEFORE_EXPIRY' | 'BEFORE_APPOINTMENT'
 
+/** O público (MK2 do Bloco Tags, 2026-11-14: sem filtro de unidade — a cliente é da rede). */
 export type AudienceRules = {
-  branch_ids?:           string[]
   genders?:              ('M' | 'F' | 'O')[]
   procedure_ids?:        string[]
   tags?:                 string[]

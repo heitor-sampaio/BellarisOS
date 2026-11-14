@@ -6,7 +6,6 @@ import { filiaisAtivas } from '@/lib/branches'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { getFunilDoQuadro } from '@/lib/metrics/queries'
 import { resumoDoFunil } from '@/lib/metrics/resultado'
-import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 import { sinaisDasClientes, sugereGanho } from '@/lib/crm/sinais-do-card'
@@ -21,14 +20,6 @@ import { UserPlus } from 'lucide-react'
 import { lerTodas } from '@/lib/db'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-/** Nome da unidade marcada no lead, se houver. */
-function unidadeDoLead(tags: unknown): string | null {
-  const t = (Array.isArray(tags) ? tags : []).find(
-    (x): x is string => typeof x === 'string' && isUnitTag(x),
-  )
-  return t ? unitTagName(t) : null
-}
 
 /** O que a tela lê do lead; o resto do select passa adiante como veio. */
 type LeadLido = Record<string, unknown> & {
@@ -136,9 +127,6 @@ export default async function AdminOportunidadesPage({
         ? sinais.get(l.client_id as string)!.compra : null,
       compra_valor: l.client_id && sugereGanho(l as unknown as { created_at: string }, sinais.get(l.client_id as string), abertaNaEtapa(l.crm_stage_id))
         ? sinais.get(l.client_id as string)!.compraValor : null,
-      // O badge da unidade sai da TAG, não de branch_id: o lead é da rede e a
-      // coluna é sempre nula, então o badge nunca aparecia.
-      branch_name:         unidadeDoLead(l.tags),
       branch_slug:         null,
     }
   })
@@ -183,7 +171,6 @@ export default async function AdminOportunidadesPage({
             <>
               <CRMLeadModal
                 branches={branches}
-                unidades={branches}
                 stages={allStages}
                 funnels={ativos}
                 funnelId={selecionado?.id ?? ''}
@@ -217,7 +204,6 @@ export default async function AdminOportunidadesPage({
             allStages={allStages}
             funnels={ativos}
             funnelId={selecionado?.id ?? ''}
-            unidades={branches}
             procedures={procedures}
             branchId=""
             slug=""

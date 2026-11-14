@@ -121,13 +121,13 @@ export async function criarOportunidadeCore(
 
   // Origem canônica: se há atribuição, deriva; senão respeita a escolhida; sem nada, sem origem ("Não informado", D14).
   const derived = resolveLeadSource({ fbclid: o.fbclid ?? null, gclid: o.gclid ?? null, utm_source: o.utmSource ?? null, utm_medium: o.utmMedium ?? null }, o.origem ?? null)
-  const tags = mergeTags(derived.tags, o.tags ?? [])
+  // A origem não vira tag (T2 do Bloco Tags): as tags são as que a pessoa marcou.
+  const tags = mergeTags(o.tags ?? [])
   const etapaInicial = await resolverEtapa(ctx.tenantId!, o.crmStageId ?? null, o.funnelId ?? null)
 
   const { data: lead, error } = await admin.from('leads').insert({
     tenant_id: ctx.tenantId!,
-    // Lead é SEMPRE da rede. A unidade é a tag `Unidade: <nome>`, dimensão
-    // de métrica e recorte de tela — não fronteira de dado.
+    // Lead é SEMPRE da rede (não existe tag de unidade — H16).
     branch_id: null,
     name: nome, phone: telefone, email: o.email ?? null, social_media: o.social ?? null,
     source: derived.source, notes: o.observacoes ?? null,

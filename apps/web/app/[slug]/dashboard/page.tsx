@@ -211,7 +211,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     // atendimentos dos inativos) somados aqui — cortavam em 1000 (§13.1).
     // r2-ind-03 (o Heitor: "na clínica de uma unidade, a clínica e a unidade
     // são a mesma coisa"): com UMA unidade, todas as clientes ativas da
-    // clínica — não só as que têm a tag da unidade.
+    // clínica.
     // A regra é UMA, a do /admin e a do Copilot também (r3-f13-10).
     canClients
       ? getClientesParaReativarDoRecorte({
@@ -683,7 +683,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             subtitulo={proId
               ? `As suas novas clientes e os seus agendamentos neste mês, até agora${nasUnidades(unidadesDaAgenda)}`
               : paraReativar.daUnidade
-                ? 'Novas clientes que frequentam a unidade e os agendamentos da unidade, neste mês, até agora'
+                ? 'Novas clientes atendidas na unidade e os agendamentos da unidade, neste mês, até agora'
                 : 'Novas clientes da clínica e os agendamentos, neste mês, até agora'}
             etapas={funnel}
           />

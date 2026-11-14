@@ -1,7 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas, contar } from '@/lib/db'
-import { unitTag } from '@estetica-os/utils'
 import { mediaPorAtendimentoCobrado } from './resultado'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 
@@ -105,12 +104,13 @@ export interface ClientesParaReativar {
 }
 
 export async function getClientesParaReativar(args: {
-  tenantId: string; branchId: string; tag: string; desde: Date; limite?: number
-  /** "Só os meus": só as clientes que ela atendeu (agendamento não cancelado na unidade). */
+  tenantId: string; branchId: string; desde: Date; limite?: number
+  /** A cliente da unidade é a atendida nela (agendamento não cancelado; T1 do
+   * Bloco Tags — não existe tag de unidade). "Só os meus": só as clientes que ela atendeu (agendamento não cancelado na unidade). */
   professionalId?: string | null
 }): Promise<ClientesParaReativar> {
   const data = await ler(createAdminClient().rpc('metrics_clientes_para_reativar', {
-    p_tenant: args.tenantId, p_branch_id: args.branchId, p_tag: args.tag,
+    p_tenant: args.tenantId, p_branch_id: args.branchId,
     p_desde: args.desde.toISOString(), p_limite: args.limite ?? 3,
     p_professional_id: args.professionalId ?? null,
   }), 'buscar os clientes para reativar')
@@ -166,10 +166,11 @@ export async function getClientesParaReativarDaRede(args: {
  * O "Reativar clientes" de um RECORTE — a regra ÚNICA do dashboard (os dois
  * portais) e do Copilot (r3-f13-10, o Heitor em 2026-11-03: "os dois têm de
  * dar a mesma resposta"):
- * - na clínica de UMA unidade, a clínica inteira — todas as clientes ativas,
- *   com ou sem a tag da unidade (r2-ind-03: "na clínica de uma unidade, a
- *   clínica e a unidade são a mesma coisa");
- * - com várias e o recorte numa unidade, a dela (pela tag "Unidade: X");
+ * - na rede de UMA unidade, a rede inteira — todas as clientes ativas
+ *   (r2-ind-03: "na clínica de uma unidade, a clínica e a unidade são a mesma
+ *   coisa");
+ * - com várias e o recorte numa unidade, as atendidas nela (agendamento não
+ *   cancelado; T1 do Bloco Tags, 2026-11-14 — era a tag "Unidade: X");
  * - com várias e sem recorte, a clínica inteira: sem visita em NENHUMA
  *   unidade, com a unidade de cada uma.
  * Quem mostra não escolhe entre a conta da unidade e a da rede: chama esta.
@@ -185,7 +186,7 @@ export async function getClientesParaReativarDoRecorte(args: {
   const umaSo = await redeTemUmaUnidade(args.tenantId)
   if (args.unidade && !umaSo) {
     const r = await getClientesParaReativar({
-      tenantId: args.tenantId, branchId: args.unidade.id, tag: unitTag(args.unidade.name),
+      tenantId: args.tenantId, branchId: args.unidade.id,
       desde: args.desde, limite: args.limite, professionalId: args.professionalId,
     })
     return { ...r, lista: r.lista.map(c => ({ ...c, unidade: null, unidadeSlug: null })), daUnidade: true }
@@ -198,20 +199,12 @@ export async function getClientesParaReativarDoRecorte(args: {
 }
 
 /**
- * As clientes ATIVAS da rede e as que frequentam cada unidade (a tag
- * "Unidade: <nome>", o mesmo critério do filtro de Clientes) — contadas no
- * banco (A24 da 5ª simulação, 2026-11-02). Em `/admin/clients?unidade=` a
- * lista recortava a unidade e o contador seguia o da rede ("4 ativos").
+ * As clientes ATIVAS da rede, contadas no banco (A24 da 5ª simulação,
+ * 2026-11-02). A cliente é da rede (H16, Bloco Tags de 2026-11-14): não há
+ * contador por unidade — a "Unidade: X" era tag, e saiu.
  */
-export async function getClientesAtivos(args: {
-  tenantId: string; unidades: { id: string; name: string }[]
-}): Promise<{ total: number; porUnidade: Record<string, number> }> {
-  const admin = createAdminClient()
-  const base = () => admin.from('clients').select('id', { count: 'exact', head: true })
-    .eq('tenant_id', args.tenantId).eq('is_active', true)
-  const [total, ...porUnidade] = await Promise.all([
-    contar(base(), 'contar as clientes ativas'),
-    ...args.unidades.map(u => contar(base().contains('tags', [unitTag(u.name)]), 'contar as clientes da unidade')),
-  ])
-  return { total, porUnidade: Object.fromEntries(args.unidades.map((u, i) => [u.id, porUnidade[i] ?? 0])) }
+export async function getClientesAtivos(args: { tenantId: string }): Promise<{ total: number }> {
+  const total = await contar(createAdminClient().from('clients').select('id', { count: 'exact', head: true })
+    .eq('tenant_id', args.tenantId).eq('is_active', true), 'contar as clientes ativas')
+  return { total }
 }

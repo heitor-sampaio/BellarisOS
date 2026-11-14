@@ -1,7 +1,6 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import type { TenantContext } from '@estetica-os/types'
-import { unitTag, mergeTags } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { criarOportunidadeCore } from '@/lib/crm/oportunidade'
@@ -141,7 +140,6 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
   try {
     const usa = (c: ChaveDeCampo) => p.mapeamento.includes(c)
     const refs = await referenciasDaRede(admin, p.tenant_id, {
-      // A unidade da importação também entra: é dela a tag do cliente novo.
       unidades:      p.destino === 'clientes',
       etapaId:       usa('op_etapa') ? p.oportunidade?.etapaId : null,
       membros:       usa('op_responsavel'),
@@ -149,13 +147,6 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
       procedimentos: usa('op_procedimentos') || usa('pacote'),
       origens:       usa('op_origem'),
     })
-    // A tag de cada unidade (é por ela que a lista de clientes filtra).
-    const nomesDasUnidades = new Map((refs.unidades ?? []).map(u => [u.id, u.nome]))
-    if (p.branch_id && !nomesDasUnidades.has(p.branch_id)) {
-      const u = await ler(admin.from('branches').select('name').eq('id', p.branch_id).eq('tenant_id', p.tenant_id).maybeSingle(), 'buscar a unidade')
-      if (u) nomesDasUnidades.set(p.branch_id, u.name as string)
-    }
-    const tagDaUnidade = (id: string | null) => (id && nomesDasUnidades.has(id) ? unitTag(nomesDasUnidades.get(id)!) : null)
 
     for (;;) {
       const linhas = await ler(admin.from('importacao_linhas').select('numero, valores')
@@ -183,7 +174,7 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
           if (erros.length < MAX_ERROS) erros.push({ linha: l.numero, nome, motivo: problemas.join(' ') })
         } else {
           try {
-            const r = await gravarLinha(admin, p, ctx, dados, tagDaUnidade, l.numero)
+            const r = await gravarLinha(admin, p, ctx, dados, l.numero)
             placar[r.resultado === 'nova' ? 'novas' : r.resultado === 'completada' ? 'completadas' : 'sem_mudanca']++
             if (r.oportunidade) placar.oportunidades++
             // D2 (F35): a linha entrou, e o que ficou de fora dela vai para o relatório.
@@ -253,7 +244,7 @@ async function pessoaDaLinha(admin: Admin, tenantId: string, dados: DadosDaLinha
 
 /** Uma linha válida: a pessoa (nova, completada ou igual) e a oportunidade, se pedida. */
 async function gravarLinha(
-  admin: Admin, p: Pedido, ctx: TenantContext, dados: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null, numero: number,
+  admin: Admin, p: Pedido, ctx: TenantContext, dados: DadosDaLinha, numero: number,
 ): Promise<{ resultado: Resultado; oportunidade: boolean; avisos: string[] }> {
   // Sem telefone só no contato que só tem e-mail (D-10): a ficha exige o telefone.
   const fone = dados.phone as string | undefined
@@ -261,7 +252,7 @@ async function gravarLinha(
   let clientId: string | null = null
   const avisos: string[] = []
   if (p.destino === 'clientes') {
-    const r = await gravarCliente(admin, p, ctx, dados, tagDaUnidade, (p.nao_completar ?? []).includes(numero))
+    const r = await gravarCliente(admin, p, ctx, dados, (p.nao_completar ?? []).includes(numero))
     resultado = r.resultado
     clientId = r.clientId
     avisos.push(...r.avisos)
@@ -337,7 +328,7 @@ const CAMPOS_DO_CLIENTE = [
 const CAMPOS_DO_RESPONSAVEL = ['responsavel_nome', 'responsavel_cpf', 'responsavel_parentesco', 'responsavel_telefone'] as const
 
 async function gravarCliente(
-  admin: Admin, p: Pedido, ctx: TenantContext, linhaDaPlanilha: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
+  admin: Admin, p: Pedido, ctx: TenantContext, linhaDaPlanilha: DadosDaLinha,
   /** A prévia desmarcou "completar a ficha de X" nesta linha (cli-07): o telefone não junta. */
   naoCompletarPeloTelefone = false,
 ): Promise<{ resultado: Resultado; clientId: string; avisos: string[] }> {
@@ -400,8 +391,8 @@ async function gravarCliente(
     }
   } else {
     // A situação vale só para quem nasce — quem já existe mantém a da clínica.
-    const tag = tagDaUnidade(branchId)
-    const tags = [...new Set([...((dados.tags as string[] | undefined) ?? []), ...(tag ? [tag] : [])])]
+    // As tags são só as da planilha: o sistema não põe tag de unidade (T1).
+    const tags = [...new Set((dados.tags as string[] | undefined) ?? [])]
     const linha: Record<string, unknown> = { tenant_id: p.tenant_id, branch_id: branchId, is_active: dados.ativo !== 'false', tags }
     for (const c of campos) if (c !== 'tags' && dados[c]) linha[c] = dados[c]
     const { data: novo, error } = await admin.from('clients').insert(linha).select('id').single<{ id: string }>()
@@ -456,15 +447,14 @@ async function gravarCliente(
 
 /**
  * O contato do CRM pelo telefone — com ou sem o nono dígito, como o WhatsApp o
- * guarda —, ou, sem telefone, pelo e-mail (D-10). A ORIGEM da linha entra
- * como tag da pessoa (como a do anúncio, `deriveLeadSource`), e a pessoa que
- * já existe junta as tags e a origem; o resto, só o vazio (D-10, decisão do
- * Heitor de 2026-10-29).
+ * guarda —, ou, sem telefone, pelo e-mail (D-10). A pessoa que já existe
+ * junta as tags da planilha; o resto, só o vazio (D-10, decisão do Heitor de
+ * 2026-10-29). A origem NÃO vira tag (T3 do Bloco Tags, 2026-11-14): ela é do
+ * card da oportunidade.
  */
 async function gravarContato(admin: Admin, tenantId: string, ctx: TenantContext, linha: DadosDaLinha): Promise<Resultado> {
   const fone = linha.phone as string | undefined
-  const origem = linha.op_origem as string | undefined
-  const dados: DadosDaLinha = { ...linha, tags: mergeTags(linha.tags as string[] | undefined, origem ? [origem] : []) }
+  const dados: DadosDaLinha = linha
   const pessoa = await pessoaDaLinha(admin, tenantId, dados)
   if (pessoa) {
     const atual = pessoa.name?.trim() ?? ''

@@ -355,29 +355,19 @@ export function PainelDoNo({
           </Campo>
         )}
 
+        {/* T4 do Bloco Tags: só adiciona, e uma das tags cadastradas da rede. */}
         {no.tipo === NODES.ACAO_TAG_CLIENTE && (
-          <>
-            <Campo rotulo="O que fazer">
-              <select
-                className="field" value={(c.modo as string) ?? 'adicionar'}
-                disabled={somenteLeitura}
-                onChange={e => set({ modo: e.target.value })}
-              >
-                <option value="adicionar">Adicionar a tag</option>
-                <option value="remover">Remover a tag</option>
-              </select>
-            </Campo>
-            <Campo rotulo="Tag">
-              <select
-                className="field" value={(c.tag as string) ?? ''}
-                disabled={somenteLeitura}
-                onChange={e => set({ tag: e.target.value })}
-              >
-                <option value="">Escolha a tag…</option>
-                {(opcoes?.tags ?? []).map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </Campo>
-          </>
+          <Campo rotulo="Tag">
+            <select
+              className="field" value={(c.tag as string) ?? ''}
+              disabled={somenteLeitura}
+              onChange={e => set({ tag: e.target.value })}
+            >
+              <option value="">Escolha a tag…</option>
+              {(opcoes?.tags ?? []).map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <Dica>A tag é adicionada ao cliente. Tirar uma tag é só pela ficha.</Dica>
+          </Campo>
         )}
 
         {no.tipo === NODES.ACAO_ATRIBUIR && (
@@ -513,16 +503,6 @@ export function PainelDoNo({
                 Só quem faz aniversário hoje
               </span>
             </label>
-            <Campo rotulo="Unidade">
-              <select
-                className="field" value={(c.unidadeId as string) ?? ''}
-                disabled={somenteLeitura}
-                onChange={e => set({ unidadeId: e.target.value || null })}
-              >
-                <option value="">Todas</option>
-                {(opcoes?.unidades ?? []).map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-              </select>
-            </Campo>
             <Campo rotulo="No máximo">
               <input
                 type="number" min={1} max={500} className="field"
@@ -1138,7 +1118,7 @@ function agruparEventos(): [string, string[]][] {
  * pedida 600 ms depois da última mudança do passo.
  */
 function QuemAchariaHoje({ cfg }: { cfg: Record<string, unknown> }) {
-  const chave = JSON.stringify({ d: cfg.semRetornoHaDias, a: cfg.aniversarioHoje, t: cfg.tags, u: cfg.unidadeId, l: cfg.limite })
+  const chave = JSON.stringify({ d: cfg.semRetornoHaDias, a: cfg.aniversarioHoje, t: cfg.tags, l: cfg.limite })
   const [conta, setConta] = useState<{ chave: string; texto: string } | null>(null)
   useEffect(() => {
     let vivo = true

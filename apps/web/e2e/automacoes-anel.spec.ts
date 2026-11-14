@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { banco, nomeDeTeste, tenantId } from './apoio/banco'
+import { chamarAcao } from './apoio/acao-direta'
 
 /**
  * O anel: duas automações que se alimentam pela corrente de eventos.
@@ -11,19 +12,25 @@ import { banco, nomeDeTeste, tenantId } from './apoio/banco'
  * evento que dispara a outra.
  *
  * Duas automações e não uma porque com uma só o anel morreria sozinho: a
- * segunda passagem tentaria adicionar uma tag que já está lá, não alteraria
- * nada e não emitiria evento. O par adiciona-e-remove alterna de verdade, e
- * então a ÚNICA coisa que segura é a profundidade.
+ * segunda passagem tentaria mover para a etapa em que o card já está, não
+ * alteraria nada e não emitiria evento. O par "para a etapa 2" e "para a
+ * etapa 3", as duas em "a etapa mudou", alterna de verdade, e então a ÚNICA
+ * coisa que segura é a profundidade.
+ *
+ * Até 2026-11-14 o par era "pôr a tag" e "tirar a tag"; a ação de tag passou a
+ * só adicionar (T4 do Bloco Tags), e a tag só cresce — não fecha anel.
  *
  * O que se prova não é "zero execuções" — o encadeamento é desejado, é o que
  * permite um fluxo disparar outro. O que se prova é que ele **para**.
  */
 
 const nome = nomeDeTeste('Anel')
-const TAG  = `[e2e]anel${Date.now().toString(36)}`
 
 const ids: string[] = []
-let clientId: string | null = null
+let leadId: string | null = null
+let funilId: string | null = null
+let etapa1 = ''
+let etapa2 = ''
 
 test.afterAll(async () => {
   const db = banco()
@@ -33,10 +40,16 @@ test.afterAll(async () => {
     await db.from('automation_runs').delete().eq('automation_id', id)
     await db.from('automations').delete().eq('id', id)
   }
-  if (clientId) {
-    await db.from('domain_events').delete().eq('entidade_id', clientId)
-    await db.from('loyalty_accounts').delete().eq('client_id', clientId)
-    await db.from('clients').delete().eq('id', clientId)
+  if (leadId) {
+    const { data: l } = await db.from('leads').select('contato_id').eq('id', leadId).maybeSingle()
+    await db.from('lead_events').delete().eq('lead_id', leadId)
+    await db.from('domain_events').delete().eq('entidade_id', leadId)
+    await db.from('leads').delete().eq('id', leadId)
+    if (l?.contato_id) await db.from('contacts').delete().eq('id', l.contato_id as string)
+  }
+  if (funilId) {
+    await db.from('crm_stages').delete().eq('funnel_id', funilId)
+    await db.from('crm_funnels').delete().eq('id', funilId)
   }
 })
 
@@ -58,28 +71,39 @@ test.beforeAll(async ({ browser }) => {
   const db = banco()
   const tenant = await tenantId()
 
-  const { data: filial } = await db
-    .from('branches').select('id').eq('tenant_id', tenant).eq('is_active', true).limit(1).single()
+  // Um funil próprio, com três etapas abertas, e o card na primeira.
+  const { data: funil, error: eFunil } = await db.from('crm_funnels')
+    .insert({ tenant_id: tenant, name: nome, is_default: false, position: 99 }).select('id').single<{ id: string }>()
+  expect(eFunil).toBeNull()
+  funilId = funil!.id
+  const etapas: string[] = []
+  for (const [i, n] of ['Um', 'Dois', 'Três'].entries()) {
+    const { data } = await db.from('crm_stages').insert({
+      tenant_id: tenant, funnel_id: funilId, name: `${nome} ${n}`, color: '#c34d6b', position: i, outcome: 'OPEN',
+    }).select('id').single<{ id: string }>()
+    etapas.push(data!.id)
+  }
+  etapa1 = etapas[0]!; etapa2 = etapas[1]!
+  const { data: lead, error: eLead } = await db.from('leads').insert({
+    tenant_id: tenant, name: nome, phone: '5547' + String(Date.now()).slice(-9), crm_stage_id: etapa1,
+  }).select('id').single<{ id: string }>()
+  expect(eLead).toBeNull()
+  leadId = lead!.id
 
-  const { data: cliente } = await db.from('clients').insert({
-    tenant_id: tenant, branch_id: filial!.id, name: nome, phone: '47999990000',
-  }).select('id').single()
-  clientId = cliente!.id as string
-
-  // O par: uma põe a tag, a outra tira. As duas assinam o mesmo evento, e a
-  // ação de cada uma emite justamente esse evento.
-  for (const modo of ['adicionar', 'remover'] as const) {
+  // O par: uma leva o card à etapa 2, a outra à 3. As duas assinam o mesmo
+  // evento, e a ação de cada uma emite justamente esse evento.
+  for (const destino of [etapas[1]!, etapas[2]!]) {
     const { data } = await db.from('automations').insert({
       tenant_id: tenant,
-      nome:      `${nome} · ${modo}`,
+      nome:      `${nome} · ${destino === etapas[1] ? 'para a 2' : 'para a 3'}`,
       status:    'ATIVA',
-      gatilhos:  ['cliente.dados_alterados'],
+      gatilhos:  ['lead.etapa_mudou'],
       grafo: {
         nos: [
           { id: 'g1', tipo: 'gatilho.evento', pos: { x: 0, y: 0 },
-            config: { evento: 'cliente.dados_alterados' } },
-          { id: 'a1', tipo: 'acao.tag_cliente', pos: { x: 260, y: 0 },
-            config: { tag: TAG, modo } },
+            config: { evento: 'lead.etapa_mudou' } },
+          { id: 'a1', tipo: 'acao.mover_etapa', pos: { x: 260, y: 0 },
+            config: { etapaId: destino } },
         ],
         ligacoes: [{ id: 'l1', de: 'g1', para: 'a1' }],
       },
@@ -91,7 +115,7 @@ test.beforeAll(async ({ browser }) => {
   // o servidor ter compilado, não a página estar interativa.
   const contexto = await browser.newContext()
   const aquecer = await contexto.newPage()
-  await aquecer.goto(`/admin/clients/${clientId}?tab=dados`, { waitUntil: 'commit' })
+  await aquecer.goto('/admin/oportunidades', { waitUntil: 'commit' })
   await contexto.close()
 })
 
@@ -103,8 +127,8 @@ test('duas automações que se alimentam param no teto de profundidade', async (
   // motor: o que se prova aqui é que a contagem estabiliza, e ela estabiliza.
   //
   // 150s não bastou: com a suíte em 133 testes ele reprovou em 3 de 5 rodadas
-  // completas, sempre no MESMO lugar — o `fill` do formulário do cliente, que é
-  // trabalho de TELA, não de motor. Sozinho o teste inteiro leva 35s; sob carga,
+  // completas, sempre no MESMO lugar — o `fill` do formulário do cliente, que
+  // era trabalho de TELA, não de motor (o pavio hoje é a action do quadro). Sozinho o teste inteiro leva 35s; sob carga,
   // o dev server (compilando sob demanda e disputando o banco) multiplica isso
   // por 3 ou 4.
   //
@@ -115,21 +139,15 @@ test('duas automações que se alimentam param no teto de profundidade', async (
 
   const db = banco()
 
-  // -- O pavio: uma edição de verdade, pela tela ------------------------------
+  // -- O pavio: mover o card, pela action do quadro ---------------------------
   // Tem de passar pelo app: é o emissor que despacha para o motor, e alterar o
   // banco por fora não dispararia nada.
-  // A ficha lê a aba por `?aba=` (`?tab=` abria a Visão geral). Era o `isVisible()`
-  // — que não espera a tela — que pulava o clique na aba sob carga.
-  await page.goto(`/admin/clients/${clientId}?aba=dados`)
-
-  const campoNome = page.locator('xpath=//p[normalize-space()="Nome *"]/following::input[1]')
-  await campoNome.fill(`${nome} editado`)
-  await page.getByRole('button', { name: /Salvar dados/ }).click()
+  await chamarAcao(page, 'actions/leads.ts', 'updateLeadStage', '/admin/oportunidades', [leadId, etapa2, ''])
 
   await expect.poll(async () => {
-    const { data } = await db.from('clients').select('name').eq('id', clientId!).single()
-    return data?.name
-  }, { message: 'a edição deveria ter sido gravada' }).toBe(`${nome} editado`)
+    const { data } = await db.from('leads').select('crm_stage_id').eq('id', leadId!).single()
+    return data?.crm_stage_id
+  }, { message: 'o card deveria ter saído da etapa 1' }).not.toBe(etapa1)
 
   // -- O anel roda… -----------------------------------------------------------
   const contar = async () => {
@@ -161,7 +179,7 @@ test('duas automações que se alimentam param no teto de profundidade', async (
 
   expect(estavel, 'o número de execuções tem de estabilizar — se subir para sempre, há laço').toBeGreaterThanOrEqual(3)
   // O número exato depende de quantas execuções alteram algo de verdade (a
-  // tag alterna, então nem toda passagem emite evento). O que importa é a
+  // etapa alterna, então nem toda passagem emite evento). O que importa é a
   // ordem de grandeza: com a trava são unidades; sem ela, seriam centenas em
   // poucos segundos.
   expect(depois, 'o anel tem de fechar em poucas voltas, não em centenas').toBeLessThanOrEqual(20)
@@ -177,7 +195,7 @@ test('duas automações que se alimentam param no teto de profundidade', async (
   // essa marca que o motor distingue o que ELE fez do que uma pessoa fez.
   const { data: daAutomacao } = await db
     .from('domain_events').select('origem, ator_nome')
-    .eq('entidade_id', clientId!).eq('origem', 'automacao')
+    .eq('entidade_id', leadId!).eq('origem', 'automacao')
 
   expect((daAutomacao ?? []).length, 'as alterações da automação têm origem própria').toBeGreaterThan(0)
   expect(daAutomacao![0]!.ator_nome).toContain('Automação')

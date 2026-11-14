@@ -430,7 +430,7 @@ test.describe('os indicadores do dia sem hora (F62b)', () => {
 
     for (const [fn, args] of [
       ['metrics_clientes_para_reativar_rede', { p_tenant: unidade!.tenantId, p_desde: new Date().toISOString(), p_limite: 50 }],
-      ['metrics_clientes_para_reativar', { p_tenant: unidade!.tenantId, p_branch_id: unidade!.branchId, p_tag: TAG, p_desde: new Date().toISOString(), p_limite: 50 }],
+      ['metrics_clientes_para_reativar', { p_tenant: unidade!.tenantId, p_branch_id: unidade!.branchId, p_desde: new Date().toISOString(), p_limite: 50 }],
     ] as const) {
       const r = await db().rpc(fn, args)
       expect(r.error, fn).toBeNull()

@@ -5,9 +5,9 @@ import { filtrosDoPublico } from '@/lib/notifications/resumo-do-publico'
 describe('os filtros do público da campanha, em português', () => {
   it('diz cada filtro, com os nomes', () => {
     expect(filtrosDoPublico(
-      { tags: ['VIP'], branch_ids: ['b1'], genders: ['F'], procedure_ids: ['p1'], has_app_account: true, max_days_since_visit: 60 },
-      { unidades: [{ id: 'b1', name: 'Setor Bueno' }], procedimentos: [{ id: 'p1', name: 'Botox' }] },
-    )).toEqual(['Tags: VIP', 'Unidades: Setor Bueno', 'Sexo: feminino', 'Fez: Botox', 'Sem visita há mais de 60 dias', 'Só quem tem o app'])
+      { tags: ['VIP'], genders: ['F'], procedure_ids: ['p1'], has_app_account: true, max_days_since_visit: 60 },
+      { procedimentos: [{ id: 'p1', name: 'Botox' }] },
+    )).toEqual(['Tags: VIP', 'Sexo: feminino', 'Fez: Botox', 'Sem visita há mais de 60 dias', 'Só quem tem o app'])
   })
   it('sem filtro, nada (a tela diz "todas as clientes ativas")', () => {
     expect(filtrosDoPublico({})).toEqual([])

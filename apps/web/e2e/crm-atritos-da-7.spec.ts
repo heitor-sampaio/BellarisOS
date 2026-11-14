@@ -138,7 +138,10 @@ test('A15: o "Revisar" da campanha mostra os filtros do público', async ({ brow
   })
 })
 
-test('A16/A17: a origem do CSV se mapeia nos contatos, a prévia diz como entra e diz o e-mail que se perde', async ({ browser }) => {
+// T3 do Bloco Tags (2026-11-14): sem a oportunidade, a origem não tem onde
+// morar — não vira tag da pessoa, e a coluna fica em "Não importar". Com a
+// oportunidade, ela é a origem do card (importacao-contatos.spec.ts).
+test('A16/A17: sem oportunidade a origem do CSV não vira tag (a coluna não se importa), e a prévia diz o e-mail que se perde', async ({ browser }) => {
   const fone = `(48) 9${fim}-7777`
   const conteudo = [
     'Nome,WhatsApp,E-mail,Origem',
@@ -153,12 +156,11 @@ test('A16/A17: a origem do CSV se mapeia nos contatos, a prévia diz como entra 
     }).toPass()
     await p.getByRole('button', { name: 'Como contatos do CRM', exact: true }).click()
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
-    await expect(p.getByLabel('Campo da coluna Origem')).toHaveValue('op_origem')
+    await expect(p.getByLabel('Campo da coluna Origem')).toHaveValue('')
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
     const previa = p.locator('[data-previa]')
-    await expect(previa.locator('[data-origens-da-planilha]')).toContainText('facebook → Meta Ads')
-    await expect(previa.locator('[data-origens-da-planilha]')).toContainText('entra como tag da pessoa')
-    await expect(previa).not.toContainText('a origem se juntam')
+    await expect(previa.locator('[data-origens-da-planilha]')).toHaveCount(0)
+    await expect(previa).not.toContainText('tag da pessoa')
     await expect(previa).toContainText(`o e-mail desta linha (joana-${marca}@exemplo.com) não entra`)
   })
 })

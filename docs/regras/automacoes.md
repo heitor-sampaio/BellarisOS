@@ -280,6 +280,21 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   cadastrou anteontem. Os filtros moram em `filtrosDaBusca`
   (`lib/automacoes/tempo.ts`): o motor, a contagem do passo e a conta antes de
   ligar leem por ela.
+- **"Buscar clientes" é da rede, sem unidade** (T1 do Bloco Tags, 2026-11-14:
+  a cliente é da REDE — não existe tag de unidade, e `clients.branch_id` não
+  decide nada). O campo "Unidade" do passo saiu, e o dia do aniversário é o
+  do fuso da rede. Um `unidadeId` gravado antes é ignorado.
+- **"Adicionar tag" só adiciona** (T4 do Bloco Tags, 2026-11-14; a regra das
+  Tags do CLAUDE.md §1: "o sistema não coloca tag nenhuma automaticamente em
+  ninguém"). A ação (era "Marcar com tag", com "Adicionar/Remover") põe na
+  cliente uma das tags CADASTRADAS da rede (o seletor lista Configurações →
+  Tags) — é o único caminho do sistema que grava tag, e só porque a rede montou
+  o fluxo. Tirar tag é da pessoa, na ficha. Um passo antigo gravado com o modo
+  de remover não faz nada e diz por quê no passo a passo ("Refaça este passo")
+  — inverter o que a rede montou seria pior (`executar.ts`). A trava:
+  `tests/tags-so-quem-marca.test.ts`. O anel de automações
+  (`e2e/automacoes-anel.spec.ts`) passou a se fechar por "Mover de etapa"
+  (etapa 2 ↔ etapa 3): a tag só cresce, e não fecha anel.
 - **O "N dias depois do ÚLTIMO atendimento" da campanha** (C52, F69) não pega
   quem concluiu no dia-alvo e voltou depois (`concluiramNoDia` tira quem tem
   concluído depois do fim daquele dia). Prova:
@@ -326,6 +341,15 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   Só quem tem o app" (`filtrosDoPublico`, `lib/notifications/resumo-do-publico.ts`,
   `data-filtros-do-publico`); sem filtro, "todas as clientes ativas". Prova: o
   mesmo spec ("A15"), `tests/campanha-filtros-do-publico.test.ts`.
+- **O público da campanha não tem filtro de unidade** (MK2 do Bloco Tags,
+  2026-11-14: "as tags e o filtro de tag já cobrem o caso"). A seção
+  "Unidades" do público saiu, e "Tags do CRM" passou a ser "Tags" (as da rede,
+  Configurações → Tags). `branch_ids` saiu de `AudienceRules`, de
+  `filtrosDaCampanha` e de `clientes_do_publico` (migration
+  `20261114800001`); a regra de unidade gravada numa campanha antiga não
+  recorta mais, e o detalhe não a mostra. Prova:
+  `e2e/campanha-cada-filtro-chega.spec.ts` ("unidade gravada antes"),
+  `e2e/tags-sem-unidade.spec.ts` ("MK2").
 - **Cada regra gravada do público chega à prévia E ao disparo** (D1 da 9ª
   simulação, 2026-11-07, ALTA: a "Reativação 60 dias" gravava
   `max_days_since_visit: 60` e nem a prévia nem o disparo o liam — ativada,
@@ -441,7 +465,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 
 ```
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
-❌ Montar o filtro do público da campanha à mão (branch_ids: rules.branch_ids…) — é filtrosDaCampanha, senão a regra nova fica sem leitor e a campanha vai a todas (D1 da 9ª)
+❌ Montar o filtro do público da campanha à mão (genders: rules.genders…) — é filtrosDaCampanha, senão a regra nova fica sem leitor e a campanha vai a todas (D1 da 9ª)
 ❌ Contar "quem receberia hoje" da campanha automática pelo público inteiro, ou escolher as clientes do gatilho fora de lib/notifications/gatilho-de-hoje (o cron e o detalhe dividem a escolha — D10 da 12ª)
 ❌ Trazer um gatilho de campanha já marcado, ou dizer quando ela sai fora de quandoDispara (a hora é a do cron, jaEhHoraDeDisparar — D8 da 11ª)
 ❌ Criar fato no banco (origem 'banco') e esperar que alguém o despache na hora — quem despacha é o cron (despacharFatosDoBanco), reivindicando despachado_em (C2)
@@ -450,4 +474,6 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 ❌ Decidir a janela "Ligar a automação?" pelo canal à mão — é canaisParaACliente (lib/automacoes/antes-de-ligar.ts): todo fluxo que chega à cliente, push incluído (A10 da 14ª)
 ❌ Mandar campanha fora de enviarCampanha, ou ler os aparelhos pela ficha (push_tokens.client_id) — são os de todas as fichas do login, e o disparo é reivindicado por dia (C51/C56)
 ❌ Gravar o limite vazio da automação como undefined (some no JSON e o padrão volta) — é null (C54)
+❌ Ação de automação que TIRA tag, ou caminho que põe tag sem ser a "Adicionar tag" que a rede montou (o sistema não põe tag sozinho — tests/tags-so-quem-marca.test.ts trava)
+❌ Filtro de unidade no público da campanha ou no "Buscar clientes" (a cliente é da rede — MK2/T1 do Bloco Tags)
 ```

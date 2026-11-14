@@ -7,7 +7,7 @@ import { SO_CONSULTA_CLIENTES } from '@/lib/clients/so-consulta'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
-import { unitTag, cpfValido, telefoneDoCadastro, telefoneInternacional } from '@estetica-os/utils'
+import { cpfValido, telefoneDoCadastro, telefoneInternacional } from '@estetica-os/utils'
 import { after } from 'next/server'
 import { enviarEventoCapi } from '@/lib/ads/capi'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
@@ -162,11 +162,6 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   const comAcesso = formData.get('_acesso') === 'on'
   const tagsRaw   = formData.get('tags') as string
   const tags: string[] = tagsRaw ? JSON.parse(tagsRaw) : []
-
-  // Unidade de cadastro entra como tag (métrica). O trigger de agendamento adiciona
-  // as demais unidades que o cliente vier a frequentar.
-  const unitName = (branch as { name?: string }).name
-  if (unitName && !tags.includes(unitTag(unitName))) tags.push(unitTag(unitName))
 
   // Regra de negócio de CRIAR CLIENTE — idêntica no cadastro manual e na conversão de lead.
   if (!name || !phone)                     return { error: 'Nome e telefone são obrigatórios.' }

@@ -16,7 +16,7 @@ import { interpolarTexto, caminhosDoTexto } from './variaveis'
 import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { notificarEquipe, anotarNaLinhaDoTempo } from './acoes'
 import {
-  moverDeEtapa, marcarDesfecho, mudarTagDoCliente, definirResponsavel,
+  moverDeEtapa, marcarDesfecho, adicionarTagAoCliente, definirResponsavel,
   type AtorDaAutomacao,
 } from './acoes-crm'
 import { mandarMensagem } from './acoes-mensagem'
@@ -481,13 +481,14 @@ async function rodarNo(
     }
 
     case NODES.ACAO_TAG_CLIENTE: {
-      const cfg = no.config as ConfigAcaoTagCliente
-      await hidratarParaCaminhos(contexto, evento, run.tenant_id, ['cliente'])
-      return {
-        resumo: await mudarTagDoCliente(
-          atorDaAutomacao(run, automacao), contexto, cfg.tag, cfg.modo ?? 'adicionar',
-        ),
+      const cfg = no.config as ConfigAcaoTagCliente & { modo?: string }
+      // T4 (Bloco Tags): a ação só adiciona. Um nó antigo, gravado para tirar
+      // a tag, não faz nada — inverter o que a rede montou seria pior.
+      if (cfg.modo && cfg.modo !== 'adicionar') {
+        return { resumo: { alterado: false, motivo: 'A ação só adiciona tag: a de tirar saiu do sistema. Refaça este passo.' } }
       }
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, ['cliente'])
+      return { resumo: await adicionarTagAoCliente(atorDaAutomacao(run, automacao), contexto, cfg.tag) }
     }
 
     case NODES.ACAO_ATRIBUIR: {
@@ -521,8 +522,9 @@ async function rodarNo(
 
     case NODES.BUSCAR_CLIENTES: {
       const cfg = no.config as ConfigBuscarClientes
-      const { clientes, truncado } = await buscarClientes(run.tenant_id, cfg,
-        cfg.unidadeId ? await fusoDaUnidade(run.tenant_id, cfg.unidadeId) : await fusoDaRede(run.tenant_id))
+      // A busca é da rede (T1 do Bloco Tags: a cliente é da rede, sem unidade),
+      // e o dia do aniversário, no fuso da rede.
+      const { clientes, truncado } = await buscarClientes(run.tenant_id, cfg, await fusoDaRede(run.tenant_id))
 
       const proximo = ligacaoSaindo(automacao.grafo, no.id)
       if (!proximo) return { parar: true, resumo: { encontrados: clientes.length, motivo: 'Nada ligado depois da busca.' } }

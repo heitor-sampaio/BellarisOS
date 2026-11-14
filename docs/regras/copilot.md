@@ -119,9 +119,12 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     (`copilot_clientes_da_tag`) e a tag que não existe devolve o vocabulário;
     `marcar_tags` marca só o que existe no vocabulário, com o nome dele, pelo
     núcleo da ficha (`atualizarClienteCore`). Criar tag é da tela.
-  - **Recorte por unidade nas listas de clientes** só com mais de uma unidade:
-    na clínica única, o cliente sem a tag "Unidade: …" sumia da lista. O
-    "sem visita" é o "Reativar clientes" do dashboard
+  - **As listas de clientes são da rede** (Bloco Tags, 2026-11-14: não
+    existe tag de unidade): "novos", "tag" e "aniversariantes" não recortam
+    por unidade (`copilot_clientes_da_tag` perdeu o `p_tag_unidade`), a ficha
+    não separa "unidades" das tags, e criar oportunidade não põe tag. O
+    "sem visita" é o "Reativar clientes" do dashboard — na unidade, as
+    atendidas nela
     (`getClientesParaReativarDoRecorte`, r3-f13-10: "os dois têm de dar a
     mesma resposta").
   - **Os "clientes novos" são os do dashboard** (sobra da F49, 10ª simulação,

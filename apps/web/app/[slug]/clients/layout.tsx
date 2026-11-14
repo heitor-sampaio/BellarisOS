@@ -4,7 +4,7 @@ import { getTenantContext, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
-import { getCachedBranchClients, getCachedUltimasVisitas } from '@/lib/cached-queries'
+import { getCachedNetworkClients, getCachedUltimasVisitas } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 import { aniversariantesDoMes } from '@/lib/clientes/aniversariantes'
 
@@ -33,13 +33,16 @@ export default async function ClientsLayout({
     .single(), 'buscar a unidade')
   if (!branch) notFound()
 
+  // O portal da unidade vê TODAS as clientes da rede (CL3 do Bloco Tags,
+  // 2026-11-14; H5: "A cliente é da clínica"): não existe tag de unidade para
+  // recortar a lista, e a busca "fora da unidade" (A17 da 8ª) saiu com ela.
   const [rawClients, ultimasVisitas, aniversariantes] = await Promise.all([
-    getCachedBranchClients(branch.id, ctx.tenantId!),
-    getCachedUltimasVisitas(ctx.tenantId!, branch.id),
+    getCachedNetworkClients(ctx.tenantId!),
+    getCachedUltimasVisitas(ctx.tenantId!, null),
     aniversariantesDoMes(ctx.tenantId!),
   ])
 
-  // A última visita NESTA unidade, agregada no banco.
+  // A última visita na REDE, agregada no banco.
   const lastVisitMap = new Map(ultimasVisitas.map(v => [v.client_id, v.ultima]))
 
   const thirtyDaysAgo = subDays(new Date(), 30)
@@ -68,8 +71,6 @@ export default async function ClientsLayout({
           basePath={`/${slug}/clients`}
           totalActive={totalActive}
           aniversariantes={aniversariantes}
-          // A17 da 8ª: a cliente da clínica que não está na lista desta unidade.
-          portalDaUnidade={slug}
         />
       }
     >

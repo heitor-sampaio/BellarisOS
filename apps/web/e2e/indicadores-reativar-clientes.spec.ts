@@ -19,16 +19,14 @@ test.afterAll(async () => { await rede?.limpar() })
 test('cadastrada há pouco não é "para reativar"; cadastrada há meses e sem vir, é', async () => {
   const nova = await rede!.criarCliente('Nova')
   const antiga = await rede!.criarCliente('Antiga')
-  const { data: un } = await db().from('branches').select('name').eq('id', rede!.branchId).single<{ name: string }>()
-  const tag = `Unidade: ${un!.name}`
   const haDias = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString()
   for (const [id, criada] of [[nova, haDias(0)], [antiga, haDias(200)]] as const) {
-    const { error } = await db().from('clients').update({ tags: [tag], is_active: true, created_at: criada }).eq('id', id)
+    const { error } = await db().from('clients').update({ is_active: true, created_at: criada }).eq('id', id)
     expect(error).toBeNull()
   }
 
   const { data, error } = await db().rpc('metrics_clientes_para_reativar', {
-    p_tenant: rede!.tenantId, p_branch_id: rede!.branchId, p_tag: tag, p_desde: haDias(90), p_limite: 10,
+    p_tenant: rede!.tenantId, p_branch_id: rede!.branchId, p_desde: haDias(90), p_limite: 10,
   })
   expect(error).toBeNull()
   const ids = ((data as { lista: { id: string }[] }).lista).map(c => c.id)

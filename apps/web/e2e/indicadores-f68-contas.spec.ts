@@ -15,9 +15,10 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * - C49: os motivos de perda não contam o funil arquivado; os agendamentos do
  *   comercial contam por `aconteceu_em`; o "Reativar" da unidade mostra a
  *   última visita NA UNIDADE (a inatividade é dela).
- * - C6 / C45: a unidade da cliente é a TAG ("Unidade: X", a da lista da
- *   unidade), não a de cadastro — no público da campanha e da automação e nas
- *   novas clientes por unidade; o total da rede conta a clínica inteira.
+ * - C45, revista no Bloco Tags (2026-11-14, T1): a cliente da unidade nas
+ *   novas clientes por unidade é a ATENDIDA nela (agendamento não cancelado),
+ *   não a tag "Unidade: X" nem a de cadastro; o total da rede conta a clínica
+ *   inteira. O público da campanha não tem mais filtro de unidade (MK2).
  */
 
 const marca = Date.now().toString(36)
@@ -137,8 +138,8 @@ test.describe('F68 — as contas no banco', () => {
 
   test('C49: o "Reativar" da unidade mostra a última visita NELA, não a de outra unidade', async () => {
     const cliente = await rede!.criarCliente('Sumida da A')
-    const { error: eTag } = await db().from('clients').update({ tags: [`Unidade: ${nomeA}`, `Unidade: ${nomeB}`], created_at: iso(agora - 200 * DIA) }).eq('id', cliente)
-    expect(eTag).toBeNull()
+    const { error: eData } = await db().from('clients').update({ created_at: iso(agora - 200 * DIA) }).eq('id', cliente)
+    expect(eData).toBeNull()
     const visita = (unidade: string, dias: number) => db().from('appointments').insert({
       branch_id: unidade, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
       status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 0,
@@ -146,8 +147,9 @@ test.describe('F68 — as contas no banco', () => {
     })
     expect((await visita(rede!.branchId, 120)).error).toBeNull()
     expect((await visita(unidadeB, 10)).error).toBeNull()
+    // A cliente da unidade é a atendida nela (T1 do Bloco Tags, 2026-11-14).
     const { data, error } = await db().rpc('metrics_clientes_para_reativar', {
-      p_tenant: rede!.tenantId, p_branch_id: rede!.branchId, p_tag: `Unidade: ${nomeA}`,
+      p_tenant: rede!.tenantId, p_branch_id: rede!.branchId,
       p_desde: iso(agora - 90 * DIA), p_limite: 50, p_professional_id: null,
     })
     expect(error).toBeNull()
@@ -158,45 +160,56 @@ test.describe('F68 — as contas no banco', () => {
     expect(dias).toBe(120)
   })
 
-  test('C6: o público da campanha e da automação pela TAG da unidade, não pela de cadastro', async () => {
-    // Cadastrada na A, frequenta só a B.
+  test('MK2: o público da campanha e da automação não recorta por unidade (o branch_ids gravado antes é ignorado)', async () => {
     const cliente = await rede!.criarCliente('Só vai à B')
-    const { error } = await db().from('clients').update({ tags: [`Unidade: ${nomeB}`] }).eq('id', cliente)
-    expect(error).toBeNull()
     const publico = async (unidade: string) => {
       const { data, error: e } = await db().rpc('clientes_do_publico', { p_tenant: rede!.tenantId, p_filtros: { branch_ids: [unidade], client_ids: [cliente] } })
       expect(e).toBeNull()
       return (data as { id: string }[]).map(c => c.id)
     }
     expect(await publico(unidadeB)).toEqual([cliente])
-    expect(await publico(rede!.branchId)).toEqual([])
+    expect(await publico(rede!.branchId)).toEqual([cliente])
   })
 
-  test('C6/C45: as novas clientes de cada unidade pela tag; o total da rede, a clínica inteira', async () => {
-    // Uma nova só da B (cadastrada na A), uma nova das duas, uma nova sem unidade nenhuma.
+  test('T1/C45: as novas clientes de cada unidade são as atendidas nela (não a tag); o total da rede, a clínica inteira', async () => {
+    // Uma nova atendida só na B (cadastrada na A, com a tag "Unidade: A" — que
+    // não conta), uma nas duas, uma sem atendimento, uma com o da B cancelado.
     const soB = await rede!.criarCliente('Nova da B')
     const duas = await rede!.criarCliente('Nova das duas')
     const nenhuma = await rede!.criarCliente('Nova sem unidade')
-    await db().from('clients').update({ tags: [`Unidade: ${nomeB}`] }).eq('id', soB)
-    await db().from('clients').update({ tags: [`Unidade: ${nomeA}`, `Unidade: ${nomeB}`] }).eq('id', duas)
+    const cancelada = await rede!.criarCliente('Nova cancelada na B')
+    await db().from('clients').update({ tags: [`Unidade: ${nomeA}`] }).eq('id', soB)
     await db().from('clients').update({ tags: [], branch_id: null }).eq('id', nenhuma)
+    const marcar = async (cliente: string, unidade: string, status = 'SCHEDULED') => {
+      const { error } = await db().from('appointments').insert({
+        branch_id: unidade, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
+        status, source: 'INTERNAL', duration_min: 30, price: 0, scheduled_at: iso(agora + 3 * DIA),
+      })
+      expect(error).toBeNull()
+    }
+    await marcar(soB, unidadeB)
+    await marcar(duas, rede!.branchId)
+    await marcar(duas, unidadeB)
+    await marcar(cancelada, unidadeB, 'CANCELLED')
     const novas = async (unidades: string[] | null) => {
       const { data, error } = await db().rpc('metrics_core', { p_tenant: rede!.tenantId, p_branch_ids: unidades, ...janelaDeHoje, p_professional_id: null })
       expect(error).toBeNull()
       return Number(data![0]!.new_clients)
     }
-    const { data: todas } = await db().from('clients').select('id, tags, created_at').eq('tenant_id', rede!.tenantId).gte('created_at', janelaDeHoje.p_from)
-    const comTag = (n: string) => (todas ?? []).filter(c => ((c.tags as string[] | null) ?? []).includes(`Unidade: ${n}`)).length
-    expect(await novas([unidadeB])).toBe(comTag(nomeB))
-    expect(await novas([rede!.branchId])).toBe(comTag(nomeA))
+    const { data: todas } = await db().from('clients').select('id, created_at').eq('tenant_id', rede!.tenantId).gte('created_at', janelaDeHoje.p_from)
+    const ids = (todas ?? []).map(c => c.id as string)
+    const { data: ags } = await db().from('appointments').select('client_id, branch_id, status').in('client_id', ids)
+    const atendidasEm = (u: string) => new Set((ags ?? []).filter(a => a.branch_id === u && a.status !== 'CANCELLED').map(a => a.client_id as string)).size
+    expect(await novas([unidadeB])).toBe(atendidasEm(unidadeB))
+    expect(await novas([rede!.branchId])).toBe(atendidasEm(rede!.branchId))
     expect(await novas(null)).toBe((todas ?? []).length)
+    expect(atendidasEm(unidadeB), 'a da B e a das duas; a cancelada não').toBeGreaterThanOrEqual(2)
 
     // O "Por filial" (metrics_by_branch) conta a MESMA régua.
     const { data: porUnidade, error } = await db().rpc('metrics_by_branch', { p_tenant: rede!.tenantId, ...janelaDeHoje })
     expect(error).toBeNull()
     const linha = (id: string) => Number((porUnidade as { branch_id: string; new_clients: number }[]).find(l => l.branch_id === id)!.new_clients)
-    expect(linha(unidadeB)).toBe(comTag(nomeB))
-    expect(linha(rede!.branchId)).toBe(comTag(nomeA))
-    expect(comTag(nomeB)).toBeGreaterThanOrEqual(2)
+    expect(linha(unidadeB)).toBe(atendidasEm(unidadeB))
+    expect(linha(rede!.branchId)).toBe(atendidasEm(rede!.branchId))
   })
 })

@@ -81,7 +81,7 @@ test('a rede nova nasce com as tags padrão, e a tag gravada em qualquer lugar e
   expect(nomes).toEqual(expect.arrayContaining(['VIP', 'Indicação', 'Retorno', 'Alergias', 'Gestante', 'Idoso', 'Plano', 'Desconto', POS]))
   // "retorno" é a mesma de "Retorno" (sem caixa): não vira outra.
   expect(nomes.filter(n => n.toLowerCase() === 'retorno')).toHaveLength(1)
-  // A de unidade é do sistema: não entra.
+  // O sistema não põe tag sozinho (Bloco Tags, 2026-11-14): nenhuma "Unidade: …".
   expect(nomes.some(n => n.startsWith('Unidade: '))).toBe(false)
 })
 

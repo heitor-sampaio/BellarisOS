@@ -12,7 +12,7 @@ import {
   registrarEventoLead, estadoAtualDoLead,
   diferencas, listaLegivel,
 } from '@/lib/lead-events'
-import { isUnitTag, unitTagName, parseDinheiro } from '@estetica-os/utils'
+import { parseDinheiro } from '@estetica-os/utils'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
 import { pessoaDoNovoLeadValida } from '@/lib/crm/pessoa-para-novo-lead'
@@ -355,32 +355,12 @@ export async function updateLead(
     }
 
     if (antes) {
-      // A unidade é tag, e tag é conjunto: o lead pode ter mais de uma, ou
-      // nenhuma. Ainda assim tem evento próprio, porque é a marca que diz para
-      // quem o lead está endereçado — e trocá-la é o que alguém faria para
-      // puxar um lead para si.
-      const unidadesDepois = novasTags
-        ? listaLegivel(novasTags.filter(isUnitTag).map(unitTagName))
-        : antes.unidades
-      if (unidadesDepois !== antes.unidades) {
-        await registrarEventoLead({
-          tenantId: ctx.tenantId!,
-          leadId,
-          type:     'UNIT_CHANGED',
-          changes: [{
-            campo: 'Unidade',
-            de:    antes.unidades   || null,
-            para:  unidadesDepois   || null,
-          }],
-          ...autor,
-        })
-      }
-
       const depois: Record<string, string | null> = {
         name, phone, email, social_media: social, source, notes,
         procedures: listaLegivel(await nomesDeProcedimentos(admin, ctx.tenantId!, procedureIds)),
       }
-      if (novasTags) depois.tags = listaLegivel(novasTags.filter(t => !isUnitTag(t)))
+      // A "Unidade: X" é uma tag como as outras (H16): sem evento próprio.
+      if (novasTags) depois.tags = listaLegivel(novasTags)
 
       const mudou = diferencas(antes.campos, depois)
       if (mudou.length > 0) {

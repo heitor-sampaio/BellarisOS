@@ -29,8 +29,8 @@ describe('deriveLeadSource', () => {
     expect(deriveLeadSource({}).source).toBe('Orgânico')
   })
 
-  it('a tag de origem espelha o source', () => {
-    expect(deriveLeadSource({ gclid: 'abc' }).tags).toEqual(['Google Ads'])
+  it('a origem não vira tag (T2 do Bloco Tags)', () => {
+    expect(deriveLeadSource({ gclid: 'abc' })).not.toHaveProperty('tags')
   })
 })
 
@@ -46,8 +46,8 @@ describe('resolveLeadSource', () => {
   // D14 da 6ª simulação (2026-11-04; princípio 4, "não chutar"): o lead criado
   // com "Não informado" aparecia "Orgânico", que ninguém escolheu.
   it('sem nada, sem origem (a tela diz "Não informado") e sem tag de origem', () => {
-    expect(resolveLeadSource({}, '   ')).toEqual({ source: null, tags: [] })
-    expect(resolveLeadSource({}, null)).toEqual({ source: null, tags: [] })
+    expect(resolveLeadSource({}, '   ')).toEqual({ source: null })
+    expect(resolveLeadSource({}, null)).toEqual({ source: null })
   })
 })
 

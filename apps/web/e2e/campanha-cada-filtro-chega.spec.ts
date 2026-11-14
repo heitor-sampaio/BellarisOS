@@ -94,7 +94,9 @@ const casos: { regra: string; regras: () => Record<string, unknown>; quem: () =>
     // Não entram: quem veio há 10 e há 5 dias, nem a cadastrada hoje.
     quem: () => ['vip', 'outraUnidade', 'masculino', 'fezHa100', 'nuncaVeioAntiga', 'comApp'] },
   { regra: 'tag', regras: () => ({ tags: [`VIP ${marca}`] }), quem: () => ['vip'] },
-  { regra: 'unidade', regras: () => ({ branch_ids: [f!.segunda] }), quem: () => ['outraUnidade'] },
+  // MK2 do Bloco Tags (2026-11-14): o público é da rede, sem filtro de unidade —
+  // a regra de unidade gravada antes não recorta (a VIP é da outra unidade e recebe).
+  { regra: 'unidade gravada antes (não recorta)', regras: () => ({ branch_ids: [f!.segunda], tags: [`VIP ${marca}`] }), quem: () => ['vip'] },
   { regra: 'sexo', regras: () => ({ genders: ['M'] }), quem: () => ['masculino'] },
   { regra: 'procedimento feito', regras: () => ({ procedure_ids: [f!.outra.procedureId] }), quem: () => ['fezHa100', 'veioHa10', 'duasVisitas'] },
   { regra: 'só quem tem o app', regras: () => ({ has_app_account: true }), quem: () => ['comApp'] },

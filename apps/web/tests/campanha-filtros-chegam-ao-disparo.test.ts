@@ -16,10 +16,10 @@ describe('as regras da campanha viram os filtros do público', () => {
 
   it('cada regra gravada chega ao filtro', () => {
     expect(filtrosDaCampanha({
-      branch_ids: ['b1'], genders: ['F'], tags: ['VIP'], procedure_ids: ['p1'],
+      genders: ['F'], tags: ['VIP'], procedure_ids: ['p1'],
       has_app_account: true, max_days_since_visit: 60, min_visits: 2,
     }, agora)).toEqual({
-      branch_ids: ['b1'], genders: ['F'], tags: ['VIP'], procedure_ids: ['p1'],
+      genders: ['F'], tags: ['VIP'], procedure_ids: ['p1'],
       has_app_account: true,
       // 60 dias antes de agora: sem atendimento concluído desde então, e
       // cliente da clínica de antes disso (a cadastrada ontem não "sumiu").
@@ -41,6 +41,11 @@ describe('as regras da campanha viram os filtros do público', () => {
     const chaves = [...bloco.matchAll(/^\s*(\w+)\?:/gm)].map(m => m[1]!)
     const leitor = fs.readFileSync(path.resolve(__dirname, '../lib/notifications/filtros-da-campanha.ts'), 'utf8')
     for (const chave of chaves) expect(leitor, `a regra ${chave}`).toContain(`regras.${chave}`)
+  })
+
+  it('a regra de unidade gravada antes não filtra (MK2 do Bloco Tags: o público é da rede)', () => {
+    const antiga = { branch_ids: ['b1'], tags: ['VIP'] } as Parameters<typeof filtrosDaCampanha>[0]
+    expect(filtrosDaCampanha(antiga, agora)).not.toHaveProperty('branch_ids')
   })
 
   it('a prévia, o disparo e o cron montam o público por ela', () => {

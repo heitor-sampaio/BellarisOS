@@ -1774,6 +1774,67 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Tags: a tag de unidade sai do sistema, e só a pessoa marca tag
+
+Do plano de adaptação (a revisão do Heitor de 2026-11-13: H16 e a regra das
+Tags no CLAUDE.md §1). T1–T4, CL1–CL3, AG2 e MK2. MK1/AU1 ficam para o bloco
+deles.
+
+- **T1, no banco** (migration `20261114800001_tags_sem_unidade`, aplicada):
+  ⚠️ DESTRUTIVA — `drop trigger trg_appointment_unit_tag` e `drop function`
+  de `on_appointment_add_unit_tag()`, `tags_das_unidades(uuid[])` e das
+  assinaturas antigas de `metrics_clientes_para_reativar` (sem o `p_tag`) e
+  `copilot_clientes_da_tag` (sem o `p_tag_unidade`). `registrar_tags` passa a
+  registrar a "Unidade: …" como qualquer tag. Sem backfill: as "Unidade: …"
+  gravadas ficam como tags comuns (o banco é zerado antes do lançamento). Os
+  corpos partiram dos da produção (`pg_get_functiondef`).
+- **"A cliente nesta unidade" é o FATO** (decisão pelos princípios 3 e 4 e
+  pela H16): as novas clientes de uma unidade (`metrics_core`,
+  `metrics_new_clients_series`, `metrics_by_branch`) e o "Reativar" da
+  unidade são as clientes com agendamento NÃO CANCELADO nela; o recorte que é
+  a clínica inteira (`recorte_e_a_clinica`, e a rede de uma unidade só) conta
+  todas, também a nova ainda sem agendamento. A que foi atendida em duas
+  unidades conta em cada uma e uma vez no total — a frase que o ranking já
+  dizia, agora "atendidas na unidade" (era "que frequentam"). Resolve a A26 e
+  o `fuso-da-unidade` "desde 10/03" que a fase 4 do PDV deixou.
+- **T2/T3**: a origem não vira tag — nem na conversa de anúncio
+  (`deriveLeadSource` sem `tags`), nem na oportunidade criada à mão
+  (`resolveLeadSource`), nem na importação (a coluna "Origem" sem
+  oportunidade saiu; com oportunidade, é a origem dela).
+- **T4**: a ação "Marcar com tag" virou **"Adicionar tag"**: só adiciona, com
+  as tags da rede. O passo antigo salvo como "remover" não faz nada e diz
+  "Refaça este passo" (inverter para adicionar faria o contrário do que a
+  rede montou).
+- **CL1–CL3**: a lista de Clientes é a da rede nos dois portais
+  (`getCachedNetworkClients`; saíram `getCachedBranchClients`, a unidade na
+  linha, o filtro "Unidade", o contador por unidade e a busca "fora da
+  unidade" com `actions/clientes-da-clinica.ts`); a última visita é a da
+  rede. A ficha perdeu "Unidades que frequenta"; o cadastro diz "A cliente é
+  da rede: aparece na lista de Clientes de todas as unidades". O lead perdeu
+  o evento "Unidade" (fica o tipo, para os antigos) e as sugestões de tag de
+  unidade; o lead novo nasce sem tag.
+- **AG2**: o Agendar do card e do inbox escolhe a unidade numa caixa que só
+  aparece com mais de uma unidade (`unidadeDaTag` saiu).
+- **MK2**: o público da campanha e o "Buscar clientes" das automações não têm
+  unidade (o `branch_ids` gravado antes é ignorado: a campanha antiga vai à
+  rede inteira); "Tags do CRM" virou "Tags".
+- **Copilot**: as listas de clientes são da rede; o "sem visita" é o Reativar.
+- **A trava**: `tests/tags-so-quem-marca.test.ts` — quem grava `tags` está
+  numa lista com o porquê (a pessoa ou a ação "Adicionar tag"); ninguém monta
+  nem lê "Unidade: X"; a origem não vira tag; as contas do banco não leem tag.
+- Specs que contrariavam a regra e mudaram: saíram
+  `clientes-da-clinica-na-unidade` e `clientes-contador-da-unidade` (A17 da
+  8ª e A24 da 5ª: a regra que provavam saiu) e `tests/unidade-da-tag`;
+  mudaram `indicadores-f68-contas` (C6/C45 pelo fato), `indicadores-unidade-na-url`
+  (Clientes não recorta), `indicadores-cenario`, `indicadores-reativar-clientes`,
+  `indicadores-reativar-clientes-da-rede`, `fuso-da-unidade` (sem `p_tag`),
+  `crm-atritos` (o lead nasce sem tag), `clientes-arquivar`, `listas-sem-corte`,
+  `importacao-contatos`, `crm-atritos-da-7`, `campanha-cada-filtro-chega`,
+  `campanha-aniversario`, `automacoes-anel` (o anel agora com "Mover de
+  etapa"), `automacoes-quadro-encaixe`, `tags-da-rede`; e os vitest de tags,
+  pacotes, lead-source, client-tags, textos do cadastro, importação e campanha.
+- Prova: `e2e/tags-sem-unidade.spec.ts` (8). Vizinhos: 28 specs, 148 testes — 134 passaram, 11 pulados (os que se pulam sozinhos), 2 falharam e 1 não rodou (o seguinte do serial): o A26 conferia o texto antigo ("conta em cada unidade" → "atendida em duas unidades conta em cada uma"), e o funil do `indicadores-cenario` esperava a etapa de ganho na posição 4 — a rede de teste, recriada em 13/11, nasce com o funil-modelo de 7 etapas (ganho na 5): não é deste bloco, e a conferência passou a olhar a contagem na etapa de ganho, não a posição. Os dois de novo: 11 passaram.
+
 ### 2026-11-14 — Bloco Procedimentos (e PC1/PC6 dos Pacotes): o catálogo é da permissão
 
 Do plano de adaptação (a revisão do Heitor de 2026-11-13).
@@ -2004,11 +2065,12 @@ CX4–CX6 do plano de adaptação (`docs/revisao.md`).
   a espécie negativa como aviso) foram tiradas ou trocadas pelo aviso das
   comandas abertas; o CSV do fechamento passou a ser baixado pelo Financeiro.
 - Prova: `e2e/pdv-fechar-o-dia.spec.ts`, `e2e/fechamento-do-dia-avisos.spec.ts`.
-- Fica para o bloco das Tags: `fuso-da-unidade` "a cliente 'desde 10/03' é
+- ~~Fica para o bloco das Tags: `fuso-da-unidade` "a cliente 'desde 10/03' é
   nova em 10/03 de Manaus" falha, e não por esta fase. `metrics_by_branch`
   conta as novas clientes pela tag "Unidade: X" (a A26). O teste grava
   `tags: [TAG]`, que tira a da unidade, e a conta dá 0. Quem resolve é o
-  bloco das Tags, quando a contagem deixar a tag.
+  bloco das Tags, quando a contagem deixar a tag.~~ Resolvido no Bloco Tags
+  (14/11): a conta é pelo atendimento na unidade, e o spec passa.
 - Sobra: no menu, o "Fechamento do dia" não fica marcado como ativo em
   `/pdv?fechar=1`.
 

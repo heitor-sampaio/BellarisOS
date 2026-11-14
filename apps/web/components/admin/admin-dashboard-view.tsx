@@ -612,7 +612,7 @@ export function AdminDashboardView({
               atendida — a coluna somava mais que o cartão "Novos clientes", e a
               tela não dizia por quê (princípio 3). */}
           <p data-recorte-do-ranking style={{ padding: '8px 20px', borderBottom: '1px solid var(--border)', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            Novos: as clientes novas que frequentam a unidade. Quem foi atendida em duas unidades conta em cada unidade em que foi atendida, por isso a soma pode passar do cartão “Novos clientes”.
+            Novos: as clientes novas atendidas na unidade (com agendamento nela). Quem foi atendida em duas unidades conta em cada uma, por isso a soma pode passar do cartão “Novos clientes”.
           </p>
 
           <div className="table-wrap">

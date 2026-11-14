@@ -22,7 +22,6 @@ import type { CampaignType, TriggerType, AudienceRules, CreateCampaignInput, Not
 
 // -- Types --------------------------------------------------------------
 
-type Branch    = { id: string; name: string; city: string | null }
 type Procedure = { id: string; name: string; category: string | null }
 
 const NOTIF_TYPES = [
@@ -38,7 +37,6 @@ const NOTIF_TYPES = [
 // -- Main Component -----------------------------------------------------
 
 interface Props {
-  branches:   Branch[]
   procedures: Procedure[]
   /** Editar em vez de criar. O TIPO fica travado: o servidor não o muda (é outra campanha). */
   existing?:  NotificationCampaign
@@ -46,7 +44,7 @@ interface Props {
 
 type Step = 1 | 2 | 3 | 4
 
-export function NotificationCampaignForm({ branches, procedures, existing }: Props) {
+export function NotificationCampaignForm({ procedures, existing }: Props) {
   const router = useRouter()
   // A campanha é da rede: a hora digitada é a do relógio comum das unidades (F64, D4).
   const fuso   = useFuso()
@@ -84,7 +82,6 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
   const [notifType,     setNotifType]     = useState(existing?.notification_type ?? 'promotion')
 
   // Step 3 — audience
-  const [branchIds,     setBranchIds]     = useState<string[]>(regras.branch_ids ?? [])
   const [genders,       setGenders]       = useState<('M'|'F'|'O')[]>(regras.genders ?? [])
   const [procIds,       setProcIds]       = useState<string[]>(regras.procedure_ids ?? [])
   const [tags,          setTags]          = useState<string[]>(regras.tags ?? [])
@@ -95,7 +92,6 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
   const [maxDays,       setMaxDays]       = useState<number | null>(regras.max_days_since_visit ?? null)
 
   const audienceRules: AudienceRules = {
-    ...(branchIds.length   && { branch_ids: branchIds }),
     ...(genders.length     && { genders }),
     ...(procIds.length     && { procedure_ids: procIds }),
     ...(tags.length        && { tags }),
@@ -433,25 +429,8 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
             Todos os filtros são opcionais. Deixe em branco para atingir todos os clientes ativos.
           </p>
 
-          {/* Branches */}
-          <div>
-            <SectionLabel>Unidades</SectionLabel>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {branches.map(b => (
-                <CheckRow
-                  key={b.id}
-                  label={b.name}
-                  sub={b.city ?? undefined}
-                  checked={branchIds.includes(b.id)}
-                  onChange={v => setBranchIds(v ? [...branchIds, b.id] : branchIds.filter(x => x !== b.id))}
-                />
-              ))}
-            </div>
-            {branchIds.length === 0 && (
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 4 }}>Nenhuma selecionada = todas as unidades</p>
-            )}
-          </div>
-
+          {/* MK2 do Bloco Tags (2026-11-14): sem filtro de unidade — a cliente é
+              da rede, e as tags cobrem o recorte que a rede quiser. */}
           {/* Gender */}
           <div>
             <SectionLabel>Gênero</SectionLabel>
@@ -497,7 +476,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
 
           {/* Tags */}
           <div>
-            <SectionLabel>Tags do CRM</SectionLabel>
+            <SectionLabel>Tags</SectionLabel>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {tags.map(t => (
                 <span key={t} className="chip-filtro is-ativo" style={{ cursor: 'default', paddingRight: 6 }}>
@@ -572,7 +551,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
           {/* A15 da 7ª simulação: o público estimado vinha sem o filtro que o explica. */}
           <div data-filtros-do-publico>
             <ReviewRow label="Filtros do público" value={(() => {
-              const f = filtrosDoPublico(audienceRules, { unidades: branches, procedimentos: procedures })
+              const f = filtrosDoPublico(audienceRules, { procedimentos: procedures })
               return f.length ? f.join(' · ') : 'Nenhum filtro: todas as clientes ativas'
             })()} />
           </div>

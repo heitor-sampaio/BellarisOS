@@ -3,19 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { filiaisAtivas } from '@/lib/branches'
 import { getConversations, opcoesDoInbox } from '@/actions/inbox'
 import { canaisConectados } from '@/lib/channels/factory'
-import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { TravaRolagem } from '@/components/shared/trava-rolagem'
 import { lerTodas } from '@/lib/db'
-
-/** Nome da unidade marcada no lead, se houver. */
-function unidadeDoLead(tags: unknown): string | null {
-  const t = (Array.isArray(tags) ? tags : []).find(
-    (x): x is string => typeof x === 'string' && isUnitTag(x),
-  )
-  return t ? unitTagName(t) : null
-}
 
 export default async function AdminInboxPage({
   searchParams,
@@ -59,7 +50,6 @@ export default async function AdminInboxPage({
     id:          l.id as string,
     name:        l.name as string,
     phone:       (l.phone as string | null) ?? null,
-    branch_name: unidadeDoLead(l.tags),
   }))
 
   return (

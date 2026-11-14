@@ -76,9 +76,6 @@ test.describe.serial('arquivar a cliente', () => {
 
   test('a recepção arquiva e reativa pela ficha, no menu "Mais ações"', async ({ browser }) => {
     const id = await rede!.criarCliente('Arquivada pela recepção')
-    // A lista da unidade mostra quem tem a tag dela.
-    const { data: un } = await db().from('branches').select('name').eq('id', rede!.branchId).single<{ name: string }>()
-    expect((await db().from('clients').update({ tags: [`Unidade: ${un!.name}`] }).eq('id', id)).error).toBeNull()
     const ctx = await browser.newContext({ storageState: recepcao!.estado })
     try {
       const p = await ctx.newPage()

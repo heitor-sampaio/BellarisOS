@@ -154,12 +154,15 @@ export async function marcarDesfecho(
   return { ...r, desfecho }
 }
 
-/** Adiciona ou remove uma tag do cliente. */
-export async function mudarTagDoCliente(
+/**
+ * "Adicionar tag" (T4 do Bloco Tags, 2026-11-14): adiciona uma tag ao cliente
+ * — a ação que a rede montou é o único caminho do sistema que grava tag, e só
+ * adiciona (tirar é da pessoa, na ficha).
+ */
+export async function adicionarTagAoCliente(
   ator: AtorDaAutomacao,
   contexto: ContextoDaExecucao,
   tag: string,
-  modo: 'adicionar' | 'remover',
 ): Promise<Record<string, unknown>> {
   const clienteId = clienteDo(contexto)
   if (!clienteId) return { alterado: false, motivo: 'Este fluxo não tem cliente no contexto.' }
@@ -178,10 +181,9 @@ export async function mudarTagDoCliente(
 
   // Nada a fazer é um FATO, não um erro: adicionar uma tag que já está lá não
   // deveria pintar o passo de vermelho nem emitir "dados alterados".
-  if (modo === 'adicionar' && tem)  return { alterado: false, motivo: 'O cliente já tinha esta tag.' }
-  if (modo === 'remover'   && !tem) return { alterado: false, motivo: 'O cliente não tinha esta tag.' }
+  if (tem) return { alterado: false, motivo: 'O cliente já tinha esta tag.' }
 
-  const novas = modo === 'adicionar' ? [...atuais, limpa] : atuais.filter(t => t !== limpa)
+  const novas = [...atuais, limpa]
 
   const { error } = await admin
     .from('clients').update({ tags: novas }).eq('id', clienteId).eq('tenant_id', ator.tenantId)
@@ -193,7 +195,7 @@ export async function mudarTagDoCliente(
     ...extras(ator),
   })
 
-  return { alterado: true, tag: limpa, modo }
+  return { alterado: true, tag: limpa }
 }
 
 /** Define (ou tira) o responsável pela oportunidade. */

@@ -49,11 +49,11 @@ describe('sugerirMapeamento', () => {
   it('cada campo vai para uma coluna só (a primeira)', () => {
     expect(sugerirMapeamento(['Telefone', 'Celular'], 'clientes')).toEqual(['phone', null])
   })
-  // A16 da 7ª simulação: a ORIGEM também — ela entra como tag da pessoa (D-10), e a coluna não se mapeava.
-  it('no contato do CRM: nome, telefone, e-mail, rede social, tags e a origem — a ficha (CPF…) não', () => {
-    expect(camposDoDestino('contatos').map(c => c.chave)).toEqual(['name', 'phone', 'email', 'social_media', 'tags', 'op_origem'])
-    expect(camposDoDestino('contatos').find(c => c.chave === 'op_origem')?.grupo, 'é da pessoa, sem oportunidade').toBe('pessoa')
-    expect(sugerirMapeamento(['Nome', 'Origem'], 'contatos')).toEqual(['name', 'op_origem'])
+  // T3 do Bloco Tags (2026-11-14): a ORIGEM não vira tag da pessoa — sem a
+  // oportunidade ela não tem onde morar, e a coluna não se oferece (era a A16 da 7ª).
+  it('no contato do CRM: nome, telefone, e-mail, rede social e tags — a ficha (CPF…) e a origem não', () => {
+    expect(camposDoDestino('contatos').map(c => c.chave)).toEqual(['name', 'phone', 'email', 'social_media', 'tags'])
+    expect(sugerirMapeamento(['Nome', 'Origem'], 'contatos')).toEqual(['name', null])
     expect(sugerirMapeamento(['Nome', 'WhatsApp', 'CPF', 'E-mail', 'Instagram'], 'contatos')).toEqual(['name', 'phone', null, 'email', 'social_media'])
   })
   it('com oportunidade, os campos dela entram (e só então)', () => {
@@ -219,7 +219,7 @@ describe('validarLinha', () => {
 })
 
 // D-10: no CONTATO, o telefone repetido na planilha não é erro — a segunda
-// linha junta as tags e a origem à pessoa que a primeira criou.
+// linha junta as tags à pessoa que a primeira criou.
 describe('marcarRepetidas — contatos', () => {
   it('o mesmo telefone duas vezes passa (a segunda junta à primeira)', () => {
     const r = marcarRepetidas('contatos', [

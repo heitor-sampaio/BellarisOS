@@ -5,7 +5,6 @@
  * mostra e para o que o disparo usa (`AudienceRules`).
  */
 export interface RegrasDoPublico {
-  branch_ids?: string[]
   genders?: ('M' | 'F' | 'O')[]
   procedure_ids?: string[]
   tags?: string[]
@@ -18,12 +17,11 @@ const SEXO: Record<'M' | 'F' | 'O', string> = { F: 'feminino', M: 'masculino', O
 
 export function filtrosDoPublico(
   regras: RegrasDoPublico,
-  nomes: { unidades?: { id: string; name: string }[]; procedimentos?: { id: string; name: string }[] } = {},
+  nomes: { procedimentos?: { id: string; name: string }[] } = {},
 ): string[] {
   const nomeDe = (lista: { id: string; name: string }[] | undefined, id: string) => lista?.find(x => x.id === id)?.name ?? 'removido'
   const saida: string[] = []
   if (regras.tags?.length) saida.push(`Tags: ${regras.tags.join(', ')}`)
-  if (regras.branch_ids?.length) saida.push(`Unidades: ${regras.branch_ids.map(id => nomeDe(nomes.unidades, id)).join(', ')}`)
   if (regras.genders?.length) saida.push(`Sexo: ${regras.genders.map(g => SEXO[g]).join(', ')}`)
   if (regras.procedure_ids?.length) saida.push(`Fez: ${regras.procedure_ids.map(id => nomeDe(nomes.procedimentos, id)).join(', ')}`)
   if (regras.max_days_since_visit) saida.push(`Sem visita há mais de ${regras.max_days_since_visit} dias`)

@@ -432,13 +432,13 @@ export function ImportadorDeContatos(p: Props) {
             <LinhasDoRelatorio rotulo={`${plural(comAviso.length, 'linha entra', 'linhas entram')} com aviso — o campo ilegível fica de fora, e o resto da ficha entra:`}
               atributo="data-importadas-com-aviso" linhas={comAviso.map(l => ({ linha: l.numero, nome: nomeDe(l), motivo: (l.avisos ?? []).join(' ') }))} />
             {/* A16 da 7ª simulação: como a origem da planilha entra, antes de importar. */}
-            <OrigensDaPlanilha destino={destino} comOportunidade={comOportunidade} validadas={validadas}
+            <OrigensDaPlanilha validadas={validadas}
               brutas={mapa.indexOf('op_origem') >= 0 ? arquivo.linhas.map(l => (l[mapa.indexOf('op_origem')] ?? '').trim()) : null} />
             <OQueJunta destino={destino} validadas={validadas} cruzados={cruzados} naoCompletar={naoCompletar}
               alternar={n => setNaoCompletar(s => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })} />
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
               Quem já está cadastrado ({destino === 'clientes' ? 'pelo CPF ou, sem CPF, pelo telefone' : 'pelo telefone ou, sem ele, pelo e-mail'}) só tem o que está em
-              branco completado — nada do que a clínica já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags se juntam (a origem entra como tag), e o nome e o e-mail que ficam são os da primeira linha.'} A importação não dispara as
+              branco completado — nada do que a clínica já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags se juntam, e o nome e o e-mail que ficam são os da primeira linha.'} A importação não dispara as
               automações de cadastro (boas-vindas, novo lead); as de rotina — aniversário, quem não volta há
               tempo — passam a contar com quem entrou.
             </p>
@@ -761,12 +761,10 @@ function OQueJunta({ destino, validadas, cruzados, naoCompletar, alternar }: {
  * Como a ORIGEM da planilha entra (A16 da 7ª simulação, 2026-11-05; princípio
  * 3): a prévia dizia que "a origem se junta" e não dizia em quê. Mostra cada
  * valor da coluna e a origem que ele vira — a da clínica com o mesmo nome, o
- * apelido conhecido ("facebook" → Meta Ads) ou "Outro" — e onde ela entra:
- * no contato, como TAG da pessoa (D-10); com a oportunidade, também no card.
+ * apelido conhecido ("facebook" → Meta Ads) ou "Outro". Ela é a origem da
+ * OPORTUNIDADE, e só dela: não vira tag da pessoa (T3 do Bloco Tags, 2026-11-14).
  */
-function OrigensDaPlanilha({ destino, comOportunidade, validadas, brutas }: {
-  destino: Destino; comOportunidade: boolean; validadas: LinhaValidada[]; brutas: string[] | null
-}) {
+function OrigensDaPlanilha({ validadas, brutas }: { validadas: LinhaValidada[]; brutas: string[] | null }) {
   if (!brutas) return null
   const pares = new Map<string, string>()
   validadas.forEach((l, i) => {
@@ -775,13 +773,10 @@ function OrigensDaPlanilha({ destino, comOportunidade, validadas, brutas }: {
     if (bruta && vira && !l.erros.length && !pares.has(bruta)) pares.set(bruta, vira)
   })
   if (!pares.size) return null
-  const onde = destino === 'contatos'
-    ? `entra como tag da pessoa${comOportunidade ? ' e é a origem da oportunidade' : ''}`
-    : 'é a origem da oportunidade'
   const lista = [...pares.entries()]
   return (
     <div data-origens-da-planilha style={caixaDaPrevia}>
-      <span style={forte}>A origem de cada linha {onde}:</span>
+      <span style={forte}>A origem de cada linha é a origem da oportunidade:</span>
       <span>
         {lista.slice(0, 12).map(([de, para]) => (de === para ? para : `${de} → ${para}`)).join(' · ')}
         {lista.length > 12 ? ' …' : ''}

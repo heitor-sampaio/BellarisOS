@@ -11,8 +11,10 @@ import { dayKeyTZ, addDaysTZ } from '../lib/datetime'
  * vazia — um `any` escondia. E, com a coluna, `new Date('1990-09-27')` em São
  * Paulo cai no dia 26: a campanha sairia na véspera.
  *
- * Isolamento: uma unidade `[e2e]` na rede real e a campanha restrita a ela
- * (`branch_ids`). Aniversariante de verdade não recebe nada daqui.
+ * Isolamento: uma unidade `[e2e]` na rede real, e as fichas daqui com uma tag
+ * própria, a que a campanha mira (`tags`). Aniversariante de verdade não
+ * recebe nada daqui. (Até 2026-11-14 era o filtro de unidade, `branch_ids`,
+ * que saiu do público — MK2 do Bloco Tags.)
  *
  * Chamar o cron processa as campanhas ativas de TODAS as redes — o mesmo que
  * ele faz de hora em hora sozinho.
@@ -21,6 +23,7 @@ import { dayKeyTZ, addDaysTZ } from '../lib/datetime'
 test.setTimeout(240_000)
 
 const marca = Date.now().toString(36)
+const TAG_DO_TESTE = `${PREFIXO} aniversário ${marca}`
 const db = () => banco()
 
 test('aniversariante do dia recebe uma vez; o de amanhã não', async ({ request }) => {
@@ -52,7 +55,7 @@ test('aniversariante do dia recebe uma vez; o de amanhã não', async ({ request
     for (let i = 0; i < 1010; i += 250) {
       const { data, error } = await b.from('clients').insert(Array.from({ length: Math.min(250, 1010 - i) }, (_, j) => ({
         tenant_id: tenant, branch_id: unidade, name: `${PREFIXO} Lote ${i + j} Aniversário ${marca}`,
-        birth_date: nasceu(depois), is_active: true, phone: '5500' + String(Date.now() + i + j).slice(-9),
+        birth_date: nasceu(depois), is_active: true, phone: '5500' + String(Date.now() + i + j).slice(-9), tags: [TAG_DO_TESTE],
       }))).select('id')
       expect(error, 'semear o lote').toBeNull()
       clientes.push(...((data ?? []) as { id: string }[]).map(c => c.id))
@@ -61,7 +64,7 @@ test('aniversariante do dia recebe uma vez; o de amanhã não', async ({ request
     for (const [rotulo, dia] of [['Hoje', hoje], ['Amanhã', amanha]] as const) {
       const { data, error } = await b.from('clients').insert({
         tenant_id: tenant, branch_id: unidade, name: `${PREFIXO} ${rotulo} Aniversário ${marca}`,
-        phone: '5548' + String(Date.now() + clientes.length).slice(-9), birth_date: nasceu(dia), is_active: true,
+        phone: '5548' + String(Date.now() + clientes.length).slice(-9), birth_date: nasceu(dia), is_active: true, tags: [TAG_DO_TESTE],
       }).select('id').single<{ id: string }>()
       expect(error).toBeNull()
       clientes.push(data!.id)
@@ -71,7 +74,7 @@ test('aniversariante do dia recebe uma vez; o de amanhã não', async ({ request
       tenant_id: tenant, name: `${PREFIXO} Aniversário ${marca}`, status: 'ACTIVE',
       type: 'AUTOMATED', trigger_type: 'BIRTHDAY',
       title: 'Feliz aniversário, {{first_name}}!', body: `${PREFIXO} presente ${marca}`,
-      audience_rules: { branch_ids: [unidade] },
+      audience_rules: { tags: [TAG_DO_TESTE] },
     }).select('id').single<{ id: string }>()
     expect(ec).toBeNull()
     campanha = c!.id

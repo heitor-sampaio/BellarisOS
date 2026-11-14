@@ -116,19 +116,12 @@ const DA_OPORTUNIDADE: CampoDoSistema[] = [
 /**
  * Os campos que esta importação oferece, na ordem da tela: os da pessoa, a
  * unidade (se por linha) e os do card (se há oportunidade). No cliente a rede
- * social não é da ficha — vai só para o card.
+ * social não é da ficha — vai só para o card. A origem é só do card: sem a
+ * oportunidade ela não tem onde morar (T3 do Bloco Tags, 2026-11-14 — a origem
+ * não vira tag da pessoa; até ali entrava como "Origem (vira tag da pessoa)").
  */
-/**
- * A ORIGEM no contato sem oportunidade (A16 da 7ª simulação, 2026-11-05): a
- * origem da linha entra como TAG da pessoa (D-10, `gravarContato`), mas a
- * coluna só se oferecia com a oportunidade — e a prévia dizia que "a origem se
- * junta". Com a oportunidade, ela é também a origem do card (o campo do card).
- */
-const ORIGEM_DA_PESSOA: CampoDoSistema = { ...DA_OPORTUNIDADE[0]!, grupo: 'pessoa', rotulo: 'Origem (vira tag da pessoa)' }
-
 export function camposDoDestino(destino: Destino, opcoes: OpcoesDosCampos = {}): CampoDoSistema[] {
   const lista = [...DA_PESSOA[destino]]
-  if (destino === 'contatos' && !opcoes.oportunidade) lista.push(ORIGEM_DA_PESSOA)
   if (destino === 'clientes' && opcoes.pacote) lista.push(PACOTE)
   if (destino === 'clientes' && opcoes.unidadePorLinha) lista.push(UNIDADE)
   if (opcoes.oportunidade) {

@@ -1673,6 +1673,21 @@ revisão, só se escreve o plano. Nada se implementa.
   fornecedor na entrada (não no produto) e os três filtros. Ficaram de fora
   **E11 e E13**: dependem do bloco Equipe (a pessoa em mais de uma unidade).
   Regra em `docs/regras/atendimento.md` §9.5.
+- ✅ Bloco Tags (14/11) — T1–T4, CL1–CL3, AG2 e MK2: a tag de unidade sai do
+  sistema. Saíram o gatilho da "Unidade: X" e toda leitura dela como "a
+  unidade da cliente"; onde a unidade importa (as novas clientes por unidade,
+  o "Por filial", o "Reativar" da unidade) vale a cliente ATENDIDA nela
+  (agendamento não cancelado), e a clínica inteira conta todas (A26 junto).
+  A origem não vira tag (conversa de anúncio, oportunidade, importação); a
+  ação da automação é "Adicionar tag", só adiciona, com as tags da rede. A
+  lista de Clientes é a da rede nos dois portais (sem unidade na linha, sem
+  filtro nem contador por unidade, a última visita na rede; a busca "fora da
+  unidade" saiu); o Agendar do card e do inbox escolhe a unidade numa caixa
+  que só aparece com mais de uma; o público da campanha e o "Buscar
+  clientes" não têm unidade, e "Tags do CRM" virou "Tags". A trava:
+  `tests/tags-so-quem-marca.test.ts`. Fica: MK1/AU1 (outro bloco); as
+  "Unidade: …" já gravadas ficam como tags comuns (o banco é zerado antes do
+  lançamento). Regras em `crm-inbox.md`, `automacoes.md`, `indicadores.md`.
 
 ### Bloco: Estoque
 
@@ -1978,6 +1993,7 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 **Onde cada item foi parar (fim da revisão, 13/11):**
 - H16 e a F77 → a regra das Tags (CLAUDE.md §1) e o "Bloco: Tags": sai o
   gatilho da "Unidade: X" e toda leitura da tag como unidade (A26 junto).
+  ✅ Feito em 14/11 (ver "Andamento").
 - D7 e o CSV do Fechamento → CX6: as taxas da maquininha e a planilha vão ao
   Financeiro.
 - D20 → mantido no "Bloco: Agenda" ("só os meus" + Gerenciar remarca o próprio).
@@ -1990,31 +2006,10 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 
 O texto abaixo é o de antes da revisão.
 
-**Tags (Clientes / CRM): a regra H16.** As palavras do Heitor, de 13/11, são
-estas duas:
-- "o cliente não é da unidade, o cliente é da rede. Se a rede quiser ela pode
-  colocar um tag pra ajudar a filtrar";
-- "não existem tags de unidade, existem tags, a rede cria a tag que quiser e
-  usa elas como filtro depois, do que quiser, com nome que quiser. Não
-  complica".
-
-O bloco "Não existe tag de unidade" em `docs/regras/crm-inbox.md` foi escrito
-pelo Claude e vai ALÉM dessas palavras. São leituras do Claude, ainda NÃO
-confirmadas pelo Heitor:
-- as "Unidade: …" já gravadas ficam como tags comuns;
-- `clients.branch_id` não volta;
-- onde a unidade importa, vale "a cliente atendida naquela unidade";
-- a lista de Clientes da unidade é a da rede.
-
-Também ainda não está feito: o gatilho que cria a tag "Unidade: X" e todas as
-leituras da tag como unidade continuam no sistema (campanhas, automações,
-novas clientes por unidade, Reativar, lista de Clientes da unidade, Agendar).
-
 **Da F75 (Agenda, Caixa, Financeiro)**, decidido pela frente e não pelo Heitor:
 - D7 vale na tela do Fechamento? Hoje a recepção vê "Taxas da maquininha no dia".
 - D20: quem tem "só os meus" e Gerenciar remarca o próprio atendimento? A F75
   pôs o "Remarcar", e a regra escrita fala só de cancelar e marcar falta.
-- A26: "Novas clientes" por unidade ainda contam pela tag "Unidade: X", contra a H16.
 - A política antiga "Operacional acessa financeiro da filial" ficou sem efeito.
   Apagar ou não é decisão do Heitor.
 - O CSV do Fechamento põe a maquininha na coluna "Forma".
@@ -2023,7 +2018,6 @@ novas clientes por unidade, Reativar, lista de Clientes da unidade, Agendar).
 - ~~C64: o bônus da fidelidade usado em várias unidades~~ — sai com o FD3 (o saldo é um só, da rede).
 
 **Parado, esperando a revisão:**
-- a F77, que implementaria a H16 no código;
 - a F76, as falhas da completa (execução 43326349069 do GitHub Actions);
 - o teste "dois cliques fecham uma vez" (comissões), que falha no `next dev` e
   passa no build.

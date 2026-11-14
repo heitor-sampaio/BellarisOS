@@ -1,6 +1,5 @@
 import 'server-only'
 import { z } from 'zod/v4'
-import { unitTag } from '@estetica-os/utils'
 import { can, ownerFilter, podeReceber, temRecurso } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { creditosDoCliente } from '@/lib/creditos/credito'
@@ -14,7 +13,7 @@ import { filtroDosClientesNovos } from '@/lib/copilot/clientes-novos'
 import { diaDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
-  STATUS_DO_AGENDAMENTO, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, nomesPorId, quandoLegivel, resolverCliente, resolverUnidade, rota, unidadesDaRede,
+  STATUS_DO_AGENDAMENTO, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, nomesPorId, quandoLegivel, resolverCliente, resolverUnidade, rota,
 } from '@/lib/copilot/ferramentas/comum'
 
 /**
@@ -59,8 +58,7 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
     const agora = new Date().toISOString()
     const verAgenda = can(c.ctx, 'agenda', 'VIEW')
     const dono = ownerFilter(c.ctx, 'agenda')
-    const [unidades, proximos, ultimos, creditos, internos, pontos] = await Promise.all([
-      unidadesDaRede(c),
+    const [proximos, ultimos, creditos, internos, pontos] = await Promise.all([
       verAgenda ? (() => {
         let q = c.admin.from('appointments').select('id, scheduled_at, status, procedure_id, professional_id, branch_id')
           .eq('client_id', ficha.id).gte('scheduled_at', agora).in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED']).order('scheduled_at').limit(5)
@@ -100,7 +98,6 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
       profissional: a.professional_id ? (profs.get(a.professional_id) ?? '—') : '—',
       status: STATUS_DO_AGENDAMENTO[a.status] ?? a.status, href: rota(c, `/agenda/${a.id}`),
     })
-    const nomesDeUnidade = new Set(unidades.map(u => unitTag(u.name)))
     const href = rota(c, `/clients/${ficha.id}`)
     // O crédito interno é da REDE (o gatilho do uso soma por cliente, e a ficha não recorta).
     const creditoInterno = internos === null ? undefined
@@ -111,8 +108,7 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
         id: ficha.id, nome: ficha.name, telefone: ficha.phone, email: ficha.email,
         cpf: cpfMascarado(ficha.document), nascimento: ficha.birth_date?.slice(0, 10) ?? null, idade: idade(ficha.birth_date, fusoDoPortal),
         genero: ficha.gender, cidade: ficha.city, ativo: ficha.is_active,
-        unidades: (ficha.tags ?? []).filter(t => nomesDeUnidade.has(t)),
-        tags: (ficha.tags ?? []).filter(t => !nomesDeUnidade.has(t)),
+        tags: ficha.tags ?? [],
         clienteDesde: ficha.created_at.slice(0, 10),
         temAcessoAoApp: !!ficha.app_account_created_at,
         href,
@@ -146,21 +142,18 @@ export const clientes: FerramentaDeLeitura<{
     let lista: Lin[] = []
     let total: number | null = null
 
-    // A unidade (a da pessoa, se fixa): as listas da unidade recortam pela tag dela.
+    // A unidade (a da pessoa, se fixa): o "sem_visita" é de quem foi atendida
+    // nela; as outras listas são da rede — a cliente é da rede (H16, Bloco Tags).
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
-    // Na rede de UMA unidade não há o que recortar — e o cliente que chegou sem
-    // a tag "Unidade: …" (importação, dado antigo) sumiria de toda lista.
-    const variasUnidades = (await unidadesDaRede(c)).length > 1
-    const tagDaUnidade = u.unidade && variasUnidades ? unitTag(u.unidade.name) : null
     // O "hoje" das listas (o mês do aniversário, os N dias): o da unidade, senão o do portal (F62b).
     const fuso = await fusoDe(c, u.unidade?.id)
 
     if (args.filtro === 'sem_visita') {
       // A MESMA regra do "Reativar clientes" do dashboard (r3-f13-10, o Heitor:
       // "os dois têm de dar a mesma resposta"): na clínica de uma unidade, todas
-      // as clientes ativas, com ou sem a tag; com várias, a unidade pedida (pela
-      // tag) ou a clínica inteira — sem visita em nenhuma unidade. E, como lá,
+      // as clientes ativas; com várias, as atendidas na unidade pedida ou a
+      // rede inteira — sem visita em nenhuma unidade. E, como lá,
       // com a agenda "só os meus", as dela.
       const desde = addDaysTZ(new Date(), -(args.dias ?? 90), fuso)
       const r = await getClientesParaReativarDoRecorte({
@@ -176,9 +169,8 @@ export const clientes: FerramentaDeLeitura<{
       // Sobra da F49 (10ª): pela regra do dashboard — coalesce(cliente_desde,
       // created_at) —, não pelo cadastro: a importada de 2021 não é nova.
       const desde = addDaysTZ(new Date(), -(args.dias ?? 30), fuso)
-      let q = c.admin.from('clients').select('id, name, phone, created_at, cliente_desde').eq('tenant_id', tenant).eq('is_active', true)
+      const q = c.admin.from('clients').select('id, name, phone, created_at, cliente_desde').eq('tenant_id', tenant).eq('is_active', true)
         .or(filtroDosClientesNovos(desde, fuso)).order('created_at', { ascending: false }).limit(50)
-      if (tagDaUnidade) q = q.contains('tags', [tagDaUnidade])
       lista = ((await ler(q, 'ler os clientes novos')) as (Lin & { created_at: string; cliente_desde: string | null })[] | null ?? [])
         .map(x => ({ id: x.id, name: x.name, phone: x.phone, detalhe: `desde ${diaDeClienteDesde({ clienteDesde: x.cliente_desde, createdAt: x.created_at }, fuso)}` }))
     } else if (args.filtro === 'tag') {
@@ -186,7 +178,7 @@ export const clientes: FerramentaDeLeitura<{
       // O vocabulário da rede (Configurações → Tags): "VIP" e "vip" são a
       // mesma; a que não está nele (nem em cliente nenhum) vira a lista certa.
       const vocabulario = await tagsAtivasDaRede(tenant)
-      lista = (await ler(c.admin.rpc('copilot_clientes_da_tag', { p_tenant: tenant, p_tag: args.tag, p_tag_unidade: tagDaUnidade, p_limite: 50 }),
+      lista = (await ler(c.admin.rpc('copilot_clientes_da_tag', { p_tenant: tenant, p_tag: args.tag, p_limite: 50 }),
         'ler os clientes da tag') as Lin[] | null) ?? []
       if (!lista.length && !temTag(vocabulario, args.tag)) {
         return { dados: { erro: `A tag "${args.tag}" não existe na rede. Tags: ${vocabulario.join(', ') || 'nenhuma'}.` } }
@@ -194,14 +186,14 @@ export const clientes: FerramentaDeLeitura<{
     } else {
       const mes = args.mes ?? Number(hojeNoFuso(fuso).slice(5, 7))
       // No banco (copilot_aniversariantes): ler a rede toda cortaria em mil linhas.
-      const achados = (await ler(c.admin.rpc('copilot_aniversariantes', { p_tenant: tenant, p_mes: mes, p_limite: 50, p_tag: tagDaUnidade }), 'ler os aniversariantes') as
+      const achados = (await ler(c.admin.rpc('copilot_aniversariantes', { p_tenant: tenant, p_mes: mes, p_limite: 50, p_tag: null }), 'ler os aniversariantes') as
         { id: string; name: string; phone: string | null; dia: number }[] | null) ?? []
       lista = achados.map(x => ({ id: x.id, name: x.name, phone: x.phone, detalhe: `dia ${String(x.dia).padStart(2, '0')}` }))
     }
 
     const itens = lista.map(x => ({ id: x.id, nome: x.name, telefone: x.phone, detalhe: x.detalhe ?? null, href: rota(c, `/clients/${x.id}`) }))
     return {
-      dados: { filtro: args.filtro, unidade: u.unidade?.name ?? 'todas as unidades', ...(total !== null ? { total } : {}), clientes: itens },
+      dados: { filtro: args.filtro, ...(args.filtro === 'sem_visita' ? { unidade: u.unidade?.name ?? 'todas as unidades' } : {}), ...(total !== null ? { total } : {}), clientes: itens },
       cartao: itens.length ? { tipo: 'links', itens: itens.slice(0, 12).map(i => ({ texto: i.nome, detalhe: [i.detalhe, i.telefone].filter(Boolean).join(' · ') || undefined, href: i.href })) } : undefined,
     }
   },

@@ -47,7 +47,7 @@ import { creditosParaAgendar } from '@/actions/creditos'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { formatBRL, maskPhone } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { unidadeInicial, unidadeDaTag } from '@/lib/unidades/unidade-inicial'
+import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
 import { sugestaoDoAgendar, TEXTO_DA_SUGESTAO, type SugestaoDoAgendar } from '@/lib/crm/sugestao-do-agendar'
 
 export interface PanelBranch { id: string; name: string; slug: string }
@@ -679,7 +679,6 @@ export function InboxLeadPanel({
           clienteId={cliente?.id ?? null}
           contatoInicial={{ nome, telefone }}
           procedimentosDeInteresse={(card.abertas.find(o => o.id === (scheduling || card.abertas[0]?.id))?.procedure_ids) ?? []}
-          tags={[...tags, ...((card.abertas.find(o => o.id === (scheduling || card.abertas[0]?.id))?.tags) ?? [])]}
           branches={branches}
           onClose={() => setScheduling(null)}
           onScheduled={() => { setScheduling(null); void recarregar(); onLeadChanged?.() }}
@@ -694,12 +693,10 @@ export function InboxLeadPanel({
             </p>
           )}
           <ClientForm
-            /* A unidade de cadastro vira a tag `Unidade: X`, e é POR ELA que
-               a lista de clientes de cada filial filtra. Com `branchId` vazio
-               o seletor abria na primeira unidade em ordem alfabética: quem
-               cadastrava pelo portal de uma unidade gravava o cliente em
-               outra sem perceber, e ele sumia da própria lista. No portal da
-               filial a unidade atual é o padrão; no portal da rede não
+            /* Com `branchId` vazio o seletor abria na primeira unidade em
+               ordem alfabética: quem cadastrava pelo portal de uma unidade
+               gravava o cliente em outra sem perceber. No portal da
+               unidade a atual é o padrão; no portal da rede não
                há unidade corrente e o seletor segue como está. */
             branchId={branches.find(b => b.slug === slug)?.id ?? ''}
             slug={slug}
@@ -1071,7 +1068,7 @@ function NovaOportunidade({
  */
 export function ScheduleModal({
   leadId, conversationId, clienteLigado, clienteId, contatoInicial, branches, onClose, onScheduled,
-  procedimentosDeInteresse, tags = [],
+  procedimentosDeInteresse,
 }: {
   leadId:         string
   conversationId: string | null
@@ -1085,8 +1082,6 @@ export function ScheduleModal({
   onScheduled:    () => void
   /** Os procedimentos de interesse do card: o primeiro que a unidade oferece vem escolhido (A1 da 11ª). */
   procedimentosDeInteresse?: string[]
-  /** As tags do lead: a "Unidade: X" de uma unidade da lista já vem escolhida (A25 da 14ª). */
-  tags?: readonly string[]
 }) {
   // A hora escolhida é a do relógio da unidade (F62).
   const fuso = useFuso()
@@ -1094,9 +1089,9 @@ export function ScheduleModal({
   const [telefone, setTelefone] = useState(contatoInicial.telefone)
   // Sobra da F33 (8ª simulação; princípio 3): com duas ou mais unidades,
   // nenhuma vem escolhida — nascia na primeira em ordem alfabética.
-  // A25 da 14ª (F73; "a unidade da cliente é a tag", F68): a tag "Unidade: X"
-  // do lead escolhe a unidade quando aponta uma só.
-  const [branchId,   setBranchId]   = useState(() => unidadeInicial(branches) || unidadeDaTag(branches, tags))
+  // AG2 do Bloco Tags (2026-11-14): a tag não escolhe a unidade (não existe
+  // tag de unidade) — quem agenda escolhe na caixa.
+  const [branchId,   setBranchId]   = useState(() => unidadeInicial(branches))
   const [data,       setData]       = useState<CrmSchedulingData | null>(null)
   const [loadingData, setLoadingData] = useState(!!branchId)
   const [procedureId, setProcedureId] = useState('')
@@ -1308,7 +1303,9 @@ export function ScheduleModal({
             </label>
           )}
 
-          {/* Unidade */}
+          {/* Unidade (AG2 do Bloco Tags): uma caixa simples, só quando a rede tem
+              mais de uma — com uma, ela já vem escolhida e a caixa não aparece. */}
+          {branches.length !== 1 && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={labelStyle}>Unidade</span>
             <select className="field" value={branchId} onChange={e => setBranchId(e.target.value)} style={selectStyle}>
@@ -1317,6 +1314,7 @@ export function ScheduleModal({
               {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </label>
+          )}
 
           {/* Procedimento. Havia um checkbox "Consulta de avaliação" acima que
               escondia esta lista e marcava o agendamento SEM procedimento — a

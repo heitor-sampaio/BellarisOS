@@ -76,7 +76,7 @@ export const ROTULOS_DE_NO: Record<TipoDeNo, string> = {
   [NODES.ACAO_NOTIFICAR_EQUIPE]: 'Avisar a equipe',
   [NODES.ACAO_MOVER_ETAPA]:      'Mover de etapa',
   [NODES.ACAO_DESFECHO]:         'Marcar ganho ou perdido',
-  [NODES.ACAO_TAG_CLIENTE]:      'Marcar com tag',
+  [NODES.ACAO_TAG_CLIENTE]:      'Adicionar tag',
   [NODES.ACAO_ATRIBUIR]:         'Definir responsável',
   [NODES.ACAO_ANOTAR]:           'Anotar na oportunidade',
 }
@@ -157,9 +157,8 @@ export const DADOS_DO_NO: Record<TipoDeNo, readonly DadoDoPasso[]> = {
     MOTIVO,
   ],
   [NODES.ACAO_TAG_CLIENTE]: [
-    { campo: 'alterado', rotulo: 'Mudou a tag',            tipo: 'booleano' },
-    { campo: 'tag',      rotulo: 'Tag',                    tipo: 'texto' },
-    { campo: 'modo',     rotulo: 'Adicionou ou removeu',   tipo: 'texto' },
+    { campo: 'alterado', rotulo: 'Adicionou a tag', tipo: 'booleano' },
+    { campo: 'tag',      rotulo: 'Tag',             tipo: 'texto' },
     MOTIVO,
   ],
   [NODES.ACAO_ATRIBUIR]: [
@@ -251,7 +250,6 @@ export interface ConfigBuscarClientes {
   semRetornoHaDias?: number
   aniversarioHoje?:  boolean
   tags?:             string[]
-  unidadeId?:        string | null
   /** Teto de segurança por execução. */
   limite?:           number
 }
@@ -317,9 +315,13 @@ export interface ConfigAcaoDesfecho {
   motivo?:  string
 }
 
+/**
+ * "Adicionar tag" (T4 do Bloco Tags, 2026-11-14): uma das tags cadastradas da
+ * rede, e só ADICIONA — o sistema não tira tag de ninguém. O `modo` de antes
+ * saiu; um nó antigo gravado com o de remover não faz nada (executar.ts).
+ */
 export interface ConfigAcaoTagCliente {
   tag:  string
-  modo: 'adicionar' | 'remover'
 }
 
 export interface ConfigAcaoAtribuir {

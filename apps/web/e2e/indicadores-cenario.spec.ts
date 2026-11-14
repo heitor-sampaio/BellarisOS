@@ -345,13 +345,11 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     // Desde sempre: a0 (fev) conta junto com a1 e a2.
     expect(nums2(sessoes)).toEqual([[c!.pA, 3]])
 
-    // C1 e C2 com a tag da unidade: C2 tem agendamento marcado (a5, SCHEDULED)
-    // "desde" 2021-03-13 — só C1 fica sem visita; a última dela é a1 (10/03).
-    const { data: u } = await db.from('branches').select('name').eq('id', c!.unidade).single<{ name: string }>()
-    const tag = `Unidade: ${u!.name}`
-    await db.from('clients').update({ tags: [tag] }).in('id', [c!.c1, c!.c2])
+    // C1 e C2 foram atendidas na unidade (T1 do Bloco Tags: é o FATO, não a
+    // tag): C2 tem agendamento marcado (a5, SCHEDULED) "desde" 2021-03-13 —
+    // só C1 fica sem visita; a última dela é a1 (10/03). C3 é de outra.
     const { data: reativar } = await db.rpc('metrics_clientes_para_reativar', {
-      p_tenant: c!.tenant, p_branch_id: c!.unidade, p_tag: tag, p_desde: '2021-03-13T00:00:00-03:00', p_limite: 3,
+      p_tenant: c!.tenant, p_branch_id: c!.unidade, p_desde: '2021-03-13T00:00:00-03:00', p_limite: 3,
     })
     const r = reativar as { total: number; lista: { id: string; ultima_visita: string }[] }
     expect(r.total).toBe(1)
@@ -380,7 +378,9 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     const porEtapa: [number, string, number, number][] = data!.map((e: Record<string, unknown>) =>
       [num(e.stage_position), String(e.stage_outcome), num(e.leads), num(e.converted)])
     expect(porEtapa[0], '1ª etapa: 2 leads, 1 virou cliente').toEqual([0, 'OPEN', 2, 1])
-    expect(porEtapa.find(e => e[1] === 'WON'), 'ganho: 1').toEqual([4, 'WON', 1, 0])
+    // A posição da etapa de ganho é a do funil-modelo da rede (7 etapas desde a
+    // rede de teste recriada em 13/11): o que se confere é a contagem nela.
+    expect(porEtapa.find(e => e[1] === 'WON')?.slice(1), 'ganho: 1').toEqual(['WON', 1, 0])
     expect(porEtapa.reduce((s, e) => s + e[2], 0), 'nenhum outro lead na janela').toBe(3)
   })
 })

@@ -318,7 +318,7 @@ export default async function AdminDashboardPage({
   // clínica (as ativas) — o "só os meus" da agenda não recorta a ficha
   // (Clientes não é módulo escopável). Era a demografia recortada pela agenda
   // dela: a vendedora que não atende via "0 clientes" com 11 na lista.
-  const totalClientsEver = needsCore ? (await getClientesAtivos({ tenantId: ctx.tenantId!, unidades: [] })).total : 0
+  const totalClientsEver = needsCore ? (await getClientesAtivos({ tenantId: ctx.tenantId! })).total : 0
 
   const todayAppts = (todayApptsRaw ?? []) as AgendamentoDeHoje[]
 
@@ -648,7 +648,7 @@ export default async function AdminDashboardPage({
   // em nenhuma unidade há 90 dias), com a unidade de cada uma; recortada a
   // uma unidade pelo ?unidade=, o mesmo quadro da unidade. Na clínica de UMA
   // unidade, a clínica e a unidade são a mesma coisa (r2-ind-03, o Heitor):
-  // todas as clientes ativas, não só as com a tag da unidade. Com a agenda
+  // todas as clientes ativas. Com a agenda
   // "só os meus", as dela (o recorte da agenda).
   const noventaDias = addDaysTZ(now, -90, fuso)
   const umaSoNoRecorte = branches.length === 1 && !umaUnidade ? branches[0]! : null
@@ -665,7 +665,7 @@ export default async function AdminDashboardPage({
       <ClientesDoPeriodo
         titulo="Clientes no período"
         // A10 da 13ª: o quadro diz o seu recorte (a unidade é a tag da cliente — C6).
-        subtitulo={`${agendaDela ? 'As suas novas clientes e os seus agendamentos' : paraReativar.daUnidade ? 'Novas clientes que frequentam a unidade e os agendamentos dela' : 'Novas clientes e agendamentos da clínica'} · ${periodLabel}, até agora`}
+        subtitulo={`${agendaDela ? 'As suas novas clientes e os seus agendamentos' : paraReativar.daUnidade ? 'Novas clientes atendidas na unidade e os agendamentos dela' : 'Novas clientes e agendamentos da clínica'} · ${periodLabel}, até agora`}
         etapas={[
           { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
           { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)' },

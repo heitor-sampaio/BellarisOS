@@ -2,7 +2,7 @@ import { subDays } from 'date-fns'
 import { getTenantContext, can } from '@/lib/auth'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
-import { getCachedNetworkClients, getCachedUltimasVisitas, getCachedNetworkBranches } from '@/lib/cached-queries'
+import { getCachedNetworkClients, getCachedUltimasVisitas } from '@/lib/cached-queries'
 import { getClientesAtivos } from '@/lib/metrics/unidade'
 import { aniversariantesDoMes } from '@/lib/clientes/aniversariantes'
 
@@ -19,38 +19,30 @@ export default async function AdminClientsLayout({
   // é a trava dela (assertPermission, como toda page.tsx) que diz "sem acesso".
   if (!can(ctx, 'clients', 'VIEW')) return <>{children}</>
 
-  const [rawClients, ultimasVisitas, branchesRaw, aniversariantes] = await Promise.all([
+  const [rawClients, ultimasVisitas, aniversariantes, ativos] = await Promise.all([
     getCachedNetworkClients(ctx.tenantId!),
     getCachedUltimasVisitas(ctx.tenantId!, null),
-    getCachedNetworkBranches(ctx.tenantId!),
     aniversariantesDoMes(ctx.tenantId!),
+    // O contador vem do banco (A24). A cliente é da rede (CL2 do Bloco Tags):
+    // não há contador por unidade.
+    getClientesAtivos({ tenantId: ctx.tenantId! }),
   ])
 
   const lastVisitMap = new Map(ultimasVisitas.map(v => [v.client_id, v.ultima]))
 
   const thirtyDaysAgo = subDays(new Date(), 30)
 
-  const clients = (rawClients ?? []).map(c => {
-    const branch = Array.isArray(c.branches) ? (c.branches[0] as { id: string; name: string } | undefined) ?? null : (c.branches as { id: string; name: string } | null)
-    return {
-      id:         c.id as string,
-      name:       c.name as string,
-      phone:      c.phone as string,
-      tags:       (c.tags ?? []) as string[],
-      isActive:   c.is_active as boolean,
-      // F35: a importada com "cliente desde" de antes não é nova.
-      isNew:      new Date((c as { cliente_desde?: string | null }).cliente_desde ?? c.created_at) >= thirtyDaysAgo,
-      lastVisit:  lastVisitMap.get(c.id) ?? null,
-      branchId:   (c.branch_id ?? undefined) as string | undefined,
-      branchName: branch?.name ?? undefined,
-    }
-  })
-
-  const branches       = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
-  // O contador vem do banco (A24): o da rede e o de cada unidade, para
-  // acompanhar o recorte do `?unidade=`.
-  const ativos         = await getClientesAtivos({ tenantId: ctx.tenantId!, unidades: branches })
-  const totalActive    = ativos.total
+  // A cliente é da REDE (CL1 do Bloco Tags, 2026-11-14): a linha não diz unidade.
+  const clients = (rawClients ?? []).map(c => ({
+    id:         c.id as string,
+    name:       c.name as string,
+    phone:      c.phone as string,
+    tags:       (c.tags ?? []) as string[],
+    isActive:   c.is_active as boolean,
+    // F35: a importada com "cliente desde" de antes não é nova.
+    isNew:      new Date((c as { cliente_desde?: string | null }).cliente_desde ?? c.created_at) >= thirtyDaysAgo,
+    lastVisit:  lastVisitMap.get(c.id) ?? null,
+  }))
 
   return (
     <ListaDetalhe
@@ -59,14 +51,10 @@ export default async function AdminClientsLayout({
         <ClientsSidebar
           clients={clients}
           basePath="/admin/clients"
-          totalActive={totalActive}
-          ativosPorUnidade={ativos.porUnidade}
+          totalActive={ativos.total}
           // A rede passa a cadastrar pela própria rede: antes o botão era
           // escondido aqui e só existia dentro do portal de uma unidade.
           newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
-          availableBranches={branches}
-          // A abrangência vence o `?unidade=` (J-54): quem tem unidade fixa fica nela.
-          unidadeFixa={ctx.branchId}
           aniversariantes={aniversariantes}
         />
       }

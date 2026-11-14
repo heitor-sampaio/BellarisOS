@@ -433,8 +433,6 @@ interface CRMBoardProps {
   allStages:    CRMStage[]
   funnels:      Pick<CRMFunnel, 'id' | 'name'>[]
   funnelId:     string
-  /** Unidades da rede, para o seletor de unidade do card. */
-  unidades:     { id: string; name: string }[]
   procedures:   Procedure[]
   branchId:     string
   slug:         string
@@ -495,7 +493,7 @@ function MenuItem({
 
 // --- Cartão do lead ----------------------------------------------
 function LeadCard({
-  lead, slug, branchId, allStages, funnels, funnelId, unidades, procedures, branches, networkMode, nowMs, podeCadastrarCliente = false,
+  lead, slug, branchId, allStages, funnels, funnelId, procedures, branches, networkMode, nowMs, podeCadastrarCliente = false,
   unidadesParaAgendar, isDragging, onDragStart, onDragEnd, onLeadDeleted, abrirAoMontar, onAbertoAoMontar,
   desfechos, onMoverPara,
 }: {
@@ -505,7 +503,6 @@ function LeadCard({
   allStages:      CRMStage[]
   funnels:        Pick<CRMFunnel, 'id' | 'name'>[]
   funnelId:       string
-  unidades:       { id: string; name: string }[]
   procedures:     Procedure[]
   branches?:      { id: string; name: string; slug: string }[]
   networkMode?:   boolean
@@ -652,7 +649,6 @@ function LeadCard({
         ref={editRef}
         branchId={branchId} slug={slug}
         stages={allStages} funnels={funnels} funnelId={funnelId}
-        unidades={unidades}
         procedures={procedures}
         branches={branches}
         existing={{
@@ -1049,7 +1045,6 @@ function LeadCard({
             <ClientForm
               branchId={branchId}
               slug={slug}
-              branchName={lead.branch_name ?? undefined}
               leadId={lead.id}
               prefill={{ name: lead.name, phone: lead.phone ? maskPhone(lead.phone) : undefined, email: lead.email ?? undefined }}
               onSuccess={(clientId) => {
@@ -1090,7 +1085,7 @@ const semRelogio = () => null
 
 // --- Board principal ---------------------------------------------
 export function CRMBoard({
-  initialLeads, stages, allStages, funnels, funnelId, unidades,
+  initialLeads, stages, allStages, funnels, funnelId,
   procedures, branchId, branchName, slug, networkMode, branches, leadAberto, motivos = [], podeCadastrarCliente = false,
   podeAgendar = false, podeMover = false,
 }: CRMBoardProps) {
@@ -1372,9 +1367,8 @@ export function CRMBoard({
               </div>
               {!networkMode && (
               <CRMLeadModal
-                branchId={branchId} slug={slug} branchName={branchName}
+                branchId={branchId} slug={slug}
                 stages={allStages} funnels={funnels} funnelId={funnelId}
-                unidades={unidades}
                 procedures={procedures}
                 initialStageId={stage.id}
                 onLeadCreated={handleLeadCreated}
@@ -1403,7 +1397,6 @@ export function CRMBoard({
                   key={lead.id}
                   lead={lead} slug={slug} branchId={branchId}
                   allStages={allStages} funnels={funnels} funnelId={funnelId}
-                  unidades={unidades}
                   procedures={procedures} branches={branches}
                   networkMode={networkMode}
                   podeCadastrarCliente={podeCadastrarCliente}

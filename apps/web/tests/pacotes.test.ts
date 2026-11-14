@@ -5,7 +5,6 @@ import {
   resolveLeadSource, mergeTags, sourceStyle,
 } from '@estetica-os/utils'
 import { secondsSince, agingLevel, formatDurationShort, formatDurationLong } from '../../../packages/utils/src/crm-metrics'
-import { unitTag, isUnitTag, unitTagName } from '../../../packages/utils/src/client-tags'
 
 /**
  * Os pacotes compartilhados que o app usa. (Os schemas de agendamento,
@@ -42,7 +41,7 @@ describe('origem do lead', () => {
     expect(resolveLeadSource({ fbclid: 'x' }).source).toBe('Meta Ads')
     expect(resolveLeadSource({ utm_source: 'ig' })).toMatchObject({ source: 'Meta Ads', utm_source: 'instagram' })
     expect(resolveLeadSource({ referral: { ctwaClid: 'c1', sourceApp: 'facebook' } }))
-      .toEqual({ source: 'Meta Ads', tags: ['Meta Ads'], utm_source: 'facebook', ctwa_clid: 'c1' })
+      .toEqual({ source: 'Meta Ads', utm_source: 'facebook', ctwa_clid: 'c1' })
   })
 
   it('a plataforma dita pelo provedor vence a URL — encurtador engana', () => {
@@ -51,8 +50,8 @@ describe('origem do lead', () => {
   })
 
   it('sem atribuição, vale a escolha manual; sem nada, sem origem (D14)', () => {
-    expect(resolveLeadSource({}, 'Indicação')).toEqual({ source: 'Indicação', tags: ['Indicação'] })
-    expect(resolveLeadSource({}, '  ')).toEqual({ source: null, tags: [] })
+    expect(resolveLeadSource({}, 'Indicação')).toEqual({ source: 'Indicação' })
+    expect(resolveLeadSource({}, '  ')).toEqual({ source: null })
     // Com atribuição, a escolha manual não apaga o anúncio.
     expect(resolveLeadSource({ fbclid: 'x' }, 'Indicação').source).toBe('Meta Ads')
   })
@@ -109,12 +108,3 @@ describe('CRM: tempo parado', () => {
   })
 })
 
-describe('tag de unidade do cliente', () => {
-  it('ida e volta', () => {
-    const t = unitTag('Centro')
-    expect(t).toBe('Unidade: Centro')
-    expect(isUnitTag(t)).toBe(true)
-    expect(unitTagName(t)).toBe('Centro')
-    expect(unitTagName('VIP')).toBe('VIP')
-  })
-})

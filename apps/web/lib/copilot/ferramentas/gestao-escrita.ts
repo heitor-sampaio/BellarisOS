@@ -2,7 +2,6 @@ import 'server-only'
 import { z } from 'zod/v4'
 import { revalidatePath } from 'next/cache'
 import { can, isOwnScope, ownerFilter } from '@/lib/auth'
-import { unitTag } from '@estetica-os/utils'
 import { origensDaRede } from '@/lib/crm/origens'
 import { ler } from '@/lib/db'
 import { dayKeyTZ } from '@/lib/datetime'
@@ -381,7 +380,7 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
 
 interface ArgsOportunidade { nome: string; telefone?: string; email?: string; origem?: string; interesse?: string[]; observacao?: string; funil?: string; valor?: number; responsavel?: string }
 interface PayloadOportunidade {
-  nome: string; telefone: string | null; email: string | null; origem: string | null; procedureIds: string[]; observacoes: string | null; funnelId: string | null; tags: string[]
+  nome: string; telefone: string | null; email: string | null; origem: string | null; procedureIds: string[]; observacoes: string | null; funnelId: string | null
   valor?: number; responsavelId?: string
   /** D11: as fichas ativas com este telefone — a escolha "mesma:<id>" liga a oportunidade a uma. */
   fichas?: string[]
@@ -422,9 +421,6 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
       origem = daClinica.find(k => semAcento(k) === semAcento(a.origem!)) ?? null
       if (!origem) return { erro: `Origem "${a.origem}" não existe. Origens: ${daClinica.join(', ')}.` }
     }
-    // Criada no portal de uma unidade (ou por quem é de uma): nasce com a tag dela, como na tela.
-    const u = c.ctx.branchId || c.slugDoPortal ? await resolverUnidade(c, null) : { unidade: null }
-    const tags = 'unidade' in u && u.unidade ? [unitTag(u.unidade.name)] : []
     // O incompleto é recusado e o número vai no formato do WhatsApp (C28, F70).
     let digitos = ''
     if (a.telefone) {
@@ -473,7 +469,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
       },
       payload: {
         nome: a.nome.trim(), telefone: digitos || null, fichas: fichas.map(f => f.id), email: a.email?.trim().toLowerCase() || null,
-        origem, procedureIds: procs.map(p => p.id), observacoes: a.observacao?.trim() || null, funnelId: funil?.id ?? null, tags,
+        origem, procedureIds: procs.map(p => p.id), observacoes: a.observacao?.trim() || null, funnelId: funil?.id ?? null,
         ...(a.valor ? { valor: a.valor } : {}),
         ...(responsavel ? { responsavelId: responsavel.id } : {}),
       },
@@ -485,7 +481,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
     if (mesma && !(p.fichas ?? []).includes(mesma)) return { erro: 'A ficha deste telefone não foi encontrada.' }
     const r = await criarOportunidadeCore(c.admin, c.ctx, {
       nome: p.nome, telefone: p.telefone, email: p.email, origem: p.origem, observacoes: p.observacoes,
-      procedureIds: p.procedureIds, funnelId: p.funnelId, tags: p.tags, valor: p.valor ?? null,
+      procedureIds: p.procedureIds, funnelId: p.funnelId, valor: p.valor ?? null,
     }, mesma ? { clientId: mesma } : {})
     if ('error' in r) return { erro: r.error }
     revalidar('oportunidades')

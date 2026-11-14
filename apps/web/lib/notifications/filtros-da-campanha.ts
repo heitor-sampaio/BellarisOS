@@ -23,7 +23,6 @@ export function filtrosDaCampanha(regras: AudienceRules, agora: Date = new Date(
     ? new Date(agora.getTime() - regras.max_days_since_visit * DIA_MS).toISOString()
     : undefined
   return {
-    ...(regras.branch_ids?.length    && { branch_ids: regras.branch_ids }),
     ...(regras.genders?.length       && { genders: regras.genders }),
     ...(regras.tags?.length          && { tags: regras.tags }),
     ...(regras.procedure_ids?.length && { procedure_ids: regras.procedure_ids }),

@@ -67,8 +67,8 @@ test.beforeAll(async () => {
   const u = (await db().from('branches').select('slug, name').eq('id', rede.branchId).single<{ slug: string; name: string }>()).data!
   slug = u.slug; nomeDaUnidade = u.name
 
-  // As 1010 clientes do lote ("Lote 0001"…), da unidade (a tag é a da lista da
-  // unidade), e a "Zz", que a ordem por nome deixa por último.
+  // As 1010 clientes do lote ("Lote 0001"…) e a "Zz", que a ordem por nome
+  // deixa por último. (A tag "Unidade: X" é só uma tag desde o Bloco Tags.)
   lote.push(...await emLotes('clients', Array.from({ length: LOTE }, (_, i) => ({
     tenant_id: rede!.tenantId, branch_id: rede!.branchId, is_active: true,
     name: `${PREFIXO} Lote ${String(i).padStart(4, '0')} ${marca}`, tags: [`Unidade: ${nomeDaUnidade}`],
@@ -152,7 +152,7 @@ test('o público no banco: aniversário, sem retorno e o teto, depois do filtro'
     return ((data ?? []) as { id: string }[]).map(c => c.id)
   }
   expect(await publico({ aniversario: { mes: Number(dia.slice(5, 7)), dia: Number(dia.slice(8, 10)) } })).toEqual([zz])
-  const semRetorno = await publico({ branch_ids: [rede!.branchId], sem_retorno_desde: addDaysTZ(hoje, -30).toISOString() })
+  const semRetorno = await publico({ sem_retorno_desde: addDaysTZ(hoje, -30).toISOString() })
   expect(semRetorno).toEqual([zz])
   // Contado no banco, como `contarPublico`: lido direto, o próprio PostgREST
   // cortaria em 1000.

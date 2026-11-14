@@ -3,7 +3,6 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarAgendamentos } from './apoio/limpeza'
-import { unitTag } from '@estetica-os/utils'
 
 /**
  * J-54 (ajustes J, 2026-10-30): o drill-down da rede é `?unidade=<id|slug>` na
@@ -11,8 +10,8 @@ import { unitTag } from '@estetica-os/utils'
  * ignoravam: `/admin/dashboard?unidade=b` mostrava a rede inteira.
  *
  * Agora o dashboard recorta a unidade (o título é ela, os números são os dela,
- * os quadros "por filial" saem e há "Ver a rede inteira"), e a lista de
- * Clientes abre com o filtro de unidade já escolhido.
+ * os quadros "por filial" saem e há "Ver a rede inteira"). A lista de
+ * Clientes não recorta: a cliente é da rede (CL2 do Bloco Tags, 2026-11-14).
  */
 
 const marca = Date.now().toString(36)
@@ -41,8 +40,7 @@ test.beforeAll(async () => {
   // Um atendimento concluído na unidade A; nada na B.
   const clienteA = await rede.criarCliente('Cliente da A')
   const clienteB = await rede.criarCliente('Cliente da B')
-  expect((await db().from('clients').update({ tags: [unitTag(nomeA)] }).eq('id', clienteA)).error).toBeNull()
-  expect((await db().from('clients').update({ tags: [unitTag(unidadeB.name)] }).eq('id', clienteB)).error).toBeNull()
+  expect(clienteB).toBeTruthy()
   expect((await db().from('appointments').insert({
     branch_id: rede.branchId, client_id: clienteA, procedure_id: rede.procedureId, professional_id: rede.professionalId,
     status: 'COMPLETED', source: 'INTERNAL', duration_min: 30, price: 0,
@@ -81,12 +79,12 @@ test('o dashboard da rede recorta a unidade do ?unidade=', async ({ browser }) =
   })
 })
 
-test('Clientes do /admin abre com a unidade do ?unidade= escolhida', async ({ browser }) => {
+test('Clientes do /admin é da rede: o ?unidade= não recorta a lista (CL2)', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto(`/admin/clients?unidade=${unidadeB!.slug}`)
     const lista = p.locator('.clients-master-list')
     await expect(lista.getByText(`Cliente da B`, { exact: false })).toBeVisible()
-    await expect(lista.getByText(`Cliente da A`, { exact: false }), 'só as da unidade B').toHaveCount(0)
-    await expect(lista.getByRole('button', { name: unidadeB!.name })).toBeVisible()
+    await expect(lista.getByText(`Cliente da A`, { exact: false }), 'a cliente é da rede').toBeVisible()
+    await expect(lista.getByRole('button', { name: unidadeB!.name })).toHaveCount(0)
   })
 })

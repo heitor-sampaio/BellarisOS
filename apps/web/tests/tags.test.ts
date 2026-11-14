@@ -19,8 +19,8 @@ describe('temTag / alternarTag', () => {
 })
 
 describe('opcoesDeTag', () => {
-  it('o vocabulário ativo, mais o que a pessoa já tem fora dele (importado, arquivado) — sem as de unidade', () => {
-    expect(opcoesDeTag(['VIP', 'Retorno'], ['vip', 'evento-maio', 'Unidade: Centro'])).toEqual(['VIP', 'Retorno', 'evento-maio'])
+  it('o vocabulário ativo, mais o que a pessoa já tem fora dele (importado, arquivado) — a "Unidade: X" é uma tag comum (H16)', () => {
+    expect(opcoesDeTag(['VIP', 'Retorno'], ['vip', 'evento-maio', 'Unidade: Centro'])).toEqual(['VIP', 'Retorno', 'evento-maio', 'Unidade: Centro'])
   })
   it('sem nada marcado, só o vocabulário', () => {
     expect(opcoesDeTag(['VIP'], [])).toEqual(['VIP'])
@@ -28,10 +28,10 @@ describe('opcoesDeTag', () => {
 })
 
 describe('validarNomeDeTag', () => {
-  it('apara, recusa vazio, longo e o prefixo de unidade', () => {
+  it('apara, recusa vazio e longo — e aceita "Unidade: …", que é uma tag comum (H16)', () => {
     expect(validarNomeDeTag('  Noivas  ')).toEqual({ nome: 'Noivas' })
     expect(validarNomeDeTag('   ')).toEqual({ error: 'Dê um nome à tag.' })
     expect(validarNomeDeTag('x'.repeat(61))).toEqual({ error: 'A tag tem no máximo 60 caracteres.' })
-    expect(validarNomeDeTag('Unidade: Norte')).toEqual({ error: 'Tags "Unidade: …" são do sistema (a unidade que o cliente frequenta).' })
+    expect(validarNomeDeTag('Unidade: Norte')).toEqual({ nome: 'Unidade: Norte' })
   })
 })

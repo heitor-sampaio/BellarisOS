@@ -70,8 +70,8 @@ export interface DerivedSource {
   /** plataforma (facebook|instagram) para Meta Ads; senão undefined */
   utm_source?: string
   ctwa_clid?:  string
-  /** tags a aplicar (a de origem espelha o source) */
-  tags:        string[]
+  // Sem `tags` (T2 do Bloco Tags, 2026-11-14): a origem é a ORIGEM, não uma
+  // tag — "o sistema não coloca tag nenhuma automaticamente" (CLAUDE.md §1).
 }
 
 function hasAttribution(a: AttributionInput): boolean {
@@ -105,7 +105,7 @@ export function deriveLeadSource(input: AttributionInput): DerivedSource {
   const utm = input.utm_source?.toLowerCase()
 
   if (input.gclid || utm === 'google') {
-    return { source: 'Google Ads', tags: ['Google Ads'] }
+    return { source: 'Google Ads' }
   }
 
   const isMeta =
@@ -116,13 +116,13 @@ export function deriveLeadSource(input: AttributionInput): DerivedSource {
 
   if (isMeta) {
     const platform = metaPlatform(input)
-    const out: DerivedSource = { source: 'Meta Ads', tags: ['Meta Ads'] }
+    const out: DerivedSource = { source: 'Meta Ads' }
     if (platform) out.utm_source = platform
     if (input.referral?.ctwaClid) out.ctwa_clid = input.referral.ctwaClid
     return out
   }
 
-  return { source: 'Orgânico', tags: ['Orgânico'] }
+  return { source: 'Orgânico' }
 }
 
 /** A origem da criação manual: a escolhida, ou nenhuma ("Não informado"). */
@@ -143,10 +143,10 @@ export function resolveLeadSource(
 ): ResolvedSource {
   if (hasAttribution(input)) return deriveLeadSource(input)
   const source = (manualSource && manualSource.trim()) || null
-  return { source, tags: source ? [source] : [] }
+  return { source }
 }
 
-/** Deduplica tags preservando ordem (tag de origem primeiro). */
+/** Deduplica tags preservando a ordem. */
 export function mergeTags(...groups: (string[] | null | undefined)[]): string[] {
   const seen = new Set<string>()
   const out: string[] = []

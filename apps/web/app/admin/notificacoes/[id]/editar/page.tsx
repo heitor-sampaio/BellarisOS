@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { idOu404 } from '@/lib/id-da-rota'
 import { notFound, redirect } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
@@ -31,11 +30,8 @@ export default async function EditarCampanhaPage({ params }: { params: Promise<{
   }
   if (!['DRAFT', 'PAUSED'].includes(campaign.status)) redirect(`/admin/notificacoes/${id}`)
 
-  const [branches, procedures] = await Promise.all([
-    // A campanha nova mira as unidades ATIVAS (lib/unidades/da-tela).
-    unidadesParaCriar<{ city: string | null }>(ctx.tenantId!, 'city'),
-    getCachedNetworkProcedures(ctx.tenantId!),
-  ])
+  // O público é da rede, sem filtro de unidade (MK2 do Bloco Tags).
+  const procedures = await getCachedNetworkProcedures(ctx.tenantId!)
 
   return (
     <div>
@@ -60,7 +56,6 @@ export default async function EditarCampanhaPage({ params }: { params: Promise<{
 
       <NotificationCampaignForm
         existing={campaign}
-        branches={(branches ?? []) as { id: string; name: string; city: string | null }[]}
         procedures={(procedures ?? []) as { id: string; name: string; category: string | null }[]}
       />
     </div>
