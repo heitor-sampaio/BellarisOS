@@ -16,7 +16,7 @@ export function textoParaIAs(o: {
     '',
     `> ${DEFINICAO}`,
     '',
-    'O sistema operacional da clínica de estética: um sistema só, fácil de usar, no lugar de vários que não conversam entre si — a agenda, a planilha do financeiro, o WhatsApp no celular de alguém, o termo em papel.',
+    'O sistema operacional da clínica de estética: um sistema só, fácil de usar, no lugar de vários que não conversam entre si — a agenda, a planilha do financeiro, o WhatsApp no celular de alguém, o documento em papel.',
     '',
     `- Site: ${o.site}/`,
     `- Teste grátis (14 dias, tudo liberado, sem cartão): ${o.comecar}`,

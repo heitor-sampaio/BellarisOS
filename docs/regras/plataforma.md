@@ -320,6 +320,21 @@ um muro que não depende de cada trava do código.
     existem), e o que JÁ foi vendido continua valendo (agendar a sessão de um
     pacote vendido). A comissão continua sendo calculada no banco; trava a
     tela, a configuração e o fechamento.
+  - **O PDV e a Auditoria são de TODO plano** (PL1, Bloco Plataforma do plano
+    de adaptação, 2026-11-16 — o Heitor: "Sim"): é pelo PDV que entra o
+    dinheiro (como Clientes, que não é opção), e a auditoria é segurança da
+    rede. Nenhuma funcionalidade do catálogo cobre o `cashier` nem o `audit`,
+    e o único caminho pelo qual o plano tira um módulo é `modulosForaDoPlano`
+    (no `buildContext` e nos interessados dos avisos) — então plano nenhum, nem
+    o teste grátis (tudo menos o Copilot), nem a rede bloqueada que volta com o
+    retrato dela, os tira. Trava: `tests/planos-pdv-e-auditoria.test.ts`
+    (funcionalidade nova que liste um dos dois quebra o teste).
+  - **Os rótulos do catálogo seguem os nomes da revisão** (PL1): "Documentos
+    (assinatura eletrônica)" (era "Termos e contratos…", DC1), "Fichas de
+    atendimento personalizadas" (era "Personalização de fichas de
+    atendimento", FC1), "Portal e app da cliente" (era "do cliente"). Moram só
+    no código (`recursos.ts`): o banco guarda as CHAVES, então o sistema, a
+    aba Assinatura, o comparativo e o site mudam juntos, sem migration.
   - ⚠️ **Chave nova no catálogo exige migration NOVA**: retratos e planos
     antigos não a têm, e `lerRecursos` a trata como fora (falha fechada). A
     migration decide, com `jsonb_set`, se ela entra nos planos e retratos
@@ -1015,6 +1030,7 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
 ❌ Redirecionar no proxy um pedido que não é GET com 307 (repete o POST da action numa tela que não a tem: "Failed to find Server Action", D17) — é `redirecionar`, 303
 ❌ Tela ou action de funcionalidade que é PARTE de um módulo (pacotes, inbox, campanhas…) sem assertRecurso, ou rotina sem tela sem redeTemRecurso
 ❌ Acrescentar chave ao catálogo de lib/planos/recursos.ts sem migration nova decidindo os planos e retratos que já existem
+❌ Funcionalidade do plano que cubra o cashier (PDV) ou o audit (Auditoria) — são de todo plano (PL1; tests/planos-pdv-e-auditoria.test.ts trava)
 ❌ Gravar retrato (tenant_subscriptions.recursos) fora de definirAssinatura/criarRede/aplicarPlanoAtual
 ❌ Gravar tenant_subscriptions.adicionais fora de assinatura_adicional_definir — nem na troca de plano (quem tira o que não cabe é o gatilho trg_retrato_sem_plano)
 ❌ Deixar a clínica (p_valor_centavos null) aumentar adicional com preço especial

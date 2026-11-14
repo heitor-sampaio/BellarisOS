@@ -220,6 +220,33 @@ test('o app da cliente diz que ela remarca e cancela, até o prazo da clínica',
   await expect(item).toContainText('fala com a clínica')
 })
 
+// SI2 (Bloco Site do plano de adaptação, 2026-11-16): o app da cliente diz o
+// que ganhou na revisão — aceitar o plano, agendar as sessões do plano e do
+// pacote, assinar todos os documentos de uma vez —, sem prometer pagar; e a
+// Auditoria entra no "Cada um vê o seu".
+test('o app da cliente diz o que ganhou, e tudo o que se faz fica registrado', async ({ page }) => {
+  await page.goto('/')
+  const app = page.locator('#app-da-cliente')
+  await expect(app.locator('li').filter({ hasText: 'Aceita o plano de tratamento' })).toContainText('aceita pelo celular')
+  await expect(app.locator('li').filter({ hasText: 'Agenda sozinha' })).toContainText('sessões do plano e do pacote')
+  await expect(app.locator('li').filter({ hasText: 'Assina pelo celular' })).toContainText('todos de uma vez')
+  await expect(app).not.toContainText(/paga(r)? (pelo|no) (app|celular)/i)
+  const cadaUm = page.locator('#facil .site-item').filter({ has: page.getByRole('heading', { name: 'Cada um vê o seu', exact: true }) })
+  await expect(cadaUm).toContainText('tudo o que se faz fica registrado')
+})
+
+// SI1: o texto fala o sistema adaptado — nenhum nome velho, nenhum cargo como se fosse fixo.
+test('o texto fala o sistema adaptado: Documentos, ficha de saúde, PDV, e nenhum cargo fixo', async ({ page }) => {
+  await page.goto('/')
+  const corpo = page.locator('main, body').first()
+  for (const velho of [/termos e contratos/i, /anamnese/i, /recep[çc][ãa]o/i, /\b(a|à|da) profissional\b/i, /\bpor profissional\b/i, /pelo portal/i]) {
+    await expect(corpo).not.toContainText(velho)
+  }
+  await expect(page.locator('#funcionalidades')).toContainText('Documento assinado sem papel')
+  await expect(corpo).toContainText(/ficha de saúde/i)
+  await expect(corpo).toContainText('PDV')
+})
+
 test('o rodapé leva à política de privacidade da clínica', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Política de Privacidade' })).toHaveAttribute('href', `${CLINICA}/privacidade`)
@@ -293,6 +320,7 @@ const TERMOS: [string, RegExp][] = [
   ['DRE', /entrou[\s\S]*saiu/],
   ['inbox', /caixa de entrada/],
   ['Funil de oportunidades', /etapas/],
+  ['PDV', /comanda/],
   ['horário de silêncio', /21h/],
 ]
 

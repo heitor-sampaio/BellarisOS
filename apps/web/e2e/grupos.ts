@@ -52,6 +52,8 @@ export const ISOLADOS = [
   // O Bloco Configurações do plano de adaptação (2026-11-16): as abas em grupos, os Eventos nas Automações e a auditoria.
   'configuracoes-grupos-e-eventos.spec.ts',
   'auditoria.spec.ts',
+  // BU1 do Bloco Busca (2026-11-16): o "Vender" da busca leva ao PDV, e o PDV confere o id da URL.
+  'busca-vender-no-pdv.spec.ts',
   'estoque-defeitos-da-12.spec.ts',
   'estoque-atritos-da-12.spec.ts',
   'fidelidade-atritos-da-12.spec.ts',

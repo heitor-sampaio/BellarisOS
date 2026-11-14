@@ -7,6 +7,7 @@ import { comandasDoPdv, situacaoDoPdv } from '@/lib/pdv/comandas'
 import { creditosDoCliente } from '@/lib/creditos/credito'
 import { pagamentoCombinadoDoAtendimento } from '@/lib/documentos/leitura'
 import { ler } from '@/lib/db'
+import { ehUuid } from '@/lib/id-da-rota'
 import { FusoProvider } from '@/components/shared/fuso'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { PdvTela, type ComandaEscolhida } from '@/components/shared/pdv/pdv-tela'
@@ -103,7 +104,9 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     novaVenda = { dados: null, perguntaAUnidade: true }
   } else if (nova === '1') {
     const admin = createAdminClient()
-    const cliente = clienteId && /^[0-9a-f-]{36}$/i.test(clienteId)
+    // O id da URL (a busca, o inbox) só vai ao banco se for uuid (BU1): o
+    // `/^[0-9a-f-]{36}$/` deixava passar 36 hífens, e o 22P02 dava a tela de erro.
+    const cliente = ehUuid(clienteId)
       ? await ler(admin.from('clients').select('id, name, phone, is_active')
           .eq('id', clienteId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a cliente da venda') as
           { id: string; name: string; phone: string | null; is_active: boolean } | null

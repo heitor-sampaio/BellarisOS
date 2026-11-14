@@ -18,7 +18,7 @@ import { useSequencia } from '@/components/movimento'
 const AVISOS = [
   { icone: MessageCircle, tom: 'whatsapp', rotulo: 'WhatsApp', titulo: 'Mariana Costa', texto: 'Oi! Vi o anúncio do preenchimento labial. Vocês têm horário essa semana?' },
   { icone: CalendarCheck, tom: 'marca', rotulo: 'Agenda', titulo: 'Agendado', texto: 'Mariana Costa · quinta, 10h · Dra. Ana Lima' },
-  { icone: PenLine, tom: 'marca', rotulo: 'Termos', titulo: 'Termo assinado', texto: 'A Mariana assinou pelo celular. O PDF já está na ficha.' },
+  { icone: PenLine, tom: 'marca', rotulo: 'Documentos', titulo: 'Documento assinado', texto: 'A Mariana assinou pelo celular. O PDF já está na ficha.' },
   { icone: Sparkles, tom: 'marca', rotulo: 'Copilot', titulo: 'Horários de amanhã', texto: 'A Dra. Ana Lima tem 10h, 11h30 e 15h livres.' },
 ] as const
 const TEMPO_DOS_AVISOS = [3400, 3400, 3400, 3400] as const

@@ -37,7 +37,7 @@ describe('acoesGerais', () => {
 })
 
 describe('acoesDoCliente', () => {
-  it('agendar (a agenda com o modal e o cliente) e vender (a ficha com a venda aberta)', () => {
+  it('agendar (a agenda com o modal e o cliente) e vender (o PDV com a venda aberta e ela escolhida — BU1)', () => {
     const a = acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ agenda: 'MANAGE', cashier: 'MANAGE' }), agendaPropria: false }, 'c1')
     expect(a.map(x => [x.id, x.href])).toEqual([
       ['agendar', '/admin/agenda?novo=1&cliente=c1'],
@@ -47,6 +47,12 @@ describe('acoesDoCliente', () => {
   it('vender é de quem recebe (caixa ou financeiro em Gerenciar)', () => {
     expect(acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ financial: 'MANAGE' }), agendaPropria: false }, 'c1').map(x => x.id)).toEqual(['vender'])
     expect(acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ financial: 'VIEW' }), agendaPropria: false }, 'c1')).toEqual([])
+  })
+  it('no portal da unidade, o PDV da unidade; sem o PDV nem o Financeiro em Gerenciar, nada de vender (BU1)', () => {
+    const v = acoesDoCliente({ pathname: '/centro/dashboard', slug: 'centro', permissoes: com({ cashier: 'MANAGE' }), agendaPropria: false }, 'c1')
+    expect(v.map(x => [x.id, x.href])).toEqual([['vender', '/centro/pdv?nova=1&cliente=c1']])
+    const semVenda = acoesDoCliente({ pathname: '/centro/dashboard', slug: 'centro', permissoes: com({ agenda: 'MANAGE', clients: 'MANAGE', financial: 'VIEW' }), agendaPropria: false }, 'c1')
+    expect(semVenda.map(x => x.id)).toEqual(['agendar'])
   })
 })
 

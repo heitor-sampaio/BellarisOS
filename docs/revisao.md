@@ -2078,22 +2078,22 @@ Heitor de que vale uma completa.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| BU1 | **"Vender" na linha da cliente leva ao PDV** com ela escolhida (`lib/busca/acoes.ts`; era `…/clients/<id>?acao=vender`). Aparece a quem vende no PDV (CG1). As páginas novas (PDV, Auditoria) e os nomes novos vêm do menu e das abas | PDV, CG1 |
+| BU1 | **"Vender" na linha da cliente leva ao PDV** com ela escolhida (`lib/busca/acoes.ts`; era `…/clients/<id>?acao=vender`). Aparece a quem vende no PDV (CG1). As páginas novas (PDV, Auditoria) e os nomes novos vêm do menu e das abas ✅ 16/11 (o atalho veio com o PDV7; a página do PDV passou a conferir o id por `ehUuid`, e `e2e/busca-vender-no-pdv.spec.ts` prova os dois portais e quem não vende) | PDV, CG1 |
 | — | Mantém: o que se acha, as outras ações, a regra de não abrir exceção | — |
 
 ### Bloco: Plataforma
 
 | # | O que muda | Depende de |
 |---|---|---|
-| PL1 | **O PDV e a Auditoria são de todo plano**: nenhuma funcionalidade do catálogo (`packages/nucleo/src/lib/planos/recursos.ts`) cobre o `cashier` nem o módulo novo da Auditoria (CF3c), e um teste trava que nenhuma passe a cobrir — plano nenhum, nem o teste grátis, nem a rede bloqueada que volta, os tira. Os rótulos do catálogo (que o sistema, a tela de assinatura e o site mostram) seguem os nomes da revisão: "Documentos" (era "Termos e contratos"), "Fichas de atendimento", "Portal e app da cliente" | PDV, CF3c, DC1 |
+| PL1 | **O PDV e a Auditoria são de todo plano**: nenhuma funcionalidade do catálogo (`packages/nucleo/src/lib/planos/recursos.ts`) cobre o `cashier` nem o módulo novo da Auditoria (CF3c), e um teste trava que nenhuma passe a cobrir — plano nenhum, nem o teste grátis, nem a rede bloqueada que volta, os tira. Os rótulos do catálogo (que o sistema, a tela de assinatura e o site mostram) seguem os nomes da revisão: "Documentos" (era "Termos e contratos"), "Fichas de atendimento", "Portal e app da cliente" ✅ 16/11 (`tests/planos-pdv-e-auditoria.test.ts`; os rótulos moram no código, sem migration) | PDV, CF3c, DC1 |
 | — | Mantém: os dois apps, os planos e os limites, o teste grátis sem o Copilot, a cobrança pelo Asaas, o bloqueio, o suporte e o "entrar como" | — |
 
 ### Bloco: Site
 
 | # | O que muda | Depende de |
 |---|---|---|
-| SI1 | **O texto fala o sistema adaptado** (`components/conteudo.tsx`, `lib/telas.ts`, `lib/perguntas.ts`, `/llms.txt`): Documentos, Ficha de saúde, PDV, Oportunidades; nenhum cargo como fixo ("a recepção" → "a equipe", "quem atende"). "Clínica de estética" fica: é o mercado | DC1, PR3, PDV, CR1 |
-| SI2 | **O app da cliente diz o que ganhou**: aceita o plano pelo celular, agenda as sessões do plano e do pacote, assina tudo de uma vez — sem prometer pagar. A Auditoria no "Cada um vê o seu" | PT1b, CA3, CA4, CF3 |
+| SI1 | **O texto fala o sistema adaptado** (`components/conteudo.tsx`, `lib/telas.ts`, `lib/perguntas.ts`, `/llms.txt`): Documentos, Ficha de saúde, PDV, Oportunidades; nenhum cargo como fixo ("a recepção" → "a equipe", "quem atende"). "Clínica de estética" fica: é o mercado ✅ 16/11 (`apps/site/tests/texto-adaptado.test.ts`) | DC1, PR3, PDV, CR1 |
+| SI2 | **O app da cliente diz o que ganhou**: aceita o plano pelo celular, agenda as sessões do plano e do pacote, assina tudo de uma vez — sem prometer pagar. A Auditoria no "Cada um vê o seu" ✅ 16/11 | PT1b, CA3, CA4, CF3 |
 | SI3 | **As telas fotografadas de novo** (`e2e-capturas/telas-do-site.spec.ts`), com o sistema adaptado, no fim do plano | todos os blocos |
 | — | Mantém: o teste grátis como chamada, os preços do sistema, a calculadora, o SEO/GEO, o movimento | — |
 

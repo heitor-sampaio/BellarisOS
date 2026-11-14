@@ -1774,6 +1774,99 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — Blocos Busca (BU1), Plataforma (PL1) e Site (SI1, SI2): o "Vender" da busca no PDV, o PDV e a Auditoria em todo plano, e o site falando o sistema adaptado
+
+A revisão do Heitor (13/11), no plano de adaptação aprovado: "Ok" (BU1),
+"Sim" (PL1) e "Sim para o site" (SI1–SI3). O SI3 (fotografar as telas de
+novo) fica para o fim do plano, como está nele.
+
+- **BU1 — o "Vender" da busca leva ao PDV.** O atalho já tinha vindo com o
+  PDV7 (fase 2 do PDV, 13/11): `…/pdv?nova=1&cliente=<id>` pelo `rotaNoPortal`,
+  a quem vende no PDV (`recebe`: o PDV ou o Financeiro em Gerenciar — a mesma
+  trava `podeReceber` da página). O que faltava: a página do PDV conferia o id
+  da URL com `/^[0-9a-f-]{36}$/`, que deixava passar 36 hífens — o Postgres
+  respondia 22P02 e a tela era "Algo deu errado". Agora é `ehUuid`
+  (`lib/id-da-rota.ts`) em `app/_shared/pdv.tsx`; a cliente continua conferida
+  na rede da sessão e ativa, e a unidade pela abrangência. A ficha não tinha
+  mais tratamento do `?acao=vender` (saiu no PDV7) — nada morto sobrou.
+  `docs/regras/busca.md` diz o destino novo. `tests/busca-acoes.test.ts`
+  ganhou o portal da unidade e quem não vende.
+- **PL1 — o PDV e a Auditoria são de todo plano.** Nenhuma funcionalidade do
+  catálogo cobria o `cashier` nem o `audit` (já era assim), e o único caminho
+  pelo qual o plano tira um módulo é `modulosForaDoPlano` (o `buildContext` e
+  os interessados dos avisos): plano nenhum, nem o teste grátis, nem a rede
+  bloqueada que volta com o retrato, os tira. A trava nova,
+  `tests/planos-pdv-e-auditoria.test.ts`, quebra se uma funcionalidade passar
+  a listar um dos dois (e confere o plano mais pobre, cada plano de uma
+  funcionalidade só, o teste grátis e o `lib/auth.ts` sem corte escrito à
+  mão). **Os rótulos**: "Documentos (assinatura eletrônica)" (era "Termos e
+  contratos…"), "Fichas de atendimento personalizadas" (era "Personalização de
+  fichas de atendimento"), "Portal e app da cliente" (era "do cliente"). Moram
+  só no código (`packages/nucleo/src/lib/planos/recursos.ts`): o banco guarda
+  as chaves, e `planos_do_site()` devolve o `recursos` (chaves) — o sistema, a
+  aba Assinatura, o comparativo, os dados estruturados e o site mudam juntos,
+  **sem migration**.
+- **SI1 — o texto do site fala o sistema adaptado** (`components/conteudo.tsx`,
+  `demos.tsx`, `termo.tsx`, `lib/telas.ts`, `lib/perguntas.ts`, `lib/llms.ts`):
+  "Documentos" (a faixa, a frente Atendimento, o destaque — "Documento assinado
+  sem papel"), "ficha de saúde" e "ficha de atendimento" no lugar de
+  "anamnese", "Recebeu no PDV, entrou no caixa", o PDV na frente Financeiro
+  (com um `Termo` novo: "a comanda, o recebimento") e no "A venda" do dia da
+  clínica; "a equipe", "quem atende", "por pessoa" e "as permissões dela" no
+  lugar de "a recepção", "a profissional", "por profissional" e "o cargo dela
+  decide"; "Permissões sob medida" no lugar de "Cargos sob medida"; e duas
+  vezes "pelo portal" viraram "pelo app" (a regra do site já proibia chamar o
+  app de portal). "Clínica de estética" ficou (é o mercado).
+- **SI2 — o app da cliente diz o que ganhou**: "Aceita o plano de
+  tratamento" (vê o plano, as sessões e os valores, e aceita pelo celular),
+  "Agenda sozinha … e as sessões do plano e do pacote que ela já tem", "assina
+  todos de uma vez"; a frente do app ganhou "Aceita o plano pelo celular" e
+  "Assina os documentos de uma vez". Nada de pagar pelo app. "Cada um vê o
+  seu" termina em "e tudo o que se faz fica registrado" (a Auditoria).
+- **Decidido pelos princípios** (anotado aqui, não levado ao Heitor):
+  - **O "Vender" segue a trava da página do PDV** (o PDV OU o Financeiro em
+    Gerenciar), não só o `cashier`: a regra da busca é "cada ação só aparece
+    a quem a tela de destino libera" — mostrar a menos esconderia uma porta
+    que a pessoa tem; a mais abriria uma tela fechada.
+  - **"Fichas de atendimento personalizadas"**, não "Fichas de atendimento"
+    seco: o que o plano liga é a PERSONALIZAÇÃO (as fichas que existem seguem
+    no atendimento sem ela) — princípio 3, o rótulo diz o que vale.
+  - **"Termo de consentimento" fica no site** onde é o tipo do documento (é
+    um dos cinco tipos do DC1); o nome do módulo e da tela é "Documentos".
+  - **"por profissional" também saiu** (não só "a profissional"): no site, a
+    palavra lida como cargo; "por quem atende" diz o mesmo sem cargo.
+- **TDD — as falhas antes**:
+  - `e2e/busca-vender-no-pdv.spec.ts` (4 casos): o do id que não é uuid
+    falhou pelo motivo certo — `getByRole('region', { name: 'Vender' })` não
+    apareceu, e a tela era "Algo deu errado · A tela não conseguiu carregar"
+    (o 22P02). Os outros três (o "Vender" no portal da unidade de quem só tem
+    o PDV, quem não vende sem o "Vender", a cliente de outra rede) passaram de
+    primeira: o atalho veio com o PDV7.
+  - `tests/planos-pdv-e-auditoria.test.ts`: os 4 casos dos rótulos falharam
+    (`Expected "Documentos (assinatura eletrônica)" / Received "Termos e
+    contratos (assinatura eletrônica)"`, idem os outros dois); os 5 da trava
+    passaram de primeira (a regra já valia — o teste a prende).
+  - `apps/site/tests/texto-adaptado.test.ts`: 15 de 20 falharam ("Termos e
+    contratos", "termos assinados sem papel", "anamnese", "recebeu na
+    recepção", "recepção", "a profissional", "por profissional", "cada
+    profissional", "o cargo da pessoa", "pelo portal", a falta do PDV e da
+    ficha de saúde, e os quatro do SI2 — "Cada um vê o seu" dizia "o cargo da
+    pessoa usa: a recepção não tropeça no financeiro").
+- **Resultados**: `busca-vender-no-pdv` 4 de 4; os vizinhos (`busca-acoes`,
+  `pdv-nova-venda`, `busca-universal`, `planos-recursos`) 17 passaram e 21
+  pulados (o `planos-recursos` é da plataforma: só roda contra o build). O
+  site contra o build dele (`playwright.site.config.ts`, com os dois casos
+  novos — SI1 e SI2 — e o `PDV` na lista dos termos): 28 de 28. `typecheck` e
+  `lint` limpos; vitest: web 291 arquivos / 2491 testes, site 39, sistema 12,
+  suporte 1, utils 59, validators 5 — todos passando.
+- O spec novo entrou nos ISOLADOS (`e2e/grupos.ts`) e na área "busca
+  universal" do `test:e2e:afetados`.
+- **Para o Heitor**: nenhuma migration (os rótulos do plano não moram no
+  banco). Mexeu no núcleo (`lib/planos/recursos.ts`, só os rótulos e o
+  comentário) — o sistema e a aba Assinatura mostram os nomes novos; vale a
+  completa quando quiser. As telas do site seguem as fotos de antes (SI3,
+  no fim do plano).
+
 ### 2026-11-16 — Bloco Configurações (CF1, CF2, CF3a–CF3c): as abas em grupos, "O que já aconteceu" nas Automações e a Auditoria
 
 A revisão do Heitor (13/11), no plano de adaptação aprovado: as abas de

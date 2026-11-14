@@ -16,6 +16,7 @@ export const DICAS = {
   'dre': 'O demonstrativo do resultado: quanto entrou, quanto saiu e quanto sobrou no mês, organizado por categoria.',
   'inbox': 'Uma caixa de entrada só, com as conversas de todos os números da clínica e várias pessoas atendendo.',
   'funil': 'Cada cliente interessada vira um cartão que anda pelas etapas, do primeiro contato até fechar a venda.',
+  'pdv': 'O ponto de venda: cada venda vira uma comanda — o atendimento, o pacote, o plano, o produto — e é ali que se recebe, à vista, no cartão em vezes ou no crediário.',
   'silencio': 'Das 21h às 8h (dá para mudar em cada automação), nenhuma mensagem automática sai para a cliente: o que cairia nesse horário espera e sai de manhã. Os avisos para a equipe saem na hora.',
 } as const
 

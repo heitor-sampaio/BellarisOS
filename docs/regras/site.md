@@ -35,9 +35,10 @@ clínicas." O site diz isso em três lugares:
   um sistema e outro × a funcionalidade que existe no lugar. Cada "depois" é
   uma funcionalidade conferida; nenhum concorrente citado.
 - **Fácil de usar** (`#facil`, 2026-10-19): sustentado só pelo que o sistema
-  tem — busca universal (Ctrl+K), menu recortado pelo cargo, Copilot, app
-  Android, o `/setup` com a importação, a Ajuda com chamados. Nada de "em 5
-  minutos" ou número de adoção.
+  tem — busca universal (Ctrl+K), menu recortado pelas permissões, Copilot,
+  app Android, o `/setup` com a importação, a Ajuda com chamados. Nada de "em
+  5 minutos" ou número de adoção. O "Cada um vê o seu" diz também "e tudo o
+  que se faz fica registrado" — a Auditoria (CF3; SI2, 2026-11-16).
 - **O app da cliente é o diferencial**, com seção própria (`#app-da-cliente`,
   no menu do topo) e três telas do app em leque. O nome na página é sempre
   **"App da cliente"** (no sistema é o portal do cliente).
@@ -49,8 +50,12 @@ clínicas." O site diz isso em três lugares:
     liberar), assinar com o dedo, pacotes/créditos/planos, pontos e
     recompensas, confirmar e avaliar, avisos no celular, LGPD, e — desde
     2026-10-21 — remarcar e cancelar até o prazo da clínica (24h por padrão;
-    depois, "fala com a clínica"). Ele NÃO cobra (o financeiro é consulta) e
-    leva o nome da unidade — não a logo da clínica.
+    depois, "fala com a clínica"). Desde a revisão (SI2, 2026-11-16): aceita
+    o plano de tratamento pelo celular (PT1b), agenda as sessões do plano e
+    do pacote (PT3/CA3) e assina todos os documentos abertos de uma vez (CA4).
+    Ele NÃO cobra (o financeiro é consulta; o aceite do plano é um gesto, o
+    pagamento é no PDV da clínica) e leva o nome da unidade — não a logo da
+    clínica.
 
 ## Como é feito
 
@@ -152,6 +157,19 @@ fonte, raios, sombras de quem flutua).
 
 ## O texto
 
+- **O texto fala o sistema ADAPTADO** (SI1, Bloco Site do plano de
+  adaptação, 2026-11-16 — o Heitor: "Sim para o site"): "Documentos" (não
+  "Termos e contratos"), "ficha de saúde" (não "anamnese"), o PDV (a venda e
+  o recebimento: "Recebeu no PDV"), "oportunidade" (não "lead"), e NENHUM
+  cargo como se fosse fixo — "a equipe", "quem atende", "as permissões dela",
+  nunca "a recepção", "a gerente", "a profissional", "a contadora" (quem
+  decide é a permissão; o cargo é um conjunto de permissões que a clínica
+  monta). "Termo de consentimento" segue: é um dos tipos de documento.
+  "Clínica de estética" fica: é o MERCADO, o que a dona procura no buscador,
+  não a rede dentro do sistema. Trava: `apps/site/tests/texto-adaptado.test.ts`
+  (o texto dos arquivos, as perguntas, as telas e o catálogo do plano) e o
+  caso "o texto fala o sistema adaptado" de `e2e-site/site.spec.ts`. Novo no
+  `Termo`: "PDV" (a comanda, o recebimento).
 - **Nada inventado**: sem depoimento, cliente, logo de parceiro ou número de
   uso enquanto não existirem de verdade. Cada promessa é uma funcionalidade
   conferida no DEVLOG e no código.
@@ -196,5 +214,6 @@ fonte, raios, sombras de quem flutua).
 ❌ Levar a exceção do movimento ou do gradiente de fundo para a clínica (lá vale a skill /lumiere-design)
 ❌ Prometer no app da cliente pagar ou a logo da clínica (o portal não faz) — ou cancelar/remarcar sem o prazo da clínica
 ❌ Chamar o app da cliente de "portal" na página (um nome por conceito: "App da cliente")
+❌ Nome velho do sistema ("Termos e contratos", "anamnese", "lead") ou cargo como se fosse fixo ("a recepção", "a profissional", "a gerente", "a contadora", "o cargo dela decide") — SI1; apps/site/tests/texto-adaptado.test.ts trava
 ❌ Dizer que a cliente baixa um app à parte ou "o app da sua clínica" (é o mesmo app; o login abre a visão dela)
 ```

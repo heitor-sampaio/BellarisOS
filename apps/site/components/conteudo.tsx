@@ -1,7 +1,7 @@
 import {
   Check, Plus, Package, Gift, BarChart3, ShieldCheck, Search, FileSpreadsheet, Megaphone, Building2, ArrowRight,
   MessagesSquare, CalendarDays, CalendarPlus, Wallet, Smartphone, PenLine, Star, Bell, X, Sparkles, LifeBuoy,
-  Receipt, Landmark, Pill,
+  Receipt, Landmark, Pill, ClipboardCheck,
 } from 'lucide-react'
 import { Navegador, Celular } from '@/components/molduras'
 import { AvisosDoHero, DemoConversa, DemoCopilot } from '@/components/demos'
@@ -83,7 +83,7 @@ export function Hero({ links }: { links: Links }) {
 
 const FAIXA = [
   'Agenda', 'WhatsApp', 'Prontuário', 'Injetáveis', 'Pacotes', 'Financeiro', 'Comissões', 'Estoque',
-  'Fidelidade', 'Automações', 'Termos assinados', 'Copilot', 'App da cliente', 'Relatórios', 'Campanhas',
+  'Fidelidade', 'Automações', 'Documentos assinados', 'PDV', 'Copilot', 'App da cliente', 'Relatórios', 'Campanhas',
 ]
 
 /**
@@ -107,14 +107,14 @@ export function Faixa() {
  * A troca (pedido do Heitor, 2026-10-19): o BellarisOS SUBSTITUI a pilha de
  * ferramentas que não conversam entre si. Cada linha é o que a equipe faz hoje
  * à mão, entre um sistema e outro — e a funcionalidade que existe no lugar
- * (conferida no sistema: agendar pelo inbox, caixa e DRE, comissão com regra,
- * termo pelo app, baixa de estoque com lote, automações).
+ * (conferida no sistema: agendar pelo inbox, o PDV e o DRE, comissão com regra,
+ * documento assinado pelo app, baixa de estoque com lote, automações).
  */
 const TROCAS = [
   { antes: 'Combina o horário no WhatsApp e copia na agenda', depois: 'Agenda na própria conversa — e o horário já está na agenda' },
-  { antes: 'Fecha o caixa numa planilha à parte', depois: 'Recebeu na recepção, entrou no caixa e no resultado do mês' },
+  { antes: 'Fecha o caixa numa planilha à parte', depois: 'Recebeu no PDV, entrou no caixa e no resultado do mês' },
   { antes: 'Calcula a comissão à mão no fim do mês', depois: 'A comissão se calcula sozinha, com a regra da clínica' },
-  { antes: 'Guarda o termo assinado numa pasta de papel', depois: 'O termo é assinado no celular e fica na ficha da cliente' },
+  { antes: 'Guarda o termo assinado numa pasta de papel', depois: 'O documento é assinado no celular e fica na ficha da cliente' },
   { antes: 'Confere o estoque no olho', depois: 'O produto usado na sessão sai do estoque, com lote e validade' },
   { antes: 'Manda lembrete de horário um por um', depois: 'Lembrete, confirmação e retorno saem sozinhos' },
 ]
@@ -127,7 +127,7 @@ export function Troca() {
           <span className="site-overline">✦ Um sistema no lugar de vários</span>
           <h2 id="troca-titulo" className="site-h2">Chega de passar a limpo de um sistema para o outro.</h2>
           <p className="site-lead">
-            Agenda num aplicativo, financeiro na planilha, WhatsApp no celular de alguém, termo no papel.
+            Agenda num aplicativo, financeiro na planilha, WhatsApp no celular de alguém, documento no papel.
             Nada conversa com nada — e a equipe passa o dia copiando de um lugar para o outro.
           </p>
         </div>
@@ -161,8 +161,8 @@ export function Troca() {
 interface Frente { area: string; icone: typeof Wallet; titulo: string; sigla?: string; itens: React.ReactNode[] }
 const FRENTES: Frente[] = [
   { area: 'com', icone: MessagesSquare, titulo: 'Comercial', sigla: 'CRM', itens: [<>O WhatsApp da equipe num <Termo dica="inbox">inbox</Termo> só</>, <Termo key="funil" dica="funil">Funil de oportunidades</Termo>, 'De qual anúncio a cliente veio', 'Venda de pacote e pré-pago'] },
-  { area: 'ate', icone: CalendarDays, titulo: 'Atendimento', itens: ['Agenda por profissional e sala', 'Prontuário e injetáveis', 'Termos assinados sem papel', 'Estoque com baixa na sessão'] },
-  { area: 'fin', icone: Wallet, titulo: 'Financeiro', sigla: 'ERP', itens: ['Caixa, contas a pagar e a receber', 'O resultado do mês (DRE)', 'Comissões com regra', 'Parcelas no financeiro'] },
+  { area: 'ate', icone: CalendarDays, titulo: 'Atendimento', itens: ['Agenda por quem atende e por sala', 'Prontuário, ficha de saúde e injetáveis', 'Documentos assinados no celular', 'Estoque com baixa na sessão'] },
+  { area: 'fin', icone: Wallet, titulo: 'Financeiro', sigla: 'ERP', itens: [<><Termo key="pdv" dica="pdv">PDV</Termo>: toda venda numa comanda</>, 'O resultado do mês (DRE)', 'Comissões com regra', 'Contas a pagar e a receber'] },
   { area: 'mar', icone: Megaphone, titulo: 'Marketing', itens: ['Automações sem programador', 'Campanhas por WhatsApp e no app', 'Fidelidade com pontos', 'Anúncio ligado à venda'] },
 ]
 
@@ -211,9 +211,9 @@ export function UmSistema() {
 
 const PASSOS = [
   { titulo: 'A conversa chega', texto: 'A mensagem do WhatsApp cai no inbox da equipe, já dizendo de qual anúncio a cliente veio.' },
-  { titulo: 'Vira horário', texto: 'Na própria conversa, a recepção encontra o horário livre da profissional e agenda.' },
-  { titulo: 'O atendimento', texto: 'Ficha, anamnese, fotos e prontuário na sessão — e o produto usado sai do estoque.' },
-  { titulo: 'A venda', texto: 'Pacote, pré-pago ou parcelado: o financeiro e a comissão se fazem sozinhos.' },
+  { titulo: 'Vira horário', texto: 'Na própria conversa, a equipe encontra o horário livre de quem atende e agenda.' },
+  { titulo: 'O atendimento', texto: 'A ficha de saúde, a ficha de atendimento, as fotos e o prontuário na sessão — e o produto usado sai do estoque.' },
+  { titulo: 'A venda', texto: 'No PDV, cada venda é uma comanda — o atendimento, o pacote, o plano, o produto, à vista ou parcelado —, e o financeiro e a comissão se fazem sozinhos.' },
   { titulo: 'O retorno', texto: 'Automações lembram do horário e do retorno; a fidelidade dá pontos para voltar.' },
 ]
 
@@ -242,12 +242,13 @@ export function DiaDaClinica() {
 
 /**
  * Fácil de usar (pedido do Heitor, 2026-10-19) — sustentado pelo que o sistema
- * TEM: a busca universal (Ctrl+K), o menu recortado pelo cargo, o Copilot, o
- * app Android, o /setup com a importação de contatos e a Ajuda com chamados.
+ * TEM: a busca universal (Ctrl+K), o menu recortado pelas permissões, o
+ * Copilot, o app Android, o /setup com a importação de contatos e a Ajuda com
+ * chamados. A Auditoria (CF3) entrou no "Cada um vê o seu" (SI2, 2026-11-16).
  */
 const FACIL = [
   { icone: Search, titulo: 'Tudo a um atalho', texto: 'Cliente, conversa, agendamento ou tela: digite e vá, de qualquer lugar do sistema (Ctrl+K).' },
-  { icone: ShieldCheck, titulo: 'Cada um vê o seu', texto: 'O menu mostra só o que o cargo da pessoa usa: a recepção não tropeça no financeiro.' },
+  { icone: ShieldCheck, titulo: 'Cada um vê o seu', texto: 'O menu mostra só o que cada pessoa tem permissão de usar, e o resto nem aparece — e tudo o que se faz fica registrado.' },
   { icone: Sparkles, titulo: 'Peça em português', texto: 'O Copilot agenda, consulta e lança por texto ou por voz — e você confirma antes de gravar.' },
   { icone: Smartphone, titulo: 'No computador e no celular', texto: 'O mesmo sistema no navegador e no app Android, com as notificações no bolso.' },
   { icone: FileSpreadsheet, titulo: 'Comece com o que já tem', texto: 'Um passo a passo monta a clínica, e os contatos chegam de uma planilha.' },
@@ -303,12 +304,12 @@ const DESTAQUES: Destaque[] = [
     tela: TELAS.inbox, demo: 'conversa',
   },
   {
-    overline: 'Agenda e atendimento', titulo: 'A agenda que a recepção entende de primeira',
-    texto: 'Por profissional e por sala, com confirmação, chegada e falta. A sessão abre a ficha certa.',
+    overline: 'Agenda e atendimento', titulo: 'A agenda que a equipe entende de primeira',
+    texto: 'Por quem atende e por sala, com confirmação, chegada e falta. A sessão abre a ficha certa.',
     itens: [
-      { forte: 'A sessão completa', resto: ': anamnese, fichas, fotos, consumo de produtos e pagamento num lugar só.' },
+      { forte: 'A sessão completa', resto: ': ficha de saúde, ficha de atendimento, fotos e consumo de produtos num lugar só — e a comanda já espera no PDV.' },
       { forte: 'O histórico inteiro da cliente', resto: ' — pacotes, créditos, próximos horários — na ficha.' },
-      { forte: 'Cargos sob medida', resto: ': cada pessoa vê só o que o cargo dela libera.' },
+      { forte: 'Permissões sob medida', resto: ': cada cargo é um conjunto de permissões que a clínica monta, e cada pessoa vê só o que ele libera.' },
     ],
     // A agenda, não a ficha (pedido do Heitor, 2026-10-22).
     tela: TELAS.agendaDia,
@@ -318,24 +319,24 @@ const DESTAQUES: Destaque[] = [
     texto: 'O mapa do rosto com cada ponto, o produto e a dose — e o plano de tratamento ao lado.',
     itens: [
       { forte: 'Prontuário e evolução', resto: ' guardados com o cuidado que dado de saúde pede.' },
-      { forte: 'Fichas do seu jeito', resto: ': monte as perguntas de anamnese da clínica.' },
-      { forte: 'Planos de tratamento', resto: ' com as sessões e o que já foi feito.' },
+      { forte: 'Fichas do seu jeito', resto: ': monte a ficha de saúde e as fichas de atendimento da clínica.' },
+      { forte: 'Planos de tratamento', resto: ' com as sessões e o que já foi feito — e a cliente aceita pelo app.' },
     ],
     tela: TELAS.injetaveis,
   },
   {
-    overline: 'Vendas e financeiro', titulo: 'Vendeu, entrou no caixa. Atendeu, gerou a comissão.',
-    texto: 'Pacote, procedimento pré-pago, desconto e parcelas — com cada parcela no financeiro e a comissão calculada.',
+    overline: 'Vendas e financeiro', titulo: 'Vendeu no PDV, entrou no caixa. Atendeu, gerou a comissão.',
+    texto: 'Pacote, procedimento pré-pago, produto, desconto e parcelas — cada venda uma comanda no PDV, cada parcela no financeiro e a comissão calculada.',
     itens: [
       { forte: 'O resultado do mês', resto: <> (<Termo dica="dre">DRE</Termo>), contas a pagar e a receber, por unidade ou da clínica inteira.</> },
-      { forte: 'Comissões com regra', resto: ': por profissional, por procedimento, descontando a taxa do cartão.' },
+      { forte: 'Comissões com regra', resto: ': por pessoa, por procedimento, descontando a taxa do cartão.' },
       { forte: 'Relatórios', resto: ' de vendas, agenda, clientes e comercial, prontos para exportar.' },
     ],
     tela: TELAS.financeiro,
   },
   {
-    overline: 'Termos e contratos', titulo: 'Termo assinado sem papel — e conferível por qualquer um',
-    texto: 'Modelos com os dados da cliente preenchidos sozinhos. A assinatura é na clínica, pelo portal ou por um link.',
+    overline: 'Documentos', titulo: 'Documento assinado sem papel — e conferível por qualquer um',
+    texto: 'Termos de consentimento e contratos com os dados da cliente preenchidos sozinhos. A assinatura é na clínica, pelo app da cliente ou por um link — e os documentos abertos se assinam todos de uma vez.',
     itens: [
       { forte: 'O PDF assinado', resto: ' fica na ficha, com a verificação pública do documento.' },
       { forte: 'Prefere papel?', resto: ' Imprima, colha a assinatura e guarde o documento na ficha do mesmo jeito.' },
@@ -343,7 +344,7 @@ const DESTAQUES: Destaque[] = [
     tela: TELAS.documento,
   },
   {
-    overline: 'Automações', titulo: 'O que a recepção faria de cabeça, o sistema faz sozinho',
+    overline: 'Automações', titulo: 'O que a equipe faria de cabeça, o sistema faz sozinho',
     texto: <>Monte regras sem programador: quando acontecer isto, espere tanto, mande aquilo — fora do{' '}
       <Termo dica="silencio">horário de silêncio</Termo>.</>,
     itens: [
@@ -368,17 +369,20 @@ const DESTAQUES: Destaque[] = [
  * portal FAZ hoje — conferido tela a tela: ela não paga por ele, e o app leva
  * o nome da unidade, não a logo da clínica. Remarcar e cancelar entraram em
  * 2026-10-21, até o prazo da clínica (`tenants.portal_prazo_alteracao_horas`).
+ * SI2 (2026-11-16): aceitar o plano de tratamento (PT1b), agendar as sessões
+ * do plano e do pacote (PT3/CA3) e assinar todos os documentos de uma vez (CA4).
  */
-export const APP_NA_FRENTE = ['Agenda sozinha', 'Assina os termos no celular', 'Pacotes, pontos e histórico', 'Um aviso a cada passo']
+export const APP_NA_FRENTE = ['Agenda sozinha', 'Aceita o plano pelo celular', 'Assina os documentos de uma vez', 'Pacotes, pontos e histórico', 'Um aviso a cada passo']
 
 const NO_APP = [
-  { icone: CalendarPlus, forte: 'Agenda sozinha', resto: 'o procedimento, a profissional e um horário livre — só o que a clínica liberar.' },
-  { icone: PenLine, forte: 'Assina pelo celular', resto: 'o termo chega no app e ela assina com o dedo; o PDF vai para a ficha.' },
+  { icone: CalendarPlus, forte: 'Agenda sozinha', resto: 'o procedimento, quem vai atender e um horário livre — o que a clínica liberar, e as sessões do plano e do pacote que ela já tem.' },
+  { icone: ClipboardCheck, forte: 'Aceita o plano de tratamento', resto: 'vê o plano que a clínica montou para ela, as sessões e os valores, e aceita pelo celular.' },
+  { icone: PenLine, forte: 'Assina pelo celular', resto: 'os documentos chegam no app e ela assina todos de uma vez, com o dedo; o PDF vai para a ficha.' },
   { icone: CalendarDays, forte: 'Remarca ou cancela', resto: 'até o prazo da clínica (24 horas antes, se ela não mudar); mais perto da hora, fala com a clínica pelo WhatsApp.' },
-  { icone: Package, forte: 'Acompanha o tratamento', resto: 'pacotes com as sessões feitas, créditos e planos de tratamento.' },
+  { icone: Package, forte: 'Acompanha o tratamento', resto: 'o plano e os pacotes com as sessões feitas e as que faltam, e os créditos.' },
   { icone: Gift, forte: 'Pontos e recompensas', resto: 'o saldo, o que vai vencer e o catálogo de recompensas da clínica.' },
-  { icone: Star, forte: 'Confirma e avalia', resto: 'depois do atendimento, dá nota ao procedimento e à profissional.' },
-  { icone: Bell, forte: 'Um aviso a cada passo', resto: 'horário confirmado, termo para assinar, pontos e as campanhas da clínica.' },
+  { icone: Star, forte: 'Confirma e avalia', resto: 'depois do atendimento, dá nota ao que a clínica escolheu avaliar.' },
+  { icone: Bell, forte: 'Um aviso a cada passo', resto: 'horário confirmado, documento para assinar, pontos e as campanhas da clínica.' },
 ]
 
 export function AppDaCliente() {
@@ -390,8 +394,8 @@ export function AppDaCliente() {
             <span className="site-overline">✦ App da cliente</span>
             <h2 id="app-titulo" className="site-h2">A sua cliente com a clínica no bolso.</h2>
             <p className="site-lead">
-              Ela agenda, assina, acompanha o tratamento e junta pontos pelo celular — e a recepção para
-              de responder no WhatsApp o que o app já mostra.
+              Ela agenda, aceita o plano, assina, acompanha o tratamento e junta pontos pelo celular — e a equipe
+              para de responder no WhatsApp o que o app já mostra.
             </p>
             <ul className="site-app-lista">
               {NO_APP.map(({ icone: Icone, forte, resto }, i) => (
@@ -526,9 +530,9 @@ export function Seguranca() {
             <h2 id="seguranca-titulo" className="site-h2">Dado de saúde com o cuidado que ele pede.</h2>
           </div>
           <div className="site-seguranca-itens">
-            <div><h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>O prontuário é de quem atende</h3><p>Só o cargo que libera o clínico vê prontuário, evolução e fotos — o resto da equipe, não.</p></div>
+            <div><h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>O prontuário é de quem atende</h3><p>Só quem tem a permissão do clínico vê prontuário, evolução e fotos — o resto da equipe, não.</p></div>
             <div><h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>Cada clínica isolada</h3><p>Os dados de uma clínica nunca aparecem para outra: o isolamento está no próprio banco de dados.</p></div>
-            <div><h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>A cliente pede os dados dela</h3><p>Pelo portal, a cliente pede uma cópia de todos os dados dela, como manda a LGPD.</p></div>
+            <div><h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>A cliente pede os dados dela</h3><p>Pelo app, a cliente pede uma cópia de todos os dados dela, como manda a LGPD.</p></div>
             <div><h3 className="site-h3" style={{ fontSize: 'var(--site-corpo)' }}>Suporte só com a sua permissão</h3><p>A equipe do BellarisOS só entra na sua conta quando você libera — e nunca vê o clínico.</p></div>
           </div>
         </div>

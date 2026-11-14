@@ -10,8 +10,13 @@ import type { AppModule, ReportTab } from '@estetica-os/types'
  *   plano no catálogo vale para as próximas atribuições, não corta ninguém.
  * - Rede sem retrato (nenhuma rede antiga tem plano) = TUDO LIBERADO. É o
  *   `null` que atravessa `temFuncionalidade`, `limiteDe` e `modulosForaDoPlano`.
- * - Clientes, procedimentos, equipe, configurações e recebimentos não estão no
- *   catálogo: são o mínimo para a clínica funcionar. Do módulo `forms`, só a
+ * - Clientes, procedimentos, equipe, configurações, o PDV (`cashier`) e a
+ *   Auditoria (`audit`) não estão no catálogo: são o mínimo para a rede
+ *   funcionar — é pelo PDV que entra o dinheiro, e a auditoria é segurança da
+ *   rede (PL1, a revisão do Heitor de 2026-11-13). Nenhuma funcionalidade os
+ *   cobre, e `tests/planos-pdv-e-auditoria.test.ts` trava isso.
+ * - Os rótulos seguem os nomes da revisão (PL1): "Documentos" (DC1), "Fichas
+ *   de atendimento" (FC1), "Portal e app da cliente". Do módulo `forms`, só a
  *   PERSONALIZAÇÃO de fichas (`fichas`, 2026-10-07) é do plano — as fichas que
  *   existem seguem no atendimento, e os modelos de documento são `documentos`.
  */
@@ -36,10 +41,10 @@ export const FUNCIONALIDADES = [
   // 2026-10-07: partes de módulo — sem elas, o prontuário e os modelos de
   // documento (que também são do módulo forms) seguem valendo.
   { chave: 'injetaveis',           rotulo: 'Planejador de injetáveis',                 grupo: 'Atendimento', modulos: [] },
-  { chave: 'fichas',               rotulo: 'Personalização de fichas de atendimento',  grupo: 'Atendimento', modulos: [] },
-  { chave: 'documentos',           rotulo: 'Termos e contratos (assinatura eletrônica)', grupo: 'Atendimento', modulos: ['documents'] },
+  { chave: 'fichas',               rotulo: 'Fichas de atendimento personalizadas',     grupo: 'Atendimento', modulos: [] },
+  { chave: 'documentos',           rotulo: 'Documentos (assinatura eletrônica)',       grupo: 'Atendimento', modulos: ['documents'] },
   { chave: 'estoque',              rotulo: 'Estoque e lotes',                          grupo: 'Atendimento', modulos: ['stock'] },
-  { chave: 'portal',               rotulo: 'Portal e app do cliente',                  grupo: 'Clientes',    modulos: [] },
+  { chave: 'portal',               rotulo: 'Portal e app da cliente',                  grupo: 'Clientes',    modulos: [] },
   { chave: 'fidelidade',           rotulo: 'Fidelidade',                               grupo: 'Clientes',    modulos: ['loyalty'] },
   { chave: 'pacotes',              rotulo: 'Pacotes',                                  grupo: 'Vendas',      modulos: [] },
   { chave: 'pre_pago',             rotulo: 'Procedimento pré-pago',                    grupo: 'Vendas',      modulos: [] },

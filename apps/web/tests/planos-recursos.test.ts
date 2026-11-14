@@ -104,7 +104,7 @@ describe('a migration', () => {
   it('o planejador de injetáveis e a personalização de fichas são funcionalidades; o inbox é "omnichannel" (2026-10-07)', () => {
     const por = Object.fromEntries(FUNCIONALIDADES.map(f => [f.chave, f])) as Record<string, { rotulo: string; modulos: readonly string[] } | undefined>
     expect(por.injetaveis?.rotulo).toBe('Planejador de injetáveis')
-    expect(por.fichas?.rotulo).toBe('Personalização de fichas de atendimento')
+    expect(por.fichas?.rotulo).toBe('Fichas de atendimento personalizadas')
     expect(por.inbox?.rotulo).toBe('Inbox omnichannel')
     // Partes de módulo: o prontuário e os modelos de documento seguem para quem não as tem.
     expect(por.injetaveis?.modulos).toEqual([])

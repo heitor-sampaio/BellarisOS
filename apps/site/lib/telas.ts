@@ -12,8 +12,8 @@ const semMenu = (arquivo: string, descricao: string): Tela => ({ arquivo: `/tela
 const celular = (arquivo: string, descricao: string): Tela => ({ arquivo: `/telas/${arquivo}.png`, largura: 390, altura: 844, descricao })
 
 export const TELAS = {
-  agenda:       computador('agenda', 'A agenda do dia no BellarisOS, com os horários de cada profissional'),
-  agendaDia:    semMenu('agenda-dia', 'A agenda do dia no BellarisOS, por profissional, com a situação de cada atendimento'),
+  agenda:       computador('agenda', 'A agenda do dia no BellarisOS, com os horários de cada pessoa que atende'),
+  agendaDia:    semMenu('agenda-dia', 'A agenda do dia no BellarisOS, por quem atende, com a situação de cada atendimento'),
   inbox:        semMenu('inbox', 'O inbox do BellarisOS com uma conversa de WhatsApp aberta e os dados da cliente ao lado'),
   inboxCelular: celular('inbox-celular', 'Uma conversa de WhatsApp no BellarisOS, pelo celular'),
   ficha:        semMenu('ficha', 'A ficha da cliente no BellarisOS: histórico, pacotes e próximos horários'),
@@ -21,7 +21,7 @@ export const TELAS = {
   financeiro:   semMenu('financeiro', 'O financeiro do BellarisOS: o resultado do mês, receitas e despesas'),
   automacao:    semMenu('automacao', 'O editor de automações do BellarisOS: o gatilho, a condição e o aviso à equipe'),
   copilot:      semMenu('copilot', 'O Copilot do BellarisOS respondendo a um pedido sobre a agenda'),
-  documento:    semMenu('documento', 'A tela de Documentos do BellarisOS: os termos de cada cliente, assinados e a enviar'),
+  documento:    semMenu('documento', 'A tela de Documentos do BellarisOS: os documentos de cada cliente, assinados e a enviar'),
   portal:       celular('portal-celular', 'O início do app da cliente: o que confirmar, o próximo horário e os tratamentos em curso'),
   portalAgendar: celular('portal-agendar', 'O app da cliente: escolhendo a data e um horário livre para agendar sozinha'),
   portalPontos: celular('portal-pontos', 'O app da cliente: o saldo de pontos e as recompensas da clínica'),
