@@ -1647,8 +1647,18 @@ revisão, só se escreve o plano. Nada se implementa.
   recebe a parcela pedindo a forma; a baixa da receita no Financeiro pede a
   forma sempre (a parte da forma do CX2). Fica: o crediário no recebimento
   do atendimento avulso (ele grava um lançamento só).
-- ⬜ PDV fase 5b — os pontos dentro da comanda (FD2) e vários itens numa
-  comanda.
+- ✅ PDV fase 5b (14/11) — vários itens numa comanda e os pontos dentro dela
+  (FD2a–FD2c): na comanda do atendimento se acrescenta o produto de Venda
+  direta com a quantidade (e se tira antes de receber); ele entra no total,
+  sai do estoque da unidade pelos lotes ao receber, junto do atendimento e
+  na mesma forma, e o estorno o devolve como a venda de produto já fazia. Os
+  pontos e o voucher valem sobre o total da comanda do atendimento e também
+  na "Nova venda" (produto, pacote, procedimento), à vista; o ponto nasce
+  quando a comanda é paga, pelo valor pago, e o estorno tira o que aquela
+  comanda deu. A ficha diz que o voucher se usa no PDV; a Fidelidade diz "No
+  PDV, ao receber". Fica: os pontos na comanda do PLANO (o receber do plano
+  é outra tela, e "sem forçar" não coube) e o crediário no recebimento do
+  atendimento avulso (ele grava um lançamento só).
 - ✅ Bloco Estoque (14/11) — E1/E5, E4/E5, E6/E3, E2, E10, E14 e E15:
   Categorias, Marcas e Fornecedores (criar, renomear, excluir; quem tem o
   Estoque em Gerenciar), o campo com busca e "+ Nova …", Insumo e Venda
@@ -1728,7 +1738,7 @@ revisão, só se escreve o plano. Nada se implementa.
 | # | O que muda | Depende de |
 |---|---|---|
 | PDV1 | **O PDV**: a tela de vender e de controlar as vendas e os pagamentos. Todo pagamento de venda passa por ele, seja do que for | o desenho da tela, mostrado ao Heitor antes de implementar |
-| PDV2 | **Uma venda, uma comanda**: o atendimento avulso, o pacote, o plano, a venda de produto — cada um na sua comanda | PDV1 |
+| PDV2 | **Uma venda, uma comanda**: o atendimento avulso, o pacote, o plano, a venda de produto — cada um na sua comanda. Na comanda do atendimento se acrescenta o produto de Venda direta que a cliente leva ("na saída ela levou um sérum") ✅ fase 5b (14/11) | PDV1 |
 | PDV3 | **Iniciar o atendimento** (clicar no horário na agenda e iniciar, por quem tem a permissão) gera a comanda e o atendimento de quem vai atender. Pagar antes ou depois é só a ordem do trabalho. Agendar, confirmar e remarcar não geram comanda; falta e cancelamento não têm comanda | PDV2 |
 | PDV4 | ~~**Plano de tratamento**: a comanda nasce ao iniciar o PRIMEIRO atendimento do plano.~~ **Revisto no Plano de tratamento (PT1):** a comanda do plano nasce no ACEITE, com o valor inteiro. Sai o "Fechar checkout" | PDV2; **Bloco: Plano de tratamento** |
 | PDV5 | **Pacote**: vendido como um produto, na hora, pelo PDV | PDV2 |
@@ -1776,9 +1786,9 @@ unidade.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| FD2a | **O desconto em pontos e o voucher se aplicam na comanda do PDV** — os dois caminhos que hoje existem fora dele (o pagamento do atendimento, a troca na ficha que vira desconto) passam a ser o PDV | PDV1–PDV7 |
-| FD2b | **O ponto nasce quando a comanda é paga**, pela regra que já existe (por real ou por procedimento; o pacote vendido como produto pontua na venda; o produto pontua se a rede ligou). O estorno da comanda tira o que ela deu | PDV1 |
-| FD2c | **A tela de Configurações → Fidelidade** diz "No PDV, ao receber" no lugar de "Na recepção, ao confirmar o pagamento" | — |
+| FD2a | **O desconto em pontos e o voucher se aplicam na comanda do PDV** — os dois caminhos que hoje existem fora dele (o pagamento do atendimento, a troca na ficha que vira desconto) passam a ser o PDV. ✅ fase 5b (14/11): na comanda do atendimento (sobre o total, com os produtos) e na "Nova venda" à vista; a comanda do plano fica | PDV1–PDV7 |
+| FD2b | **O ponto nasce quando a comanda é paga**, pela regra que já existe (por real ou por procedimento; o pacote vendido como produto pontua na venda; o produto pontua se a rede ligou). O estorno da comanda tira o que ela deu. ✅ fase 5b (14/11) | PDV1 |
+| FD2c | **A tela de Configurações → Fidelidade** diz "No PDV, ao receber" no lugar de "Na recepção, ao confirmar o pagamento". ✅ fase 5b (14/11) | — |
 | FD3 | **Sai "pontos só na unidade"**: o saldo é sempre um, da rede. Saem junto a escolha "Onde o bônus pode ser usado" e a C64. A coluna e o saldo por unidade no razão dos pontos saem das funções e da tela (banco zerado: não há saldo a migrar) | — |
 | — | Mantém: ganho por real ou por procedimento, o catálogo e os vouchers, o ajuste com motivo, a validade, os bônus, o prêmio da indicação, a troca pelo app — todos opcionais e desligados ao nascer | — |
 

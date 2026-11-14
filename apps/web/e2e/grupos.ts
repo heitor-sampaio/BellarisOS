@@ -176,6 +176,8 @@ export const ISOLADOS = [
   'pdv-fechar-o-dia.spec.ts',
   // O PDV, fase 5a (PDV8 e CX1): o crediário como forma e a parcela no PDV.
   'pdv-crediario-e-parcela.spec.ts',
+  // O PDV, fase 5b (PDV2 e FD2): o produto na comanda do atendimento e os pontos.
+  'pdv-comanda-varios-itens-e-pontos.spec.ts',
   'ficha-acesso-sem-cpf.spec.ts',
   'ficha-cadastro-atritos-da-7.spec.ts',
   'ficha-cadastro-documento.spec.ts',

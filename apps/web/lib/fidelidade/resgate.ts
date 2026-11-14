@@ -76,7 +76,7 @@ export function calcularDescontoComPontos(entrada: {
   const descontoC = Math.min(descontoEmCentavos(pedido, regras.valorDoPonto), precoC)
   const tetoC     = Math.round(precoC * regras.tetoPct / 100)
   if (descontoC > tetoC) {
-    return { ...semDesconto, motivo: `Os pontos pagam no máximo ${String(regras.tetoPct).replace('.', ',')}% do atendimento.` }
+    return { ...semDesconto, motivo: `Os pontos pagam no máximo ${String(regras.tetoPct).replace('.', ',')}% do valor a pagar.` }
   }
   return { pontos: pedido, desconto: reais(descontoC), restante: reais(precoC - descontoC) }
 }

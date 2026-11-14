@@ -80,8 +80,11 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   rede); no app sem a troca pelo portal, "A troca é feita na recepção, com
   quem cuida da fidelidade: Lúcia." (pela unidade do endereço). Prova:
   `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A38").
-- **Pontos como desconto no pagamento** (fase 2): na recepção, o cliente abate
-  pontos do atendimento. Regras da rede: valor do ponto, mínimo e teto (% do
+- **Pontos como desconto no pagamento** (fase 2; o lugar é o PDV desde a
+  fase 5b do plano de adaptação, FD2a, 2026-11-14): no PDV, ao receber, o
+  cliente abate pontos do TOTAL da comanda do atendimento (o atendimento e os
+  produtos acrescentados nela) ou de uma venda à vista da "Nova venda"
+  (produto, pacote, procedimento). Regras da rede: valor do ponto, mínimo e teto (% do
   valor). `financial_transactions.amount` continua sendo o DINHEIRO RECEBIDO; o
   desconto vai em `loyalty_discount` (bruto = amount + loyalty_discount) — por
   isso receita, LTV e estorno seguem certos sem mudar nada.
@@ -98,6 +101,28 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
 - Pago todo com pontos: `amount` 0, sem forma de pagamento, sem "Purchase" na
   API de Conversões (o `pagamento.recebido` sai, com 0).
 - Estorno devolve os pontos usados (ESTORNO_RESGATE) e tira os ganhos.
+- **FD2 no PDV** (fase 5b, 2026-11-14 — regra do PDV em
+  `vendas-financeiro.md`):
+  - Na comanda do atendimento com produtos, os pontos e o voucher se repartem
+    entre os lançamentos na proporção do valor (`private.parte_dos_itens`), e
+    o RESGATE sai em uma linha por lançamento: o estorno de um deles devolve
+    só os pontos dele. O voucher de procedimento fica inteiro no atendimento.
+  - Na "Nova venda", só à vista e só o voucher de DESCONTO (valor ou
+    percentual); a conta é `contaDaFidelidade` (`lib/fidelidade/conta-na-venda.ts`:
+    desconto comercial → voucher → pontos), refeita no servidor
+    (`fidelidadeDaVenda`) e conferida no banco (`private.fidelidade_na_venda`,
+    pela `venda_com_fidelidade`, uma transação). A venda de crédito na rede
+    (`creditos_vendidos`) não usa pontos: é dinheiro guardado, não consumo.
+  - **O ponto nasce quando a comanda é paga** (FD2b), pelo valor pago: o
+    lançamento nasce em aberto e vira pago já reduzido, e o gatilho de ganho
+    (`on_transaction_loyalty_earn`, no UPDATE de `is_paid`) pontua o que entrou.
+    O estorno tira o que aquele lançamento deu (`estornar_transacao`, sem
+    mudança). O produto só pontua se a rede ligou (como antes).
+  - A ficha diz, no voucher de desconto ativo, "Usa-se no PDV, ao receber"
+    (`[data-voucher-no-pdv]`); Configurações → Fidelidade diz "No PDV, ao
+    receber" (FD2c).
+  - Fica: os pontos na comanda do PLANO.
+  - Prova: `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`.
 - **Pacote cancelado** (F2b, 2026-11-01; `vendas-financeiro.md` §9.3.1): os
   pontos seguem o estorno. Devolvido como ESTORNO, cada lançamento estornado
   inteiro tira o que deu (`estornar_transacao`), e o estornado EM PARTE tira

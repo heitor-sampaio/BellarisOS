@@ -13,9 +13,17 @@ import { rotaCliente } from '@/lib/rotas'
 import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
 import { SITUACOES_DO_PDV, type ComandaDoPdv, type SituacaoDoPdv } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
+import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
+import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
 
 export interface ComandaEscolhida {
   comanda:            ComandaDoPdv
+  /** Fase 5b: o preço do atendimento sozinho (a comanda vale ele e os produtos dela). */
+  valorDoAtendimento: number | null
+  /** Fase 5b: os produtos acrescentados na comanda do atendimento. */
+  itens:              ItemDaComanda[]
+  /** Os produtos de Venda direta que ainda se podem acrescentar (só na comanda do atendimento a receber). */
+  produtosParaAcrescentar: { id: string; name: string; price: number; unidade: string; disponivel: number }[]
   pacotesParaAbater:  PacoteParaAbater[]
   pagamentoCombinado: { metodo: string | null; rotulo: string; desconto?: number } | null
 }
@@ -256,9 +264,13 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
               </p>
             </div>
             <span style={{ color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>1</span>
-            <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl(c.valor)}</span>
+            <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl(e.valorDoAtendimento ?? c.valor)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12, marginTop: 8 }}>
+          {c.origem === 'ATENDIMENTO' && (
+            <ProdutosDaComanda comandaId={c.id} slug={slugDaUnidade} itens={e.itens}
+              produtos={aReceber && c.agendamentoId ? e.produtosParaAcrescentar : null} />
+          )}
+          <div data-total-da-comanda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12, marginTop: 8 }}>
             <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Total</span>
             <b style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{brl(c.valor)}</b>
           </div>
@@ -280,7 +292,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
           ) : aReceber && c.planoId ? (
             <ReceberOPlano key={c.id} planoId={c.planoId} slug={slugDaUnidade} aoReceber={aoReceber} />
           ) : aReceber && c.agendamentoId ? (
-            <FormularioDeReceberAtendimento key={c.id} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}
+            <FormularioDeReceberAtendimento key={`${c.id}:${c.valor}`} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}
               clienteId={c.clienteId} pagamentoCombinado={e.pagamentoCombinado} pacotesParaAbater={e.pacotesParaAbater}
               emBlocos onFeito={aoReceber} />
           ) : null}

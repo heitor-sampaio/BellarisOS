@@ -33,7 +33,11 @@ export function situacaoDoVoucher(v: { status: string; expires_at: string }, ago
 /** Quanto o voucher desconta deste atendimento — ou por que não serve. */
 export function descontoDoVoucher(
   v: VoucherParaCalculo,
-  atendimento: { procedureId: string | null; preco: number },
+  atendimento: {
+    procedureId: string | null; preco: number
+    /** PDV, fase 5b (FD2a): o total da comanda (o atendimento e os produtos dela) — o voucher de desconto vale sobre ele; o de procedimento, sobre o preço do atendimento. */
+    total?: number
+  },
   agora = new Date(),
 ): { desconto: number; motivo?: string } {
   const situacao = situacaoDoVoucher(v, agora)
@@ -41,6 +45,7 @@ export function descontoDoVoucher(
   if (situacao !== 'ATIVO')   return { desconto: 0, motivo: 'Este voucher já foi usado ou cancelado.' }
 
   const precoC = Math.round(atendimento.preco * 100)
+  const totalC = Math.round((atendimento.total ?? atendimento.preco) * 100)
   const valor  = Number(v.discount_value ?? 0)
   switch (v.type) {
     case 'PROCEDIMENTO':
@@ -48,11 +53,11 @@ export function descontoDoVoucher(
         ? { desconto: precoC / 100 }
         : { desconto: 0, motivo: 'Este voucher é de outro procedimento.' }
     case 'DESCONTO_VALOR':
-      return { desconto: Math.min(Math.round(valor * 100), precoC) / 100 }
+      return { desconto: Math.min(Math.round(valor * 100), totalC) / 100 }
     case 'DESCONTO_PERCENTUAL': {
-      // round(preço × pct / 100, 2) do banco, em inteiros (pct tem 2 casas).
+      // round(total × pct / 100, 2) do banco, em inteiros (pct tem 2 casas).
       const pctC = Math.round(valor * 100)
-      return { desconto: Math.floor((precoC * pctC + 5000) / 10000) / 100 }
+      return { desconto: Math.floor((totalC * pctC + 5000) / 10000) / 100 }
     }
     case 'PRODUTO':
       return { desconto: 0, motivo: 'Voucher de produto é entregue, não aplicado no pagamento.' }

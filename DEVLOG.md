@@ -1774,6 +1774,73 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — O PDV, fase 5b: vários itens numa comanda e os pontos dentro dela
+
+PDV2 (o produto na comanda do atendimento) e FD2a–FD2c do plano de adaptação
+(`docs/revisao.md`). O desenho aprovado (`docs/desenhos/pdv.html`): "na saída
+ela levou um sérum, que se acrescenta na mesma comanda", "320 pts valem R$
+16,00", "os pontos desta compra entram quando ela for paga". Regras em
+`docs/regras/vendas-financeiro.md` (o PDV), `fidelidade.md` e
+`atendimento.md` (§10).
+- **O produto na comanda do atendimento**: "Acrescentar produto" (os de
+  Venda direta, com a quantidade) e "Tirar" até receber
+  (`ProdutosDaComanda`; actions `acrescentarProdutoNaComanda` /
+  `tirarProdutoDaComanda`, com `podeReceber`, a rede e o alcance). O total
+  da comanda é o atendimento + os produtos; ao receber, os produtos se
+  vendem DENTRO de `confirmar_pagamento_do_atendimento` por
+  `produto_vender_itens` (os lotes, a baixa — nada duplicado), na mesma
+  forma, com o profissional do atendimento como quem vendeu. O estorno é o
+  da venda de produto (o estoque volta pelos lotes).
+- **FD2a**: os pontos e o voucher valem sobre o total da comanda do
+  atendimento (`previaDoPagamento`/`confirmPayment` somam os produtos; o
+  voucher de valor/percentual sobre o total, o de procedimento sobre o
+  preço) e na "Nova venda" do PDV — produto, pacote e procedimento, à vista
+  (`PontosNaVenda`, `useFidelidadeNaVenda`; a conta pura em
+  `contaDaFidelidade`, o servidor em `fidelidadeDaVenda`, o banco em
+  `venda_com_fidelidade` → `private.fidelidade_na_venda`). A ficha diz, no
+  voucher de desconto, "Usa-se no PDV, ao receber".
+- **FD2b**: o lançamento nasce em aberto e vira pago já com o valor pago, e
+  o gatilho de ganho pontua o que entrou; o RESGATE sai em uma linha por
+  lançamento, e o estorno de um deles devolve só os pontos dele e tira só o
+  que ele deu (`estornar_transacao`, sem mudança).
+- **FD2c**: Configurações → Fidelidade diz "No PDV, ao receber"; saíram os
+  dois "recepção" da tela.
+- **Banco** (migration `20261114700101_pdv_itens_e_pontos`, aplicada pelo
+  MCP; NÃO destrutiva): tabela `comanda_itens` (RLS ligada e só as
+  restritivas do suporte: a sessão não lê nem grava; o servidor, depois da
+  trava), `comanda_acrescentar_item`/`comanda_tirar_item`,
+  `private.parte_dos_itens`, o gatilho `comanda_da_venda` que respeita
+  `bellaris.venda_na_comanda`, `confirmar_pagamento_do_atendimento` com os
+  itens, `venda_com_fidelidade` + `private.fidelidade_na_venda`, e
+  `pdv_comandas` com o valor e o recebido dos itens.
+- **Decisões pelos princípios** (anotadas para o Heitor):
+  - o produto vale o preço de venda de AGORA (o de `produto_vender_itens`;
+    princípio 3) e o estoque não se reserva ao acrescentar — confere-se de
+    novo ao receber (princípio 7);
+  - quem vendeu o produto é o profissional do atendimento, se ativo (o
+    desenho);
+  - os descontos (voucher, desconto comercial, pontos) se repartem entre o
+    atendimento e os produtos na proporção do valor; o voucher de
+    procedimento fica inteiro no atendimento, e o `used_transaction_id` do
+    voucher é o lançamento do atendimento;
+  - um RESGATE por lançamento (o estorno de um devolve a parte dele);
+  - com produto pendente, o atendimento não se abate de pacote (há dinheiro
+    a receber na comanda);
+  - na "Nova venda", pontos e voucher só à vista e só o voucher de DESCONTO
+    (o de procedimento é do atendimento; o de produto é entregue); ordem:
+    desconto comercial → voucher → pontos; a venda de crédito na rede não
+    usa pontos;
+  - as mensagens dos pontos dizem "valor a pagar" em vez de "atendimento".
+- TDD: `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts` (6 testes) falhou
+  pelo que faltava — sem o "Acrescentar produto" (A e B no tempo), a action
+  `acrescentarProdutoNaComanda` não existia em manifesto nenhum (C e D), sem
+  o bloco `[data-pontos-da-venda]` na Nova venda (E), e sem o
+  `[data-voucher-no-pdv]` na ficha (F).
+- **Fica**: os pontos na comanda do PLANO (o receber do plano é outra tela,
+  e "sem forçar" não coube) e o crediário no recebimento do atendimento
+  avulso (`confirmar_pagamento_do_atendimento` grava um lançamento por
+  coisa vendida, à vista ou a receber).
+
 ### 2026-11-14 — O PDV, fase 5a: o crediário é uma forma e a parcela se recebe no PDV
 
 PDV8 e o resto do CX1 do plano de adaptação (`docs/revisao.md`). O Heitor,

@@ -43,6 +43,7 @@ import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
+import { valorDosItensDoAtendimento } from '@/lib/pdv/itens-da-comanda'
 import { insumosPorProduto, montarInsumosDaBaixa } from '@/lib/atendimento/insumos-da-baixa'
 import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
 import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
@@ -1115,9 +1116,12 @@ export async function confirmPayment(
     // confere de novo (config, teto, saldo) dentro da transação.
     // A ordem: o voucher desconta PRIMEIRO, depois o desconto comercial (sobre o
     // que sobrou), e os pontos valem sobre o que sobra dos dois.
+    // PDV, fase 5b (FD2a): tudo sobre o TOTAL da comanda — o atendimento e os
+    // produtos acrescentados nela, que o banco vende junto.
     const preco = parseFloat(String(appt.price))
+    const total = Math.round((preco + await valorDosItensDoAtendimento(ctx.tenantId!, appointmentId, admin)) * 100) / 100
     let pontos = 0, desconto = 0, descontoVoucher = 0, descontoVenda = 0
-    let valorFinal = Math.round(preco * 100) / 100
+    let valorFinal = total
     const cfg = pedido > 0 || voucherId ? await configDaRede(ctx.tenantId!, admin) : null
     if (cfg && !cfg.enabled) return { error: 'O programa de fidelidade está desligado nesta rede.' }
     {
@@ -1126,10 +1130,10 @@ export async function confirmPayment(
           .select('type, status, expires_at, procedure_id, discount_value, client_id')
           .eq('id', voucherId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o voucher')
         if (!v || v.client_id !== appt.client_id) return { error: 'Voucher não encontrado para este cliente.' }
-        const dv = descontoDoVoucher(v as VoucherParaCalculo, { procedureId: appt.procedure_id as string | null, preco })
+        const dv = descontoDoVoucher(v as VoucherParaCalculo, { procedureId: appt.procedure_id as string | null, preco, total })
         if (dv.motivo) return { error: dv.motivo }
         descontoVoucher = dv.desconto
-        valorFinal = Math.round((preco - descontoVoucher) * 100) / 100
+        valorFinal = Math.round((total - descontoVoucher) * 100) / 100
       }
 
       const recusa = recusaDoDesconto(valorFinal, pedidoDeDesconto.data)
@@ -1212,6 +1216,8 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
   const cfg = await configDaRede(ctx.tenantId!, admin)
   if (!cfg.enabled) return null
   const preco = parseFloat(String(appt.price))
+  // PDV, fase 5b (FD2a): o voucher de desconto e os pontos valem sobre o total da comanda.
+  const total = Math.round((preco + await valorDosItensDoAtendimento(ctx.tenantId!, appointmentId, admin)) * 100) / 100
   const [saldoLido, meus] = await Promise.all([
     saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? appt.branch_id as string : null, admin),
     ler(admin.from('loyalty_vouchers')
@@ -1221,7 +1227,7 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
   ])
   const vouchers = ((meus ?? []) as (VoucherParaCalculo & { id: string; name: string; branch_id: string })[])
     .filter(v => !cfg.scope_per_branch || v.branch_id === appt.branch_id)
-    .map(v => ({ v, d: descontoDoVoucher(v, { procedureId: appt.procedure_id as string | null, preco }) }))
+    .map(v => ({ v, d: descontoDoVoucher(v, { procedureId: appt.procedure_id as string | null, preco, total }) }))
     .filter(({ d }) => !d.motivo && d.desconto > 0)
     .map(({ v, d }) => ({ id: v.id, name: v.name, desconto: d.desconto, expires_at: v.expires_at }))
 
@@ -1229,7 +1235,7 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
   if (saldo <= 0 && vouchers.length === 0) return null
 
   const regras = { valorDoPonto: cfg.redeem_points_value, minimo: cfg.redeem_min_points, tetoPct: cfg.redeem_max_pct }
-  return { saldo, ...regras, maximo: maximoDePontos(saldo, preco, regras), vouchers }
+  return { saldo, ...regras, maximo: maximoDePontos(saldo, total, regras), vouchers }
 }
 
 // --- Salvar rascunho de notas (sem concluir) ---------------------

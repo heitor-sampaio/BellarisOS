@@ -19,6 +19,8 @@ import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { parcelasEmAbertoDaCliente } from '@/lib/pdv/parcelas-da-cliente'
+import { itensDaComanda } from '@/lib/pdv/itens-da-comanda'
+import { fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
 
 /**
  * O PDV, o corpo dos dois portais (PDV1, a revisão do Heitor de 2026-11-13:
@@ -65,17 +67,29 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     // como na tela do atendimento; o combinado no contrato vem escolhido.
     const admin = createAdminClient()
     const agendamento = comanda.agendamentoId
-      ? await ler(admin.from('appointments').select('procedure_id, status')
-          .eq('id', comanda.agendamentoId).maybeSingle(), 'ler o atendimento da comanda') as { procedure_id: string | null; status: string } | null
+      ? await ler(admin.from('appointments').select('procedure_id, status, price')
+          .eq('id', comanda.agendamentoId).maybeSingle(), 'ler o atendimento da comanda') as { procedure_id: string | null; status: string; price: number | string | null } | null
       : null
     const aReceber = !comanda.paga && !comanda.canceladaEm
-    const pacotes = aReceber && agendamento?.status === 'COMPLETED' && agendamento.procedure_id
+    // Fase 5b: os produtos acrescentados na comanda do atendimento, e os que
+    // ainda se podem acrescentar (os de Venda direta, no estoque da unidade).
+    const doAtendimento = comanda.origem === 'ATENDIMENTO'
+    const [itens, produtos] = await Promise.all([
+      doAtendimento ? itensDaComanda(ctx.tenantId!, comanda.id, admin) : [],
+      doAtendimento && aReceber ? produtosAVenda(ctx.tenantId!, unidadeId) : [],
+    ])
+    const comProdutos = itens.some(i => !i.vendido)
+    // Com produto na comanda, o atendimento não se abate do pacote: a comanda se recebe inteira.
+    const pacotes = aReceber && !comProdutos && agendamento?.status === 'COMPLETED' && agendamento.procedure_id
       ? (await creditosDoCliente(admin, ctx.tenantId!, comanda.clienteId))
           .filter(c => c.tipo === 'PACOTE' && c.procedureId === agendamento.procedure_id)
           .map(c => ({ sessaoId: c.id, pacote: c.origem, restantes: c.restantes, preco: c.preco }))
       : []
     escolhida = {
       comanda,
+      valorDoAtendimento: agendamento ? Number(agendamento.price ?? 0) : null,
+      itens,
+      produtosParaAcrescentar: produtos.map(p => ({ id: p.id, name: p.name, price: p.price, unidade: p.unidade, disponivel: p.disponivel })),
       pacotesParaAbater: pacotes,
       pagamentoCombinado: aReceber && comanda.agendamentoId
         ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, comanda.agendamentoId) : null,
@@ -98,14 +112,16 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     // A arquivada não compra (princípio 3: a tela diz por quê, não volta calada à busca).
     else if (!cliente.is_active) novaVenda = { dados: null, aviso: `${cliente.name} está arquivada. Para vender, reative a cliente na ficha.` }
     else {
-      const [pacotes, procedimentos, produtos, equipe, aReceber, emAberto] = await Promise.all([
+      const [pacotes, procedimentos, produtos, equipe, aReceber, emAberto, fidelidade] = await Promise.all([
         pacotesAVenda(ctx.tenantId!, unidadeId), procedimentosAVenda(ctx.tenantId!, unidadeId), produtosAVenda(ctx.tenantId!, unidadeId),
         equipeDaVenda(ctx.tenantId!, unidadeId, ctx.internalUserId, veComissaoDeTodos(ctx)),
         getAtendimentosAReceber({ tenantId: ctx.tenantId!, clienteId: cliente.id }),
         // CX1: as parcelas do crediário e os a receber dela no caixa DESTA unidade.
         parcelasEmAbertoDaCliente({ branchId: unidadeId, clienteId: cliente.id, fuso }),
+        // FD2a: os pontos e os vouchers de desconto dela, para usar na venda à vista.
+        fidelidadeParaAVenda(ctx.tenantId!, cliente.id, unidadeId),
       ])
-      novaVenda = { dados: { cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens, podeAgendar: can(ctx, 'agenda', 'MANAGE'), emAberto } }
+      novaVenda = { dados: { cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens, podeAgendar: can(ctx, 'agenda', 'MANAGE'), emAberto, fidelidade } }
     }
   }
 

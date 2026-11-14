@@ -23,6 +23,8 @@ import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
 import { textoDaComissaoDaVenda, type RegraDeVenda } from '@/lib/comissoes/comissao-da-venda'
 import { useFuso } from '@/components/shared/fuso'
+import { useFidelidadeNaVenda } from '@/components/shared/pontos-na-venda'
+import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 
 /**
  * Vender (decisão do Heitor, 2026-09-30; desde 2026-11-13, só pelo PDV — PDV7):
@@ -72,7 +74,7 @@ const ABA_DO_CREDITO = { key: 'CREDITO', label: 'Crédito na rede' }
  * sem a janela, numa unidade só (a do PDV). Toda venda vira a comanda dela no
  * banco (o gatilho `comanda_da_venda`).
  */
-export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produtos, equipe, podeAgendar = false, aReceber = [], onFim }: {
+export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produtos, equipe, podeAgendar = false, aReceber = [], fidelidade = null, onFim }: {
   clienteId:     string
   branchId:      string
   pacotes:       PacoteAVenda[]
@@ -81,6 +83,8 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
   equipe:        MembroDaVenda[]
   podeAgendar?:  boolean
   aReceber?:     AtendimentoAReceber[]
+  /** FD2a: os pontos e os vouchers de desconto da cliente, para a venda à vista. */
+  fidelidade?:   FidelidadeDaVenda | null
   onFim:         () => void
 }) {
   const [aba, setAba] = useState<Aba>(procedimentos.length ? 'PROCEDIMENTO' : pacotes.length ? 'PACOTE' : produtos.length ? 'PRODUTO' : 'CREDITO')
@@ -98,10 +102,10 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
       {aba === 'CREDITO'
         ? <FormularioDoCredito key={aba} clienteId={clienteId} branchId={branchId} onFim={onFim} />
         : aba === 'PRODUTO' && produtos.length > 0
-        ? <FormularioDoProduto key={aba} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={onFim} equipe={equipe} />
+        ? <FormularioDoProduto key={aba} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={onFim} equipe={equipe} fidelidade={fidelidade} />
         : aba === 'PROCEDIMENTO' && procedimentos.length > 0
-        ? <FormularioDoProcedimento key={aba} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={onFim} podeAgendar={podeAgendar} aReceber={aReceber} equipe={equipe} />
-        : <FormularioDoPacote key={aba} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={onFim} equipe={equipe} podeAgendar={podeAgendar} />}
+        ? <FormularioDoProcedimento key={aba} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={onFim} podeAgendar={podeAgendar} aReceber={aReceber} equipe={equipe} fidelidade={fidelidade} />
+        : <FormularioDoPacote key={aba} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={onFim} equipe={equipe} podeAgendar={podeAgendar} fidelidade={fidelidade} />}
     </div>
   )
 }
@@ -113,8 +117,9 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
  * protetor"). O estoque baixa na hora, pelo lote que vence primeiro; sem
  * estoque suficiente de um deles, o servidor recusa a venda inteira.
  */
-function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
+function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fidelidade }: {
   clienteId: string; branchId: string; produtos: ProdutoAVenda[]; onFim: () => void; equipe: MembroDaVenda[]
+  fidelidade: FidelidadeDaVenda | null
 }) {
   const fuso = useFuso()
   // "Quem vendeu" (com-06): nasce VAZIO (r2-ven-12); vazio, a venda pergunta.
@@ -136,6 +141,8 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
   const tabela = Math.round(linhas.reduce((s, l) => s + Math.round(l.subtotal * 100), 0)) / 100
   const conta = contaDoDesconto(tabela, desconto)
   const quantidadesValidas = linhas.every(l => l.qtd >= 1 && l.qtd <= 100)
+  // FD2a: o voucher e os pontos, à vista; o pagamento é o que sobra.
+  const fid = useFidelidadeNaVenda(fidelidade, conta.liquido, estado.forma)
   const livres = produtos.filter(p => !itens.some(i => i.prodId === p.id))
   // A chave do envio (D10): o duplo clique vende uma vez só.
   const envio = useEnvioUnico()
@@ -143,23 +150,23 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
     setItens(xs => xs.map((x, i) => (i === n ? { ...x, ...parte } : x)))
 
   function vender(semVendedor = false) {
-    setErro(recusaDoPagamento(estado, conta.liquido))
-    if (recusaDoPagamento(estado, conta.liquido)) return
+    setErro(recusaDoPagamento(estado, fid.aPagar))
+    if (recusaDoPagamento(estado, fid.aPagar)) return
     iniciar(async () => {
       const r = await venderProduto(clienteId, linhas.map(l => ({ produtoId: l.prod.id, quantidade: l.qtd })), branchId, null,
-        montarPagamento(estado), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor })
+        montarPagamento(estado), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor }, fid.paraEnviar)
       if (r.confirmarSemVendedor) { setPergunta(r.confirmarSemVendedor); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
       // A46 da 8ª: a janela fechava calada.
-      toast.success(avisoDaVenda(linhas.map(l => `${l.qtd}× ${l.prod.name}`).join(' + '), conta.liquido, estado.forma))
+      toast.success(avisoDaVenda(linhas.map(l => `${l.qtd}× ${l.prod.name}`).join(' + '), fid.aPagar, estado.forma))
       onFim()
     })
   }
 
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
-  const fidelidade = produtos[0]?.fidelidade
+  const pontuacao = produtos[0]?.fidelidade
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {itens.map((item, n) => {
@@ -203,9 +210,9 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
       <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }}
         comissao={comissaoDosProdutos(equipe.find(m => m.id === vendedorId), linhas.map(l => l.prod))} />
       {/* A48 da 5ª simulação: a venda de produto nasce sem pontuar, e a tela não dizia. */}
-      {fidelidade && (
+      {pontuacao && (
         <p data-pontos-do-produto style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          {fidelidade === 'PONTUA'
+          {pontuacao === 'PONTUA'
             ? 'A venda gera pontos de fidelidade quando for paga.'
             : 'A venda de produto não gera pontos de fidelidade (Configurações → Fidelidade).'}
         </p>
@@ -213,7 +220,8 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} clienteId={clienteId} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} />
+        {fid.bloco}
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
         )}
@@ -224,8 +232,8 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe }: {
       ) : (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || !quantidadesValidas}>
-            {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
+          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar) || !quantidadesValidas}>
+            {pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}
           </button>
         </div>
       )}
@@ -342,9 +350,9 @@ function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string
  * quantos dias valem; o desconto e como vai ser pago. As unidades ficam na
  * ficha, para agendar.
  */
-function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, podeAgendar, aReceber, equipe }: {
+function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, podeAgendar, aReceber, equipe, fidelidade }: {
   clienteId: string; branchId: string; procedimentos: ProcedimentoAVenda[]; onFim: () => void; podeAgendar: boolean
-  aReceber: AtendimentoAReceber[]; equipe: MembroDaVenda[]
+  aReceber: AtendimentoAReceber[]; equipe: MembroDaVenda[]; fidelidade: FidelidadeDaVenda | null
 }) {
   const fuso = useFuso()
   // "Quem vendeu" (com-06): nasce VAZIO (r2-ven-12); vazio, a venda pergunta.
@@ -367,23 +375,25 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   const qtd = Math.max(0, Math.trunc(Number(quantidade) || 0))
   const tabela = Math.round(proc.price * 100) * qtd / 100
   const conta = contaDoDesconto(tabela, desconto)
+  // FD2a: o voucher e os pontos, à vista; o pagamento é o que sobra.
+  const fid = useFidelidadeNaVenda(fidelidade, conta.liquido, estado.forma)
   // O mesmo procedimento já foi atendido e não foi pago: a venda nova cobraria de novo.
   const jaAtendido = aReceber.find(a => a.procedureId === proc.id) ?? null
   // A chave do envio (D10): o duplo clique vende uma vez só.
   const envio = useEnvioUnico()
 
   function vender(semVendedor = false) {
-    setErro(recusaDoPagamento(estado, conta.liquido))
-    if (recusaDoPagamento(estado, conta.liquido)) return
+    setErro(recusaDoPagamento(estado, fid.aPagar))
+    if (recusaDoPagamento(estado, fid.aPagar)) return
     iniciar(async () => {
       const r = await venderProcedimento(clienteId, proc.id, branchId, qtd, validade.trim() ? Number(validade) : null,
-        montarPagamento(estado), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor })
+        montarPagamento(estado), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor }, fid.paraEnviar)
       if (r.confirmarSemVendedor) { setPergunta(r.confirmarSemVendedor); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
       if (podeAgendar && r.primeiraUnidadeId) { setVendida(r.primeiraUnidadeId); return }
-      toast.success(avisoDaVenda(`${qtd}× ${proc.name}`, conta.liquido, estado.forma))
+      toast.success(avisoDaVenda(`${qtd}× ${proc.name}`, fid.aPagar, estado.forma))
       onFim()
     })
   }
@@ -453,7 +463,8 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} clienteId={clienteId} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} />
+        {fid.bloco}
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
         )}
@@ -464,8 +475,8 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       ) : (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido) || qtd < 1 || qtd > 100}>
-            {pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}
+          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar) || qtd < 1 || qtd > 100}>
+            {pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}
           </button>
         </div>
       )}

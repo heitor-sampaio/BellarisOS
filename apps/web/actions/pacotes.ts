@@ -20,6 +20,8 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDoMembroDaVenda, quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
+import { fidelidadeDaVenda } from '@/lib/fidelidade/na-venda'
+import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora } from '@/lib/checkout/pagamento'
@@ -122,12 +124,14 @@ export async function venderPacote(
   /** A chave do envio (D10, lib/envio-unico.ts): o mesmo envio vende UMA vez. */
   envio?: string | null,
   equipe?: EquipeDaVendaDoPacote | null,
+  /** FD2a: os pontos e o voucher de desconto, no pagamento à vista. */
+  fidelidade?: EscolhaDaFidelidade | null,
 ): Promise<ResultadoDaVendaDoPacote> {
   try {
     const ctx = await getTenantContext()
     // A pergunta (sem responsável) não grava: solta a chave, e a resposta vende.
     return await umaVez(ctx.tenantId!, 'venderPacote', chaveDoEnvio(envio),
-      () => venderPacoteUmaVez(clienteId, pacoteId, branchId, pagamento, desconto, equipe ?? null),
+      () => venderPacoteUmaVez(clienteId, pacoteId, branchId, pagamento, desconto, equipe ?? null, fidelidade ?? null),
       { gravou: r => !!r.clientPackageId })
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e
@@ -138,6 +142,7 @@ export async function venderPacote(
 async function venderPacoteUmaVez(
   clienteId: string, pacoteId: string, branchId: string, pagamento: unknown, desconto: unknown,
   equipe: EquipeDaVendaDoPacote | null,
+  fidelidade: EscolhaDaFidelidade | null = null,
 ): Promise<ResultadoDaVendaDoPacote> {
   try {
     const ctx = await getTenantContext()
@@ -198,12 +203,18 @@ async function venderPacoteUmaVez(
     // Cada sessão com o seu procedimento e a sua parte do preço VENDIDO (rateio
     // pelo preço de tabela): é a base da comissão dela. O banco confere a soma.
     const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId, branchId), vendido)
-    const clientPackageId = await gravar(admin.rpc('pacote_vender_com_equipe', {
+    // FD2a: os pontos e o voucher (à vista), conferidos aqui e de novo no banco.
+    const fid = await fidelidadeDaVenda({ tenantId: ctx.tenantId!, clienteId, branchId, vendido, escolha: fidelidade, aVista: lido.data.forma === 'AVISTA', admin })
+    if ('error' in fid) return { error: fid.error }
+    const args = {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_pacote: pacoteId, p_unidade: branchId,
       p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor,
       p_responsavel: pacote.comissao_responsavel_tipo ? responsavelId : null,
       p_lancamentos: lancamentos, p_sessoes: sessoes, p_desconto: reais,
-    }), 'vender o pacote') as string
+    }
+    const clientPackageId = await gravar(fid.dados
+      ? admin.rpc('venda_com_fidelidade', { p_tenant: ctx.tenantId!, p_tipo: 'PACOTE', p_args: args, p_fidelidade: fid.dados })
+      : admin.rpc('pacote_vender_com_equipe', args), 'vender o pacote') as string
 
     // A 1ª sessão (a de número 1, com o procedimento dela): a janela oferece
     // agendá-la agora, como o pré-pago (A47). Agendar passa pelo schedulePackageSession.

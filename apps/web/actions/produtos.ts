@@ -18,6 +18,8 @@ import { ler, mensagemDoErro } from '@/lib/db'
 import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
+import { fidelidadeDaVenda } from '@/lib/fidelidade/na-venda'
+import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora } from '@/lib/checkout/pagamento'
@@ -46,12 +48,14 @@ export async function venderProduto(
   envio?: string | null,
   /** "Quem vendeu" (com-06); sem o objeto, quem registra. */
   equipe?: QuemVendeuDaTela | null,
+  /** FD2a: os pontos e o voucher de desconto, no pagamento à vista. */
+  fidelidade?: EscolhaDaFidelidade | null,
 ): Promise<ResultadoDaVendaDeProduto> {
   try {
     const ctx = await getTenantContext()
     // A pergunta (sem quem vendeu) não grava: solta a chave, e a resposta vende.
     return await umaVez(ctx.tenantId!, 'venderProduto', chaveDoEnvio(envio),
-      () => venderProdutoUmaVez(clienteId, produtos, branchId, quantidade, pagamento, desconto, equipe),
+      () => venderProdutoUmaVez(clienteId, produtos, branchId, quantidade, pagamento, desconto, equipe, fidelidade),
       { gravou: r => !!r.vendaId })
   } catch (e) {
     if ((e as { digest?: string })?.digest) throw e
@@ -64,6 +68,7 @@ type ResultadoDaVendaDeProduto = { error?: string; vendaId?: string; confirmarSe
 async function venderProdutoUmaVez(
   clienteId: string, produtos: string | ItemDaVenda[], branchId: string,
   quantidade: unknown, pagamento: unknown, desconto: unknown, equipe: QuemVendeuDaTela | null | undefined,
+  fidelidade?: EscolhaDaFidelidade | null,
 ): Promise<ResultadoDaVendaDeProduto> {
   try {
     const ctx = await getTenantContext()
@@ -131,13 +136,19 @@ async function venderProdutoUmaVez(
     if ('error' in vendeu) return { error: vendeu.error }
     if ('pergunta' in vendeu) return { confirmarSemVendedor: vendeu.pergunta }
 
-    const { data, error } = await admin.rpc('produto_vender_itens', {
+    // FD2a: os pontos e o voucher (à vista), conferidos aqui e de novo no banco.
+    const fid = await fidelidadeDaVenda({ tenantId: ctx.tenantId!, clienteId, branchId, vendido, escolha: fidelidade, aVista: lido.data.forma === 'AVISTA', admin })
+    if ('error' in fid) return { error: fid.error }
+    const args = {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_unidade: branchId,
       p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor,
       p_itens: [...itens].map(([id, qtd]) => ({ product_id: id, quantity: qtd })),
       p_desconto: reais,
       p_lancamentos: comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, rotulo), motivoDoDesconto(d.data, reais)),
-    })
+    }
+    const { data, error } = fid.dados
+      ? await admin.rpc('venda_com_fidelidade', { p_tenant: ctx.tenantId!, p_tipo: 'PRODUTO', p_args: args, p_fidelidade: fid.dados })
+      : await admin.rpc('produto_vender_itens', args)
     if (error) {
       // A recusa do banco (estoque insuficiente, desconto, revenda) é para a tela.
       if (error.code === 'P0001' || error.code === 'P0002') return { error: error.message }

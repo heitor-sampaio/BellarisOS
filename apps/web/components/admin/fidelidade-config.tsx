@@ -190,7 +190,7 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, 
 
       <Bloco titulo="Usar pontos como desconto">
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          Na recepção, ao confirmar o pagamento, o cliente pode abater pontos do valor. O que ele pagar em pontos não entra como receita — só o que pagar em dinheiro.
+          No PDV, ao receber, o cliente pode abater pontos do valor — numa comanda de atendimento (com os produtos dela) ou numa venda à vista. O que ele pagar em pontos não entra como receita — só o que pagar em dinheiro.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <CampoNumero rotulo="Valor de 1 ponto (R$)" nome="redeem_points_value" valor={valorDoPonto} onChange={setValorDoPonto}
@@ -353,8 +353,8 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false, 
         )}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
           {trocaNoPortal
-            ? 'Além da recepção, o cliente troca os pontos pelo portal ou pelo app. O voucher aparece na hora para ele e na ficha para a equipe.'
-            : 'A troca é feita na recepção, pela ficha do cliente. No portal, o cliente só vê o catálogo.'}
+            ? 'Além da ficha do cliente, ele troca os pontos pelo portal ou pelo app. O voucher aparece na hora para ele e na ficha para a equipe; o de desconto se usa no PDV, ao receber.'
+            : 'A troca é feita pela ficha do cliente; o voucher de desconto se usa no PDV, ao receber. No portal, o cliente só vê o catálogo.'}
         </p>
       </Bloco>
 

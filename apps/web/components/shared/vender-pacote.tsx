@@ -15,6 +15,8 @@ import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-d
 import { textoDaComissaoDaVenda, type RegraDeVenda } from '@/lib/comissoes/comissao-da-venda'
 import type { MembroDaVenda } from '@/components/shared/vender'
 import { useFuso } from '@/components/shared/fuso'
+import { useFidelidadeNaVenda } from '@/components/shared/pontos-na-venda'
+import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 
 /**
  * Vender um pacote (decisão do Heitor, 2026-09-30): o pacote do catálogo, e
@@ -34,12 +36,14 @@ export interface PacoteAVenda {
 }
 
 /** O formulário da venda do pacote — dentro do "Vender" (`components/shared/vender.tsx`). */
-export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe = [], podeAgendar = false }: {
+export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe = [], podeAgendar = false, fidelidade = null }: {
   clienteId: string; branchId: string; pacotes: PacoteAVenda[]; onFim: () => void
   /** Depois de vender, oferece "Agendar a 1ª sessão agora" (A47 da 7ª; agenda: MANAGE), como o pré-pago. */
   podeAgendar?: boolean
   /** A equipe da unidade: a responsável sai de quem atende (com-04). */
   equipe?: MembroDaVenda[]
+  /** FD2a: os pontos e os vouchers de desconto da cliente, para a venda à vista. */
+  fidelidade?: FidelidadeDaVenda | null
 }) {
   const fuso = useFuso()
   const router = useRouter()
@@ -55,6 +59,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const pacote = pacotes.find(p => p.id === pacoteId) ?? pacotes[0]!
   const [desconto, setDesconto] = useState(SEM_DESCONTO)
   const conta = contaDoDesconto(pacote.price, desconto)
+  // FD2a: o voucher e os pontos, à vista; o pagamento é o que sobra.
+  const fid = useFidelidadeNaVenda(fidelidade, conta.liquido, estado.forma)
   // A chave do envio (D10): o duplo clique vende uma vez só.
   const envio = useEnvioUnico()
   // com-04: a profissional responsável, quando o pacote paga quem atende sobre o valor dele.
@@ -66,21 +72,22 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const quemAtende = equipe.filter(m => m.atende)
 
   function vender(resposta: { semVendedor?: boolean; semResponsavel?: boolean } = {}) {
-    setErro(recusaDoPagamento(estado, conta.liquido))
-    if (recusaDoPagamento(estado, conta.liquido)) return
+    setErro(recusaDoPagamento(estado, fid.aPagar))
+    if (recusaDoPagamento(estado, fid.aPagar)) return
     const semV = resposta.semVendedor ?? semVendedor
     if (resposta.semVendedor) setSemVendedor(true)
     iniciar(async () => {
       const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado), descontoDoEstado(desconto), envio.chave(),
         { vendedorId: vendedorId || null, semVendedor: semV,
-          responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel: resposta.semResponsavel === true })
+          responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel: resposta.semResponsavel === true },
+        fid.paraEnviar)
       if (r.confirmarSemVendedor) { setPergunta({ texto: r.confirmarSemVendedor, sem: 'VENDEDOR' }); return }
       if (r.confirmarSemResponsavel) { setPergunta({ texto: r.confirmarSemResponsavel, sem: 'RESPONSAVEL' }); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
       if (podeAgendar && r.primeiraSessao) { setVendida(r.primeiraSessao); return }
-      toast.success(avisoDaVenda(pacote.name, conta.liquido, estado.forma))
+      toast.success(avisoDaVenda(pacote.name, fid.aPagar, estado.forma))
       onFim()
     })
   }
@@ -145,7 +152,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={pacote.price} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={conta.liquido} clienteId={clienteId} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} />
+        {fid.bloco}
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
         )}
@@ -159,7 +167,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       ) : (
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-        <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!recusaDoPagamento(estado, conta.liquido)}>{pendente ? 'Vendendo…' : `Vender por ${formatBRL(conta.liquido)}`}</button>
+        <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar)}>{pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}</button>
       </div>
       )}
     </div>

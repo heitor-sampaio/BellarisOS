@@ -141,12 +141,60 @@ comanda (PDV-P1).
   forma de pagamento."; Crediário/A receber recusados), o id pela rede e pelo
   alcance (`lancamentoAoAlcance`) e só receita; a baixa é a de sempre,
   `marcarPagoCore` (uma gravação com a guarda de não pago e não estornado).
+- **O produto na comanda do atendimento** (PDV2, fase 5b, 2026-11-14 — o
+  desenho: "na saída ela levou um sérum, que se acrescenta na mesma
+  comanda"). Na comanda do atendimento ainda não paga, "Acrescentar produto"
+  oferece o que é de Venda direta (`products.uso` REVENDA/AMBOS) com a
+  quantidade; cada um vira uma linha de `comanda_itens` (sem
+  `product_sale_id` enquanto pendente), com "Tirar" até receber. A action é
+  `acrescentarProdutoNaComanda` / `tirarProdutoDaComanda` (`actions/pdv.ts`):
+  `podeReceber`, os ids, a comanda pela rede e pelo alcance
+  (`alcancaUnidade`), e a gravação pelas funções `comanda_acrescentar_item` /
+  `comanda_tirar_item` (só o servidor; recusam comanda paga ou que não é de
+  atendimento, produto que não é de Venda direta e estoque que não basta).
+  - O produto vale o **preço de venda de agora** (o mesmo que
+    `produto_vender_itens` usa), entra no total da comanda e na conta dos
+    pontos e do voucher. O estoque NÃO se reserva ao acrescentar; confere-se
+    de novo ao receber.
+  - **Ao receber** (`confirmar_pagamento_do_atendimento`), os itens pendentes
+    se vendem por `produto_vender_itens` (os lotes, o FEFO, a baixa do
+    estoque — nada duplicado), na MESMA forma do atendimento, com o
+    profissional do atendimento como quem vendeu; o lançamento do produto
+    nasce em aberto e vira pago junto, para o ganho de pontos pegar o valor
+    pago. A venda não abre comanda própria (`bellaris.venda_na_comanda`
+    segura o gatilho `comanda_da_venda`): ela é da comanda do atendimento.
+  - Os descontos (voucher, desconto comercial, pontos) se repartem entre o
+    atendimento e os produtos na proporção do valor (`private.parte_dos_itens`);
+    o voucher de PROCEDIMENTO fica inteiro no atendimento.
+  - O estorno e o cancelamento do produto são os da venda de produto (o
+    estoque volta pelos lotes, os pontos do lançamento saem).
+  - Com produto pendente, o atendimento não se abate de pacote (a comanda
+    tem dinheiro a receber).
+  - `pdv_comandas` do atendimento: valor = preço do atendimento + produtos
+    (pendentes ao preço de agora; vendidos pelo `preco_tabela` da venda);
+    recebido = o lançamento do atendimento + os dos produtos.
+  - Prova: `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`.
+- **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
+  valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`
+  e `confirmPayment` somam `valorDosItensDoAtendimento`); na "Nova venda"
+  (produto, pacote, procedimento) o bloco "Fidelidade" (`PontosNaVenda`)
+  aparece quando a cliente tem saldo ou voucher de desconto, e vale só no
+  pagamento À VISTA (no Crediário e no A receber a tela diz "Os pontos e o
+  voucher se usam no pagamento à vista."). Ordem: desconto comercial →
+  voucher → pontos (`contaDaFidelidade`). Só o voucher de DESCONTO (valor ou
+  percentual) vale na venda. A action refaz a conta
+  (`fidelidadeDaVenda`, `lib/fidelidade/na-venda.ts`) e grava por
+  `venda_com_fidelidade` (uma transação: a venda de sempre, depois
+  `private.fidelidade_na_venda` reduz o lançamento, grava o
+  `loyalty_discount`, marca o voucher USADO e lança o RESGATE). A comanda do
+  PLANO ainda não usa pontos (fica para o bloco do Plano de tratamento).
 - Ainda por vir (o plano de adaptação, `docs/revisao.md`): o crediário no
-  recebimento do atendimento avulso, os pontos dentro da comanda; vários
-  itens numa comanda.
+  recebimento do atendimento avulso (`confirmar_pagamento_do_atendimento`
+  grava um lançamento só); os pontos na comanda do plano.
 - Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`, `e2e/pdv-nova-venda.spec.ts`,
   `e2e/pdv-comanda-do-plano.spec.ts`, `e2e/pdv-fechar-o-dia.spec.ts`,
-  `e2e/pdv-crediario-e-parcela.spec.ts`.
+  `e2e/pdv-crediario-e-parcela.spec.ts`,
+  `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`.
 
 ### 9.3.1 Pacotes (2026-09-30)
 

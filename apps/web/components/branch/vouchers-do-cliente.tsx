@@ -14,7 +14,8 @@ import { useFuso } from '@/components/shared/fuso'
  * Recompensas e vouchers na ficha do cliente.
  *
  * Trocar debita os pontos NA HORA e dá ao cliente um voucher com validade.
- * Voucher de procedimento e de desconto é aplicado no pagamento (recepção);
+ * Voucher de procedimento e de desconto se usa no PDV, ao receber (FD2a: o de
+ * desconto em qualquer comanda, o de procedimento no atendimento dele);
  * voucher de produto é ENTREGUE aqui (baixa no estoque da unidade). Cancelar um
  * voucher não usado devolve os pontos; vencido não volta.
  */
@@ -157,6 +158,13 @@ export function VouchersDoCliente({
                   </div>
                   <span className={CHIP_DA_SITUACAO[situacao]}>{ROTULO_DA_SITUACAO[situacao]}</span>
                 </div>
+                {situacao === 'ATIVO' && v.type !== 'PRODUTO' && (
+                  <p data-voucher-no-pdv style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                    {v.type === 'PROCEDIMENTO'
+                      ? 'Usa-se no PDV, ao receber a comanda do atendimento deste procedimento.'
+                      : 'Usa-se no PDV, ao receber: na comanda do atendimento ou numa venda à vista.'}
+                  </p>
+                )}
                 {podeGerenciar && situacao === 'ATIVO' && cancelando !== v.id && (
                   <div style={{ display: 'flex', gap: 8 }}>
                     {v.type === 'PRODUTO' && (

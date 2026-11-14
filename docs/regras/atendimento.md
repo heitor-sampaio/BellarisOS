@@ -2688,6 +2688,17 @@ O resto do fluxo:
   O de **R$ 0 não tem o que receber** (D9, 2026-10-27): nem conta a receber,
   nem "aguardando pagamento" — a tela diz "Sem cobrança". O concluído a
   receber aparece na agenda, no Fechamento do dia e na ficha (§9.6).
+- **A comanda do atendimento leva produto de Venda direta** (PDV2, fase 5b
+  do plano de adaptação, 2026-11-14): "Acrescentar produto" na comanda, no
+  PDV, com a quantidade; o total da comanda passa a ser o atendimento + os
+  produtos, e é sobre ele que valem os pontos e o voucher (`confirmPayment` e
+  `previaDoPagamento` somam `valorDosItensDoAtendimento`). Os produtos se
+  vendem DENTRO de `confirmar_pagamento_do_atendimento` (a mesma transação,
+  a mesma forma, a baixa pelos lotes de `produto_vender_itens`); o insumo do
+  atendimento (abaixo) é outra coisa e não passa por aí. Com produto
+  pendente, o atendimento não se abate de pacote. Regra em
+  `vendas-financeiro.md`, "O produto na comanda do atendimento"; prova:
+  `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`.
 - **O insumo usado hoje se lança na tela do atendimento, em todo formato
   dela** (2026-10-20): o cartão "Insumos utilizados" (os do cadastro do
   procedimento, marcados, mais o "Adicionar insumo") aparece também no

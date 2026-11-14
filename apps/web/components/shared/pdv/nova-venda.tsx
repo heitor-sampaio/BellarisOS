@@ -10,6 +10,7 @@ import type { PacoteAVenda } from '@/components/shared/vender-pacote'
 import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
 import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
 import { ParcelasEmAberto } from '@/components/shared/pdv/parcelas-em-aberto'
+import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 
 /** O que a "Nova venda" precisa, com a cliente escolhida. */
 export interface VendaDoPdv {
@@ -22,6 +23,8 @@ export interface VendaDoPdv {
   podeAgendar:   boolean
   /** CX1: as parcelas do crediário e os a receber dela no caixa desta unidade. */
   emAberto:      ParcelaEmAberto[]
+  /** FD2a: o saldo de pontos e os vouchers de desconto que a cliente pode usar nesta venda (nulo: nada a oferecer). */
+  fidelidade:    FidelidadeDaVenda | null
 }
 
 /**
@@ -89,7 +92,7 @@ export function NovaVenda({ unidadeId, slugDaUnidade, venda, aviso, unidades, hr
             <ParcelasEmAberto parcelas={venda.emAberto} slug={slugDaUnidade} />
             <VendaNaTela key={venda.cliente.id} clienteId={venda.cliente.id} branchId={unidadeId}
               pacotes={venda.pacotes} procedimentos={venda.procedimentos} produtos={venda.produtos} equipe={venda.equipe}
-              podeAgendar={venda.podeAgendar} aReceber={venda.aReceber} onFim={aoVender} />
+              podeAgendar={venda.podeAgendar} aReceber={venda.aReceber} fidelidade={venda.fidelidade} onFim={aoVender} />
           </>
         ) : (
           <>
