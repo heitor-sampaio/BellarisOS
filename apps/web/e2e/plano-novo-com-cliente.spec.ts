@@ -27,6 +27,8 @@ test.beforeAll(async () => {
   slug = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   profissional = await criarMembro(`pncp${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Profissional',
+    // PT2 (2026-11-14): monta o plano quem ATENDE na unidade (o "Atende"), não o Prontuário.
+    atendeEm: [rede.branchId],
     permissoes: [
       { modulo: 'agenda', nivel: 'MANAGE' },
       { modulo: 'clients', nivel: 'VIEW' },

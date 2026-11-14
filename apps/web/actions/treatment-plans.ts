@@ -34,6 +34,9 @@ import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment } from '@/lib/appointments/avisos'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 import { retratoDoCancelamento, type RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
+import { montaPlano, RECUSA_QUEM_MONTA } from '@/lib/plano-de-tratamento/quem-monta'
+import { situacoesDosPlanos, andamentoDosPlanos, type DocumentosDoPlano, type SituacaoDoContrato } from '@/lib/plano-de-tratamento/andamento-do-plano'
+import { SITUACOES_COMERCIAIS, situacaoComercialDoPlano, type SituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
 
 /**
  * Quem pode o quê, neste arquivo.
@@ -46,8 +49,13 @@ import { retratoDoCancelamento, type RetratoDoCancelamento } from '@/lib/plano-d
  *
  * Agora cada gesto exige a permissão do que ele é:
  *
- * - montar, salvar e propor o plano → `medical_records: MANAGE` (quem atende)
- * - aceitar o plano e colher termos  → quem atende OU quem recebe
+ * - montar, salvar e propor o plano → quem ATENDE na unidade do plano (PT2,
+ *   2026-11-14: o "Atende" da Equipe, `montaPlano` — não é permissão; a
+ *   Admin da rede tem tudo). Na avaliação ABERTA, gerar o plano grava também
+ *   o registro do atendimento: ali segue o Prontuário em Gerenciar.
+ * - a anotação clínica do plano ("Observações da profissional") → o
+ *   Prontuário em Gerenciar (`anotaNoPlano`); sem ele, a anotação fica como está
+ * - aceitar o plano e colher termos  → quem monta OU quem recebe
  * - receber dinheiro                 → caixa ou financeiro (`assertPodeReceber`)
  * - agendar as sessões do plano      → `agenda: MANAGE`, conferido na hora
  * - ler plano e sessões              → `agenda: VIEW`
@@ -64,7 +72,26 @@ import { retratoDoCancelamento, type RetratoDoCancelamento } from '@/lib/plano-d
  * ⚠️ Não é export: todo export de arquivo `'use server'` vira endpoint público.
  */
 function assertPodeFecharPlano(ctx: TenantContext): void {
-  if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
+  // Sem a unidade (antes de ler o plano): atender em alguma basta; quem chama
+  // confere a unidade do plano depois (`podeFecharEstePlano`).
+  if (!montaPlano(ctx) && !podeReceber(ctx)) throw semAcesso()
+}
+
+/** Fecha (aceita, colhe termos) quem monta o plano DESTA unidade ou quem recebe. */
+function podeFecharEstePlano(ctx: TenantContext, unidadeId: string | null | undefined): boolean {
+  return montaPlano(ctx, unidadeId ?? null) || podeReceber(ctx)
+}
+
+/**
+ * Escreve a anotação clínica do plano (as "Observações da profissional")?
+ * É prontuário (PT2: "a anotação clínica dentro do plano continua pedindo o
+ * Prontuário"): o módulo em Gerenciar e, no "só os meus" do prontuário, o
+ * plano dela. Sem isso, a anotação que está gravada fica como está.
+ *
+ * ⚠️ Não é export: todo export de arquivo `'use server'` vira endpoint público.
+ */
+function anotaNoPlano(ctx: TenantContext, responsavelId: string | null | undefined): boolean {
+  return can(ctx, 'medical_records', 'MANAGE') && podeVerClinico(ctx, responsavelId ?? null)
 }
 
 // -- Tipos ---------------------------------------------------------------------
@@ -270,13 +297,16 @@ async function saveTreatmentPlanInterno(
 ): Promise<{ planId?: string; error?: string }> {
   const ctx   = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   // Agendamento de outra rede responde como inexistente — senão o plano
   // nasceria no cliente e na unidade de lá.
   const appt = await agendamentoDoTenant(admin, appointmentId, ctx)
   if (!appt) return { error: 'Agendamento não encontrado.' }
+  // PT2: o rascunho do plano da avaliação é de quem monta (quem atende na unidade).
+  if (!montaPlano(ctx, appt.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
+  const anota = anotaNoPlano(ctx, ctx.internalUserId)
 
   const { data: plan, error: planErr } = await admin
     .from('treatment_plans')
@@ -285,7 +315,8 @@ async function saveTreatmentPlanInterno(
       client_id:                 appt.client_id,
       branch_id:                 appt.branch_id,
       professional_id:           ctx.internalUserId!,
-      professional_notes:        notes,
+      // A anotação é prontuário: sem ele, a que existe fica (PT2).
+      ...(anota ? { professional_notes: notes } : {}),
       status:                    'DRAFT',
       updated_at:                new Date().toISOString(),
     }, { onConflict: 'evaluation_appointment_id' })
@@ -379,7 +410,9 @@ export async function criarPlanoDoCliente(
 ): Promise<{ planId?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  // Ver planos é da Agenda; montar é de quem atende (PT2), conferido na unidade abaixo.
+  assertPermission(ctx, 'agenda', 'VIEW')
+  if (!montaPlano(ctx)) return { error: RECUSA_QUEM_MONTA }
   const admin = createAdminClient()
 
   let filial = branchId
@@ -402,6 +435,15 @@ export async function criarPlanoDoCliente(
   const unidadeDoPlano = await ler(admin.from('branches').select('id')
     .eq('id', filial).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
   if (!unidadeDoPlano || !alcancaUnidade(ctx, filial)) return { error: 'Unidade não encontrada.' }
+  // PT2: monta quem ATENDE na unidade do plano.
+  if (!montaPlano(ctx, filial)) return { error: RECUSA_QUEM_MONTA }
+  // "Montar plano desta avaliação": a avaliação é da rede, do mesmo cliente e
+  // ao alcance de quem monta (o id vem do navegador).
+  if (appointmentId) {
+    const aval = await agendamentoDoTenant(admin, appointmentId, ctx)
+    if (!aval || (clientId && aval.client_id !== clientId)) return { error: 'Agendamento não encontrado.' }
+    if (deOutroProfissional(ctx, aval.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
+  }
 
   const { data, error } = await admin
     .from('treatment_plans')
@@ -462,11 +504,12 @@ export async function vincularClienteAoPlano(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
+  if (!montaPlano(ctx, plan.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
 
   const cliente = await ler(admin
     .from('clients')
@@ -529,11 +572,12 @@ export async function buscarClientesParaPlano(termo: string): Promise<{
 export async function renomearPlano(planId: string, nome: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
+  if (!montaPlano(ctx, plan.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
   if (!nome.trim()) return { error: 'Dê um nome ao plano.' }
 
   const { error } = await admin
@@ -602,11 +646,15 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
  */
 export async function listarPlanejamentos(opcoes?: {
   status?: string
+  /** PT1f: a situação do plano (Proposto, Aceito (falta assinar), Falta pagar…). */
+  situacao?: SituacaoComercial
   busca?:  string
   branchId?: string | null
 }): Promise<{
   planos: {
     id: string; nome: string; status: string; criadoEm: string
+    /** PT1f: onde o plano está — aceitar → assinar → pagar → agendar. */
+    situacao: SituacaoComercial
     total: number; sessoes: number
     cliente: { id: string; name: string; phone: string | null } | null
     unidade: string | null
@@ -634,6 +682,15 @@ export async function listarPlanejamentos(opcoes?: {
   const dela = ownerFilter(ctx, 'agenda')
   if (isOwnScope(ctx, 'agenda') && !dela) return { planos: [] }
 
+  const situacaoPedida = opcoes?.situacao && (SITUACOES_COMERCIAIS as readonly string[]).includes(opcoes.situacao)
+    ? opcoes.situacao : null
+  const statusDaSituacao: string[] | null = !situacaoPedida ? null
+    : situacaoPedida === 'RASCUNHO' ? ['DRAFT']
+    : situacaoPedida === 'PROPOSTO' ? ['PROPOSED']
+    : situacaoPedida === 'CONCLUIDO' ? ['COMPLETED']
+    : situacaoPedida === 'CANCELADO' ? ['CANCELLED', 'REJECTED']
+    : ['ACCEPTED']
+
   // Todos, em páginas (2026-10-22): tinha teto de 200, sem "ver mais" — os
   // planejamentos mais antigos sumiam da lista.
   type Recorte = 'todos' | 'daCliente' | 'montadoPorEla'
@@ -656,6 +713,9 @@ export async function listarPlanejamentos(opcoes?: {
     }
     if (recorte === 'montadoPorEla') query = query.eq('professional_id', dela!)
     if (opcoes?.status) query = query.eq('status', opcoes.status)
+    // A situação recorta primeiro pela situação do banco; o resto (documentos,
+    // contrato, recebido) se confere abaixo, só nos aceitos.
+    if (statusDaSituacao) query = query.in('status', statusDaSituacao)
     return query.order('created_at', { ascending: false }).order('id').range(de, ate)
   }, 'carregar os planejamentos')
 
@@ -676,7 +736,11 @@ export async function listarPlanejamentos(opcoes?: {
   // A busca pela regra única da busca de cliente (F73; sem acento, telefone e documento por dígitos).
   const termo = (opcoes?.busca ?? '').trim()
 
+  const situacoes = await situacoesDosPlanos(ctx.tenantId!,
+    (data ?? []).map(p => ({ id: p.id as string, status: p.status as string })))
+
   const planos = (data ?? [])
+    .filter(p => !situacaoPedida || situacoes.get(p.id as string) === situacaoPedida)
     .map(p => {
       const cli     = p.clients as unknown as RawCli | null
       const sessoes = (p.treatment_plan_sessions as unknown as RawSess[]) ?? []
@@ -685,6 +749,7 @@ export async function listarPlanejamentos(opcoes?: {
         id:       p.id as string,
         nome:     (p.name as string | null) ?? 'Plano de tratamento',
         status:   p.status as string,
+        situacao: situacoes.get(p.id as string) ?? 'RASCUNHO',
         criadoEm: p.created_at as string,
         sessoes:  sessoes.length,
         total:    sessoes.reduce(
@@ -850,18 +915,22 @@ async function salvarPlanoDoClienteInterno(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
+  // PT2: monta quem ATENDE na unidade do plano — sem o Prontuário em Gerenciar.
+  if (!montaPlano(ctx, plan.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
   if (plan.status === 'ACCEPTED' || plan.status === 'COMPLETED') {
     return { error: 'Este plano já foi fechado e não pode mais ser alterado.' }
   }
 
+  // A anotação clínica é do Prontuário: quem não a escreve não a apaga (PT2).
+  const anota = anotaNoPlano(ctx, (plan.professional_id as string | null) ?? null)
   const { error } = await admin
     .from('treatment_plans')
-    .update({ professional_notes: notes || null, updated_at: new Date().toISOString() })
+    .update({ ...(anota ? { professional_notes: notes || null } : {}), updated_at: new Date().toISOString() })
     .eq('id', planId)
   if (error) return { error: error.message }
 
@@ -952,11 +1021,13 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
 export async function proposeTreatmentPlan(planId: string, slug: string) {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'planos_de_tratamento')
-  assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertPermission(ctx, 'agenda', 'VIEW')
 
   const admin = createAdminClient()
 
-  if (!(await planoDoTenant(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
+  const alvo = await planoDoTenant(admin, planId, ctx)
+  if (!alvo) return { error: 'Plano não encontrado.' }
+  if (!montaPlano(ctx, alvo.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
 
   const plan = await ler(admin
     .from('treatment_plans')
@@ -967,7 +1038,7 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
   if (!plan)               return { error: 'Plano não encontrado.' }
   if (plan.status !== 'DRAFT') return { error: 'Apenas planos em rascunho podem ser enviados.' }
 
-  const recusa = await recusaDoEnvioDoPlano(admin, plan)
+  const recusa = await recusaDoEnvioDoPlano(admin, plan, anotaNoPlano(ctx, alvo.professional_id as string | null))
   if (recusa) return { error: recusa }
 
   const { error } = await admin
@@ -994,10 +1065,16 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
 async function recusaDoEnvioDoPlano(
   admin: ReturnType<typeof createAdminClient>,
   plan: { id: string; evaluation_appointment_id: string | null; professional_notes: string | null; client_id: string | null },
+  /**
+   * Quem age escreve a anotação clínica? Só a ela se pede a observação (PT2):
+   * quem monta sem o Prontuário nem vê o campo — pedir o que ela não pode
+   * escrever trancaria o plano dela.
+   */
+  anota = true,
 ): Promise<string | null> {
   const planId = plan.id
   // 1. Observações da profissional
-  if (!plan.professional_notes?.trim()) {
+  if (anota && !plan.professional_notes?.trim()) {
     // A29 da 12ª: o botão é "Aceitar plano" (ou "Cliente vai pensar") — a frase diz os dois.
     return 'Preencha as observações da profissional antes de aceitar o plano ou mandá-lo à cliente.'
   }
@@ -1062,10 +1139,12 @@ export async function aceitarPlano(planId: string): Promise<{ error?: string; co
     const admin = createAdminClient()
     const alvo = await planoDoTenant(admin, planId, ctx)
     if (!alvo) return { error: 'Plano não encontrado.' }
+    // Aceita quem monta o plano (quem atende na unidade DELE) ou quem recebe.
+    if (!podeFecharEstePlano(ctx, alvo.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
     if (alvo.status === 'DRAFT') {
       const plan = await ler(admin.from('treatment_plans')
         .select('id, evaluation_appointment_id, professional_notes, client_id').eq('id', planId).single(), 'buscar o plano')
-      const recusa = plan ? await recusaDoEnvioDoPlano(admin, plan) : 'Plano não encontrado.'
+      const recusa = plan ? await recusaDoEnvioDoPlano(admin, plan, anotaNoPlano(ctx, alvo.professional_id as string | null)) : 'Plano não encontrado.'
       if (recusa) return { error: recusa }
     }
     const { data, error } = await admin.rpc('plano_aceitar', { p_tenant: ctx.tenantId, p_plano: planId })
@@ -1109,6 +1188,7 @@ export async function cancelCheckout(
     .eq('id', plan.branch_id)
     .maybeSingle(), 'buscar a unidade')
   if (branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { error: 'Acesso negado.' }
+  if (!podeFecharEstePlano(ctx, plan.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
 
   if (plan.status === 'ACCEPTED') return { error: 'Plano já foi aprovado e não pode ser cancelado.' }
 
@@ -1275,8 +1355,8 @@ async function generateEvaluationPlanInterno(
   opcoes:                { confirmarPlanejamentoVazio?: boolean } = {},
 ): Promise<{ error?: string; planId?: string; confirmarPlanejamentoVazio?: boolean }> {
   const ctx   = await getTenantContext()
-  assertPermission(ctx, 'medical_records', 'MANAGE')
-  // A avaliação grava prontuário E monta o plano: é do plano de tratamento.
+  assertPermission(ctx, 'agenda', 'VIEW')
+  // A avaliação monta o plano: é do plano de tratamento.
   assertRecurso(ctx, 'planos_de_tratamento')
   const admin = createAdminClient()
 
@@ -1295,6 +1375,15 @@ async function generateEvaluationPlanInterno(
   // anamnese daquele dia ficam como estão — só o plano nasce, ligado a ela.
   // Por isso nada do registro é lido da tela nem conferido de novo.
   const concluida = appt.status === 'COMPLETED'
+  // Quem gera (PT2, 2026-11-14): na avaliação concluída só o plano nasce —
+  // monta quem atende na unidade ("Montar plano desta avaliação"). Na ABERTA,
+  // a mesma gravação escreve o registro do atendimento (as dores, a ficha, a
+  // anamnese, a evolução): segue do Prontuário em Gerenciar, como o "Finalizar".
+  if (concluida ? !montaPlano(ctx, appt.branch_id as string) : !can(ctx, 'medical_records', 'MANAGE')) {
+    return { error: concluida ? RECUSA_QUEM_MONTA : 'Gerar o plano na avaliação grava o prontuário: é preciso ter o Prontuário em Gerenciar.' }
+  }
+  // A anotação clínica do plano (as "Observações da profissional") é do Prontuário.
+  const anota = anotaNoPlano(ctx, ctx.internalUserId)
 
   let anamnese: AnamneseGeral | null = null
   let pendente: Record<string, unknown> | null = null
@@ -1369,7 +1458,8 @@ async function generateEvaluationPlanInterno(
     p_ator_nome:   userName,
     p_dados: {
       profissional:   ctx.internalUserId,
-      notas_do_plano: planNotes,
+      // Sem a chave, a função mantém a anotação que já havia (migration 20261115500001).
+      ...(anota ? { notas_do_plano: planNotes } : {}),
       // A conferência das obrigatórias no banco (atend-04): sem o recurso, o planejador não barra.
       sem_injetaveis: !temRecurso(ctx, 'injetaveis'),
       sessoes: sessions.map(s => ({
@@ -1426,6 +1516,7 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
   if (!plan?.branch_id || !branch || branch.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) {
     return { error: 'Plano não encontrado.' }
   }
+  if (!podeFecharEstePlano(ctx, plan.branch_id as string)) return { error: RECUSA_QUEM_MONTA }
 
   const { plan: checkout, error } = await montarCheckoutPlan(
     planId, plan.branch_id as string, branch.name, ctx.tenantId!, prof => podeVerClinico(ctx, prof), ctx.internalUserId ?? null,
@@ -2141,10 +2232,118 @@ export async function avulsosDoPlanoNoCheckout(planId: string): Promise<{ id: st
     const plano = await ler(admin.from('treatment_plans').select('branch_id, branches!branch_id(tenant_id)')
       .eq('id', planId).maybeSingle(), 'buscar o plano') as { branch_id: string; branches: { tenant_id: string } | null } | null
     if (!plano || plano.branches?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plano.branch_id)) return []
+    if (!podeFecharEstePlano(ctx, plano.branch_id)) return []
     const fuso = await fusoDaUnidade(ctx.tenantId, plano.branch_id)
     return (await avulsosDoPlano(admin, ctx.tenantId!, planId)).map(a => ({ id: a.id, texto: textoDoAvulso(a, fuso) }))
   } catch (e) {
     console.error('[checkout] avulsos do plano:', mensagemDoErro(e))
     return []
+  }
+}
+
+// ─── Os passos do plano (PT1a, Bloco Plano de tratamento, leva 1) ────────────
+
+/** Uma sessão do plano no passo ④ (sem dado clínico: procedimento e horário). */
+export interface SessaoDoPasso {
+  id:            string
+  numero:        number
+  procedimentos: string
+  procedureId:   string
+  /** A duração DELA (a soma dos procedimentos — D5 da 9ª). */
+  duracaoMin:    number
+  appointmentId: string | null
+  scheduledAt:   string | null
+  /** O status do agendamento (nulo: sem agendamento). */
+  apptStatus:    string | null
+  profissional:  string | null
+}
+
+export interface PassosDoPlano {
+  status:      string
+  situacao:    SituacaoComercial
+  aceitoEm:    string | null
+  clienteId:   string | null
+  unidadeId:   string
+  documentos:  DocumentosDoPlano
+  contrato:    SituacaoDoContrato
+  recebido:    boolean
+  /** A comanda do plano no PDV (nasce no aceite). */
+  comandaId:   string | null
+  podeReceber: boolean
+  /** Agendar a sessão é da Agenda em Gerenciar (o `schedulePlanSession`). */
+  podeAgendar: boolean
+  /** As contagens da fonte única (`metrics_financeiro_do_plano`). */
+  contagem:    { total: number; agendadas: number; feitas: number }
+  sessoes:     SessaoDoPasso[]
+}
+
+/**
+ * A página do plano é o centro (PT1a, a revisão do Heitor de 2026-11-13):
+ * ① Aceite ② Documentos ③ Contrato e pagamento ④ Sessões — cada passo diz o
+ * estado e leva aonde se faz. Quem lê é quem vê o plano (a Agenda, com o
+ * alcance e o "só os meus" do `planoDoTenant`). Sem dado clínico.
+ */
+export async function getPassosDoPlano(planId: string): Promise<{ passos?: PassosDoPlano; error?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'planos_de_tratamento')
+    assertPermission(ctx, 'agenda', 'VIEW')
+    const admin = createAdminClient()
+    const plan = await planoDoTenant(admin, planId, ctx)
+    if (!plan) return { error: 'Plano não encontrado.' }
+
+    const [extra, andamento, financeiro, comanda, brutas] = await Promise.all([
+      ler(admin.from('treatment_plans').select('aceito_em').eq('id', planId).maybeSingle(), 'buscar o aceite do plano'),
+      andamentoDosPlanos(ctx.tenantId!, [planId]),
+      getFinanceiroDoPlano(ctx.tenantId!, planId),
+      ler(admin.from('comandas').select('id').eq('treatment_plan_id', planId).is('cancelada_em', null).maybeSingle(), 'buscar a comanda do plano'),
+      ler(admin.from('treatment_plan_sessions')
+        .select(`id, sort_order, appointment_id,
+          treatment_plan_session_procedures(procedure_id, sort_order, procedures(name, duration_min)),
+          appointments:appointment_id(id, status, scheduled_at, professional:users!professional_id(name))`)
+        .eq('plan_id', planId).order('sort_order').order('id'), 'carregar as sessões do plano'),
+    ])
+    const a = andamento.get(planId)!
+
+    type Proc = { procedure_id: string; sort_order: number; procedures: { name: string; duration_min: number | null } | null }
+    type Ag   = { id: string; status: string; scheduled_at: string; professional: { name: string } | null } | null
+    type Sess = { id: string; appointment_id: string | null; treatment_plan_session_procedures: Proc[]; appointments: Ag }
+    const sessoes: SessaoDoPasso[] = ((brutas ?? []) as unknown as Sess[]).map((s, i) => {
+      const procs = [...(s.treatment_plan_session_procedures ?? [])].sort((x, y) => x.sort_order - y.sort_order)
+      return {
+        id:            s.id,
+        numero:        i + 1,
+        procedimentos: procs.map(p => p.procedures?.name ?? '—').join(' + ') || '—',
+        procedureId:   procs[0]?.procedure_id ?? '',
+        duracaoMin:    procs.reduce((t, p) => t + (p.procedures?.duration_min ?? 60), 0),
+        appointmentId: s.appointment_id ?? null,
+        scheduledAt:   s.appointments?.scheduled_at ?? null,
+        apptStatus:    s.appointments?.status ?? null,
+        profissional:  s.appointments?.professional?.name ?? null,
+      }
+    })
+
+    return {
+      passos: {
+        status:      plan.status as string,
+        situacao:    situacaoComercialDoPlano({
+          status: plan.status as string, recebido: a.recebido, documentosAbertos: a.documentos.abertos,
+          contratoFalta: a.contrato === 'NO_PDV' || a.contrato === 'FALTA_ASSINAR',
+        }),
+        aceitoEm:    (extra?.aceito_em as string | null) ?? null,
+        clienteId:   (plan.client_id as string | null) ?? null,
+        unidadeId:   plan.branch_id as string,
+        documentos:  a.documentos,
+        contrato:    a.contrato,
+        recebido:    a.recebido,
+        comandaId:   (comanda?.id as string | undefined) ?? null,
+        podeReceber: podeReceber(ctx),
+        podeAgendar: can(ctx, 'agenda', 'MANAGE'),
+        contagem:    { total: financeiro.sessoes.total, agendadas: financeiro.sessoes.agendadas, feitas: financeiro.sessoes.feitas },
+        sessoes,
+      },
+    }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
   }
 }

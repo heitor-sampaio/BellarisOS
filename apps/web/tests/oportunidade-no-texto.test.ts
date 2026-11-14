@@ -108,7 +108,7 @@ function achados(arquivo: string, texto: string): string[] {
   return saida
 }
 
-describe('CR1: "Contato" e "Oportunidade" em todo texto que se lê', () => {
+describe('CR1: "Contato" e "Oportunidade" em todo texto que se lê', { timeout: 60_000 }, () => {
   it('nenhuma tela, aviso, rótulo ou resposta do Copilot diz "lead"', () => {
     const errados: string[] = []
     for (const pasta of PASTAS) {

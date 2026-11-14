@@ -37,7 +37,8 @@ test('criar um plano abre a tela dele; voltar traz a lista', async ({ page }) =>
   // primeira pode ser a `[e2e]` de outro spec rodando em paralelo, que ela
   // apaga logo depois — o "Criar" batia em chave estrangeira e o plano não
   // nascia (foi o "intermitente" que parecia ser tempo).
-  const unidade = page.locator('select').first()
+  // Na janela do "Novo plano": a lista tem o seletor da situação (PT1f) antes dela.
+  const unidade = page.getByRole('dialog').locator('select').first()
   if (await unidade.count()) await unidade.selectOption((await filiaisAtivas())[0]!.id)
 
   await page.getByRole('button', { name: 'Criar', exact: true }).click()

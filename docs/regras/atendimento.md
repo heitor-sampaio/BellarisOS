@@ -1942,18 +1942,74 @@ const procedures = await ler(
   ficha não oferece "+ Agendar" sem a Agenda em Gerenciar, nem "Adicionar
   primeiro documento" a quem não anexa (A23). Prova:
   `e2e/permissoes-quem-so-ve.spec.ts`.
+  **Quem monta o plano é quem ATENDE na unidade dele** (PT2, Bloco Plano de
+  tratamento, 2026-11-14 — o Heitor: "quem monta o plano é quem atende, nem
+  precisa de permissão pra isso pq isso é proprio atendimento, faz parte").
+  "Quem atende" é o "Atende" da Equipe (`users.atende_em` com a unidade do
+  plano), que NÃO é permissão; a Admin da rede tem tudo. A regra mora num
+  lugar só: `montaPlano` (`lib/plano-de-tratamento/quem-monta.ts`). O
+  Prontuário em Gerenciar saiu da trava de montar — criar, salvar, renomear,
+  ligar a cliente, "Cliente vai pensar" e o rascunho da avaliação
+  (`criarPlanoDoCliente`, `salvarPlanoDoCliente`, `renomearPlano`,
+  `vincularClienteAoPlano`, `proposeTreatmentPlan`, `saveTreatmentPlan`)
+  devolvem `{ error: RECUSA_QUEM_MONTA }` a quem não atende na unidade do
+  plano, depois de conferida a rede, o alcance e o "só os meus".
+  - **A anotação clínica dentro do plano continua do Prontuário** (as
+    "Observações da profissional", `professional_notes`): só quem tem o
+    Prontuário em Gerenciar (e, no "só os meus" do prontuário, o plano dela —
+    `anotaNoPlano`) a escreve. Para quem monta sem ele, o editor não mostra o
+    campo (`podeAnotar`), a action ignora a anotação que chega e a que está
+    gravada FICA — nem se apaga (a `gerar_plano_da_avaliacao` só mexe nela
+    quando recebe `notas_do_plano`, migration `20261115500001`). E o "envio"
+    não pede a observação a quem não pode escrevê-la.
+  - **Monta-se na avaliação ou DEPOIS** ("a dra pode realizar a avaliação e
+    depois com calma montar o plano"): o "Novo plano" na ficha (Planejamento →
+    Tratamentos) e no menu Tratamentos; e "Montar plano desta avaliação" na
+    avaliação CONCLUÍDA (o plano nasce ligado a ela). Na avaliação ABERTA,
+    gerar o plano grava também o registro do atendimento (as dores, a ficha, a
+    anamnese, a evolução) — ali segue o Prontuário em Gerenciar, como o
+    "Finalizar".
+  - No portal da rede, o "Novo plano" oferece só as unidades em que ela atende.
   **Sem o "Novo plano", a tela diz quem monta** (A18 da 6ª simulação,
-  2026-11-04): montar o plano pede o Prontuário em Gerenciar, e a recepção lia
-  "pode ser montado agora…" sem botão. A aba Planejamento vazia e a tela
-  Planejamentos dizem "Quem monta o plano é quem tem o Prontuário em Gerenciar
-  (a profissional, na avaliação ou aqui)." (`TEXTO_QUEM_MONTA`,
-  `lib/plano-de-tratamento/situacao.ts`). **E diz onde se libera e o que isso
-  abre** (A12 da 12ª simulação, 2026-11-11; princípio 3): "Para liberar,
-  Configurações → Cargos → Prontuário em Gerenciar — e o cargo passa a ver e
-  escrever o prontuário (o dado clínico) das clientes." A regra fica. Prova:
+  2026-11-04, revisto no PT2): a aba Planejamento vazia e a tela Tratamentos
+  dizem "Quem monta o plano é quem atende nesta unidade, na avaliação ou
+  aqui. Para marcar alguém, Equipe → "Atende" nesta unidade."
+  (`TEXTO_QUEM_MONTA`). Prova: `e2e/plano-tratamento-leva-1.spec.ts`,
   `e2e/configuracoes-atritos-da-12.spec.ts` ("A12"). E `/planejamentos/novo` (os dois
   portais) não é 404: leva à lista com `?novo=1`, que abre o "Novo plano"
   para quem monta. Prova: `e2e/planejamentos-quem-monta.spec.ts`.
+- **A página do plano é o centro, com os passos** (PT1a, 2026-11-14):
+  ① Aceite ② Documentos ③ Contrato e pagamento ④ Sessões (`PassosDoPlano`,
+  `getPassosDoPlano`). Cada passo diz o estado e leva aonde se faz: o aceite
+  ali mesmo ("Aceitar plano" e "Cliente vai pensar", que salvam o que está na
+  tela antes); os documentos, à ficha da cliente (o link e o aparelho que já
+  existem); o contrato e o pagamento, à comanda do plano no PDV ("Receber no
+  PDV", a quem recebe); as sessões, ao agendar. O passo da vez é o número
+  preenchido, na ordem do Heitor: aceitar → assinar → pagar → agendar. As
+  contagens das sessões são da fonte única (`metrics_financeiro_do_plano`).
+  Aceita quem monta o plano (quem atende na unidade dele) ou quem recebe.
+- **Cada sessão tem o [Agendar], e há o "Agendar todas"** (PT1d), a qualquer
+  momento depois do aceite (antes dele, o passo ④ diz "depois do aceite" — e o
+  servidor recusa a sessão de plano não aceito, `conferirCredito`). O agendar
+  já vem com a cliente, o procedimento e a duração da sessão
+  (`SessionScheduler` + `schedulePlanSession`, pelo `createAppointmentCore`);
+  o "Agendar todas" segue para a próxima sessão livre a cada uma salva.
+  Agendar é da Agenda em Gerenciar. O "+ Agendar" da agenda continua
+  oferecendo as sessões do plano.
+- **A sessão do plano não cobra nada** (PT1e): a comanda do atendimento não
+  nasce para a sessão de plano; o dinheiro do plano é o da comanda do plano
+  no PDV, e a parcela que venceu aparece no PDV da cliente
+  (`parcelasEmAbertoDaCliente`, "Receber esta parcela"). Prova:
+  `e2e/plano-tratamento-leva-1.spec.ts` ("PT1e").
+- **Tratamentos filtra pela situação** (PT1f): Rascunho, Proposto, Aceito
+  (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado
+  (`situacaoComercialDoPlano`, `lib/plano-de-tratamento/situacao.ts`; o banco
+  lido em `andamento-do-plano.ts`). O aceito com documento por assinar — ou
+  com o contrato de plano por emitir/assinar — é "Aceito (falta assinar)"; sem
+  isso e sem dinheiro, "Falta pagar"; com dinheiro recebido, "Em andamento" (o
+  recebido vence o documento aberto). O REJECTED antigo é "Cancelado". Sete
+  situações: um seletor (`.filtro-select`), não um segmentado. O plano
+  proposto se chama "Proposto" em toda tela (era "Aguardando checkout").
 - **Os planos de tratamento seguem a agenda "só os meus"** (decisão do Heitor,
   2026-10-28). Com `agenda` OWN, a tela Planejamentos (`listarPlanejamentos`),
   os planos da cliente (`getPlanosDoCliente`, o Planejamento da ficha e do
@@ -3018,9 +3074,11 @@ O resto do fluxo:
   do concluído (`textoDoRegistroTravado`, `lib/atendimento/registro-travado.ts`).
   Dizia "Atendimento concluído. Para corrigir, use…". Prova:
   `tests/registro-travado.test.ts`.
-- **Gerar o plano (o "Fechar agora" e o "Gerar plano e enviar à recepção")
-  pede o Prontuário em Gerenciar** (D9 da 5ª simulação, 2026-11-01): grava a
-  avaliação no prontuário (`generateEvaluationPlan`). Com ele só em Ver, o
+- **Gerar o plano na avaliação ABERTA (o "Aceitar plano" e o "Gerar plano e
+  enviar à recepção") pede o Prontuário em Gerenciar** (D9 da 5ª simulação,
+  2026-11-01): grava a avaliação no prontuário (`generateEvaluationPlan`). Na
+  avaliação CONCLUÍDA, só o plano nasce: monta quem atende na unidade (PT2,
+  "Montar plano desta avaliação"). Com ele só em Ver, o
   cartão some inteiro, com a dica do J-35 — que mandava a um "Finalizar
   atendimento" que não existe para ela (o alto da tela já diz "Quem conclui é
   o profissional"). Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
@@ -3157,7 +3215,10 @@ O resto do fluxo:
 ❌ Aceitar a ficha da CLIENTE (app ou link) sem oQueFaltaNaFicha no servidor
 ❌ Gravar o token do link da ficha em texto (o que confere quem abre é o SHA-256; para mostrar de novo, só CIFRADO pelo cofre, com a chave fora do banco — A22 da 9ª), ou contar tentativas fora de pre_atendimento_link_abrir
 ❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista) — na tela, "Este atendimento é de outra profissional" (AtendimentoDeOutraProfissional), nem 404 nem semAcesso() (o cargo libera; o atendimento é que não é dela)
-❌ Botão que grava o prontuário (gerar o plano, "Editar registro") para quem não tem o Prontuário em Gerenciar (canEditRecords)
+❌ Botão que grava o prontuário (gerar o plano na avaliação aberta, "Editar registro") para quem não tem o Prontuário em Gerenciar (canEditRecords)
+❌ Decidir quem monta o plano pelo Prontuário ou por nome de cargo — é montaPlano (quem atende na unidade do plano; a Admin da rede tem tudo — PT2)
+❌ Gravar ou apagar a anotação clínica do plano (professional_notes) sem anotaNoPlano — quem monta sem o Prontuário não a escreve nem a zera
+❌ Cobrar a sessão do plano (comanda do atendimento, preço no caixa): o plano se paga na comanda dele, no PDV (PT1e)
 ❌ Listar ou conferir "quem atende nesta unidade" com branch_id = unidade, ou com "a da rede atende em todas" — é a unidade marcada no "Atende" (atende_em, filtroDeQuemAtendeNaUnidade)
 ❌ Gravar users.atende_em ou provides_services sem passar pelo gatilho que os mantém juntos (atende_em_sincronizar), ou dar à unidade nova alguém marcado sozinho (princípio 6)
 ❌ Abrir a unidade inteira a quem só ATENDE nela (a Talita no Batel): o alcance é dos agendamentos DELA — alcancaOAgendamento, nunca crescer a abrangência

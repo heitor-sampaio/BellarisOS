@@ -108,6 +108,13 @@ interface Props {
    */
   onSalvarPorPlano?:    (sessions: PlanSessionInput[], notes: string) => Promise<void>
   /**
+   * Escreve a anotação clínica (as "Observações da profissional")? É do
+   * Prontuário em Gerenciar (PT2, 2026-11-14): quem monta o plano sem ele vê a
+   * anotação que existe (se o prontuário lhe mostra) e não a escreve — o
+   * servidor também não a grava.
+   */
+  podeAnotar?:          boolean
+  /**
    * A unidade do plano: com ela, o editor busca os pacotes à venda e DIZ quando
    * as sessões batem com um (A28, 2026-10-27). O plano segue por procedimento;
    * quem aplica a economia é o checkout.
@@ -430,6 +437,7 @@ function SessionCard({
 
 export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(function TreatmentPlanEditor({
   appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano, branchId, opcional = false,
+  podeAnotar = true,
 }, ref) {
   const [sessions,  setSessions]  = useState<EditorSession[]>(() => fromExisting(existingPlan))
   // Os pacotes à venda na unidade — só para a dica; sem eles, nada aparece.
@@ -759,7 +767,15 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
           </div>
         )}
 
-        {/* Observações */}
+        {/* Observações — a anotação clínica é do Prontuário (PT2). */}
+        {!podeAnotar ? (existingPlan?.notes ? (
+          <div data-anotacao-so-leitura>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>OBSERVAÇÕES DA PROFISSIONAL</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 12px', background: 'var(--bg-app)', borderRadius: 8 }}>
+              “{existingPlan.notes}”
+            </p>
+          </div>
+        ) : null) : (
         <div>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>OBSERVAÇÕES DA PROFISSIONAL</p>
           <textarea
@@ -776,6 +792,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
             }}
           />
         </div>
+        )}
 
         {/* Ações.
             `onSalvarPorPlano` é o modo "planejamento do cliente": o plano já

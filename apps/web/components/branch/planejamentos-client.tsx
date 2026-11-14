@@ -6,10 +6,9 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, Plus, ClipboardList, Loader2, User } from 'lucide-react'
 import { listarPlanejamentos, criarPlanoDoCliente, buscarClientesParaPlano } from '@/actions/treatment-plans'
-import { SegSelect } from '@/components/shared/seg-select'
 import { useFala } from '@/components/shared/uma-unidade'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { situacaoDoPlano, SITUACAO_DO_PLANO, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
+import { TEXTO_QUEM_MONTA, SITUACOES_COMERCIAIS, rotuloDaSituacaoComercial, corDaSituacaoComercial, type SituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
 import { useFuso } from '@/components/shared/fuso'
 
 /**
@@ -26,18 +25,16 @@ import { useFuso } from '@/components/shared/fuso'
 
 export interface PlanoDaLista {
   id: string; nome: string; status: string; criadoEm: string
+  /** PT1f: onde o plano está — aceitar → assinar → pagar → agendar. */
+  situacao: SituacaoComercial
   total: number; sessoes: number
   cliente: { id: string; name: string; phone: string | null } | null
   unidade: string | null
 }
 
-const FILTROS: { key: string; label: string }[] = [
-  { key: '',          label: 'Todos' },
-  { key: 'DRAFT',     label: 'Rascunho' },
-  { key: 'PROPOSED',  label: SITUACAO_DO_PLANO.PROPOSED!.label },
-  { key: 'ACCEPTED',  label: 'Fechados' },
-  { key: 'COMPLETED', label: 'Concluídos' },
-]
+// PT1f (a revisão do Heitor de 2026-11-13): a situação na ordem do fluxo —
+// aceitar → assinar → pagar → agendar. Sete situações: é um seletor
+// (`.filtro-select`), não um segmentado (§13, design.md: segmentado é de 2 a 5).
 
 // O nome de cada situação é UM (J-37): lib/plano-de-tratamento/situacao.
 
@@ -66,7 +63,7 @@ export function PlanejamentosClient({
   const fala = useFala()
   const [planos, setPlanos] = useState(planosIniciais)
   const [busca,  setBusca]  = useState('')
-  const [status, setStatus] = useState('')
+  const [situacao, setSituacao] = useState<SituacaoComercial | ''>('')
   const [buscando, startBusca] = useTransition()
 
   // `/planejamentos/novo` chega aqui com ?novo=1 (A18): abre o "Novo plano" para quem monta.
@@ -102,12 +99,12 @@ export function PlanejamentosClient({
   useEffect(() => {
     const t = setTimeout(() => {
       startBusca(async () => {
-        const res = await listarPlanejamentos({ busca, status: status || undefined, branchId: branchId || null })
+        const res = await listarPlanejamentos({ busca, situacao: situacao || undefined, branchId: branchId || null })
         setPlanos(res.planos)
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [busca, status, branchId])
+  }, [busca, situacao, branchId])
 
   async function criar() {
     if (!novaUnidade) { setErro('Escolha a unidade do plano.'); return }
@@ -159,17 +156,12 @@ export function PlanejamentosClient({
             onChange={e => setBusca(e.target.value)}
           />
         </div>
-        {/* Escolha exclusiva entre cinco estados fixos: é um segmentado, não
-            cinco pílulas soltas. Eram pílulas com raio, borda e altura
-            próprias — a mesma escolha desenhada de um jeito diferente do
-            resto do sistema. Ver §13 do CLAUDE.md. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <SegSelect
-            options={FILTROS}
-            value={status}
-            onSelect={setStatus}
-            ariaLabel="Filtrar por situação do plano"
-          />
+          <select className="filtro-select" aria-label="Filtrar por situação do plano"
+            value={situacao} onChange={e => setSituacao(e.target.value as SituacaoComercial | '')}>
+            <option value="">Todas as situações</option>
+            {SITUACOES_COMERCIAIS.map(s => <option key={s} value={s}>{rotuloDaSituacaoComercial(s)}</option>)}
+          </select>
           {buscando && <Loader2 size={14} className="animate-spin" style={{ color: 'var(--text-faint)' }} />}
         </div>
       </div>
@@ -185,7 +177,7 @@ export function PlanejamentosClient({
             <ClipboardList size={22} style={{ color: 'var(--text-faint)' }} />
           </div>
           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
-            {busca || status ? 'Nada encontrado com esse filtro' : 'Nenhum plano ainda'}
+            {busca || situacao ? 'Nada encontrado com esse filtro' : 'Nenhum plano ainda'}
           </p>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', maxWidth: 380 }}>
             O plano pode ser montado antes de a pessoa virar cliente — basta dar um nome e ligar a um cadastro depois.
@@ -194,16 +186,16 @@ export function PlanejamentosClient({
       ) : (
         <div className="rolagem-da-lista" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {planos.map(p => {
-            const st = situacaoDoPlano(p.status)
+            const st = corDaSituacaoComercial(p.situacao)
             return (
-              <Link key={p.id} href={`${base}/${p.id}`}
+              <Link key={p.id} href={`${base}/${p.id}`} data-plano-da-lista
                 className="card card-hover"
                 style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', textDecoration: 'none' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{p.nome}</span>
                     <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
-                      {st.label}
+                      {rotuloDaSituacaoComercial(p.situacao)}
                     </span>
                   </div>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>

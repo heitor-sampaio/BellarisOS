@@ -218,7 +218,7 @@ test('A11: a gerente de unidade fixa lê por que a aba e a Equipe não abrem, e 
   }
 })
 
-test('A12: quem não monta o plano lê onde se libera, e que isso abre o prontuário', async ({ browser }) => {
+test('A12: quem não monta o plano lê onde se libera — o "Atende" da Equipe (PT2)', async ({ browser }) => {
   const cliente = await rede.criarCliente('Plano A12')
   const { data: b } = await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()
   const recepcao = await criarMembro(`cfg12r${marca}`, {
@@ -228,9 +228,10 @@ test('A12: quem não monta o plano lê onde se libera, e que isso abre o prontu�
   try {
     await como(browser, recepcao, async p => {
       await p.goto(`/${b!.slug}/clients/${cliente}?aba=planejamento`)
-      const texto = p.getByText(/Quem monta o plano é quem tem o Prontuário em Gerenciar/)
-      await expect(texto).toContainText('Configurações → Cargos')
-      await expect(texto).toContainText('prontuário')
+      // PT2 (2026-11-14): quem monta é quem ATENDE na unidade — o texto leva
+      // ao "Atende" da Equipe, não mais ao Prontuário em Cargos.
+      const texto = p.getByText(/Quem monta o plano é quem atende nesta unidade/)
+      await expect(texto).toContainText('Equipe → "Atende"')
     })
   } finally {
     await recepcao.limpar()

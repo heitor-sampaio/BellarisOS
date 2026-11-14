@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
-import { getTenantContext, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertRecurso, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { DetalheDePlano } from '@/app/_shared/detalhe-de-plano'
 import { ler } from '@/lib/db'
@@ -20,6 +20,8 @@ export default async function BranchPlanoPage({
   const ctx = await getTenantContext()
   // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
   assertRecurso(ctx, 'planos_de_tratamento')
+  // A trava da PÁGINA (§6: o layout protege a navegação, não a URL).
+  assertPermission(ctx, 'agenda', 'VIEW')
 
   const supabase = await createSupabase()
   const branch = await ler(supabase

@@ -156,6 +156,12 @@ export async function criarMembro(
      * com que o cargo modelo nasce. `permissoes` fica sem uso.
      */
     cargoDaRede?: string
+    /**
+     * As unidades em que o membro ATENDE (`users.atende_em`, o "Atende" da
+     * Equipe — não é permissão). O plano de tratamento é montado por quem
+     * atende (PT2, Bloco Plano de tratamento, 2026-11-14).
+     */
+    atendeEm?: string[]
   },
 ): Promise<MembroDeTeste> {
   const db     = banco()
@@ -224,6 +230,7 @@ export async function criarMembro(
       .insert({
         auth_id: authId, tenant_id: tenant, branch_id: branchId,
         name: `${PREFIXO} ${rotulo} ${marca}`, email, role_id: roleId,
+        ...(opcoes.atendeEm?.length ? { atende_em: opcoes.atendeEm } : {}),
       })
       .select('id').single<{ id: string }>()
     if (erroMembro) throw new Error(`criar o membro: ${erroMembro.message}`)

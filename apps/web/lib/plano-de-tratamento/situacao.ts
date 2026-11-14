@@ -11,7 +11,9 @@ export interface SituacaoDoPlano { label: string; cor: string; fundo: string }
 
 export const SITUACAO_DO_PLANO: Record<string, SituacaoDoPlano> = {
   DRAFT:     { label: 'Rascunho',            cor: 'var(--text-muted)', fundo: 'var(--bg-app)' },
-  PROPOSED:  { label: 'Aguardando checkout', cor: 'var(--warning)',    fundo: 'var(--warning-soft)' },
+  // PT1a (2026-11-14): o aceite deixou de ser um checkout — o plano proposto é
+  // "Proposto", o nome da lista de Tratamentos (PT1f).
+  PROPOSED:  { label: 'Proposto',            cor: 'var(--warning)',    fundo: 'var(--warning-soft)' },
   ACCEPTED:  { label: 'Fechado',             cor: 'var(--success)',    fundo: 'var(--success-bg)' },
   COMPLETED: { label: 'Concluído',           cor: 'var(--success)',    fundo: 'var(--success-bg)' },
   CANCELLED: { label: 'Cancelado',           cor: 'var(--danger)',     fundo: 'var(--danger-soft)' },
@@ -41,5 +43,62 @@ export function situacaoDaExecucao(status: string, feitas: number, total: number
   return { label: `Em andamento · ${sessoes}`, cor: 'var(--brand)', fundo: 'var(--brand-soft)' }
 }
 
-/** Quem monta o plano (A18 da 6ª simulação): o "Novo plano" pede o Prontuário em Gerenciar, e a tela sem o botão diz isso. */
-export const TEXTO_QUEM_MONTA = 'Quem monta o plano é quem tem o Prontuário em Gerenciar (a profissional, na avaliação ou aqui). Para liberar, Configurações → Cargos → Prontuário em Gerenciar — e o cargo passa a ver e escrever o prontuário (o dado clínico) das clientes.'
+/** Quem monta o plano: desde o PT2 (2026-11-14), quem ATENDE — `lib/plano-de-tratamento/quem-monta.ts`. */
+export { TEXTO_QUEM_MONTA } from './quem-monta'
+
+/**
+ * A situação do plano na lista de Tratamentos e no topo da página dele (PT1f,
+ * Bloco Plano de tratamento — a revisão do Heitor de 2026-11-13: "Proposto,
+ * Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado").
+ * Segue a ordem do Heitor: aceitar → assinar → pagar → agendar.
+ *
+ * - Aceito (falta assinar): aceito, sem dinheiro, com documento do plano
+ *   aberto ou o contrato de plano da rede ainda sem assinatura (nem dispensa).
+ * - Falta pagar: aceito, tudo assinado, sem dinheiro.
+ * - Em andamento: o plano já foi recebido (um lançamento vivo dele) — o
+ *   dinheiro que entrou vence o documento que ficou aberto.
+ * - Rascunho fica à parte: o plano salvo que ainda não foi à cliente.
+ *
+ * Pura: quem lê o banco é `listarPlanejamentos` / `getPassosDoPlano`.
+ */
+export const SITUACOES_COMERCIAIS = ['RASCUNHO', 'PROPOSTO', 'FALTA_ASSINAR', 'FALTA_PAGAR', 'EM_ANDAMENTO', 'CONCLUIDO', 'CANCELADO'] as const
+export type SituacaoComercial = typeof SITUACOES_COMERCIAIS[number]
+
+const COMERCIAL: Record<SituacaoComercial, SituacaoDoPlano> = {
+  RASCUNHO:      { label: 'Rascunho',               cor: 'var(--text-muted)', fundo: 'var(--bg-app)' },
+  PROPOSTO:      { label: 'Proposto',               cor: 'var(--warning)',    fundo: 'var(--warning-soft)' },
+  FALTA_ASSINAR: { label: 'Aceito (falta assinar)', cor: 'var(--warning)',    fundo: 'var(--warning-soft)' },
+  FALTA_PAGAR:   { label: 'Falta pagar',            cor: 'var(--warning)',    fundo: 'var(--warning-soft)' },
+  EM_ANDAMENTO:  { label: 'Em andamento',           cor: 'var(--brand)',      fundo: 'var(--brand-soft)' },
+  CONCLUIDO:     { label: 'Concluído',              cor: 'var(--success)',    fundo: 'var(--success-bg)' },
+  CANCELADO:     { label: 'Cancelado',              cor: 'var(--danger)',     fundo: 'var(--danger-soft)' },
+}
+
+export function situacaoComercialDoPlano(p: {
+  status: string
+  /** Há lançamento de receita vivo do plano (o plano foi recebido). */
+  recebido: boolean
+  /** Documentos do plano ainda por assinar (prontos, a gerar ou com dados faltando). */
+  documentosAbertos: number
+  /** A rede tem contrato de plano ativo e este plano não tem um assinado nem dispensado. */
+  contratoFalta: boolean
+}): SituacaoComercial {
+  switch (p.status) {
+    case 'DRAFT':     return 'RASCUNHO'
+    case 'PROPOSED':  return 'PROPOSTO'
+    case 'COMPLETED': return 'CONCLUIDO'
+    case 'CANCELLED':
+    case 'REJECTED':  return 'CANCELADO'
+  }
+  if (p.recebido) return 'EM_ANDAMENTO'
+  if (p.documentosAbertos > 0 || p.contratoFalta) return 'FALTA_ASSINAR'
+  return 'FALTA_PAGAR'
+}
+
+export function rotuloDaSituacaoComercial(s: SituacaoComercial): string {
+  return COMERCIAL[s].label
+}
+
+export function corDaSituacaoComercial(s: SituacaoComercial): SituacaoDoPlano {
+  return COMERCIAL[s]
+}

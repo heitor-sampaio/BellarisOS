@@ -3,6 +3,7 @@ import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao-no-servidor'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
+import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 import { getPagoComCreditoDoCliente } from '@/lib/metrics/fechamento-extra'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
@@ -525,6 +526,9 @@ export default async function AdminClientProfilePage({
         planProcedures={planoProcs.procedures}
         planProducts={planoProcs.products}
         podeReceber={podeReceber(ctx)}
+        // PT2: monta o plano quem ATENDE na unidade (o "Atende" — não é permissão);
+        // sem a unidade escolhida, atender em alguma basta, e a gravação confere.
+        podeMontarPlano={montaPlano(ctx, perguntaAUnidade ? null : branchId)}
         aReceber={aReceber}
         podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
         perguntaAUnidade={perguntaAUnidade}

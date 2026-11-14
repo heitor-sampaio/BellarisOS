@@ -79,10 +79,15 @@ comanda (PDV-P1).
   - **Aceitar é só "quero fazer"** (`aceitarPlano` → `plano_aceitar`): o plano
     vira ACCEPTED, os documentos ficam prontos e a comanda `PLANO` nasce no PDV
     com o valor inteiro. Nenhum dinheiro, nenhum agendamento, nenhuma pergunta
-    de forma. Aceita quem monta o plano (prontuário em Gerenciar) ou quem
-    recebe. Na página do plano e na tela do atendimento o botão é "Aceitar
-    plano"; "a cliente vai pensar" deixa o plano proposto (PROPOSED), para
-    aceitar depois.
+    de forma. Aceita quem monta o plano — quem ATENDE na unidade dele
+    (`montaPlano`, PT2 de 2026-11-14; era o Prontuário em Gerenciar) — ou
+    quem recebe. Na página do plano o botão é o do passo ① ("Aceite", PT1a);
+    na tela do atendimento, "Aceitar plano"; "a cliente vai pensar" deixa o
+    plano proposto (PROPOSED), para aceitar depois. Na página do plano, o
+    passo ③ ("Contrato e pagamento") leva à comanda do plano no PDV
+    ("Receber no PDV", `?unidade=…&comanda=…`).
+  - **A sessão do plano não cobra nada** (PT1e): o dinheiro do plano é o da
+    comanda dele; a parcela vencida do crediário aparece no PDV da cliente.
   - **O dinheiro é no PDV**: a comanda do plano tem "Receber o plano", o mesmo
     assistente do antigo checkout (`CheckoutWizard`, `podeAgendar={false}`) —
     desconto, "Quem vendeu", à vista ou crediário, o contrato e então o
@@ -2152,11 +2157,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     Fechamento do dia, a receita sem forma com `loyalty_discount` é `PONTOS`;
     todo o resto sem forma (a compra de estoque) é "Sem forma de pagamento".
   - Prova: `e2e/financeiro-credito-em-vezes.spec.ts`, `tests/financeiro-formas.test.ts`.
-- **A página do plano proposto tem "Fechar checkout"** (A44 da 5ª
-  simulação): em Tratamentos, quem RECEBE e não escreve no plano (a recepção,
-  sem o prontuário em Gerenciar) vê "Fechar checkout" no plano PROPOSTO — o
-  mesmo wizard do atendimento. O botão só existia na tela da avaliação; quem
-  escreve no plano segue com o "Aceitar plano". Prova:
+- **A página do plano proposto tem o aceite para quem recebe** (A44 da 5ª
+  simulação; desde a fase 3 do PDV, "Aceitar plano" — o "Fechar checkout"
+  saiu): em Tratamentos, quem RECEBE e não monta o plano vê "Aceitar plano" no
+  passo ① do plano PROPOSTO. Prova:
   `e2e/plano-fechar-checkout-na-pagina.spec.ts`.
   **E o erro fica junto do botão; o plano aceito diz "Continuar o
   checkout"** (A24 da 14ª, F75): o erro do "Aceitar plano", do "Cliente vai

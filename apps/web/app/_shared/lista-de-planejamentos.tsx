@@ -1,4 +1,5 @@
 import { getTenantContext, assertPermission, can, assertRecurso } from '@/lib/auth'
+import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { listarPlanejamentos } from '@/actions/treatment-plans'
 import { getCachedNetworkBranches } from '@/lib/cached-queries'
 import { PlanejamentosClient } from '@/components/branch/planejamentos-client'
@@ -36,14 +37,18 @@ export async function ListaDePlanejamentos({
     branchId ? Promise.resolve([]) : getCachedNetworkBranches(ctx.tenantId!),
   ])
 
+  // PT2: monta quem ATENDE na unidade (o "Atende" da Equipe — não é permissão).
+  // Na rede, o "Novo plano" oferece só as unidades em que ela atende.
+  const unidadesQueMonta = (unidades as { id: string; name: string }[]).filter(u => montaPlano(ctx, u.id))
+
   return (
     <PlanejamentosClient
       planosIniciais={planos}
       branchId={branchId ?? ''}
       branchName={branchName}
       basePath={basePath}
-      unidades={unidades as { id: string; name: string }[]}
-      podeEditar={can(ctx, 'medical_records', 'MANAGE')}
+      unidades={unidadesQueMonta}
+      podeEditar={branchId ? montaPlano(ctx, branchId) : unidadesQueMonta.length > 0}
       podeBuscarCliente={can(ctx, 'clients', 'VIEW')}
     />
   )

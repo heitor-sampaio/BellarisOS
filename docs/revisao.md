@@ -1777,6 +1777,15 @@ revisão, só se escreve o plano. Nada se implementa.
   do banco devolvia texto com "lead" (conferido no `pg_proc`), então não há
   migration. A trava: `tests/oportunidade-no-texto.test.ts`. Regras em
   `crm-inbox.md` §9.2.1 e `indicadores.md`.
+- ✅ Bloco Plano de tratamento, leva 1 (14/11) — PT2 (monta quem ATENDE na
+  unidade, sem o Prontuário; a anotação clínica segue dele; "Novo plano" na
+  ficha e em Tratamentos, "Montar plano desta avaliação" na concluída), PT1a
+  (a página do plano com os quatro passos), PT1d ([Agendar] em cada sessão e
+  "Agendar todas"), PT1e (conferido e provado: a sessão não cobra, a parcela
+  vencida no PDV) e PT1f (Tratamentos filtra pela situação). Ficam para a
+  leva 2: PT1b (o aceite pelo app e o aviso à equipe), PT1c (o contrato com o
+  pagamento no PDV, a assinatura antes do dinheiro), PT3, os documentos do
+  plano no pop-up e nascendo na criação, os pontos na comanda do plano.
 
 ### Bloco: Estoque
 
@@ -1942,13 +1951,13 @@ e Agenda (AG1) com o DC1–DC4.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| PT2 | **Monta quem atende, sem permissão própria** (sai a exigência do Prontuário em Gerenciar): na avaliação (o editor na tela do atendimento) ou DEPOIS, com calma — "Novo plano" na ficha (Planejamento → Tratamentos) e no menu Tratamentos, e "Montar plano desta avaliação" na avaliação concluída (o plano fica ligado a ela). A anotação clínica dentro do plano continua pedindo o Prontuário | — |
-| PT1a | **A página do plano é o centro**, com os passos à vista: ① Aceite ② Documentos ③ Contrato e pagamento ④ Sessões (X de N agendadas/realizadas). Sai o "Fechar checkout" (os quatro passos numa tela só) | — |
+| PT2 | **Monta quem atende, sem permissão própria** (sai a exigência do Prontuário em Gerenciar): na avaliação (o editor na tela do atendimento) ou DEPOIS, com calma — "Novo plano" na ficha (Planejamento → Tratamentos) e no menu Tratamentos, e "Montar plano desta avaliação" na avaliação concluída (o plano fica ligado a ela). A anotação clínica dentro do plano continua pedindo o Prontuário ✅ 14/11 | — |
+| PT1a | **A página do plano é o centro**, com os passos à vista: ① Aceite ② Documentos ③ Contrato e pagamento ④ Sessões (X de N agendadas/realizadas). Sai o "Fechar checkout" (os quatro passos numa tela só) ✅ 14/11 | — |
 | PT1b | **"Aceitar plano" é só "quero fazer"**, sem pergunta de dinheiro — na clínica ou **pelo app** (a cliente recebe o plano, analisa e aceita; sai o "O aceite é feito na clínica"). Aceito, os documentos ficam prontos e a comanda do plano nasce no PDV com o valor INTEIRO (a soma das sessões). A equipe é avisada do aceite pelo app | DC1–DC4, PDV |
 | PT1c | **Os termos e os outros documentos** se assinam quando a cliente quiser — no app (até em casa), por link ou no aparelho da clínica. **O CONTRATO e o pagamento andam juntos, no PDV**: escolhe-se a forma (à vista, entrada + parcelas, cartão em N vezes; o desconto e "Quem vendeu") → o contrato sai com ela e a cliente assina → recebe-se. A assinatura vem antes do dinheiro; o PDV não confirma o recebimento do plano sem o contrato assinado ou dispensado (é a ordem do Heitor; o dispensar com motivo segue valendo) | PT1b |
-| PT1d | **Agendar as sessões** a qualquer momento depois do aceite: [Agendar] em cada sessão e "Agendar todas" na página do plano (a janela da agenda já com a cliente, o procedimento e a duração), o "+ Agendar" da agenda (já oferece as sessões do plano) e o app | — |
-| PT1e | **A sessão não cobra nada**; a parcela com a clínica que venceu aparece no PDV (CX) | CX |
-| PT1f | **Tratamentos** (menu) filtra por situação: Proposto, Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado | PT1a |
+| PT1d | **Agendar as sessões** a qualquer momento depois do aceite: [Agendar] em cada sessão e "Agendar todas" na página do plano (a janela da agenda já com a cliente, o procedimento e a duração), o "+ Agendar" da agenda (já oferece as sessões do plano) e o app ✅ 14/11 (o app fica no PT3) | — |
+| PT1e | **A sessão não cobra nada**; a parcela com a clínica que venceu aparece no PDV (CX) ✅ 14/11 | CX |
+| PT1f | **Tratamentos** (menu) filtra por situação: Proposto, Aceito (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado ✅ 14/11 | PT1a |
 | PT3 | **No app, a cliente vê TUDO do plano** — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados — e **agenda as sessões em aberto**. A sessão de plano OU de pacote se agenda pelo app mesmo com o procedimento sem "Permitir auto agendamento" | — |
 | — | Mantém: as sessões com procedimento, preço e duração; "Cliente vai pensar"; a validade da proposta (só informação); o aviso de plano × avulso do mesmo procedimento; a sugestão do pacote equivalente; o cancelamento do plano por quem tem o Financeiro em Gerenciar; o "só os meus" | — |
 

@@ -27,7 +27,7 @@ type Aba = 'tratamento' | 'injetaveis'
 export function PainelPlanejamento({
   clientId, branchId, slug, appointmentId = null,
   procedures, availableProducts = [],
-  podeEditar, podeVerInjetaveis, podeVerPlanos = true, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
+  podeEditar, podeMontarPlano, podeAnotarNoPlano = true, podeVerInjetaveis, podeVerPlanos = true, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
   abaInicial = 'tratamento',
 }: {
   clientId:       string
@@ -36,7 +36,15 @@ export function PainelPlanejamento({
   appointmentId?: string | null
   procedures:     TreatmentProcedure[]
   availableProducts?: AvailableProduct[]
+  /** O mapa de injetáveis (prontuário): o Prontuário em Gerenciar. */
   podeEditar:     boolean
+  /**
+   * Monta o plano de tratamento: quem ATENDE na unidade (PT2, 2026-11-14 —
+   * "nem precisa de permissão pra isso"). Sem ele, vale `podeEditar`.
+   */
+  podeMontarPlano?: boolean
+  /** A anotação clínica do plano: o Prontuário em Gerenciar (PT2). */
+  podeAnotarNoPlano?: boolean
   /**
    * O mapa de injetáveis é PRONTUÁRIO (§9.4): sem `medical_records: VIEW` — e,
    * no "só os meus", fora da cliente dela — a sub-aba nem aparece. É a decisão
@@ -116,7 +124,8 @@ export function PainelPlanejamento({
           appointmentId={appointmentId}
           procedures={procedures}
           availableProducts={availableProducts}
-          podeEditar={podeEditar}
+          podeEditar={podeMontarPlano ?? podeEditar}
+          podeAnotar={podeAnotarNoPlano}
           podeReceber={podeReceber}
           abertoId={aberto}
           onAbrir={abrir}

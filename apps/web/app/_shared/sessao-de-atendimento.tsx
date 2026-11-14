@@ -3,6 +3,7 @@ import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
+import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 import { documentosDoAgendamento, pagamentoCombinadoDoAtendimento } from '@/lib/documentos/leitura'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
@@ -657,6 +658,8 @@ export async function SessaoDeAtendimento({
         procedureProductsMap={procedureProductsMap}
         isPartOfPlan={isPartOfPlan}
         podeMontarPlano={temRecurso(ctx, 'planos_de_tratamento')}
+        // PT2: monta o plano quem ATENDE na unidade do atendimento (não é permissão).
+        montaPlanoNaUnidade={montaPlano(ctx, branchId)}
         podeInjetaveis={temRecurso(ctx, 'injetaveis')}
         isPackageSession={!!sessaoDePacote}
         pacoteDeFora={!!(sessaoDePacote as { client_packages?: { de_fora?: boolean | null } | null } | null)?.client_packages?.de_fora}

@@ -305,6 +305,8 @@ interface Props {
   planProducts?:         { id: string; name: string; unit: string }[]
   /** Pode receber: habilita fechar o plano ali mesmo. */
   podeReceber?:          boolean
+  /** PT2: monta o plano de tratamento quem ATENDE na unidade (`montaPlano`), não o Prontuário. */
+  podeMontarPlano?:      boolean
   /** Os procedimentos pré-pagos do cliente, com as unidades. */
   prePagos?:             PrePagoDoCliente[]
   /** Pode agendar (agenda: MANAGE): a unidade pré-paga se agenda da ficha, e o "+ Agendar" (A23). */
@@ -1491,7 +1493,7 @@ export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, clientHistory, opportunities = [],
-  planProcedures = [], planProducts = [], podeReceber = false, termos = null,
+  planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
@@ -2135,6 +2137,8 @@ export function ClientProfile({
             procedures={planProcedures}
             availableProducts={planProducts}
             podeEditar={canManageProcedures}
+            podeMontarPlano={podeMontarPlano}
+            podeAnotarNoPlano={canManageProcedures}
             // Injetáveis é prontuário: a mesma decisão da aba Prontuário.
             podeVerInjetaveis={podeVerProntuario}
             podeVerPlanos={podeVerPlanos}

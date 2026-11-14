@@ -19,9 +19,11 @@ const TELAS = [
 ]
 
 describe('a situação do plano de tratamento', () => {
-  it('PROPOSED é "Aguardando checkout" — o aceite é o checkout', () => {
-    expect(SITUACAO_DO_PLANO.PROPOSED!.label).toBe('Aguardando checkout')
-    expect(situacaoDoPlano('PROPOSED').label).toBe('Aguardando checkout')
+  // PT1a (Bloco Plano de tratamento, 2026-11-14): o aceite não é mais o
+  // checkout (a comanda vai ao PDV) — o proposto é "Proposto", o nome do PT1f.
+  it('PROPOSED é "Proposto"', () => {
+    expect(SITUACAO_DO_PLANO.PROPOSED!.label).toBe('Proposto')
+    expect(situacaoDoPlano('PROPOSED').label).toBe('Proposto')
   })
 
   it('o plano fechado no checkout é "Fechado" em toda tela', () => {

@@ -22,7 +22,7 @@ import { rotaCliente } from '@/lib/rotas'
  */
 export function PlanoAberto({
   plano, basePath, branchId, slug,
-  procedures, availableProducts, podeEditar, podeReceber,
+  procedures, availableProducts, podeEditar, podeAnotar, podeReceber, unidadesParaAgendar,
 }: {
   plano: {
     id: string; nome: string; status: string
@@ -35,8 +35,13 @@ export function PlanoAberto({
   slug:      string
   procedures:        TreatmentProcedure[]
   availableProducts: AvailableProduct[]
+  /** Monta o plano: quem atende na unidade dele (PT2). */
   podeEditar:   boolean
+  /** Escreve a anotação clínica (as "Observações da profissional"): o Prontuário em Gerenciar. */
+  podeAnotar:   boolean
   podeReceber:  boolean
+  /** As unidades em que a sessão do plano se agenda (PT1d). */
+  unidadesParaAgendar: { id: string; name: string }[]
 }) {
   const pathname = usePathname()
   const router   = useRouter()
@@ -142,7 +147,9 @@ export function PlanoAberto({
         procedures={procedures}
         availableProducts={availableProducts}
         podeEditar={podeEditar}
+        podeAnotar={podeAnotar}
         podeReceber={podeReceber}
+        unidadesParaAgendar={unidadesParaAgendar}
       />
     </div>
   )

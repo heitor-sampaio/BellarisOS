@@ -69,6 +69,8 @@ test.beforeAll(async () => {
 
   gestor = await criarMembro(`g${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestão',
+    // PT2 (2026-11-14): monta o plano quem ATENDE na unidade (o "Atende"), não o Prontuário.
+    atendeEm: [rede.branchId, unidadeB],
     permissoes: (['agenda', 'medical_records', 'clients'] as const).map(modulo => ({ modulo, nivel: 'MANAGE' as const })),
   })
 

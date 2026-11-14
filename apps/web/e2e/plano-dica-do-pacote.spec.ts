@@ -59,6 +59,8 @@ test.beforeAll(async () => {
 
   profissional = await criarMembro(`dpp${marca}`, {
     tenant: rede.tenantId, rotulo: 'Profissional',
+    // PT2 (2026-11-14): monta o plano quem ATENDE na unidade (o "Atende"), não o Prontuário.
+    atendeEm: [rede.branchId],
     permissoes: [{ modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
 })

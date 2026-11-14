@@ -18,6 +18,7 @@ import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/sit
 import { rodapeDoPlanoFechado } from '@/lib/plano-de-tratamento/textos'
 import { CancelarPlano } from '@/components/shared/cancelar-pacote'
 import { useFuso } from '@/components/shared/fuso'
+import { PassosDoPlano } from '@/components/branch/passos-do-plano'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -49,7 +50,8 @@ function fmtBRL(v: number) {
 export function PlanejamentoTratamento({
   clientId, branchId, slug, appointmentId = null, planIdInicial = null,
   procedures, availableProducts = [],
-  podeEditar, podeReceber = false, abertoId, onAbrir, planoNaTela = false,
+  podeEditar, podeAnotar = true, podeReceber = false, abertoId, onAbrir, planoNaTela = false,
+  unidadesParaAgendar = [],
 }: {
   /** Vazio quando o plano ainda não tem cliente — o caso da tela geral. */
   clientId:      string
@@ -61,8 +63,13 @@ export function PlanejamentoTratamento({
   planIdInicial?: string | null
   procedures:    TreatmentProcedure[]
   availableProducts?: AvailableProduct[]
+  /** Monta o plano: quem ATENDE na unidade dele (PT2, `montaPlano`). */
   podeEditar:    boolean
+  /** Escreve a anotação clínica (as "Observações da profissional"): o Prontuário em Gerenciar (PT2). */
+  podeAnotar?:   boolean
   podeReceber?:  boolean
+  /** Na página do plano: as unidades em que as sessões se agendam (PT1d). */
+  unidadesParaAgendar?: { id: string; name: string }[]
   /**
    * Qual plano está aberto, decidido de fora. Com `onAbrir` presente, quem
    * manda é o pai — é assim que a ficha do cliente guarda o plano na URL e
@@ -103,6 +110,8 @@ export function PlanejamentoTratamento({
   // A24 da 14ª: o erro do "Aceitar plano" (e do "Cliente vai pensar") aparece
   // JUNTO do botão — no topo, a Débora não o via.
   const [erroDoBotao, setErroDoBotao] = useState<string | null>(null)
+  // Uma sessão agendada pelos passos relê o resumo (as sessões feitas e agendadas).
+  const [versaoDoResumo, setVersaoDoResumo] = useState(0)
 
   // Vínculo com cliente — um plano pode nascer só com nome e ganhar dono depois.
   const [ligando,       setLigando]       = useState(false)
@@ -296,7 +305,7 @@ export function PlanejamentoTratamento({
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', maxWidth: 320 }}>
             {podeEditar
               ? 'O plano de tratamento é do cliente: pode ser montado agora, revisado depois e fechado quando ele decidir.'
-              // A18: sem o prontuário não há botão — a tela diz por quê e quem monta.
+              // A18 (revisto no PT2): sem o "Atende" não há botão — a tela diz quem monta.
               : <>{TEXTO_QUEM_MONTA} Quando houver um, ele aparece aqui.</>}
           </p>
         </div>
@@ -357,6 +366,41 @@ export function PlanejamentoTratamento({
   const st       = situacaoDoPlano(aberto.status)
   const fechado  = aberto.status === 'ACCEPTED' || aberto.status === 'COMPLETED' || aberto.status === 'CANCELLED'
   const editavel = podeEditar && !fechado
+  // A página do plano (`/planejamentos/<id>`): os passos são o centro (PT1a),
+  // e o aceite mora no passo ① — não embaixo do editor.
+  const paginaDoPlano = !!planIdInicial && !controlado && !ehNovo
+
+  // Os botões do aceite: os mesmos na ficha e no passo ① da página do plano.
+  const botoesDoAceite = editavel && !ehNovo ? (
+    <div data-botoes-do-plano style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* Aceitar é só "quero fazer" (PT1b): a comanda do plano vai ao PDV,
+          onde a cliente assina o contrato e paga. */}
+      <button type="button" onClick={aceitarAgora} disabled={salvando} className="btn-primary"
+        style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
+        {salvando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+        Aceitar plano
+      </button>
+      {aberto.status === 'DRAFT' && (
+        <button type="button" onClick={enviarParaRecepcao} disabled={salvando} className="btn-ghost"
+          style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
+          <Send size={14} /> Cliente vai pensar
+        </button>
+      )}
+      {erroDoBotao && <ErroDoBotao texto={erroDoBotao} />}
+    </div>
+  ) : !editavel && podeReceber && aberto.status === 'PROPOSED' ? (
+    <div data-botoes-do-plano style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <button type="button" onClick={aceitarAgora} disabled={salvando} className="btn-primary"
+        style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
+        {salvando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+        Aceitar plano
+      </button>
+      <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+        A cliente quer fazer? Aceite: a comanda do plano vai ao PDV, onde ela assina o contrato e paga.
+      </span>
+      {erroDoBotao && <ErroDoBotao texto={erroDoBotao} />}
+    </div>
+  ) : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -377,6 +421,13 @@ export function PlanejamentoTratamento({
 
       {erro && (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>{erro}</p>
+      )}
+
+      {paginaDoPlano && (
+        <PassosDoPlano key={`passos-${aberto.id}-${aberto.status}`} planId={aberto.id} slug={slug}
+          unidadesParaAgendar={unidadesParaAgendar}
+          acoesDoAceite={botoesDoAceite ?? undefined}
+          onMudou={() => setVersaoDoResumo(v => v + 1)} />
       )}
 
       {/* Sem cliente: o plano existe pelo nome, e ganha dono quando houver um. */}
@@ -438,6 +489,7 @@ export function PlanejamentoTratamento({
         hideActions
         branchId={branchId}
         onSalvarPorPlano={editavel ? salvar : undefined}
+        podeAnotar={podeAnotar}
       />
 
       {editavel && ehNovo && (
@@ -446,42 +498,9 @@ export function PlanejamentoTratamento({
         </p>
       )}
 
-      {editavel && !ehNovo && (
-        <div data-botoes-do-plano style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Aceitar deixou de depender do caixa: a profissional fecha o plano
-              na sala e o valor fica em aberto, para ser recebido no check-in.
-              Quem também opera caixa pode cobrar ali mesmo, no wizard. */}
-          <button type="button" onClick={aceitarAgora} disabled={salvando} className="btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
-            {salvando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-            Aceitar plano
-          </button>
-          {aberto.status === 'DRAFT' && (
-            <button type="button" onClick={enviarParaRecepcao} disabled={salvando} className="btn-ghost"
-              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
-              <Send size={14} /> Cliente vai pensar
-            </button>
-          )}
-          {erroDoBotao && <ErroDoBotao texto={erroDoBotao} />}
-        </div>
-      )}
-
-      {/* Quem recebe e não escreve no plano aceita o plano proposto daqui,
-          quando a cliente diz que quer (A44 da 5ª: a página do plano proposto
-          não tinha o que fazer). O dinheiro é no PDV (PT1b). */}
-      {!editavel && podeReceber && aberto.status === 'PROPOSED' && (
-        <div data-botoes-do-plano style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button type="button" onClick={aceitarAgora} disabled={salvando} className="btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
-            {salvando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-            Aceitar plano
-          </button>
-          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-            A cliente quer fazer? Aceite: a comanda do plano vai ao PDV, onde ela assina o contrato e paga.
-          </span>
-          {erroDoBotao && <ErroDoBotao texto={erroDoBotao} />}
-        </div>
-      )}
+      {/* Na ficha (e na avaliação), o aceite fica embaixo do editor; na página
+          do plano, no passo ① (PT1a). */}
+      {!paginaDoPlano && botoesDoAceite}
 
       {/* D4 da 12ª: o cancelado é um RETRATO — a data, quem, o motivo, o que
           foi devolvido e o que ficou (o `cancelamento` que o banco guarda). */}
@@ -508,7 +527,9 @@ export function PlanejamentoTratamento({
       {/* D5 da 12ª: cancelado aqui, a tela relê o plano e a lista (o refresh não
           chega ao estado do navegador, e o "Cancelar plano" ficava na tela). */}
       {fechado && aberto.status !== 'CANCELLED' && (
-        <ResumoDoPlano key={`resumo-${aberto.id}`} planId={aberto.id} slug={slug}
+        <ResumoDoPlano key={`resumo-${aberto.id}-${versaoDoResumo}`} planId={aberto.id} slug={slug}
+          // Na página do plano, o "falta receber" mora no passo ③ (PT1a).
+          semFaltaReceber={paginaDoPlano}
           onCancelado={() => { void carregarLista(); void abrirPlano(aberto.id) }} />
       )}
 
@@ -541,7 +562,7 @@ function situacaoDoLancamento(l: LancamentoDoPlano, fuso = 'America/Sao_Paulo'):
     : { texto: `A vencer em ${diaNoFuso(new Date(l.vencimento), fuso)}`, cor: 'var(--text-muted)' }
 }
 
-function ResumoDoPlano({ planId, slug, onCancelado }: { planId: string; slug: string; onCancelado?: () => void }) {
+function ResumoDoPlano({ planId, slug, onCancelado, semFaltaReceber = false }: { planId: string; slug: string; onCancelado?: () => void; semFaltaReceber?: boolean }) {
   const fuso = useFuso()
   const pathname = usePathname()
   // PT1b: aceito e ainda não recebido — a comanda está no PDV.
@@ -582,7 +603,7 @@ function ResumoDoPlano({ planId, slug, onCancelado }: { planId: string; slug: st
 
   return (
     <div data-resumo-do-plano className="card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {faltaReceber && (
+      {faltaReceber && !semFaltaReceber && (
         <div data-plano-falta-receber style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)' }}>
           <p style={{ flex: 1, minWidth: 220, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
             <b>Plano aceito. Falta receber:</b> a comanda do plano está no PDV — lá se escolhe a forma, a cliente assina o contrato e paga.

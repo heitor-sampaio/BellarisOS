@@ -1774,6 +1774,83 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Plano de tratamento, leva 1 (PT2, PT1a, PT1d, PT1e, PT1f): quem atende monta, e a página do plano mostra os passos
+
+A revisão do Heitor (13/11): "quem monta o plano é quem atende, nem precisa de
+permissão pra isso pq isso é proprio atendimento, faz parte" — e "a dra pode
+realizar a avaliação e depois com calma montar o plano".
+
+- **PT2 — monta quem ATENDE na unidade do plano.** "Quem atende" é o "Atende"
+  da Equipe (`users.atende_em` com a unidade do plano), que não é permissão; a
+  Admin da rede tem tudo. Uma regra num lugar só: `montaPlano`
+  (`lib/plano-de-tratamento/quem-monta.ts`). O Prontuário em Gerenciar saiu da
+  trava de criar, salvar, renomear, ligar a cliente, "Cliente vai pensar" e do
+  rascunho da avaliação; a action devolve `{ error }` a quem não atende ali,
+  depois da rede, do alcance e do "só os meus". Monta-se no "Novo plano" da
+  ficha e de Tratamentos e em "Montar plano desta avaliação" (a avaliação
+  CONCLUÍDA). Aceitar: quem monta o plano DESTA unidade ou quem recebe.
+  - **A anotação clínica segue do Prontuário** (as "Observações da
+    profissional"): sem ele, o editor não mostra o campo, a action ignora o que
+    chega e a anotação gravada FICA. Migration `20261115500001`:
+    `gerar_plano_da_avaliacao` só mexe na anotação quando recebe
+    `notas_do_plano` (antes zerava ao gerar de novo).
+  - **Decidido pelos princípios** (anotado aqui, não levado ao Heitor): na
+    avaliação ABERTA, gerar o plano grava também o registro do atendimento
+    (dores, ficha, anamnese, evolução) numa transação só — segue pedindo o
+    Prontuário em Gerenciar, como o "Finalizar". Na concluída, só o plano
+    nasce: monta quem atende. O envio do plano não pede a observação a quem
+    não pode escrevê-la (pedir trancaria o plano dela). No portal da rede, o
+    "Novo plano" oferece só as unidades em que ela atende.
+- **PT1a — a página do plano tem os quatro passos** (`PassosDoPlano`,
+  `getPassosDoPlano`): ① Aceite (os botões ali, salvando o que está na tela
+  antes) ② Documentos (quantos assinados, e "Ver documentos" na ficha — o
+  link e o aparelho que já existem) ③ Contrato e pagamento (a situação do
+  contrato de plano e "Receber no PDV" na comanda do plano) ④ Sessões ("X de
+  N agendadas · Y realizadas", da fonte única `metrics_financeiro_do_plano`).
+  O passo da vez é o número preenchido. O plano proposto se chama "Proposto"
+  em toda tela (era "Aguardando checkout": o aceite não é mais checkout).
+- **PT1d — [Agendar] em cada sessão e "Agendar todas"**, depois do aceite: o
+  agendar já com a cliente, o procedimento e a duração da sessão
+  (`SessionScheduler` + `schedulePlanSession`, pelo `createAppointmentCore`);
+  o "Agendar todas" segue para a próxima livre. O "+ Agendar" da agenda
+  continua oferecendo as sessões.
+- **PT1e — conferido e provado**: a sessão do plano não abre comanda do
+  atendimento (não cobra nada) e a parcela vencida do crediário do plano
+  aparece no PDV da cliente.
+- **PT1f — Tratamentos filtra pela situação**: Rascunho, Proposto, Aceito
+  (falta assinar), Falta pagar, Em andamento, Concluído, Cancelado
+  (`situacaoComercialDoPlano`; o banco lido em `andamento-do-plano.ts`, em
+  lotes). Sete opções: `.filtro-select`, não segmentado. **Decidido**: o
+  Rascunho fica como situação própria (o plano montado e ainda não
+  oferecido); o recebido vence o documento aberto ("Em andamento"); o
+  contrato de plano por emitir ou por assinar conta como "falta assinar".
+- **Páginas com a trava própria**: as duas listas e as duas páginas do plano
+  ganharam `assertPermission(ctx, 'agenda', 'VIEW')` (antes só o layout ou o
+  componente).
+- **Specs antigos que mudaram, e por quê**: `planejamentos-quem-monta` e
+  `configuracoes-atritos-da-12` (A12) — o texto agora diz que monta quem
+  atende, e o membro de teste ganhou o "Atende"; `plano-novo-so-ao-salvar`,
+  `plano-novo-com-cliente`, `pdv-comanda-do-plano`, `plano-dica-do-pacote` e
+  `plano-unidade-do-plano-f73` — quem monta o plano nelas tinha só o
+  Prontuário, e agora precisa do "Atende" na unidade (`atendeEm`);
+  `planejamentos-mobile` — o seletor de unidade é o do modal, porque o filtro
+  de situação veio antes na página; `plano-situacao` e
+  `situacao-da-execucao` (vitest) — "Proposto".
+- **TDD**: `e2e/plano-tratamento-leva-1.spec.ts` antes da implementação, 8
+  falhas: o "Novo plano" não aparecia a quem atende sem o Prontuário; a action
+  recusava as sessões dela (120 esperado, 50 gravado); sem "Montar plano desta
+  avaliação"; zero passos e zero sessões na página do plano;
+  `schedulePlanSession` não existia na página do plano; o `aceitarPlano` pelo
+  id lançava antes de dizer "Plano não encontrado"; e uma falha do TESTE (a
+  rede de teste não semeava o contrato de plano — corrigido com
+  `documentos_modelos_padrao`). Depois: 8 de 8. Vizinhos: 31 specs, 25
+  passaram de primeira; os 6 que caíram eram a regra nova (o membro sem o
+  "Atende" e o seletor do mobile) e passaram depois de ajustados.
+- **Para o Heitor**: a migration `20261115500001` foi aplicada (troca o corpo
+  de `gerar_plano_da_avaliacao`, mantendo os grants). E `e2e/apoio/sessao.ts`
+  (compartilhado) ganhou a opção `atendeEm` do `criarMembro` — vale uma
+  completa quando quiser.
+
 ### 2026-11-14 — Bloco CRM (CR1, CR2) e RL2: "Contato" e "Oportunidade" em todo texto que se lê
 
 A revisão do Heitor (13/11): "leads e oportunidades sao entidades diferentes,

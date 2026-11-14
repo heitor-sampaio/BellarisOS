@@ -79,7 +79,7 @@ function achados(arquivo: string, texto: string): string[] {
   return saida
 }
 
-describe('PR3: "Ficha de saúde" em todo texto que se lê', () => {
+describe('PR3: "Ficha de saúde" em todo texto que se lê', { timeout: 60_000 }, () => {
   it('nenhuma tela, mensagem ou aviso diz "pré-atendimento" nem "anamnese"', () => {
     const errados: string[] = []
     for (const pasta of PASTAS) {

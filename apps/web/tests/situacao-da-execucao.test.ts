@@ -11,6 +11,6 @@ describe('a situação da EXECUÇÃO do tratamento', () => {
   })
   it('os outros estados são os do plano', () => {
     expect(situacaoDaExecucao('CANCELLED', 0, 2).label).toBe('Cancelado')
-    expect(situacaoDaExecucao('PROPOSED', 0, 2).label).toBe('Aguardando checkout')
+    expect(situacaoDaExecucao('PROPOSED', 0, 2).label).toBe('Proposto')
   })
 })

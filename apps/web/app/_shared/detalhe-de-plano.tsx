@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { getTenantContext, assertPermission, can, podeReceber, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, podeReceber, assertRecurso, alcancaUnidade } from '@/lib/auth'
+import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 import { getCabecalhoDoPlano } from '@/actions/treatment-plans'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { PlanoAberto } from '@/components/branch/plano-aberto'
@@ -44,6 +46,11 @@ export async function DetalheDePlano({
     )
   }
 
+  // As unidades em que a sessão do plano se agenda (PT1d): as ativas, ao alcance.
+  const unidadesParaAgendar = (await unidadesParaCriar(ctx.tenantId!))
+    .filter(u => alcancaUnidade(ctx, u.id))
+    .map(u => ({ id: u.id, name: u.name }))
+
   return (
     <PlanoAberto
       plano={plano}
@@ -52,8 +59,12 @@ export async function DetalheDePlano({
       slug={slug}
       procedures={procs.procedures}
       availableProducts={procs.products}
-      podeEditar={can(ctx, 'medical_records', 'MANAGE')}
+      // PT2: monta quem ATENDE na unidade do plano (não é permissão); a
+      // anotação clínica dentro dele segue do Prontuário em Gerenciar.
+      podeEditar={montaPlano(ctx, plano.unidadeId)}
+      podeAnotar={can(ctx, 'medical_records', 'MANAGE')}
       podeReceber={podeReceber(ctx)}
+      unidadesParaAgendar={unidadesParaAgendar}
     />
   )
 }

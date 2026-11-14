@@ -207,6 +207,14 @@ interface Props {
   isPartOfPlan?:         boolean
   /** O plano da rede inclui planos de tratamento? Sem ele, a sessão é a simples. */
   podeMontarPlano?:      boolean
+  /**
+   * Quem age MONTA o plano nesta unidade (PT2, 2026-11-14): quem atende nela
+   * (o "Atende" da Equipe, `montaPlano` — não é permissão). É o que abre o
+   * "Montar plano desta avaliação" na avaliação concluída e o aceite do
+   * proposto; na avaliação aberta, gerar o plano grava o prontuário e segue
+   * pedindo o Prontuário em Gerenciar (`canEditRecords`).
+   */
+  montaPlanoNaUnidade?:  boolean
   /** E o planejador de injetáveis? Sem ele, o campo da ficha fica só para ver. */
   podeInjetaveis?:       boolean
   /** Sessão de pacote: já paga na venda do pacote — não se cobra de novo (2026-09-27). */
@@ -1019,7 +1027,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, quemEstorna = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, quemEstorna = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
 }: Props) {
   const router   = useRouter()
@@ -1601,6 +1609,8 @@ export function AppointmentSession({
               procedures={treatmentProcedures}
               availableProducts={availableProducts}
               podeEditar={canEditRecords}
+              podeMontarPlano={montaPlanoNaUnidade}
+              podeAnotarNoPlano={canEditRecords}
               // Injetáveis é prontuário: o clínico desta sessão.
               podeVerInjetaveis={canViewRecords}
               podeReceber={podeReceber}
@@ -2230,7 +2240,7 @@ export function AppointmentSession({
 
                   {/* A cliente ia pensar e decidiu: quem monta o plano ou quem
                       recebe o aceita daqui. */}
-                  {(podeReceber || canEditRecords) && existingPlan?.status === 'PROPOSED' && (
+                  {(podeReceber || montaPlanoNaUnidade) && existingPlan?.status === 'PROPOSED' && (
                     <div data-plano-proposto className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                       <div>
                         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>A cliente vai pensar</p>
@@ -2315,6 +2325,8 @@ export function AppointmentSession({
                     availableProducts={availableProducts}
                     hideActions={true}
                     opcional={!isDone}
+                    // A anotação clínica do plano é do Prontuário (PT2).
+                    podeAnotar={canEditRecords}
                     onPlanChange={(_items, notes) => setEvalPlanNotes(notes)}
                   />
 
@@ -2384,12 +2396,18 @@ export function AppointmentSession({
                       pede o prontuário em Gerenciar): com ele só em Ver, "Fechar agora"
                       respondia "Seu cargo não libera" e a dica mandava a um
                       "Finalizar" que não existe para ela (D9, 2026-11-01). */}
-                  {canManage && canEditRecords && (status === 'COMPLETED' || !isDone) && (
+                  {/* PT2 (2026-11-14): na avaliação CONCLUÍDA só o plano nasce, e
+                      monta quem atende na unidade — "a dra pode realizar a
+                      avaliação e depois com calma montar o plano". */}
+                  {canManage && (status === 'COMPLETED' ? montaPlanoNaUnidade : (canEditRecords && !isDone)) && (
                     <div className="card" style={{ padding: '20px 24px' }}>
                       {status === 'COMPLETED' && (
-                        <p data-plano-da-avaliacao-concluida style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 12 }}>
-                          {textoDoPlanoDoConcluido()}
-                        </p>
+                        <div data-montar-plano-da-avaliacao style={{ marginBottom: 12 }}>
+                          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Montar plano desta avaliação</h3>
+                          <p data-plano-da-avaliacao-concluida style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                            {textoDoPlanoDoConcluido()}
+                          </p>
+                        </div>
                       )}
                       {genError && (
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginBottom: 12, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>
