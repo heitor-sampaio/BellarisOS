@@ -22,10 +22,11 @@ export const ROTULO_DA_SITUACAO: Record<SituacaoDoDocumento, string> = {
 export const ehSituacao = (v: unknown): v is SituacaoDoDocumento =>
   typeof v === 'string' && (SITUACOES as readonly string[]).includes(v)
 
-export const TIPOS_DE_DOCUMENTO = ['TERMO', 'CONTRATO', 'CONTRATO_PLANO'] as const
+export const TIPOS_DE_DOCUMENTO = ['TERMO', 'CONTRATO', 'CONTRATO_PLANO', 'CONTRATO_PACOTE', 'DOCUMENTO'] as const
 export type TipoDeDocumento = typeof TIPOS_DE_DOCUMENTO[number]
 export const ROTULO_DO_TIPO_DE_DOCUMENTO: Record<TipoDeDocumento, string> = {
   TERMO: 'Termo', CONTRATO: 'Contrato', CONTRATO_PLANO: 'Contrato de plano',
+  CONTRATO_PACOTE: 'Contrato de pacote', DOCUMENTO: 'Documento',
 }
 export const ehTipoDeDocumento = (v: unknown): v is TipoDeDocumento =>
   typeof v === 'string' && (TIPOS_DE_DOCUMENTO as readonly string[]).includes(v)

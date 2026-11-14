@@ -403,14 +403,14 @@
   ("Chegou", `arrived_at`) é o check-in — a cliente está na sala de espera.
   Antes os dois gravavam CONFIRMED. O check-in (`checkinCore`, a agenda e o
   Copilot) vale de Agendado (chegar também confirma) ou de Confirmado; o
-  atendimento começa de Confirmado ou de Chegou. Chegar emite os documentos do
-  início, como confirmar. Lista nova de status "em aberto" inclui ARRIVED.
+  atendimento começa de Confirmado ou de Chegou. Chegar não emite documento
+  nenhum: desde o DC4 (2026-11-14) todos nascem ao agendar (`documentos.md`). Lista nova de status "em aberto" inclui ARRIVED.
   Prova: `e2e/agenda-check-in.spec.ts`.
 - **A profissional marca a chegada e inicia num gesto** (A21 da simulação de
   2026-10-27): no agendamento DELA que ainda não chegou (Agendado ou
   Confirmado), a tela do atendimento e a janela da agenda mostram "Marcar
   chegada e iniciar" (`chegarEIniciar`, `actions/appointments.ts`) — o MESMO
-  `checkinCore` (documentos do início, e o plano em aberto aparece na tela
+  `checkinCore` (o plano em aberto aparece na tela
   como em todo check-in) e depois o MESMO `startAppointment` (a trava dos
   documentos). Com a agenda "só os meus", só no agendamento dela. Sem o
   check-in no cargo, a tela diz que a recepção marca a chegada. Prova:

@@ -1,7 +1,9 @@
 'use server'
 
 /**
- * Modelos de termo e contrato da rede (Configurações → Documentos).
+ * Modelos de documento da rede (Configurações → Documentos): o termo, o
+ * contrato do procedimento, o contrato de plano, o contrato de pacote e o
+ * documento (DC1, Bloco Documentos, 2026-11-14).
  *
  * Autoria de rede, como as fichas: pede `forms: MANAGE`. Colher a assinatura
  * do cliente é outro módulo (`documents`), e ligar o modelo ao procedimento é
@@ -20,16 +22,15 @@ import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro, ErroDeBanco } from '@/lib/db'
 import { ensurePrivateBucket, getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
-import { validarDocumentoDoEditor, TIPOS_DE_MODELO, type TipoDeModelo } from '@/lib/documentos/variaveis'
+import { validarDocumentoDoEditor, TIPOS_DE_MODELO, CONTRATOS_DA_REDE, ROTULO_DO_TIPO, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { normalizarListasDoEditor, type DocumentoDoEditor } from '@/lib/documentos/editor/converter'
 import { medidasDaImagem } from '@/lib/documentos/editor/medidas-da-imagem'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 
-type Resultado = { error?: string; id?: string; versao?: number; novaVersao?: boolean; /** A8: o contrato de plano novo ficou inativo (a rede já tem um ativo). */ nasceuInativo?: boolean }
+type Resultado = { error?: string; id?: string; versao?: number; novaVersao?: boolean; /** A8: o contrato de plano (ou de pacote) novo ficou inativo (a rede já tem um ativo). */ nasceuInativo?: boolean }
 
-const MOMENTOS   = ['AGENDAMENTO', 'INICIO_ATENDIMENTO'] as const
+// Sem "quando nasce" (DC4): todo documento do atendimento nasce ao agendar.
 const EXIGENCIAS = ['BLOQUEIA', 'AVISA'] as const
-type Momento   = typeof MOMENTOS[number]
 type Exigencia = typeof EXIGENCIAS[number]
 
 /** PDF de modelo: até 10 MB e 50 páginas — ele é carimbado no servidor depois. */
@@ -47,8 +48,9 @@ function revalidar() {
  * aí a frase certa é esta, não "não consegui salvar".
  */
 function mensagem(e: unknown): string {
-  if (e instanceof ErroDeBanco && e.causa.code === '23505' && /contrato_de_plano/.test(e.causa.message)) {
-    return 'Outro contrato de plano ficou ativo ao mesmo tempo. Recarregue a tela e use "Tornar ativo" no que deve valer.'
+  if (e instanceof ErroDeBanco && e.causa.code === '23505' && /contrato_de_(plano|pacote)/.test(e.causa.message)) {
+    const qual = /pacote/.test(e.causa.message) ? 'contrato de pacote' : 'contrato de plano'
+    return `Outro ${qual} ficou ativo ao mesmo tempo. Recarregue a tela e use "Tornar ativo" no que deve valer.`
   }
   return mensagemDoErro(e)
 }
@@ -57,7 +59,6 @@ interface Configuracao {
   id?:       string | null
   nome:      string
   tipo:      TipoDeModelo
-  momento?:  Momento | null
   exigencia: Exigencia
 }
 
@@ -66,9 +67,6 @@ function conferir(c: Configuracao): string | null {
   if (!c.nome?.trim() || c.nome.trim().length < 2) return 'Dê um nome ao modelo.'
   if (!TIPOS_DE_MODELO.includes(c.tipo)) return 'Tipo de modelo inválido.'
   if (!EXIGENCIAS.includes(c.exigencia)) return 'Escolha se o documento bloqueia ou só avisa.'
-  if (c.tipo !== 'CONTRATO_PLANO' && !MOMENTOS.includes(c.momento as Momento)) {
-    return 'Escolha quando o documento nasce no atendimento.'
-  }
   return null
 }
 
@@ -87,7 +85,8 @@ async function salvar(
     p_nome:            c.nome.trim(),
     p_tipo:            c.tipo,
     p_origem:          conteudo.origem,
-    p_momento:         c.tipo === 'CONTRATO_PLANO' ? null : c.momento ?? null,
+    // Ignorado no banco desde o DC4 (fica na assinatura da função).
+    p_momento:         null,
     p_exigencia:       c.exigencia,
     p_texto:           null,
     p_documento:       conteudo.origem === 'EDITOR' ? conteudo.documento : null,
@@ -101,12 +100,12 @@ async function salvar(
     p_ator:            ator,
   }), 'salvar o modelo de documento')
   const salvo = r as { id: string; versao: number; novaVersao: boolean }
-  // A8 da 6ª simulação: o contrato de plano NOVO nasce inativo quando a rede já
-  // tem um ativo (D-5) — calado, só a dica da seção dizia. A tela avisa e diz
-  // como ativar.
-  if (c.tipo === 'CONTRATO_PLANO' && !c.id) {
+  // A8 da 6ª simulação: o contrato de plano (e o de pacote, DC1) NOVO nasce
+  // inativo quando a rede já tem um ativo (D-5) — calado, só a dica da seção
+  // dizia. A tela avisa e diz como ativar.
+  if (CONTRATOS_DA_REDE.includes(c.tipo) && !c.id) {
     const m = await ler(admin.from('document_templates').select('is_active')
-      .eq('id', salvo.id).eq('tenant_id', tenantId).maybeSingle(), 'conferir se o contrato de plano ficou ativo') as { is_active: boolean } | null
+      .eq('id', salvo.id).eq('tenant_id', tenantId).maybeSingle(), `conferir se o ${ROTULO_DO_TIPO[c.tipo].toLowerCase()} ficou ativo`) as { is_active: boolean } | null
     if (m && !m.is_active) return { ...salvo, nasceuInativo: true }
   }
   return salvo
@@ -172,7 +171,6 @@ export async function salvarModeloDeArquivo(formData: FormData): Promise<Resulta
       id:        (formData.get('id') as string) || null,
       nome:      (formData.get('nome') as string) ?? '',
       tipo:      formData.get('tipo') as TipoDeModelo,
-      momento:   (formData.get('momento') as Momento) || null,
       exigencia: formData.get('exigencia') as Exigencia,
     }
     const recusa = conferir(c)
@@ -239,12 +237,13 @@ export async function definirModeloAtivo(id: string, ativo: boolean): Promise<Re
     const daClinica = recusaDaConfigDaClinica(ctx)
     if (daClinica) return { error: daClinica }
     const admin = createAdminClient()
-    // Ligar um contrato de plano é TROCAR o ativo (D-5): pelo mesmo caminho
-    // do "Tornar ativo", numa transação, em vez de bater no índice único.
+    // Ligar um contrato de plano (ou de pacote) é TROCAR o ativo (D-5): pelo
+    // mesmo caminho do "Tornar ativo", numa transação, em vez de bater no
+    // índice único.
     if (ativo) {
       const m = await ler(admin.from('document_templates').select('kind')
         .eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o modelo')
-      if (m?.kind === 'CONTRATO_PLANO') return await trocarContratoDePlano(ctx.tenantId!, id)
+      if (CONTRATOS_DA_REDE.includes(m?.kind as TipoDeModelo)) return await trocarContratoDaRede(ctx.tenantId!, id)
     }
     const linhas = await gravar(admin
       .from('document_templates')
@@ -262,27 +261,28 @@ export async function definirModeloAtivo(id: string, ativo: boolean): Promise<Re
 
 /**
  * "Tornar ativo" do contrato de plano (D-5, decisão do Heitor em 2026-10-29:
- * "Um contrato de plano ativo só, e dá para TROCAR qual é o ativo direto").
- * O atual sai e o escolhido entra numa transação só
- * (`documento_contrato_de_plano_ativar`).
+ * "Um contrato de plano ativo só, e dá para TROCAR qual é o ativo direto") e
+ * do contrato de pacote (DC1, PC9a: "como o de plano"). O atual DO MESMO TIPO
+ * sai e o escolhido entra numa transação só (`documento_contrato_de_plano_ativar`,
+ * que serve aos dois).
  */
-export async function tornarContratoDePlanoAtivo(id: string): Promise<Resultado> {
+export async function tornarContratoAtivo(id: string): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
     const daClinica = recusaDaConfigDaClinica(ctx)
     if (daClinica) return { error: daClinica }
-    return await trocarContratoDePlano(ctx.tenantId!, String(id ?? ''))
+    return await trocarContratoDaRede(ctx.tenantId!, String(id ?? ''))
   } catch (e) {
     return { error: mensagem(e) }
   }
 }
 
-async function trocarContratoDePlano(tenantId: string, id: string): Promise<Resultado> {
+async function trocarContratoDaRede(tenantId: string, id: string): Promise<Resultado> {
   await gravar(createAdminClient().rpc('documento_contrato_de_plano_ativar', {
     p_tenant: tenantId, p_modelo: id,
-  }), 'trocar o contrato de plano ativo')
+  }), 'trocar o contrato ativo')
   revalidar()
   return { id }
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, BadgeCheck, FileSignature, Printer, ShieldCheck, Tablet, Upload } from 'lucide-react'
+import type { TipoDeDocumento } from '@/lib/documentos/situacao'
 import { TelaCheiaDaCliente } from '@/components/shared/tela-cheia-da-cliente'
 import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
 import { VisualizadorDePdf } from '@/components/shared/visualizador-de-pdf'
@@ -30,7 +31,7 @@ import { useFuso } from '@/components/shared/fuso'
 export interface DocumentoNaTela {
   id:          string
   titulo:      string
-  tipo:        'TERMO' | 'CONTRATO' | 'CONTRATO_PLANO'
+  tipo:        TipoDeDocumento
   status:      string
   faltando:    string[]
   codigo:      string | null

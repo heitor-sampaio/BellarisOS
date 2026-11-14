@@ -27,6 +27,7 @@ interface ExistingProcedure {
   form_id?: string | null
   consent_template_id?: string | null
   contract_template_id?: string | null
+  outros_documentos?: string[]
   loyalty_points?: number | null
   room_ids?: string[]
   /** Quem realiza (por-01). */

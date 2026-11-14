@@ -61,6 +61,8 @@ interface ExistingProcedure {
   form_id?: string | null
   consent_template_id?: string | null
   contract_template_id?: string | null
+  /** "Outros documentos" (DC1b/PC7): os modelos que também nascem no atendimento avulso. */
+  outros_documentos?: string[]
   loyalty_points?: number | null
   /** As salas em que é feito (D5). */
   room_ids?: string[]
@@ -74,17 +76,19 @@ export interface ProfissionalDoCadastro { id: string; name: string }
 /** Uma sala ativa da rede, com a unidade dela (D5). */
 export interface SalaDoCadastro { id: string; name: string; unidade: string }
 
-/** Um modelo de termo ou contrato que o procedimento pode ligar. */
+/** Um modelo de documento que o procedimento pode ligar. */
 export interface OpcaoDeModeloDoProcedimento {
   id:        string
   nome:      string
-  momento:   'AGENDAMENTO' | 'INICIO_ATENDIMENTO' | null
+  tipo:      'TERMO' | 'CONTRATO' | 'DOCUMENTO'
   exigencia: 'BLOQUEIA' | 'AVISA'
   ativo:     boolean
 }
 export interface ModelosDoProcedimento {
   termos:    OpcaoDeModeloDoProcedimento[]
   contratos: OpcaoDeModeloDoProcedimento[]
+  /** "Outros documentos" (DC1b): os documentos, os termos e os contratos do procedimento da rede. */
+  outros:    OpcaoDeModeloDoProcedimento[]
 }
 
 interface ProcedureFormProps {
@@ -215,6 +219,16 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
   const variasUnidades = new Set(salas.map(s => s.unidade)).size > 1
   function alternarSala(id: string) {
     setSalasMarcadas(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
+  }
+
+  // "Outros documentos" (DC1b/PC7, 2026-11-14): opcional, quantos quiser.
+  // Inativos só aparecem se já estão ligados — sumir da lista apagaria o
+  // vínculo em silêncio ao salvar.
+  const [outrosMarcados, setOutrosMarcados] = useState<string[]>(
+    () => (existing?.outros_documentos ?? []).filter(id => (modelos?.outros ?? []).some(o => o.id === id)))
+  const outrosVisiveis = (modelos?.outros ?? []).filter(o => o.ativo || outrosMarcados.includes(o.id))
+  function alternarOutro(id: string) {
+    setOutrosMarcados(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
   }
 
   // Quem realiza (por-01, revisão do Heitor de 2026-11-02): opcional. Sem
@@ -388,6 +402,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
       {salas.length > 0 && <input type="hidden" name="room_ids" value={JSON.stringify(salasMarcadas)} />}
       {/* Sem ninguém que atenda na rede, o campo não vai: a ação não mexe nas ligações. */}
       {profissionais.length > 0 && <input type="hidden" name="professional_ids" value={JSON.stringify(quemRealiza)} />}
+      {/* Sem a lista dos modelos, o campo não vai: a ação não mexe nos "Outros documentos". */}
+      {modelos && <input type="hidden" name="outros_documentos" value={JSON.stringify(outrosMarcados)} />}
 
       {/* -- Dados básicos -- */}
       <div className="form-2col">
@@ -440,10 +456,11 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           </Field>
         </div>
 
-        {/* Até UM termo e UM contrato por procedimento (decisão do Heitor,
-            2026-09-29). No plano, o cliente assina o termo de cada
-            procedimento e o contrato de plano da rede — o contrato daqui é o
-            do atendimento avulso. */}
+        {/* UM termo e UM contrato por procedimento, papéis específicos (PR4/PR5,
+            revistos no PC7), e "Outros documentos", quantos quiser. Todos
+            nascem quando o atendimento AVULSO é agendado (DC4); no plano, o
+            cliente assina o termo de cada procedimento e o contrato de plano
+            da rede — o contrato daqui é só do avulso. */}
         <SeletorDeModelo
           nome="consent_template_id" rotulo="Termo de consentimento"
           opcoes={modelos?.termos ?? []} inicial={existing?.consent_template_id ?? null}
@@ -453,7 +470,38 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           nome="contract_template_id" rotulo="Contrato"
           opcoes={modelos?.contratos ?? []} inicial={existing?.contract_template_id ?? null}
           vazio="Nenhum contrato de procedimento cadastrado — crie em Configurações → Documentos."
+          sempre="só no atendimento avulso (a sessão de pacote e a de plano não pedem)"
         />
+        {modelos && (
+          <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span id="outros-documentos-rotulo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              Outros documentos
+            </span>
+            {outrosVisiveis.length === 0 ? (
+              <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                Nenhum documento cadastrado ainda — crie em Configurações → Documentos.
+              </p>
+            ) : (
+              <>
+                <div role="group" aria-label="Outros documentos" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                  {outrosVisiveis.map(o => {
+                    const on = outrosMarcados.includes(o.id)
+                    return (
+                      <button key={o.id} type="button" className={on ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                        aria-pressed={on} onClick={() => alternarOutro(o.id)}
+                        title={o.exigencia === 'BLOQUEIA' ? 'Bloqueia o início sem assinatura' : 'Só avisa se faltar'}>
+                        {o.nome}{o.tipo === 'DOCUMENTO' ? '' : ` · ${o.tipo === 'TERMO' ? 'termo' : 'contrato'}`}{o.ativo ? '' : ' (inativo)'}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                  Opcional, quantos quiser. Os marcados nascem junto com o termo e o contrato quando o atendimento avulso é agendado.
+                </p>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Só no modo "por procedimento": ausente do formulário, o servidor não
             mexe no valor gravado (ver pontosDeFidelidade em actions/procedures). */}
@@ -823,15 +871,15 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
   )
 }
 
-const ROTULO_DO_MOMENTO = { AGENDAMENTO: 'nasce ao agendar', INICIO_ATENDIMENTO: 'nasce no início do atendimento' } as const
-
 /**
- * Escolha do termo ou do contrato. Diz, embaixo, quando o documento nasce e se
- * ele trava o atendimento — é isso que muda o dia da recepção, e quem liga o
- * modelo precisa ver sem abrir Configurações.
+ * Escolha do termo ou do contrato. Diz, embaixo, se o documento trava o
+ * atendimento — é isso que muda o dia da recepção, e quem liga o modelo
+ * precisa ver sem abrir Configurações. Todo documento nasce ao agendar (DC4).
  */
-function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio }: {
+function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre }: {
   nome: string; rotulo: string; opcoes: OpcaoDeModeloDoProcedimento[]; inicial: string | null; vazio: string
+  /** O que vale para o campo, escolhido ou não (o contrato: só no avulso). */
+  sempre?: string
 }) {
   const [valor, setValor] = useState(inicial ?? '')
   // Inativos só aparecem se já estão ligados: sumir da lista apagaria o
@@ -840,11 +888,11 @@ function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio }: {
   const escolhido = visiveis.find(o => o.id === valor)
   const dica = escolhido
     ? [
-        escolhido.momento ? ROTULO_DO_MOMENTO[escolhido.momento] : null,
+        sempre ?? null,
         escolhido.exigencia === 'BLOQUEIA' ? 'bloqueia o início sem assinatura' : 'só avisa se faltar',
         escolhido.ativo ? null : 'modelo inativo — não nasce em atendimento novo',
       ].filter(Boolean).join(' · ')
-    : visiveis.length ? 'Opcional.' : vazio
+    : visiveis.length ? ['Opcional', sempre].filter(Boolean).join(' · ') + '.' : vazio
   return (
     <Field label={rotulo} hint={dica.charAt(0).toUpperCase() + dica.slice(1)}>
       <select name={nome} className="field" value={valor} onChange={e => setValor(e.target.value)}>

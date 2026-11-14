@@ -6,11 +6,12 @@ import { ArrowLeft, FileUp, FileText, ExternalLink } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { marcacaoParaEditor } from '@/lib/documentos/editor/da-marcacao'
 import { normalizarListasDoEditor, type DocumentoDoEditor, type NoPM } from '@/lib/documentos/editor/converter'
-import { ROTULO_DO_TIPO, validarDocumentoDoEditor, type TipoDeModelo } from '@/lib/documentos/variaveis'
+import { ROTULO_DO_TIPO, TIPOS_DE_MODELO, validarDocumentoDoEditor, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { salvarModeloDoEditor, salvarModeloDeArquivo, linkDoArquivoDoModelo } from '@/actions/modelos-de-documento'
 
 /**
- * O editor de um modelo de termo ou contrato.
+ * O editor de um modelo de documento: termo, contrato do procedimento,
+ * contrato de plano, contrato de pacote ou documento (DC1).
  *
  * Um editor de texto de verdade (`editor-rico/`: fonte, tamanho, negrito,
  * tabelas, imagens, cabeçalho e rodapé, variáveis), numa folha com as medidas
@@ -32,7 +33,6 @@ export interface ModeloEmEdicao {
   nome:      string
   tipo:      TipoDeModelo
   origem:    'EDITOR' | 'ARQUIVO'
-  momento:   'AGENDAMENTO' | 'INICIO_ATENDIMENTO' | null
   exigencia: 'BLOQUEIA' | 'AVISA'
   versao:    number
   versaoId:  string | null
@@ -89,6 +89,35 @@ const TEXTO_INICIAL: Record<TipoDeModelo, string> = {
     '',
     '[[assinatura]]',
   ].join('\n'),
+  CONTRATO_PACOTE: [
+    '# Contrato de prestação de serviços',
+    '',
+    '**Contratante:** {{cliente.nome}}, CPF {{cliente.cpf}}, residente em {{cliente.endereco}}, {{cliente.cidade}}/{{cliente.uf}}.',
+    '**Contratada:** {{rede.nome}}, inscrita sob o nº {{rede.documento}}, unidade {{unidade.nome}}.',
+    '',
+    '## Objeto',
+    'Pacote **{{pacote.nome}}**, com {{pacote.sessoes}} sessões:',
+    '{{pacote.procedimentos}}',
+    '',
+    'Validade: {{pacote.validade}}.',
+    '',
+    '## Valor e pagamento',
+    'Valor total: **{{pacote.total}}**.',
+    'Forma de pagamento: **{{pagamento.forma}}**.',
+    '',
+    '{{unidade.cidade}}, {{data.hoje}}.',
+    '',
+    '[[assinatura]]',
+  ].join('\n'),
+  DOCUMENTO: [
+    '# Autorização de uso de imagem',
+    '',
+    'Eu, **{{cliente.nome}}**, CPF {{cliente.cpf}}, autorizo a {{rede.nome}} a usar as fotos do meu atendimento de **{{procedimento.nome}}**.',
+    '',
+    '{{unidade.cidade}}, {{data.hoje}}.',
+    '',
+    '[[assinatura]]',
+  ].join('\n'),
 }
 
 export function EditorDeDocumento({ existente, tipoInicial, origemInicial, imagens, onPronto, onVoltar }: {
@@ -104,7 +133,6 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
   const [tipo, setTipo]           = useState<TipoDeModelo>(existente?.tipo ?? tipoInicial)
   const [origem, setOrigem]       = useState<'EDITOR' | 'ARQUIVO'>(existente?.origem ?? origemInicial)
   const [nome, setNome]           = useState(existente?.nome ?? '')
-  const [momento, setMomento]     = useState<'AGENDAMENTO' | 'INICIO_ATENDIMENTO'>(existente?.momento ?? 'AGENDAMENTO')
   const [exigencia, setExigencia] = useState<'BLOQUEIA' | 'AVISA'>(existente?.exigencia ?? 'BLOQUEIA')
   const [inicial, setInicial]     = useState<DocumentoDoEditor>(() => documentoInicial(existente, existente?.tipo ?? tipoInicial))
   const [documento, setDocumento] = useState<DocumentoDoEditor>(inicial)
@@ -131,9 +159,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
     setErro(null)
     iniciar(async () => {
       const config = {
-        id: existente?.id ?? null, nome, tipo,
-        momento: tipo === 'CONTRATO_PLANO' ? null : momento,
-        exigencia,
+        id: existente?.id ?? null, nome, tipo, exigencia,
       }
       let r: { error?: string; nasceuInativo?: boolean }
       if (origem === 'EDITOR') {
@@ -145,7 +171,6 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
         const fd = new FormData()
         if (config.id) fd.set('id', config.id)
         fd.set('nome', nome); fd.set('tipo', tipo); fd.set('exigencia', exigencia)
-        if (config.momento) fd.set('momento', config.momento)
         if (arquivo) fd.set('arquivo', arquivo)
         r = await salvarModeloDeArquivo(fd)
       }
@@ -184,7 +209,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
             <Campo rotulo="Tipo" dica={DICA_DO_TIPO[tipo]}>
               <SegSelect
                 ariaLabel="Tipo do modelo"
-                options={(['TERMO', 'CONTRATO', 'CONTRATO_PLANO'] as const).map(k => ({ key: k, label: ROTULO_CURTO[k] }))}
+                options={TIPOS_DE_MODELO.map(k => ({ key: k, label: ROTULO_CURTO[k] }))}
                 value={tipo} onSelect={k => trocarTipo(k as TipoDeModelo)}
               />
             </Campo>
@@ -198,17 +223,10 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
           </>
         )}
 
-        {tipo !== 'CONTRATO_PLANO' && (
-          <Campo rotulo="Quando nasce (atendimento avulso)" dica="No plano de tratamento, o termo é assinado no fechamento do plano.">
-            <SegSelect
-              ariaLabel="Quando o documento nasce"
-              options={[{ key: 'AGENDAMENTO', label: 'Ao agendar' }, { key: 'INICIO_ATENDIMENTO', label: 'No início do atendimento' }]}
-              value={momento} onSelect={k => setMomento(k as 'AGENDAMENTO' | 'INICIO_ATENDIMENTO')}
-            />
-          </Campo>
-        )}
         <Campo rotulo="Sem assinatura" dica={exigencia === 'BLOQUEIA'
-          ? (tipo === 'CONTRATO_PLANO' ? 'O plano não é fechado sem o contrato assinado.' : 'O atendimento não é iniciado sem o documento assinado.')
+          ? (tipo === 'CONTRATO_PLANO' ? 'O plano não é fechado sem o contrato assinado.'
+            : tipo === 'CONTRATO_PACOTE' ? 'A venda do pacote não é fechada sem o contrato assinado.'
+            : 'O atendimento não é iniciado sem o documento assinado.')
           : 'A equipe é avisada, mas nada é travado.'}>
           <SegSelect
             ariaLabel="O que acontece sem assinatura"
@@ -280,12 +298,15 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
 
 const ROTULO_CURTO: Record<TipoDeModelo, string> = {
   TERMO: 'Termo', CONTRATO: 'Contrato do procedimento', CONTRATO_PLANO: 'Contrato de plano',
+  CONTRATO_PACOTE: 'Contrato de pacote', DOCUMENTO: 'Documento',
 }
 
 const DICA_DO_TIPO: Record<TipoDeModelo, string> = {
   TERMO:          `${ROTULO_DO_TIPO.TERMO}: ligado ao procedimento, assinado no atendimento e no fechamento do plano.`,
   CONTRATO:       'Ligado ao procedimento, assinado no atendimento avulso.',
   CONTRATO_PLANO: 'O contrato de todo plano de tratamento da rede — um só ativo.',
+  CONTRATO_PACOTE: 'O contrato de todo pacote vendido pela rede — um só ativo.',
+  DOCUMENTO:      'Qualquer outro documento para a cliente assinar (autorização de imagem, orientações…). Liga-se ao procedimento em "Outros documentos".',
 }
 
 function Campo({ rotulo, dica, children }: { rotulo: string; dica?: string; children: React.ReactNode }) {

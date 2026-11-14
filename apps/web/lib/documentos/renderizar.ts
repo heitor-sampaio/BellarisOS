@@ -7,6 +7,7 @@ import { interpolar, formaCanonica, textoDoDocumento, type DocumentoDoModelo } f
 import { converterDocumentoDoEditor } from './editor/converter'
 import { marcacaoParaEditor } from './editor/da-marcacao'
 import { variavelObrigatoria } from './variaveis'
+import type { TipoDeDocumento } from './situacao'
 import { ehMenorDeIdade } from '@/lib/clients/menor'
 import { valoresDoDocumento, type DadosDoDocumento } from './valores'
 import { fusoValido } from '@/lib/unidades/fuso'
@@ -40,7 +41,7 @@ export interface DocumentoEmitido {
   appointment_id:      string | null
   treatment_plan_id:   string | null
   procedure_id:        string | null
-  kind:                'TERMO' | 'CONTRATO' | 'CONTRATO_PLANO'
+  kind:                TipoDeDocumento
   source:              'EDITOR' | 'ARQUIVO'
   title:               string
   moment:              string

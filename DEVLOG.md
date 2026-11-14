@@ -1774,6 +1774,105 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Documentos, leva 1 (DC1, DC1b, DC2, DC4): cinco tipos, "Outros documentos" e tudo nasce ao agendar
+
+O Heitor (revisão de 13/11, com PR4/PR5 de Procedimentos e PC2/PC7–PC9a de
+Pacotes): os tipos de documento, o que o procedimento liga e quando o
+documento nasce. A leva 1 é o modelo e o atendimento; a venda do pacote, o
+pop-up do pacote/plano e a assinatura única ficam para a leva 2.
+
+- **DC1 — cinco tipos**: Termo, Contrato do procedimento, Contrato de plano,
+  **Contrato de pacote** e **Documento** (novo: autorização de imagem,
+  orientações — usa exatamente as variáveis do termo). Configurações →
+  Documentos tem um grupo por tipo, com "Novo …" de cada, e o editor oferece
+  os cinco. O contrato de pacote é da rede, um só ativo (índice único), e
+  "Tornar ativo" troca como no de plano (`tornarContratoAtivo`, que
+  substituiu `tornarContratoDePlanoAtivo`; o segundo nasce inativo e a tela
+  diz). Variáveis `pacote.nome`, `pacote.procedimentos`, `pacote.sessoes`,
+  `pacote.validade` e `pacote.total`, mais `pagamento.*`: as do contrato de
+  plano trocando `plano.*`/`procedimentos.lista` por `pacote.*`.
+- **DC1b / PR4 / PC7 / PC8 — o procedimento liga**: "Termo de consentimento"
+  (opcional), "Contrato" (opcional, a dica diz "só no atendimento avulso") e
+  **"Outros documentos"** — botões de marcar, quantos quiser, gravados em
+  `procedures.outros_documentos` (uuid[]). Termo e contrato seguem papéis
+  específicos (PR5). O banco confere (rede, tipo, sem repetido), e a action
+  também. O aviso "faltam dados no cadastro" do Agendar passou a olhar os
+  outros documentos.
+- **DC2**: toda rede nasce com o contrato de pacote padrão, ao lado do de
+  plano (`documentos_modelos_padrao`); a migration semeou nas redes que já
+  tinham o de plano (1 rede hoje — o banco foi zerado em 13/11). Semear de
+  novo não duplica.
+- **DC4 — sai o "quando nasce"**: todo documento do atendimento avulso nasce
+  AO AGENDAR (o gatilho no INSERT emite termo, contrato e outros). Saíram o
+  campo "Quando nasce" do editor, a coluna `document_templates.moment`, a
+  emissão do check-in e a do início (`lib/documentos/inicio.ts`,
+  `emitirDocumentosDoInicio`). A trava do início só confere. Reabrir um
+  cancelado (ou falta) emite de novo. "Bloqueia ou só avisa" segue por
+  documento; o contrato com `pagamento.*` segue esperando o pagamento
+  combinado.
+- **PC2 (a parte do atendimento)**: a sessão de pacote não pede documento. Ela
+  nasce como agendamento comum e só depois se liga ao pacote; o gatilho novo
+  `trg_documentos_da_sessao_de_pacote` cancela os abertos dela ("Sessão de
+  pacote: os documentos são os do pacote"). A de plano já não emitia.
+- **Migration** `20261115200001_documentos_tipos_e_nascimento` (aplicada):
+  os cinco tipos nos dois `check`; o índice `uniq_contrato_de_pacote_ativo`;
+  **destrutiva** — sai `document_templates.moment` (com o `check` do momento
+  por tipo); `procedures.outros_documentos`; `private.procedimento_modelos_do_tipo`
+  (gatilho também em `outros_documentos`); `private.modelos_do_atendimento`
+  (sem execução para ninguém além do dono) e
+  `public.documentos_emitir_do_atendimento(uuid)` (só `service_role`), que
+  substituem as de dois argumentos (removidas); `private.documentos_no_agendamento`
+  e `private.documentos_bloqueiam_inicio` reescritas a partir do corpo de
+  produção; `private.documentos_da_sessao_de_pacote` + gatilho;
+  `documento_modelo_salvar` (ignora `p_momento`, que fica na assinatura),
+  `documento_contrato_de_plano_ativar` (os dois contratos da rede) e
+  `documentos_modelos_padrao` (o de pacote). Sem tabela nova (o vínculo é
+  coluna de array — uma tabela com chave para `procedures` e
+  `document_templates` viraria junção no PostgREST, o PGRST201 de 04/11).
+  Nenhuma função lia `document_templates.moment` (conferido no banco antes de
+  fechar: as três que citam `moment` são de `issued_documents`, que o mantém).
+- **Decisões pelos princípios** (anotadas também em `documentos.md`):
+  "Outros documentos" aceita Documento, Termo e Contrato do procedimento da
+  rede — "qualquer documento criado ou anexado" (PC7); o PDF enviado é um
+  modelo desses; os contratos de plano e de pacote não (são da venda). O
+  contrato de pacote não tem `profissional.*` (princípio 4: o pacote vendido
+  não tem quem atende). `pacote.validade` é obrigatória e diz "sem prazo de
+  validade" no pacote sem validade (a lição do D6 da 12ª: opcional vazia vira
+  "Validade: ."). Sem emissão retroativa para os agendamentos abertos (o
+  banco foi zerado; emitir agora geraria `termo.emitido` de agendamento
+  antigo). Desligar a sessão do pacote não emite de novo (quem desfaz a
+  sessão cancela ou reagenda). O pré-pago é avulso e emite. Efeito aceito: o
+  `termo.emitido` do INSERT fica registrado mesmo quando a ligação ao pacote
+  cancela o termo logo depois.
+- **Specs antigos que mudaram** (a regra nova): `documentos-inicio-da-9` (o
+  termo existe desde o agendamento; a tela já não deixa iniciar e o banco
+  recusa), `documentos-atendimento` (o contrato nasce ao agendar; o check-in
+  não emite; cancelar cancela os dois), `documentos-modelos` (sem
+  `moment` e sem "nasce ao agendar" no texto), `tests/menor-de-idade.test.ts`
+  (o responsável vale nos cinco tipos).
+- **Testes**: TDD — o vitest novo (`tests/documentos-tipos-leva1.test.ts`, 6)
+  falhou 6/6 antes (três tipos; "Variável que não existe: {{pacote.total}}";
+  a varredura achou o "início do atendimento" em 7 arquivos), e o E2E novo
+  (`e2e/documentos-tipos-e-nascimento.spec.ts`, 5) caiu no `beforeAll` pelo
+  `check` do momento por tipo. Depois: os dois passam. Vizinhos em série, 55
+  specs: 211 passaram, 28 pularam (`copilot-novidades` e `planos-recursos`
+  sem a chave), e 3 falham por um motivo que já existia —
+  `documentos-atritos-da-11` (A5), `documentos-atritos-da-12` (A14) e
+  `plano-checkout-uma-transacao` chamam `aceitarPlano` em `/admin/pdv`, que
+  não importa a action (nada sob `/admin/pdv` a usa na HEAD; "Server action not found" no
+  servidor novo do `next dev`; nenhum arquivo deste bloco está no caminho).
+  `tsc`, `eslint` e vitest (2389) limpos.
+- **Para o Heitor**: (1) a migration é **destrutiva** e já está no banco —
+  sai a coluna `document_templates.moment` (o "quando nasce"); (2) os três
+  specs acima esperam uma rota que use `aceitarPlano`; (3) o `afetados`
+  lista 299 specs (a área de documentos, procedimentos e agenda) — rodei os
+  55 que tocam documento; vale uma completa.
+- **Fica para a leva 2**: DC3/AG1/PC10 (link único e uma assinatura),
+  DC1c/PC9b (o pop-up do pacote e do plano puxando os documentos) e PC2 (a
+  venda do pacote emitir o contrato de pacote e os documentos — é quando
+  `pacote.*` ganha valor ao montar); e, do DC4, "o do plano, na criação"
+  (com o bloco Plano; hoje nascem no checkout).
+
 ### 2026-11-14 — Bloco Prontuário (PR1a–PR3): as fotos e os anexos no Prontuário, a anotação, a versão de antes, "Ficha de saúde"
 
 O Heitor (revisão de 13/11): a foto e o anexo clínico moram no prontuário, e

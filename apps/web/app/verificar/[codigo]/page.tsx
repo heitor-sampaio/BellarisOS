@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   referrer: 'no-referrer',
 }
 
-const TIPO: Record<string, string> = { TERMO: 'Termo de consentimento', CONTRATO: 'Contrato', CONTRATO_PLANO: 'Contrato de plano' }
+const TIPO: Record<string, string> = { TERMO: 'Termo de consentimento', CONTRATO: 'Contrato', CONTRATO_PLANO: 'Contrato de plano', CONTRATO_PACOTE: 'Contrato de pacote', DOCUMENTO: 'Documento' }
 const CANAL: Record<string, string> = {
   CLINICA: 'presencialmente, na clínica', PAPEL: 'no papel, na clínica', PORTAL: 'pelo portal do cliente', LINK: 'por link enviado ao cliente',
 }

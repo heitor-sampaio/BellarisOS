@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cadastro'
+import { TIPOS_DE_OUTROS_DOCUMENTOS, type TipoDeModelo } from '@/lib/documentos/variaveis'
 
 /**
  * Procedimento é dado da REDE.
@@ -31,12 +32,13 @@ import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cada
 async function idsDoFormularioDaRede(
   admin: ReturnType<typeof createAdminClient>,
   tenantId: string,
-  ids: { unidades: string[]; produtos: string[]; ficha: string | null; termo: string | null; contrato: string | null },
+  ids: { unidades: string[]; produtos: string[]; ficha: string | null; termo: string | null; contrato: string | null; outros?: string[] },
 ): Promise<string | null> {
   const unicos = (xs: string[]) => [...new Set(xs.filter(Boolean))]
   const unidades = unicos(ids.unidades)
   const produtos = unicos(ids.produtos)
-  const modelos = [ids.termo, ids.contrato].filter((x): x is string => !!x)
+  const outros   = unicos(ids.outros ?? [])
+  const modelos = unicos([ids.termo, ids.contrato, ...outros].filter((x): x is string => !!x))
   const [u, pr, f, m] = await Promise.all([
     unidades.length
       ? ler(admin.from('branches').select('id').eq('tenant_id', tenantId).in('id', unidades), 'conferir as unidades')
@@ -59,7 +61,28 @@ async function idsDoFormularioDaRede(
   const tipoDe = new Map((m ?? []).map(x => [x.id as string, x.kind as string]))
   if (ids.termo && tipoDe.get(ids.termo) !== 'TERMO') return 'Termo de consentimento não encontrado.'
   if (ids.contrato && tipoDe.get(ids.contrato) !== 'CONTRATO') return 'Contrato não encontrado.'
+  // "Outros documentos" (DC1b/PC7): documento, termo ou contrato do
+  // procedimento da rede — o contrato de plano e o de pacote são da venda.
+  if (outros.some(id => !TIPOS_DE_OUTROS_DOCUMENTOS.includes(tipoDe.get(id) as TipoDeModelo))) {
+    return 'Outros documentos: um dos documentos escolhidos não foi encontrado.'
+  }
   return null
+}
+
+/**
+ * "Outros documentos" do formulário (DC1b, 2026-11-14): sem o campo, o
+ * formulário não mexe neles (undefined); com o campo, a lista sem repetidos.
+ */
+function outrosDocumentosDoFormulario(formData: FormData): string[] | undefined | { error: string } {
+  const bruto = formData.get('outros_documentos')
+  if (bruto === null) return undefined
+  try {
+    const lista = JSON.parse(String(bruto) || '[]') as unknown
+    if (!Array.isArray(lista) || lista.some(x => typeof x !== 'string')) return { error: 'Outros documentos inválidos.' }
+    return [...new Set(lista as string[])]
+  } catch {
+    return { error: 'Outros documentos inválidos.' }
+  }
 }
 
 /**
@@ -192,6 +215,8 @@ async function addProcedureInterno(
   const fichaId = (formData.get('form_id') as string)?.trim() || null
   const termoId    = (formData.get('consent_template_id') as string)?.trim() || null
   const contratoId = (formData.get('contract_template_id') as string)?.trim() || null
+  const outros = outrosDocumentosDoFormulario(formData)
+  if (outros && !Array.isArray(outros)) return { error: outros.error }
   const pontos = pontosDeFidelidade(formData)
   if (pontos === 'invalido') return { error: 'Pontos de fidelidade inválidos.' }
   const branchIds      = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
@@ -218,6 +243,7 @@ async function addProcedureInterno(
     ficha:    fichaId,
     termo:    termoId,
     contrato: contratoId,
+    outros,
   })
   if (recusa) return { error: recusa }
   const salas = await salasDoFormulario(admin, ctx.tenantId!, formData)
@@ -242,6 +268,7 @@ async function addProcedureInterno(
       form_id:               fichaId,
       consent_template_id:   termoId,
       contract_template_id:  contratoId,
+      outros_documentos:     outros ?? [],
       ...(pontos !== undefined && { loyalty_points: pontos }),
       is_active:             true,
     })
@@ -345,6 +372,8 @@ async function updateProcedureInterno(
   const fichaId = (formData.get('form_id') as string)?.trim() || null
   const termoId    = (formData.get('consent_template_id') as string)?.trim() || null
   const contratoId = (formData.get('contract_template_id') as string)?.trim() || null
+  const outros = outrosDocumentosDoFormulario(formData)
+  if (outros && !Array.isArray(outros)) return { error: outros.error }
   const pontos = pontosDeFidelidade(formData)
   if (pontos === 'invalido') return { error: 'Pontos de fidelidade inválidos.' }
   const branchIds     = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
@@ -369,6 +398,7 @@ async function updateProcedureInterno(
     ficha:    fichaId,
     termo:    termoId,
     contrato: contratoId,
+    outros,
   })
   if (recusa) return { error: recusa }
   const salas = await salasDoFormulario(admin, ctx.tenantId!, formData)
@@ -390,7 +420,7 @@ async function updateProcedureInterno(
   // Atualiza dados básicos
   const { error } = await admin
     .from('procedures')
-    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, form_id: fichaId, consent_template_id: termoId, contract_template_id: contratoId, ...(pontos !== undefined && { loyalty_points: pontos }) })
+    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, form_id: fichaId, consent_template_id: termoId, contract_template_id: contratoId, ...(outros !== undefined && { outros_documentos: outros }), ...(pontos !== undefined && { loyalty_points: pontos }) })
     .eq('id', procedureId)
     .eq('tenant_id', ctx.tenantId!)
 

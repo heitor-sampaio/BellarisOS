@@ -2,17 +2,20 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getSignedUrls, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
-import type { TipoDeModelo } from './variaveis'
+import { TIPOS_DE_OUTROS_DOCUMENTOS, type TipoDeModelo } from './variaveis'
 
 /**
- * Leitura dos modelos de termo e contrato da rede.
+ * Leitura dos modelos de documento da rede.
  *
  * Quem chama já conferiu a permissão (Configurações pede `forms`, o cadastro
  * do procedimento pede `procedures`): aqui é só a consulta, sempre recortada
  * pela rede.
+ *
+ * Sem "quando nasce" (DC4, Bloco Documentos, 2026-11-14): todo documento do
+ * atendimento nasce ao agendar. O que cada modelo ainda decide é se BLOQUEIA o
+ * início sem assinatura ou só avisa.
  */
 
-export type Momento   = 'AGENDAMENTO' | 'INICIO_ATENDIMENTO'
 export type Exigencia = 'BLOQUEIA' | 'AVISA'
 
 export interface ModeloDeDocumento {
@@ -20,7 +23,6 @@ export interface ModeloDeDocumento {
   nome:          string
   tipo:          TipoDeModelo
   origem:        'EDITOR' | 'ARQUIVO'
-  momento:       Momento | null
   exigencia:     Exigencia
   ativo:         boolean
   versao:        number
@@ -36,7 +38,7 @@ export interface ModeloDeDocumento {
 
 type LinhaDoModelo = {
   id: string; name: string; kind: TipoDeModelo; source: 'EDITOR' | 'ARQUIVO'
-  moment: Momento | null; enforcement: Exigencia; is_active: boolean
+  enforcement: Exigencia; is_active: boolean
   current_version: number; updated_at: string
 }
 type LinhaDaVersao = {
@@ -62,12 +64,14 @@ export async function urlsDasImagensDosModelos(modelos: ModeloDeDocumento[]): Pr
   return caminhos.size ? getSignedUrls(MODELOS_DE_DOCUMENTO_BUCKET, [...caminhos], 60 * 60) : {}
 }
 
+type LigacaoDoProcedimento = { consent_template_id: string | null; contract_template_id: string | null; outros_documentos: string[] | null }
+
 /** Todos os modelos da rede, com o conteúdo da versão atual — a aba de Configurações. */
 export async function modelosDaRede(tenantId: string): Promise<ModeloDeDocumento[]> {
   const admin = createAdminClient()
   const [modelos, versoes, procs] = await Promise.all([
     ler(admin.from('document_templates')
-      .select('id, name, kind, source, moment, enforcement, is_active, current_version, updated_at')
+      .select('id, name, kind, source, enforcement, is_active, current_version, updated_at')
       .eq('tenant_id', tenantId)
       .order('kind').order('name'), 'carregar os modelos de documento'),
     ler(admin.from('document_template_versions')
@@ -75,14 +79,15 @@ export async function modelosDaRede(tenantId: string): Promise<ModeloDeDocumento
       .eq('tenant_id', tenantId), 'carregar as versões dos modelos'),
     // Quantos procedimentos usam cada modelo — a tela avisa antes de desativar.
     ler(admin.from('procedures')
-      .select('consent_template_id, contract_template_id')
+      .select('consent_template_id, contract_template_id, outros_documentos')
       .eq('tenant_id', tenantId)
-      .or('consent_template_id.not.is.null,contract_template_id.not.is.null'), 'contar os procedimentos de cada modelo'),
+      .or('consent_template_id.not.is.null,contract_template_id.not.is.null,outros_documentos.neq.{}'), 'contar os procedimentos de cada modelo'),
   ])
 
   const usos = new Map<string, number>()
-  for (const p of (procs ?? []) as { consent_template_id: string | null; contract_template_id: string | null }[]) {
-    for (const id of [p.consent_template_id, p.contract_template_id]) {
+  for (const p of (procs ?? []) as LigacaoDoProcedimento[]) {
+    const ids = new Set([p.consent_template_id, p.contract_template_id, ...(p.outros_documentos ?? [])])
+    for (const id of ids) {
       if (id) usos.set(id, (usos.get(id) ?? 0) + 1)
     }
   }
@@ -99,7 +104,6 @@ export async function modelosDaRede(tenantId: string): Promise<ModeloDeDocumento
       nome:          m.name,
       tipo:          m.kind,
       origem:        m.source,
-      momento:       m.moment,
       exigencia:     m.enforcement,
       ativo:         m.is_active,
       versao:        m.current_version,
@@ -118,31 +122,37 @@ export async function modelosDaRede(tenantId: string): Promise<ModeloDeDocumento
 export interface OpcaoDeModelo {
   id:        string
   nome:      string
-  momento:   Momento | null
+  tipo:      'TERMO' | 'CONTRATO' | 'DOCUMENTO'
   exigencia: Exigencia
   ativo:     boolean
 }
 
 /**
- * O que o cadastro do procedimento oferece: termos e contratos do procedimento.
+ * O que o cadastro do procedimento oferece: o termo, o contrato e os "Outros
+ * documentos" (DC1b — o documento, mais os termos e contratos já criados, pela
+ * regra do PC7: "qualquer documento criado ou anexado no sistema"). Os
+ * contratos de plano e de pacote são da rede, não de um procedimento.
  * Ativos, mais os inativos já ligados a algum procedimento — senão editar um
  * procedimento cujo modelo foi desativado apagaria o vínculo em silêncio.
  */
 export async function opcoesDeModeloParaProcedimento(
   tenantId: string,
-): Promise<{ termos: OpcaoDeModelo[]; contratos: OpcaoDeModelo[] }> {
+): Promise<{ termos: OpcaoDeModelo[]; contratos: OpcaoDeModelo[]; outros: OpcaoDeModelo[] }> {
   const admin = createAdminClient()
   const linhas = await ler(admin.from('document_templates')
-    .select('id, name, kind, moment, enforcement, is_active')
+    .select('id, name, kind, enforcement, is_active')
     .eq('tenant_id', tenantId)
-    .in('kind', ['TERMO', 'CONTRATO'])
-    .order('name'), 'carregar os modelos de termo e contrato')
-  const opcoes = (linhas ?? []).map(l => ({
-    id: l.id as string, nome: l.name as string, tipo: l.kind as string,
-    momento: l.moment as Momento | null, exigencia: l.enforcement as Exigencia, ativo: !!l.is_active,
+    .in('kind', [...TIPOS_DE_OUTROS_DOCUMENTOS])
+    .order('name'), 'carregar os modelos de documento do procedimento')
+  const opcoes: OpcaoDeModelo[] = (linhas ?? []).map(l => ({
+    id: l.id as string, nome: l.name as string, tipo: l.kind as OpcaoDeModelo['tipo'],
+    exigencia: l.enforcement as Exigencia, ativo: !!l.is_active,
   }))
-  const doTipo = (tipo: string): OpcaoDeModelo[] => opcoes
-    .filter(o => o.tipo === tipo)
-    .map(o => ({ id: o.id, nome: o.nome, momento: o.momento, exigencia: o.exigencia, ativo: o.ativo }))
-  return { termos: doTipo('TERMO'), contratos: doTipo('CONTRATO') }
+  const ordem = (o: OpcaoDeModelo) => TIPOS_DE_OUTROS_DOCUMENTOS.indexOf(o.tipo)
+  return {
+    termos:    opcoes.filter(o => o.tipo === 'TERMO'),
+    contratos: opcoes.filter(o => o.tipo === 'CONTRATO'),
+    // O "Documento" primeiro: é o tipo feito para isto.
+    outros:    [...opcoes].sort((a, b) => ordem(a) - ordem(b)),
+  }
 }

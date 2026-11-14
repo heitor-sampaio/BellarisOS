@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Copy, FileSignature, FileText, Link2, MessageCircle, ScrollText } from 'lucide-react'
+import { Copy, FileCheck, FileSignature, FileText, Link2, MessageCircle, ScrollText } from 'lucide-react'
+import type { TipoDeDocumento } from '@/lib/documentos/situacao'
 import { formatDate, formatTime } from '@estetica-os/utils'
 import { rotaNoPortal } from '@/lib/rotas'
 import { DefinirPagamento } from '@/components/shared/definir-pagamento'
@@ -26,7 +27,7 @@ import { useFuso } from '@/components/shared/fuso'
 export interface ItemDeTermo {
   id:            string
   titulo:        string
-  tipo:          'TERMO' | 'CONTRATO' | 'CONTRATO_PLANO'
+  tipo:          TipoDeDocumento
   status:        'A_GERAR' | 'INCOMPLETO' | 'PENDENTE' | 'ASSINADO' | 'DISPENSADO' | 'CANCELADO' | 'SUBSTITUIDO'
   exigencia:     'BLOQUEIA' | 'AVISA'
   faltando:      string[]
@@ -44,7 +45,7 @@ export interface ItemDeTermo {
   valorDoAtendimento?: number | null
 }
 
-const ICONE = { TERMO: FileSignature, CONTRATO: FileText, CONTRATO_PLANO: ScrollText } as const
+const ICONE: Record<TipoDeDocumento, typeof FileText> = { TERMO: FileSignature, CONTRATO: FileText, CONTRATO_PLANO: ScrollText, CONTRATO_PACOTE: ScrollText, DOCUMENTO: FileCheck }
 const CANAL = { CLINICA: 'na clínica', PORTAL: 'pelo portal', LINK: 'por link', PAPEL: 'no papel' } as const
 
 function Situacao({ item }: { item: ItemDeTermo }) {

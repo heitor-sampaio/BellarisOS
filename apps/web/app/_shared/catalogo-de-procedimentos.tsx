@@ -79,7 +79,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
     unidadesParaCriar(ctx.tenantId!),
 
     ler(admin.from('procedures')
-      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, consent_template_id, contract_template_id, loyalty_points')
+      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, consent_template_id, contract_template_id, outros_documentos, loyalty_points')
       .eq('tenant_id', ctx.tenantId!).is('branch_id', null)
       .order('category').order('name'), 'carregar os procedimentos'),
 
@@ -300,6 +300,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                     form_id:              (p.form_id as string | null) ?? null,
                     consent_template_id:  (p.consent_template_id as string | null) ?? null,
                     contract_template_id: (p.contract_template_id as string | null) ?? null,
+                    outros_documentos:    (p.outros_documentos as string[] | null) ?? [],
                     loyalty_points:       (p.loyalty_points as number | null) ?? null,
                     room_ids:             p.room_ids,
                     professional_ids:     p.professional_ids,

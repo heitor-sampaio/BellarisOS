@@ -24,7 +24,7 @@ const SITUACAO_DO_PEDIDO: Record<string, SituacaoDoDocumento> = {
   faltam_dados: 'FALTAM_DADOS', a_enviar: 'A_ENVIAR', enviado: 'ENVIADO', assinado: 'ASSINADO',
   dispensado: 'DISPENSADO', cancelado: 'CANCELADO',
 }
-const TIPO_DO_PEDIDO: Record<string, TipoDeDocumento> = { termo: 'TERMO', contrato: 'CONTRATO', contrato_de_plano: 'CONTRATO_PLANO' }
+const TIPO_DO_PEDIDO: Record<string, TipoDeDocumento> = { termo: 'TERMO', contrato: 'CONTRATO', contrato_de_plano: 'CONTRATO_PLANO', contrato_de_pacote: 'CONTRATO_PACOTE', documento: 'DOCUMENTO' }
 const PERIODOS = ['today', 'week', '7d', '15d', '30d', 'month', 'last_month', 'quarter', 'custom'] as const
 
 export const documentos: FerramentaDeLeitura<{
@@ -35,7 +35,7 @@ export const documentos: FerramentaDeLeitura<{
   tipo: 'leitura',
   modulo: 'documents', nivel: 'VIEW',
   recurso: 'documentos',
-  descricao: 'Os termos e contratos emitidos no período (padrão: o mês) e a situação de cada um: faltam_dados (o cadastro não tem o que o texto pede), a_enviar, enviado (por link, portal ou WhatsApp), assinado, dispensado, cancelado. Filtros: situacao, tipo (termo, contrato, contrato_de_plano), busca (cliente ou título), unidade. Traz o resumo por situação e até 30 documentos.',
+  descricao: 'Os termos, contratos e documentos emitidos no período (padrão: o mês) e a situação de cada um: faltam_dados (o cadastro não tem o que o texto pede), a_enviar, enviado (por link, portal ou WhatsApp), assinado, dispensado, cancelado. Filtros: situacao, tipo (termo, contrato, contrato_de_plano, contrato_de_pacote, documento), busca (cliente ou título), unidade. Traz o resumo por situação e até 30 documentos.',
   parametros: z.object({
     situacao: z.enum(Object.keys(SITUACAO_DO_PEDIDO) as [string, ...string[]]).optional(),
     tipo: z.enum(Object.keys(TIPO_DO_PEDIDO) as [string, ...string[]]).optional(),

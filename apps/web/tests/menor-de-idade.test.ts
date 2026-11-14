@@ -56,7 +56,7 @@ describe('as variáveis do responsável no termo', () => {
   it('existem no catálogo, em todo tipo de modelo, no grupo "Responsável legal"', () => {
     for (const v of ['responsavel.nome', 'responsavel.cpf', 'responsavel.parentesco', 'responsavel.telefone'] as const) {
       expect(VARIAVEIS_DE_DOCUMENTO[v].grupo).toBe('Responsável legal')
-      expect(VARIAVEIS_DE_DOCUMENTO[v].tipos).toEqual(['TERMO', 'CONTRATO', 'CONTRATO_PLANO'])
+      expect(VARIAVEIS_DE_DOCUMENTO[v].tipos).toEqual(['TERMO', 'CONTRATO', 'CONTRATO_PLANO', 'CONTRATO_PACOTE', 'DOCUMENTO'])
     }
   })
 

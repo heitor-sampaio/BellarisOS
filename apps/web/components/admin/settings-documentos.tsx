@@ -2,19 +2,20 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Pencil, FileSignature, FileText, ScrollText } from 'lucide-react'
+import { Plus, Pencil, FileSignature, FileText, ScrollText, Package, FileCheck } from 'lucide-react'
 import { EditorDeDocumento, type ModeloEmEdicao } from '@/components/admin/editor-de-documento'
-import { definirModeloAtivo, definirEnvioDoLinkPelaConversa, tornarContratoDePlanoAtivo } from '@/actions/modelos-de-documento'
+import { definirModeloAtivo, definirEnvioDoLinkPelaConversa, tornarContratoAtivo } from '@/actions/modelos-de-documento'
 import { SegSelect } from '@/components/shared/seg-select'
-import type { TipoDeModelo } from '@/lib/documentos/variaveis'
+import { CONTRATOS_DA_REDE, ROTULO_DO_TIPO, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { Fala } from '@/components/shared/uma-unidade'
 
 /**
- * Configurações → Documentos: os modelos de termo e contrato da rede.
+ * Configurações → Documentos: os modelos de documento da rede.
  *
- * Três grupos, porque cada um tem um lugar diferente no fluxo: o termo e o
- * contrato se ligam ao PROCEDIMENTO (no cadastro dele); o contrato de plano é
- * da rede, um só ativo, e vale para todo plano de tratamento.
+ * Cinco grupos, porque cada um tem um lugar diferente no fluxo (DC1): o termo,
+ * o contrato do procedimento e o documento se ligam ao PROCEDIMENTO (no
+ * cadastro dele); o contrato de plano e o de pacote são da rede, um só ativo
+ * de cada, e valem para todo plano e todo pacote vendido.
  */
 
 export interface ItemDeModelo extends ModeloEmEdicao {
@@ -27,16 +28,21 @@ type Vista =
   | { modo: 'novo'; tipo: TipoDeModelo }
   | { modo: 'editar'; modelo: ItemDeModelo }
 
-const GRUPOS: { tipo: TipoDeModelo; titulo: string; dica: string; icone: typeof FileText }[] = [
-  { tipo: 'TERMO',          titulo: 'Termos de consentimento', icone: FileSignature,
-    dica: 'Ligue ao procedimento no cadastro dele. No plano, o cliente assina o termo de cada procedimento.' },
-  { tipo: 'CONTRATO',       titulo: 'Contratos do procedimento', icone: FileText,
-    dica: 'Assinados no atendimento avulso do procedimento a que estão ligados.' },
-  { tipo: 'CONTRATO_PLANO', titulo: 'Contrato de plano', icone: ScrollText,
+const GRUPOS: { tipo: TipoDeModelo; titulo: string; dica: string; novo: string; icone: typeof FileText }[] = [
+  { tipo: 'TERMO',           titulo: 'Termos de consentimento', icone: FileSignature, novo: 'Novo termo',
+    dica: 'Ligue ao procedimento no cadastro dele, em "Termo de consentimento". Nasce quando o atendimento é agendado; no plano, o cliente assina o termo de cada procedimento.' },
+  { tipo: 'CONTRATO',        titulo: 'Contratos do procedimento', icone: FileText, novo: 'Novo contrato',
+    dica: 'Ligue ao procedimento no cadastro dele, em "Contrato". Nasce quando o atendimento avulso é agendado.' },
+  { tipo: 'DOCUMENTO',       titulo: 'Documentos', icone: FileCheck, novo: 'Novo documento',
+    dica: 'Qualquer outro documento para o cliente assinar (autorização de imagem, orientações…). Ligue ao procedimento em "Outros documentos": nasce quando o atendimento avulso é agendado.' },
+  { tipo: 'CONTRATO_PLANO',  titulo: 'Contrato de plano', icone: ScrollText, novo: 'Novo contrato de plano',
     dica: 'Assinado no fechamento de todo plano de tratamento, com os procedimentos, o valor e a forma de pagamento. Um só ativo: o novo nasce inativo, e "Tornar ativo" troca o que vale.' },
+  { tipo: 'CONTRATO_PACOTE', titulo: 'Contrato de pacote', icone: Package, novo: 'Novo contrato de pacote',
+    dica: 'O contrato de todo pacote vendido, com os procedimentos, as sessões, a validade e o pagamento. Um só ativo: o novo nasce inativo, e "Tornar ativo" troca o que vale.' },
 ]
 
-const MOMENTO = { AGENDAMENTO: 'nasce ao agendar', INICIO_ATENDIMENTO: 'nasce no início do atendimento' } as const
+/** O contrato de plano e o de pacote são da rede (um só ativo); os outros, do procedimento. */
+const ehDaRede = (t: TipoDeModelo) => CONTRATOS_DA_REDE.includes(t)
 
 export function SettingsDocumentos({ modelos, imagens, envio }: {
   modelos: ItemDeModelo[]
@@ -50,12 +56,12 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
   const [ocupado, setOcupado] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
-  // A8 da 6ª simulação: o contrato de plano novo nasce inativo quando já há um
-  // ativo (D-5) — a lista diz, logo depois de salvar, e como ativar.
-  const [salvoInativo, setSalvoInativo] = useState<string | null>(null)
+  // A8 da 6ª simulação: o contrato de plano (ou de pacote) novo nasce inativo
+  // quando já há um ativo (D-5) — a lista diz, logo depois de salvar, e como ativar.
+  const [salvoInativo, setSalvoInativo] = useState<{ nome: string; tipo: TipoDeModelo } | null>(null)
 
   function pronto(r?: { nasceuInativo?: boolean; nome?: string }) {
-    setSalvoInativo(r?.nasceuInativo ? (r.nome ?? '').trim() : null)
+    setSalvoInativo(r?.nasceuInativo && vista.modo === 'novo' ? { nome: (r.nome ?? '').trim(), tipo: vista.tipo } : null)
     setVista({ modo: 'lista' })
     router.refresh()
   }
@@ -71,11 +77,11 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
     else router.refresh()
   }
 
-  /** O contrato de plano é um só ativo: "Tornar ativo" TROCA o atual por este (D-5). */
+  /** O contrato de plano e o de pacote são um só ativo: "Tornar ativo" TROCA o atual por este (D-5, PC9a). */
   async function tornarAtivo(m: ItemDeModelo) {
     setErro(null)
     setOcupado(m.id)
-    const r = await tornarContratoDePlanoAtivo(m.id)
+    const r = await tornarContratoAtivo(m.id)
     if (!r.error) setSalvoInativo(null)
     setOcupado(null)
     if (r.error) setErro(r.error)
@@ -101,9 +107,9 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', maxWidth: 640 }}>
-        Monte aqui os termos e contratos que o cliente assina — escrevendo no sistema, com os dados do
-        cliente preenchidos na hora, ou enviando o PDF da clínica. A assinatura é eletrônica e fica
-        registrada com data, hora e um código de verificação.
+        Monte aqui os termos, contratos e documentos que o cliente assina — escrevendo no sistema, com
+        os dados do cliente preenchidos na hora, ou enviando um PDF pronto. A assinatura é eletrônica e
+        fica registrada com data, hora e um código de verificação.
       </p>
 
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
@@ -112,8 +118,8 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
           fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', background: 'var(--warning-soft)',
           borderRadius: 'var(--radius-field-token)', padding: '9px 12px', fontWeight: 'var(--weight-semibold)',
         }}>
-          O contrato de plano “{salvoInativo}” foi salvo inativo: a clínica já tem um ativo, e só um vale por vez.
-          Para usar este, clique em “Tornar ativo” na linha dele, em Contrato de plano.
+          O {ROTULO_DO_TIPO[salvoInativo.tipo].toLowerCase()} “{salvoInativo.nome}” foi salvo inativo: a rede já tem um ativo, e só um vale por vez.
+          Para usar este, clique em “Tornar ativo” na linha dele, em {ROTULO_DO_TIPO[salvoInativo.tipo]}.
         </p>
       )}
 
@@ -129,7 +135,7 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
               </div>
               <button type="button" className="btn-secondary" onClick={() => setVista({ modo: 'novo', tipo: g.tipo })}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Plus size={14} /> {g.tipo === 'TERMO' ? 'Novo termo' : g.tipo === 'CONTRATO' ? 'Novo contrato' : 'Novo contrato de plano'}
+                <Plus size={14} /> {g.novo}
               </button>
             </div>
 
@@ -138,7 +144,9 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
                 <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   {g.tipo === 'CONTRATO_PLANO'
                     ? 'Sem contrato de plano, o fechamento do plano pede só os termos dos procedimentos.'
-                    : 'Nenhum modelo ainda.'}
+                    : g.tipo === 'CONTRATO_PACOTE'
+                      ? 'Nenhum contrato de pacote ainda.'
+                      : 'Nenhum modelo ainda.'}
                 </p>
               </div>
             ) : (
@@ -154,15 +162,14 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
                         {[
                           m.origem === 'ARQUIVO' ? 'PDF enviado' : 'Escrito no sistema',
                           `versão ${m.versao}`,
-                          m.momento ? MOMENTO[m.momento] : null,
                           m.exigencia === 'BLOQUEIA' ? 'bloqueia sem assinatura' : 'só avisa',
-                          g.tipo !== 'CONTRATO_PLANO'
+                          !ehDaRede(g.tipo)
                             ? `${m.procedimentos} procedimento${m.procedimentos === 1 ? '' : 's'}`
                             : null,
                         ].filter(Boolean).join(' · ')}
                       </p>
                     </div>
-                    {g.tipo === 'CONTRATO_PLANO' && !m.ativo ? (
+                    {ehDaRede(g.tipo) && !m.ativo ? (
                       // Um só ativo: o inativo não liga sozinho, ele TOMA o
                       // lugar do atual (D-5).
                       <button

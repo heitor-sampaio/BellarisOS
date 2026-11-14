@@ -92,7 +92,8 @@ export interface FaltaNoCadastroDoTermo {
  * A17 da 12ª simulação (2026-11-11; princípio 3): o termo do Peeling só dizia
  * "Faltam dados: Data de nascimento" DEPOIS de agendado — a F55 (A9 da 11ª)
  * levou o aviso à janela do agendamento, não ao Agendar. Aqui, antes de agendar:
- * os modelos ligados ao procedimento (o termo e o contrato), as variáveis do
+ * os modelos ligados ao procedimento (o termo, o contrato e os outros
+ * documentos), as variáveis do
  * CADASTRO (cliente e responsável) obrigatórias que a ficha não tem — a mesma
  * régua da montagem (`variavelObrigatoria`, `valoresDoDocumento`). Só avisa
  * (princípio 2): o agendamento segue. Acessório: falhou, sem aviso.
@@ -106,14 +107,15 @@ export async function faltaNoCadastroAoAgendar(clientId: string, procedureId: st
     if (!z.string().uuid().safeParse(clientId).success || !z.string().uuid().safeParse(procedureId).success) return null
     const admin = createAdminClient()
     const [proc, cli] = await Promise.all([
-      ler(admin.from('procedures').select('consent_template_id, contract_template_id')
+      ler(admin.from('procedures').select('consent_template_id, contract_template_id, outros_documentos')
         .eq('id', procedureId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar os modelos do procedimento') as
-        Promise<{ consent_template_id: string | null; contract_template_id: string | null } | null>,
+        Promise<{ consent_template_id: string | null; contract_template_id: string | null; outros_documentos: string[] | null } | null>,
       ler(admin.from('clients')
         .select('name, document, documento_tipo, documento_numero, birth_date, phone, email, zip_code, address, address_number, address_complement, neighborhood, city, state, gender, responsavel_nome, responsavel_cpf, responsavel_parentesco, responsavel_telefone')
         .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cadastro da cliente'),
     ])
-    const ids = [proc?.consent_template_id, proc?.contract_template_id].filter((x): x is string => !!x)
+    // Os "Outros documentos" (DC1b) também nascem ao agendar o avulso.
+    const ids = [...new Set([proc?.consent_template_id, proc?.contract_template_id, ...(proc?.outros_documentos ?? [])].filter((x): x is string => !!x))]
     if (!cli || !ids.length) return null
     const [modelos, versoes] = await Promise.all([
       ler(admin.from('document_templates').select('id, name, enforcement, current_version')

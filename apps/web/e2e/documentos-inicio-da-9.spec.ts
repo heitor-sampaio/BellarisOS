@@ -15,6 +15,10 @@ import { haMinutosHoje } from './apoio/datas'
  * - A23: o termo que bloqueia não tinha caminho na janela do agendamento; a
  *   assinatura estava em Clientes → Documentos → Colher assinatura.
  *
+ * Desde o DC4 (Bloco Documentos, 2026-11-14) não há mais termo do início:
+ * todo documento do atendimento nasce AO AGENDAR. O D7 continua valendo como
+ * "o termo que a trava pede existe para assinar" — agora desde o agendamento.
+ *
  * Numa rede [e2e] própria.
  */
 
@@ -44,7 +48,7 @@ test.beforeAll(async () => {
   expect((await db().from('users').update({ provides_services: true, branch_id: rede.branchId }).eq('id', rede.professionalId)).error).toBeNull()
   const { data: m, error: eM } = await db().rpc('documento_modelo_salvar', {
     p_tenant: rede.tenantId, p_modelo: null, p_nome: TITULO, p_tipo: 'TERMO', p_origem: 'EDITOR',
-    p_momento: 'INICIO_ATENDIMENTO', p_exigencia: 'BLOQUEIA', p_texto: '# Termo\n\nEu, **{{cliente.nome}}**, autorizo.\n\n[[assinatura]]',
+    p_momento: null, p_exigencia: 'BLOQUEIA', p_texto: '# Termo\n\nEu, **{{cliente.nome}}**, autorizo.\n\n[[assinatura]]',
     p_arquivo_path: null, p_arquivo_sha256: null, p_arquivo_nome: null, p_arquivo_tamanho: null, p_arquivo_paginas: null,
     p_variaveis: [], p_usa_pagamento: false, p_ator: null,
   })
@@ -76,16 +80,21 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('o termo do início', () => {
-  test('D7: iniciar sem o "Chegou" recusa, e o termo que ele pede passa a existir para assinar', async ({ browser }) => {
-    expect(await documentos(), 'confirmado, o termo do início ainda não nasceu').toEqual([])
+  test('D7: iniciar sem o "Chegou" é recusado, e o termo que a trava pede existe para assinar (desde o agendamento, DC4)', async ({ browser }) => {
+    // DC4: o termo nasceu ao agendar — antes mesmo do "Chegou".
+    expect((await documentos()).map(d => d.template_id), 'o termo nasce ao agendar (DC4)').toEqual([modelo])
     await como(browser, recepcao!, async p => {
       await p.goto(`/${slug}/agenda/${agendamento}`)
-      await p.getByRole('button', { name: 'Iniciar atendimento' }).click()
-      await expect(p.getByText(`Falta assinar: ${TITULO}`).first()).toBeVisible()
-      // O termo está lá para colher: o painel dos documentos o lista.
+      // O termo está lá para colher desde o agendamento: o painel o lista, e a
+      // tela já não deixa iniciar (antes do DC4 era o clique que o fazia nascer).
       const painel = p.getByRole('region', { name: 'Documentos do atendimento' })
       await expect(painel.getByText(TITULO)).toBeVisible()
+      await expect(painel.getByText('O atendimento só começa depois da assinatura')).toBeVisible()
+      await expect(p.getByRole('button', { name: 'Iniciar atendimento' })).toBeDisabled()
     })
+    // E a trava do banco, para qualquer porta que tente começar.
+    const direto = await db().from('appointments').update({ status: 'IN_PROGRESS', started_at: new Date().toISOString() }).eq('id', agendamento)
+    expect(direto.error?.message).toContain(`Falta assinar: ${TITULO}`)
     await expect.poll(async () => (await documentos()).map(d => d.template_id)).toEqual([modelo])
     expect((await db().from('appointments').select('status').eq('id', agendamento).single()).data?.status).toBe('CONFIRMED')
   })

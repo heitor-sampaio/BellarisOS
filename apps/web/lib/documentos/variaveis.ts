@@ -19,21 +19,36 @@ import { converterDocumentoDoEditor } from './editor/converter'
  *    avulso — conhece o agendamento, o profissional e o valor.
  *  - CONTRATO_PLANO: o contrato de plano da rede — lista os procedimentos, as
  *    sessões, o total e a forma de pagamento.
+ *  - CONTRATO_PACOTE (Bloco Documentos, DC1/PC9a, 2026-11-14): o contrato de
+ *    pacote da rede, o equivalente do de plano — as mesmas variáveis, com
+ *    `pacote.*` no lugar de `plano.*` (o nome, os procedimentos, as sessões,
+ *    a validade e o total) e o pagamento. Sem profissional: o pacote vendido
+ *    não tem quem atende (princípio 4).
+ *  - DOCUMENTO (DC1): o "outro documento" do procedimento (uso de imagem, um
+ *    regulamento) — as variáveis do termo.
  *
  * Não há variável de prontuário nem de anamnese: o documento não carrega dado
  * clínico, e assim a permissão e o export não precisam do cuidado do
  * prontuário.
  */
 
-export type TipoDeModelo = 'TERMO' | 'CONTRATO' | 'CONTRATO_PLANO'
+export type TipoDeModelo = 'TERMO' | 'CONTRATO' | 'CONTRATO_PLANO' | 'CONTRATO_PACOTE' | 'DOCUMENTO'
 
-export const TIPOS_DE_MODELO: readonly TipoDeModelo[] = ['TERMO', 'CONTRATO', 'CONTRATO_PLANO']
+export const TIPOS_DE_MODELO: readonly TipoDeModelo[] = ['TERMO', 'CONTRATO', 'CONTRATO_PLANO', 'CONTRATO_PACOTE', 'DOCUMENTO']
 
 export const ROTULO_DO_TIPO: Record<TipoDeModelo, string> = {
-  TERMO:          'Termo de consentimento',
-  CONTRATO:       'Contrato do procedimento',
-  CONTRATO_PLANO: 'Contrato de plano',
+  TERMO:           'Termo de consentimento',
+  CONTRATO:        'Contrato do procedimento',
+  CONTRATO_PLANO:  'Contrato de plano',
+  CONTRATO_PACOTE: 'Contrato de pacote',
+  DOCUMENTO:       'Documento',
 }
+
+/** Os contratos da REDE (um ativo de cada, trocado por "Tornar ativo"): não se ligam a procedimento. */
+export const CONTRATOS_DA_REDE: readonly TipoDeModelo[] = ['CONTRATO_PLANO', 'CONTRATO_PACOTE']
+
+/** O que o procedimento pode ligar em "Outros documentos" (DC1b, pela regra do PC7). */
+export const TIPOS_DE_OUTROS_DOCUMENTOS: readonly TipoDeModelo[] = ['DOCUMENTO', 'TERMO', 'CONTRATO']
 
 export interface VariavelDeDocumento {
   rotulo:   string
@@ -48,10 +63,14 @@ export interface VariavelDeDocumento {
 }
 
 const TODOS: readonly TipoDeModelo[] = TIPOS_DE_MODELO
-const DO_PROCEDIMENTO: readonly TipoDeModelo[] = ['TERMO', 'CONTRATO']
+/** Quem tem a profissional: todos menos o contrato de pacote (o pacote vendido não tem quem atende). */
+const COM_PROFISSIONAL: readonly TipoDeModelo[] = ['TERMO', 'CONTRATO', 'CONTRATO_PLANO', 'DOCUMENTO']
+/** O "Documento" usa as variáveis do termo (DC1). */
+const DO_PROCEDIMENTO: readonly TipoDeModelo[] = ['TERMO', 'CONTRATO', 'DOCUMENTO']
 const SO_CONTRATO: readonly TipoDeModelo[] = ['CONTRATO']
 const SO_PLANO: readonly TipoDeModelo[] = ['CONTRATO_PLANO']
-const COM_PAGAMENTO: readonly TipoDeModelo[] = ['CONTRATO', 'CONTRATO_PLANO']
+const SO_PACOTE: readonly TipoDeModelo[] = ['CONTRATO_PACOTE']
+const COM_PAGAMENTO: readonly TipoDeModelo[] = ['CONTRATO', 'CONTRATO_PLANO', 'CONTRATO_PACOTE']
 
 export const VARIAVEIS_DE_DOCUMENTO = {
   'data.hoje':             { grupo: 'Data',        rotulo: 'Data de hoje, por extenso', tipos: TODOS, exemplo: '29 de setembro de 2026' },
@@ -95,13 +114,22 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'agendamento.hora':      { grupo: 'Atendimento', rotulo: 'Hora do atendimento', tipos: SO_CONTRATO, exemplo: '14:30' },
   // No termo também (A5 da 11ª): a profissional do atendimento em que é colhido; no plano, a do plano.
   // E no contrato de plano (A14 da 12ª): a profissional do plano (`treatment_plans.professional_id`).
-  'profissional.nome':     { grupo: 'Atendimento', rotulo: 'Profissional que atende', tipos: TODOS, exemplo: 'Dra. Helena Prado' },
+  'profissional.nome':     { grupo: 'Atendimento', rotulo: 'Profissional que atende', tipos: COM_PROFISSIONAL, exemplo: 'Dra. Helena Prado' },
   // A13 da 12ª (princípio 1): o registro no conselho (CRM, COREN…), opcional no cadastro da pessoa.
-  'profissional.registro': { grupo: 'Atendimento', rotulo: 'Registro no conselho da profissional (CRM, COREN…)', tipos: TODOS, exemplo: 'CRM-SC 12345', opcional: true, vaziaQuando: 'sem o registro no cadastro da profissional (Equipe)' },
+  'profissional.registro': { grupo: 'Atendimento', rotulo: 'Registro no conselho da profissional (CRM, COREN…)', tipos: COM_PROFISSIONAL, exemplo: 'CRM-SC 12345', opcional: true, vaziaQuando: 'sem o registro no cadastro da profissional (Equipe)' },
 
   'procedimentos.lista':   { grupo: 'Plano',       rotulo: 'Procedimentos do plano (sessões e valor)', tipos: SO_PLANO, exemplo: 'Toxina botulínica — 2 sessões — R$ 2.400,00' },
   'plano.total':           { grupo: 'Plano',       rotulo: 'Valor total do plano', tipos: SO_PLANO, exemplo: 'R$ 4.800,00' },
   'plano.sessoes':         { grupo: 'Plano',       rotulo: 'Número de sessões', tipos: SO_PLANO, exemplo: '4' },
+
+  // O contrato de pacote (DC1, PC9a): o equivalente das do plano. Os valores
+  // vêm do pacote VENDIDO (a venda emite o contrato — a leva 2 do bloco).
+  'pacote.nome':           { grupo: 'Pacote',      rotulo: 'Nome do pacote', tipos: SO_PACOTE, exemplo: 'Pacote Verão' },
+  'pacote.procedimentos':  { grupo: 'Pacote',      rotulo: 'Procedimentos do pacote (sessões de cada um)', tipos: SO_PACOTE, exemplo: 'Drenagem linfática — 6 sessões; Massagem modeladora — 4 sessões' },
+  'pacote.sessoes':        { grupo: 'Pacote',      rotulo: 'Número de sessões', tipos: SO_PACOTE, exemplo: '10' },
+  // Nunca vazia (a lição do D6 da 12ª, "Validade: ."): o pacote sem validade (PC3) diz.
+  'pacote.validade':       { grupo: 'Pacote',      rotulo: 'Validade do pacote (ou "sem prazo de validade")', tipos: SO_PACOTE, exemplo: '180 dias, até 13/05/2027' },
+  'pacote.total':          { grupo: 'Pacote',      rotulo: 'Valor total do pacote', tipos: SO_PACOTE, exemplo: 'R$ 1.800,00' },
 
   // O pagamento vale nos dois contratos (decisão do Heitor, 2026-09-30): no de
   // plano ele vem do checkout; no do procedimento, a recepção o define antes
@@ -232,9 +260,11 @@ function validarVariaveis(variaveis: string[], tipo: TipoDeModelo): ValidacaoDoM
 }
 
 const DICA_DO_TIPO: Record<TipoDeModelo, string> = {
-  TERMO:          'O termo também é assinado no fechamento de um plano, onde não há um agendamento só.',
-  CONTRATO:       'O contrato do procedimento é o do atendimento avulso; o do plano é o contrato de plano.',
-  CONTRATO_PLANO: 'O contrato de plano cobre vários procedimentos e sessões.',
+  TERMO:           'O termo também é assinado no fechamento de um plano, onde não há um agendamento só.',
+  CONTRATO:        'O contrato do procedimento é o do atendimento avulso; o do plano é o contrato de plano.',
+  CONTRATO_PLANO:  'O contrato de plano cobre vários procedimentos e sessões.',
+  CONTRATO_PACOTE: 'O contrato de pacote cobre os procedimentos e as sessões do pacote vendido, sem um atendimento só.',
+  DOCUMENTO:       'O documento usa as variáveis do termo: também pode ser assinado fora de um atendimento só.',
 }
 
 /**

@@ -455,6 +455,8 @@ export const ISOLADOS = [
   'relatorios-status-com-os-abertos.spec.ts',
   'relatorios-mais-realizado-empate.spec.ts',
   'portal-cliente-avaliacao-por-procedimento.spec.ts',
+  // Bloco Documentos, leva 1 (2026-11-14): os cinco tipos e "nasce ao agendar".
+  'documentos-tipos-e-nascimento.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

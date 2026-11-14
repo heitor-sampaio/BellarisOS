@@ -75,7 +75,7 @@ async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
 }
 
 const modelo = async (nome: string) =>
-  (await db().from('document_templates').select('id, kind, source, moment, enforcement, current_version, is_active')
+  (await db().from('document_templates').select('id, kind, source, enforcement, current_version, is_active')
     .eq('tenant_id', rede!.tenantId).eq('name', nome).maybeSingle()).data
 const versoes = async (templateId: string) =>
   (await db().from('document_template_versions').select('version, body_markup, body_doc, file_sha256, file_pages, variables, uses_payment')
@@ -158,10 +158,10 @@ test.describe.serial('documentos: modelos da rede', () => {
 
       await page.getByRole('button', { name: 'Salvar modelo' }).click()
       await expect(page.getByText(nome)).toBeVisible()
-      await expect(page.getByText(/Escrito no sistema · versão 1 · nasce ao agendar · bloqueia sem assinatura/)).toBeVisible()
+      await expect(page.getByText(/Escrito no sistema · versão 1 · bloqueia sem assinatura/)).toBeVisible()
 
       const m = await modelo(nome)
-      expect(m).toMatchObject({ kind: 'TERMO', source: 'EDITOR', moment: 'AGENDAMENTO', enforcement: 'BLOQUEIA', current_version: 1 })
+      expect(m).toMatchObject({ kind: 'TERMO', source: 'EDITOR', enforcement: 'BLOQUEIA', current_version: 1 })
       const [v1] = await versoes(m!.id)
       expect(v1!.body_markup).toBeNull()
       expect(v1!.variables).toEqual(['procedimento.nome', 'cliente.nome', 'cliente.cpf'])
@@ -176,7 +176,7 @@ test.describe.serial('documentos: modelos da rede', () => {
       await expect(corpo(page)).toBeVisible()
       await page.getByRole('button', { name: 'Só avisa' }).click()
       await page.getByRole('button', { name: 'Salvar modelo' }).click()
-      await expect(page.getByText(/versão 1 · nasce ao agendar · só avisa/)).toBeVisible()
+      await expect(page.getByText(/versão 1 · só avisa/)).toBeVisible()
       expect(await versoes(m!.id)).toHaveLength(1)
 
       // Mudar o TEXTO abre a v2, e a v1 continua como estava.
@@ -203,7 +203,7 @@ test.describe.serial('documentos: modelos da rede', () => {
     const doc = (...content: unknown[]) => ({ corpo: { type: 'doc', content } })
     const par = (...content: unknown[]) => ({ type: 'paragraph', content })
     const salvar = (page: Page, documento: unknown) => chamarAcao(page, 'actions/modelos-de-documento.ts', 'salvarModeloDoEditor', '/admin/settings?tab=documentos', [{
-      id: null, nome: `${PREFIXO} Recusado ${marca}`, tipo: 'TERMO', momento: 'AGENDAMENTO', exigencia: 'AVISA', documento,
+      id: null, nome: `${PREFIXO} Recusado ${marca}`, tipo: 'TERMO', exigencia: 'AVISA', documento,
     }])
     const sha = 'b'.repeat(64)
     await como(browser, async page => {
@@ -287,8 +287,8 @@ test.describe.serial('documentos: modelos da rede', () => {
     })
     const a = await modelo(nomeA)
     const b = await modelo(nomeB)
-    expect(a).toMatchObject({ kind: 'CONTRATO_PLANO', moment: null, is_active: false })
-    expect(b).toMatchObject({ kind: 'CONTRATO_PLANO', moment: null, is_active: true })
+    expect(a).toMatchObject({ kind: 'CONTRATO_PLANO', is_active: false })
+    expect(b).toMatchObject({ kind: 'CONTRATO_PLANO', is_active: true })
     expect((await versoes(b!.id))[0]).toMatchObject({ uses_payment: true })
   })
 
@@ -301,7 +301,7 @@ test.describe.serial('documentos: modelos da rede', () => {
       await linha.getByRole('button', { name: 'Editar' }).click()
       const dialogo = page.locator('dialog[open]')
       await dialogo.locator('select[name="consent_template_id"]').selectOption(termo!.id)
-      await expect(dialogo.getByText('Nasce ao agendar · só avisa se faltar')).toBeVisible()
+      await expect(dialogo.getByText('Só avisa se faltar', { exact: true })).toBeVisible()
       await dialogo.locator('select[name="contract_template_id"]').selectOption(contrato!.id)
 
       // O ataque: a mesma chamada com o termo de OUTRA rede no lugar.

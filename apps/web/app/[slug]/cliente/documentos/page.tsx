@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ChevronRight, FileSignature, FileText, ScrollText } from 'lucide-react'
+import { ChevronRight, FileCheck, FileSignature, FileText, ScrollText } from 'lucide-react'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { documentosNoPortal } from '@/lib/documentos/leitura'
 import { formatDate } from '@estetica-os/utils'
@@ -65,7 +65,7 @@ export default async function DocumentosDoClientePage({
 }
 
 function Cartao({ slug, doc, fuso }: { slug: string; doc: Awaited<ReturnType<typeof documentosNoPortal>>[number]; fuso: string }) {
-  const Icone = doc.tipo === 'CONTRATO_PLANO' ? ScrollText : doc.tipo === 'CONTRATO' ? FileText : FileSignature
+  const Icone = doc.tipo === 'CONTRATO_PLANO' || doc.tipo === 'CONTRATO_PACOTE' ? ScrollText : doc.tipo === 'CONTRATO' ? FileText : doc.tipo === 'DOCUMENTO' ? FileCheck : FileSignature
   const situacao = doc.status === 'ASSINADO'
     ? `Assinado em ${doc.assinadoEm ? formatDate(doc.assinadoEm, fuso) : '—'}`
     : doc.status === 'INCOMPLETO' ? 'Em preparação pela clínica' : 'Esperando a sua assinatura'

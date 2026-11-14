@@ -46,7 +46,7 @@ const CATEGORIA_DO_ANEXO: Record<string, string> = {
   termo_consentimento: 'Termo de consentimento', exame: 'Exame', laudo: 'Laudo médico', contrato: 'Contrato',
   foto_clinica: 'Foto clínica', receita: 'Receita', outro: 'Outro',
 }
-const TIPO_DO_DOCUMENTO: Record<string, string> = { TERMO: 'Termo', CONTRATO: 'Contrato', CONTRATO_PLANO: 'Contrato do plano' }
+const TIPO_DO_DOCUMENTO: Record<string, string> = { TERMO: 'Termo', CONTRATO: 'Contrato', CONTRATO_PLANO: 'Contrato do plano', CONTRATO_PACOTE: 'Contrato do pacote', DOCUMENTO: 'Documento' }
 const SITUACAO_DO_DOCUMENTO: Record<string, string> = {
   PENDENTE: 'Aguardando assinatura', INCOMPLETO: 'Em preparação', ASSINADO: 'Assinado', DISPENSADO: 'Dispensado',
   CANCELADO: 'Cancelado', SUBSTITUIDO: 'Substituído',

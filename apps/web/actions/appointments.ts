@@ -53,7 +53,6 @@ import type { AnamnesisRow } from '@/lib/anamnesis'
 import { retratarInjetaveis, planejamentoAplicadoNoAtendimento } from '@/lib/injetaveis/alcance'
 import { oQueFaltaParaSeguir } from '@/lib/atendimento/obrigatorias-no-servidor'
 import { perguntaDoInicioAdiantado } from '@/lib/appointments/inicio-adiantado'
-import { emitirDocumentosDoInicio } from '@/lib/documentos/inicio'
 import { planosComOProcedimento, textoDoPlano } from '@/lib/checkout/plano-e-avulso'
 import { nomeParaSaudar } from '@/lib/saudacao'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
@@ -520,11 +519,8 @@ async function startAppointmentInterno(
       if (pergunta) return { error: pergunta, confirmarInicioAdiantado: true }
     }
 
-    // Os termos e contratos do início nascem num passo próprio, ANTES do
-    // update (D7 da 9ª, regressão da F33): a trava do banco recusa o início sem
-    // assinatura no mesmo update e a transação desfazia a emissão — a recepção
-    // lia "Falta assinar: …" e o termo não existia para colher.
-    await emitirDocumentosDoInicio(admin, appointmentId)
+    // Os documentos já nasceram ao agendar (DC4, Bloco Documentos): a trava do
+    // banco (`trg_documentos_bloqueiam_inicio`) só confere o que falta assinar.
     // Com a guarda da situação NA ESCRITA (C11, F65): o que foi concluído,
     // cancelado ou marcado como falta entre a leitura e a escrita não reabre.
     const iniciados = await gravar(admin

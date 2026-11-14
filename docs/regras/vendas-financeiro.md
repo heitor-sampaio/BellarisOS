@@ -212,6 +212,14 @@ comissão de venda (`comissoes.md`): a do pacote é do cadastro de cada pacote; 
 do plano, um percentual da clínica (Configurações → Comissões → "Venda de
 plano").
 
+- **Documentos do pacote** (PC2/PC7, Bloco Documentos leva 1, 2026-11-14): a
+  cliente assina UMA vez, pelo pacote — a sessão de pacote não emite documento.
+  A sessão nasce como agendamento comum e, ligada ao pacote
+  (`package_sessions.appointment_id`), os documentos abertos dela são
+  cancelados (`trg_documentos_da_sessao_de_pacote`). O **contrato de pacote**
+  é um modelo da rede, um só ativo, e toda rede nasce com o padrão (DC1/DC2,
+  `documentos.md`). A venda emitir o contrato de pacote e os documentos
+  puxados dos procedimentos é a leva 2 (DC1c/PC9b, PC2).
 - **Os itens** moram em `service_package_items` (procedimento + quantidade);
   `service_packages.total_sessions` é a soma e `procedure_id` o primeiro item
   (as leituras de "o procedimento do pacote" seguem certas). Pacote e itens se

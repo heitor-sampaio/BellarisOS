@@ -15,24 +15,54 @@ assinatura na clínica e no papel; checkout do plano; PDF assinado e
 verificação pública; portal do cliente; link público. O desenho inteiro está no
 DEVLOG ("Termos e contratos").
 
-- **O documento é do PROCEDIMENTO** (decisão do Heitor): cada procedimento
-  liga até UM termo (`procedures.consent_template_id`) e UM contrato
-  (`contract_template_id`). No plano, o cliente assina um termo por
-  procedimento distinto e UM **contrato de plano** da rede
+- **Cinco tipos** (DC1, Bloco Documentos, 2026-11-14): **Termo**
+  (`TERMO`), **Contrato do procedimento** (`CONTRATO`), **Contrato de plano**
+  (`CONTRATO_PLANO`), **Contrato de pacote** (`CONTRATO_PACOTE`) e
+  **Documento** (`DOCUMENTO`: qualquer outro para a cliente assinar —
+  autorização de imagem, orientações). Configurações → Documentos tem um grupo
+  por tipo. O contrato de plano e o de pacote são DA REDE (um só ativo de
+  cada, `CONTRATOS_DA_REDE`); os outros três se ligam ao procedimento.
+- **O documento é do PROCEDIMENTO** (decisão do Heitor; revisto no PC7 e no
+  DC1b, 2026-11-14): cada procedimento liga até UM termo
+  (`procedures.consent_template_id`, "Termo de consentimento"), até UM
+  contrato (`contract_template_id`, "Contrato" — só do atendimento AVULSO) e
+  os **"Outros documentos"**, quantos quiser (`procedures.outros_documentos`,
+  uuid[]). Termo e contrato continuam papéis específicos (PR5). Nos "Outros
+  documentos" entra qualquer modelo da rede do tipo Documento, Termo ou
+  Contrato do procedimento — "qualquer documento criado ou anexado no
+  sistema" (PC7); o PDF enviado é um modelo desses. O contrato de plano e o de
+  pacote NÃO entram: são da venda. O banco confere (gatilho
+  `trg_procedimento_modelos_do_tipo`: mesma rede, o tipo, sem repetido —
+  "Outros documentos: …"), e a action também (`idsDoFormularioDaRede`).
+  ⚠️ É uma COLUNA de array, não uma tabela de ligação: uma tabela com chave
+  estrangeira para `procedures` e `document_templates` viraria junção para
+  o PostgREST (o PGRST201 de 04/11 — `atendimento.md`). No plano, o cliente
+  assina um termo por procedimento distinto e UM **contrato de plano** da rede
   (`kind = 'CONTRATO_PLANO'`, no máximo um ativo — índice único). Sempre de
   novo: cada atendimento avulso e cada plano pede documentos novos.
+- **O contrato de pacote** (PC9a, DC1): "como o de plano", um modelo da rede à
+  parte, um só ativo (índice `uniq_contrato_de_pacote_ativo`), trocado por
+  "Tornar ativo" do mesmo jeito. Variáveis: as do contrato de plano trocando
+  `plano.*` e `procedimentos.lista` por `pacote.nome`, `pacote.procedimentos`,
+  `pacote.sessoes`, `pacote.validade` e `pacote.total`, mais `pagamento.*`; sem
+  `profissional.*` (o pacote vendido não tem quem atende — princípio 4).
+  `pacote.validade` é obrigatória e nunca sai vazia: o pacote sem validade
+  (PC3) diz "sem prazo de validade". ⚠️ **Ainda não é emitido**: a venda do
+  pacote emitir o contrato e os documentos puxados é a leva 2 do Bloco
+  Documentos (PC2, DC1c/PC9b), e é lá que `pacote.*` ganha valor ao montar.
 - **O contrato de plano ativo se TROCA, não se desativa antes** (D-5, decisão
   do Heitor, 2026-10-29: "Fica o fluxo de trocar; sai o de criar outro e
   desativar o atual antes."). O contrato de plano novo nasce INATIVO quando a
   rede já tem um ativo (`documento_modelo_salvar`, migration
   `20261029001602`) — o texto nunca se perde —, e "Tornar ativo"
-  (`tornarContratoDePlanoAtivo` → `documento_contrato_de_plano_ativar`)
-  desliga o atual e liga o escolhido numa transação só. Ligar um contrato de
+  (`tornarContratoAtivo` → `documento_contrato_de_plano_ativar`, que serve
+  ao de plano e ao de pacote desde o DC1) desliga o atual DO MESMO TIPO e
+  liga o escolhido numa transação só. Ligar um contrato de
   plano por `definirModeloAtivo` passa pelo mesmo caminho. O índice único
   continua sendo a garantia. **Salvo inativo, a tela diz** (A8 da 6ª
   simulação, 2026-11-04: só a dica da seção dizia): "O contrato de plano “B”
-  foi salvo inativo: a clínica já tem um ativo, e só um vale por vez. Para
-  usar este, clique em “Tornar ativo”…" (`nasceuInativo` do salvar,
+  foi salvo inativo: a rede já tem um ativo, e só um vale por vez. Para
+  usar este, clique em “Tornar ativo”…" (o mesmo para o contrato de pacote) (`nasceuInativo` do salvar,
   `[data-contrato-inativo]`). Prova: `e2e/documentos-modelos.spec.ts`.
 - **O documento da cliente sem CPF** (cli-09, revisão do Heitor de
   2026-11-02: "contrato sem documento da cliente vale menos"): `cliente.cpf`,
@@ -56,10 +86,11 @@ DEVLOG ("Termos e contratos").
   dele; `dadosDoAssinante`) e a tela de assinar (`cliente.assinante`). A
   adulta, ou a menor ainda sem responsável, assina por si. Prova:
   `e2e/ficha-menor-de-idade.spec.ts`.
-- **Três tipos, cada um com as suas variáveis** (`lib/documentos/variaveis.ts`,
+- **Cada tipo com as suas variáveis** (`lib/documentos/variaveis.ts`,
   catálogo FECHADO): o termo também serve ao plano, então não usa
-  `agendamento.*`; o contrato do procedimento é o do avulso; só o contrato de
-  plano usa `plano.*` e `pagamento.*`. Variável fora do tipo é recusada ao
+  `agendamento.*`; o Documento usa exatamente as do termo; o contrato do
+  procedimento é o do avulso; só o contrato de plano usa `plano.*`, só o de
+  pacote usa `pacote.*`, e `pagamento.*` vale nos três contratos. Variável fora do tipo é recusada ao
   salvar — sairia em branco num documento assinado.
 - **O editor é rico (Tiptap), mas o que se assina é a árvore NOSSA**
   (`lib/documentos/arvore.ts`, v2 — decisão do Heitor, 2026-09-29, que
@@ -141,28 +172,38 @@ DEVLOG ("Termos e contratos").
 - PDF enviado: cabeçalho `%PDF-` conferido (não o `type` do navegador), abre
   no `pdf-lib` sem senha, até 10 MB e 50 páginas; mora em
   `modelos-de-documento/<tenant>/<sha256>.pdf`.
-- **O documento emitido é `issued_documents`** (`consent_terms` é legado). Nasce
-  por GATILHO no agendamento (`trg_documentos_no_agendamento`: INSERT emite os de
-  AGENDAMENTO; check-in, os de INICIO_ATENDIMENTO; cancelar/falta cancela os
-  abertos; trocar o procedimento troca os documentos) — o agendamento nasce em
-  cinco INSERTs. Agendamento de plano não emite (o plano tem os dele).
-  **Confirmar não é o check-in** (D13 da 8ª simulação, 2026-11-06; migration
-  `20261106003301`): o de INICIO_ATENDIMENTO nascia no "Confirmar
-  agendamento", um resto de quando o check-in gravava CONFIRMED. Nasce na
-  CHEGADA (ARRIVED) e, no início direto de Confirmado, ao iniciar. Os que já
-  tinham nascido num confirmar ficaram (a emissão é idempotente). Prova:
-  `e2e/documentos-atendimento.spec.ts`.
-  **No início direto de Confirmado, o termo nasce ANTES da trava** (D7 da 9ª
-  simulação, 2026-11-07; regressão da F33): a trava do início
-  (`trg_documentos_bloqueiam_inicio`) emitia e recusava no MESMO update, e a
-  transação desfazia a emissão — a recepção lia "Falta assinar: Termo… Colha a
-  assinatura" e o termo não existia (a ficha dizia "Nenhum termo…"). Os dois
-  caminhos que iniciam (`startAppointment` e o IN_PROGRESS de
-  `updateAppointmentStatus`; o "Marcar chegada e iniciar" passa pelo check-in)
-  emitem antes num passo próprio, gravado (`emitirDocumentosDoInicio`,
-  `lib/documentos/inicio.ts`, o agendamento de plano fora); a trava segue sendo
-  a segunda linha, e o termo fica para colher. Prova:
-  `e2e/documentos-inicio-da-9.spec.ts` ("D7").
+- **O documento emitido é `issued_documents`** (`consent_terms` é legado).
+  **Todo documento do atendimento nasce AO AGENDAR** (DC4, Bloco Documentos,
+  2026-11-14 — saiu o "quando nasce" do modelo e a coluna
+  `document_templates.moment`): o gatilho `trg_documentos_no_agendamento`
+  emite no INSERT o termo, o contrato e os "Outros documentos" do
+  procedimento (`documentos_emitir_do_atendimento` →
+  `private.modelos_do_atendimento`), com `issued_documents.moment =
+  'AGENDAMENTO'`; cancelar/falta cancela os abertos; reabrir um cancelado (ou
+  falta) emite de novo; trocar o procedimento troca os documentos. O check-in
+  e o início não emitem nada — saíram a emissão do check-in (D13 da 8ª) e a do
+  início (`emitirDocumentosDoInicio`, D7 da 9ª): sem "nascer depois", a trava
+  do início não tem mais o que desfazer. O agendamento nasce em cinco
+  INSERTs, e todos passam pelo gatilho. "Bloqueia o início ou só avisa"
+  continua por documento, e a trava do início
+  (`trg_documentos_bloqueiam_inicio`) só CONFERE ("Falta assinar: …"). O
+  contrato com `pagamento.*` segue pedindo o "pagamento combinado" antes.
+  Prova: `e2e/documentos-tipos-e-nascimento.spec.ts` ("DC4"),
+  `e2e/documentos-atendimento.spec.ts`, `e2e/documentos-inicio-da-9.spec.ts`
+  ("D7": o termo que a trava pede existe para colher desde o agendamento).
+  **Sessão de plano e de pacote não emitem** (PC2: assina-se UMA vez, pelo
+  plano ou pelo pacote). O agendamento de plano (`treatment_plan_id`) nunca
+  emite. A sessão de pacote nasce como agendamento comum e só DEPOIS se liga
+  ao pacote (`package_sessions.appointment_id`, por `ligarCredito`,
+  `agendamento_usar_credito` ou o "abater do pacote"): o gatilho
+  `trg_documentos_da_sessao_de_pacote` cancela os abertos dela ("Sessão de
+  pacote: os documentos são os do pacote"), e a emissão já não acha modelo
+  para agendamento ligado a pacote (reabrir, trocar o procedimento). Desligar
+  a sessão do pacote não emite de novo (decisão desta frente: quem desfaz a
+  sessão de pacote cancela ou reagenda). O pré-pago
+  (`procedure_sale_units`) é avulso e emite. ⚠️ O `termo.emitido` do INSERT
+  fica registrado mesmo quando a ligação ao pacote cancela o termo logo
+  depois. Prova: `e2e/documentos-tipos-e-nascimento.spec.ts` ("PC2").
   **A janela do agendamento leva a colher** (A23 da 9ª): o termo que falta
   assinar tem "Colher assinatura" (`[data-colher-assinatura]`, a tela
   `/documentos/[id]/assinar` com a volta à agenda) para quem tem os Termos em
@@ -306,9 +347,12 @@ DEVLOG ("Termos e contratos").
   `trg_documentos_bloqueiam_plano` é a segunda linha (barra o ACCEPTED que
   `plano_checkout` grava; o checkout é uma transação só desde a F67, C32 —
   a recusa do gatilho desfaz tudo).
-- **Toda rede nasce com o contrato de plano padrão** (`documentos_modelos_padrao`:
-  migration para as de antes, `registerAction` para as novas). Sem CPF de
-  propósito: o contrato de antes não o exigia.
+- **Toda rede nasce com o contrato de plano padrão e o de pacote padrão**
+  (`documentos_modelos_padrao`: migration para as de antes, `registerAction`
+  para as novas; o de pacote desde o DC2, 2026-11-14 —
+  `system_key = 'CONTRATO_PACOTE_PADRAO'`, semeado também nas redes que já
+  tinham o de plano). Sem CPF de propósito: o contrato de antes não o exigia.
+  Semear de novo não duplica. Prova: `e2e/documentos-tipos-e-nascimento.spec.ts` ("DC2").
 - `consent_terms` é LEGADO: os assinados foram copiados para `issued_documents`
   (`moment = 'LEGADO'`, assinatura `identity_method = 'LEGADO'`) e o histórico da
   ficha e do portal lê `assinadosDoCliente`. Nada novo é gravado lá.
@@ -549,8 +593,11 @@ DEVLOG ("Termos e contratos").
 ❌ Pôr fonte em documento que não esteja no catálogo e em public/fontes-documento (a tela e o PDF têm de desenhar a mesma)
 ❌ Alterar uma versão de modelo de documento ou apagar um modelo (edita → versão nova; o que não serve, desativa)
 ❌ Gravar ou mostrar quem assina fora de quemAssina/dadosDoAssinante (a menor com responsável é assinada por ELE — decisão 2 da 7ª)
-❌ Assinar documento fora de documento_assinar, ou emitir documento de agendamento fora do gatilho (a exceção é emitirDocumentosDoInicio, antes de iniciar — a mesma função do gatilho)
+❌ Assinar documento fora de documento_assinar, ou emitir documento de agendamento fora do gatilho (DC4: tudo nasce no INSERT; não há emissão no check-in nem no início)
 ❌ Contar com a emissão feita DENTRO de uma trava que recusa no mesmo update: a recusa desfaz a emissão (D7 da 9ª) — emita antes, num passo gravado
+❌ Ligar documento ao procedimento por tabela com chave estrangeira para procedures E document_templates (vira junção no PostgREST — PGRST201); os "Outros documentos" são a coluna procedures.outros_documentos
+❌ Pôr contrato de plano ou de pacote no procedimento (são da venda, da rede), ou emitir documento na sessão de pacote ou de plano (PC2)
+❌ Voltar com o "quando nasce" (document_templates.moment saiu no DC4); o moment de issued_documents é só o registro
 ❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)
 ❌ Pôr nas dependências do efeito que relê o passo do checkout um objeto que vem do servidor (cada refresh traz um novo, e a tela volta ao Pagamento — F46)
 ❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir

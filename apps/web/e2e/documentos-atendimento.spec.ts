@@ -12,8 +12,8 @@ import { apagarDocumentosEmitidos } from './apoio/limpeza'
  * (migration 20260930000002_documentos_emissao).
  *
  * Numa rede `[e2e]` própria. O procedimento dela liga um TERMO que nasce ao
- * agendar e BLOQUEIA, e um CONTRATO que nasce no início do atendimento e só
- * AVISA. Uma segunda rede é o alvo de "o documento de outra rede não se assina
+ * agendar e BLOQUEIA, e um CONTRATO que só AVISA — desde o DC4 (Bloco
+ * Documentos, 2026-11-14) os dois nascem ao agendar; não há mais o do início. Uma segunda rede é o alvo de "o documento de outra rede não se assina
  * daqui".
  */
 
@@ -67,7 +67,7 @@ test.beforeAll(async () => {
   })
   termo = await modelo(rede, TITULO_TERMO, 'TERMO', 'AGENDAMENTO', 'BLOQUEIA',
     '# Termo de {{procedimento.nome}}\n\nEu, **{{cliente.nome}}**, CPF {{cliente.cpf}}, autorizo.\n\n[[assinatura]]')
-  contrato = await modelo(rede, TITULO_CONTRATO, 'CONTRATO', 'INICIO_ATENDIMENTO', 'AVISA',
+  contrato = await modelo(rede, TITULO_CONTRATO, 'CONTRATO', 'AGENDAMENTO', 'AVISA',
     '# Contrato\n\n{{cliente.nome}} contrata {{procedimento.nome}} em {{agendamento.data}} por {{procedimento.valor}}.')
   const { error } = await db().from('procedures')
     .update({ consent_template_id: termo, contract_template_id: contrato }).eq('id', rede.procedureId)
@@ -105,22 +105,20 @@ async function rabiscar(page: Page) {
 test.describe.serial('documentos: emissão pelo atendimento e assinatura na clínica', () => {
   let ag1 = ''
 
-  test('nasce ao agendar; o do início nasce no check-in; iniciar é recusado sem assinatura', async ({ browser }) => {
+  test('nasce ao agendar (os dois, DC4); confirmar e o check-in não emitem; iniciar é recusado sem assinatura', async ({ browser }) => {
     ag1 = await agendar(rede!, cliente)
     let docs = await documentos({ appointment_id: ag1 })
-    expect(docs.map(d => d.template_id), 'só o termo nasce ao agendar').toEqual([termo])
-    const { data: evento } = await db().from('domain_events').select('nome, dados').eq('entidade_id', docs[0]!.id).single()
+    expect(docs.map(d => d.template_id).sort(), 'o termo e o contrato nascem ao agendar (DC4)').toEqual([termo, contrato].sort())
+    const doTermo = docs.find(d => d.template_id === termo)!
+    const { data: evento } = await db().from('domain_events').select('nome, dados').eq('entidade_id', doTermo.id).single()
     expect(evento).toMatchObject({ nome: 'termo.emitido', dados: { referencia: TITULO_TERMO, exigencia: 'BLOQUEIA' } })
 
-    // D13 da 8ª simulação: confirmar a presença não é o check-in — o contrato
-    // do início nascia no "Confirmar agendamento" (um resto de quando o
-    // check-in gravava CONFIRMED). Ele nasce na chegada (ARRIVED).
+    // DC4: nem confirmar nem o check-in emitem nada (era o D13 da 8ª: o
+    // contrato do início nascia na chegada).
     await db().from('appointments').update({ status: 'CONFIRMED' }).eq('id', ag1)
-    docs = await documentos({ appointment_id: ag1 })
-    expect(docs.map(d => d.template_id), 'confirmar não emite o do início').toEqual([termo])
     await db().from('appointments').update({ status: 'ARRIVED', arrived_at: new Date().toISOString() }).eq('id', ag1)
     docs = await documentos({ appointment_id: ag1 })
-    expect(docs.map(d => d.template_id).sort(), 'o contrato nasce no check-in').toEqual([termo, contrato].sort())
+    expect(docs.map(d => d.template_id).sort(), 'a chegada não emite de novo').toEqual([termo, contrato].sort())
 
     // A trava é do banco: vale para qualquer porta que tente começar.
     const direto = await db().from('appointments').update({ status: 'IN_PROGRESS' }).eq('id', ag1)
@@ -266,7 +264,7 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na clí
   test('cancelar o agendamento cancela os abertos; agendamento de plano não emite nada', async () => {
     const ag4 = await agendar(rede!, cliente)
     await db().from('appointments').update({ status: 'CANCELLED', cancellation_reason: 'e2e' }).eq('id', ag4)
-    expect((await documentos({ appointment_id: ag4 })).map(d => d.status)).toEqual(['CANCELADO'])
+    expect((await documentos({ appointment_id: ag4 })).map(d => d.status)).toEqual(['CANCELADO', 'CANCELADO'])
 
     const plano = await rede!.criarPlanoProposto('Docs', { semTermo: true })
     const ag5 = await agendar(rede!, plano.clientId, { treatment_plan_id: plano.planId })
