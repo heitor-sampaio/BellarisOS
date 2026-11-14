@@ -100,7 +100,7 @@ test('F17-5: lançar e dar baixa no crédito em 3x; acima do limite da clínica,
       amount: 1200, is_paid: false, payment_method: 'CREDIT_CARD', created_by: 'e2e',
     }).select('id').single<{ id: string }>()
     expect(error).toBeNull()
-    const baixa = await pedir(p, 'marcar_pago', { lancamento: pend!.id, vezes: 3 })
+    const baixa = await pedir(p, 'marcar_pago', { lancamento: pend!.id, forma: 'credito', vezes: 3 })
     await expect(baixa).toContainText('3x')
     await baixa.getByRole('button', { name: 'Confirmar' }).click()
     await expect(baixa.getByRole('status')).toContainText('Feito')

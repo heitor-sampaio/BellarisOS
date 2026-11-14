@@ -56,20 +56,23 @@ const data = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'Data inválid
 export const EntradaDoPagamento = z.discriminatedUnion('forma', [
   z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA, maquininha: MAQUININHA }),
   z.object({
-    // A23 da 14ª: o meio é o da ENTRADA — sem entrada, pode vir vazio (nada se recebe agora).
-    forma: z.literal('PARCELADO'), metodo: z.union([z.enum(METODOS), z.literal('')]),
+    // PDV8: o Crediário é a forma; o meio é o da ENTRADA — sem entrada, nenhum
+    // (nada se recebe agora: nulo, não um texto vazio).
+    forma: z.literal('PARCELADO'), metodo: z.enum(METODOS).nullish(),
     // C38: o limite é da rede (`recusaDasParcelasDaRede`); aqui, só o teto do registro.
     entrada: z.number().min(0), parcelas: z.number().int().min(1).max(TETO_DO_CREDIARIO), primeiroVencimento: data, bandeira: BANDEIRA, maquininha: MAQUININHA,
     /** D5: as vezes na maquininha da ENTRADA no crédito. */
     vezes: z.number().int().min(1).max(12).optional(),
   }),
-  z.object({ forma: z.literal('A_RECEBER'), metodo: z.enum(METODOS).nullable(), vencimento: data.nullable() }),
+  // PDV8: o "a receber" não tem meio — nada entra agora; a forma se escolhe
+  // quando o dinheiro entra (a baixa). Sai o "Meio de pagamento (opcional)".
+  z.object({ forma: z.literal('A_RECEBER'), metodo: z.null().optional(), vencimento: data.nullable() }),
 ]).refine(
   p => p.forma === 'A_RECEBER' || !p.vezes || p.vezes === 1 || p.metodo === 'CREDIT_CARD',
   'Parcelar na maquininha só no cartão de crédito.',
 ).refine(
-  p => p.forma !== 'PARCELADO' || p.metodo !== '' || !(p.entrada > 0),
-  'Escolha o meio de pagamento da entrada.',
+  p => p.forma !== 'PARCELADO' || !!p.metodo || !(p.entrada > 0),
+  'Escolha a forma da entrada.',
 )
 
 const centavos = (v: number) => Math.round(v * 100) / 100
@@ -94,7 +97,7 @@ export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotul
     return [{ amount: valor, payment_method: p.metodo, is_paid: true, due_date: null, notes: null, ...(vezes > 1 ? { cartao_vezes: vezes } : {}), ...comBandeira }]
   }
   if (p.forma === 'A_RECEBER') {
-    return [{ amount: valor, payment_method: p.metodo, is_paid: false, due_date: p.vencimento, notes: `${rotulo} — a receber` }]
+    return [{ amount: valor, payment_method: null, is_paid: false, due_date: p.vencimento, notes: `${rotulo} — a receber` }]
   }
   const entrada = centavos(Math.max(0, Math.min(p.entrada, valor)))
   const saldo = centavos(valor - entrada)
@@ -103,7 +106,7 @@ export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotul
     // D5: a entrada no crédito também em N vezes na maquininha (pago agora).
     const vezes = vezesNoCartao(p)
     saida.push({
-      amount: entrada, payment_method: p.metodo, is_paid: true, due_date: null, notes: `Entrada — ${rotulo}`, sufixo: 'entrada',
+      amount: entrada, payment_method: p.metodo ?? null, is_paid: true, due_date: null, notes: `Entrada — ${rotulo}`, sufixo: 'entrada',
       ...(vezes > 1 ? { cartao_vezes: vezes } : {}), ...comBandeira,
     })
   }

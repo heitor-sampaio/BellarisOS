@@ -78,11 +78,11 @@ test('o receber do plano: a entrada acima do total avisa junto do campo e não s
   await como(browser, async p => {
     const janela = await receberPlanoNoPdv(p, `/${slug}`, planId)
     await janela.getByRole('button', { name: /Confirmar plano/ }).click()
-    await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
+    await janela.getByRole('radio', { name: 'Crediário', exact: true }).click()
     await janela.getByLabel('Entrada', { exact: true }).fill('60')
     await expect(janela.getByRole('alert').filter({ hasText: 'passa do total do plano' })).toContainText('R$ 50,00')
-    // A37: a forma nasce vazia; escolhida, o que segura é a entrada.
-    await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+    // A37: a forma da entrada nasce vazia; escolhida, o que segura é a entrada.
+    await janela.getByLabel('Forma da entrada').selectOption('PIX')
     await janela.getByRole('button', { name: /Ir para a documentação/ }).click()
     await expect(janela.getByRole('button', { name: /Ir para a documentação/ }), 'continua no pagamento').toBeVisible()
   })
@@ -118,7 +118,7 @@ test('a venda no PDV: a entrada acima do total avisa, desliga o "Vender" e o ser
     const janela = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     const aba = janela.getByRole('button', { name: 'Produto' })
     if (await aba.count()) await aba.click()
-    await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
+    await janela.getByRole('radio', { name: 'Crediário', exact: true }).click()
     await janela.getByLabel('Entrada', { exact: true }).fill('150')
     await expect(janela.getByRole('alert').filter({ hasText: 'passa do total da venda' })).toContainText('R$ 100,00')
     await expect(janela.getByRole('button', { name: /^Vender por/ })).toBeDisabled()

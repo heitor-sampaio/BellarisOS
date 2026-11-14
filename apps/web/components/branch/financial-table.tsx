@@ -7,7 +7,6 @@ import {
 } from 'lucide-react'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
-import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -434,7 +433,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                       <td data-label="" style={{ padding: '13px 16px' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           {!tx.is_paid && !isReversed && canPay && (
-                            <button type="button" onClick={() => tx.type === 'INCOME' && (temBandeira(tx.payment_method) || !tx.payment_method)
+                            <button type="button" onClick={() => tx.type === 'INCOME'
                               ? setNoCartao({ id: tx.id, descricao: tx.description ?? 'Lançamento', metodo: tx.payment_method ?? null, valor: Number(tx.amount) })
                               : tx.type === 'EXPENSE' && !tx.payment_method
                               ? setDespesaAPagar({ id: tx.id, descricao: tx.description ?? 'Despesa', valor: Number(tx.amount) })

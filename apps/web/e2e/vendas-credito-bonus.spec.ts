@@ -90,7 +90,7 @@ test('A20: R$ 500 pagos + R$ 50 de bônus — o caixa e os pontos sobre o pago, 
     await dlg.getByLabel('Bônus (opcional)').fill('50')
     await expect(dlg.locator('[data-conta-do-bonus]')).toContainText(/R\$\s500,00 pagos \+ R\$\s50,00 de bônus/)
     await expect(dlg.locator('[data-conta-do-bonus]')).toContainText(/R\$\s550,00/)
-    await dlg.getByLabel('Meio de pagamento').selectOption('PIX')
+    await dlg.getByRole('radio', { name: 'Pix', exact: true }).click()
     // O caixa recebe só o pago.
     await dlg.getByRole('button', { name: /^Vender por R\$\s500,00/ }).click()
     await expect(p.getByText(/Venda registrada: Crédito na clínica/)).toBeVisible({ timeout: 15_000 })

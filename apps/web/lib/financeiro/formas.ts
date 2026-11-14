@@ -5,11 +5,16 @@
  * Puro: serve ao servidor e ao navegador.
  */
 
+// PDV8 (o Heitor, 13/11: "o crediario é uma forma de pagamento"): CREDIARIO
+// é a venda no crediário — não é meio de lançamento (as parcelas nascem sem
+// meio, D6); é o nome da forma na comanda (`pdv_comandas`) e no bloco do PDV.
 const CURTO: Record<string, string> = {
   CASH: 'Dinheiro', PIX: 'Pix', DEBIT_CARD: 'Débito', CREDIT_CARD: 'Crédito', INTERNAL_CREDIT: 'Crédito interno', BOLETO: 'Boleto',
+  CREDIARIO: 'Crediário', A_RECEBER: 'A receber',
 }
 const LONGO: Record<string, string> = {
   CASH: 'Dinheiro', PIX: 'Pix', DEBIT_CARD: 'Cartão de débito', CREDIT_CARD: 'Cartão de crédito', INTERNAL_CREDIT: 'Crédito interno', BOLETO: 'Boleto',
+  CREDIARIO: 'Crediário', A_RECEBER: 'A receber',
 }
 
 /**

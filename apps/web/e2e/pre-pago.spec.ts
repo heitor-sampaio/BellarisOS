@@ -113,7 +113,7 @@ test.describe.serial('procedimento pré-pago', () => {
       await expect(dlg.locator('[data-resumo-do-procedimento]')).toContainText('900,00')
       await dlg.getByRole('button', { name: '%', exact: true }).click()
       await dlg.getByLabel('Desconto', { exact: true }).fill('10')
-      await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
+      await dlg.getByRole('radio', { name: 'Crediário', exact: true }).click()
       await dlg.getByLabel('Entrada', { exact: true }).fill('210')
       await dlg.getByLabel('Parcelas').selectOption('2')
       await pagoNoPix(dlg)

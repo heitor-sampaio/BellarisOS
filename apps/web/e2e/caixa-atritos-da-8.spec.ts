@@ -96,7 +96,7 @@ test('A36 + A46: o crédito interno mostra o saldo e o que sobra, e a venda conc
     const produto = dlg.getByLabel('Produto', { exact: true })
     await produto.selectOption((await produto.locator('option', { hasText: SERUM }).getAttribute('value'))!)
     await dlg.getByLabel('Quantidade').fill('1')
-    await dlg.getByLabel('Meio de pagamento').selectOption('INTERNAL_CREDIT')
+    await dlg.getByRole('radio', { name: 'Crédito interno', exact: true }).click()
     // R$ 450 − R$ 180 já usados = R$ 270; depois desta venda de R$ 100, R$ 170.
     await expect(dlg.locator('[data-saldo-do-credito]')).toHaveText(/Crédito na clínica: R\$\s270,00 · depois deste pagamento: R\$\s170,00/)
     await euVendi(dlg)
@@ -113,7 +113,7 @@ test('A40: ao escolher o cartão e as vezes, a tela diz a taxa e o líquido; a l
     const produto = dlg.getByLabel('Produto', { exact: true })
     await produto.selectOption((await produto.locator('option', { hasText: SERUM }).getAttribute('value'))!)
     await dlg.getByLabel('Quantidade').fill('1')
-    await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
+    await dlg.getByRole('radio', { name: 'Crédito', exact: true }).click()
     await expect(dlg.locator('[data-valor-da-parcela]')).toContainText('parcela até')
     await dlg.getByLabel('Vezes no cartão').selectOption('3')
     const liquido = dlg.locator('[data-liquido-do-cartao]')

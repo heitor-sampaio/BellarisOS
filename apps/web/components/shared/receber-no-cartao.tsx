@@ -15,8 +15,7 @@ const FORMAS_DE_PAGAMENTO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as cons
  * "Marcar como pago" de um lançamento a receber no CARTÃO (r3-f13-01; o
  * Heitor, 2026-11-03: "Lembre-se, flexibilidade. Prazo por bandeira. Taxas
  * também configuráveis por bandeira."): antes de dar baixa, a bandeira,
- * opcional — vazia, vale a regra geral do prazo e das taxas. Fora do cartão a
- * baixa segue direta, como sempre.
+ * opcional — vazia, vale a regra geral do prazo e das taxas.
  *
  * F17-5 (o Heitor: "pode"): no CRÉDITO, também as vezes — até o "Parcelar no
  * crédito até" da clínica. É UM pagamento que a operadora deposita em N, com
@@ -25,10 +24,15 @@ const FORMAS_DE_PAGAMENTO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as cons
  * D6 da 6ª simulação: o lançamento SEM meio (a parcela do crediário da
  * clínica) pergunta a forma aqui — nasce vazia, é obrigatória (A37) — e, no
  * cartão, a bandeira e as vezes. Era dar baixa sem forma nenhuma.
+ *
+ * PDV8 (o Heitor, 13/11: "não existe pagamento sem forma de pagamento"): a
+ * forma é pedida SEMPRE — o meio combinado no lançamento vem escolhido, e
+ * quem recebe confirma ou troca (a cliente que ia pagar no Pix pagou em
+ * dinheiro).
  */
 export function ReceberNoCartao({ descricao, metodo, valor, pending, aoConfirmar, aoFechar }: {
   descricao: string
-  /** O meio do lançamento; nulo, a pessoa escolhe aqui. */
+  /** O meio combinado no lançamento: vem escolhido; nulo, nada escolhido. */
   metodo: string | null
   valor: number
   pending: boolean
@@ -37,32 +41,28 @@ export function ReceberNoCartao({ descricao, metodo, valor, pending, aoConfirmar
 }) {
   const [bandeira, setBandeira] = useState('')
   const [vezes, setVezes] = useState(1)
-  const [escolhida, setEscolhida] = useState('')
+  const [forma, setForma] = useState(() => (FORMAS_DE_PAGAMENTO as readonly string[]).includes(metodo ?? '') ? metodo! : '')
   // C75: "Qual maquininha?" (só com mais de uma na rede).
   const [maquininha, setMaquininha] = useState('')
   const opcoesDeVezes = useOpcoesDeVezes(maquininha)
-  const pergunta = !metodo
-  const forma = metodo ?? escolhida
   const faltaAMaquininha = useFaltaAMaquininha(forma, maquininha)
   const noCredito = forma === 'CREDIT_CARD'
-  const titulo = pergunta ? 'Receber' : 'Receber no cartão'
+  const titulo = forma === 'CREDIT_CARD' || forma === 'DEBIT_CARD' ? 'Receber no cartão' : 'Receber'
   return (
     <JanelaModal onFechar={aoFechar} rotulo={titulo} largura={420} travado={pending}>
       <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{titulo}</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          {descricao}{metodo ? <> · {rotuloDaForma(metodo)}</> : null}
+          {descricao}{metodo ? <> · combinado: {rotuloDaForma(metodo)}</> : null}
         </p>
-        {pergunta && (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <span className="field-label">Forma de pagamento *</span>
-            <select className="field" aria-label="Forma de pagamento" value={escolhida} disabled={pending}
-              onChange={e => { setEscolhida(e.target.value); setVezes(1); setBandeira('') }}>
-              <option value="">Selecione…</option>
-              {FORMAS_DE_PAGAMENTO.map(f => <option key={f} value={f}>{rotuloDaForma(f, null, { longo: true })}</option>)}
-            </select>
-          </label>
-        )}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <span className="field-label">Forma de pagamento *</span>
+          <select className="field" aria-label="Forma de pagamento" value={forma} disabled={pending}
+            onChange={e => { setForma(e.target.value); setVezes(1); setBandeira(''); setMaquininha('') }}>
+            <option value="">Selecione…</option>
+            {FORMAS_DE_PAGAMENTO.map(f => <option key={f} value={f}>{rotuloDaForma(f, null, { longo: true })}</option>)}
+          </select>
+        </label>
         <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={valor}
           maquininha={maquininha} aoMudarMaquininha={v => { setMaquininha(v); setVezes(1) }} />
         {noCredito && (
@@ -83,7 +83,7 @@ export function ReceberNoCartao({ descricao, metodo, valor, pending, aoConfirmar
         )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={aoFechar} disabled={pending}>Cancelar</button>
-          <button type="button" className="btn-primary" onClick={() => aoConfirmar(bandeira || null, noCredito ? vezes : 1, pergunta ? escolhida : null, maquininha || null)}
+          <button type="button" className="btn-primary" onClick={() => aoConfirmar(bandeira || null, noCredito ? vezes : 1, forma, maquininha || null)}
             disabled={pending || !forma || !!faltaAMaquininha} title={faltaAMaquininha ?? undefined}>
             {pending ? 'Recebendo…' : 'Confirmar recebimento'}
           </button>

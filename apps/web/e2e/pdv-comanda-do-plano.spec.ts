@@ -87,8 +87,7 @@ test('PDV4/PT1c: o PDV recebe o plano aceito — a forma, o contrato, e só ent�
     await janela.getByRole('button', { name: /Confirmar plano/ }).click()
     // Sem o "Receber no atendimento": aqui é o PDV, recebe-se.
     await expect(janela.getByRole('button', { name: 'Receber no atendimento' })).toHaveCount(0)
-    await janela.getByRole('button', { name: 'À vista' }).click()
-    await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+    await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await euVendiOPlano(p)
     await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
     // Sem agendamento aqui: as sessões se agendam depois, pelo plano.

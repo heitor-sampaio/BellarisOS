@@ -18,6 +18,7 @@ import { produtosAVenda } from '@/lib/produtos/leitura'
 import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
+import { parcelasEmAbertoDaCliente } from '@/lib/pdv/parcelas-da-cliente'
 
 /**
  * O PDV, o corpo dos dois portais (PDV1, a revisão do Heitor de 2026-11-13:
@@ -97,12 +98,14 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     // A arquivada não compra (princípio 3: a tela diz por quê, não volta calada à busca).
     else if (!cliente.is_active) novaVenda = { dados: null, aviso: `${cliente.name} está arquivada. Para vender, reative a cliente na ficha.` }
     else {
-      const [pacotes, procedimentos, produtos, equipe, aReceber] = await Promise.all([
+      const [pacotes, procedimentos, produtos, equipe, aReceber, emAberto] = await Promise.all([
         pacotesAVenda(ctx.tenantId!, unidadeId), procedimentosAVenda(ctx.tenantId!, unidadeId), produtosAVenda(ctx.tenantId!, unidadeId),
         equipeDaVenda(ctx.tenantId!, unidadeId, ctx.internalUserId, veComissaoDeTodos(ctx)),
         getAtendimentosAReceber({ tenantId: ctx.tenantId!, clienteId: cliente.id }),
+        // CX1: as parcelas do crediário e os a receber dela no caixa DESTA unidade.
+        parcelasEmAbertoDaCliente({ branchId: unidadeId, clienteId: cliente.id, fuso }),
       ])
-      novaVenda = { dados: { cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens, podeAgendar: can(ctx, 'agenda', 'MANAGE') } }
+      novaVenda = { dados: { cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens, podeAgendar: can(ctx, 'agenda', 'MANAGE'), emAberto } }
     }
   }
 

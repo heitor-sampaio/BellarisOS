@@ -8,7 +8,6 @@ import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
-import { temBandeira } from '@/lib/financeiro/bandeiras'
 
 /**
  * As ações de um lançamento na aba Financeiro da ficha da cliente — a mesma
@@ -82,7 +81,7 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
           aoConfirmar={receber} aoFechar={() => setAReceber(false)} />
       )}
       {mostraReceber && (
-        <button type="button" data-receber-na-ficha onClick={() => temBandeira(l.metodo) || !l.metodo ? setAReceber(true) : receber(null, 1, null)}
+        <button type="button" data-receber-na-ficha onClick={() => setAReceber(true)}
           style={{ ...botao, border: '1.5px solid var(--success)', background: 'var(--success-bg)', color: 'var(--success)' }}>
           <CheckCircle2 size={12} aria-hidden /> Receber
         </button>

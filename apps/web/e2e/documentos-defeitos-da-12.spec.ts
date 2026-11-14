@@ -57,8 +57,7 @@ test('D6: no checkout à vista, o contrato diz que a entrada, as parcelas e o ve
     // O receber do plano é no PDV (fase 3, PT1b) — quem recebe também aceita.
     const janela = await receberPlanoNoPdv(p, '/admin', planId)
     await janela.getByRole('button', { name: 'Confirmar plano' }).click()
-    await janela.getByRole('button', { name: 'À vista' }).click()
-    await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+    await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await euVendiOPlano(p)
     await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
     const contrato = janela.locator('[data-documento]').filter({ hasText: 'Contrato do plano' })

@@ -1784,8 +1784,11 @@ async function checkoutTreatmentPlanInterno(
 export type RecebimentoDoPlano =
   /** `vezes`: o cartão de crédito em N vezes, pago na hora (2026-10-20). */
   | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string; maquininha?: string }
-  /** `metodo`, `vezes`, `bandeira` e `maquininha` são da entrada (D5); as parcelas são da clínica, sem meio (D6). */
-  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number; maquininha?: string }
+  /**
+   * `metodo`, `vezes`, `bandeira` e `maquininha` são da entrada (D5); as
+   * parcelas são da clínica, sem meio (D6). PDV8: sem entrada, sem meio (nulo).
+   */
+  | { forma: 'PARCELADO'; metodo: string | null; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number; maquininha?: string }
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1845,8 +1848,12 @@ async function receberDoPlanoInterno(
   // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
   const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(recebimento), maquininhaDoPagamento(recebimento), metodoQuePagaAgora(recebimento))
   if (recusaDasVezes) return { error: recusaDasVezes }
-  // A37: a forma nasce vazia na tela; sem ela, não se recebe.
-  if (!recebimento.metodo) return { error: 'Escolha a forma de pagamento.' }
+  // A37: a forma nasce vazia na tela; sem ela, não se recebe. PDV8: no
+  // crediário a forma é o crediário, e o meio é só o da ENTRADA — sem entrada,
+  // nada se recebe agora (as parcelas pedem a forma quando forem pagas).
+  if (recebimento.forma === 'AVISTA' && !recebimento.metodo) return { error: 'Escolha a forma de pagamento.' }
+  if (recebimento.forma === 'PARCELADO' && recebimento.entrada > 0 && !recebimento.metodo) return { error: 'Escolha a forma da entrada.' }
+  if (recebimento.forma === 'PARCELADO' && !(recebimento.entrada > 0)) recebimento = { ...recebimento, metodo: null, vezes: undefined, bandeira: undefined, maquininha: undefined }
 
   // O agendamento só serve para registrar o recebimento no histórico dele — e
   // tem de ser DESTE plano (uma sessão dele ou a avaliação que o gerou). Antes

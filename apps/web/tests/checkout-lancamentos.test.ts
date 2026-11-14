@@ -14,8 +14,9 @@ describe('lançamentos de uma venda', () => {
     expect(l).toMatchObject({ amount: 300, is_paid: false, due_date: '2026-10-10T15:00:00.000Z' })
   })
   it('a receber SEM data: um lançamento em aberto, sem vencimento', () => {
+    // PDV8: o a receber nasce sem meio — mesmo o retrato de antes que tinha um.
     const [l] = lancamentosDoPagamento(300, { forma: 'A_RECEBER', metodo: 'PIX', vencimento: null }, 'Pacote')
-    expect(l).toMatchObject({ amount: 300, is_paid: false, due_date: null })
+    expect(l).toMatchObject({ amount: 300, is_paid: false, due_date: null, payment_method: null })
     expect(EntradaDoPagamento.safeParse({ forma: 'A_RECEBER', metodo: null, vencimento: null }).success).toBe(true)
   })
   it('entrada + parcelas: a entrada paga e CADA parcela um lançamento, no seu mês', () => {

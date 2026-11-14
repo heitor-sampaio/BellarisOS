@@ -130,7 +130,7 @@ test('A19: a taxa e o líquido da maquininha no Vender são de quem vê o financ
     await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
     await dlg.getByLabel('Produto', { exact: true }).selectOption(produto)
     await dlg.getByLabel('Quantidade').fill('1')
-    await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
+    await dlg.getByRole('radio', { name: 'Crédito', exact: true }).click()
     await dlg.getByLabel('Vezes no cartão').selectOption('3')
     return dlg
   }

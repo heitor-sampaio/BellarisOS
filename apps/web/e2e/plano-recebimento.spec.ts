@@ -78,11 +78,11 @@ test.describe.serial('receber o plano no atendimento', () => {
     const modal = page.locator('div')
       .filter({ has: page.getByText('Receber o plano de tratamento') })
       .filter({ has: page.getByRole('button', { name: 'Confirmar recebimento' }) }).last()
-    await modal.getByRole('button', { name: 'Entrada + parcelas' }).click()
-    // A37 (6ª simulação): a forma nasce vazia.
-    await modal.getByLabel('Forma de pagamento').selectOption('PIX')
+    await modal.getByRole('radio', { name: 'Crediário', exact: true }).click()
     const numeros = modal.locator('input[type="number"]')
     await numeros.nth(0).fill('100')   // Entrada (R$)
+    // A37 (6ª simulação) e PDV8: a forma da entrada nasce vazia.
+    await modal.getByLabel('Forma da entrada').selectOption('PIX')
     // C38 (F67): as parcelas são um seletor, até o limite do crediário da rede.
     await modal.getByLabel('Parcelas', { exact: true }).selectOption('2')
     const chamada = capturarAcao(page, corpo => corpo.includes(c!.plano) && corpo.includes(c!.appt))
@@ -117,7 +117,7 @@ test.describe.serial('receber o plano no atendimento', () => {
     await page.reload()
     await expect(page.getByText(/em aberto R\$\s100,00/)).toBeVisible()
     await page.getByRole('button', { name: /Receber R\$\s100,00/ }).click()
-    await page.getByLabel('Forma de pagamento').selectOption('PIX')
+    await page.getByRole('radio', { name: 'Pix', exact: true }).click()
     await page.getByRole('button', { name: 'Confirmar recebimento' }).click()
     await expect.poll(async () => {
       const { data } = await db.from('financial_transactions').select('parcela_numero')

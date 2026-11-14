@@ -17,11 +17,20 @@ export async function euVendi(janela: Locator) {
  * A forma de pagamento nasce VAZIA em toda tela de cobrança (A37 da 6ª
  * simulação: o Pix era o padrão calado). Nos specs que vendem pela tela e não
  * testam a forma, o Pix é escolhido aqui — só quando nada foi escolhido.
+ * PDV8: a forma é um bloco (rádio) ao lado do Crediário e do A receber.
  */
 export async function pagoNoPix(janela: Locator) {
-  const campo = janela.getByLabel('Meio de pagamento')
-  if (await campo.count() === 0) return
-  if (await campo.inputValue() === '') await campo.selectOption('PIX')
+  const formas = janela.getByRole('radiogroup', { name: /Forma de pagamento/ })
+  if (await formas.count() === 0) return
+  if (await formas.locator('[aria-checked="true"]').count() === 0) await formas.getByRole('radio', { name: 'Pix', exact: true }).click()
+  // No Crediário com entrada, a entrada pede a forma dela.
+  const daEntrada = janela.getByLabel('Forma da entrada')
+  if (await daEntrada.count() === 1 && await daEntrada.inputValue() === '') await daEntrada.selectOption('PIX')
+}
+
+/** PDV8: escolhe o bloco da forma (`Pix`, `Crediário`, `A receber`…) numa venda. */
+export async function escolherForma(janela: Locator, nome: string) {
+  await janela.getByRole('radiogroup', { name: /Forma de pagamento/ }).getByRole('radio', { name: nome, exact: true }).click()
 }
 
 /**

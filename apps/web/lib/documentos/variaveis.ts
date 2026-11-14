@@ -108,7 +108,9 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   // de colher a assinatura (`definirPagamentoDoContrato`) — até lá o contrato
   // fica INCOMPLETO, porque `pagamento.forma` é obrigatória.
   'pagamento.forma':       { grupo: 'Pagamento',   rotulo: 'Forma de pagamento — a frase completa (já diz a entrada, as parcelas e os vencimentos)', tipos: COM_PAGAMENTO, exemplo: 'Entrada de R$ 800,00 + 4x de R$ 1.000,00 no cartão de crédito' },
-  'pagamento.metodo':      { grupo: 'Pagamento',   rotulo: 'Meio de pagamento', tipos: COM_PAGAMENTO, exemplo: 'no cartão de crédito', opcional: true, vaziaQuando: 'no a receber no atendimento e nas parcelas sem entrada' },
+  // PDV8: não existe pagamento sem forma — o crediário diz "no crediário", e o
+  // a receber, "a receber". Só fica vazia quando o pagamento é no atendimento.
+  'pagamento.metodo':      { grupo: 'Pagamento',   rotulo: 'Forma de pagamento — só o nome (Pix, crediário…)', tipos: COM_PAGAMENTO, exemplo: 'no cartão de crédito', opcional: true, vaziaQuando: 'quando o pagamento fica para o atendimento' },
   'pagamento.entrada':     { grupo: 'Pagamento',   rotulo: 'Valor da entrada',  tipos: COM_PAGAMENTO, exemplo: 'R$ 800,00', opcional: true, vaziaQuando: 'sem entrada (à vista, cartão em vezes, a receber)' },
   'pagamento.parcelas':    { grupo: 'Pagamento',   rotulo: 'Número de parcelas', tipos: COM_PAGAMENTO, exemplo: '4', opcional: true, vaziaQuando: 'à vista de uma vez e no a receber' },
   'pagamento.valor_parcela': { grupo: 'Pagamento', rotulo: 'Valor da parcela',  tipos: COM_PAGAMENTO, exemplo: 'R$ 1.000,00', opcional: true, vaziaQuando: 'à vista de uma vez e no a receber' },

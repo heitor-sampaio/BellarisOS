@@ -112,11 +112,41 @@ comanda (PDV-P1).
 - **Os textos da fila do antigo checkout** (fase 4): "Planos propostos" / "a
   cliente vai pensar", com o link à página do plano
   (`/<portal>/planejamentos/<id>`). As rotas não mudaram.
-- Ainda por vir (o plano de adaptação, `docs/revisao.md`): o crediário como
-  forma, a parcela do crediário e os pontos dentro da comanda; vários itens
-  numa comanda.
+- **Não existe pagamento sem forma; o crediário é uma forma** (PDV8, fase 5a,
+  2026-11-14 — o Heitor, 13/11: "sempre tem que ter forma de pagamento, o
+  crediario é uma forma de pagamento, não existe pagamento sem forma de
+  pagamento"). Toda tela que vende ou recebe mostra as formas em blocos
+  (`FormasDePagamento`): Pix, Dinheiro, Débito, Crédito, Crédito interno, e
+  ao lado o **Crediário** e o **A receber** onde cabem. O bloco de um meio é o
+  à vista nele (sai o "À vista" × "Entrada + parcelas" × "A receber" e o
+  seletor de meio). No Crediário, a ENTRADA, se houver, pede a forma dela
+  ("Forma da entrada *"); sem entrada, nada entra agora — a venda é
+  registrada no Crediário e as parcelas nascem sem meio (D6). O "A receber"
+  não tem meio nenhum (o servidor recusa um: `EntradaDoPagamento`). A forma
+  se escolhe quando o dinheiro ENTRA: a parcela no PDV (abaixo) ou a baixa no
+  Financeiro (§9.6). Na comanda da venda e do plano, a forma é `CREDIARIO`
+  quando há parcelas do crediário e `A_RECEBER` quando não há meio e há algo
+  em aberto (`pdv_comandas`, migration `20261114600101`); no contrato,
+  "no crediário" / "no crediário, com a entrada no Pix" / "a receber" — o
+  `pagamento.metodo` nunca fica vazio. Prova:
+  `e2e/pdv-crediario-e-parcela.spec.ts`.
+- **A parcela se recebe no PDV** (CX1, fase 5a): escolhida a cliente na "Nova
+  venda", o PDV mostra o que ela tem em aberto NESTA unidade, sem agendamento
+  (`parcelasEmAbertoDaCliente`, `lib/pdv/parcelas-da-cliente.ts`: "Parcela 2
+  de 3 do crediário: R$ …", o vencimento — a vencida em destaque — e o
+  "A receber: R$ …" de uma venda a receber). "Receber esta parcela" abre a
+  janela com as formas (sem o Crediário), a bandeira, a maquininha e as vezes
+  do crédito; sem forma, o botão espera. A action é `receberParcelaNoPdv`
+  (`actions/pdv.ts`): `podeReceber`, a forma conferida (`''` → "Escolha a
+  forma de pagamento."; Crediário/A receber recusados), o id pela rede e pelo
+  alcance (`lancamentoAoAlcance`) e só receita; a baixa é a de sempre,
+  `marcarPagoCore` (uma gravação com a guarda de não pago e não estornado).
+- Ainda por vir (o plano de adaptação, `docs/revisao.md`): o crediário no
+  recebimento do atendimento avulso, os pontos dentro da comanda; vários
+  itens numa comanda.
 - Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`, `e2e/pdv-nova-venda.spec.ts`,
-  `e2e/pdv-comanda-do-plano.spec.ts`, `e2e/pdv-fechar-o-dia.spec.ts`.
+  `e2e/pdv-comanda-do-plano.spec.ts`, `e2e/pdv-fechar-o-dia.spec.ts`,
+  `e2e/pdv-crediario-e-parcela.spec.ts`.
 
 ### 9.3.1 Pacotes (2026-09-30)
 
@@ -1464,11 +1494,20 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `?receber=1` abre sozinho — e só abre, nunca confirma), o "Receber" do plano
   no check-in, o checkout do plano (nenhum meio marcado) e o `CamposDoPagamento`
   (o "Vender" de pacote, pré-pago e produto, e o pagamento do contrato); o
-  "Pagar" de uma receita sem meio no Financeiro (D6) também. O que se recebe
+  "Pagar" de uma receita no Financeiro também. O que se recebe
   agora (à vista, a entrada) não confirma sem ela — o botão espera, e o
-  servidor recusa ("Escolha a forma de pagamento."). O "a receber" segue com
-  a forma opcional ("Não informado"). Só o meio COMBINADO no contrato vem
-  escolhido. O Pix era o padrão calado: um clique gravou o peeling do Jorge
+  servidor recusa ("Escolha a forma de pagamento."). O "a receber" e o
+  crediário sem entrada não têm forma agora: ela se escolhe quando o dinheiro
+  entra (PDV8, 2026-11-14 — saiu o "Meio de pagamento (opcional)"). Só o meio
+  COMBINADO vem escolhido — no contrato, e na baixa da receita que nasceu com
+  um (quem recebe confirma ou troca).
+- **A baixa da RECEITA pede a forma sempre** (PDV8/CX2, 2026-11-14): o "Pagar"
+  de toda receita em aberto, nos dois financeiros e na ficha, abre "Receber"
+  (`ReceberNoCartao`; "Receber no cartão" quando a forma é um cartão) com a
+  forma — o meio combinado no lançamento já escolhido —, a bandeira, a
+  maquininha e as vezes. `marcarPagoCore` recusa receita sem forma ("Escolha
+  a forma de pagamento."), e o Copilot (`marcar_pago`) pergunta como foi
+  pago. A despesa que já tem forma segue baixando direto. O Pix era o padrão calado: um clique gravou o peeling do Jorge
   no Pix, que ele pagou no cartão. Nos specs, `pagoNoPix`
   (`e2e/apoio/vender.ts`) escolhe o Pix onde a forma não é o assunto. Prova:
   `e2e/vendas-forma-nasce-vazia.spec.ts`.
@@ -1921,20 +1960,22 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     o checkout e o check-in em 48, calados — `maximoDeParcelasDaRede`). A
     DESPESA não muda: parcelada de 2 a 48, recorrente de 2 a 60 (é a clínica
     pagando, não vendendo).
-  - **O crediário tem UM nome, diz o limite e só pede o meio com entrada**
-    (A23 da 14ª simulação, F75; princípio 7): a configuração dizia
-    "Crediário da clínica" e o Vender, "Entrada + parcelas" — a Wanda e a
-    Débora não ligavam um ao outro. Toda tela que vende nele diz
-    "Crediário (entrada + parcelas)" (`ROTULO_DO_CREDIARIO`,
-    `lib/financeiro/parcelas-do-crediario.ts`), e a lista das parcelas diz
-    "até 6x, o limite da clínica" (`limiteDoCrediarioEmTexto`). O meio é o da
-    ENTRADA ("Meio de pagamento da entrada", `rotuloDoMeioNoCrediario`): sem
-    entrada, nada se recebe agora e ele não é pedido — na tela
-    (`recusaDoPagamento`) e no servidor (`EntradaDoPagamento`), que só o
-    exigem com entrada ("Escolha o meio de pagamento da entrada."). A caixa
-    do plano no atendimento (o pagamento do dia) segue pedindo a forma: lá
-    sempre se recebe algo. Trava: `tests/crediario-nomes-e-entrada.test.ts`
-    (nenhuma tela escreve o nome velho à mão).
+  - **O crediário tem UM nome, diz o limite e só pede a forma da entrada**
+    (A23 da 14ª simulação, F75; princípio 7; PDV8, 2026-11-14): a
+    configuração dizia "Crediário da clínica" e o Vender, "Entrada +
+    parcelas" — a Wanda e a Débora não ligavam um ao outro. O Crediário é um
+    BLOCO de forma, ao lado dos meios, com o nome "Crediário"
+    (`ROTULO_DO_CREDIARIO`, `lib/financeiro/parcelas-do-crediario.ts`; na
+    comanda, `rotuloDaForma('CREDIARIO')`), e a lista das parcelas diz "até
+    6x, o limite da clínica" (`limiteDoCrediarioEmTexto`). Com entrada, ela
+    pede a forma dela ("Forma da entrada *"); sem entrada, nada se recebe
+    agora e forma nenhuma é pedida — na tela (`recusaDoPagamento`) e no
+    servidor (`EntradaDoPagamento`: o meio é um meio ou nulo, nunca `''`;
+    com entrada e sem meio, "Escolha a forma da entrada."). Vale para o
+    PDV, o receber do plano no PDV e a caixa do plano no atendimento
+    (`receberDoPlanoInterno` recusa igual). Trava:
+    `tests/crediario-nomes-e-entrada.test.ts` (nenhuma tela escreve o nome
+    velho à mão).
   - **A tela diz o limite e o valor da parcela** (A47 da 5ª simulação):
     junto de todo "Vezes no cartão" (venda de pacote, pré-pago e produto, o
     recebimento do avulso e do plano, o checkout), "Até 4x no crédito" e,
@@ -2421,6 +2462,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Prender ver ou agendar as sessões do pacote, do plano ou do pré-pago à unidade da VENDA (é alcancaOTratamento; o dinheiro é alcancaOCaixaDoTratamento — lib/tratamento/alcance.ts, F73)
 
 ❌ Gravar "paga" na comanda (a situação é o lançamento vivo pago da venda) ou criar a comanda do atendimento fora do gatilho comanda_do_atendimento
+
+❌ Receber dinheiro sem forma (PDV8): a baixa da receita, a entrada do crediário e a parcela no PDV pedem a forma — o crediário sem entrada e o "a receber" é que nascem sem meio, e nunca com `''`
 
 ```
 ❌ Criar FinancialTransaction fora de um Appointment concluído sem justificativa

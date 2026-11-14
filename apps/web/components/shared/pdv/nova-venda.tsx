@@ -8,6 +8,8 @@ import { buscarClientesParaVender } from '@/actions/pdv'
 import { VendaNaTela, type ProcedimentoAVenda, type ProdutoAVenda, type MembroDaVenda } from '@/components/shared/vender'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
 import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
+import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
+import { ParcelasEmAberto } from '@/components/shared/pdv/parcelas-em-aberto'
 
 /** O que a "Nova venda" precisa, com a cliente escolhida. */
 export interface VendaDoPdv {
@@ -18,6 +20,8 @@ export interface VendaDoPdv {
   equipe:        MembroDaVenda[]
   aReceber:      AtendimentoAReceber[]
   podeAgendar:   boolean
+  /** CX1: as parcelas do crediário e os a receber dela no caixa desta unidade. */
+  emAberto:      ParcelaEmAberto[]
 }
 
 /**
@@ -26,8 +30,10 @@ export interface VendaDoPdv {
  * produto ou crédito na rede — e como paga. A cliente escolhida vai para a URL
  * (`?cliente=`), que é o que a busca e o inbox usam para chegar aqui com ela.
  */
-export function NovaVenda({ unidadeId, venda, aviso, unidades, hrefDaCliente, hrefCancelar, aoVender }: {
+export function NovaVenda({ unidadeId, slugDaUnidade, venda, aviso, unidades, hrefDaCliente, hrefCancelar, aoVender }: {
   unidadeId:     string
+  /** O endereço da unidade: receber a parcela revalida as telas dela. */
+  slugDaUnidade: string
   venda:         VendaDoPdv | null
   /** Por que a cliente da URL não está na venda (a arquivada). */
   aviso?:        string
@@ -79,6 +85,8 @@ export function NovaVenda({ unidadeId, venda, aviso, unidades, hrefDaCliente, hr
                 Trocar a cliente
               </Link>
             </div>
+            {/* CX1: a cliente que veio pagar a parcela recebe aqui, antes de vender. */}
+            <ParcelasEmAberto parcelas={venda.emAberto} slug={slugDaUnidade} />
             <VendaNaTela key={venda.cliente.id} clienteId={venda.cliente.id} branchId={unidadeId}
               pacotes={venda.pacotes} procedimentos={venda.procedimentos} produtos={venda.produtos} equipe={venda.equipe}
               podeAgendar={venda.podeAgendar} aReceber={venda.aReceber} onFim={aoVender} />

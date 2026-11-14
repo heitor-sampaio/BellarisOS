@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
-import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix, escolherForma } from './apoio/vender'
 
 /**
  * A VENDA DE PRODUTO (D4, decisão do Heitor, 2026-10-29): "Produto entra no
@@ -155,7 +155,7 @@ test.describe.serial('a venda de produto', () => {
       await dlg.getByLabel('Quantidade').fill('3')
       await expect(dlg.locator('[data-resumo-do-produto]')).toContainText('447,00')
       await dlg.getByLabel('Desconto', { exact: true }).fill('47')
-      await dlg.getByLabel('Meio de pagamento').selectOption('PIX')
+      await dlg.getByRole('radio', { name: 'Pix', exact: true }).click()
       await pagoNoPix(dlg)
       await euVendi(dlg)
       await dlg.getByRole('button', { name: /^Vender por R\$\s400,00$/ }).click()
@@ -225,7 +225,7 @@ test.describe.serial('a venda de produto', () => {
       await expect(dlg.locator('[data-pontos-do-produto]')).toContainText('gera pontos de fidelidade quando for paga')
       await dlg.getByLabel('Produto', { exact: true }).selectOption(serum)
       await dlg.getByLabel('Quantidade').fill('1')
-      await dlg.getByLabel('Meio de pagamento').selectOption('CASH')
+      await dlg.getByRole('radio', { name: 'Dinheiro', exact: true }).click()
       await pagoNoPix(dlg)
       await euVendi(dlg)
       await dlg.getByRole('button', { name: /^Vender por R\$\s149,00$/ }).click()
@@ -268,12 +268,12 @@ test.describe.serial('a venda de produto', () => {
     const mais = await db().rpc('estoque_entrada', { p_produto: serum, p_unidade: rede!.branchId, p_quantidade: 5, p_custo: 70, p_observacao: 'e2e', p_lote: 'C', p_validade: null, p_autor: 'e2e' })
     expect(mais.error).toBeNull()
     await como(browser, async p => {
-      for (const forma of ['À vista', 'A receber']) {
+      // PDV8: a forma é um bloco — Pix (paga) e A receber (em aberto).
+      for (const forma of ['Pix', 'A receber']) {
         const dlg = await abrirVendaDeProduto(p)
         await dlg.getByLabel('Produto', { exact: true }).selectOption(serum)
         await dlg.getByLabel('Quantidade').fill('1')
-        await dlg.getByRole('button', { name: forma, exact: true }).click()
-        await pagoNoPix(dlg)
+        await escolherForma(dlg, forma)
         await euVendi(dlg)
         await dlg.getByRole('button', { name: /^Vender por R\$\s149,00$/ }).click()
         await expect(dlg).toBeHidden()

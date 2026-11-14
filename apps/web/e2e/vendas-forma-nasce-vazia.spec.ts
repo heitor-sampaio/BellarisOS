@@ -88,17 +88,16 @@ test('o receber do plano no PDV e a venda no PDV: o meio nasce vazio e o botão 
     // O receber do plano é no PDV (fase 3, PT1b).
     const janela = await receberPlanoNoPdv(p, '/admin', pl!.id)
     await janela.getByRole('button', { name: 'Confirmar plano' }).click()
-    await janela.getByRole('button', { name: 'À vista', exact: true }).click()
-    // Nenhum meio escolhido: nenhum botão de meio marcado, e seguir é recusado.
-    await expect(janela.locator('[data-meio-do-checkout][aria-pressed="true"]')).toHaveCount(0)
+    // Nenhuma forma escolhida: nenhum bloco marcado, e seguir é recusado.
+    await expect(janela.getByRole('radio', { checked: true })).toHaveCount(0)
     await expect(janela.getByRole('button', { name: 'Ir para a documentação' })).toBeDisabled()
-    await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+    await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await expect(janela.getByRole('button', { name: 'Ir para a documentação' })).toBeEnabled()
 
     // A venda no PDV (procedimento pré-pago; era o "Vender" da ficha até o PDV7): a forma nasce vazia.
     const dlg = await abrirVendaNoPdv(p, '/admin', c, rede!.branchId)
     await dlg.getByLabel('Procedimento', { exact: true }).selectOption(rede!.procedureId)
-    await expect(dlg.getByLabel('Meio de pagamento')).toHaveValue('')
+    await expect(dlg.getByRole('radiogroup', { name: /Forma de pagamento/ }).getByRole('radio', { checked: true })).toHaveCount(0)
     await expect(dlg.getByRole('button', { name: /Vender por/ })).toBeDisabled()
   })
   expect((await db().from('financial_transactions').select('id').eq('treatment_plan_id', pl!.id)).data ?? [], 'nada recebido').toEqual([])
@@ -122,7 +121,7 @@ test('o "Receber" do plano no check-in: a forma nasce vazia', async ({ browser }
     await p.goto(`/${slug}/agenda/${ap!.id}`)
     await p.getByRole('button', { name: /Receber R\$/ }).click()
     const dlg = p.getByRole('dialog', { name: 'Receber o plano de tratamento' })
-    await expect(dlg.getByLabel('Forma de pagamento')).toHaveValue('')
+    await expect(dlg.getByRole('radio', { checked: true })).toHaveCount(0)
     await expect(dlg.getByRole('button', { name: 'Confirmar recebimento' })).toBeDisabled()
   })
 })

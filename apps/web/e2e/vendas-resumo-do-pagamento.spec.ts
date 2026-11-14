@@ -48,19 +48,18 @@ test.afterAll(async () => {
   await gestor?.limpar(); await rede?.limpar()
 })
 
-test('A46: "Entrada + parcelas" mostra o resumo antes de vender; A47: o crédito diz "até 4x" e o valor da parcela', async ({ browser }) => {
+test('A46: o Crediário mostra o resumo antes de vender; A47: o crédito diz "até 4x" e o valor da parcela', async ({ browser }) => {
   await como(browser, async p => {
     const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
     await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
 
-    await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
+    await dlg.getByRole('radio', { name: 'Crediário', exact: true }).click()
     await dlg.getByLabel('Entrada', { exact: true }).fill('300')
     await dlg.getByLabel('Parcelas').selectOption('3')
     await expect(dlg.locator('[data-resumo-do-pagamento]')).toHaveText(/Entrada R\$\s300,00 \+ 3× R\$\s1\.000,00/)
 
-    await dlg.getByRole('button', { name: 'À vista' }).click()
-    await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
+    await dlg.getByRole('radio', { name: 'Crédito', exact: true }).click()
     const vezes = dlg.getByLabel('Vezes no cartão')
     await expect(vezes.locator('option')).toHaveCount(4)
     // A40 da 8ª: à vista, a linha diz para que serve.

@@ -13,7 +13,6 @@ import { FinancialTransactionModal } from '@/components/branch/financial-transac
 import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
-import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
@@ -809,7 +808,7 @@ export function AdminFinancialView({
                     <td data-label="" style={{ padding: '11px 16px', width: 1 }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap', minWidth: 120 }}>
                         {!t.is_paid && !estornada && canPay && (
-                          <button type="button" onClick={() => t.type === 'INCOME' && (temBandeira(t.payment_method) || !t.payment_method)
+                          <button type="button" onClick={() => t.type === 'INCOME'
                             ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method ?? null, valor: Number(t.amount) })
                             : t.type === 'EXPENSE' && !t.payment_method
                             ? setDespesaAPagar({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Despesa', valor: Number(t.amount) })

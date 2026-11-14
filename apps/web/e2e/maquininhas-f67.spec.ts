@@ -178,8 +178,7 @@ test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e esp
     // O receber do plano (no PDV desde a fase 3, PT1b).
     const janela = await receberPlanoNoPdv(p, '/admin', pl!.id)
     await janela.getByRole('button', { name: 'Confirmar plano' }).click()
-    await janela.getByRole('button', { name: 'À vista', exact: true }).click()
-    await janela.getByRole('button', { name: 'Crédito', exact: true }).click()
+    await janela.getByRole('radio', { name: 'Crédito', exact: true }).click()
     await expect(janela.getByLabel('Qual maquininha?')).toBeVisible()
     await expect(janela.getByRole('button', { name: 'Ir para a documentação' })).toBeDisabled()
     await janela.getByLabel('Qual maquininha?').selectOption({ label: 'Maquininha' })
@@ -188,7 +187,7 @@ test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e esp
     // A venda no PDV (era o "Vender" da ficha até o PDV7; pacote, pré-pago, produto, crédito e o contrato usam os mesmos campos).
     const vender = await abrirVendaNoPdv(p, '/admin', c, rede!.branchId)
     await vender.getByLabel('Procedimento', { exact: true }).selectOption(rede!.procedureId)
-    await vender.getByLabel('Meio de pagamento').selectOption('DEBIT_CARD')
+    await vender.getByRole('radio', { name: 'Débito', exact: true }).click()
     await expect(vender.getByLabel('Qual maquininha?')).toBeVisible()
     await expect(vender.getByRole('button', { name: /Vender por/ })).toBeDisabled()
     await vender.getByLabel('Qual maquininha?').selectOption({ label: 'Stone' })
@@ -211,7 +210,7 @@ test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e esp
     await p.goto(`/${slug}/agenda/${chegou!.id}`)
     await p.getByRole('button', { name: /Receber R\$/ }).click()
     const dlg = p.getByRole('dialog', { name: 'Receber o plano de tratamento' })
-    await dlg.getByLabel('Forma de pagamento').selectOption('DEBIT_CARD')
+    await dlg.getByRole('radio', { name: 'Débito', exact: true }).click()
     await expect(dlg.getByRole('button', { name: 'Confirmar recebimento' })).toBeDisabled()
     await dlg.getByLabel('Qual maquininha?').selectOption({ label: 'Stone' })
     await expect(dlg.getByRole('button', { name: 'Confirmar recebimento' })).toBeEnabled()

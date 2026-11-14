@@ -45,6 +45,8 @@ export const ISOLADOS = [
   // A F74 (configurações, menu, equipe e estoque — a 14ª simulação).
   'configuracoes-atritos-da-14.spec.ts',
   'estoque-atritos-da-14.spec.ts',
+  // O Bloco Estoque do plano de adaptação (2026-11-14): marcas, fornecedores, Insumo e Venda direta.
+  'estoque-marcas-e-fornecedores.spec.ts',
   'estoque-defeitos-da-12.spec.ts',
   'estoque-atritos-da-12.spec.ts',
   'fidelidade-atritos-da-12.spec.ts',
@@ -172,6 +174,8 @@ export const ISOLADOS = [
   'fechamento-escopo-proprio.spec.ts',
   // O PDV, fase 4 (CX4–CX6): o Fechamento do dia no PDV, numa rede própria.
   'pdv-fechar-o-dia.spec.ts',
+  // O PDV, fase 5a (PDV8 e CX1): o crediário como forma e a parcela no PDV.
+  'pdv-crediario-e-parcela.spec.ts',
   'ficha-acesso-sem-cpf.spec.ts',
   'ficha-cadastro-atritos-da-7.spec.ts',
   'ficha-cadastro-documento.spec.ts',

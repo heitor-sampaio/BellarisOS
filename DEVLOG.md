@@ -1774,6 +1774,106 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — O PDV, fase 5a: o crediário é uma forma e a parcela se recebe no PDV
+
+PDV8 e o resto do CX1 do plano de adaptação (`docs/revisao.md`). O Heitor,
+13/11: "sempre tem que ter forma de pagamento, o crediario é uma forma de
+pagamento, não existe pagamento sem forma de pagamento". Regra em
+`docs/regras/vendas-financeiro.md` (o PDV e §9.6).
+- **As formas em blocos** em toda tela que vende ou recebe — o PDV (venda
+  nova), o receber do plano no PDV (`checkout-wizard`), a caixa do plano no
+  atendimento e o pagamento do contrato (`CamposDoPagamento`): Pix, Dinheiro,
+  Débito, Crédito, Crédito interno, e ao lado o **Crediário** e o **A
+  receber** onde cabem (`FormasDePagamento`). O bloco de um meio é o à vista
+  nele; saíram o "À vista" × "Entrada + parcelas" × "A receber" e o seletor de
+  meio. No Crediário, a entrada pede "Forma da entrada *"; sem entrada nada
+  entra agora e nada é pedido.
+- **Sem forma vazia**: saíram o `rotuloDoMeioNoCrediario`, o `metodo: ''` de
+  `EntradaDoPagamento` (o meio é um meio ou nulo; com entrada e sem meio,
+  "Escolha a forma da entrada."), o meio do "a receber" (o servidor recusa
+  um; o lançamento nasce sem) e o "Meio de pagamento (opcional)". O contrato
+  diz "no crediário" / "no crediário, com a entrada no Pix" / "a receber". A
+  comanda diz "Crediário" ou "A receber" em vez de "Sem forma de pagamento"
+  (`pdv_comandas`, migration `20261114600101_pdv_crediario_e_forma`, aplicada
+  pelo MCP; só a coluna `forma` mudou).
+- **CX1 — a parcela no PDV**: escolhida a cliente na "Nova venda", o PDV
+  lista o que ela tem em aberto nesta unidade (`parcelasEmAbertoDaCliente`):
+  "Parcela 2 de 3 do crediário: R$ …", o vencimento (a vencida em destaque) e
+  "Receber esta parcela", que pede a forma (sem o Crediário), a bandeira, a
+  maquininha e as vezes. A action `receberParcelaNoPdv` confere quem recebe
+  (`podeReceber`), a forma, a rede e a unidade (`lancamentoAoAlcance`) e só
+  receita, e baixa por `marcarPagoCore`.
+- **A baixa da receita pede a forma sempre** (a parte do CX2): o "Pagar" de
+  toda receita em aberto, nos dois financeiros e na ficha, abre "Receber" com
+  o meio combinado já escolhido; `marcarPagoCore` recusa receita sem forma, e
+  o Copilot (`marcar_pago`) pergunta como foi pago.
+- Decisões pelos princípios: o "A receber" segue como forma da venda (é uma
+  venda sem dinheiro agora, princípio 1) e não leva meio; a baixa traz o meio
+  combinado escolhido (princípio 7) mas deixa trocar — quem recebe diz como o
+  dinheiro entrou; a lista do PDV mostra só o que é da unidade do PDV e sem
+  agendamento (o do atendimento se recebe na comanda dele); "Crédito interno"
+  ficou com o nome de hoje (renomear é do bloco do Crédito na rede).
+- TDD: `e2e/pdv-crediario-e-parcela.spec.ts` falhou pelo que faltava — os
+  blocos de forma não existiam (o rádio "Pix"/"A receber" não achado), o
+  crediário sem entrada e sem meio era recusado pelo schema velho, o
+  `receberParcelaNoPdv` não existia, e a baixa de uma receita com meio Pix
+  passava sem perguntar a forma.
+- Specs vizinhos passaram para os blocos (rádio): os do PDV, vendas,
+  checkout do plano, comissões, documentos, maquininhas, plano; os que dão
+  baixa pela action passam a forma. `pagoNoPix` também escolhe a forma da
+  entrada no crediário.
+- Fica: o crediário no recebimento do atendimento avulso
+  (`confirmar_pagamento_do_atendimento` grava um lançamento só); os pontos na
+  comanda (FD2) e vários itens numa comanda (fase 5b).
+
+### 2026-11-14 — Bloco Estoque: marcas e fornecedores, Insumo e Venda direta
+
+O "Bloco: Estoque" do plano de adaptação (`docs/revisao.md`), itens E1/E5,
+E4/E5, E6/E3, E2, E10, E14 e E15. Regra em `docs/regras/atendimento.md` §9.5.
+- **Três cadastros de texto livre** — Categorias, Marcas (nova, tabela
+  `marcas`) e Fornecedores —, com a mesma janela ao lado no Estoque dos dois
+  portais: criar, renomear, excluir (`CadastroDoEstoque`; actions
+  `criarItemDoEstoque`/`renomearItemDoEstoque`/`excluirItemDoEstoque`).
+- **Quem tem o Estoque em Gerenciar, e só isso**: a `recusaDaConfigDaClinica`
+  saiu das categorias e dos fornecedores (a C71 e a regra da D4/C76 foram
+  revistas; `CLAUDE.md` §11 e `plataforma.md` ajustados).
+- **Campo com busca** (`CampoDaLista`): categoria no produto; marca e
+  fornecedor no estoque inicial e na Entrada (a do leitor também), com
+  "+ Nova …" ali mesmo.
+- **Insumo e Venda direta** são dois checkboxes; o banco guarda o mesmo
+  `products.uso` (o contrato que o PDV lê — nenhum arquivo do PDV mudou).
+- **O produto não tem marca nem fornecedor**; a entrada tem os dois
+  (`stock_movements.marca_id`/`marca`; `estoque_entrada` de 11 argumentos,
+  `estoque_inicial` de 12; o Copilot leva a marca em texto).
+- **Os três filtros** na lista (categoria, marca, fornecedor); marca e
+  fornecedor = o produto que teve alguma entrada deles
+  (`estoque_marcas_e_fornecedores_dos_produtos`).
+- **Banco** (migration `20261114500101`, aplicada pelo MCP; DESTRUTIVA,
+  autorizada pelo Heitor, sem migrar dados — o banco será zerado): sai
+  `products.supplier`, `products.fornecedor_id`, o gatilho do produto e
+  `fornecedores.arquivado_em`; `private.fornecedor_da_lista` virou
+  `private.marca_e_fornecedor_da_lista` (no movimento).
+- **Decisões pelos princípios** (anotadas para o Heitor):
+  - o produto novo nasce com Insumo marcado; nenhum dos dois é recusado
+    ("o produto não estaria em lugar nenhum");
+  - marca e fornecedor da entrada são opcionais (princípio 7);
+  - excluir é excluir (não há mais arquivar): o produto da categoria fica sem
+    categoria, e a entrada guarda o NOME da marca/fornecedor que tinha
+    (princípio 3: o Histórico continua dizendo de onde veio); sai do filtro;
+  - renomear a categoria leva o nome aos produtos; o nome já gravado nas
+    entradas fica (é o histórico);
+  - o "+ Nova …" do campo cria na hora (só quem tem Gerenciar chega lá);
+  - o filtro de marca/fornecedor conta a entrada (compra) não desfeita;
+  - os três filtros ficam sempre à vista.
+- **Fora**: E11 e E13 dependem do bloco Equipe ("a pessoa em mais de uma
+  unidade").
+- Saíram `CampoFornecedor`, `FornecedoresModal`, `ProductCategoryModal` e o
+  `AdminProductTable` (sem uso).
+- Prova: `e2e/estoque-marcas-e-fornecedores.spec.ts` (6 testes); os vizinhos
+  que diziam a regra antiga mudaram (C71 em `estoque-cadastro-f66`, C76 em
+  `estoque-movimentos-f66`, A12/A14 em `estoque-atritos-da-14`, A37 em
+  `estoque-uso-da-10`, A54 em `estoque-atritos-da-11`, `estoque-uso-do-produto`).
+
 ### 2026-11-14 — O PDV, fase 4: o Fechamento do dia no PDV
 
 CX4–CX6 do plano de adaptação (`docs/revisao.md`).

@@ -224,8 +224,7 @@ test.describe.serial('o cartão por bandeira', () => {
       const dlg = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
       await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacote)
-      await dlg.getByRole('button', { name: 'À vista', exact: true }).click()
-      await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
+      await dlg.getByRole('radio', { name: 'Crédito', exact: true }).click()
       await dlg.getByLabel('Vezes no cartão').selectOption('3')
       await dlg.getByLabel('Bandeira').selectOption({ label: 'Elo' })
       await pagoNoPix(dlg)
@@ -665,10 +664,10 @@ test.describe.serial('o cartão por bandeira', () => {
     ])
     // O servidor recusa acima do limite, sem dar baixa.
     await como(browser, gestor!, async p => {
-      const r = await chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', `/${slug}/financeiro`, [noDebito, slug, null, 2])
+      const r = await chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', `/${slug}/financeiro`, [noDebito, slug, null, 2, 'DEBIT_CARD'])
       expect(r.texto, 'no débito não há vezes').toMatch(/só no crédito/)
       const outro = await pendente(`${PREFIXO} Pendente 12x ${marca}`, 'CREDIT_CARD')
-      const acima = await chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', `/${slug}/financeiro`, [outro, slug, null, 12])
+      const acima = await chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', `/${slug}/financeiro`, [outro, slug, null, 12, 'CREDIT_CARD'])
       expect(acima.texto).toMatch(/3x/)
       expect((await db().from('financial_transactions').select('is_paid').eq('id', outro).single()).data?.is_paid, 'nada baixado').toBe(false)
     })

@@ -126,8 +126,7 @@ test('o checkout diz a comissão de venda de quem vendeu, e "Quem vendeu" volta 
     // C42: a regra antes de vender — a da clínica, porque o consultor não tem a dele.
     await expect(janela.locator('[data-comissao-da-venda]'))
       .toHaveText(`Comissão de venda de ${nomeDoConsultor}: 5% do vendido — da clínica. Sai quando a venda estiver paga inteira.`)
-    await janela.getByRole('button', { name: 'À vista' }).click()
-    await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+    await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
     await expect(janela.getByRole('button', { name: 'Receber o plano' })).toBeEnabled()
   })

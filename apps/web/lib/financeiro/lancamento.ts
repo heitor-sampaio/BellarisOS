@@ -152,7 +152,10 @@ export async function marcarPagoCore(
   if (bandeira && !ehBandeira(bandeira)) return { error: 'Bandeira do cartão desconhecida: use Visa, Mastercard, Elo, Amex, Hipercard ou Outras.' }
   // C34 (F67): o lançamento sem meio (a parcela do crediário, a despesa sem
   // forma) só se baixa dizendo a forma — ficava pago como "Não informado".
-  if (!forma && !tx.payment_method) return { error: 'Escolha a forma de pagamento.' }
+  // PDV8 (o Heitor, 13/11: "não existe pagamento sem forma de pagamento"): a
+  // RECEITA pede a forma sempre, também a que nasceu com um meio combinado —
+  // quem recebe diz como o dinheiro entrou de fato.
+  if (!forma && (tx.type === 'INCOME' || !tx.payment_method)) return { error: 'Escolha a forma de pagamento.' }
   // A14 da 9ª: o Boleto é forma da despesa.
   if (forma === 'BOLETO' && tx.type !== 'EXPENSE') return { error: 'Boleto é forma de pagar uma despesa.' }
   const daBandeira = bandeiraDoPagamento(forma ?? tx.payment_method, bandeira)

@@ -193,7 +193,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
 
         <div className="card" data-comanda-aberta={!novaVenda && escolhida ? escolhida.comanda.id : undefined}>
           {novaVenda ? (
-            <NovaVenda unidadeId={unidadeId} venda={novaVenda.dados} aviso={novaVenda.aviso}
+            <NovaVenda unidadeId={unidadeId} slugDaUnidade={slugDaUnidade} venda={novaVenda.dados} aviso={novaVenda.aviso}
               unidades={novaVenda.perguntaAUnidade ? unidades.map(u => ({ ...u, href: hrefNaUnidade(u.id) })) : null}
               hrefDaCliente={id => href(id ? { nova: '1', cliente: id } : { nova: '1' })}
               hrefCancelar={href({})}

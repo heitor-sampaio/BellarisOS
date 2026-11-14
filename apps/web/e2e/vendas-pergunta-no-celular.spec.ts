@@ -47,7 +47,7 @@ test.afterAll(async () => {
 test('A1: sem "Quem vendeu", a pergunta do Vender aparece inteira na tela do celular, e "Vender assim" vende', async ({ browser }) => {
   await noCelular(browser, dona!, async p => {
     const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
-    await dlg.getByLabel('Meio de pagamento').selectOption('PIX')
+    await dlg.getByRole('radio', { name: 'Pix', exact: true }).click()
     await expect(dlg.getByLabel('Quem vendeu')).toHaveValue('')
     await dlg.getByRole('button', { name: /^Vender por R\$\s220,00/ }).click()
     const pergunta = dlg.getByRole('alertdialog', { name: 'Confirmar a venda' })

@@ -148,10 +148,10 @@ test.describe.serial('checkout de plano', () => {
       await janela.getByRole('button', { name: 'Confirmar plano' }).click()
 
       // Pagamento ANTES da documentação: o contrato cita o pagamento.
-      await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      // A37 (6ª simulação): o meio nasce vazio.
-      await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+      await janela.getByRole('radio', { name: 'Crediário', exact: true }).click()
       await janela.getByLabel('Entrada', { exact: true }).fill('100')
+      // PDV8: com entrada, a entrada pede a forma dela (nasce vazia — A37).
+      await janela.getByLabel('Forma da entrada').selectOption('PIX')
       await euVendiOPlano(page)
       await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
 
@@ -286,9 +286,9 @@ test.describe.serial('checkout de plano', () => {
 
       const janela = await receberPlanoNoPdv(page, '/admin', planId)
       await janela.getByRole('button', { name: 'Confirmar plano' }).click()
-      await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+      await janela.getByRole('radio', { name: 'Crediário', exact: true }).click()
       await janela.getByLabel('Entrada', { exact: true }).fill('100')
+      await janela.getByLabel('Forma da entrada').selectOption('PIX')
       await euVendiOPlano(page)
       await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
       const aviso = page.locator('[data-substitui-contrato]')
@@ -358,11 +358,11 @@ test.describe.serial('checkout de plano', () => {
       await expect(frase).toContainText(/Entra neste checkout: R\$\s180,00 cobrados junto/)
       await expect(janela.getByText('(com o atendimento de hoje)')).toBeVisible()
       // "A receber": não entra, e diz onde receber.
-      await janela.getByRole('button', { name: 'A receber', exact: true }).click()
+      await janela.getByRole('radio', { name: 'A receber', exact: true }).click()
       await expect(frase).toHaveAttribute('data-hoje-entra', 'nao')
       await expect(frase).toHaveText('Não entra neste checkout: receba pela tela do atendimento.')
-      // De volta ao à vista: entra de novo.
-      await janela.getByRole('button', { name: 'À vista', exact: true }).click()
+      // De volta ao à vista (o bloco de um meio — PDV8): entra de novo.
+      await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
       await expect(frase).toHaveAttribute('data-hoje-entra', 'sim')
       await expect(janela.getByTestId('atendimento-de-hoje-no-pagamento')).toHaveCount(1)
       await expect(janela.getByText(/fica fora deste checkout|entra junto, à vista/)).toHaveCount(0)
@@ -388,8 +388,7 @@ test.describe.serial('checkout de plano', () => {
         // (quem recebe também aceita — PT1b).
         const janela = await receberPlanoNoPdv(page, `/${slug}`, planId)
         await janela.getByRole('button', { name: 'Confirmar plano' }).click()
-        await janela.getByRole('button', { name: 'À vista' }).click()
-        await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+        await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
         await euVendiOPlano(page)
         await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
         const linhas = janela.locator('[data-documento]')

@@ -205,7 +205,7 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
       await janela.getByRole('button', { name: 'Confirmar plano' }).click()
       await expect(janela.locator('[data-contrato-sem-documento]'), 'repete antes da documentação').toBeVisible()
       // No PDV a forma nasce "À vista" e o meio, vazio (A37): escolhido o meio, o aviso não segura.
-      await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+      await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
       await expect(janela.getByRole('button', { name: /Ir para a documentação/ })).toBeEnabled()
     })
   })
@@ -229,8 +229,8 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
       await expect(aviso).toContainText('já foi assinado com este pagamento')
       await expect(aviso).toContainText('À vista, no Pix')
       await expect(aviso).toContainText('Mudar as condições pede um contrato novo')
-      await expect(janela.getByRole('button', { name: 'À vista' })).toHaveAttribute('aria-pressed', 'true')
-      await expect(janela.getByRole('button', { name: 'Pix', exact: true })).toHaveAttribute('aria-pressed', 'true')
+      // PDV8: o à vista no Pix é o bloco do Pix marcado.
+      await expect(janela.getByRole('radio', { name: 'Pix', exact: true })).toHaveAttribute('aria-checked', 'true')
     })
   })
 })

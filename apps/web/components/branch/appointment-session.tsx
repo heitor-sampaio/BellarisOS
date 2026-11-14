@@ -1,6 +1,6 @@
 'use client'
 
-import { ROTULO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
+import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { useActionState, useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
@@ -610,6 +610,8 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
   const envio = useEnvioUnico()
   // A entrada acima do que está em aberto é recusada, não cortada (ven-02).
   const recusaDaEntrada = forma === 'PARCELADO' ? recusaDaEntradaAcimaDoTotal(entrada, plano.emAberto, 'em aberto do plano') : null
+  // PDV8: o à vista pede o meio; o crediário, só o da entrada.
+  const semForma = forma === 'AVISTA' ? !metodo : entrada > 0 && !metodo
 
   async function receber() {
     if (recusaDaEntrada) { setErro(recusaDaEntrada); return }
@@ -621,7 +623,8 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
       forma === 'AVISTA'
         ? (metodo === 'CREDIT_CARD' && vezes > 1 ? { forma: 'AVISTA', metodo, vezes, ...comBandeira } : { forma: 'AVISTA', metodo, ...comBandeira })
         // D5: a entrada no crédito também em N vezes na maquininha.
-        : { forma: 'PARCELADO', metodo, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString(),
+        // PDV8: sem entrada, nenhum meio — nada se recebe agora.
+        : { forma: 'PARCELADO', metodo: entrada > 0 ? metodo : null, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString(),
             ...(metodo === 'CREDIT_CARD' && entrada > 0 && vezes > 1 ? { vezes } : {}), ...comBandeira },
       appointmentId,
       slug,
@@ -684,40 +687,12 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                 <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(plano.emAberto)}</p>
               </div>
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                {([['AVISTA', 'À vista'], ['PARCELADO', ROTULO_DO_CREDIARIO]] as const).map(([v, label]) => (
-                  <button key={v} type="button" onClick={() => setForma(v)}
-                    className={forma === v ? 'btn-primary' : 'btn-secondary'}
-                    style={{ flex: 1, padding: '9px 12px', fontSize: 'var(--text-sm-sz)', justifyContent: 'center' }}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label className="field-label" htmlFor="plano-forma">Forma de pagamento *</label>
-                <select id="plano-forma" className="field" value={metodo} onChange={e => setMetodo(e.target.value)}>
-                  <option value="">Selecione…</option>
-                  {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-              </div>
-
-              {(forma === 'AVISTA' || entrada > 0) && (
-                <CampoDaMaquininha metodo={metodo} valor={maquininha} aoMudar={v => { setMaquininha(v); setVezes(1) }} />
-              )}
-              {metodo === 'CREDIT_CARD' && (forma === 'AVISTA' || entrada > 0) && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {/* D5: na entrada + parcelas, as vezes são da ENTRADA (a maquininha). */}
-                  <label className="field-label" htmlFor="vezes-no-cartao">{forma === 'PARCELADO' ? 'Vezes no cartão (a entrada)' : 'Vezes no cartão'}</label>
-                  <select id="vezes-no-cartao" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
-                    {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
-                  </select>
-                  <DicaDasVezes total={forma === 'PARCELADO' ? entrada : plano.emAberto} vezes={vezes} opcoes={opcoesDeVezes} />
-                  <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
-                </div>
-              )}
-              <CampoDaBandeira metodo={metodo} valor={bandeira} aoMudar={setBandeira} maquininha={maquininha} />
-
+              {/* PDV8: o Crediário é uma forma, ao lado dos meios — o bloco de um meio é o à vista nele. */}
+              <FormasDePagamento valor={forma === 'AVISTA' ? metodo : 'CREDIARIO'} formas={[...FORMAS_DO_BALCAO, 'CREDIARIO']}
+                aoMudar={f => {
+                  if (f === 'CREDIARIO') { setForma('PARCELADO'); setMetodo('') } else { setForma('AVISTA'); setMetodo(f) }
+                  setVezes(1); setBandeira(''); setMaquininha('')
+                }} />
               {forma === 'PARCELADO' && (
                 <>
                   <div className="form-2col">
@@ -750,11 +725,39 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                 </>
               )}
 
+              {/* Com entrada, ela pede a forma dela; sem entrada, nada se recebe agora. */}
+              {forma === 'PARCELADO' && entrada > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label className="field-label" htmlFor="plano-forma-da-entrada">Forma da entrada *</label>
+                  <select id="plano-forma-da-entrada" className="field" value={metodo}
+                    onChange={e => { setMetodo(e.target.value); setVezes(1); setBandeira(''); setMaquininha('') }}>
+                    <option value="">Selecione…</option>
+                    {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {(forma === 'AVISTA' || entrada > 0) && (
+                <CampoDaMaquininha metodo={metodo} valor={maquininha} aoMudar={v => { setMaquininha(v); setVezes(1) }} />
+              )}
+              {metodo === 'CREDIT_CARD' && (forma === 'AVISTA' || entrada > 0) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {/* D5: na entrada + parcelas, as vezes são da ENTRADA (a maquininha). */}
+                  <label className="field-label" htmlFor="vezes-no-cartao">{forma === 'PARCELADO' ? 'Vezes no cartão (a entrada)' : 'Vezes no cartão'}</label>
+                  <select id="vezes-no-cartao" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
+                    {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
+                  </select>
+                  <DicaDasVezes total={forma === 'PARCELADO' ? entrada : plano.emAberto} vezes={vezes} opcoes={opcoesDeVezes} />
+                  <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
+                </div>
+              )}
+              <CampoDaBandeira metodo={metodo} valor={bandeira} aoMudar={setBandeira} maquininha={maquininha} />
+
               {erro && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>}
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
                 <button type="button" onClick={() => setAberto(false)} className="btn-secondary"><X size={13} /> Voltar</button>
-                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada || !metodo || !!faltaAMaquininha} className="btn-primary"
+                <button type="button" onClick={receber} disabled={salvando || !!recusaDaEntrada || semForma || !!faltaAMaquininha} className="btn-primary"
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
                   {salvando ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                   {salvando ? 'Registrando…' : 'Confirmar recebimento'}

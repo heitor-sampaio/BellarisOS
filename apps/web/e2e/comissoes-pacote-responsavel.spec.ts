@@ -119,7 +119,7 @@ test('a venda pela ficha escolhe a responsável; no Pix, os 10% de R$ 900 (R$ 90
     if (await aba.count()) await aba.click()
     await janela.getByLabel('Pacote', { exact: true }).selectOption(pacote)
     await janela.getByLabel('Profissional responsável').selectOption(rede!.professionalId)
-    await janela.getByLabel('Meio de pagamento').selectOption('PIX')
+    await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await pagoNoPix(janela)
     await euVendi(janela)
     await janela.getByRole('button', { name: /^Vender por R\$\s900,00$/ }).click()

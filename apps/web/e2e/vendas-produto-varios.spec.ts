@@ -92,7 +92,7 @@ test('o kit pela ficha: 2 séruns + 1 protetor, um pagamento só — a venda, a 
     await janela.getByLabel('Produto 2', { exact: true }).selectOption(protetor)
     await janela.getByLabel('Quantidade 2', { exact: true }).fill('1')
     await expect(janela.locator('[data-resumo-do-produto]')).toContainText('290,00')
-    await janela.getByLabel('Meio de pagamento').selectOption('PIX')
+    await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await pagoNoPix(janela)
     await euVendi(janela)
     await janela.getByRole('button', { name: /^Vender por R\$\s290,00$/ }).click()

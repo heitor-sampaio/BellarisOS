@@ -1,5 +1,5 @@
 ﻿'use client'
-import { ROTULO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
+import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { useFuso } from '@/components/shared/fuso'
 import { instanteNoFuso, dayKeyTZ, addDaysTZ, BUSINESS_TZ } from '@/lib/datetime'
 
@@ -23,7 +23,6 @@ import { textoDaExigenciaDoModelo } from '@/lib/checkout/exigencia-do-modelo'
 import Link from 'next/link'
 import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
-import { SegSelect } from '@/components/shared/seg-select'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
@@ -323,7 +322,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   }
 
   // A37: o que se recebe agora (à vista, entrada + parcelas) pede a forma.
-  const semForma = (formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && !paymentMethod
+  // PDV8: no crediário a forma é o crediário — o meio é só o da ENTRADA.
+  const semForma = (formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && !paymentMethod
   const faltaAMaquininha = useFaltaAMaquininha(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0) ? paymentMethod : null, maquininha)
 
   // -- Documentação: monta os documentos com o pagamento escolhido -----------
@@ -431,21 +431,23 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     const noCartao = paymentMethod === 'CREDIT_CARD' || paymentMethod === 'DEBIT_CARD'
     const comBandeira = { ...(bandeira && noCartao ? { bandeira } : {}), ...(maquininha && noCartao ? { maquininha } : {}) }
     if (formaPgto === 'PARCELADO') {
+      // PDV8: sem entrada, nada se recebe agora — nenhum meio.
+      const comEntrada = entradaNum > 0
       return {
         forma:              'PARCELADO',
-        metodo:             paymentMethod,
+        metodo:             comEntrada ? paymentMethod || null : null,
         entrada:            entradaNum,
         parcelas,
         primeiroVencimento: new Date(`${primeiroVenc}T12:00:00-03:00`).toISOString(),
         // D5: as vezes da ENTRADA no crédito (a maquininha).
-        ...(paymentMethod === 'CREDIT_CARD' && entradaNum > 0 && vezesCartao > 1 ? { vezes: vezesCartao } : {}),
-        ...comBandeira,
+        ...(paymentMethod === 'CREDIT_CARD' && comEntrada && vezesCartao > 1 ? { vezes: vezesCartao } : {}),
+        ...(comEntrada ? comBandeira : {}),
       }
     }
     if (formaPgto === 'A_RECEBER') {
+      // PDV8: o a receber não tem meio — a forma se escolhe quando o dinheiro entra.
       return {
         forma:      'A_RECEBER',
-        metodo:     paymentMethod || null,
         vencimento: new Date(`${primeiroVenc}T12:00:00-03:00`).toISOString(),
       }
     }
@@ -734,21 +736,21 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               aoMudar={id => { setVendedorId(id); setSemVendedor(false); setPerguntaDoVendedor(null) }} />
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          <SegSelect
-            options={[
-              { key: 'NADA_AGORA', label: 'Receber no atendimento' },
-              { key: 'AVISTA',     label: 'À vista' },
-              { key: 'PARCELADO',  label: ROTULO_DO_CREDIARIO },
-              { key: 'A_RECEBER',  label: 'A receber' },
-            // PT1b (o Heitor, 13/11): aceitar não cobra — o plano já chega aceito, e
-            // aqui é o RECEBER (no PDV). Sai o "Receber no atendimento".
-            ].filter(o => o.key !== 'NADA_AGORA' && podeCobrar)}
-            value={formaPgto}
-            onSelect={k => setFormaPgto(k as typeof formaPgto)}
-            ariaLabel="Como vai ser pago"
-          />
-        </div>
+        {/* PT1b (o Heitor, 13/11): aceitar não cobra — o plano já chega aceito, e
+            aqui é o RECEBER (no PDV). PDV8: as formas lado a lado — o bloco de
+            um meio é o à vista nele; o Crediário e o A receber são formas. */}
+        {podeCobrar && (
+          <div style={{ marginBottom: 16 }}>
+            <FormasDePagamento formas={[...FORMAS_DO_BALCAO, 'CREDIARIO', 'A_RECEBER']}
+              valor={formaPgto === 'AVISTA' ? paymentMethod : formaPgto === 'PARCELADO' ? 'CREDIARIO' : formaPgto}
+              aoMudar={f => {
+                if (f === 'CREDIARIO') { setFormaPgto('PARCELADO'); setPaymentMethod('') }
+                else if (f === 'A_RECEBER') { setFormaPgto('A_RECEBER'); setPaymentMethod('') }
+                else { setFormaPgto('AVISTA'); setPaymentMethod(f) }
+                setVezesCartao(1); setBandeira(''); setMaquininha('')
+              }} />
+          </div>
+        )}
         {plan.pacoteEquivalente && (() => {
           const pac = plan.pacoteEquivalente
           const aplicado = contaDesc.reais === pac.economia
@@ -800,6 +802,17 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                   </p>
                 )}
               </div>
+              {/* PDV8: com entrada, ela pede a forma dela; sem entrada, nada se recebe agora. */}
+              {entradaNum > 0 && (
+                <div>
+                  <label htmlFor="checkout-forma-da-entrada" style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Forma da entrada *</label>
+                  <select id="checkout-forma-da-entrada" value={paymentMethod} className="field" style={{ marginTop: 5 }}
+                    onChange={e => { setPaymentMethod(e.target.value); setVezesCartao(1); setBandeira(''); setMaquininha('') }}>
+                    <option value="">Selecione…</option>
+                    {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label htmlFor="checkout-parcelas-do-saldo" style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Parcelas do saldo</label>
                 <select id="checkout-parcelas-do-saldo" value={parcelas} onChange={e => setParcelas(Number(e.target.value))} className="field" style={{ marginTop: 5 }}>
@@ -844,28 +857,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       {formaPgto !== 'NADA_AGORA' && (
       <div className="card" style={{ padding: '20px 24px', marginBottom: 20 }}>
         <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
-          {formaPgto === 'AVISTA' ? 'Forma de pagamento' : 'Método'}
+          O que se recebe agora
         </p>
-        <div className="form-2col" style={{ marginBottom: 20 }}>
-          {PAYMENT_METHODS.map(m => (
-            <button
-              key={m.value}
-              type="button"
-              data-meio-do-checkout
-              aria-pressed={paymentMethod === m.value}
-              onClick={() => setPaymentMethod(m.value)}
-              style={{
-                padding: '14px', borderRadius: 10, textAlign: 'center', fontWeight: 700, fontSize: 'var(--text-base-sz)',
-                border:     paymentMethod === m.value ? '2px solid var(--brand)'   : '1.5px solid var(--border)',
-                background: paymentMethod === m.value ? 'var(--brand-soft)'        : 'var(--surface)',
-                color:      paymentMethod === m.value ? 'var(--brand)'             : 'var(--text)',
-                cursor: 'pointer',
-              }}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
         {/* A36 da 8ª: com o crédito na clínica, o saldo dela e o que sobra. */}
         {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && paymentMethod === 'INTERNAL_CREDIT' && (
           <div style={{ marginBottom: 16 }}>

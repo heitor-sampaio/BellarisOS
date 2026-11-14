@@ -1640,8 +1640,22 @@ revisão, só se escreve o plano. Nada se implementa.
   Financeiro; os textos da fila do checkout ("Planos propostos").
   Fica: o item "Fechamento do dia" do menu não se acende sozinho (o menu
   compara só o caminho, e o PDV acende no lugar).
-- ⬜ PDV fase 5 — o crediário como forma (PDV8), os pontos dentro da comanda
-  (FD2), vários itens numa comanda, e a parcela no PDV (o resto do CX1).
+- ✅ PDV fase 5a (14/11) — o crediário como forma (PDV8) e a parcela no PDV
+  (o resto do CX1): as formas em blocos em toda tela que vende ou recebe, o
+  Crediário e o A receber ao lado dos meios, a entrada com a forma dela, a
+  comanda que diz "Crediário"; o PDV mostra o que a cliente tem em aberto e
+  recebe a parcela pedindo a forma; a baixa da receita no Financeiro pede a
+  forma sempre (a parte da forma do CX2). Fica: o crediário no recebimento
+  do atendimento avulso (ele grava um lançamento só).
+- ⬜ PDV fase 5b — os pontos dentro da comanda (FD2) e vários itens numa
+  comanda.
+- ✅ Bloco Estoque (14/11) — E1/E5, E4/E5, E6/E3, E2, E10, E14 e E15:
+  Categorias, Marcas e Fornecedores (criar, renomear, excluir; quem tem o
+  Estoque em Gerenciar), o campo com busca e "+ Nova …", Insumo e Venda
+  direta em checkbox (o `products.uso` de antes, que o PDV lê), a marca e o
+  fornecedor na entrada (não no produto) e os três filtros. Ficaram de fora
+  **E11 e E13**: dependem do bloco Equipe (a pessoa em mais de uma unidade).
+  Regra em `docs/regras/atendimento.md` §9.5.
 
 ### Bloco: Estoque
 
@@ -1720,7 +1734,7 @@ revisão, só se escreve o plano. Nada se implementa.
 | PDV5 | **Pacote**: vendido como um produto, na hora, pelo PDV | PDV2 |
 | PDV6 | **Produto**: o PDV vende o que está marcado como Venda direta | E2 |
 | PDV7 | Sai o **"Vender" da ficha**; o do **inbox** leva ao PDV. Sai a cobrança da conclusão do atendimento como porta própria (vira a comanda) | PDV1–PDV3 |
-| PDV8 | **Não existe pagamento sem forma de pagamento** (o Heitor, 13/11: "sempre tem que ter forma de pagamento, o crediario é uma forma de pagamento, não existe pagamento sem forma de pagamento"). O **Crediário** é uma das formas, ao lado de Pix, Dinheiro, Débito, Crédito e Crédito na rede: escolhido, a venda fica registrada como Crediário. Se houver entrada, ela pede a forma dela. Sai o "sem entrada, não precisa" (`rotuloDoMeioNoCrediario`, o `metodo: ''` de `EntradaDoPagamento`, o `pagamento.metodo` vazio nos documentos, que passa a dizer "Crediário"), e sai o "Meio de pagamento (opcional)" do "a receber". Quando o dinheiro entra (a parcela no PDV, CX1, ou a baixa no Financeiro, CX2), a forma é pedida, sempre | PDV1, CX1, CX2 |
+| PDV8 | **Não existe pagamento sem forma de pagamento** (o Heitor, 13/11: "sempre tem que ter forma de pagamento, o crediario é uma forma de pagamento, não existe pagamento sem forma de pagamento"). O **Crediário** é uma das formas, ao lado de Pix, Dinheiro, Débito, Crédito e Crédito na rede: escolhido, a venda fica registrada como Crediário. Se houver entrada, ela pede a forma dela. Sai o "sem entrada, não precisa" (`rotuloDoMeioNoCrediario`, o `metodo: ''` de `EntradaDoPagamento`, o `pagamento.metodo` vazio nos documentos, que passa a dizer "Crediário"), e sai o "Meio de pagamento (opcional)" do "a receber". Quando o dinheiro entra (a parcela no PDV, CX1, ou a baixa no Financeiro, CX2), a forma é pedida, sempre. ✅ fase 5a (14/11) | PDV1, CX1, CX2 |
 | — | Mantém, dentro da comanda: o crediário (entrada + parcelas), o "a receber", o cartão em N vezes, o desconto, "Quem vendeu", o estorno e a devolução, as comissões | — |
 
 ### Bloco: Caixa (recebimentos e fechamento do dia)
@@ -1730,8 +1744,8 @@ PDV; o resto é do Financeiro.**
 
 | # | O que muda | Depende de |
 |---|---|---|
-| CX1 | **O PDV recebe** toda comanda e também a **parcela do crediário** que a cliente veio pagar: abrir a cliente no PDV mostra as parcelas em aberto dela, e recebe-se ali | PDV1–PDV3 |
-| CX2 | **O Financeiro** tem a lista de tudo que falta receber, de todas as clientes, e dá baixa só no que entra sem passar pelo balcão (a transferência que caiu na conta) | — |
+| CX1 | **O PDV recebe** toda comanda e também a **parcela do crediário** que a cliente veio pagar: abrir a cliente no PDV mostra as parcelas em aberto dela, e recebe-se ali. ✅ a comanda na fase 1, a parcela na fase 5a (14/11) | PDV1–PDV3 |
+| CX2 | **O Financeiro** tem a lista de tudo que falta receber, de todas as clientes, e dá baixa só no que entra sem passar pelo balcão (a transferência que caiu na conta). A baixa pedindo a forma sempre: ✅ fase 5a (14/11); a lista é o FI3 | — |
 | CX3 | Os **"Concluídos a receber"** viram as **comandas abertas** do PDV (sai a lista à parte na agenda, no Fechamento e na ficha) | PDV3 |
 | CX4 | **O Fechamento do dia mora no PDV** ("Fechar o dia"): uma linha por forma de pagamento, **o que o sistema registrou × o que foi conferido**; o fundo de troco segue opcional na linha do dinheiro | PDV1 |
 | CX5 | **Os avisos do Fechamento** ficam dois: **"há comanda aberta"** e **"entrou dinheiro depois do fechamento"**. "Por quem recebeu" e os estornos do dia ficam como detalhe recolhido | CX4 |

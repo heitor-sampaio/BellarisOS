@@ -25,11 +25,16 @@ export type PagamentoDoPlano =
    * `metodo`, `vezes` e `bandeira` são da ENTRADA, paga agora (D5 da 6ª
    * simulação: a entrada no crédito também em N vezes na maquininha). As
    * parcelas do saldo são o CREDIÁRIO da clínica: nascem sem meio, que se
-   * escolhe ao receber (D6 — não são cartão).
+   * escolhe ao receber (D6 — não são cartão). PDV8: sem entrada, nenhum meio
+   * (nulo) — o Crediário é a forma, e nada se recebe agora.
    */
-  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number; maquininha?: string }
-  /** Vencimento opcional: "a receber" sem data combinada é válido. */
-  | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string | null }
+  | { forma: 'PARCELADO'; metodo?: string | null; entrada: number; parcelas: number; primeiroVencimento: string; bandeira?: string; vezes?: number; maquininha?: string }
+  /**
+   * Vencimento opcional: "a receber" sem data combinada é válido. PDV8: sem
+   * meio — a forma se escolhe quando o dinheiro entra. O `metodo` só existe no
+   * retrato de antes (o contrato assinado com "A receber, no Pix").
+   */
+  | { forma: 'A_RECEBER'; metodo?: string | null; vencimento: string | null }
 
 /**
  * A linha do tempo do atendimento: curta, com a forma pelo nome da tela
@@ -164,7 +169,8 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
     const m = metodo(p.metodo)
     return {
       ...vazio,
-      'pagamento.metodo': m,
+      // PDV8: o a receber não tem meio (o retrato de antes ainda pode ter).
+      'pagamento.metodo': m ?? 'a receber',
       'pagamento.primeiro_vencimento': p.vencimento ? formatDate(p.vencimento) : null,
       'pagamento.forma': `${formatBRL(total)} a receber${p.vencimento ? ` em ${formatDate(p.vencimento)}` : ''}${m ? `, ${m}` : ''}`,
     }
@@ -185,8 +191,8 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
     ? `${gravadas.length} parcelas ${quanto} com a clínica: ${listaDasParcelas(gravadas)}`
     : `1 parcela ${quanto} com a clínica, com vencimento em ${formatDate(p.primeiroVencimento)}`
   return {
-    // O meio é o da entrada (sem entrada, nenhum).
-    'pagamento.metodo':              p.entrada > 0 ? meioDaEntrada(p) : null,
+    // PDV8: a forma é o crediário (nunca vazia); com entrada, diz o meio dela.
+    'pagamento.metodo':              p.entrada > 0 && meioDaEntrada(p) ? `no crediário, com a entrada ${meioDaEntrada(p)}` : 'no crediário',
     'pagamento.entrada':             p.entrada > 0 ? formatBRL(p.entrada) : null,
     'pagamento.parcelas':            String(p.parcelas),
     'pagamento.valor_parcela':       valorDaParcela(valores),
@@ -217,7 +223,7 @@ function normalizadoSemDesconto(p: PagamentoDoPlano | null): Record<string, stri
   if (p.forma === 'AVISTA') return vezesNoCartao(p) > 1 ? { forma: 'AVISTA', metodo: p.metodo, vezes: vezesNoCartao(p) } : { forma: 'AVISTA', metodo: p.metodo }
   if (p.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: p.metodo ?? null, vencimento: p.vencimento ? dia(p.vencimento) : null }
   return {
-    forma: 'PARCELADO', metodo: p.metodo, entrada: centavos(p.entrada),
+    forma: 'PARCELADO', metodo: p.metodo || null, entrada: centavos(p.entrada),
     parcelas: p.parcelas, primeiroVencimento: dia(p.primeiroVencimento),
     // D5: as vezes da entrada só entram quando passam de 1 (o retrato de antes segue igual).
     ...(vezesNoCartao(p) > 1 ? { vezes: vezesNoCartao(p) } : {}),
@@ -244,7 +250,7 @@ export function pagamentoDoRetrato(retrato: unknown): PagamentoDoPlano | null {
       : { forma: 'AVISTA', metodo: String(r.metodo) }
     case 'A_RECEBER': return { forma: 'A_RECEBER', metodo: (r.metodo as string | null) ?? null, vencimento: r.vencimento ? dia(r.vencimento) : null }
     case 'PARCELADO': return {
-      forma: 'PARCELADO', metodo: String(r.metodo), entrada: Number(r.entrada) || 0,
+      forma: 'PARCELADO', metodo: (r.metodo as string | null) || null, entrada: Number(r.entrada) || 0,
       parcelas: Number(r.parcelas) || 1, primeiroVencimento: dia(r.primeiroVencimento),
       ...(Number(r.vezes) > 1 ? { vezes: Number(r.vezes) } : {}),
     }

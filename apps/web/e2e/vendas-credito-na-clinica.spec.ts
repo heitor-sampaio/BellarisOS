@@ -93,8 +93,8 @@ test('decisão 1: a recepção vende R$ 300 de crédito na clínica no Pix — c
     await expect(dlg.locator('[data-regra-do-credito]')).toContainText('não conta como receita de novo')
     await dlg.getByLabel('Valor do crédito').fill('300')
     // Pagar crédito com crédito não existe.
-    await expect(dlg.getByLabel('Meio de pagamento').locator('option[value="INTERNAL_CREDIT"]')).toHaveCount(0)
-    await dlg.getByLabel('Meio de pagamento').selectOption('PIX')
+    await expect(dlg.getByRole('radio', { name: 'Crédito interno', exact: true })).toHaveCount(0)
+    await dlg.getByRole('radio', { name: 'Pix', exact: true }).click()
     await dlg.getByRole('button', { name: /^Vender por R\$\s300,00/ }).click()
     await expect(p.getByText(/Venda registrada: Crédito na clínica/)).toBeVisible({ timeout: 15_000 })
   })

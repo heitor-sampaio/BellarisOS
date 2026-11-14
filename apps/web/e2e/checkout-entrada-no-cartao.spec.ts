@@ -8,7 +8,7 @@ import { abrirVendaNoPdv, euVendi, euVendiOPlano, pagoNoPix, receberPlanoNoPdv }
 /**
  * D5 e D6 da 6ª simulação (F20), e o A47.
  *
- * D5: a ENTRADA do "Entrada + parcelas" no cartão de crédito tem "Vezes no
+ * D5: a ENTRADA do Crediário no cartão de crédito tem "Vezes no
  * cartão", com o limite da clínica, a taxa e o recebível da operadora — como o
  * à vista. A entrada de R$ 1.000 da Paula no Elo saiu 1x, sem a taxa do 3x.
  *
@@ -112,9 +112,9 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       // O receber do plano é no PDV (fase 3, PT1b).
       const janela = await receberPlanoNoPdv(page, '/admin', planId)
       await janela.getByRole('button', { name: 'Confirmar plano' }).click()
-      await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await janela.getByRole('button', { name: 'Pix', exact: true }).click()
+      await janela.getByRole('radio', { name: 'Crediário', exact: true }).click()
       await janela.getByLabel('Entrada', { exact: true }).fill('1728')
+      await janela.getByLabel('Forma da entrada').selectOption('PIX')
       await janela.getByLabel('Parcelas do saldo').selectOption('3')
       await expect(janela.locator('[data-parcelas-do-saldo]'), 'a tela diz as parcelas que vão ser gravadas')
         .toHaveText(/^2x de R\$\s890,66 \+ 1x de R\$\s890,68$/)
@@ -144,9 +144,9 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
     await como(browser, async page => {
       const janela = await receberPlanoNoPdv(page, '/admin', planId)
       await janela.getByRole('button', { name: 'Confirmar plano' }).click()
-      await janela.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await janela.getByRole('button', { name: 'Crédito', exact: true }).click()
+      await janela.getByRole('radio', { name: 'Crediário', exact: true }).click()
       await janela.getByLabel('Entrada', { exact: true }).fill('1000')
+      await janela.getByLabel('Forma da entrada').selectOption('CREDIT_CARD')
       await janela.getByLabel('Parcelas do saldo').selectOption('2')
       const vezes = janela.getByLabel('Vezes no cartão', { exact: true })
       await vezes.selectOption('3')
@@ -178,7 +178,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
     expect((rec ?? []).map(r => [n(r.valor), n(r.taxa_pct)])).toEqual([[333.33, 4], [333.33, 4], [333.34, 4]])
   })
 
-  test('Vender pacote: "Entrada + parcelas" no crédito também pergunta as vezes da entrada; as parcelas nascem sem meio', async ({ browser }) => {
+  test('Vender pacote: o Crediário com a entrada no crédito também pergunta as vezes da entrada; as parcelas nascem sem meio', async ({ browser }) => {
     const { data: pacote, error } = await db().rpc('pacote_salvar', {
       p_tenant: rede!.tenantId, p_id: null, p_nome: `${PREFIXO} Pacote ${marca}`, p_preco: 900, p_validade: null, p_ativo: true,
       p_itens: [{ procedure_id: rede!.procedureId, quantity: 3 }], p_comissao: { venda: null, execucao: { tipo: 'REGRA', valor: null } },
@@ -189,9 +189,9 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       const dlg = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
       await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacote as string)
-      await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await dlg.getByLabel('Meio de pagamento').selectOption('CREDIT_CARD')
+      await dlg.getByRole('radio', { name: 'Crediário', exact: true }).click()
       await dlg.getByLabel('Entrada', { exact: true }).fill('300')
+      await dlg.getByLabel('Forma da entrada').selectOption('CREDIT_CARD')
       await dlg.getByLabel('Parcelas').selectOption('2')
       await dlg.getByLabel('Vezes no cartão').selectOption('2')
       await expect(dlg.getByText(/2× R\$\s150,00/).first()).toBeVisible()

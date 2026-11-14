@@ -107,12 +107,11 @@ test('A45: o receber do plano volta ao passo em que estava ao recarregar', async
     await expect.poll(guardado, { message: 'a tela hidratou e guarda o passo' }).toContain('"step":0')
     await janela.getByRole('button', { name: /Confirmar plano/ }).click()
     await expect(janela.locator('[data-passo-atual]')).toHaveAttribute('data-passo-atual', 'Pagamento')
-    await janela.getByRole('button', { name: 'À vista', exact: true }).click()
-    await janela.locator('[data-meio-do-checkout]', { hasText: 'Pix' }).click()
+    await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await expect.poll(guardado).toContain('"paymentMethod":"PIX"')
     janela = await receberPlanoNoPdv(p, `/${slug}`, planId)
     await expect(janela.locator('[data-passo-atual]'), 'recarregar não volta ao "Plano"').toHaveAttribute('data-passo-atual', 'Pagamento')
-    await expect(janela.locator('[data-meio-do-checkout]', { hasText: 'Pix' }), 'o que foi escolhido fica').toHaveAttribute('aria-pressed', 'true')
+    await expect(janela.getByRole('radio', { name: 'Pix', exact: true }), 'o que foi escolhido fica').toHaveAttribute('aria-checked', 'true')
     // Na documentação, recarregar volta à documentação.
     await janela.getByRole('button', { name: /Ir para a documentação/ }).click()
     // "Quem vendeu" vazio pergunta antes (decisão 4 da 7ª): aqui, vende assim.
