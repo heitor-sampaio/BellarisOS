@@ -145,7 +145,8 @@ test('A3: o cadastro da unidade pede a comissão, e o Desativar diz o que é', a
       await modal.getByLabel('Nome completo').fill(`${PREFIXO} Nova ea8${marca}`)
       await modal.getByLabel('E-mail').fill(email)
       await modal.getByLabel('Cargo').selectOption({ index: 1 })
-      await modal.getByRole('checkbox', { name: nomeA }).check()
+      // EQ1c: o "Atende" é uma caixa; fechada, vale nas unidades dela (aqui, a A).
+      await modal.getByLabel(/Atende clientes/).check()
       await modal.getByLabel('Comissão padrão (%)').fill('30')
       await modal.getByLabel('Senha temporária').fill('senha-forte-123')
       await modal.getByRole('button', { name: 'Criar membro' }).click()

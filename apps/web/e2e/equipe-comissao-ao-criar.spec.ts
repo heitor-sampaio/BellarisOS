@@ -48,8 +48,12 @@ async function criar(browser: import('@playwright/test').Browser, quem: MembroDe
     const modal = p.locator('dialog[open], [role="dialog"]').last()
     await modal.locator('#tm-name').fill(`[e2e] ${email.split('@')[0]}`)
     await modal.locator('#tm-email').fill(email)
-    await modal.locator('#tm-role').selectOption({ index: 1 })
-    await modal.locator('#tm-branch').selectOption({ index: 1 })
+    // O primeiro cargo HABILITADO: o cargo com mais acesso que o de quem cria vem
+    // desligado (H7, "ninguém dá um cargo acima do próprio") e travaria o selectOption.
+    const habilitado = await modal.locator('#tm-role option:not([disabled])').evaluateAll(os => os.map(o => (o as HTMLOptionElement).value).find(v => v))
+    await modal.locator('#tm-role').selectOption(habilitado!)
+    // EQ1a: "Unidades" — numa rede de uma unidade, ela já vem marcada.
+    await expect(modal.locator('[data-unidades-do-membro] input[type="checkbox"]').first()).toBeChecked()
     await modal.locator('#tm-password').fill('Senha-e2e-123')
     const campo = modal.getByLabel(/Comissão padrão/)
     await expect(campo, 'sem "atende", não pergunta').toHaveCount(0)

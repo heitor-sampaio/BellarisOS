@@ -256,6 +256,15 @@
   `getCachedBranchProfessionals` e por toda lista ou conferência de "quem
   atende aqui" — nunca `branch_id = unidade` nem "a da rede atende em todas".
   A tag da lista é da rede (`professionals:<rede>`).
+  - **Na tela, o "Atende" é UMA caixa** (EQ1c, Bloco Equipe, 2026-11-14:
+    "Atende" é uma caixa; marcada, atende em todas as unidades dela). Fechada,
+    `atende_em` = as unidades da pessoa (a principal e as outras — EQ1a; a rede
+    inteira: as ativas na hora de salvar). Com mais de uma unidade, "Escolher
+    em quais unidades atende" (fechado por padrão) abre a lista
+    (`AtendeDoMembro`, `components/shared/unidades-do-membro.tsx`). `atende_em`
+    continua a fonte, e o gatilho `atende_em_sincronizar` usa as unidades da
+    pessoa como padrão de quem atende sem a lista. A unidade que a rede abrir
+    depois nasce sem ninguém marcado (princípio 6: nada se move sozinho).
   - **A abrangência NÃO muda com o checklist** (decidido por "ficam
     disponíveis" + o acesso continuar o dela): a Talita é da Água Verde e,
     marcada no Batel, alcança no Batel só os agendamentos DELA — ver, marcar a

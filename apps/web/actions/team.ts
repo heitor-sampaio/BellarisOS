@@ -5,7 +5,7 @@ import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/li
 import { erroDoAuth } from '@/lib/erro-do-auth'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, can, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, temRecurso, unidadesDoContexto } from '@/lib/auth'
 import { parseDinheiro } from '@estetica-os/utils'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -16,6 +16,7 @@ import { comLoginNovo } from '@/lib/login-novo'
 import { EntradaDoRepasse, aplicarRepasse, pendenciasDoMembro, type PendenciasDoMembro } from '@/lib/equipe/repasse'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 import { atendeDoFormulario, atendeQueGrava, listaDeUnidades } from '@/lib/equipe/atende'
+import { unidadesDoFormulario, unidadesDoMembro, unidadesQueGrava } from '@/lib/unidades/do-membro'
 
 /** As unidades ATIVAS da rede (o checklist do "Atende" só marca estas). */
 async function unidadesAtivas(admin: ReturnType<typeof createAdminClient>, tenantId: string): Promise<string[]> {
@@ -23,31 +24,58 @@ async function unidadesAtivas(admin: ReturnType<typeof createAdminClient>, tenan
     .map(b => b.id as string)
 }
 
-// Resolve a abrangência (branch_id) de um membro a partir do form.
-// Apenas NETWORK_ADMIN pode criar membros de rede (branch_id null); gerentes de
-// filial ficam restritos à própria filial.
-// Abrangência é atributo do MEMBRO (`users.branch_id`), não do nome do cargo:
-// quem tem `branchId === null` opera a rede toda. Antes isto olhava para
-// `isNetworkAdmin`, e um cargo de rede que não fosse NETWORK_ADMIN caía na
-// última linha e jogava o membro editado para `branch_id = null` em silêncio.
-function resolveScope(
-  ctx: { branchId: string | null },
-  scope: string | null,
-  branchId: string | null,
-): { branchId: string | null } | { error: string } {
-  const isNetworkWide = ctx.branchId === null
+/**
+ * As UNIDADES que o formulário dá ao membro (EQ1a do Bloco Equipe,
+ * 2026-11-14): null = "A rede inteira"; senão a principal primeiro (vira
+ * `users.branch_id`, e as outras `users.outras_unidades`).
+ *
+ * A abrangência é do MEMBRO, não do nome do cargo: "A rede inteira" só a dá
+ * quem a tem; quem tem unidades dá só as DELAS, e a unidade que o membro já
+ * tinha fora do alcance de quem edita fica como estava (H7). Devolve `null`
+ * quando o formulário não mexe nas unidades (a edição sem o campo).
+ */
+async function unidadesDoPedido(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+  formData: FormData,
+  /** As de antes (edição): null = era a rede inteira; undefined = membro novo. */
+  antes?: string[] | null,
+): Promise<{ unidades: string[] | null } | { error: string } | null> {
+  const deQuemEdita = unidadesDoContexto(ctx)
+  let pedido = unidadesDoFormulario(formData)
+  if (pedido === null) {
+    if (antes !== undefined) return null
+    // Membro novo sem unidade no pedido: quem é da rede escolhe; quem tem
+    // unidades, a unidade em que está.
+    if (deQuemEdita === null) return { error: 'Selecione a unidade.' }
+    pedido = [ctx.branchId!]
+  }
+  const ativas = await unidadesAtivas(admin, ctx.tenantId!)
+  const r = unidadesQueGrava({ pedido, antes, deQuemEdita, ativas })
+  if ('error' in r) return r
+  for (const u of r.unidades ?? []) {
+    const ok = await assertBranchInTenant(admin, ctx.tenantId!, u)
+    if ('error' in ok) return ok
+  }
+  return r
+}
 
-  if (scope === 'network') {
-    if (!isNetworkWide) return { error: 'Só quem tem abrangência de rede pode criar membros de rede.' }
-    return { branchId: null }
-  }
-  // Filial
-  if (isNetworkWide) {
-    if (!branchId) return { error: 'Selecione a unidade.' }
-    return { branchId }
-  }
-  // Quem é de uma filial só mexe na própria
-  return { branchId: ctx.branchId }
+/**
+ * O membro está ao alcance de quem edita: quem tem a rede inteira alcança
+ * todos; quem tem unidades, o membro de alguma delas (`todas`: de TODAS as
+ * dele — desativar tranca o login, e ele trabalha também onde ela não chega).
+ * O membro da rede inteira, só quem também a tem.
+ */
+function alcancaOMembro(
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+  membro: { branch_id: string | null; outras_unidades?: string[] | null },
+  todas = false,
+): boolean {
+  const minhas = unidadesDoContexto(ctx)
+  if (minhas === null) return true
+  const dele = unidadesDoMembro({ branchId: membro.branch_id, outrasUnidades: membro.outras_unidades })
+  if (dele === null) return false
+  return todas ? dele.every(u => minhas.includes(u)) : dele.some(u => minhas.includes(u))
 }
 
 /**
@@ -129,8 +157,6 @@ export async function createTeamMember(
   const email            = (formData.get('email') as string)?.trim().toLowerCase()
   const roleId           = formData.get('roleId') as string
   const password         = formData.get('password') as string
-  const scope            = formData.get('scope') as string | null
-  const branchId         = formData.get('branchId') as string | null
   // O "Atende" por unidade (decisão 2 da 8ª): a lista do checklist; o
   // formulário de antes manda só `providesServices` (o gatilho do banco dá a
   // unidade que a pessoa alcança).
@@ -157,13 +183,13 @@ export async function createTeamMember(
   if ('error' in roleCheck) return roleCheck
 
   // A Admin da rede é sempre da rede, peça o formulário o que pedir.
-  const scoped = roleCheck.admin ? { branchId: null } : resolveScope(ctx, scope, branchId)
-  if ('error' in scoped) return scoped
-  const effectiveBranchId = scoped.branchId
-  const branchCheck = await assertBranchInTenant(admin, ctx.tenantId!, effectiveBranchId)
-  if ('error' in branchCheck) return branchCheck
+  const pedidas = roleCheck.admin ? { unidades: null } : await unidadesDoPedido(admin, ctx, formData)
+  if (!pedidas) return { error: 'Selecione a unidade.' }
+  if ('error' in pedidas) return pedidas
+  const unidades = pedidas.unidades
+  const effectiveBranchId = unidades?.[0] ?? null
   const atendeEm = pedidoDoAtende
-    ? atendeQueGrava({ pedido: pedidoDoAtende, antes: [], ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: ctx.branchId })
+    ? atendeQueGrava({ pedido: pedidoDoAtende, antes: [], ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: unidadesDoContexto(ctx) })
     : null
   if (atendeEm) {
     providesServices = atendeEm.length > 0
@@ -206,6 +232,7 @@ export async function createTeamMember(
         auth_id:           authId,
         tenant_id:         ctx.tenantId!,
         branch_id:         effectiveBranchId,
+        outras_unidades:   unidades?.slice(1) ?? [],
         name,
         email,
         role_id:           roleId,
@@ -264,8 +291,6 @@ export async function updateTeamMember(
 
   const userId           = formData.get('userId') as string
   const roleId           = formData.get('roleId') as string
-  const scope            = formData.get('scope') as string | null
-  const branchId         = formData.get('branchId') as string | null
   const pedidoDoAtende   = atendeDoFormulario(formData)
   const providesServices = formData.get('providesServices') === 'on'
   const redirectPath     = (formData.get('redirectPath') as string) ?? '/admin/team'
@@ -287,13 +312,15 @@ export async function updateTeamMember(
 
   const member = await ler(admin
     .from('users')
-    .select('id, auth_id, branch_id, role_id, is_active, name, atende_em')
+    .select('id, auth_id, branch_id, outras_unidades, role_id, is_active, name, atende_em')
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar o usuário')
   // O membro tem de estar ao alcance de quem edita (§11): a gerente da unidade
   // A editava — e puxava para a A — gente da B e até da rede.
-  if (!member || !alcancaUnidade(ctx, member.branch_id as string | null)) return { error: 'Membro não encontrado.' }
+  // Com várias unidades (EQ1a): o membro de alguma das de quem edita.
+  if (!member || !alcancaOMembro(ctx, member as { branch_id: string | null; outras_unidades: string[] | null })) return { error: 'Membro não encontrado.' }
+  const unidadesAntes = unidadesDoMembro({ branchId: member.branch_id as string | null, outrasUnidades: member.outras_unidades as string[] | null })
 
   // "Somente admin pode alterar admin" (revisão do Heitor, 2026-10-29): a
   // Admin da rede só é alterada — cargo, "atende", horário — por outra Admin
@@ -327,25 +354,29 @@ export async function updateTeamMember(
   }
   const mantemCargoDoSistema = !!cargoAtual?.is_system && roleId === member.role_id
 
-  let effectiveBranchId = member.branch_id as string | null
+  let unidades = unidadesAntes
   if (!mantemCargoDoSistema) {
+    // O cargo vale em TODAS as unidades do membro: quem não alcança todas não o
+    // troca (H7: "gerente de uma unidade só mexe no que é da unidade").
+    if (roleId !== member.role_id && !alcancaOMembro(ctx, member as { branch_id: string | null; outras_unidades: string[] | null }, true)) {
+      return { error: 'Essa pessoa também está numa unidade fora do seu alcance: o cargo dela só muda quem alcança todas as unidades dela.' }
+    }
     // Dar o cargo de Admin da rede só quem o tem (`assertRoleInTenant`).
     const roleCheck = await assertRoleInTenant(admin, ctx, roleId, { jaETeuCargo: roleId === member.role_id })
     if ('error' in roleCheck) return roleCheck
 
     // A Admin da rede é sempre da rede, peça o formulário o que pedir.
-    const scoped = roleCheck.admin ? { branchId: null } : resolveScope(ctx, scope, branchId)
-    if ('error' in scoped) return scoped
-    effectiveBranchId = scoped.branchId
-    const branchCheck = await assertBranchInTenant(admin, ctx.tenantId!, effectiveBranchId)
-    if ('error' in branchCheck) return branchCheck
+    const pedidas = roleCheck.admin ? { unidades: null } : await unidadesDoPedido(admin, ctx, formData, unidadesAntes)
+    if (pedidas && 'error' in pedidas) return pedidas
+    if (pedidas) unidades = pedidas.unidades
   }
+  const effectiveBranchId = unidades?.[0] ?? null
 
   // O checklist (decisão 2 da 8ª): a gerente de unidade fixa muda só a dela.
   const atendeEm = pedidoDoAtende
     ? atendeQueGrava({
         pedido: pedidoDoAtende, antes: ((member as { atende_em?: string[] | null }).atende_em ?? []) as string[],
-        ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: ctx.branchId,
+        ativas: await unidadesAtivas(admin, ctx.tenantId!), unidadeDeQuemEdita: unidadesDoContexto(ctx),
       })
     : null
 
@@ -382,7 +413,7 @@ export async function updateTeamMember(
   const { error } = await admin
     .from('users')
     .update({
-      ...(mantemCargoDoSistema ? {} : { role_id: roleId, branch_id: effectiveBranchId }),
+      ...(mantemCargoDoSistema ? {} : { role_id: roleId, branch_id: effectiveBranchId, outras_unidades: unidades?.slice(1) ?? [] }),
       // Com a lista, o gatilho do banco acerta `provides_services` (= atende em alguma).
       ...(atendeEm ? { atende_em: atendeEm } : { provides_services: providesServices }),
       ...(horario !== undefined ? { horario } : {}),
@@ -427,13 +458,14 @@ async function membroDaRede(
   userId: string,
 ) {
   const membro = await ler(admin
-    .from('users').select('id, name, auth_id, branch_id, is_active, role_id')
+    .from('users').select('id, name, auth_id, branch_id, outras_unidades, is_active, role_id')
     .eq('id', userId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o membro')
   // E ao alcance (§11): a gerente da unidade A desativava — e bania do login —
   // gente da B e admins da rede.
   // Nulo, e quem chama devolve `{ error }`: lançado, a mensagem chegava
   // trocada à tela em produção (C9).
-  if (!membro || !alcancaUnidade(ctx, membro.branch_id as string | null)) return null
+  // Com várias unidades (EQ1a): de TODAS as dele — o login é um só.
+  if (!membro || !alcancaOMembro(ctx, membro as { branch_id: string | null; outras_unidades: string[] | null }, true)) return null
   return membro as { id: string; name: string; auth_id: string | null; is_active: boolean; role_id: string | null }
 }
 

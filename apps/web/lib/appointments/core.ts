@@ -14,6 +14,7 @@ import { fusoValido } from '@/lib/unidades/fuso'
 import { lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { ptBR } from 'date-fns/locale'
 import type { TenantContext } from '@estetica-os/types'
+import { alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
 import { enviarEventoCapi } from '@/lib/ads/capi'
@@ -169,7 +170,7 @@ export async function conferirPecasDoAgendamento(
     procedureId?: string | null
   },
 ): Promise<string | null> {
-  if (pecas.branchId && ctx.branchId && pecas.branchId !== ctx.branchId) {
+  if (pecas.branchId && !alcancaUnidade(ctx, pecas.branchId)) {
     return 'Você só pode agendar na sua unidade.'
   }
   const [unidade, profissional, cliente, recusaSala, procedimentoNaoFeito] = await Promise.all([

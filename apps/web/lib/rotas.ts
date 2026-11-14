@@ -78,3 +78,23 @@ export function rotaOportunidade(
   params.set('lead', leadId)
   return `${rotaOportunidades(pathname, slug)}?${params.toString()}`
 }
+
+const PARECE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * A MESMA tela na outra unidade (PO1, 2026-11-14): o "Unidade: X ▾" da pessoa
+ * de várias unidades troca o endereço da unidade e mantém o resto —
+ * `/centro/clients?q=ana` → `/norte/clients?q=ana`. O registro de uma unidade
+ * (`/centro/agenda/<id>`) não é da outra: a troca para na lista dele
+ * (`/norte/agenda`), sem a busca. Fora de um portal de unidade, o painel.
+ */
+export function rotaNaOutraUnidade(pathname: string, slugNovo: string, busca = ''): string {
+  const partes = pathname.split('?')[0]!.split('/').filter(Boolean)
+  if (!partes.length || ehPortalDaRede(pathname)) return `/${slugNovo}/dashboard`
+  const resto = partes.slice(1)
+  const id = resto.findIndex(p => PARECE_ID.test(p))
+  if (id >= 0) return `/${[slugNovo, ...resto.slice(0, id)].join('/')}`
+  const sufixo = resto.length ? `/${resto.join('/')}` : '/dashboard'
+  const query = busca && busca !== '?' ? (busca.startsWith('?') ? busca : `?${busca}`) : ''
+  return `/${slugNovo}${sufixo}${query}`
+}

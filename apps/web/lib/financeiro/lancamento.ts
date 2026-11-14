@@ -74,7 +74,7 @@ export { vencimentoDoDia }
 export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancamento): Promise<{ id: string } | { error: string }> {
   // A unidade vem de quem pede. Sem conferir, o lançamento caía na unidade de
   // QUALQUER rede — e quem é de unidade lançava na unidade vizinha.
-  if (ctx.branchId !== null && l.branchId !== ctx.branchId) return { error: 'Unidade não identificada.' }
+  if (!alcancaUnidade(ctx, l.branchId)) return { error: 'Unidade não identificada.' }
   const unidade = await ler(admin.from('branches').select('id').eq('id', l.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
     'conferir a unidade do lançamento')
   if (!unidade) return { error: 'Unidade não identificada.' }

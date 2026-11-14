@@ -2848,3 +2848,67 @@ body:has(.copilot-botao:not([data-subir="sim"])) main {
   border-radius: var(--radius-row);
   margin: 0 8px;
 }
+
+/* "Unidade: Centro ▾" no topo (PO1, 2026-11-14): a pessoa de várias unidades
+   troca entre as dela na mesma tela. É navegação, não filtro: um botão com a
+   altura dos seletores e o painel que flutua (sombra de popover). */
+.seletor-de-unidade {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  height: var(--altura-controle);
+  padding: 0 10px;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-soft-border);
+  border-radius: var(--radius-field-token);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-sm-sz);
+  color: var(--brand);
+  cursor: pointer;
+}
+.seletor-de-unidade:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.seletor-de-unidade-rotulo { font-weight: var(--weight-semibold); color: var(--text-muted); }
+.seletor-de-unidade-nome {
+  font-weight: var(--weight-bold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.seletor-de-unidade-painel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  max-width: 300px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+  z-index: 60;
+}
+.seletor-de-unidade-opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.seletor-de-unidade-opcao:last-child { border-bottom: 0; }
+.seletor-de-unidade-opcao:hover { background: var(--bg-app); }
+.seletor-de-unidade-opcao[aria-selected="true"] { color: var(--brand); font-weight: var(--weight-bold); }
+@media (max-width: 639px) {
+  .seletor-de-unidade { max-width: 150px; }
+  .seletor-de-unidade-rotulo { display: none; }
+}

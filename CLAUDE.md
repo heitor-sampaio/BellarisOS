@@ -551,11 +551,26 @@ o "Não definido". A autorização tem **três eixos**:
 |---|---|---|
 | **Módulo × nível** | `role_permissions.level` (`NONE`/`VIEW`/`MANAGE`) | até onde o cargo mexe |
 | **Escopo** | `role_permissions.scope` (`OWN`/`ALL`) | em quais registros |
-| **Abrangência** | `users.branch_id` (`null` = rede) | em quais unidades |
+| **Abrangência** | `users.branch_id` (`null` = "A rede inteira") + `users.outras_unidades` | em quais unidades |
 
 Escopo e abrangência são coisas diferentes: o escopo é do **cargo**, a abrangência
-é do **membro**. Um mesmo cargo "Profissional" serve para alguém de uma filial e
+é do **membro**. Um mesmo cargo "Profissional" serve para alguém de uma unidade e
 para alguém da rede.
+
+**A abrangência é "A rede inteira" OU as unidades marcadas, uma ou mais**
+(EQ1a/EQ1b, Bloco Equipe, 2026-11-14). No banco: `users.branch_id` nulo = a
+rede inteira (todas, inclusive as que vierem); preenchido = a PRIMEIRA (a
+principal: a claim `branch_id`, o destino do login) e `users.outras_unidades`
+as outras (sem tabela de junção: PGRST201). No contexto: `ctx.unidades`
+(null = a rede inteira; senão a principal primeiro) e `ctx.branchId` = a
+unidade em que ela ESTÁ — a do endereço (`x-bellaris-caminho`), se é uma das
+dela; senão a principal. `ctx.branchId === null` continua querendo dizer "é
+da rede" (H7, o `/admin`, quem abriu o prontuário): duas unidades NÃO são a
+rede. Registro de outra unidade se confere com `alcancaUnidade` (que lê
+`ctx.unidades`), nunca com `=== ctx.branchId`. Na RLS,
+`private.can_access_branch` aceita as outras pela
+`private.minhas_outras_unidades()` (lida pelo `auth.uid()`, uma vez por
+transação). Prova: `e2e/equipe-varias-unidades.spec.ts`.
 
 **O escopo só vale em módulo que o cargo TEM** (D6, 2026-10-29): módulo NONE —
 no cargo, no plano da rede ou Relatórios sem aba — é ALL no contexto
@@ -666,7 +681,7 @@ Regras:
   `e2e/equipe-dona-que-atende.spec.ts`.
 - **A configuração da clínica toda é de quem é da rede** (H7, decisão do
   Heitor, 2026-11-01: "gerente de uma unidade só mexe no que é da unidade").
-  Com os módulos em Gerenciar, quem tem unidade fixa (`ctx.branchId !== null`)
+  Com os módulos em Gerenciar, quem não tem "A rede inteira" (`ctx.branchId !== null` — uma unidade ou várias, EQ1b)
   não grava tags, funis, cargos, fichas, termos, integrações, automações,
   campanhas, templates, as Importações nem os
   dados da rede: a action devolve
@@ -684,8 +699,8 @@ Regras:
 - **A abrangência se confere na ACTION, não só no layout.** Registro de
   unidade que chega por id (agendamento, lançamento, plano, mapa, membro,
   unidade) passa por `alcancaUnidade` / `assertUnidade` (`lib/auth.ts`)
-  depois de conferida a rede: quem é da rede alcança todas, quem tem unidade
-  fixa só a dela, e registro sem unidade é da rede. Leitura que recebe
+  depois de conferida a rede: quem é da rede alcança todas, quem tem unidades
+  só as DELA (`ctx.unidades`), e registro sem unidade é da rede. Leitura que recebe
   `branchId` usa `ctx.branchId ?? branchId` — o pedido não vence a
   abrangência. Até 2026-09-28 a recepção da A cancelava, recebia e estornava
   na B pelo id. Prova: `e2e/abrangencia-unidade.spec.ts`.

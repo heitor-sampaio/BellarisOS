@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, temRecurso, unidadesDoContexto } from '@/lib/auth'
 import { contagemDeMembros } from '@/lib/equipe/contagem'
 import { DesativarMembro } from '@/components/admin/desativar-membro'
 import { createClient } from '@/lib/supabase/server'
@@ -65,8 +65,9 @@ export default async function TeamPage({
   const [todosOsMembros, tenantRoles, daRedeQueAtendem, unidadesDaRede] = await Promise.all([
     ler(supabase
       .from('users')
-      .select('id, name, email, role_id, is_active, provides_services, atende_em, horario, comissao_venda_pct, registro_conselho')
-      .eq('branch_id', branchId)
+      .select('id, name, email, role_id, branch_id, outras_unidades, is_active, provides_services, atende_em, horario, comissao_venda_pct, registro_conselho')
+      // Quem tem esta unidade: a principal ou uma das outras (EQ1a).
+      .or(`branch_id.eq.${branchId},outras_unidades.cs.{${branchId}}`)
       .order('name'), 'carregar a equipe'),
     ler(supabase
       .from('tenant_roles')
@@ -85,14 +86,20 @@ export default async function TeamPage({
       .eq('tenant_id', ctx.tenantId!)
       .contains('atende_em', [branchId])
       .or(`branch_id.is.null,branch_id.neq.${branchId}`)
+      .not('outras_unidades', 'cs', `{${branchId}}`)
       .eq('is_active', true)
       .order('name'), 'carregar quem é de fora e atende aqui'),
     getCachedNetworkBranches(ctx.tenantId!),
   ])
   const nomeDa = new Map(((unidadesDaRede ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
   const unidadesDoAtende = (unidadesDaRede ?? []) as { id: string; name: string }[]
-  // A gerente de unidade fixa marca e desmarca só a dela (H7); quem é da rede, todas.
-  const editaveisDoAtende = ctx.branchId === null ? null : [branchId]
+  // Quem tem unidades marca e desmarca só as DELA (H7, EQ1a); quem é da rede, todas.
+  const minhas = unidadesDoContexto(ctx)
+  const editaveisDoAtende = minhas
+  // Com mais de uma unidade, ela escolhe em quais das dela a pessoa entra (EQ1a).
+  const unidadesDeQuemCadastra = minhas && minhas.length > 1
+    ? unidadesDoAtende.filter(u => minhas.includes(u.id))
+    : null
   const ninguemAtendeAqui = ![...(todosOsMembros ?? []), ...(daRedeQueAtendem ?? [])]
     .some(m => (m as { is_active?: boolean }).is_active !== false && ((m as { atende_em?: string[] | null }).atende_em ?? []).includes(branchId))
 
@@ -147,7 +154,8 @@ export default async function TeamPage({
         </div>
         {canManage && (
           <TeamForm branchId={branchId} slug={slug} roles={assignableRoles} unidade={branch?.name ?? null}
-            unidadesDoAtende={unidadesDoAtende} editaveisDoAtende={editaveisDoAtende} podeComissao={podeComissao} />
+            unidadesDoAtende={unidadesDoAtende} editaveisDoAtende={editaveisDoAtende} podeComissao={podeComissao}
+            unidadesDeQuemCadastra={unidadesDeQuemCadastra} />
         )}
       </div>
 
@@ -238,7 +246,8 @@ export default async function TeamPage({
                           name:             m.name,
                           email:            m.email ?? '',
                           roleId:           m.role_id ?? null,
-                          branchId:         branchId,
+                          branchId:         (m as { branch_id?: string | null }).branch_id ?? branchId,
+                          outrasUnidades:   ((m as { outras_unidades?: string[] | null }).outras_unidades ?? []) as string[],
                           providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
                           atendeEm: ((m as { atende_em?: string[] | null }).atende_em ?? []) as string[],
                           registroConselho: (m as { registro_conselho?: string | null }).registro_conselho ?? null,
@@ -248,6 +257,7 @@ export default async function TeamPage({
                         editaveisDoAtende={editaveisDoAtende}
                         roles={assignableRoles}
                         canChooseScope={false}
+                        unidadesDeQuemEdita={minhas}
                         redirectPath={`/${slug}/team`}
                       />
                     )}

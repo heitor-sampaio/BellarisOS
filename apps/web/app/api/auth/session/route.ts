@@ -2,11 +2,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { opcoesDoCookieDeSessao } from '@/lib/supabase/cookie-de-sessao'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import type { JwtClaims } from '@estetica-os/types'
-import { ler } from '@/lib/db'
 import { destinoDaCliente } from '@/lib/clientes/destino'
+import { slugDaUnidadeDeEntrada } from '@/lib/unidades/de-entrada'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 
 // Troca um par de tokens por cookies de sessão (httpOnly) e devolve o destino.
@@ -62,7 +61,6 @@ export async function POST(req: NextRequest) {
   const usuario = data.session.user
 
   const claims = usuario.app_metadata as JwtClaims
-  const admin  = createAdminClient()
 
   // Primeiro acesso do cliente pelo app: a mesma marca (e o bônus opcional) do
   // login pela tela. Idempotente — só o primeiro conta.
@@ -79,9 +77,8 @@ export async function POST(req: NextRequest) {
       // Uma clínica, várias, o seletor ou a última usada (lib/clientes/entrada.ts).
       redirectTo = (await destinoDaCliente(usuario.id)) ?? redirectTo
     } else if (claims.branch_id) {
-      const br = await ler(admin
-        .from('branches').select('slug').eq('id', claims.branch_id).single(), 'buscar a unidade')
-      redirectTo = getRedirectPath(claims.role, br?.slug ?? null)
+      // Com várias unidades, a ÚLTIMA usada (PO1).
+      redirectTo = getRedirectPath(claims.role, await slugDaUnidadeDeEntrada(usuario.id, claims.branch_id))
     } else {
       redirectTo = getRedirectPath(claims.role, null)
     }

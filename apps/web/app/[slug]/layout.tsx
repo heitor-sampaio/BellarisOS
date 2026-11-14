@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { unidadesParaCriar } from '@/lib/unidades/da-tela'
-import { getTenantContext, isOwnScope, caminhoDaRequisicao } from '@/lib/auth'
+import { getTenantContext, isOwnScope, caminhoDaRequisicao, alcancaUnidade, unidadesDoContexto } from '@/lib/auth'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { UmaUnidadeProvider } from '@/components/shared/uma-unidade'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -69,8 +69,10 @@ export default async function BranchLayout({
 
   if (!branch) notFound()
 
-  // Usuário de filial só pode acessar a própria filial
-  if (ctx.branchId && ctx.branchId !== branch.id) {
+  // Quem tem unidades só abre as DELAS (EQ1a/PO1, 2026-11-14: a pessoa de A
+  // e B abre as duas; era "a própria", uma só). Fora delas, a dela — a em que
+  // ela está (`ctx.branchId`: aqui, fora das dela, a principal).
+  if (!alcancaUnidade(ctx, branch.id as string)) {
     // A unidade DO MEMBRO pelo servidor, não pela sessão (D9 da 9ª simulação):
     // mudada a unidade com a sessão aberta, o token ainda tem a claim velha, a
     // RLS escondia a unidade nova e o `.single()` lançava — 500 em toda tela.
@@ -93,7 +95,10 @@ export default async function BranchLayout({
   // nome do cargo, e a sócia da rede com outro cargo não trocava de unidade)
   // + não-lidas em paralelo. Nome e permissões já vêm no ctx.
   const daRede = ctx.branchId === null
-  const [allBranches, unreadRes] = await Promise.all([
+  // A pessoa de VÁRIAS unidades (PO1): o seletor "Unidade: X ▾" do topo, só
+  // com as dela que estão ativas (trocar é ENTRAR no portal da outra).
+  const minhas = unidadesDoContexto(ctx)
+  const [allBranches, unreadRes, unidadesDoSeletor] = await Promise.all([
     daRede
       // Trocar de unidade é ENTRAR no portal dela: só as ativas (lib/unidades/da-tela).
       ? unidadesParaCriar(ctx.tenantId!).then(us => us.map(({ name, slug }) => ({ name, slug })))
@@ -105,6 +110,9 @@ export default async function BranchLayout({
           .eq('user_id', ctx.internalUserId)
           .eq('is_received', false)
       : Promise.resolve({ count: 0, error: null }),
+    minhas && minhas.length > 1
+      ? unidadesParaCriar(ctx.tenantId!).then(us => us.filter(u => minhas.includes(u.id)).map(({ name, slug }) => ({ name, slug })))
+      : Promise.resolve([]),
   ])
 
   const permissions   = ctx.permissions
@@ -132,7 +140,9 @@ export default async function BranchLayout({
         allBranches={allBranches}
         umaUnidade={umaUnidade}
       />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} daRede={ctx.branchId === null} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} daRede={ctx.branchId === null}
+        unidade={unidadesDoSeletor.length > 1 ? { atual: { slug: branch.slug, name: branch.name }, unidades: unidadesDoSeletor } : null}
+        suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
         marginTop:     'calc(var(--topbar-h) + env(safe-area-inset-top, 0px))',

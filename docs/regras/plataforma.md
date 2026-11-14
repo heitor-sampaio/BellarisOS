@@ -868,6 +868,39 @@ abaixo entraram na F70, 2026-11-12):
   autoriza)". Prova: `tests/suporte-regras.test.ts`, `e2e/permissoes-f70.spec.ts`
   ("C59").
 
+**A pessoa de VÁRIAS unidades (EQ1a, EQ1b, EQ1c e PO1 — Bloco Equipe e
+Portais, 2026-11-14; o Heitor, 2026-11-13: "permitir linkar a pessoa em mais
+de uma unidade"):**
+- O cadastro da Equipe tem **"Unidades"**: "A rede inteira" (todas, inclusive
+  as que vierem) ou as unidades marcadas, uma ou mais
+  (`components/shared/unidades-do-membro.tsx`). No banco, `users.branch_id`
+  nulo = a rede inteira; preenchido = a principal, e `users.outras_unidades`
+  as outras (gatilho `trg_a_unidades_do_membro`: sem repetição, sem a
+  principal, só unidades da rede, vazia para a rede inteira). Sem tabela de
+  junção (PGRST201) e sem backfill: o membro de antes segue igual.
+- **Ela vê e opera só as DELA**: `ctx.unidades` (null = a rede inteira) e
+  `alcancaUnidade`; `ctx.branchId` é a unidade em que ela ESTÁ (a do endereço,
+  se é dela; senão a principal). A RLS a acompanha:
+  `private.can_access_branch` e as políticas de leitura de `branches` e
+  `users` aceitam as outras (`private.minhas_outras_unidades()`).
+- **"Da rede" é só "A rede inteira"** (EQ1b): duas unidades marcadas não
+  abrem o `/admin`, não gravam a configuração da rede toda (H7) e não veem a
+  lista de quem abriu o prontuário.
+- **Quem dá as unidades**: "A rede inteira" só quem a tem; quem tem unidades
+  marca só as DELA, e a unidade que o membro já tinha fora do alcance dela fica
+  como estava (`unidadesQueGrava`, `lib/unidades/do-membro.ts`). Editar exige
+  alcançar ALGUMA unidade do membro; trocar o cargo, desativar e reativar, TODAS
+  (o login e o cargo são um só). A Admin da rede é sempre da rede.
+- **O portal (PO1)**: a pessoa de várias unidades entra no portal da unidade —
+  a ÚLTIMA usada (o cookie `bellaris-unidade`, que o seletor grava; o servidor
+  confere que ainda é dela e está ativa, `lib/unidades/de-entrada.ts`), senão a
+  principal. No topo, "Unidade: X ▾" (`components/shared/seletor-de-unidade.tsx`)
+  com só as dela; trocar leva à MESMA tela na outra (`rotaNaOutraUnidade`,
+  `lib/rotas.ts`; o registro de uma unidade volta à lista). O layout de
+  `[slug]` aceita qualquer unidade dela; a que não é dela leva à dela com o
+  aviso. Quem tem a rede inteira segue no portal da rede.
+- Prova: `e2e/equipe-varias-unidades.spec.ts`, `tests/unidades-do-membro.test.ts`.
+
 **O "Atende" é por unidade — e não é abrangência (§11 do CLAUDE.md; decisão 2
 do Heitor sobre a 8ª simulação, 2026-11-06: "Inves de atende também em, o
 atende vira um checklist com todas as unidades, as que estiverem marcadas ficam
@@ -877,13 +910,18 @@ disponiveis"):**
   `private.atende_em_sincronizar` mantém os dois juntos. Continua não sendo
   permissão: diz onde a pessoa aparece como profissional (agenda, agendar,
   repasse, comissão, relatórios da unidade) — §9.1 de `atendimento.md`.
-- A ABRANGÊNCIA (`users.branch_id`) é a mesma de antes: marcar a Talita (da
+- **Uma caixa (EQ1c)**: "Atende clientes" marcada vale em todas as unidades
+  DELA (a rede inteira: as ativas na hora de salvar — a unidade aberta depois
+  nasce sem ninguém marcado, princípio 6). Com mais de uma unidade, "Escolher em
+  quais unidades atende" (fechado por padrão) abre a lista; a marca de antes
+  fora das unidades dela aparece na lista e não some calada.
+- A ABRANGÊNCIA (`users.branch_id`/`outras_unidades`) não muda com o "Atende": marcar a Talita (da
   Água Verde) no Batel não a põe no Batel. Ela alcança lá só os agendamentos
   DELA (`alcancaOAgendamento`, `lib/auth.ts`) — ver, iniciar, concluir, a
   comissão —, e o resto do Batel (agenda, clientes, caixa) continua fora. A
   dona deixou de precisar dar a rede inteira para alguém cobrir uma unidade (A12).
-- Marca e desmarca quem gere a equipe; a gerente de unidade fixa, só a
-  unidade DELA (H7) — as outras aparecem travadas e o servidor as mantém
+- Marca e desmarca quem gere a equipe; quem não tem a rede inteira, só as
+  unidades DELA (H7) — as outras aparecem travadas e o servidor as mantém
   (`atendeQueGrava`, `lib/equipe/atende.ts`).
 - Prova: `e2e/equipe-atende-por-unidade.spec.ts`.
 

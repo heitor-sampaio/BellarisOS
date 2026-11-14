@@ -2015,9 +2015,9 @@ Heitor de que vale uma completa.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| EQ1a | **"Unidades"** no cadastro: "A rede inteira" (todas, inclusive as futuras) ou as marcadas, uma ou mais. Sai a abrangência rede OU uma unidade. A pessoa vê e opera só nas unidades dela (`alcancaUnidade`, os filtros das listas, a agenda, o PDV, as telas da unidade); com uma só, a tela se comporta como hoje | — |
-| EQ1b | **"Da rede" é quem tem "A rede inteira"**: a configuração da rede toda (H7), o portal da rede, a lista de quem abriu o prontuário. Quem tem duas unidades marcadas NÃO é da rede | EQ1a |
-| EQ1c | **"Atende" é uma caixa**: marcada, atende em todas as unidades dela (agenda, agendar, repasse, comissão, relatórios). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista | EQ1a |
+| EQ1a | **"Unidades"** no cadastro: "A rede inteira" (todas, inclusive as futuras) ou as marcadas, uma ou mais. Sai a abrangência rede OU uma unidade. A pessoa vê e opera só nas unidades dela (`alcancaUnidade`, os filtros das listas, a agenda, o PDV, as telas da unidade); com uma só, a tela se comporta como hoje ✅ 14/11 | — |
+| EQ1b | **"Da rede" é quem tem "A rede inteira"**: a configuração da rede toda (H7), o portal da rede, a lista de quem abriu o prontuário. Quem tem duas unidades marcadas NÃO é da rede ✅ 14/11 | EQ1a |
+| EQ1c | **"Atende" é uma caixa**: marcada, atende em todas as unidades dela (agenda, agendar, repasse, comissão, relatórios). Com mais de uma unidade, "Escolher em quais unidades atende" (fechado por padrão) abre a lista ✅ 14/11 | EQ1a |
 | EQ1d | **A unidade pré-preenchida** dos cadastros (o produto do Estoque, E13: "Se a pessoa tiver mais de uma unidade, a lista mostra apenas as unidades dela") segue as unidades da pessoa | EQ1a, E13 |
 | — | Mantém: a lista e os filtros, o cargo, o horário, o registro no conselho, a senha temporária, a comissão, as regras da Admin da rede e do "cargo acima", o desativar com repasse | — |
 
@@ -2043,7 +2043,7 @@ Heitor de que vale uma completa.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| PO1 | **A pessoa de várias unidades** entra no portal da unidade (a primeira das dela, ou a última usada), com o seletor "Unidade: X ▾" no topo; trocar leva à MESMA tela na outra unidade (`lib/rotas`). O layout da unidade aceita qualquer unidade dela (hoje confere UMA). Quem tem "A rede inteira" segue no portal da rede | EQ1 |
+| PO1 | **A pessoa de várias unidades** entra no portal da unidade (a primeira das dela, ou a última usada), com o seletor "Unidade: X ▾" no topo; trocar leva à MESMA tela na outra unidade (`lib/rotas`). O layout da unidade aceita qualquer unidade dela (hoje confere UMA). Quem tem "A rede inteira" segue no portal da rede ✅ 14/11 | EQ1 |
 | PO2 | **Sai o "clínica" da rede de uma unidade** (`useFala`, `lib/unidades/vocabulario.ts`): onde a palavra é necessária, o NOME da rede; onde não é, nenhuma | V1 |
 | — | Mantém: os dois portais, as mesmas telas com o mesmo sufixo, o filtro de unidade na rede, o que é só da rede, o "Abrir unidade" do Dashboard, o esconder do que só serve com duas unidades | — |
 

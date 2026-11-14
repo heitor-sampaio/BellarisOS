@@ -1774,6 +1774,117 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Equipe (EQ1a, EQ1b, EQ1c) e PO1 dos Portais: a pessoa de várias unidades
+
+A revisão do Heitor (13/11): "permitir linkar a pessoa em mais de uma
+unidade", e a recomendação do Claude ("Concord."). O EQ1d (a unidade
+pré-preenchida dos cadastros) fica para o bloco do Estoque (E11/E13).
+
+- **EQ1a — "Unidades" no cadastro da Equipe**: "A rede inteira" (todas,
+  inclusive as que vierem) ou as unidades marcadas, uma ou mais
+  (`UnidadesDoMembro`, `components/shared/unidades-do-membro.tsx`), no
+  cadastro e na edição da rede e no cadastro da unidade (quem tem mais de uma
+  unidade marca entre as dela). No banco, `users.branch_id` continua: nulo = a
+  rede inteira; preenchido = a PRINCIPAL (a claim `branch_id`, o destino do
+  login), e as outras em `users.outras_unidades uuid[]` — sem tabela de junção
+  (PGRST201, o incidente de 04/11) e sem backfill. No contexto, `ctx.unidades`
+  (null = a rede inteira) e `ctx.branchId` = a unidade em que ela ESTÁ (a do
+  endereço, se é dela; senão a principal). `alcancaUnidade`/`assertUnidade`
+  leem `ctx.unidades`. A RLS: `private.can_access_branch` e as leituras de
+  `branches` e `users` aceitam as outras (`private.minhas_outras_unidades()`,
+  pelo `auth.uid()`, uma vez por transação; fora de `jwt_claim`).
+- **EQ1b — "Da rede" é só "A rede inteira"**: `ctx.branchId === null` segue
+  querendo dizer isso. Duas unidades marcadas não abrem o `/admin` (leva à
+  unidade, com o aviso), não gravam a configuração da rede toda (H7) e não
+  veem quem abriu o prontuário.
+- **EQ1c — o "Atende" é UMA caixa**: marcada, atende em todas as unidades dela;
+  com mais de uma, "Escolher em quais unidades atende" (fechado por padrão)
+  abre a lista (`AtendeDoMembro`). `atende_em` segue a fonte; o gatilho
+  `atende_em_sincronizar` passou a usar as unidades da pessoa (a principal e as
+  outras) como o padrão de quem atende sem a lista.
+- **PO1 — o portal**: a pessoa de várias unidades entra na ÚLTIMA usada (o
+  cookie `bellaris-unidade`, que o seletor grava; o servidor confere que ainda
+  é dela e está ativa — `lib/unidades/de-entrada.ts`, nos quatro pontos de
+  destino: `destinoPelosClaims`, `/`, `/auth/redirect`, `/api/auth/session`),
+  senão a principal. No topo, "Unidade: X ▾" (`SeletorDeUnidade`) só com as
+  dela; trocar leva à MESMA tela na outra (`rotaNaOutraUnidade`, `lib/rotas`;
+  o registro de uma unidade volta à lista dele, porque o id é da outra). O
+  layout de `[slug]` aceita qualquer unidade dela; a que não é dela leva à
+  dela com "Você não tem acesso a essa unidade". Quem tem a rede inteira segue
+  no portal da rede.
+- **Os `ctx.branchId` revistos um a um** (o resto ficou, e por quê):
+  - Viraram `alcancaUnidade` (registro que chega por id, "é uma das dela"):
+    `actions/stock.ts` (estoque inicial, entrada, ajuste, transferência,
+    inventário), `lib/estoque/movimentos.ts` (os dois), `lib/financeiro/lancamento.ts`,
+    `actions/financial.ts`, `lib/appointments/core.ts` (agendar só nas
+    dela) e o filtro do `/admin/pdv`.
+  - A Equipe (`actions/team.ts`): `resolveScope` saiu para `unidadesDoPedido`
+    (`unidadesQueGrava`, `lib/unidades/do-membro.ts`); o membro ao alcance é
+    `alcancaOMembro` (editar: alguma unidade dele; trocar o cargo, desativar,
+    reativar: TODAS); `atendeQueGrava` aceita as várias unidades de quem edita.
+    As duas telas da Equipe leem quem tem a unidade como principal OU como
+    outra.
+  - O Copilot (`/api/copilot`, que não tem a unidade no endereço) fala da
+    unidade da PÁGINA, se é dela.
+  - Ficaram (a unidade em que ela está, ou "é da rede"): os `ctx.branchId ??
+    pedido` das leituras (clientes, anexos, injetáveis, pacotes, busca,
+    fidelidade, documentos emitidos, `stock.ts:814`), as travas de "só da
+    rede" (`=== null`/`!== null`: unidades, H7, comissões, catálogo, inbox,
+    `/admin`, prontuário) e os filtros do Copilot por unidade.
+- **Decidido pelos princípios**: (1) "A rede inteira" com o "Atende" marcado
+  vale nas unidades ATIVAS na hora de salvar; a unidade que a rede abrir
+  depois nasce sem ninguém marcado (princípio 6, nada se move sozinho — a
+  regra de antes). (2) A marca do "Atende" fora das unidades da pessoa (a
+  Talita da Água Verde no Batel) aparece na lista aberta e não some ao salvar
+  (princípio 3). (3) Quem tem unidades dá só as DELAS; a unidade que o
+  membro tinha fora do alcance de quem edita fica (H7). (4) Trocar o cargo,
+  desativar e reativar pedem alcançar TODAS as unidades do membro — o cargo e
+  o login são um só; o horário e o "Atende" de quem tem também uma unidade
+  fora, ela muda (o "Atende" só nas dela). (5) A principal de antes continua
+  a principal se ficou marcada. (6) Rede de uma unidade: o campo mostra "A
+  rede inteira" × "Só a unidade".
+- **Migrations** (nenhuma destrutiva): `20261115800001_membro_em_varias_unidades`
+  (a coluna, o gatilho `trg_a_unidades_do_membro`, `minhas_outras_unidades`,
+  `can_access_branch`, as duas políticas de leitura recriadas `to
+  authenticated`, `atende_em_sincronizar` recriado do corpo de produção) e
+  `20261115800002_minhas_outras_unidades_auth_id_texto` — ⚠️ a primeira
+  comparava `users.auth_id` (TEXTO) com `auth.uid()` e dava 42883 na leitura
+  de `branches` pela sessão de quem tem unidade, na linha que não era a dela;
+  ficou no ar alguns minutos, achado pelo próprio spec novo.
+- **TDD — as falhas antes** (`e2e/equipe-varias-unidades.spec.ts`, 9 testes,
+  rede própria): o portal de B voltava a A com `?aviso=outra-unidade`; sem
+  `[data-seletor-de-unidade]`; `updateBranch` em B não gravava ("Unidade B"
+  em vez de "Unidade B editada"); a RLS dava 42883 (o erro da migration); o
+  login voltava a A; o membro novo com B e C ficava em A (o
+  `resolveScope` forçava a unidade de quem cadastra). Os dois de recusa (C
+  pela URL e o `/admin`; a tag da rede) já passavam — são as travas que não
+  podiam regredir. O do cadastro pela tela estourou o tempo naquela rodada
+  (o dev recompilava com a edição em curso); passa agora.
+  `tests/unidades-do-membro.test.ts` e o caso novo de `tests/equipe-atende`.
+- **Resultados**: o spec novo 9/9 (`equipe-varias-unidades`). Os vizinhos em
+  série (21 specs, 91 testes: `abrangencia-*`, `equipe-*`,
+  `ficha-de-outra-unidade`, `membro-desativado`, `permissoes-acoes`,
+  `permissoes-gerente-de-unidade`, `portais-isolamento`, `rls-isolamento`,
+  `rotas-com-sessao-levam-ao-destino`): 85 passaram de primeira; 6 falharam
+  pela tela que mudou de propósito e foram ajustados (abaixo) — 14 de 15
+  passam. O que sobra, `equipe-comissao-ao-criar` ("quem só gere a equipe"),
+  trava 60 s no `selectOption` do CARGO (campo que este bloco não tocou) e
+  trava igual com o formulário e o spec de antes (o `team-form.tsx` e o spec do
+  HEAD): não é deste bloco — fica para olhar. `pnpm typecheck` limpo, `pnpm
+  --filter web lint` sem erro, `pnpm --filter web test` 2460/2460.
+- **Specs antigos que mudaram, e por quê** (a tela mudou de propósito):
+  `equipe-formulario-limpo` e `equipe-comissao-ao-criar` (o `#tm-branch` e o
+  "Uma unidade"/"Clínica toda" viraram o campo "Unidades"); `equipe-atritos-da-8`
+  A3 (o "Atende" da unidade é a caixa "Atende clientes"); `equipe-atende-por-unidade`
+  (marcar no "Atende" uma unidade FORA das da pessoa saiu da tela — EQ1c; o
+  spec planta a marca de antes no banco e confere que a edição a mostra e não
+  a apaga ao salvar).
+- Mexeu em arquivo compartilhado (`lib/auth.ts`, o layout de `[slug]`, a
+  topbar, `lib/rotas.ts`, `lib/cached-queries.ts`, o núcleo do agendar, o CSS
+  global, `e2e/apoio/sessao.ts`): **vale uma completa** quando o Heitor quiser.
+- **Para o Heitor**: as duas migrations foram aplicadas; nenhuma é
+  destrutiva.
+
 ### 2026-11-14 — MK1, AU1 e RL1: a campanha é Imediata ou Agendada, os gatilhos de cada cliente viram modelos nas Automações, e a aba Vendas lista as comandas
 
 A revisão do Heitor (13/11): "mk1 ok", "concordo, o resto fica como está"

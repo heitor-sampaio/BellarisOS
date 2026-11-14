@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getTenantContext, getRedirectPath } from '@/lib/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
 import { destinoDaCliente } from '@/lib/clientes/destino'
+import { slugDaUnidadeDeEntrada } from '@/lib/unidades/de-entrada'
 import { lerClaims, marcaDaPlataforma } from '@/lib/plataforma/contexto'
 
 export const dynamic = 'force-dynamic'
@@ -21,14 +20,12 @@ export default async function AuthRedirectPage() {
 
   try {
     const ctx   = await getTenantContext()
-    const admin = createAdminClient()
 
     if (ctx.isClient) {
       dest = (await destinoDaCliente(ctx.userId)) ?? dest
     } else if (ctx.branchId) {
-      const br = await ler(admin
-        .from('branches').select('slug').eq('id', ctx.branchId).single(), 'buscar a unidade')
-      dest = getRedirectPath(ctx.role, br?.slug ?? null)
+      // Com várias unidades, a ÚLTIMA usada (PO1).
+      dest = getRedirectPath(ctx.role, await slugDaUnidadeDeEntrada(ctx.userId, ctx.branchId))
     } else {
       dest = getRedirectPath(ctx.role, null)
     }

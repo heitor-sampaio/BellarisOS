@@ -120,17 +120,23 @@ test('quem já atendia fica marcado no que alcança: a de uma unidade, na dela; 
 test('o "Atende" é um checklist das unidades: a dona marca a Talita no Batel, ela entra no agendar dele e a abrangência fica a da Água Verde', async ({ browser }) => {
   await como(browser, dona!.estado, async p => {
     expect(await quemAtendeNa(p, batel), 'antes: a Talita não atende no Batel').not.toContain(nomeDaTalita)
+  })
+  // EQ1c (Bloco Equipe, 2026-11-14): o "Atende" da tela virou UMA caixa, nas
+  // unidades DELA — marcar uma unidade fora delas saiu da tela. A marca de
+  // antes continua valendo (o agendar, o alcance do agendamento dela), e a
+  // edição a mostra na lista aberta, sem apagá-la ao salvar (princípio 3).
+  expect((await db().from('users').update({ atende_em: [rede!.branchId, batel] }).eq('id', talita!.userId)).error).toBeNull()
+  await como(browser, dona!.estado, async p => {
     await p.goto('/admin/team')
     await p.getByTitle(`Editar ${nomeDaTalita}`).click()
     const modal = p.getByRole('dialog')
     const lista = modal.getByRole('group', { name: 'Atende clientes em' })
     await expect(lista.getByRole('checkbox', { name: nomeA })).toBeChecked()
-    await expect(lista.getByRole('checkbox', { name: nomeBatel })).not.toBeChecked()
-    await lista.getByRole('checkbox', { name: nomeBatel }).check()
+    await expect(lista.getByRole('checkbox', { name: nomeBatel }), 'a marca de antes aparece').toBeChecked()
     await modal.getByRole('button', { name: 'Salvar' }).click()
     await expect(modal).toHaveCount(0)
   })
-  await expect.poll(async () => [...((await atendeEm(talita!.userId))?.atende_em ?? [])].sort(), { message: 'gravou as duas' })
+  await expect.poll(async () => [...((await atendeEm(talita!.userId))?.atende_em ?? [])].sort(), { message: 'salvar não apagou o Batel' })
     .toEqual([rede!.branchId, batel].sort())
   expect((await atendeEm(talita!.userId))?.branch_id, 'a abrangência continua a Água Verde').toBe(rede!.branchId)
   await como(browser, dona!.estado, async p => {

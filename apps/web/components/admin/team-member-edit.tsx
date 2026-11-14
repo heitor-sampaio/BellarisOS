@@ -6,10 +6,9 @@ import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { normalizarHorario, horarioDeQuemDeixaDeSeguir } from '@/lib/agenda/horario'
 import { Pencil, X } from 'lucide-react'
 import { updateTeamMember } from '@/actions/team'
-import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFala } from '@/components/shared/uma-unidade'
-import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
+import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { RepasseDoAtende, repasseDasEscolhas } from '@/components/admin/repasse-do-atende'
 
 interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
@@ -28,6 +27,8 @@ export interface EditableMember {
   email:            string
   roleId:           string | null
   branchId:         string | null
+  /** As outras unidades dela, além da principal (`branchId`) — EQ1a. */
+  outrasUnidades?:  string[]
   providesServices: boolean
   /** As unidades em que atende (o checklist do "Atende", decisão 2 da 8ª). */
   atendeEm?:        string[]
@@ -41,8 +42,14 @@ interface Props {
   member:         EditableMember
   branches:       Branch[]
   roles:          Role[]
-  /** Só quem tem abrangência de rede escolhe entre filial e rede. */
+  /** Quem tem a rede inteira: dá "A rede inteira" e marca qualquer unidade. */
   canChooseScope: boolean
+  /**
+   * As unidades de quem edita, quando não tem a rede inteira (EQ1a): com mais
+   * de uma, ela marca entre as DELA. Com uma só, o campo não aparece e as
+   * unidades do membro ficam como estão.
+   */
+  unidadesDeQuemEdita?: string[] | null
   redirectPath:   string
   /**
    * O cargo de SISTEMA do membro (o Admin da rede), travado: é a Admin editando
@@ -98,17 +105,21 @@ export function TeamMemberEdit(props: Props) {
  * o resultado da última tentativa nascem dos valores do membro a cada abertura,
  * e não do que se mexeu antes de cancelar.
  */
-function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath, cargoFixo, cargoDeAdminId, unidadesDoAtende, editaveisDoAtende = null, onFechar }: Props & { onFechar: () => void }) {
-  const [scopeEscolhido, setScope] = useState<'branch' | 'network'>(member.branchId ? 'branch' : 'network')
-  // Uma unidade só: já vem escolhida (F8).
-  const [filial, setFilial] = useState(member.branchId ?? (branches.length === 1 ? branches[0]!.id : ''))
+function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQuemEdita = null, redirectPath, cargoFixo, cargoDeAdminId, unidadesDoAtende, editaveisDoAtende = null, onFechar }: Props & { onFechar: () => void }) {
+  // As unidades (EQ1a): a rede inteira, ou as dela (a principal primeiro).
+  const [unidadesEscolhidas, setUnidades] = useState<ValorDasUnidades>(
+    member.branchId ? [member.branchId, ...(member.outrasUnidades ?? []).filter(u => u !== member.branchId)] : 'rede')
   const fala = useFala()
   // Cargo fora das opções nunca vira "o primeiro da lista": fica em "Selecione…".
   const cargoInicial = member.roleId && roles.some(r => r.id === member.roleId) ? member.roleId : ''
   const [cargo, setCargo] = useState(cargoInicial)
   // A Admin da rede é sempre da rede: escolhido o cargo, a abrangência some.
   const paraAdmin = !!cargoDeAdminId && cargo === cargoDeAdminId
-  const scope = paraAdmin ? 'network' : scopeEscolhido
+  const unidades: ValorDasUnidades = paraAdmin ? 'rede' : unidadesEscolhidas
+  // O campo "Unidades": quem tem a rede inteira, ou quem tem mais de uma unidade.
+  const mostraUnidades = !cargoFixo && !paraAdmin && (canChooseScope || (unidadesDeQuemEdita?.length ?? 0) > 1)
+  const todasAsAtivas = unidadesDoAtende ?? branches
+  const unidadesDela = unidades === 'rede' ? todasAsAtivas.map(b => b.id) : unidades
   const [state, action, pending] = useActionState(updateTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
   // A10: rebaixar uma Admin pergunta antes (o servidor também — sem o "sim",
@@ -116,7 +127,9 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
   // solto do formulário depois de cada envio, e a resposta reenvia.
   const pergunta = state && 'pergunta' in state ? state.pergunta : null
   const [rebaixar, setRebaixar] = useState(false)
-  const [atendeEm, setAtendeEm] = useState<string[]>(member.atendeEm ?? [])
+  // O "Atende" de UMA caixa (EQ1c): fechada, vale nas unidades dela.
+  const atendeEstado = useAtendeDoMembro(member.atendeEm ?? [], unidadesDela)
+  const atendeEm = atendeEstado.efetivo
   const formRef = useRef<HTMLFormElement>(null)
   // D3 da 9ª: desmarcar a unidade com agendamentos ali devolve o repasse. Ele
   // vale para o "Atende" que foi enviado — mexeu de novo, some (e o servidor pergunta de novo).
@@ -165,7 +178,6 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
               <input type="hidden" name="userId" value={member.id} />
               <input type="hidden" name="_rebaixarAdmin" value={rebaixar ? 'sim' : ''} />
               <input type="hidden" name="redirectPath" value={redirectPath} />
-              <input type="hidden" name="scope" value={scope} />
 
               <div className="form-2col">
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -205,50 +217,22 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                   )}
                 </div>
 
-                {!cargoFixo && !paraAdmin && canChooseScope && (
-                  <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline">Abrangência</label>
-                    <SegSelect
-                      options={[
-                        { key: 'branch',  label: 'Uma unidade' },
-                        { key: 'network', label: fala('Rede inteira') },
-                      ]}
-                      value={scope}
-                      onSelect={k => setScope(k as 'branch' | 'network')}
-                      ariaLabel="Abrangência do membro"
-                    />
-                  </div>
+                {mostraUnidades && (
+                  <UnidadesDoMembro id={`tme-unidades-${member.id}`}
+                    // Quem edita vê as dela; a unidade do membro fora do alcance aparece travada.
+                    unidades={canChooseScope ? branches : todasAsAtivas.filter(b => (unidadesDeQuemEdita ?? []).includes(b.id) || unidadesDela.includes(b.id))}
+                    editaveis={canChooseScope ? null : unidadesDeQuemEdita}
+                    valor={unidades} aoMudar={setUnidades} />
                 )}
-
-                {!cargoFixo && scope === 'branch' && (
-                  <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline" htmlFor={`tme-branch-${member.id}`}>Unidade</label>
-                    <select
-                      id={`tme-branch-${member.id}`} name="branchId" required className="field"
-                      value={filial} onChange={e => setFilial(e.target.value)}
-                    >
-                      <option value="" disabled>Selecione…</option>
-                      {branches.map(b => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {!cargoFixo && scope === 'network' && (
+                {!cargoFixo && paraAdmin && (
                   <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    {paraAdmin ? fala('A Admin da rede tem acesso total, em todas as unidades.') : 'Acesso a todas as unidades, sem unidade fixa.'}
+                    {fala('A Admin da rede tem acesso total, em todas as unidades.')}
                   </span>
                 )}
 
-                <AtendeNasUnidades id={`tme-atende-${member.id}`} unidades={unidadesDoAtende ?? branches}
-                  marcadas={atendeEm} aoMudar={setAtendeEm} editaveis={editaveisDoAtende} />
-                {/* A33 da 9ª: os dois controles não se alinham sozinhos, e a tela não dizia. */}
-                {(unidadesDoAtende ?? branches).length > 1 && (
-                  <span data-atende-e-unidade style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    A unidade (ou a rede) é o acesso: o que a pessoa abre no sistema. O “Atende clientes em” é onde ela
-                    aparece para agendar. Um não muda o outro: mudou a unidade, confira também onde ela atende.
-                  </span>
-                )}
+                {/* O "Atende" de UMA caixa (EQ1c): marcada, atende em todas as unidades dela. */}
+                <AtendeDoMembro id={`tme-atende-${member.id}`} estado={atendeEstado} unidades={todasAsAtivas}
+                  unidadesDela={unidadesDela} editaveis={editaveisDoAtende} />
 
                 {/* A13 da 12ª (princípio 1): o CRM/COREN, opcional — a variável do registro nos documentos. */}
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -260,7 +244,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, redirectPath,
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span className="field-label">Horário de atendimento</span>
                   <EditorDeHorario nome="horario" valor={normalizarHorario(member.horario)} seguir="Segue o horário da unidade"
-                    base={horarioDeQuemDeixaDeSeguir(branches, scope === 'branch' ? (filial || null) : null)} />
+                    base={horarioDeQuemDeixaDeSeguir(branches, unidades === 'rede' ? null : (unidades[0] ?? null))} />
                 </div>
               </div>
 

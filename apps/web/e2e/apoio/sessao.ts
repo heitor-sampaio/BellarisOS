@@ -162,6 +162,11 @@ export async function criarMembro(
      * atende (PT2, Bloco Plano de tratamento, 2026-11-14).
      */
     atendeEm?: string[]
+    /**
+     * As OUTRAS unidades do membro, além de `branchId` (EQ1a, 2026-11-14:
+     * `users.outras_unidades`). Só com `branchId`.
+     */
+    outrasUnidades?: string[]
   },
 ): Promise<MembroDeTeste> {
   const db     = banco()
@@ -231,6 +236,7 @@ export async function criarMembro(
         auth_id: authId, tenant_id: tenant, branch_id: branchId,
         name: `${PREFIXO} ${rotulo} ${marca}`, email, role_id: roleId,
         ...(opcoes.atendeEm?.length ? { atende_em: opcoes.atendeEm } : {}),
+        ...(opcoes.outrasUnidades?.length ? { outras_unidades: opcoes.outrasUnidades } : {}),
       })
       .select('id').single<{ id: string }>()
     if (erroMembro) throw new Error(`criar o membro: ${erroMembro.message}`)

@@ -15,18 +15,20 @@ interface Unidade { id: string; name: string }
  * formulário a cada envio. A unidade fora do alcance de quem edita (a gerente
  * de unidade fixa) aparece travada — o servidor também só muda a dela.
  */
-export function AtendeNasUnidades({ unidades, marcadas, aoMudar, editaveis = null, id = 'atende' }: {
+export function AtendeNasUnidades({ unidades, marcadas, aoMudar, editaveis = null, id = 'atende', semCampos = false }: {
   unidades: Unidade[]
   marcadas: string[]
   aoMudar:  (ids: string[]) => void
   /** As que quem edita pode mudar; null = todas. */
   editaveis?: string[] | null
   id?: string
+  /** Os campos ocultos ficam com quem usa (o "Atende" de uma caixa, EQ1c). */
+  semCampos?: boolean
 }) {
   const pode = (u: string) => editaveis === null || editaveis.includes(u)
   const alternar = (u: string, ligar: boolean) =>
     aoMudar(ligar ? [...new Set([...marcadas, u])] : marcadas.filter(x => x !== u))
-  const campos = (
+  const campos = semCampos ? null : (
     <>
       <input type="hidden" name="_atendeEm" value="1" />
       <input type="hidden" name="atendeEm" value={marcadas.join(',')} />

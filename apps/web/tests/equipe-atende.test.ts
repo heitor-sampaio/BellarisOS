@@ -15,6 +15,10 @@ describe('atendeQueGrava', () => {
     expect(atendeQueGrava({ pedido: ['B'], antes: ['A'], ativas, unidadeDeQuemEdita: 'B' })).toEqual(['A', 'B'])
     expect(atendeQueGrava({ pedido: ['C'], antes: [], ativas, unidadeDeQuemEdita: 'B' })).toEqual([])
   })
+  it('quem tem várias unidades (EQ1a) muda só as DELA', () => {
+    expect(atendeQueGrava({ pedido: ['A', 'C'], antes: ['B', 'C'], ativas, unidadeDeQuemEdita: ['A', 'B'] })).toEqual(['A', 'C'])
+    expect(atendeQueGrava({ pedido: [], antes: ['A', 'B', 'C'], ativas, unidadeDeQuemEdita: ['A', 'B'] })).toEqual(['C'])
+  })
 })
 
 describe('atendeDoFormulario', () => {

@@ -1,5 +1,6 @@
 import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
+import { alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
@@ -102,7 +103,7 @@ export async function saldoAgoraEmTexto(admin: Admin, productId: string, branchI
 }
 
 export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: EntradaDeEstoque): Promise<{ ok: true; saldo: number } | { error: string }> {
-  if (ctx.branchId !== null && e.branchId !== ctx.branchId) return { error: 'Operação não permitida fora da sua unidade.' }
+  if (!alcancaUnidade(ctx, e.branchId)) return { error: 'Operação não permitida fora da sua unidade.' }
   if (!(e.quantidade > 0)) return { error: 'Quantidade deve ser maior que zero.' }
   if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, e.productId, [e.branchId]))) {
     return { error: 'Produto ou unidade não encontrado.' }
@@ -146,7 +147,7 @@ export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
    */
   loteId?: string | null; loteValidade?: string | null
 }): Promise<{ ok: true; de: number } | { error: string }> {
-  if (ctx.branchId !== null && a.branchId !== ctx.branchId) return { error: 'Operação não permitida fora da sua unidade.' }
+  if (!alcancaUnidade(ctx, a.branchId)) return { error: 'Operação não permitida fora da sua unidade.' }
   if (!a.motivo.trim()) return { error: 'Motivo do ajuste é obrigatório.' }
   if (Number.isNaN(a.novoSaldo) || a.novoSaldo < 0) return { error: 'Novo estoque não pode ser negativo.' }
   if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, a.productId, [a.branchId]))) {

@@ -3,10 +3,8 @@
 import { useActionState, useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
-import { SegSelect } from '@/components/shared/seg-select'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { useFala } from '@/components/shared/uma-unidade'
-import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
+import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { toast } from 'sonner'
 
 interface Branch { id: string; name: string }
@@ -55,14 +53,14 @@ export function AdminTeamForm(props: AdminTeamFormProps) {
  * profissional (D8, regressão de 4e5bef5).
  */
 function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, cargoDeAdminId = null, onFechar }: AdminTeamFormProps & { onFechar: () => void }) {
-  // O "Atende" é o checklist das unidades (decisão 2 da 8ª simulação).
-  const [atendeEm, setAtendeEm] = useState<string[]>([])
-  const atende = atendeEm.length > 0
-  const [escolhido, setScope] = useState<'branch' | 'network'>('branch')
+  // As unidades (EQ1a): a rede inteira, ou as marcadas. Uma unidade só: já vem marcada (F8).
+  const [unidades, setUnidades] = useState<ValorDasUnidades>(branches.length === 1 ? [branches[0]!.id] : [])
   const [roleId, setRoleId] = useState('')
   const ehAdmin = !!cargoDeAdminId && roleId === cargoDeAdminId
-  const scope = ehAdmin ? 'network' : escolhido
-  const fala = useFala()
+  // O "Atende" de UMA caixa (EQ1c): vale nas unidades dela.
+  const unidadesDela = ehAdmin || unidades === 'rede' ? branches.map(b => b.id) : unidades
+  const atendeEstado = useAtendeDoMembro([], unidadesDela)
+  const atende = atendeEstado.efetivo.length > 0
   const [state, action, pending] = useActionState(createTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
 
@@ -97,7 +95,6 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
 
             <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <input type="hidden" name="redirectPath" value="/admin/team" />
-              <input type="hidden" name="scope" value={scope} />
 
               <div className="form-2col">
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -142,43 +139,13 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                     A Admin tem acesso à clínica toda, sem unidade fixa, e pode dar e alterar o cargo de Admin.
                   </span>
                 )}
-                {isNetworkAdmin && !ehAdmin && (
-                  <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline">Abrangência</label>
-                    <SegSelect
-                      options={[
-                        { key: 'branch',  label: 'Uma unidade' },
-                        { key: 'network', label: fala('Rede inteira') },
-                      ]}
-                      value={scope}
-                      onSelect={k => setScope(k as 'branch' | 'network')}
-                      ariaLabel="Abrangência do membro"
-                    />
-                  </div>
+                {!ehAdmin && (
+                  <UnidadesDoMembro id="tm-unidades" unidades={branches} editaveis={isNetworkAdmin ? null : branches.map(b => b.id)}
+                    valor={unidades} aoMudar={setUnidades} />
                 )}
 
-                {scope === 'branch' && (
-                  <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline" htmlFor="tm-branch">Unidade</label>
-                    <select id="tm-branch" name="branchId" required className="field"
-                      // Uma unidade só: já vem escolhida (F8).
-                      defaultValue={branches.length === 1 ? branches[0]!.id : ''}>
-                      <option value="" disabled>Selecione…</option>
-                      {branches.map(b => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {scope === 'network' && !ehAdmin && (
-                  <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    Acesso a todas as unidades, sem unidade fixa.
-                  </span>
-                )}
-
-                {/* Atende clientes: em quais unidades */}
-                <AtendeNasUnidades id="tm-atende" unidades={branches} marcadas={atendeEm} aoMudar={setAtendeEm}
-                  editaveis={isNetworkAdmin ? null : []} />
+                {/* Atende clientes (EQ1c): uma caixa; "Escolher em quais unidades atende" abre a lista. */}
+                <AtendeDoMembro id="tm-atende" estado={atendeEstado} unidades={branches} unidadesDela={unidadesDela} />
 
                 {atende && podeComissao && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>

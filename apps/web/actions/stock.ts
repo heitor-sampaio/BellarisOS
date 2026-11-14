@@ -171,7 +171,7 @@ async function createProductInterno(
     const filialEstoque = str(formData, '_branchId') || ctx.branchId
     const comEstoque    = !!initialQty && initialQty > 0
     if (comEstoque && !filialEstoque) return { error: 'Escolha a unidade que vai receber o estoque inicial.' }
-    if (comEstoque && ctx.branchId !== null && filialEstoque !== ctx.branchId) return { error: 'O estoque inicial é só da sua unidade.' }
+    if (comEstoque && !alcancaUnidade(ctx, filialEstoque)) return { error: 'O estoque inicial é só da sua unidade.' }
 
     // O nome repetido AVISA, sem recusar (A6 da 9ª; princípio 2): dois "Manta
     // térmica" iguais apareciam em dobro no seletor de insumo, sem nada que os
@@ -421,7 +421,7 @@ async function adminUpdateMinStockInterno(productId: string, branchId: string, m
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
-    if (ctx.branchId !== null && branchId !== ctx.branchId)
+    if (!alcancaUnidade(ctx, branchId))
       return { error: 'Operação não permitida fora da sua unidade.' }
     // C24: o impossível é recusado (princípio 2) — o mínimo negativo.
     if (typeof minStock !== 'number' || !Number.isFinite(minStock)) return { error: 'Informe o mínimo.' }
@@ -484,7 +484,7 @@ async function adminAddStockInterno(
     const branchId  = str(formData, 'branchId')
     if (!productId) return { error: 'Produto não identificado.' }
     if (!branchId)  return { error: 'Selecione uma unidade.' }
-    if (ctx.branchId !== null && branchId !== ctx.branchId)
+    if (!alcancaUnidade(ctx, branchId))
       return { error: 'Operação não permitida fora da sua unidade.' }
 
     const qtyRaw = str(formData, 'quantity')
@@ -561,7 +561,7 @@ async function adminTransferStockInterno(
     if (isNaN(qty) || qty <= 0) return { error: 'Quantidade deve ser maior que zero.' }
 
     const notes = str(formData, 'notes')
-    if (ctx.branchId !== null && fromBranchId !== ctx.branchId)
+    if (!alcancaUnidade(ctx, fromBranchId))
       return { error: 'Operação não permitida fora da sua unidade.' }
     const admin = createAdminClient()
     if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [fromBranchId, toBranchId])))
@@ -627,7 +627,7 @@ async function adminAdjustStockInterno(
     const branchId  = str(formData, 'branchId')
     if (!productId) return { error: 'Produto não identificado.' }
     if (!branchId)  return { error: 'Selecione uma unidade.' }
-    if (ctx.branchId !== null && branchId !== ctx.branchId)
+    if (!alcancaUnidade(ctx, branchId))
       return { error: 'Operação não permitida fora da sua unidade.' }
 
     const reason = str(formData, 'reason')

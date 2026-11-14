@@ -65,10 +65,12 @@ export default async function AdminTeamPage({
     ler((() => {
       let query = supabase
         .from('users')
-        .select('id, name, email, role_id, is_active, branch_id, provides_services, atende_em, horario, comissao_venda_pct, registro_conselho, branches(name)')
+        .select('id, name, email, role_id, is_active, branch_id, outras_unidades, provides_services, atende_em, horario, comissao_venda_pct, registro_conselho, branches(name)')
         .eq('tenant_id', ctx.tenantId!)
 
-      if (branch) query = query.eq('branch_id', branch)
+      // A unidade do filtro: a principal ou uma das outras (EQ1a). Só um uuid entra no `or`.
+      if (/^[0-9a-f-]{36}$/i.test(branch)) query = query.or(`branch_id.eq.${branch},outras_unidades.cs.{${branch}}`)
+      else if (branch) query = query.eq('branch_id', branch)
       if (role)   query = query.eq('role_id', role)
       if (status === 'active')   query = query.eq('is_active', true)
       if (status === 'inactive') query = query.eq('is_active', false)
@@ -230,9 +232,13 @@ export default async function AdminTeamPage({
             </thead>
             <tbody>
               {members.map((m, i) => {
-                const branchName = (m.branches as unknown as { name: string } | null)?.name
+                const principal = (m.branches as unknown as { name: string } | null)?.name
                   ?? (m.branch_id ? branchMap[m.branch_id] : null)
-                  ?? (m.branch_id ? '—' : fala('Rede inteira'))
+                // As unidades dela (EQ1a): a principal e as outras, "A, B e C".
+                const outras = ((m as { outras_unidades?: string[] | null }).outras_unidades ?? []).map(u => branchMap[u]).filter(Boolean) as string[]
+                const branchName = m.branch_id
+                  ? (listaDeUnidades([principal ?? '—', ...outras]))
+                  : fala('Rede inteira')
                 const label = (m.role_id ? roleLabel[m.role_id] : null) ?? '—'
 
                 return (
@@ -305,6 +311,7 @@ export default async function AdminTeamPage({
                           email:            m.email ?? '',
                           roleId:           m.role_id ?? null,
                           branchId:         m.branch_id ?? null,
+                          outrasUnidades:   ((m as { outras_unidades?: string[] | null }).outras_unidades ?? []) as string[],
                           providesServices: !!m.provides_services, horario: (m as { horario?: unknown }).horario ?? null,
                           atendeEm: ((m as { atende_em?: string[] | null }).atende_em ?? []) as string[],
                           registroConselho: (m as { registro_conselho?: string | null }).registro_conselho ?? null,

@@ -163,6 +163,8 @@ export const ISOLADOS = [
   'equipe-dona-que-atende.spec.ts',
   'equipe-formulario-limpo.spec.ts',
   'equipe-horario-parte-da-unidade.spec.ts',
+  // EQ1a-c e PO1 (Bloco Equipe e Portais, 2026-11-14): o membro de várias unidades.
+  'equipe-varias-unidades.spec.ts',
   'estoque-chip-da-unidade.spec.ts',
   'estoque-custo-de-consumo.spec.ts',
   'estoque-transferencia-com-nomes.spec.ts',

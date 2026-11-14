@@ -26,13 +26,15 @@ export function atendeDoFormulario(dados: FormData): string[] | null {
  * de uma unidade só mexe no que é da unidade").
  */
 export function atendeQueGrava(args: {
-  pedido: string[]; antes: string[]; ativas: string[]; unidadeDeQuemEdita: string | null
+  pedido: string[]; antes: string[]; ativas: string[]
+  /** As unidades de quem edita (EQ1a: podem ser várias); null = a rede inteira. */
+  unidadeDeQuemEdita: string | string[] | null
 }): string[] {
   const ativas = new Set(args.ativas)
   const pedido = args.pedido.filter(u => ativas.has(u))
   const inativas = args.antes.filter(u => !ativas.has(u))
   if (args.unidadeDeQuemEdita === null) return [...new Set([...inativas, ...pedido])].sort()
-  const minha = args.unidadeDeQuemEdita
-  const fora = args.antes.filter(u => u !== minha)
-  return [...new Set([...fora, ...(pedido.includes(minha) ? [minha] : [])])].sort()
+  const minhas = new Set(typeof args.unidadeDeQuemEdita === 'string' ? [args.unidadeDeQuemEdita] : args.unidadeDeQuemEdita)
+  const fora = args.antes.filter(u => !minhas.has(u))
+  return [...new Set([...fora, ...pedido.filter(u => minhas.has(u))])].sort()
 }

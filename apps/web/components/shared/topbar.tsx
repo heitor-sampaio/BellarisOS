@@ -16,6 +16,7 @@ import type { ResolvedPermissions, ResolvedScopes, SuporteNoContexto } from '@es
 import { useUmaUnidade } from '@/components/shared/uma-unidade'
 import { useFuso } from '@/components/shared/fuso'
 import { rotuloDoCargo } from '@/lib/unidades/vocabulario'
+import { SeletorDeUnidade } from '@/components/shared/seletor-de-unidade'
 
 interface TopbarProps {
   userName:       string
@@ -35,6 +36,11 @@ interface TopbarProps {
   agendaPropria?: boolean
   /** Quem está é da REDE (`ctx.branchId === null`): a busca, no portal da unidade, acha também o que é só da rede (A18 da 8ª). */
   daRede?:        boolean
+  /**
+   * A pessoa de VÁRIAS unidades (PO1, 2026-11-14): a unidade em que está e as
+   * dela, para o "Unidade: X ▾". Nulo para quem tem uma só ou a rede inteira.
+   */
+  unidade?:       { atual: { slug: string; name: string }; unidades: { slug: string; name: string }[] } | null
   /** A sessão é do suporte da plataforma: mostra o aviso fixo com o "Sair". */
   suporte?:       SuporteNoContexto | null
   /** Teste acabando ou pagamento em atraso — só para quem administra a rede. */
@@ -70,7 +76,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false, saudacaoInicial }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false, unidade = null, saudacaoInicial }: TopbarProps) {
   // "Dra. Lívia", não "Dra."; e a saudação pela hora (era "Bom dia" sempre).
   const firstName  = primeiroNome(userName)
   const fuso       = useFuso()
@@ -119,6 +125,9 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       >
         <Menu size={20} />
       </button>
+
+      {/* PO1: "Unidade: X ▾" para quem tem várias — troca para a mesma tela na outra. */}
+      {unidade && <SeletorDeUnidade atual={unidade.atual} unidades={unidade.unidades} />}
 
       {/* No modo suporte, o aviso toma o lugar da saudação — e não some */}
       {suporte && <BannerDoSuporte suporte={suporte} />}

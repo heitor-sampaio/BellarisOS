@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
+import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { toast } from 'sonner'
 
 interface Role { id: string; label: string }
@@ -21,11 +21,35 @@ interface TeamFormProps {
   editaveisDoAtende?: string[] | null
   /** `financial: MANAGE` com comissões no plano: quem atende já nasce com a comissão padrão (A3 da 8ª). */
   podeComissao?: boolean
+  /**
+   * As unidades de quem cadastra, quando são MAIS de uma (EQ1a): ela marca em
+   * quais das dela a pessoa nova entra (começa nesta). Sem isto, entra nesta.
+   */
+  unidadesDeQuemCadastra?: { id: string; name: string }[] | null
 }
 
-export function TeamForm({ branchId, slug, roles, unidade = null, unidadesDoAtende, editaveisDoAtende = null, podeComissao = false }: TeamFormProps) {
+export function TeamForm(props: TeamFormProps) {
   const [open, setOpen] = useState(false)
-  const [atendeEm, setAtendeEm] = useState<string[]>([])
+  return (
+    <>
+      <button className="btn-primary" onClick={() => setOpen(true)}>
+        <Plus size={15} />
+        Adicionar membro
+      </button>
+      {open && <NovoMembroDaUnidade {...props} onFechar={() => setOpen(false)} />}
+    </>
+  )
+}
+
+/** O formulário só existe com a janela aberta: o estado nasce limpo a cada abertura (D8). */
+function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDoAtende, editaveisDoAtende = null, podeComissao = false, unidadesDeQuemCadastra = null, onFechar }: TeamFormProps & { onFechar: () => void }) {
+  const setOpen = (aberto: boolean) => { if (!aberto) onFechar() }
+  const variasMinhas = (unidadesDeQuemCadastra?.length ?? 0) > 1
+  const [unidades, setUnidades] = useState<ValorDasUnidades>([branchId])
+  const unidadesDela = variasMinhas && Array.isArray(unidades) ? unidades : [branchId]
+  // O "Atende" de UMA caixa (EQ1c): vale nas unidades dela.
+  const atendeEstado = useAtendeDoMembro([], unidadesDela)
+  const atendeEm = atendeEstado.efetivo
   // O sucesso fecha o formulário na própria action, quando a resposta chega.
   const [state, action, pending] = useActionState(
     async (anterior: Parameters<typeof createTeamMember>[0], dados: FormData) => {
@@ -43,12 +67,7 @@ export function TeamForm({ branchId, slug, roles, unidade = null, unidadesDoAten
 
   return (
     <>
-      <button className="btn-primary" onClick={() => { setAtendeEm([]); setOpen(true) }}>
-        <Plus size={15} />
-        Adicionar membro
-      </button>
-
-      {open && (
+      {(
         <JanelaModal onFechar={() => setOpen(false)} rotulo="Novo membro" largura={440} fechaNoFundo={false}>
           <div style={{ padding: 'var(--card-pad)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -66,8 +85,12 @@ export function TeamForm({ branchId, slug, roles, unidade = null, unidadesDoAten
             </div>
 
             <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <input type="hidden" name="scope" value="branch" />
-              <input type="hidden" name="branchId" value={branchId} />
+              {!variasMinhas && (
+                <>
+                  <input type="hidden" name="scope" value="branch" />
+                  <input type="hidden" name="branchId" value={branchId} />
+                </>
+              )}
               <input type="hidden" name="redirectPath" value={slug} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -102,8 +125,14 @@ export function TeamForm({ branchId, slug, roles, unidade = null, unidadesDoAten
                 )}
               </div>
 
-              <AtendeNasUnidades id="tm-atende" unidades={unidadesDoAtende ?? [{ id: branchId, name: unidade ?? 'Esta unidade' }]}
-                marcadas={atendeEm} aoMudar={setAtendeEm} editaveis={editaveisDoAtende} />
+              {variasMinhas && (
+                <UnidadesDoMembro id="tm-unidades" unidades={unidadesDeQuemCadastra!} editaveis={unidadesDeQuemCadastra!.map(u => u.id)}
+                  valor={unidades} aoMudar={setUnidades} />
+              )}
+
+              <AtendeDoMembro id="tm-atende" estado={atendeEstado}
+                unidades={unidadesDoAtende ?? [{ id: branchId, name: unidade ?? 'Esta unidade' }]}
+                unidadesDela={unidadesDela} editaveis={editaveisDoAtende} />
 
               {/* A3 da 8ª simulação: o cadastro da unidade não pedia a comissão. */}
               {atendeEm.length > 0 && podeComissao && (

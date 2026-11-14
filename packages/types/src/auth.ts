@@ -115,7 +115,19 @@ export interface TenantContext {
   userName: string        // nome do usuário (users.name) — vazio para CLIENT
   roleLabel: string       // rótulo do cargo (tenant_roles.label) — vazio para CLIENT
   tenantId: string | null
+  /**
+   * A unidade em que a pessoa ESTÁ (EQ1a, 2026-11-14): a do endereço, quando
+   * é uma das dela; senão a principal. Nulo só para quem tem "A rede inteira"
+   * — `branchId !== null` continua querendo dizer "não é da rede" (H7, EQ1b).
+   */
   branchId: string | null
+  /**
+   * As unidades da pessoa, a principal primeiro (`users.branch_id` +
+   * `users.outras_unidades`); null = "A rede inteira". É o que
+   * `alcancaUnidade` confere. Ausente num contexto montado à mão (o de antes):
+   * vale `branchId` (nulo = rede; senão, só ela).
+   */
+  unidades?: string[] | null
   role: UserRole
   roleId: string | null          // tenant_roles.id do cargo do usuário
   clientId: string | null

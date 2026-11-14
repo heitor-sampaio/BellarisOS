@@ -35,6 +35,11 @@ export type CachedMember = {
    */
   branchId: string | null
   /**
+   * As OUTRAS unidades dele, além de `branchId` (EQ1a, 2026-11-14:
+   * `users.outras_unidades`). Vazia para quem tem a rede inteira.
+   */
+  outrasUnidades: string[]
+  /**
    * Desativado não entra (`buildContext`). Até 2026-09-27 nada lia esta
    * coluna: quem era desligado seguia com acesso completo até alguém apagar a
    * conta na mão.
@@ -48,7 +53,7 @@ export function getCachedMember(authId: string) {
       const admin = createAdminClient()
       const data = await ler(admin
         .from('users')
-        .select('id, name, role_id, branch_id, provides_services, atende_em, is_active, tenant_roles(label, key, is_system)')
+        .select('id, name, role_id, branch_id, outras_unidades, provides_services, atende_em, is_active, tenant_roles(label, key, is_system)')
         .eq('auth_id', authId)
         .maybeSingle(), 'buscar o usuário')
       if (!data) return null
@@ -62,12 +67,14 @@ export function getCachedMember(authId: string) {
         providesServices: data.provides_services ?? false,
         atendeEm: ((data as { atende_em?: string[] | null }).atende_em ?? []) as string[],
         branchId: (data.branch_id as string | null) ?? null,
+        outrasUnidades: ((data as { outras_unidades?: string[] | null }).outras_unidades ?? []) as string[],
         isActive: data.is_active !== false,
       }
     },
     // `v2`: o formato ganhou o `ehAdminDaRede` (F70) — a entrada antiga, sem
-    // ele, valeria "não é Admin" por até uma hora depois do deploy.
-    [`member-v2-${authId}`],
+    // ele, valeria "não é Admin" por até uma hora depois do deploy. `v3`: as
+    // `outrasUnidades` (EQ1a), pelo mesmo motivo.
+    [`member-v3-${authId}`],
     { revalidate: 3600, tags: [`user:${authId}`] },
   )()
 }
@@ -174,6 +181,26 @@ export function getCachedNetworkBranches(tenantId: string) {
 }
 
 // ─── Filial por slug (lookup feito em quase toda página de filial) ────────────
+/**
+ * TODAS as unidades da rede (ativas ou não), com o slug — o contexto acha por
+ * aqui a unidade do endereço da pessoa de várias unidades (EQ1a/PO1), e a
+ * desativada que ela ainda tem continua sendo dela.
+ */
+export function getCachedTodasAsUnidades(tenantId: string) {
+  return unstable_cache(
+    async () => {
+      const data = await ler(createAdminClient()
+        .from('branches')
+        .select('id, name, slug, is_active')
+        .eq('tenant_id', tenantId)
+        .order('name'), 'carregar as unidades da rede')
+      return (data ?? []) as { id: string; name: string; slug: string; is_active: boolean }[]
+    },
+    [`todas-as-unidades-${tenantId}`],
+    { revalidate: 600, tags: [`branches:${tenantId}`] },
+  )()
+}
+
 export function getCachedBranchBySlug(slug: string, tenantId: string) {
   return unstable_cache(
     async () => {

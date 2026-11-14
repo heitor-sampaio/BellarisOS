@@ -5,7 +5,8 @@ import type {
   ResolvedPermissions, ResolvedScopes, ReportTab,
 } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
-import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedFichasDoLogin, getCachedRolePermissions, getCachedRoleReportTabs } from '@/lib/cached-queries'
+import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedFichasDoLogin, getCachedRolePermissions, getCachedRoleReportTabs, getCachedTodasAsUnidades } from '@/lib/cached-queries'
+import { unidadesDoMembro, unidadeEmQueEsta } from '@/lib/unidades/do-membro'
 import { fichaDaRequisicao, slugDoCaminho } from '@/lib/clientes/ficha-da-requisicao'
 import { clinicaAbreParaCliente, fichasQueAbrem } from '@/lib/clientes/disponibilidade'
 import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
@@ -99,7 +100,22 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   // manda embora quem tem filial fixa): lendo só do JWT, promover alguém a
   // abrangência de rede o deixava até uma hora trancado fora do portal certo.
   // `undefined` = membro não carregado (cliente final); `null` = rede.
-  const branchId = member ? member.branchId : (meta.branch_id ?? null)
+  //
+  // As UNIDADES do membro (EQ1a, 2026-11-14): null = "A rede inteira"; senão
+  // a principal (`users.branch_id`) e as outras (`users.outras_unidades`).
+  // `branchId` é a unidade em que a pessoa ESTÁ: a do endereço, quando é uma
+  // das dela (o portal de B para quem tem A e B); senão a principal. Nulo só
+  // para a rede inteira — `ctx.branchId !== null` segue querendo dizer "não é
+  // da rede" (H7, o /admin, EQ1b), e `ctx.branchId ?? pedido` prende a leitura
+  // à unidade em que ela está. Com uma unidade só, nada muda.
+  const principal = member ? member.branchId : (meta.branch_id ?? null)
+  const unidades = member ? unidadesDoMembro(member) : (principal === null ? null : [principal])
+  let branchId = principal
+  if (member && tenantId && unidades && unidades.length > 1) {
+    const slug = slugDoCaminho(await caminhoDaRequisicao())
+    const doEndereco = slug ? (await getCachedTodasAsUnidades(tenantId)).find(u => u.slug === slug)?.id ?? null : null
+    branchId = unidadeEmQueEsta(unidades, doEndereco)
+  }
 
   let permissions: ResolvedPermissions
   let scopes: ResolvedScopes
@@ -154,6 +170,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     roleLabel: member?.roleLabel ?? '',
     tenantId,
     branchId,
+    unidades,
     role,
     roleId,
     clientId,
@@ -224,7 +241,10 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
 })
 
 async function renovarSeAsClaimsEstaoVelhas(ctx: TenantContext, meta: Partial<JwtClaims>): Promise<void> {
-  if (!claimsVelhas(meta as { branch_id?: string | null; role_id?: string | null }, { branchId: ctx.branchId, roleId: ctx.roleId })) return
+  // A claim `branch_id` é a unidade PRINCIPAL gravada (set_user_claims), não a
+  // do endereço: a pessoa de várias unidades no portal de B não tem token velho.
+  const principal = ctx.unidades === undefined ? ctx.branchId : (ctx.unidades?.[0] ?? null)
+  if (!claimsVelhas(meta as { branch_id?: string | null; role_id?: string | null }, { branchId: principal, roleId: ctx.roleId })) return
   const caminho = renovaNestaRequisicao(await caminhoDaRequisicao())
   if (!caminho) return
   // Acabou de renovar e não pegou: segue com o banco (sem laço).
@@ -400,8 +420,18 @@ export function ownerFilter(ctx: TenantContext, module: AppModule): string | nul
 }
 
 /**
- * A ABRANGÊNCIA do membro (§11): quem é da rede (`branchId` nulo) alcança
- * todas as unidades; quem tem unidade fixa, só a dele.
+ * As unidades do contexto: `ctx.unidades` (null = a rede inteira); no
+ * contexto montado à mão, sem ela, o `branchId` (nulo = a rede; senão, só ele).
+ */
+export function unidadesDoContexto(ctx: Pick<TenantContext, 'branchId' | 'unidades'>): string[] | null {
+  if (ctx.unidades !== undefined) return ctx.unidades
+  return ctx.branchId === null ? null : [ctx.branchId]
+}
+
+/**
+ * A ABRANGÊNCIA do membro (§11): quem tem "A rede inteira" (`unidades` nulo)
+ * alcança todas as unidades; quem tem unidades, só as DELE (EQ1a, 2026-11-14:
+ * a pessoa de A e B alcança as duas, em qualquer dos dois portais).
  *
  * O registro de UNIDADE que chega por id — agendamento, lançamento, plano,
  * estoque, mapa, membro — passa por aqui depois de conferida a rede. Até
@@ -411,8 +441,9 @@ export function ownerFilter(ctx: TenantContext, module: AppModule): string | nul
  * `branchId` nulo no REGISTRO é coisa da rede (catálogo, cliente sem
  * unidade): só quem é da rede mexe.
  */
-export function alcancaUnidade(ctx: TenantContext, branchId: string | null | undefined): boolean {
-  return ctx.branchId === null || (!!branchId && branchId === ctx.branchId)
+export function alcancaUnidade(ctx: Pick<TenantContext, 'branchId' | 'unidades'>, branchId: string | null | undefined): boolean {
+  const minhas = unidadesDoContexto(ctx)
+  return minhas === null || (!!branchId && minhas.includes(branchId))
 }
 
 /**

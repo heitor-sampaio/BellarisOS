@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { destinoDaCliente } from '@/lib/clientes/destino'
+import { slugDaUnidadeDeEntrada } from '@/lib/unidades/de-entrada'
 
 /**
  * O login não é de NENHUMA clínica: nem membro de uma rede (`users`, ativo ou
@@ -51,8 +52,8 @@ export async function destinoPelosClaims(
     // ao destino de novo — milhares de idas e voltas, a tela em branco.
     if (!claims.tenant_id) return null
     if (claims.branch_id) {
-      const br = await ler(createAdminClient().from('branches').select('slug').eq('id', claims.branch_id).single(), 'buscar a unidade')
-      return getRedirectPath(claims.role, br?.slug ?? null)
+      // Com várias unidades, a ÚLTIMA usada (PO1).
+      return getRedirectPath(claims.role, await slugDaUnidadeDeEntrada(user.id, claims.branch_id))
     }
     return getRedirectPath(claims.role, null)
   } catch {

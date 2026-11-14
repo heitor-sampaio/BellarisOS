@@ -4,7 +4,8 @@ import { getTenantContext } from '@/lib/auth'
 import { copilotNoCargo, copilotNoPlano } from '@/lib/copilot/disponivel'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { origemPublica } from '@/lib/origem'
-import { getCachedRede } from '@/lib/cached-queries'
+import { getCachedRede, getCachedTodasAsUnidades } from '@/lib/cached-queries'
+import { unidadeEmQueEsta } from '@/lib/unidades/do-membro'
 import { ler } from '@/lib/db'
 import { copilotConfigurado, perguntarAoModelo, ErroDoModelo, type AoGastar, type ItemDaConversa } from '@/lib/copilot/openai'
 import { contextoDoCopilot, executarChamada, ferramentasDoCargo, paraOModelo } from '@/lib/copilot/executor'
@@ -91,6 +92,13 @@ export async function POST(req: NextRequest) {
   }
   if (!texto && anexos.length === 0) return recusa(400, 'Escreva algo ou mande um anexo.')
 
+  // Quem tem várias unidades (EQ1a) fala da unidade da PÁGINA, se é uma das dela
+  // (a rota /api não tem a unidade no endereço: o contexto viria com a principal).
+  const slugDaPaginaPedida = slugDaPagina(pagina)
+  if (ctxDaPessoa.unidades && ctxDaPessoa.unidades.length > 1 && slugDaPaginaPedida) {
+    const daPagina = (await getCachedTodasAsUnidades(ctxDaPessoa.tenantId!)).find(u => u.slug === slugDaPaginaPedida)
+    ctxDaPessoa = { ...ctxDaPessoa, branchId: unidadeEmQueEsta(ctxDaPessoa.unidades, daPagina?.id) }
+  }
   const ctx = contextoDoCopilot(ctxDaPessoa)
   const conversaExistente = conversaPedida ? await conversaDaPessoa(admin, ctx, conversaPedida) : null
   if (conversaPedida && !conversaExistente) return recusa(404, 'Conversa não encontrada.')

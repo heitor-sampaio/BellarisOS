@@ -1,5 +1,5 @@
 import type { TenantContext } from '@estetica-os/types'
-import { getTenantContext, podeReceber, podeVerFechamento } from '@/lib/auth'
+import { getTenantContext, podeReceber, podeVerFechamento, alcancaUnidade } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { SeloUnidadeDesativada } from '@/components/shared/selo-unidade-desativada'
@@ -25,7 +25,7 @@ export default async function PdvDaRedePage({ searchParams }: {
 
   // As unidades de LEITURA (a desativada com comanda aberta ainda recebe), e a
   // abrangência vence: quem tem unidade fixa, só a dela.
-  const unidades = (await unidadesParaLer(ctx.tenantId!)).filter(u => !ctx.branchId || u.id === ctx.branchId)
+  const unidades = (await unidadesParaLer(ctx.tenantId!)).filter(u => alcancaUnidade(ctx, u.id))
   if (unidades.length === 0) {
     return <p style={{ padding: 40, color: 'var(--text-muted)' }}>Nenhuma unidade ativa.</p>
   }
@@ -52,7 +52,7 @@ async function FechamentoNaRede({ ctx, dia, unidade }: { ctx: TenantContext; dia
     colunas: 'fuso',
     periodo: Number.isNaN(diaPedido.getTime()) ? undefined
       : { de: new Date(diaPedido.getTime() - 36 * 3_600_000), ate: new Date(diaPedido.getTime() + 36 * 3_600_000) },
-  })).filter(u => !ctx.branchId || u.id === ctx.branchId)
+  })).filter(u => alcancaUnidade(ctx, u.id))
   if (unidades.length === 0) {
     return <p style={{ padding: 40, color: 'var(--text-muted)' }}>Nenhuma unidade ativa.</p>
   }

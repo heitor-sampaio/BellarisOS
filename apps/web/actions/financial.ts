@@ -56,7 +56,7 @@ async function lancarPeloFormulario(formData: FormData): Promise<{ error?: strin
 
     // A unidade vem do formulário. Sem conferir, o lançamento caía na unidade
     // de QUALQUER rede — e quem é de unidade lançava na unidade vizinha.
-    if (ctx.branchId !== null && branchId !== ctx.branchId) return { error: 'Unidade não identificada.' }
+    if (!alcancaUnidade(ctx, branchId)) return { error: 'Unidade não identificada.' }
     const unidade = await ler(createAdminClient()
       .from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
       'conferir a unidade do lançamento')
