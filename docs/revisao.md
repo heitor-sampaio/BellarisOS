@@ -1698,7 +1698,8 @@ revisão, só se escreve o plano. Nada se implementa.
 | PDV5 | **Pacote**: vendido como um produto, na hora, pelo PDV | PDV2 |
 | PDV6 | **Produto**: o PDV vende o que está marcado como Venda direta | E2 |
 | PDV7 | Sai o **"Vender" da ficha**; o do **inbox** leva ao PDV. Sai a cobrança da conclusão do atendimento como porta própria (vira a comanda) | PDV1–PDV3 |
-| — | Mantém, dentro da comanda: as formas de pagamento (à vista, entrada + parcelas, a receber, cartão em N vezes), o desconto, "Quem vendeu", o estorno e a devolução, as comissões | — |
+| PDV8 | **Não existe pagamento sem forma de pagamento** (o Heitor, 13/11: "sempre tem que ter forma de pagamento, o crediario é uma forma de pagamento, não existe pagamento sem forma de pagamento"). O **Crediário** é uma das formas, ao lado de Pix, Dinheiro, Débito, Crédito e Crédito na rede: escolhido, a venda fica registrada como Crediário. Se houver entrada, ela pede a forma dela. Sai o "sem entrada, não precisa" (`rotuloDoMeioNoCrediario`, o `metodo: ''` de `EntradaDoPagamento`, o `pagamento.metodo` vazio nos documentos, que passa a dizer "Crediário"), e sai o "Meio de pagamento (opcional)" do "a receber". Quando o dinheiro entra (a parcela no PDV, CX1, ou a baixa no Financeiro, CX2), a forma é pedida, sempre | PDV1, CX1, CX2 |
+| — | Mantém, dentro da comanda: o crediário (entrada + parcelas), o "a receber", o cartão em N vezes, o desconto, "Quem vendeu", o estorno e a devolução, as comissões | — |
 
 ### Bloco: Caixa (recebimentos e fechamento do dia)
 
@@ -1729,6 +1730,7 @@ quem cuida do dinheiro.
 | FI5 | **Movimentações**: o extrato com filtro; o estorno, o recibo, a devolução e o cancelamento de venda, o CSV da contadora; como aviso, as taxas da maquininha estimadas e a venda sem taxa cadastrada (vindos do Fechamento — CX6) | FI1, CX6 |
 | FI6 | **Comissões**: como hoje, como aba | FI1 |
 | FI7 | **"Conceder crédito" vai para a ficha da cliente**, aba Financeiro, para quem tem o Financeiro em Gerenciar (como o "Trazer pacote de fora"). No topo do Financeiro fica só o "Novo lançamento" | — |
+| FI8 | **Sai a política antiga "Operacional acessa financeiro da filial"**: já não tem efeito (o Heitor, 13/11: "ok") | — |
 | — | Mantém: o período, o filtro de unidade na rede, quem vê o quê pelas permissões. Fora, por ser mais do que uma clínica pequena precisa: conciliação com o extrato do banco e plano de contas contábil completo | — |
 
 ### Bloco: Fidelidade
@@ -1928,9 +1930,10 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 - D20 → mantido no "Bloco: Agenda" ("só os meus" + Gerenciar remarca o próprio).
 - C64 → sai com o FD3.
 - A F76 e o teste "dois cliques fecham uma vez" → o "tudo verde" do fim do plano.
-- Sobram para o Heitor: a política antiga "Operacional acessa financeiro da
-  filial" (sem efeito) e o crediário sem entrada sem pedir o meio de
-  pagamento.
+- A política antiga "Operacional acessa financeiro da filial" sai (o Heitor:
+  "ok") → FI8.
+- O crediário sem entrada sem forma de pagamento → PDV8 (o Heitor: "não existe
+  pagamento sem forma de pagamento", e o crediário é uma delas).
 
 O texto abaixo é o de antes da revisão.
 
