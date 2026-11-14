@@ -10,7 +10,7 @@
  * texto não decide pelo procedimento (como os avisos da A48): "o atendimento".
  */
 export function textoDoPlanoDoConcluido(): string {
-  return 'Este atendimento está concluído: o plano gerado aqui nasce ligado a ele, e o registro daquele dia (dores, evolução, ficha e anamnese) fica como está.'
+  return 'Este atendimento está concluído: o plano gerado aqui nasce ligado a ele, e o registro daquele dia (dores, evolução, ficha do procedimento e ficha de saúde) fica como está.'
 }
 
 /**

@@ -148,7 +148,7 @@ test('A31: a recepção (sem o prontuário) não recebe a anamnese para responde
     // O controle: quem atende vê a anamnese revisada.
     await como(browser, async p => {
       await p.goto(`/${slug}/agenda/${id}`)
-      await expect(p.getByText('Anamnese revisada')).toBeVisible()
+      await expect(p.getByText('Ficha de saúde revisada')).toBeVisible()
     })
     const ctx = await browser.newContext({ storageState: recepcao.estado })
     try {
@@ -175,7 +175,7 @@ test('o servidor recusa o "Finalizar" sem a obrigatória — a trava não é só
     const r1 = await chamarAcaoComFormulario(p, 'actions/appointments.ts', 'finishSession', rota, [null], campos)
     // A recusa diz o que falta. (O texto da resposta traz também a página, com
     // os rótulos da ficha: por isso a frase inteira da recusa.)
-    expect(r1.texto, 'a recusa diz o que falta').toContain('na anamnese.')
+    expect(r1.texto, 'a recusa diz o que falta').toContain('na ficha de saúde.')
     expect(await status(id)).toBe('IN_PROGRESS')
 
     // A anamnese respondida pela cliente, a ficha ainda não: recusa pela ficha.
@@ -199,7 +199,7 @@ test('a anamnese que a cliente respondeu pelo app vale: só a ficha do procedime
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
     const falta = p.locator('[data-o-que-falta]')
     await expect(falta.getByText('Fototipo', { exact: true })).toBeVisible()
-    await expect(falta.getByText('Na anamnese'), 'a anamnese respondida não entra na lista').toHaveCount(0)
+    await expect(falta.getByText('Na ficha de saúde'), 'a anamnese respondida não entra na lista').toHaveCount(0)
     await falta.getByRole('button', { name: 'Responder agora' }).click()
     await expect(campo(p, FICHA_DO_PROCEDIMENTO, 'fototipo')).toHaveAttribute('data-invalido', 'true')
     await expect(campo(p, ANAMNESE, 'isPregnantOrBreastfeeding'), 'a anamnese respondida não é apontada')
@@ -238,7 +238,7 @@ test('atend-04: concluir_atendimento chamada direto, sem a action, recusa a obri
     p_dados: { notas: null, intercorrencias: null, comissoes: [], insumos: [], ...dados },
   })
   const r1 = await chamar({})
-  expect(r1.error?.message, 'sem anamnese').toContain('na anamnese.')
+  expect(r1.error?.message, 'sem anamnese').toContain('na ficha de saúde.')
   await responderAnamnese(cliente, rede!.tenantId)
   const r2 = await chamar({})
   expect(r2.error?.message, 'sem a ficha do procedimento').toBe('Falta preencher "Fototipo" na ficha do procedimento.')

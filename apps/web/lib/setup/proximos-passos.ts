@@ -9,7 +9,7 @@ export const PROXIMOS_PASSOS = [
   { titulo: 'Salas', porque: 'As salas ou cabines: o agendar oferece a livre. Com duas unidades, ficam no “Ver detalhes” de cada uma.', href: '/admin/settings?tab=unidades#salas' },
   { titulo: 'Estoque', porque: 'Os insumos: o procedimento só baixa o que já está cadastrado.', href: '/admin/estoque' },
   // A1 da 7ª simulação: o procedimento pede a ficha e o termo JÁ existentes.
-  { titulo: 'Fichas', porque: 'A anamnese de cada procedimento: ele escolhe uma ficha que já existe.', href: '/admin/settings?tab=fichas', recurso: 'fichas' },
+  { titulo: 'Fichas', porque: 'A ficha de atendimento de cada procedimento: ele escolhe uma ficha que já existe.', href: '/admin/settings?tab=fichas', recurso: 'fichas' },
   { titulo: 'Termos e contratos', porque: 'O termo que o procedimento pede antes de começar — também escolhido de um que já existe.', href: '/admin/settings?tab=documentos', recurso: 'documentos' },
   { titulo: 'Procedimentos', porque: 'O catálogo, com quem realiza, os insumos, a ficha, o termo e o preço.', href: '/admin/procedures' },
   { titulo: 'Taxas da maquininha', porque: 'Em Configurações → Comissões e taxas: o que a operadora desconta em cada forma e bandeira.', href: '/admin/settings?tab=comissoes' },

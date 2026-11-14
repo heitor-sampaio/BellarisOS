@@ -248,9 +248,9 @@ export async function Configuracoes({
   const preAtendimento = wantsForms && ctx.branchId === null
     ? await Promise.all([
         ler(admin.from('forms').select('id, name, schema')
-          .eq('tenant_id', ctx.tenantId!).eq('tipo', 'PRE_ATENDIMENTO').maybeSingle(), 'carregar a ficha de pré-atendimento'),
+          .eq('tenant_id', ctx.tenantId!).eq('tipo', 'PRE_ATENDIMENTO').maybeSingle(), 'carregar a ficha de saúde'),
         ler(admin.from('tenants').select('pre_atendimento_envio, pre_atendimento_validade_meses')
-          .eq('id', ctx.tenantId!).single(), 'carregar o envio do pré-atendimento'),
+          .eq('id', ctx.tenantId!).single(), 'carregar o envio da ficha de saúde'),
       ])
     : null
 

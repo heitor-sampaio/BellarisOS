@@ -45,6 +45,7 @@ import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resg
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
 import { valorDosItensDoAtendimento } from '@/lib/pdv/itens-da-comanda'
 import { insumosPorProduto, montarInsumosDaBaixa } from '@/lib/atendimento/insumos-da-baixa'
+import { corrigirRegistro } from '@/lib/prontuario/corrigir'
 import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
 import { fichaParaConcluir } from '@/lib/atendimento/ficha-do-procedimento'
 import { planejamentosDaFicha, perguntaDoPlanejamentoVazio, temPlanejadorSemPlanejamento } from '@/lib/atendimento/retrato-dos-injetaveis'
@@ -1292,10 +1293,22 @@ async function saveDraftNotesInterno(
       return { error: 'Este agendamento foi cancelado ou a cliente não compareceu: não há atendimento para escrever a evolução.' }
     }
 
-    // Profissional não pode editar registro já finalizado
+    // O registro concluído se corrige com a Agenda em Gerenciar (o "Editar
+    // registro" pede a Agenda E o Prontuário em Gerenciar — A39 da 5ª).
     const isFinalised = appt.status === 'COMPLETED'
     const isAdmin     = ctx.permissions.agenda === 'MANAGE'
-    if (isFinalised && !isAdmin) return { error: 'Registro finalizado. Apenas gerentes podem editar.' }
+    if (isFinalised && !isAdmin) return { error: 'Registro finalizado: corrigir pede a Agenda e o Prontuário em Gerenciar.' }
+
+    // A correção do concluído guarda a versão de antes (bloco Prontuário,
+    // PR2b): uma transação, `prontuario_corrigir_registro`. Sem mudança, nada.
+    if (isFinalised) {
+      const { versao } = await corrigirRegistro(admin, ctx, appointmentId, { notes, intercurrences })
+      if (versao) {
+        await logHistory(admin, appointmentId, ctx.internalUserId, ctx.userName || await getUserName(admin, ctx.userId), 'EDITED',
+          'Registro do atendimento corrigido (a versão de antes ficou guardada)')
+      }
+      return { success: true }
+    }
 
     // Get or create medical_records
     let medRecord = await ler(admin
@@ -1321,13 +1334,6 @@ async function saveDraftNotesInterno(
         notes,
         intercurrences,
       }, { onConflict: 'appointment_id' }), 'salvar o rascunho do prontuário')
-    }
-
-    // Log quando admin edita pós-conclusão
-    if (isFinalised && isAdmin) {
-      const userName = ctx.userName || await getUserName(admin, ctx.userId)
-      await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'EDITED',
-        'Observações do atendimento editadas pelo gerente')
     }
 
     return { success: true }

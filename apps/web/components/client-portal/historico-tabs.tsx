@@ -62,7 +62,7 @@ function MiniStars({ label, value }: { label: string; value: number }) {
 type Tab = 'procedimentos' | 'pagamentos' | 'documentos'
 
 const DOC_CATEGORY: Record<string, string> = {
-  anamnese:  'Anamnese',
+  anamnese:  'Ficha de saúde',
   contrato:  'Contrato',
   foto:      'Foto',
   laudo:     'Laudo',

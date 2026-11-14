@@ -45,6 +45,7 @@ const SUBTITULO_DO_CANAL: Record<string, string> = {
 }
 import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import { registrarAcessoAoProntuario, acessosAoProntuario } from '@/lib/prontuario/acessos'
+import { anotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { nomeDosProcedimentos } from '@/lib/plano-de-tratamento/nome'
 import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
 import { abaDaFicha } from '@/lib/clientes/aba-da-ficha'
@@ -151,7 +152,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('client_documents')
-      .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at, enviado_em, enviado_por_nome, atendimento:appointments!client_documents_appointment_id_fkey(id, scheduled_at, procedures(name))')
+      .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at, enviado_em, enviado_por_nome, momento, atendimento:appointments!client_documents_appointment_id_fkey(id, scheduled_at, procedures(name))')
       .eq('client_id', id)
       .is('apagado_em', null)
       .order('created_at', { ascending: false }), 'carregar os documentos'),
@@ -323,21 +324,35 @@ export default async function AdminClientProfilePage({
   const financeiro = await financeiroDaFicha(ctx, id)
   const { veFinanceiro, transactions, internalCredits, aReceber } = financeiro
 
-  type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string; enviado_em: string | null; enviado_por_nome: string | null; atendimento: { id: string; scheduled_at: string; procedures: { name: string } | null } | null }
+  type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string; enviado_em: string | null; enviado_por_nome: string | null; momento: string | null; atendimento: { id: string; scheduled_at: string; procedures: { name: string } | null } | null }
   // Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem sai daqui.
   const rawDocs = ((docsRaw as RawDoc[] | null) ?? []).filter(d => canViewRecords || !ehAnexoClinico(d.category))
   // A35 da 11ª: quantos anexos clínicos ficaram de fora (o recorte), para a aba
   // não dizer "Nenhum documento" quando há — só a contagem, nada do conteúdo.
   const anexosClinicosFora = canViewRecords ? 0 : ((docsRaw as RawDoc[] | null) ?? []).filter(d => ehAnexoClinico(d.category)).length
-  // O link assinado só na aba Documentos (o Prontuário só conta as fotos do atendimento).
-  const docUrlMap: Record<string, string> = aba === 'documentos' ? await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(d => d.file_path)) : {}
-  const documents: ClientDocumentItem[] = rawDocs.map(d => ({
+  // PR1b (a revisão de 2026-11-13): o anexo CLÍNICO mora na aba Prontuário, e
+  // a aba Documentos fica com o comum (RG, comprovante, "outro", contrato).
+  // O link assinado só na aba que o mostra.
+  const docsComuns = rawDocs.filter(d => !ehAnexoClinico(d.category))
+  // Só na aba que os mostra: em outra aba, o anexo clínico nem viaja à tela.
+  const docsClinicos = canViewRecords && aba === 'fichas' ? rawDocs.filter(d => ehAnexoClinico(d.category)) : []
+  const docUrlMap: Record<string, string> = aba === 'documentos' ? await getSignedUrls(CLIENT_DOCS_BUCKET, docsComuns.map(d => d.file_path))
+    : aba === 'fichas' ? await getSignedUrls(CLIENT_DOCS_BUCKET, docsClinicos.map(d => d.file_path)) : {}
+  const paraOItem = (d: RawDoc): ClientDocumentItem => ({
     id: d.id, name: d.name, category: d.category, fileUrl: docUrlMap[d.file_path] ?? '', fileName: d.file_name,
     fileSize: d.file_size, mimeType: d.mime_type, uploadedBy: d.uploaded_by?.name ?? null, createdAt: d.created_at,
     atendimento: atendimentoDoAnexo(d.atendimento),
     enviadoEm:   d.enviado_em,
     enviadoPor:  d.enviado_por_nome,
-  }))
+    momento:     d.momento,
+    appointmentId: d.atendimento?.id ?? null,
+  })
+  const documents = docsComuns.map(paraOItem)
+  const anexosClinicos = docsClinicos.map(paraOItem)
+  // PR2: as anotações e as versões de antes, só na aba que as mostra.
+  const anotacoesEVersoesDaFicha = canViewRecords && aba === 'fichas'
+    ? await anotacoesEVersoes(admin, ctx.tenantId!, recordForms.map(r => r.appointmentId))
+    : undefined
 
   const PAYMENT_METHOD_LABELS: Record<string, string> = {
     CASH: 'Dinheiro', PIX: 'Pix', DEBIT_CARD: 'Débito',
@@ -479,6 +494,10 @@ export default async function AdminClientProfilePage({
         lotesDosAtendimentos={lotesDosAtendimentosDaFicha}
         podeAbrirLote={can(ctx, 'stock', 'VIEW') && can(ctx, 'clients', 'VIEW')}
         anexosClinicosFora={anexosClinicosFora}
+        anexosClinicos={anexosClinicos}
+        temModuloProntuario={can(ctx, 'medical_records', 'VIEW')}
+        anotacoesEVersoes={anotacoesEVersoesDaFicha}
+        podeAnotar={can(ctx, 'medical_records', 'MANAGE') && canViewRecords}
         podeVerProntuario={canViewRecords}
         planejamentosQueAbrem={planejamentosQueAbrem}
         acessosAoProntuario={acessosDoProntuario}

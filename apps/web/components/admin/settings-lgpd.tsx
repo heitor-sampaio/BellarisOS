@@ -80,7 +80,7 @@ function ReviewButtons({ requestId }: { requestId: string }) {
             padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
           }}>
             <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', textAlign: 'right', lineHeight: 1.5 }}>
-              O pacote é refeito com a anamnese, a evolução e as fotos, e vai para a cliente. Não se desfaz.
+              O pacote é refeito com a ficha de saúde, a evolução e as fotos, e vai para a cliente. Não se desfaz.
             </span>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" disabled={pending} onClick={() => setConfirmando(false)}

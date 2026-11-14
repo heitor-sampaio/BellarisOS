@@ -263,7 +263,7 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
       {!nomeFixo && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Nome da ficha *</label>
-          <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Anamnese — Toxina botulínica" />
+          <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Ficha da toxina botulínica" />
         </div>
       )}
 

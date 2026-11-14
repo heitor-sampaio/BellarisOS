@@ -41,18 +41,18 @@ export async function salvarFichaDePreAtendimento(input: { id?: string; name: st
   assertRecurso(ctx, 'fichas')
   if (ctx.branchId !== null) throw semAcesso()
 
-  const nome = String(input?.name ?? '').trim().slice(0, 120) || 'Pré-atendimento'
+  const nome = String(input?.name ?? '').trim().slice(0, 120) || 'Ficha de saúde'
   const schema = normalizeFormSchema(input?.schema)
   const invalido = validateFormSchema(schema)
   if (invalido) return { error: invalido }
   const fora = flattenFields(schema).find(f => TIPOS_FORA_DO_PRE_ATENDIMENTO.includes(f.type))
-  if (fora) return { error: `A cliente responde a ficha pelo celular: campo de ${ROTULO_FORA[fora.type] ?? fora.type} não entra no pré-atendimento ("${fora.label}").` }
+  if (fora) return { error: `A cliente responde a ficha pelo celular: campo de ${ROTULO_FORA[fora.type] ?? fora.type} não entra na ficha de saúde ("${fora.label}").` }
 
   const admin = createAdminClient()
   const atualizadas = await gravar(admin.from('forms')
     .update({ name: nome, schema, updated_at: new Date().toISOString() })
-    .eq('tenant_id', ctx.tenantId!).eq('tipo', 'PRE_ATENDIMENTO').select('id'), 'salvar a ficha de pré-atendimento') as { id: string }[] | null
-  if (!atualizadas?.length) return { error: 'A ficha de pré-atendimento da rede não foi encontrada.' }
+    .eq('tenant_id', ctx.tenantId!).eq('tipo', 'PRE_ATENDIMENTO').select('id'), 'salvar a ficha de saúde') as { id: string }[] | null
+  if (!atualizadas?.length) return { error: 'A ficha de saúde da rede não foi encontrada.' }
   revalidatePath('/admin/settings')
   return { ok: true }
 }
@@ -68,7 +68,7 @@ export async function definirEnvioDoPreAtendimento(input: unknown): Promise<Resu
 
   await gravar(createAdminClient().from('tenants')
     .update({ pre_atendimento_envio: dados.data.envio, pre_atendimento_validade_meses: dados.data.validadeMeses })
-    .eq('id', ctx.tenantId!), 'salvar o envio do pré-atendimento')
+    .eq('id', ctx.tenantId!), 'salvar o envio da ficha de saúde')
   revalidatePath('/admin/settings')
   return { ok: true }
 }
@@ -86,7 +86,7 @@ export async function salvarAnamneseGeral(input: unknown): Promise<Resultado> {
   // escrever a anamnese de saúde dela.
   const admin = createAdminClient()
   const cliente = await ler(admin.from('clients').select('id')
-    .eq('id', dados.data.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a cliente da anamnese')
+    .eq('id', dados.data.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a cliente da ficha de saúde')
   if (!cliente) return { error: 'Cliente não encontrada.' }
 
   await gravarAnamneseGeral(admin, {
@@ -152,10 +152,10 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
   const admin = createAdminClient()
   const [pendente, deste, cliente, pelaConversa] = await Promise.all([
     ler(admin.from('pre_atendimentos').select('modo').eq('client_id', ap.client_id).eq('tenant_id', ctx.tenantId!)
-      .eq('status', 'PENDENTE').maybeSingle(), 'buscar o pré-atendimento pendente'),
+      .eq('status', 'PENDENTE').maybeSingle(), 'buscar a ficha de saúde pendente'),
     // A ficha gravada vazia não é respondida (D2 da simulação de 2026-10-28).
     ler(admin.from('pre_atendimentos').select('respondido_em').eq('appointment_id', ap.id).eq('status', 'RESPONDIDO').neq('respostas', '{}')
-      .order('respondido_em', { ascending: false }).limit(1).maybeSingle(), 'buscar o pré-atendimento do agendamento'),
+      .order('respondido_em', { ascending: false }).limit(1).maybeSingle(), 'buscar a ficha de saúde do agendamento'),
     ler(admin.from('clients').select('document, birth_date').eq('id', ap.client_id).maybeSingle(), 'buscar a cliente'),
     envioPelaConversaLigado(ctx.tenantId!),
   ])
@@ -232,7 +232,7 @@ export async function gerarLinkDoPreAtendimento(appointmentId: string): Promise<
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'MANAGE')
-    const travado = bloqueioDoSuporte(ctx, 'mandar a ficha de pré-atendimento')
+    const travado = bloqueioDoSuporte(ctx, 'mandar a ficha de saúde')
     if (travado) return { error: travado }
     const ap = await agendamentoAoAlcance(ctx, appointmentId)
     if (!ap?.client_id) return { error: 'Agendamento não encontrado.' }
@@ -254,7 +254,7 @@ export async function enviarFichaPelaConversa(appointmentId: string): Promise<{ 
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'MANAGE')
-    const travado = bloqueioDoSuporte(ctx, 'mandar a ficha de pré-atendimento')
+    const travado = bloqueioDoSuporte(ctx, 'mandar a ficha de saúde')
     if (travado) return { error: travado }
     const ap = await agendamentoAoAlcance(ctx, appointmentId)
     if (!ap?.client_id) return { error: 'Agendamento não encontrado.' }
@@ -303,10 +303,10 @@ async function criarLinkDaFicha(
   }
   let pendente = await preAtendimentoPendente(admin, ap.client_id)
   if (!pendente) {
-    await gravar(admin.rpc('pre_atendimento_abrir_manual', { p_tenant: ctx.tenantId!, p_appointment: ap.id }), 'abrir a ficha de pré-atendimento')
+    await gravar(admin.rpc('pre_atendimento_abrir_manual', { p_tenant: ctx.tenantId!, p_appointment: ap.id }), 'abrir a ficha de saúde')
     pendente = await preAtendimentoPendente(admin, ap.client_id)
   }
-  if (!pendente || pendente.tenantId !== ctx.tenantId) return { error: 'A cliente não tem ficha de pré-atendimento esperando resposta.' }
+  if (!pendente || pendente.tenantId !== ctx.tenantId) return { error: 'A cliente não tem ficha de saúde esperando resposta.' }
 
   const { token, hash } = novoToken()
   const expiraEm = new Date(Date.now() + VALIDADE_DO_LINK_DIAS * 86_400_000).toISOString()
@@ -333,8 +333,11 @@ async function montarLinkDaFicha(
   const unidade = await ler(admin.from('branches').select('name').eq('id', ap.branch_id).maybeSingle(), 'buscar a unidade')
   const clinica = (unidade?.name as string) || 'A clínica'
   const url = `${origemPublicaDe(await headers())}/pre-atendimento/${token}`
+  // A prévia aparece na tela de bloqueio do celular: nada de saúde (nem no
+  // nome da ficha — PR3 trocou "pré-atendimento" por "ficha de saúde" no que
+  // se lê DENTRO do link, não aqui).
   const mensagem = mensagemDoLink({
-    nome: cliente?.name as string | null, pedido: `${clinica} mandou a sua ficha de pré-atendimento.`,
+    nome: cliente?.name as string | null, pedido: `${clinica} mandou uma ficha para você responder.`,
     acao: 'Para responder', temCpf, dias: VALIDADE_DO_LINK_DIAS, url,
   })
   const numero = telefoneParaWhatsApp(cliente?.phone as string | null)
@@ -351,13 +354,13 @@ export async function linkDaFichaDeNovo(appointmentId: string): Promise<{ error:
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'MANAGE')
-    const travado = bloqueioDoSuporte(ctx, 'mandar a ficha de pré-atendimento')
+    const travado = bloqueioDoSuporte(ctx, 'mandar a ficha de saúde')
     if (travado) return { error: travado }
     const ap = await agendamentoAoAlcance(ctx, appointmentId)
     if (!ap?.client_id) return { error: 'Agendamento não encontrado.' }
     const admin = createAdminClient()
     const pendente = await preAtendimentoPendente(admin, ap.client_id)
-    if (!pendente || pendente.tenantId !== ctx.tenantId) return { error: 'A cliente não tem ficha de pré-atendimento esperando resposta.' }
+    if (!pendente || pendente.tenantId !== ctx.tenantId) return { error: 'A cliente não tem ficha de saúde esperando resposta.' }
     const valendo = await ler(admin.from('pre_atendimento_links').select('expires_at, token_cifrado')
       .eq('pre_atendimento_id', pendente.id).eq('tenant_id', ctx.tenantId!).is('revoked_at', null).is('used_at', null)
       .gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),

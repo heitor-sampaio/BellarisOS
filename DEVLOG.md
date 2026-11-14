@@ -1774,6 +1774,82 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Prontuário (PR1a–PR3): as fotos e os anexos no Prontuário, a anotação, a versão de antes, "Ficha de saúde"
+
+O Heitor (revisão de 13/11): a foto e o anexo clínico moram no prontuário, e
+"o registro concluído não se reescreve sem rastro".
+
+- **PR1a — a foto mora no atendimento dela**: na aba Prontuário da ficha, o
+  registro de cada atendimento (`[data-registro-do-atendimento]`) mostra as
+  fotos dele — a miniatura abre grande, o momento, o título, "Enviar à
+  cliente"/"Tirar do app" e "Excluir" (só marca), a quem tem o Prontuário em
+  Gerenciar. O momento (Antes/Durante/Depois) agora se GRAVA
+  (`client_documents.momento`; era só o nome sugerido). Saiu o "2 fotos em
+  Documentos → Foto clínica" (a ficha diz "em Fotos do atendimento, neste
+  registro"), e o cartão vazio da tela do atendimento diz "Ela fica no
+  prontuário da cliente, no registro deste atendimento." (o A26 da 9ª, que
+  dizia Documentos, foi revisto).
+- **PR1b — "Anexos clínicos" no Prontuário**: exame, laudo, receita, foto e
+  termo anexados sem atendimento (e a foto de atendimento ainda sem registro,
+  com o caminho a ele) — anexar só o clínico, ver, enviar à cliente, excluir
+  (só marca). A aba Documentos ficou com o comum (RG, comprovante, "outro",
+  contrato) e só oferece o comum. O aviso "Há N anexos clínicos desta cliente
+  que a sua permissão não abre" foi junto para o Prontuário (a aba aparece
+  para isso a quem tem o Prontuário em Ver e não atende a cliente); sem o
+  módulo, ele fica nos Documentos (não há outra aba).
+- **PR2a — "Acrescentar anotação"**: no atendimento concluído, quem tem o
+  Prontuário em Gerenciar, com o alcance de hoje, grava um texto datado com o
+  nome do ctx (a marca "via suporte" junto). Não se edita nem se apaga: sem
+  botão, e o gatilho recusa. Aparece no atendimento e no registro da aba
+  Prontuário, na ordem do tempo. `actions/prontuario.ts`.
+- **PR2b — a correção guarda a versão de antes**: o "Editar registro" salva
+  pela `prontuario_corrigir_registro` (uma transação): grava a evolução, a
+  intercorrência e a ficha do procedimento como estavam, com quem e quando, e
+  só então troca. Sem mudança, nada; a ficha só conta quando muda a resposta.
+  "Editado por X em dd/mm — ver a anterior" no atendimento e no Prontuário.
+  A avaliação concluída destravada não tinha "Salvar" — ganhou.
+- **PR2c**: o pacote LGPD leva as anotações e as versões de cada atendimento.
+- **PR3 — "Ficha de saúde" em todo texto que se lê**: 73 textos (telas da
+  equipe, app, link público, Configurações → Fichas, Copilot, mensagens de
+  erro, o pacote LGPD) e o nome da ficha da rede ("Pré-atendimento" →
+  "Ficha de saúde"). O código e o banco mantêm `pre_atendimento`/`anamnese`.
+  Trava: `tests/ficha-de-saude-no-texto.test.ts` (varre o texto que se lê
+  pela árvore do TypeScript).
+- **Migrations**: `20261115100001_prontuario_anotacoes_e_versoes` (as tabelas
+  `prontuario_anotacoes` e `prontuario_versoes` — RLS sem política
+  permissiva, só o servidor; as restritivas do suporte; o gatilho
+  `prontuario_registro_imutavel`, que só deixa sair pela cascata e pela
+  limpeza da rede de teste; a função da correção; `client_documents.momento`;
+  e os três textos do banco: "ficha de saúde"); `20261115100002_ficha_de_saude_no_nome`
+  (o nome da ficha da rede e os textos de três funções); e
+  `20261115100003_prontuario_corrigir_compara_respostas` (a ficha só muda
+  com a resposta — o primeiro "Salvar" gerava duas versões). Nenhuma
+  destrutiva: as funções foram recriadas a partir do corpo de produção, e o
+  `e2e_apagar_rede` ganhou uma linha (marca a rede que está apagando).
+- **Decisões pelos princípios**: a foto do atendimento sem registro fica nos
+  Anexos clínicos (princípio 3: a tela mostra onde está); a anotação só no
+  concluído (antes, é a evolução); o salvar sem mudança não cria versão; a
+  ficha cancelada ou de falta não se preenche mais; o aviso do recorte fica
+  nos Documentos só para quem não tem o Prontuário; o anexo clínico só vai
+  ao HTML na aba Prontuário (nas outras abas ele nem é lido); a mensagem do
+  link pelo WhatsApp não diz "saúde" ("mandou uma ficha para você
+  responder" — a prévia aparece na tela bloqueada); no pacote LGPD, o nome
+  antigo "Pré-atendimento" de uma ficha já gravada sai "Ficha de saúde".
+- **Specs antigos que mudaram** (a regra nova): `atendimento-foto-clinica`,
+  `clinico-so-com-prontuario`, `portal-cliente-documento-enviado` e
+  `prontuario` (o anexo clínico se acha e se anexa no Prontuário);
+  `atendimento-atritos-da-9` (A26) e `prontuario-atritos-da-11` (A34, A35);
+  e os de texto — `atendimento-obrigatorias-barram`,
+  `ficha-pre-atendimento*`, `configuracoes-textos-e-estados-vazios`,
+  `tests/obrigatorias-do-atendimento`.
+- **Testes**: novos `prontuario-fotos-e-anexos` (5) e
+  `prontuario-anotacoes-e-versoes` (9), mais a trava de texto (vitest, 2);
+  vizinhos em série, 26 specs, 134 passaram (o `copilot-esqueleto` pula sem
+  a chave). `tsc`, `eslint` e vitest (2382) limpos.
+- **Para o Heitor**: `lib/permissions.ts` mudou (só o texto do Prontuário na
+  tela de Cargos) — o `afetados` pede a completa, que não rodei. As
+  migrations já estão no banco.
+
 ### 2026-11-14 — Bloco Financeiro (FI1–FI8): cinco abas, o crédito na ficha, a política antiga fora
 
 O Heitor (revisão de 13/11): "Nada de recurso novo: o que já existe,

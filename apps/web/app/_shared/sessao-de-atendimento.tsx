@@ -27,6 +27,7 @@ import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler, lerTodas } from '@/lib/db'
 import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
+import { anotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { deOutroProfissional } from '@/lib/appointments/alteracoes'
 import { creditosDoCliente } from '@/lib/creditos/credito'
@@ -137,7 +138,7 @@ export async function SessaoDeAtendimento({
       .from('medical_records')
       .select('general_anamnesis')
       .eq('client_id', cli.id)
-      .maybeSingle(), 'carregar a anamnese do cliente'),
+      .maybeSingle(), 'carregar a ficha de saúde do cliente'),
 
     procedureId
       ? ler(admin
@@ -598,17 +599,20 @@ export async function SessaoDeAtendimento({
   // As fotos clínicas deste atendimento (A30, 2026-10-27): anexo clínico,
   // então só para quem vê o prontuário dele — e o acesso já foi registrado
   // acima. Bucket privado: a tela recebe URL assinada.
-  type RawFoto = { id: string; name: string; file_path: string; file_name: string; mime_type: string | null; created_at: string; enviado_em: string | null }
+  type RawFoto = { id: string; name: string; file_path: string; file_name: string; mime_type: string | null; created_at: string; enviado_em: string | null; momento: string | null }
   const fotosRaw = canViewRecords && cli
     ? ((await ler(admin.from('client_documents')
-        .select('id, name, file_path, file_name, mime_type, created_at, enviado_em')
+        .select('id, name, file_path, file_name, mime_type, created_at, enviado_em, momento')
         .eq('appointment_id', appointment.id).eq('client_id', cli.id).is('apagado_em', null)
         .order('created_at'), 'carregar as fotos do atendimento')) ?? []) as RawFoto[]
     : []
   const urlsDasFotos = await getSignedUrls(CLIENT_DOCS_BUCKET, fotosRaw.map(f => f.file_path))
   const fotosDoAtendimento = canViewRecords
-    ? fotosRaw.map(f => ({ id: f.id, name: f.name, fileName: f.file_name, mimeType: f.mime_type, createdAt: f.created_at, url: urlsDasFotos[f.file_path] ?? '', enviadoEm: f.enviado_em }))
+    ? fotosRaw.map(f => ({ id: f.id, name: f.name, fileName: f.file_name, mimeType: f.mime_type, createdAt: f.created_at, url: urlsDasFotos[f.file_path] ?? '', enviadoEm: f.enviado_em, momento: f.momento }))
     : null
+  // PR2 (bloco Prontuário): as anotações depois do atendimento e as versões de
+  // antes do registro corrigido — dado clínico, só para quem vê o prontuário.
+  const depoisDoAtendimento = canViewRecords ? await anotacoesEVersoes(admin, ctx.tenantId!, [appointment.id]) : null
 
   return (
     <>
@@ -625,6 +629,9 @@ export async function SessaoDeAtendimento({
         canEditRecords={canEditRecords}
         canViewRecords={canViewRecords}
         fotosDoAtendimento={fotosDoAtendimento}
+        anotacoes={depoisDoAtendimento ? (depoisDoAtendimento.anotacoes[appointment.id] ?? []) : null}
+        versoesDoRegistro={depoisDoAtendimento?.versoes[appointment.id] ?? []}
+        podeAnotar={canViewRecords && can(ctx, 'medical_records', 'MANAGE')}
         portalNoPlano={temRecurso(ctx, 'portal')}
         ficha={ficha}
         respostasDaFicha={respostasDaFicha}

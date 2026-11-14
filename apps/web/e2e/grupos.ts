@@ -54,6 +54,10 @@ export const ISOLADOS = [
   'financeiro-atritos-da-12.spec.ts',
   // O Bloco Financeiro do plano de adaptação (2026-11-14): as cinco abas (FI1–FI8).
   'financeiro-abas.spec.ts',
+  // O Bloco Prontuário do plano de adaptação (2026-11-14): fotos e anexos clínicos
+  // no Prontuário (PR1), anotações e versões do registro (PR2).
+  'prontuario-fotos-e-anexos.spec.ts',
+  'prontuario-anotacoes-e-versoes.spec.ts',
   'plano-defeitos-da-12.spec.ts',
   'campanha-defeitos-da-12.spec.ts',
   // A F62 (o fuso da clínica: a unidade de Manaus).

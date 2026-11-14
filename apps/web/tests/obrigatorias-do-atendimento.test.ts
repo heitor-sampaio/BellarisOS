@@ -52,7 +52,7 @@ describe('a primeira obrigatória vazia', () => {
       linha([{ id: 'allergies', type: 'textarea', label: 'Alergias', required: true }]),
       linha([{ id: 'foto', type: 'photo', label: 'Foto', required: true }]),
     ]
-    expect(faltaNaAnamnese(saude, {})).toEqual({ onde: 'anamnese', campo: 'allergies', rotulo: 'Alergias', mensagem: 'Falta responder "Alergias" na anamnese.' })
+    expect(faltaNaAnamnese(saude, {})).toEqual({ onde: 'anamnese', campo: 'allergies', rotulo: 'Alergias', mensagem: 'Falta responder "Alergias" na ficha de saúde.' })
     expect(faltaNaAnamnese(saude, { allergies: 'Nega' })).toBeNull()
   })
 })

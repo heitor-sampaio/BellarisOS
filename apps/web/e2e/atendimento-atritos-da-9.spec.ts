@@ -11,7 +11,7 @@ import { saudacao } from '../lib/saudacao'
  *   certo, mas só o Estoque dizia de qual frasco saiu).
  * - A25: a intercorrência digitada na desistência ia ao prontuário, mas não
  *   aparecia na tela do atendimento cancelado.
- * - A26: a foto clínica vai para Documentos → Foto clínica, e o texto dizia
+ * - A26 (revisto no PR1a, 2026-11-14: a foto mora no prontuário): a foto clínica ia para Documentos → Foto clínica, e o texto dizia
  *   "ela fica no prontuário".
  * - D18: a saudação da topbar ("Boa noite" → "Olá") dava erro de hidratação na
  *   virada das faixas: o servidor e o navegador a calculavam cada um.
@@ -108,13 +108,16 @@ test('A25: o atendimento cancelado mostra a intercorrência registrada na desist
   })
 })
 
-test('A26: sem foto, o cartão diz onde a foto clínica fica (Documentos → Foto clínica)', async ({ browser }) => {
+// PR1a (bloco Prontuário, a revisão de 2026-11-13) virou o A26: a foto
+// clínica passou a morar no prontuário, no registro do atendimento — e o
+// cartão vazio diz isso, não mais "Documentos → Foto clínica".
+test('A26: sem foto, o cartão diz onde a foto clínica fica (no prontuário, no registro do atendimento)', async ({ browser }) => {
   const { id } = await atendimento('Foto')
   await como(browser, profissional!, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
     const vazio = p.getByText(/Nenhuma foto neste atendimento/)
-    await expect(vazio).toContainText('Documentos → Foto clínica')
-    await expect(vazio).not.toContainText('fica no prontuário')
+    await expect(vazio).toContainText('fica no prontuário da cliente, no registro deste atendimento')
+    await expect(vazio).not.toContainText('Documentos → Foto clínica')
   })
 })
 

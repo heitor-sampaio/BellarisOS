@@ -31,17 +31,24 @@ export interface ClientDocumentItem {
   /** Quando a clínica o enviou ao app da cliente; nulo = só a equipe vê (2026-10-30). */
   enviadoEm?:   string | null
   enviadoPor?:  string | null
+  /** O momento da foto do atendimento (PR1a): ANTES, DURANTE ou DEPOIS. */
+  momento?:     string | null
+  /** O atendimento de onde veio, cru (para a aba Prontuário pôr a foto nele). */
+  appointmentId?: string | null
 }
 
 interface Props {
+  /** Só o anexo COMUM (RG, comprovante, "outro"): o clínico mora na aba Prontuário (PR1b). */
   documents: ClientDocumentItem[]
-  /** A35 da 11ª: quantos anexos clínicos o cargo não abre (o recorte). */
+  /**
+   * A35 da 11ª: quantos anexos clínicos o cargo não abre. Com o Prontuário
+   * (mesmo no "só os meus") o aviso mora na aba Prontuário (PR1b); aqui, só
+   * para quem não tem o módulo — não há outra aba onde dizê-lo.
+   */
   anexosClinicosFora?: number
   clientId:  string
   branchId:  string
   slug:      string
-  /** Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem aparece no formulário. */
-  podeAnexarClinico?: boolean
   /** O cadastro (`clients: MANAGE`): anexar e apagar o que não é clínico. */
   podeAnexarComum?:   boolean
   /**
@@ -53,7 +60,7 @@ interface Props {
 
 // -- Constants -----------------------------------------------------------------
 
-const CATEGORIES: { value: string; label: string }[] = [
+export const CATEGORIES: { value: string; label: string }[] = [
   { value: 'termo_consentimento', label: 'Termo de consentimento' },
   { value: 'exame',               label: 'Exame' },
   { value: 'laudo',               label: 'Laudo médico' },
@@ -91,7 +98,7 @@ function FileIcon({ mimeType }: { mimeType: string | null }) {
   return <File size={18} style={style} />
 }
 
-function categoryLabel(cat: string): string {
+export function categoryLabel(cat: string): string {
   return CATEGORIES.find(c => c.value === cat)?.label ?? cat
 }
 
@@ -104,6 +111,7 @@ function categoryLabel(cat: string): string {
 export function UploadForm({
   clientId, branchId, slug, podeAnexarClinico, podeAnexarComum, onClose,
   categoriaFixa, appointmentId, nomePadrao, rotuloDoEnvio = 'Anexar documento', titulo = 'Novo documento', aceita, momentos,
+  exemploDoNome = 'Ex: Comprovante de endereço — jun 2026',
 }: {
   clientId: string; branchId: string; slug: string; podeAnexarClinico: boolean; podeAnexarComum: boolean; onClose: () => void
   /** A categoria já decidida (a foto clínica do atendimento): sem o seletor. */
@@ -120,6 +128,8 @@ export function UploadForm({
    * marcar antes e depois): cada um dá o nome sugerido; o nome segue editável.
    */
   momentos?:      { opcoes: { key: string; label: string; nome: string }[]; inicial: string }
+  /** O exemplo do campo do nome (o do anexo comum ou o do clínico). */
+  exemploDoNome?: string
 }) {
   const formRef     = useRef<HTMLFormElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
@@ -158,6 +168,8 @@ export function UploadForm({
       <input type="hidden" name="slug"      value={slug} />
       {appointmentId && <input type="hidden" name="appointment_id" value={appointmentId} />}
       {categoriaFixa && <input type="hidden" name="category" value={categoriaFixa} />}
+      {/* PR1a: o momento da foto se GRAVA (era só o nome sugerido). */}
+      {momentos && <input type="hidden" name="momento" value={momento} />}
 
       {/* Uma saída só: o "Cancelar" do fim (A32, 2026-10-27). Eram três — o X,
           o Cancelar daqui e o botão do cabeçalho virando "Cancelar". */}
@@ -177,7 +189,7 @@ export function UploadForm({
           <input
             type="text" name="name" required
             value={nome} onChange={e => setNome(e.target.value)}
-            placeholder="Ex: Termo de anamnese — Jun 2026"
+            placeholder={exemploDoNome}
             className="field"
             style={{ background: 'var(--surface)' }}
           />
@@ -239,12 +251,28 @@ export function UploadForm({
   )
 }
 
+/**
+ * A35 da 11ª: o anexo clínico que o cargo não abre não some calado — diz
+ * quantos ficam de fora (só o número, nada do conteúdo). Mora na aba
+ * Prontuário (PR1b); na de Documentos só para quem não tem o módulo.
+ */
+export function AvisoDosAnexosClinicosFora({ quantos }: { quantos: number }) {
+  return (
+    <p data-anexos-clinicos-fora style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, padding: '12px 20px' }}>
+      {quantos === 1 ? 'Há 1 anexo clínico desta cliente' : `Há ${quantos} anexos clínicos desta cliente`} (fotos, exames, laudos)
+      que a sua permissão não abre: o prontuário é de quem tem o Prontuário — e, no “só os meus”, das clientes que você atende.
+    </p>
+  )
+}
+
 // -- Document row --------------------------------------------------------------
 
-function DocumentRow({
-  doc, slug, clientId, podeApagar, onDelete, portalNoPlano,
+export function DocumentRow({
+  doc, slug, clientId, podeApagar, onDelete, portalNoPlano, clinico = false,
 }: {
   doc: ClientDocumentItem; slug: string; clientId: string; podeApagar: boolean; onDelete: (id: string) => void; portalNoPlano: boolean
+  /** O anexo clínico, na aba Prontuário (PR1b): apagar só MARCA (fica o rastro). */
+  clinico?: boolean
 }) {
   const fuso = useFuso()
   const [deleting, setDeleting] = useState(false)
@@ -265,7 +293,8 @@ function DocumentRow({
   const catColor = CATEGORY_COLOR[doc.category] ?? CATEGORY_COLOR['outro']!
 
   async function handleDelete() {
-    if (!confirm('Excluir este documento? Esta ação não pode ser desfeita.')) return
+    // O clínico só se marca (o rastro fica); o comum sai de verdade.
+    if (!confirm(clinico ? 'Excluir este anexo do prontuário? Ele sai das telas, e o registro de quem excluiu fica.' : 'Excluir este documento? Esta ação não pode ser desfeita.')) return
     setDeleting(true)
     setErro(null)
     const res = await deleteClientDocument(doc.id, slug, clientId)
@@ -276,7 +305,7 @@ function DocumentRow({
   }
 
   return (
-    <div data-documento-da-ficha={doc.id} style={{
+    <div {...(clinico ? { 'data-anexo-clinico': doc.id } : { 'data-documento-da-ficha': doc.id })} style={{
       display: 'flex', alignItems: 'center', gap: 14,
       padding: '13px 20px',
       borderBottom: '1px solid var(--hairline)',
@@ -378,7 +407,7 @@ function DocumentRow({
 
 // -- Main component ------------------------------------------------------------
 
-export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarClinico = false, podeAnexarComum = false, anexosClinicosFora = 0, portalNoPlano }: Props) {
+export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarComum = false, anexosClinicosFora = 0, portalNoPlano }: Props) {
   const router = useRouter()
   const [showForm, setShowForm]   = useState(false)
   // A lista vem das PROPS a cada render; localmente só se guarda o que acabou
@@ -411,7 +440,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
           clientId={clientId}
           branchId={branchId}
           slug={slug}
-          podeAnexarClinico={podeAnexarClinico}
+          podeAnexarClinico={false}
           podeAnexarComum={podeAnexarComum}
           onClose={() => { setShowForm(false); router.refresh() }}
         />
@@ -439,7 +468,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
               </span>
             )}
           </div>
-          {(podeAnexarComum || podeAnexarClinico) && !showForm && (
+          {podeAnexarComum && !showForm && (
             <button
               type="button"
               onClick={() => setShowForm(true)}
@@ -451,14 +480,8 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
           )}
         </div>
 
-        {/* A35 da 11ª: o anexo clínico que o cargo não abre não some calado — a
-            aba diz quantos ficam de fora (só o número, nada do conteúdo). */}
-        {anexosClinicosFora > 0 && (
-          <p data-anexos-clinicos-fora style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '0 0 8px' }}>
-            {anexosClinicosFora === 1 ? 'Há 1 anexo clínico desta cliente' : `Há ${anexosClinicosFora} anexos clínicos desta cliente`} (fotos, exames, laudos)
-            que o seu cargo não abre: o prontuário é de quem o tem — e, no “só os meus”, das clientes que você atende.
-          </p>
-        )}
+        {anexosClinicosFora > 0 && <AvisoDosAnexosClinicosFora quantos={anexosClinicosFora} />}
+
         {/* Empty state */}
         {localDocs.length === 0 && !showForm && (
           <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
@@ -475,9 +498,13 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
             {/* Só quem pode anexar ganha o convite (A23, 2026-11-01): sem o
                 cadastro nem o prontuário em Gerenciar, o botão abria um
                 formulário que a action recusava. */}
-            {(podeAnexarComum || podeAnexarClinico) && (<>
+            {/* PR1b: o exame, o laudo, a receita e a foto moram no Prontuário. */}
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', maxWidth: 320 }}>
+              Exames, laudos, receitas, fotos e termos anexados ficam na aba Prontuário, em Anexos clínicos.
+            </p>
+            {podeAnexarComum && (<>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', maxWidth: 280 }}>
-                Adicione termos de consentimento, laudos, exames ou qualquer arquivo do cliente.
+                Adicione o RG, um comprovante ou outro arquivo da cliente.
               </p>
               <button
                 type="button"
@@ -522,7 +549,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
                   doc={doc}
                   slug={slug}
                   clientId={clientId}
-                  podeApagar={ehAnexoClinico(doc.category) ? podeAnexarClinico : podeAnexarComum}
+                  podeApagar={!ehAnexoClinico(doc.category) && podeAnexarComum}
                   onDelete={handleDelete}
                   portalNoPlano={portalNoPlano}
                 />

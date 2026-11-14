@@ -37,6 +37,14 @@ interface Props {
   /** A evolução e a intercorrência gravadas ao concluir — só no prontuário
    *  (leitura). A avaliação sem ficha tinha só isso, e sumia (D4, 2026-10-27). */
   evolucao?:        { texto: string | null; intercorrencias: string | null; queixas?: string | null } | null
+  /** O atendimento deste registro (marca `data-registro-do-atendimento`, no prontuário). */
+  registroId?:      string
+  /** "Editado por X em dd/mm — ver a anterior" (PR2b): no topo do registro. */
+  correcao?:        React.ReactNode
+  /** As fotos do atendimento (PR1a): moram no registro dele. */
+  fotos?:           React.ReactNode
+  /** As anotações depois do atendimento (PR2a), no fim do registro. */
+  anotacoes?:       React.ReactNode
 }
 
 function maskCPF(doc: string | null): string | null {
@@ -83,7 +91,7 @@ function TextoClinico({ label, texto }: { label: string; texto: string }) {
   )
 }
 
-export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, ficha, evolucao }: Props) {
+export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, ficha, evolucao, registroId, correcao, fotos, anotacoes }: Props) {
   const age = idadeEm(client.birthDate)
   const birth = formatDia(client.birthDate)
 
@@ -92,7 +100,7 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
   }
 
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="card" data-registro-do-atendimento={registroId} style={{ padding: 0, overflow: 'hidden' }}>
       {/* Cabeçalho do documento */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
         <FileText size={15} style={{ color: 'var(--brand)' }} />
@@ -101,6 +109,7 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
       </div>
 
       <div style={{ padding: '20px 24px' }}>
+        {correcao && <div style={{ marginBottom: 16 }}>{correcao}</div>}
         {/* Seção 1 — Dados do cliente */}
         <SectionOverline label="Dados do cliente" />
         <div className="form-2col" style={{ gap: '14px 28px', marginBottom: 18 }}>
@@ -148,6 +157,9 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
             {ficha.node}
           </div>
         )}
+
+        {fotos && <div style={sectionDivider}>{fotos}</div>}
+        {anotacoes && <div style={sectionDivider}>{anotacoes}</div>}
       </div>
     </div>
   )

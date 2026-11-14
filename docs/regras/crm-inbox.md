@@ -537,6 +537,15 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   anotação da profissional), e o PDF ganhou a seção "Planos de tratamento"; as
   comunicações no PDF dizem dia e hora (`lib/lgpd/plano.ts`). Prova: o mesmo
   spec e `tests/lgpd-plano-no-pacote.test.ts`.
+- **O prontuário do pacote leva as anotações e as versões de antes** (bloco
+  Prontuário, PR2c, 2026-11-14): cada atendimento do JSON tem `anotacoes[{
+  texto, por, em }]` (o que se escreveu depois de concluir) e
+  `versoesAnteriores[{ evolucao, intercorrencias, fichaDoProcedimento, por,
+  substituidaEm }]` (o que o "Editar registro" substituiu, com quem corrigiu);
+  o PDF, as linhas "Anotação de …" e "Versão anterior: …" sob o atendimento.
+  A ficha de saúde sai com o nome "Ficha de saúde" (o retrato velho
+  "Pré-atendimento" também — PR3). Prova:
+  `e2e/prontuario-anotacoes-e-versoes.spec.ts` ("PR2c").
 - **O cadastro do pacote leva o responsável legal e o documento estrangeiro**
   (sobra da F29, decisões 1 e 2 da 7ª simulação, 2026-11-05): a menor tem o
   "Responsável legal" na ficha (`clients.responsavel_*`), e o pacote não o

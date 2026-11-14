@@ -100,7 +100,7 @@ async function pendenteConferido(c: Extract<Conferida, { ok: true }>) {
   const pendente = c.conferir ? await preAtendimentoDoLink(admin, c.pre, c.cliente) : await preAtendimentoPendente(admin, c.cliente)
   if (!pendente || pendente.id !== c.pre) return null
   const registro = await ler(admin.from('medical_records').select('general_anamnesis')
-    .eq('client_id', c.cliente).maybeSingle(), 'buscar a anamnese')
+    .eq('client_id', c.cliente).maybeSingle(), 'buscar a ficha de saúde')
   return { pendente, atual: paraAnamneseGeral(registro?.general_anamnesis ?? null, pendente.ficha) }
 }
 

@@ -18,7 +18,7 @@ import { FichaPorLink } from './ficha-por-link'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Ficha de pré-atendimento — BellarisOS',
+  title: 'Ficha de saúde — BellarisOS',
   robots: { index: false, follow: false },
   referrer: 'no-referrer',
 }

@@ -103,7 +103,7 @@ export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
       initial={(rascunho ?? anamnese?.respostas ?? {}) as AnamnesisAnswers}
       canEdit
       semInjetaveis
-      rotuloSalvar="Salvar anamnese"
+      rotuloSalvar="Salvar ficha de saúde"
       onAnswersChange={onMudou}
       saveAction={async ({ answers }) => {
         const r = await salvarAnamneseGeral({ clientId, respostas: answers })
@@ -117,7 +117,7 @@ export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
   ) : respondida ? (
     <RespostasDaAnamnese rows={anamnese.ficha.rows} respostas={anamnese.respostas} />
   ) : (
-    <p className="anamnese-geral-vazio">{anamnese ? 'A ficha de saúde está vazia: nenhuma pergunta foi respondida.' : 'A cliente ainda não respondeu a anamnese.'}</p>
+    <p className="anamnese-geral-vazio">{anamnese ? 'A ficha de saúde está vazia: nenhuma pergunta foi respondida.' : 'A cliente ainda não respondeu a ficha de saúde.'}</p>
   )
 
   const acoes = canEdit && (
@@ -129,7 +129,7 @@ export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
         )
       : (
           <button type="button" className="btn-secondary" onClick={() => setEditando(true)} style={{ fontSize: 'var(--text-sm-sz)', gap: 5 }}>
-            <Edit2 size={12} /> Editar anamnese
+            <Edit2 size={12} /> Editar ficha de saúde
           </button>
         )
   )
@@ -151,7 +151,7 @@ export const AnamneseGeralCartao = forwardRef<AnamneseGeralCartaoHandle, {
     <div data-anamnese-geral className="card anamnese-geral" style={{ padding: 0, overflow: 'hidden' }}>
       <div className="anamnese-geral-cabeca">
         <ClipboardList size={15} style={{ color: 'var(--brand)' }} aria-hidden="true" />
-        <h3 className="anamnese-geral-titulo">Anamnese</h3>
+        <h3 className="anamnese-geral-titulo">Ficha de saúde</h3>
         {anamnese && (!editando || !respondida) && <SeloDaAnamnese anamnese={anamnese} />}
         {acoes}
       </div>
@@ -192,9 +192,9 @@ export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
   return (
     <div data-anamnese-geral className="card anamnese-geral" style={{ padding: 0, overflow: 'hidden' }}>
       <div className="anamnese-geral-cabeca" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-        <h3 className="anamnese-geral-titulo">Anamnese</h3>
+        <h3 className="anamnese-geral-titulo">Ficha de saúde</h3>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-          {anamnese && anamneseRespondida(anamnese) ? quemRespondeu(anamnese, fuso) : 'As perguntas da ficha de pré-atendimento da clínica'}
+          {anamnese && anamneseRespondida(anamnese) ? quemRespondeu(anamnese, fuso) : 'As perguntas da ficha de saúde da clínica'}
         </p>
         {anamnese && !anamneseRespondida(anamnese) && <SeloDaAnamnese anamnese={anamnese} />}
       </div>

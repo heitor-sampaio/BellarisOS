@@ -1711,6 +1711,20 @@ revisão, só se escreve o plano. Nada se implementa.
   antigos (`?aberto=`) levam à aba nova. Saiu a política "Operacional acessa
   financeiro da filial" (migration `20261115000001`, destrutiva, "aplica e
   anota"). Nada de recurso novo. Regra em `vendas-financeiro.md` §9.6.
+- ✅ Bloco Prontuário (14/11) — PR1a, PR1b, PR2a, PR2b, PR2c e PR3: a foto do
+  atendimento aparece no registro dele, na aba Prontuário (abre grande, o
+  momento — que agora se grava —, "Enviar à cliente"/"Tirar do app",
+  excluir só marca); "Anexos clínicos" no Prontuário (exame, laudo,
+  receita, foto, termo), e a aba Documentos com o comum; o aviso dos anexos
+  que a permissão não abre foi junto. "Acrescentar anotação" no concluído
+  (texto datado, com o nome, que não se edita nem se apaga) e a correção
+  que guarda a versão de antes ("Editado por X em dd/mm — ver a anterior");
+  as duas no pacote LGPD. "Ficha de saúde" em todo texto que se lê (e no
+  nome da ficha da rede). Migrations `20261115100001` (as tabelas
+  `prontuario_anotacoes` e `prontuario_versoes`, o gatilho que as tranca, a
+  função da correção, `client_documents.momento`), `20261115100002` (o nome
+  "Ficha de saúde") e `20261115100003` (a ficha só muda com a resposta).
+  Regra em `atendimento.md` §9.4.
 
 ### Bloco: Estoque
 
@@ -1841,12 +1855,12 @@ unidade.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| PR1a | **A foto do atendimento aparece no atendimento dela, na aba Prontuário** (miniatura que abre grande, o momento — antes/durante/depois —, "Enviar à cliente"/"Tirar do app"). Sai o "2 fotos em Documentos → Foto clínica"; o cartão vazio da tela do atendimento diz que a foto fica no prontuário | — |
-| PR1b | **"Anexos clínicos" na aba Prontuário**: exame, laudo, receita, foto e termo anexado sem atendimento — anexar, ver, apagar (só marca), enviar à cliente. A aba Documentos fica com o anexo comum (RG, comprovante, "outro"); o aviso de "anexos clínicos que o seu cargo não abre" vai junto | — |
-| PR2a | **Anotação depois do atendimento**: no atendimento concluído, "Acrescentar anotação" (quem tem o Prontuário em Gerenciar, com o alcance de hoje) grava um texto datado com o nome de quem escreveu (o do ctx, com a marca "via suporte"), que não se edita nem se apaga. Aparece no atendimento, na aba Prontuário, na ordem do tempo | — |
-| PR2b | **A correção guarda a versão de antes**: o "Editar registro" grava, antes de trocar, o que estava (evolução, intercorrência, ficha do procedimento), com quem e quando; o atendimento diz "editado por X em dd/mm — ver a anterior". Só o servidor grava; a versão não se altera (gatilho), como os acessos | — |
-| PR2c | **O pacote LGPD leva as anotações e as versões** | PR2a, PR2b |
-| PR3 | **"Ficha de saúde" em toda tela, mensagem e aviso** (a equipe, o app, o link, Configurações → Fichas, o Copilot): sai "pré-atendimento" e "anamnese" do texto que se lê. O nome no código e no banco fica | — |
+| PR1a | **A foto do atendimento aparece no atendimento dela, na aba Prontuário** (miniatura que abre grande, o momento — antes/durante/depois —, "Enviar à cliente"/"Tirar do app"). Sai o "2 fotos em Documentos → Foto clínica"; o cartão vazio da tela do atendimento diz que a foto fica no prontuário ✅ 14/11 | — |
+| PR1b | **"Anexos clínicos" na aba Prontuário**: exame, laudo, receita, foto e termo anexado sem atendimento — anexar, ver, apagar (só marca), enviar à cliente. A aba Documentos fica com o anexo comum (RG, comprovante, "outro"); o aviso de "anexos clínicos que o seu cargo não abre" vai junto ✅ 14/11 | — |
+| PR2a | **Anotação depois do atendimento**: no atendimento concluído, "Acrescentar anotação" (quem tem o Prontuário em Gerenciar, com o alcance de hoje) grava um texto datado com o nome de quem escreveu (o do ctx, com a marca "via suporte"), que não se edita nem se apaga. Aparece no atendimento, na aba Prontuário, na ordem do tempo ✅ 14/11 | — |
+| PR2b | **A correção guarda a versão de antes**: o "Editar registro" grava, antes de trocar, o que estava (evolução, intercorrência, ficha do procedimento), com quem e quando; o atendimento diz "editado por X em dd/mm — ver a anterior". Só o servidor grava; a versão não se altera (gatilho), como os acessos ✅ 14/11 | — |
+| PR2c | **O pacote LGPD leva as anotações e as versões** ✅ 14/11 | PR2a, PR2b |
+| PR3 | **"Ficha de saúde" em toda tela, mensagem e aviso** (a equipe, o app, o link, Configurações → Fichas, o Copilot): sai "pré-atendimento" e "anamnese" do texto que se lê. O nome no código e no banco fica ✅ 14/11 | — |
 | — | Mantém: o registro de cada atendimento (evolução, intercorrência, ficha do procedimento, o lote), a ficha de saúde e o envio dela, os injetáveis, quem vê e o registro de quem abriu | — |
 
 ### Bloco: Documentos

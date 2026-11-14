@@ -106,7 +106,7 @@ test.describe.serial('prontuário', () => {
     await anamneseGeral.locator('[data-campo="medications"] textarea').fill('Nenhum')
     await anamneseGeral.locator('[data-campo="healthConditions"] textarea').fill('Nenhuma')
     const anamnese = capturarAcao(page, corpo => corpo.includes(c!.cliente) && corpo.includes('dipirona'))
-    await page.getByRole('button', { name: 'Salvar anamnese' }).click()
+    await page.getByRole('button', { name: 'Salvar ficha de saúde' }).click()
     chamadas.anamnese = await anamnese
     await expect.poll(async () => {
       const { data } = await db.from('medical_records').select('general_anamnesis').eq('client_id', c!.cliente).maybeSingle()
@@ -138,12 +138,15 @@ test.describe.serial('prontuário', () => {
 
   test('documentos do cliente: anexar, baixar e excluir', async ({ page }) => {
     const db = banco()
-    await page.goto(`/admin/clients/${c!.cliente}?aba=documentos`)
-    await page.getByRole('button', { name: /Adicionar (primeiro )?documento/ }).first().click()
-    await page.locator('input[name="name"]').fill(`${PREFIXO} Termo ${marca}`)
-    await page.locator('select[name="category"]').selectOption('termo_consentimento')
-    await page.locator('input[name="file"]').setInputFiles({ name: 'termo.txt', mimeType: 'text/plain', buffer: Buffer.from('termo e2e') })
-    await page.getByRole('button', { name: 'Anexar documento' }).click()
+    // PR1b (2026-11-14): o termo anexado é anexo CLÍNICO — entra pelo
+    // Prontuário ("Anexos clínicos"); a aba Documentos fica com o comum.
+    await page.goto(`/admin/clients/${c!.cliente}?aba=fichas`)
+    const anexos = page.locator('[data-anexos-clinicos]')
+    await anexos.getByRole('button', { name: 'Anexar' }).click()
+    await anexos.locator('input[name="name"]').fill(`${PREFIXO} Termo ${marca}`)
+    await anexos.locator('select[name="category"]').selectOption('termo_consentimento')
+    await anexos.locator('input[name="file"]').setInputFiles({ name: 'termo.txt', mimeType: 'text/plain', buffer: Buffer.from('termo e2e') })
+    await anexos.getByRole('button', { name: 'Anexar documento' }).click()
 
     await expect.poll(async () => {
       const { data } = await db.from('client_documents').select('file_path').eq('client_id', c!.cliente)
@@ -166,6 +169,7 @@ test.describe.serial('prontuário', () => {
     expect(guardados ?? [], 'o arquivo fica').toHaveLength(1)
 
     // O anexo COMUM (aqui, "outro") se apaga de verdade: linha e arquivo.
+    await page.goto(`/admin/clients/${c!.cliente}?aba=documentos`)
     await page.getByRole('button', { name: /Adicionar (primeiro )?documento/ }).first().click()
     await page.locator('input[name="name"]').fill(`${PREFIXO} Comum ${marca}`)
     await page.locator('select[name="category"]').selectOption('outro')

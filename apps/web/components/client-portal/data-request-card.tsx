@@ -147,7 +147,7 @@ export function DataRequestCard({ requests }: Props) {
               style={{ marginTop: 2, accentColor: 'var(--brand)', width: 15, height: 15 }}
             />
             <span>
-              Incluir também meu prontuário (anamnese, evolução dos atendimentos e
+              Incluir também meu prontuário (ficha de saúde, evolução dos atendimentos e
               termos assinados).
               <span style={{ color: 'var(--text-muted)' }}>
                 {' '}Esta parte passa por liberação da clínica antes de ser enviada.

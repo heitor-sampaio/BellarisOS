@@ -212,7 +212,7 @@ test.describe('a ficha de saúde não se responde vazia (D2)', () => {
       const page = await ctx.newPage()
       await page.goto(`/admin/agenda/${ag}`)
       await expect(page.locator('[data-anamnese-geral]').first()).toBeVisible()
-      await expect(page.getByText('Anamnese revisada'), 'sem o selo de revisada').toHaveCount(0)
+      await expect(page.getByText('Ficha de saúde revisada'), 'sem o selo de revisada').toHaveCount(0)
       await expect(page.getByText(/Respondida pela cliente/), 'sem "respondida"').toHaveCount(0)
       await expect(page.getByText('Ficha de saúde vazia', { exact: false }).first(), 'a tela diz que está vazia').toBeVisible()
     } finally {

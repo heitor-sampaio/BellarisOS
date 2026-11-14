@@ -1630,15 +1630,19 @@ const procedures = await ler(
   ao Estoque com `?lote=<id>` e abre ali o "Aplicado em" do lote
   (`loteDaUrl`, `BotaoAplicadoEm abrirAoMontar`): num caso de reação adversa, é
   por aqui que se começa. E o campo de foto da ficha que ficou vazio, com fotos
-  anexadas pelo cartão "Fotos do atendimento", diz "2 fotos deste atendimento em
-  Documentos → Foto clínica" (`[data-fotos-do-atendimento]`) — dizia "Não
+  anexadas pelo cartão "Fotos do atendimento", diz "2 fotos deste atendimento,
+  em Fotos do atendimento, neste registro" (`[data-fotos-na-ficha]`; era "em
+  Documentos → Foto clínica" até o PR1a, 2026-11-14) — dizia "Não
   informado". Prova: `e2e/prontuario-atritos-da-11.spec.ts`.
 - **O recorte se diz** (A35 da 11ª): com o prontuário "só os meus", a ficha de
   quem ela não atende dizia "Nenhum termo ou contrato" e "Nenhum documento
   anexado" — eles existem. Os Termos dizem "não aparecem para você: com o
-  prontuário “só os meus”…" (`[data-termos-recortados]`), e a aba Documentos
-  "Há 2 anexos clínicos desta cliente (fotos, exames, laudos) que o seu cargo
-  não abre…" (`[data-anexos-clinicos-fora]`) — só o número, nada do conteúdo.
+  prontuário “só os meus”…" (`[data-termos-recortados]`), e a aba PRONTUÁRIO
+  (desde o PR1b, 2026-11-14; era a de Documentos) "Há 2 anexos clínicos desta
+  cliente (fotos, exames, laudos) que a sua permissão não abre…"
+  (`[data-anexos-clinicos-fora]`) — só o número, nada do conteúdo. A aba
+  Prontuário aparece para isso a quem tem o Prontuário em Ver e não atende a
+  cliente; sem o módulo, o aviso fica na aba Documentos (não há outra).
   A regra de quem vê não mudou.
 - **O modelo de perguntas de injetáveis** (A30 da 11ª: a ficha de
   pré-atendimento padrão não perguntava doença neuromuscular, toxina anterior,
@@ -1704,9 +1708,12 @@ const procedures = await ler(
   A action confere que o atendimento é DESTA cliente, da rede e de unidade ao
   alcance. O cartão só existe para quem vê o prontuário do atendimento
   (`canViewRecords`, já registrado em `prontuario_acessos`); anexar, para
-  quem escreve nele. A foto aparece também na aba Documentos da ficha, com a
-  linha "Atendimento de dd/mm/aaaa · Procedimento" levando à tela dele
-  (`atendimentoDoAnexo`, `lib/clientes/anexos.ts`; o dia no fuso do negócio).
+  quem escreve nele. Na ficha da cliente a foto mora no PRONTUÁRIO (PR1a,
+  2026-11-14): no registro do atendimento dela, e — a do atendimento ainda
+  sem registro — em "Anexos clínicos", com a linha "Atendimento de
+  dd/mm/aaaa · Procedimento" levando à tela dele (`atendimentoDoAnexo`,
+  `lib/clientes/anexos.ts`; o dia no fuso do negócio). Não está mais na aba
+  Documentos.
   O cartão mostra o TÍTULO dado à foto (o nome do arquivo fica na dica — J-41),
   e anexar grava no histórico do atendimento a linha `FOTO_CLINICA`, "Foto
   clínica anexada" — texto FIXO, sem o título: o histórico aparece a quem tem
@@ -1720,17 +1727,21 @@ const procedures = await ler(
   `enviarDocumentoACliente`, para quem anexa (`canEditRecords`; a action
   confere `recusaDoAnexo`), com "Só a equipe vê" / "No app da cliente".
   Prova: `e2e/atendimento-foto-clinica.spec.ts`.
-  **O cartão vazio diz onde a foto fica** (A26 da 9ª simulação, 2026-11-07;
-  princípio 3): dizia "Ela fica no prontuário da cliente", e a foto vai para a
-  ficha, aba Documentos, categoria Foto clínica — a regra fica. Agora "Ela
-  fica na ficha da cliente, em Documentos → Foto clínica, ligada a este
-  atendimento." Prova: `e2e/atendimento-atritos-da-9.spec.ts` ("A26").
+  **O cartão vazio diz onde a foto fica** (A26 da 9ª simulação, revisto no
+  PR1a do bloco Prontuário, 2026-11-14): "Nenhuma foto neste atendimento. Ela
+  fica no prontuário da cliente, no registro deste atendimento." (de
+  2026-11-07 a 2026-11-14 dizia "em Documentos → Foto clínica"). Prova:
+  `e2e/atendimento-atritos-da-9.spec.ts` ("A26"),
+  `e2e/prontuario-fotos-e-anexos.spec.ts`.
   **A foto diz o momento** (A13 da 10ª, 2026-11-10: as duas saíam "Foto
   clínica — 10/11/2026"): o anexar da foto do atendimento pergunta "Momento
   da foto" — Antes, Durante, Depois (a primeira nasce "antes", a seguinte
   "depois") — e o nome sugerido o diz ("Foto clínica (antes) — 10/11/2026");
-  o nome segue editável, e nada novo se grava além dele (`UploadForm
-  momentos`). Prova: `e2e/atendimento-uso-da-10.spec.ts` ("A13").
+  o nome segue editável (`UploadForm momentos`). Desde o PR1a (2026-11-14) o
+  momento também se GRAVA: `client_documents.momento` (`ANTES`/`DURANTE`/
+  `DEPOIS`, só na foto clínica), e a miniatura o mostra
+  (`[data-momento-da-foto]`). Prova: `e2e/atendimento-uso-da-10.spec.ts`
+  ("A13"), `e2e/prontuario-fotos-e-anexos.spec.ts`.
 - **No app da cliente aparece só o arquivo que a clínica ENVIA** (decisão do
   Heitor, 2026-10-30; migration `20261029001201`). Anexar (pela ficha ou pela
   foto do atendimento) não manda nada à cliente: o arquivo nasce "Só a equipe
@@ -1997,6 +2008,62 @@ const procedures = await ler(
   Prova: `e2e/plano-dica-do-pacote.spec.ts`.
 
 ---
+
+- **Bloco Prontuário (revisão do Heitor, 2026-11-13; entregue em
+  2026-11-14)**:
+  - **PR1a — a foto mora no atendimento dela**: a aba Prontuário da ficha
+    mostra, dentro do registro de cada atendimento
+    (`[data-registro-do-atendimento]`), as fotos dele (`FotosDoAtendimento
+    embutido`): a miniatura abre grande, o momento (Antes/Durante/Depois), o
+    título, "Enviar à cliente"/"Tirar do app" e "Excluir" (só marca) a quem
+    tem o Prontuário em Gerenciar com o alcance da ficha. Saiu o "N fotos em
+    Documentos → Foto clínica".
+  - **PR1b — "Anexos clínicos" no Prontuário**: o exame, o laudo, a receita, a
+    foto e o termo anexados sem atendimento (e a foto do atendimento que ainda
+    não tem registro) moram na seção "Anexos clínicos" da aba Prontuário
+    (`components/branch/anexos-clinicos.tsx`, `[data-anexos-clinicos]`):
+    anexar (só as categorias clínicas), ver, enviar à cliente e excluir (só
+    marca, `apagado_em`). A aba Documentos fica com o COMUM (RG, comprovante,
+    "outro", contrato) e só oferece o comum. A página só manda à tela o
+    anexo clínico de quem vê o prontuário (`canViewRecords`, com o acesso
+    registrado), com o link assinado só na aba que o mostra.
+  - **PR2a — "Acrescentar anotação"**: no atendimento CONCLUÍDO, quem tem o
+    Prontuário em Gerenciar, com o alcance de hoje (a rede, a unidade ao
+    alcance ou o atendimento dela, e a cliente no "só os meus"), acrescenta
+    um texto datado com o nome do ctx (a marca "via suporte" junto) —
+    `acrescentarAnotacao` (`actions/prontuario.ts`), tabela
+    `prontuario_anotacoes`. Não se edita nem se apaga: não há botão, e o
+    gatilho `prontuario_registro_imutavel` recusa UPDATE e DELETE (só a
+    cascata e a limpeza da rede de teste passam). Aparece no atendimento e no
+    registro da aba Prontuário, na ordem do tempo
+    (`[data-anotacoes-do-atendimento]`). Antes de concluir, escreve-se na
+    evolução — a action recusa.
+  - **PR2b — a correção guarda a versão de antes**: o "Editar registro" do
+    concluído salva pela `prontuario_corrigir_registro` (UMA transação,
+    `lib/prontuario/corrigir.ts`): grava em `prontuario_versoes` a evolução, a
+    intercorrência e a ficha do procedimento como estavam, com quem corrigiu
+    (o nome do ctx) e quando, e só então troca. Sem mudança, nada se grava; a
+    ficha só "muda" quando muda a RESPOSTA (o retrato das perguntas
+    remontado não conta — migration `20261115100003`). A versão não se altera
+    nem se apaga (o mesmo gatilho). A tela diz "Editado por X em dd/mm — ver
+    a anterior" (`[data-registro-editado]`, `[data-versao-anterior]`), no
+    atendimento e no registro da aba Prontuário. A avaliação concluída
+    destravada ganhou o "Salvar" (não tinha: destravar não gravava nada).
+    Corrigir pede a Agenda e o Prontuário em Gerenciar; a ficha cancelada ou
+    de falta não se preenche mais.
+  - **As duas tabelas são só do servidor**: RLS ligada sem política
+    permissiva (a sessão não lê nem grava — prova com o token de um membro no
+    spec), as restritivas `suporte_sem_clinico` e `suporte_sem_escrita_*`,
+    e a função `security definer` fechada a `anon`/`authenticated`.
+  - **PR2c — o pacote LGPD leva as anotações e as versões** de cada
+    atendimento (`anotacoes`, `versoesAnteriores` no JSON; linhas no PDF).
+  - **PR3 — "Ficha de saúde" em todo texto que se lê**: tela da equipe, app
+    da cliente, link público, Configurações → Fichas, Copilot, mensagens de
+    erro e o nome da ficha da rede (migration `20261115100002`). O código e o
+    banco mantêm `pre_atendimento`/`anamnese`. A trava é
+    `tests/ficha-de-saude-no-texto.test.ts`.
+  - Prova: `e2e/prontuario-fotos-e-anexos.spec.ts`,
+    `e2e/prontuario-anotacoes-e-versoes.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação
@@ -3138,6 +3205,10 @@ O resto do fluxo:
 ❌ Dizer no "Aplicado em" do lote a baixa INTEIRA do atendimento (é stock_movement_batches.quantity × o rendimento) ou a hora marcada (é a conclusão) — D6/A12 da 9ª; ou listar só os lotes com saldo onde o recall pede o esgotado (D15)
 ❌ Ler a validade do lote (product_batches.expires_at) com new Date(...)/toLocaleDateString — é um DIA gravado à meia-noite UTC e vira a véspera: é lib/estoque/validade.ts (D1 da 7ª)
 ❌ Deletar anexo clínico de client_documents pela tela (é apagado_em), ou ler client_documents numa tela sem .is('apagado_em', null)
+❌ Pôr anexo clínico (exame, laudo, receita, foto, termo) na aba Documentos da ficha — ele mora no Prontuário (PR1b)
+❌ Trocar a evolução, a intercorrência ou a ficha do atendimento CONCLUÍDO fora de prontuario_corrigir_registro (a versão de antes se perderia — PR2b)
+❌ Abrir prontuario_anotacoes ou prontuario_versoes à sessão, ou dar UPDATE/DELETE nelas (o gatilho recusa; só o servidor lê e grava)
+❌ Escrever "pré-atendimento" ou "anamnese" em texto que se lê — é "ficha de saúde" (tests/ficha-de-saude-no-texto trava)
 ❌ Mostrar no portal da cliente um client_documents sem enviado_em (a clínica decide o que vai ao app)
 ❌ Recriar um "Retorno em N dias" (regra, lista ou cron) — é um agendamento novo (aut-04)
 ❌ Usar 40001 para "tente de novo" numa função chamada pelo PostgREST (ele repete sozinho, sem reler) — é PT409

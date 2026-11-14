@@ -241,7 +241,7 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
     try {
       await page.goto('/admin/settings?tab=fichas')
       const secao = page.locator('[data-pre-atendimento]')
-      await expect(secao.getByRole('heading', { name: 'Ficha de pré-atendimento' })).toBeVisible()
+      await expect(secao.getByRole('heading', { name: 'Ficha de saúde' })).toBeVisible()
       await secao.getByLabel('Mandar a ficha quando a cliente for agendada').check()
       await secao.getByLabel('Validade das respostas (meses)').fill('3')
       await secao.getByRole('button', { name: 'Salvar o envio' }).click()
@@ -281,10 +281,10 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
       await expect(cartao.getByText(`dipirona ${marca}`)).toBeVisible()
       await expect(page.getByText(/Pele Oleosa/)).toBeVisible()
 
-      await cartao.getByRole('button', { name: 'Editar anamnese' }).click()
+      await cartao.getByRole('button', { name: 'Editar ficha de saúde' }).click()
       await responderAlergia(cartao, `látex ${marca}`)
       await preencherObrigatorias(cartao)
-      await cartao.getByRole('button', { name: 'Salvar anamnese' }).click()
+      await cartao.getByRole('button', { name: 'Salvar ficha de saúde' }).click()
       await expect.poll(async () => {
         const { data } = await db().from('medical_records').select('general_anamnesis').eq('client_id', cliente).single()
         const g = data?.general_anamnesis as { versao?: number; origem?: string; respostas?: Record<string, string> }
@@ -724,7 +724,7 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       await page.goto(`/pre-atendimento/${token}`)
       await expect(page.getByText('Ficha já respondida')).toHaveCount(0)
       // A50 da 9ª: antes do CPF, nada da ficha — nem que a clínica já a preencheu.
-      await expect(page.getByRole('heading', { level: 1 })).toContainText('mandou a sua ficha de pré-atendimento')
+      await expect(page.getByRole('heading', { level: 1 })).toContainText('mandou a sua ficha de saúde')
       await expect(page.getByRole('heading', { level: 1 })).not.toContainText('já preencheu')
       await page.getByLabel('CPF').fill(cpf)
       await page.getByRole('button', { name: 'Continuar' }).click()

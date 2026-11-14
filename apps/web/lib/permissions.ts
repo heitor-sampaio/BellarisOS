@@ -45,7 +45,7 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   agenda:          'Agendamentos, check-in e atendimentos',
   clients:         'Cadastro e ficha de clientes',
   loyalty:         'Pontos do cliente: saldo, extrato e ajuste',
-  medical_records: 'Anamnese, evolução e fotos clínicas',
+  medical_records: 'Ficha de saúde, evolução e fotos clínicas',
   documents:       'Assinatura de termos e contratos do cliente',
   procedures:      'Catálogo de procedimentos e pacotes',
   stock:           'Produtos, movimentações e transferências',

@@ -13,7 +13,7 @@ export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): {
     return {
       json: 'Pedido — em análise pela clínica. Quando ela liberar, um pacote novo é preparado com o prontuário.',
       pdf: [
-        'Você pediu também o prontuário (anamnese, evolução dos atendimentos e',
+        'Você pediu também o prontuário (ficha de saúde, evolução dos atendimentos e',
         'fotos clínicas), e o pedido está em análise pela clínica. Quando ela',
         'liberar, um pacote novo é preparado já com ele.',
       ],
@@ -31,7 +31,7 @@ export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): {
   return {
     json: 'Não incluído nesta solicitação.',
     pdf: [
-      'Os dados de prontuário (anamnese, evolução dos atendimentos e fotos',
+      'Os dados de prontuário (ficha de saúde, evolução dos atendimentos e fotos',
       'clínicas) não fazem parte deste pacote. Para',
       'solicitá-los, procure a unidade onde você é atendido.',
     ],

@@ -44,7 +44,7 @@ export async function oQueFaltaParaSeguir(admin: Admin, o: {
     let respostas: Record<string, unknown> | null = o.anamneseNaTela?.respostas ?? null
     if (!respostas) {
       const mr = await ler(admin.from('medical_records').select('general_anamnesis')
-        .eq('client_id', o.clientId).maybeSingle(), 'buscar a anamnese da cliente') as { general_anamnesis: unknown } | null
+        .eq('client_id', o.clientId).maybeSingle(), 'buscar a ficha de saúde da cliente') as { general_anamnesis: unknown } | null
       respostas = paraAnamneseGeral(mr?.general_anamnesis ?? null, fichaAtual)?.respostas ?? {}
     }
     const falta = faltaNaAnamnese(fichaAtual.rows, respostas)

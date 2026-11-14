@@ -81,7 +81,7 @@ export function FichaPorLink({ token, clinica, pede, conferir = false }: {
           {/* A50 da 9ª: antes do CPF a página não diz nada da ficha — nem que a
               clínica já a preencheu. Depois dele, o modo CONFERIR diz
               "Confira as respostas que a equipe preencheu". */}
-          {`${clinica} mandou a sua ficha de pré-atendimento.`}
+          {`${clinica} mandou a sua ficha de saúde.`}
         </h1>
       </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8 }}>

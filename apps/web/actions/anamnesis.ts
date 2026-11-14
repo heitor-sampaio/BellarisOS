@@ -9,6 +9,8 @@ import { normalizeFormSchema } from '@/lib/anamnesis'
 import { ANAMNESIS_BUCKET, ensurePrivateBucket, getSignedUrl, getSignedUrls } from '@/lib/storage'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { retratarInjetaveis } from '@/lib/injetaveis/alcance'
+import { corrigirRegistro } from '@/lib/prontuario/corrigir'
+import { logHistory } from '@/lib/appointments/avisos'
 
 
 // A anamnese GERAL da cliente saiu daqui em 2026-10-20: é a ficha de
@@ -122,9 +124,10 @@ export async function salvarFichaDoProcedimento(params: {
       return { error: 'Agendamento não encontrado.' }
     }
 
-    const isFinalised = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)
-    const isAdmin     = ctx.permissions.medical_records === 'MANAGE'
-    if (isFinalised && !isAdmin) return { error: 'Registro finalizado. Apenas gerentes podem editar.' }
+    // O cancelado e a falta não tiveram atendimento: não há ficha a escrever.
+    if (appt.status === 'CANCELLED' || appt.status === 'NO_SHOW') {
+      return { error: 'Este agendamento foi cancelado ou a cliente não compareceu: não há ficha do atendimento a preencher.' }
+    }
 
     // Ficha vinculada ao procedimento (para snapshot dos campos)
     const proc = await ler(admin
@@ -154,6 +157,21 @@ export async function salvarFichaDoProcedimento(params: {
     })
     if ('error' in retratadas) return { error: retratadas.error }
 
+    const fichaNova = { formId: form.id, name: form.name, rows, answers: retratadas.answers }
+
+    // A correção do CONCLUÍDO guarda a versão de antes (bloco Prontuário,
+    // PR2b): uma transação, `prontuario_corrigir_registro`. Sem mudança, nada.
+    if (appt.status === 'COMPLETED') {
+      const { versao } = await corrigirRegistro(admin, ctx, params.appointmentId, { ficha: fichaNova })
+      if (versao) {
+        await logHistory(admin, params.appointmentId, ctx.internalUserId, ctx.userName || ctx.roleLabel || 'Equipe', 'EDITED',
+          'Ficha do procedimento corrigida (a versão de antes ficou guardada)')
+      }
+      revalidatePath(`/${params.slug}/agenda/${params.appointmentId}`)
+      revalidatePath(`/admin/agenda/${params.appointmentId}`)
+      return { ok: true }
+    }
+
     // medical_records (get or create)
     let medRecord = await ler(admin
       .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle(), 'buscar o prontuário do cliente')
@@ -174,7 +192,7 @@ export async function salvarFichaDoProcedimento(params: {
 
     const merged = {
       ...existing,
-      ficha: { formId: form.id, name: form.name, rows, answers: retratadas.answers },
+      ficha: fichaNova,
     }
 
     const { error } = await admin.from('medical_record_entries').upsert({

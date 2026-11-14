@@ -531,7 +531,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                 <>
                   <Divider />
                   <div>
-                    <SectionTitle>Anamnese</SectionTitle>
+                    <SectionTitle>Ficha de saúde</SectionTitle>
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginBottom: 10 }}>{quemRespondeu(details.anamnesis, fuso)}</p>
                     <RespostasDaAnamnese rows={details.anamnesis.ficha.rows} respostas={details.anamnesis.respostas} />
                   </div>

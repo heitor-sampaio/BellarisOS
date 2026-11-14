@@ -31,6 +31,8 @@ import { AlertaDeAlergia } from '@/components/shared/alerta-de-alergia'
 import { nomeParaSaudar } from '@/lib/saudacao'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
+import { AnotacoesDoAtendimento, RegistroEditado } from '@/components/branch/anotacoes-do-atendimento'
+import type { AnotacaoDoAtendimento, VersaoDoRegistro } from '@/lib/prontuario/anotacoes-e-versoes'
 import { FotosDoAtendimento, type FotoDoAtendimento } from '@/components/branch/fotos-do-atendimento'
 import { lerRascunho, gravarRascunho, limparRascunho, type RespostaDaFicha } from '@/lib/atendimento/rascunho'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
@@ -180,6 +182,12 @@ interface Props {
   canViewRecords?:    boolean
   /** As fotos clínicas deste atendimento (A30). Nulo = quem vê não tem o prontuário. */
   fotosDoAtendimento?: FotoDoAtendimento[] | null
+  /** PR2a: as anotações depois do atendimento (nulo = quem não vê o prontuário). */
+  anotacoes?:          AnotacaoDoAtendimento[] | null
+  /** PR2b: as versões de antes do registro corrigido. */
+  versoesDoRegistro?:  VersaoDoRegistro[]
+  /** PR2a: o Prontuário em Gerenciar, vendo o prontuário deste atendimento. */
+  podeAnotar?:         boolean
   /** O portal do cliente no plano da rede: sem ele, a foto não oferece "Enviar à cliente" (F73). */
   portalNoPlano?:     boolean
   canReassign:        boolean
@@ -1009,7 +1017,7 @@ function DorasCard({ value, onChange, readonly, erro }: {
 export function AppointmentSession({
   appointment, client, anamnesis, fichaDeSaudeVencidaEm = null, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts, lotesDosInsumos,
   professionals, history, branchId, slug,
-  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
+  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, quemEstorna = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null, abrirRecebimento = false,
@@ -1236,7 +1244,7 @@ export function AppointmentSession({
     const daFicha = fichaRef.current?.validar({ rolar: !anamnese?.error })
     if (!anamnese?.error && !daFicha?.error) return null
     const grupos: GrupoQueFalta[] = []
-    if (anamnese?.error) grupos.push({ onde: 'Na anamnese', rotulos: anamnese.faltam ?? [] })
+    if (anamnese?.error) grupos.push({ onde: 'Na ficha de saúde', rotulos: anamnese.faltam ?? [] })
     if (daFicha?.error) grupos.push({ onde: 'Na ficha do procedimento', rotulos: daFicha.faltam ?? [] })
     const mensagem = grupos.map(g => `${g.onde.toLowerCase()}: ${g.rotulos.map(r => `"${r}"`).join(', ')}`).join('; ')
     return { mensagem: `Falta responder ${mensagem}.`, grupos }
@@ -1839,7 +1847,7 @@ export function AppointmentSession({
         {status === 'IN_PROGRESS' && podeRascunhar && (
           <p data-aviso-do-rascunho role="note" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
             <Info size={14} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--info)' }} />
-            A anamnese, a evolução e a ficha digitadas ficam guardadas só nesta aba até o “Finalizar atendimento”: recarregar mantém; fechar a aba ou abrir em outro aparelho, não.
+            A ficha de saúde, a evolução e a ficha digitadas ficam guardadas só nesta aba até o “Finalizar atendimento”: recarregar mantém; fechar a aba ou abrir em outro aparelho, não.
           </p>
         )}
 
@@ -1954,7 +1962,7 @@ export function AppointmentSession({
               {/* Só com resposta: a ficha gravada vazia não é "revisada" (D2, 2026-10-28). */}
               {anamneseRespondida(anamnesis) && (
                 <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', background: 'var(--success-soft)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Check size={11} strokeWidth={3} /> Anamnese revisada
+                  <Check size={11} strokeWidth={3} /> Ficha de saúde revisada
                 </span>
               )}
               {appointment.clientNotes && (
@@ -2039,6 +2047,12 @@ export function AppointmentSession({
                 </button>
               )
             )}
+          </div>
+        )}
+        {/* PR2b: a correção guardou a versão de antes — quem corrigiu, quando, e o que estava. */}
+        {isDone && canViewRecords && versoesDoRegistro.length > 0 && (
+          <div className="card" style={{ padding: '12px 20px' }}>
+            <RegistroEditado versoes={versoesDoRegistro} appointmentId={appointment.id} slug={slug} />
           </div>
         )}
 
@@ -2339,6 +2353,24 @@ export function AppointmentSession({
                     </div>
                   </div>}
 
+                  {/* PR2b: o registro concluído destravado ("Editar registro")
+                      se salva aqui — a correção guarda a versão de antes. A
+                      avaliação não tinha o "Salvar": o destravar não gravava nada. */}
+                  {isDone && !editLocked && canEditRecords && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <button type="button" onClick={handleSaveAll} disabled={savingAll} className="btn-primary" style={{ gap: 7, fontSize: 'var(--text-base-sz)', padding: '10px 22px' }}>
+                        {savingAll ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                        {savingAll ? 'Salvando…' : 'Salvar'}
+                      </button>
+                      {savedAllAt && !savingAll && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 700 }}>
+                          <CheckCircle2 size={15} /> Tudo salvo
+                        </span>
+                      )}
+                      {saveAllError && <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--warning)', fontWeight: 600 }}>{saveAllError}</span>}
+                    </div>
+                  )}
+
                   {/* Fim da avaliação.
                       Quem pode receber fecha a venda aqui mesmo, com o cliente
                       na sala — antes o plano saía da tela e ficava esperando a
@@ -2454,6 +2486,14 @@ export function AppointmentSession({
                   </div>
                 )}
               </>
+            )}
+
+            {/* PR2a: no concluído, o que vem depois é anotação datada, que não
+                se edita nem se apaga. */}
+            {status === 'COMPLETED' && anotacoes && (podeAnotar || anotacoes.length > 0) && (
+              <div className="card" style={{ padding: '16px 20px' }}>
+                <AnotacoesDoAtendimento appointmentId={appointment.id} anotacoes={anotacoes} podeAnotar={podeAnotar} />
+              </div>
             )}
 
             {/* As fotos clínicas DESTE atendimento (A30, 2026-10-27): antes só

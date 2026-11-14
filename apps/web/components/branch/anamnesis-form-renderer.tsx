@@ -59,8 +59,8 @@ interface Props {
    */
   injetaveis?: ContextoDosInjetaveis
   /**
-   * A34 da 11ª: as fotos clínicas anexadas NESTE atendimento (Documentos →
-   * Foto clínica). Na leitura, o campo de foto vazio diz que elas existem — a
+   * A34 da 11ª: as fotos clínicas anexadas NESTE atendimento (que o
+   * prontuário mostra no registro dele, PR1a). Na leitura, o campo de foto vazio diz que elas existem — a
    * ficha dizia "Não informado" com duas fotos anexadas.
    */
   fotosDoAtendimento?: number
@@ -333,10 +333,11 @@ function ReadOnlyValue({ field: f, value, photoUrl, linkDoPlanejamento, fotosDoA
     }
     if (!value && fotosDoAtendimento > 0) {
       // A34 da 11ª (princípio 3): a foto foi anexada pelo cartão "Fotos do
-      // atendimento", não por este campo — a ficha diz onde ela está.
+      // atendimento", não por este campo — a ficha diz onde ela está (no
+      // mesmo registro, desde o PR1a).
       return (
-        <p data-fotos-do-atendimento style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)' }}>
-          {fotosDoAtendimento === 1 ? '1 foto deste atendimento' : `${fotosDoAtendimento} fotos deste atendimento`} em Documentos → Foto clínica.
+        <p data-fotos-na-ficha style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)' }}>
+          {fotosDoAtendimento === 1 ? '1 foto deste atendimento' : `${fotosDoAtendimento} fotos deste atendimento`}, em Fotos do atendimento, neste registro.
         </p>
       )
     }

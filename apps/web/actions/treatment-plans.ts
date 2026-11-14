@@ -1038,7 +1038,7 @@ async function recusaDoEnvioDoPlano(
       .eq('client_id', plan.client_id)
       .maybeSingle(), 'abrir o prontuário do cliente')
     if (!medRecord?.general_anamnesis) {
-      return 'Preencha a anamnese do cliente antes de enviar.'
+      return 'Preencha a ficha de saúde do cliente antes de enviar.'
     }
   }
   return null
@@ -2053,7 +2053,7 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
       ler(admin.from('medical_records')
         .select('general_anamnesis')
         .eq('client_id', clientId)
-        .maybeSingle(), 'buscar a anamnese do cliente'),
+        .maybeSingle(), 'buscar a ficha de saúde do cliente'),
     ])
 
     // 3. Zipa sessões com agendamentos pela ordem (sort_order ↔ scheduled_at asc)

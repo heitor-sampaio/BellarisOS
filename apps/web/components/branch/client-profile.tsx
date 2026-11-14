@@ -15,6 +15,11 @@ import type { ClientDocumentItem } from './client-documents-tab'
 import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from './anamnesis-form-renderer'
 import { AttendanceRecordCard } from './attendance-record-card'
+import { AnexosClinicos } from './anexos-clinicos'
+import { AnotacoesDoAtendimento, RegistroEditado } from './anotacoes-do-atendimento'
+import { FotosDoAtendimento, type FotoDoAtendimento } from './fotos-do-atendimento'
+import { AvisoDosAnexosClinicosFora } from './client-documents-tab'
+import type { AnotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { ExportarLgpdDaFicha } from './exportar-lgpd-da-ficha'
 import { AnamneseGeralCartao } from './anamnese-geral'
 import { alergiasDaAnamnese, type AnamneseGeral } from '@/lib/anamnese-geral'
@@ -340,6 +345,18 @@ interface Props {
   podeAbrirLote?:        boolean
   /** A35 da 11ª: quantos anexos clínicos o cargo não abre (o recorte) — só o número. */
   anexosClinicosFora?:   number
+  /**
+   * PR1b: os anexos clínicos (exame, laudo, receita, foto, termo) que quem vê
+   * abre — moram na aba Prontuário. A foto ligada a um atendimento do
+   * prontuário aparece no registro dele (PR1a); o resto, em "Anexos clínicos".
+   */
+  anexosClinicos?:       ClientDocumentItem[]
+  /** O Prontuário em Ver (mesmo no "só os meus" de quem não atende): a aba existe para dizer o recorte. */
+  temModuloProntuario?:  boolean
+  /** PR2: as anotações e as versões de antes de cada atendimento do prontuário. */
+  anotacoesEVersoes?:    AnotacoesEVersoes
+  /** PR2a: acrescentar anotação (o Prontuário em Gerenciar; a action confere o alcance). */
+  podeAnotar?:           boolean
   /** Os atendimentos concluídos e não pagos desta cliente (D5, 2026-10-27). */
   aReceber?:             ListaAReceber
   /** Receber o atendimento (o módulo de recebimentos, como `confirmPayment`). */
@@ -1473,7 +1490,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
@@ -1536,8 +1553,20 @@ export function ClientProfile({
   // atendimento (a anamnese já está lá): a dona não achava a aba (2026-10-20).
   // O Planejamento é dos planos (Agenda) e dos injetáveis (prontuário): sem
   // nenhum dos dois, a aba ficava em "Carregando planos…" para sempre (D6).
-  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0) && (t.key !== 'financeiro' || veFinanceiro)
+  // PR1b: com o Prontuário em Ver e anexos clínicos fora do "só os meus", a
+  // aba existe para dizer o recorte (o aviso saiu da aba Documentos).
+  const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0 || (temModuloProntuario && anexosClinicosFora > 0)) && (t.key !== 'financeiro' || veFinanceiro)
     && (t.key !== 'planejamento' || podeVerPlanos || podeVerProntuario))
+
+  // PR1a: a foto de um atendimento do prontuário aparece no registro dele; a
+  // que não tem registro aqui (o atendimento ainda aberto) fica nos anexos.
+  const registrosNoProntuario = new Set(recordForms.map(r => r.appointmentId))
+  const ehFotoDeRegistro = (d: ClientDocumentItem) => d.category === 'foto_clinica' && !!d.appointmentId && registrosNoProntuario.has(d.appointmentId)
+  const fotosDoRegistro = (appointmentId: string): FotoDoAtendimento[] => anexosClinicos
+    .filter(d => ehFotoDeRegistro(d) && d.appointmentId === appointmentId)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .map(d => ({ id: d.id, name: d.name, fileName: d.fileName, mimeType: d.mimeType, createdAt: d.createdAt, url: d.fileUrl, enviadoEm: d.enviadoEm ?? null, momento: d.momento ?? null }))
+  const anexosSemRegistro = anexosClinicos.filter(d => !ehFotoDeRegistro(d))
 
   /**
    * A aba aberta mora na URL, não em `useState`.
@@ -2189,7 +2218,12 @@ export function ClientProfile({
       {/* -- Tab: Fichas ---------------------------------------------- */}
       {tab === 'fichas' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {recordForms.length === 0 ? (
+          {/* A35 da 11ª, no Prontuário desde o PR1b: o anexo clínico que a
+              permissão não abre não some calado — só o número. */}
+          {anexosClinicosFora > 0 && (
+            <div className="card" style={{ padding: 0 }}><AvisoDosAnexosClinicosFora quantos={anexosClinicosFora} /></div>
+          )}
+          {!podeVerProntuario && recordForms.length === 0 ? null : recordForms.length === 0 ? (
             <>
               {generalAnamnesis && (
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -2207,8 +2241,23 @@ export function ClientProfile({
                 client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
                 subtitle={`${entry.procedureName ?? 'Atendimento'} · ${entry.diaDoAtendimento || formatarNoFuso(entry.createdAt, "dd/MM/yyyy", fuso)}`}
                 generalAnamnesis={
-                  <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis?.ficha ?? { formId: null, nome: 'Pré-atendimento', rows: [] }} clientId={client.id} canEdit={false} />
+                  <AnamneseGeralCartao embedded anamnese={generalAnamnesis} fichaAtual={generalAnamnesis?.ficha ?? { formId: null, nome: 'Ficha de saúde', rows: [] }} clientId={client.id} canEdit={false} />
                 }
+                registroId={entry.appointmentId}
+                correcao={(anotacoesEVersoes.versoes[entry.appointmentId] ?? []).length > 0
+                  ? <RegistroEditado versoes={anotacoesEVersoes.versoes[entry.appointmentId]!} appointmentId={entry.appointmentId} slug={slug} />
+                  : undefined}
+                fotos={fotosDoRegistro(entry.appointmentId).length > 0 ? (
+                  <FotosDoAtendimento embutido
+                    fotos={fotosDoRegistro(entry.appointmentId)}
+                    clientId={client.id} branchId={branchId} slug={slug} appointmentId={entry.appointmentId}
+                    podeAnexar={false} podeMexer={podeAnexarClinico} portalNoPlano={portalNoPlano}
+                  />
+                ) : undefined}
+                anotacoes={podeAnotar || (anotacoesEVersoes.anotacoes[entry.appointmentId] ?? []).length > 0 ? (
+                  <AnotacoesDoAtendimento appointmentId={entry.appointmentId}
+                    anotacoes={anotacoesEVersoes.anotacoes[entry.appointmentId] ?? []} podeAnotar={podeAnotar} />
+                ) : undefined}
                 ficha={entry.ficha && entry.ficha.rows.length > 0 ? {
                   name: entry.ficha.name,
                   node: (
@@ -2217,7 +2266,7 @@ export function ClientProfile({
                       formName={entry.ficha.name} rows={entry.ficha.rows}
                       initial={entry.ficha.answers as AnamnesisAnswers} canEdit={false}
                       injetaveis={{ linkDoPlanejamento: linkDoPlanejamento }}
-                      fotosDoAtendimento={documents.filter(d => d.category === 'foto_clinica' && d.atendimento?.id === entry.appointmentId).length}
+                      fotosDoAtendimento={fotosDoRegistro(entry.appointmentId).length}
                     />
                   ),
                 } : null}
@@ -2241,6 +2290,12 @@ export function ClientProfile({
                 ) : undefined}
               />
             ))
+          )}
+          {/* PR1b: o exame, o laudo, a receita e o termo — e a foto de
+              atendimento que não está acima — moram aqui, não em Documentos. */}
+          {podeVerProntuario && (
+            <AnexosClinicos anexos={anexosSemRegistro} clientId={client.id} branchId={branchId} slug={slug}
+              podeAnexar={podeAnexarClinico} portalNoPlano={portalNoPlano} />
           )}
           {/* Quem abriu o prontuário — o servidor só manda ao admin da rede. */}
           {acessosAoProntuario && <AcessosAoProntuario {...acessosAoProntuario} />}
@@ -2282,11 +2337,10 @@ export function ClientProfile({
       {tab === 'documentos' && (
         <ClientDocumentsTab
           documents={documents}
-          anexosClinicosFora={anexosClinicosFora}
+          anexosClinicosFora={temModuloProntuario ? 0 : anexosClinicosFora}
           clientId={client.id}
           branchId={branchId}
           slug={slug}
-          podeAnexarClinico={podeAnexarClinico}
           podeAnexarComum={podeAnexarComum}
           portalNoPlano={portalNoPlano}
         />

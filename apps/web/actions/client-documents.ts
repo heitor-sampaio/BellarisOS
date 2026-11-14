@@ -16,7 +16,7 @@ const BUCKET        = CLIENT_DOCS_BUCKET
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
 
 const SEM_ACESSO_COMUM   = 'Seu cargo não libera anexar documentos do cadastro.'
-const SEM_ACESSO_CLINICO = 'Anexo clínico (exame, laudo, foto clínica, receita…) é prontuário: é preciso o módulo Prontuário — e, com "só os meus", ser cliente que você atende.'
+const SEM_ACESSO_CLINICO = 'Anexo clínico (exame, laudo, foto clínica, receita…) é prontuário: é preciso o Prontuário em Gerenciar — e, com "só os meus", ser cliente que você atende.'
 
 /**
  * Quem mexe num anexo: o que é CLÍNICO é prontuário — o módulo dele decide,
@@ -50,6 +50,10 @@ export async function uploadClientDocument(
   // A foto clínica pela tela do atendimento (A30, 2026-10-27): o anexo fica
   // ligado a ele. Vazio = anexado pela ficha.
   const appointmentId = ((formData.get('appointment_id') as string | null) ?? '').trim() || null
+  // O momento da foto do atendimento (PR1a): antes, durante ou depois — só
+  // da foto clínica; o resto não tem momento.
+  const momentoPedido = ((formData.get('momento') as string | null) ?? '').trim().toUpperCase()
+  const momento = category === 'foto_clinica' && ['ANTES', 'DURANTE', 'DEPOIS'].includes(momentoPedido) ? momentoPedido : null
 
   if (!file || file.size === 0) return { error: 'Selecione um arquivo.' }
   if (!name)                    return { error: 'Informe o nome do documento.' }
@@ -124,6 +128,7 @@ export async function uploadClientDocument(
     mime_type:   file.type || `application/${ext}`,
     uploaded_by: ctx.internalUserId,
     appointment_id: appointmentId,
+    momento,
   })
 
   if (dbError) {

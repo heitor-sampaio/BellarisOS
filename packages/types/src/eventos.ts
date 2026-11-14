@@ -475,7 +475,7 @@ export const ROTULOS_DE_EVENTO: Record<NomeDeEvento, string> = {
 
   // Clínico
   'prontuario.entrada_criada': 'Ficha do atendimento criada',
-  'anamnese.respondida':       'Anamnese respondida',
+  'anamnese.respondida':       'Ficha de saúde respondida',
   'termo.assinado':            'Termo ou contrato assinado',
   'termo.emitido':             'Termo ou contrato para assinar',
   'injetavel.aplicado':        'Injetável aplicado',

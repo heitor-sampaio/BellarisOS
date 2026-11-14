@@ -225,7 +225,7 @@ function EnvioDoLink({ pelaConversa, podeMudar }: { pelaConversa: boolean; podeM
       <div>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Envio do link de assinatura</h2>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2, maxWidth: 560 }}>
-          <Fala>Vale para a rede inteira</Fala>, para os documentos e para a ficha de saúde (pré-atendimento). O link vale 7 dias, e o cliente confirma o CPF (ou a data de nascimento) antes de ver o documento ou as perguntas.
+          <Fala>Vale para a rede inteira</Fala>, para os documentos e para a ficha de saúde. O link vale 7 dias, e o cliente confirma o CPF (ou a data de nascimento) antes de ver o documento ou as perguntas.
         </p>
       </div>
       {podeMudar ? (

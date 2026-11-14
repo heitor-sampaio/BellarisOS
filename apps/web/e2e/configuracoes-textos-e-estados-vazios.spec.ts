@@ -73,7 +73,7 @@ test('A7: salvar a ficha de pré-atendimento confirma', async ({ browser }) => {
     await p.goto('/admin/settings?tab=fichas')
     await p.getByRole('button', { name: 'Editar perguntas' }).click()
     await p.getByRole('button', { name: 'Salvar ficha' }).click()
-    await expect(p.getByRole('status').filter({ hasText: 'Ficha de pré-atendimento salva.' })).toBeVisible()
+    await expect(p.getByRole('status').filter({ hasText: 'Ficha de saúde salva.' })).toBeVisible()
   })
 })
 

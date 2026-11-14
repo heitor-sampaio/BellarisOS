@@ -16,8 +16,8 @@ type Admin = ReturnType<typeof createAdminClient>
  */
 export async function fichaDePreAtendimento(admin: Admin, tenantId: string): Promise<FichaDePreAtendimento> {
   const f = await ler(admin.from('forms').select('id, name, schema')
-    .eq('tenant_id', tenantId).eq('tipo', 'PRE_ATENDIMENTO').maybeSingle(), 'buscar a ficha de pré-atendimento') as { id: string; name: string; schema: unknown } | null
-  return f ? { formId: f.id, nome: f.name, rows: normalizeFormSchema(f.schema).rows } : { formId: null, nome: 'Pré-atendimento', rows: [] }
+    .eq('tenant_id', tenantId).eq('tipo', 'PRE_ATENDIMENTO').maybeSingle(), 'buscar a ficha de saúde') as { id: string; name: string; schema: unknown } | null
+  return f ? { formId: f.id, nome: f.name, rows: normalizeFormSchema(f.schema).rows } : { formId: null, nome: 'Ficha de saúde', rows: [] }
 }
 
 /**
@@ -54,7 +54,7 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
   // link como "pela equipe" (simulação de um dia de clínica, 2026-10-20). A
   // cliente confirmando ("nada mudou") renova a data — é a validade.
   const atual = o.origem !== 'EQUIPE' ? null : await ler(admin.from('medical_records').select('general_anamnesis')
-    .eq('client_id', o.clientId).maybeSingle(), 'buscar a anamnese atual') as { general_anamnesis: AnamneseGeral | null } | null
+    .eq('client_id', o.clientId).maybeSingle(), 'buscar a ficha de saúde atual') as { general_anamnesis: AnamneseGeral | null } | null
   const antes = atual?.general_anamnesis
   if (antes?.versao === 2 && mesmasRespostas(antes.respostas, respostas)) {
     if (temResposta) await gravar(admin.from('pre_atendimentos')
@@ -62,7 +62,7 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
         status: 'RESPONDIDO', respostas, respondido_em: new Date().toISOString(),
         origem: o.origem, respondido_por: o.porUsuario, updated_at: new Date().toISOString(),
       })
-      .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar o pré-atendimento')
+      .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar a ficha de saúde')
     return antes
   }
   // O agendamento do pendente que esta resposta fecha: é a profissional dele
@@ -70,7 +70,7 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
   const daCliente = temResposta && (o.origem === 'CLIENTE_APP' || o.origem === 'CLIENTE_LINK')
   const pendenteAntes = daCliente ? await ler(admin.from('pre_atendimentos').select('appointment_id')
     .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE').maybeSingle(),
-    'buscar o pré-atendimento pendente') as { appointment_id: string | null } | null : null
+    'buscar a ficha de saúde pendente') as { appointment_id: string | null } | null : null
   const anamnese: AnamneseGeral = {
     versao: 2,
     ficha,
@@ -82,14 +82,14 @@ export async function gravarAnamneseGeral(admin: Admin, o: {
   await gravar(admin.from('medical_records').upsert(
     { client_id: o.clientId, general_anamnesis: anamnese },
     { onConflict: 'client_id' },
-  ), 'salvar a anamnese')
+  ), 'salvar a ficha de saúde')
   if (!temResposta) return anamnese
   await gravar(admin.from('pre_atendimentos')
     .update({
       status: 'RESPONDIDO', respostas: anamnese.respostas, respondido_em: anamnese.respondidoEm,
       origem: o.origem, respondido_por: o.porUsuario, updated_at: anamnese.respondidoEm,
     })
-    .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar o pré-atendimento')
+    .eq('client_id', o.clientId).eq('tenant_id', o.tenantId).eq('status', 'PENDENTE'), 'fechar a ficha de saúde')
   if (pendenteAntes?.appointment_id) await avisarAProfissional(admin, pendenteAntes.appointment_id, anamnese)
   return anamnese
 }
@@ -113,7 +113,7 @@ export async function anamneseDaEquipeParaGravar(admin: Admin, o: {
   const respostas = respostasDaFicha(ficha.rows, o.respostas)
   if (Object.keys(respostas).length === 0) return null
   const atual = await ler(admin.from('medical_records').select('general_anamnesis')
-    .eq('client_id', o.clientId).maybeSingle(), 'buscar a anamnese atual') as { general_anamnesis: AnamneseGeral | null } | null
+    .eq('client_id', o.clientId).maybeSingle(), 'buscar a ficha de saúde atual') as { general_anamnesis: AnamneseGeral | null } | null
   const antes = atual?.general_anamnesis
   if (antes?.versao === 2 && mesmasRespostas(antes.respostas, respostas)) return null
   return { versao: 2, ficha, respostas, respondidoEm: new Date().toISOString(), origem: 'EQUIPE', respondidoPor: o.porUsuario }
@@ -162,12 +162,12 @@ export interface PreAtendimentoPendente {
 /** O pré-atendimento PENDENTE de uma ficha de cliente (no máximo um — índice único), ou null. */
 export async function preAtendimentoPendente(admin: Admin, clientId: string): Promise<PreAtendimentoPendente | null> {
   const p = await ler(admin.from('pre_atendimentos').select('id, tenant_id, modo, ficha')
-    .eq('client_id', clientId).eq('status', 'PENDENTE').maybeSingle(), 'buscar o pré-atendimento pendente') as
+    .eq('client_id', clientId).eq('status', 'PENDENTE').maybeSingle(), 'buscar a ficha de saúde pendente') as
     { id: string; tenant_id: string; modo: 'COMPLETO' | 'CONFIRMAR'; ficha: { formId?: string; nome?: string; rows?: unknown } } | null
   if (!p) return null
   return {
     id: p.id, tenantId: p.tenant_id, modo: p.modo,
-    ficha: { formId: p.ficha?.formId ?? null, nome: p.ficha?.nome ?? 'Pré-atendimento', rows: normalizeFormSchema({ rows: p.ficha?.rows }).rows },
+    ficha: { formId: p.ficha?.formId ?? null, nome: p.ficha?.nome ?? 'Ficha de saúde', rows: normalizeFormSchema({ rows: p.ficha?.rows }).rows },
   }
 }
 
@@ -178,12 +178,12 @@ export async function preAtendimentoPendente(admin: Admin, clientId: string): Pr
 export async function preAtendimentoDoLink(admin: Admin, preId: string, clientId: string): Promise<PreAtendimentoPendente | null> {
   const p = await ler(admin.from('pre_atendimentos').select('id, tenant_id, modo, ficha')
     .eq('id', preId).eq('client_id', clientId).eq('status', 'RESPONDIDO').eq('origem', 'EQUIPE').maybeSingle(),
-    'buscar o pré-atendimento do link') as
+    'buscar a ficha de saúde do link') as
     { id: string; tenant_id: string; modo: 'COMPLETO' | 'CONFIRMAR'; ficha: { formId?: string; nome?: string; rows?: unknown } } | null
   if (!p) return null
   return {
     id: p.id, tenantId: p.tenant_id, modo: p.modo,
-    ficha: { formId: p.ficha?.formId ?? null, nome: p.ficha?.nome ?? 'Pré-atendimento', rows: normalizeFormSchema({ rows: p.ficha?.rows }).rows },
+    ficha: { formId: p.ficha?.formId ?? null, nome: p.ficha?.nome ?? 'Ficha de saúde', rows: normalizeFormSchema({ rows: p.ficha?.rows }).rows },
   }
 }
 
@@ -199,7 +199,7 @@ export async function avisarDoPreAtendimento(
   appointmentId: string,
 ): Promise<void> {
   const p = await ler(admin.from('pre_atendimentos').select('client_id, modo, appointments(branches(slug))')
-    .eq('appointment_id', appointmentId).eq('status', 'PENDENTE').maybeSingle(), 'buscar o pré-atendimento do agendamento') as
+    .eq('appointment_id', appointmentId).eq('status', 'PENDENTE').maybeSingle(), 'buscar a ficha de saúde do agendamento') as
     { client_id: string; modo: 'COMPLETO' | 'CONFIRMAR'; appointments: { branches: { slug: string } | null } | null } | null
   const slug = p?.appointments?.branches?.slug
   if (!p || !slug) return

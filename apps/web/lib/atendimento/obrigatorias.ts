@@ -24,7 +24,7 @@ export interface FaltaNoAtendimento {
 /** A anamnese: as respostas que valem (a da tela, senão a gravada) contra a ficha de pré-atendimento ATUAL da rede. */
 export function faltaNaAnamnese(rows: AnamnesisRow[], respostas: Record<string, unknown>): FaltaNoAtendimento | null {
   const f = primeiraObrigatoriaVazia(rows, respostas, TIPOS_FORA_DO_PRE_ATENDIMENTO)
-  return f ? { onde: 'anamnese', campo: f.id, rotulo: f.label, mensagem: `Falta responder "${f.label}" na anamnese.` } : null
+  return f ? { onde: 'anamnese', campo: f.id, rotulo: f.label, mensagem: `Falta responder "${f.label}" na ficha de saúde.` } : null
 }
 
 /** Os rótulos de TODAS as obrigatórias vazias da anamnese (A30: a tela diz a lista inteira de uma vez). */

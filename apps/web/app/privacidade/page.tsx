@@ -172,7 +172,7 @@ export default function PoliticaDePrivacidade() {
             O paciente não conversa com o Copilot.
           </P>
           <Lista itens={[
-            <><B>O Copilot não lê o prontuário:</B> nenhuma consulta dele busca prontuário, evolução, anamnese, fotos clínicas ou anotações clínicas de plano de tratamento — isso só se vê na tela do sistema.</>,
+            <><B>O Copilot não lê o prontuário:</B> nenhuma consulta dele busca prontuário, evolução, ficha de saúde, fotos clínicas ou anotações clínicas de plano de tratamento — isso só se vê na tela do sistema.</>,
             <><B>O que a equipe envia vai como está:</B> o texto escrito, o áudio gravado (transcrito pela OpenAI) e as imagens e documentos anexados são enviados à OpenAI inteiros, para que o modelo os leia. O painel avisa, de forma fixa, para <B>não enviar material clínico</B> (fotos de procedimento, prontuário, exames) — a responsabilidade pelo que é anexado é da clínica.</>,
             <><B>Do sistema, vai o necessário para o pedido:</B> o que foi consultado para responder (por exemplo, nome, telefone e horário de um agendamento). Um CPF que a equipe digita para um cadastro vai no pedido; o resumo da confirmação volta ao modelo com o CPF mascarado.</>,
             <><B>Toda gravação é confirmada por uma pessoa:</B> o Copilot prepara (um agendamento, um cadastro) e só grava depois que a pessoa da equipe confirma.</>,

@@ -148,8 +148,10 @@ test.describe.serial('dado clínico só com prontuário', () => {
   })
 
   test('laudo na ficha do cliente: o admin vê, a recepção não — nem apaga pela action', async ({ browser }) => {
+    // PR1b (2026-11-14): o laudo mora na aba Prontuário, em "Anexos clínicos".
     await comSessao(browser, f!.admin.estado, async p => {
-      expect(await conteudo(p, `/admin/clients/${f!.clienteId}?aba=documentos`)).toContain(LAUDO)
+      expect(await conteudo(p, `/admin/clients/${f!.clienteId}?aba=fichas`)).toContain(LAUDO)
+      expect(await conteudo(p, `/admin/clients/${f!.clienteId}?aba=documentos`), 'não mais em Documentos').not.toContain(LAUDO)
     })
     await comSessao(browser, f!.recepcao.estado, async p => {
       const html = await conteudo(p, `/admin/clients/${f!.clienteId}?aba=documentos`)
@@ -179,7 +181,7 @@ test.describe.serial('dado clínico só com prontuário', () => {
     const { data: arquivo } = await db().storage.from('client-documents').download(`${f!.outra.branchId}/${f!.clienteId}/inexistente.pdf`)
     expect(arquivo, 'o arquivo continua no bucket').not.toBeNull()
     await comSessao(browser, f!.admin.estado, async p => {
-      const html = await conteudo(p, `/admin/clients/${f!.clienteId}?aba=documentos`)
+      const html = await conteudo(p, `/admin/clients/${f!.clienteId}?aba=fichas`)
       expect(html).toContain('Paciente Clinico')
       expect(html, 'o apagado sai da ficha').not.toContain(LAUDO)
     })
@@ -208,21 +210,24 @@ test.describe.serial('dado clínico só com prontuário', () => {
 
     const NOME = `FOTO-CLINICA-${marca}`
     await comSessao(browser, prof.estado, async p => {
-      await p.goto(`/admin/clients/${f!.clienteId}?aba=documentos`)
-      await p.getByRole('button', { name: 'Adicionar documento' }).click()
-      await p.locator('input[name="name"]').fill(NOME)
-      await p.locator('select[name="category"]').selectOption('foto_clinica')
-      await p.locator('input[name="file"]').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: Buffer.from('89504e470d0a1a0a', 'hex') })
-      await p.getByRole('button', { name: 'Anexar documento' }).click()
+      // PR1b (2026-11-14): o anexo clínico se anexa pelo Prontuário ("Anexos
+      // clínicos"); a aba Documentos é do cadastro, que ela não tem.
+      await p.goto(`/admin/clients/${f!.clienteId}?aba=fichas`)
+      const anexos = p.locator('[data-anexos-clinicos]')
+      await anexos.getByRole('button', { name: 'Anexar' }).click()
+      await anexos.locator('input[name="name"]').fill(NOME)
+      await anexos.locator('select[name="category"]').selectOption('foto_clinica')
+      await anexos.locator('input[name="file"]').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: Buffer.from('89504e470d0a1a0a', 'hex') })
+      await anexos.getByRole('button', { name: 'Anexar documento' }).click()
       await expect.poll(async () => (await db().from('client_documents').select('category').eq('name', NOME).maybeSingle()).data?.category,
         { message: 'a foto clínica foi anexada', timeout: 20_000 }).toBe('foto_clinica')
-      // Só o que é dela: sem o cadastro, a categoria comum não aparece.
-      await p.getByRole('button', { name: 'Adicionar documento' }).click()
-      await expect(p.locator('select[name="category"] option[value="outro"]')).toHaveCount(0)
+      // Só o que é dela: sem o cadastro, nem o "Adicionar documento" dos Documentos.
+      await p.goto(`/admin/clients/${f!.clienteId}?aba=documentos`)
+      await expect(p.getByRole('button', { name: 'Adicionar documento' })).toHaveCount(0)
 
       // De quem ela NÃO atende, não anexa.
-      await p.goto(`/admin/clients/${outraCliente}?aba=documentos`)
-      await expect(p.getByRole('button', { name: 'Adicionar documento' })).toHaveCount(0)
+      await p.goto(`/admin/clients/${outraCliente}?aba=fichas`)
+      await expect(p.locator('[data-anexos-clinicos]').getByRole('button', { name: 'Anexar' })).toHaveCount(0)
     })
   })
 

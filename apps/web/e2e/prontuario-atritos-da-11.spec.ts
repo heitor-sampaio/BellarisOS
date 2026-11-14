@@ -91,7 +91,8 @@ test('A33 e A34: o prontuário diz o lote aplicado, com o caminho ao "Aplicado e
     const lotes = p.locator('[data-lotes-do-atendimento]')
     await expect(lotes).toContainText(`lote TOX-${marca}`.toUpperCase().replace('LOTE', 'lote'))
     await expect(lotes).toContainText('30 U')
-    await expect(p.locator('[data-fotos-do-atendimento]')).toContainText('2 fotos deste atendimento em Documentos → Foto clínica')
+    // PR1a: as fotos moram no registro do atendimento, e a ficha diz onde.
+    await expect(p.locator('[data-fotos-na-ficha]')).toContainText('2 fotos deste atendimento, em Fotos do atendimento, neste registro')
     await lotes.locator('[data-aplicado-em-do-lote]').click()
     await expect(p).toHaveURL(new RegExp(`/estoque\\?lote=${loteId}`))
     const janela = p.getByRole('dialog', { name: /Aplicado em/ })
@@ -101,8 +102,10 @@ test('A33 e A34: o prontuário diz o lote aplicado, com o caminho ao "Aplicado e
 
 test('A35: para quem tem o prontuário "só os meus", a ficha diz que os termos e os anexos clínicos ficam de fora', async ({ browser }) => {
   await como(browser, sofia, async p => {
-    await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
+    // PR1b: o aviso dos anexos clínicos foi com eles para o Prontuário.
+    await p.goto(`/${slug}/clients/${cliente}?aba=fichas`)
     await expect(p.locator('[data-anexos-clinicos-fora]')).toContainText('Há 2 anexos clínicos desta cliente')
+    await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
     await expect(p.locator('[data-termos-recortados]')).toContainText('“só os meus”')
   })
 })
@@ -114,7 +117,7 @@ test('A30: a ficha de pré-atendimento acrescenta o modelo de perguntas de injet
     await p.getByRole('button', { name: 'Acrescentar as perguntas de injetáveis' }).click()
     await expect(p.getByText('Tem doença neuromuscular').first()).toBeVisible()
     await p.getByRole('button', { name: 'Salvar ficha' }).click()
-    await expect(p.getByText('Ficha de pré-atendimento salva.')).toBeVisible({ timeout: 20_000 })
+    await expect(p.getByText('Ficha de saúde salva.')).toBeVisible({ timeout: 20_000 })
   })
   await expect.poll(async () => JSON.stringify((await db().from('forms').select('schema')
     .eq('tenant_id', rede.tenantId).eq('tipo', 'PRE_ATENDIMENTO').single<{ schema: unknown }>()).data?.schema ?? null))

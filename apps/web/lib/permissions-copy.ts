@@ -90,8 +90,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   medical_records: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Lê a anamnese, a evolução clínica e as fotos do cliente.',
-    MANAGE: 'Tudo do Ver, mais preencher e salvar anamnese, evolução e fotos, e liberar a parte clínica em pedidos de LGPD.',
+    VIEW:   'Lê a ficha de saúde, a evolução clínica e as fotos do cliente.',
+    MANAGE: 'Tudo do Ver, mais preencher e salvar a ficha de saúde, a evolução e as fotos, e liberar a parte clínica em pedidos de LGPD.',
   },
   documents: {
     NONE:   SEM_ACESSO,

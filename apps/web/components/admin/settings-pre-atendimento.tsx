@@ -46,7 +46,7 @@ export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePerson
       <div className="card" style={{ padding: '20px 11px' }} data-pre-atendimento>
         <ConstrutorDeFicha
           existing={ficha}
-          onSaved={() => setAviso({ tipo: 'ok', texto: 'Ficha de pré-atendimento salva.' })}
+          onSaved={() => setAviso({ tipo: 'ok', texto: 'Ficha de saúde salva.' })}
           onDone={() => { setEditando(false); router.refresh() }}
           updateAction={salvarFichaDePreAtendimento}
           tiposFora={TIPOS_FORA_DO_PRE_ATENDIMENTO}
@@ -63,7 +63,7 @@ export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePerson
       <div className="pre-atendimento-config-cabeca">
         <span className="pre-atendimento-config-icone" aria-hidden="true"><ClipboardCheck size={18} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 id={`${idEnvio}-titulo`} className="pre-atendimento-config-titulo">Ficha de pré-atendimento</h3>
+          <h3 id={`${idEnvio}-titulo`} className="pre-atendimento-config-titulo">Ficha de saúde</h3>
           <p className="pre-atendimento-config-texto">
             As perguntas sobre a cliente — alergias, medicamentos, condições de saúde —, iguais para qualquer
             atendimento. Ela responde antes de chegar, pelo app ou por um link, e a equipe confere na sessão.

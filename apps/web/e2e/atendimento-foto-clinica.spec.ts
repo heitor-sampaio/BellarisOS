@@ -91,14 +91,17 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
   // Sobra da frente 8 (2026-10-27): na aba Documentos a foto aparecia sem
   // dizer de qual atendimento veio. A linha diz o dia e o procedimento, com o
   // link para a tela do atendimento.
-  test('na aba Documentos da ficha, a foto diz de qual atendimento veio', async ({ browser }) => {
+  // PR1b (2026-11-14): o anexo clínico saiu da aba Documentos e mora no
+  // Prontuário. A foto de um atendimento ainda aberto (sem registro) fica em
+  // "Anexos clínicos", com o caminho ao atendimento.
+  test('na aba Prontuário da ficha, a foto diz de qual atendimento veio', async ({ browser }) => {
     const { data: ag } = await db().from('appointments').select('scheduled_at, procedures(name)').eq('id', atendimento).single()
     const dia = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' })
       .format(new Date(ag!.scheduled_at as string))
     const procedimento = (ag!.procedures as unknown as { name: string }).name
     await como(profissional!, browser, async p => {
-      await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
-      const origem = p.locator('[data-documento-atendimento]')
+      await p.goto(`/${slug}/clients/${cliente}?aba=fichas`)
+      const origem = p.locator('[data-anexos-clinicos] [data-documento-atendimento]')
       await expect(origem, 'a linha da foto diz o atendimento').toHaveText(`Atendimento de ${dia} · ${procedimento}`)
       await expect(origem).toHaveAttribute('href', `/${slug}/agenda/${atendimento}`)
     })
@@ -110,7 +113,7 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
   // escrito pela profissional e pode dizer o que a foto mostra, e o histórico
   // aparece para quem tem só a agenda.
   const TITULO = `Antes — região malar ${marca}`
-  test('o título dado à foto aparece no cartão e na aba Documentos, e o histórico registra a foto sem o título', async ({ browser }) => {
+  test('o título dado à foto aparece no cartão e no Prontuário, e o histórico registra a foto sem o título', async ({ browser }) => {
     const antes = (await fotosDo(atendimento)).length
     await como(profissional!, browser, async p => {
       await p.goto(`/${slug}/agenda/${atendimento}`)
@@ -126,8 +129,8 @@ test.describe.serial('a foto clínica pela tela do atendimento', () => {
       const historico = p.locator('[data-historico-do-atendimento]')
       await expect(historico.getByText('Foto clínica anexada').first(), 'a foto entra no histórico').toBeVisible()
       await expect(historico, 'o histórico não repete o título (pode ser dado clínico)').not.toContainText(TITULO)
-      await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
-      await expect(p.locator('[data-documento-da-ficha]').getByText(TITULO, { exact: true }), 'a aba Documentos mostra o título').toBeVisible()
+      await p.goto(`/${slug}/clients/${cliente}?aba=fichas`)
+      await expect(p.locator('[data-anexo-clinico]').getByText(TITULO, { exact: true }), 'o Prontuário mostra o título').toBeVisible()
     })
     const { data: linhas } = await db().from('appointment_history').select('action, description').eq('appointment_id', atendimento)
     const daFoto = (linhas ?? []).filter(l => l.action === 'FOTO_CLINICA')
@@ -225,8 +228,8 @@ test.describe.serial('a foto do atendimento: ver, enviar à cliente e apagar com
     const { data: membro } = await db().from('users').select('name').eq('id', profissional!.userId).single<{ name: string }>()
     await como(profissional!, browser, async p => {
       p.on('dialog', d => d.accept())
-      await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
-      await p.locator(`[data-documento-da-ficha="${foto}"]`).getByTitle('Excluir').click()
+      await p.goto(`/${slug}/clients/${cliente}?aba=fichas`)
+      await p.locator(`[data-anexo-clinico="${foto}"]`).getByTitle('Excluir').click()
       await expect.poll(async () => (await db().from('client_documents').select('apagado_em').eq('id', foto).single()).data?.apagado_em).not.toBeNull()
       await p.goto(`/${slug}/agenda/${atendimento}`)
       await expect(p.locator('[data-historico-do-atendimento]').getByText(`Foto clínica apagada por ${membro!.name}`)).toBeVisible()

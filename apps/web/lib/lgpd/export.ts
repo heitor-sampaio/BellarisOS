@@ -77,6 +77,19 @@ export function paraOTitular(v: unknown): unknown {
   return saida
 }
 
+/**
+ * PR3: o nome da ficha de saúde no retrato. O de fábrica era
+ * "Pré-atendimento" (renomeado na migration 20261115100002); o retrato velho
+ * guarda o nome de então, e o pacote diz "Ficha de saúde".
+ */
+function nomeDaFichaDeSaude(nome: string | null | undefined): string {
+  const n = (nome ?? '').trim()
+  return !n || /^pr[eé]-atendimento$/i.test(n) ? 'Ficha de saúde' : n
+}
+
+type AnotacaoLida = { appointment_id: string; texto: string; autor_nome: string; criada_em: string }
+type VersaoLida = { appointment_id: string; evolucao: string | null; intercorrencias: string | null; ficha: { name?: string; rows?: unknown; answers?: unknown } | null; editada_por_nome: string; substituida_em: string }
+
 /** O prontuário liberado, legível: cada atendimento por extenso, a ficha pergunta a pergunta. */
 function prontuarioLegivel(medical: Json | null): Json | null {
   if (!medical) return null
@@ -86,7 +99,7 @@ function prontuarioLegivel(medical: Json | null): Json | null {
     ...medical,
     anamneseGeral: anamnese && anamnese.versao === 2
       ? {
-          ficha: (anamnese.ficha as { nome?: string } | null)?.nome ?? 'Pré-atendimento',
+          ficha: nomeDaFichaDeSaude((anamnese.ficha as { nome?: string } | null)?.nome),
           respondidaEm: anamnese.respondidoEm ?? null,
           respostas: respostasLegiveis(anamnese.ficha, anamnese.respostas),
         }
@@ -103,6 +116,14 @@ function prontuarioLegivel(medical: Json | null): Json | null {
         insumos: e.insumos_do_estoque ?? e.products_used ?? null,
         fichaDoProcedimento: f ? { ficha: f.nome ?? 'Ficha do procedimento', respostas: respostasLegiveis(f, f.respostas) } : null,
         fotos: Number(e.fotos_do_atendimento ?? ((e.record_photos ?? []) as unknown[]).length),
+        // PR2c (bloco Prontuário): o que se escreveu depois e o que a correção
+        // substituiu — o titular tem direito ao registro inteiro, com o rastro.
+        anotacoes: ((e.anotacoes_do_atendimento ?? []) as AnotacaoLida[]).map(a => ({ texto: a.texto, por: a.autor_nome, em: a.criada_em })),
+        versoesAnteriores: ((e.versoes_do_registro ?? []) as VersaoLida[]).map(v => ({
+          evolucao: v.evolucao, intercorrencias: v.intercorrencias,
+          fichaDoProcedimento: v.ficha ? { ficha: v.ficha.name ?? 'Ficha do procedimento', respostas: respostasLegiveis(v.ficha, v.ficha.answers) } : null,
+          por: v.editada_por_nome, substituidaEm: v.substituida_em,
+        })),
       }
     }),
   }
@@ -256,9 +277,19 @@ export async function buildClientExport(
     const fichasRespondidas = (respondidas ?? []).map(p => ({
       respondidaEm:  p.respondido_em as string | null,
       respondidaPor: p.origem ? QUEM_RESPONDEU[p.origem as string] ?? String(p.origem) : null,
-      ficha:         ((p.ficha as { nome?: string } | null)?.nome) ?? 'Pré-atendimento',
+      ficha:         nomeDaFichaDeSaude((p.ficha as { nome?: string } | null)?.nome),
       respostas:     respostasLegiveis(p.ficha, p.respostas),
     }))
+
+    // PR2c: as anotações depois do atendimento e as versões de antes da correção.
+    const [anotacoesRes, versoesRes] = await Promise.all([
+      admin.from('prontuario_anotacoes').select('appointment_id, texto, autor_nome, criada_em')
+        .eq('tenant_id', client.tenant_id).eq('client_id', clientId).order('criada_em').order('id'),
+      admin.from('prontuario_versoes').select('appointment_id, evolucao, intercorrencias, ficha, editada_por_nome, substituida_em')
+        .eq('tenant_id', client.tenant_id).eq('client_id', clientId).order('substituida_em').order('id'),
+    ])
+    const anotacoesLidas = (unwrap('as anotações do prontuário', anotacoesRes) ?? []) as AnotacaoLida[]
+    const versoesLidas = (unwrap('as versões do prontuário', versoesRes) ?? []) as VersaoLida[]
 
     // D18 da 8ª: os insumos de cada atendimento moram no estoque (o consumo).
     const insumos = await insumosDosAtendimentos(admin, (record?.medical_record_entries ?? [])
@@ -276,6 +307,8 @@ export async function buildClientExport(
           fotos_do_atendimento: ((e.record_photos ?? []) as unknown[]).length
             + (documents ?? []).filter(d => d.appointment_id && d.appointment_id === e.appointment_id && d.category === 'foto_clinica' && !d.apagado_em).length,
           insumos_do_estoque: e.appointment_id ? insumos.get(e.appointment_id as string) ?? [] : null,
+          anotacoes_do_atendimento: anotacoesLidas.filter(a => a.appointment_id === e.appointment_id),
+          versoes_do_registro: versoesLidas.filter(v => v.appointment_id === e.appointment_id),
         })),
         fichasDeSaude: fichasRespondidas,
       }
@@ -486,7 +519,7 @@ export async function buildClientExport(
       }),
     },
     {
-      title: `Fichas de saúde — pré-atendimento (${fichasDeSaude.length})`,
+      title: `Fichas de saúde (${fichasDeSaude.length})`,
       emptyLabel: 'Nenhuma ficha de saúde enviada.',
       lines: fichasDeSaude.map(p => `${fmtDate(p.enviadaEm)} — ${p.tipo} — ${p.situacao}`
         + (p.respondidaEm ? ` em ${fmtDateTime(p.respondidaEm)}` : '') + (p.respondidaPor ? ` por ${p.respondidaPor}` : '')),
@@ -527,12 +560,21 @@ export async function buildClientExport(
           const inter = String(e.intercurrences ?? '').replace(/\s+/g, ' ').trim()
           const dores = String(e.queixas ?? '').replace(/\s+/g, ' ').trim()
           const insumos = insumosEmTexto((e.insumos_do_estoque ?? []) as InsumoDoAtendimento[])
-          return `${fmtDate(e.created_at as string)} — profissional: ${prof} — fotos: ${fotos}`
+          const anotacoes = ((e.anotacoes_do_atendimento ?? []) as AnotacaoLida[])
+            .map(a => `${fmtDateTime(a.criada_em)}, por ${a.autor_nome}: ${a.texto.replace(/\s+/g, ' ').trim()}`)
+          const versoes = ((e.versoes_do_registro ?? []) as VersaoLida[])
+            .map(v => `corrigido por ${v.editada_por_nome} em ${fmtDateTime(v.substituida_em)}; antes dizia: ${String(v.evolucao ?? '').replace(/\s+/g, ' ').trim() || '(em branco)'}`
+              + (v.intercorrencias ? ` — intercorrências: ${v.intercorrencias.replace(/\s+/g, ' ').trim()}` : ''))
+          return [
+            `${fmtDate(e.created_at as string)} — profissional: ${prof} — fotos: ${fotos}`
                + (dores ? ` — dores relatadas: ${dores}` : '')
                + (notas ? ` — observações: ${notas}` : '')
                + (inter ? ` — intercorrências: ${inter}` : '')
-               + (insumos ? ` — insumos: ${insumos}` : '')
-        }),
+               + (insumos ? ` — insumos: ${insumos}` : ''),
+            ...anotacoes.map(a => `   Anotação de ${a}`),
+            ...versoes.map(v => `   Versão anterior: ${v}`),
+          ]
+        }).flat(),
       },
     )
   } else {

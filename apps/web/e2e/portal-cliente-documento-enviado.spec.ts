@@ -77,8 +77,9 @@ test.describe.serial('o documento chega ao app só quando a clínica envia', () 
 
   test('a profissional envia pela ficha, e a cliente passa a ver', async ({ browser }) => {
     await como(browser, profissional!.estado, async p => {
-      await p.goto(`/${slug}/clients/${cliente!.clientId}?aba=documentos`)
-      const linhaDoDoc = p.locator(`[data-documento-da-ficha="${foto}"]`)
+      // PR1b: a foto clínica mora no Prontuário, em "Anexos clínicos".
+      await p.goto(`/${slug}/clients/${cliente!.clientId}?aba=fichas`)
+      const linhaDoDoc = p.locator(`[data-anexo-clinico="${foto}"]`)
       await expect(linhaDoDoc.getByText('Só a equipe vê')).toBeVisible()
       await linhaDoDoc.getByRole('button', { name: 'Enviar à cliente' }).click()
       await expect(linhaDoDoc.getByText(/No app da cliente desde/)).toBeVisible()
@@ -95,8 +96,9 @@ test.describe.serial('o documento chega ao app só quando a clínica envia', () 
 
   test('"Tirar do app" volta a esconder', async ({ browser }) => {
     await como(browser, profissional!.estado, async p => {
-      await p.goto(`/${slug}/clients/${cliente!.clientId}?aba=documentos`)
-      const linhaDoDoc = p.locator(`[data-documento-da-ficha="${foto}"]`)
+      // PR1b: a foto clínica mora no Prontuário, em "Anexos clínicos".
+      await p.goto(`/${slug}/clients/${cliente!.clientId}?aba=fichas`)
+      const linhaDoDoc = p.locator(`[data-anexo-clinico="${foto}"]`)
       await linhaDoDoc.getByRole('button', { name: 'Tirar do app' }).click()
       await expect(linhaDoDoc.getByText('Só a equipe vê')).toBeVisible()
     })

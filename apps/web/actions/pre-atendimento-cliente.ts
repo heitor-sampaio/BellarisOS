@@ -26,7 +26,7 @@ import { gravarAnamneseGeral, preAtendimentoPendente } from '@/lib/pre-atendimen
 
 type Resultado = { ok: true } | { error: string }
 
-const SEM_PENDENTE = 'Não há pré-atendimento para responder agora.'
+const SEM_PENDENTE = 'Não há ficha de saúde para responder agora.'
 const Entrada = z.object({ respostas: z.record(z.string(), z.unknown()) })
 
 export async function responderPreAtendimento(input: unknown): Promise<Resultado> {
@@ -61,7 +61,7 @@ export async function confirmarQueNadaMudou(): Promise<Resultado> {
   if (!pendente) return { error: SEM_PENDENTE }
 
   const registro = await ler(admin.from('medical_records').select('general_anamnesis')
-    .eq('client_id', ctx.clientId!).maybeSingle(), 'buscar a anamnese')
+    .eq('client_id', ctx.clientId!).maybeSingle(), 'buscar a ficha de saúde')
   const atual = paraAnamneseGeral(registro?.general_anamnesis ?? null, pendente.ficha)
   if (!anamneseRespondida(atual)) return { error: 'Não há respostas anteriores: responda a ficha.' }
   const falta = oQueFaltaNaFicha(pendente.ficha.rows, respostasDaFicha(pendente.ficha.rows, atual.respostas))

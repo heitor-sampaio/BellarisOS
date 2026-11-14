@@ -31,7 +31,7 @@ export default async function PreAtendimentoPage({ params }: { params: Promise<{
   }
 
   const registro = await ler(admin.from('medical_records').select('general_anamnesis')
-    .eq('client_id', ctx.clientId!).maybeSingle(), 'buscar a anamnese')
+    .eq('client_id', ctx.clientId!).maybeSingle(), 'buscar a ficha de saúde')
   const atual = paraAnamneseGeral(registro?.general_anamnesis ?? null, pendente.ficha)
 
   return (
