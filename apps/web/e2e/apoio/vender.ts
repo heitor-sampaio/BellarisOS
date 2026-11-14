@@ -88,8 +88,11 @@ export async function receberPlanoNoPdv(page: Page, portal: string, planId: stri
     .single<{ status: string; branch_id: string }>()
   expect(plano, 'o plano existe').toBeTruthy()
   if (plano!.status === 'DRAFT' || plano!.status === 'PROPOSED') {
-    const r = await chamarAcao(page, 'actions/treatment-plans.ts', 'aceitarPlano', `${portal}/pdv`, [planId])
-    expect(r.texto, 'o aceite passou').not.toContain('"error"')
+    // O aceite é da página do plano (é ela que carrega a action, não o PDV).
+    // A resposta vem como payload RSC (com a árvore da página): a prova é o banco.
+    await chamarAcao(page, 'actions/treatment-plans.ts', 'aceitarPlano', `${portal}/planejamentos/${planId}`, [planId])
+    const { data: aceito } = await banco().from('treatment_plans').select('status').eq('id', planId).single<{ status: string }>()
+    expect(aceito!.status, 'o aceite passou').toBe('ACCEPTED')
   }
   const { data: comanda } = await banco().from('comandas').select('id').eq('treatment_plan_id', planId)
     .is('cancelada_em', null).single<{ id: string }>()

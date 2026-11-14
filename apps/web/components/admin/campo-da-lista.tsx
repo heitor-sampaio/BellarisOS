@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { Loader2, Plus, Search, X } from 'lucide-react'
 import { contemSemAcento } from '@/lib/texto'
 import { criarItemDoEstoque, type ListaDoEstoque } from '@/actions/stock'
@@ -39,7 +39,7 @@ export function CampoDaLista({ lista, rotulo, nome, itens, inicial = null, podeC
     const vistos = new Set(itens.map(i => i.id))
     return [...itens, ...criados.filter(c => !vistos.has(c.id))]
   }, [itens, criados])
-  const [escolhido, setEscolhido] = useState<ItemDaLista | null>(() =>
+  const [escolhidoNoEstado, setEscolhido] = useState<ItemDaLista | null>(() =>
     inicial ? itens.find(i => i.id === inicial) ?? itens.find(i => chave(i.nome) === chave(inicial)) ?? null : null)
   const [termo, setTermo] = useState('')
   const [aberto, setAberto] = useState(false)
@@ -51,9 +51,7 @@ export function CampoDaLista({ lista, rotulo, nome, itens, inicial = null, podeC
   const campo = useRef<HTMLInputElement>(null)
 
   // O item escolhido sumiu da lista (excluído na janela): o campo se esvazia.
-  useEffect(() => {
-    if (escolhido && !todos.some(i => i.id === escolhido.id)) setEscolhido(null)
-  }, [todos, escolhido])
+  const escolhido = escolhidoNoEstado && todos.some(i => i.id === escolhidoNoEstado.id) ? escolhidoNoEstado : null
 
   const busca = termo.trim()
   const achados = useMemo(() => (busca ? todos.filter(i => contemSemAcento([i.nome], busca)) : todos).slice(0, 50), [todos, busca])

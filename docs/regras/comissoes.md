@@ -363,8 +363,8 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   linha da Equipe (A4 da 12ª), o "Desfazer" dele (A6 da 14ª) e a caixa da
   janela de comissão (A14 da 11ª). Quem atende sem comissão padrão fica no
   aviso de Configurações → Comissões e na pílula âmbar "Sem comissão" da
-  Equipe. A coluna `users.sem_comissao_de_proposito` ficou no banco, e nada a
-  lê nem grava. Prova: `e2e/configuracoes-atritos-da-11.spec.ts` ("A14
+  Equipe. A coluna `users.sem_comissao_de_proposito` saiu do banco em
+  2026-11-14 (migration `20261114900901`). Prova: `e2e/configuracoes-atritos-da-11.spec.ts` ("A14
   (revista)") e `e2e/configuracoes-atritos-da-12.spec.ts` ("A4 (revista)").
 - **A comissão de venda POR PESSOA** (A17 da 11ª simulação, 2026-11-10;
   decidido pelo princípio 1 — a clínica decide; configuração com padrão que não

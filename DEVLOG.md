@@ -1774,6 +1774,29 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Limpeza do banco e as sobras dos blocos
+
+- **Limpeza do banco** (o Heitor, 13/11: "aplica e anota"), migration
+  `20261114900901_limpeza_do_banco` — **destrutiva, aplicada**: (1) o schema
+  `backup_wipe_20261113` (a cópia de 141 tabelas, ~8 MB, feita antes de
+  zerar o banco de teste em 13/11; ninguém lia); (2) a coluna
+  `users.sem_comissao_de_proposito` (o "sem comissão, de propósito" saiu em
+  13/11; nenhuma função nem view a lia). Os dois specs que ainda gravavam
+  nela (`configuracoes-atritos-da-11` e `-da-12`) deixaram de gravar: 3 e
+  10 verdes.
+- **`vendas-desconto` › "plano: 10% rateado…"** voltou a passar (6/6): o
+  aceite do plano se chama pela página do plano (é ela que carrega
+  `aceitarPlano`), e a prova é o status no banco — a resposta da action
+  traz a árvore da página, com `"error":` do roteador, e o
+  `not.toContain('"error"')` dava falso negativo. O helper
+  `receberPlanoNoPdv` (`e2e/apoio/vender.ts`) tinha os dois defeitos e foi
+  corrigido junto; vizinhos `checkout-de-plano` (8) e `plano-e-avulso` (3)
+  verdes.
+- **O lint do web volta a zero**: `campo-da-lista.tsx` (do bloco Estoque)
+  zerava o escolhido num `useEffect` (`set-state-in-effect`); agora o valor
+  é derivado na renderização. `estoque-marcas-e-fornecedores` 6/6.
+- **Para o Heitor**: a limpeza é destrutiva e já está no banco.
+
 ### 2026-11-14 — Bloco Fidelidade (FD3): o saldo de pontos é um só, da rede
 
 Do plano de adaptação (a revisão do Heitor de 2026-11-13, FD3: "concordo").
@@ -1841,16 +1864,17 @@ Do plano de adaptação (a revisão do Heitor de 2026-11-13, FD3: "concordo").
   rateado…" falha ANTES de qualquer ponto, no `chamarAcao` de
   `aceitarPlano` em `/admin/pdv` ("não existe em /admin/pdv") — a página do
   PDV não carrega mais essa action desde a fase 3; o FD3 não mexeu nos
-  imports dela. Fica para quem mexer no spec (pendência do PDV, não da
-  fidelidade). `tsc` (os 11 pacotes) verde; vitest 278 arquivos / 2.372
+  imports dela. ~~Fica para quem mexer no spec~~ — corrigido logo depois
+  (ver "Limpeza do banco" acima). `tsc` (os 11 pacotes) verde; vitest 278 arquivos / 2.372
   verdes; eslint do web com 1 erro que já estava na `main`
   (`components/admin/campo-da-lista.tsx:55`, `set-state-in-effect`, do bloco
   Estoque).
 - **Para o Heitor**: (1) a migration é destrutiva (a coluna
   `scope_per_branch`, a função `saldos_por_unidade` e três assinaturas
   antigas) e já está no banco — o app no ar, até este código subir, quebra
-  ao ler a configuração da fidelidade (ele pede a coluna que saiu); (2) vale
-  uma completa: mexeu no pagamento do atendimento, no PDV e no Copilot.
+  ao ler a configuração da fidelidade (ele pede a coluna que saiu) — o
+  código subiu logo em seguida (`19cfc0d4`); (2) vale uma completa: mexeu no
+  pagamento do atendimento, no PDV e no Copilot.
 
 ### 2026-11-14 — Bloco Tags: a tag de unidade sai do sistema, e só a pessoa marca tag
 

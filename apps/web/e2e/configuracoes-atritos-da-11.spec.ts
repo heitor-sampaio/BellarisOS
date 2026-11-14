@@ -61,8 +61,8 @@ test('A13: o insumo do procedimento diz que o custo é o último custo, e que a 
 // caixa tambem"): não existe mais "sem comissão, de propósito" — nem o atalho
 // na linha da Equipe, nem a caixa na janela, nem a exceção no aviso.
 test('A14 (revista): não há "sem comissão, de propósito" — quem atende sem comissão fica no aviso', async ({ browser }) => {
-  // Uma marca antiga no banco não vale mais nada.
-  expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId], sem_comissao_de_proposito: true }).eq('id', dona.userId)).error).toBeNull()
+  // A coluna da marca saiu do banco (limpeza de 2026-11-14).
+  expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId] }).eq('id', dona.userId)).error).toBeNull()
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=comissoes')
     const aviso = p.locator('[data-sem-regra]')

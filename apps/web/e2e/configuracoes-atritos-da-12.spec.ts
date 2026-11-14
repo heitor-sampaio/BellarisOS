@@ -137,7 +137,7 @@ test('A1: "Aberta 24 horas" se desfaz com um toque, e o horário de antes volta'
 // propósito na configuração da equipe"): a linha da Equipe não tem mais o
 // atalho; o "sem comissão, de propósito" fica só na janela da comissão (A14 da 11ª).
 test('A4 (revista): a linha da Equipe não tem o atalho "É de propósito"', async ({ browser }) => {
-  expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId], sem_comissao_de_proposito: false }).eq('id', dona.userId)).error).toBeNull()
+  expect((await db().from('users').update({ provides_services: true, atende_em: [rede.branchId] }).eq('id', dona.userId)).error).toBeNull()
   await como(browser, dona, async p => {
     await p.goto('/admin/team')
     const chip = p.locator(`[data-comissao="${dona.userId}"]`)

@@ -142,8 +142,11 @@ test.describe.serial('desconto nas vendas', () => {
 
     await comSessao(browser, async p => {
       // Fase 3 do PDV (PT1b): aceito antes; o receber (com o desconto) é no PDV.
-      const aceite = await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', '/admin/pdv', [pl!.id])
-      expect(aceite.texto, 'o aceite passa').not.toContain('"error"')
+      // O aceite é da página do plano (é ela que carrega a action).
+      // A resposta vem como payload RSC (com a árvore da página): a prova é o banco.
+      await chamarAcao(p, 'actions/treatment-plans.ts', 'aceitarPlano', `/admin/planejamentos/${pl!.id}`, [pl!.id])
+      const { data: aceito } = await db().from('treatment_plans').select('status').eq('id', pl!.id).single<{ status: string }>()
+      expect(aceito!.status, 'o aceite passa').toBe('ACCEPTED')
       const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', '/admin/pdv',
         [pl!.id, { forma: 'AVISTA', metodo: 'PIX' }, [], slug, { tipo: 'PERCENTUAL', valor: 10 }])
       expect(r.texto, 'o checkout passa').toContain('transactionId')
