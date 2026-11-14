@@ -46,20 +46,19 @@ test('o procedimento novo nasce FORA do app (self-service desligado)', async ({ 
   await como(browser, async p => {
     await p.goto('/admin/procedures')
     await p.getByRole('button', { name: 'Novo procedimento' }).first().click()
-    await expect(p.getByRole('checkbox', { name: 'Visível no app do cliente', exact: true })).not.toBeChecked()
+    await expect(p.getByRole('checkbox', { name: 'Permitir auto agendamento', exact: true })).not.toBeChecked()
   })
 })
 
-// J-10 (2026-10-30): o título "Visível no app do cliente" e a caixa "Permitir
-// agendamento self-service" pareciam duas coisas. É um rótulo só, LIGADO à
-// caixa: clicar nele marca.
+// J-10 (2026-10-30): o título e a caixa pareciam duas coisas. É um rótulo só,
+// LIGADO à caixa: clicar nele marca. O nome é "Permitir auto agendamento" (PR2).
 test('o self-service tem um rótulo só, ligado à caixa', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto('/admin/procedures')
     await p.getByRole('button', { name: 'Novo procedimento' }).first().click()
     await expect(p.getByText('Permitir agendamento self-service')).toHaveCount(0)
-    const caixa = p.getByRole('checkbox', { name: 'Visível no app do cliente', exact: true })
-    await p.locator('label').filter({ has: caixa }).getByText('Visível no app do cliente', { exact: true }).click()
+    const caixa = p.getByRole('checkbox', { name: 'Permitir auto agendamento', exact: true })
+    await p.locator('label').filter({ has: caixa }).getByText('Permitir auto agendamento', { exact: true }).click()
     await expect(caixa).toBeChecked()
   })
 })

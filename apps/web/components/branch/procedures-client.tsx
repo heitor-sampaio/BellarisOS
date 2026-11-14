@@ -1,11 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { Clock, Star, Smartphone, Search } from 'lucide-react'
 import { contemSemAcento } from '@/lib/texto'
-import { rotaNoPortal } from '@/lib/rotas'
 import { useFala } from '@/components/shared/uma-unidade'
 
 /**
@@ -38,8 +35,6 @@ interface Props {
   precoMedio: number
   /** O `?q=` da URL — a busca universal abre a tela já filtrada. */
   buscaInicial?: string
-  /** Quem gere o catálogo (procedimentos em Gerenciar, com abrangência de rede): vê o botão que cadastra. */
-  podeCadastrar?: boolean
 }
 
 // -- Helper ---------------------------------------------------------------------
@@ -82,7 +77,7 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
           {p.name}
         </p>
         {p.visibleOnClientApp && (
-          <Smartphone size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} aria-label="Disponível no app do cliente" />
+          <Smartphone size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} aria-label="Permite auto agendamento" />
         )}
       </div>
 
@@ -114,8 +109,7 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
 
 // -- Main ----------------------------------------------------------------------
 
-export function ProceduresClient({ procedures, categories, totalCount, precoMedio, buscaInicial = '', podeCadastrar = false }: Props) {
-  const pathname = usePathname()
+export function ProceduresClient({ procedures, categories, totalCount, precoMedio, buscaInicial = '' }: Props) {
   const [activeTab, setActiveTab] = useState('Todos')
   const fala = useFala()
   const [busca,     setBusca]     = useState(buscaInicial)
@@ -153,16 +147,7 @@ export function ProceduresClient({ procedures, categories, totalCount, precoMedi
       {/* A35 da 8ª: a gerente via o catálogo só para ler, sem saber por quê (a
           regra: o catálogo é da rede — plataforma.md). */}
       <p data-catalogo-da-rede style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', marginBottom: 16 }}>
-        {fala('O catálogo de procedimentos é da clínica toda: quem cria e muda é quem administra a rede (Procedimentos em Gerenciar, no portal da rede). Aqui ele é consulta.')}
-        {/* A20 da 9ª: quem pode editar (a dona da clínica de uma unidade) não sabia onde. */}
-        {podeCadastrar && (
-          <>
-            {' '}
-            <Link href="/admin/procedures" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-              {fala('Editar no catálogo da rede')} →
-            </Link>
-          </>
-        )}
+        {fala('O catálogo de procedimentos é da rede toda: quem cria e muda é quem tem Procedimentos em Gerenciar. Aqui ele é consulta.')}
       </p>
 
       {/* Filtro por categoria. As opções vêm do catálogo da rede — são dado,
@@ -202,13 +187,8 @@ export function ProceduresClient({ procedures, categories, totalCount, precoMedi
       {totalCount === 0 ? (
         <div className="card" style={{ padding: '56px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-            {podeCadastrar
-              ? fala('O catálogo da rede ainda está vazio.')
-              : fala('O catálogo é da rede: peça a quem administra.')}
+            O catálogo ainda está vazio: quem cadastra é quem tem Procedimentos em Gerenciar.
           </p>
-          {podeCadastrar && (
-            <Link href={rotaNoPortal(pathname, null, '/procedures')} className="btn-primary">Cadastrar procedimento</Link>
-          )}
         </div>
       ) : visible.length === 0 ? (
         <div className="card" style={{ padding: '56px 24px', textAlign: 'center' }}>

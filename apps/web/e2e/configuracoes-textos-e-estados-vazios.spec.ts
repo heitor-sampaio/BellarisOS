@@ -43,17 +43,18 @@ async function como(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise
   try { await fn(await ctx.newPage()) } finally { await ctx.close() }
 }
 
-test('A4: catálogo vazio — quem gere vê o botão que cadastra; quem não gere lê a quem pedir', async ({ browser }) => {
+// Revista no PR1 (2026-11-13): quem tem Procedimentos em Gerenciar cadastra
+// ali mesmo, no portal da unidade; quem só vê lê quem cadastra — pela permissão.
+test('A4: catálogo vazio — quem gere vê o botão que cadastra; quem não gere lê quem cadastra', async ({ browser }) => {
   const slug = `e2e-un-txt${marca}`
   await como(browser, daUnidade, async p => {
     await p.goto(`/${slug}/procedures`)
-    // A rede de teste tem uma unidade: a clínica não fala "rede" (F8).
-    await expect(p.getByText('O catálogo é da clínica: peça a quem administra.')).toBeVisible()
-    await expect(p.getByRole('link', { name: 'Cadastrar procedimento' })).toHaveCount(0)
+    await expect(p.getByText('O catálogo ainda está vazio: quem cadastra é quem tem Procedimentos em Gerenciar.')).toBeVisible()
+    await expect(p.getByRole('button', { name: 'Novo procedimento' })).toHaveCount(0)
   })
   await como(browser, gerente, async p => {
     await p.goto(`/${slug}/procedures`)
-    await expect(p.getByRole('link', { name: 'Cadastrar procedimento' })).toHaveAttribute('href', '/admin/procedures')
+    await expect(p.getByRole('button', { name: 'Novo procedimento' }).first()).toBeVisible()
   })
 })
 

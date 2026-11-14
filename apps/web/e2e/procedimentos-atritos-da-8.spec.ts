@@ -48,11 +48,14 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A35: no portal da unidade, o catálogo diz que é da clínica toda e quem o muda', async ({ browser }) => {
+// PR1/PR6 (a revisão do Heitor de 2026-11-13) mudou a A35: o catálogo é de
+// quem tem Procedimentos em Gerenciar, e só isso — a gerente de unidade fixa
+// com o módulo em Gerenciar cuida dele pelo portal da unidade.
+test('A35 (revista no PR1): no portal da unidade, quem tem Procedimentos em Gerenciar cuida do catálogo', async ({ browser }) => {
   await como(browser, gerente!, async p => {
     await p.goto(`/${slug}/procedures`)
-    // Clínica de uma unidade: a fala troca "rede" por "clínica" (design.md).
-    await expect(p.locator('[data-catalogo-da-rede]')).toContainText(/quem cria e muda é quem administra a (rede|clínica)/)
+    await expect(p.getByRole('button', { name: 'Novo procedimento' }).first()).toBeVisible()
+    await expect(p.locator('[data-catalogo-da-rede]')).toHaveCount(0)
   })
 })
 
@@ -81,15 +84,10 @@ test('A4: o formulário do procedimento só existe no DOM com a janela aberta (u
  * Gerenciar, da clínica toda) ganha o "Editar no catálogo da clínica"; a
  * gerente de unidade fixa, não (H7: o catálogo é da clínica toda).
  */
-test('A20 da 9ª: o catálogo da unidade leva quem pode editar ao catálogo da clínica', async ({ browser }) => {
+// Revista no PR1: quem pode editar edita ali mesmo, sem ir à rede.
+test('A20 da 9ª (revista no PR1): quem pode editar edita o catálogo no portal da unidade', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/procedures`)
-    const link = p.locator('[data-catalogo-da-rede]').getByRole('link', { name: /Editar no catálogo da (rede|clínica)/ })
-    await expect(link).toHaveAttribute('href', '/admin/procedures')
-  })
-  await como(browser, gerente!, async p => {
-    await p.goto(`/${slug}/procedures`)
-    await expect(p.locator('[data-catalogo-da-rede]')).toBeVisible()
-    await expect(p.locator('[data-catalogo-da-rede]').getByRole('link')).toHaveCount(0)
+    await expect(p.getByRole('button', { name: 'Novo procedimento' }).first()).toBeVisible()
   })
 })

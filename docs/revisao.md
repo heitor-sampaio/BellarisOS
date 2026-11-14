@@ -1659,6 +1659,13 @@ revisão, só se escreve o plano. Nada se implementa.
   PDV, ao receber". Fica: os pontos na comanda do PLANO (o receber do plano
   é outra tela, e "sem forçar" não coube) e o crediário no recebimento do
   atendimento avulso (ele grava um lançamento só).
+- ✅ Bloco Procedimentos (14/11) — PR1/PR6, PR2, PR3; e do bloco Pacotes,
+  PC1 e PC6: o catálogo, as categorias e os pacotes são de quem tem
+  Procedimentos em Gerenciar, e só isso (o portal da unidade gerencia o
+  catálogo; quem só vê consulta); "Permitir auto agendamento" e "Ficha de
+  atendimento"; o preço do pacote nasce com a soma e se altera. PR4/PR5 e o
+  resto do Pacotes (PC2, PC7–PC10) esperam a revisão de Documentos. A
+  comissão do procedimento segue com quem é da rede (é do financeiro).
 - ✅ Bloco Estoque (14/11) — E1/E5, E4/E5, E6/E3, E2, E10, E14 e E15:
   Categorias, Marcas e Fornecedores (criar, renomear, excluir; quem tem o
   Estoque em Gerenciar), o campo com busca e "+ Nova …", Insumo e Venda

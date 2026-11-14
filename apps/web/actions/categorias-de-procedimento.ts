@@ -1,7 +1,6 @@
 'use server'
 
 import { getTenantContext, assertPermission } from '@/lib/auth'
-import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 
@@ -11,8 +10,8 @@ import { ler } from '@/lib/db'
  * todos os procedimentos, e junta se o nome já existe — e arquiva (sai das
  * opções, fica em quem já está nela).
  *
- * Gerencia quem gerencia o catálogo: `procedures: MANAGE` e abrangência de
- * rede, a mesma trava de criar procedimento.
+ * Gerencia quem tem Procedimentos em Gerenciar, e só isso (PR1, a revisão
+ * do Heitor de 2026-11-13) — a mesma trava de criar procedimento.
  */
 
 export interface CategoriaDeProcedimento {
@@ -22,7 +21,6 @@ export interface CategoriaDeProcedimento {
 async function quemGerencia() {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'MANAGE')
-  if (ctx.branchId !== null) throw semAcesso()
   return ctx
 }
 

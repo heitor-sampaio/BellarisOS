@@ -252,8 +252,12 @@ plano").
 - **Catálogo da rede** em Vendas → Pacotes (`/admin/pacotes` e
   `/[slug]/pacotes`, corpo em `app/_shared/pacotes.tsx`, `PacotesCatalogo`):
   os procedimentos e quantas sessões de cada, preço, validade em dias (vazio =
-  sem validade), à venda ou não. Ver pede `procedures: VIEW`; editar, `procedures: MANAGE` e
-  abrangência de rede (`salvarPacote`) — na unidade é consulta.
+  sem validade), à venda ou não. Ver pede `procedures: VIEW`; editar,
+  `procedures: MANAGE`, e só isso (PC6 do plano de adaptação, 2026-11-13: sai
+  a exigência de ser da rede), nos dois portais (`salvarPacote`). **O preço
+  nasce com a soma** (PC1): sessões × preço de tabela, e acompanha a soma até
+  alguém mexer no campo; o pacote que já existe guarda o seu. Prova:
+  `e2e/procedimentos-por-permissao.spec.ts` ("PC1", "PC6").
 - **O menu tem Vendas e Marketing separados** (decisão do Heitor, 2026-09-30):
   Vendas = Inbox, Oportunidades, Procedimentos e Pacotes (o funil e o que se
   vende); Marketing = Notificações, Marketing e Templates. A tela de cargos

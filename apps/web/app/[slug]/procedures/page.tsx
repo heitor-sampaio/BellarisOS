@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { CatalogoDeProcedimentos } from '@/app/_shared/catalogo-de-procedimentos'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ProceduresClient } from '@/components/branch/procedures-client'
@@ -31,6 +32,8 @@ export default async function BranchProceduresPage({
     .eq('tenant_id', ctx.tenantId!)
     .single(), 'buscar a unidade')
   if (!branch) notFound()
+  // PR1/PR6: Procedimentos em Gerenciar cuida do catálogo daqui — sem ir à rede.
+  if (can(ctx, 'procedures', 'MANAGE')) return <CatalogoDeProcedimentos termo={busca} />
 
   const [allProcs, sessionsMap] = await Promise.all([
     ler(// Procedures (rede + locais da filial)
@@ -90,7 +93,7 @@ export default async function BranchProceduresPage({
     ? items.reduce((s, p) => s + p.price, 0) / totalCount
     : 0
 
-  // Sem `canManage`: o catálogo é da rede e só se altera em `/admin/procedures`.
+  // Aqui chega quem só vê: a consulta, com o preço desta unidade.
   return (
     <>
       <RealtimeRefresher tables={['procedures']} />
@@ -100,7 +103,6 @@ export default async function BranchProceduresPage({
         totalCount={totalCount}
         precoMedio={precoMedio}
         buscaInicial={busca}
-        podeCadastrar={ctx.permissions.procedures === 'MANAGE' && ctx.branchId === null}
       />
     </>
   )

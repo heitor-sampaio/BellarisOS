@@ -1248,22 +1248,25 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
 ---
 
 ### 9.3 Procedimentos
-- `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
-- **A tela diz de quem é o catálogo** (A35 da 8ª simulação, 2026-11-06; a regra
-  — o catálogo é da rede — não mudou): no portal da unidade, "O catálogo de
-  procedimentos é da clínica toda: quem cria e muda é quem administra a rede…
-  Aqui ele é consulta." (`[data-catalogo-da-rede]`, pela fala da clínica de uma
-  unidade); na rede, quem só vê lê "Seu cargo só consulta o catálogo"
-  (`[data-catalogo-so-consulta]`). E o formulário do procedimento só existe
-  com a janela ABERTA (A4: montado escondido em cada linha, eram N+1
-  formulários no DOM, `name=price` repetido; o "Novo procedimento" do vazio
-  aparecia a quem só vê). Prova: `e2e/procedimentos-atritos-da-8.spec.ts`.
-  **Quem pode editar é levado ao catálogo da clínica** (A20 da 9ª simulação,
-  2026-11-07: a dona da clínica de uma unidade lia "aqui ele é consulta" e não
-  sabia que se edita no `/admin`): com Procedimentos em Gerenciar e a clínica
-  toda (`ctx.branchId === null`, o mesmo do "Novo procedimento"), a frase ganha
-  "Editar no catálogo da clínica →" (`/admin/procedures`); a gerente de unidade
-  fixa segue só lendo (H7). Prova: o mesmo spec ("A20 da 9ª").
+- `branchId: null` = catálogo base da rede.
+- **O catálogo é de quem tem Procedimentos em Gerenciar, e só isso** (PR1/PR6
+  do plano de adaptação, a revisão do Heitor de 2026-11-13: "Sai a exigência
+  de ser da rede"). Criar, editar, ativar/desativar o procedimento e as
+  categorias: a action confere só `procedures: MANAGE` (saíram o `assertRede`
+  de `actions/procedures.ts` e a abrangência de `quemGerencia`). O catálogo
+  tem um corpo só, `app/_shared/catalogo-de-procedimentos.tsx`: o portal da
+  rede o mostra sempre, e o da unidade a quem tem o módulo em Gerenciar — a
+  pessoa de unidade fixa cuida dele dali, sem ir à rede. Quem só vê lê, no
+  portal da unidade, a consulta com o preço daquela unidade e "quem cria e
+  muda é quem tem Procedimentos em Gerenciar" (`[data-catalogo-da-rede]`); na
+  rede, "Seu cargo só consulta o catálogo" (`[data-catalogo-so-consulta]`).
+  Ficou com a rede só a comissão do procedimento (é configuração do
+  financeiro). O formulário só existe com a janela ABERTA (A4 da 8ª: eram N+1
+  formulários no DOM). Prova: `e2e/procedimentos-por-permissao.spec.ts`,
+  `e2e/procedimentos-atritos-da-8.spec.ts` (A35 e A20, revistos).
+- **Os nomes do formulário** (PR2/PR3): "Permitir auto agendamento" (era
+  "Visível no app do cliente"; a coluna `visible_on_client_app` é a mesma) e
+  "Ficha de atendimento" (era "Ficha"; a mesma lista).
 - `visibleOnClientApp`: controla se o procedimento aparece para o cliente agendar pelo app
 - **O procedimento que a unidade NÃO faz sai de toda lista e o núcleo o
   recusa** (D7 da 13ª, F65). "Em quais unidades" do cadastro
@@ -1371,7 +1374,7 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   (`renomear_categoria_de_procedimento`); arquivar tira das opções. O cadastro
   sempre oferece a categoria ATUAL do procedimento, mesmo arquivada ou de fora
   — senão abria em "Selecione…" e salvar a trocava. Gerencia quem tem
-  `procedures: MANAGE` e abrangência de rede. Prova:
+  `procedures: MANAGE`, e só isso (PR1, 2026-11-13). Prova:
   `e2e/categorias-de-procedimento.spec.ts`.
 
 Query correta para buscar procedimentos de uma filial — o catálogo base da

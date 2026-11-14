@@ -1774,6 +1774,32 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-14 — Bloco Procedimentos (e PC1/PC6 dos Pacotes): o catálogo é da permissão
+
+Do plano de adaptação (a revisão do Heitor de 2026-11-13).
+
+- **PR1/PR6, PC6:** procedimento, categorias e pacote — criar, editar,
+  ativar/desativar — são de quem tem Procedimentos em Gerenciar, e só isso.
+  Saíram o `assertRede` (`actions/procedures.ts`), a abrangência de
+  `quemGerencia` (categorias) e a de `salvarPacote`. O corpo do catálogo foi
+  para `app/_shared/catalogo-de-procedimentos.tsx`: o portal da rede o mostra
+  sempre, e o da unidade a quem tem o módulo em Gerenciar. Quem só vê segue
+  com a consulta da unidade (o preço dela), que agora diz "quem cria e muda é
+  quem tem Procedimentos em Gerenciar".
+- **PR2/PR3:** "Permitir auto agendamento" e "Ficha de atendimento".
+- **PC1:** o preço do pacote novo nasce com a soma (sessões × preço de
+  tabela) e acompanha a soma até alguém mexer no campo.
+- **Decisão pelos princípios:** a comissão do procedimento continua com quem
+  é da rede — é configuração do financeiro, e a decisão do Heitor foi sobre
+  o catálogo. A disponibilidade por unidade se edita como o resto do
+  catálogo (a regra é a permissão, "e só isso").
+- Specs que contrariavam a regra nova e mudaram: `procedimentos-atritos-da-8`
+  (A35 e A20), `configuracoes-textos-e-estados-vazios` (A4) e
+  `equipe-desativar-pede-confirmacao` (o rótulo novo).
+- Prova: `e2e/procedimentos-por-permissao.spec.ts` (5).
+- Fica: PR4/PR5 e o resto dos Pacotes (PC2, PC7–PC10) esperam a revisão de
+  Documentos.
+
 ### 2026-11-14 — O PDV, fase 5b: vários itens numa comanda e os pontos dentro dela
 
 PDV2 (o produto na comanda do atendimento) e FD2a–FD2c do plano de adaptação

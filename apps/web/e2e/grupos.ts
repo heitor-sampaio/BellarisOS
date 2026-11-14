@@ -275,6 +275,7 @@ export const ISOLADOS = [
   'lgpd-atritos-da-9.spec.ts',
   'financeiro-atritos-da-8.spec.ts',
   'procedimentos-atritos-da-8.spec.ts',
+  'procedimentos-por-permissao.spec.ts',
   'caixa-atritos-da-8.spec.ts',
   'relatorios-atritos-da-8.spec.ts',
   // F40 (a 2ª unidade da 9ª simulação), cada um na sua rede [e2e].

@@ -9,11 +9,11 @@ import { TEXTO_DA_VENDA_DO_PACOTE } from '@/lib/permissions-copy'
 
 /**
  * Vendas → Pacotes, o corpo dos dois portais. O catálogo é da REDE: edita quem
- * tem `procedures: MANAGE` e abrangência de rede; na unidade ele é consulta
- * (mais os pacotes locais dela, se houver). A venda é na ficha do cliente.
+ * tem Procedimentos em Gerenciar, e só isso (PC6, a revisão do Heitor de
+ * 2026-11-13), dos dois portais. A venda é no PDV.
  */
 export async function PacotesDaRede({ ctx, unidadeId, busca }: { ctx: TenantContext; unidadeId?: string; busca?: string }) {
-  const podeEditar = can(ctx, 'procedures', 'MANAGE') && ctx.branchId === null
+  const podeEditar = can(ctx, 'procedures', 'MANAGE')
   // A comissão do pacote (2026-10-30) é do financeiro, como a do procedimento.
   const podeComissao = podeEditar && podeMudarComissaoDoProcedimento(ctx)
   const [pacotes, procedimentos] = await Promise.all([

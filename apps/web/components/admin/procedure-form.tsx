@@ -410,20 +410,20 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
             min={1} defaultValue={existing?.duration_min ?? 60} />
         </Field>
 
-        {/* Um rótulo só, LIGADO à caixa (J-10, 2026-10-30): o título "Visível no
-            app do cliente" e a caixa "Permitir agendamento self-service" pareciam
-            duas coisas. A explicação vai pelo aria-describedby. */}
+        {/* Um rótulo só, LIGADO à caixa (J-10, 2026-10-30). O nome é o do
+            Heitor (PR2, 2026-11-13): "Permitir auto agendamento". A explicação
+            vai pelo aria-describedby. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 18 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <input type="checkbox" name="visible_on_client_app" aria-describedby="proc-visivel-no-app-dica"
               defaultChecked={existing?.visible_on_client_app ?? false}
               style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
             <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
-              Visível no app do cliente
+              Permitir auto agendamento
             </span>
           </label>
           <p id="proc-visivel-no-app-dica" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-            A cliente vê o procedimento no app e agenda sozinha.
+            A cliente vê o procedimento no app e agenda sozinha, sem passar pela equipe.
           </p>
         </div>
 
@@ -432,7 +432,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
             cadastrava um procedimento tinha de escolher em qual das duas pôr
             cada pergunta, e a escolha não mudava nada (2026-09-25). */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <Field label="Ficha" hint="Opcional — preenchida pelo profissional durante o atendimento. Se o procedimento for uma avaliação, os campos são os da avaliação.">
+          <Field label="Ficha de atendimento" hint="Opcional — preenchida pelo profissional durante o atendimento. Se o procedimento for uma avaliação, os campos são os da avaliação.">
             <select name="form_id" className="field" defaultValue={existing?.form_id ?? ''}>
               <option value="">Nenhuma</option>
               {fichas.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}

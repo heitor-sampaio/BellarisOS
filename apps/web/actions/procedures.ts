@@ -152,11 +152,6 @@ async function gravarQuemRealiza(
   }
 }
 
-function assertRede(ctx: { branchId: string | null }) {
-  if (ctx.branchId !== null) {
-    throw new Error('Procedimentos são do catálogo da rede: só quem tem abrangência de rede pode alterá-los.')
-  }
-}
 
 // --- Criar procedimento (rede) -------------------------------------
 /**
@@ -183,7 +178,6 @@ async function addProcedureInterno(
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'MANAGE')
-  assertRede(ctx)
 
   const name        = (formData.get('name') as string)?.trim()
   const category    = (formData.get('category') as string)?.trim()
@@ -326,7 +320,6 @@ async function updateProcedureInterno(
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'MANAGE')
-  assertRede(ctx)
 
   const procedureId = formData.get('_procedureId') as string
 
@@ -471,7 +464,6 @@ export async function toggleProcedureStatus(
 async function toggleProcedureStatusInterno(procedureId: string, isActive: boolean) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'MANAGE')
-  assertRede(ctx)
 
   const admin = createAdminClient()
   await gravar(admin

@@ -663,10 +663,13 @@ um muro que não depende de cada trava do código.
   (`integrations`, `uazapi-connection`, o OAuth da Meta em `/api/oauth/meta`;
   o inbox vazio manda pedir a quem administra), as ações em lote
   (`acoes-em-lote`), as automações, as campanhas e os templates (que já eram
-  só do portal da rede, D-2). Já eram da rede antes: o catálogo de
-  procedimentos, as categorias e os pacotes, a fidelidade, a configuração de
+  só do portal da rede, D-2). Já eram da rede antes: a fidelidade, a configuração de
   comissões, as taxas e a comissão do procedimento, criar/desativar unidade, a
   assinatura e o suporte.
+- **O catálogo de procedimentos, as categorias e os pacotes são de quem tem
+  Procedimentos em Gerenciar, e só isso** (PR1/PR6 e PC6 do plano de
+  adaptação, 2026-11-13): saíram da lista do que é da rede. Ver
+  `docs/regras/atendimento.md` §9.3.
 - **Fica com a unidade** (o alcance de sempre, `alcancaUnidade`): a aba
   **Unidade** do portal da unidade (nova): os dados, o horário e as salas da
   unidade do endereço (`updateBranch`, `actions/salas.ts`); o estoque dela

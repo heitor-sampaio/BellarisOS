@@ -1,0 +1,409 @@
+import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
+import { getTenantContext, can, temRecurso } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getCachedProductsReference } from '@/lib/cached-queries'
+import { ehInsumo } from '@/lib/estoque/uso'
+import { ProcedureModal } from '@/components/admin/procedure-modal'
+import { CategoriasDeProcedimento } from '@/components/admin/categorias-de-procedimento'
+import { categoriasAtivasDaRede } from '@/lib/procedimentos/categorias'
+import { ToggleProcedureBtn } from '@/components/admin/toggle-procedure-btn'
+import { ComissaoDoProcedimento, type DadosDaComissao } from '@/components/admin/comissao-do-procedimento'
+import { comissaoDosProcedimentos } from '@/lib/comissoes/leitura'
+import { Pencil, Smartphone } from 'lucide-react'
+import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { ler } from '@/lib/db'
+import { configDaRede } from '@/lib/fidelidade/leitura'
+import { opcoesDeModeloParaProcedimento } from '@/lib/documentos/modelos'
+import { BuscaNaUrl } from '@/components/shared/busca-na-url'
+import { contemSemAcento } from '@/lib/texto'
+import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { vocabulario } from '@/lib/unidades/vocabulario'
+
+function formatBRL(v: string | number) {
+  return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+/** As unidades com preço próprio (o vazio segue o da rede). */
+function precosProprios(linhas: unknown): { branch_id: string; price: number }[] {
+  return ((linhas ?? []) as { branch_id: string; price: number | null }[])
+    .filter(l => l.price != null).map(l => ({ branch_id: l.branch_id, price: Number(l.price) }))
+}
+
+/** Largura fixa por coluna, compartilhada por todas as tabelas de categoria.
+ *  A de comissão só existe para quem vê quanto cada um ganha. */
+const colunas = (comComissao: boolean) => [
+  { titulo: 'Procedimento', largura: undefined },
+  { titulo: 'Duração',      largura: 98 },
+  { titulo: 'Preço',        largura: 116 },
+  { titulo: 'Unidades',     largura: 132 },
+  { titulo: 'App',          largura: 64 },
+  { titulo: 'Situação',     largura: 108 },
+  ...(comComissao ? [{ titulo: 'Comissão', largura: 168 }] : []),
+  { titulo: '',             largura: 172 },
+]
+
+/**
+ * Procedimentos — o catálogo da rede, o corpo dos dois portais (bloco
+ * Procedimentos do plano de adaptação, PR1/PR6, a revisão do Heitor de
+ * 2026-11-13): criar, editar, ativar/desativar e as categorias são de quem tem
+ * Procedimentos em Gerenciar, e só isso — a pessoa de unidade fixa com o
+ * módulo em Gerenciar cuida do catálogo pelo portal da unidade. Quem chama
+ * confere o `procedures: VIEW` (a página).
+ */
+export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
+  const ctx = await getTenantContext()
+  const canEdit = can(ctx, 'procedures', 'MANAGE')
+  // A clínica de uma unidade não fala "rede" (F8).
+  const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
+  // Quanto cada um ganha é do financeiro (§9.7): gerir o catálogo não basta.
+  // E a comissão do procedimento vale para a rede inteira.
+  const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes') && ctx.branchId === null
+  const COLUNAS = colunas(podeComissao)
+
+  const admin = createAdminClient()
+
+  // Queries paralelas sem usar embed do PostgREST (evita dependência do schema cache)
+  // Erro aqui PARA a página: com ele só no log, a falha virava "nenhum
+  // procedimento cadastrado" — convite a cadastrar de novo o que já existe.
+  const [
+    branches,
+    procedures,
+    products,
+    fichaRows,
+    categorias,
+    salasDaRede,
+    quemAtende,
+  ] = await Promise.all([
+    // Onde o procedimento é oferecido: as unidades ATIVAS (lib/unidades/da-tela).
+    unidadesParaCriar(ctx.tenantId!),
+
+    ler(admin.from('procedures')
+      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, consent_template_id, contract_template_id, loyalty_points')
+      .eq('tenant_id', ctx.tenantId!).is('branch_id', null)
+      .order('category').order('name'), 'carregar os procedimentos'),
+
+    getCachedProductsReference(ctx.tenantId!),
+
+    ler(admin.from('forms').select('id, name')
+      .eq('tenant_id', ctx.tenantId!).eq('tipo', 'PROCEDIMENTO').eq('is_active', true).order('name'), 'carregar as fichas'),
+
+    // O vocabulário da rede (Procedimentos → Categorias).
+    categoriasAtivasDaRede(ctx.tenantId!),
+
+    // As salas ATIVAS das unidades da rede (D5, 2026-10-30): o procedimento se liga às em que é feito.
+    ler(admin.from('rooms').select('id, name, branch_id, branches!inner(tenant_id, name, is_active)')
+      .eq('branches.tenant_id', ctx.tenantId!).eq('branches.is_active', true).eq('is_active', true)
+      .order('name').order('id'), 'carregar as salas da rede'),
+
+    // Quem atende na rede (por-01): o "Quem realiza" de cada procedimento.
+    ler(admin.from('users').select('id, name')
+      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).eq('provides_services', true)
+      .order('name'), 'carregar quem atende'),
+  ])
+  const comissao = podeComissao ? await comissaoDosProcedimentos(ctx.tenantId!) : null
+  // O que o chip e o modal de editar recebem; o de criar começa sem nada.
+  const dadosDaComissao = (id: string): DadosDaComissao | undefined => comissao ? {
+    geral: comissao.gerais.get(id) ?? null, porProfissional: comissao.porProfissional.get(id) ?? [], profissionais: comissao.profissionais,
+  } : undefined
+  const comissaoNova: DadosDaComissao | undefined = comissao ? { geral: null, porProfissional: [], profissionais: comissao.profissionais } : undefined
+
+  const fichas = (fichaRows ?? []) as { id: string; name: string }[]
+  // Termo e contrato que o procedimento pode ligar — só quem edita precisa.
+  const modelos = canEdit ? await opcoesDeModeloParaProcedimento(ctx.tenantId!) : undefined
+
+  // O campo de pontos só existe quando a rede ganha por procedimento.
+  const cfgFidelidade = await configDaRede(ctx.tenantId!, admin)
+  const pontosPorProcedimento = cfgFidelidade.enabled && cfgFidelidade.earn_mode === 'POR_PROCEDIMENTO'
+
+  const baseProcs = procedures ?? []
+
+  // Busca dados relacionados separadamente (sem depender do schema cache do PostgREST)
+  const procIds = baseProcs.map(p => p.id)
+
+  const [
+    availability,
+    procProducts,
+    branchPricing,
+    salasLigadas,
+    realizam,
+  ] = procIds.length > 0
+    ? await Promise.all([
+        ler(admin.from('procedure_branch_availability').select('procedure_id, branch_id').in('procedure_id', procIds), 'carregar a disponibilidade por unidade'),
+        ler(admin.from('procedure_products').select('procedure_id, product_id, quantity, unit_cost').in('procedure_id', procIds), 'carregar os insumos dos procedimentos'),
+        ler(admin.from('procedure_branch_pricing').select('procedure_id, branch_id, price, labor_cost').in('procedure_id', procIds), 'carregar os preços por unidade'),
+        ler(admin.from('procedure_rooms').select('procedure_id, room_id').in('procedure_id', procIds), 'carregar as salas dos procedimentos'),
+        quemRealizaOsProcedimentos(admin, procIds),
+      ])
+    : [[], [], [], [], new Map<string, string[]>()]
+
+  // Junta os dados manualmente
+  const procList = baseProcs.map(p => ({
+    ...p,
+    procedure_branch_availability: (availability   ?? []).filter(a  => a.procedure_id  === p.id),
+    procedure_products:            (procProducts   ?? []).filter(pp => pp.procedure_id  === p.id),
+    procedure_branch_pricing:      (branchPricing  ?? []).filter(bp => bp.procedure_id  === p.id),
+    room_ids:                      (salasLigadas   ?? []).filter(l  => l.procedure_id   === p.id).map(l => l.room_id as string),
+    professional_ids:              realizam.get(p.id) ?? [],
+  }))
+
+  // Usa as filiais já carregadas para montar o mapa de nomes (sem embed PostgREST)
+  const branchNameMap = Object.fromEntries((branches ?? []).map(b => [b.id, b.name]))
+
+  // Os INSUMOS (D-6): o produto só de revenda não se escolhe como insumo —
+  // mas o que já está ligado a um procedimento continua na lista, senão o
+  // modal perderia o nome dele (e salvar o tiraria).
+  const ligados = new Set((procProducts ?? []).map(pp => pp.product_id as string))
+  const productList = (products ?? []).filter(p => ehInsumo((p as { uso?: string | null }).uso) || ligados.has(p.id)).map(p => ({
+    id:                p.id,
+    name:              p.name,
+    // A6 da 9ª: o SKU distingue dois produtos de mesmo nome no seletor de insumo.
+    sku:               (p as { sku?: string | null }).sku ?? null,
+    unit:              p.unit,
+    // O insumo da clínica toda não leva sufixo (A11: era "— Rede" em todos).
+    branch_name:       p.branch_id ? (branchNameMap[p.branch_id] ?? '—') : null,
+    cost_price:        p.cost_price ?? null,
+    consumption_unit:  p.consumption_unit ?? null,
+    units_per_package: p.units_per_package ?? null,
+  }))
+
+  // Agrupa por categoria — só o que casa com a busca. Os totais do cabeçalho
+  // continuam sendo do catálogo inteiro.
+  const filtrados = termo
+    ? procList.filter(p => contemSemAcento([p.name, p.category], termo))
+    : procList
+  const grouped = filtrados.reduce<Record<string, typeof procList>>((acc, p) => {
+    const cat = p.category ?? 'Outros'
+    if (!acc[cat]) acc[cat] = []
+    acc[cat]!.push(p)
+    return acc
+  }, {})
+
+  // A6 da 10ª simulação: o procedimento criado ANTES do estoque ficava sem
+  // insumo, e nada lembrava de ligar depois — a baixa automática nunca
+  // acontecia. Com insumo no estoque, o catálogo diz quais estão sem.
+  const temInsumo = productList.length > 0
+  const semInsumo = temInsumo ? procList.filter(p => p.is_active && !p.procedure_products.length) : []
+  const idsSemInsumo = new Set(semInsumo.map(p => p.id))
+
+  const totalActive   = procList.filter(p => p.is_active).length
+  const totalInactive = procList.filter(p => !p.is_active).length
+  const branchList    = branches ?? []
+  const salasDoCadastro = ((salasDaRede ?? []) as unknown as { id: string; name: string; branches: { name: string } }[])
+    .map(s => ({ id: s.id, name: s.name, unidade: s.branches.name }))
+  const profissionaisDoCadastro = ((quemAtende ?? []) as { id: string; name: string }[]).map(p => ({ id: p.id, name: p.name }))
+
+  return (
+    <div>
+      <RealtimeRefresher tables={['procedures', 'products']} />
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
+            Procedimentos
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
+            {totalActive} {totalActive === 1 ? 'ativo' : 'ativos'} · {totalInactive} {totalInactive === 1 ? 'inativo' : 'inativos'} · {fala('catálogo da rede')}
+          </p>
+        </div>
+        {/* A35 da 8ª: quem só vê lê por quê (o catálogo é de quem o gerencia). */}
+        {!canEdit && (
+          <p data-catalogo-so-consulta style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', maxWidth: 360, textAlign: 'right' }}>
+            Seu cargo só consulta o catálogo: cria e muda quem tem Procedimentos em Gerenciar.
+          </p>
+        )}
+        {canEdit && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* As categorias: a mesma trava de criar procedimento (PR1). */}
+            <CategoriasDeProcedimento ativas={categorias.length} />
+            <ProcedureModal salas={salasDoCadastro} profissionais={profissionaisDoCadastro} branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />
+          </div>
+        )}
+      </div>
+
+      {semInsumo.length > 0 && (
+        <p data-sem-insumo-ligado role="note" className="card" style={{ padding: '12px 16px', marginBottom: 16, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text)' }}>
+            {semInsumo.length === 1 ? '1 procedimento ativo sem insumo ligado' : `${semInsumo.length} procedimentos ativos sem insumo ligado`}
+          </strong>
+          : a baixa automática do estoque não acontece {semInsumo.length === 1 ? 'nele' : 'neles'}.
+          {canEdit ? ' Ligue os insumos em “Editar” → Insumos utilizados.' : ''} O que não usa insumo (a avaliação, por exemplo) pode ficar assim.
+        </p>
+      )}
+
+      {procList.length > 0 && (
+        <div className="filtros-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
+          <BuscaNaUrl inicial={termo} placeholder="Buscar procedimento ou categoria…" rotulo="Buscar procedimento" />
+        </div>
+      )}
+
+      {procList.length > 0 && filtrados.length === 0 && (
+        <div className="card" style={{ padding: '40px 24px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+            Nenhum procedimento encontrado para “{termo}”.
+          </p>
+        </div>
+      )}
+
+      {/* Lista agrupada por categoria */}
+      {Object.entries(grouped).map(([cat, procs]) => (
+        <div key={cat} style={{ marginBottom: 28 }}>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 10 }}>
+            {cat}
+          </p>
+
+          <div className="card table-wrap" style={{ padding: 0, overflow: 'hidden' }}>
+            {/* `table-layout: fixed` + colgroup: cada categoria é uma tabela
+                separada e, no modo automático, cada uma media as colunas pelo
+                próprio conteúdo — um nome comprido numa categoria desalinhava
+                ela inteira em relação às outras. */}
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: comissao ? 1028 : 860 }}>
+              <colgroup>
+                {COLUNAS.map(c => <col key={c.titulo} style={c.largura ? { width: c.largura } : undefined} />)}
+              </colgroup>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {COLUNAS.map(c => (
+                    <th key={c.titulo} style={{
+                      padding: '10px 16px', textAlign: 'left',
+                      fontSize: 'var(--text-overline)', fontWeight: 700,
+                      letterSpacing: '0.1em', textTransform: 'uppercase',
+                      color: 'var(--text-muted)',
+                    }}>
+                      {c.titulo}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {procs.map((p, i) => {
+                  const availability = p.procedure_branch_availability as { branch_id: string }[] | null
+                  const branchCount  = availability?.length ?? 0
+                  const branchLabel  = branchCount === 0
+                    ? fala('Toda a rede')
+                    : `${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`
+
+                  const existingForEdit = {
+                    id:                   p.id,
+                    name:                 p.name,
+                    category:             p.category,
+                    description:          p.description,
+                    duration_min:         p.duration_min,
+                    price:                p.price,
+                    labor_cost:           p.labor_cost,
+                    other_costs:          p.other_costs,
+                    visible_on_client_app: p.visible_on_client_app,
+                    is_active:            p.is_active,
+                    branch_ids:           (availability ?? []).map(a => a.branch_id),
+                    procedure_products:   (p.procedure_products   as { product_id: string; quantity: number; unit_cost: number }[]              | null) ?? [],
+                    branch_pricing:       (p.procedure_branch_pricing as { branch_id: string; price: number | null; labor_cost: number | null }[] | null) ?? [],
+                    form_id:              (p.form_id as string | null) ?? null,
+                    consent_template_id:  (p.consent_template_id as string | null) ?? null,
+                    contract_template_id: (p.contract_template_id as string | null) ?? null,
+                    loyalty_points:       (p.loyalty_points as number | null) ?? null,
+                    room_ids:             p.room_ids,
+                    professional_ids:     p.professional_ids,
+                  }
+
+                  return (
+                    <tr key={p.id} style={{ borderBottom: i < procs.length - 1 ? '1px solid var(--hairline)' : undefined, opacity: p.is_active ? 1 : 0.55 }}>
+                      <td data-label="" style={{ padding: '13px 16px' }}>
+                        {/* Nome quebra em vez de esticar a coluna: com largura
+                            fixa, esticar não é mais possível, mas o texto
+                            precisa poder ocupar duas linhas sem estourar. */}
+                        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflowWrap: 'anywhere' }}>{p.name}</p>
+                        {idsSemInsumo.has(p.id) && (
+                          <span data-chip-sem-insumo className="chip chip-muted" style={{ marginTop: 4, display: 'inline-flex' }}>Sem insumo ligado</span>
+                        )}
+                        {p.description && (
+                          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {p.description}
+                          </p>
+                        )}
+                      </td>
+                      <td data-label="Duração" data-par style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>{p.duration_min} min</span>
+                      </td>
+                      <td data-label="Preço" data-par style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>{formatBRL(p.price)}</span>
+                        {/* D2 da 9ª: o preço próprio de cada unidade, que agora vale na conta. */}
+                        {precosProprios(p.procedure_branch_pricing).map(bp => (
+                          <p key={bp.branch_id} data-preco-da-unidade style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'normal' }}>
+                            {formatBRL(bp.price)} na {branchNameMap[bp.branch_id] ?? 'unidade'}
+                          </p>
+                        ))}
+                      </td>
+                      <td data-label="Unidades" data-par style={{ padding: '13px 16px' }}>
+                        <span style={{
+                          fontSize: 'var(--text-2xs)', fontWeight: 700,
+                          color: branchCount === 0 ? 'var(--brand)' : 'var(--text-soft)',
+                          background: branchCount === 0 ? 'var(--brand-soft)' : 'var(--bg-app)',
+                          border: `1px solid ${branchCount === 0 ? 'var(--brand-soft-border)' : 'var(--border)'}`,
+                          padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap',
+                        }}>
+                          {branchLabel}
+                        </span>
+                      </td>
+                      <td data-label="App" data-par style={{ padding: '13px 16px' }}>
+                        {p.visible_on_client_app
+                          ? <Smartphone size={14} color="var(--brand)" aria-label="Permite auto agendamento" />
+                          : <span style={{ color: 'var(--text-faint)', fontSize: 'var(--text-2xs)' }}>—</span>}
+                      </td>
+                      <td data-label="Situação" data-par style={{ padding: '13px 16px' }}>
+                        <span className={p.is_active ? 'chip chip-success' : 'chip chip-muted'}>
+                          {p.is_active ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      {comissao && (
+                        <td data-label="Comissão" data-par style={{ padding: '13px 16px' }}>
+                          <ComissaoDoProcedimento procedimento={{ id: p.id, nome: p.name }} dados={dadosDaComissao(p.id)!} />
+                        </td>
+                      )}
+                      <td data-label="" style={{ padding: '13px 16px' }}>
+                        {canEdit && (
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <ProcedureModal
+                              salas={salasDoCadastro}
+                              profissionais={profissionaisDoCadastro}
+                              branches={branchList}
+                              products={productList}
+                              fichas={fichas}
+                              existing={existingForEdit}
+                              pontosDeFidelidade={pontosPorProcedimento}
+                              modelos={modelos}
+                              categorias={categorias}
+                              comissao={dadosDaComissao(p.id)}
+                              trigger={
+                                <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Pencil size={13} /> Editar
+                                </button>
+                              }
+                            />
+                            <ToggleProcedureBtn
+                              procedureId={p.id}
+                              isActive={p.is_active}
+                            />
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      {procList.length === 0 && (
+        <div className="card" style={{ padding: '56px 24px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 16 }}>
+            Nenhum procedimento cadastrado na rede ainda.
+          </p>
+          {/* A4 da 8ª: só para quem cadastra (aparecia também a quem só vê). */}
+          {canEdit && <ProcedureModal salas={salasDoCadastro} profissionais={profissionaisDoCadastro} branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />}
+        </div>
+      )}
+    </div>
+  )
+}

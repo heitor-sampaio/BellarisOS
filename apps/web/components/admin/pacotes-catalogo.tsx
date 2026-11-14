@@ -161,6 +161,9 @@ function Formulario({ inicial, procedimentos, podeComissao, aoTerminar }: {
   const [r, setR] = useState(inicial)
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, iniciar] = useTransition()
+  // PC1 (a revisão do Heitor de 2026-11-13): o pacote novo nasce com o preço
+  // da soma e o acompanha até alguém mexer no preço; o que já existe guarda o seu.
+  const [precoMexido, setPrecoMexido] = useState(!!inicial.id)
   const mudar = (parte: Partial<Rascunho>) => setR(atual => ({ ...atual, ...parte }))
   const mudarItem = (i: number, parte: Partial<ItemDoRascunho>) =>
     setR(atual => ({ ...atual, itens: atual.itens.map((it, j) => j === i ? { ...it, ...parte } : it) }))
@@ -169,11 +172,14 @@ function Formulario({ inicial, procedimentos, podeComissao, aoTerminar }: {
   const sessoes = r.itens.reduce((s, i) => s + (Number(i.quantidade) || 0), 0)
   // Referência para quem monta: quanto as sessões custariam avulsas.
   const avulso = r.itens.reduce((s, i) => s + (Number(i.quantidade) || 0) * (precoDe.get(i.procedureId) ?? 0), 0)
+  const precoNaTela = precoMexido
+    ? r.preco
+    : (avulso > 0 ? avulso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
 
   function salvar() {
     setErro(null)
-    const preco = numero(r.preco)
-    if (!Number.isFinite(preco) || preco < 0 || !r.preco.trim()) { setErro('Informe o preço do pacote.'); return }
+    const preco = numero(precoNaTela)
+    if (!Number.isFinite(preco) || preco < 0 || !precoNaTela.trim()) { setErro('Informe o preço do pacote.'); return }
     const comissao = podeComissao ? comissaoDoRascunho(r.comissao) : null
     if (comissao && 'erro' in comissao) { setErro(comissao.erro); return }
     iniciar(async () => {
@@ -230,7 +236,9 @@ function Formulario({ inicial, procedimentos, podeComissao, aoTerminar }: {
       <div className="form-2col">
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={rotulo}>Preço do pacote (R$)</span>
-          <input className="field" inputMode="decimal" aria-label="Preço do pacote" value={r.preco} onChange={e => mudar({ preco: e.target.value })} placeholder="0,00" />
+          <input className="field" inputMode="decimal" aria-label="Preço do pacote" value={precoNaTela} placeholder="0,00"
+            onChange={e => { setPrecoMexido(true); mudar({ preco: e.target.value }) }} />
+          {!precoMexido && <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>A soma das sessões. Pode alterar.</span>}
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={rotulo}>Validade em dias (vazio = sem validade)</span>
