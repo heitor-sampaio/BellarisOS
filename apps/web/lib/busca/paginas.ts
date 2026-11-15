@@ -1,7 +1,8 @@
 import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
-import { ADMIN_MENU, BRANCH_MENU, SO_NO_MENU_DA_REDE, menuEntriesFor } from '@/lib/menu'
+import { ADMIN_MENU, BRANCH_MENU, SO_NO_MENU_DA_REDE, menuEntriesFor, soLeriaAsConfiguracoes } from '@/lib/menu'
 import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada } from '@/lib/configuracoes/abas'
 import { casaComTermo } from '@/lib/busca/texto'
+import { semAcento } from '@/lib/texto'
 import type { ResultadoDaBusca } from '@/lib/busca/tipos'
 
 /**
@@ -129,7 +130,10 @@ export function paginasDaBusca(
   const prefixo = naRede ? '' : `/${slug}`
   const base = naRede ? '/admin' : `/${slug}`
 
+  // A26 da 15ª: quem só leria as abas Tags e Importações não acha Configurações (o menu também não a mostra).
+  const semConfiguracoes = !naRede && soLeriaAsConfiguracoes(permissions, !!opcoes.daRede)
   const menu = menuEntriesFor(naRede ? ADMIN_MENU : BRANCH_MENU, permissions, plano, scopes)
+    .filter(e => !semConfiguracoes || e.key !== 'settings')
   const paginas: PaginaDaBusca[] = menu.map(e => ({
     key:      e.key,
     titulo:   e.label,
@@ -162,7 +166,7 @@ export function paginasDaBusca(
   // o módulo dela em MANAGE a libera.
   const abasDoPortal = naRede ? ABAS_DA_REDE : ABAS_DA_UNIDADE
   for (const aba of ABAS_DE_CONFIGURACAO) {
-    if (!abasDoPortal.includes(aba.key)) continue
+    if (semConfiguracoes || !abasDoPortal.includes(aba.key)) continue
     if (!abaLiberada(aba, m => permissions[m] === 'MANAGE')) continue
     if (!abaNoPlano(aba, plano)) continue
     paginas.push({
@@ -239,4 +243,16 @@ function apelidoQueCasou(p: PaginaDaBusca, termo: string): string | null {
   if (casaComTermo(termo, [p.titulo])) return null
   const a = p.apelidos.find(x => casaComTermo(termo, [x]))
   return a ? a.charAt(0).toUpperCase() + a.slice(1) : null
+}
+
+/**
+ * O termo é o NOME de uma página (o título ou um apelido, sem acento e sem
+ * caixa): "PDV", "Agenda". A busca não oferece "Cadastrar 'PDV' como
+ * cliente" (A6 da 15ª simulação, princípio 7) — quem digitou o nome de uma
+ * tela queria a tela.
+ */
+export function termoEhDeUmaPagina(paginas: readonly PaginaDaBusca[], termo: string): boolean {
+  const t = semAcento(termo).trim().replace(/\s+/g, ' ')
+  if (!t) return false
+  return paginas.some(p => [p.titulo, ...p.apelidos].some(x => semAcento(x).trim() === t))
 }

@@ -93,7 +93,7 @@ test.afterAll(async () => {
   await profissional?.limpar(); await rede?.limpar()
 })
 
-test('a observação interna do agendamento não vira "Dores do cliente": fica à mostra como observação (A17)', async ({ browser }) => {
+test('a observação interna do agendamento não vira "Queixas e dores": fica à mostra como observação (A17)', async ({ browser }) => {
   const { id } = await atendimentoEmCurso('Observacao', { notes: OBSERVACAO })
   await como(browser, async p => {
     await p.goto(`/${slug}/agenda/${id}`)

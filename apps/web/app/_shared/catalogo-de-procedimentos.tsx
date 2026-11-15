@@ -278,9 +278,13 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                 {procs.map((p, i) => {
                   const availability = p.procedure_branch_availability as { branch_id: string }[] | null
                   const branchCount  = availability?.length ?? 0
+                  // A24 da 15ª (princípio 3): uma unidade diz o nome; várias, "3 de 4" com os nomes na dica.
+                  const nomesDasUnidades = (availability ?? []).map(a => branchNameMap[a.branch_id]).filter((n): n is string => !!n)
                   const branchLabel  = branchCount === 0
                     ? fala('Toda a rede')
-                    : `${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`
+                    : branchCount === 1
+                      ? nomesDasUnidades[0] ?? '1 unidade'
+                      : `${branchCount} de ${branchList.length}`
 
                   const existingForEdit = {
                     id:                   p.id,
@@ -340,7 +344,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                           background: branchCount === 0 ? 'var(--brand-soft)' : 'var(--bg-app)',
                           border: `1px solid ${branchCount === 0 ? 'var(--brand-soft-border)' : 'var(--border)'}`,
                           padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap',
-                        }}>
+                        }} title={branchCount > 1 ? nomesDasUnidades.join(', ') : undefined}>
                           {branchLabel}
                         </span>
                       </td>

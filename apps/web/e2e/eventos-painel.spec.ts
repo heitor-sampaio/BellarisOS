@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { banco, tenantId } from './apoio/banco'
+// A31 da 15ª: a tela mostra o rótulo do catálogo, não o nome técnico.
+import { rotuloDoEvento } from '../../../packages/types/src/eventos'
 
 /**
  * O painel de conferência (Fase 6).
@@ -35,11 +37,11 @@ test('a aba Eventos mostra o catálogo inteiro e a corrente, com detalhe do payl
   const catalogo = page.locator('.card').first()
   await expect(catalogo.getByText(/eventos declarados/)).toBeVisible()
   await catalogo.getByRole('button', { name: /nunca ocorreram/ }).click()
-  await expect(catalogo.getByRole('button', { name: /agendamento\.criado/ })).toBeVisible()
+  await expect(catalogo.getByRole('button', { name: /Agendamento criado/})).toBeVisible()
 
   // Uma linha da corrente abre o payload; sem ele o painel só diria que algo
   // aconteceu, e quem monta automação precisa ver o formato dos dados.
-  const primeira = page.locator('button', { hasText: exemplo!.nome as string }).last()
+  const primeira = page.locator('button', { hasText: rotuloDoEvento(exemplo!.nome as string) }).last()
   await primeira.click()
   await expect(page.locator('pre')).toBeVisible()
   await expect(page.locator('pre')).toContainText('"dados"')

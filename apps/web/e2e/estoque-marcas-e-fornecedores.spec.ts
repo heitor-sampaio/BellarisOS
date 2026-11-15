@@ -238,7 +238,7 @@ test.describe.serial('marcas, fornecedores e categorias', () => {
     const fornId = await criarNaLista('fornecedores', f)
     await como(browser, gerente, async p => {
       await p.goto(rota())
-      await linhaDo(p, nomeGel).getByRole('button', { name: 'Entrada e perda' }).click()
+      await linhaDo(p, nomeGel).getByRole('button', { name: 'Movimentar' }).click()
       const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
       await modal.locator('input[name="quantity"]').fill('4')
       await modal.getByRole('combobox', { name: 'Marca' }).fill('marca da entrada')
@@ -250,7 +250,7 @@ test.describe.serial('marcas, fornecedores e categorias', () => {
         .eq('product_id', gel).eq('type', 'PURCHASE')).data).toEqual([{ marca_id: marcaId, fornecedor_id: fornId }])
 
       await p.goto(rota())
-      await linhaDo(p, nomeGel).getByRole('button', { name: 'Entrada e perda' }).click()
+      await linhaDo(p, nomeGel).getByRole('button', { name: 'Movimentar' }).click()
       const de_novo = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
       await de_novo.getByRole('button', { name: 'Histórico' }).click()
       await expect(de_novo.getByText(m)).toBeVisible()

@@ -82,7 +82,7 @@ export type ResultadoDoCadastro = {
 }
 
 /** A pessoa do CRM (lead ou conversa) com este telefone: "É a mesma pessoa do lead X?" (D-9). */
-export type PerguntaDoLead = { contatoId: string; nome: string; ehLead: boolean; perdida: boolean; telefone: string }
+export type PerguntaDoLead = { contatoId: string; nome: string; ehLead: boolean; perdida: boolean; telefone: string; soContato?: boolean }
 
 export async function addClient(
   _prev: ResultadoDoCadastro | undefined,
@@ -262,7 +262,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   }
   // "É a mesma pessoa do lead": as outras oportunidades e as conversas dela.
   if (pessoaDoCrm) {
-    await ligarPessoaDoCrmAoCliente(admin, ctx, pessoaDoCrm, client.id as string)
+    await ligarPessoaDoCrmAoCliente(admin, ctx, pessoaDoCrm, client.id as string, name)
     revalidatePath('/admin/inbox')
   }
 
@@ -365,7 +365,7 @@ async function perguntaDoTelefone(
     if (achada && r.pessoaDoCrm === `mesma:${achada.contatoId}`) pessoaDoCrm = achada
     else if (achada && r.pessoaDoCrm !== `outra:${achada.contatoId}`) {
       return { pergunta: { mesmaPessoaDoLead: {
-        contatoId: achada.contatoId, nome: achada.nome, ehLead: !!achada.leadId, perdida: achada.perdida, telefone: fone.digitos,
+        contatoId: achada.contatoId, nome: achada.nome, ehLead: !!achada.leadId, perdida: achada.perdida, telefone: fone.digitos, soContato: achada.soContato,
       } } }
     }
   }

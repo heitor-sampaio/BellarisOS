@@ -344,6 +344,12 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, origemSugeri
           allBranches={soAtivas(allBranches).filter(b => b.id !== fromId)}
           label="Destino" required onChange={setToId} />
       </div>
+      {/* A12 da 15ª (princípio 3): a origem é a unidade da pessoa; o destino, qualquer uma da rede — e a tela diz. */}
+      {defaultBranchId && (
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: -6 }}>
+          Pode mandar para qualquer unidade da rede.
+        </p>
+      )}
 
       {fromStock !== null && (
         <div style={{

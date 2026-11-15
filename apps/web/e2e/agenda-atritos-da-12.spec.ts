@@ -127,7 +127,7 @@ test('A29: "Aceitar plano" leva a observação que está na tela', async ({ brow
   expect((await b.from('treatment_plan_session_procedures').insert({ session_id: s!.id, procedure_id: rede.procedureId, price: 200 })).error).toBeNull()
   await como(browser, dona, async p => {
     await p.goto(`/${slug}/planejamentos/${pl!.id}`)
-    await p.getByLabel('Observações da profissional').fill('Sem ácidos na semana anterior.')
+    await p.getByLabel('Observações de quem atende').fill('Sem ácidos na semana anterior.')
     await p.getByRole('button', { name: 'Aceitar plano' }).click()
     await expect(p.getByText(/Preencha as observações/)).toHaveCount(0)
     // Fase 3 do PDV: aceitar leva o plano a ACEITO (antes, a PROPOSTO).

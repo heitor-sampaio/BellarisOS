@@ -1803,7 +1803,34 @@ Corrigidos (cada um com o teste antes, visto falhando):
 
 **Para o Heitor: as 8 tags com que a rede nova nasce (D2).** Desde 13/10, toda rede nova ganha VIP, Indicação, Retorno, Alergias, Gestante, Idoso, Plano e Desconto no catálogo de tags (`private.tags_padrao()`, `docs/regras/crm-inbox.md`). Elas não vão para ninguém sozinhas, mas aparecem em todo cadastro e filtro. Três papéis estranharam nos dois times. A sua regra de 13/11 ("ela cria uma tag com o que ela quiser") e a semente brigam. A rede nova nasce sem tag nenhuma, ou as oito ficam como sugestão que a rede apaga? Não mexi.
 
-Os atritos (A1–A37) vão na próxima leva. Mexer em `packages/nucleo/src/lib/db.ts` (o texto do sem-acesso) pede uma completa.
+**Os atritos (segunda leva):**
+- **O crediário e o pacote não parecem pagos.**
+  - O que está pago com dinheiro em aberto leva o selo "A receber" no PDV.
+  - A comanda diz "R$ X em aberto (N parcelas, a 1ª em dd/mm)", e a lista também (A1, A17).
+  - A função `pdv_comandas` traz o em aberto (migration `20261116500001`).
+  - O app diz "Incluído no pacote X (sessão n de t)" no lugar de "Já pago" (A10).
+- **O estorno.** A comanda paga diz quem estorna, a quem não pode estornar (A2).
+- **Cargos e equipe.**
+  - Salvar um cargo sem "o que enxerga" leva ao módulo que falta e o destaca (A14).
+  - Desativar um membro diz o que fica com ele (A19).
+- **A ficha e o CRM.**
+  - Cadastrar com o telefone de um contato só da Importação pergunta "É a mesma pessoa?", e o "Sim" acerta o nome (A25).
+  - "Tags e importações" sai do menu de quem só leria as duas abas (A26).
+- **A Auditoria lê a GRAVAÇÃO** (A27, A28). Nada deixa de ser gravado: muda só a leitura, e o CSV segue com uma linha por registro.
+  - As linhas de um mesmo instante e de quem agiu viram uma só. A semente vira "Montou a rede nova…", e as filhas ficam sob o pai ("Criou 19 permissões do cargo X").
+  - O estorno, o desativar e reativar, a transferência e o movimento de estoque têm frase própria, e o campo se nomeia.
+  - "Abriu o prontuário" sai do filtro de quem tem unidades.
+  - A paginação é por cursor e não corta uma gravação ao meio.
+- **O prontuário vai à tela, e se registra, só na aba Prontuário** (A30, minimização da LGPD; antes, abrir a ficha no Financeiro registrava "Abriu o prontuário").
+- **Textos e organização dos baixos:** A3–A6, A9, A11–A13, A16, A18, A20, A22–A24, A31, A34–A37.
+- **Ficaram de fora:**
+  - A7, A8, A21, A29 e A32: a correção é maior que um texto, e ficam para a próxima leva;
+  - o selo "No plano pago" no Copilot (A16) e o toast que cobre a busca (A23);
+  - o que seria funcionalidade nova, não pedida: "Duplicar" cargo (A15), o aviso novo no app (A33) e a campanha para uma cliente só (A37).
+
+**Para o Heitor:** com o A30, o ALERTA de alergia continua em toda aba da ficha para quem vê o prontuário. Só o texto da alergia vai à tela, e mostrá-lo também registra o acesso. Decidi pelo princípio 3, porque é segurança do atendimento. Se preferir o alerta só na aba Prontuário, é uma linha.
+
+Mexer em `packages/nucleo/src/lib/db.ts` (o texto do sem-acesso) e no `globals.css` do núcleo pede uma completa.
 
 ### 2026-11-16 — A segunda e a terceira completa (runs 43677659176 e 43684680309): o banco cai, ou para, sob a suíte
 

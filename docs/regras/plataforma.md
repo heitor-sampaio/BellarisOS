@@ -244,7 +244,10 @@ um muro que não depende de cada trava do código.
   unidade" e o passo da unidade do `/setup`) mostra o aviso "A unidade vai
   ficar sem CNPJ…" com "Usar o CNPJ da rede (…)" e "Criar sem CNPJ" (`_cnpj=sem`). Duas
   unidades com o MESMO CNPJ podem existir (não há índice único). O `/setup`
-  continua trazendo o CNPJ da rede preenchido, à vista (J-6). O "Nova
+  continua trazendo o CNPJ da rede preenchido, à vista (J-6), e o "Nova
+  unidade" também (A20 da 15ª simulação, princípio 7: o mesmo do `/setup`;
+  `settings-branches.tsx` passa o da rede ao `BranchForm`) — apagado, volta
+  a pergunta. Prova: `e2e/configuracoes-unidade-cnpj.spec.ts` ("A20"). O "Nova
   unidade" grava uma vez por envio (`umaVez`) e passou a gravar a inscrição
   estadual (o campo existia e se perdia). **A inscrição estadual é OPCIONAL**
   (r2-cfg-05, o Heitor, 2026-11-03: "manter, mas opcional"): o campo diz
@@ -1027,6 +1030,29 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
   `20261116400002`, só o servidor). Era `users.branch_id in (as dela)`: ficava
   de fora quem tem "A rede inteira", com as ações dele na tela. Prova:
   `e2e/auditoria-pessoas-do-filtro.spec.ts`.
+- **A tela lê a GRAVAÇÃO, não a linha** (A27/A28 da 15ª simulação, 2026-11-15;
+  princípios 7 e 3). Nada deixa de ser gravado: muda a leitura
+  (`gruposDaAuditoria`, `lib/auditoria/frase.ts`).
+  - As linhas de uma mesma gravação (o mesmo `criado_em`, que é o `now()` da
+    transação, e a mesma pessoa) viram UMA linha, com as outras guardadas nela
+    ("Ver as N mudanças desta gravação", `[data-detalhe-da-auditoria]`; a frase
+    da linha é `[data-frase-da-auditoria]`). A tabela-filha se lê sob a do pai
+    ("Criou o cargo X (19 permissões)"); sem o pai, no plural ("Criou 3 e
+    apagou 3 insumos do procedimento"); a semente da rede nova é "Montou a rede
+    nova X (N registros: …)".
+  - A frase lê o fato: "Estornou a venda de produto (R$ 139,00), e 1 Sérum
+    voltou ao estoque" (o motivo é texto livre e não entra na auditoria),
+    "Desativou/Reativou Fulana", "Transferiu 2 Protetor de Batel para Água
+    Verde", "Deu entrada em 5 …", "Registrou a perda de 1 …". O produto e o
+    cargo das permissões se leem na hora, como os nomes ("Criou a permissão de
+    Agenda do cargo X"; "Criou 19 permissões do cargo X").
+  - O campo se nomeia (a lista `CAMPO`); a coluna fora dela sai pelo próprio
+    nome, sem "um campo"/"outros campos".
+  - A página segue por gravação (`?antes=<id>`): a gravação que começa numa
+    página termina nela. O CSV segue uma linha por registro.
+  - O filtro "Abriu o prontuário" sai da lista de quem tem unidades
+    (`operacoesDoFiltro`): a abertura é da rede, e ela nunca a alcança.
+  - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:
   trancar a venda porque o registro dela falhou seria pior; calar esconderia o

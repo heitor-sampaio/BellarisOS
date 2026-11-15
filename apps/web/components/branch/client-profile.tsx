@@ -266,6 +266,8 @@ interface Props {
   /** Quem abriu o prontuário — só para o admin da rede (nulo para os demais). */
   acessosAoProntuario?:  { itens: AcessoNaFicha[]; total: number } | null
   generalAnamnesis?:     AnamneseGeral | null
+  /** O texto da alergia (A30 da 15ª): em toda aba, a quem vê o prontuário; a ficha de saúde inteira só vai na aba Prontuário. */
+  alergias?:             string | null
   canGrantCredit:        boolean
   branches:              { id: string; name: string }[]
   currentBranchId:       string
@@ -1495,7 +1497,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemUnidade = false, perguntaAUnidade = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemUnidade = false, perguntaAUnidade = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, podeReceberAtendimento = false,
@@ -1856,8 +1858,8 @@ export function ClientProfile({
           à parte — o resumo e o caminho para a comanda. */}
       <ComandasAbertasDaFicha total={aReceber.total} receber={comandaParaReceber} podeReceber={podeReceberAtendimento} />
 
-      {/* A alergia em destaque (só chega aqui com o prontuário à vista). */}
-      <AlertaDeAlergia alergias={alergiasDaAnamnese(generalAnamnesis)} />
+      {/* A alergia em destaque, em toda aba, a quem vê o prontuário (A30 da 15ª: só o texto dela). */}
+      <AlertaDeAlergia alergias={alergias ?? alergiasDaAnamnese(generalAnamnesis)} />
 
       {/* -- Tabs ------------------------------------------------------ */}
       {/* São ABAS (tablist/tab, a escolhida marcada) — A17 da 5ª simulação: a

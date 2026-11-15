@@ -37,7 +37,7 @@ export function PlanoAberto({
   availableProducts: AvailableProduct[]
   /** Monta o plano: quem atende na unidade dele (PT2). */
   podeEditar:   boolean
-  /** Escreve a anotação clínica (as "Observações da profissional"): o Prontuário em Gerenciar. */
+  /** Escreve a anotação clínica (as "Observações de quem atende"): o Prontuário em Gerenciar. */
   podeAnotar:   boolean
   podeReceber:  boolean
   /** As unidades em que a sessão do plano se agenda (PT1d). */

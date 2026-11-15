@@ -208,7 +208,7 @@ test('A11: quem tem só uma unidade, com Configurações em Gerenciar, lê por q
 
       await p.goto('/admin/settings')
       await expect(p).toHaveURL(new RegExp(`/${slug}/`))
-      await expect(p.getByText(/O portal da (rede|clínica) é de quem atende todas as unidades/)).toBeVisible()
+      await expect(p.getByText(/O portal da rede é de quem tem “A rede inteira”/)).toBeVisible()
     })
   } finally {
     await gerente.limpar()

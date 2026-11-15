@@ -1796,6 +1796,10 @@ input[type="search"].field {
 .auditoria-quando, .auditoria-unidade { color: var(--text-muted); font-size: var(--text-xs-sz); }
 .auditoria-quem { font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
 .auditoria-o-que { overflow-wrap: anywhere; line-height: var(--leading-snug); }
+/* Os registros de uma gravação (A27 da 15ª), guardados na linha dela. */
+.auditoria-detalhes { margin-top: 4px; }
+.auditoria-detalhes summary { cursor: pointer; color: var(--text-muted); font-size: var(--text-xs-sz); }
+.auditoria-detalhes ul { margin: 6px 0 0; padding-left: 16px; display: grid; gap: 2px; color: var(--text-muted); font-size: var(--text-sm-sz); }
 @media (max-width: 639px) {
   .auditoria-cabecalho { display: none; }
   .auditoria-linha { grid-template-columns: 1fr auto; gap: 4px 10px; }

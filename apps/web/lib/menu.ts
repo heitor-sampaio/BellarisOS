@@ -201,6 +201,18 @@ export const SO_NO_MENU_DA_REDE: readonly MenuEntry[] =
   ADMIN_MENU.filter(e => !BRANCH_MENU.some(b => b.key === e.key))
 
 /**
+ * Quem chega a Configurações SÓ pelas Clientes ou pelo CRM em Gerenciar (as
+ * abas Tags e Importações) e não tem "A rede inteira" só leria as duas: elas
+ * são configuração da rede toda (H7) e dizem "Quem muda: …". O item "Tags e
+ * importações" prometia uma tela onde nada se faz — sai do menu e da busca
+ * dela (A26 da 15ª simulação; CLAUDE.md §14, "botão que a pessoa não pode
+ * usar: a tela esconde"). A tela continua de pé pela URL, com a frase.
+ */
+export function soLeriaAsConfiguracoes(p: ResolvedPermissions, daRede: boolean): boolean {
+  return !daRede && !(has(p, 'settings') || has(p, 'roles') || has(p, 'forms'))
+}
+
+/**
  * O menu do portal da UNIDADE, com os endereços completos. Quem é da rede
  * (`ctx.branchId === null`) vê também as entradas que só a rede tem, levando
  * a `/admin` (A1 da 14ª); quem tem unidade fixa, não — ela não entra em
@@ -212,7 +224,9 @@ export function menuDaUnidadeFor(
   scopes: Partial<ResolvedScopes> | undefined,
   o: { base: string; daRede: boolean },
 ): MenuSection[] {
-  const daUnidade = BRANCH_MENU.map(e => ({ ...e, href: `${o.base}${e.href}` }))
+  const daUnidade = BRANCH_MENU
+    .filter(e => e.key !== 'settings' || !soLeriaAsConfiguracoes(permissions, o.daRede))
+    .map(e => ({ ...e, href: `${o.base}${e.href}` }))
   return menuSectionsFor([...daUnidade, ...(o.daRede ? SO_NO_MENU_DA_REDE : [])], permissions, plano, scopes)
 }
 

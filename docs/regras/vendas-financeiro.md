@@ -74,6 +74,15 @@ comanda (PDV-P1).
   seguintes não fazem outra. O pacote trazido de fora não é venda: não tem
   comanda. A venda nasce paga (vendida com a forma escolhida): aparece em
   "Pagas hoje" pela hora da venda; a estornada inteira diz "Estornada".
+  **O que ficou em aberto se diz** (A1/A17 da 15ª simulação, princípio 3):
+  a venda no crediário ou no a receber nasce paga, mas a linha e a comanda
+  dizem "Crediário · R$ 1.800,00 em aberto (3 parcelas, a 1ª em 15/12)", e o
+  selo é "A receber", nunca "Paga". O número sai do banco (`pdv_comandas`:
+  `em_aberto`, `parcelas_em_aberto`, `proxima_parcela`, migration
+  `20261116500001`), não da tela. A linha da comanda do atendimento diz o
+  produto que ela leva ("Limpeza de pele + 1 produto", A3). A comanda paga
+  diz, a quem não tem o Financeiro em Gerenciar, de quem é o estorno — a
+  mesma frase da ficha, com os nomes (A2). Prova: `e2e/pdv-atritos-da-15.spec.ts`.
 - **A comanda do plano nasce no ACEITE** (PDV4 e PT1a–PT1c; o Heitor: "a
   partir do momento que a cliente aceita o plano, ela precisa daí pagar e
   agendar as sessões"; sobre perguntar a forma no aceite: "pode ser
@@ -2348,9 +2357,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `e2e/portal-cliente-agendar-o-que-ja-pagou.spec.ts` ("sobra da F41").
   **E o Confirmar DIZ** (D10 da 8ª simulação, 2026-11-06; sobra da F28): o
   passo mostrava "Valor R$ 180,00" na sessão que o pacote cobria. Agora o
-  "Valor" é "Já pago pelo pacote X (sessão 2 de 3)" (ou "pelo plano de
-  tratamento (sessão N de M)", ou "Já pago: Y pré-pago (unidade N de M)"), e a
-  lista de procedimentos diz "Já pago" no lugar do preço — a MESMA escolha
+  "Valor" é "Incluído no pacote X (sessão 2 de 3)" (A10/A17 da 15ª: era
+  "Já pago", e o pacote do crediário tinha dinheiro em aberto; ou "Faz parte
+  do seu plano de
+  tratamento (sessão N de M)", ou "Incluído no pré-pago de Y (unidade N de M)"), e a
+  lista de procedimentos diz "Incluído" no lugar do preço — a MESMA escolha
   que o agendamento usa (`jaPagoNoApp`, ao lado de `pagoParaAgendar`). Prova:
   `e2e/portal-cliente-confirmar-ja-pago.spec.ts`.
 - **O check-in só cobra o que VENCEU** (`emAbertoDoPlano` /

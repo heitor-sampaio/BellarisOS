@@ -14,11 +14,16 @@ export function DicaDasVezes({ total, vezes, opcoes }: { total: number; vezes: n
   return (
     <span data-valor-da-parcela style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
       {/* A40 da 8ª: à vista, a linha solta "Até 12x no crédito" não dizia para quê. */}
-      {vezes <= 1
-        ? `À vista · parcela até ${maximo}x no crédito em “Vezes no cartão”`
-        : `Até ${maximo}x no crédito${parcela ? ` · ${parcela}` : ''}`}
+      {textoDaDicaDasVezes(maximo, vezes, parcela)}
     </span>
   )
+}
+
+/** O texto da dica das vezes no cartão (pura: o teste a chama). */
+export function textoDaDicaDasVezes(maximo: number, vezes: number, parcela: string | null | undefined): string {
+  return vezes <= 1
+    ? `À vista · até ${maximo}x no crédito`
+    : `Até ${maximo}x no crédito${parcela ? ` · ${parcela}` : ''}`
 }
 
 /**

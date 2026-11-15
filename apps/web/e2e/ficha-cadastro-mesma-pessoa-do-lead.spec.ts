@@ -170,3 +170,26 @@ test('A16: a pessoa antiga, gravada sem o 55 ("4899…"), também é achada pelo
     await expect(p.getByRole('alert').filter({ hasText: 'É a mesma pessoa' })).toContainText(nome('lead antigo'))
   })
 })
+
+test('A25 da 15ª: o contato só da Importação (sem oportunidade nem conversa) também pergunta, e o "Sim" acerta o nome do contato', async ({ browser }) => {
+  // A Lia cadastrou a "Camila Rocha" com o telefone do contato importado
+  // "Camila Duarte": nada perguntou, e o contato seguiu com o nome antigo.
+  const nacional = `489${sufixo}0009`
+  const { data: contato, error } = await db().from('contacts').insert({
+    tenant_id: rede!.tenantId, name: nome('importada'), phone: `55${nacional}`, identifiers: [`55${nacional}`],
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+
+  await como(browser, async p => {
+    await preencher(p, { nome: nome('cadastrada'), telefone: nacional })
+    await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
+    const pergunta = p.getByRole('alert').filter({ hasText: 'É a mesma pessoa' })
+    await expect(pergunta).toContainText(`É a mesma pessoa do contato ${nome('importada')}?`)
+    expect(await fichaDe(nome('cadastrada')), 'perguntar não cadastra').toBeNull()
+    await pergunta.getByRole('button', { name: 'Sim, é a mesma pessoa' }).click()
+    await expect(p).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}/)
+  })
+  expect(await fichaDe(nome('cadastrada'))).toBeTruthy()
+  const { data: depois } = await db().from('contacts').select('name').eq('id', contato!.id).single<{ name: string }>()
+  expect(depois?.name, 'o contato passa a ter o nome da ficha').toBe(nome('cadastrada'))
+})

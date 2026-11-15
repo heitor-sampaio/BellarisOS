@@ -138,7 +138,7 @@ test.describe('a rede que monta plano: o atendimento avulso (ramo da avaliação
     await como(browser, c!, async p => {
       await p.goto(`/${c!.slug}/agenda/${id}`)
       // O ramo da avaliação (as dores à mostra): era aqui que a ficha faltava.
-      await expect(p.getByRole('heading', { name: 'Dores do cliente' })).toBeVisible()
+      await expect(p.getByRole('heading', { name: 'Queixas e dores' })).toBeVisible()
       await preencherFicha(p)
       await finalizar(p, id)
     })
@@ -186,7 +186,7 @@ test.describe('a rede sem planos de tratamento: o outro ramo da tela', () => {
     const id = await atendimentoAvulsoEmCurso(c!, 'Sophie')
     await como(browser, c!, async p => {
       await p.goto(`/${c!.slug}/agenda/${id}`)
-      await expect(p.getByRole('heading', { name: 'Dores do cliente' }), 'sem planos, não é o ramo da avaliação').toHaveCount(0)
+      await expect(p.getByRole('heading', { name: 'Queixas e dores' }), 'sem planos, não é o ramo da avaliação').toHaveCount(0)
       await preencherFicha(p)
       await finalizar(p, id)
     })

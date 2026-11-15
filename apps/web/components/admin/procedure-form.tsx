@@ -226,7 +226,12 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
   // vínculo em silêncio ao salvar.
   const [outrosMarcados, setOutrosMarcados] = useState<string[]>(
     () => (existing?.outros_documentos ?? []).filter(id => (modelos?.outros ?? []).some(o => o.id === id)))
-  const outrosVisiveis = (modelos?.outros ?? []).filter(o => o.ativo || outrosMarcados.includes(o.id))
+  // A36 da 15ª (princípio 7): o termo e o contrato escolhidos acima saem desta
+  // lista — o que já está marcado nela fica, para não sumir em silêncio.
+  const [termoEscolhido, setTermoEscolhido] = useState(existing?.consent_template_id ?? '')
+  const [contratoEscolhido, setContratoEscolhido] = useState(existing?.contract_template_id ?? '')
+  const outrosVisiveis = (modelos?.outros ?? []).filter(o => (o.ativo || outrosMarcados.includes(o.id))
+    && ((o.id !== termoEscolhido && o.id !== contratoEscolhido) || outrosMarcados.includes(o.id)))
   function alternarOutro(id: string) {
     setOutrosMarcados(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
   }
@@ -252,7 +257,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
   const comissaoMudou = !!lidaComissao && 'entrada' in lidaComissao && JSON.stringify(lidaComissao.entrada) !== comissaoInicial
 
   const [selectedBranches, setSelectedBranches] = useState<string[]>(existing?.branch_ids ?? [])
-  const [insumos, setInsumos] = useState<{ product_id: string; quantity: number; unit_cost: number }[]>(
+  const [insumos, setInsumos] = useState<{ product_id: string; quantity: number | null; unit_cost: number }[]>(
     (existing?.procedure_products ?? []).map(pp => ({
       ...pp,
       unit_cost: pp.unit_cost ?? products.find(p => p.id === pp.product_id)?.cost_price ?? 0,
@@ -303,7 +308,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
       }))
   )
 
-  const productsCostCalc = insumos.reduce((sum, ins) => sum + (ins.unit_cost ?? 0) * ins.quantity, 0)
+  const productsCostCalc = insumos.reduce((sum, ins) => sum + (ins.unit_cost ?? 0) * (ins.quantity ?? 0), 0)
 
   function parseBRL(v: string) { const n = parseDinheiro(v); return Number.isFinite(n) ? n : 0 }
   const laborCostNum  = parseBRL(laborCost)
@@ -371,7 +376,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
   function addInsumo() {
     if (products.length === 0) return
     const first = products[0]!
-    setInsumos(p => [...p, { product_id: first.id, quantity: 1, unit_cost: calcUnitCost(first) }])
+    // A13 da 15ª (princípio 4): a quantidade nasce em branco — o 1 de antes dava a margem errada.
+    setInsumos(p => [...p, { product_id: first.id, quantity: null, unit_cost: calcUnitCost(first) }])
   }
 
   function removeInsumo(i: number) {
@@ -465,12 +471,14 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           nome="consent_template_id" rotulo="Termo de consentimento"
           opcoes={modelos?.termos ?? []} inicial={existing?.consent_template_id ?? null}
           vazio="Nenhum termo cadastrado ainda — crie em Configurações → Documentos."
+          aoMudar={setTermoEscolhido}
         />
         <SeletorDeModelo
           nome="contract_template_id" rotulo="Contrato"
           opcoes={modelos?.contratos ?? []} inicial={existing?.contract_template_id ?? null}
           vazio="Nenhum contrato de procedimento cadastrado — crie em Configurações → Documentos."
           sempre="só no atendimento avulso (a sessão de pacote e a de plano não pedem)"
+          aoMudar={setContratoEscolhido}
         />
         {modelos && (
           <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -660,8 +668,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                   <input
                     type="number" min={0.001} step={0.001} className="field"
                     style={{ width: 80 }}
-                    value={ins.quantity}
-                    onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))}
+                    value={ins.quantity ?? ''} required aria-label="Quantidade do insumo"
+                    onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, quantity: e.target.value === '' ? null : parseFloat(e.target.value) || 0 } : x))}
                   />
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', minWidth: 24 }}>
                     {(prod?.consumption_unit && prod?.units_per_package) ? prod.consumption_unit : (prod?.unit ?? '')}
@@ -876,10 +884,12 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
  * atendimento — é isso que muda o dia da recepção, e quem liga o modelo
  * precisa ver sem abrir Configurações. Todo documento nasce ao agendar (DC4).
  */
-function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre }: {
+function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre, aoMudar }: {
   nome: string; rotulo: string; opcoes: OpcaoDeModeloDoProcedimento[]; inicial: string | null; vazio: string
   /** O que vale para o campo, escolhido ou não (o contrato: só no avulso). */
   sempre?: string
+  /** O escolhido, para "Outros documentos" não o oferecer de novo (A36 da 15ª). */
+  aoMudar?: (id: string) => void
 }) {
   const [valor, setValor] = useState(inicial ?? '')
   // Inativos só aparecem se já estão ligados: sumir da lista apagaria o
@@ -895,7 +905,7 @@ function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre }: {
     : visiveis.length ? ['Opcional', sempre].filter(Boolean).join(' · ') + '.' : vazio
   return (
     <Field label={rotulo} hint={dica.charAt(0).toUpperCase() + dica.slice(1)}>
-      <select name={nome} className="field" value={valor} onChange={e => setValor(e.target.value)}>
+      <select name={nome} className="field" value={valor} onChange={e => { setValor(e.target.value); aoMudar?.(e.target.value) }}>
         <option value="">Nenhum</option>
         {visiveis.map(o => <option key={o.id} value={o.id}>{o.nome}{o.ativo ? '' : ' (inativo)'}</option>)}
       </select>

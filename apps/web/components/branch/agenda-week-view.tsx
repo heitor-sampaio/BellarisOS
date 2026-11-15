@@ -137,7 +137,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
   if (professionals.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-        Nenhum profissional cadastrado nesta unidade.
+        Ninguém atende nesta unidade ainda: quem tem a Equipe em Gerenciar marca o “Atende clientes” de quem atende aqui, na Equipe.
       </div>
     )
   }

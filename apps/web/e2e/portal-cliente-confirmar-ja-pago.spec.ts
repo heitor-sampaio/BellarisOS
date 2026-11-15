@@ -9,7 +9,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * de 3" do pacote, e a cliente não sabia que já estava pago (sobra da F28:
  * o valor cobrado foi corrigido na lista de agendamentos, não no assistente).
  *
- * Agora o Confirmar diz "Já pago pelo pacote X (sessão 2 de 3)" — o MESMO
+ * Agora o Confirmar diz "Incluído no pacote X (sessão 2 de 3)" (A10 da 15ª: o
+ * "Já pago" mentia com o pacote no crediário em aberto) — o MESMO
  * crédito que o agendamento vai usar (`pagoParaAgendar`). O procedimento
  * sem nada pago segue com o preço.
  */
@@ -62,7 +63,7 @@ test.afterAll(async () => {
   await cliente?.limpar(); await rede?.limpar()
 })
 
-test('D10: o Confirmar da sessão coberta pelo pacote diz "Já pago pelo pacote X (sessão 2 de 3)", não o preço', async ({ browser }) => {
+test('D10 e A10 da 15ª: o Confirmar da sessão coberta pelo pacote diz "Incluído no pacote X (sessão 2 de 3)", não o preço nem "Já pago"', async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: cliente!.estado })
   const p = await ctx.newPage()
   try {
@@ -84,7 +85,8 @@ test('D10: o Confirmar da sessão coberta pelo pacote diz "Já pago pelo pacote 
     }
     await confirmar(`Limpeza ${marca}`)
     const resumo = p.locator('.card').filter({ hasText: 'Procedimento' })
-    await expect(resumo).toContainText(`Já pago pelo pacote ${PACOTE} (sessão 2 de 3)`)
+    await expect(resumo).toContainText(`Incluído no pacote ${PACOTE} (sessão 2 de 3)`)
+    await expect(resumo).not.toContainText('Já pago')
     await expect(resumo).not.toContainText('180,00')
 
     // O que não tem nada pago segue com o preço de tabela.

@@ -34,7 +34,7 @@ import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import { lotesDosAtendimentos } from '@/lib/prontuario/lotes-dos-atendimentos'
 import { planejamentosAbriveisDasFichas } from '@/lib/injetaveis/alcance'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
-import { paraAnamneseGeral } from '@/lib/anamnese-geral'
+import { alergiasDaAnamnese, paraAnamneseGeral } from '@/lib/anamnese-geral'
 import { fichaDePreAtendimento } from '@/lib/pre-atendimento/ficha'
 import { createAdminClient as clienteDeServico } from '@/lib/supabase/admin'
 import { documentosDoCliente, assinadosDoCliente } from '@/lib/documentos/leitura'
@@ -246,9 +246,10 @@ export default async function ClientProfilePage({
   )
   // Quem viu o prontuário fica registrado (lib/prontuario/acessos.ts) — só
   // quando ele vai à tela; o admin da rede vê o registro na própria ficha.
-  if (canViewRecords) await registrarAcessoAoProntuario(ctx, id, 'ficha')
-  const acessosDoProntuario = aba === 'fichas' ? await acessosAoProntuario(ctx, id) : null
-  const recordForms = canViewRecords ? buildRecordForms(mreEntries, apptNameById, new Map(allAppointments.map(a => [a.id, a.scheduledAt])),
+  // A30 da 15ª (minimização da LGPD, sem mudar quem vê): o prontuário só vai à
+  // tela, e só se registra, na aba Prontuário (`?aba=fichas`).
+  const noProntuario = canViewRecords && aba === 'fichas'
+  const recordForms = noProntuario ? buildRecordForms(mreEntries, apptNameById, new Map(allAppointments.map(a => [a.id, a.scheduledAt])),
     new Set(allAppointments.filter(a => a.status === 'COMPLETED').map(a => a.id))) : []
   // A33 da 11ª: o lote que cada atendimento usou (a baixa), no prontuário — e o
   // caminho ao "Aplicado em" do lote, a quem abre o Estoque e as Clientes.
@@ -258,7 +259,13 @@ export default async function ClientProfilePage({
   const planejamentosQueAbrem = canViewRecords && aba === 'fichas'
     ? await planejamentosAbriveisDasFichas(admin, ctx, id, recordForms.map(r => r.ficha))
     : []
-  const generalAnamnesis = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, await fichaDePreAtendimento(clienteDeServico(), ctx.tenantId!)) : null
+  const anamneseLida = canViewRecords ? paraAnamneseGeral(medRecord?.general_anamnesis ?? null, await fichaDePreAtendimento(clienteDeServico(), ctx.tenantId!)) : null
+  const generalAnamnesis = noProntuario ? anamneseLida : null
+  // A exceção: o alerta de alergia, em toda aba a quem vê o prontuário — só o
+  // TEXTO dela viaja, e mostrá-lo registra o acesso.
+  const alergias = canViewRecords ? alergiasDaAnamnese(anamneseLida) : null
+  if (noProntuario || alergias) await registrarAcessoAoProntuario(ctx, id, 'ficha')
+  const acessosDoProntuario = aba === 'fichas' ? await acessosAoProntuario(ctx, id) : null
 
   // O financeiro da cliente — lançamentos, totais, crédito e os atendimentos a
   // receber — é UMA leitura (lib/clientes/financeiro-da-ficha.ts), com o "só os
@@ -533,6 +540,7 @@ export default async function ClientProfilePage({
       planejamentosQueAbrem={planejamentosQueAbrem}
       acessosAoProntuario={acessosDoProntuario}
       generalAnamnesis={generalAnamnesis}
+      alergias={alergias}
       fidelidade={fidelidade}
       activePackage={activePackage}
       transactions={transactions}

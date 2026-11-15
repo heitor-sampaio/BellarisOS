@@ -8,7 +8,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * própria com duas unidades (a Centro e a Pampulha):
  *
  * - A12 (princípio 7): a entrada, a perda e o histórico moravam atrás de uma
- *   engrenagem sem texto — o botão diz "Entrada e perda"; e os Fornecedores
+ *   engrenagem sem texto — o botão diz "Movimentar"; e os Fornecedores
  *   ficam ao lado das Categorias nos DOIS portais (só o /admin os tinha: sobra
  *   da C76/F66). Desde o Bloco Estoque (E4, 2026-11-14), para quem tem o
  *   Estoque em Gerenciar — a gerente de uma unidade também.
@@ -99,12 +99,12 @@ test.afterAll(async () => {
   await gerente?.limpar(); await dona?.limpar(); await rede?.limpar()
 })
 
-test('A12: o botão diz "Entrada e perda", e os Fornecedores ficam ao lado das Categorias nos dois portais — para quem tem o Estoque em Gerenciar', async ({ browser }) => {
+test('A12: o botão diz "Movimentar", e os Fornecedores ficam ao lado das Categorias nos dois portais — para quem tem o Estoque em Gerenciar', async ({ browser }) => {
   await como(browser, dona, async p => {
     for (const rota of [`/${slug}/estoque`, '/admin/estoque']) {
       await p.goto(rota)
       await expect(p.getByRole('button', { name: 'Fornecedores' }), rota).toBeVisible()
-      const botao = linhaDo(p, nomeLuva).getByRole('button', { name: 'Entrada e perda' })
+      const botao = linhaDo(p, nomeLuva).getByRole('button', { name: 'Movimentar' })
       await expect(botao, rota).toBeVisible()
       await botao.click()
       await expect(p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })).toBeVisible()
@@ -114,7 +114,7 @@ test('A12: o botão diz "Entrada e perda", e os Fornecedores ficam ao lado das C
   // a gerente de uma unidade, com o Estoque em Gerenciar, também mexe na lista.
   await como(browser, gerente, async p => {
     await p.goto(`/${slug}/estoque`)
-    await expect(linhaDo(p, nomeLuva).getByRole('button', { name: 'Entrada e perda' })).toBeVisible()
+    await expect(linhaDo(p, nomeLuva).getByRole('button', { name: 'Movimentar' })).toBeVisible()
     await expect(p.getByRole('button', { name: 'Fornecedores' })).toBeVisible()
   })
 })
@@ -122,7 +122,7 @@ test('A12: o botão diz "Entrada e perda", e os Fornecedores ficam ao lado das C
 test('A13: a perda que não se desfaz diz por quê', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto(`/${slug}/estoque`)
-    await linhaDo(p, nomeLuva).getByRole('button', { name: 'Entrada e perda' }).click()
+    await linhaDo(p, nomeLuva).getByRole('button', { name: 'Movimentar' }).click()
     const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
     await modal.getByRole('button', { name: 'Histórico' }).click()
     await expect(modal.getByRole('button', { name: 'Desfazer perda' })).toHaveCount(1)
@@ -169,7 +169,7 @@ test('A15: o mínimo herdado do cadastro diz "(do cadastro)" na linha; o da unid
 test('A16: com a tela filtrada numa unidade, a Entrada e a Perda já vêm com ela', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto(`/admin/estoque?unidade=${slugPampulha}`)
-    await linhaDo(p, nomeSeringa).getByRole('button', { name: 'Entrada e perda' }).click()
+    await linhaDo(p, nomeSeringa).getByRole('button', { name: 'Movimentar' }).click()
     const modal = p.locator('dialog[open]').filter({ hasText: 'Gerenciar estoque' })
     await expect(modal.locator('select[name="branchId"]')).toHaveValue(pampulha)
     await modal.getByRole('button', { name: 'Perda' }).click()

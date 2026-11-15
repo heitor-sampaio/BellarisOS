@@ -310,7 +310,11 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
           </div>
 
           <div>
-            <SectionLabel>Título <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(para pôr o primeiro nome da cliente, escreva {'{{first_name}}'})</span></SectionLabel>
+            {/* A37 da 15ª: a dica fora do overline — em caixa alta, a variável virava {{FIRST_NAME}}. */}
+            <SectionLabel style={{ marginBottom: 2 }}>Título</SectionLabel>
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 8 }}>
+              Para pôr o primeiro nome da cliente, escreva {'{{first_name}}'}.
+            </p>
             <input
               className="field"
               placeholder="ex: Feliz aniversário, {{first_name}}! 🎂"
@@ -413,7 +417,7 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
                 <CheckRow
                   key={p.id}
                   label={p.name}
-                  sub={p.category ?? undefined}
+                  sub={p.category && p.category !== p.name ? p.category : undefined}
                   checked={procIds.includes(p.id)}
                   onChange={v => setProcIds(v ? [...procIds, p.id] : procIds.filter(x => x !== p.id))}
                   indent

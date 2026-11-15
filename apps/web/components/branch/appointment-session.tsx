@@ -997,8 +997,8 @@ function DorasCard({ value, onChange, readonly, erro }: {
     <div className="card" data-campo="dores" data-invalido={erro ? 'true' : undefined}
       style={{ padding: 0, overflow: 'hidden', ...(erro ? { borderLeft: '3px solid var(--danger)' } : {}) }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-        <h3 id="titulo-dores" style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</h3>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Queixas e necessidades relatadas pelo cliente — pedidas só para gerar um plano; sem plano, são opcionais.</p>
+        <h3 id="titulo-dores" style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Queixas e dores</h3>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Queixas e necessidades relatadas na consulta — pedidas só para gerar um plano; sem plano, são opcionais.</p>
       </div>
       <div style={{ padding: '18px 20px' }}>
         {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600, marginBottom: 6 }}>{erro}</p>}
@@ -2244,7 +2244,7 @@ export function AppointmentSession({
                   {appointment.complaints && (
                     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--hairline)' }}>
-                        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</h3>
+                        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Queixas e dores</h3>
                       </div>
                       <div style={{ padding: '16px 20px' }}>
                         <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{appointment.complaints}</p>

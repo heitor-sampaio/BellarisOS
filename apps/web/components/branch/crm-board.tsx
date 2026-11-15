@@ -1300,6 +1300,13 @@ export function CRMBoard({
         onSortChange={setSort}
         onClear={() => { setFilters(DEFAULT_FILTERS); setSort('newest') }}
       />
+      {/* A34 da 15ª (princípio 7): o contato sem oportunidade (o da Importação)
+          não mora no quadro — o vazio diz onde ele se acha. Não é tela nova. */}
+      {leads.length === 0 && (
+        <p data-quadro-vazio style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
+          Nenhuma oportunidade neste funil ainda. Contatos sem oportunidade: procure pelo nome na busca (Ctrl K).
+        </p>
+      )}
 
     {/* Quadro: rola na horizontal, uma coluna de cada vez no celular.
         `scroll-snap` faz a coluna parar alinhada em vez de ficar cortada ao

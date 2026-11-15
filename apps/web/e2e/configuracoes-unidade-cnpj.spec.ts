@@ -34,11 +34,13 @@ async function como<T>(browser: Browser, fn: (p: Page) => Promise<T>) {
 const unidade = async (nome: string) =>
   (await db().from('branches').select('id, document').eq('tenant_id', rede!.tenantId).eq('name', nome)).data ?? []
 
-async function abrirNovaUnidade(p: Page, nome: string) {
+/** A janela com o CNPJ em branco (A20 da 15ª: ele vem preenchido com o da rede, como no /setup). */
+async function abrirNovaUnidade(p: Page, nome: string, { emBranco = true } = {}) {
   await p.goto('/admin/settings?tab=unidades')
   await p.getByRole('button', { name: 'Nova unidade' }).click()
   const janela = p.getByRole('dialog', { name: 'Nova unidade' })
   await janela.locator('#br-name').fill(nome)
+  if (emBranco) await janela.locator('#br-doc').fill('')
   return janela
 }
 
@@ -172,4 +174,16 @@ test.describe.serial('o CNPJ da unidade nova', () => {
     })
     expect(await unidade(nome)).toHaveLength(1)
   })
+
+  test('A20 da 15ª: o CNPJ da rede vem preenchido, como no /setup, e a aba diz onde ficam as salas', async ({ browser }) => {
+    const nome = `${PREFIXO} Preenchida ${marca}`
+    await como(browser, async p => {
+      const janela = await abrirNovaUnidade(p, nome, { emBranco: false })
+      await expect(janela.locator('#br-doc'), 'o da rede, à vista — trocar ou apagar é da pessoa').toHaveValue(CNPJ_COM_MASCARA)
+      // Com duas unidades ou mais, as salas são de cada uma: a aba diz onde.
+      await p.goto('/admin/settings?tab=unidades')
+      await expect(p.getByText('As salas ficam no “Ver detalhes” de cada unidade.')).toBeVisible()
+    })
+  })
 })
+

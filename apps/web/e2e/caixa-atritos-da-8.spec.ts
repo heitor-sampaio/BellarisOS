@@ -114,7 +114,7 @@ test('A40: ao escolher o cartão e as vezes, a tela diz a taxa e o líquido; a l
     await produto.selectOption((await produto.locator('option', { hasText: SERUM }).getAttribute('value'))!)
     await dlg.getByLabel('Quantidade').fill('1')
     await dlg.getByRole('radio', { name: 'Crédito', exact: true }).click()
-    await expect(dlg.locator('[data-valor-da-parcela]')).toContainText('parcela até')
+    await expect(dlg.locator('[data-valor-da-parcela]')).toContainText('À vista · até')
     await dlg.getByLabel('Vezes no cartão').selectOption('3')
     const liquido = dlg.locator('[data-liquido-do-cartao]')
     await expect(liquido).toContainText('2,97%')

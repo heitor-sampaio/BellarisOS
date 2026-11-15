@@ -566,7 +566,10 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
       <span>
         {pergunta.ehLead
           ? <>Este telefone é de um contato com oportunidade no CRM{pergunta.perdida ? ' (a oportunidade está perdida)' : ''}. É a mesma pessoa do contato <b style={destaque}>{pergunta.nome}</b>?</>
-          : <>Este telefone é de uma conversa do inbox. É a mesma pessoa do contato <b style={destaque}>{pergunta.nome}</b>?</>}
+          : pergunta.soContato
+            // A25 da 15ª: o contato que só veio da Importação também é a pessoa do CRM.
+            ? <>Este telefone é de um contato do CRM. É a mesma pessoa do contato <b style={destaque}>{pergunta.nome}</b>?</>
+            : <>Este telefone é de uma conversa do inbox. É a mesma pessoa do contato <b style={destaque}>{pergunta.nome}</b>?</>}
       </span>
       <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_pessoaDoCrm', `mesma:${pergunta.contatoId}`)}>

@@ -22,6 +22,7 @@ import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { parcelasEmAbertoDaCliente } from '@/lib/pdv/parcelas-da-cliente'
 import { itensDaComanda } from '@/lib/pdv/itens-da-comanda'
 import { fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
+import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 
 /**
  * O PDV, o corpo dos dois portais (PDV1, a revisão do Heitor de 2026-11-13:
@@ -94,6 +95,9 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       pacotesParaAbater: pacotes,
       pagamentoCombinado: aReceber && comanda.agendamentoId
         ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, comanda.agendamentoId) : null,
+      // A2 da 15ª (princípios 3 e 7): a comanda paga diz a quem não estorna de quem é o estorno.
+      quemEstorna: comanda.paga && !comanda.estornada && !can(ctx, 'financial', 'MANAGE')
+        ? await quemDesfazNoCaixa(ctx.tenantId!, unidadeId) : null,
     }
   }
 

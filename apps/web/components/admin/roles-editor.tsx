@@ -464,6 +464,8 @@ function PermissionMatrix({
   const [dismissed, setDismissed] = useState(false)
   // A2 da 12ª: o que falta escolher, dito ao tentar salvar (não um padrão escondido).
   const [faltas, setFaltas] = useState<string[]>([])
+  // A14 da 15ª: o módulo que falta escolher, destacado — o aviso do pé não basta.
+  const [destaque, setDestaque] = useState<AppModule | null>(null)
 
   const dirty = useMemo(
     () => ALL_MODULES.some(m =>
@@ -493,16 +495,19 @@ function PermissionMatrix({
     setLevels(prev => ({ ...prev, [module]: v }))
     setDismissed(true)
     setFaltas([])
+    setDestaque(null)
   }
   function setScope(module: AppModule, v: PermissionScope) {
     setScopes(prev => ({ ...prev, [module]: v }))
     setDismissed(true)
     setFaltas([])
+    setDestaque(null)
   }
   function toggleReportTab(t: ReportTab) {
     setReportTabs(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
     setDismissed(true)
     setFaltas([])
+    setDestaque(null)
   }
 
   // O que o cargo ligou e ainda não escolheu: o alcance de cada módulo
@@ -527,7 +532,15 @@ function PermissionMatrix({
       onSubmit={e => {
         const falta = oQueFalta()
         setFaltas(falta)
-        if (falta.length > 0) e.preventDefault()
+        if (falta.length > 0) {
+          e.preventDefault()
+          // A14 da 15ª (princípio 7): a tela vai até o primeiro módulo sem escolha, na ordem da tela.
+          const primeiro = MODULE_GROUPS.flatMap(g => g.modules).find(m =>
+            !foraDoPlano.includes(m) && ((isScoped(m) && levels[m] !== 'NONE' && !scopes[m])
+              || (m === 'reports' && levels.reports !== 'NONE' && reportTabs.length === 0))) ?? null
+          setDestaque(primeiro)
+          if (primeiro) document.querySelector(`[data-modulo="${primeiro}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        }
       }}
     >
       <input type="hidden" name="roleId" value={role.id} />
@@ -586,6 +599,7 @@ function PermissionMatrix({
                   level={levels[module]}
                   scope={scopes[module]}
                   last={i === group.modules.length - 1}
+                  destacado={destaque === module}
                   reportTabs={reportTabs}
                   caixas={caixas}
                   onLevel={v => setLevel(module, v)}
@@ -598,6 +612,13 @@ function PermissionMatrix({
           </section>
         ))}
       </div>
+
+      {/* A16 da 15ª (princípio 3): o que o plano não inclui some da matriz — e a tela diz o quê. */}
+      {foraDoPlano.length > 0 && (
+        <p data-fora-do-plano style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 16 }}>
+          {`Fora do plano da rede: ${foraDoPlano.map(m => MODULE_LABELS[m]).join(', ')}. ${foraDoPlano.length === 1 ? 'Entra' : 'Entram'} na matriz quando o plano ${foraDoPlano.length === 1 ? 'o' : 'os'} incluir.`}
+        </p>
+      )}
 
       <MenuPreview levels={levels} scopes={scopes} reportTabs={reportTabs} />
 
@@ -646,12 +667,13 @@ function PermissionMatrix({
 }
 
 function ModuleRow({
-  module, level, scope, last, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
+  module, level, scope, last, destacado, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
 }: {
   module: AppModule
   level: PermissionLevel
   scope: PermissionScope | null
   last: boolean
+  destacado?: boolean
   reportTabs: ReportTab[]
   caixas: CaixasDoCargo
   onLevel: (v: PermissionLevel) => void
@@ -666,9 +688,14 @@ function ModuleRow({
   const soNaRede    = SO_NA_REDE_NOTE[module]
 
   return (
-    <div data-modulo={module} style={{
-      padding: '12px 4px',
+    <div data-modulo={module} data-destacado={destacado ? '1' : undefined} style={{
+      padding: destacado ? '12px 10px' : '12px 4px',
       borderBottom: last ? undefined : '1px solid var(--hairline)',
+      // A14 da 15ª: o que falta escolher, no lugar onde se escolhe.
+      ...(destacado ? {
+        background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)',
+        outline: '1px solid var(--warning)',
+      } : null),
     }}>
       {/* `flexWrap`: nome do módulo e seletor de nível lado a lado quando cabe,
           um sobre o outro quando não. Sem isso, no celular o seletor de três

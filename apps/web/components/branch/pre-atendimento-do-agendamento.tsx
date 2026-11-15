@@ -139,10 +139,10 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
         {naoEnviada && !link && !enviado
           ? situacao.podeLink
             ? 'Enviar a ficha gera o link: ela confirma o CPF (ou o nascimento) e responde pelo celular — e, se tiver o app, a ficha aparece lá também.'
-            : 'Complete o CPF ou a data de nascimento para enviar o link — ou responda a ficha aqui, no atendimento.'
+            : 'Para quem não tem CPF, complete a data de nascimento para enviar o link — ou responda a ficha aqui, no atendimento.'
           : situacao.podeLink
             ? 'A cliente recebe no app. Sem o app, mande o link: ela confirma o CPF (ou o nascimento) e responde pelo celular.'
-            : 'Complete o CPF ou a data de nascimento para enviar o link. Sem eles, a ficha vai só pelo app — ou é respondida aqui, no atendimento.'}
+            : 'Para quem não tem CPF, complete a data de nascimento para enviar o link. Sem um dos dois, a ficha vai só pelo app — ou é respondida aqui, no atendimento.'}
       </p>
       {!situacao.podeLink && situacao.podeCompletarNascimento && (
         <div data-completar-nascimento className="pre-atendimento-agendamento-acoes" style={{ alignItems: 'flex-end' }}>

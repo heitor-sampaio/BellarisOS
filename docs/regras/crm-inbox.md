@@ -147,7 +147,10 @@
     `conversaAoAlcance`; sem o CRM não pergunta): a mais recente segue a
     conversão de sempre (CONVERTED, o clique do anúncio, a API de
     Conversões), as outras ganham `client_id` e CONVERTED. "Não" cadastra sem
-    ligar. Resposta em `_pessoaDoCrm` (`mesma:`/`outra:<contato>`). Quem
+    ligar. **O contato só da Importação** (sem oportunidade nem conversa)
+    também pergunta, a quem vê o CRM (A25 da 15ª simulação): a pessoa já
+    existe no CRM. "Sim" acerta o NOME do contato para o da ficha (vale para
+    toda pessoa ligada assim). Resposta em `_pessoaDoCrm` (`mesma:`/`outra:<contato>`). Quem
     cadastra pelo card ou pela conversa não é perguntado (já disse quem é).
     **A pessoa da oportunidade criada à mão também é achada** (A16 da 6ª simulação,
     2026-11-04: a Alice, criada no quadro com "(81) 99600-0070", virou uma
@@ -1091,7 +1094,11 @@ escondido: a tela diz o que falta (`[data-falta-escolher]`) e a action recusa
 "só os meus" guardado do módulo desligado volta ao religar (D6). O Relatórios
 em "Ver" pede ao menos um relatório antes de salvar. `escopoInicial`
 (`lib/cargos/escopo-inicial.ts`). Prova: `tests/cargo-escopo-inicial.test.ts`,
-`e2e/configuracoes-atritos-da-12.spec.ts` ("A2").
+`e2e/configuracoes-atritos-da-12.spec.ts` ("A2"). **E o Salvar leva ao que
+falta** (A14 da 15ª simulação, princípio 7: o aviso morava no pé da página): a
+tela rola até o primeiro módulo sem escolha, na ordem da matriz, e o destaca
+(`[data-destacado="1"]`) até a escolha. Prova:
+`e2e/configuracoes-atritos-da-15.spec.ts` ("A14").
 
 **O RESPONSÁVEL da oportunidade** (`leads.owner_id`, 2026-10-09). Na tela e no
 histórico é sempre "Responsável", nunca "Dono" (decisão do Heitor: o mesmo
@@ -1122,7 +1129,10 @@ conceito não pode ter dois nomes) — no código segue `owner`.
   2026-11-01; a regra inteira em `atendimento.md` §9.1): para quem tem o CRM
   ou "Sem responsável", pelo mesmo `trocarResponsavelCore`. O filtro
   "Responsável" do quadro marca "(inativo)" quem foi desativado e ainda é
-  responsável por algum card. Prova: `e2e/equipe-desativar-repassa.spec.ts`.
+  responsável por algum card. O padrão segue "sem repasse" (princípio 6), e a
+  janela diz, antes do Desativar, o que fica com ela: "1 agendamento e 3
+  oportunidades ficam com X, que não entra mais." (`[data-fica-com]`, A19 da
+  15ª simulação). Prova: `e2e/equipe-desativar-repassa.spec.ts`.
 
 **O filtro de situação do quadro** é "Já é cliente / Ainda não é cliente"
 (2026-10-09; era "Convertidos / Não convertidos", que se lia como "ganho").

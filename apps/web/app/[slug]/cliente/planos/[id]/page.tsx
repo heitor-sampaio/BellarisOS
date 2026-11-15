@@ -177,13 +177,19 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
         <section aria-label="Pagamentos" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p className="overline">Pagamentos</p>
           <div className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>
-              <span style={{ color: 'var(--text)' }}>Pago {formatBRL(financeiro.recebido)}</span>
-              <span style={{ color: financeiro.aReceber > 0 ? 'var(--warning)' : 'var(--text-muted)' }}>A pagar {formatBRL(financeiro.aReceber)}</span>
-            </div>
+            {/* A35 da 15ª (princípio 3): sem nada combinado, "Pago R$ 0,00 / A pagar R$ 0,00"
+                num plano de R$ 3.490 dizia que não havia o que pagar — diz o valor, a combinar. */}
             {financeiro.lancamentos.length === 0 ? (
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>O pagamento ainda não foi combinado. Ele é feito na unidade.</p>
+              <p data-plano-a-combinar style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
+                {formatBRL(valor)}, a combinar na unidade
+              </p>
             ) : (
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>
+                <span style={{ color: 'var(--text)' }}>Pago {formatBRL(financeiro.recebido)}</span>
+                <span style={{ color: financeiro.aReceber > 0 ? 'var(--warning)' : 'var(--text-muted)' }}>A pagar {formatBRL(financeiro.aReceber)}</span>
+              </div>
+            )}
+            {financeiro.lancamentos.length === 0 ? null : (
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
                 {financeiro.lancamentos.map((l, i) => (
                   <li key={l.id} data-pagamento-do-plano

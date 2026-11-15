@@ -68,9 +68,28 @@ const acessos = async (userId?: string) => {
   return data ?? []
 }
 
+test('A30 da 15ª: a ficha aberta em outra aba não manda o prontuário à tela, e nada se registra', async ({ browser }) => {
+  // A Marina abriu a ficha no Financeiro e a auditoria disse "Abriu o
+  // prontuário": a ficha mandava o prontuário ao navegador em toda aba.
+  // Minimização (LGPD), sem mudar quem vê: só a aba Prontuário o leva.
+  await como(browser, gerente!, async p => {
+    for (const aba of ['visao', 'historico', 'documentos', 'dados']) {
+      await p.goto(`/${slug}/clients/${cliente}?aba=${aba}`)
+      await expect(p.getByText(`Acessos pac${marca}`, { exact: false }).first()).toBeVisible()
+    }
+    // A aba existe para ela, e é lá que o prontuário vai e se registra.
+    await expect(p.getByRole('tab', { name: /Prontuário/ }).or(p.getByRole('link', { name: /Prontuário/ })).first()).toBeVisible()
+  })
+  expect(await acessos(gerente!.userId), 'nada foi registrado fora da aba Prontuário').toEqual([])
+  await como(browser, gerente!, async p => {
+    await p.goto(`/${slug}/clients/${cliente}?aba=fichas`)
+    await expect.poll(async () => (await acessos(gerente!.userId)).length, { message: 'a aba Prontuário registra' }).toBe(1)
+  })
+})
+
 test('a profissional abre a ficha: o acesso fica registrado, e reabrir em seguida não duplica', async ({ browser }) => {
   await como(browser, prof!, async p => {
-    await p.goto(`/${slug}/clients/${cliente}`)
+    await p.goto(`/${slug}/clients/${cliente}?aba=fichas`)
     await expect(p.getByText(`Acessos pac${marca}`, { exact: false }).first()).toBeVisible()
     await expect.poll(async () => (await acessos(prof!.userId)).length, { message: 'o acesso foi registrado' }).toBe(1)
     await p.reload()

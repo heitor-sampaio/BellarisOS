@@ -108,7 +108,7 @@ interface Props {
    */
   onSalvarPorPlano?:    (sessions: PlanSessionInput[], notes: string) => Promise<void>
   /**
-   * Escreve a anotação clínica (as "Observações da profissional")? É do
+   * Escreve a anotação clínica (as "Observações de quem atende")? É do
    * Prontuário em Gerenciar (PT2, 2026-11-14): quem monta o plano sem ele vê a
    * anotação que existe (se o prontuário lhe mostra) e não a escreve — o
    * servidor também não a grava.
@@ -780,19 +780,19 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
         {/* Observações — a anotação clínica é do Prontuário (PT2). */}
         {!podeAnotar ? (existingPlan?.notes ? (
           <div data-anotacao-so-leitura>
-            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>OBSERVAÇÕES DA PROFISSIONAL</p>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6, textTransform: 'uppercase' }}>Observações de quem atende</p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 12px', background: 'var(--bg-app)', borderRadius: 8 }}>
               “{existingPlan.notes}”
             </p>
           </div>
         ) : null) : (
         <div>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>OBSERVAÇÕES DA PROFISSIONAL</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6, textTransform: 'uppercase' }}>Observações de quem atende</p>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={3}
-            aria-label="Observações da profissional"
+            aria-label="Observações de quem atende"
             placeholder="Recomendações, contraindicações, observações clínicas…"
             style={{
               width: '100%', padding: '10px 12px', borderRadius: 10,

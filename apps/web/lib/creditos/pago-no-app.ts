@@ -2,6 +2,7 @@ import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { creditosDoCliente, type CreditoDeAgendamento, type CreditoParaAgendar } from '@/lib/creditos/credito'
+import { deQual, textoDoCreditoNoApp } from '@/lib/creditos/texto-do-pago'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -27,10 +28,6 @@ async function lerOJaPago(admin: Admin, tenantId: string, clientId: string): Pro
   return { planos: planos ?? [], creditos: creditos.filter(c => c.tipo !== 'PLANO') }
 }
 
-/** "(sessão 2 de 3)" — sem o número, nada. */
-const deQual = (rotulo: string, numero?: number, total?: number) =>
-  numero && total ? ` (${rotulo} ${numero} de ${total})` : ''
-
 function escolher(dados: OJaPago, procedureId: string): PagoParaAgendar | null {
   for (const plano of dados.planos) {
     const sessoes = [...(plano.treatment_plan_sessions ?? [])].sort((a, b) => a.sort_order - b.sort_order)
@@ -47,9 +44,7 @@ function escolher(dados: OJaPago, procedureId: string): PagoParaAgendar | null {
   }
   const credito = dados.creditos.find(c => c.procedureId === procedureId)
   if (!credito) return null
-  const texto = credito.tipo === 'PACOTE'
-    ? `Já pago pelo pacote ${credito.origem}${deQual('sessão', credito.numero, credito.total)}`
-    : `Já pago: ${credito.procedimento} pré-pago${deQual('unidade', credito.numero, credito.total)}`
+  const texto = textoDoCreditoNoApp(credito)
   return { tipo: 'CREDITO', credito: { tipo: credito.tipo, id: credito.id }, preco: credito.preco, texto }
 }
 
@@ -75,7 +70,7 @@ export async function pagoParaAgendar(
 
 /**
  * O que o passo "Confirmar" do agendar do app diz no lugar do preço (D10 da
- * 8ª simulação, 2026-11-06): "Já pago pelo pacote X (sessão 2 de 3)". É a
+ * 8ª simulação, 2026-11-06): "Incluído no pacote X (sessão 2 de 3)" (A10 da 15ª; era "Já pago"). É a
  * MESMA escolha que o agendamento vai usar (`pagoParaAgendar`), por
  * procedimento; o que não tem nada pago fica de fora (vale o preço).
  */

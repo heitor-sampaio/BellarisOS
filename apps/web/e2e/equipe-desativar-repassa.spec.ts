@@ -182,6 +182,13 @@ test.describe.serial('desativar oferece repassar o que fica com a pessoa', () =>
       const janela = await abrirDesativar(p, renata2!)
       await janela.locator(`[data-agendamento="${a3}"] select`).selectOption({ label: nT })
       await expect(janela.locator(`[data-agendamento="${a4}"] select`)).toHaveValue('')
+      // A19 da 15ª (princípios 6 e 3): o padrão segue sem repasse, e o
+      // Desativar diz o que fica com quem não entra mais.
+      const nR = await nome(renata2!)
+      const fica = janela.locator('[data-fica-com]')
+      await expect(fica).toContainText('1 agendamento')
+      await expect(fica).toContainText(/\d+ oportunidades? /)
+      await expect(fica).toContainText(`ficam com ${nR}, que não entra mais`)
       await janela.getByRole('button', { name: 'Desativar' }).click()
     })
 

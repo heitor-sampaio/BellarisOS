@@ -63,7 +63,7 @@ test('A46: o Crediário mostra o resumo antes de vender; A47: o crédito diz "at
     const vezes = dlg.getByLabel('Vezes no cartão')
     await expect(vezes.locator('option')).toHaveCount(4)
     // A40 da 8ª: à vista, a linha diz para que serve.
-    await expect(dlg.locator('[data-valor-da-parcela]')).toHaveText('À vista · parcela até 4x no crédito em “Vezes no cartão”')
+    await expect(dlg.locator('[data-valor-da-parcela]')).toHaveText('À vista · até 4x no crédito')
     await vezes.selectOption('3')
     await expect(dlg.locator('[data-valor-da-parcela]')).toHaveText(/Até 4x no crédito · 3× R\$\s1\.100,00/)
   })

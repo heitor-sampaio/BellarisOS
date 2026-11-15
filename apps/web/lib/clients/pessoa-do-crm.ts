@@ -2,6 +2,7 @@ import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
+import { can } from '@/lib/auth'
 import { leadAoAlcance } from '@/lib/crm/alcance'
 import { conversaAoAlcance } from '@/lib/inbox/alcance'
 import { formasParaAcharAPessoa } from '@/lib/importacao/normalizar'
@@ -30,6 +31,8 @@ export type PessoaDoCrm = {
   /** Todas as oportunidades ao alcance, ainda sem cliente, que se ligam. */
   leadIds: string[]
   conversaIds: string[]
+  /** O contato não tem oportunidade nem conversa (veio da Importação — A25 da 15ª). */
+  soContato: boolean
   /** A oportunidade escolhida está perdida (a tela diz isso). */
   perdida: boolean
 }
@@ -59,7 +62,10 @@ export async function pessoaDoCrmDoTelefone(admin: Admin, ctx: TenantContext, di
     for (const l of leads) if (await leadAoAlcance(admin, ctx, l.id)) leadsAoAlcance.push(l)
     const conversaIds: string[] = []
     for (const v of conversas) if (await conversaAoAlcance(admin, ctx, v.id)) conversaIds.push(v.id)
-    if (!leadsAoAlcance.length && !conversaIds.length) continue
+    // A25 da 15ª: o contato só da Importação (sem oportunidade nem conversa)
+    // também é a pessoa do CRM — a quem vê o CRM. Com algo que não alcança, não.
+    const soContato = !leads.length && !conversas.length
+    if (!leadsAoAlcance.length && !conversaIds.length && !(soContato && can(ctx, 'crm', 'VIEW'))) continue
 
     const escolhido = leadsAoAlcance[0] ?? null
     return {
@@ -69,6 +75,7 @@ export async function pessoaDoCrmDoTelefone(admin: Admin, ctx: TenantContext, di
       leadIds: leadsAoAlcance.map(l => l.id),
       conversaIds,
       perdida: !!escolhido?.perdido_em,
+      soContato: !leadsAoAlcance.length && !conversaIds.length,
     }
   }
   return null
@@ -77,10 +84,11 @@ export async function pessoaDoCrmDoTelefone(admin: Admin, ctx: TenantContext, di
 /**
  * "Sim, é a mesma pessoa": as OUTRAS oportunidades ao alcance e as conversas
  * passam a ser da cliente. A escolhida (`leadId`) segue o caminho da conversão
- * do `addClient` (CONVERTED, o clique do anúncio, a API de Conversões).
+ * do `addClient` (CONVERTED, o clique do anúncio, a API de Conversões). E o
+ * contato passa a ter o nome da ficha (A25 da 15ª).
  */
 export async function ligarPessoaDoCrmAoCliente(
-  admin: Admin, ctx: TenantContext, pessoa: PessoaDoCrm, clientId: string,
+  admin: Admin, ctx: TenantContext, pessoa: PessoaDoCrm, clientId: string, nomeDaFicha: string,
 ): Promise<void> {
   for (const id of pessoa.leadIds) {
     if (id === pessoa.leadId) continue
@@ -92,4 +100,10 @@ export async function ligarPessoaDoCrmAoCliente(
     })
   }
   for (const id of pessoa.conversaIds) await ligarContatoAoCliente(admin, ctx.tenantId!, id, clientId)
+  // A25 da 15ª: a pessoa é a cliente — o contato passa a ter o nome da ficha
+  // (seguia "Camila Duarte" da planilha com a ficha "Camila Rocha").
+  if (nomeDaFicha.trim()) {
+    await gravar(admin.from('contacts').update({ name: nomeDaFicha.trim() })
+      .eq('id', pessoa.contatoId).eq('tenant_id', ctx.tenantId!), 'acertar o nome do contato')
+  }
 }

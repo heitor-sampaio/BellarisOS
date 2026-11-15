@@ -217,7 +217,8 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
               <select className="field" value={estado.metodo} aria-label="Forma da entrada"
                 onChange={e => mudar({ metodo: e.target.value, vezes: 1, bandeira: '', maquininha: '' })}>
                 <option value="">Selecione…</option>
-                {metodos.map(m => <option key={m} value={m}>{rotuloDaForma(m, null, { longo: true })}</option>)}
+                {/* A4 da 15ª: os nomes da lista de formas ao lado ("Débito", "Crédito"), um nome só. */}
+                {metodos.map(m => <option key={m} value={m}>{rotuloDaForma(m)}</option>)}
               </select>
             </label>
           )}

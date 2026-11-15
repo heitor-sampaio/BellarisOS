@@ -66,7 +66,7 @@ export function PlanejamentoTratamento({
   availableProducts?: AvailableProduct[]
   /** Monta o plano: quem ATENDE na unidade dele (PT2, `montaPlano`). */
   podeEditar:    boolean
-  /** Escreve a anotação clínica (as "Observações da profissional"): o Prontuário em Gerenciar (PT2). */
+  /** Escreve a anotação clínica (as "Observações de quem atende"): o Prontuário em Gerenciar (PT2). */
   podeAnotar?:   boolean
   podeReceber?:  boolean
   /** Na página do plano: as unidades em que as sessões se agendam (PT1d). */

@@ -194,6 +194,10 @@ export const ISOLADOS = [
   'pdv-crediario-e-parcela.spec.ts',
   // O PDV, fase 5b (PDV2 e FD2): o produto na comanda do atendimento e os pontos.
   'pdv-comanda-varios-itens-e-pontos.spec.ts',
+  // Os atritos da 15ª simulação, cada um na sua rede.
+  'pdv-atritos-da-15.spec.ts',
+  'configuracoes-atritos-da-15.spec.ts',
+  'auditoria-atritos-da-15.spec.ts',
   'ficha-acesso-sem-cpf.spec.ts',
   'ficha-cadastro-atritos-da-7.spec.ts',
   'ficha-cadastro-documento.spec.ts',

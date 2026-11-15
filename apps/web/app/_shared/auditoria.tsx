@@ -4,8 +4,8 @@ import { unidadesDoContexto } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { lerAuditoria, pessoasDaAuditoria } from '@/lib/auditoria/leitura'
-import { linhaDaAuditoria } from '@/lib/auditoria/frase'
-import { OPERACOES, type FiltrosDaAuditoria } from '@/lib/auditoria/tipos'
+import { gruposDaAuditoria } from '@/lib/auditoria/frase'
+import { operacoesDoFiltro, type FiltrosDaAuditoria } from '@/lib/auditoria/tipos'
 import { PeriodSelector, type Period } from '@/components/admin/period-selector'
 
 /**
@@ -29,12 +29,13 @@ export async function TelaDaAuditoria({
 }) {
   const minhas = unidadesDoContexto(ctx)
   const [pagina, pessoas, todasAsUnidades] = await Promise.all([
-    lerAuditoria(ctx, filtros),
+    lerAuditoria(ctx, filtros, { porGravacao: true }),
     pessoasDaAuditoria(ctx),
     unidadesParaLer(ctx.tenantId!),
   ])
   const unidades = todasAsUnidades.filter(u => minhas === null || minhas.includes(u.id))
-  const linhas = pagina.registros.map(r => linhaDaAuditoria(r, pagina.nomes, basePath, slug))
+  // Uma linha por GRAVAÇÃO (A27 da 15ª): o que a pessoa fez; os registros dela ficam guardados na linha.
+  const linhas = gruposDaAuditoria(pagina.registros, pagina.nomes, basePath, slug)
 
   // Os filtros que ficam (o período mora no seletor; a página volta à primeira).
   const params = (extra: Record<string, string | null>) => {
@@ -83,7 +84,7 @@ export async function TelaDaAuditoria({
         </select>
         <select name="tipo" defaultValue={filtros.tipo ?? ''} className="filtro-select" aria-label="O que foi feito">
           <option value="">Qualquer ação</option>
-          {OPERACOES.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+          {operacoesDoFiltro(minhas).map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
         {unidades.length > 1 && (
           <select name="unidade" defaultValue={pagina.unidade ?? ''} className="filtro-select" aria-label="Unidade">
@@ -100,7 +101,7 @@ export async function TelaDaAuditoria({
         <div className="card" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '18px 20px' }}>
           <ScrollText size={16} aria-hidden style={{ color: 'var(--text-faint)' }} />
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-            Nada registrado com esses filtros{pagina.pagina > 1 ? ' nesta página' : ''}.
+            Nada registrado com esses filtros{pagina.antes ? ' nesta página' : ''}.
           </p>
         </div>
       ) : (
@@ -112,24 +113,38 @@ export async function TelaDaAuditoria({
             <div key={l.id} data-linha-da-auditoria className="auditoria-linha">
               <span className="auditoria-quando">{l.quando}</span>
               <span className="auditoria-quem" data-tipo-de-ator={l.tipoDeAtor}>{l.quem}</span>
-              <span className="auditoria-o-que">
-                {l.href
+              <div className="auditoria-o-que">
+                <span data-frase-da-auditoria>{l.href
                   ? <Link href={l.href} style={{ color: 'var(--text)', fontWeight: 'var(--weight-semibold)' }}>{l.oQue}</Link>
-                  : l.oQue}
-              </span>
+                  : l.oQue}</span>
+                {l.detalhes.length > 1 && (
+                  <details className="auditoria-detalhes">
+                    <summary>Ver as {l.detalhes.length} mudanças desta gravação</summary>
+                    <ul>
+                      {l.detalhes.map(d => (
+                        <li key={d.id} data-detalhe-da-auditoria>
+                          {d.href ? <Link href={d.href} style={{ color: 'var(--text)' }}>{d.oQue}</Link> : d.oQue}
+                          {d.unidade && d.unidade !== l.unidade ? ` · ${d.unidade}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
               <span className="auditoria-unidade">{l.unidade ?? '—'}</span>
             </div>
           ))}
         </div>
       )}
 
-      {(pagina.pagina > 1 || pagina.temMais) && (
+      {/* Por gravação, a página segue por cursor (`?antes=`): "Mais recentes" volta ao começo. */}
+      {(pagina.antes || pagina.temMais) && (
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 14 }}>
-          {pagina.pagina > 1
-            ? <Link href={`${basePath}${params({ pagina: pagina.pagina - 1 > 1 ? String(pagina.pagina - 1) : null })}`} className="btn-ghost">Mais recentes</Link>
+          {pagina.antes
+            ? <Link href={`${basePath}${params({})}`} className="btn-ghost">Mais recentes</Link>
             : <span />}
-          {pagina.temMais && (
-            <Link href={`${basePath}${params({ pagina: String(pagina.pagina + 1) })}`} className="btn-ghost" data-auditoria-mais>
+          {pagina.temMais && pagina.proximo && (
+            <Link href={`${basePath}${params({ antes: pagina.proximo })}`} className="btn-ghost" data-auditoria-mais>
               Mais antigas
             </Link>
           )}

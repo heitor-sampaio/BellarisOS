@@ -238,13 +238,15 @@ function SeloInativo() {
  * A12 da 14ª (princípio 7): a entrada, a perda, o ajuste e o histórico moravam
  * atrás de uma engrenagem sem texto, e a dona procurava "Entrada" pela tela. O
  * botão diz o que abre; o `title` segue o nome da janela ("Gerenciar estoque").
+ * A12 da 15ª: "Entrada e perda" escondia a Transferência — é "Movimentar"
+ * (a entrada, a perda e a transferência).
  */
 function EntradaEPerdaButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return (
     <button type="button" className="btn-secondary" title="Gerenciar estoque"
       onClick={e => { e.stopPropagation(); onClick(e) }}
       style={{ padding: '4px 10px', fontSize: 'var(--text-xs-sz)', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-      <PackagePlus size={13} aria-hidden /> Entrada e perda
+      <PackagePlus size={13} aria-hidden /> Movimentar
     </button>
   )
 }

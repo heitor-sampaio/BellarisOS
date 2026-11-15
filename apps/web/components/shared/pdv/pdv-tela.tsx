@@ -11,7 +11,7 @@ import { FormularioDeReceberAtendimento, type PacoteParaAbater } from '@/compone
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { rotaCliente } from '@/lib/rotas'
 import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
-import { SITUACOES_DO_PDV, type ComandaDoPdv, type SituacaoDoPdv } from '@/lib/pdv/situacoes'
+import { SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, type ComandaDoPdv, type SituacaoDoPdv } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
 import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
@@ -26,21 +26,13 @@ export interface ComandaEscolhida {
   produtosParaAcrescentar: { id: string; name: string; price: number; unidade: string; disponivel: number }[]
   pacotesParaAbater:  PacoteParaAbater[]
   pagamentoCombinado: { metodo: string | null; rotulo: string; desconto?: number } | null
+  /** A2 da 15ª: na comanda paga, quem estorna — só a quem não tem o Financeiro em Gerenciar (nulo: não diz). */
+  quemEstorna?:       string[] | null
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const horaNo = (fuso: string) => (iso: string | null) => iso
   ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso }) : ''
-
-/** A situação da comanda, como o balcão a lê. */
-function selo(c: ComandaDoPdv): { texto: string; tom: 'ok' | 'warn' | 'info' | 'perigo' } {
-  if (c.estornada) return { texto: 'Estornada', tom: 'perigo' }
-  if (c.canceladaEm) return c.canceladaMotivo === 'Sessão do pacote' || c.canceladaMotivo === 'Procedimento pré-pago'
-    ? { texto: c.canceladaMotivo, tom: 'ok' } : { texto: 'Cancelada', tom: 'perigo' }
-  if (c.paga) return { texto: 'Paga', tom: 'ok' }
-  if (c.atendimento === 'IN_PROGRESS') return { texto: 'Em atendimento', tom: 'info' }
-  return { texto: 'Atendida, a pagar', tom: 'warn' }
-}
 
 const TOM: Record<'ok' | 'warn' | 'info' | 'perigo', React.CSSProperties> = {
   ok:     { background: 'var(--success-soft)', color: 'var(--success)', border: '1px solid transparent' },
@@ -50,7 +42,7 @@ const TOM: Record<'ok' | 'warn' | 'info' | 'perigo', React.CSSProperties> = {
 }
 
 function Selo({ c }: { c: ComandaDoPdv }) {
-  const s = selo(c)
+  const s = seloDaComanda(c)
   return (
     <span style={{
       ...TOM[s.tom], justifySelf: 'end', display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 9px',
@@ -188,9 +180,8 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
                   className={escolhida?.comanda.id === c.id ? 'pdv-linha is-escolhida' : 'pdv-linha'}>
                   <span style={{ fontWeight: 800, fontSize: 'var(--text-base-sz)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.cliente}</span>
                   <span style={{ fontWeight: 800, textAlign: 'right' }}>{brl(c.valor)}</span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {[c.procedimento, c.agendadoPara ? hora(c.agendadoPara) : null, c.paga ? rotuloDaForma(c.forma) : c.profissional]
-                      .filter(Boolean).join(' · ')}
+                  <span title={detalheDaComanda(c, hora)} style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {detalheDaComanda(c, hora)}
                   </span>
                   <Selo c={c} />
                 </Link>
@@ -231,6 +222,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
 }) {
   const c = e.comanda
   const aReceber = !c.paga && !c.canceladaEm
+  const emAberto = emAbertoDaComanda(c, useFuso())
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--hairline)' }}>
@@ -286,9 +278,27 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
               Sem cobrança desde as {hora(c.canceladaEm)}: {(c.canceladaMotivo ?? 'Atendimento cancelado').toLocaleLowerCase('pt-BR')}. Não há o que receber.
             </p>
           ) : c.paga ? (
-            <p data-comanda-paga style={{ color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
-              {c.origem === 'VENDA' ? 'Vendida' : c.origem === 'PLANO' ? 'Recebido' : 'Paga'} às {hora(c.pagaEm)} · {rotuloDaForma(c.forma)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
-            </p>
+            <>
+              <p data-comanda-paga style={{ color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
+                {c.origem === 'VENDA' ? 'Vendida' : c.origem === 'PLANO' ? 'Recebido' : 'Paga'} às {hora(c.pagaEm)} · {rotuloDaForma(c.forma)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
+              </p>
+              {/* A1/A17 da 15ª (princípio 3): a venda nasce paga, e o que ficou em aberto se diz. */}
+              {emAberto && (
+                <p data-comanda-em-aberto style={{
+                  color: 'var(--warning)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+                  borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)',
+                }}>
+                  {emAberto}
+                </p>
+              )}
+              {/* A2 da 15ª: a quem não estorna, de quem é o estorno — a frase da ficha. */}
+              {e.quemEstorna && (
+                <p data-quem-estorna style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px' }}>
+                  Estornar esta comanda é de quem tem o Financeiro em Gerenciar
+                  {e.quemEstorna.length > 0 ? `: ${e.quemEstorna.join(', ')} (na ficha da cliente, aba Financeiro).` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+                </p>
+              )}
+            </>
           ) : aReceber && c.planoId ? (
             <ReceberOPlano key={c.id} planoId={c.planoId} slug={slugDaUnidade} aoReceber={aoReceber} />
           ) : aReceber && c.agendamentoId ? (

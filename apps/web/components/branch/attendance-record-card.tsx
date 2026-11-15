@@ -143,7 +143,7 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
               {!evolucao.texto && !evolucao.intercorrencias && !evolucao.queixas && (
                 <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Sem evolução registrada.</p>
               )}
-              {evolucao.queixas && <TextoClinico label="Dores do cliente" texto={evolucao.queixas} />}
+              {evolucao.queixas && <TextoClinico label="Queixas e dores" texto={evolucao.queixas} />}
               {evolucao.texto && <TextoClinico label="Evolução" texto={evolucao.texto} />}
               {evolucao.intercorrencias && <TextoClinico label="Intercorrências" texto={evolucao.intercorrencias} />}
             </div>

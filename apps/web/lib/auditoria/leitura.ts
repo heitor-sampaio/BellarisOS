@@ -24,6 +24,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const escaparLike = (s: string) => s.replace(/[\\%_]/g, m => `\\${m}`)
 
 const COLUNAS = 'id, criado_em, branch_id, client_id, tabela, operacao, registro_id, colunas, antes, depois, ator_user_id, ator_nome, ator_tipo, incompleto'
+const baseDaAuditoria = (admin: ReturnType<typeof createAdminClient>) => admin.from('auditoria').select(COLUNAS)
+type Consulta = ReturnType<typeof baseDaAuditoria>
 
 export interface PaginaDaAuditoria {
   registros: RegistroDaAuditoria[]
@@ -33,10 +35,14 @@ export interface PaginaDaAuditoria {
   /** A unidade pedida, só se estiver ao alcance (senão, nula: a URL não vence a abrangência). */
   unidade:   string | null
   periodo:   { key: string; label: string; from?: string; to?: string }
+  /** Na leitura por gravação: o cursor da próxima página (as linhas antes deste id). */
+  proximo?:  string | null
+  /** Na leitura por gravação: o cursor desta página (nulo na primeira). */
+  antes?:    string | null
 }
 
 export async function lerAuditoria(
-  ctx: TenantContext, filtros: FiltrosDaAuditoria, opcoes: { porPagina?: number } = {},
+  ctx: TenantContext, filtros: FiltrosDaAuditoria, opcoes: { porPagina?: number; porGravacao?: boolean } = {},
 ): Promise<PaginaDaAuditoria> {
   const admin = createAdminClient()
   const porPagina = opcoes.porPagina ?? POR_PAGINA
@@ -61,19 +67,25 @@ export async function lerAuditoria(
     if (!clientesDoFiltro.length) return vazia
   }
 
-  let q = admin.from('auditoria').select(COLUNAS)
-    .eq('tenant_id', ctx.tenantId!)
-    .gte('criado_em', periodo.from.toISOString())
-    .lte('criado_em', periodo.fullTo.toISOString())
-  if (minhas !== null) q = q.in('branch_id', minhas)
-  if (unidade) q = q.eq('branch_id', unidade)
-  if (filtros.pessoa && UUID.test(filtros.pessoa)) q = q.eq('ator_user_id', filtros.pessoa)
-  if (filtros.tipo && OPERACOES.some(o => o.key === filtros.tipo)) q = q.eq('operacao', filtros.tipo)
-  if (clientesDoFiltro) q = q.in('client_id', clientesDoFiltro)
+  // Um construtor a cada consulta: os filtros do supabase-js mudam o próprio objeto.
+  const consulta = () => {
+    let q = baseDaAuditoria(admin)
+      .eq('tenant_id', ctx.tenantId!)
+      .gte('criado_em', periodo.from.toISOString())
+      .lte('criado_em', periodo.fullTo.toISOString())
+    if (minhas !== null) q = q.in('branch_id', minhas)
+    if (unidade) q = q.eq('branch_id', unidade)
+    if (filtros.pessoa && UUID.test(filtros.pessoa)) q = q.eq('ator_user_id', filtros.pessoa)
+    if (filtros.tipo && OPERACOES.some(o => o.key === filtros.tipo)) q = q.eq('operacao', filtros.tipo)
+    if (clientesDoFiltro) q = q.in('client_id', clientesDoFiltro)
+    return q
+  }
+
+  if (opcoes.porGravacao) return lerPorGravacao(ctx, vazia, consulta, filtros.antes, porPagina)
 
   const inicio = (pagina - 1) * porPagina
   // Uma a mais diz se há a próxima página, sem contar a tabela inteira.
-  const linhas = (await ler(q.order('id', { ascending: false }).range(inicio, inicio + porPagina), 'ler a auditoria') ?? []) as RegistroDaAuditoria[]
+  const linhas = (await ler(consulta().order('id', { ascending: false }).range(inicio, inicio + porPagina), 'ler a auditoria') ?? []) as RegistroDaAuditoria[]
   const registros = linhas.slice(0, porPagina)
 
   return {
@@ -84,12 +96,67 @@ export async function lerAuditoria(
   }
 }
 
+/**
+ * A tela lê por GRAVAÇÃO (A27 da 15ª simulação): a página não corta uma
+ * gravação ao meio — a do fim da página vem inteira (as linhas da mesma
+ * transação, o mesmo `criado_em`), e a próxima página começa antes da menor
+ * linha lida (`?antes=<id>`, um cursor, e não um número de página, que se
+ * deslocaria com a gravação estendida). O CSV segue por página, uma linha
+ * por registro.
+ */
+async function lerPorGravacao(
+  ctx: TenantContext, vazia: PaginaDaAuditoria,
+  consulta: () => Consulta,
+  antes: string | undefined, porPagina: number,
+): Promise<PaginaDaAuditoria> {
+  const cursor = antes && /^\d+$/.test(antes) ? antes : null
+  const primeira = cursor ? consulta().lt('id', cursor) : consulta()
+  const linhas = (await ler(primeira.order('id', { ascending: false }).limit(porPagina + 1), 'ler a auditoria') ?? []) as RegistroDaAuditoria[]
+  let registros = linhas.slice(0, porPagina)
+  let temMais = linhas.length > porPagina
+  if (temMais && registros.length) {
+    const ultima = registros[registros.length - 1]!
+    const resto = (await ler(consulta().eq('criado_em', ultima.criado_em).lt('id', ultima.id)
+      .order('id', { ascending: false }).limit(1000), 'ler o resto da gravação') ?? []) as RegistroDaAuditoria[]
+    if (resto.length) {
+      registros = [...registros, ...resto]
+      const menor = registros[registros.length - 1]!.id
+      const depois = await ler(consulta().lt('id', menor).limit(1), 'ver se há mais auditoria') ?? []
+      temMais = depois.length > 0
+    }
+  }
+  return {
+    ...vazia,
+    registros,
+    nomes:   await nomesDaAuditoria(ctx, registros),
+    temMais,
+    proximo: temMais && registros.length ? String(registros[registros.length - 1]!.id) : null,
+    antes:   cursor,
+  }
+}
+
 /** Os nomes que as frases usam, lidos agora (só os da página). */
 async function nomesDaAuditoria(ctx: TenantContext, registros: readonly RegistroDaAuditoria[]): Promise<NomesDaAuditoria> {
   const admin = createAdminClient()
   const clientes = [...new Set(registros.map(r => r.client_id).filter((v): v is string => !!v))]
   const membros = [...new Set(registros.filter(r => r.tabela === 'users' && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!))]
-  const [c, m, u] = await Promise.all([
+  // O produto do movimento e o cargo da permissão (A27/A28 da 15ª): a frase diz o nome, não "um produto".
+  const doRegistro = (r: RegistroDaAuditoria, chave: string) => {
+    const v = r.depois?.[chave] ?? r.antes?.[chave]
+    return typeof v === 'string' && UUID.test(v) ? v : null
+  }
+  const produtos = [...new Set(registros.filter(r => r.tabela === 'stock_movements').map(r => doRegistro(r, 'product_id')).filter((v): v is string => !!v))]
+  const permissoes = registros.filter(r => r.tabela === 'role_permissions' && r.registro_id && UUID.test(r.registro_id))
+  const cargosDaPermissao = new Map<string, string>()
+  for (const r of permissoes) { const cargo = doRegistro(r, 'role_id'); if (cargo) cargosDaPermissao.set(r.registro_id!, cargo) }
+  const semCargo = permissoes.filter(r => !cargosDaPermissao.has(r.registro_id!)).map(r => r.registro_id!)
+  if (semCargo.length) {
+    const lidas = await ler(admin.from('role_permissions').select('id, role_id').eq('tenant_id', ctx.tenantId!).in('id', [...new Set(semCargo)]),
+      'ler o cargo das permissões') ?? []
+    for (const p of lidas) cargosDaPermissao.set(p.id as string, p.role_id as string)
+  }
+  const cargos = [...new Set(cargosDaPermissao.values())]
+  const [c, m, u, p, cg] = await Promise.all([
     clientes.length
       ? ler(admin.from('clients').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', clientes), 'ler os nomes das clientes')
       : Promise.resolve([]),
@@ -98,10 +165,19 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
       : Promise.resolve([]),
     // As unidades da rede são poucas (o caso comum é uma).
     ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!), 'ler as unidades'),
+    produtos.length
+      ? ler(admin.from('products').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', produtos), 'ler os nomes dos produtos')
+      : Promise.resolve([]),
+    cargos.length
+      ? ler(admin.from('tenant_roles').select('id, name:label').eq('tenant_id', ctx.tenantId!).in('id', cargos), 'ler os nomes dos cargos')
+      : Promise.resolve([]),
   ])
   const mapa = (xs: { id: unknown; name: unknown }[] | null) =>
     Object.fromEntries((xs ?? []).map(x => [x.id as string, (x.name as string | null) ?? '']))
-  return { clientes: mapa(c), membros: mapa(m), unidades: mapa(u) }
+  const nomeDoCargo = mapa(cg as { id: unknown; name: unknown }[] | null)
+  const cargosPorPermissao = Object.fromEntries([...cargosDaPermissao.entries()]
+    .filter(([, cargo]) => nomeDoCargo[cargo]).map(([permissao, cargo]) => [permissao, nomeDoCargo[cargo]!]))
+  return { clientes: mapa(c), membros: mapa(m), unidades: mapa(u), produtos: mapa(p), cargos: cargosPorPermissao }
 }
 
 /**

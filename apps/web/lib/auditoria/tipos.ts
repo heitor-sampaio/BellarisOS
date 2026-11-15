@@ -38,6 +38,10 @@ export interface NomesDaAuditoria {
   clientes: Record<string, string>
   membros:  Record<string, string>
   unidades: Record<string, string>
+  /** O produto do movimento de estoque (A28 da 15ª), lido agora. */
+  produtos?: Record<string, string>
+  /** O cargo de cada permissão (o id da linha de `role_permissions` → o nome do cargo), lido agora. */
+  cargos?:   Record<string, string>
 }
 
 /** Uma linha pronta para a tela e para o CSV. */
@@ -60,4 +64,16 @@ export interface FiltrosDaAuditoria {
   unidade?: string
   cliente?: string
   pagina?:  string
+  /** A tela segue por gravação (A27 da 15ª): as linhas antes deste id. O CSV segue por `pagina`. */
+  antes?:   string
+}
+
+/**
+ * As ações do filtro "O que foi feito" que a pessoa ALCANÇA (A28 da 15ª
+ * simulação): a abertura do prontuário é da rede (a linha não tem unidade), e
+ * quem tem unidades nunca a lê — o filtro sai da lista dela em vez de ficar
+ * sempre vazio.
+ */
+export function operacoesDoFiltro(minhas: readonly string[] | null): readonly { key: OperacaoDaAuditoria; label: string }[] {
+  return minhas === null ? OPERACOES : OPERACOES.filter(o => o.key !== 'abriu')
 }

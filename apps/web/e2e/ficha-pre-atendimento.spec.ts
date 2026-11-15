@@ -674,7 +674,7 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
       await page.goto(`/admin/agenda?date=${DIA}`)
       await page.locator(`[title*="Sem identidade pd${marca}"]`).first().click()
       const ficha = page.locator('[data-pre-atendimento-do-agendamento]')
-      await expect(ficha.getByText('Complete o CPF ou a data de nascimento para enviar o link')).toBeVisible()
+      await expect(ficha.getByText('Para quem não tem CPF, complete a data de nascimento para enviar o link')).toBeVisible()
       await expect(ficha.getByRole('link', { name: 'Editar o cadastro' })).toHaveAttribute('href', `/admin/clients/${sem.cliente}?aba=dados`)
     } finally {
       await ctx.close()

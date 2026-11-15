@@ -9,6 +9,7 @@ import {
   type EventoNaLista, type LinhaDoCatalogo,
 } from '@/actions/eventos'
 import { useFuso } from '@/components/shared/fuso'
+import { rotuloDoEvento } from '@estetica-os/types'
 
 /**
  * Painel de conferência da corrente de eventos.
@@ -185,7 +186,7 @@ export function SettingsEventos({
               title={l.vezes === 0 ? fala('Nunca ocorreu nesta rede') : `Último em ${dia(l.ultimoEm, fuso)}`}
             >
               {l.vezes === 0 ? <CircleSlash size={11} /> : <Activity size={11} />}
-              {l.nome}
+              {rotuloDoEvento(l.nome)}
               {l.vezes > 0 && <span style={{ opacity: 0.7 }}>· {l.vezes}</span>}
             </button>
           ))}
@@ -222,7 +223,7 @@ export function SettingsEventos({
           {entidades.map(ent => (
             <optgroup key={ent} label={ent}>
               {linhas.filter(l => l.entidade === ent).map(l => (
-                <option key={l.nome} value={l.nome}>{l.nome}</option>
+                <option key={l.nome} value={l.nome}>{rotuloDoEvento(l.nome)}</option>
               ))}
             </optgroup>
           ))}
@@ -268,7 +269,7 @@ export function SettingsEventos({
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
-                          {ev.nome}
+                          {rotuloDoEvento(ev.nome)}
                         </span>
                         <span className="chip chip-muted">{ORIGEM_ROTULO[ev.origem] ?? ev.origem}</span>
                       </div>

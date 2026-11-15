@@ -29,7 +29,9 @@ function toSlug(name: string) {
     .replace(/-+/g, '-')
 }
 
-export function BranchForm() {
+/** `cnpjDaRede`: vem preenchido, como no /setup (A20 da 15ª) — à vista, a pessoa troca ou apaga (cfg-01: em branco, pergunta). */
+export function BranchForm({ cnpjDaRede = null }: { cnpjDaRede?: string | null } = {}) {
+  const cnpjInicial = cnpjDaRede ? maskCPFouCNPJDigitando(cnpjDaRede) : ''
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [slugDigitado, setSlug] = useState('')
@@ -40,7 +42,7 @@ export function BranchForm() {
   const envio = useEnvioUnico()
   const formRef = useRef<HTMLFormElement>(null)
   // O CNPJ em branco pergunta antes de criar (cfg-01): a resposta vai em `_cnpj`.
-  const [documento, setDocumento] = useState('')
+  const [documento, setDocumento] = useState(cnpjInicial)
   const [respostaCnpj, setRespostaCnpj] = useState<'' | 'sem'>('')
   // Telefone, e-mail e IE também em estado (D7 da 6ª simulação): soltos, o
   // <form action> do React os limpava depois da 1ª submissão — a que volta
@@ -80,7 +82,7 @@ export function BranchForm() {
 
   if (formState && 'success' in formState && open) {
     setOpen(false)
-    setName(''); setSlug(''); setSlugTouched(false); setDocumento(''); setRespostaCnpj('')
+    setName(''); setSlug(''); setSlugTouched(false); setDocumento(cnpjInicial); setRespostaCnpj('')
     setTelefone(''); setEmail(''); setInscricao('')
     setZipCode(''); setAddress(''); setCity(''); setUf('')
     setCepError(null); setCepBuscado('')
@@ -88,7 +90,7 @@ export function BranchForm() {
 
   function handleClose() {
     setOpen(false)
-    setName(''); setSlug(''); setSlugTouched(false); setDocumento(''); setRespostaCnpj('')
+    setName(''); setSlug(''); setSlugTouched(false); setDocumento(cnpjInicial); setRespostaCnpj('')
     setTelefone(''); setEmail(''); setInscricao('')
     setZipCode(''); setAddress(''); setCity(''); setUf('')
     setCepError(null); setCepBuscado('')

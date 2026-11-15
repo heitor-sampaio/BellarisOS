@@ -9,7 +9,8 @@ export const AVISOS_DA_URL = {
   // A20 da 14ª (F73): quem ATENDE na outra unidade (§11, o "Atende" é por
   // unidade) não opera nela, mas os atendimentos de lá estão na agenda dela.
   'atende-em-outra-unidade': 'Os seus atendimentos nessa unidade estão na sua agenda, aqui. O resto daquela unidade é da equipe de lá.',
-  'portal-da-rede': 'O portal da rede é de quem atende todas as unidades. Abrimos a sua.',
+  // A23 da 15ª: a pessoa pediu a rede — o aviso diz de quem ela é, pela abrangência.
+  'portal-da-rede': 'O portal da rede é de quem tem “A rede inteira”. Abrimos a sua unidade.',
   // C61 (F70): o primeiro acesso da clínica (o /setup) é de quem é da rede.
   'setup-da-rede':  'A configuração inicial da rede é de quem tem “A rede inteira”. Abrimos a sua unidade.',
   // A14 da 13ª (F70): "?unidade=" no portal de uma unidade abria esta, calado.

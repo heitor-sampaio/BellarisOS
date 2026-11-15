@@ -35,6 +35,9 @@ export async function SettingsBranches() {
 
   // O endereço do app da cliente de cada unidade (A4): é este que se dá a ela.
   const origem = await origemDoApp()
+  // A20 da 15ª: o CNPJ da rede preenche a unidade nova, como no /setup.
+  const daRede = await ler(createAdminClient().from('tenants').select('document')
+    .eq('id', ctx.tenantId!).maybeSingle(), 'ler o CNPJ da rede') as { document: string | null } | null
 
   const total    = branches?.length ?? 0
   const active   = branches?.filter(b => b.is_active).length ?? 0
@@ -72,10 +75,10 @@ export async function SettingsBranches() {
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
             {/* A clínica de uma unidade não fala "rede" (F8). */}
-            {umaUnidade ? 'A unidade e as salas dela' : 'Gerencie as unidades da rede'}
+            {umaUnidade ? 'A unidade e as salas dela' : 'Gerencie as unidades da rede. As salas ficam no “Ver detalhes” de cada unidade.'}
           </p>
         </div>
-        <BranchForm />
+        <BranchForm cnpjDaRede={daRede?.document ?? null} />
       </div>
 
       {/* KPIs */}

@@ -171,7 +171,7 @@ export default async function AdminTeamPage({
         }}>
           {semNinguem.length === 1 && !variasUnidades
             ? 'Ninguém atende nesta unidade ainda: marque o “Atende clientes” de quem atende, no lápis de cada pessoa.'
-            : `Ninguém atende ${semNinguem.length === 1 ? 'na unidade' : 'nas unidades'} ${listaDeUnidades(semNinguem.map(b => b.name))} ainda: marque a unidade no “Atende clientes em” de quem atende lá, no lápis de cada pessoa.`}
+            : `Ninguém atende ${semNinguem.length === 1 ? 'na unidade' : 'nas unidades'} ${listaDeUnidades(semNinguem.map(b => b.name))} ainda: marque o “Atende clientes” de quem atende lá, no lápis de cada pessoa (com mais de uma unidade, em “Escolher em quais unidades atende”).`}
         </p>
       )}
 

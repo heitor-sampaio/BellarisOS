@@ -59,6 +59,6 @@ test('abrir o portal da rede sem ser da rede leva à sua unidade, dizendo por qu
   await como(browser, membroDeA!.estado, async p => {
     await p.goto('/admin/dashboard')
     await expect(p).toHaveURL(new RegExp(`/${slugA}/dashboard`))
-    await expect(p.getByText('O portal da rede é de quem atende todas as unidades. Abrimos a sua.')).toBeVisible()
+    await expect(p.getByText('O portal da rede é de quem tem “A rede inteira”. Abrimos a sua unidade.')).toBeVisible()
   })
 })

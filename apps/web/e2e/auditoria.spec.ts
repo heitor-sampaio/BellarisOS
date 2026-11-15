@@ -216,8 +216,8 @@ test.describe('CF3b: o registro', () => {
     expect(JSON.stringify(linhas), 'nenhuma linha da auditoria carrega o texto clínico').not.toContain(SEGREDO)
   })
 
-  test('abrir a ficha da cliente registra que abriu o prontuário', async ({ browser }) => {
-    await como(browser, dona, async p => { await p.goto(`/admin/clients/${clienteId}`) })
+  test('abrir o prontuário da cliente (a aba dele, A30 da 15ª) registra que abriu', async ({ browser }) => {
+    await como(browser, dona, async p => { await p.goto(`/admin/clients/${clienteId}?aba=fichas`) })
     await expect.poll(async () => (await linhasDaRede())
       .filter(l => l.tabela === 'prontuario_acessos' && l.client_id === clienteId)
       .map(l => [l.operacao, l.ator_user_id]), { timeout: 15_000 }).toContainEqual(['abriu', dona.userId])
@@ -355,13 +355,16 @@ test.describe('CF3a: a tela', () => {
   })
 
   test('a lista é paginada: 50 por página e o "Mais antigas"', async ({ browser }) => {
-    const { error } = await db().from('rooms').insert(Array.from({ length: 55 }, (_, i) => ({ branch_id: unidadeB, name: `${PREFIXO} Lote ${i} ${marca}` })))
-    expect(error, error?.message).toBeNull()
+    // Uma gravação por sala: as linhas de UMA gravação viram uma só (A27 da 15ª).
+    for (let i = 0; i < 55; i++) {
+      const { error } = await db().from('rooms').insert({ branch_id: unidadeB, name: `${PREFIXO} Lote ${i} ${marca}` })
+      expect(error, error?.message).toBeNull()
+    }
     await como(browser, dona, async p => {
       await p.goto('/admin/auditoria')
       await expect(p.locator('[data-linha-da-auditoria]')).toHaveCount(50)
       await p.locator('[data-auditoria-mais]').click()
-      await expect(p).toHaveURL(/pagina=2/)
+      await expect(p).toHaveURL(/antes=\d+/)
       await expect(p.locator('[data-linha-da-auditoria]').first()).toBeVisible()
     })
   })

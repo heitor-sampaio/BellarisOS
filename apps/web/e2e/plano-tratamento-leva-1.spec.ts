@@ -90,7 +90,7 @@ test('PT2: monta quem ATENDE — o "Novo plano" e a gravação não pedem o Pron
     await expect(p.getByRole('button', { name: 'Novo plano' })).toBeVisible()
     // A anotação clínica é do Prontuário: o editor não a oferece a quem não o tem.
     await p.getByRole('button', { name: 'Novo plano' }).click()
-    await expect(p.getByLabel('Observações da profissional')).toHaveCount(0)
+    await expect(p.getByLabel('Observações de quem atende')).toHaveCount(0)
     await chamarAcao(p, 'actions/treatment-plans.ts', 'salvarPlanoNovo', `/${slug}/clients/${cliente}`,
       [cliente, rede!.branchId, null, sessoes(rede!.procedureId), 'anotação que ela não pode escrever'])
   })
@@ -119,7 +119,7 @@ test('PT2: quem atende, sem o Prontuário, salva o plano sem apagar a anotação
   await db().from('treatment_plans').update({ status: 'DRAFT', professional_notes: 'Anotação clínica' }).eq('id', planId)
   await como(atende!, browser, async p => {
     await p.goto(`/${slug}/planejamentos/${planId}`)
-    await expect(p.getByLabel('Observações da profissional')).toHaveCount(0)
+    await expect(p.getByLabel('Observações de quem atende')).toHaveCount(0)
     await chamarAcao(p, 'actions/treatment-plans.ts', 'salvarPlanoDoCliente', `/${slug}/planejamentos/${planId}`,
       [planId, sessoes(rede!.procedureId, 120), ''])
   })

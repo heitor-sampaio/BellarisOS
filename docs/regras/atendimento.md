@@ -1503,7 +1503,7 @@ const procedures = await ler(
     WhatsApp ligado, o botão parecia o da rede — a regra do wa.me ficou) —,
     com `agenda: MANAGE`), que mostra só o ESTADO
     (pendente/respondida) — as respostas são do prontuário. Cliente sem CPF
-    nem nascimento: a janela diz "Complete o CPF ou a data de nascimento para
+    nem nascimento: a janela diz "Para quem não tem CPF, complete a data de nascimento para
     enviar o link" e leva ao cadastro (`?aba=dados`, via `lib/rotas`). **E
     pede o nascimento ali mesmo** (A12 da 10ª simulação, 2026-11-10: a cliente
     do Agendar, só com nome e telefone, ficava sem a ficha): quem tem as
@@ -1698,6 +1698,13 @@ const procedures = await ler(
     `canViewRecords`/`podeVerClinico`), nunca só por abrir a página: quem não
     tem o módulo abre a ficha e não entra no registro. Tela nova que mostra
     dado clínico chama `registrarAcessoAoProntuario`.
+  - **Na ficha da cliente, o prontuário só vai à tela na aba Prontuário**
+    (`?aba=fichas`; A30 da 15ª simulação — minimização da LGPD, sem mudar
+    quem vê): as evoluções, a ficha de saúde e os anexos clínicos não viajam
+    nas outras abas, e abri-las não registra acesso. A exceção é o alerta de
+    alergia (regra própria: na ficha e no atendimento, para quem vê o
+    prontuário): nas outras abas vai só o TEXTO da alergia, e mostrá-lo
+    registra o acesso. Prova: `e2e/prontuario-acessos.spec.ts` ("A30").
   - A mesma pessoa relendo a mesma cliente no mesmo ponto (e referência) em
     30 min é uma linha só (`prontuario_registrar_acesso`): a tela recarrega
     sozinha. Falha no registro vai ao log e não tranca o atendimento.
@@ -1991,7 +1998,7 @@ const procedures = await ler(
   devolvem `{ error: RECUSA_QUEM_MONTA }` a quem não atende na unidade do
   plano, depois de conferida a rede, o alcance e o "só os meus".
   - **A anotação clínica dentro do plano continua do Prontuário** (as
-    "Observações da profissional", `professional_notes`): só quem tem o
+    "Observações de quem atende", `professional_notes`; A9 da 15ª): só quem tem o
     Prontuário em Gerenciar (e, no "só os meus" do prontuário, o plano dela —
     `anotaNoPlano`) a escreve. Para quem monta sem ele, o editor não mostra o
     campo (`podeAnotar`), a action ignora a anotação que chega e a que está
@@ -2750,8 +2757,11 @@ indicada é a do consolidado do levantamento):
     "de costume" × "desta entrada" (`CampoFornecedor`, que saiu). A linha do
     lote que mostra a nota e o fornecedor da compra (`lotesComSaldo`) fica.
 - **O que a 14ª simulação corrigiu no Estoque** (F74, 2026-11-13):
-  - O botão da linha diz **"Entrada e perda"** (A12; era uma engrenagem sem
+  - O botão da linha diz **"Movimentar"** (A12; era uma engrenagem sem
     texto). A janela segue "Gerenciar estoque" (o `title` do botão também).
+    Na 15ª (A12) o "Entrada e perda" virou "Movimentar" — escondia a
+    Transferência —, e o destino da transferência diz "Pode mandar para
+    qualquer unidade da rede" a quem tem a origem fixa.
   - **A perda sem "Desfazer perda" diz por quê** (A13, princípio 3): só a
     mais nova de cada unidade se desfaz (C69), e as outras dizem "desfaça
     antes as mais novas desta unidade" (`perdaSemDesfazer`, de

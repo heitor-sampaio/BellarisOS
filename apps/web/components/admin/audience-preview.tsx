@@ -61,7 +61,7 @@ export function AudiencePreview({ rules }: Props) {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
             <Smartphone size={14} />
             {conta.comAparelho === 0
-              ? 'nenhuma tem o app para receber o aviso'
+              ? 'nenhuma tem o aviso no celular ligado'
               : `${n(conta.comAparelho)} ${conta.comAparelho === 1 ? 'vai' : 'vão'} receber o aviso no celular`}
           </span>
         </>

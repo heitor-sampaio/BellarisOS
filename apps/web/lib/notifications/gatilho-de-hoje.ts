@@ -59,7 +59,7 @@ export async function quemReceberiaHoje(camp: CampanhaDoGatilho, agora = new Dat
     ...filtrosDaCampanha(camp.audience_rules ?? {}), client_ids: quem.map(c => c.id),
   })
   const recebem = comAparelho === 0
-    ? 'nenhuma tem o app para receber o aviso'
+    ? 'nenhuma tem o aviso no celular ligado'
     : `${comAparelho} ${comAparelho === 1 ? 'vai' : 'vão'} receber o aviso no celular`
   const n = quem.length
   return { hoje: n, comAparelho, texto: `Hoje é a data: ${n} ${n === 1 ? 'cliente no público' : 'clientes no público'} · ${recebem}.` }

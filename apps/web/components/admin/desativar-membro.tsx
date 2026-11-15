@@ -103,6 +103,13 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
   const repassados = Object.values(paraAg).filter(p => p && p !== CANCELAR).length + Object.values(paraOp).filter(Boolean).length
   const cancelados = Object.values(paraAg).filter(p => p === CANCELAR).length
   const vencidos = dados?.agendamentos.filter(a => a.vencido).length ?? 0
+  // A19 da 15ª (princípios 6 e 3): o padrão segue "sem repasse", e o Desativar diz o que fica com ela.
+  const ficamAg = dados?.agendamentos.filter(a => !paraAg[a.id]).length ?? 0
+  const ficamOp = dados?.oportunidades.filter(o => !paraOp[o.id]).length ?? 0
+  const ficaCom = [
+    ficamAg ? `${ficamAg} ${ficamAg === 1 ? 'agendamento' : 'agendamentos'}` : '',
+    ficamOp ? `${ficamOp} ${ficamOp === 1 ? 'oportunidade' : 'oportunidades'}` : '',
+  ].filter(Boolean).join(' e ')
 
   return (
     <>
@@ -201,6 +208,11 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
               <p style={texto}>{nome} não tem agendamentos futuros nem oportunidades abertas.</p>
             )}
 
+            {ficaCom && (
+              <p data-fica-com style={{ ...texto, color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                {ficaCom} {ficamAg + ficamOp === 1 ? 'fica' : 'ficam'} com {nome}, que não entra mais.
+              </p>
+            )}
             {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
               {(repassados > 0 || cancelados > 0) && (

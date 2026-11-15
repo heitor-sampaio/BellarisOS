@@ -13,7 +13,7 @@ import {
 import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
 import { buscarTudo } from '@/actions/busca'
 import { emitNavStart } from '@/components/shared/navigation-progress'
-import { paginasDaBusca, paginasQueCasam } from '@/lib/busca/paginas'
+import { paginasDaBusca, paginasQueCasam, termoEhDeUmaPagina } from '@/lib/busca/paginas'
 import { destinoDoResultado } from '@/lib/busca/destino'
 import { acaoDeCadastrar, acoesDaArquivada, acoesDoCliente, acoesGerais, type AcaoDaBusca, type IdDaAcao } from '@/lib/busca/acoes'
 import {
@@ -144,7 +144,8 @@ export function BuscaUniversal({ slug, permissions, scopes, plano = null, agenda
     // Não achou cliente nenhum (com a busca já de volta): o atalho de cadastrar
     // o termo, no FIM — no topo, o Enter cadastraria em vez de abrir a conversa achada.
     const achouCliente = doServidor.some(g => g.tipo === 'cliente' && g.itens.length > 0)
-    const cadastrar = !curto && !procurando && !achouCliente ? acaoDeCadastrar(quem, limpo) : null
+    // A6 da 15ª: o termo que é o nome de uma página ("PDV", "Agenda") não vira cadastro.
+    const cadastrar = !curto && !procurando && !achouCliente && !termoEhDeUmaPagina(paginas, limpo) ? acaoDeCadastrar(quem, limpo) : null
     const todos = [
       ...(gerais.length > 0 ? [{ tipo: 'acao' as const, itens: gerais }] : []),
       ...doServidor,
