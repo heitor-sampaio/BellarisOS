@@ -10,6 +10,6 @@ export function textoDaExigenciaDoModelo(titulos: string[]): string | null {
   const nomes = titulos.map(t => `“${t}”`)
   const lista = nomes.length === 1 ? nomes[0]! : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`
   return nomes.length === 1
-    ? `Quem exige a assinatura de ${lista} é o modelo do documento: em Configurações → Documentos, a clínica escolhe se ele “Bloqueia” o checkout ou “Só avisa”.`
-    : `Quem exige a assinatura de ${lista} são os modelos dos documentos: em Configurações → Documentos, a clínica escolhe se cada um “Bloqueia” o checkout ou “Só avisa”.`
+    ? `Quem exige a assinatura de ${lista} é o modelo do documento: em Configurações → Documentos, a rede escolhe se ele “Bloqueia” o checkout ou “Só avisa”.`
+    : `Quem exige a assinatura de ${lista} são os modelos dos documentos: em Configurações → Documentos, a rede escolhe se cada um “Bloqueia” o checkout ou “Só avisa”.`
 }

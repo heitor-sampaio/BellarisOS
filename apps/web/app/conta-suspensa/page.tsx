@@ -59,16 +59,16 @@ export default async function ContaSuspensaPage() {
     : motivo === 'cancelada' ? 'Assinatura cancelada'
     : 'Acesso desligado'
   const texto = ehCliente
-    ? `O portal de ${rede.nome} está temporariamente indisponível. Fale com a clínica para agendar.`
+    ? `O portal de ${rede.nome} está temporariamente indisponível. Fale com a equipe para agendar.`
     : motivo === 'suspensa'
       ? (administra && fatura
           ? 'A assinatura do BellarisOS ficou em atraso além do prazo. Assim que a fatura for paga, o acesso volta sozinho — em alguns minutos.'
           : administra
             ? 'O período de teste ou a assinatura do BellarisOS terminou sem pagamento. Fale com o BellarisOS para regularizar.'
-            : 'A assinatura do BellarisOS está em atraso. Avise o responsável pela clínica: assim que for paga, o acesso volta sozinho.')
+            : 'A assinatura do BellarisOS está em atraso. Avise quem administra a rede: assim que for paga, o acesso volta sozinho.')
       : motivo === 'cancelada'
-        ? 'A assinatura do BellarisOS desta clínica foi cancelada. Para voltar, fale com o BellarisOS.'
-        : 'O acesso desta clínica ao BellarisOS foi desligado. Fale com o BellarisOS para entender e regularizar.'
+        ? 'A assinatura do BellarisOS desta rede foi cancelada. Para voltar, fale com o BellarisOS.'
+        : 'O acesso desta rede ao BellarisOS foi desligado. Fale com o BellarisOS para entender e regularizar.'
 
   return (
     <main className="suporte-centro" style={{ minHeight: '100dvh', background: 'var(--bg-app)', padding: 'var(--content-pad-x)' }}>

@@ -173,7 +173,7 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
           )}
         </div>
       )}
-      {enviado && <p role="status" className="pre-atendimento-agendamento-texto">Link enviado pela conversa do WhatsApp da clínica.</p>}
+      {enviado && <p role="status" className="pre-atendimento-agendamento-texto">Link enviado pela conversa do WhatsApp da rede.</p>}
       {erro && <p role="alert" className="pre-atendimento-agendamento-erro">{erro}</p>}
       {link && (
         <div className="pre-atendimento-agendamento-link">
@@ -194,8 +194,8 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
               computador ou celular, com a mensagem pronta. */}
           <p data-whatsapp-do-aparelho className="pre-atendimento-agendamento-texto">
             {situacao.pelaConversa
-              ? 'Abre o WhatsApp deste computador ou celular, com a mensagem pronta. Para mandar pelo WhatsApp da clínica, use “Mandar pela conversa”.'
-              : 'Abre o WhatsApp deste computador ou celular, com a mensagem pronta — não é um WhatsApp ligado à clínica.'}
+              ? 'Abre o WhatsApp deste computador ou celular, com a mensagem pronta. Para mandar pelo WhatsApp da rede, use “Mandar pela conversa”.'
+              : 'Abre o WhatsApp deste computador ou celular, com a mensagem pronta — não é um WhatsApp ligado à rede.'}
           </p>
         </div>
       )}

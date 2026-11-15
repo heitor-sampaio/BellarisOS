@@ -42,8 +42,7 @@ import { podeIncluirClinico } from '@/lib/suporte/regras'
 import { SettingsSuporte } from '@/components/admin/settings-suporte'
 import { SettingsAssinatura } from '@/components/admin/settings-assinatura'
 import { lerAssinatura } from '@/lib/redes/assinatura'
-import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
-import { vocabulario } from '@/lib/unidades/vocabulario'
+import { falaDaTela, redeTemUmaUnidade } from '@/lib/unidades/uma-so'
 import { FidelidadeConfig } from '@/components/admin/fidelidade-config'
 import { FidelidadeCatalogo } from '@/components/admin/fidelidade-catalogo'
 import { catalogoDeRecompensas } from '@/actions/fidelidade'
@@ -116,10 +115,10 @@ export async function Configuracoes({
   metaStep, metaError, metaErrorReason, unidadeDaTela,
 }: Props) {
   const ctx = await getTenantContext()
-  // A clínica de uma unidade não fala "rede" (F8), e o aviso de que "muda para
+  // Na rede de uma unidade (PO2), o rótulo que é só a rede é o nome dela, e o aviso de que "muda para
   // todas as unidades" não tem a quem avisar.
   const umaUnidade = await redeTemUmaUnidade(ctx.tenantId!)
-  const fala = vocabulario(umaUnidade)
+  const fala = await falaDaTela(ctx.tenantId)
 
   const tabs = TABS.filter(t => abas.includes(t.key) && abaLiberada(t, m => can(ctx, m, 'MANAGE')) && abaNoPlano(t, ctx.plano))
 
@@ -401,7 +400,7 @@ export async function Configuracoes({
         <nav aria-label="Assunto das configurações" data-grupos-de-abas className="grupos-de-abas">
           {abasEmGrupos(tabs).map(g => (
             // "A rede" fala "A clínica" na rede de uma unidade (F8), como o resto da tela.
-            <div key={g.key} data-grupo-de-abas={fala(g.label)} className="grupo-de-abas">
+            <div key={g.key} data-grupo-de-abas={g.label} className="grupo-de-abas">
               <span className="overline">{fala(g.label)}</span>
               <div className="grupo-de-abas-chips">
                 {g.abas.map(t => (
@@ -553,7 +552,7 @@ export async function Configuracoes({
           uso={usoDosLimites ?? { unidades: 0, membros: 0, whatsapp: 0 }}
           copilot={usoDoCopilotNaAba}
           // A mensalidade é da REDE: contrata quem é dela, com configurações; o suporte não.
-          semContratar={ctx.suporte ? 'No modo suporte não dá para contratar: isto é feito pela própria clínica.'
+          semContratar={ctx.suporte ? 'No modo suporte não dá para contratar: isto é feito pela própria rede.'
             : ctx.branchId === null && can(ctx, 'settings', 'MANAGE') ? null
             : fala('Para contratar ou cancelar, fale com quem administra a rede.')}
         />
@@ -563,7 +562,7 @@ export async function Configuracoes({
         ? <SettingsSuporte dados={dadosDoSuporte} podeClinico={podeIncluirClinico(ctx)} souAdmin={ctx.isNetworkAdmin} meuId={ctx.internalUserId} />
         : (
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-            Indisponível no modo suporte: quem autoriza o acesso é a própria clínica.
+            Indisponível no modo suporte: quem autoriza o acesso é a própria rede.
           </p>
         ))}
 

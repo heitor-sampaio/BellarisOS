@@ -104,7 +104,7 @@ test('A27: a página do plano fechado tem "Cancelar plano", e quem não pode lê
 test('A29: o Investido total diz que o crédito comprado conta na compra', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/clients/${elisa}`)
-    await expect(p.locator('[data-pago-com-credito]').first()).toContainText('crédito na clínica comprado')
+    await expect(p.locator('[data-pago-com-credito]').first()).toContainText('crédito interno comprado')
   })
 })
 

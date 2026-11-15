@@ -103,7 +103,7 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
         [varias ? 'Cartão por maquininha e bandeira' : 'Cartão por bandeira'],
         [varias ? 'Forma, maquininha e bandeira' : 'Forma e bandeira', 'Entradas', 'Saídas', 'Saldo'],
         ...f.bandeiras.map(b => [
-          `${rotuloDaFormaDoFechamento(b.forma)}${varias ? ` · ${b.maquininha ?? 'Cartão da clínica'}` : ''} · ${nomeDaBandeira(b.bandeira)}`,
+          `${rotuloDaFormaDoFechamento(b.forma)}${varias ? ` · ${b.maquininha ?? 'Cartão'}` : ''} · ${nomeDaBandeira(b.bandeira)}`,
           reais(b.entradas), reais(b.saidas), reais(b.entradas - b.saidas),
         ]),
       ]

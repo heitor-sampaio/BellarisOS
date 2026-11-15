@@ -25,7 +25,7 @@ export function DocumentosDaJanela({ appointmentId, slug }: { appointmentId: str
   if (!docs?.length) return null
   return (
     <div data-documentos-do-agendamento style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <p className="overline">Termos e contratos</p>
+      <p className="overline">Documentos</p>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {docs.map(d => (
           <li key={d.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>

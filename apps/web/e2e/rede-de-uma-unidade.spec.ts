@@ -13,8 +13,15 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  * F8 da 5ª simulação (2026-11-02): o D-19 limpou o dashboard e os Relatórios, e
  * o resto da clínica de uma unidade seguia falando "rede" e "filial" — o menu,
  * o cargo no cabeçalho, Equipe, Procedimentos, Estoque, Financeiro, Documentos,
- * Planejamentos, o checkout, as Configurações. O teste percorre as telas dos
- * dois portais e não pode achar as palavras; com a segunda unidade, elas voltam.
+ * Planejamentos, o checkout, as Configurações.
+ *
+ * PO2 do plano de adaptação (a revisão do Heitor, 2026-11-13: "Clinica é a
+ * mesma coisa que rede e não deve existir no sistema"): o F8 trocava "rede"
+ * por "clínica", e isso acabou. Na rede de uma unidade, a frase diz "rede"; o
+ * rótulo que é SÓ a rede ("Rede", "Da rede", o grupo "A rede" das
+ * Configurações) é o NOME dela. O teste percorre as telas dos dois portais e
+ * não pode achar "clínica" nem "filial"; com a segunda unidade, o rótulo volta
+ * a ser "A rede".
  *
  * O cliente típico tem UMA clínica (CLAUDE.md §1). Rede `[e2e]` própria, com a
  * dona; a segunda unidade nasce pela action da tela (createBranch), que é o que
@@ -31,8 +38,10 @@ let segunda: string | null = null
 let produto = ''
 let clienteId = ''
 
-/** As palavras de rede, como palavra inteira ("Redefinir" e "redes sociais" passam). */
-const DE_REDE = /\b(rede|filial|filiais)\b/i
+/** As palavras que saíram do sistema (V1, V2), como palavra inteira. */
+const DE_REDE = /\b(cl[íi]nicas?|filial|filiais)\b/i
+/** O nome da rede de teste — sem "clínica", senão a varredura acharia o próprio nome. */
+const nomeDaRede = `${PREFIXO} Estética uu${marca}`
 
 async function como(browser: Browser, fn: (p: Page) => Promise<void>) {
   const ctx = await browser.newContext({ storageState: dona!.estado })
@@ -89,10 +98,10 @@ const telasDaUnidade = () => [
 
 test.beforeAll(async () => {
   rede = await criarOutraRede(`uu${marca}`)
-  // O nome da rede é dado da clínica, não vocabulário: sem "rede" no nome, o
+  // O nome da rede é dado dela, não vocabulário: sem "clínica" no nome, o
   // que sobrar na tela é texto do sistema.
   expect((await db().from('tenants').update({
-    name: `${PREFIXO} Clínica uu${marca}`,
+    name: nomeDaRede,
     // O portal da rede manda ao /setup a rede sem onboarding.
     onboarding_completed_at: new Date().toISOString(),
   }).eq('id', rede.tenantId)).error).toBeNull()
@@ -144,7 +153,7 @@ test.describe.serial('a clínica de uma unidade só', () => {
     })
   })
 
-  test('com UMA unidade, nenhuma tela dos dois portais fala "rede" ou "filial" (F8)', async ({ browser }) => {
+  test('com UMA unidade, nenhuma tela dos dois portais fala "clínica" ou "filial" (PO2)', async ({ browser }) => {
     test.setTimeout(15 * 60_000)
     await como(browser, async p => {
       const achados: string[] = []
@@ -188,6 +197,10 @@ test.describe.serial('a clínica de uma unidade só', () => {
       achados.push(...await dicasDeRede(p, 'Eventos → os que nunca ocorreram'))
 
       expect(achados).toEqual([])
+
+      // PO2: o grupo "A rede" das Configurações é o nome da rede (era "A clínica").
+      await p.goto('/admin/settings')
+      await expect(p.locator('[data-grupo-de-abas="A rede"] .overline')).toHaveText(nomeDaRede)
     })
   })
 
@@ -202,13 +215,13 @@ test.describe.serial('a clínica de uma unidade só', () => {
     } finally { await ctx.close() }
   })
 
-  test('r2-cfg-02: com UMA unidade, a dica do lápis de quem atende na Equipe da unidade não diz "rede"', async ({ browser }) => {
-    // A dona que atende aparece na Equipe da unidade, com o lápis que leva à Equipe da clínica.
+  test('r2-cfg-02 / PO2: com UMA unidade, quem é da rede aparece com o nome dela na Equipe da unidade, e a dica não diz "clínica"', async ({ browser }) => {
+    // A dona que atende aparece na Equipe da unidade, com o lápis que leva à Equipe da rede.
     expect((await db().from('users').update({ provides_services: true }).eq('id', dona!.userId)).error).toBeNull()
     try {
       await como(browser, async p => {
         await p.goto(`/${slug}/team`)
-        await expect(p.getByText('Da rede', { exact: true }).or(p.getByText('Da clínica', { exact: true })).first()).toBeVisible()
+        await expect(p.locator('main').getByText(nomeDaRede, { exact: true }).first(), 'o "Da rede" é o nome dela').toBeVisible()
         expect(await dicasDeRede(p, `/${slug}/team`)).toEqual([])
       })
     } finally {
@@ -303,9 +316,9 @@ test.describe.serial('a clínica de uma unidade só', () => {
       await expect(p.getByRole('heading', { name: 'Unidades' })).toBeVisible()
       await expect(p.locator('[data-salas-da-unidade]')).toHaveCount(0)
 
-      // O vocabulário de rede volta com a segunda unidade (o controle do F8).
-      expect(await falasDeRede(p, '/admin/team')).not.toEqual([])
-      expect(await falasDeRede(p, '/admin/procedures')).not.toEqual([])
+      // Com a segunda unidade, o rótulo volta a ser "A rede" (o controle do PO2).
+      await p.goto('/admin/settings')
+      await expect(p.locator('[data-grupo-de-abas="A rede"] .overline')).toHaveText('A rede')
     })
   })
 })

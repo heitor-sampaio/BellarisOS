@@ -5,8 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClipboardList, ChevronRight, User } from 'lucide-react'
 import { lerTodas } from '@/lib/db'
-import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
-import { vocabulario } from '@/lib/unidades/vocabulario'
+import { falaDaTela } from '@/lib/unidades/uma-so'
 
 /**
  * Os planos de tratamento PROPOSTOS — "a cliente vai pensar" (PDV4, fase 3:
@@ -35,8 +34,8 @@ export async function ListaDeCheckout({
   assertPodeReceber(ctx)
 
   const ehRede = branchName === null
-  // A clínica de uma unidade não fala "rede" (F8).
-  const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
+  // Na rede de uma unidade (PO2), o rótulo que é só a rede é o nome dela.
+  const fala = await falaDaTela(ctx.tenantId)
   const admin  = createAdminClient()
 
   // O total vem das SESSÕES, que é o que o editor do plano grava. A consulta

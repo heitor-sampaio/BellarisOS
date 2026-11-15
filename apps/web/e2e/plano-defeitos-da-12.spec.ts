@@ -106,7 +106,7 @@ test('D5 e D4: cancelar relê o plano na hora, e o cancelado é só leitura, com
     // A34 da 12ª: "sem multa.Usado" — a frase colava na outra.
     await expect(dlg.locator('[data-conta-do-cancelamento]')).toContainText('sem multa. Usado:')
     await dlg.getByLabel('Motivo do cancelamento *').fill('Mudou de cidade')
-    await dlg.getByRole('radio', { name: /Crédito na clínica/ }).check()
+    await dlg.getByRole('radio', { name: /Crédito interno/ }).check()
     await dlg.getByRole('button', { name: 'Cancelar plano' }).click()
     await expect(dlg).toBeHidden()
 
@@ -114,7 +114,7 @@ test('D5 e D4: cancelar relê o plano na hora, e o cancelado é só leitura, com
     const retrato = p.locator('[data-retrato-do-cancelamento]')
     await expect(retrato).toBeVisible()
     await expect(retrato).toContainText('Mudou de cidade')
-    await expect(retrato).toContainText('R$ 200,00 em crédito na clínica')
+    await expect(retrato).toContainText('R$ 200,00 em crédito interno')
     await expect(p.locator('[data-cancelar-plano]')).toHaveCount(0)
     await expect(p.getByText('Cancelado', { exact: true }).first()).toBeVisible()
 

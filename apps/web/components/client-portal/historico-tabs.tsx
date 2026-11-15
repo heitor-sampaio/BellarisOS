@@ -220,7 +220,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                   {p.paid_at
                     ? new Date(p.paid_at).toLocaleDateString('pt-BR', { timeZone: fuso })
                     : p.aPagarNaClinica
-                      ? 'A pagar na clínica'
+                      ? 'A pagar na unidade'
                       : p.vencida && p.vencimento ? `Vencida em ${(formatDia(p.vencimento) ?? "").slice(0, 5)}`
                       : p.vencimento ? `vence em ${formatDia(p.vencimento)}` : 'Pendente'}
                   {/* D6: a parcela do crediário sem meio diz "Com a clínica" (a forma pronta da página). */}

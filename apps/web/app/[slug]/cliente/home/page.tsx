@@ -316,9 +316,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
           padding: '14px 18px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         }}>
           <div>
-            <p className="overline">Crédito na clínica</p>
+            <p className="overline">Seu crédito</p>
             <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{formatBRL(creditoNaClinica)}</p>
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Use em qualquer atendimento ou produto na clínica.</p>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Use em qualquer atendimento ou produto.</p>
             {bonusDoCredito.map((b, i) => (
               <p key={i} data-bonus-do-credito style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Crédito comprado: {b}.</p>
             ))}
@@ -337,7 +337,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
           <SectionHeader label="Como foram os seus atendimentos?" />
           {/* A54 da 8ª: parecia uma pendência — é opcional. */}
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '-4px 0 10px' }}>
-            É opcional: confirmar que o atendimento foi feito e avaliar ajuda a clínica a melhorar.
+            É opcional: confirmar que o atendimento foi feito e avaliar ajuda a equipe a melhorar.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pendingConfirm.map(a => (
@@ -409,7 +409,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 {/* A51: o de hoje que passou da hora segue aqui até a clínica concluir. */}
                 {jaPassouDaHora(nextAppt.scheduled_at) && (
                   <p data-passou-da-hora style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
-                    Hoje, já no horário: a clínica registra quando o atendimento terminar.
+                    Hoje, já no horário: a equipe registra quando o atendimento terminar.
                   </p>
                 )}
               </div>
@@ -477,7 +477,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     </Link>
                   ) : (
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10 }}>
-                      {proc.name}: agende com a clínica.
+                      {proc.name}: agende com a equipe.
                       {aClinica?.whatsapp && (
                         <> <a href={comMensagem(aClinica.whatsapp, `Olá! Quero agendar a próxima sessão do meu pacote (${proc.name}).`)!}
                           target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 700 }}>Falar no WhatsApp</a></>
@@ -613,24 +613,24 @@ function PlanoProposto({ plano, slug, validadeDias, whatsapp, telefone, avulsos 
       </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: vencido ? 'var(--warning)' : 'var(--text-muted)', fontWeight: 600 }}>
         {/* PT1b (2026-11-14): a cliente aceita pelo app, na página do plano. */}
-        {vencido ? `Proposta vencida em ${dia} — fale com a clínica para atualizar.` : `Válido até ${dia}.`}
+        {vencido ? `Proposta vencida em ${dia} — fale com a equipe para atualizar.` : `Válido até ${dia}.`}
       </p>
       <Link href={`/${slug}/cliente/planos/${plano.id}`} prefetch={false} className={vencido ? 'btn-secondary' : 'btn-primary'} style={{ justifyContent: 'center' }}>
         Ver o plano <ChevronRight size={14} aria-hidden="true" />
       </Link>
       {avulsos.length > 0 && (
         <p data-avulso-do-plano style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
-          {avulsos.join('; ')}: ele não faz parte deste plano. Fale com a clínica se ele deveria ser uma sessão do plano.
+          {avulsos.join('; ')}: ele não faz parte deste plano. Fale com a equipe se ele deveria ser uma sessão do plano.
         </p>
       )}
       {whatsapp ? (
         // A66: o WhatsApp abre com a mensagem pronta sobre ESTE plano.
         <a href={comMensagem(whatsapp, `Olá! Vi no app o plano de tratamento proposto (${sessoes.length} ${sessoes.length === 1 ? 'sessão' : 'sessões'}, ${formatBRL(valor)}) e quero conversar sobre ele.`)!}
           target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ justifyContent: 'center' }}>
-          <MessageCircle size={14} aria-hidden="true" /> Falar com a clínica
+          <MessageCircle size={14} aria-hidden="true" /> Falar com a equipe
         </a>
       ) : telefone ? (
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>Telefone da clínica: {telefone}</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>Telefone: {telefone}</p>
       ) : null}
     </div>
   )
@@ -688,7 +688,7 @@ function PlanoFechado({ plano, financeiro, slug, fuso }: { plano: ActivePlan; fi
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {sessoes.map((s, i) => {
             const sit = situacao(s.appointments)
-            const texto = sit.texto === 'A agendar' ? `A agendar · ${peloApp(s) ? 'pelo app' : 'quem marca é a clínica'}` : sit.texto
+            const texto = sit.texto === 'A agendar' ? `A agendar · ${peloApp(s) ? 'pelo app' : 'quem marca é a equipe'}` : sit.texto
             return (
               <li key={i} data-sessao-do-plano={i + 1} style={{ display: 'flex', flexDirection: 'column', gap: 1, fontSize: 'var(--text-sm-sz)' }}>
                 <span style={{ color: 'var(--text-soft)', overflowWrap: 'anywhere' }}>

@@ -18,7 +18,7 @@ export function opcoesDeParcelas(maximo: number): number[] {
 
 /** A recusa para `parcelas` acima do limite da rede, ou `null`. */
 export function recusaDasParcelas(parcelas: number, maximo: number): string | null {
-  return parcelas > maximo ? `A clínica divide o crediário em até ${maximo}x. Escolha até ${maximo} parcelas.` : null
+  return parcelas > maximo ? `A rede divide o crediário em até ${maximo}x. Escolha até ${maximo} parcelas.` : null
 }
 
 /**
@@ -30,7 +30,7 @@ export function recusaDasParcelas(parcelas: number, maximo: number): string | nu
  */
 export const ROTULO_DO_CREDIARIO = 'Crediário'
 
-/** "até 6x, o limite da clínica" — a lista parava em 6x sem dizer por quê (A23). */
+/** "até 6x, o limite da rede" — a lista parava em 6x sem dizer por quê (A23). */
 export function limiteDoCrediarioEmTexto(maximo: number): string {
-  return `até ${maximo}x, o limite da clínica`
+  return `até ${maximo}x, o limite da rede`
 }

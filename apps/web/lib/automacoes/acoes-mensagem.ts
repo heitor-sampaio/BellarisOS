@@ -153,7 +153,7 @@ async function avisoNoCelular(ator: AtorDaAutomacao, contexto: ContextoDaExecuca
     return { resumo: { enviada: false, canal: 'push', motivo: 'Este fluxo não tem cliente — não há para quem mandar o aviso.' } }
   }
   const admin = createAdminClient()
-  const rede = await ler(admin.from('tenants').select('name').eq('id', ator.tenantId).maybeSingle(), 'buscar o nome da clínica') as { name: string } | null
-  await notifyClient(admin, clienteId, { type: 'automacao', title: rede?.name ?? 'Sua clínica', body: texto })
+  const rede = await ler(admin.from('tenants').select('name').eq('id', ator.tenantId).maybeSingle(), 'buscar o nome da rede') as { name: string } | null
+  await notifyClient(admin, clienteId, { type: 'automacao', title: rede?.name ?? 'Aviso', body: texto })
   return { resumo: { enviada: true, canal: 'push' } }
 }

@@ -14,7 +14,7 @@ export function textoDaOrigemDoCredito(creditos: CreditoComOrigem[]): string {
   const entradas = creditos.filter(c => c.amount > 0 && !c.transactionId)
   const concedido = entradas.some(c => c.concedido)
   const comDinheiro = entradas.some(c => !c.concedido)
-  if (concedido && !comDinheiro) return 'o crédito foi concedido pela clínica, sem dinheiro — não é receita'
-  if (concedido && comDinheiro) return 'o crédito comprado (ou que ficou de um cancelamento) entrou no caixa quando foi pago; o concedido pela clínica nunca teve dinheiro'
+  if (concedido && !comDinheiro) return 'o crédito foi concedido, sem dinheiro — não é receita'
+  if (concedido && comDinheiro) return 'o crédito comprado (ou que ficou de um cancelamento) entrou no caixa quando foi pago; o concedido nunca teve dinheiro'
   return 'o dinheiro entrou quando o crédito foi comprado (ou ficou de um cancelamento)'
 }

@@ -93,7 +93,7 @@ test('A20: R$ 500 pagos + R$ 50 de bônus — o caixa e os pontos sobre o pago, 
     await dlg.getByRole('radio', { name: 'Pix', exact: true }).click()
     // O caixa recebe só o pago.
     await dlg.getByRole('button', { name: /^Vender por R\$\s500,00/ }).click()
-    await expect(p.getByText(/Venda registrada: Crédito na clínica/)).toBeVisible({ timeout: 15_000 })
+    await expect(p.getByText(/Venda registrada: Crédito interno/)).toBeVisible({ timeout: 15_000 })
   })
   const tx = await pagamentoDoCredito(daniela.clientId)
   expect(n(tx.amount)).toBe(500)
@@ -126,9 +126,9 @@ test('A20: no estorno o bônus sai junto — na proporção, a clínica escolhe;
   expect(await saldoDe(daniela.clientId)).toBe(420)
   await como(browser, dona.estado, async p => {
     await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
-    const linha = p.locator('[data-lancamento]', { hasText: 'Crédito na clínica' }).filter({ hasText: '500,00' }).first()
+    const linha = p.locator('[data-lancamento]', { hasText: 'Crédito interno' }).filter({ hasText: '500,00' }).first()
     await linha.getByRole('button', { name: 'Estornar' }).click()
-    const dlg = p.getByRole('dialog', { name: 'Estornar a venda de crédito na clínica?' })
+    const dlg = p.getByRole('dialog', { name: 'Estornar a venda de crédito interno?' })
     const comoSai = dlg.locator('[data-como-sai-o-bonus]')
     // As duas opções, com a conta de cada uma (do banco).
     await expect(comoSai.getByRole('radio', { name: /Inteiro.*R\$\s50,00.*volta R\$\s370,00/ })).toBeVisible()

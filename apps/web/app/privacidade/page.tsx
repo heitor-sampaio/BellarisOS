@@ -48,9 +48,9 @@ export default function PoliticaDePrivacidade() {
 
         <Secao titulo="1. Em uma frase">
           <P>
-            O BellarisOS é o sistema que a clínica usa para operar: agenda, cadastro de
+            O BellarisOS é o sistema que a rede de estética usa para operar: agenda, cadastro de
             clientes, prontuário, conversas, estoque e financeiro. Quase todo dado pessoal
-            que passa por aqui é <B>da clínica que atende você</B> — nós o guardamos e
+            que passa por aqui é <B>da rede que atende você</B> — nós o guardamos e
             processamos por conta dela, seguindo as instruções dela.
           </P>
         </Secao>
@@ -61,15 +61,15 @@ export default function PoliticaDePrivacidade() {
           </P>
           <Lista itens={[
             <>
-              <B>A clínica é a controladora</B> dos dados de quem ela atende. É ela que
+              <B>A rede é a controladora</B> dos dados de quem ela atende. É ela que
               decide coletar seu CPF, abrir seu prontuário, guardar suas fotos e conversar
               com você. Pedidos sobre esses dados começam nela.
             </>,
             <>
               <B>O BellarisOS é o operador</B> desses mesmos dados: tratamos em nome da
-              clínica, dentro do que ela determina, e não usamos o dado dela para
+              rede, dentro do que ela determina, e não usamos o dado dela para
               finalidade própria. Não vendemos dado, não fazemos perfil publicitário com o
-              dado da clínica e não cruzamos base de uma clínica com a de outra — cada rede
+              dado da rede e não cruzamos a base de uma rede com a de outra — cada uma
               vê apenas a própria (isolamento por rede e por unidade, aplicado em todas as
               consultas e também no banco).
             </>,
@@ -88,12 +88,12 @@ export default function PoliticaDePrivacidade() {
             guarda de cada uma também é diferente.
           </P>
 
-          <SubTitulo>Se você é cliente de uma clínica</SubTitulo>
+          <SubTitulo>Se você é cliente de uma rede</SubTitulo>
           <Lista itens={[
             <><B>Identificação e contato:</B> nome, CPF, data de nascimento, telefone, e-mail, endereço.</>,
             <><B>Atendimento:</B> agendamentos, procedimentos realizados, profissional, unidade, observações da equipe.</>,
             <><B>Saúde:</B> fichas clínicas e questionário de saúde, intercorrências, produtos aplicados, fotos de antes, durante e depois, termos de consentimento assinados. <B>Ver a seção 4.</B></>,
-            <><B>Conversas:</B> mensagens trocadas com a clínica por WhatsApp, Instagram, Messenger ou e-mail, incluindo anexos, quando a clínica usa a caixa de entrada do sistema.</>,
+            <><B>Conversas:</B> mensagens trocadas com a rede por WhatsApp, Instagram, Messenger ou e-mail, incluindo anexos, quando a rede usa a caixa de entrada do sistema.</>,
             <><B>Comercial:</B> origem do contato, interesse, etapa da negociação, marcações (tags).</>,
             <><B>Financeiro:</B> lançamentos, forma de pagamento, parcelas, créditos e estornos.</>,
             <><B>App e portal:</B> credenciais de acesso e identificador do aparelho para envio de notificação, se você instalar o aplicativo.</>,
@@ -115,8 +115,8 @@ export default function PoliticaDePrivacidade() {
           </P>
           <Lista itens={[
             <>Ficam em armazenamento <B>privado</B>, nunca em endereço público. Cada abertura de foto ou documento gera um link temporário, que expira.</>,
-            <>O acesso depende de permissão específica de prontuário. Quem trabalha na clínica sem essa permissão não enxerga o conteúdo clínico, mesmo vendo a agenda ou o cadastro.</>,
-            <>O <B>cliente não acessa o próprio prontuário pelo aplicativo</B> — ali ele vê o histórico de procedimentos, não o conteúdo clínico. Para receber o prontuário é preciso pedir, e o pedido passa por liberação de quem responde por ele na clínica (seção 9).</>,
+            <>O acesso depende de permissão específica de prontuário. Quem trabalha na rede sem essa permissão não enxerga o conteúdo clínico, mesmo vendo a agenda ou o cadastro.</>,
+            <>O <B>cliente não acessa o próprio prontuário pelo aplicativo</B> — ali ele vê o histórico de procedimentos, não o conteúdo clínico. Para receber o prontuário é preciso pedir, e o pedido passa por liberação de quem responde por ele na rede (seção 9).</>,
             <>Os avisos que o sistema manda sobre atendimento <B>não carregam conteúdo clínico</B>. A notificação diz que a ficha chegou; quem precisa do conteúdo abre o prontuário, com a permissão que ele exige.</>,
           ]} />
         </Secao>
@@ -125,8 +125,8 @@ export default function PoliticaDePrivacidade() {
           <Tabela
             colunas={['Para quê', 'Fundamento legal (LGPD)']}
             linhas={[
-              ['Executar o contrato com a clínica e manter o sistema no ar', 'Execução de contrato (art. 7º, V)'],
-              ['Agendar, atender, cobrar e registrar o que aconteceu', 'Execução de contrato e legítimo interesse da clínica (art. 7º, V e IX)'],
+              ['Executar o contrato com a rede e manter o sistema no ar', 'Execução de contrato (art. 7º, V)'],
+              ['Agendar, atender, cobrar e registrar o que aconteceu', 'Execução de contrato e legítimo interesse da rede (art. 7º, V e IX)'],
               ['Guardar prontuário e registro clínico', 'Tutela da saúde, por profissional de saúde ou serviço de saúde (art. 11, II, "f")'],
               ['Guardar registro financeiro e fiscal', 'Cumprimento de obrigação legal ou regulatória (art. 7º, II)'],
               ['Mandar mensagem de confirmação, lembrete e aviso de atendimento', 'Execução de contrato e legítimo interesse (art. 7º, V e IX)'],
@@ -147,10 +147,10 @@ export default function PoliticaDePrivacidade() {
               ['Supabase', 'Banco de dados, autenticação e armazenamento de arquivos', 'Estados Unidos'],
               ['Railway', 'Hospedagem da aplicação e das rotinas agendadas', 'Estados Unidos'],
               ['Upstash', 'Cache e controle de fila', 'Estados Unidos'],
-              ['Meta (WhatsApp, Instagram, Messenger)', 'Envio e recebimento de mensagens pelos canais oficiais e medição de campanhas, quando a clínica conecta a conta dela', 'Estados Unidos'],
-              ['uazapi', 'Envio e recebimento pelo WhatsApp em conexão não oficial, quando a clínica escolhe esse caminho', 'Brasil'],
+              ['Meta (WhatsApp, Instagram, Messenger)', 'Envio e recebimento de mensagens pelos canais oficiais e medição de campanhas, quando a rede conecta a conta dela', 'Estados Unidos'],
+              ['uazapi', 'Envio e recebimento pelo WhatsApp em conexão não oficial, quando a rede escolhe esse caminho', 'Brasil'],
               ['Google (Firebase Cloud Messaging)', 'Entrega das notificações no aplicativo', 'Estados Unidos'],
-              ['OpenAI', 'O Copilot, o assistente da equipe da clínica (ver a seção 6.1), quando a clínica o usa', 'Estados Unidos'],
+              ['OpenAI', 'O Copilot, o assistente da equipe da rede (ver a seção 6.1), quando a rede o usa', 'Estados Unidos'],
             ]}
           />
           <P>
@@ -166,14 +166,14 @@ export default function PoliticaDePrivacidade() {
 
         <Secao titulo="6.1 O Copilot, o assistente da equipe">
           <P>
-            O Copilot é um assistente com que a <B>equipe da clínica</B> conversa dentro do
+            O Copilot é um assistente com que a <B>equipe da rede</B> conversa dentro do
             sistema para consultar e registrar informações (agenda, cadastro, financeiro,
             estoque, comercial). Ele funciona com um modelo de linguagem da <B>OpenAI</B>.
             O paciente não conversa com o Copilot.
           </P>
           <Lista itens={[
             <><B>O Copilot não lê o prontuário:</B> nenhuma consulta dele busca prontuário, evolução, ficha de saúde, fotos clínicas ou anotações clínicas de plano de tratamento — isso só se vê na tela do sistema.</>,
-            <><B>O que a equipe envia vai como está:</B> o texto escrito, o áudio gravado (transcrito pela OpenAI) e as imagens e documentos anexados são enviados à OpenAI inteiros, para que o modelo os leia. O painel avisa, de forma fixa, para <B>não enviar material clínico</B> (fotos de procedimento, prontuário, exames) — a responsabilidade pelo que é anexado é da clínica.</>,
+            <><B>O que a equipe envia vai como está:</B> o texto escrito, o áudio gravado (transcrito pela OpenAI) e as imagens e documentos anexados são enviados à OpenAI inteiros, para que o modelo os leia. O painel avisa, de forma fixa, para <B>não enviar material clínico</B> (fotos de procedimento, prontuário, exames) — a responsabilidade pelo que é anexado é da rede.</>,
             <><B>Do sistema, vai o necessário para o pedido:</B> o que foi consultado para responder (por exemplo, nome, telefone e horário de um agendamento). Um CPF que a equipe digita para um cadastro vai no pedido; o resumo da confirmação volta ao modelo com o CPF mascarado.</>,
             <><B>Toda gravação é confirmada por uma pessoa:</B> o Copilot prepara (um agendamento, um cadastro) e só grava depois que a pessoa da equipe confirma.</>,
             <><B>A OpenAI não usa os dados para treinar modelos</B> e o pedido é feito sem guardar histórico do lado dela (pela política da OpenAI, o conteúdo pode ser retido por até 30 dias só para monitorar abuso). Áudios, imagens e documentos enviados ao Copilot são lidos na hora e não ficam guardados no sistema.</>,
@@ -185,7 +185,7 @@ export default function PoliticaDePrivacidade() {
           <Lista itens={[
             <><B>Prontuário e registro clínico:</B> pelo prazo que a legislação e a regulação profissional exigem. <B>Não são apagados a pedido</B> — ver a seção 9.</>,
             <><B>Registro financeiro e fiscal:</B> pelo prazo legal aplicável. Lançamento não se apaga; correção é feita por estorno, que deixa os dois lados registrados.</>,
-            <><B>Cadastro, conversas e histórico comercial:</B> enquanto durar a relação com a clínica e pelos prazos legais depois dela.</>,
+            <><B>Cadastro, conversas e histórico comercial:</B> enquanto durar a relação com a rede e pelos prazos legais depois dela.</>,
             <><B>Registro interno de eventos do sistema</B> (a trilha técnica que o sistema usa para reagir a fatos e para automações): <B>30 dias</B>, e depois é apagado automaticamente.</>,
             <><B>Pacote de exportação de dados:</B> fica disponível por <B>30 dias</B> a partir da geração e depois expira.</>,
             <><B>Conversas da equipe com o Copilot:</B> cada mensagem por até <B>90 dias</B>, e depois é apagada automaticamente.</>,
@@ -201,7 +201,7 @@ export default function PoliticaDePrivacidade() {
           ]} />
           <Nota>
             Nenhum sistema é imune. Se ocorrer incidente de segurança com risco relevante,
-            comunicamos a clínica e, no que nos couber, a Autoridade Nacional de Proteção de
+            comunicamos a rede e, no que nos couber, a Autoridade Nacional de Proteção de
             Dados e os titulares, nos termos do art. 48 da LGPD.
           </Nota>
         </Secao>
@@ -216,20 +216,20 @@ export default function PoliticaDePrivacidade() {
           <SubTitulo>Como pedir</SubTitulo>
           <Lista itens={[
             <>
-              <B>Se você é cliente de uma clínica:</B> o caminho mais direto é o portal do
+              <B>Se você é cliente de uma rede:</B> o caminho mais direto é o portal do
               cliente, em <Codigo>Perfil → Meus dados</Codigo>. O sistema monta um pacote com
               o que existe sobre você, em <B>PDF</B> (para ler) e <B>JSON</B> (para levar a
               outro serviço), disponível por download privado durante 30 dias. Você também
-              pode falar direto com a clínica que atende você.
+              pode falar direto com a rede que atende você.
             </>,
             <>
               <B>Sobre o conteúdo do prontuário:</B> você marca no pedido que quer incluí-lo,
-              e a liberação é decidida por quem responde pelo prontuário na clínica. Aprovado,
+              e a liberação é decidida por quem responde pelo prontuário na rede. Aprovado,
               o pacote é gerado de novo com a parte clínica junto.
             </>,
             <>
-              <B>Para pedir a eliminação dos seus dados:</B> fale com a clínica que atende
-              você, pelo contato dela. O sistema não tem um botão de eliminação: a clínica
+              <B>Para pedir a eliminação dos seus dados:</B> fale com a rede que atende
+              você, pelo contato dela. O sistema não tem um botão de eliminação: a rede
               recebe o pedido, confere o que pode ser apagado e responde a você.
             </>,
             <>
@@ -245,7 +245,7 @@ export default function PoliticaDePrivacidade() {
             profissional (<B>20 anos</B> desde o último registro), e o registro fiscal, a
             dele (<B>5 anos</B>). Apagá-los conflitaria com esses deveres — e a LGPD
             reconhece isso expressamente (art. 16, I). O resto é eliminado quando você
-            pede, pelo contato da clínica, respeitando essas guardas.
+            pede, pelo contato da rede, respeitando essas guardas.
           </P>
         </Secao>
 
@@ -261,9 +261,9 @@ export default function PoliticaDePrivacidade() {
 
         <Secao titulo="11. Crianças e adolescentes">
           <P>
-            Menores podem ser atendidos pelas clínicas, e nesse caso o tratamento dos dados
+            Menores podem ser atendidos pelas redes, e nesse caso o tratamento dos dados
             depende de consentimento específico de pelo menos um dos pais ou do responsável
-            legal, na forma do art. 14 da LGPD. Recolher esse consentimento é da clínica que
+            legal, na forma do art. 14 da LGPD. Recolher esse consentimento é da rede que
             atende; o sistema é onde ele fica registrado.
           </P>
         </Secao>
@@ -283,7 +283,7 @@ export default function PoliticaDePrivacidade() {
         <Secao titulo="13. Mudanças nesta política">
           <P>
             Se o sistema mudar o que faz com dado pessoal, este texto muda junto e a data no
-            topo é atualizada. Mudança relevante é comunicada às clínicas contratantes.
+            topo é atualizada. Mudança relevante é comunicada às redes contratantes.
           </P>
         </Secao>
       </main>

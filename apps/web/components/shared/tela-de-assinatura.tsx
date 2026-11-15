@@ -49,7 +49,7 @@ export interface DocumentoNaTela {
 type Modo = 'equipe' | 'cliente' | 'papel' | 'feito'
 
 const CANAL: Record<string, string> = {
-  CLINICA: 'na tela, na clínica', PAPEL: 'no papel', PORTAL: 'pelo portal do cliente', LINK: 'por link',
+  CLINICA: 'na tela, presencialmente', PAPEL: 'no papel', PORTAL: 'pelo portal do cliente', LINK: 'por link',
 }
 
 async function hashDe(bytes: ArrayBuffer): Promise<string> {
@@ -264,7 +264,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Documento assinado</h2>
         {codigo && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Código de verificação <strong style={{ color: 'var(--text)' }}>{codigo}</strong></p>}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          {noPortal ? 'Tudo certo! A clínica já recebeu o documento assinado.' : noPapel ? null : 'Devolva o aparelho à equipe.'}
+          {noPortal ? 'Tudo certo! A equipe já recebeu o documento assinado.' : noPapel ? null : 'Devolva o aparelho à equipe.'}
         </p>
         {noPapel && (
           <p data-assinado-no-papel style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
@@ -327,14 +327,14 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
             <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span className="chip chip-warning" style={{ alignSelf: 'flex-start' }}>Faltam dados</span>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-                {noPortal ? 'A clínica ainda está completando os seus dados para este documento. Você será avisado quando ele estiver pronto para assinar.' : 'Complete o cadastro do cliente para gerar o documento:'}
+                {noPortal ? 'A equipe ainda está completando os seus dados para este documento. Você será avisado quando ele estiver pronto para assinar.' : 'Complete o cadastro do cliente para gerar o documento:'}
               </p>
               {!noPortal && <ul style={{ paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', listStyle: 'disc' }}>
                 {doc.faltando.map(f => <li key={f}>{f}</li>)}
               </ul>}
               {!noPortal && doc.faltando.some(f => f.startsWith('Pagamento ·')) && (
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  O pagamento do contrato se define na ficha do cliente, em Termos e contratos (“Definir pagamento”).
+                  O pagamento do contrato se define na ficha do cliente, em Documentos (“Definir pagamento”).
                 </p>
               )}
               {podeColher && (
@@ -348,7 +348,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
 
           {aberto && podeColher && modo === 'equipe' && (
             <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <p className="overline">Assinar na clínica</p>
+              <p className="overline">Assinar na tela</p>
               {comJuntos && (
                 <div data-assinam-juntos style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)' }}>

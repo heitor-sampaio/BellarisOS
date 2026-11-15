@@ -79,7 +79,7 @@ export async function revogarAutorizacaoDeSuporte(grantId: string): Promise<Resu
       return { ok: false, error: 'Você não pode revogar esta autorização.' }
     }
     const { data, error } = await admin.rpc('suporte_revogar_autorizacao', {
-      p_grant: grantId, p_tenant: ctx.tenantId, p_por_user: ctx.internalUserId, p_por_staff: null, p_motivo: 'revogada pela clínica',
+      p_grant: grantId, p_tenant: ctx.tenantId, p_por_user: ctx.internalUserId, p_por_staff: null, p_motivo: 'revogada pela rede',
     })
     if (error) return { ok: false, error: error.message }
     // A sessão em curso cai na próxima requisição do atendente.

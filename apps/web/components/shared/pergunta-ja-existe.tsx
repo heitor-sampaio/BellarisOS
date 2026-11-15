@@ -40,7 +40,7 @@ export function PerguntaJaExiste({ ficha, pending, aoCadastrarMesmoAssim, aoAtua
         <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden />
         <span>
           {textoDaFichaQueJaExiste(ficha)} Nada foi gravado ainda.
-          {!ficha.podeCadastrarMesmoAssim && ' O CPF é único na clínica.'}
+          {!ficha.podeCadastrarMesmoAssim && ' O CPF é único na rede.'}
         </span>
       </span>
       <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

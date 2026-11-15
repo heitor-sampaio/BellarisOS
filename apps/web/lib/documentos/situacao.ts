@@ -40,7 +40,7 @@ export const ROTULO_DO_ENVIO: Record<string, string> = {
 
 /** Onde foi assinado. */
 export const ROTULO_DO_CANAL: Record<string, string> = {
-  CLINICA: 'na clínica', PORTAL: 'pelo portal', LINK: 'por link', PAPEL: 'no papel',
+  CLINICA: 'na tela', PORTAL: 'pelo portal', LINK: 'por link', PAPEL: 'no papel',
 }
 
 /** Cada passo da trilha (`issued_document_events.kind`) — a tela e o PDF. */

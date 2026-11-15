@@ -98,7 +98,7 @@ type PagamentoLido = {
   appointments: { procedures: { name: string } | null } | null
 }
 type DocumentoLido = { id: string; name: string; category: string; file_path: string; created_at: string }
-const CANAL_NO_PORTAL: Record<string, string> = { CLINICA: 'na clínica', PAPEL: 'no papel', PORTAL: 'pelo portal', LINK: 'por link' }
+const CANAL_NO_PORTAL: Record<string, string> = { CLINICA: 'presencialmente', PAPEL: 'no papel', PORTAL: 'pelo portal', LINK: 'por link' }
 
 export default async function HistoricoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params

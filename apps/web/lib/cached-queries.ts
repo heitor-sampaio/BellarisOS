@@ -102,7 +102,7 @@ export function getCachedFichasDoLogin(authId: string) {
       const redes = [...new Set((data ?? []).map(c => c.tenant_id as string))]
       const unidades = redes.length
         ? ((await ler(admin.from('branches').select('slug, tenant_id')
-            .in('tenant_id', redes).eq('is_active', true), 'buscar as unidades das clínicas da cliente')) ?? []) as { slug: string; tenant_id: string }[]
+            .in('tenant_id', redes).eq('is_active', true), 'buscar as unidades das redes da cliente')) ?? []) as { slug: string; tenant_id: string }[]
         : []
       return (data ?? []).map(c => {
         const unidade = c.branches as unknown as { slug: string; name: string; tenants: { name: string } | null } | null

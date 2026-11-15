@@ -563,7 +563,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             </Link>
           ) : (
             <p style={{ textAlign: 'center', color: 'var(--warning)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, marginBottom: 10 }}>
-              Pagamento a receber na recepção.
+              Pagamento a receber no PDV.
             </p>
           )
         )}

@@ -8,7 +8,7 @@ describe('A36: o saldo do crédito na tela de cobrança', () => {
   it('cobre: o saldo e o que sobra', () => {
     const t = textoDoSaldoDoCredito(450, 90)
     expect(t.cobre).toBe(true)
-    expect(br(t.texto)).toBe('Crédito na clínica: R$ 450,00 · depois deste pagamento: R$ 360,00')
+    expect(br(t.texto)).toBe('Crédito interno: R$ 450,00 · depois deste pagamento: R$ 360,00')
   })
   it('não cobre: o que falta, e que o banco recusa', () => {
     const t = textoDoSaldoDoCredito(450, 500)

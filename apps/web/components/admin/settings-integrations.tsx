@@ -458,7 +458,7 @@ function OfficialForm({ numero, configIdDoCadastro, appIdDaMeta, nomeDoNumero }:
         <div className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Conectar pela Meta</p>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-normal)' }}>
-            Abre uma janela da Meta: você entra com o Facebook da clínica, escolhe a conta do
+            Abre uma janela da Meta: você entra com o Facebook da rede, escolhe a conta do
             WhatsApp e o número, e volta com tudo pronto — sem copiar token nenhum.
           </p>
           <ConectarWhatsAppPelaMeta configId={configIdDoCadastro} appId={appIdDaMeta} modo={modo} nomeDoNumero={nomeDoNumero} />
@@ -1146,7 +1146,7 @@ function MetaMessagingConnect({
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-          Conecte a página do Facebook da clínica para receber e responder Messenger e
+          Conecte a página do Facebook da rede para receber e responder Messenger e
           Instagram Direct dentro do Inbox. O Instagram precisa ser uma conta profissional
           ligada a essa página.
         </p>

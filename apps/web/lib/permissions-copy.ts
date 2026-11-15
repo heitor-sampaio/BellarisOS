@@ -69,7 +69,7 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
   },
 ]
 
-// ─── O que cada nível libera, em português de dona de clínica ────────────────
+// ─── O que cada nível libera, em português de quem monta o cargo ────────────────
 
 const SEM_ACESSO = 'Não aparece para esta pessoa.'
 
@@ -77,7 +77,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   agenda: {
     NONE:   SEM_ACESSO,
     VIEW:   'Abre a agenda, inicia e conclui atendimentos e escreve as anotações da sessão.',
-    MANAGE: 'Tudo do Ver, mais marcar, remarcar, cancelar, marcar falta, fazer check-in e trocar o profissional do horário.',
+    MANAGE: 'Tudo do Ver, mais marcar, remarcar, cancelar, marcar falta, fazer check-in e trocar quem atende no horário.',
   },
   clients: {
     NONE:   SEM_ACESSO,
@@ -91,24 +91,24 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   medical_records: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Lê a ficha de saúde, a evolução clínica e as fotos do cliente.',
-    MANAGE: 'Tudo do Ver, mais preencher e salvar a ficha de saúde, a evolução e as fotos, e liberar a parte clínica em pedidos de LGPD.',
+    VIEW:   'Lê, no Prontuário, a ficha de saúde, a evolução, as fotos do atendimento e os anexos clínicos (exames, laudos, receitas).',
+    MANAGE: 'Tudo do Ver, mais preencher a ficha de saúde e a evolução, tirar as fotos do atendimento, anexar exames e laudos, acrescentar anotação ao atendimento concluído e liberar a parte clínica em pedidos de LGPD. Montar o plano de tratamento não pede o Prontuário: é de quem atende.',
   },
   documents: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Vê os termos e contratos do cliente, assinados e pendentes, e baixa o documento assinado.',
-    MANAGE: 'Tudo do Ver, mais colher a assinatura (na tela, no papel, pelo portal ou por link), emitir documento avulso e dispensar um documento, com motivo.',
+    VIEW:   'Vê os documentos da cliente (termos, contratos e os outros), assinados e pendentes, e baixa o documento assinado.',
+    MANAGE: 'Tudo do Ver, mais colher a assinatura (na tela, no papel, pelo app ou pelo link — todos de uma vez), emitir documento avulso e dispensar um documento, com motivo.',
   },
   procedures: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Vê a tabela de procedimentos e preços, os pacotes do cliente e a fila de fechamentos.',
-    // D1 da 12ª: não promete a venda — o “Vender” da ficha é de quem recebe (podeReceber).
-    MANAGE: 'Tudo do Ver, mais criar e precificar procedimento e pacote, montar orçamento e colher assinatura do termo. Vender (no PDV) é de Recebimentos.',
+    VIEW:   'Vê a tabela de procedimentos e preços e os pacotes.',
+    // D1 da 12ª: não promete a venda — vender no PDV é de quem recebe (podeReceber).
+    MANAGE: 'Tudo do Ver, mais criar, precificar e organizar os procedimentos, as categorias e os pacotes. Vender é no PDV, de quem tem o PDV.',
   },
   stock: {
     NONE:   SEM_ACESSO,
     VIEW:   'Vê produtos, saldo por unidade, alertas de estoque baixo e histórico de movimentação.',
-    MANAGE: 'Tudo do Ver, mais cadastrar produto, dar entrada e baixa, ajustar inventário e transferir entre unidades.',
+    MANAGE: 'Tudo do Ver, mais cadastrar produto (as categorias, as marcas e os fornecedores), dar entrada e baixa, ajustar inventário e transferir entre unidades — nas unidades da pessoa.',
   },
   financial: {
     NONE:   SEM_ACESSO,
@@ -117,13 +117,13 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   cashier: {
     NONE:   SEM_ACESSO,
-    // A15 da 11ª: Recebimentos abre o "Fechamento do dia" no menu — a linha diz.
-    MANAGE: 'Recebe o pagamento do atendimento e do plano de tratamento, na recepção, e vê o Fechamento do dia (o que entrou, por forma de pagamento). Não lança despesa, não estorna e não vê o financeiro da unidade — isso é Financeiro.',
+    // A15 da 11ª: o PDV abre o "Fechamento do dia" no menu — a linha diz.
+    MANAGE: 'Abre o PDV: faz a venda nova (procedimento, pacote, produto e crédito), recebe a comanda do atendimento e do plano de tratamento e as parcelas que a cliente veio pagar, e faz o Fechamento do dia (o que entrou, por forma de pagamento). Não lança despesa, não estorna e não vê o financeiro da unidade — isso é Financeiro.',
   },
   crm: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Vê o funil de oportunidades, abre os cards e lê as conversas de WhatsApp.',
-    MANAGE: 'Tudo do Ver, mais criar e mover oportunidades, responder no WhatsApp e agendar direto pelo CRM. Montar funis, etapas e motivos de perda é Configurações.',
+    VIEW:   'Vê o funil de oportunidades, abre os cards e lê as conversas com os contatos (WhatsApp, Instagram, Messenger).',
+    MANAGE: 'Tudo do Ver, mais criar e mover oportunidades, responder as conversas e agendar direto pelo CRM. Montar funis, etapas e motivos de perda é Configurações.',
   },
   marketing: {
     NONE:   SEM_ACESSO,
@@ -132,16 +132,16 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   reports: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Abre os relatórios: financeiro, agenda, clientes, procedimentos, profissionais e estoque. O alcance decide se é a rede toda ou uma unidade por vez.',
+    VIEW:   'Abre os relatórios que o cargo libera (as abas marcadas abaixo: financeiro, vendas, oportunidades, agenda, clientes, procedimentos, quem atende, estoque…). O alcance decide se é a rede toda ou uma unidade por vez.',
   },
   team: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Vê quem trabalha na unidade, com cargo e situação.',
-    MANAGE: 'Tudo do Ver, mais cadastrar e editar pessoas, definir o cargo de cada uma e desativar quem sai. Quem é Admin da rede só outra Admin da rede altera.',
+    VIEW:   'Vê quem trabalha nas unidades, com o cargo, as unidades de cada um e a situação.',
+    MANAGE: 'Tudo do Ver, mais cadastrar e editar pessoas, definir o cargo, as unidades e onde cada uma atende, e desativar quem sai. Quem é Admin da rede só outra Admin da rede altera.',
   },
   forms: {
     NONE:   SEM_ACESSO,
-    MANAGE: 'Monta as fichas que os profissionais preenchem e os modelos de termo e contrato que o cliente assina. Preencher a ficha é Prontuário; colher a assinatura é Termos e contratos.',
+    MANAGE: 'Monta as fichas de atendimento (as que quem atende preenche), a ficha de saúde e os modelos de documento que a cliente assina. Preencher a ficha é Prontuário; colher a assinatura é Documentos.',
   },
   roles: {
     NONE:   SEM_ACESSO,
@@ -174,12 +174,12 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
 // se reduz à lista de comissões.
 
 export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
-  reports:   'Uma unidade por vez: quem tem unidade fixa vê a dela; quem é da rede escolhe a unidade e vê uma de cada vez. O consolidado da rede fica indisponível.',
+  reports:   'Uma unidade por vez: quem não tem “A rede inteira” vê só as unidades dela, uma de cada vez; quem tem escolhe a unidade e vê uma de cada vez. O consolidado da rede fica indisponível.',
   financial: 'Com alcance próprio a tela vira só "minhas comissões": some faturamento, despesas e extrato — e não dá para lançar, mesmo com Gerenciar.',
   // D20 (o Heitor, 2026-11-11): Ver inicia e conclui; Gerenciar confirma,
   // marca a chegada, cancela, marca a falta, remarca e troca a profissional;
   // com "só os meus", tudo isso só nos dela (F65).
-  agenda:    'Com "só os meus", a pessoa mexe só nos atendimentos dela. Em Ver, inicia e conclui. Em Gerenciar, também marca a chegada, cancela e marca a falta dos dela. Confirmar a presença fica com quem tem "todos" e Gerenciar (a recepção).',
+  agenda:    'Com "só os meus", a pessoa mexe só nos atendimentos dela. Em Ver, inicia e conclui. Em Gerenciar, também marca a chegada, cancela e marca a falta dos dela. Confirmar a presença fica com quem tem "todos" e Gerenciar.',
 }
 
 // ─── Módulos que só existem no portal da rede ────────────────────────────────
@@ -187,7 +187,7 @@ export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
 // esses acessos não valem nada para essa pessoa. Já aconteceu com `forms` e
 // `reports`, que ganharam tela na unidade; estes três são de rede por natureza.
 
-export const NETWORK_ONLY_NOTE = 'Só funciona para quem tem abrangência de rede.'
+export const NETWORK_ONLY_NOTE = 'Só funciona para quem tem “A rede inteira”.'
 
 export const NETWORK_ONLY: readonly AppModule[] = ['marketing', 'automations', 'roles', 'settings']
 
@@ -199,7 +199,7 @@ export const NETWORK_ONLY: readonly AppModule[] = ['marketing', 'automations', '
  */
 export function notaDeAbrangencia(modulo: AppModule): string {
   if (modulo === 'settings') {
-    return 'Quem tem unidade fixa mexe só na aba Unidade (os dados, o horário e as salas dela): as integrações, os funis, as fichas, os termos e o resto são da clínica toda e ficam com quem é da rede.'
+    return 'Quem não tem “A rede inteira” mexe só na aba Unidade (os dados, o horário e as salas das unidades dela): as integrações, os funis, as fichas, os documentos e o resto são da rede toda e ficam com quem tem “A rede inteira”.'
   }
   return NETWORK_ONLY_NOTE
 }
@@ -211,8 +211,8 @@ export function notaDeAbrangencia(modulo: AppModule): string {
  * de alguém da unidade não esperar uma tela que ela não vai ter.
  */
 export const SO_NA_REDE_NOTE: Partial<Record<AppModule, string>> = {
-  marketing:   'É da clínica: as telas ficam no portal da rede e valem só para quem é da rede.',
-  automations: 'É da clínica: as automações ficam no portal da rede e valem só para quem é da rede.',
+  marketing:   'É da rede toda: as telas ficam no portal da rede e valem só para quem tem “A rede inteira”.',
+  automations: 'É da rede toda: as automações ficam no portal da rede e valem só para quem tem “A rede inteira”.',
 }
 
 // ─── Cargos sensíveis ────────────────────────────────────────────────────────
@@ -248,11 +248,11 @@ export function quemVendeNoResumo(niveis: Partial<Record<'procedures' | 'crm' | 
     return 'Vende no PDV (procedimento, pacote, produto e crédito).'
   }
   if ((['procedures', 'crm', 'clients'] as const).some(m => niveis[m] === 'MANAGE')) {
-    return 'Não vende no PDV: vender é de Recebimentos (ou do Financeiro em Gerenciar).'
+    return 'Não vende no PDV: vender é de quem tem o PDV (ou o Financeiro em Gerenciar).'
   }
   return null
 }
 
 /** O texto da tela de Pacotes (D1 da 12ª): onde se vende, e quem vende. */
 export const TEXTO_DA_VENDA_DO_PACOTE =
-  'A venda é no PDV, em “Nova venda” (escolha Pacote). O PDV aparece a quem tem Recebimentos (ou o Financeiro em Gerenciar).'
+  'A venda é no PDV, em “Nova venda” (escolha Pacote). O PDV aparece a quem tem o PDV no cargo (ou o Financeiro em Gerenciar).'

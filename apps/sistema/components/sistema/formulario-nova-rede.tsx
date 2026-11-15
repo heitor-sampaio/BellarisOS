@@ -55,7 +55,7 @@ export function FormularioNovaRede({ planos, diasDeTeste }: {
     <form action={enviar} className="card suporte-secao">
       <div className="sistema-form">
         <label className="suporte-campo"><span className="field-label">Nome da rede</span>
-          <input className="field" name="nome" required minLength={2} maxLength={100} placeholder="Ex.: Clínica Bella" />
+          <input className="field" name="nome" required minLength={2} maxLength={100} placeholder="Ex.: Estética Bella" />
         </label>
         <label className="suporte-campo"><span className="field-label">CPF ou CNPJ</span>
           <input className="field" name="documento" required inputMode="numeric" placeholder="Só os números" />

@@ -35,10 +35,10 @@ export default async function SeletorDeClinicaPage() {
           fontSize: 'var(--text-name)', fontWeight: 'var(--weight-extrabold)',
           letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', margin: 0,
         }}>
-          Em qual clínica você quer entrar?
+          Onde você quer entrar?
         </h1>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '6px 0 18px' }}>
-          Sua conta está em mais de uma clínica. Dá para trocar depois, pelo nome da clínica no topo.
+          Sua conta está em mais de uma rede. Dá para trocar depois, pelo nome no topo.
         </p>
         <SeletorDeClinica clinicas={fichas.map(f => ({
           clientId: f.clientId, unidade: f.unidade, rede: f.rede, disponivel: abertas.has(f.clientId),

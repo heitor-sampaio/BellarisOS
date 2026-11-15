@@ -134,7 +134,7 @@ test('A63: o cartão do pacote diz quantas restam e leva ao agendamento do proce
     await p.goto(`/${slug}/cliente/home`)
     let cartao = p.locator('[data-pacote]', { hasText: nomeDoPacote })
     await expect(cartao).toContainText('restam 2')
-    await expect(cartao).toContainText('agende com a clínica')
+    await expect(cartao).toContainText('agende com a equipe')
     await expect(cartao.getByRole('link', { name: /^Agendar/ })).toHaveCount(0)
 
     expect((await db().from('procedures').update({ visible_on_client_app: true }).eq('id', rede!.procedureId)).error).toBeNull()

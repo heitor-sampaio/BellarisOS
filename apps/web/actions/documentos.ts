@@ -411,7 +411,7 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
     // a clínica sem portal, calado) — e a tela dizia "Pedido enviado" e
     // gravava NOTIFICADO_PORTAL. Recusa antes, sem gravar nada.
     if (!temRecurso(ctx, 'portal')) {
-      return { error: 'O plano desta clínica não tem o portal do cliente. Colha na clínica, por link ou no papel.' }
+      return { error: 'O plano desta rede não tem o portal da cliente. Colha na tela, por link ou no papel.' }
     }
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
@@ -422,7 +422,7 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
     const admin = createAdminClient()
     const cliente = await ler(admin.from('clients').select('auth_id, branch_id').eq('id', doc.client_id).single(), 'buscar o cliente')
     if (!cliente?.auth_id) {
-      return { error: 'Este cliente ainda não tem acesso ao portal. Colha a assinatura na clínica.' }
+      return { error: 'Este cliente ainda não tem acesso ao portal. Colha a assinatura na tela.' }
     }
     // O portal é o da unidade do cliente (ou a do documento, se ele não tiver).
     const unidadeId = (cliente.branch_id as string | null) ?? doc.branch_id
@@ -435,7 +435,7 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
     await notifyClient(admin, doc.client_id, {
       type:  'document_to_sign',
       title: 'Documento para assinar',
-      body:  `${(unidade.name as string) || (rede?.name as string) || 'A clínica'} pediu a sua assinatura em um documento.`,
+      body:  `${(unidade.name as string) || (rede?.name as string) || 'A equipe'} pediu a sua assinatura em um documento.`,
       data:  { link: `/${unidade.slug}/cliente/documentos/${doc.id}` },
     })
     await gravar(admin.from('issued_document_events').insert({
@@ -491,7 +491,7 @@ async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{
   const temCpf = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0
   if (!temCpf && !cliente?.birth_date) {
     // Sem nada para conferir, o link valeria para quem o tivesse na mão.
-    return { error: 'O cadastro do cliente não tem CPF nem data de nascimento, e o link precisa de um dos dois para conferir quem abre. Complete o cadastro ou colha na clínica.' }
+    return { error: 'O cadastro do cliente não tem CPF nem data de nascimento, e o link precisa de um dos dois para conferir quem abre. Complete o cadastro ou colha na tela.' }
   }
 
   const { token, hash } = novoToken()
@@ -504,7 +504,7 @@ async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{
     doc.branch_id ? ler(admin.from('branches').select('name').eq('id', doc.branch_id).maybeSingle(), 'buscar a unidade') : Promise.resolve(null),
     ler(admin.from('tenants').select('name').eq('id', ctx.tenantId!).single(), 'buscar a rede'),
   ])
-  const clinica = (unidade?.name as string) || (rede?.name as string) || 'a clínica'
+  const clinica = (unidade?.name as string) || (rede?.name as string) || 'a equipe'
   const url = `${origemPublicaDe(await headers())}/assinar/${token}`
   // Genérica de propósito: a prévia do WhatsApp aparece na tela de bloqueio.
   const mensagem = mensagemDoLink({
@@ -574,7 +574,7 @@ export async function enviarLinkPelaConversa(id: string): Promise<{ error?: stri
     // Antes de gerar: sem conversa, não se revoga à toa o link que já existe.
     const conversa = await conversaDoCliente(ctx.tenantId!, doc.client_id)
     if (!conversa) {
-      return { error: 'Este cliente não tem conversa aberta no WhatsApp da clínica. Use "Enviar link" para copiar ou abrir no WhatsApp do aparelho.' }
+      return { error: 'Este cliente não tem conversa aberta no WhatsApp da rede. Use "Enviar link" para copiar ou abrir no WhatsApp do aparelho.' }
     }
 
     const criado = await criarLink(ctx, doc)

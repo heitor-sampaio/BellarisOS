@@ -19,7 +19,7 @@ export function CanalDaCampanha() {
       <Smartphone size={16} style={{ flexShrink: 0, marginTop: 2, color: 'var(--info)' }} />
       <span>
         <strong>Aviso no celular.</strong> A campanha chega como notificação no celular de quem tem o
-        app da clínica (ou os avisos do navegador ligados) e fica no sino do portal da cliente.
+        app (ou os avisos do navegador ligados) e fica no sino do portal da cliente.
         Ela não vai pelo WhatsApp.
       </span>
     </div>

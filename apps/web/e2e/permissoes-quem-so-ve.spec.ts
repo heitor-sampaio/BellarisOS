@@ -195,7 +195,7 @@ test('D8: o médico que não colhe assinatura lê quem colhe o termo que bloquei
     await p.goto(`/${slug}/agenda/${id}`)
     await expect(p.getByText('Para assinar · bloqueia').first()).toBeVisible()
     await expect(p.getByRole('link', { name: 'Colher assinatura' })).toHaveCount(0)
-    await expect(p.locator('[data-quem-colhe]')).toContainText('recepção')
+    await expect(p.locator('[data-quem-colhe]')).toContainText('quem tem os Documentos em Gerenciar')
   })
 })
 

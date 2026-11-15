@@ -490,7 +490,7 @@ export function TemplatesManager({
                   <p data-preco-da-categoria style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
                     A Meta cobra cerca de{' '}
                     <strong>{formatarPreco(precoDaCategoria(categoriaDoTemplate(form.category)))}</strong>{' '}
-                    por mensagem entregue, na conta do WhatsApp da clínica.
+                    por mensagem entregue, na conta do WhatsApp da rede.
                     {form.category === 'UTILITY' && ' Texto com cara de promoção é reclassificado pela Meta como marketing — e cobrado como tal.'}
                   </p>
                 </div>

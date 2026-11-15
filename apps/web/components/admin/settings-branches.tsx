@@ -72,7 +72,7 @@ export async function SettingsBranches() {
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
             {/* A clínica de uma unidade não fala "rede" (F8). */}
-            {umaUnidade ? 'A unidade da clínica e as salas dela' : 'Gerencie as unidades da rede'}
+            {umaUnidade ? 'A unidade e as salas dela' : 'Gerencie as unidades da rede'}
           </p>
         </div>
         <BranchForm />
@@ -98,7 +98,7 @@ export async function SettingsBranches() {
       {!branches?.length ? (
         <div className="card" style={{ padding: '48px 24px', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-            Nenhuma unidade cadastrada. Crie a primeira unidade da clínica.
+            Nenhuma unidade cadastrada. Crie a primeira unidade da rede.
           </p>
         </div>
       ) : (

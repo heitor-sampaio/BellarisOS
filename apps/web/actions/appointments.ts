@@ -952,7 +952,7 @@ async function finishSessionInterno(
         .eq('id', appt.procedure_id as string).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o procedimento')
       const form = proc?.form_id
         ? await ler(admin.from('forms').select('id, name, schema')
-            .eq('id', proc.form_id as string).eq('tenant_id', ctx.tenantId!).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha do procedimento')
+            .eq('id', proc.form_id as string).eq('tenant_id', ctx.tenantId!).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha de atendimento')
         : null
       ficha = fichaParaConcluir(form as { id: string; name: string; schema: unknown } | null, fichaDigitada)
     }

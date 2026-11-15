@@ -86,7 +86,7 @@ export function DevolverParteDaVenda({ transacaoId, onFechar }: { transacaoId: s
       if (r.error) { setErro(r.error); return }
       toast.success(r.devolver && r.devolver > 0
         ? r.destino === 'CREDITO'
-          ? `Devolução registrada (${previa.devolvido}). ${formatBRL(r.devolver)} ficaram de crédito na clínica.`
+          ? `Devolução registrada (${previa.devolvido}). ${formatBRL(r.devolver)} ficaram de crédito interno.`
           : `Devolução registrada (${previa.devolvido}). ${formatBRL(r.devolver)} estornados à cliente.`
         : `Devolução registrada (${previa.devolvido}).`)
       onFechar()

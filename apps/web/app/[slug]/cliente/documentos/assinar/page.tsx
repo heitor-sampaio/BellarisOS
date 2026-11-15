@@ -35,7 +35,7 @@ export default async function AssinarTodosPage({ params }: { params: Promise<{ s
       documentos={documentos}
       assinante={assinante}
       cabecalho={`${nomeParaSaudar(assinante) || assinante}, leia os documentos e assine uma vez no fim.`}
-      final="Tudo certo! A clínica já recebeu os documentos assinados."
+      final="Tudo certo! A equipe já recebeu os documentos assinados."
       assinar={assinarJuntosNoPortal}
       rodape={<Link href={`/${slug}/cliente/documentos`} className="btn-primary">Voltar aos documentos</Link>}
     />

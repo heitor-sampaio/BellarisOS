@@ -9,7 +9,7 @@ export function avisoDoPreAtendimento(slug: string, modo: 'COMPLETO' | 'CONFIRMA
     title: 'Antes do seu atendimento',
     body: modo === 'CONFIRMAR'
       ? 'Confirme se algo mudou desde a sua última ficha. Leva um minuto.'
-      : 'A clínica mandou algumas perguntas para você responder pelo app.',
+      : 'A equipe mandou algumas perguntas para você responder pelo app.',
     data: { link: `/${slug}/cliente/pre-atendimento` },
   }
 }

@@ -48,5 +48,5 @@ export function notaDoEstornoParcialParaACliente(t: LancamentoParaNota): string 
  */
 export function notaDoUsoDeCredito(t: LancamentoParaNota): string | null {
   if (t.type !== 'INCOME' || t.payment_method !== 'INTERNAL_CREDIT' || t.notes === 'Estornada') return null
-  return 'Uso do crédito na clínica: não é receita — o caixa foi quando o crédito foi comprado (ou ficou de um cancelamento).'
+  return 'Uso do crédito interno: não é receita — o caixa foi quando o crédito foi comprado (ou ficou de um cancelamento).'
 }

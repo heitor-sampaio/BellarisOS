@@ -42,5 +42,5 @@ export function faltaNaFichaDoProcedimento(
 ): FaltaNoAtendimento | null {
   const ignorar: AnamnesisFieldType[] = o.semInjetaveis ? ['injectable_map'] : []
   const f = primeiraObrigatoriaVazia(rows, respostas, ignorar)
-  return f ? { onde: 'ficha', campo: f.id, rotulo: f.label, mensagem: `Falta preencher "${f.label}" na ficha do procedimento.` } : null
+  return f ? { onde: 'ficha', campo: f.id, rotulo: f.label, mensagem: `Falta preencher "${f.label}" na ficha de atendimento.` } : null
 }

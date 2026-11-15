@@ -221,7 +221,7 @@ export function PainelDeDocumentos(p: {
         </p>
         <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>Documentos</h1>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '4px 0 0' }}>
-          Termos e contratos emitidos · {p.periodo.rotulo}
+          Documentos emitidos · {p.periodo.rotulo}
         </p>
       </div>
         <PeriodSelector

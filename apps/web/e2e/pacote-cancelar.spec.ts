@@ -234,7 +234,7 @@ test.describe.serial('cancelar pacote', () => {
       await expect(dlg.locator('[data-agendamentos-do-pacote]')).toContainText('1 sessão já agendada')
       await dlg.getByLabel('Motivo do cancelamento *').fill('Mudou de cidade')
       await expect(dlg.getByRole('button', { name: 'Cancelar pacote' }), 'sem dizer como devolver, não cancela').toBeDisabled()
-      await dlg.getByRole('radio', { name: /Crédito na clínica/ }).check()
+      await dlg.getByRole('radio', { name: /Crédito interno/ }).check()
       await expect(dlg.getByRole('button', { name: 'Cancelar pacote' }), 'sem dizer o que fazer com o agendamento, não cancela').toBeDisabled()
       await dlg.getByRole('radio', { name: /Cancelar os agendamentos/ }).check()
       await dlg.getByRole('button', { name: 'Cancelar pacote' }).click()

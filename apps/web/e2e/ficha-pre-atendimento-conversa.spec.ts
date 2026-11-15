@@ -114,7 +114,7 @@ test.describe.serial('pré-atendimento: a ficha pela conversa do inbox', () => {
       await page.locator(`[title*="Ficha conversa pv${marca}"]`).first().click()
       const ficha = page.locator('[data-pre-atendimento-do-agendamento]')
       await ficha.getByRole('button', { name: 'Mandar pela conversa' }).click()
-      await expect(ficha.getByText('Link enviado pela conversa do WhatsApp da clínica.')).toBeVisible()
+      await expect(ficha.getByText('Link enviado pela conversa do WhatsApp da rede.')).toBeVisible()
     })
 
     const { data: msgs } = await db().from('messages').select('content, status, direction, whatsapp_number_id')

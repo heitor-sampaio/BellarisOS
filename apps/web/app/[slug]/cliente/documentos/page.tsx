@@ -42,7 +42,7 @@ export default async function DocumentosDoClientePage({
         <div className="card-brand" style={{ padding: '14px 18px', borderRadius: 'var(--radius-card-token)' }}>
           <p style={{ fontWeight: 'var(--weight-extrabold)' }}>Agendamento feito!</p>
           <p style={{ fontSize: 'var(--text-sm-sz)', marginTop: 2 }}>
-            Para este atendimento, a clínica pede a sua assinatura {doAgendamento.length === 1 ? 'no documento abaixo' : 'nos documentos abaixo'}. Você pode assinar agora mesmo.
+            Para este atendimento, a equipe pede a sua assinatura {doAgendamento.length === 1 ? 'no documento abaixo' : 'nos documentos abaixo'}. Você pode assinar agora mesmo.
           </p>
         </div>
       )}
@@ -77,7 +77,7 @@ function Cartao({ slug, doc, fuso }: { slug: string; doc: Awaited<ReturnType<typ
   const Icone = doc.tipo === 'CONTRATO_PLANO' || doc.tipo === 'CONTRATO_PACOTE' ? ScrollText : doc.tipo === 'CONTRATO' ? FileText : doc.tipo === 'DOCUMENTO' ? FileCheck : FileSignature
   const situacao = doc.status === 'ASSINADO'
     ? `Assinado em ${doc.assinadoEm ? formatDate(doc.assinadoEm, fuso) : '—'}`
-    : doc.status === 'INCOMPLETO' ? 'Em preparação pela clínica' : 'Esperando a sua assinatura'
+    : doc.status === 'INCOMPLETO' ? 'Em preparação pela equipe' : 'Esperando a sua assinatura'
   return (
     <Link href={`/${slug}/cliente/documentos/${doc.id}`} data-documento={doc.id} className="card"
       style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>

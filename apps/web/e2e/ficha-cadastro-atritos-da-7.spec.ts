@@ -178,12 +178,12 @@ test('A26: "Pedir no portal" só para quem tem o app; sem ele, a tela diz antes 
 
   await como(browser, async p => {
     await p.goto(`/${slug}/clients/${semApp}?aba=documentos`)
-    const termos = p.getByRole('region', { name: 'Termos e contratos' })
+    const termos = p.getByRole('region', { name: 'Documentos para assinatura' })
     await expect(termos.getByRole('link', { name: 'Colher assinatura' })).toBeVisible()
     await expect(termos.getByRole('button', { name: 'Pedir no portal' })).toHaveCount(0)
-    await expect(termos.locator('[data-sem-portal]')).toContainText('Sem acesso ao app: colha na clínica, por link ou no papel.')
+    await expect(termos.locator('[data-sem-portal]')).toContainText('Sem acesso ao app: colha na tela, por link ou no papel.')
 
     await p.goto(`/${slug}/clients/${comApp}?aba=documentos`)
-    await expect(p.getByRole('region', { name: 'Termos e contratos' }).getByRole('button', { name: 'Pedir no portal' }), 'controle: com o app, o botão está lá').toBeVisible()
+    await expect(p.getByRole('region', { name: 'Documentos para assinatura' }).getByRole('button', { name: 'Pedir no portal' }), 'controle: com o app, o botão está lá').toBeVisible()
   })
 })

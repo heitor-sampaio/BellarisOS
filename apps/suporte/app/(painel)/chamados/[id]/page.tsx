@@ -89,7 +89,7 @@ export default async function ChamadoPage({ params, searchParams }: {
                 expiraEm={c.autorizacao.expiraEm} clinico={c.autorizacao.clinico} chamadoId={c.id} />
             ) : (
               <p className="suporte-texto-fraco">
-                {c.quemId ? 'Sem autorização vigente: só a clínica libera o acesso.' : 'Quem abriu não está mais na rede.'}
+                {c.quemId ? 'Sem autorização vigente: só a rede libera o acesso.' : 'Quem abriu não está mais na rede.'}
               </p>
             )}
             <AcoesDoChamado chamadoId={c.id} status={c.status} podePedir={!c.autorizacao && !!c.quemId} />

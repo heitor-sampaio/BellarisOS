@@ -11,7 +11,7 @@ export const AVISOS_DA_URL = {
   'atende-em-outra-unidade': 'Os seus atendimentos nessa unidade estão na sua agenda, aqui. O resto daquela unidade é da equipe de lá.',
   'portal-da-rede': 'O portal da rede é de quem atende todas as unidades. Abrimos a sua.',
   // C61 (F70): o primeiro acesso da clínica (o /setup) é de quem é da rede.
-  'setup-da-rede':  'O primeiro acesso da clínica é de quem é da rede. Abrimos a sua unidade.',
+  'setup-da-rede':  'A configuração inicial da rede é de quem tem “A rede inteira”. Abrimos a sua unidade.',
   // A14 da 13ª (F70): "?unidade=" no portal de uma unidade abria esta, calado.
   'filtro-de-unidade': 'Aqui é o portal desta unidade: para ver outra, troque de unidade no menu ou use o portal da rede.',
 } as const

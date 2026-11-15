@@ -60,8 +60,8 @@ test.beforeAll(async () => {
   }).select('id').single<{ id: string }>()
   expect(cv.error, cv.error?.message).toBeNull()
   expect((await db().from('financial_transactions').insert({
-    branch_id: rede.branchId, client_id: ana, credito_vendido_id: cv.data!.id, type: 'INCOME', category: 'Crédito na clínica',
-    description: 'Crédito na clínica', amount: 300, is_paid: true, paid_at: '2021-05-14T15:00:00Z', created_at: '2021-05-14T15:00:00Z',
+    branch_id: rede.branchId, client_id: ana, credito_vendido_id: cv.data!.id, type: 'INCOME', category: 'Crédito interno',
+    description: 'Crédito interno', amount: 300, is_paid: true, paid_at: '2021-05-14T15:00:00Z', created_at: '2021-05-14T15:00:00Z',
     payment_method: 'PIX', created_by: 'e2e',
   })).error, 'o recebimento do crédito').toBeNull()
 
@@ -90,7 +90,7 @@ test('cada linha é uma comanda — o crédito também —, e o crédito fica fo
     await expect(linhas(p)).toHaveCount(2)
     const credito = linhas(p).nth(0)
     await expect(credito).toContainText('14/05/2021')
-    await expect(credito).toContainText('Crédito na clínica')
+    await expect(credito).toContainText('Crédito interno')
     await expect(credito.locator('[data-comanda]')).toHaveText(`Nº ${comandaDoCredito}`)
     await expect(linhas(p).nth(1).locator('[data-comanda]')).toHaveText(`Nº ${comandaDoPacote}`)
 
@@ -102,7 +102,7 @@ test('cada linha é uma comanda — o crédito também —, e o crédito fica fo
     // O filtro por tipo tem o crédito.
     await p.getByRole('button', { name: 'Créditos', exact: true }).click()
     await expect(linhas(p)).toHaveCount(1)
-    await expect(linhas(p).first()).toContainText('Crédito na clínica')
+    await expect(linhas(p).first()).toContainText('Crédito interno')
   })
 })
 

@@ -195,7 +195,7 @@ test('r3-f14-04: o servidor recusa o número removido, o de outra rede, a conver
       await p.goto('/admin/inbox')
       expect((await pedir(p, velha, antigo)).texto, 'o próprio número removido').toContain('não está disponível')
       expect((await pedir(p, velha, alheio)).texto, 'o número de outra rede').toContain('não está disponível')
-      expect((await pedir(p, ativa, marketing)).texto, 'a conversa do número que continua').toContain('continua na clínica')
+      expect((await pedir(p, ativa, marketing)).texto, 'a conversa do número que continua').toContain('continua na rede')
       // O controle: o pedido certo abre.
       expect((await pedir(p, velha, marketing)).texto).toMatch(/"conversationId":"[0-9a-f-]{36}"/)
     })

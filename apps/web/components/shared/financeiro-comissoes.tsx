@@ -136,7 +136,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
       </div>
       <p data-regra-da-comissao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
         A comissão fica a pagar quando a cliente paga tudo o que a gerou: o atendimento pago, ou a venda inteira do pacote, do plano ou do produto.
-        Cartão de crédito em várias vezes conta como pago. O que a cliente ainda deve à clínica fica “aguardando o pagamento integral”
+        Cartão de crédito em várias vezes conta como pago. O que a cliente ainda deve à rede fica “aguardando o pagamento integral”
         {p.totais.aguardando > 0 ? ` (${formatBRL(p.totais.aguardando)} no total)` : ''}, fora do a pagar.
       </p>
       {/* A27 da 14ª: o fechamento é por profissional E unidade — quem atende em

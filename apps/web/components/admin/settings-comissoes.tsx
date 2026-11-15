@@ -28,11 +28,11 @@ import { Fala } from '@/components/shared/uma-unidade'
  */
 const QUANDO_VALE = [
   'A comissão fica a pagar quando a cliente paga tudo o que a gerou: o atendimento pago; no pacote, no plano, no pré-pago e na venda de produto, a venda inteira paga — a comissão da venda e a de cada sessão já feita.',
-  'Cartão de crédito em várias vezes conta como pago: quem paga a clínica é a operadora. No crediário da clínica (entrada + parcelas), a comissão libera quando a última parcela entra.',
+  'Cartão de crédito em várias vezes conta como pago: quem paga a rede é a operadora. No crediário (entrada + parcelas), a comissão libera quando a última parcela entra.',
   'Até lá, ela aparece no extrato como “aguardando o pagamento integral”, fora do a pagar e do fechamento. Se um pagamento for estornado, a comissão volta a aguardar.',
 ] as const
 const BASES = {
-  PRECO:      { label: 'Sobre o preço', explicacao: 'Quando o cliente usa pontos ou voucher como desconto, a comissão continua sobre o preço do atendimento. O desconto é custo da clínica.' },
+  PRECO:      { label: 'Sobre o preço', explicacao: 'Quando o cliente usa pontos ou voucher como desconto, a comissão continua sobre o preço do atendimento. O desconto é custo da rede.' },
   VALOR_PAGO: { label: 'Sobre o valor pago', explicacao: 'Quando o cliente usa pontos ou voucher, a comissão cai na mesma proporção. O profissional divide o custo do programa.' },
 } as const
 const PERIODOS = {
@@ -316,8 +316,8 @@ function CrediarioDaClinica({ gravado, podeEditar }: { gravado: number; podeEdit
     })
   }
   return (
-    <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }} aria-label="Crediário da clínica">
-      <h2 style={titulo}>Crediário da clínica</h2>
+    <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }} aria-label="Crediário">
+      <h2 style={titulo}>Crediário</h2>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
         <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Dividir o crediário em até</span>
         <select className="field" aria-label="Dividir o crediário em até" disabled={!podeEditar} value={n}
@@ -734,7 +734,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
             placeholder="Ex.: Stone" value={atual.nome} autoFocus={!atual.id}
             onChange={e => { const v = e.target.value; mudarAtual(() => ({ nome: v })) }} />
           {!variasMaquininhas && (
-            <span style={ajuda}>A clínica que passa o cartão em mais de uma maquininha cadastra cada uma: aí a venda no cartão pergunta “Qual maquininha?”.</span>
+            <span style={ajuda}>A rede que passa o cartão em mais de uma maquininha cadastra cada uma: aí a venda no cartão pergunta “Qual maquininha?”.</span>
           )}
         </label>
       </div>
@@ -777,7 +777,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
       )}
       {parcelasNaTela.length === 0 ? (
         <p data-so-a-vista style={ajuda}>
-          {variasMaquininhas ? 'Nesta maquininha, a' : 'A'} clínica recebe no crédito só à vista: o crédito parcelado não aparece. Para parcelar, escolha até quantas vezes{bandeira ? ' na taxa da maquininha' : ' acima'}.
+          {variasMaquininhas ? 'Nesta maquininha, a' : 'A'} rede recebe no crédito só à vista: o crédito parcelado não aparece. Para parcelar, escolha até quantas vezes{bandeira ? ' na taxa da maquininha' : ' acima'}.
         </p>
       ) : (<>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>

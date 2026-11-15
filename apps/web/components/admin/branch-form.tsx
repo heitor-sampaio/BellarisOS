@@ -179,7 +179,7 @@ export function BranchForm() {
                       onChange={e => { setSlugTouched(true); setSlug(e.target.value) }}
                     />
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      O endereço é único entre todas as clínicas: se já estiver em uso, o sistema completa com o nome da sua.
+                      O endereço é único no sistema inteiro: se já estiver em uso, o sistema completa com o nome da sua rede.
                     </span>
                   </div>
 
@@ -190,7 +190,7 @@ export function BranchForm() {
                         value={telefone} onChange={e => setTelefone(maskPhoneDigitando(e.target.value))} />
                       {/* A3 da 9ª: a regra J-66 (sem telefone na unidade, vale o da clínica). */}
                       <span data-telefone-vazio-no-app style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                        Em branco, o app da cliente mostra o telefone da clínica (o de Configurações → Geral).
+                        Em branco, o app da cliente mostra o telefone da rede (o de Configurações → Geral).
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

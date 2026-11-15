@@ -1,4 +1,4 @@
-import { getCachedNetworkBranches } from '@/lib/cached-queries'
+import { getCachedNetworkBranches, getCachedRede } from '@/lib/cached-queries'
 import { vocabulario } from '@/lib/unidades/vocabulario'
 
 /**
@@ -23,13 +23,21 @@ export async function redeTemUmaUnidade(tenantId: string): Promise<boolean> {
 }
 
 /**
+ * A fala da tela no SERVIDOR (PO2): com UMA unidade, o rótulo que é só a rede
+ * vira o nome dela e "Admin da rede" vira "Admin" (`lib/unidades/vocabulario.ts`).
+ */
+export async function falaDaTela(tenantId: string | null | undefined): Promise<(texto: string) => string> {
+  if (!tenantId) return (texto: string) => texto
+  const [umaUnidade, rede] = await Promise.all([redeTemUmaUnidade(tenantId), getCachedRede(tenantId)])
+  return vocabulario(umaUnidade, rede?.nome)
+}
+
+/**
  * O texto que o SERVIDOR devolve à tela (a recusa de uma action) na fala da
- * clínica: com UMA unidade, "rede" vira "clínica" e "Admin da rede", "Admin"
- * (`lib/unidades/vocabulario.ts`). r2-cfg-02 (revisão do Heitor de 2026-11-03):
- * "Só quem é Admin da rede…" escapava, porque a recusa nasce na action e a
- * tela a mostra como veio.
+ * rede de uma unidade: "Admin da rede" vira "Admin" (r2-cfg-02, revisão do
+ * Heitor de 2026-11-03: "Só quem é Admin da rede…" escapava, porque a recusa
+ * nasce na action e a tela a mostra como veio).
  */
 export async function falaDaRede(tenantId: string | null | undefined, texto: string): Promise<string> {
-  if (!tenantId) return texto
-  return vocabulario(await redeTemUmaUnidade(tenantId))(texto)
+  return (await falaDaTela(tenantId))(texto)
 }

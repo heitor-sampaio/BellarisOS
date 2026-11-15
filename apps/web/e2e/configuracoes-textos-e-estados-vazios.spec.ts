@@ -81,7 +81,7 @@ test('A8: na unidade, Geral não manda à aba Assinatura — diz que é de quem 
   await como(browser, daUnidade, async p => {
     await p.goto(`/e2e-un-txt${marca}/settings?tab=general`)
     // A rede de teste tem uma unidade: a clínica não fala "rede" (F8).
-    await expect(p.getByText(/A assinatura fica com quem administra a clínica/)).toBeVisible()
+    await expect(p.getByText(/A assinatura fica com quem administra a rede/)).toBeVisible()
     await expect(p.getByText(/aba Assinatura/)).toHaveCount(0)
   })
   await como(browser, gerente, async p => {

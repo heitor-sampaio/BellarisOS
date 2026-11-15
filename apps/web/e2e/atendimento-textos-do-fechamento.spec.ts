@@ -114,6 +114,6 @@ test('J-40: o avulso com preço continua dizendo que a recepção recebe', async
     await p.goto(`/${slug}/agenda/${id}`)
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
     const janela = p.getByRole('dialog', { name: 'Finalizar atendimento' })
-    await expect(janela.locator('[data-pagamento-ao-finalizar]')).toContainText('O pagamento será confirmado pela recepção')
+    await expect(janela.locator('[data-pagamento-ao-finalizar]')).toContainText('O pagamento é recebido no PDV')
   })
 })

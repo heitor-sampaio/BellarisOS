@@ -188,7 +188,7 @@ export default async function AdminEstoquePage({
             {unidade
               ? <>{daLeitura.get(unidade.id)?.name ?? unidade.name}{desativadas.has(unidade.id) && <> <SeloUnidadeDesativada /></>}</>
               // A clínica de uma unidade não fala "rede" (F8).
-              : umaUnidadeSo(branches.length) ? 'Estoque da clínica'
+              : umaUnidadeSo(branches.length) ? 'Estoque'
               : `Visão consolidada da rede · ${branches.length} unidades`}
           </p>
         </div>

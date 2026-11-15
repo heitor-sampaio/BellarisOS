@@ -25,7 +25,7 @@ export default async function VerificacaoPage() {
         <h1 className="suporte-titulo">Verificação em duas etapas</h1>
         <p className="suporte-sub">
           {pendente
-            ? <>A plataforma enxerga todas as clínicas: além da senha, ela pede o código do seu aplicativo autenticador (Google Authenticator, Microsoft Authenticator, 1Password…).</>
+            ? <>A plataforma enxerga todas as redes: além da senha, ela pede o código do seu aplicativo autenticador (Google Authenticator, Microsoft Authenticator, 1Password…).</>
             : <>Opcional: com um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, 1Password…), além da senha a plataforma passa a pedir o código dele em cada login.</>}
         </p>
         <Verificacao inicial={estado} destino="/" acoes={{ iniciar: iniciarVerificacao, confirmar: confirmarVerificacao }} />

@@ -1774,6 +1774,119 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — Bloco Vocabulário (as telas: V0, V1, V2), Bloco Cargos (CG1–CG3), PO2 dos Portais e CA1 do Portal da cliente: "clínica", "filial" e cargo fixo saem do texto que se lê
+
+A revisão do Heitor (13/11, CLAUDE.md §1): "Clinica é a mesma coisa que rede
+e não deve existir no sistema", "Filial sai de vez" e "o que define quem
+gerencia é permissão, ponto". Esta entrega é a parte das TELAS; as regras
+(`docs/regras/`), o CLAUDE.md e os nomes internos do código ficam para a
+próxima (V0/V1/V2: "telas ✅ 16/11 (docs e código: a seguir)").
+
+- **V1 / CA1 — "clínica" saiu** de toda tela dos três apps (clínica, sistema,
+  suporte), do núcleo, do portal e do app da cliente, dos avisos (push,
+  e-mail, as mensagens automáticas de modelo), das mensagens de erro, do
+  Copilot e da política de privacidade. Na tela da equipe é "a rede" (ou o
+  nome dela); no portal da cliente, "a equipe" ou "a unidade": "Seu crédito",
+  "fale com a equipe", "Telefone: …", "Ligar", "A pagar na unidade", "A equipe
+  enviou um documento", "Tudo certo! A equipe já recebeu…". Login: "Seu acesso
+  foi desativado. Fale com quem administra a rede." e "Esta conta não tem
+  acesso a nenhuma rede."; o seletor `/auth/clinicas` (a rota ficou) diz
+  "Onde você quer entrar?" e o topo "Trocar de rede". "Esta configuração é da
+  rede toda: quem muda é quem tem “A rede inteira”." (`recusaDaConfigDaClinica`
+  e a aba).
+- **PO2 — a rede de uma unidade não troca mais "rede" por "clínica"**
+  (`lib/unidades/vocabulario.ts`, `falaDeUmaUnidade`). A frase diz "rede", a
+  palavra do sistema; o rótulo que é SÓ a rede ("Rede", "A rede", "Da rede",
+  "Toda a rede" — e o grupo "A rede" das Configurações, que o Bloco
+  Configurações deixava virar "A clínica") é o NOME dela. Os dois layouts
+  passam o nome ao `UmaUnidadeProvider`; no servidor, `falaDaTela(tenantId)`
+  (`lib/unidades/uma-so.ts`). "Admin da rede" segue "Admin". O limite do plano
+  diz "O plano da sua rede" sempre (`mensagemDoLimite` perdeu o `fala`).
+- **V2 — "filial" saiu** do texto (as telas que diziam "Nenhuma filial ativa",
+  as notas do estoque, o dashboard). A nota GRAVADA da transferência antiga
+  ("Transferência para filial destino.") continua sendo conferida como está —
+  é dado, e a tela a troca pelo nome da unidade.
+- **V0 — nenhum cargo como se fosse fixo**: "a recepção", "a gerente", "a
+  contadora" viraram permissão ("quem tem a Agenda em Gerenciar", "quem tem os
+  Documentos em Gerenciar"), "a equipe" ou o PDV ("O pagamento é recebido no
+  PDV", "Enviar ao PDV"). Os nomes dos cargos-modelo ficam (são nomes de
+  cargo que a rede edita).
+- **CG1–CG3 — Cargos**: `cashier` é "PDV" e `documents` é "Documentos"
+  (`MODULE_LABELS`); as dicas e o `LEVEL_COPY` dizem o sistema adaptado (o PDV
+  faz a venda nova, recebe a comanda e as parcelas e faz o Fechamento do dia;
+  o Prontuário tem a ficha de saúde, as fotos do atendimento, os anexos e a
+  anotação; montar o plano é de quem atende; o Estoque nas unidades da
+  pessoa; Relatórios pelas abas marcadas; a Equipe com as unidades e o
+  "Atende"); as notas de abrangência falam em “A rede inteira” e "as unidades
+  dela". Nenhum nível nem escopo mudou.
+- **Nomes velhos**: "ficha do procedimento" fora das Configurações é "ficha de
+  atendimento" (o título no atendimento, o "Falta preencher … na ficha de
+  atendimento", o registro, a exportação da LGPD); "Termos e contratos" →
+  "Documentos" (a seção da ficha é "Documentos para assinatura").
+- **No banco** (`20261116200001_vocabulario_nas_funcoes` e
+  `20261116200002_ficha_de_atendimento_na_obrigatoria`, aplicadas): só o
+  corpo das funções que devolvem texto à tela — erros de `raise`, a descrição
+  do lançamento ("Crédito interno comprado"), o rótulo do relatório de vendas,
+  o motivo de perda que a rede NOVA ganha ("Fechou com a concorrência"), o
+  `limite_do_plano`, o "Falta preencher … na ficha de atendimento." da
+  conclusão. Cada função é reescrita a partir do `pg_get_functiondef` atual,
+  com troca exata (frase não achada aborta); grants e `security definer`
+  mantidos. Não destrutivas; sem backfill — o que já está gravado fica.
+- **Decidido pelos princípios** (anotado aqui, não levado ao Heitor):
+  - **"Crédito interno"** para a equipe (era "Crédito na clínica"): já era o
+    nome da forma de pagamento `INTERNAL_CREDIT` na tela — um nome só
+    (princípio 7). No app da cliente, "Seu crédito".
+  - **O crediário é "Crediário"** na forma do lançamento e "no crediário" na
+    frase do contrato (era "Com a clínica" / "com a clínica") — o nome que a
+    PDV8 deu à forma.
+  - **"A rede inteira" não vira o nome da rede** na rede de uma unidade: é o
+    nome da abrangência (U1/EQ1a), e as notas de Cargos falam nele.
+  - **A assinatura "na clínica"** (o canal CLINICA) é "na tela" /
+    "presencialmente" no texto; a chave fica.
+  - **Na tela da cliente, "a equipe"**, não o nome da rede: a frase ("fale
+    com a equipe", "quem marca é a equipe") lê melhor e não depende de um
+    nome que pode ser longo; o nome aparece onde a rede é o assunto (o
+    cartão da unidade, o seletor).
+  - **A "Receita dos atendimentos (da clínica)"** do relatório de quem atende
+    com o dinheiro de todos é "(de todos)".
+- **TDD — as falhas antes** (`tests/vocabulario-no-texto.test.ts`, uma trava
+  por AST nos três apps, no núcleo e nos tipos):
+  - `é "a rede" ou o nome dela ("clínica" só no site, como mercado): expected [ …(358) ] to deeply equal []`
+  - `a palavra é "unidade": expected [ …(8) ] to deeply equal []`
+  - `é "PDV" e "Documentos": expected [ …(28) ] to deeply equal []`
+  - `fala-se em permissão, em "a equipe" ou em "quem atende": expected [ …(32) ] to deeply equal []`
+  - e o FC1 fora das Configurações: `é "ficha de atendimento": expected [ …(15) ] to deeply equal []`.
+  As exceções da trava, uma a uma no arquivo: o prompt do Copilot (cita as
+  palavras para mandar não usá-las), os rótulos dos cargos-modelo antigos no
+  topo, os papéis FIXOS da equipe da plataforma (ADMIN, GERENTE) no app
+  sistema, e o texto gravado comparado com `===`/`startsWith`.
+  `tests/vocabulario-de-uma-unidade.test.ts` substituiu o
+  `vocabulario-da-clinica.test.ts` (o `falaDaClinica` saiu).
+- **Resultados**: E2E em série, contra o `next dev` — 39 de 39
+  (`rede-de-uma-unidade`, refeito para o PO2: varre os dois portais atrás de
+  "clínica" e "filial", confere o nome da rede no grupo das Configurações e
+  na Equipe, e "A rede" de volta com a segunda unidade;
+  `configuracoes-grupos-e-eventos`, `membro-desativado`,
+  `autenticacao-login-sem-vinculo`, `rotas-com-sessao-levam-ao-destino`,
+  `privacidade-publica`, `equipe-formulario-limpo`, `equipe-dona-que-atende`)
+  e mais 18 specs dos vizinhos (Cargos e permissões, crédito interno, portal da cliente, documentos, atendimento, checkout, fidelidade, pré-pago): 90 passaram e 4 falharam na primeira — dois pela trava do servidor que ainda dizia "na ficha do procedimento." (daí a `20261116200002`) e dois specs com o texto velho; corrigidos, os três specs de novo: 22 de 22. Os specs que procuravam os textos velhos (75) foram
+  atualizados. `typecheck` e `lint` limpos; vitest: web 292 arquivos (todos
+  passando), sistema, suporte, site, utils, validators — todos passando.
+- **Para o Heitor**:
+  - Duas migrations aplicadas (não destrutivas: só texto em função).
+  - Mexeu em arquivo compartilhado (os dois layouts, `components/shared/uma-unidade.tsx`,
+    `lib/unidades/`, `lib/permissions*.ts`, o núcleo) — vale uma completa
+    quando quiser.
+  - Na rede de uma unidade, as frases voltam a dizer "rede" (era "clínica"
+    pelo F8); só o rótulo que é a rede vira o nome dela.
+  - O que fica para a próxima: `docs/regras/` e o CLAUDE.md ainda citam
+    "clínica", "filial", "Recebimentos", "Crédito na clínica" e cargos (só
+    troquei as frases de tela citadas: o login desativado, "nenhuma rede",
+    "Esta configuração é da rede toda", o motivo de perda, o inbox sem
+    WhatsApp); e os nomes internos (`recusaDaConfigDaClinica`, `falaDaRede`,
+    `aClinicaDoEndereco`, `cartao-da-clinica.tsx`, a rota `/auth/clinicas`,
+    `regraDe: 'CLINICA'`, os títulos de teste).
+
 ### 2026-11-16 — Blocos Busca (BU1), Plataforma (PL1) e Site (SI1, SI2): o "Vender" da busca no PDV, o PDV e a Auditoria em todo plano, e o site falando o sistema adaptado
 
 A revisão do Heitor (13/11), no plano de adaptação aprovado: "Ok" (BU1),

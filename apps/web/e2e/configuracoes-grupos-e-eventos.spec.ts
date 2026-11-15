@@ -81,11 +81,11 @@ async function gruposDaTela(p: Page): Promise<[string, string[]][]> {
 test('CF1: na rede, as abas em sete grupos, na ordem, e o Eventos não está mais lá', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto('/admin/settings')
-    // A rede de uma unidade fala "clínica" no lugar de "rede" (F8): o grupo "A rede" vira "A clínica".
+    // O atributo é a chave do grupo; o rótulo na rede de uma unidade é o nome dela (PO2).
     const grupos = await gruposDaTela(p)
-    expect(grupos.map(([g]) => g.replace('A clínica', 'A rede'))).toEqual(GRUPOS.map(([g]) => g))
+    expect(grupos.map(([g]) => g)).toEqual(GRUPOS.map(([g]) => g))
     for (const [g, abas] of GRUPOS) {
-      const achado = grupos.find(([n]) => n.replace('A clínica', 'A rede') === g)!
+      const achado = grupos.find(([n]) => n === g)!
       expect(achado[1], `as abas do grupo ${g}`).toEqual([...abas])
     }
     expect(grupos.flatMap(([, a]) => a)).not.toContain('Eventos')
@@ -110,7 +110,7 @@ test('CF1: no portal da unidade, a aba Unidade fica no grupo da rede, ao lado de
     await p.goto(`/${slug}/settings`)
     const grupos = await gruposDaTela(p)
     const primeiro = grupos[0]!
-    expect(primeiro[0].replace('A clínica', 'A rede')).toBe('A rede')
+    expect(primeiro[0]).toBe('A rede')
     expect(primeiro[1]).toEqual(['Unidade', 'Geral'])
     expect(grupos.flatMap(([, a]) => a)).not.toContain('Eventos')
   })

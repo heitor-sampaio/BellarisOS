@@ -647,7 +647,7 @@ Regras:
   com `revalidateTag(tag, { expire: 0 })` — o `'max'` serviria o valor velho em
   mais uma requisição, e o `updateTag` se mostrou instável no `unstable_cache`
   (2026-10-21). Até 2026-09-27 desativar era uma coluna que nada lia. Ninguém
-  desativa a si mesmo. O login diz "Seu acesso foi desativado pela clínica"
+  desativa a si mesmo. O login diz "Seu acesso foi desativado. Fale com quem administra a rede."
   SEMPRE que o Auth responde `user_banned`, com qualquer senha (2026-11-01):
   conferir a senha antes (`senha_da_conta_confere`, J-68) era um oráculo de
   senha sem limite — a função perdeu a execução em `20261101000501`.
@@ -658,7 +658,7 @@ Regras:
   é unidade"): todo login é membro de uma rede ou cliente com ficha (a
   plataforma à parte). Login novo grava o vínculo por `comLoginNovo`, que
   apaga o login se o vínculo falha; o que sobrar não entra ("Esta conta não
-  tem acesso a nenhuma clínica."). Ver `docs/regras/plataforma.md`.
+  tem acesso a nenhuma rede."). Ver `docs/regras/plataforma.md`.
 - **Só a Admin da rede dá e altera o cargo de Admin da rede** (revisão do
   Heitor, 2026-10-29: "somente um admin pode promover alguém a admin" e
   "somente admin pode alterar admin"). Quem tem o cargo de SISTEMA Admin da

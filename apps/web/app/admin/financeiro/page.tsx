@@ -84,7 +84,7 @@ export default async function AdminFinanceiroPage({
   if (branchIds.length === 0) {
     return (
       <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
-        Nenhuma filial ativa cadastrada.
+        Nenhuma unidade ativa cadastrada.
       </div>
     )
   }

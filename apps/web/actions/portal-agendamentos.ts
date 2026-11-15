@@ -52,7 +52,7 @@ async function agendamentoDaCliente(appointmentId: string) {
 function recusaDoPrazo(scheduledAt: string, prazoHoras: number): string | null {
   const falta = new Date(scheduledAt).getTime() - Date.now()
   if (falta < prazoHoras * 3600_000) {
-    return `Pelo app, só até ${prazoHoras} horas antes do horário. Para mudar agora, fale com a clínica.`
+    return `Pelo app, só até ${prazoHoras} horas antes do horário. Para mudar agora, fale com a equipe.`
   }
   return null
 }
@@ -134,7 +134,7 @@ export async function remarcarPelaCliente(
     if (!ABERTOS.includes(a.status)) return { error: 'Este agendamento não pode mais ser remarcado.' }
     const recusa = recusaDoPrazo(a.scheduled_at, prazoHoras)
     if (recusa) return { error: recusa }
-    if (!a.professional_id && !semPreferencia) return { error: 'Fale com a clínica para remarcar este horário.' }
+    if (!a.professional_id && !semPreferencia) return { error: 'Fale com a equipe para remarcar este horário.' }
     const unidade = await unidadeDoRemarcar(admin, a, branchId)
     if (!unidade) return { error: 'Esta unidade não atende este procedimento agora. Escolha outra.' }
     const mudaDeUnidade = unidade !== a.branch_id

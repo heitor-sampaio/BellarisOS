@@ -71,7 +71,7 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
 
   const linha = { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' } as const
   const valor = { color: 'var(--text)', fontWeight: 700, whiteSpace: 'nowrap' } as const
-  const titulo = 'Estornar a venda de crédito na clínica?'
+  const titulo = 'Estornar a venda de crédito interno?'
 
   return (
     <JanelaModal rotulo={titulo} largura={480} travado={estornando} onFechar={onFechar} fechaNoFundo={false}>

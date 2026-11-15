@@ -25,7 +25,7 @@ import {
 export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
   unidadeId:   string
   onFechar:    () => void
-  /** O que dizer na ficha depois ("R$ 250,00 ficaram de crédito na clínica."). */
+  /** O que dizer na ficha depois ("R$ 250,00 ficaram de crédito interno."). */
   onCancelada: (aviso: string) => void
 }) {
   const router = useRouter()
@@ -64,7 +64,7 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
       if (r.error) { setErro(r.error); return }
       onCancelada(r.devolver && r.devolver > 0
         ? r.destino === 'CREDITO'
-          ? `Unidade cancelada. ${formatBRL(r.devolver)} ficaram de crédito na clínica.`
+          ? `Unidade cancelada. ${formatBRL(r.devolver)} ficaram de crédito interno.`
           : `Unidade cancelada. ${formatBRL(r.devolver)} estornados à cliente.`
         : r.reduzido && r.reduzido > 0 ? `Unidade cancelada. O a receber diminuiu ${formatBRL(r.reduzido)}.` : 'Unidade cancelada.')
       onFechar()

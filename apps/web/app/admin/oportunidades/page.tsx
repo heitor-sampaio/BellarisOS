@@ -192,7 +192,7 @@ export default async function AdminOportunidadesPage({
       {branches.length === 0 ? (
         <div className="card" style={{ padding: '56px 24px', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-            Nenhuma filial ativa cadastrada.
+            Nenhuma unidade ativa cadastrada.
           </p>
         </div>
       ) : (

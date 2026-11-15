@@ -79,7 +79,7 @@ test('um login sem clínica nenhuma não entra: fica no formulário, diz o porqu
     await expect(p).toHaveURL(/\/login(\?|$)/)
     await expect(p.getByRole('button', { name: 'Entrar' })).toBeVisible()
     // Desde a F5 da 5ª simulação (2026-11-01) o login sem vínculo não entra.
-    await expect(p.getByText('Esta conta não tem acesso a nenhuma clínica.')).toBeVisible()
+    await expect(p.getByText('Esta conta não tem acesso a nenhuma rede.')).toBeVisible()
     await p.waitForTimeout(2_000)
     expect(idasAoPainel, 'nada de ida e volta entre o /login e o painel').toBeLessThan(3)
   } finally {

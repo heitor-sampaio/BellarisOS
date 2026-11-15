@@ -39,7 +39,7 @@ const formatadores = (fuso: string) => ({
 const fmtMoney    = (v: unknown) => formatBRL(Number(v ?? 0))
 
 const ORIGEM_DO_AGENDAMENTO: Record<string, string> = {
-  INTERNAL: 'A clínica', CLIENT_APP: 'Você, pelo app', COMMERCIAL: 'A equipe comercial', ONLINE: 'Online',
+  INTERNAL: 'A equipe', CLIENT_APP: 'Você, pelo app', COMMERCIAL: 'A equipe comercial', ONLINE: 'Online',
 }
 const SITUACAO_DA_UNIDADE: Record<string, string> = { DISPONIVEL: 'Disponível', USADA: 'Usada', CANCELADA: 'Cancelada' }
 const CATEGORIA_DO_ANEXO: Record<string, string> = {
@@ -51,9 +51,9 @@ const SITUACAO_DO_DOCUMENTO: Record<string, string> = {
   PENDENTE: 'Aguardando assinatura', INCOMPLETO: 'Em preparação', ASSINADO: 'Assinado', DISPENSADO: 'Dispensado',
   CANCELADO: 'Cancelado', SUBSTITUIDO: 'Substituído',
 }
-const CANAL_DA_ASSINATURA: Record<string, string> = { CLINICA: 'Na clínica', PORTAL: 'Pelo app', LINK: 'Por link', PAPEL: 'No papel' }
+const CANAL_DA_ASSINATURA: Record<string, string> = { CLINICA: 'Na tela', PORTAL: 'Pelo app', LINK: 'Por link', PAPEL: 'No papel' }
 const IDENTIFICACAO: Record<string, string> = {
-  SESSAO_PORTAL: 'Pela sua conta no app', PRESENCIAL: 'Na clínica, com o documento conferido pela equipe',
+  SESSAO_PORTAL: 'Pela sua conta no app', PRESENCIAL: 'Presencialmente, com o documento conferido pela equipe',
   CPF: 'Pelo CPF', NASCIMENTO: 'Pela data de nascimento', LEGADO: 'Registro antigo',
 }
 const SITUACAO_DO_PLANO: Record<string, string> = {
@@ -114,14 +114,14 @@ function prontuarioLegivel(medical: Json | null): Json | null {
         doresRelatadas: e.queixas ?? null,
         // D18 da 8ª: do estoque do atendimento (era products_used, que nada grava).
         insumos: e.insumos_do_estoque ?? e.products_used ?? null,
-        fichaDoProcedimento: f ? { ficha: f.nome ?? 'Ficha do procedimento', respostas: respostasLegiveis(f, f.respostas) } : null,
+        fichaDoProcedimento: f ? { ficha: f.nome ?? 'Ficha de atendimento', respostas: respostasLegiveis(f, f.respostas) } : null,
         fotos: Number(e.fotos_do_atendimento ?? ((e.record_photos ?? []) as unknown[]).length),
         // PR2c (bloco Prontuário): o que se escreveu depois e o que a correção
         // substituiu — o titular tem direito ao registro inteiro, com o rastro.
         anotacoes: ((e.anotacoes_do_atendimento ?? []) as AnotacaoLida[]).map(a => ({ texto: a.texto, por: a.autor_nome, em: a.criada_em })),
         versoesAnteriores: ((e.versoes_do_registro ?? []) as VersaoLida[]).map(v => ({
           evolucao: v.evolucao, intercorrencias: v.intercorrencias,
-          fichaDoProcedimento: v.ficha ? { ficha: v.ficha.name ?? 'Ficha do procedimento', respostas: respostasLegiveis(v.ficha, v.ficha.answers) } : null,
+          fichaDoProcedimento: v.ficha ? { ficha: v.ficha.name ?? 'Ficha de atendimento', respostas: respostasLegiveis(v.ficha, v.ficha.answers) } : null,
           por: v.editada_por_nome, substituidaEm: v.substituida_em,
         })),
       }
@@ -138,7 +138,7 @@ const STATUS_LABEL: Record<string, string> = {
 const SITUACAO_DA_FICHA: Record<string, string> = { PENDENTE: 'Pendente', RESPONDIDO: 'Respondida', CANCELADO: 'Cancelada' }
 const TIPO_DA_FICHA: Record<string, string> = { COMPLETO: 'Ficha completa', CONFIRMAR: 'Confirmação ("algo mudou?")' }
 const QUEM_RESPONDEU: Record<string, string> = {
-  CLIENTE_APP: 'a cliente, pelo app', CLIENTE_LINK: 'a cliente, pelo link', EQUIPE: 'a equipe da clínica',
+  CLIENTE_APP: 'a cliente, pelo app', CLIENTE_LINK: 'a cliente, pelo link', EQUIPE: 'a equipe',
 }
 
 /** As respostas da ficha, pergunta a pergunta, com o rótulo da ficha do envio. */
@@ -246,7 +246,7 @@ export async function buildClientExport(
   const notifications = unwrap('as comunicações', notificationRes)
   const plans         = unwrap('os planos de tratamento', planRes)
   const branches      = unwrap('as unidades', branchRes)
-  const termos        = unwrap('os termos e contratos', termosRes)
+  const termos        = unwrap('os documentos', termosRes)
   const prePagos      = unwrap('os procedimentos pré-pagos', prePagoRes)
   const fichasDeSaude = (unwrap('as fichas de saúde', fichasRes) ?? []).map(p => ({
     enviadaEm:     p.created_at as string,
@@ -508,7 +508,7 @@ export async function buildClientExport(
       lines: (documents ?? []).map(d => `${fmtDate(d.created_at)} — ${String(d.name ?? d.file_name)} (${String(d.category ?? 'sem categoria')})${d.apagado_em ? ` — apagado da ficha em ${fmtDate(d.apagado_em)}` : ''}`),
     },
     {
-      title: `Termos e contratos (${(termos ?? []).length})`,
+      title: `Documentos (${(termos ?? []).length})`,
       emptyLabel: 'Nenhum termo ou contrato.',
       lines: (termos ?? []).map(t => {
         const assinatura = t.document_signatures as unknown as { channel?: string } | null

@@ -78,7 +78,7 @@ export function DesativarUnidade({
             {resumo && <p style={{ ...texto, color: 'var(--text)', fontWeight: 600 }}>{resumo}</p>}
             {resumo && (
               <p style={texto}>
-                O que ficou nela continua nos totais da clínica e nas telas da rede, com o selo “Unidade desativada”, até ser resolvido.
+                O que ficou nela continua nos totais e nas telas da rede, com o selo “Unidade desativada”, até ser resolvido.
               </p>
             )}
 

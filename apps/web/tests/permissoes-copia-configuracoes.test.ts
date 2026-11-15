@@ -13,11 +13,11 @@ describe('Configurações na tela de Cargos dizem o que vem junto e o que a unid
   })
   it('a nota diz que a unidade fixa mexe só na aba Unidade', () => {
     const nota = notaDeAbrangencia('settings')
-    expect(nota).toMatch(/unidade fixa/)
+    expect(nota).toMatch(/Quem não tem “A rede inteira” mexe só na aba Unidade/)
     expect(nota).toMatch(/aba Unidade/)
     expect(nota).not.toMatch(/Só funciona para quem tem abrangência de rede/)
   })
   it('os outros módulos de rede seguem com a nota de sempre', () => {
-    expect(notaDeAbrangencia('roles')).toBe('Só funciona para quem tem abrangência de rede.')
+    expect(notaDeAbrangencia('roles')).toBe('Só funciona para quem tem “A rede inteira”.')
   })
 })

@@ -378,7 +378,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                 {vezesNoCartao > 1 && (
                   <span data-credito-em-vezes style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                     Um pagamento só: a cliente pagou tudo agora, e a operadora deposita em {vezesNoCartao} parcelas
-                    (no “A receber da operadora”). Não é um parcelamento da cliente com a clínica.
+                    (no “A receber da operadora”). Não é o crediário da cliente.
                   </span>
                 )}
                 <AvisoDaTaxa vezes={vezesNoCartao} bandeira={bandeira} total={finalAmount} maquininha={maquininha} />

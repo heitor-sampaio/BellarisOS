@@ -117,7 +117,7 @@ export default async function RedePage({ params, searchParams }: {
                         expiraEm={autorizacao.get(m.id)!.expires_at} clinico={autorizacao.get(m.id)!.includes_clinical}
                       />
                     ) : m.is_active && (
-                      <span className="suporte-texto-fraco">Sem autorização da clínica para entrar</span>
+                      <span className="suporte-texto-fraco">Sem autorização da rede para entrar</span>
                     )}
                     <AcoesDoMembro tenantId={rede.id} userId={m.id} ativo={m.is_active} />
                   </div>

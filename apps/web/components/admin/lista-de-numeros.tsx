@@ -110,7 +110,7 @@ function CobrancaDoMes({ cobranca }: { cobranca: CobrancaDoNumero | null }) {
           <span>
             <strong>A Meta recusou templates deste número por falta de forma de pagamento</strong>{' '}
             (último em {quando(cobranca.pagamentoRecusadoEm, fuso)}). Cadastre um cartão na conta do
-            WhatsApp da clínica, no{' '}
+            WhatsApp da rede, no{' '}
             <a href={GERENCIADOR_DO_WHATSAPP} target="_blank" rel="noopener noreferrer"
               style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>
               Gerenciador do WhatsApp
@@ -139,7 +139,7 @@ function CobrancaDoMes({ cobranca }: { cobranca: CobrancaDoNumero | null }) {
         </span>
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>
           Respostas digitadas: {respostas.toLocaleString('pt-BR')} de {gratis.toLocaleString('pt-BR')} grátis no mês.
-          Valores estimados pela tabela da Meta; a fatura sai na conta do WhatsApp da clínica.
+          Valores estimados pela tabela da Meta; a fatura sai na conta do WhatsApp da rede.
         </span>
       </div>
     </div>

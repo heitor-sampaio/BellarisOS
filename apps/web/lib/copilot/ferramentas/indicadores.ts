@@ -56,7 +56,7 @@ export const indicadores: FerramentaDeLeitura<{
   nome: 'indicadores',
   tipo: 'leitura',
   modulo: 'reports', nivel: 'VIEW',
-  descricao: 'Os números da clínica num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos, novos clientes, comissões), financeiro (por unidade, forma de pagamento, categoria), vendas (cada venda: procedimento, pacote, pré-pago e plano, com o total por tipo), agenda (por status, dia da semana, origem), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (funil). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate.',
+  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos, novos clientes, comissões), financeiro (por unidade, forma de pagamento, categoria), vendas (cada venda: procedimento, pacote, pré-pago e plano, com o total por tipo), agenda (por status, dia da semana, origem), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (funil). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate.',
   parametros: z.object({
     aba: z.enum(REPORT_TABS).optional(),
     periodo: z.enum(PERIODOS).optional(),

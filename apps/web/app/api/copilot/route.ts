@@ -65,8 +65,8 @@ export async function POST(req: NextRequest) {
     return recusa(401, 'Entre no sistema para usar o Copilot.')
   }
   if (!origemConfere(req)) return recusa(403, 'Pedido de outra origem.')
-  if (ctxDaPessoa.isClient || !ctxDaPessoa.tenantId || !ctxDaPessoa.internalUserId) return recusa(403, 'O Copilot é da equipe da clínica.')
-  if (!copilotNoPlano(ctxDaPessoa)) return recusa(403, 'O Copilot não faz parte do plano da sua clínica.')
+  if (ctxDaPessoa.isClient || !ctxDaPessoa.tenantId || !ctxDaPessoa.internalUserId) return recusa(403, 'O Copilot é da equipe da rede.')
+  if (!copilotNoPlano(ctxDaPessoa)) return recusa(403, 'O Copilot não faz parte do plano da sua rede.')
   if (!copilotNoCargo(ctxDaPessoa)) return recusa(403, 'O seu cargo não tem acesso ao Copilot.')
   if (ctxDaPessoa.suporte) return recusa(403, 'No modo suporte o Copilot fica desligado.')
   if (!copilotConfigurado()) return recusa(503, 'O Copilot não está configurado nesta instalação.')

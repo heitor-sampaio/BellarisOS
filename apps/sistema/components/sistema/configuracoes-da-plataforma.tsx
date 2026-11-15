@@ -33,7 +33,7 @@ export function ConfiguracoesDaPlataforma({ diasDeTeste, diasDeCarencia, exigirV
           <input className="field" name="carencia" type="number" min={0} max={60} defaultValue={diasDeCarencia} required />
         </label>
       </div>
-      <p className="suporte-texto-fraco">Em atraso, a clínica vê o aviso e a fatura; passada a carência, o acesso é suspenso sozinho, e volta sozinho quando ela paga.</p>
+      <p className="suporte-texto-fraco">Em atraso, a rede vê o aviso e a fatura; passada a carência, o acesso é suspenso sozinho, e volta sozinho quando ela paga.</p>
       <label className="ajuda-check">
         <input type="checkbox" name="verificacao" defaultChecked={exigirVerificacao} />
         <span>Exigir a verificação em duas etapas de toda a equipe</span>

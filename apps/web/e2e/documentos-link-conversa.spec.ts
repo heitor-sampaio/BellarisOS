@@ -158,7 +158,7 @@ test.describe.serial('documentos: link pela conversa do inbox', () => {
     await como(browser, daUnidade!.estado, async page => {
       const r = await chamarAcao(page, 'actions/modelos-de-documento.ts', 'definirEnvioDoLinkPelaConversa', `/${slug}/settings?tab=documentos`, [true])
       // A rede de teste tem UMA unidade: "rede inteira" é "clínica toda" (r2-cfg-02).
-      expect(r.texto).toContain('clínica toda')
+      expect(r.texto).toContain('rede toda')
     })
     expect((await db().from('tenants').select('documentos_link_pela_conversa').eq('id', rede!.tenantId).single()).data)
       .toEqual({ documentos_link_pela_conversa: false })
@@ -169,13 +169,13 @@ test.describe.serial('documentos: link pela conversa do inbox', () => {
       await page.goto('/admin/settings?tab=documentos')
       const secao = page.getByRole('region', { name: 'Envio do link de assinatura' })
       await secao.getByRole('button', { name: 'Também pela conversa' }).click()
-      await expect(secao.getByText(/manda o link pelo WhatsApp da clínica/)).toBeVisible()
+      await expect(secao.getByText(/manda o link pelo WhatsApp da rede/)).toBeVisible()
       await expect.poll(async () => (await db().from('tenants').select('documentos_link_pela_conversa').eq('id', rede!.tenantId).single()).data?.documentos_link_pela_conversa).toBe(true)
 
       await page.goto(`/admin/clients/${clientes.a}?aba=documentos`)
       const linha = page.locator(`[data-documento="${docA}"]`)
       await linha.getByRole('button', { name: 'Enviar pela conversa' }).click()
-      await expect(page.getByText('Link enviado pela conversa do WhatsApp da clínica.')).toBeVisible()
+      await expect(page.getByText('Link enviado pela conversa do WhatsApp da rede.')).toBeVisible()
     })
 
     const { data: msgs } = await db().from('messages').select('content, status, direction, whatsapp_number_id, sent_by_name')

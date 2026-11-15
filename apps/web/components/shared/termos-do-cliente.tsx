@@ -46,7 +46,7 @@ export interface ItemDeTermo {
 }
 
 const ICONE: Record<TipoDeDocumento, typeof FileText> = { TERMO: FileSignature, CONTRATO: FileText, CONTRATO_PLANO: ScrollText, CONTRATO_PACOTE: ScrollText, DOCUMENTO: FileCheck }
-const CANAL = { CLINICA: 'na clínica', PORTAL: 'pelo portal', LINK: 'por link', PAPEL: 'no papel' } as const
+const CANAL = { CLINICA: 'na tela', PORTAL: 'pelo portal', LINK: 'por link', PAPEL: 'no papel' } as const
 
 function Situacao({ item }: { item: ItemDeTermo }) {
   const fuso = useFuso()
@@ -139,7 +139,7 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
       // Falhou depois de gerar (janela fechada): o link volta, para copiar.
       if (r.link && !r.enviado) setLink({ id, dados: r.link })
       if (r.error) { setErro(r.error); router.refresh(); return }
-      setAviso('Link enviado pela conversa do WhatsApp da clínica.')
+      setAviso('Link enviado pela conversa do WhatsApp da rede.')
       router.refresh()
     })
   }
@@ -174,7 +174,7 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
       <div className="card" style={{ padding: '16px 18px' }}>
         <p data-termos-recortados={recortado || undefined} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           {recortado
-            ? 'Os termos e contratos desta cliente não aparecem para você: com o prontuário “só os meus”, você vê os das clientes que atende.'
+            ? 'Os documentos desta cliente não aparecem para você: com o prontuário “só os meus”, você vê os das clientes que atende.'
             : 'Nenhum termo ou contrato para este cliente. Eles nascem do procedimento agendado, conforme o modelo ligado a ele.'}
         </p>
       </div>
@@ -187,15 +187,15 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
   const temAberto = itens.some(i => i.status === 'PENDENTE' || i.status === 'A_GERAR' || i.status === 'INCOMPLETO')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Termos e contratos">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Documentos para assinatura">
       {!podeColher && temAberto && (
         <p data-quem-colhe style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
-          A assinatura é colhida pela recepção (quem tem os Termos em Gerenciar): na clínica, por link ou pelo app da cliente.
+          A assinatura é colhida por quem tem os Documentos em Gerenciar: na tela, por link ou pelo app da cliente.
         </p>
       )}
       {podeColher && !temAcessoAoApp && itens.some(i => i.status === 'PENDENTE' || i.status === 'A_GERAR') && (
         <p data-sem-portal style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
-          Sem acesso ao app: colha na clínica, por link ou no papel.
+          Sem acesso ao app: colha na tela, por link ou no papel.
         </p>
       )}
       {erro && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}

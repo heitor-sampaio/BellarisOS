@@ -88,7 +88,7 @@ test('sem o portal no plano: o botão não aparece, e a action recusa sem gravar
     await expect(linha.getByRole('button', { name: 'Pedir no portal' })).toHaveCount(0)
 
     const r = await chamarAcao(p, 'actions/documentos.ts', 'pedirAssinaturaNoPortal', rota, [doc])
-    expect(r.texto).toContain('O plano desta clínica não tem o portal do cliente')
+    expect(r.texto).toContain('O plano desta rede não tem o portal da cliente')
   })
   const { data: ev } = await db().from('issued_document_events').select('kind').eq('issued_document_id', doc).eq('kind', 'NOTIFICADO_PORTAL')
   expect(ev ?? [], 'nada de "notificado" quando ninguém foi avisado').toHaveLength(0)

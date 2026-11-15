@@ -70,7 +70,7 @@ test.afterAll(async () => {
 test.describe.serial('o motivo da perda', () => {
   test('a rede nasce com os motivos de perda prontos', async () => {
     const { data } = await db().from('crm_motivos_perda').select('nome').eq('tenant_id', rede!.tenantId).eq('ativo', true).order('posicao')
-    expect((data ?? []).map(m => m.nome)).toEqual(['Preço', 'Sem retorno', 'Fechou com outra clínica', 'Sem horário que sirva', 'Desistiu', 'Outro'])
+    expect((data ?? []).map(m => m.nome)).toEqual(['Preço', 'Sem retorno', 'Fechou com a concorrência', 'Sem horário que sirva', 'Desistiu', 'Outro'])
   })
 
   test('levar o card a "Perdido" pede o motivo — e ele vai para o lead e para a linha do tempo', async ({ browser }) => {

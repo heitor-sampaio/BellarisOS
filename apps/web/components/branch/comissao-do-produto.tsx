@@ -53,7 +53,7 @@ export function ComissaoDoProduto({ productId }: { productId: string | null }) {
       <div data-comissao-do-produto style={caixa}>
         <span style={rotulo}>Comissão na venda</span>
         <span style={dica}>
-          A clínica comissiona a venda de produto por uma regra sobre o total
+          A rede comissiona a venda de produto por uma regra sobre o total
           {info.geralPct != null ? ` (${pct(info.geralPct)} do vendido)` : ' (hoje, sem comissão)'}, a mesma para todo produto.
           {' '}Para cada produto ter a sua, escolha “Por produto” em{' '}
           <Link href="/admin/settings?tab=comissoes" style={{ color: 'var(--brand)', fontWeight: 700 }}>Configurações → Comissões e taxas</Link>.

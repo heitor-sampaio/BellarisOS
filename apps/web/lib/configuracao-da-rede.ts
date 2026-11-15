@@ -17,7 +17,7 @@
  * a mesma regra.
  */
 
-export const CONFIG_DA_CLINICA = 'Esta configuração é da clínica toda: quem muda é quem administra a clínica, sem unidade fixa.'
+export const CONFIG_DA_CLINICA = 'Esta configuração é da rede toda: quem muda é quem tem “A rede inteira”.'
 
 /** Quem é da rede (sem unidade fixa) mexe na configuração da clínica. */
 export function mexeNaConfigDaClinica(ctx: { branchId: string | null }): boolean {

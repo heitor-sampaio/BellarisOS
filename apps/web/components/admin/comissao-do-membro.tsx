@@ -188,7 +188,7 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct
         </label>
         <p style={ajuda}>
           Sobre o vendido, quando ela está em “Quem vendeu”: pacote, plano, pré-pago e produto. A comissão de venda do próprio pacote
-          ou produto vence esta; sem as duas, vale a da clínica (Configurações → Comissões e taxas). O crédito na clínica não tem comissão de venda.
+          ou produto vence esta; sem as duas, vale a da rede (Configurações → Comissões e taxas). O crédito interno vendido não tem comissão de venda.
         </p>
       </div>
 

@@ -50,9 +50,9 @@ export function telefoneParaWhatsApp(telefone: string | null | undefined): strin
 export type EstadoDoLink = 'valido' | 'invalido' | 'usado' | 'revogado' | 'vencido' | 'indisponivel'
 
 export const MENSAGEM_DO_ESTADO: Record<Exclude<EstadoDoLink, 'valido'>, string> = {
-  invalido:     'Este link não existe. Confira se ele foi copiado inteiro, ou peça um novo à clínica.',
-  usado:        'Este documento já foi assinado por este link. Se precisar de uma cópia, peça à clínica.',
-  revogado:     'Este link não vale mais. Peça um novo à clínica.',
-  vencido:      'Este link venceu. Peça um novo à clínica.',
-  indisponivel: 'Este documento não está mais esperando assinatura. Fale com a clínica.',
+  invalido:     'Este link não existe. Confira se ele foi copiado inteiro, ou peça um novo à equipe.',
+  usado:        'Este documento já foi assinado por este link. Se precisar de uma cópia, peça à equipe.',
+  revogado:     'Este link não vale mais. Peça um novo à equipe.',
+  vencido:      'Este link venceu. Peça um novo à equipe.',
+  indisponivel: 'Este documento não está mais esperando assinatura. Fale com a equipe.',
 }

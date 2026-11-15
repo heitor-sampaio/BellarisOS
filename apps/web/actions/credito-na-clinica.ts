@@ -36,8 +36,8 @@ const FORMAS: ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] = ['PIX', 'CASH', 'DE
 
 /** O pagamento do crédito: sempre agora (o crédito é o dinheiro que entrou). */
 const PagamentoDoCredito = z.object({
-  forma:    z.literal('AVISTA', { message: 'O crédito na clínica é pago na hora: escolha "À vista".' }),
-  metodo:   z.enum(FORMAS, { message: 'Escolha a forma de pagamento (Pix, dinheiro ou cartão): crédito na clínica não se paga com crédito.' }),
+  forma:    z.literal('AVISTA', { message: 'O crédito interno é pago na hora: escolha "À vista".' }),
+  metodo:   z.enum(FORMAS, { message: 'Escolha a forma de pagamento (Pix, dinheiro ou cartão): crédito interno não se paga com crédito.' }),
   vezes:    z.number().int().min(1).max(12).optional(),
   bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).optional().nullable(),
   /** C75: a maquininha do cartão (o banco confere a rede). */

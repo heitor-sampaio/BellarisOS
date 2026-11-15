@@ -27,11 +27,11 @@ import { gravarAnamneseGeral, preAtendimentoPendente, preAtendimentoDoLink } fro
 export type EstadoDoLinkDaFicha = 'valido' | 'conferir' | 'invalido' | 'usado' | 'revogado' | 'vencido' | 'indisponivel'
 
 export const MENSAGEM_DO_LINK_DA_FICHA: Record<Exclude<EstadoDoLinkDaFicha, 'valido' | 'conferir'>, string> = {
-  invalido:     'Este link não existe. Confira se ele foi copiado inteiro, ou peça um novo à clínica.',
-  usado:        'Tudo certo: a sua ficha já chegou à clínica.',
-  revogado:     'Este link não vale mais. Peça um novo à clínica.',
-  vencido:      'Este link venceu. Peça um novo à clínica.',
-  indisponivel: 'Esta ficha não está mais esperando resposta. Fale com a clínica.',
+  invalido:     'Este link não existe. Confira se ele foi copiado inteiro, ou peça um novo à equipe.',
+  usado:        'Tudo certo: a sua ficha já chegou à equipe.',
+  revogado:     'Este link não vale mais. Peça um novo à equipe.',
+  vencido:      'Este link venceu. Peça um novo à equipe.',
+  indisponivel: 'Esta ficha não está mais esperando resposta. Fale com a equipe.',
 }
 
 export interface EspiadaDaFicha {
@@ -61,7 +61,7 @@ type Conferida =
 const ERRO: Record<string, string> = {
   ...MENSAGEM_DO_LINK_DA_FICHA,
   limite:         'Muitas tentativas a partir desta conexão. Tente de novo em uma hora.',
-  sem_identidade: 'Não foi possível conferir a sua identidade por este link. Fale com a clínica.',
+  sem_identidade: 'Não foi possível conferir a sua identidade por este link. Fale com a equipe.',
 }
 const STATUS: Record<string, number> = { invalido: 404, usado: 410, revogado: 410, vencido: 410, indisponivel: 410, limite: 429 }
 

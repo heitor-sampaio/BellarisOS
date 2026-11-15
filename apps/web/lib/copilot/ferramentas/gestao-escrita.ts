@@ -64,7 +64,7 @@ async function maquininhaDoPedido(c: ContextoDaFerramenta, pedido: string | unde
   const achadas = ativas.filter(m => semAcento(m.nome) === t)
   const parecidas = achadas.length ? achadas : ativas.filter(m => semAcento(m.nome).includes(t))
   if (parecidas.length === 1) return { id: parecidas[0]!.id, nome: parecidas[0]!.nome }
-  return { erro: parecidas.length ? `Mais de uma maquininha com "${pedido}": ${parecidas.map(m => m.nome).join(', ')}. Qual?` : `Maquininha "${pedido}" não encontrada. As da clínica: ${nomes}.` }
+  return { erro: parecidas.length ? `Mais de uma maquininha com "${pedido}": ${parecidas.map(m => m.nome).join(', ')}. Qual?` : `Maquininha "${pedido}" não encontrada. As da rede: ${nomes}.` }
 }
 function categoria(tipo: 'receita' | 'despesa', pedida: string): string | { erro: string } {
   const lista: readonly string[] = tipo === 'receita' ? CATEGORIAS_DE_RECEITA : CATEGORIAS_DE_DESPESA
@@ -86,7 +86,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   modulo: 'financial', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'financial'),
   recurso: 'financeiro',
-  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}), vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N. No cartão pago, a maquininha pelo nome (ex.: Stone) quando a clínica tem mais de uma — sem ela, a ferramenta pergunta.`,
+  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}), vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N. No cartão pago, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.`,
   parametros: z.object({
     tipo: z.enum(['receita', 'despesa']),
     descricao: z.string().min(2).max(200),
@@ -160,7 +160,7 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
   // dava baixa em qualquer lançamento da unidade.
   modulo: 'cashier', nivel: 'MANAGE',
   recurso: 'financeiro',
-  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a clínica tem mais de uma — sem ela, a ferramenta pergunta.',
+  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.',
   parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional(), bandeira: z.string().max(30).optional(), vezes: z.number().int().min(1).max(12).optional(), maquininha: z.string().max(60).optional() }),
   async preparar(c, a) {
     const tx = await lancamentoAoAlcance(c.admin, c.ctx, a.lancamento)
@@ -248,7 +248,7 @@ interface PayloadEntrada {
  * O que a janela de Entrada diz (C5 do levantamento, F66): a regra da despesa
  * (D13 revisto — movimentação de estoque nunca gera despesa).
  */
-const ENTRADA_SEM_DESPESA = 'Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a clínica pagou entra no Financeiro por um lançamento (categoria “Compra de estoque”).'
+const ENTRADA_SEM_DESPESA = 'Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a rede pagou entra no Financeiro por um lançamento (categoria “Compra de estoque”).'
 const num = (n: number, casas = 4) => n.toLocaleString('pt-BR', { maximumFractionDigits: casas })
 
 export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> = {
@@ -460,7 +460,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
         ...(fichas.length ? {
           aviso: veNomes
             ? `Este telefone é da ficha de ${fichas.map(f => f.nome).join(', ')}. É a mesma pessoa? Com o “Sim”, a oportunidade nasce ligada à ficha.`
-            : 'Este telefone é de uma cliente da clínica. É a mesma pessoa? Com o “Sim”, a oportunidade nasce ligada à ficha.',
+            : 'Este telefone é de uma cliente da rede. É a mesma pessoa? Com o “Sim”, a oportunidade nasce ligada à ficha.',
           escolhas: [
             ...fichas.map(f => ({ chave: `mesma:${f.id}`, rotulo: veNomes ? `Sim, é ${f.nome}` : 'Sim, é a mesma pessoa' })),
             { chave: 'outra', rotulo: 'Não, é outra pessoa' },

@@ -64,7 +64,7 @@ export async function abrirConversaNoNumero(
     .eq('id', conversaId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a conversa') as ConversaDeOrigem | null
   if (!conv || conv.channel !== 'whatsapp') return { error: 'Conversa não encontrada.' }
   if (!(await numeroRemovidoDaConversa(admin, conv.whatsapp_number_id))) {
-    return { error: 'O número desta conversa continua na clínica: responda por ela.' }
+    return { error: 'O número desta conversa continua na rede: responda por ele.' }
   }
 
   const opcoes = await numerosParaResponder(admin, ctx)
@@ -72,7 +72,7 @@ export async function abrirConversaNoNumero(
 
   const telefone = (conv.contact_phone ?? '').replace(/\D/g, '')
   if (telefone.length < 8) {
-    return { error: 'Esta conversa não tem o telefone da pessoa: comece a conversa pelo número da clínica a partir do card dela.' }
+    return { error: 'Esta conversa não tem o telefone da pessoa: comece a conversa por um número da rede a partir do card dela.' }
   }
   const formas = variantesDoTelefone(telefone)
 

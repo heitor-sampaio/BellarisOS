@@ -52,7 +52,7 @@ export async function aClinicaDoEndereco(slug: string): Promise<AClinica | null>
   const admin = createAdminClient()
   const u = await ler(admin.from('branches')
     .select('id, tenant_id, name, phone, address, city, state, zip_code, horario, tenants!inner(name, phone)')
-    .eq('slug', slug).eq('is_active', true).maybeSingle(), 'buscar a clínica do endereço') as {
+    .eq('slug', slug).eq('is_active', true).maybeSingle(), 'buscar a unidade do endereço') as {
       id: string; tenant_id: string
       name: string; phone: string | null; address: string | null; city: string | null; state: string | null; zip_code: string | null
       horario: unknown; tenants: { name: string; phone: string | null }

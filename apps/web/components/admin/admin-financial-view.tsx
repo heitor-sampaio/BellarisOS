@@ -557,7 +557,7 @@ export function AdminFinancialView({
   }
   const daAba = (a: AbaDoFinanceiro, extra: Record<string, string> = {}) => linkDaAba(base, a, manter, extra)
   // A42 da 12ª: quem só vê o Financeiro lia "use Pagar na linha" sem botão nenhum.
-  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) no cargo.'
+  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem o PDV no cargo.'
   const faixa: React.CSSProperties = { fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', margin: 0 }
 
   // A receber e a pagar (2026-10-21): a unidade mostrava, a rede não.

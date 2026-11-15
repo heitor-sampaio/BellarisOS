@@ -44,7 +44,7 @@ export function descricaoDoLancamento(tipo: string, descricao?: string | null): 
  * recepção").
  */
 export function jaPodeTrocar(saldo: number, custo: number): string | null {
-  return saldo >= custo ? 'Você já pode trocar: peça na recepção.' : null
+  return saldo >= custo ? 'Você já pode trocar: peça à equipe.' : null
 }
 
 /** Quanto os pontos valem em R$, pelo valor do ponto da rede. Nunca negativo. */

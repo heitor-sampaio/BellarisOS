@@ -18,7 +18,7 @@ export const ROTULO_DO_TIPO: Record<TipoDeVenda, string> = {
   PRE_PAGO:     'Pré-pago',
   PLANO:        'Plano',
   PRODUTO:      'Produto',
-  CREDITO:      'Crédito na clínica',
+  CREDITO:      'Crédito interno',
 }
 
 /**

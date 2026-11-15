@@ -12,7 +12,7 @@ import { Suspense } from 'react'
 import { Copilot } from '@/components/copilot/copilot'
 import { CopilotForaDoPlano } from '@/components/copilot/copilot-fora-do-plano'
 import { copilotNaTela, copilotForaDoPlanoNaTela, redeEmTeste } from '@/lib/copilot/disponivel'
-import { getCachedBranchBySlug } from '@/lib/cached-queries'
+import { getCachedBranchBySlug, getCachedRede } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 import { ENDERECOS_RESERVADOS } from '@/lib/unidades/endereco'
 import { comAviso } from '@/lib/aviso-da-url'
@@ -119,14 +119,15 @@ export default async function BranchLayout({
   // O contador do sino é acessório: a falha fica no log e ele começa em zero.
   if (unreadRes.error) console.error('[slug/layout] contar as notificações:', unreadRes.error.message)
   const initialUnread = unreadRes.count ?? 0
-  // A clínica de uma unidade não fala "rede" (D-19, F8): a régua vai às telas do navegador.
+  // A rede de uma unidade (D-19): a régua e o NOME da rede vão às telas do navegador (PO2).
   const umaUnidade = ctx.tenantId ? await redeTemUmaUnidade(ctx.tenantId) : true
+  const nomeDaRede = ctx.tenantId ? (await getCachedRede(ctx.tenantId))?.nome ?? null : null
 
   // As datas e horas da tela no fuso da unidade (F62).
   const fuso = await fusoDaUnidade(ctx.tenantId, branch.id)
 
   return (
-    <UmaUnidadeProvider valor={umaUnidade}>
+    <UmaUnidadeProvider valor={umaUnidade} nome={nomeDaRede}>
     <FusoProvider fuso={fuso}>
     <SidebarProvider>
       <Suspense fallback={null}><AvisoDaUrl /></Suspense>
@@ -157,7 +158,7 @@ export default async function BranchLayout({
       </main>
       {/* A secretária virtual, por cima de todas as telas da equipe (docs/regras/copilot.md). */}
       {copilotNaTela(ctx) && <Suspense fallback={null}><Copilot /></Suspense>}
-      {/* Fora do plano, explicado a quem administra a clínica (A51). */}
+      {/* Fora do plano, explicado a quem administra a rede (A51). */}
       {!copilotNaTela(ctx) && copilotForaDoPlanoNaTela(ctx) && (
         <CopilotForaDoPlano emTeste={await redeEmTeste(ctx.tenantId!)} assinaturaHref="/admin/settings?tab=assinatura" />
       )}

@@ -46,7 +46,7 @@ export default async function BranchSettingsPage({
       // Quem tem unidade fixa mexe só na unidade dela (H7, 2026-11-01): o resto
       // das abas diz que é da clínica toda, e o aviso de "alterar aqui muda para
       // todas" sairia convidando a mexer. Quem é da rede continua lendo o aviso.
-      subtitulo={ctx.branchId === null ? 'Cargos, modelos de ficha e integrações da rede' : 'Os dados e as salas da unidade, e o que vale para a clínica toda'}
+      subtitulo={ctx.branchId === null ? 'Cargos, modelos de ficha e integrações da rede' : 'Os dados e as salas da unidade, e o que vale para a rede toda'}
       aviso={ctx.branchId === null ? 'Estas configurações valem para a rede inteira. Alterar aqui muda para todas as unidades.' : undefined}
       atalhoParaEquipe={false}
       unidadeDaTela={{ id: unidade.id as string, nome: unidade.name as string }}

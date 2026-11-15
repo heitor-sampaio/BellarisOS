@@ -22,17 +22,17 @@ const ROTULO: Record<ChaveDeLimite, [string, string]> = {
 }
 
 /**
- * `umaUnidade`: a clínica de UMA unidade ativa não fala "rede" (a régua do
- * D-19, `falaDaRede` no app; o núcleo não importa do app, e conta aqui).
- * C61 do levantamento das regras (F70).
+ * A recusa do limite fala "rede" com uma unidade ou com várias (PO2 do plano
+ * de adaptação, a revisão do Heitor de 2026-11-13: "clínica" não existe no
+ * sistema). Era a C61 (F70), que trocava "rede" por "clínica" com uma só.
  */
-export function mensagemDoLimite(chave: ChaveDeLimite, limite: number, fala: { umaUnidade?: boolean } = {}): string {
+export function mensagemDoLimite(chave: ChaveDeLimite, limite: number): string {
   const [um, varios] = ROTULO[chave]
   // O WhatsApp a clínica amplia sozinha: a conexão adicional (2026-10-07).
   const caminho = chave === 'whatsapp'
     ? 'contrate uma conexão adicional em Configurações → Assinatura ou fale com o BellarisOS.'
     : 'fale com o BellarisOS.'
-  return `O plano da sua ${fala.umaUnidade ? 'clínica' : 'rede'} permite até ${limite} ${limite === 1 ? um : varios}. Para ampliar, ${caminho}`
+  return `O plano da sua rede permite até ${limite} ${limite === 1 ? um : varios}. Para ampliar, ${caminho}`
 }
 
 /**
@@ -67,9 +67,5 @@ export async function conferirLimite(tenantId: string, chave: ChaveDeLimite): Pr
     .eq('tenant_id', tenantId).eq('is_active', true)
   if (!error && !passaDoLimite(limite, count ?? 0)) return null
   if (error) console.error(`[planos] contar ${chave}:`, error.message)
-  // A fala: "clínica" com UMA unidade ativa (contada só na recusa).
-  const { count: unidades } = chave === 'unidades' && !error
-    ? { count }
-    : await admin.from('branches').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('is_active', true)
-  return mensagemDoLimite(chave, limite, { umaUnidade: unidades === 1 })
+  return mensagemDoLimite(chave, limite)
 }

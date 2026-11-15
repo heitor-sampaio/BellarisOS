@@ -33,7 +33,7 @@ export default async function FichaPeloLinkPage({ params }: { params: Promise<{ 
     <MolduraDaVerificacao marca={null}>
       {espiada.estado === 'valido' || espiada.estado === 'conferir'
         // A52: a ficha que a equipe preencheu, a cliente confere pelo mesmo link.
-        ? <FichaPorLink token={decodeURIComponent(token)} clinica={espiada.clinica ?? 'A clínica'} pede={espiada.pede} conferir={espiada.estado === 'conferir'} />
+        ? <FichaPorLink token={decodeURIComponent(token)} clinica={espiada.clinica ?? 'A equipe'} pede={espiada.pede} conferir={espiada.estado === 'conferir'} />
         : (
           <div className="card" style={{ padding: '28px 22px', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
             <div style={{ width: 44, height: 44, borderRadius: '50%', background: espiada.estado === 'usado' ? 'var(--success-bg)' : 'var(--warning-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -49,7 +49,7 @@ export default async function FichaPeloLinkPage({ params }: { params: Promise<{ 
             </p>
             {espiada.estado === 'usado' && (
               <p data-contato-da-clinica style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                Precisa corrigir alguma resposta? Fale com {espiada.clinica ?? 'a clínica'}
+                Precisa corrigir alguma resposta? Fale com {espiada.clinica ?? 'a equipe'}
                 {telefone ? <>: <a href={`tel:${zap ? `+${zap}` : telefone.replace(/\D/g, '')}`} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>{telefone}</a></> : '.'}
                 {zap && <> · <a href={`https://wa.me/${zap}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>WhatsApp</a></>}
               </p>

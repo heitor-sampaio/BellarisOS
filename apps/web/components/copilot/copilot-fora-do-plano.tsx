@@ -45,7 +45,7 @@ export function CopilotForaDoPlano({ emTeste, assinaturaHref }: { emTeste: boole
       </header>
       <div className="copilot-corpo">
         <div className="copilot-vazio" data-copilot-fora-do-plano>
-          <p><strong>{emTeste ? 'O Copilot não está no seu plano de teste.' : 'O Copilot não faz parte do plano da clínica.'}</strong></p>
+          <p><strong>{emTeste ? 'O Copilot não está no seu plano de teste.' : 'O Copilot não faz parte do plano da rede.'}</strong></p>
           <p>
             {emTeste
               ? 'O teste grátis libera tudo, menos o Copilot: ele custa por uso. Ele entra com um plano que o inclua, ou como adicional.'

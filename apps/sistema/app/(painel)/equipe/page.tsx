@@ -27,7 +27,7 @@ export default async function EquipePage({ searchParams }: { searchParams: Promi
       <div className="suporte-cabecalho">
         <div>
           <h1 className="suporte-titulo">Equipe da plataforma</h1>
-          <p className="suporte-sub">Quem atende as clínicas. Cada pessoa define a senha pelo convite que chega por e-mail.</p>
+          <p className="suporte-sub">Quem atende as redes. Cada pessoa define a senha pelo convite que chega por e-mail.</p>
         </div>
         {/* Na linha do título, à direita. O Gerente vê travado. */}
         <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>

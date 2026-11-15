@@ -112,7 +112,7 @@ export async function lerChamado(chamadoId: string, opcoes: { comInternas: boole
     mensagens: linhas.map(m => ({
       id: m.id, autor: m.author_kind, corpo: m.body, interna: m.interna, em: m.created_at,
       nome: m.author_kind === 'suporte' ? `${m.platform_staff?.name ?? 'Suporte'} · Suporte BellarisOS`
-        : m.author_kind === 'sistema' ? 'BellarisOS' : (m.users?.name ?? 'Clínica'),
+        : m.author_kind === 'sistema' ? 'BellarisOS' : (m.users?.name ?? 'Rede'),
       anexos: (m.anexos ?? []).map(a => ({ ...a, url: urls[a.path] ?? null })),
     })),
     autorizacao: grant ? (() => {

@@ -122,7 +122,7 @@ export async function createLead(
       const fichas = await fichasDoTelefoneDoLead(ctx.tenantId!, phone)
       const resposta = respostaDaFichaDoTelefone(str(formData, '_fichaDoTelefone'))
       if (fichas.length && !resposta) {
-        const quem = can(ctx, 'clients', 'VIEW') ? `da ficha de ${fichas[0]!.nome}` : 'de uma cliente da clínica'
+        const quem = can(ctx, 'clients', 'VIEW') ? `da ficha de ${fichas[0]!.nome}` : 'de uma cliente da rede'
         return { error: `Responda antes de criar: este telefone é ${quem}. É a mesma pessoa? (logo abaixo do telefone)` }
       }
       if (resposta && 'mesma' in resposta) {

@@ -10,7 +10,7 @@
  * texto não decide pelo procedimento (como os avisos da A48): "o atendimento".
  */
 export function textoDoPlanoDoConcluido(): string {
-  return 'Este atendimento está concluído: o plano gerado aqui nasce ligado a ele, e o registro daquele dia (dores, evolução, ficha do procedimento e ficha de saúde) fica como está.'
+  return 'Este atendimento está concluído: o plano gerado aqui nasce ligado a ele, e o registro daquele dia (dores, evolução, ficha de atendimento e ficha de saúde) fica como está.'
 }
 
 /**
@@ -52,7 +52,7 @@ export function quemMarcaAsSessoes(aAgendar: { numero: number; peloApp: boolean 
       : `Sessões ${listaDeNumeros(peloApp)}: agende pelo app em “Agendar” (fazem parte do seu plano).`)
   }
   if (pelaClinica.length) {
-    saida.push(`${pelaClinica.length === 1 ? 'Sessão' : 'Sessões'} ${listaDeNumeros(pelaClinica)}: quem marca é a clínica — fale com ela para escolher o dia.`)
+    saida.push(`${pelaClinica.length === 1 ? 'Sessão' : 'Sessões'} ${listaDeNumeros(pelaClinica)}: quem marca é a equipe — fale com ela para escolher o dia.`)
   }
   return saida
 }

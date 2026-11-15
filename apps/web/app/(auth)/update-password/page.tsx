@@ -55,7 +55,7 @@ function NovaSenha() {
       </h1>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 28 }}>
         {primeiro
-          ? 'A senha com que você entrou foi criada pela clínica. Escolha a sua para continuar.'
+          ? 'A senha com que você entrou é provisória. Escolha a sua para continuar.'
           : 'Escolha a senha que vai usar para entrar.'}
       </p>
 

@@ -14,7 +14,7 @@ describe('RL1: a aba Vendas é a das comandas do PDV', () => {
   it('os tipos: atendimento avulso, pacote, pré-pago, plano, produto e crédito', () => {
     expect([...TIPOS_DE_VENDA]).toEqual(['PROCEDIMENTO', 'PACOTE', 'PRE_PAGO', 'PLANO', 'PRODUTO', 'CREDITO'])
     expect(ROTULO_DO_TIPO.PROCEDIMENTO).toBe('Atendimento avulso')
-    expect(ROTULO_DO_TIPO.CREDITO).toBe('Crédito na clínica')
+    expect(ROTULO_DO_TIPO.CREDITO).toBe('Crédito interno')
   })
 
   it('o crédito aparece na lista e fica FORA do Total vendido (o que se paga com ele é a venda — senão o mesmo dinheiro seria duas)', () => {
@@ -29,10 +29,10 @@ describe('RL1: a aba Vendas é a das comandas do PDV', () => {
   it('o CSV leva a comanda', () => {
     expect(CABECALHO_DO_CSV_DE_VENDAS).toBe('Data;Comanda;Tipo;Descrição;Cliente;Profissional;Unidade;Valor')
     const v: Venda = {
-      id: 'x', tipo: 'CREDITO', data: '2026-11-14T15:00:00Z', descricao: 'Crédito na clínica', quantidade: 1,
+      id: 'x', tipo: 'CREDITO', data: '2026-11-14T15:00:00Z', descricao: 'Crédito interno', quantidade: 1,
       clienteId: null, cliente: 'Ana', profissional: null, branchId: 'b', valor: 300, comanda: 7,
     }
     expect(colunasDoCsvDeVendas(v, { fuso: 'America/Sao_Paulo', unidade: 'Centro' }))
-      .toEqual(['14/11/2026', '7', 'Crédito na clínica', 'Crédito na clínica', 'Ana', '', 'Centro', '300,00'])
+      .toEqual(['14/11/2026', '7', 'Crédito interno', 'Crédito interno', 'Ana', '', 'Centro', '300,00'])
   })
 })

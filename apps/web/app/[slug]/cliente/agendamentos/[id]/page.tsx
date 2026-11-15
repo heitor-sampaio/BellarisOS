@@ -27,8 +27,8 @@ const SITUACAO: Record<string, { texto: string; cor: string }> = {
   ASSINADO:   { texto: 'Assinado', cor: 'var(--success)' },
   PENDENTE:   { texto: 'Falta a sua assinatura', cor: 'var(--brand)' },
   A_GERAR:    { texto: 'Falta a sua assinatura', cor: 'var(--brand)' },
-  INCOMPLETO: { texto: 'Em preparação pela clínica', cor: 'var(--text-muted)' },
-  DISPENSADO: { texto: 'Dispensado pela clínica', cor: 'var(--text-muted)' },
+  INCOMPLETO: { texto: 'Em preparação pela equipe', cor: 'var(--text-muted)' },
+  DISPENSADO: { texto: 'Dispensado pela equipe', cor: 'var(--text-muted)' },
 }
 
 function LinhaDoDocumento({ slug, doc, fuso }: { slug: string; doc: ResumoDeDocumento; fuso: string }) {

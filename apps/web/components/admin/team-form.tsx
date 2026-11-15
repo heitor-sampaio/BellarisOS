@@ -110,7 +110,7 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <label className="overline" htmlFor="tm-registro">Registro no conselho (opcional)</label>
                   <input id="tm-registro" name="registro_conselho" type="text" maxLength={60} className="field" placeholder="Ex.: CRM-SC 12345, COREN-SC 123456" />
-                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Sai nos termos e contratos pela variável do registro da profissional.</span>
+                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Sai nos documentos pela variável do registro de quem atende.</span>
                 </div>
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -136,7 +136,7 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                 {/* Abrangência — a Admin é sempre da clínica toda. */}
                 {ehAdmin && (
                   <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    A Admin tem acesso à clínica toda, sem unidade fixa, e pode dar e alterar o cargo de Admin.
+                    A Admin tem acesso à rede toda, em todas as unidades, e pode dar e alterar o cargo de Admin.
                   </span>
                 )}
                 {!ehAdmin && (

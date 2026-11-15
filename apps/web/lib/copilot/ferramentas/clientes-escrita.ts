@@ -103,7 +103,7 @@ export function escolhasDaFichaQueJaExiste(f: FichaQueJaExiste) {
 // Quem já usa o app em outra clínica (mesmo e-mail e CPF) entra na conta que tem (lib/clients/acesso.ts).
 const linhaDoAcesso = (email: string, tipo: 'CPF' | 'PASSAPORTE' | 'RNE' = 'CPF') => ({
   rotulo: 'Acesso ao app',
-  valor: `login ${email}, senha inicial = ${tipo === 'CPF' ? 'o CPF' : tipo === 'RNE' ? 'o número do RNE' : 'o número do passaporte'} (se ela já usa o app em outra clínica, a senha continua a dela)`,
+  valor: `login ${email}, senha inicial = ${tipo === 'CPF' ? 'o CPF' : tipo === 'RNE' ? 'o número do RNE' : 'o número do passaporte'} (se ela já usa o app em outra rede, a senha continua a dela)`,
 })
 
 export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro> = {

@@ -69,7 +69,7 @@ const APELIDOS_DA_ABA: Record<string, readonly string[]> = {
   lotes:        ['histórico do whatsapp', 'tarefas em segundo plano'],
   tags:         ['etiquetas', 'marcadores'],
   importacoes:  ['importar', 'planilha', 'csv'],
-  general:      ['dados da clínica', 'cnpj', 'endereço'],
+  general:      ['dados da rede', 'clínica', 'cnpj', 'endereço'],
 }
 
 /**
@@ -87,7 +87,7 @@ const ANCORA_DO_APELIDO: Record<string, string> = {
  * modelos, em Configurações).
  */
 const SUBTITULO_PELO_APELIDO: Record<string, string> = {
-  documentos:            'Os termos e contratos emitidos e assinados',
+  documentos:            'Os documentos emitidos e assinados',
   'settings:documentos': 'Os modelos de termo e contrato (a configuração)',
   oportunidades:         'O quadro das oportunidades',
 }

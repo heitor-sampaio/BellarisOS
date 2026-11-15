@@ -153,7 +153,7 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
         {/* Seção 3 — A ficha do procedimento (construtor) */}
         {ficha && (
           <div style={sectionDivider}>
-            <SectionOverline label="Ficha do procedimento" subtitle={ficha.name} />
+            <SectionOverline label="Ficha de atendimento" subtitle={ficha.name} />
             {ficha.node}
           </div>
         )}

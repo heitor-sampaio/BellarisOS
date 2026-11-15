@@ -128,10 +128,10 @@ test.describe('D1: cancelar a unidade do pré-pago, como o pacote', () => {
       const confirmar = dlg.getByRole('button', { name: 'Cancelar unidade' })
       await dlg.getByLabel('Motivo do cancelamento').fill('Mudou de cidade')
       await expect(confirmar, 'sem dizer como devolver, não confirma').toBeDisabled()
-      await dlg.getByRole('radio', { name: /Crédito na clínica/ }).check()
+      await dlg.getByRole('radio', { name: /Crédito interno/ }).check()
       await confirmar.click()
       await expect(dlg).toBeHidden()
-      await expect(card.getByRole('status')).toContainText('R$ 250,00 ficaram de crédito na clínica')
+      await expect(card.getByRole('status')).toContainText('R$ 250,00 ficaram de crédito interno')
     })
     // Nada de "Devolução" a pagar; o Pix fica inteiro; o crédito nasce; os pontos ficam.
     expect((await lancamentos(venda)).map(t => [t.type, t.amount, t.payment_method, t.is_paid, t.notes])).toEqual([
@@ -210,7 +210,7 @@ test.describe('D1: cancelar a unidade do pré-pago, como o pacote', () => {
       await card.getByRole('button', { name: 'Cancelar', exact: true }).nth(1).click()
       const dlg = p.getByRole('dialog', { name: 'Cancelar unidade' })
       await expect(dlg.locator('[data-a-devolver]')).toContainText('R$ 0,00')
-      await expect(dlg.getByRole('radio', { name: /Crédito na clínica/ })).toHaveCount(0)
+      await expect(dlg.getByRole('radio', { name: /Crédito interno/ })).toHaveCount(0)
       await dlg.getByLabel('Motivo do cancelamento').fill('Só uma')
       await dlg.getByRole('button', { name: 'Cancelar unidade' }).click()
       await expect(card.getByRole('status')).toContainText('O a receber diminuiu R$ 250,00')
@@ -226,7 +226,7 @@ test.describe('D1: cancelar a unidade do pré-pago, como o pacote', () => {
     await comSessao(browser, gestor!, async p => {
       const semDestino = await chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', rota,
         [unidades[0], { motivo: 'x', destino: null, esperado: 250 }])
-      expect(semDestino.texto).toContain('estorno ou crédito na clínica')
+      expect(semDestino.texto).toContain('estorno ou crédito interno')
       const mudou = await chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', rota,
         [unidades[0], { motivo: 'x', destino: 'CREDITO', esperado: 100 }])
       expect(mudou.texto).toContain('mudaram desde que a janela abriu')

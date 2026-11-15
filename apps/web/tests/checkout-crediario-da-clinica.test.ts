@@ -52,15 +52,15 @@ describe('D6: o crediário da clínica não é cartão', () => {
   })
   it('o contrato diz a entrada no cartão e as parcelas com a clínica', () => {
     expect(valoresDoPagamento(dap, 4400)['pagamento.forma']).toMatch(
-      /^entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2 parcelas de R\$\s1\.700,00 com a clínica: R\$\s1\.700,00 em 04\/12\/2026 e R\$\s1\.700,00 em 04\/01\/2027$/)
+      /^entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2 parcelas de R\$\s1\.700,00 no crediário: R\$\s1\.700,00 em 04\/12\/2026 e R\$\s1\.700,00 em 04\/01\/2027$/)
     expect(valoresDoPagamento({ ...dap, vezes: undefined }, 4400)['pagamento.forma']).toMatch(
-      /^entrada de R\$\s1\.000,00 no cartão de crédito \+ 2 parcelas de R\$\s1\.700,00 com a clínica/)
+      /^entrada de R\$\s1\.000,00 no cartão de crédito \+ 2 parcelas de R\$\s1\.700,00 no crediário/)
     expect(valoresDoPagamento({ ...dap, entrada: 0, vezes: undefined }, 3400)['pagamento.forma']).toMatch(
-      /^2 parcelas de R\$\s1\.700,00 com a clínica: R\$\s1\.700,00 em 04\/12\/2026 e /)
+      /^2 parcelas de R\$\s1\.700,00 no crediário: R\$\s1\.700,00 em 04\/12\/2026 e /)
   })
   it('a tela e a linha do tempo dizem o mesmo', () => {
-    expect(frasesDoPagamento(dap)).toMatch(/^Entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2x com a clínica, a primeira em 04\/12\/2026$/)
-    expect(rotuloDoPagamento(dap)).toBe('entrada de R$ 1.000,00 em Crédito 3x + 2x com a clínica')
-    expect(rotuloDoPagamento({ ...dap, entrada: 0, vezes: undefined })).toBe('2x com a clínica')
+    expect(frasesDoPagamento(dap)).toMatch(/^Entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2x no crediário, a primeira em 04\/12\/2026$/)
+    expect(rotuloDoPagamento(dap)).toBe('entrada de R$ 1.000,00 em Crédito 3x + 2x no crediário')
+    expect(rotuloDoPagamento({ ...dap, entrada: 0, vezes: undefined })).toBe('2x no crediário')
   })
 })

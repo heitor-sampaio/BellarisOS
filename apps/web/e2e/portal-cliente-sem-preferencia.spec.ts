@@ -61,7 +61,7 @@ async function agendarSemPreferencia(p: Page, data: string, hora: string) {
   await p.getByRole('button', { name: /Sem preferência/ }).click()
   await p.getByLabel('Data').fill(data)
   await p.getByRole('button', { name: hora, exact: true }).click()
-  await expect(p.getByText('A clínica escolhe quem estiver livre')).toBeVisible()
+  await expect(p.getByText('A equipe escolhe quem estiver livre')).toBeVisible()
   await p.getByRole('button', { name: 'Confirmar agendamento' }).click()
   await expect(p).toHaveURL(new RegExp(`/${slug}/cliente/agendamentos$`))
 }

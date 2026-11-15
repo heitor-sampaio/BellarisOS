@@ -27,11 +27,11 @@ describe('A43: o título do lançamento de venda diz que é venda', () => {
 
 // A17 da 11ª: de onde veio o percentual.
 describe('A17: a regra diz de onde veio', () => {
-  it('da pessoa, do item, da clínica', () => {
+  it('da pessoa, do item, da rede', () => {
     expect(regraDoLancamento({ ...base, regraValor: 3, regraDe: 'PESSOA' }, 'Tatiane')).toBe('3% — da Tatiane')
     expect(regraDoLancamento({ ...base, origem: 'PACOTE_VENDA', regraValor: 10, regraDe: 'ITEM' }, 'Tatiane')).toBe('10% — do pacote')
     expect(regraDoLancamento({ ...base, origem: 'PRODUTO', regraValor: 10, regraDe: 'ITEM' }, 'Tatiane')).toBe('10% — do produto')
-    expect(regraDoLancamento({ ...base, regraDe: 'CLINICA' }, 'Tatiane')).toBe('5% — da clínica')
+    expect(regraDoLancamento({ ...base, regraDe: 'CLINICA' }, 'Tatiane')).toBe('5% — da rede')
     expect(regraDoLancamento({ ...base, regraDe: null }, 'Tatiane')).toBe('5%')
   })
 })
@@ -48,6 +48,6 @@ describe('A44: o CSV não diz 0,00 do que não sai da base', () => {
     const sem = campos(l[1]!), com = campos(l[2]!)
     expect([sem[iTaxa], sem[iIns]]).toEqual(['', ''])
     expect(com[iTaxa]).toBe('6,30')
-    expect(sem[iRegra]).toBe('5% — da clínica')
+    expect(sem[iRegra]).toBe('5% — da rede')
   })
 })

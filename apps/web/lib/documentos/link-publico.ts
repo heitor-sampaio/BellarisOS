@@ -42,7 +42,7 @@ type Conferida =
 const ERRO: Record<string, string> = {
   ...MENSAGEM_DO_ESTADO,
   limite:         'Muitas tentativas a partir desta conexão. Tente de novo em uma hora.',
-  sem_identidade: 'Não foi possível conferir a sua identidade por este link. Fale com a clínica.',
+  sem_identidade: 'Não foi possível conferir a sua identidade por este link. Fale com a equipe.',
 }
 
 // A rota responde com o status certo: 404 link que não existe, 410 o que já

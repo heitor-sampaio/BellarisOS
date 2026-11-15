@@ -152,7 +152,7 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
       {credito > 0 && (
         <div data-credito-interno className="card" style={{ padding: '16px 22px', marginTop: -12, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>Crédito na clínica</p>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>Seu crédito</p>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Use como forma de pagamento nos próximos atendimentos.</p>
             {bonus.map((b, i) => (
               <p key={i} data-bonus-do-credito style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Crédito comprado: {b}.</p>

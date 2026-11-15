@@ -165,6 +165,6 @@ test('A30: as Vendas dizem a ponte com o caixa', async ({ browser }) => {
     const ponte = p.locator('[data-ponte-vendas-caixa]')
     await expect(ponte).toContainText('caixa')
     await expect(ponte).toContainText('R$ 1.000,00')
-    await expect(ponte).toContainText('crédito na clínica')
+    await expect(ponte).toContainText('crédito interno')
   })
 })

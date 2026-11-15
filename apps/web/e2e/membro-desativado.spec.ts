@@ -86,14 +86,14 @@ test.describe.serial('membro desativado', () => {
       // 1. A sessão que ele já tinha para de funcionar.
       await pagina.goto('/admin/agenda')
       await expect(pagina).toHaveURL(/\/login\?acesso=desativado/)
-      await expect(pagina.getByText('Seu acesso foi desativado pela clínica.', { exact: false })).toBeVisible()
+      await expect(pagina.getByText('Seu acesso foi desativado.', { exact: false })).toBeVisible()
       // A9 da 5ª simulação: ali, a senha errada de uma conta ATIVA tira a
       // faixa e diz o erro (a pessoa lia a faixa, não o erro).
       await pagina.getByLabel('E-mail').fill(`e2e-membro-gest${marca}@bellaris.invalid`)
       await pagina.getByLabel('Senha').fill('senha-errada-de-proposito')
       await entrar(pagina)
       await expect(pagina.getByText('E-mail ou senha incorretos')).toBeVisible()
-      await expect(pagina.getByText('Seu acesso foi desativado pela clínica.', { exact: false })).toHaveCount(0)
+      await expect(pagina.getByText('Seu acesso foi desativado.', { exact: false })).toHaveCount(0)
 
       // 2. A conta está bloqueada no Auth: não entra de novo.
       const ate = await bloqueadoAte(alvo!.userId)
@@ -130,14 +130,14 @@ test.describe.serial('membro desativado', () => {
       await p.getByLabel('E-mail').fill(email)
       await p.getByLabel('Senha').fill(senha)
       await entrar(p)
-      await expect(p.getByText('Seu acesso foi desativado pela clínica.', { exact: false })).toBeVisible()
+      await expect(p.getByText('Seu acesso foi desativado.', { exact: false })).toBeVisible()
       await expect(p.getByText('E-mail ou senha incorretos')).toHaveCount(0)
       // Com a senha ERRADA também: a conta está bloqueada, e é isso que a
       // pessoa precisa saber (não "tente outra senha").
       await p.getByLabel('E-mail').fill(email)
       await p.getByLabel('Senha').fill('senha-errada-de-proposito')
       await entrar(p)
-      await expect(p.getByText('Seu acesso foi desativado pela clínica.', { exact: false })).toBeVisible()
+      await expect(p.getByText('Seu acesso foi desativado.', { exact: false })).toBeVisible()
       await expect(p.getByText('E-mail ou senha incorretos')).toHaveCount(0)
     } finally {
       await ctx.close()

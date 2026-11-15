@@ -32,14 +32,14 @@ describe('textoAntesDeLigar', () => {
   })
   it('os dois canais no mesmo fluxo dizem as duas contas', () => {
     expect(textoAntesDeLigar({ porBusca: false, quantas: 10, truncado: false, comConversa: 4, comAparelho: 6 }))
-      .toBe('Hoje a clínica tem 10 clientes ativas, e 4 têm conversa aberta no WhatsApp, e 6 vão receber o aviso no celular.')
+      .toBe('Hoje a rede tem 10 clientes ativas, e 4 têm conversa aberta no WhatsApp, e 6 vão receber o aviso no celular.')
   })
 })
 
 describe('explicacaoAntesDeLigar', () => {
   it('diz por onde chega, canal por canal', () => {
     expect(explicacaoAntesDeLigar(['whatsapp'])).toContain('não abre conversa nova')
-    expect(explicacaoAntesDeLigar(['push'])).toContain('só chega a quem tem o app da clínica ou os avisos ligados no navegador')
+    expect(explicacaoAntesDeLigar(['push'])).toContain('só chega a quem tem o app ou os avisos ligados no navegador')
     expect(explicacaoAntesDeLigar(['instagram'])).toContain('o Instagram')
   })
 })

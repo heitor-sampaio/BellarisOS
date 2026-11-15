@@ -96,10 +96,10 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'responsavel.parentesco': { grupo: 'Responsável legal', rotulo: 'Parentesco', tipos: TODOS, exemplo: 'Mãe', opcional: true, vaziaQuando: 'na cliente adulta' },
   'responsavel.telefone':   { grupo: 'Responsável legal', rotulo: 'Telefone do responsável', tipos: TODOS, exemplo: '(71) 98888-7777', opcional: true, vaziaQuando: 'na cliente adulta' },
 
-  'rede.nome':             { grupo: 'Rede',        rotulo: 'Nome da rede',      tipos: TODOS, exemplo: 'Clínica Bellaris' },
+  'rede.nome':             { grupo: 'Rede',        rotulo: 'Nome da rede',      tipos: TODOS, exemplo: 'Estética Bellaris' },
   'rede.documento':        { grupo: 'Rede',        rotulo: 'CNPJ ou CPF da rede', tipos: TODOS, exemplo: '12.345.678/0001-90' },
-  'rede.telefone':         { grupo: 'Rede',        rotulo: 'Telefone da rede',  tipos: TODOS, exemplo: '(47) 3030-1000', opcional: true, vaziaQuando: 'sem telefone no cadastro da clínica' },
-  'rede.email':            { grupo: 'Rede',        rotulo: 'E-mail da rede',    tipos: TODOS, exemplo: 'contato@clinica.com', opcional: true, vaziaQuando: 'sem e-mail no cadastro da clínica' },
+  'rede.telefone':         { grupo: 'Rede',        rotulo: 'Telefone da rede',  tipos: TODOS, exemplo: '(47) 3030-1000', opcional: true, vaziaQuando: 'sem telefone no cadastro da rede' },
+  'rede.email':            { grupo: 'Rede',        rotulo: 'E-mail da rede',    tipos: TODOS, exemplo: 'contato@esteticabellaris.com.br', opcional: true, vaziaQuando: 'sem e-mail no cadastro da rede' },
 
   'unidade.nome':          { grupo: 'Unidade',     rotulo: 'Nome da unidade',   tipos: TODOS, exemplo: 'Unidade Centro' },
   'unidade.cnpj':          { grupo: 'Unidade',     rotulo: 'CNPJ da unidade',   tipos: TODOS, exemplo: '12.345.678/0002-71' },

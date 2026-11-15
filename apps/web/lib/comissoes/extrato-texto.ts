@@ -59,7 +59,7 @@ export function regraDoLancamento(l: LancamentoDoExtrato, nomeDaPessoa: string |
   const regra = regraEmTexto(l)
   if (l.regraDe === 'PESSOA') return `${regra} — da ${nomeDaPessoa ?? 'pessoa'}`
   if (l.regraDe === 'ITEM') return `${regra} — ${l.origem === 'PRODUTO' ? 'do produto' : 'do pacote'}`
-  if (l.regraDe === 'CLINICA') return `${regra} — da clínica`
+  if (l.regraDe === 'CLINICA') return `${regra} — da rede`
   return regra
 }
 

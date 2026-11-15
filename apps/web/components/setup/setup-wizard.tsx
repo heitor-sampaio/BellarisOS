@@ -33,7 +33,7 @@ function toSlug(name: string) {
 // -- Stepper ------------------------------------------------------------------
 
 // O setup nasce com UMA unidade: a clínica não fala "rede" (F8).
-const STEPS = ['Sua clínica', 'Primeira unidade', 'Pronto!']
+const STEPS = ['Sua rede', 'Primeira unidade', 'Pronto!']
 
 function Stepper({ current }: { current: number }) {
   return (
@@ -135,15 +135,15 @@ function StepNetwork({
           color: 'var(--text)',
           marginBottom: 4,
         }}>
-          Dados da sua clínica
+          Dados da sua rede
         </h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Essas informações identificam sua clínica no sistema.
+          Essas informações identificam a sua rede no sistema.
         </p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <label className="overline" htmlFor="net-name">Nome da clínica *</label>
+        <label className="overline" htmlFor="net-name">Nome da rede *</label>
         <input
           id="net-name"
           type="text"
@@ -371,7 +371,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           Primeira unidade
         </h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Cadastre a primeira unidade da sua clínica. Você poderá adicionar mais depois.
+          Cadastre a primeira unidade da sua rede. Você poderá adicionar mais depois.
         </p>
       </div>
 
@@ -405,7 +405,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           onChange={e => { setSlugTouched(true); setSlug(e.target.value) }}
         />
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          O endereço é único entre todas as clínicas: se já estiver em uso, o sistema completa com o nome da sua.
+          O endereço é único no sistema inteiro: se já estiver em uso, o sistema completa com o nome da sua rede.
         </span>
       </div>
 
@@ -421,7 +421,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           onChange={e => setDocument(maskCPFouCNPJDigitando(e.target.value))}
         />
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          O mesmo da clínica, já preenchido. Troque se a unidade tiver CNPJ próprio.
+          O mesmo da rede, já preenchido. Troque se a unidade tiver CNPJ próprio.
         </span>
         {perguntaCnpj && !document.trim() && (
           <div role="alertdialog" aria-label="Unidade sem CNPJ" style={{
@@ -441,7 +441,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
               {perguntaCnpj.cnpjDaRede && (
                 <button type="button" className="btn-primary" disabled={pending}
                   onClick={() => { const doc = perguntaCnpj.cnpjDaRede!; setDocument(doc); enviar({ documento: doc }) }}>
-                  {`Usar o CNPJ da clínica (${perguntaCnpj.cnpjDaRede})`}
+                  {`Usar o CNPJ da rede (${perguntaCnpj.cnpjDaRede})`}
                 </button>
               )}
             </div>
@@ -462,7 +462,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           />
           {/* A3 da 9ª: a regra J-66 (sem telefone na unidade, vale o da clínica) que a tela não dizia. */}
           <span data-telefone-vazio-no-app style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            Em branco, o app da cliente mostra o telefone da clínica (o do passo anterior).
+            Em branco, o app da cliente mostra o telefone da rede (o do passo anterior).
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -471,7 +471,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
             id="br-email"
             type="email"
             className="field"
-            placeholder="contato@clinica.com"
+            placeholder="contato@suarede.com.br"
             value={email}
             onChange={e => setEmail(e.target.value)}
           />
@@ -565,7 +565,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           fontSize: 'var(--text-xs-sz)', color: 'var(--text)', lineHeight: 1.45,
         }}>
           <AlertTriangle size={13} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} aria-hidden />
-          <span>O domingo vem fechado. Se a clínica abre aos domingos (ou 24 horas), marque o domingo na lista abaixo e ajuste o horário de cada dia.</span>
+          <span>O domingo vem fechado. Se a unidade abre aos domingos (ou 24 horas), marque o domingo na lista abaixo e ajuste o horário de cada dia.</span>
         </p>
         <div onChange={lerHorarioDepois} onClick={lerHorarioDepois}>
           <EditorDeHorario key={horarioSalvo.chave} nome="horario" valor={horarioSalvo.valor} />
@@ -641,7 +641,7 @@ function StepDone({ tenantName, foraDoPlano = [] }: { tenantName: string; foraDo
         maxWidth: 340,
         margin: '0 auto 32px',
       }}>
-        A clínica <strong style={{ color: 'var(--text)' }}>{tenantName}</strong> está configurada. Você já pode começar a usar o painel completo.
+        A rede <strong style={{ color: 'var(--text)' }}>{tenantName}</strong> está configurada. Você já pode começar a usar o painel completo.
       </p>
 
       {/* A1 da 8ª simulação: o "Acessar o painel" ficava no fim, sem destaque, depois da lista. */}

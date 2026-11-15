@@ -123,7 +123,7 @@ export function vazioDoReativar(comVisita: number, recentesSemVisita: number, de
  */
 export function deQuemSaoAsClientes(r: { daUnidade: boolean; dela: boolean }): string {
   if (r.dela) return 'que você atendeu'
-  return r.daUnidade ? 'atendidas na unidade' : 'da clínica'
+  return r.daUnidade ? 'atendidas na unidade' : 'da rede'
 }
 
 /** As clientes sem visita há mais de 90 dias (o total e as há mais tempo sem vir). */

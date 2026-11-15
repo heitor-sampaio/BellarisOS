@@ -25,8 +25,8 @@ describe('A41: o extrato de pontos não repete o título na descrição', () => 
 
 describe('A53: com pontos suficientes, "você já pode trocar"', () => {
   it('só quando o saldo alcança o custo', () => {
-    expect(jaPodeTrocar(780, 500)).toBe('Você já pode trocar: peça na recepção.')
-    expect(jaPodeTrocar(500, 500)).toBe('Você já pode trocar: peça na recepção.')
+    expect(jaPodeTrocar(780, 500)).toBe('Você já pode trocar: peça à equipe.')
+    expect(jaPodeTrocar(500, 500)).toBe('Você já pode trocar: peça à equipe.')
     expect(jaPodeTrocar(280, 500)).toBeNull()
   })
 })

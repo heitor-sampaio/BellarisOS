@@ -59,7 +59,7 @@ test('A51: fora do teste, diz que o Copilot não faz parte do plano da clínica'
     await como(browser, dona!, async p => {
       await p.goto('/admin/dashboard')
       await p.getByRole('button', { name: 'Copilot: fora do plano' }).click()
-      await expect(p.getByRole('dialog', { name: 'Copilot' })).toContainText('O Copilot não faz parte do plano da clínica')
+      await expect(p.getByRole('dialog', { name: 'Copilot' })).toContainText('O Copilot não faz parte do plano da rede')
     })
   } finally {
     await db().from('tenants').update({ plan_status: 'trial' }).eq('id', rede!.tenantId)

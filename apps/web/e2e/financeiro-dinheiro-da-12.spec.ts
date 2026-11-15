@@ -293,7 +293,7 @@ test('A31: o estorno do crédito com bônus diz quanto foi usado e quanto disso 
   await como(browser, dona, async p => {
     await p.goto(`/${slug}/financeiro?aba=movimentacoes&period=7d`)
     await p.locator(`[data-lancamento="${pagamentoDaAna}"]`).getByRole('button', { name: 'Estornar' }).click()
-    const dlg = p.getByRole('dialog', { name: 'Estornar a venda de crédito na clínica?' })
+    const dlg = p.getByRole('dialog', { name: 'Estornar a venda de crédito interno?' })
     await dlg.locator('[data-como-sai-o-bonus]').getByRole('radio', { name: /proporção/ }).check()
     await expect(dlg.locator('[data-conta-do-estorno-do-credito]')).toContainText(/R\$\s180,00 usados, R\$\s16,36 deles do bônus/)
     await dlg.getByRole('button', { name: 'Voltar' }).click()

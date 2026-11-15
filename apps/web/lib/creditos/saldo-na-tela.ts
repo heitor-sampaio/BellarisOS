@@ -11,9 +11,9 @@ import { formatBRL } from '@estetica-os/utils'
 export function textoDoSaldoDoCredito(saldo: number, valor: number): { texto: string; cobre: boolean } {
   const s = Math.round(saldo * 100)
   const v = Math.round(Math.max(valor, 0) * 100)
-  if (s <= 0) return { texto: 'A cliente não tem crédito na clínica: o pagamento com crédito é recusado.', cobre: false }
+  if (s <= 0) return { texto: 'A cliente não tem crédito interno: o pagamento com crédito é recusado.', cobre: false }
   if (v > s) {
-    return { texto: `Crédito na clínica: ${formatBRL(s / 100)} — não cobre ${formatBRL(v / 100)} (faltam ${formatBRL((v - s) / 100)}); o pagamento com crédito é recusado.`, cobre: false }
+    return { texto: `Crédito interno: ${formatBRL(s / 100)} — não cobre ${formatBRL(v / 100)} (faltam ${formatBRL((v - s) / 100)}); o pagamento com crédito é recusado.`, cobre: false }
   }
-  return { texto: `Crédito na clínica: ${formatBRL(s / 100)} · depois deste pagamento: ${formatBRL((s - v) / 100)}`, cobre: true }
+  return { texto: `Crédito interno: ${formatBRL(s / 100)} · depois deste pagamento: ${formatBRL((s - v) / 100)}`, cobre: true }
 }

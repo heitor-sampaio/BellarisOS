@@ -344,7 +344,7 @@ export const fazerCheckIn: FerramentaDeEscrita<{ agendamento: string }, { appoin
   nome: 'fazer_check_in',
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
-  descricao: 'Faz o CHECK-IN de um agendamento (id): o cliente chegou à clínica (fica "chegou", na sala de espera). De agendamento "agendado" ou "confirmado".',
+  descricao: 'Faz o CHECK-IN de um agendamento (id): o cliente chegou à unidade (fica "chegou", na sala de espera). De agendamento "agendado" ou "confirmado".',
   parametros: z.object({ agendamento: UUID }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)

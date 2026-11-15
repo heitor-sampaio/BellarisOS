@@ -167,7 +167,7 @@ test('A42 e A43: a contadora lê "Ver a lista"; as contas a pagar de qualquer m�
     await expect(aReceber.getByRole('link', { name: 'Ver a lista' })).toBeVisible()
     await expect(aReceber).not.toContainText('dar baixa')
     await p.goto('/admin/financeiro?aba=a-receber')
-    await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Dar baixa é de quem tem Recebimentos')
+    await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Dar baixa é de quem tem o PDV')
     await expect(p.locator('[data-so-o-em-aberto]')).not.toContainText('use “Pagar” na linha')
 
     // A43: o "A pagar" diz todo o em aberto e leva à lista dele.

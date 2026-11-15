@@ -28,7 +28,7 @@ export function avisoDoAcessoCriado({ contaLigada, email, documento }: {
   return contaLigada
     ? {
         titulo: 'Ficha ligada à conta que já existe',
-        descricao: `Este e-mail já usa o app em outra clínica: o login continua o e-mail${login}, e a senha continua a mesma. Esta clínica passa a aparecer no app.`,
+        descricao: `Este e-mail já usa o app em outra rede: o login continua o e-mail${login}, e a senha continua a mesma. Esta rede passa a aparecer no app.`,
       }
     : {
         titulo: 'Acesso ao app criado',
@@ -73,7 +73,7 @@ export function oQueFaltaResponder(p: {
     const onde = p.motivo ? ONDE_DO_MOTIVO[p.motivo] : ONDE
     const unificar = `“Unificar com a ficha de ${p.nome}”`
     return p.podeCadastrarMesmoAssim === false
-      ? `Responda antes de cadastrar: já existe a ficha de ${p.nome}${porQue}, e o CPF é único na clínica — ${unificar}, ${onde}, ou corrija o CPF.`
+      ? `Responda antes de cadastrar: já existe a ficha de ${p.nome}${porQue}, e o CPF é único na rede — ${unificar}, ${onde}, ou corrija o CPF.`
       : `Responda antes de cadastrar: já existe a ficha de ${p.nome}${porQue} — é outra pessoa (“Cadastrar mesmo assim”) ou é ela (${unificar})? A pergunta está ${onde}.`
   }
   return `Responda antes de cadastrar: o telefone é da ficha arquivada de ${p.nome} — é ela (“Reativar a ficha de ${p.nome}”) ou “É outra pessoa”? A pergunta está ${ONDE}.`

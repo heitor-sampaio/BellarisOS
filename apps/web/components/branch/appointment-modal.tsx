@@ -657,7 +657,7 @@ export function AppointmentModal({
               )}
               {credito && (
                 <span data-credito-escolhido style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  O procedimento e o preço vêm do que já foi pago; a recepção não cobra de novo.
+                  O procedimento e o preço vêm do que já foi pago; o PDV não cobra de novo.
                 </span>
               )}
             </Field>

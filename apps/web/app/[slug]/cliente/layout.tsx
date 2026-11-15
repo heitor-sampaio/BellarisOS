@@ -49,7 +49,7 @@ export default async function ClientPortalLayout({
     ? await ler(admin.from('branches').select('name').eq('slug', slug).eq('tenant_id', cliente.tenant_id as string).maybeSingle(), 'buscar a unidade')
     : null
 
-  const branchName = (branch as { name: string } | null)?.name ?? 'Clínica'
+  const branchName = (branch as { name: string } | null)?.name ?? 'BellarisOS'
   // O contador do sino é acessório: a falha fica no log e ele começa em zero.
   if (unread.error) console.error('[cliente/layout] contar as notificações:', unread.error.message)
   const initialUnread = unread.count ?? 0
@@ -79,7 +79,7 @@ export default async function ClientPortalLayout({
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, minWidth: 0 }}>
             <span style={{ fontSize: 'var(--text-card-title)', color: 'var(--brand)', fontWeight: 800, marginRight: 8, lineHeight: 1 }}>✦</span>
             {variasClinicas ? (
-              <Link href={ROTA_DO_SELETOR} aria-label="Trocar de clínica" title="Trocar de clínica" className="portal-trocar-clinica">
+              <Link href={ROTA_DO_SELETOR} aria-label="Trocar de rede" title="Trocar de rede" className="portal-trocar-clinica">
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{branchName}</span>
                 <ChevronsUpDown size={16} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
               </Link>

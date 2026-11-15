@@ -6,7 +6,7 @@ import Link from 'next/link'
 
 /** Por que a pessoa voltou ao login (`?acesso=`) — dito na tela, não só na URL. */
 const AVISOS_DE_ACESSO: Record<string, string> = {
-  desativado: 'Seu acesso foi desativado pela clínica. Fale com o responsável.',
+  desativado: 'Seu acesso foi desativado. Fale com quem administra a rede.',
   // A sessão de alguém da equipe da plataforma (proxy, buildContext): os apps dela são outros.
   plataforma: 'A equipe da plataforma entra por admin.bellarisos.com ou suporte.bellarisos.com.',
 }
@@ -43,7 +43,7 @@ export function FormularioDeLogin() {
         Entrar
       </h1>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 28 }}>
-        Equipe da clínica ou cliente: entre com o seu e-mail e a sua senha.
+        Equipe ou cliente: entre com o seu e-mail e a sua senha.
       </p>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: -20, marginBottom: 24 }}>
         Cliente: no primeiro acesso, a senha é o seu CPF (só os números) ou, sem CPF, o número do seu passaporte ou RNE.

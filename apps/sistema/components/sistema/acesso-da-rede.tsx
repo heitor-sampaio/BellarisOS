@@ -37,7 +37,7 @@ export function AcessoDaRede({ tenantId, ativa, motivo }: { tenantId: string; at
   }
   return (
     <div className="suporte-pilha">
-      <p className="suporte-texto-fraco">Desligada, ninguém da equipe da clínica entra e o portal do paciente fica indisponível. A cobrança não religa: só você.</p>
+      <p className="suporte-texto-fraco">Desligada, ninguém da equipe da rede entra e o portal da cliente fica indisponível. A cobrança não religa: só você.</p>
       {!aberto ? (
         <div className="sistema-acoes">
           <button type="button" className="btn-secondary" onClick={() => setAberto(true)}>Desligar rede…</button>

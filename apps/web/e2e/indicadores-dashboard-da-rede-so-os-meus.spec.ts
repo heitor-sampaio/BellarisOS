@@ -203,7 +203,7 @@ test('"só os meus": os rankings, a demografia, o giro, os planos e o funil são
     // recorta a ficha —, e diz que é ("da clínica"). Era o das clientes que ela atendeu.
     const { count: daClinica } = await banco().from('clients').select('id', { count: 'exact', head: true })
       .eq('tenant_id', rede!.tenantId).eq('is_active', true)
-    await expect.soft(corpo, 'o total: as clientes da clínica').toContainText(new RegExp(` · ${daClinica} clientes da clínica`))
+    await expect.soft(corpo, 'o total: as clientes da clínica').toContainText(new RegExp(` · ${daClinica} clientes da rede`))
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'o procedimento dela').toContainText(`Proc dr${marca}`)
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'não o da outra').not.toContainText(outroProc)
     await expect.soft(card(p, 'Ranking — Procedimentos por receita dos atendimentos'), 'a receita por procedimento dela').toContainText('R$ 120,00')

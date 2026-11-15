@@ -13,7 +13,7 @@ describe('o pagamento no contrato', () => {
     expect(valoresDoPagamento({ forma: 'AVISTA', metodo: 'PIX' }, 400)['pagamento.forma']).toMatch(/R\$\s400,00 à vista, no Pix/)
     expect(valoresDoPagamento(parcelado, 400)['pagamento.forma'])
       // D6 (6ª simulação): as parcelas são o crediário da CLÍNICA, não o cartão da entrada.
-      .toMatch(/^entrada de R\$\s100,00 no cartão de crédito \+ 3 parcelas de R\$\s100,00 com a clínica: R\$\s100,00 em 10\/10\/2026, R\$\s100,00 em 10\/11\/2026 e R\$\s100,00 em 10\/12\/2026$/)
+      .toMatch(/^entrada de R\$\s100,00 no cartão de crédito \+ 3 parcelas de R\$\s100,00 no crediário: R\$\s100,00 em 10\/10\/2026, R\$\s100,00 em 10\/11\/2026 e R\$\s100,00 em 10\/12\/2026$/)
     expect(valoresDoPagamento({ forma: 'A_RECEBER', metodo: null, vencimento: venc }, 400)['pagamento.forma'])
       .toMatch(/a receber em 10\/10\/2026$/)
   })
@@ -38,7 +38,7 @@ describe('o pagamento no contrato', () => {
   // D18 (simulação de 2026-10-29): a linha do tempo dizia "3x em CREDIT_CARD".
   // A forma vai com o nome da tela (rotuloDaForma).
   it('a linha do tempo diz a forma em português, como a tela', () => {
-    expect(rotuloDoPagamento(parcelado)).toBe('entrada de R$ 100,00 em Crédito + 3x com a clínica')
+    expect(rotuloDoPagamento(parcelado)).toBe('entrada de R$ 100,00 em Crédito + 3x no crediário')
     expect(rotuloDoPagamento({ forma: 'AVISTA', metodo: 'PIX' })).toBe('Pix à vista')
     expect(rotuloDoPagamento({ forma: 'AVISTA', metodo: 'CASH' })).toBe('Dinheiro à vista')
   })

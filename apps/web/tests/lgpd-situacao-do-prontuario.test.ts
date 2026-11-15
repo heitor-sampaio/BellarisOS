@@ -23,13 +23,13 @@ describe('o prontuário fora do pacote, por situação', () => {
 // tinha sido ignorado. O pedido diz a situação do prontuário por extenso.
 describe('A56: a solicitação diz a situação do prontuário', () => {
   it('pedido e esperando a clínica: "pendente de liberação"', () => {
-    expect(prontuarioNaSolicitacao('pending', false)).toBe('pedido — pendente de liberação pela clínica')
+    expect(prontuarioNaSolicitacao('pending', false)).toBe('pedido — pendente de liberação pela equipe')
   })
   it('liberado e incluído', () => {
     expect(prontuarioNaSolicitacao('approved', true)).toBe('pedido — liberado e incluído neste pacote')
   })
   it('não liberado', () => {
-    expect(prontuarioNaSolicitacao('denied', false)).toBe('pedido — não liberado pela clínica')
+    expect(prontuarioNaSolicitacao('denied', false)).toBe('pedido — não liberado pela equipe')
   })
   it('não pedido', () => {
     expect(prontuarioNaSolicitacao('not_requested', false)).toBe('não pedido')

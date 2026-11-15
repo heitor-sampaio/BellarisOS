@@ -16,7 +16,7 @@ import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
   CONFIRMED:   'Confirmado',
-  ARRIVED:     'Na clínica',
+  ARRIVED:     'Chegou',
   IN_PROGRESS: 'Em atendimento',
   COMPLETED:   'Concluído',
   CANCELLED:   'Cancelado',
@@ -120,7 +120,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
         <section style={{ marginBottom: 28 }}>
           <GroupLabel>Próximos</GroupLabel>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '-4px 0 10px' }}>
-            Toque no agendamento para cancelar ou remarcar — pelo app, até {prazoHoras} horas antes. Depois disso, fale com a clínica.
+            Toque no agendamento para cancelar ou remarcar — pelo app, até {prazoHoras} horas antes. Depois disso, fale com a equipe.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {upcoming.map(a => <AppointmentCard key={a.id} appt={a} slug={slug} highlight prazoHoras={prazoHoras} comUnidade={variasUnidades} />)}
@@ -280,7 +280,7 @@ function AppointmentCard({ appt, slug, highlight = false, prazoHoras, comUnidade
       {prazoHoras != null && ['SCHEDULED', 'CONFIRMED'].includes(appt.status) && !aindaDaParaAlterar(appt.scheduled_at, prazoHoras)
         && new Date(appt.scheduled_at).getTime() > new Date(inicioDosProximos(new Date(), fuso)).getTime() && (
         <p data-prazo-encerrado style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-          Prazo do app encerrado: fale com a clínica para alterar
+          Prazo do app encerrado: fale com a equipe para alterar
         </p>
       )}
     </Link>

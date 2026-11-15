@@ -169,7 +169,7 @@ test.describe.serial('checkout de plano', () => {
         if (i === 0) {
           // O contrato de plano vem primeiro (kind), já com o pagamento e os procedimentos.
           // D6 (6ª simulação): a entrada no Pix; as parcelas são o crediário da clínica.
-          await expect(page.getByText(/entrada de R\$\s100,00 no Pix \+ 3 parcelas de R\$\s100,00 com a clínica/)).toBeVisible()
+          await expect(page.getByText(/entrada de R\$\s100,00 no Pix \+ 3 parcelas de R\$\s100,00 no crediário/)).toBeVisible()
           await expect(page.getByText(new RegExp(`Peeling ${marca} — 1 sessão — R\\$\\s100,00`))).toBeVisible()
         }
         await page.getByRole('button', { name: 'Assinar no papel' }).click()

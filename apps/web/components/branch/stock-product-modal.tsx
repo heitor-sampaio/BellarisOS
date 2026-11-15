@@ -405,7 +405,7 @@ function ProductFields({
                   é base de insumo, custo e margem — e o estoque inicial DIZ isso,
                   como a Entrada (D5 do levantamento, C16). */}
               <p data-entrada-sem-despesa style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a clínica pagou entra no
+                Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a rede pagou entra no
                 Financeiro por um lançamento (Novo lançamento, categoria “Compra de estoque”).
               </p>
 

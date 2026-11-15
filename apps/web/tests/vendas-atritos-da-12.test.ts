@@ -20,7 +20,7 @@ describe('A18: o Vender diz a comissão de venda de quem vendeu e de onde vem', 
   })
   it('o produto: a do produto, senão a da pessoa, senão a da clínica — e cada item com a sua', () => {
     expect(textoDaComissaoDaVenda({ tipo: 'PRODUTO', itens: [{ nome: 'Sérum', regra: null }], pessoa: { nome: 'Rita', pct: null }, clinicaPct: 2 }))
-      .toContain('2% do vendido — da clínica')
+      .toContain('2% do vendido — da rede')
     expect(textoDaComissaoDaVenda({
       tipo: 'PRODUTO', pessoa: rita, clinicaPct: 2,
       itens: [{ nome: 'Sérum', regra: { tipo: 'PERCENTAGE', valor: 10 } }, { nome: 'Protetor', regra: { tipo: 'FIXED_AMOUNT', valor: 3 } }, { nome: 'Gel', regra: null }],

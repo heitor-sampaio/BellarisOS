@@ -31,7 +31,7 @@ export default async function AssinarPeloLinkPage({ params }: { params: Promise<
   return (
     <MolduraDaVerificacao marca={null}>
       {espiada.estado === 'valido'
-        ? <AssinarPorLink token={decodeURIComponent(token)} clinica={espiada.clinica ?? 'A clínica'} pede={espiada.pede} quantos={espiada.documentos} />
+        ? <AssinarPorLink token={decodeURIComponent(token)} clinica={espiada.clinica ?? 'A equipe'} pede={espiada.pede} quantos={espiada.documentos} />
         : (
           <div className="card" style={{ padding: '28px 22px', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
             <div style={{ width: 44, height: 44, borderRadius: '50%', background: espiada.estado === 'usado' ? 'var(--success-bg)' : 'var(--warning-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

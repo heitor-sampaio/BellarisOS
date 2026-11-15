@@ -32,7 +32,7 @@ test('o login sem rede nem ficha não entra e diz que a conta não tem acesso a 
   await page.getByLabel('E-mail').fill(email)
   await page.getByLabel('Senha').fill(senha)
   await page.getByRole('button', { name: 'Entrar' }).click()
-  await expect(page.getByText('Esta conta não tem acesso a nenhuma clínica.')).toBeVisible()
+  await expect(page.getByText('Esta conta não tem acesso a nenhuma rede.')).toBeVisible()
   await expect(page).toHaveURL(/\/login/)
   // E a sessão não ficou aberta: o /admin manda de volta ao login.
   await page.goto('/admin/dashboard')

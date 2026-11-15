@@ -115,8 +115,8 @@ const CAMPO: Record<string, string> = {
 const VERBO: Record<string, string> = { criou: 'Criou', editou: 'Editou', apagou: 'Apagou' }
 
 const MODULO: Record<string, string> = {
-  agenda: 'Agenda', clients: 'Clientes', loyalty: 'Fidelidade', medical_records: 'Prontuário', documents: 'Termos e contratos',
-  procedures: 'Procedimentos e pacotes', stock: 'Estoque', financial: 'Financeiro e comissões', cashier: 'Recebimentos',
+  agenda: 'Agenda', clients: 'Clientes', loyalty: 'Fidelidade', medical_records: 'Prontuário', documents: 'Documentos',
+  procedures: 'Procedimentos e pacotes', stock: 'Estoque', financial: 'Financeiro e comissões', cashier: 'PDV',
   crm: 'CRM', marketing: 'Marketing', reports: 'Relatórios', team: 'Equipe', forms: 'Modelos de ficha e de documento',
   roles: 'Cargos e permissões', settings: 'Configurações da rede', automations: 'Automações', copilot: 'Copilot', audit: 'Auditoria',
 }

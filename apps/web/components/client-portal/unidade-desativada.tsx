@@ -14,8 +14,8 @@ export function AvisoUnidadeDesativada({ nome, aberto }: { nome: string | null |
     }}>
       <AlertTriangle size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
       <span>
-        {nome ? `A unidade ${nome} foi desativada pela clínica.` : 'Esta unidade foi desativada pela clínica.'}
-        {aberto ? ' Remarque para outra unidade ou fale com a clínica.' : ''}
+        {nome ? `A unidade ${nome} foi desativada.` : 'Esta unidade foi desativada.'}
+        {aberto ? ' Remarque para outra unidade ou fale com a equipe.' : ''}
       </span>
     </p>
   )

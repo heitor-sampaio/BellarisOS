@@ -76,7 +76,7 @@ test('a cliente com passaporte: o termo sai com o passaporte, pronto para assina
   const { cliente, doc } = await documentoDe('Portuguesa', { documento_tipo: 'PASSAPORTE', documento_numero: 'CB1234567' })
   await como(browser, gestor, async p => {
     await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
-    await expect(p.getByRole('region', { name: 'Termos e contratos' }).getByText('Para assinar'), 'pronto para assinar, sem "faltam dados"').toBeVisible()
+    await expect(p.getByRole('region', { name: 'Documentos para assinatura' }).getByText('Para assinar'), 'pronto para assinar, sem "faltam dados"').toBeVisible()
   })
   const { data } = await db().from('issued_documents').select('status, content').eq('id', doc).single<{ status: string; content: string }>()
   expect(data!.status, 'não fica INCOMPLETO por falta de CPF').toBe('PENDENTE')

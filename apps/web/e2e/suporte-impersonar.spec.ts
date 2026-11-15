@@ -175,7 +175,7 @@ test.describe.serial('suporte: entrar como', () => {
     try {
       const p = await ctx.newPage()
       await p.goto(`${SUP()}/redes/${f!.outra.tenantId}`)
-      await expect(p.locator('tr', { hasText: `Alvo sialvo${marca}` }).getByText('Sem autorização da clínica para entrar')).toBeVisible()
+      await expect(p.locator('tr', { hasText: `Alvo sialvo${marca}` }).getByText('Sem autorização da rede para entrar')).toBeVisible()
       const r = await p.request.post(`${SUP()}/api/entrar`, {
         form: { tenantId: f!.outra.tenantId, userId: f!.alvo.userId, motivo: 'tentando sem autorização' }, maxRedirects: 0,
         // O Origin que o formulário do painel leva (sem ele, a rota recusa antes).

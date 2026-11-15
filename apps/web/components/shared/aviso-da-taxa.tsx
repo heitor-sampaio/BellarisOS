@@ -35,7 +35,7 @@ export function AvisoDaTaxa({ vezes, bandeira, total, maquininha }: {
     const conta = liquidoNaMaquininha(total, taxa)
     return (
       <p data-liquido-do-cartao role="note" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-        Taxa da maquininha{naMaquininha} no crédito {rotulo}: {pct(taxa)}% ({formatBRL(conta.taxa)}) — a clínica recebe {formatBRL(conta.liquido)}
+        Taxa da maquininha{naMaquininha} no crédito {rotulo}: {pct(taxa)}% ({formatBRL(conta.taxa)}) — a rede recebe {formatBRL(conta.liquido)}
         {vezes > 1 ? `, que a operadora deposita em ${vezes} parcelas` : ''}.
       </p>
     )
@@ -78,7 +78,7 @@ export function AvisoDaTaxaDoDebito({ bandeira, total, maquininha }: { bandeira?
   return (
     <p data-taxa-do-debito role="note" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
       Taxa da maquininha{naMaquininha} no débito: {pct(taxa)}%{deOnde}
-      {conta ? ` (${formatBRL(conta.taxa)}); a clínica recebe ${formatBRL(conta.liquido)}` : ''}.
+      {conta ? ` (${formatBRL(conta.taxa)}); a rede recebe ${formatBRL(conta.liquido)}` : ''}.
     </p>
   )
 }

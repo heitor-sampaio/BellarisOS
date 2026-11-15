@@ -82,7 +82,7 @@ test.describe('A49: a ficha de pré-atendimento se manda à mão, com o envio au
       // A31 da 7ª: numa rede sem WhatsApp ligado, o botão parecia o da clínica —
       // é o wa.me, o WhatsApp do aparelho, e a tela diz isso.
       await expect(ficha.getByRole('link', { name: 'Abrir no WhatsApp do aparelho' })).toHaveAttribute('href', /^https:\/\/wa\.me\/55/)
-      await expect(ficha.locator('[data-whatsapp-do-aparelho]')).toContainText('não é um WhatsApp ligado à clínica')
+      await expect(ficha.locator('[data-whatsapp-do-aparelho]')).toContainText('não é um WhatsApp ligado à rede')
     } finally {
       await ctx.close()
     }

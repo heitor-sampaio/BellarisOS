@@ -25,7 +25,7 @@ const MODOS: { key: ModoDeGanho; label: string; explicacao: string }[] = [
   },
   {
     key: 'POR_PROCEDIMENTO', label: 'Por procedimento',
-    explicacao: 'Cada procedimento vale uma quantidade fixa de pontos, definida no cadastro dele. Bom para destacar o que a clínica quer vender mais. Procedimento sem pontos cadastrados não gera ponto.',
+    explicacao: 'Cada procedimento vale uma quantidade fixa de pontos, definida no cadastro dele. Bom para destacar o que a rede quer vender mais. Procedimento sem pontos cadastrados não gera ponto.',
   },
 ]
 
@@ -310,7 +310,7 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
             {indicacao === 'DESLIGADO'
               ? 'A ficha guarda quem indicou (“Indicada por”), mas ninguém ganha nada pela indicação.'
-              : `Quem indicou ganha ${indicacao === 'PONTOS' ? 'os pontos' : 'um voucher da recompensa, sem gastar pontos,'} quando a indicada pagar o primeiro atendimento ou a primeira compra na clínica (a venda de pacote, pré-pago, produto ou crédito na clínica também conta) — uma vez por indicada. Se esse pagamento for estornado por inteiro, o prêmio sai junto; o estorno de uma parte não tira o prêmio. Quem já tinha pago antes da indicação não conta. No app, a cliente vê “Indique uma amiga” com o prêmio; a ficha da amiga continua sendo feita pela clínica.`}
+              : `Quem indicou ganha ${indicacao === 'PONTOS' ? 'os pontos' : 'um voucher da recompensa, sem gastar pontos,'} quando a indicada pagar o primeiro atendimento ou a primeira compra (a venda de pacote, pré-pago, produto ou crédito interno também conta) — uma vez por indicada. Se esse pagamento for estornado por inteiro, o prêmio sai junto; o estorno de uma parte não tira o prêmio. Quem já tinha pago antes da indicação não conta. No app, a cliente vê “Indique uma amiga” com o prêmio; a ficha da amiga continua sendo feita pela equipe.`}
           </p>
         </div>
       </Bloco>
@@ -331,7 +331,7 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
           {pontuaProduto
             ? 'O produto vendido na ficha dá pontos pelo valor pago, na mesma conta de pontos por R$ 1 — também quando os procedimentos pontuam por procedimento.'
-            : 'O produto vendido na ficha não dá pontos. Os atendimentos, os pacotes, os pré-pagos, os planos e o crédito na clínica vendido pontuam.'}
+            : 'O produto vendido na ficha não dá pontos. Os atendimentos, os pacotes, os pré-pagos, os planos e o crédito interno vendido pontuam.'}
         </p>
       </Bloco>
 

@@ -157,7 +157,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
       const noPrazo = prazoHoras != null && prazoHoras > 0 && new Date(scheduledAt).getTime() - Date.now() < prazoHoras * 3_600_000
       toast.success('Horário marcado', {
         description: `${res.quemAtende ? `Com ${res.quemAtende}, ` : ''}${fmtDate(date)} às ${time}.`
-          + (noPrazo ? ` Fica a menos de ${prazoHoras} horas: para cancelar ou remarcar, fale com a clínica.` : ''),
+          + (noPrazo ? ` Fica a menos de ${prazoHoras} horas: para cancelar ou remarcar, fale com a equipe.` : ''),
       })
       if (res.documentosParaAssinar) {
         // O procedimento pede termo ou contrato: direto para ele.
@@ -498,7 +498,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
           <div className="card" style={{ padding: '20px 22px', marginBottom: 24 }}>
             {unidades.length > 1 && unidade && <Row label="Unidade" value={unidade} />}
             <Row label="Procedimento" value={procedure.name} />
-            <Row label="Profissional"  value={prof.id ? prof.name : 'A clínica escolhe quem estiver livre'} />
+            <Row label="Profissional"  value={prof.id ? prof.name : 'A equipe escolhe quem estiver livre'} />
             <Row label="Data"          value={fmtDate(date)} />
             <Row label="Horário"       value={time} />
             <Row label="Duração"       value={`${procedure.duration_min} min`} />
@@ -515,7 +515,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
             }}>
               {/* A52 da 12ª: a Sabrina leu e não entendeu — a frase diz o que acontece com ESTE agendamento. */}
               Este horário fica a menos de {prazoHoras} horas: o agendamento nasce sem cancelar nem remarcar pelo app (pelo app, só até {prazoHoras} horas antes).
-              Depois de confirmar, para mudar, fale com a clínica.
+              Depois de confirmar, para mudar, fale com a equipe.
             </p>
           )}
 

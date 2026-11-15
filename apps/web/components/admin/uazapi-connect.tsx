@@ -208,7 +208,7 @@ export function UazapiConnect({ numeroId, nomeDoNumero }: {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55, margin: 0 }}>
-          Conecte o WhatsApp da clínica escaneando um QR code, como no WhatsApp Web.
+          Conecte o WhatsApp da rede escaneando um QR code, como no WhatsApp Web.
           Não é preciso contratar nada à parte — a conexão já faz parte do plano.
         </p>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', lineHeight: 1.55, margin: 0 }}>
@@ -365,7 +365,7 @@ export function UazapiConnect({ numeroId, nomeDoNumero }: {
                 margin: '8px 0 0', paddingLeft: 18, fontSize: 'var(--text-sm-sz)',
                 color: 'var(--text-muted)', lineHeight: 1.7,
               }}>
-                <li>Abra o WhatsApp no celular da clínica</li>
+                <li>Abra o WhatsApp no celular do número que vai conectar</li>
                 <li>Toque em <strong>Aparelhos conectados</strong></li>
                 <li>Toque em <strong>Conectar aparelho</strong></li>
                 <li>Aponte a câmera para este código</li>

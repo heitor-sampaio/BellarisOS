@@ -28,7 +28,7 @@ export function RespostaDoSuporte({ chamadoId }: { chamadoId: string }) {
 
   return (
     <form key={chave} action={enviar} className="ajuda-form" style={{ borderTop: '1px solid var(--hairline)', paddingTop: 12 }}>
-      <label className="ajuda-rotulo">{interna ? 'Nota interna (a clínica não vê)' : 'Responder à clínica'}
+      <label className="ajuda-rotulo">{interna ? 'Nota interna (a rede não vê)' : 'Responder à rede'}
         <textarea className="field" name="corpo" required maxLength={5000} rows={4} />
       </label>
       <div className="ajuda-acoes" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
@@ -42,7 +42,7 @@ export function RespostaDoSuporte({ chamadoId }: { chamadoId: string }) {
         <div className="suporte-filtros">
           {!interna && (
             <select name="status" className="filtro-select" defaultValue="" aria-label="Situação depois de responder">
-              <option value="">Depois: aguardando a clínica</option>
+              <option value="">Depois: aguardando a rede</option>
               {SITUACOES_DO_CHAMADO.filter(s => s !== 'aguardando_clinica').map(s => (
                 <option key={s} value={s}>Depois: {ROTULO_DA_SITUACAO[s].toLowerCase()}</option>
               ))}
@@ -69,7 +69,7 @@ export function AcoesDoChamado({ chamadoId, status, podePedir }: { chamadoId: st
     <div className="suporte-pilha" style={{ borderTop: '1px solid var(--hairline)', paddingTop: 10 }}>
       {podePedir && (
         <button type="button" className="btn-secondary" disabled={gravando}
-          onClick={() => rodar(() => pedirAutorizacao(chamadoId), 'Pedido enviado à clínica.')}>
+          onClick={() => rodar(() => pedirAutorizacao(chamadoId), 'Pedido enviado à rede.')}>
           Pedir autorização
         </button>
       )}

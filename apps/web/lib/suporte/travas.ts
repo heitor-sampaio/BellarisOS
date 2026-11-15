@@ -13,5 +13,5 @@ import type { TenantContext } from '@estetica-os/types'
  */
 export function bloqueioDoSuporte(ctx: Pick<TenantContext, 'suporte'>, oQue: string): string | null {
   if (!ctx.suporte) return null
-  return `No modo suporte não dá para ${oQue}. Isto é feito pela própria clínica.`
+  return `No modo suporte não dá para ${oQue}. Isto é feito pela própria rede.`
 }

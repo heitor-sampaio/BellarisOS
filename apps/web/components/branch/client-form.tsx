@@ -419,7 +419,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           <b style={{ color: 'var(--text)' }}>Criar o acesso ao app</b>
           {podeAcesso ? (
             <> — login = e-mail e senha inicial = {nomeDoDoc}{tipoDoc !== 'CPF' ? ' (em maiúsculas, como está aqui)' : ''}. Se ela já
-              usa o app em outra clínica, com o mesmo e-mail e documento, esta ficha entra na conta dela, e a senha
+              usa o app em outra rede, com o mesmo e-mail e documento, esta ficha entra na conta dela, e a senha
               continua a que ela já usa.</>
           ) : (
             <> — precisa do e-mail e de um documento (CPF, passaporte ou RNE). Sem eles, a cliente é cadastrada sem o
@@ -542,7 +542,7 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
       <div role="alert" data-ja-existe style={caixaDaPergunta}>
         <span>
           Já existe a ficha de <b style={destaque}>{pergunta.nome}</b> {POR_QUE[pergunta.motivo]}.
-          {pergunta.podeCadastrarMesmoAssim ? ' Se é outra pessoa (mãe e filha dividem o telefone), cadastre mesmo assim.' : ' O CPF é único na clínica.'}
+          {pergunta.podeCadastrarMesmoAssim ? ' Se é outra pessoa (mãe e filha dividem o telefone), cadastre mesmo assim.' : ' O CPF é único na rede.'}
         </span>
         <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {pergunta.podeCadastrarMesmoAssim && (

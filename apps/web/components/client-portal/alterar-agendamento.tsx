@@ -101,23 +101,23 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
     return (
       <div data-fora-do-prazo className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          O prazo para alterar pelo app terminou em {limite} ({prazoHoras} horas antes do horário). A clínica ainda
-          cancela ou remarca: para isso, fale com a clínica.
+          O prazo para alterar pelo app terminou em {limite} ({prazoHoras} horas antes do horário). A equipe ainda
+          cancela ou remarca: para isso, fale com ela.
         </p>
         {telefone && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
-            Telefone da clínica: {telefone}
+            Telefone: {telefone}
           </p>
         )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {zap && (
             <a href={zap} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ justifyContent: 'center', flex: '1 1 180px' }}>
-              <MessageCircle size={14} aria-hidden="true" /> Falar com a clínica
+              <MessageCircle size={14} aria-hidden="true" /> Falar com a equipe
             </a>
           )}
           {ligar && (
             <a href={ligar} className="btn-secondary" style={{ justifyContent: 'center', flex: '1 1 180px' }}>
-              <Phone size={14} aria-hidden="true" /> Ligar para a clínica
+              <Phone size={14} aria-hidden="true" /> Ligar
             </a>
           )}
         </div>
@@ -252,7 +252,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
               color: 'var(--text)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)',
               padding: '10px 14px', fontSize: 'var(--text-sm-sz)', lineHeight: 1.45,
             }}>
-              Este horário fica a menos de {prazoHoras} horas: depois de remarcar, para mudar de novo ou cancelar, fale com a clínica.
+              Este horário fica a menos de {prazoHoras} horas: depois de remarcar, para mudar de novo ou cancelar, fale com a equipe.
             </p>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
@@ -269,7 +269,7 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
             Motivo (opcional)
-            <input className="field" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Conte para a clínica o porquê, se quiser" />
+            <input className="field" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Conte à equipe o porquê, se quiser" />
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="btn-secondary" disabled={enviando} onClick={() => setModo('nada')}>Voltar</button>

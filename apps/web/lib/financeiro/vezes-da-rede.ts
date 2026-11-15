@@ -47,7 +47,7 @@ export async function recusaDasVezesDaRede(tenantId: string, vezes: number, maqu
   const noCartao = metodo === 'CREDIT_CARD' || metodo === 'DEBIT_CARD'
   if (!(vezes > 1) && !maquininhaId && !noCartao) return null
   const lista = await maquininhasDaRede(tenantId)
-  if (maquininhaId && !lista.some(m => m.id === maquininhaId)) return 'Esta maquininha não é desta clínica.'
+  if (maquininhaId && !lista.some(m => m.id === maquininhaId)) return 'Esta maquininha não é desta rede.'
   if (noCartao && !maquininhaId && lista.filter(m => !m.arquivada).length > 1) return 'Escolha a maquininha do cartão.'
   if (!(vezes > 1)) return null
   const m = maquininhaDaVenda(lista, maquininhaId)

@@ -79,7 +79,7 @@ test('A10: ligar o fluxo que manda aviso no celular abre a janela, com quantas v
     await p.getByRole('button', { name: 'Ligar' }).click()
     const janela = p.locator('[data-antes-de-ligar]')
     await expect(janela).toContainText('Hoje a busca acharia 3 clientes, e 1 vai receber o aviso no celular', { timeout: 20_000 })
-    await expect(janela).toContainText('só chega a quem tem o app da clínica ou os avisos ligados no navegador')
+    await expect(janela).toContainText('só chega a quem tem o app ou os avisos ligados no navegador')
     await janela.getByRole('button', { name: 'Agora não' }).click()
     await expect(p.locator('[data-antes-de-ligar]')).toHaveCount(0)
   })

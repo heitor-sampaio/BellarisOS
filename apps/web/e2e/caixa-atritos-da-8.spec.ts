@@ -85,7 +85,7 @@ test('A33: a recepção lê na ficha a quem pedir o estorno, a devolução e o c
 test('A43: a ficha diz que ela pagou com crédito na clínica (fora do investido e do "Total pago")', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/clients/${cliente}`)
-    await expect(p.locator('[data-pago-com-credito]').first()).toContainText(/R\$\s180,00 pagos com crédito na clínica/)
+    await expect(p.locator('[data-pago-com-credito]').first()).toContainText(/R\$\s180,00 pagos com crédito interno/)
   })
 })
 
@@ -98,7 +98,7 @@ test('A36 + A46: o crédito interno mostra o saldo e o que sobra, e a venda conc
     await dlg.getByLabel('Quantidade').fill('1')
     await dlg.getByRole('radio', { name: 'Crédito interno', exact: true }).click()
     // R$ 450 − R$ 180 já usados = R$ 270; depois desta venda de R$ 100, R$ 170.
-    await expect(dlg.locator('[data-saldo-do-credito]')).toHaveText(/Crédito na clínica: R\$\s270,00 · depois deste pagamento: R\$\s170,00/)
+    await expect(dlg.locator('[data-saldo-do-credito]')).toHaveText(/Crédito interno: R\$\s270,00 · depois deste pagamento: R\$\s170,00/)
     await euVendi(dlg)
     await dlg.getByRole('button', { name: /^Vender por/ }).click()
     await expect(p.getByText(/Venda registrada: 1× .*Sérum cx/)).toBeVisible({ timeout: 15_000 })
@@ -118,6 +118,6 @@ test('A40: ao escolher o cartão e as vezes, a tela diz a taxa e o líquido; a l
     await dlg.getByLabel('Vezes no cartão').selectOption('3')
     const liquido = dlg.locator('[data-liquido-do-cartao]')
     await expect(liquido).toContainText('2,97%')
-    await expect(liquido).toContainText(/a clínica recebe R\$\s97,03/)
+    await expect(liquido).toContainText(/a rede recebe R\$\s97,03/)
   })
 })

@@ -174,7 +174,7 @@ export async function enviarDocumentoACliente(
   if (typeof documentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(documentId)) return { error: 'Documento não encontrado.' }
   // Sem o portal no plano, a cliente não tem onde ver (C57a, F69): recusa em
   // vez de dizer "enviado". Tirar do app continua valendo.
-  if (enviar && !temRecurso(ctx, 'portal')) return { error: 'O plano desta clínica não tem o portal do cliente: não há onde a cliente ver o documento.' }
+  if (enviar && !temRecurso(ctx, 'portal')) return { error: 'O plano desta rede não tem o portal da cliente: não há onde a cliente ver o documento.' }
 
   const admin = createAdminClient()
   const doc = await ler(admin
@@ -204,7 +204,7 @@ export async function enviarDocumentoACliente(
       await notifyClient(admin, doc.client_id as string, {
         type:  'document_shared',
         title: 'Documento novo',
-        body:  `${unidade.name || 'A clínica'} enviou um documento para você.`,
+        body:  `${unidade.name || 'A equipe'} enviou um documento para você.`,
         data:  { link: `/${unidade.slug}/cliente/historico` },
       })
     }

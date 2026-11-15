@@ -32,9 +32,9 @@ describe('até quantas vezes a clínica parcela no crédito', () => {
   })
 
   it('acima do limite é recusado, com o limite na frase', () => {
-    expect(recusaDasVezes(6, 3)).toBe('A clínica parcela no cartão de crédito em até 3x.')
+    expect(recusaDasVezes(6, 3)).toBe('A rede parcela no cartão de crédito em até 3x.')
     expect(recusaDasVezes(3, 3)).toBeNull()
     expect(recusaDasVezes(1, 1)).toBeNull()
-    expect(recusaDasVezes(2, 1)).toBe('A clínica não parcela no cartão de crédito: só à vista.')
+    expect(recusaDasVezes(2, 1)).toBe('A rede não parcela no cartão de crédito: só à vista.')
   })
 })

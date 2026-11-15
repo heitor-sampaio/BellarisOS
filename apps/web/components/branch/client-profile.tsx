@@ -436,7 +436,7 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
             Pedido de dados (LGPD) feito pelo app em {formatarDiaDaFalta(pedidoLgpd.pedidoEm, fuso)}: {pedidoLgpd.aberto
               ? `responder até ${pedidoLgpd.prazo} (15 dias do pedido).`
               : 'o pacote já está no app dela.'}
-            {!pedidoLgpd.caminho && ' Quem administra a clínica responde em Configurações → LGPD.'}
+            {!pedidoLgpd.caminho && ' A resposta é em Configurações → LGPD.'}
           </span>
           {pedidoLgpd.caminho && <Link href={pedidoLgpd.caminho} style={link}>Abrir Configurações → LGPD</Link>}
         </p>
@@ -1294,7 +1294,7 @@ function FinanceiroTab({
       )}
       {pagoComCredito > 0 && (
         <p data-pago-com-credito style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          {fmtBRL(pagoComCredito)} foram pagos com crédito na clínica e não entram no “Total pago”: {textoDaOrigemDoCredito(internalCredits)}.
+          {fmtBRL(pagoComCredito)} foram pagos com crédito interno e não entram no “Total pago”: {textoDaOrigemDoCredito(internalCredits)}.
         </p>
       )}
       {/* A33 da 8ª: a recepção (Recebimentos em Gerenciar) não vê Estornar, Devolver nem Cancelar pacote — a regra de cargo fica, e a tela diz a quem pedir. */}
@@ -1821,10 +1821,10 @@ export function ClientProfile({
             // A43 da 8ª: "R$ 0" ao lado do preço médio de R$ 450, sem dizer que ela pagou com crédito.
             // A41 da 9ª: de onde veio o crédito — o concedido nunca teve dinheiro.
             nota: [
-              pagoComCredito > 0 ? `+ ${fmtBRL(pagoComCredito)} pagos com crédito na clínica: não contam aqui (${textoDaOrigemDoCredito(internalCredits)}).` : null,
+              pagoComCredito > 0 ? `+ ${fmtBRL(pagoComCredito)} pagos com crédito interno: não contam aqui (${textoDaOrigemDoCredito(internalCredits)}).` : null,
               // A29 da 10ª: logo depois da venda do vale, o LTV subia sem nota — o crédito comprado conta na compra.
               internalCredits.some(c => c.comprado && c.amount > 0)
-                ? 'Inclui o crédito na clínica comprado: o dinheiro conta aqui no dia da compra, e usar o crédito depois não conta de novo.'
+                ? 'Inclui o crédito interno comprado: o dinheiro conta aqui no dia da compra, e usar o crédito depois não conta de novo.'
                 : null,
             ].filter(Boolean).join(' ') || undefined },
           // A56: ao lado do que ela PAGOU (de tudo), o preço médio dos
@@ -2333,8 +2333,8 @@ export function ClientProfile({
 
       {/* -- Tab: Documentos ------------------------------------------- */}
       {tab === 'documentos' && termos && (
-        <section aria-label="Termos e contratos" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Termos e contratos</h3>
+        <section aria-label="Documentos para assinatura" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Documentos para assinatura</h3>
           <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso && termos.portalNoPlano !== false} recortado={!!termos.recortado} />
         </section>
       )}

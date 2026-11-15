@@ -27,7 +27,7 @@ export async function trocarPontosNoPortal(entrada: { slug: string; rewardId: st
   if (!cliente?.tenant_id) return { error: 'Sem acesso.' }
 
   const cfg = await configDaRede(cliente.tenant_id, admin)
-  if (!cfg.enabled || !cfg.client_redeem) return { error: 'A troca pelo portal não está disponível. Fale com a recepção.' }
+  if (!cfg.enabled || !cfg.client_redeem) return { error: 'A troca pelo app não está disponível. Fale com a equipe.' }
 
   // A unidade é a do portal em que o cliente está, procurada DENTRO da rede
   // dele: é onde a troca fica registrada. O saldo que paga é o da rede (FD3).

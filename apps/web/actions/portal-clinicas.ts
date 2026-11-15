@@ -19,8 +19,8 @@ export async function entrarNaClinica(clientId: unknown): Promise<{ error: strin
   assertClient(ctx)
   const id = z.string().uuid().safeParse(clientId)
   const ficha = id.success ? (await getCachedFichasDoLogin(ctx.userId)).find(f => f.clientId === id.data) : undefined
-  if (!ficha?.slug) return { error: 'Clínica não encontrada.' }
-  if (!(await clinicaAbreParaCliente(ficha.tenantId))) return { error: 'Esta clínica está indisponível no momento.' }
+  if (!ficha?.slug) return { error: 'Rede não encontrada.' }
+  if (!(await clinicaAbreParaCliente(ficha.tenantId))) return { error: 'Esta rede está indisponível no momento.' }
 
   await registrarEntradaNoPortal(ficha.clientId, { escolheuAgora: true })
   redirect(`/${ficha.slug}/cliente`)

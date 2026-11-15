@@ -263,7 +263,7 @@ export async function enviarFichaPelaConversa(appointmentId: string): Promise<{ 
     }
     const conversa = await conversaDoCliente(ctx.tenantId!, ap.client_id)
     if (!conversa) {
-      return { error: 'Esta cliente não tem conversa aberta no WhatsApp da clínica. Use "Enviar a ficha" para copiar ou abrir no WhatsApp do aparelho.' }
+      return { error: 'Esta cliente não tem conversa aberta no WhatsApp da rede. Use "Enviar a ficha" para copiar ou abrir no WhatsApp do aparelho.' }
     }
 
     const criado = await criarLinkDaFicha(ctx, { ...ap, client_id: ap.client_id })
@@ -331,7 +331,7 @@ async function montarLinkDaFicha(
 ): Promise<LinkDoPreAtendimento> {
   const admin = createAdminClient()
   const unidade = await ler(admin.from('branches').select('name').eq('id', ap.branch_id).maybeSingle(), 'buscar a unidade')
-  const clinica = (unidade?.name as string) || 'A clínica'
+  const clinica = (unidade?.name as string) || 'A equipe'
   const url = `${origemPublicaDe(await headers())}/pre-atendimento/${token}`
   // A prévia aparece na tela de bloqueio do celular: nada de saúde (nem no
   // nome da ficha — PR3 trocou "pré-atendimento" por "ficha de saúde" no que

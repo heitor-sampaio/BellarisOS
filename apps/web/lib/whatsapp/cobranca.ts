@@ -42,7 +42,7 @@ export const MENSAGEM_SEM_PAGAMENTO =
 
 /** O aviso de quem conecta um número oficial: a conta (e a fatura) é da clínica. */
 export const AVISO_DE_COBRANCA =
-  'A Meta cobra direto na conta do WhatsApp da clínica: cada template entregue (de marketing, '
+  'A Meta cobra direto na conta do WhatsApp da rede: cada template entregue (de marketing, '
   + `cerca de ${formatarPreco(TABELA_DA_META.precos.marketing)}; de utilidade, ${formatarPreco(TABELA_DA_META.precos.utility)}) `
   + `e as respostas além de ${TABELA_DA_META.respostasGratisPorMes.toLocaleString('pt-BR')} por mês no número. `
   + 'Depois de conectar, cadastre uma forma de pagamento no Gerenciador do WhatsApp da Meta — sem ela, os templates são recusados.'
@@ -74,7 +74,7 @@ export function formatarPreco(valor: number): string {
 export function avisoDoTemplate(category: string, janelaAberta: boolean): { tom: 'info' | 'alerta'; texto: string } {
   const categoria = categoriaDoTemplate(category)
   const base = `Template de ${ROTULO_DA_CATEGORIA[categoria]}: a Meta cobra cerca de `
-    + `${formatarPreco(precoDaCategoria(categoria))} por mensagem entregue, na conta do WhatsApp da clínica.`
+    + `${formatarPreco(precoDaCategoria(categoria))} por mensagem entregue, na conta do WhatsApp da rede.`
   if (janelaAberta && categoria === 'marketing') {
     return {
       tom: 'alerta',

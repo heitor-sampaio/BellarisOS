@@ -17,7 +17,7 @@ describe('os nomes do crediário (A23 da 14ª, PDV8)', () => {
   it('um nome só — o do bloco, ao lado de Pix, Dinheiro, Débito e Crédito', () => {
     expect(ROTULO_DO_CREDIARIO).toBe('Crediário')
     expect(rotuloDaForma('CREDIARIO')).toBe('Crediário')
-    expect(limiteDoCrediarioEmTexto(6)).toBe('até 6x, o limite da clínica')
+    expect(limiteDoCrediarioEmTexto(6)).toBe('até 6x, o limite da rede')
   })
 })
 

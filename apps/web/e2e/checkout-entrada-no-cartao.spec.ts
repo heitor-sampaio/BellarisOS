@@ -122,7 +122,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
-      await expect(page.getByText(/3 parcelas \(2x de R\$\s890,66 \+ 1x de R\$\s890,68\) com a clínica: R\$\s890,66 em \d\d\/\d\d\/\d{4}, R\$\s890,66 em \d\d\/\d\d\/\d{4} e R\$\s890,68 em \d\d\/\d\d\/\d{4}/),
+      await expect(page.getByText(/3 parcelas \(2x de R\$\s890,66 \+ 1x de R\$\s890,68\) no crediário: R\$\s890,66 em \d\d\/\d\d\/\d{4}, R\$\s890,66 em \d\d\/\d\d\/\d{4} e R\$\s890,68 em \d\d\/\d\d\/\d{4}/),
         'o contrato lista cada parcela com o valor e a data').toBeVisible()
       await page.getByRole('button', { name: 'Assinar no papel' }).click()
       await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
@@ -155,7 +155,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
       await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       await page.getByRole('button', { name: 'Colher assinatura' }).first().click()
-      await expect(page.getByText(/entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2 parcelas de R\$\s1\.700,00 com a clínica/)).toBeVisible()
+      await expect(page.getByText(/entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2 parcelas de R\$\s1\.700,00 no crediário/)).toBeVisible()
       await page.getByRole('button', { name: 'Assinar no papel' }).click()
       await page.getByRole('button', { name: 'Confirmar: o cliente assinou o papel' }).click()
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
@@ -228,13 +228,13 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
         await p.getByRole('button', { name: /Pagamentos/ }).click()
         const linha = p.locator('[data-pagamento]').filter({ hasText: `Pacote crediário ${marca}` })
         await expect(linha).toContainText('Parcela 1 de 2')
-        await expect(linha).toContainText('Com a clínica')
+        await expect(linha).toContainText('Crediário')
       } finally { await ctxCli.close() }
 
       await como(browser, async p => {
         // A ficha da cliente, aba Financeiro.
         await p.goto(`/admin/clients/${cliente.clientId}?aba=financeiro`)
-        await expect(p.locator(`[data-lancamento="${tx!.id}"] [data-forma-do-lancamento]`)).toHaveText('Com a clínica')
+        await expect(p.locator(`[data-lancamento="${tx!.id}"] [data-forma-do-lancamento]`)).toHaveText('Crediário')
 
         // O Financeiro: "Pagar" pergunta a forma (nasce vazia) antes de dar baixa.
         const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })

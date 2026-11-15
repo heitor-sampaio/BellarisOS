@@ -623,7 +623,7 @@ function TabVendas(p: ReportsBiProps) {
       <p data-ponte-vendas-caixa style={{ margin: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
         O Total vendido é a venda, no dia em que foi feita; o caixa do período é o dinheiro, no dia em que entrou:{' '}
         <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito na
-        clínica vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
+        interno vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
         cliente usar); o pacote e o plano entram aqui
         inteiros, no dia da venda, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo.
       </p>
@@ -688,7 +688,7 @@ function TabVendas(p: ReportsBiProps) {
             {/* RL1: o crédito está na lista e fora do total — a tela diz (princípio 3). */}
             {!v.tipo && credito.quantidade > 0 && (
               <span data-credito-fora-do-total style={{ display: 'block', marginTop: 2, fontSize: 'var(--text-xs-sz)' }}>
-                Fora do total: {credito.quantidade.toLocaleString('pt-BR')} {credito.quantidade === 1 ? 'crédito na clínica vendido' : 'créditos na clínica vendidos'},{' '}
+                Fora do total: {credito.quantidade.toLocaleString('pt-BR')} {credito.quantidade === 1 ? 'crédito interno vendido' : 'créditos internos vendidos'},{' '}
                 {fmtBRLFull(credito.total)} — a venda é o que for pago com ele.
               </span>
             )}
@@ -706,8 +706,7 @@ function TabVendas(p: ReportsBiProps) {
           )}
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele); o crédito na
-          clínica não tem. A sessão de pacote, de plano ou pré-paga não aparece de novo — já foi vendida. A venda de antes do PDV não tem comanda (—).
+          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele); o crédito internonão tem. A sessão de pacote, de plano ou pré-paga não aparece de novo — já foi vendida. A venda de antes do PDV não tem comanda (—).
         </p>
       </SCard>
     </div>
@@ -931,7 +930,7 @@ function AgeRankCard({ data }: {
 // -----------------------------------------------------------------------------
 // TAB: PROCEDIMENTOS
 // -----------------------------------------------------------------------------
-/** "R$ 160,00 concluídos sem pagamento (1)" e "R$ 450,00 pagos com crédito na clínica (não é receita)" — A47/A43 da 8ª. */
+/** "R$ 160,00 concluídos sem pagamento (1)" e "R$ 450,00 pagos com crédito interno (não é receita)" — A47/A43 da 8ª. */
 /** A11 da 13ª: o Top 5 da Visão geral diz o pago com crédito na clínica, como as tabelas. */
 function NotasDoTop5({ notas }: { notas: string[] }) {
   if (notas.length === 0) return null
@@ -947,7 +946,7 @@ function NotaSemReceita({ s }: { s: SemReceita | undefined }) {
   return (
     <span data-sem-receita style={{ display: 'block', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
       {s.semPagamento.n > 0 && <span style={{ display: 'block' }}>{fmtBRLFull(s.semPagamento.valor)} concluídos sem pagamento ({s.semPagamento.n})</span>}
-      {s.comCredito.valor > 0 && <span style={{ display: 'block' }}>{fmtBRLFull(s.comCredito.valor)} pagos com crédito na clínica (não é receita)</span>}
+      {s.comCredito.valor > 0 && <span style={{ display: 'block' }}>{fmtBRLFull(s.comCredito.valor)} pagos com crédito interno (não é receita)</span>}
     </span>
   )
 }
@@ -992,7 +991,7 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'name',     label: 'Procedimento'  },
     { key: 'category', label: 'Categoria'     },
     { key: 'count',    label: 'Execuções',    align: 'center' },
-    { key: 'revenue',  label: p.receitaDaClinica ? 'Receita dos atendimentos (da clínica)' : 'Receita dos atendimentos', align: 'right',
+    { key: 'revenue',  label: p.receitaDaClinica ? 'Receita dos atendimentos (de todos)' : 'Receita dos atendimentos', align: 'right',
       render: (v, row) => <>{fmtBRLFull(Number(v))}<NotaSemReceita s={p.semReceita?.porProcedimento[String(row.name)]} /></> },
     // Receita do procedimento ÷ as execuções dele: não é o ticket médio (que só
     // conta os cobrados), e o nome diz isso (D11).
@@ -1096,7 +1095,7 @@ function TabProfissionais(p: ReportsBiProps) {
   const commCols: TableColumn[] = [
     { key: 'name',    label: 'Profissional'   },
     { key: 'appts',   label: 'Atendimentos',   align: 'center' },
-    { key: 'revenue', label: p.receitaDaClinica ? 'Receita dos atendimentos (da clínica)' : 'Receita dos atendimentos', align: 'right',
+    { key: 'revenue', label: p.receitaDaClinica ? 'Receita dos atendimentos (de todos)' : 'Receita dos atendimentos', align: 'right',
       render: (v, row) => <>{fmtBRLFull(Number(v))}<NotaSemReceita s={p.semReceita?.porProfissional[String(row.name)]} /></> },
     { key: 'open',    label: 'Comissão Aberta', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'paid',    label: 'Comissão Paga',   align: 'right', render: (v) => fmtBRLFull(Number(v)) },

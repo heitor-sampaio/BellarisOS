@@ -71,7 +71,7 @@ test('dispensado pela clínica, o detalhe diz isso', async ({ browser }) => {
   await como(browser, cliente!, async p => {
     await p.goto(`/${slug}/cliente/agendamentos/${agendamento}`)
     const linha = p.locator(`[data-documentos-do-agendamento] [data-documento="${doc}"]`)
-    await expect(linha).toContainText('Dispensado pela clínica')
+    await expect(linha).toContainText('Dispensado pela equipe')
     await expect(linha.getByRole('link', { name: 'Assinar' })).toHaveCount(0)
   })
 })

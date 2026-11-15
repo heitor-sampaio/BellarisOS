@@ -115,7 +115,9 @@ test('a Equipe da unidade lista quem é da rede e atende ali, sem deixar a unida
     await p.goto(`/${slug}/team`)
     const linha = p.getByRole('row', { name: new RegExp(nomeDaDona.replace(/[[\]]/g, '\\$&')) })
     await expect(linha).toBeVisible()
-    await expect(linha).toContainText('Da clínica') // uma unidade só: sem "rede" (F8)
+    // Uma unidade só: o "Da rede" é o nome da rede (PO2).
+    const { data: aRede } = await db().from('tenants').select('name').eq('id', rede!.tenantId).single<{ name: string }>()
+    await expect(linha).toContainText(aRede!.name)
     await expect(linha).toContainText('Atende')
     await expect(linha.getByTitle(/^Editar /), 'a unidade não edita quem é da rede').toHaveCount(0)
     await expect(linha.getByTitle('Desativar membro')).toHaveCount(0)
@@ -148,7 +150,7 @@ test('a última Admin da rede ativa não se desativa', async ({ browser }) => {
   try {
     await como(browser, gestora.estado, async p => {
       const r = await chamarAcao(p, 'actions/team.ts', 'deactivateTeamMember', '/admin/team', [dona!.userId, '/admin/team'])
-      expect(r.texto, 'a action diz por quê').toMatch(/única Admin ativa: a clínica/)
+      expect(r.texto, 'a action diz por quê').toMatch(/única Admin ativa: a rede/)
     })
     expect((await membro(dona!.userId))?.is_active, 'a última admin segue ativa').toBe(true)
   } finally {
@@ -318,7 +320,7 @@ test('eq-01: a Admin cadastra a sócia já como Admin, sem unidade fixa; o gesto
       await janela.locator('#tm-role').selectOption({ value: dona!.roleId })
       // A Admin é da clínica toda: a abrangência não se pergunta.
       await expect(janela.locator('#tm-branch')).toHaveCount(0)
-      await expect(janela.getByText(/Admin tem acesso à clínica toda/)).toBeVisible()
+      await expect(janela.getByText(/Admin tem acesso à rede toda/)).toBeVisible()
       await janela.locator('#tm-password').fill('Senha-forte-123')
       await janela.getByRole('button', { name: 'Criar membro' }).click()
       await expect(janela).toBeHidden({ timeout: 20_000 })

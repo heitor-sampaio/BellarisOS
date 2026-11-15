@@ -117,7 +117,7 @@ export function CampoIndicadaPor({ nome = 'indicada_por', inicial = null, exceto
                 </button>
               )) : (
                 <p style={{ padding: '10px 14px', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  Nenhuma ficha com “{termo.trim()}”. Quem indicou precisa ter ficha na clínica: cadastre-a primeiro.
+                  Nenhuma ficha com “{termo.trim()}”. Quem indicou precisa ter ficha na rede: cadastre-a primeiro.
                 </p>
               )}
             </div>

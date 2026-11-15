@@ -663,7 +663,7 @@ um muro que não depende de cada trava do código.
   (não entra em `/admin`). Trava: `tests/configuracoes-e-menu-da-14.test.ts`
   (toda entrada de `ADMIN_MENU` chega ao menu da unidade de quem é da rede).
 - **A aba da clínica toda diz QUEM muda** (A5 da 14ª, princípio 3): depois de
-  "Esta configuração é da clínica toda", "Quem muda: …" com os nomes de quem é
+  "Esta configuração é da rede toda", "Quem muda: …" com os nomes de quem é
   da rede e tem o módulo da aba em Gerenciar (`quemMudaNaClinica`,
   `lib/equipe/quem-desfaz.ts` — a mesma consulta do "quem desfaz").
 - **Fica com quem é da rede** (a action recusa, a aba diz "Esta configuração é

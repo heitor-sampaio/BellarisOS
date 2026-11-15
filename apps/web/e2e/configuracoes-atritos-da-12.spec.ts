@@ -169,7 +169,7 @@ test('A6/A24: o prêmio da indicação diz que o número é sugestão e o que co
     await expect(bloco.locator('[data-sugestao-de-pontos]')).toContainText('sugestão')
     await expect(bloco).toContainText('quando a indicada pagar o primeiro atendimento ou a primeira compra')
     await expect(bloco).toContainText('pacote')
-    await expect(bloco).toContainText('crédito na clínica')
+    await expect(bloco).toContainText('crédito interno')
     await expect(bloco).toContainText('o estorno de uma parte não tira o prêmio')
     // A pós-visita da campanha "Automática" saiu em 2026-11-14 (MK1): é o
     // modelo "Retorno depois do atendimento" das Automações.

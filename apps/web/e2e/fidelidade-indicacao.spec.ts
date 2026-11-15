@@ -199,7 +199,7 @@ test('com o prêmio desligado, nada sai; e a ficha de outra clínica ou a própr
   const outra = await criarOutraRede(`fino${marca}`)
   try {
     const deFora = await outra.criarCliente('De fora')
-    expect((await db().from('clients').update({ indicada_por: deFora }).eq('id', indicada)).error?.message).toMatch(/outra clínica/)
+    expect((await db().from('clients').update({ indicada_por: deFora }).eq('id', indicada)).error?.message).toMatch(/outra rede/)
     expect((await db().from('clients').update({ indicada_por: indicada }).eq('id', indicada)).error?.message).toMatch(/ela mesma/)
   } finally { await outra.limpar() }
 })
@@ -240,7 +240,7 @@ test('Ficha → Dados: "Indicada por" se escolhe e se grava; a ficha de outra re
       const deFora = await outra.criarCliente('Fora')
       const r = await chamarAcao(p, 'actions/clients.ts', 'updateClientContactData', `/${slug}/clients/${sem}`,
         [sem, { document: null, phone: null, email: null, birthDate: null, zipCode: null, address: null, addressNumber: null, addressComplement: null, neighborhood: null, city: null, state: null, indicadaPor: deFora }, slug])
-      expect(r.texto).toMatch(/não é desta clínica/)
+      expect(r.texto).toMatch(/não é desta rede/)
       expect((await db().from('clients').select('indicada_por').eq('id', sem).single()).data!.indicada_por).toBe(ana!.clientId)
     } finally { await outra.limpar() }
   })
@@ -280,7 +280,7 @@ test('no app, "Indique uma amiga" aparece só com o prêmio ligado, e diz o prê
     await expect(card).toContainText('Indique uma amiga')
     await expect(card).toContainText('300 pontos')
     // A cliente não cadastra a amiga pelo app: a clínica faz a ficha.
-    await expect(card).toContainText('na recepção')
+    await expect(card).toContainText('à equipe')
     await expect(card.getByRole('textbox')).toHaveCount(0)
   })
   await regra('DESLIGADO')

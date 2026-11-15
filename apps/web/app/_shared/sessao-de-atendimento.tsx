@@ -589,7 +589,7 @@ export async function SessaoDeAtendimento({
       .select('name, schema')
       .eq('id', fichaId)
       .eq('tenant_id', ctx.tenantId!)
-      .maybeSingle(), 'buscar a ficha do procedimento')
+      .maybeSingle(), 'buscar a ficha de atendimento')
     if (formRow) {
       ficha = { name: formRow.name as string, rows: normalizeFormSchema(formRow.schema).rows }
       const salvas = (mreRaw?.form_data as { ficha?: { answers?: Record<string, unknown> } } | null)?.ficha

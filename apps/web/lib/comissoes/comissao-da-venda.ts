@@ -57,10 +57,10 @@ export function textoDaComissaoDaVenda(o: {
       : o.tipo === 'PACOTE'
         ? `${nome} não tem comissão de venda neste pacote: nem o pacote nem ela têm regra de venda.`
         : o.tipo === 'PLANO'
-          ? `${nome} não tem comissão de venda neste plano: nem ela nem a clínica ("Venda de plano") têm regra de venda.`
-        : `${nome} não tem comissão de venda nestes produtos: nem o produto, nem ela, nem a clínica têm regra de venda.`
+          ? `${nome} não tem comissão de venda neste plano: nem ela nem a rede ("Venda de plano") têm regra de venda.`
+        : `${nome} não tem comissão de venda nestes produtos: nem o produto, nem ela, nem a rede têm regra de venda.`
   }
-  const deOnde = (de: Origem) => de === 'ITEM' ? (o.tipo === 'PRODUTO' ? 'do produto' : 'do pacote') : de === 'PESSOA' ? `da ${nome}` : 'da clínica'
+  const deOnde = (de: Origem) => de === 'ITEM' ? (o.tipo === 'PRODUTO' ? 'do produto' : 'do pacote') : de === 'PESSOA' ? `da ${nome}` : 'da rede'
   const frase = (r: { regra: RegraDeVenda; de: Origem } | null) => r ? `${regraEmTexto(r.regra, o.tipo)} — ${deOnde(r.de)}` : 'sem comissão de venda'
   const iguais = resolvidos.every(r => JSON.stringify(r) === JSON.stringify(resolvidos[0]))
   const corpo = iguais

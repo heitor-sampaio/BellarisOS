@@ -53,7 +53,7 @@ describe('taxaQueVale', () => {
 describe('a forma de um lançamento na ficha e no app (D6)', () => {
   it('o pago, pelo nome; a parcela do crediário sem meio, "com a clínica"; o resto sem forma, nada', () => {
     expect(formaDoLancamento({ metodo: 'CREDIT_CARD', vezes: 3, pago: true })).toBe('Crédito 3x')
-    expect(formaDoLancamento({ metodo: null, pago: false, parcela: 1 })).toBe('Com a clínica')
+    expect(formaDoLancamento({ metodo: null, pago: false, parcela: 1 })).toBe('Crediário')
     expect(formaDoLancamento({ metodo: null, pago: false, parcela: null })).toBeNull()
     expect(formaDoLancamento({ metodo: null, pago: true, parcela: 2 })).toBeNull()
   })

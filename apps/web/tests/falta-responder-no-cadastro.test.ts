@@ -18,7 +18,7 @@ describe('o que falta responder repete a pergunta da tela', () => {
   it('já existe pelo CPF: sem o "Cadastrar mesmo assim", que a tela não mostra', () => {
     const t = oQueFaltaResponder({ tipo: 'jaExiste', nome: 'Ana', motivo: 'CPF', podeCadastrarMesmoAssim: false })
     expect(t).toContain('com este CPF')
-    expect(t).toContain('o CPF é único na clínica')
+    expect(t).toContain('o CPF é único na rede')
     expect(t).toContain('“Unificar com a ficha de Ana”')
     expect(t).not.toContain('Cadastrar mesmo assim')
   })

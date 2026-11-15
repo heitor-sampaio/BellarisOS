@@ -106,7 +106,7 @@ export default async function ClientProfilePage() {
           )}
         </div>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 8, paddingLeft: 4 }}>
-          Para alterar esses dados, fale com a recepção.
+          Para alterar esses dados, fale com a equipe.
         </p>
       </section>
 

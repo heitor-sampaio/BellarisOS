@@ -154,11 +154,11 @@ test('a gerente de unidade fixa continua mexendo na unidade dela: os dados, o ho
   expect((await db().from('rooms').select('id').eq('branch_id', rede!.branchId).eq('name', sala)).data?.length, 'a sala dela').toBe(1)
 })
 
-test('na tela, a gerente lê "Esta configuração é da clínica toda" e não acha o botão; a dona edita', async ({ browser }) => {
+test('na tela, a gerente lê "Esta configuração é da rede toda" e não acha o botão; a dona edita', async ({ browser }) => {
   await como(browser, gerente!, async p => {
     for (const aba of ['tags', 'permissions', 'fichas', 'documentos', 'integrations', 'general']) {
       await p.goto(`/${slug}/settings?tab=${aba}`)
-      await expect.soft(p.locator('[data-config-da-clinica]'), `a aba ${aba} diz de quem é`).toContainText('Esta configuração é da clínica toda')
+      await expect.soft(p.locator('[data-config-da-clinica]'), `a aba ${aba} diz de quem é`).toContainText('Esta configuração é da rede toda')
     }
     await p.goto(`/${slug}/settings?tab=tags`)
     await expect(p.getByRole('button', { name: 'Criar tag' }), 'sem o botão de criar tag').toHaveCount(0)

@@ -46,7 +46,7 @@ export function textoAntesDeLigar(r: ContaAntesDeLigar): string {
   const clientes = (n: number) => `${n} ${n === 1 ? 'cliente' : 'clientes'}`
   const base = r.porBusca
     ? `Hoje a busca acharia ${clientes(r.quantas)}${r.truncado ? ' (o teto do passo)' : ''}`
-    : `Hoje a clínica tem ${r.quantas} ${r.quantas === 1 ? 'cliente ativa' : 'clientes ativas'}`
+    : `Hoje a rede tem ${r.quantas} ${r.quantas === 1 ? 'cliente ativa' : 'clientes ativas'}`
   if (r.quantas === 0) return `${base}.`
   const partes: string[] = []
   if (r.comConversa !== undefined) {
@@ -63,15 +63,15 @@ export function textoAntesDeLigar(r: ContaAntesDeLigar): string {
 export function explicacaoAntesDeLigar(canais: CanalParaACliente[]): string {
   const frases: string[] = []
   if (canais.includes('whatsapp')) {
-    frases.push('Ela manda mensagem pelo WhatsApp, e a mensagem só chega a quem tem conversa aberta com a clínica: a automação não abre conversa nova.')
+    frases.push('Ela manda mensagem pelo WhatsApp, e a mensagem só chega a quem tem conversa aberta com a rede: a automação não abre conversa nova.')
   }
   if (canais.includes('push')) {
-    frases.push('O aviso no celular só chega a quem tem o app da clínica ou os avisos ligados no navegador.')
+    frases.push('O aviso no celular só chega a quem tem o app ou os avisos ligados no navegador.')
   }
   const sociais = canais.filter(c => c === 'instagram' || c === 'messenger')
   if (sociais.length) {
     const nomes = sociais.map(c => (c === 'instagram' ? 'o Instagram' : 'o Messenger')).join(' e ')
-    frases.push(`Por ${nomes}, a mensagem só chega a quem já tem conversa ali com a clínica.`)
+    frases.push(`Por ${nomes}, a mensagem só chega a quem já tem conversa ali com a rede.`)
   }
   return frases.join(' ')
 }

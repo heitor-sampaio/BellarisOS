@@ -12,6 +12,6 @@ export async function unidadeParaOAviso(admin: ReturnType<typeof createAdminClie
     { name: string; tenant_id: string } | null
   if (!unidade) return null
   const ativas = await contar(admin.from('branches').select('id', { count: 'exact', head: true })
-    .eq('tenant_id', unidade.tenant_id).eq('is_active', true), 'contar as unidades da clínica')
+    .eq('tenant_id', unidade.tenant_id).eq('is_active', true), 'contar as unidades da rede')
   return (ativas ?? 0) > 1 ? unidade.name : null
 }

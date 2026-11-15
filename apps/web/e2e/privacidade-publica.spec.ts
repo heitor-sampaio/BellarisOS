@@ -74,7 +74,7 @@ test('a eliminação é pelo contato da clínica, com as guardas do prontuário 
   await page.goto('/privacidade')
   const main = page.locator('main')
   await expect(main).toContainText('Para pedir a eliminação dos seus dados')
-  await expect(main).toContainText('pelo contato da clínica')
+  await expect(main).toContainText('pelo contato dela')
   await expect(main).toContainText('20 anos')
   await expect(main).toContainText('5 anos')
   await expect(main).not.toContainText('o pedido de eliminação é atendido')

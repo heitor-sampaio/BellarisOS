@@ -95,7 +95,7 @@ test.describe.serial('o agendamento no portal', () => {
     const id = await agendado(cliente!.clientId, new Date(Date.now() + 5 * 3600_000))
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
-      await expect(p.getByText(/fale com a clínica/i)).toBeVisible()
+      await expect(p.getByText(/A equipe ainda\s+cancela ou remarca: para isso, fale com ela/)).toBeVisible()
       await expect(p.getByRole('button', { name: 'Cancelar agendamento' })).toHaveCount(0)
       const r = await chamarAcao(p, 'actions/portal-agendamentos.ts', 'cancelarPelaCliente', `/${slug}/cliente/agendamentos/${id}`, [id, 'x'])
       expect(r.texto).toContain('horas antes')
@@ -148,26 +148,26 @@ test.describe('atritos da remarcação (frente 8)', () => {
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
       await expect(p.getByText(/terminou em .* \(24 horas antes do horário\)/i)).toBeVisible()
       await expect(p.getByText('(11) 98765-4321')).toBeVisible()
-      // A66: "Falar com a clínica" abre com a mensagem pronta sobre este agendamento.
-      await expect(p.getByRole('link', { name: /Falar com a clínica/ })).toHaveAttribute('href', /\?text=.*agendamento/)
+      // A66: "Falar com a equipe" abre com a mensagem pronta sobre este agendamento.
+      await expect(p.getByRole('link', { name: /Falar com a equipe/ })).toHaveAttribute('href', /\?text=.*agendamento/)
     })
   })
 
   // A53 da 7ª simulação (2026-11-05): fora do prazo, cancelar só levava a
-  // "Falar com a clínica" — a regra fica; a saída diz o prazo, liga e manda a
+  // "Falar com a equipe" — a regra fica; a saída diz o prazo, liga e manda a
   // mensagem certa ("preciso cancelar ou remarcar"), e a lista já avisa.
   test('A53: fora do prazo, a saída diz o prazo, liga para a clínica e já pede para alterar', async ({ browser }) => {
     expect((await db().from('branches').update({ phone: '11987654321' }).eq('id', rede!.branchId)).error).toBeNull()
     const id = await agendado(cliente!.clientId, new Date(Date.now() + 3 * 3600_000))
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/agendamentos`)
-      await expect(p.locator(`a[href$="/agendamentos/${id}"] [data-prazo-encerrado]`)).toContainText('Prazo do app encerrado: fale com a clínica para alterar')
+      await expect(p.locator(`a[href$="/agendamentos/${id}"] [data-prazo-encerrado]`)).toContainText('Prazo do app encerrado: fale com a equipe para alterar')
 
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
       const saida = p.locator('[data-fora-do-prazo]')
       await expect(saida).toContainText(/O prazo para alterar pelo app terminou em .* \(24 horas antes do horário\)/)
-      await expect(saida.getByRole('link', { name: /Ligar para a clínica/ })).toHaveAttribute('href', 'tel:+5511987654321')
-      await expect(saida.getByRole('link', { name: /Falar com a clínica/ })).toHaveAttribute('href', /cancelar%20ou%20remarcar/)
+      await expect(saida.getByRole('link', { name: /^Ligar$/ })).toHaveAttribute('href', 'tel:+5511987654321')
+      await expect(saida.getByRole('link', { name: /Falar com a equipe/ })).toHaveAttribute('href', /cancelar%20ou%20remarcar/)
     })
   })
 
@@ -178,7 +178,7 @@ test.describe('atritos da remarcação (frente 8)', () => {
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/home`)
       await expect(p.getByText('Nenhum agendamento próximo.')).toHaveCount(0)
-      await expect(p.locator('[data-passou-da-hora]')).toContainText('a clínica registra quando o atendimento terminar')
+      await expect(p.locator('[data-passou-da-hora]')).toContainText('a equipe registra quando o atendimento terminar')
     })
     // Concluído, sai dos próximos.
     expect((await db().from('appointments').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', id)).error).toBeNull()

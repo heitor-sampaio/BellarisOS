@@ -15,6 +15,7 @@ import { comAviso } from '@/lib/aviso-da-url'
 import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
 import { UmaUnidadeProvider } from '@/components/shared/uma-unidade'
 import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
+import { getCachedRede } from '@/lib/cached-queries'
 import { FusoProvider } from '@/components/shared/fuso'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { saudacao } from '@/lib/saudacao'
@@ -58,14 +59,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // inteiro. A falha fica no log e o sino começa em zero (o realtime corrige).
   if (unreadRes.error) console.error('[admin/layout] contar as notificações:', unreadRes.error.message)
   const initialUnread = unreadRes.count ?? 0
-  // A clínica de uma unidade não fala "rede" (D-19, F8): a régua vai às telas do navegador.
+  // A rede de uma unidade (D-19): a régua e o NOME da rede vão às telas do navegador (PO2).
   const umaUnidade = ctx.tenantId ? await redeTemUmaUnidade(ctx.tenantId) : false
+  const nomeDaRede = ctx.tenantId ? (await getCachedRede(ctx.tenantId))?.nome ?? null : null
 
   // As datas e horas da tela no fuso da rede (F62): o das unidades, se é um só.
   const fuso = await fusoDaRede(ctx.tenantId)
 
   return (
-    <UmaUnidadeProvider valor={umaUnidade}>
+    <UmaUnidadeProvider valor={umaUnidade} nome={nomeDaRede}>
     <FusoProvider fuso={fuso}>
     <SidebarProvider>
       <Suspense fallback={null}><AvisoDaUrl /></Suspense>
@@ -85,7 +87,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </main>
       {/* A secretária virtual, por cima de todas as telas da equipe (docs/regras/copilot.md). */}
       {copilotNaTela(ctx) && <Suspense fallback={null}><Copilot /></Suspense>}
-      {/* Fora do plano, explicado a quem administra a clínica (A51). */}
+      {/* Fora do plano, explicado a quem administra a rede (A51). */}
       {!copilotNaTela(ctx) && copilotForaDoPlanoNaTela(ctx) && (
         <CopilotForaDoPlano emTeste={await redeEmTeste(ctx.tenantId!)} assinaturaHref="/admin/settings?tab=assinatura" />
       )}

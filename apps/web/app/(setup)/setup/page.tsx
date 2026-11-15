@@ -39,7 +39,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   return (
     <SetupWizard
       rede={{
-        nome:      (tenant?.name as string | null) ?? 'Minha Clínica',
+        nome:      (tenant?.name as string | null) ?? 'Minha rede',
         documento: (tenant?.document as string | null) ?? '',
         telefone:  (tenant?.phone as string | null) ?? '',
         site:      (tenant?.website as string | null) ?? '',

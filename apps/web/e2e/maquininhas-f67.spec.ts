@@ -92,7 +92,7 @@ test('a maquininha de outra rede é recusada', async () => {
   try {
     const { data } = await db().from('maquininhas').select('id').eq('tenant_id', outra.tenantId).single<{ id: string }>()
     const r = await vendaNoCredito(data!.id)
-    expect(r.error?.message).toContain('Esta maquininha não é desta clínica.')
+    expect(r.error?.message).toContain('Esta maquininha não é desta rede.')
   } finally {
     await outra.limpar()
   }

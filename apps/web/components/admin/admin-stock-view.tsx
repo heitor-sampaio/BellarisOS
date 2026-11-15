@@ -461,7 +461,7 @@ export function AdminStockView({ products, branches, productCategories = [], mar
             <PackageX size={36} style={{ color: 'var(--text-faint)', marginBottom: 8 }} />
             <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>Nenhum produto cadastrado</p>
             <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', maxWidth: 360 }}>
-              Cadastre os insumos antes dos procedimentos que os usam — e os produtos que a clínica vende.
+              Cadastre os insumos antes dos procedimentos que os usam — e os produtos que a rede vende.
             </p>
             {podeEditarProduto && (
               <div style={{ marginTop: 10 }}>

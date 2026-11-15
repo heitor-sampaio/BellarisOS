@@ -144,7 +144,7 @@ export function historicoDoCancelamento(
   const restantes = Number(c.restantes ?? 0)
   const devolver = num(c.devolver)
   const comoVoltou = devolver > 0
-    ? c.destino === 'CREDITO' ? `${brl(devolver)} em crédito na clínica`
+    ? c.destino === 'CREDITO' ? `${brl(devolver)} em crédito interno`
       : c.estorno === 'INTEIRO' ? `${brl(devolver)} estornados (o pagamento inteiro estornado e o usado lançado de novo)`
       : `${brl(devolver)} estornados`
     : 'nada a devolver'

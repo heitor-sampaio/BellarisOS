@@ -12,6 +12,6 @@ export function notasDoTop5(nomes: string[], porNome: Record<string, SemReceita>
   if (!porNome) return []
   return nomes.flatMap(nome => {
     const valor = porNome[nome]?.comCredito.valor ?? 0
-    return valor > 0 ? [`${nome}: ${formatBRL(valor)} pagos com crédito na clínica (não é receita)`] : []
+    return valor > 0 ? [`${nome}: ${formatBRL(valor)} pagos com crédito interno (não é receita)`] : []
   })
 }

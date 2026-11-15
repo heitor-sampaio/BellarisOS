@@ -125,7 +125,7 @@ export default async function BranchDetailPage({ params }: Props) {
       {!branch.is_active && temOQueFicou(oQueFica) && (
         <div data-o-que-ficou className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600, lineHeight: 1.5 }}>
-            {resumoDoQueFica(branch.name, { ...oQueFica, fixos: [] })} Continua nos totais da clínica, com o selo “Unidade desativada”.
+            {resumoDoQueFica(branch.name, { ...oQueFica, fixos: [] })} Continua nos totais da rede, com o selo “Unidade desativada”.
           </p>
           <CaminhosDoQueFicou branchId={id} oQueFica={oQueFica} />
         </div>

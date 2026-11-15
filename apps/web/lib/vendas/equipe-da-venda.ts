@@ -121,7 +121,7 @@ export async function recusaDoMembroDaVenda(
     .select('id, branch_id, is_active, atende_em')
     .eq('id', membroId).eq('tenant_id', tenantId).maybeSingle()
   if (error) throw new Error(`Não consegui conferir ${opcoes.papel.toLowerCase()}: ${error.message}`)
-  if (!data || data.is_active === false) return `${opcoes.papel}: não é da equipe desta clínica.`
+  if (!data || data.is_active === false) return `${opcoes.papel}: não é da equipe desta rede.`
   // Quem é de outra unidade e atende AQUI (decisão 2 da 8ª) também entra.
   const atendeAqui = ((data.atende_em as string[] | null) ?? []).includes(branchId)
   if (data.branch_id && data.branch_id !== branchId && !atendeAqui) return `${opcoes.papel}: é de outra unidade.`

@@ -293,7 +293,7 @@ export function PainelDoNo({
                 borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
               }}>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-                  A clínica não tem WhatsApp conectado: por este canal, a mensagem não sai.
+                  A rede não tem WhatsApp conectado: por este canal, a mensagem não sai.
                   Conecte em Configurações → Integrações, ou mande como aviso no celular da cliente.
                 </p>
                 {!somenteLeitura && (

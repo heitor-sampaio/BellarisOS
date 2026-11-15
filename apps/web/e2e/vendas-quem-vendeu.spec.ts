@@ -141,7 +141,7 @@ test('o servidor: pergunta sem quem vendeu, e recusa quem não é da equipe da r
     expect(pergunta!.texto).toContain('confirmarSemVendedor')
     const alheio = await chamarAcao(p, 'actions/produtos.ts', 'venderProduto', `/${slug}/pdv`,
       [cliente, serum, rede!.branchId, 1, PIX, null, null, { vendedorId: outra!.professionalId }])
-    expect(alheio!.texto).toContain('não é da equipe desta clínica')
+    expect(alheio!.texto).toContain('não é da equipe desta rede')
   })
 })
 

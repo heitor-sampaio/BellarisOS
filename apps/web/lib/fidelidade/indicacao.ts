@@ -43,12 +43,12 @@ export function situacaoDoPremio(i: IndicadaNaFicha, regra: { fidelidadeLigada: 
  */
 export function textoDoIndiqueUmaAmiga(regra: { premio: PremioDeIndicacao; pontos: number; recompensa: string | null }): string | null {
   if (regra.premio === 'PONTOS' && regra.pontos > 0) {
-    return `Quando a sua amiga fizer o primeiro pagamento na clínica — um atendimento ou uma compra —, você ganha ${formatarPontos(regra.pontos)}.`
+    return `Quando a sua amiga fizer o primeiro pagamento — um atendimento ou uma compra —, você ganha ${formatarPontos(regra.pontos)}.`
   }
   if (regra.premio === 'RECOMPENSA' && regra.recompensa) {
-    return `Quando a sua amiga fizer o primeiro pagamento na clínica — um atendimento ou uma compra —, você ganha um voucher: ${regra.recompensa}.`
+    return `Quando a sua amiga fizer o primeiro pagamento — um atendimento ou uma compra —, você ganha um voucher: ${regra.recompensa}.`
   }
   return null
 }
 
-export const COMO_INDICAR = 'É só ela dizer o seu nome na recepção, quando for se cadastrar: a clínica faz a ficha dela e liga à sua.'
+export const COMO_INDICAR = 'É só ela dizer o seu nome à equipe quando for se cadastrar: a ficha dela fica ligada à sua.'

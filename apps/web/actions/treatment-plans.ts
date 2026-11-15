@@ -1289,9 +1289,9 @@ export async function cancelCheckout(
     await tentar(admin.from('appointment_history').insert({
       appointment_id:  plan.evaluation_appointment_id,
       changed_by_id:   ctx.internalUserId,
-      changed_by_name: ctx.userName || ctx.roleLabel || 'Recepção',
+      changed_by_name: ctx.userName || ctx.roleLabel || 'Equipe',
       action:          'CHECKOUT_CANCELLED',
-      description:     reason.trim() ? `Checkout cancelado: ${reason.trim()}` : 'Checkout cancelado pela recepção',
+      description:     reason.trim() ? `Checkout cancelado: ${reason.trim()}` : 'Checkout cancelado',
     }), 'registrar no histórico do agendamento')
   }
 
@@ -1495,7 +1495,7 @@ async function generateEvaluationPlanInterno(
         .eq('id', appt.procedure_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o procedimento')
       const form = proc?.form_id
         ? await ler(admin.from('forms').select('id, name, schema')
-            .eq('id', proc.form_id as string).eq('tenant_id', ctx.tenantId!).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha do procedimento')
+            .eq('id', proc.form_id as string).eq('tenant_id', ctx.tenantId!).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha de atendimento')
         : null
       ficha = fichaParaConcluir(form as { id: string; name: string; schema: unknown } | null, fichaDaTela)
       if (ficha) {
@@ -1932,7 +1932,7 @@ async function checkoutTreatmentPlanInterno(
     await tentar(admin.from('appointment_history').insert({
       appointment_id:    plan.evaluation_appointment_id,
       changed_by_id:     ctx.internalUserId,
-      changed_by_name:   ctx.userName || ctx.roleLabel || 'Recepção',
+      changed_by_name:   ctx.userName || ctx.roleLabel || 'Equipe',
       action:            'CHECKOUT_COMPLETED',
       description:       `Checkout concluído — R$ ${total.toFixed(2).replace('.', ',')}${doDesconto.reais > 0 ? ` (desconto de R$ ${doDesconto.reais.toFixed(2).replace('.', ',')})` : ''} — ${rotuloDoPagamento(pagamento)}`,
     }), 'registrar o checkout no histórico')
@@ -1948,7 +1948,7 @@ async function checkoutTreatmentPlanInterno(
     if (hoje) {
       const { error } = await admin.rpc('confirmar_pagamento_do_atendimento', {
         p_agendamento: hoje.appointmentId, p_tenant: ctx.tenantId, p_ator: ctx.internalUserId,
-        p_ator_nome:   ctx.userName || ctx.roleLabel || 'Recepção',
+        p_ator_nome:   ctx.userName || ctx.roleLabel || 'Equipe',
         p_dados:       { metodo: pagamento.metodo, pontos: 0, desconto: 0, valor_final: hoje.preco, cartao_vezes: vezesNoCartao(pagamento), cartao_bandeira: bandeiraDoPagamento(pagamento.metodo, pagamento.bandeira), maquininha_id: maquininhaDoPagamento(pagamento) },
       })
       if (error) aviso = `O plano foi fechado, mas o atendimento de hoje não foi recebido (${error.message}). Receba pela tela do atendimento.`
@@ -2156,7 +2156,7 @@ async function receberDoPlanoInterno(
     await tentar(admin.from('appointment_history').insert({
       appointment_id:  appointmentId,
       changed_by_id:   ctx.internalUserId,
-      changed_by_name: ctx.userName || ctx.roleLabel || 'Recepção',
+      changed_by_name: ctx.userName || ctx.roleLabel || 'Equipe',
       action:          'PAYMENT_CONFIRMED',
       // A forma pelo nome da tela (D18, 2026-10-29: dizia "PIX à vista").
       description:     `Plano de tratamento recebido — R$ ${saldo.emAberto.toFixed(2).replace('.', ',')} — ${

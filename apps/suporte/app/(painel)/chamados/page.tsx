@@ -14,7 +14,7 @@ import { contemSemAcento, termoDaUrl } from '@estetica-os/nucleo/lib/texto'
  */
 const FILTROS = [
   { key: 'abertos',            label: 'Em aberto' },
-  { key: 'aguardando_clinica', label: 'Aguardando a clínica' },
+  { key: 'aguardando_clinica', label: 'Aguardando a rede' },
   { key: 'resolvido',          label: 'Resolvidos' },
   { key: 'todos',              label: 'Todos' },
 ]

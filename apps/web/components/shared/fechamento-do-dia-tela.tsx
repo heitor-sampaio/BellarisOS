@@ -145,7 +145,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
       <span data-bandeiras-da-forma style={DETALHE}>
         {variasMaquininhas
           ? [...new Set(bandeiras.filter(b => b.forma === forma).map(b => b.maquininha))].map(m =>
-              `${m ?? 'Cartão da clínica'}: ${bandeiras.filter(b => b.forma === forma && b.maquininha === m).map(texto).join(', ')}`).join(' · ')
+              `${m ?? 'Cartão'}: ${bandeiras.filter(b => b.forma === forma && b.maquininha === m).map(texto).join(', ')}`).join(' · ')
           : bandeiras.filter(b => b.forma === forma).map(texto).join(' · ')}
       </span>
     )

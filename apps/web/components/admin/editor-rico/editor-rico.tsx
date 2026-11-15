@@ -118,7 +118,7 @@ export default function EditorRico({ inicial, tipo, imagens, onChange }: {
       {!previa && parte !== 'corpo' && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           {parte === 'cabecalho'
-            ? 'O cabeçalho se repete no topo de toda página do PDF — bom para o logo e o nome da clínica.'
+            ? 'O cabeçalho se repete no topo de toda página do PDF — bom para o logo e o nome da rede.'
             : 'O rodapé se repete no pé de toda página do PDF, acima do selo da assinatura.'}
         </p>
       )}

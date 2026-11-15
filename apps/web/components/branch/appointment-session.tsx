@@ -416,7 +416,7 @@ function textoDoPagamentoAoFinalizar(t: { plano: boolean; pacote: boolean; pacot
   if (t.pacote)      return 'Sessão de pacote: paga na venda do pacote, nada a receber.'
   if (t.prePago)     return 'Procedimento pré-pago: pago na venda, nada a receber.'
   if (t.semCobranca) return 'Sem cobrança: atendimento de R$ 0,00.'
-  return 'O pagamento será confirmado pela recepção.'
+  return 'O pagamento é recebido no PDV.'
 }
 
 // Modal 1: Profissional confirma conclusão clínica (sem pagamento)
@@ -843,7 +843,7 @@ function InsumoCard({ items, available, lotes, checkedIds, onToggle, onChangeQty
           {filtered.length === 0 && (
             <p data-busca-de-insumo-vazia role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
               {available.length === 0
-                ? <>Nenhum produto cadastrado como insumo nesta clínica. Os insumos se cadastram em{' '}
+                ? <>Nenhum produto cadastrado como insumo nesta rede. Os insumos se cadastram em{' '}
                     <Link href={rotaNoPortal(pathname, slug, '/estoque')} style={{ color: 'var(--brand)', fontWeight: 700 }}>Estoque</Link>
                     {' '}(Novo produto, uso “Insumo”).</>
                 : search.trim()
@@ -1253,7 +1253,7 @@ export function AppointmentSession({
     if (!anamnese?.error && !daFicha?.error) return null
     const grupos: GrupoQueFalta[] = []
     if (anamnese?.error) grupos.push({ onde: 'Na ficha de saúde', rotulos: anamnese.faltam ?? [] })
-    if (daFicha?.error) grupos.push({ onde: 'Na ficha do procedimento', rotulos: daFicha.faltam ?? [] })
+    if (daFicha?.error) grupos.push({ onde: 'Na ficha de atendimento', rotulos: daFicha.faltam ?? [] })
     const mensagem = grupos.map(g => `${g.onde.toLowerCase()}: ${g.rotulos.map(r => `"${r}"`).join(', ')}`).join('; ')
     return { mensagem: `Falta responder ${mensagem}.`, grupos }
   }
@@ -1531,9 +1531,9 @@ export function AppointmentSession({
   // têm os deles aqui. O "Finalizar" leva as respostas (fichaDigitada); o
   // "Salvar ficha" e o "Enviar para a recepção" a gravam pela action dela.
   const fichaNaAvaliacao = ficha && ficha.rows.length > 0 ? (
-    <section data-ficha-do-procedimento aria-label="Ficha do procedimento" className="card" style={{ padding: 0, overflow: 'hidden' }}>
+    <section data-ficha-do-procedimento aria-label="Ficha de atendimento" className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Ficha do procedimento</h3>
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Ficha de atendimento</h3>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>{ficha.name}</p>
       </div>
       <div style={{ padding: '18px 20px' }}>
@@ -1747,7 +1747,7 @@ export function AppointmentSession({
             {/* Sem o check-in no cargo, a tela diz quem marca a chegada. */}
             {status === 'SCHEDULED' && !canCheckin && canManage && (
               <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                A recepção marca a chegada; depois você inicia.
+                Quem tem a Agenda em Gerenciar marca a chegada; depois você inicia.
               </span>
             )}
             {/* Concluir grava a evolução no prontuário: sem o módulo, a tela diz quem conclui. */}
@@ -1923,7 +1923,7 @@ export function AppointmentSession({
         {documentos && documentos.itens.length > 0 && (
           <section aria-label="Documentos do atendimento" className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-              <p className="overline">Termos e contratos</p>
+              <p className="overline">Documentos</p>
               {documentosQueBloqueiam.length > 0 && status !== 'IN_PROGRESS' && status !== 'COMPLETED' && (
                 <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
                   O atendimento só começa depois da assinatura
@@ -2131,7 +2131,7 @@ export function AppointmentSession({
                       </p>
                     )}
                     <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
-                      ⏳ Aguardando confirmação de pagamento pela recepcionista
+                      ⏳ Aguardando o pagamento no PDV
                     </p>
                   </>
                 )}

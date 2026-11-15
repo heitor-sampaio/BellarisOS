@@ -238,7 +238,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
       await expect(page).toHaveURL(new RegExp(`/e2e-un-vcb${marca}/cliente`))
 
       // No portal, o topo leva de volta ao seletor.
-      await page.getByRole('link', { name: 'Trocar de clínica' }).click()
+      await page.getByRole('link', { name: 'Trocar de rede' }).click()
       await expect(page).toHaveURL(/\/auth\/clinicas/)
       await ctx.close()
 
@@ -257,7 +257,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
       const page = await ctx.newPage()
       await page.goto(sozinha.destino)
       await expect(page.getByText(`[e2e] Unidade vca${marca}`).first()).toBeVisible()
-      await expect(page.getByRole('link', { name: 'Trocar de clínica' })).toHaveCount(0)
+      await expect(page.getByRole('link', { name: 'Trocar de rede' })).toHaveCount(0)
       await ctx.close()
     } finally {
       await sozinha.limpar()

@@ -96,7 +96,7 @@ test('decisão 1: a recepção vende R$ 300 de crédito na clínica no Pix — c
     await expect(dlg.getByRole('radio', { name: 'Crédito interno', exact: true })).toHaveCount(0)
     await dlg.getByRole('radio', { name: 'Pix', exact: true }).click()
     await dlg.getByRole('button', { name: /^Vender por R\$\s300,00/ }).click()
-    await expect(p.getByText(/Venda registrada: Crédito na clínica/)).toBeVisible({ timeout: 15_000 })
+    await expect(p.getByText(/Venda registrada: Crédito interno/)).toBeVisible({ timeout: 15_000 })
   })
 
   const [tx] = await lancamentoDoCredito(rosana)
@@ -104,7 +104,7 @@ test('decisão 1: a recepção vende R$ 300 de crédito na clínica no Pix — c
   expect(n(tx!.amount)).toBe(300)
   expect(tx!.is_paid).toBe(true)
   expect(tx!.payment_method).toBe('PIX')
-  expect(tx!.category).toBe('Crédito na clínica')
+  expect(tx!.category).toBe('Crédito interno')
   expect(await saldoDe(rosana)).toBe(300)
   // O caixa e o faturamento: a regra única de receita (metrics_receitas_pagas) o conta.
   const agora = new Date()
@@ -152,7 +152,7 @@ test('decisão 1: usar o crédito não é receita de novo nem dá pontos de novo
 test('decisão 1: o estorno do lançamento solto é recusado — a venda do crédito se estorna como venda', async () => {
   const [tx] = await lancamentoDoCredito(rosana)
   const { error } = await db().rpc('estornar_transacao', { p_transacao: tx!.id, p_tenant: rede!.tenantId, p_ator: 'e2e', p_motivo: 'e2e' })
-  expect(error?.message ?? '').toContain('venda de crédito na clínica')
+  expect(error?.message ?? '').toContain('venda de crédito interno')
 })
 
 test('decisão 1: quem não recebe não vende crédito (a action recusa)', async ({ browser }) => {
@@ -171,10 +171,10 @@ test('decisão 1: quem não recebe não vende crédito (a action recusa)', async
 test('decisão 1: estornar a venda do crédito devolve só o saldo não usado (estorno parcial no Pix)', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
-    const linha = p.locator('[data-lancamento]', { hasText: 'Crédito na clínica' }).filter({ hasText: '300,00' }).first()
+    const linha = p.locator('[data-lancamento]', { hasText: 'Crédito interno' }).filter({ hasText: '300,00' }).first()
     // A32: o "Estornar" tem texto, não só o ícone.
     await linha.getByRole('button', { name: 'Estornar' }).click()
-    const dlg = p.getByRole('dialog', { name: 'Estornar a venda de crédito na clínica?' })
+    const dlg = p.getByRole('dialog', { name: 'Estornar a venda de crédito interno?' })
     const conta = dlg.locator('[data-conta-do-estorno-do-credito]')
     await expect(conta).toContainText(/Vendido\s*R\$\s300,00/)
     await expect(conta).toContainText(/Já usado\s*R\$\s119,00/)

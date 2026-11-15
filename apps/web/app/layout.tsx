@@ -13,8 +13,8 @@ import { META_SUPABASE_URL, META_SUPABASE_KEY } from '@estetica-os/nucleo/lib/su
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'BellarisOS — Gestão de Clínicas',
-  description: 'Sistema de gestão para redes de clínicas de estética',
+  title: 'BellarisOS',
+  description: 'O sistema da rede de estética: agenda, prontuário, clientes, conversas, estoque e financeiro',
 }
 
 export const viewport: Viewport = {

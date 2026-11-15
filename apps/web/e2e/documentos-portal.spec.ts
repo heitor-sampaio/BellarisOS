@@ -106,7 +106,7 @@ test.describe.serial('documentos: portal do cliente', () => {
       await page.mouse.up()
       await page.getByRole('button', { name: 'Assinar documento' }).click()
       await expect(page.getByRole('heading', { name: 'Documento assinado' })).toBeVisible()
-      await expect(page.getByText('A clínica já recebeu o documento assinado.', { exact: false })).toBeVisible()
+      await expect(page.getByText('A equipe já recebeu o documento assinado.', { exact: false })).toBeVisible()
 
       await expect.poll(async () => (await db().from('issued_documents').select('signed_pdf_path').eq('id', doc).single()).data?.signed_pdf_path,
         { timeout: 30_000 }).toBeTruthy()

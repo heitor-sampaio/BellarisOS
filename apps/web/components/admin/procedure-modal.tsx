@@ -114,7 +114,7 @@ export function ProcedureModal({ salas = [], profissionais = [], branches, produ
                 {isEdit ? 'Editar procedimento' : 'Novo procedimento'}
               </h2>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                {isEdit ? existing!.name : umaUnidade ? 'Catálogo da clínica' : 'Catálogo da rede · disponível nas unidades selecionadas'}
+                {isEdit ? existing!.name : umaUnidade ? 'Catálogo' : 'Catálogo da rede · disponível nas unidades selecionadas'}
               </p>
             </div>
             <button

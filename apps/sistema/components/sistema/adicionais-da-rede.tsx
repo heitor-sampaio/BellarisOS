@@ -89,7 +89,7 @@ function LinhaDoAdicional({ tenantId, chave, rotulo, maximo, cabe, oferta, contr
           <button type="button" className="btn-secondary" disabled={pendente} onClick={salvar}>{pendente ? 'Salvando…' : 'Salvar'}</button>
           <span className="suporte-texto-fraco">
             {oferta != null ? `O plano oferece por ${reaisDe(oferta)}${chave === 'whatsapp' ? ' cada' : ''}.` : 'O plano não oferece: dê um preço.'}
-            {contratado && ` Contratado: ${contratado.quantidade} × ${reaisDe(contratado.valor_centavos)}${contratado.especial ? ' (condição especial: a clínica não aumenta sozinha)' : ''}.`}
+            {contratado && ` Contratado: ${contratado.quantidade} × ${reaisDe(contratado.valor_centavos)}${contratado.especial ? ' (condição especial: a rede não aumenta sozinha)' : ''}.`}
           </span>
         </div>
       )}

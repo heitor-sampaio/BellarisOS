@@ -34,7 +34,7 @@ import { urlDaClinica } from '@/lib/plataforma/destino'
 const CINZA = rgb(0.42, 0.42, 0.42)
 
 const CANAL: Record<string, string> = {
-  CLINICA: 'Na clínica, na tela (presencial)', PAPEL: 'No papel (presencial)',
+  CLINICA: 'Na tela (presencial)', PAPEL: 'No papel (presencial)',
   PORTAL: 'Pelo portal do cliente', LINK: 'Por link enviado ao cliente',
 }
 const IDENTIDADE: Record<string, string> = {

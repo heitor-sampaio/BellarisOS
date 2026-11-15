@@ -621,7 +621,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     })
   }
 
-  // -- Enviar para recepção ------------------------------------------
+  // -- Enviar ao PDV ------------------------------------------
 
   function handlePropose() {
     if (!existingPlan?.id && sessions.length === 0) {
@@ -635,7 +635,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
       const propResult = await proposeTreatmentPlan(saveResult.planId!, slug)
       const erroDaProposta = (propResult as { error?: string } | undefined)?.error
       if (erroDaProposta) setMsg(`Erro: ${erroDaProposta}`)
-      else setMsg('Plano enviado para a recepção.')
+      else setMsg('Plano enviado ao PDV.')
     })
   }
 
@@ -759,7 +759,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
         {/* A34 da 7ª simulação: a profissional não tinha onde pôr os 10% pedidos,
             e a tela não dizia que o desconto é do checkout (a regra fica). */}
         <p data-desconto-no-checkout style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          O desconto é dado no checkout do plano (na recepção, ou no “Fechar agora”): aqui vão os preços de tabela.
+          O desconto é dado no checkout do plano (no PDV, ou no “Fechar agora”): aqui vão os preços de tabela.
         </p>
 
         {/* As sessões batem com um pacote da rede: o plano segue por
@@ -826,7 +826,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
             </button>
             <button type="button" onClick={handlePropose} disabled={isPending || sessions.length === 0}
               className="btn-primary" style={{ justifyContent: 'center' }}>
-              <Send size={13} /> Enviar para recepção
+              <Send size={13} /> Enviar ao PDV
             </button>
           </div>
         )}

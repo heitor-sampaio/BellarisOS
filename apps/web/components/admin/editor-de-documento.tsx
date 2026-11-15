@@ -213,7 +213,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
                 value={tipo} onSelect={k => trocarTipo(k as TipoDeModelo)}
               />
             </Campo>
-            <Campo rotulo="Conteúdo" dica={origem === 'EDITOR' ? 'Escrito aqui, com os dados do cliente preenchidos na hora.' : 'Um PDF pronto da clínica, assinado como está — sem preencher dados.'}>
+            <Campo rotulo="Conteúdo" dica={origem === 'EDITOR' ? 'Escrito aqui, com os dados do cliente preenchidos na hora.' : 'Um PDF pronto da rede, assinado como está — sem preencher dados.'}>
               <SegSelect
                 ariaLabel="Origem do conteúdo"
                 options={[{ key: 'EDITOR', label: 'Escrever aqui' }, { key: 'ARQUIVO', label: 'Enviar PDF' }]}

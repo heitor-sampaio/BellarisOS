@@ -284,7 +284,7 @@ function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string
       if (r.error) { setErro(r.error); return }
       envio.renovar()
       router.refresh()
-      toast.success(avisoDaVenda(bonusEmReais > 0 ? `Crédito na clínica (${textoDoBonus(reais, bonusEmReais)})` : 'Crédito na clínica', reais, estado.forma))
+      toast.success(avisoDaVenda(bonusEmReais > 0 ? `Crédito interno (${textoDoBonus(reais, bonusEmReais)})` : 'Crédito interno', reais, estado.forma))
       onFim()
     })
   }

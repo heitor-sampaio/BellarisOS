@@ -63,6 +63,6 @@ export function opcoesDeVezes(maximo: number): number[] {
 export function recusaDasVezes(vezes: number, maximo: number): string | null {
   if (!(vezes > maximo)) return null
   return maximo <= 1
-    ? 'A clínica não parcela no cartão de crédito: só à vista.'
-    : `A clínica parcela no cartão de crédito em até ${maximo}x.`
+    ? 'A rede não parcela no cartão de crédito: só à vista.'
+    : `A rede parcela no cartão de crédito em até ${maximo}x.`
 }

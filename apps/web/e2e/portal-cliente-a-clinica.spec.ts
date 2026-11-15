@@ -38,7 +38,7 @@ test('a home do app tem o cartão "A clínica" com endereço, telefone, WhatsApp
   await como(browser, cliente!, async p => {
     await p.goto(`/${slug}/cliente/home`)
     const cartao = p.locator('[data-a-clinica]')
-    await expect(cartao).toContainText('A clínica')
+    await expect(cartao).toContainText('A unidade')
     await expect(cartao).toContainText(`Unidade ac${marca}`)
     await expect(cartao).toContainText('Rua das Flores, 120, Curitiba – PR, 80000-000')
     await expect(cartao).toContainText('(41) 99876-5432')

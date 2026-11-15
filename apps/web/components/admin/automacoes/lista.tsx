@@ -65,7 +65,7 @@ export function ListaDeAutomacoes({
             Automações
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            Fluxos que reagem sozinhos ao que acontece na clínica.
+            Fluxos que reagem sozinhos ao que acontece na rede.
           </p>
           {/* A9 da 14ª: a mesma frase do outro lado, nas campanhas. */}
           <p data-campanha-ou-automacao style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 8, lineHeight: 1.5, maxWidth: 640 }}>
@@ -130,7 +130,7 @@ export function ListaDeAutomacoes({
               }}>
                 <AlertCircle size={15} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-                  A clínica não tem WhatsApp conectado. As mensagens dos modelos vão como <strong>aviso no celular</strong> da
+                  A rede não tem WhatsApp conectado. As mensagens dos modelos vão como <strong>aviso no celular</strong> da
                   cliente (no app e no navegador em que ela ativou os avisos). Conectado o WhatsApp, troque o canal no passo da mensagem.
                 </p>
               </div>

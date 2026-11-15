@@ -110,9 +110,9 @@ test('as parcelas dizem o vencimento, e o atendimento concluído não pago apare
     await expect(parcela1).toContainText('vence em 01/12/2030')
     await expect(p.locator('[data-pagamento]', { hasText: 'Parcela 2 de 2' })).toContainText('vence em 01/01/2031')
 
-    const aPagar = p.locator('[data-pagamento]', { hasText: `Laser ${marca}` }).filter({ hasText: 'A pagar na clínica' })
+    const aPagar = p.locator('[data-pagamento]', { hasText: `Laser ${marca}` }).filter({ hasText: 'A pagar na unidade' })
     await expect(aPagar).toContainText('R$ 650,00')
-    await expect(aPagar).toContainText('A pagar na clínica')
+    await expect(aPagar).toContainText('A pagar na unidade')
   })
 })
 

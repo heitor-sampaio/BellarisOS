@@ -68,7 +68,7 @@ test.describe.serial('o CNPJ da unidade nova', () => {
       expect(await unidade(nome), 'nada criado antes da resposta').toHaveLength(0)
 
       // A clínica tem UMA unidade: o texto fala "clínica" (F8).
-      await aviso.getByRole('button', { name: `Usar o CNPJ da clínica (${CNPJ_COM_MASCARA})` }).click()
+      await aviso.getByRole('button', { name: `Usar o CNPJ da rede (${CNPJ_COM_MASCARA})` }).click()
       await expect(janela).toBeHidden({ timeout: 15_000 })
     })
     const criadas = await unidade(nome)

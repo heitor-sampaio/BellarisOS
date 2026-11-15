@@ -483,7 +483,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                     }}>
                       <input type="hidden" name="_fichaDoTelefone" value={resposta} />
                       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
-                        Este telefone é {fichaDoFone.nome ? <>da ficha de <strong>{fichaDoFone.nome}</strong></> : 'de uma cliente da clínica'}. É a mesma pessoa?
+                        Este telefone é {fichaDoFone.nome ? <>da ficha de <strong>{fichaDoFone.nome}</strong></> : 'de uma cliente da rede'}. É a mesma pessoa?
                       </p>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         {([
@@ -724,7 +724,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               {/* Feedback */}
               {faltaResponder && fichaDoFone && !resposta && (
                 <p data-falta-responder style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 700 }}>
-                  Responda antes de criar: este telefone é {fichaDoFone.nome ? `da ficha de ${fichaDoFone.nome}` : 'de uma cliente da clínica'}. É a mesma pessoa? (logo abaixo do telefone)
+                  Responda antes de criar: este telefone é {fichaDoFone.nome ? `da ficha de ${fichaDoFone.nome}` : 'de uma cliente da rede'}. É a mesma pessoa? (logo abaixo do telefone)
                 </p>
               )}
               {state?.error && (

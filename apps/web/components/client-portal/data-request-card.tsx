@@ -131,7 +131,7 @@ export function DataRequestCard({ requests }: Props) {
             Solicitado em {fmt(openRequest.requested_at, fuso)}. Estamos reunindo seus dados: costuma ficar
             pronto em poucos minutos, e os arquivos aparecem aqui.
             {openRequest.include_medical && openRequest.medical_status === 'pending'
-              ? ` A parte do prontuário depende da liberação da clínica, que responde até ${prazoDaClinica(openRequest.requested_at, fuso)} (15 dias do pedido).`
+              ? ` A parte do prontuário depende da liberação da equipe, que responde até ${prazoDaClinica(openRequest.requested_at, fuso)} (15 dias do pedido).`
               : ''}
           </p>
         </div>
@@ -150,7 +150,7 @@ export function DataRequestCard({ requests }: Props) {
               Incluir também meu prontuário (ficha de saúde, evolução dos atendimentos e
               termos assinados).
               <span style={{ color: 'var(--text-muted)' }}>
-                {' '}Esta parte passa por liberação da clínica antes de ser enviada.
+                {' '}Esta parte passa por liberação da equipe antes de ser enviada.
               </span>
             </span>
           </label>
@@ -195,7 +195,7 @@ export function DataRequestCard({ requests }: Props) {
           </div>
           {prontuarioEmAnalise && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-              Você já pode baixar o cadastro, os agendamentos, os pagamentos e os pontos. O prontuário depende da liberação da clínica, que responde até {prazoDaClinica(latestDone.requested_at, fuso)} (15 dias do pedido): quando ela decidir, o arquivo é refeito aqui.
+              Você já pode baixar o cadastro, os agendamentos, os pagamentos e os pontos. O prontuário depende da liberação da equipe, que responde até {prazoDaClinica(latestDone.requested_at, fuso)} (15 dias do pedido): quando ela decidir, o arquivo é refeito aqui.
             </p>
           )}
           <DownloadRow request={latestDone} />

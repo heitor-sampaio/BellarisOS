@@ -11,19 +11,19 @@ export type SituacaoDoProntuario = 'not_requested' | 'pending' | 'denied' | stri
 export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): { json: string; pdf: string[] } {
   if (situacao === 'pending') {
     return {
-      json: 'Pedido — em análise pela clínica. Quando ela liberar, um pacote novo é preparado com o prontuário.',
+      json: 'Pedido — em análise pela equipe. Quando ela liberar, um pacote novo é preparado com o prontuário.',
       pdf: [
         'Você pediu também o prontuário (ficha de saúde, evolução dos atendimentos e',
-        'fotos clínicas), e o pedido está em análise pela clínica. Quando ela',
+        'fotos clínicas), e o pedido está em análise pela equipe. Quando ela',
         'liberar, um pacote novo é preparado já com ele.',
       ],
     }
   }
   if (situacao === 'denied') {
     return {
-      json: 'Pedido — a clínica não liberou o prontuário nesta solicitação.',
+      json: 'Pedido — a equipe não liberou o prontuário nesta solicitação.',
       pdf: [
-        'Você pediu também o prontuário, e a clínica não o liberou nesta',
+        'Você pediu também o prontuário, e a equipe não o liberou nesta',
         'solicitação. Para saber o motivo, procure a unidade onde você é atendido.',
       ],
     }
@@ -31,8 +31,8 @@ export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): {
   return {
     json: 'Não incluído nesta solicitação.',
     pdf: [
-      'Os dados de prontuário (ficha de saúde, evolução dos atendimentos e fotos',
-      'clínicas) não fazem parte deste pacote. Para',
+      'Os dados de prontuário (ficha de saúde, evolução dos atendimentos e',
+      'fotos clínicas) não fazem parte deste pacote. Para',
       'solicitá-los, procure a unidade onde você é atendido.',
     ],
   }
@@ -46,7 +46,7 @@ export function textoDoProntuarioForaDoPacote(situacao: SituacaoDoProntuario): {
  */
 export function prontuarioNaSolicitacao(situacao: SituacaoDoProntuario, incluido: boolean): string {
   if (incluido || situacao === 'approved') return 'pedido — liberado e incluído neste pacote'
-  if (situacao === 'pending') return 'pedido — pendente de liberação pela clínica'
-  if (situacao === 'denied') return 'pedido — não liberado pela clínica'
+  if (situacao === 'pending') return 'pedido — pendente de liberação pela equipe'
+  if (situacao === 'denied') return 'pedido — não liberado pela equipe'
   return 'não pedido'
 }

@@ -344,7 +344,7 @@ AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
 
 **As tags da rede** (2026-10-13, pedido do Heitor; **Configurações → Tags**,
 nos dois portais, para quem tem `clients` OU `crm` em Gerenciar — e é da rede:
-quem tem unidade fixa lê "Esta configuração é da clínica toda", e
+quem tem unidade fixa lê "Esta configuração é da rede toda", e
 `criarTag`/`renomearTag`/`arquivarTag` recusam, H7 de 2026-11-01,
 `plataforma.md`). Até aqui a
 ficha oferecia oito tags fixas no código, e a tag que vinha de fora
@@ -645,7 +645,7 @@ dela — e vê Configurações só com essa aba.
   Heitor, 2026-11-11: "Importações é da rede, ela que vai importar os seus
   clientes ou o que for, e na importação poder escolher se aquilo pertence a
   uma unidade"): quem tem unidade fixa não importa (`recusaDaConfigDaClinica`;
-  a aba diz "Esta configuração é da clínica toda"), e a importação escolhe a
+  a aba diz "Esta configuração é da rede toda"), e a importação escolhe a
   unidade a que os registros pertencem. (Correção C73: hoje a gerente importa
   para a unidade dela.) `plataforma.md`, "A configuração da clínica toda".
 - **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
@@ -1198,9 +1198,9 @@ escolher a etapa) e no modal do lead.
   quadro filtra por "Motivo da perda".
 - Sem escolher o motivo o botão não fica apagado: diz "Escolha o motivo da perda" (A14), e "Outro" vem
   sempre por último na escolha (`motivosComOutroPorUltimo`, A15). O inbox vazio manda ligar o
-  WhatsApp com atalho só para quem tem Configurações em Gerenciar; os outros leem "Peça a quem
-  administra a clínica para conectar o WhatsApp" (A16).
-- Rede nova nasce com Preço, Sem retorno, Fechou com outra clínica, Sem
+  WhatsApp com atalho só para quem tem Configurações em Gerenciar; os outros leem "Peça a quem tem as
+  Configurações em Gerenciar para conectar o WhatsApp" (A16).
+- Rede nova nasce com Preço, Sem retorno, Fechou com a concorrência, Sem
   horário que sirva, Desistiu, Outro (gatilho `trg_motivos_perda_na_rede_nova`).
 Prova: `e2e/crm-motivo-da-perda.spec.ts`.
 

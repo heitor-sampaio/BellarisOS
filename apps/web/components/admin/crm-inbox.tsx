@@ -1829,7 +1829,7 @@ export function CRMInbox({
                     {podeConfigurarIntegracoes
                       ? <>Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado.{' '}
                           <Link href={`${slug ? `/${slug}` : '/admin'}/settings?tab=integrations`} style={{ color: 'var(--brand)', fontWeight: 700 }}>Conectar o WhatsApp</Link></>
-                      : <>Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado. Peça a quem administra a clínica para conectar o WhatsApp.</>}
+                      : <>Nenhum canal ligado: as conversas chegam aqui depois que o WhatsApp (ou o Instagram) é ligado. Peça a quem tem as Configurações em Gerenciar para conectar o WhatsApp.</>}
                   </p>
                 )}
                 {/* Lista vazia por causa de filtro tem saída à mão: sem isto a
@@ -2108,7 +2108,7 @@ export function CRMInbox({
                       </div>
                     )}
                     {canEdit && paraResponder?.conversa === selectedId && numerosParaResponder.length === 0 && (
-                      <span style={{ color: 'var(--text-muted)' }}>Nenhum número da clínica está no ar para você responder.</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Nenhum número da rede está no ar para você responder.</span>
                     )}
                   </div>
                 </div>

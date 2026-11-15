@@ -201,7 +201,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
       {/* A37 da 10ª: a Entrada diz a regra, como a Perda (D13 revisto, decisão do
           Heitor, 2026-10-28: movimentação de estoque nunca gera despesa). */}
       <p data-entrada-sem-despesa style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a clínica pagou entra no
+        Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a rede pagou entra no
         Financeiro por um lançamento (Novo lançamento, categoria “Compra de estoque”).
       </p>
 

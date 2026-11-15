@@ -684,7 +684,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
               ? `As suas novas clientes e os seus agendamentos neste mês, até agora${nasUnidades(unidadesDaAgenda)}`
               : paraReativar.daUnidade
                 ? 'Novas clientes atendidas na unidade e os agendamentos da unidade, neste mês, até agora'
-                : 'Novas clientes da clínica e os agendamentos, neste mês, até agora'}
+                : 'Novas clientes da rede e os agendamentos, neste mês, até agora'}
             etapas={funnel}
           />
         )}

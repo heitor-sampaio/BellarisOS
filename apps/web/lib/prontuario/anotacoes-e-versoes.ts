@@ -48,7 +48,7 @@ function fichaDaVersao(raw: unknown): VersaoDoRegistro['ficha'] {
   const f = raw as { name?: string; rows?: unknown; answers?: unknown }
   const rows = normalizeFormSchema({ rows: f.rows }).rows
   return {
-    nome: f.name ?? 'Ficha do procedimento',
+    nome: f.name ?? 'Ficha de atendimento',
     rows,
     respostas: f.answers && typeof f.answers === 'object' ? f.answers as Record<string, unknown> : {},
   }

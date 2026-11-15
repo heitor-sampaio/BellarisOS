@@ -35,14 +35,14 @@ export function retratoDoCancelamento(p: {
   if (restantes > 0) {
     linhas.push(`${restantes} de ${sessoes} ${sessoes === 1 ? 'sessão cancelada' : 'sessões canceladas'} (${formatBRL(num(c.valor_restante))}).`)
   }
-  linhas.push(`Usado, fica com a clínica: ${formatBRL(num(c.usado))} (o que foi feito, com o desconto).`)
+  linhas.push(`Usado, fica com a rede: ${formatBRL(num(c.usado))} (o que foi feito, com o desconto).`)
 
   const cai = num(c.cai)
   if (cai > 0) linhas.push(`${formatBRL(cai)} a receber caíram: não serão cobrados.`)
 
   const devolver = num(c.devolver)
   if (devolver <= 0) linhas.push('Nada a devolver à cliente.')
-  else if (c.destino === 'CREDITO') linhas.push(`${formatBRL(devolver)} em crédito na clínica.`)
+  else if (c.destino === 'CREDITO') linhas.push(`${formatBRL(devolver)} em crédito interno.`)
   else if (c.estorno === 'INTEIRO') {
     const parcial = (c.parcial ?? null) as Record<string, unknown> | null
     linhas.push(parcial

@@ -28,11 +28,11 @@ export const metadata: Metadata = {
 
 const TIPO: Record<string, string> = { TERMO: 'Termo de consentimento', CONTRATO: 'Contrato', CONTRATO_PLANO: 'Contrato de plano', CONTRATO_PACOTE: 'Contrato de pacote', DOCUMENTO: 'Documento' }
 const CANAL: Record<string, string> = {
-  CLINICA: 'presencialmente, na clínica', PAPEL: 'no papel, na clínica', PORTAL: 'pelo portal do cliente', LINK: 'por link enviado ao cliente',
+  CLINICA: 'presencialmente, na tela', PAPEL: 'presencialmente, no papel', PORTAL: 'pelo portal do cliente', LINK: 'por link enviado ao cliente',
 }
 const SITUACAO: Record<string, string> = {
   A_GERAR: 'Emitido, ainda não assinado', INCOMPLETO: 'Emitido, ainda não assinado', PENDENTE: 'Emitido, ainda não assinado',
-  DISPENSADO: 'Dispensado pela clínica — não foi assinado', CANCELADO: 'Cancelado — não foi assinado',
+  DISPENSADO: 'Dispensado pela equipe — não foi assinado', CANCELADO: 'Cancelado — não foi assinado',
   SUBSTITUIDO: 'Substituído por outro documento',
 }
 

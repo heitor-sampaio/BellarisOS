@@ -17,8 +17,7 @@ import { configDaRede } from '@/lib/fidelidade/leitura'
 import { opcoesDeModeloParaProcedimento } from '@/lib/documentos/modelos'
 import { BuscaNaUrl } from '@/components/shared/busca-na-url'
 import { contemSemAcento } from '@/lib/texto'
-import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
-import { vocabulario } from '@/lib/unidades/vocabulario'
+import { falaDaTela } from '@/lib/unidades/uma-so'
 
 function formatBRL(v: string | number) {
   return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -54,8 +53,8 @@ const colunas = (comComissao: boolean) => [
 export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
   const ctx = await getTenantContext()
   const canEdit = can(ctx, 'procedures', 'MANAGE')
-  // A clínica de uma unidade não fala "rede" (F8).
-  const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
+  // Na rede de uma unidade (PO2), o rótulo que é só a rede é o nome dela.
+  const fala = await falaDaTela(ctx.tenantId)
   // Quanto cada um ganha é do financeiro (§9.7): gerir o catálogo não basta.
   // E a comissão do procedimento vale para a rede inteira.
   const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes') && ctx.branchId === null

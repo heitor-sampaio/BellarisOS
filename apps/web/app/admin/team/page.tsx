@@ -15,8 +15,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
-import { redeTemUmaUnidade } from '@/lib/unidades/uma-so'
-import { vocabulario } from '@/lib/unidades/vocabulario'
+import { falaDaTela } from '@/lib/unidades/uma-so'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { listaDeUnidades } from '@/lib/equipe/atende'
 
@@ -92,8 +91,8 @@ export default async function AdminTeamPage({
     ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId), procedimentosComComissaoGeral(ctx.tenantId!, ctx.branchId), cargosQueVendem(ctx.tenantId!), cargosQueVeemAsComissoes(ctx.tenantId!)])
     : [null, [], [], new Set<string>(), new Set<string>()]
 
-  // A clínica de uma unidade não fala "rede" (F8): o cargo "Admin da rede" é "Admin".
-  const fala = vocabulario(await redeTemUmaUnidade(ctx.tenantId!))
+  // Na rede de uma unidade (PO2), o cargo "Admin da rede" é "Admin".
+  const fala = await falaDaTela(ctx.tenantId)
   const allRoles = (tenantRoles ?? []).map(r => ({ ...r, label: fala(r.label) }))
   // Cargos atribuíveis pela UI: sem os de sistema (NETWORK_ADMIN)
   const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')

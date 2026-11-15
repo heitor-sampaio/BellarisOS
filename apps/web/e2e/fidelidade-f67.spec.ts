@@ -60,6 +60,6 @@ test('A6: a aba Fidelidade diz que o crédito na clínica vendido pontua', async
     const p = await ctx.newPage()
     await p.goto('/admin/settings?tab=fidelidade')
     await expect(p.getByText('O produto vendido na ficha não dá pontos.', { exact: false }))
-      .toContainText('o crédito na clínica vendido')
+      .toContainText('o crédito interno vendido')
   } finally { await ctx.close() }
 })

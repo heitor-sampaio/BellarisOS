@@ -438,7 +438,7 @@ export function ImportadorDeContatos(p: Props) {
               alternar={n => setNaoCompletar(s => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })} />
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
               Quem já está cadastrado ({destino === 'clientes' ? 'pelo CPF ou, sem CPF, pelo telefone' : 'pelo telefone ou, sem ele, pelo e-mail'}) só tem o que está em
-              branco completado — nada do que a clínica já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags se juntam, e o nome e o e-mail que ficam são os da primeira linha.'} A importação não dispara as
+              branco completado — nada do que a rede já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags se juntam, e o nome e o e-mail que ficam são os da primeira linha.'} A importação não dispara as
               automações de cadastro (boas-vindas, nova oportunidade); as de rotina — aniversário, quem não volta há
               tempo — passam a contar com quem entrou.
             </p>
@@ -782,7 +782,7 @@ function OrigensDaPlanilha({ validadas, brutas }: { validadas: LinhaValidada[]; 
         {lista.length > 12 ? ' …' : ''}
       </span>
       <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-        A que não é uma das origens da clínica (Oportunidades → Configurar funis) nem um apelido conhecido vira “Outro”.
+        A que não é uma das origens da rede (Oportunidades → Configurar funis) nem um apelido conhecido vira “Outro”.
       </span>
     </div>
   )

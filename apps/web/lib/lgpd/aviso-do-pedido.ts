@@ -51,7 +51,7 @@ export async function avisarPedidoDaCliente(pedidoId: string): Promise<void> {
     await Promise.allSettled(ids.map(id => notifyUser(admin, id, {
       type: 'lgpd.pedido',
       title: `Pedido de dados (LGPD): ${nome}`,
-      body: `${nome} pediu os dados dela pelo app${pedido.include_medical ? ', com o prontuário (a parte do prontuário espera a liberação da clínica)' : ''}. Responder até ${prazoDeResposta(pedido.requested_at, true, fuso)} (15 dias do pedido), em Configurações → LGPD.`,
+      body: `${nome} pediu os dados dela pelo app${pedido.include_medical ? ', com o prontuário (a parte do prontuário espera a liberação de quem tem o Prontuário em Gerenciar)' : ''}. Responder até ${prazoDeResposta(pedido.requested_at, true, fuso)} (15 dias do pedido), em Configurações → LGPD.`,
       data: { pedidoId, caminho: CAMINHO_DA_ABA_LGPD },
     })))
   } catch (e) {

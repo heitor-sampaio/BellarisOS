@@ -64,7 +64,7 @@ export function AssinarPorLink({ token, clinica, pede, quantos }: { token: strin
         documentos={docs}
         assinante={assinante}
         cabecalho={`${nomeParaSaudar(assinante) || assinante}, leia os documentos e assine uma vez no fim.`}
-        final="Tudo certo! A clínica já recebeu os documentos assinados."
+        final="Tudo certo! A equipe já recebeu os documentos assinados."
         assinar={async d => {
           const r = await postar<{ documentos?: { id: string; codigo: string | null }[] }>('/api/assinar/assinar', { ...identidade, ...d })
           return r.erro ? { error: r.erro } : { documentos: r.documentos ?? [] }

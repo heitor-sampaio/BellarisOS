@@ -44,7 +44,7 @@ describe('a primeira obrigatória vazia', () => {
     const r = { fototipo: 'II', foto: 'rede/ag/foto.jpg' }
     expect(faltaNaFichaDoProcedimento(ficha, r)?.campo).toBe('mapa')
     expect(faltaNaFichaDoProcedimento(ficha, r, { semInjetaveis: true })).toBeNull()
-    expect(faltaNaFichaDoProcedimento(ficha, {})?.mensagem).toBe('Falta preencher "Fototipo" na ficha do procedimento.')
+    expect(faltaNaFichaDoProcedimento(ficha, {})?.mensagem).toBe('Falta preencher "Fototipo" na ficha de atendimento.')
   })
 
   it('a anamnese: foto e planejador ficam de fora (a cliente responde pelo celular)', () => {

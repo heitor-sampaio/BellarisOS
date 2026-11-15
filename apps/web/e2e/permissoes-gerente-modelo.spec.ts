@@ -47,6 +47,6 @@ test('a gerente de unidade fixa, no cargo modelo, abre a aba Unidade e não a co
     await expect(p.getByRole('heading', { name: 'Salas' })).toBeVisible()
     // O que é da clínica toda continua da rede (H7).
     await p.goto(`/${slug}/settings?tab=tags`)
-    await expect(p.getByText('Esta configuração é da clínica toda').first()).toBeVisible()
+    await expect(p.getByText('Esta configuração é da rede toda').first()).toBeVisible()
   } finally { await ctx.close() }
 })

@@ -42,7 +42,7 @@ export function aceitaNoHost(host: HostDaPlataforma, marca: string | null | unde
  */
 export function recusaDoHost(host: HostDaPlataforma, marca: string | null | undefined): string | null {
   if (marca !== 'ADMIN' && marca !== 'SUPORTE' && marca !== 'GERENTE') {
-    return 'Este acesso é só da equipe do BellarisOS. A clínica entra pelo app.'
+    return 'Este acesso é só da equipe do BellarisOS. A equipe da rede entra pelo app.'
   }
   if (aceitaNoHost(host, marca)) return null
   return host === 'sistema'

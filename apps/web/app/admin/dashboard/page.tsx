@@ -177,7 +177,7 @@ export default async function AdminDashboardPage({
   if (branchIds.length === 0) {
     return (
       <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
-        Nenhuma filial ativa cadastrada.
+        Nenhuma unidade ativa cadastrada.
       </div>
     )
   }
@@ -665,7 +665,7 @@ export default async function AdminDashboardPage({
       <ClientesDoPeriodo
         titulo="Clientes no período"
         // A10 da 13ª: o quadro diz o seu recorte (a unidade é a tag da cliente — C6).
-        subtitulo={`${agendaDela ? 'As suas novas clientes e os seus agendamentos' : paraReativar.daUnidade ? 'Novas clientes atendidas na unidade e os agendamentos dela' : 'Novas clientes e agendamentos da clínica'} · ${periodLabel}, até agora`}
+        subtitulo={`${agendaDela ? 'As suas novas clientes e os seus agendamentos' : paraReativar.daUnidade ? 'Novas clientes atendidas na unidade e os agendamentos dela' : 'Novas clientes e agendamentos da rede'} · ${periodLabel}, até agora`}
         etapas={[
           { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
           { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)' },

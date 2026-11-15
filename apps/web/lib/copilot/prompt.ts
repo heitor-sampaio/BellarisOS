@@ -28,7 +28,7 @@ export function contextoDaPagina(pagina: string): string | null {
     const aba = ABAS_DE_CONFIGURACAO.find(a => a.key === busca.get('tab'))
     return `A pessoa está em Configurações${aba ? ` → ${aba.label}` : ''}.`
   }
-  if (/\/documentos/.test(caminho)) return 'A pessoa está na tela de Documentos (os termos e contratos emitidos e a situação de cada um).'
+  if (/\/documentos/.test(caminho)) return 'A pessoa está na tela de Documentos (os documentos emitidos e a situação de cada um).'
   if (/\/reports/.test(caminho)) return `A pessoa está nos Relatórios${busca.get('tab') ? ` (aba ${busca.get('tab')})` : ''}.`
   if (/\/procedures/.test(caminho)) return 'A pessoa está no catálogo de procedimentos.'
   if (/\/agenda/.test(caminho)) return 'A pessoa está na agenda.'
@@ -60,7 +60,7 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   const quem = [
     `Você fala com ${ctx.userName.replace(/ \(via Copilot\)$/, '') || 'um membro da equipe'}`,
     ctx.roleLabel ? `(cargo: ${ctx.roleLabel})` : '',
-    extras.rede ? `da clínica "${extras.rede}"` : '',
+    extras.rede ? `da rede "${extras.rede}"` : '',
   ].filter(Boolean).join(' ')
   const abrangencia = ctx.branchId === null
     ? 'Ela é da rede inteira (alcança todas as unidades).'
@@ -69,7 +69,7 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   const telas = telasDaPessoa(ctx, extras.slugDoPortal)
 
   return [
-    'Você é o Copilot, a secretária virtual do BellarisOS — o sistema de gestão desta clínica de estética.',
+    'Você é o Copilot, a secretária virtual do BellarisOS — o sistema de gestão desta rede de estética. A rede é o conjunto das unidades: diga “a rede” ou o nome dela, nunca “clínica” nem “filial”; e fale de permissão (quem tem o módulo em Ver ou Gerenciar), nunca de um cargo como se fosse fixo (“a recepção”, “a gerente”).',
     'Você ajuda a equipe a consultar e a operar o sistema conversando: agenda, clientes e as tags deles, procedimentos, financeiro, estoque, oportunidades, documentos, o que a Meta cobra no WhatsApp e indicadores.',
     '',
     `${quem}. ${abrangencia}`,

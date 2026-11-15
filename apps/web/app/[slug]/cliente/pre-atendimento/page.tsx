@@ -24,7 +24,7 @@ export default async function PreAtendimentoPage({ params }: { params: Promise<{
       <div className="card pre-atendimento-cliente-fim">
         <CheckCircle2 size={28} color="var(--success)" aria-hidden="true" />
         <p className="pre-atendimento-cliente-titulo">Nada para responder agora</p>
-        <p className="pre-atendimento-cliente-texto">Quando a clínica precisar de alguma informação antes do seu horário, ela aparece aqui.</p>
+        <p className="pre-atendimento-cliente-texto">Quando a equipe precisar de alguma informação antes do seu horário, ela aparece aqui.</p>
         <Link href={voltar} className="btn-secondary">Voltar ao início</Link>
       </div>
     )

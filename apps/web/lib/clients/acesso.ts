@@ -34,7 +34,7 @@ const RECUSA: Record<string, string> = {
   equipe:        'Este e-mail já está em uso por outra conta.',
   cpf:           'Este e-mail já tem uma conta no BellarisOS com outro CPF. Confira o e-mail e o CPF da cliente.',
   documento:     'Este e-mail já tem uma conta no BellarisOS com outro documento. Confira o e-mail e o documento da cliente.',
-  ja_nesta_rede: 'Esta pessoa já tem acesso ao app por outra ficha desta clínica.',
+  ja_nesta_rede: 'Esta pessoa já tem acesso ao app por outra ficha desta rede.',
 }
 
 const NOME_DO_DOCUMENTO: Record<DocumentoDoAcesso['tipo'], string> = { CPF: 'o CPF', PASSAPORTE: 'o passaporte', RNE: 'o RNE' }

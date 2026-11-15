@@ -13,12 +13,12 @@ import { idadeDoLead } from '@/lib/crm/idade-do-lead'
 describe('D1 da 12ª: a venda é de Recebimentos, e a tela diz', () => {
   it('Procedimentos e pacotes em Gerenciar não promete a venda', () => {
     expect(LEVEL_COPY.procedures.MANAGE).not.toMatch(/fechar a venda/)
-    expect(LEVEL_COPY.procedures.MANAGE).toMatch(/Recebimentos/)
+    expect(LEVEL_COPY.procedures.MANAGE).toMatch(/de quem tem o PDV/)
   })
   const nada = { procedures: 'NONE', crm: 'NONE', clients: 'NONE', cashier: 'NONE', financial: 'NONE' } as const
   it('o resumo do cargo diz que o comercial sem Recebimentos não vende', () => {
     expect(quemVendeNoResumo({ ...nada, procedures: 'MANAGE', crm: 'MANAGE', clients: 'MANAGE' }))
-      .toBe('Não vende no PDV: vender é de Recebimentos (ou do Financeiro em Gerenciar).')
+      .toBe('Não vende no PDV: vender é de quem tem o PDV (ou o Financeiro em Gerenciar).')
   })
   it('com Recebimentos (ou o Financeiro em Gerenciar), vende', () => {
     expect(quemVendeNoResumo({ ...nada, cashier: 'MANAGE' })).toMatch(/^Vende no PDV/)
@@ -29,7 +29,7 @@ describe('D1 da 12ª: a venda é de Recebimentos, e a tela diz', () => {
   })
   it('a tela de Pacotes diz que a venda é no PDV, de quem tem Recebimentos (PDV7)', () => {
     expect(TEXTO_DA_VENDA_DO_PACOTE).toMatch(/no PDV/)
-    expect(TEXTO_DA_VENDA_DO_PACOTE).toMatch(/Recebimentos/)
+    expect(TEXTO_DA_VENDA_DO_PACOTE).toMatch(/quem tem o PDV/)
   })
 })
 

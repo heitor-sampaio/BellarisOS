@@ -21,10 +21,10 @@ export function AgendarComAClinica({ slug, clinica }: { slug: string; clinica: A
       </div>
       <div data-agendar-com-a-clinica className="card" style={{ padding: '18px 20px' }}>
         <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 4 }}>
-          Fale com a clínica para agendar.
+          Fale com a equipe para agendar.
         </p>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
-          O agendamento pelo app não está disponível para o seu cadastro. A recepção marca o seu horário.
+          O agendamento pelo app não está disponível para o seu cadastro. A equipe marca o seu horário.
         </p>
       </div>
       {clinica && <CartaoDaClinica clinica={clinica} />}

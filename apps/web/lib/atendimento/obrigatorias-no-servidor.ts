@@ -56,7 +56,7 @@ export async function oQueFaltaParaSeguir(admin: Admin, o: {
       .eq('id', o.procedureId).eq('tenant_id', o.tenantId).maybeSingle(), 'buscar o procedimento') as { form_id: string | null } | null
     const form = proc?.form_id
       ? await ler(admin.from('forms').select('schema')
-          .eq('id', proc.form_id).eq('tenant_id', o.tenantId).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha do procedimento') as { schema: unknown } | null
+          .eq('id', proc.form_id).eq('tenant_id', o.tenantId).eq('tipo', 'PROCEDIMENTO').maybeSingle(), 'buscar a ficha de atendimento') as { schema: unknown } | null
       : null
     if (form) {
       let respostas = o.fichaNaTela

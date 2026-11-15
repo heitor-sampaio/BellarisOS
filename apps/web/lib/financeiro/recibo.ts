@@ -53,7 +53,7 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
       .select('id, description, amount, payment_method, cartao_vezes, cartao_bandeira, paid_at, sale_discount, desconto_motivo, product_sale_id, client_package_id, procedure_sale_id, treatment_plan_id, appointment_id')
       .eq('id', l.id).single(), 'ler o lançamento do recibo'),
     ler(admin.from('branches').select('name, document, address, city, state, phone').eq('id', l.branchId).single(), 'ler a unidade do recibo'),
-    ler(admin.from('tenants').select('name, document').eq('id', l.tenantId).single(), 'ler a clínica do recibo'),
+    ler(admin.from('tenants').select('name, document').eq('id', l.tenantId).single(), 'ler a rede do recibo'),
     l.clientId
       ? ler(admin.from('clients').select('name, document, documento_tipo, documento_numero').eq('id', l.clientId).maybeSingle(), 'ler a cliente do recibo')
       : Promise.resolve(null),
@@ -94,7 +94,7 @@ export async function reciboDoLancamento(l: LancamentoDoRecibo): Promise<{ doc: 
     ...(descontos[String(tx.id)] ? [['Desconto', descontos[String(tx.id)]!.replace(/^Desconto ?·? ?/, '')] as [string, string]] : []),
   ]
   const emitente: [string, string][] = [
-    ['Clínica', String(rede.name)],
+    ['Emitido por', String(rede.name)],
     ['Unidade', String(unidade.name)],
     ...(unidade.document || rede.document ? [['CNPJ/CPF', String(unidade.document ?? rede.document)] as [string, string]] : []),
     ...(unidade.address ? [['Endereço', [unidade.address, unidade.city, unidade.state].filter(Boolean).join(', ')] as [string, string]] : []),

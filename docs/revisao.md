@@ -1825,6 +1825,21 @@ revisão, só se escreve o plano. Nada se implementa.
   "Criar/Salvar ficha de atendimento") e "Ficha de saúde" (o construtor dela
   diz "Salvar ficha de saúde"). O resto ficou. A trava:
   `tests/ficha-de-saude-no-texto.test.ts` ("FC1").
+- ✅ Bloco Vocabulário (as telas) e Bloco Cargos (16/11) — PO2, CA1, CG1–CG3,
+  e V0/V1/V2 nas telas: "clínica" e "filial" saíram de toda tela, aviso,
+  e-mail, mensagem de erro e da política de privacidade (é "a rede", o nome
+  dela, "a equipe" ou "a unidade"); nenhum cargo como se fosse fixo ("a
+  recepção", "a gerente" → quem tem o módulo); "Recebimentos" é "PDV" e
+  "Termos e contratos" é "Documentos"; "ficha do procedimento" fora das
+  Configurações é "ficha de atendimento"; o "Crédito na clínica" da equipe é
+  "Crédito interno" (no app, "Seu crédito"); o crediário é "Crediário" / "no
+  crediário". A rede de uma unidade não troca mais "rede" por "clínica": o
+  rótulo que é só a rede é o nome dela. Os textos das funções do banco, pela
+  migrations `20261116200001` e `20261116200002` (só o corpo das funções). As travas:
+  `tests/vocabulario-no-texto.test.ts` e `tests/vocabulario-de-uma-unidade.test.ts`.
+  Fica para a próxima: as regras (`docs/regras/`), o CLAUDE.md e os nomes
+  internos do código (`filial`, `falaDaRede`, `recusaDaConfigDaClinica`,
+  `aClinicaDoEndereco`, `/auth/clinicas`…).
 
 ### Bloco: Estoque
 
@@ -2061,14 +2076,14 @@ Heitor de que vale uma completa.
 | # | O que muda | Depende de |
 |---|---|---|
 | PO1 | **A pessoa de várias unidades** entra no portal da unidade (a primeira das dela, ou a última usada), com o seletor "Unidade: X ▾" no topo; trocar leva à MESMA tela na outra unidade (`lib/rotas`). O layout da unidade aceita qualquer unidade dela (hoje confere UMA). Quem tem "A rede inteira" segue no portal da rede ✅ 14/11 | EQ1 |
-| PO2 | **Sai o "clínica" da rede de uma unidade** (`useFala`, `lib/unidades/vocabulario.ts`): onde a palavra é necessária, o NOME da rede; onde não é, nenhuma | V1 |
+| PO2 | **Sai o "clínica" da rede de uma unidade** (`useFala`, `lib/unidades/vocabulario.ts`): onde a palavra é necessária, o NOME da rede; onde não é, nenhuma ✅ 16/11 (o rótulo que é só a rede — "Rede", "Da rede", "Toda a rede", o grupo "A rede" das Configurações — é o nome dela; a frase diz "rede"; "A rede inteira", o nome da abrangência, fica) | V1 |
 | — | Mantém: os dois portais, as mesmas telas com o mesmo sufixo, o filtro de unidade na rede, o que é só da rede, o "Abrir unidade" do Dashboard, o esconder do que só serve com duas unidades | — |
 
 ### Bloco: Portal da cliente
 
 | # | O que muda | Depende de |
 |---|---|---|
-| CA1 | **Sem "clínica" no portal e no app**: "Crédito na clínica", "Telefone da clínica", "A clínica enviou um documento", os avisos no celular — o NOME da rede no lugar | V1 |
+| CA1 | **Sem "clínica" no portal e no app**: "Crédito na clínica", "Telefone da clínica", "A clínica enviou um documento", os avisos no celular — o NOME da rede no lugar ✅ 16/11 (o portal fala da equipe e da unidade: "Seu crédito", "fale com a equipe", "Telefone: …", "A equipe enviou um documento") | V1 |
 | CA2 | **O plano no app** (PT1/PT3): ver tudo — o plano, os pagamentos, as sessões abertas e realizadas, os documentos assinados —, ACEITAR e agendar as sessões ✅ 14/11 (Plano, leva 2) | Plano de tratamento |
 | CA3 | **Agendar a sessão de plano ou de pacote** pelo app, mesmo com o procedimento sem "Permitir auto agendamento" ✅ 14/11 (Plano, leva 2) | PT3 |
 | CA4 | **Assinar todos os documentos abertos de uma vez** (DC3) e "Ficha de saúde" (PR3) — assinar todos ✅ 14/11 (leva 2 de Documentos) | DC3, PR3 |
@@ -2104,9 +2119,9 @@ e este passa a limpo o que sobrou.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| V0 | **Nenhum cargo como se fosse fixo** em tela, regra (`docs/regras/`), teste e CLAUDE.md: fala-se em permissão ("quem tem o Estoque em Gerenciar"). Os nomes dos cargos-modelo continuam nomes de cargos editáveis | — |
-| V1 | **"Clínica" sai** das telas (o portal e o app da cliente inclusive), dos avisos, da política de privacidade, das regras e do CLAUDE.md: é "a rede" ou o nome dela (PO2/CA1). Fica só no site, como mercado (SI1) | PO2, CA1 |
-| V2 | **"Filial" sai de vez**: do CLAUDE.md, das regras e dos nomes internos do código (`filial`, `trocarFilial…` → unidade) | — |
+| V0 | **Nenhum cargo como se fosse fixo** em tela, regra (`docs/regras/`), teste e CLAUDE.md: fala-se em permissão ("quem tem o Estoque em Gerenciar"). Os nomes dos cargos-modelo continuam nomes de cargos editáveis telas ✅ 16/11 (docs e código: a seguir) | — |
+| V1 | **"Clínica" sai** das telas (o portal e o app da cliente inclusive), dos avisos, da política de privacidade, das regras e do CLAUDE.md: é "a rede" ou o nome dela (PO2/CA1). Fica só no site, como mercado (SI1) telas ✅ 16/11 (docs e código: a seguir) | PO2, CA1 |
+| V2 | **"Filial" sai de vez**: do CLAUDE.md, das regras e dos nomes internos do código (`filial`, `trocarFilial…` → unidade) telas ✅ 16/11 (docs e código: a seguir) | — |
 
 ### Bloco: Cargos
 
@@ -2114,9 +2129,9 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| CG1 | **"Recebimentos" → "PDV"** (`MODULE_LABELS.cashier`, o texto do nível, o resumo do cargo, o menu onde aparecer) | PDV |
-| CG2 | **"Termos e contratos" → "Documentos"** | DC1 |
-| CG3 | **Os textos de cada linha** (`LEVEL_COPY`, `SCOPE_NOTE`, as notas de abrangência, o resumo "O que essa pessoa vai ver") dizem o sistema adaptado: o PDV, "oportunidade", a aba "Oportunidades", a "Ficha de saúde" e as fotos no Prontuário, o plano montado por quem atende, "as unidades dela". Nenhum nível nem escopo muda | todos os blocos |
+| CG1 | **"Recebimentos" → "PDV"** (`MODULE_LABELS.cashier`, o texto do nível, o resumo do cargo, o menu onde aparecer) ✅ 16/11 | PDV |
+| CG2 | **"Termos e contratos" → "Documentos"** ✅ 16/11 | DC1 |
+| CG3 | **Os textos de cada linha** (`LEVEL_COPY`, `SCOPE_NOTE`, as notas de abrangência, o resumo "O que essa pessoa vai ver") dizem o sistema adaptado: o PDV, "oportunidade", a aba "Oportunidades", a "Ficha de saúde" e as fotos no Prontuário, o plano montado por quem atende, "as unidades dela". Nenhum nível nem escopo muda ✅ 16/11 | todos os blocos |
 | — | Mantém: os cargos da rede, os modelos e os de sistema, a matriz, os escopos, as abas de relatório, o refino do inbox, as caixas por cargo, o "cargo acima" | — |
 
 ### Bloco: Copilot (o último)

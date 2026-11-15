@@ -107,7 +107,7 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <label className="overline" htmlFor="tm-registro">Registro no conselho (opcional)</label>
                 <input id="tm-registro" name="registro_conselho" type="text" maxLength={60} className="field" placeholder="Ex.: CRM-SC 12345, COREN-SC 123456" />
-                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Sai nos termos e contratos pela variável do registro da profissional.</span>
+                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Sai nos documentos pela variável do registro de quem atende.</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

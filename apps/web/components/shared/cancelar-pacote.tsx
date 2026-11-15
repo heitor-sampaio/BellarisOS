@@ -101,7 +101,7 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
       if (r.error) { toast.error(r.error); return }
       toast.success(previa.devolver > 0
         ? escolha.destino === 'CREDITO'
-          ? `${Nome} cancelado. ${formatBRL(previa.devolver)} ficaram de crédito na clínica.`
+          ? `${Nome} cancelado. ${formatBRL(previa.devolver)} ficaram de crédito interno.`
           : `${Nome} cancelado. ${formatBRL(previa.devolver)} estornados à cliente.`
         : `${Nome} cancelado.`)
       onFechar()
@@ -183,7 +183,7 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
                 Os pagamentos deste {nome} deram <strong>{previa.pontos.ganhos.toLocaleString('pt-BR')} pontos</strong>, e a cliente tem{' '}
                 <strong>{previa.pontos.saldo.toLocaleString('pt-BR')}</strong> hoje. O estorno tira os pontos do que voltar, na proporção
                 {previa.pontos.saldo < previa.pontos.ganhos ? ' — e o saldo pode ficar negativo (ela já trocou ou usou parte deles)' : ''}.
-                Com crédito na clínica, os pontos ficam.
+                Com crédito interno, os pontos ficam.
               </p>
             )}
 

@@ -9,12 +9,12 @@ export function CartaoDaClinica({ clinica }: { clinica: AClinica }) {
   if (!clinica.endereco && !clinica.telefone && !clinica.horario.length) return null
   const linha = { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 } as const
   return (
-    <section data-a-clinica aria-label="A clínica">
+    <section data-a-clinica aria-label="A unidade">
       <p style={{
         fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
         letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10,
       }}>
-        A clínica
+        A unidade
       </p>
       <div className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)', overflowWrap: 'anywhere' }}>{clinica.nome}</p>

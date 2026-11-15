@@ -143,7 +143,7 @@ export async function salvarFichaDoProcedimento(params: {
       .select('id, name, schema')
       .eq('id', formId)
       .eq('tenant_id', ctx.tenantId!)
-      .maybeSingle(), 'buscar a ficha do procedimento')
+      .maybeSingle(), 'buscar a ficha de atendimento')
     if (!form) return { error: 'Ficha não encontrada.' }
 
     const rows = normalizeFormSchema(form.schema).rows
@@ -165,7 +165,7 @@ export async function salvarFichaDoProcedimento(params: {
       const { versao } = await corrigirRegistro(admin, ctx, params.appointmentId, { ficha: fichaNova })
       if (versao) {
         await logHistory(admin, params.appointmentId, ctx.internalUserId, ctx.userName || ctx.roleLabel || 'Equipe', 'EDITED',
-          'Ficha do procedimento corrigida (a versão de antes ficou guardada)')
+          'Ficha de atendimento corrigida (a versão de antes ficou guardada)')
       }
       revalidatePath(`/${params.slug}/agenda/${params.appointmentId}`)
       revalidatePath(`/admin/agenda/${params.appointmentId}`)

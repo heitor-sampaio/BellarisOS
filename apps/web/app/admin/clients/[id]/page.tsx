@@ -42,7 +42,7 @@ import { documentosDoCliente, assinadosDoCliente } from '@/lib/documentos/leitur
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 
 const SUBTITULO_DO_CANAL: Record<string, string> = {
-  CLINICA: 'Na clínica', PAPEL: 'No papel', PORTAL: 'Pelo portal', LINK: 'Por link',
+  CLINICA: 'Na tela', PAPEL: 'No papel', PORTAL: 'Pelo portal', LINK: 'Por link',
 }
 import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import { registrarAcessoAoProntuario, acessosAoProntuario } from '@/lib/prontuario/acessos'

@@ -67,8 +67,8 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
         </h1>
         <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
           {cfg.client_redeem
-            ? 'Você ganha pontos a cada pagamento. Troque por uma recompensa aqui mesmo, ou use como desconto na recepção.'
-            : 'Você ganha pontos a cada pagamento. Para usar ou trocar por uma recompensa, fale com a recepção.'}
+            ? 'Você ganha pontos a cada pagamento. Troque por uma recompensa aqui mesmo, ou use como desconto ao pagar.'
+            : 'Você ganha pontos a cada pagamento. Para usar ou trocar por uma recompensa, fale com a equipe.'}
         </p>
       </div>
 
@@ -107,7 +107,7 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
               <li key={v.id}>
                 <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{descricaoDoVoucher(v)}</p>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  Válido até {data(v.expires_at)}. Mostre na recepção.
+                  Válido até {data(v.expires_at)}. Mostre à equipe.
                 </p>
               </li>
             ))}
@@ -145,7 +145,7 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
           </ul>
           {!cfg.client_redeem && (
             <p data-quem-troca style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 8 }}>
-              A troca é feita na recepção{quemTroca.length > 0 ? `, com quem cuida da fidelidade: ${quemTroca.join(', ')}` : ''}.
+              A troca é feita pela equipe{quemTroca.length > 0 ? `, com quem cuida da fidelidade: ${quemTroca.join(', ')}` : ''}.
             </p>
           )}
         </section>

@@ -97,7 +97,7 @@ test.describe.serial('o CRM', () => {
       await expect(p.getByText(/Nenhum canal ligado/)).toBeVisible()
       await expect(p.getByRole('button', { name: 'Iniciar primeira conversa' })).toHaveCount(0)
       // A16: o SDR não vê Configurações → Integrações; o aviso manda pedir a quem administra.
-      await expect(p.getByText('Peça a quem administra a clínica para conectar o WhatsApp.')).toBeVisible()
+      await expect(p.getByText('Peça a quem tem as Configurações em Gerenciar para conectar o WhatsApp.')).toBeVisible()
       await expect(p.getByRole('link', { name: /Conectar o WhatsApp/ })).toHaveCount(0)
     })
     // Quem pode configurar vê o atalho.

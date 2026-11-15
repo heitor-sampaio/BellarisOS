@@ -649,7 +649,7 @@ export function FinancialHub({
     />
   )
   // A42 da 12ª: quem só vê o financeiro não tem o "Pagar" na linha.
-  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem Recebimentos (o caixa) no cargo.'
+  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem o PDV no cargo.'
   const tabela = (ordemInicial: 'asc' | 'desc') => (
     <FinancialTable
       nomeDoCsv={nomeDoCsv}

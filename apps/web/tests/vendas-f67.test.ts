@@ -8,11 +8,11 @@ describe('C42: o checkout do plano diz a comissão de venda antes de vender', ()
     expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: 8 }, clinicaPct: 5 }))
       .toBe('Comissão de venda de Rita: 8% do vendido — da Rita. Sai quando a venda estiver paga inteira.')
     expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: null }, clinicaPct: 5 }))
-      .toBe('Comissão de venda de Rita: 5% do vendido — da clínica. Sai quando a venda estiver paga inteira.')
+      .toBe('Comissão de venda de Rita: 5% do vendido — da rede. Sai quando a venda estiver paga inteira.')
   })
   it('sem as duas, diz que não há', () => {
     expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: null }, clinicaPct: null }))
-      .toBe('Rita não tem comissão de venda neste plano: nem ela nem a clínica ("Venda de plano") têm regra de venda.')
+      .toBe('Rita não tem comissão de venda neste plano: nem ela nem a rede ("Venda de plano") têm regra de venda.')
   })
 })
 
@@ -57,7 +57,7 @@ describe('A11 da 13ª: o Top 5 da Visão geral diz o pago com crédito na clíni
       Teresa: { semPagamento: zero, comCredito: { n: 1, valor: 140 } },
       Sílvia: { semPagamento: { n: 1, valor: 90 }, comCredito: zero },
       Outra:  { semPagamento: zero, comCredito: { n: 1, valor: 50 } },
-    }).map(t => t.replace(/ /g, ' '))).toEqual(['Teresa: R$ 140,00 pagos com crédito na clínica (não é receita)'])
+    }).map(t => t.replace(/ /g, ' '))).toEqual(['Teresa: R$ 140,00 pagos com crédito interno (não é receita)'])
   })
 })
 

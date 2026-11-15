@@ -82,7 +82,7 @@ export async function arquivarMaquininha(id: unknown, arquivar: unknown = true):
     const alvo = lista.find(m => m.id === lido.data)
     if (!alvo) return { error: 'Maquininha não encontrada.' }
     if (arquivar !== false && !alvo.arquivada && lista.filter(m => !m.arquivada).length <= 1) {
-      return { error: 'A clínica precisa de ao menos uma maquininha ativa para o cartão.' }
+      return { error: 'A rede precisa de ao menos uma maquininha ativa para o cartão.' }
     }
     await gravar(createAdminClient().from('maquininhas')
       .update({ arquivada_em: arquivar === false ? null : new Date().toISOString(), updated_at: new Date().toISOString() })

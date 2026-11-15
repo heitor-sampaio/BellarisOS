@@ -207,7 +207,7 @@ export function UsarOQueJaFoiPago({ appointmentId, onUsou }: { appointmentId: st
     const r = await usarCreditoNoAgendamento(appointmentId, chave)
     setGravando(null)
     if (r.error) { setErro(r.error); return }
-    toast.success(`Agendamento ligado: ${c.origem}. A recepção não cobra de novo.`)
+    toast.success(`Agendamento ligado: ${c.origem}. O PDV não cobra de novo.`)
     onUsou()
   }
   return (

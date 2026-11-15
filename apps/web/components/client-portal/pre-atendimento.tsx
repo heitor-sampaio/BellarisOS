@@ -39,7 +39,7 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
       <div className="card pre-atendimento-cliente-fim" role="status">
         <CheckCircle2 size={28} color="var(--success)" aria-hidden="true" />
         <p className="pre-atendimento-cliente-titulo">Respostas enviadas</p>
-        <p className="pre-atendimento-cliente-texto">Tudo certo! A clínica vai conferir com você no atendimento.</p>
+        <p className="pre-atendimento-cliente-texto">Tudo certo! A equipe vai conferir com você no atendimento.</p>
         {voltar && <Link href={voltar} className="btn-secondary">Voltar ao início</Link>}
       </div>
     )
@@ -51,7 +51,7 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
         <p className="pre-atendimento-cliente-titulo">{modo === 'CONFERIR' ? 'Confira as respostas que a equipe preencheu' : 'Algo mudou na sua saúde?'}</p>
         <p className="pre-atendimento-cliente-texto">
           {modo === 'CONFERIR'
-            ? 'A clínica preencheu a sua ficha com você. Se está tudo certo, é só confirmar; se faltou ou mudou algo, corrija.'
+            ? 'A equipe preencheu a sua ficha com você. Se está tudo certo, é só confirmar; se faltou ou mudou algo, corrija.'
             : 'Estas são as suas respostas da última vez. Se nada mudou, é só confirmar.'}
         </p>
         <RespostasDaAnamnese rows={ficha.rows} respostas={respostasAnteriores} />
@@ -78,7 +78,7 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
     <div className="card pre-atendimento-cliente">
       <p className="pre-atendimento-cliente-titulo">Antes do seu atendimento</p>
       <p className="pre-atendimento-cliente-texto">
-        Algumas perguntas sobre a sua saúde. Elas ajudam a clínica a cuidar de você com segurança.
+        Algumas perguntas sobre a sua saúde. Elas ajudam a equipe a cuidar de você com segurança.
       </p>
       <AnamnesisFormRenderer
         appointmentId="" slug=""

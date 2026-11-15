@@ -206,7 +206,7 @@ export function motivoDaAbaFechada(pedida: string, o: {
   if (!aba) return `A aba “${pedida}” não existe. Abrimos ${o.abriu}.`
   if (!o.noPortal.includes(aba.key)) {
     return o.unidadeFixa
-      ? `A aba ${aba.label} é da clínica toda: quem muda é quem administra a rede. Abrimos ${o.abriu}.`
+      ? `A aba ${aba.label} é da rede toda: quem muda é quem tem “A rede inteira”. Abrimos ${o.abriu}.`
       : `A aba ${aba.label} fica nas Configurações da rede. Abrimos ${o.abriu}.`
   }
   if (!o.noPlano(aba)) return `A aba ${aba.label} não está no plano da rede. Abrimos ${o.abriu}.`

@@ -214,7 +214,7 @@ export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, f
       }>
         <p className="suporte-texto">
           {!asaasPronto ? 'O Asaas ainda não está configurado (Configurações → Integração com o Asaas).'
-            : assinatura?.cobranca === 'ativa' ? 'Ligada — mensal; a clínica escolhe Pix, boleto ou cartão.'
+            : assinatura?.cobranca === 'ativa' ? 'Ligada — mensal; a rede escolhe Pix, boleto ou cartão.'
             : temPlano && assinatura?.totalCentavos === 0 ? 'Rede de cortesia: nada a cobrar. A cobrança volta sozinha quando houver valor.'
             : !assinatura || assinatura.totalCentavos <= 0 ? 'Defina o plano e o valor para ligar a cobrança.'
             : !rede.temDocumento ? 'A rede precisa de CPF ou CNPJ (Dados da rede) para ser cobrada.'
@@ -312,7 +312,7 @@ export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, f
           <label className="suporte-campo"><span className="field-label">Motivo (fica registrado)</span>
             <input className="field" value={motivo} onChange={e => setMotivo(e.target.value)} aria-label="Motivo" />
           </label>
-          {aberta === 'cancelar' && <p className="suporte-texto-fraco">Cancelar encerra a cobrança no Asaas e bloqueia a rede (a clínica vê &ldquo;Assinatura cancelada&rdquo;).</p>}
+          {aberta === 'cancelar' && <p className="suporte-texto-fraco">Cancelar encerra a cobrança no Asaas e bloqueia a rede (a rede vê &ldquo;Assinatura cancelada&rdquo;).</p>}
           <div className="sistema-janela-acoes">
             <button type="button" className="btn-ghost" onClick={fechar} disabled={pendente}>Voltar</button>
             <button type="button" className="btn-primary" disabled={pendente || motivo.trim().length < 3}
@@ -329,7 +329,7 @@ export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, f
           <label className="suporte-campo"><span className="field-label">Primeiro vencimento</span>
             <input className="field" type="date" value={vencimento} onChange={e => setVencimento(e.target.value)} />
           </label>
-          <p className="suporte-texto-fraco">Mensal, de {reaisDe(assinatura?.totalCentavos ?? 0)}; a clínica escolhe Pix, boleto ou cartão.</p>
+          <p className="suporte-texto-fraco">Mensal, de {reaisDe(assinatura?.totalCentavos ?? 0)}; a rede escolhe Pix, boleto ou cartão.</p>
           <div className="sistema-janela-acoes">
             <button type="button" className="btn-ghost" onClick={fechar} disabled={pendente}>Cancelar</button>
             <button type="button" className="btn-primary" disabled={pendente} onClick={() => rodar(() => ativarCobrancaNoAsaas(tenantId, vencimento), 'Cobrança ligada no Asaas.')}>Ligar cobrança</button>

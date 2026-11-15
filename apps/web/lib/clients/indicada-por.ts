@@ -4,7 +4,7 @@ import { ler } from '@/lib/db'
 
 type Admin = ReturnType<typeof createAdminClient>
 
-export const INDICADA_POR_DE_FORA = 'A ficha de quem indicou não é desta clínica.'
+export const INDICADA_POR_DE_FORA = 'A ficha de quem indicou não é desta rede.'
 
 /**
  * "Indicada por" (decisão do Heitor, 2026-11-10) vem do navegador como o id de

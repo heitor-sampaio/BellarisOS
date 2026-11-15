@@ -247,8 +247,8 @@ function EnvioDoLink({ pelaConversa, podeMudar }: { pelaConversa: boolean; podeM
       )}
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5, maxWidth: 640 }}>
         {valor
-          ? '"Enviar pela conversa" (na ficha do cliente) ou "Mandar pela conversa" (no agendamento, para a ficha de saúde) manda o link pelo WhatsApp da clínica, na conversa em que o cliente falou por último — pelo número que ele conhece, com o nome de quem enviou. Na API oficial, fora da janela de 24h (o cliente não escreveu no último dia) a mensagem não sai: a equipe copia o link ou abre no WhatsApp do aparelho.'
-          : 'A equipe copia o link ou abre no WhatsApp do próprio aparelho. Nada sai pelo WhatsApp da clínica.'}
+          ? '"Enviar pela conversa" (na ficha do cliente) ou "Mandar pela conversa" (no agendamento, para a ficha de saúde) manda o link pelo WhatsApp da rede, na conversa em que o cliente falou por último — pelo número que ele conhece, com o nome de quem enviou. Na API oficial, fora da janela de 24h (o cliente não escreveu no último dia) a mensagem não sai: a equipe copia o link ou abre no WhatsApp do aparelho.'
+          : 'A equipe copia o link ou abre no WhatsApp do próprio aparelho. Nada sai pelo WhatsApp da rede.'}
       </p>
       {!podeMudar && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}><Fala>Quem muda é quem administra a rede.</Fala></p>}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}

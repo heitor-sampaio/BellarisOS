@@ -66,7 +66,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
           {fala('Dados da rede')}
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
-          Aparecem nos documentos e nas mensagens que a clínica manda.
+          Aparecem nos documentos e nas mensagens que a rede manda.
         </p>
       </div>
 
@@ -113,7 +113,7 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
             placeholder="bellaris.com.br" />
         </Campo>
 
-        <Campo rotulo="Prazo do portal (horas)" dica="Até quantas horas antes a cliente cancela ou remarca pelo app. Depois, só falando com a clínica.">
+        <Campo rotulo="Prazo do portal (horas)" dica="Até quantas horas antes a cliente cancela ou remarca pelo app. Depois, só falando com a equipe.">
           <input name="portal_prazo_alteracao_horas" type="number" min={0} max={720} step={1} className="field"
             defaultValue={rede.prazoPortalHoras} disabled={!podeEditar} inputMode="numeric" />
         </Campo>

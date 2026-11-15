@@ -128,7 +128,7 @@ test('o checkout diz a comissão de venda de quem vendeu, e "Quem vendeu" volta 
     await janela.getByLabel('Quem vendeu').selectOption(consultor!.userId)
     // C42: a regra antes de vender — a da clínica, porque o consultor não tem a dele.
     await expect(janela.locator('[data-comissao-da-venda]'))
-      .toHaveText(`Comissão de venda de ${nomeDoConsultor}: 5% do vendido — da clínica. Sai quando a venda estiver paga inteira.`)
+      .toHaveText(`Comissão de venda de ${nomeDoConsultor}: 5% do vendido — da rede. Sai quando a venda estiver paga inteira.`)
     await janela.getByRole('radio', { name: 'Pix', exact: true }).click()
     await janela.getByRole('button', { name: 'Ir para a documentação' }).click()
     await expect(janela.getByRole('button', { name: 'Receber o plano' })).toBeEnabled()
@@ -152,6 +152,6 @@ test('C38: o crediário do checkout vai até o limite da rede (padrão 12); acim
     return chamarAcao(p, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota,
       [planId, { forma: 'PARCELADO', metodo: 'PIX', entrada: 200, parcelas: 13, primeiroVencimento: venc }, [], '', null, null])
   })
-  expect(r.texto).toContain('A clínica divide o crediário em até 12x')
+  expect(r.texto).toContain('A rede divide o crediário em até 12x')
   expect(await lancamentos(planId), 'nada gravado').toEqual([])
 })

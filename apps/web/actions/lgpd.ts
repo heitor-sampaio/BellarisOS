@@ -63,7 +63,7 @@ export async function requestDataExport(
       .eq('client_id', ctx.clientId).eq('include_medical', true).eq('medical_status', 'pending')
       .limit(1), 'conferir o prontuário em análise')
     if ((emAnalise ?? []).length) {
-      return { error: 'Você já tem uma solicitação em andamento: o prontuário está em análise na clínica.' }
+      return { error: 'Você já tem uma solicitação em andamento: o prontuário está em análise pela equipe.' }
     }
 
     const { data: created, error } = await admin.from('lgpd_requests').insert({

@@ -48,7 +48,7 @@ export function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
   const entrada = p.entrada > 0
     ? `entrada de ${formatBRL(p.entrada).replace(/\s/g, ' ')} em ${rotuloDaForma(p.metodo, vezesNoCartao(p))} + `
     : ''
-  return `${entrada}${p.parcelas}x com a clínica`
+  return `${entrada}${p.parcelas}x no crediário`
 }
 
 const METODO: Record<string, string> = {
@@ -123,7 +123,7 @@ function fraseSemDesconto(p: PagamentoDoPlano | null): string {
   if (p.forma === 'A_RECEBER') return `A receber${p.vencimento ? ` em ${formatDate(p.vencimento)}` : ''}${p.metodo ? `, ${metodo(p.metodo)}` : ''}`
   // D6: as parcelas são o crediário da clínica; o meio é o da entrada.
   const entrada = p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} ${meioDaEntrada(p)} + ` : ''
-  return `${entrada}${p.parcelas}x com a clínica, a primeira em ${formatDate(p.primeiroVencimento)}`.replace(/^./, c => c.toUpperCase())
+  return `${entrada}${p.parcelas}x no crediário, a primeira em ${formatDate(p.primeiroVencimento)}`.replace(/^./, c => c.toUpperCase())
 }
 
 /**
@@ -188,8 +188,8 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
   // 06/12/2026" antes dela repetia a data ("…a primeira em 06/12/2026: R$ 750,00
   // em 06/12/2026 e…"). Uma só diz o vencimento dela.
   const parcelas = gravadas.length > 1
-    ? `${gravadas.length} parcelas ${quanto} com a clínica: ${listaDasParcelas(gravadas)}`
-    : `1 parcela ${quanto} com a clínica, com vencimento em ${formatDate(p.primeiroVencimento)}`
+    ? `${gravadas.length} parcelas ${quanto} no crediário: ${listaDasParcelas(gravadas)}`
+    : `1 parcela ${quanto} no crediário, com vencimento em ${formatDate(p.primeiroVencimento)}`
   return {
     // PDV8: a forma é o crediário (nunca vazia); com entrada, diz o meio dela.
     'pagamento.metodo':              p.entrada > 0 && meioDaEntrada(p) ? `no crediário, com a entrada ${meioDaEntrada(p)}` : 'no crediário',

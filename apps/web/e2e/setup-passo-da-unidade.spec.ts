@@ -68,7 +68,7 @@ test('o telefone com DDI inteiro; recarregar fica no passo da unidade; a unidade
     const aviso = p.getByRole('alertdialog', { name: 'Unidade sem CNPJ' })
     await expect(aviso).toBeVisible()
     await expect(p.getByText('Tudo pronto!')).toHaveCount(0)
-    await aviso.getByRole('button', { name: `Usar o CNPJ da clínica (${comMascara(CNPJ)})` }).click()
+    await aviso.getByRole('button', { name: `Usar o CNPJ da rede (${comMascara(CNPJ)})` }).click()
     await expect(p.getByText('Tudo pronto!')).toBeVisible()
     await expect(p, 'A1: concluído, a URL não fica no passo da unidade').toHaveURL(/\/setup$/)
   } finally { await ctx.close() }

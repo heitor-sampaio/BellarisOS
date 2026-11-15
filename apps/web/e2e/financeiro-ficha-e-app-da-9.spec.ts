@@ -148,9 +148,9 @@ test('A41: o crédito CONCEDIDO não diz que o dinheiro entrou quando ele nasceu
   await como(browser, dona!, async p => {
     await p.goto(`/admin/clients/${rosana!.clientId}`)
     const nota = p.locator('[data-pago-com-credito]').first()
-    await expect(nota).toContainText('pagos com crédito na clínica')
+    await expect(nota).toContainText('pagos com crédito interno')
     await expect(nota).not.toContainText('o dinheiro entrou quando o crédito nasceu')
-    await expect(nota).toContainText('concedido pela clínica')
+    await expect(nota).toContainText(/concedido(, sem dinheiro| nunca teve dinheiro)/)
   })
 })
 

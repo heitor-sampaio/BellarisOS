@@ -194,7 +194,7 @@ export const AnamneseNaAvaliacao = forwardRef<AnamneseNaAvaliacaoHandle, {
       <div className="anamnese-geral-cabeca" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
         <h3 className="anamnese-geral-titulo">Ficha de saúde</h3>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-          {anamnese && anamneseRespondida(anamnese) ? quemRespondeu(anamnese, fuso) : 'As perguntas da ficha de saúde da clínica'}
+          {anamnese && anamneseRespondida(anamnese) ? quemRespondeu(anamnese, fuso) : 'As perguntas da ficha de saúde da rede'}
         </p>
         {anamnese && !anamneseRespondida(anamnese) && <SeloDaAnamnese anamnese={anamnese} />}
       </div>

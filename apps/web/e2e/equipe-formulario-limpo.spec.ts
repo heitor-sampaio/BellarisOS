@@ -32,7 +32,7 @@ test('Adicionar membro: abrir, marcar, fechar e abrir de novo volta limpo', asyn
     await expect(caixasDaUnidade.first(), 'nasce na unidade').toBeChecked()
     await expect(modal(p).getByLabel(/Atende clientes/)).not.toBeChecked()
     await modal(p).getByLabel(/Atende clientes/).check()
-    await modal(p).locator('[data-unidades-do-membro]').getByRole('button', { name: 'A clínica toda' }).click() // rede de uma unidade (F8)
+    await modal(p).locator('[data-unidades-do-membro]').getByRole('button', { name: 'A rede inteira' }).click()
     await expect(caixasDaUnidade).toHaveCount(0)
     await modal(p).getByRole('button', { name: 'Cancelar' }).click()
     await expect(p.locator('dialog[open]')).toHaveCount(0)
@@ -53,7 +53,7 @@ test('Editar membro: reabrir depois de mexer e cancelar mostra os valores do mem
     const caixasDaUnidade = modal(p).locator('[data-unidades-do-membro] input[type="checkbox"]')
     const emRede = (await caixasDaUnidade.count()) === 0
     const atendia = await modal(p).getByLabel(/Atende clientes/).isChecked()
-    await modal(p).locator('[data-unidades-do-membro]').getByRole('button', { name: emRede ? 'Só a unidade' : 'A clínica toda' }).click()
+    await modal(p).locator('[data-unidades-do-membro]').getByRole('button', { name: emRede ? 'Só a unidade' : 'A rede inteira' }).click()
     await modal(p).getByLabel(/Atende clientes/).setChecked(!atendia)
     await modal(p).getByRole('button', { name: 'Cancelar' }).click()
     await expect(p.locator('dialog[open]')).toHaveCount(0)

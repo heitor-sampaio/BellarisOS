@@ -103,7 +103,7 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
         <label style={opcao}>
           <input type="radio" name={`${prefixo}-destino`} checked={estado.destino === 'CREDITO'} disabled={desligado}
             onChange={() => muda({ destino: 'CREDITO' })} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
-          <span>Crédito na clínica <span style={{ color: 'var(--text-muted)' }}>— fica de saldo para ela usar em outro atendimento</span></span>
+          <span>Crédito interno <span style={{ color: 'var(--text-muted)' }}>— fica de saldo para ela usar em outro atendimento</span></span>
         </label>
       </div>}
 

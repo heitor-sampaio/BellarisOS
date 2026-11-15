@@ -68,7 +68,7 @@ test('A47 + A43: a receita de cada procedimento diz o concluído sem pagamento e
     await p.goto('/admin/reports?period=month&tab=procedimentos')
     const linha = p.locator('tr', { hasText: PROC })
     await expect(linha.locator('[data-sem-receita]')).toContainText(/R\$\s160,00 concluídos sem pagamento/)
-    await expect(linha.locator('[data-sem-receita]')).toContainText(/R\$\s450,00 pagos com crédito na clínica/)
+    await expect(linha.locator('[data-sem-receita]')).toContainText(/R\$\s450,00 pagos com crédito interno/)
   })
 })
 
@@ -77,7 +77,7 @@ test('A47 + A43: e a de cada profissional', async ({ browser }) => {
     await p.goto('/admin/reports?period=month&tab=profissionais')
     const linha = p.locator('tr', { hasText: nomeDaProf })
     await expect(linha.locator('[data-sem-receita]')).toContainText(/R\$\s160,00 concluídos sem pagamento/)
-    await expect(linha.locator('[data-sem-receita]')).toContainText(/R\$\s450,00 pagos com crédito na clínica/)
+    await expect(linha.locator('[data-sem-receita]')).toContainText(/R\$\s450,00 pagos com crédito interno/)
   })
 })
 
@@ -85,8 +85,8 @@ test('A11 da 13ª (F67): o Top 5 da Visão geral diz o pago com crédito na clí
   await como(browser, dona!, async p => {
     await p.goto('/admin/reports?period=month&tab=overview')
     const notas = p.locator('[data-top5-com-credito]')
-    await expect(notas.filter({ hasText: PROC })).toContainText(/R\$\s450,00 pagos com crédito na clínica \(não é receita\)/)
-    await expect(notas.filter({ hasText: nomeDaProf })).toContainText(/R\$\s450,00 pagos com crédito na clínica/)
+    await expect(notas.filter({ hasText: PROC })).toContainText(/R\$\s450,00 pagos com crédito interno \(não é receita\)/)
+    await expect(notas.filter({ hasText: nomeDaProf })).toContainText(/R\$\s450,00 pagos com crédito interno/)
   })
 })
 

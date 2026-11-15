@@ -181,7 +181,7 @@ test('o servidor recusa o "Finalizar" sem a obrigatória — a trava não é só
     // A anamnese respondida pela cliente, a ficha ainda não: recusa pela ficha.
     await responderAnamnese(cliente, rede!.tenantId)
     const r2 = await chamarAcaoComFormulario(p, 'actions/appointments.ts', 'finishSession', rota, [null], campos)
-    expect(r2.texto).toContain('na ficha do procedimento.')
+    expect(r2.texto).toContain('na ficha de atendimento.')
     expect(await status(id)).toBe('IN_PROGRESS')
 
     // Controle: com a ficha respondida, conclui.
@@ -221,7 +221,7 @@ test('"Enviar para a recepção" também barra no servidor: sem a ficha obrigat�
     const sessoes = [{ procedures: [{ procedureId: rede!.procedureId, price: 100 }] }]
     const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'generateEvaluationPlan', rota,
       [id, `Manchas ${marca}`, respostas, sessoes, '', '', '', slug])
-    expect(r.texto).toContain('na ficha do procedimento.')
+    expect(r.texto).toContain('na ficha de atendimento.')
     const { data: plano } = await db().from('treatment_plans').select('id').eq('evaluation_appointment_id', id).maybeSingle()
     expect(plano, 'o plano não nasce sem a obrigatória').toBeNull()
   })
@@ -241,7 +241,7 @@ test('atend-04: concluir_atendimento chamada direto, sem a action, recusa a obri
   expect(r1.error?.message, 'sem anamnese').toContain('na ficha de saúde.')
   await responderAnamnese(cliente, rede!.tenantId)
   const r2 = await chamar({})
-  expect(r2.error?.message, 'sem a ficha do procedimento').toBe('Falta preencher "Fototipo" na ficha do procedimento.')
+  expect(r2.error?.message, 'sem a ficha do procedimento').toBe('Falta preencher "Fototipo" na ficha de atendimento.')
   expect(await status(id)).toBe('IN_PROGRESS')
   // Controle: com a ficha, conclui.
   const r3 = await chamar({ ficha: { formId: fichaId, name: FICHA, rows: [], answers: { fototipo: 'II' } } })
@@ -259,7 +259,7 @@ test('atend-04: gerar o plano da avaliação CONCLUÍDA também confere as obrig
     const rota = `/${slug}/agenda/${id}`
     const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'generateEvaluationPlan', rota,
       [id, '', null, sessoes, '', '', '', slug, null])
-    expect(r.texto).toContain('na ficha do procedimento.')
+    expect(r.texto).toContain('na ficha de atendimento.')
     expect((await db().from('treatment_plans').select('id').eq('evaluation_appointment_id', id)).data, 'nenhum plano').toEqual([])
   })
   // A função também recusa sozinha.
@@ -267,7 +267,7 @@ test('atend-04: gerar o plano da avaliação CONCLUÍDA também confere as obrig
     p_agendamento: id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
     p_dados: { profissional: profissional!.userId, sessoes: [{ procedimentos: [{ procedure_id: rede!.procedureId, price: 100 }] }] },
   })
-  expect(direto.error?.message).toBe('Falta preencher "Fototipo" na ficha do procedimento.')
+  expect(direto.error?.message).toBe('Falta preencher "Fototipo" na ficha de atendimento.')
   // Controle: com a ficha gravada, o plano nasce.
   const { data: mr } = await db().from('medical_records').select('id').eq('client_id', cliente).single()
   expect((await db().from('medical_record_entries').upsert({

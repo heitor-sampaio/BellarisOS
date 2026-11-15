@@ -101,6 +101,6 @@ export function formaDoLancamento(l: {
   metodo: string | null | undefined; vezes?: number | null; bandeira?: string | null; pago: boolean; parcela?: number | null
 }): string | null {
   if (l.metodo) return rotuloDaForma(l.metodo, l.vezes, { bandeira: l.bandeira })
-  if (!l.pago && l.parcela) return 'Com a clínica'
+  if (!l.pago && l.parcela) return 'Crediário'
   return null
 }

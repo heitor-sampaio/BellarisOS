@@ -1338,10 +1338,10 @@ export async function openLeadConversation(
   if (channel === 'whatsapp' && !(await redeTemWhatsapp(ctx.tenantId!))) {
     const quem = can(ctx, 'settings', 'MANAGE') && ctx.branchId === null
       ? 'Conecte o WhatsApp em Configurações → Integrações'
-      : 'Peça a quem administra a clínica para conectar o WhatsApp'
+      : 'Peça a quem tem as Configurações em Gerenciar para conectar o WhatsApp'
     return {
       conversationId: null,
-      error: `Ainda não há conversa com ${l.name}, e a clínica não tem um WhatsApp conectado: não há por onde conversar daqui. ${quem}, ou fale pelo canal de onde ela veio.`,
+      error: `Ainda não há conversa com ${l.name}, e a rede não tem um WhatsApp conectado: não há por onde conversar daqui. ${quem}, ou fale pelo canal de onde ela veio.`,
     }
   }
 

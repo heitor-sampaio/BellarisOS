@@ -57,7 +57,7 @@ export async function registerAction(
   // vínculo (o Heitor, 2026-11-01). Antes ficava solto, e a pessoa nem podia
   // tentar de novo com o mesmo e-mail ("já cadastrado").
   const rede = await comLoginNovo(createAdminClient(), authUser.id, async () => semearRede({
-    authId: authUser.id, email, nomeDoResponsavel: email, nomeDaRede: 'Minha Clínica',
+    authId: authUser.id, email, nomeDoResponsavel: email, nomeDaRede: 'Minha rede',
     slugBase: email.split('@')[1]?.split('.')[0] ?? 'clinica',
     planStatus: 'trial', trialEndsAt: await fimDoTesteParaHoje(),
   }), r => !r.ok)
@@ -72,7 +72,7 @@ export async function registerAction(
 }
 
 /** O que lê quem tenta entrar com a conta desativada pela clínica — com a senha certa ou não. */
-const MENSAGEM_DE_DESATIVADO = 'Seu acesso foi desativado pela clínica. Fale com o responsável.'
+const MENSAGEM_DE_DESATIVADO = 'Seu acesso foi desativado. Fale com quem administra a rede.'
 
 /** O que a equipe da plataforma lê quando tenta entrar na clínica. */
 const AVISO_DA_PLATAFORMA = 'A equipe da plataforma entra por admin.bellarisos.com ou suporte.bellarisos.com.'
@@ -115,7 +115,7 @@ export async function loginAction(
   // por quê. Antes voltava mudo ao formulário, com a sessão aberta.
   if (user && await contaSemVinculo(user.id)) {
     await supabase.auth.signOut({ scope: 'local' })
-    return { error: 'Esta conta não tem acesso a nenhuma clínica.' }
+    return { error: 'Esta conta não tem acesso a nenhuma rede.' }
   }
 
   // A entrada fica na auditoria (CF3b) — só a do membro; acessória, nunca impede.

@@ -13,7 +13,7 @@ export type SituacaoDoChamado = typeof SITUACOES_DO_CHAMADO[number]
 export const ROTULO_DA_SITUACAO: Record<SituacaoDoChamado, string> = {
   aberto:             'Aberto',
   em_andamento:       'Em andamento',
-  aguardando_clinica: 'Aguardando a clínica',
+  aguardando_clinica: 'Aguardando a rede',
   resolvido:          'Resolvido',
 }
 

@@ -243,7 +243,7 @@ test.describe.serial('chamados de suporte', () => {
     try {
       const page = await ctx.newPage()
       await page.goto(`${SUP()}/chamados/${id}`)
-      await expect(page.getByText('Sem autorização vigente: só a clínica libera o acesso.')).toBeVisible()
+      await expect(page.getByText('Sem autorização vigente: só a rede libera o acesso.')).toBeVisible()
       await page.getByRole('button', { name: 'Pedir autorização' }).click()
       await expect(page.getByText(/pediu autorização para entrar na sua conta/)).toBeVisible({ timeout: 20_000 })
     } finally { await ctx.close() }
