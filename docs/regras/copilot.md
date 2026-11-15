@@ -269,6 +269,21 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   dada, procura entre quem a tem marcada no "Atende"
   (`filtroDeQuemAtendeNaUnidade`) — era "da unidade ou da rede". A Talita
   marcada no Batel é achada lá; quem é da rede e não está marcada, não.
+- **Quem atende se acha pelo NOME, não pela busca** (D2 da 16ª simulação): a
+  `buscar` traz o que a tela de cada tipo mostra, e o membro só a quem tem a
+  Equipe — quem agenda sem a Equipe ouvia "nada encontrado" e desistia. O
+  prompt e as descrições de `agendar`, `remarcar` e `horarios_livres` mandam
+  passar o nome que a pessoa disse direto nelas (`resolverProfissional`
+  acha entre quem atende e, sem achar, diz quem atende); a `buscar` diz que
+  membro só aparece a quem tem a Equipe, e, vazia para quem não a tem, aponta
+  `agendar`/`horarios_livres`. A busca não se abriu.
+- **"Compra de estoque" é só a mercadoria que entra no estoque** (D5 da 16ª):
+  a descrição do `lancar` diz que ela conta no caixa e fica fora do
+  resultado (material de limpeza, de copa ou de consumo não é), e que, sem
+  uma categoria que sirva com certeza, o Copilot PERGUNTA (ou usa "Outro" se
+  a pessoa disser) — nunca a mais parecida calado. O cartão da despesa nessa
+  categoria avisa "conta no caixa e fica fora do resultado". Nenhuma
+  categoria nova. Prova: `tests/copilot-defeitos-da-16.test.ts`.
 - **O "Feito" do cartão é da DECISÃO, não da tela de trás** (F46, a completa
   de 2026-11-07): o Confirmar gravou em 1,2 s, mas o cartão ficou 15 s em
   "Gravando…" — o `router.refresh()` estava dentro da transição do cartão, e

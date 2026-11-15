@@ -149,10 +149,17 @@ export async function despacharEvento(
       const config = gatilho.config as { filtro?: Parameters<typeof avaliarGrupo>[1] }
       if (config.filtro) {
         const ctx = contextoDoEvento(evento)
-        await hidratarParaCaminhos(
-          ctx, evento, tenantId,
-          (config.filtro.regras ?? []).flatMap(r => caminhosDoCampo(r.campo)),
-        )
+        try {
+          await hidratarParaCaminhos(
+            ctx, evento, tenantId,
+            (config.filtro.regras ?? []).flatMap(r => caminhosDoCampo(r.campo)),
+          )
+        } catch (e) {
+          // D3 da 16ª: a entidade do filtro não carregou — esta automação não
+          // dispara (falha fechada), e as outras do mesmo fato seguem.
+          console.error('[despacharEvento] filtro', linha.id, (e as Error).message)
+          continue
+        }
         if (!avaliarGrupo(ctx, config.filtro)) continue
       }
 

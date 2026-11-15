@@ -49,6 +49,12 @@ export interface ComandaDoPdv {
   proximaParcela:   string | null
   /** A3 da 15ª: quantos produtos a comanda do atendimento leva. */
   produtos:         number
+  /**
+   * D1 da 16ª (princípio 3): os produtos da comanda do atendimento já vendidos
+   * e pagos enquanto ela está a receber — a comanda reaberta pelo estorno só
+   * do atendimento. Ficam fora de `valor`, que é o que falta receber.
+   */
+  jaPago:           number
 }
 
 type Tom = 'ok' | 'warn' | 'info' | 'perigo'
@@ -95,6 +101,8 @@ export function detalheDaComanda(c: ComandaDoPdv, hora: (iso: string | null) => 
   const oQue = c.procedimento && c.produtos > 0
     ? `${c.procedimento} + ${c.produtos} ${c.produtos === 1 ? 'produto' : 'produtos'}` : c.procedimento
   const aberto = c.paga && c.emAberto > 0 && !c.estornada ? `${brl(c.emAberto)} em aberto` : null
-  return [oQue, c.agendadoPara ? hora(c.agendadoPara) : null, c.paga ? rotuloDaForma(c.forma) : c.profissional, aberto]
+  // D1 da 16ª: a comanda reaberta pelo estorno só do atendimento — o produto segue pago.
+  const jaPago = !c.paga && c.jaPago > 0 ? `${brl(c.jaPago)} já pago` : null
+  return [oQue, c.agendadoPara ? hora(c.agendadoPara) : null, c.paga ? rotuloDaForma(c.forma) : c.profissional, aberto, jaPago]
     .filter(Boolean).join(' · ')
 }

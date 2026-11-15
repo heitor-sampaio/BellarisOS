@@ -18,6 +18,7 @@ interface Linha {
   valor: number | string; paga: boolean; paga_em: string | null; recebido: number | string | null; forma: string | null; estornada: boolean | null
   treatment_plan_id: string | null
   em_aberto: number | string | null; parcelas_em_aberto: number | null; proxima_parcela: string | null; produtos: number | null
+  ja_pago: number | string | null
 }
 
 /** As comandas de UMA unidade na situação pedida; a janela é a do dia (pagas e canceladas). */
@@ -40,5 +41,6 @@ export async function comandasDoPdv(args: {
     recebido: l.recebido == null ? null : Number(l.recebido), forma: l.forma, estornada: !!l.estornada,
     planoId: l.treatment_plan_id,
     emAberto: Number(l.em_aberto ?? 0), parcelasEmAberto: l.parcelas_em_aberto ?? 0, proximaParcela: l.proxima_parcela, produtos: l.produtos ?? 0,
+    jaPago: Number(l.ja_pago ?? 0),
   }))
 }

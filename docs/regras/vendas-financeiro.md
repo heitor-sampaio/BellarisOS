@@ -221,6 +221,14 @@ comanda (PDV-P1).
   - `pdv_comandas` do atendimento: valor = preço do atendimento + produtos
     (pendentes ao preço de agora; vendidos pelo `preco_tabela` da venda);
     recebido = o lançamento do atendimento + os dos produtos.
+  - **A comanda REABERTA cobra só o que falta** (D1 da 16ª simulação): o
+    estorno só do atendimento reabre a comanda, e o produto já vendido nela
+    continua pago. Aberta, o valor é o atendimento + os produtos AINDA não
+    vendidos (o mesmo `valorDosItensDoAtendimento` que o recebimento cobra),
+    e o vendido vai em `ja_pago` (`pdv_comandas`, migration
+    `20261116600001`): a tela diz "Já pago (os produtos)" e "Falta receber",
+    o item diz "já pago, fora do que falta receber", e o "Receber" é só o
+    que falta. Paga, o valor volta a ser o da comanda inteira.
   - Prova: `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`.
 - **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
   valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`

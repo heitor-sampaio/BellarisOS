@@ -1774,6 +1774,33 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — A 16ª simulação (Lótus, uma unidade; Jasmim, duas, com o Copilot) e os defeitos dela
+
+Dois times de agentes usaram a produção ao mesmo tempo em 15/11, das 13:35 às 14:40 de Brasília, sobre o f8bd6a34.
+- **"[sim] Ateliê Lótus":** uma unidade, no teste grátis.
+- **"[sim] Rede Jasmim":** duas unidades, num plano com o Copilot que o preparador gravou à mão, sem o Asaas. É a primeira rodada com o Copilot de verdade.
+
+O relatório consolidado ficou em `apps/web/.sim/relatorio.md`, e a 15ª foi arquivada em `.sim/arquivo-2026-11-15-2/`.
+
+- **O dinheiro bate nos dois times**, centavo a centavo:
+  - Lótus: R$ 2.088,00 de receita, R$ 21,12 de taxa e R$ 1.066,88 de lucro;
+  - Jasmim: R$ 1.900 de receita e R$ 232 de comissões, e o pacote baixou 1 de 5 sem lançamento novo.
+- **7 defeitos e 38 atritos.** Os defeitos:
+  - **D1 (ALTA):** a comanda reaberta pelo estorno do atendimento pedia também o produto já pago.
+  - **D2:** o Copilot procurava quem atende pela busca, que só traz a equipe a quem tem a Equipe.
+  - **D3:** o lembrete automático saía com o procedimento e a data em branco. O embed `users(name)` era ambíguo, e a condição deixava passar o agendamento que não carregou.
+  - **D4:** as 8 tags com que a rede nasce. É o D2 da 15ª, que segue com o Heitor.
+  - **D5:** o Copilot lançou material de limpeza como "Compra de estoque", que fica fora do resultado.
+  - **D6 e D7:** a Auditoria agrupada lia a gravação pelo primeiro registro (a frase e a unidade erradas no recebimento e na conclusão).
+- **Engano do agente, não do sistema:** a pergunta "obrigatória" da ficha, que o script nunca marcou; o cargo "só com o Copilot", que o script salvou assim; a "cota do Copilot", que era o orçamento do papel.
+- **Para o Heitor:** nada novo. Voltaram, com três papéis nos dois times, as 8 tags da rede nova (D4).
+- **Corrigidos D1, D2, D3, D5, D6 e D7:**
+  - **D1:** a migration `20261116600001` (`pdv_comandas.ja_pago`). Com a comanda de atendimento aberta, ela cobra o atendimento e os produtos ainda não vendidos, a mesma conta do servidor; o produto vendido aparece como "já pago".
+  - **D2/D5:** as descrições das ferramentas e o prompt do Copilot. A `buscar` diz que a equipe só aparece a quem tem a Equipe, e o `agendar`, o `remarcar` e o `horarios_livres` acham quem atende pelo nome. "Compra de estoque" é só mercadoria, e o Copilot pergunta quando nenhuma categoria serve.
+  - **D3:** o embed `users!appointments_professional_id_fkey`. A entidade que não carrega faz o passo FALHAR (fica na execução), e a regra sobre entidade ausente só vale para "vazio". O lembrete nunca sai para agendamento cancelado.
+  - **D6/D7:** a Auditoria lê a gravação pelo registro do FATO (o agendamento, o recebimento, a venda), que dá a frase, a unidade e o link: "Recebeu R$ 1.600,00 (Pix) — Rita Moura", "Recebeu a parcela 1/4 (R$ 200,00, Pix)", "Vendeu o pacote …". O que se grava não mudou.
+  - **Fica para trás:** a linha de dentro da conclusão gravada sem unidade ("—") continua assim, porque é a gravação, e a mudança foi só na leitura.
+
 ### 2026-11-16 — A 15ª simulação (Íris, uma unidade; Orquídea, três) e os defeitos dela
 
 A primeira rodada depois do plano de adaptação inteiro, na produção, em 15/11 entre 04:46 e 06:15. Dois times usaram o sistema:

@@ -198,6 +198,8 @@ export const ISOLADOS = [
   'pdv-atritos-da-15.spec.ts',
   'configuracoes-atritos-da-15.spec.ts',
   'auditoria-atritos-da-15.spec.ts',
+  // Os defeitos da 16ª simulação, na rede própria.
+  'auditoria-defeitos-da-16.spec.ts',
   'ficha-acesso-sem-cpf.spec.ts',
   'ficha-cadastro-atritos-da-7.spec.ts',
   'ficha-cadastro-documento.spec.ts',

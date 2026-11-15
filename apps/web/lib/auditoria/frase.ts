@@ -1,5 +1,6 @@
 import { partsInTZ } from '@/lib/datetime'
 import { rotaAtendimento, rotaCliente, rotaNoPortal } from '@/lib/rotas'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
 import type { LinhaDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from './tipos'
 
 /**
@@ -392,9 +393,161 @@ function fraseDaTransferencia(linhas: readonly RegistroDaAuditoria[], nomes: Nom
 const paiDaGravacao = (linhas: readonly RegistroDaAuditoria[]) =>
   [...linhas].reverse().find(l => linhas.some(f => PAI[f.tabela] === l.tabela)) ?? null
 
+// ─── O fato da gravação (D6/D7 da 16ª simulação) ────────────────────────────
+//
+// A gravação do recebimento, da venda e da conclusão grava a comissão, os
+// pontos, o contrato e as sessões junto, e "a frase do primeiro registro" lia
+// "Criou a comissão" onde a pessoa RECEBEU. O fato é o registro que a pessoa
+// mexeu (o agendamento, o lançamento recebido, a venda): ele dá a frase, a
+// unidade e o link da linha. Nada muda no que se grava; muda o que se lê.
+
+interface Recebimento { linha: RegistroDaAuditoria; tipo: string | null; valor: number; forma: string | null; categoria: string | null }
+
+/**
+ * Os lançamentos que ficaram PAGOS nesta gravação: criados já pagos, ou
+ * baixados (o `paid_at` saiu do nulo). O estado é o do fim da gravação — o
+ * criado e o editado juntos (o voucher grava R$ 89 e baixa R$ 39) —, e o que
+ * a gravação não guardou vem de `nomes.lancamentos`, lido agora.
+ */
+function recebimentosDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): Recebimento[] {
+  const doLancamento = linhas.filter(l => l.tabela === 'financial_transactions' && (l.operacao === 'criou' || l.operacao === 'editou'))
+  const porId = new Map<string, RegistroDaAuditoria[]>()
+  doLancamento.forEach((l, i) => {
+    const chave = l.registro_id ?? `#${i}`
+    porId.set(chave, [...(porId.get(chave) ?? []), l])
+  })
+  const recebidos: Recebimento[] = []
+  for (const [chave, doId] of porId) {
+    const emOrdem = [...doId].reverse() // a mais antiga primeiro
+    const estado: Record<string, unknown> = {}
+    for (const l of emOrdem) Object.assign(estado, l.depois)
+    const criou = emOrdem.find(l => l.operacao === 'criou')
+    const baixou = emOrdem.some(l => l.operacao === 'editou' && 'paid_at' in l.depois && l.depois.paid_at && !l.antes.paid_at)
+    const pago = baixou || (!!criou && !!criou.depois.paid_at && estado.paid_at !== null)
+    if (!pago) continue
+    const lido = nomes.lancamentos?.[chave]
+    const valor = numero(estado.amount) ?? lido?.valor ?? null
+    if (valor === null) continue
+    const categoria = texto(estado.category)
+    if (categoria === 'Estorno') continue
+    recebidos.push({
+      linha: emOrdem[emOrdem.length - 1]!, tipo: texto(estado.type) ?? lido?.tipo ?? null, valor,
+      forma: texto(estado.payment_method) ?? lido?.forma ?? null, categoria,
+    })
+  }
+  return recebidos
+}
+
+/** "(Pix)", "(Pix e Débito)": as formas dos recebimentos, sem repetir. */
+const formasDe = (rs: readonly Recebimento[]) => emLista([...new Set(rs.map(x => x.forma).filter((f): f is string => !!f).map(f => rotuloDaForma(f)))])
+
+/** " — Rita Moura": a cliente da gravação, se for uma só. */
+function clienteDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, preferida?: RegistroDaAuditoria): string {
+  const id = preferida?.client_id ?? linhas.find(l => l.client_id)?.client_id
+  const nome = id ? nomes.clientes[id] ?? null : null
+  return nome ? ` — ${nome}` : ''
+}
+
+const ACONTECEU_NO_ATENDIMENTO: Record<string, string> = {
+  IN_PROGRESS: 'Iniciou o atendimento', COMPLETED: 'Concluiu o atendimento',
+}
+
+/** O fato da gravação e o registro dele (a frase, a unidade e o link da linha); nulo quando não há um. */
+function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): { frase: string; principal: RegistroDaAuditoria } | null {
+  const criada = (tabela: string) => [...linhas].reverse().find(l => l.tabela === tabela && l.operacao === 'criou') ?? null
+  const recebidos = recebimentosDaGravacao(linhas, nomes)
+  const entradas = recebidos.filter(x => x.tipo === 'INCOME')
+  const totalRecebido = entradas.reduce((t, x) => t + x.valor, 0)
+  const eRecebeu = entradas.length ? ` e recebeu ${brl(totalRecebido)}${formasDe(entradas) ? ` (${formasDe(entradas)})` : ''}` : ''
+
+  // A venda: o pacote, o pré-pago, o crédito.
+  const pacote = criada('client_packages')
+  if (pacote) {
+    const pk = texto(pacote.depois.package_id)
+    const nome = pk ? nomes.pacotes?.[pk] : null
+    const preco = numero(pacote.depois.price)
+    return {
+      principal: pacote,
+      frase: `Vendeu ${nome ? `o pacote ${nome}` : 'um pacote'}${preco !== null ? ` (${brl(preco)})` : ''}${clienteDaGravacao(linhas, nomes, pacote)}`,
+    }
+  }
+  const prePago = criada('procedure_sales')
+  if (prePago) {
+    const q = numero(prePago.depois.quantity)
+    const preco = numero(prePago.depois.price)
+    const sessoes = q !== null ? ` de ${q.toLocaleString('pt-BR')} ${q === 1 ? 'sessão' : 'sessões'}` : ''
+    return {
+      principal: prePago,
+      frase: `Vendeu o pré-pago${sessoes}${preco !== null ? ` (${brl(preco)})` : ''}${clienteDaGravacao(linhas, nomes, prePago)}`,
+    }
+  }
+  const credito = criada('creditos_vendidos')
+  if (credito) {
+    const valor = numero(credito.depois.valor)
+    return {
+      principal: credito,
+      frase: `Vendeu crédito interno${valor !== null ? ` (${brl(valor)})` : ''}${clienteDaGravacao(linhas, nomes, credito)}`,
+    }
+  }
+
+  // O atendimento: iniciou, concluiu (e, na mesma gravação, recebeu).
+  const atendimento = [...linhas].reverse().find(l => l.tabela === 'appointments' && l.operacao === 'editou'
+    && ACONTECEU_NO_ATENDIMENTO[texto(l.depois.status) ?? ''] && l.antes.status !== l.depois.status)
+  if (atendimento) {
+    return {
+      principal: atendimento,
+      frase: `${ACONTECEU_NO_ATENDIMENTO[texto(atendimento.depois.status)!]}${eRecebeu}${clienteDaGravacao(linhas, nomes, atendimento)}`,
+    }
+  }
+
+  // A venda de produto avulsa (fora da comanda do atendimento): o produto e o que entrou.
+  const vendaDeProduto = criada('product_sales')
+  const saidas = linhas.filter(l => l.tabela === 'stock_movements' && l.operacao === 'criou' && texto(l.depois.type) === 'SALE')
+  const produtos = saidas.length ? emLista(saidas.map(l => doProduto(l, nomes))) : null
+  const soProduto = entradas.every(x => x.categoria === 'Venda de produto')
+  if (vendaDeProduto && !linhas.some(l => l.tabela === 'comanda_itens') && soProduto) {
+    return {
+      principal: vendaDeProduto,
+      frase: `Vendeu ${produtos ?? 'produto'}${eRecebeu}${clienteDaGravacao(linhas, nomes, vendaDeProduto)}`,
+    }
+  }
+
+  // O recebimento: a comanda, a parcela, a baixa do lançamento.
+  if (entradas.length) {
+    const principal = entradas[0]!.linha
+    const lido = principal.registro_id ? nomes.lancamentos?.[principal.registro_id] : null
+    if (entradas.length === 1 && lido?.parcela) {
+      const forma = formasDe(entradas)
+      return {
+        principal,
+        frase: `Recebeu a parcela ${lido.parcela}${lido.de ? `/${lido.de}` : ''} (${brl(totalRecebido)}${forma ? `, ${forma}` : ''})${clienteDaGravacao(linhas, nomes, principal)}`,
+      }
+    }
+    const forma = formasDe(entradas)
+    return {
+      principal,
+      frase: `Recebeu ${brl(totalRecebido)}${forma ? ` (${forma})` : ''}${produtos ? `, com ${produtos}` : ''}${clienteDaGravacao(linhas, nomes, principal)}`,
+    }
+  }
+  const saidasPagas = recebidos.filter(x => x.tipo === 'EXPENSE')
+  if (saidasPagas.length) {
+    const forma = formasDe(saidasPagas)
+    return {
+      principal: saidasPagas[0]!.linha,
+      frase: `Pagou ${brl(saidasPagas.reduce((t, x) => t + x.valor, 0))}${forma ? ` (${forma})` : ''}`,
+    }
+  }
+  return null
+}
+
 /** A frase de uma gravação inteira. */
 export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): string {
-  if (linhas.length === 1) return fraseDaAuditoria(linhas[0]!, nomes)
+  // A baixa sozinha de um lançamento (D7 da 16ª): "Recebeu a parcela 1/4 (R$ 200,00, Pix)".
+  if (linhas.length === 1) {
+    const so = linhas[0]!
+    const baixa = so.tabela === 'financial_transactions' && so.operacao === 'editou' ? fatoDaGravacao(linhas, nomes) : null
+    return baixa?.frase ?? fraseDaAuditoria(so, nomes)
+  }
 
   // A semente da rede nova: uma gravação de dezenas de registros.
   const rede = linhas.find(l => l.tabela === 'tenants' && l.operacao === 'criou')
@@ -407,6 +560,8 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (estorno) return estorno
   const transferencia = fraseDaTransferencia(linhas, nomes)
   if (transferencia) return transferencia
+  const fato = fatoDaGravacao(linhas, nomes)
+  if (fato) return fato.frase
 
   // O pai e as filhas: "Criou o cargo X (19 permissões)".
   const pai = paiDaGravacao(linhas)
@@ -441,8 +596,13 @@ export function gruposDaAuditoria(
 ): GrupoDaAuditoria[] {
   return agruparAuditoria(registros).map(linhas => {
     const detalhes = linhas.map(l => linhaDaAuditoria(l, nomes, pathname, slug, fuso))
-    if (linhas.length === 1) return { ...detalhes[0]!, detalhes }
-    const principal = paiDaGravacao(linhas) ?? linhas.find(l => l.client_id) ?? linhas[linhas.length - 1]!
+    if (linhas.length === 1) return { ...detalhes[0]!, oQue: fraseDoGrupo(linhas, nomes), detalhes }
+    // D6 da 16ª: a unidade e o link são os do FATO (o agendamento, a venda, o
+    // recebimento), não os do primeiro registro com cliente (a sessão do pacote
+    // vendido em outra unidade puxava a conclusão para lá).
+    const estorno = linhas.some(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && texto(l.depois.category) === 'Estorno')
+    const fato = linhas.some(l => l.tabela === 'tenants' && l.operacao === 'criou') || estorno ? null : fatoDaGravacao(linhas, nomes)
+    const principal = fato?.principal ?? paiDaGravacao(linhas) ?? linhas.find(l => l.client_id) ?? linhas[linhas.length - 1]!
     return { ...linhaDaAuditoria(principal, nomes, pathname, slug, fuso), id: linhas[0]!.id, oQue: fraseDoGrupo(linhas, nomes), detalhes }
   })
 }

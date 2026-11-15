@@ -76,11 +76,36 @@ function comoLista(v: unknown): string[] {
   return String(v ?? '').split(',').map(normalizar).filter(Boolean)
 }
 
+/**
+ * As entidades que o motor hidrata (`ONDE_ACHAR`, `./contexto`): a regra
+ * sobre uma delas AUSENTE no contexto (o fato não a tem, ou não carregou)
+ * falha fechada.
+ */
+const ENTIDADES_DO_CONTEXTO = new Set(['cliente', 'agendamento', 'lead', 'conversa', 'plano', 'produto', 'membro'])
+
+/**
+ * A entidade do campo (caminho simples) está ausente: `null` ou nunca
+ * hidratada. Uma entidade CARREGADA com o campo vazio não conta.
+ */
+function entidadeAusente(contexto: Record<string, unknown>, campo: string): boolean {
+  const texto = (campo ?? '').trim()
+  if (!texto || !ehCaminhoSimples(texto)) return false
+  const raiz = texto.split('.')[0]!
+  if (!ENTIDADES_DO_CONTEXTO.has(raiz)) return false
+  const ent = contexto[raiz]
+  return ent === null || ent === undefined
+}
+
 /** Uma regra sozinha. */
 export function avaliarRegra(
   contexto: Record<string, unknown>,
   regra: RegraDeCondicao,
 ): boolean {
+  // D3 da 16ª (princípio 3): sobre uma entidade ausente, só "está vazio" é
+  // verdade. "Não é nenhum de Cancelado…" com o agendamento nulo passava, e o
+  // lembrete saía também para o agendamento cancelado. Falha FECHADA.
+  if (entidadeAusente(contexto, regra.campo)) return regra.operador === 'vazio'
+
   const atual = valorDoCampo(contexto, regra.campo)
 
   // Ausente e vazio contam a mesma história para quem pergunta na tela: "o

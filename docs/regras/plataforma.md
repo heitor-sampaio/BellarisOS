@@ -1046,6 +1046,19 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     Verde", "Deu entrada em 5 …", "Registrou a perda de 1 …". O produto e o
     cargo das permissões se leem na hora, como os nomes ("Criou a permissão de
     Agenda do cargo X"; "Criou 19 permissões do cargo X").
+  - **A gravação se lê pelo FATO, e leva a unidade e o link dele** (D6/D7 da
+    16ª simulação, `fatoDaGravacao`): a venda do pacote, do pré-pago e do
+    crédito ("Vendeu o pacote 5 radiofrequências (R$ 1.650,00) — Bárbara"); o
+    início e a conclusão do atendimento ("Concluiu o atendimento — Bárbara",
+    na unidade do agendamento, não na do pacote cuja sessão foi usada); a
+    venda de produto avulsa ("Vendeu 1 Hidratante e recebeu R$ 39,00 (Pix)");
+    o recebimento ("Recebeu R$ 1.600,00 (Pix) — Rita", "Recebeu a parcela
+    1/4 (R$ 200,00, Pix)", sozinha ou com os pontos). Recebido é o lançamento
+    que ficou pago NA gravação (criado pago, ou o `paid_at` saiu do nulo),
+    no estado do fim dela; o que a baixa não grava (o valor, a parcela) e o
+    nome do pacote se leem agora (`nomesDaAuditoria`). A comissão, os pontos,
+    o contrato e as sessões gravados junto ficam guardados na linha.
+    Prova: `tests/auditoria-defeitos-da-16.test.ts`, `e2e/auditoria-defeitos-da-16.spec.ts`.
   - O campo se nomeia (a lista `CAMPO`); a coluna fora dela sai pelo próprio
     nome, sem "um campo"/"outros campos".
   - A página segue por gravação (`?antes=<id>`): a gravação que começa numa

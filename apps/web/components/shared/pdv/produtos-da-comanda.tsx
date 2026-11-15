@@ -17,11 +17,14 @@ const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
  * comanda é paga, junto do atendimento.
  *
  * `produtos` nulo: a comanda já não recebe produto (paga, cancelada).
+ * `aReceber`: a comanda ainda a receber — o produto já vendido nela (a comanda
+ * reaberta pelo estorno só do atendimento, D1 da 16ª) diz "já pago".
  */
-export function ProdutosDaComanda({ comandaId, slug, itens, produtos }: {
+export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber = false }: {
   comandaId: string
   slug:      string
   itens:     ItemDaComanda[]
+  aReceber?: boolean
   produtos:  { id: string; name: string; price: number; unidade: string; disponivel: number }[] | null
 }) {
   const router = useRouter()
@@ -62,7 +65,9 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos }: {
           <div style={{ minWidth: 0 }}>
             <p style={{ fontWeight: 700, color: 'var(--text)' }}>{i.nome}</p>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>
-              {i.vendido ? 'Produto · saiu do estoque da unidade' : 'Produto · sai do estoque da unidade ao receber'}
+              {i.vendido
+                ? aReceber ? 'Produto · já pago, fora do que falta receber' : 'Produto · saiu do estoque da unidade'
+                : 'Produto · sai do estoque da unidade ao receber'}
             </p>
             {produtos && !i.vendido && (
               <button type="button" className="btn-ghost" aria-label={`Tirar ${i.nome}`}

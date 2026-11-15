@@ -54,6 +54,11 @@ const ONDE_ACHAR: Record<Entidade, { entidade: string; chaves: string[] }> = {
   membro:      { entidade: 'membro',      chaves: ['membroId', 'profissionalId'] },
 }
 
+const ROTULO_DA_ENTIDADE: Record<Entidade, string> = {
+  cliente: 'a cliente', agendamento: 'o agendamento', lead: 'a oportunidade', conversa: 'a conversa',
+  plano: 'o plano', produto: 'o produto', membro: 'o membro da equipe',
+}
+
 function idDaEntidade(evento: EventoDoGatilho, alvo: Entidade): string | null {
   const regra = ONDE_ACHAR[alvo]
   if (evento.entidade === regra.entidade && evento.entidadeId) return evento.entidadeId
@@ -136,6 +141,14 @@ async function oportunidadeDaCliente(
  * `null` — e isso importa: sem marcar, toda leitura seguinte tentaria buscar
  * de novo, e uma condição sobre `cliente.email` num evento sem cliente faria
  * uma consulta por passo.
+ *
+ * ⚠️ **A entidade que o fato cita e que NÃO CARREGA faz o passo falhar**
+ * (D3 da 16ª simulação, 2026-11-15). Até ali o erro da consulta (e o registro
+ * que sumiu) virava `null` em silêncio: o `users(name)` ambíguo zerava todo
+ * agendamento, o lembrete saía "horário de  em ." e o "Se ainda está de pé"
+ * passava com o status nulo — também para o agendamento CANCELADO. Agora
+ * `hidratar` lança, nada fica no contexto (a próxima tentativa busca de novo),
+ * e o motor grava o erro no passo e encerra a execução como `falhou`.
  */
 export async function hidratar(
   contexto: ContextoDaExecucao,
@@ -153,13 +166,19 @@ export async function hidratar(
       : null)
   if (!id) { contexto[alvo] = null; return contexto }
 
+  /** O registro que o fato cita tem de existir: sem ele, o passo falha (não segue nulo). */
+  const exigir = <T,>(data: T): NonNullable<T> => {
+    if (!data) throw new Error(`Não encontrei ${ROTULO_DA_ENTIDADE[alvo]} do fato (${id}).`)
+    return data
+  }
+
   try {
     if (alvo === 'cliente') {
-      const data = await ler(admin
+      const data = exigir(await ler(admin
         .from('clients')
         .select('id, name, phone, email, birth_date, gender, tags, is_active, branch_id')
-        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o cliente')
-      contexto.cliente = data && {
+        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o cliente'))
+      contexto.cliente = {
         id:        data.id,
         nome:      data.name,
         telefone:  data.phone,
@@ -178,11 +197,13 @@ export async function hidratar(
     }
 
     if (alvo === 'agendamento') {
-      const data = await ler(admin
+      // `appointments` tem DUAS chaves para `users` (professional_id e
+      // created_by_id): `users(name)` é ambíguo (PGRST201) — D3 da 16ª.
+      const data = exigir(await ler(admin
         .from('appointments')
-        .select('id, scheduled_at, status, price, client_id, branch_id, professional_id, procedures(name), users(name)')
-        .eq('id', id).maybeSingle(), 'buscar o agendamento')
-      contexto.agendamento = data && {
+        .select('id, scheduled_at, status, price, client_id, branch_id, professional_id, procedures(name), users!appointments_professional_id_fkey(name)')
+        .eq('id', id).maybeSingle(), 'buscar o agendamento'))
+      contexto.agendamento = {
         id:           data.id,
         data:         data.scheduled_at,
         status:       data.status,
@@ -196,11 +217,11 @@ export async function hidratar(
     }
 
     if (alvo === 'lead') {
-      const data = await ler(admin
+      const data = exigir(await ler(admin
         .from('leads')
         .select('id, name, phone, email, source, owner_id, crm_stage_id, client_id, tags, value, crm_stages(name)')
-        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar a oportunidade')
-      contexto.lead = data && {
+        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar a oportunidade'))
+      contexto.lead = {
         id:            data.id,
         nome:          data.name,
         telefone:      data.phone,
@@ -217,11 +238,11 @@ export async function hidratar(
     }
 
     if (alvo === 'conversa') {
-      const data = await ler(admin
+      const data = exigir(await ler(admin
         .from('conversations')
         .select('id, channel, status, last_inbound_at, client_id, lead_id, provider')
-        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar a conversa')
-      contexto.conversa = data && {
+        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar a conversa'))
+      contexto.conversa = {
         id:            data.id,
         canal:         data.channel,
         status:        data.status,
@@ -234,11 +255,11 @@ export async function hidratar(
     }
 
     if (alvo === 'plano') {
-      const data = await ler(admin
+      const data = exigir(await ler(admin
         .from('treatment_plans')
         .select('id, name, status, client_id, branch_id')
-        .eq('id', id).maybeSingle(), 'buscar o plano')
-      contexto.plano = data && {
+        .eq('id', id).maybeSingle(), 'buscar o plano'))
+      contexto.plano = {
         id: data.id, nome: data.name, status: data.status,
         clienteId: data.client_id, unidadeId: data.branch_id,
       }
@@ -246,20 +267,20 @@ export async function hidratar(
     }
 
     if (alvo === 'produto') {
-      const data = await ler(admin
+      const data = exigir(await ler(admin
         .from('products')
         .select('id, name, unit, tenant_id')
-        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o produto')
-      contexto.produto = data && { id: data.id, nome: data.name, unidade: data.unit }
+        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o produto'))
+      contexto.produto = { id: data.id, nome: data.name, unidade: data.unit }
       return contexto
     }
 
     // membro
-    const data = await ler(admin
+    const data = exigir(await ler(admin
       .from('users')
       .select('id, name, email, branch_id, tenant_roles(label)')
-      .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o usuário')
-    contexto.membro = data && {
+      .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o usuário'))
+    contexto.membro = {
       id: data.id, nome: data.name, email: data.email,
       unidadeId: data.branch_id,
       cargo: (data.tenant_roles as unknown as { label?: string } | null)?.label ?? null,
@@ -267,8 +288,9 @@ export async function hidratar(
     return contexto
   } catch (e) {
     console.error('[contexto] hidratar', alvo, (e as Error).message)
-    contexto[alvo] = null
-    return contexto
+    delete contexto[alvo]
+    const motivo = (e as Error).message
+    throw new Error(motivo.startsWith('Não encontrei') ? motivo : `Não consegui carregar ${ROTULO_DA_ENTIDADE[alvo]} do fato: ${motivo}`)
   }
 }
 

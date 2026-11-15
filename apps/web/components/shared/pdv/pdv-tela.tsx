@@ -259,11 +259,19 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
             <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl(e.valorDoAtendimento ?? c.valor)}</span>
           </div>
           {c.origem === 'ATENDIMENTO' && (
-            <ProdutosDaComanda comandaId={c.id} slug={slugDaUnidade} itens={e.itens}
+            <ProdutosDaComanda comandaId={c.id} slug={slugDaUnidade} itens={e.itens} aReceber={aReceber}
               produtos={aReceber && c.agendamentoId ? e.produtosParaAcrescentar : null} />
           )}
+          {/* D1 da 16ª (princípio 3): reaberta pelo estorno só do atendimento, o
+              produto já vendido não entra no que se cobra — a tela diz quanto já foi pago. */}
+          {aReceber && c.jaPago > 0 && (
+            <div data-ja-pago-da-comanda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12, marginTop: 8, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+              <span>Já pago (os produtos)</span>
+              <span style={{ fontWeight: 700 }}>{brl(c.jaPago)}</span>
+            </div>
+          )}
           <div data-total-da-comanda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12, marginTop: 8 }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Total</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{aReceber && c.jaPago > 0 ? 'Falta receber' : 'Total'}</span>
             <b style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{brl(c.valor)}</b>
           </div>
         </div>

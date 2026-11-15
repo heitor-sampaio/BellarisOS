@@ -166,6 +166,17 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   - Toda leitura de campo passa por `valorDoCampo`, e toda hidratação por
     `caminhosDoCampo`: ler à mão com `lerCaminho` volta a ignorar expressões, e
     o texto sai vazio sem nada explicar.
+- **A entidade que não carrega faz o passo FALHAR** (D3 da 16ª simulação):
+  com o fato apontando para um agendamento (um cliente, uma oportunidade…)
+  que a hidratação não leu — a consulta deu erro ou não achou —, `hidratar`
+  lança "Não consegui carregar o agendamento do fato: …", e o motor grava o
+  passo e a execução como `falhou`, com o motivo; a mensagem não sai. E a
+  regra sobre uma entidade ausente só vale para "vazio": o status nulo não
+  passa em "não está em" (o lembrete saía ao agendamento CANCELADO, com o
+  procedimento e a hora em branco). O embed do profissional no agendamento
+  vai pela chave nomeada (`users!appointments_professional_id_fkey(name)`):
+  `users(name)` é ambíguo (PGRST201) e derrubava a leitura inteira.
+  Prova: `tests/automacoes-falha-fechada.test.ts`, `e2e/automacoes-defeitos-da-16.spec.ts`.
 - **A oportunidade de um fato de CONVERSA vem da conversa** (`contexto.ts`,
   `oportunidadeDaConversa`): os eventos de conversa não carregam `leadId`, então
   o motor usa a ligada à thread (`conversations.lead_id`) e, sem ela, a aberta
@@ -469,6 +480,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 
 ```
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
+❌ Hidratar a entidade do fato e seguir com ela nula quando a leitura falhou — o passo falha, e a condição sobre entidade ausente só vale para "vazio" (D3 da 16ª)
 ❌ Montar o filtro do público da campanha à mão (genders: rules.genders…) — é filtrosDaCampanha, senão a regra nova fica sem leitor e a campanha vai a todas (D1 da 9ª)
 ❌ Decidir "hoje é a data" da campanha de todo ano fora de lib/notifications/gatilho-de-hoje (o cron e o detalhe dividem a escolha — D10 da 12ª)
 ❌ Dizer quando a campanha de todo ano sai fora de quandoDispara (a hora é a do cron, jaEhHoraDeDisparar — D8 da 11ª)

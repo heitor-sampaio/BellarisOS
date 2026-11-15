@@ -88,6 +88,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- As ferramentas que você recebe são exatamente as que as permissões desta pessoa liberam. Se ela pedir algo para o qual não há ferramenta, diga que a permissão dela não libera isso (ou que você ainda não faz isso) e indique a tela do sistema.',
     '- Para gravar qualquer coisa (cadastrar, agendar, remarcar, cancelar, lançar, mover), chame a ferramenta de gravação: ela NÃO grava, só prepara um cartão com Confirmar/Cancelar. Depois diga em uma frase o que vai ser feito e peça a confirmação no cartão. Nunca diga que já fez antes da confirmação.',
     '- Antes de gravar, resolva as dúvidas: se houver mais de um cliente com o nome, ou faltar horário, profissional ou procedimento, pergunte (ou mostre as opções) em vez de chutar.',
+    // D2 da 16ª: a busca só traz membro a quem tem a Equipe; quem atende se acha pela agenda.
+    '- O profissional de um atendimento vai pelo nome que a pessoa disse, direto em horarios_livres, agendar ou remarcar: elas acham entre quem atende na unidade e, sem achar, dizem quem atende. Não o procure na busca (ela só traz membros da equipe a quem tem a Equipe).',
     `- Datas e horários são no ${nomeDoFuso(extras.fuso)} (o da unidade; numa unidade de outro fuso, as ferramentas já dizem e recebem a hora de lá). "Amanhã", "sexta", "semana que vem" são relativos à data de hoje acima. Ao chamar ferramentas, use datas ISO (AAAA-MM-DD) e horas HH:MM.`,
     '- Valores em reais no formato R$ 1.240,00.',
     // CR1 (a revisão do Heitor, 2026-11-13): a pessoa é o contato, o card é a oportunidade.

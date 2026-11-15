@@ -20,6 +20,7 @@ import { rotaOportunidade } from '@/lib/rotas'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, UUID, dinheiro, resolverMembro, resolverProcedimento, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 import { BANDEIRAS, rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
+import { CATEGORIA_COMPRA_DE_ESTOQUE, ehCompraDeEstoque } from '@/lib/financeiro/categorias'
 import { maquininhasDaRede } from '@/lib/financeiro/vezes-da-rede'
 
 /**
@@ -91,7 +92,9 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   modulo: 'financial', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'financial'),
   recurso: 'financeiro',
-  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}), vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito; na despesa, também boleto) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N. No cartão pago, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.`,
+  // D5 da 16ª (princípios 3 e 4): "Material de limpeza" virou "Compra de
+  // estoque" e saiu do resultado. A categoria diz o que é, e na dúvida pergunta.
+  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}). "${CATEGORIA_COMPRA_DE_ESTOQUE}" é só a mercadoria que entra no estoque (produto de revenda ou insumo cadastrado no Estoque): conta no caixa e fica fora do resultado, porque o lucro já desconta o insumo consumido — material de limpeza, de copa ou de consumo da unidade não é compra de estoque. Quando nenhuma categoria da lista serve com certeza, pergunte à pessoa qual usar (ou use "Outro" se ela disser); nunca escolha a mais parecida calado. Vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito; na despesa, também boleto) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N. No cartão pago, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.`,
   parametros: z.object({
     tipo: z.enum(['receita', 'despesa']),
     descricao: z.string().min(2).max(200),
@@ -135,6 +138,9 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
           { rotulo: 'Situação', valor: pago ? `pago${forma ? ` · ${FORMA_LEGIVEL[forma]}` : ''}${emVezes(vezes)}${bandeira ? ` · ${rotuloDaBandeira(bandeira)}` : ''}${maq ? ` · ${maq.nome}` : ''}` : `vence ${a.vencimento!.split('-').reverse().join('/')}` },
           { rotulo: 'Unidade', valor: u.unidade!.name },
         ],
+        // D5 da 16ª (princípio 3): o cartão diz o que a categoria faz com o resultado.
+        ...(a.tipo === 'despesa' && ehCompraDeEstoque(cat)
+          ? { aviso: 'Compra de estoque: conta no caixa e fica fora do resultado (é a mercadoria que entra no estoque).' } : {}),
       },
       payload: {
         branchId: u.unidade!.id, tipo: a.tipo === 'receita' ? 'INCOME' : 'EXPENSE', categoria: cat,

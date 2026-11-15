@@ -42,6 +42,22 @@ export interface NomesDaAuditoria {
   produtos?: Record<string, string>
   /** O cargo de cada permissão (o id da linha de `role_permissions` → o nome do cargo), lido agora. */
   cargos?:   Record<string, string>
+  /** O nome do pacote vendido (`client_packages.package_id` → o pacote), lido agora (D7 da 16ª). */
+  pacotes?:  Record<string, string>
+  /**
+   * O lançamento EDITADO na gravação, lido agora (D7 da 16ª): a baixa grava só
+   * as colunas que mudaram, e "Recebeu a parcela 1/4 (R$ 200,00)" precisa do
+   * tipo, do valor e da parcela.
+   */
+  lancamentos?: Record<string, LancamentoDaAuditoria>
+}
+
+export interface LancamentoDaAuditoria {
+  tipo:    string | null
+  valor:   number | null
+  forma:   string | null
+  parcela: number | null
+  de:      number | null
 }
 
 /** Uma linha pronta para a tela e para o CSV. */

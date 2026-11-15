@@ -66,7 +66,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'agenda'),
-  descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id); data (AAAA-MM-DD) e hora (HH:MM, no horário da unidade). Confira os horários livres antes. O cliente é avisado da confirmação.',
+  descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id — passe o nome que a pessoa disse, "Dr. Caio": a ferramenta acha pelo nome entre quem atende na unidade, sem precisar buscar antes, e sem achar diz quem atende); data (AAAA-MM-DD) e hora (HH:MM, no horário da unidade). Confira os horários livres antes. O cliente é avisado da confirmação.',
   parametros: z.object({
     cliente: z.string().min(2).max(120).optional(),
     clienteNovo: z.object({ nome: z.string().min(2).max(120), telefone: z.string().min(8).max(24) }).optional(),
@@ -226,7 +226,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'agenda'),
-  descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (no horário da unidade dele) e, opcionalmente, outro profissional. O cliente é avisado do novo horário.',
+  descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (no horário da unidade dele) e, opcionalmente, outro profissional (pelo nome que a pessoa disse: a ferramenta acha entre quem atende, sem precisar buscar antes). O cliente é avisado do novo horário.',
   parametros: z.object({ agendamento: UUID, data: DATA, hora: HORA, profissional: z.string().max(80).optional() }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)

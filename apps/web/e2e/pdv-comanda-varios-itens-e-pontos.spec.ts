@@ -243,6 +243,55 @@ test('o estorno da venda do produto da comanda devolve o estoque e os pontos del
   expect(await saldoDePontos(cliente)).toBe(saldoAntes + 40 - 118)
 })
 
+test('D1 da 16ª: o estorno só do atendimento reabre a comanda pedindo só o que falta — o produto já pago fica como "já pago"', async ({ browser }) => {
+  // A comanda da Paula (peeling + hidratante, débito) teve só o "Atendimento
+  // concluído" estornado e reabriu pedindo "Receber R$ 409,00": o hidratante
+  // seguia pago. A tela cobra o que o servidor grava (princípio 3).
+  const cliente = await rede!.criarCliente('Reaberta')
+  const { agendamento, comanda } = await atendimentoIniciado(cliente)
+  await como(balcao!, browser, async p => {
+    await p.goto(`/${slug}/pdv?comanda=${comanda}`)
+    await chamarAcao(p, 'actions/pdv.ts', 'acrescentarProdutoNaComanda', `/${slug}/pdv`, [comanda, serum, 1, slug])
+  })
+  await como(balcao!, browser, async p => {
+    await p.goto(`/${slug}/pdv?comanda=${comanda}`)
+    const detalhe = p.locator('[data-comanda-aberta]')
+    await detalhe.getByRole('radio', { name: 'Pix' }).click()
+    await detalhe.getByRole('button', { name: /Receber R\$\s?300,00/ }).click()
+    await expect(p.locator(`[data-lista-de-comandas] [data-comanda="${comanda}"]`)).toHaveCount(0)
+  })
+  const estoqueDepois = await estoque(serum)
+  const doAtendimento = (await db().from('financial_transactions').select('id').eq('appointment_id', agendamento)
+    .single<{ id: string }>()).data!
+  await como(balcao!, browser, async p => {
+    await p.goto(`/${slug}/financeiro`)
+    await chamarAcao(p, 'actions/financial.ts', 'reverseTransaction', `/${slug}/financeiro`, [doAtendimento.id, slug, 'Cobrou errado'])
+  })
+  expect((await db().from('financial_transactions').select('notes').eq('id', doAtendimento.id).single()).data!.notes,
+    'o atendimento foi estornado').toBe('Estornada')
+
+  await como(balcao!, browser, async p => {
+    await p.goto(`/${slug}/pdv`)
+    const linha = p.locator(`[data-lista-de-comandas] [data-comanda="${comanda}"]`)
+    await expect(linha, 'a comanda reabriu').toBeVisible()
+    await expect(linha).toContainText('180,00')
+    await expect(linha).not.toContainText('300,00')
+    await p.goto(`/${slug}/pdv?comanda=${comanda}`)
+    const detalhe = p.locator('[data-comanda-aberta]')
+    await expect(detalhe.locator('[data-item-da-comanda]', { hasText: nomeSerum })).toContainText('já pago')
+    await expect(detalhe.locator('[data-ja-pago-da-comanda]')).toContainText('120,00')
+    await expect(detalhe.locator('[data-total-da-comanda]')).toContainText('180,00')
+    await detalhe.getByRole('radio', { name: 'Pix' }).click()
+    await detalhe.getByRole('button', { name: /Receber R\$\s?180,00/ }).click()
+    await expect(p.locator(`[data-lista-de-comandas] [data-comanda="${comanda}"]`)).toHaveCount(0)
+  })
+  // O que se recebeu de novo é o atendimento; o sérum não sai outra vez.
+  const { data: vivos } = await db().from('financial_transactions').select('amount, notes, is_paid, estorno_de')
+    .eq('appointment_id', agendamento).is('estorno_de', null).eq('is_paid', true)
+  expect((vivos ?? []).filter(t => t.notes !== 'Estornada').map(t => n(t.amount))).toEqual([180])
+  expect(await estoque(serum)).toBe(estoqueDepois)
+})
+
 test('as recusas: comanda paga, produto que não é de Venda direta, comanda que não existe, quem não recebe', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Recusas')
   const { agendamento, comanda } = await atendimentoIniciado(cliente)

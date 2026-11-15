@@ -156,6 +156,26 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     for (const p of lidas) cargosDaPermissao.set(p.id as string, p.role_id as string)
   }
   const cargos = [...new Set(cargosDaPermissao.values())]
+  // D7 da 16ª: o pacote vendido e o lançamento baixado ("Recebeu a parcela 1/4 (R$ 200,00)").
+  const pacotes = [...new Set(registros.filter(r => r.tabela === 'client_packages').map(r => doRegistro(r, 'package_id')).filter((v): v is string => !!v))]
+  const lancamentos = [...new Set(registros.filter(r => r.tabela === 'financial_transactions' && r.operacao === 'editou'
+    && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!))]
+  const [pk, ft] = await Promise.all([
+    pacotes.length
+      ? ler(admin.from('service_packages').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', pacotes), 'ler os nomes dos pacotes')
+      : Promise.resolve([]),
+    lancamentos.length
+      ? ler(admin.from('financial_transactions').select('id, type, amount, payment_method, parcela_numero, parcela_total, branches!inner(tenant_id)')
+        .eq('branches.tenant_id', ctx.tenantId!).in('id', lancamentos), 'ler os lançamentos da auditoria')
+      : Promise.resolve([]),
+  ])
+  const lancamentosLidos = Object.fromEntries(((ft ?? []) as {
+    id: string; type: string | null; amount: number | string | null; payment_method: string | null
+    parcela_numero: number | null; parcela_total: number | null
+  }[]).map(l => [l.id, {
+    tipo: l.type, valor: l.amount === null ? null : Number(l.amount), forma: l.payment_method,
+    parcela: l.parcela_numero, de: l.parcela_total,
+  }]))
   const [c, m, u, p, cg] = await Promise.all([
     clientes.length
       ? ler(admin.from('clients').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', clientes), 'ler os nomes das clientes')
@@ -177,7 +197,10 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
   const nomeDoCargo = mapa(cg as { id: unknown; name: unknown }[] | null)
   const cargosPorPermissao = Object.fromEntries([...cargosDaPermissao.entries()]
     .filter(([, cargo]) => nomeDoCargo[cargo]).map(([permissao, cargo]) => [permissao, nomeDoCargo[cargo]!]))
-  return { clientes: mapa(c), membros: mapa(m), unidades: mapa(u), produtos: mapa(p), cargos: cargosPorPermissao }
+  return {
+    clientes: mapa(c), membros: mapa(m), unidades: mapa(u), produtos: mapa(p), cargos: cargosPorPermissao,
+    pacotes: mapa(pk as { id: unknown; name: unknown }[] | null), lancamentos: lancamentosLidos,
+  }
 }
 
 /**
