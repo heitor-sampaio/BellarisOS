@@ -250,7 +250,7 @@ test.describe.serial('o cartão por bandeira', () => {
     await como(browser, gestor!, async p => {
       await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
       const linha = p.getByRole('row').filter({ hasText: `Parcela no débito ${marca}` })
-      await linha.getByTitle('Marcar como pago').click()
+      await linha.getByTitle('Receber', { exact: true }).click()
       const janela = p.getByRole('dialog', { name: 'Receber no cartão' })
       await janela.getByLabel('Bandeira').selectOption({ label: 'Mastercard' })
       await janela.getByRole('button', { name: 'Confirmar recebimento' }).click()
@@ -640,12 +640,12 @@ test.describe.serial('o cartão por bandeira', () => {
     await como(browser, gestor!, async p => {
       await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
       // O débito: 1x, sem a pergunta.
-      await p.getByRole('row').filter({ hasText: `Pendente no débito ${marca}` }).getByTitle('Marcar como pago').click()
+      await p.getByRole('row').filter({ hasText: `Pendente no débito ${marca}` }).getByTitle('Receber', { exact: true }).click()
       let janela = p.getByRole('dialog', { name: 'Receber no cartão' })
       await expect(janela.getByLabel('Vezes no cartão'), 'no débito, 1x').toHaveCount(0)
       await janela.getByRole('button', { name: 'Cancelar' }).click()
       // O crédito: as vezes até o limite da clínica.
-      await p.getByRole('row').filter({ hasText: `Pendente no crédito ${marca}` }).getByTitle('Marcar como pago').click()
+      await p.getByRole('row').filter({ hasText: `Pendente no crédito ${marca}` }).getByTitle('Receber', { exact: true }).click()
       janela = p.getByRole('dialog', { name: 'Receber no cartão' })
       const vezes = janela.getByLabel('Vezes no cartão')
       await expect(vezes.locator('option'), 'até o limite da clínica (3x)').toHaveText(['À vista', '2x', '3x'])

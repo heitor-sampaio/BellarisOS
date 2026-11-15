@@ -1815,6 +1815,10 @@ O relatório consolidado ficou em `apps/web/.sim/relatorio.md`, e a 15ª foi arq
   - **A4:** o "Quem vendeu?" continua perguntando sempre, pela regra com-06 de `comissoes.md`.
   - **A30:** a ordem dos próximos passos do `/setup` não mudou, pela regra A2 da 10ª. Só o "Ver detalhes" virou "Salas e detalhes".
   - **Fora, por serem funcionalidade nova ou já tratados:** A10, A11, A18, A21 e A26.
+- **A completa local depois dos atritos (27e4e90c, 15/11):** isolados 1588 ✓ / 7 ✘ / 20 sem rodar; compartilhados 753 ✓ / 2 ✘. O banco reiniciou mais duas vezes no meio dela (20:52 e 21:38 UTC). As falhas foram de três tipos:
+  - **Os specs que o agente dos atritos não atualizou:** o título "Marcar como pago" virou "Receber" na receita (A2), em `fase1-dinheiro` e `financeiro-cartao-por-bandeira`, e "Dar baixa é de quem tem o PDV" virou "Receber é de quem…" em `financeiro-f67`. Em `financeiro-estorno-reabre`, o Peeling estornado agora aparece também em "A pagar na unidade" (A14, o certo, porque o estorno reabre a cobrança), e o spec confere os dois blocos.
+  - **`inbox-paginado`, que dependia da hora:** os telefones saíam do relógio, e a busca "Pessoa 44" também achava a conversa cujo número tivesse "44". Agora os números não têm o dígito 4.
+  - **Queda ou lentidão do banco:** `comissoes-configuracao`, `configuracoes-unidade-cnpj`, `equipe-unidade-da-9` e `equipe-dona-que-atende`. Rodados de novo, um por vez, passam.
 
 ### 2026-11-16 — A 15ª simulação (Íris, uma unidade; Orquídea, três) e os defeitos dela
 

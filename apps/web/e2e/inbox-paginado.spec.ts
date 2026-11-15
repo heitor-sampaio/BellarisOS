@@ -32,7 +32,11 @@ test.beforeAll(async () => {
   const agora = Date.now()
   const linhas = Array.from({ length: TOTAL }, (_, k) => {
     const i = k + 1
-    const fone = '5548' + String(agora + i).slice(-9)
+    // Sem o dígito 4 depois do DDD: a busca casa cada palavra também com o
+    // telefone, e "Pessoa 44" achava a conversa cujo número (tirado do relógio)
+    // tivesse "44" — falhava conforme a hora. O índice vai em base 9 sem o 4.
+    const SEM_4 = '012356789'
+    const fone = '5548' + String(agora).slice(-7).replace(/4/g, '0') + SEM_4[Math.floor(i / 9)] + SEM_4[i % 9]
     return {
       tenant_id: outra.tenantId, channel: 'whatsapp', status: 'open', provider: 'uazapi',
       contact_name: nome(i), contact_phone: fone, contact_external_id: fone, contact_aliases: [fone],

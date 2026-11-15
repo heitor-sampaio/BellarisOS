@@ -70,7 +70,7 @@ test('lançar receita na unidade escolhida e dar baixa — tudo pelo /admin', as
   await page.goto('/admin/financeiro?aba=movimentacoes')
   const linhaPendente = page.locator('tr').filter({ hasText: descricaoPendente }).first()
   await expect(linhaPendente).toBeVisible()
-  await linhaPendente.getByTitle('Marcar como pago').click()
+  await linhaPendente.getByTitle('Receber', { exact: true }).click()
   // D6 da 6ª simulação: a receita sem forma pergunta a forma ao receber.
   const receber = page.getByRole('dialog', { name: 'Receber' })
   await receber.getByLabel('Forma de pagamento').selectOption('PIX')

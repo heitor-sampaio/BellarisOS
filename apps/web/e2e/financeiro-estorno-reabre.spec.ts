@@ -135,7 +135,10 @@ test.describe('o estorno reabre a cobrança', () => {
   test('o portal da cliente mostra o pagamento como "Estornado", não "Pago"', async ({ browser }) => {
     await como(cliente!, browser, async p => {
       await p.goto(`/${slug}/cliente/financeiro`)
-      const linha = p.locator('.card').filter({ hasText: `Peeling ${marca}` })
+      // A14 da 16ª: o estorno reabre a cobrança, e o Financeiro do app a mostra
+      // em "A pagar na unidade"; o lançamento estornado fica no histórico.
+      await expect(p.locator('[data-a-pagar-na-unidade] .card').filter({ hasText: `Peeling ${marca}` })).toHaveCount(1)
+      const linha = p.locator('.card:not([data-a-pagar-na-unidade] .card)').filter({ hasText: `Peeling ${marca}` })
       await expect(linha).toHaveCount(1)
       await expect(linha).toContainText('Estornado')
       await expect(linha).not.toContainText('Pago')

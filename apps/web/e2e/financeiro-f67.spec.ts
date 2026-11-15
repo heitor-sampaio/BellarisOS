@@ -133,7 +133,7 @@ test('C33: o check-in do plano é do PDV — quem tem o Financeiro em Gerenciar 
   // E a lista do Financeiro da rede não mostra a baixa a quem não tem Recebimentos.
   await como(browser, financeiro!, async p => {
     await p.goto('/admin/financeiro?aba=a-receber#movimentacoes')
-    await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Dar baixa é de quem tem o PDV no cargo.')
+    await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Receber é de quem tem o PDV no cargo.')
     await expect(p.getByRole('button', { name: /Pagar|Receber/ }).filter({ hasText: /^(Pagar|Receber)$/ })).toHaveCount(0)
   })
 })
