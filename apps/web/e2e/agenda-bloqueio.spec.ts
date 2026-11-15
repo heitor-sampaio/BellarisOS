@@ -86,7 +86,7 @@ test.afterAll(async () => {
   await soVe?.limpar(); await propria?.limpar(); await recepcao?.limpar(); await rede?.limpar()
 })
 
-test('a recepção bloqueia o almoço da profissional pela agenda, e o bloqueio aparece na grade (unidade e rede)', async ({ browser }) => {
+test('quem tem a Agenda em Gerenciar bloqueia o almoço da profissional pela agenda, e o bloqueio aparece na grade (unidade e rede)', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda?date=${DIA}`)
     await p.getByRole('button', { name: 'Bloquear horário' }).click()

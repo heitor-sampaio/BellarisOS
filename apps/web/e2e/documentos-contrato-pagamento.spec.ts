@@ -4,6 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
+import { receberAtendimentoNoPdv } from './apoio/vender'
 
 /**
  * O pagamento no contrato do PROCEDIMENTO (atendimento avulso) — decisão do
@@ -93,7 +94,7 @@ test.describe.serial('documentos: pagamento no contrato do procedimento', () => 
     expect(d.payment_snapshot).toBeNull()
   })
 
-  test('a recepção define entrada + parcelas pela ficha, e o contrato cita o combinado', async ({ browser }) => {
+  test('quem tem Documentos em Gerenciar define entrada + parcelas pela ficha, e o contrato cita o combinado', async ({ browser }) => {
     await como(browser, gestor!.estado, async page => {
       await page.goto(`/admin/clients/${cliente}?aba=documentos`)
       const linha = page.locator(`[data-documento="${contrato}"]`)
@@ -115,7 +116,7 @@ test.describe.serial('documentos: pagamento no contrato do procedimento', () => 
     expect(d.content as string).toMatch(/Valor de R\$\s100,00, pago assim: entrada de R\$\s40,00 no cartão de crédito \+ 3 parcelas de R\$\s20,00 no crediário: R\$\s20,00 em 10\/11\/2026, R\$\s20,00 em 10\/12\/2026 e R\$\s20,00 em 10\/01\/2027\./)
   })
 
-  test('trocar antes de assinar monta o contrato de novo; a recepção recebe com o meio combinado', async ({ browser }) => {
+  test('trocar antes de assinar monta o contrato de novo; quem tem o PDV recebe com o meio combinado', async ({ browser }) => {
     const antes = (await docDoContrato()).content
     await como(browser, gestor!.estado, async page => {
       await page.goto(`/admin/clients/${cliente}?aba=documentos`)
@@ -130,14 +131,13 @@ test.describe.serial('documentos: pagamento no contrato do procedimento', () => 
     expect(d.content).not.toBe(antes)
     expect(d.content as string).toContain('à vista, no cartão de débito')
 
-    // O atendimento aconteceu: na recepção, o meio já vem escolhido.
+    // O atendimento aconteceu: na comanda dele no PDV (PDV7), o meio já vem escolhido.
     const { error } = await db().from('appointments').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', agendamento)
     expect(error).toBeNull()
     await como(browser, recepcao!.estado, async page => {
-      await page.goto(`/admin/agenda/${agendamento}`)
-      await page.getByRole('button', { name: 'Confirmar pagamento' }).click()
-      await expect(page.locator('select[name="payment_method"]')).toHaveValue('DEBIT_CARD')
-      await expect(page.getByTestId('pagamento-combinado')).toContainText('À vista, no cartão de débito')
+      const comanda = await receberAtendimentoNoPdv(page, '/admin', agendamento)
+      await expect(comanda.locator('[data-forma="DEBIT_CARD"]')).toHaveAttribute('aria-checked', 'true')
+      await expect(comanda.getByTestId('pagamento-combinado')).toContainText('À vista, no cartão de débito')
     })
   })
 

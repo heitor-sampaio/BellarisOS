@@ -192,7 +192,7 @@ test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
     await gestora?.limpar()
   })
 
-  test('a gerente da rede não promove ninguém a Admin; a Admin promove', async ({ browser }) => {
+  test('quem tem a Equipe em Gerenciar não promove ninguém a Admin; a Admin promove', async ({ browser }) => {
     await como(browser, gestora!.estado, async p => {
       await p.goto('/admin/team')
       await p.getByTitle(`Editar ${PREFIXO} Colega dac${marca}`).click()
@@ -223,7 +223,7 @@ test.describe.serial('só a Admin da rede mexe na Admin da rede', () => {
     expect(promovida?.branch_id, 'a Admin é da rede, peça o formulário o que pedir').toBeNull()
   })
 
-  test('a gerente da rede não altera a Admin: nem "atende", nem comissão, nem desativa', async ({ browser }) => {
+  test('quem tem a Equipe em Gerenciar não altera a Admin: nem "atende", nem comissão, nem desativa', async ({ browser }) => {
     await como(browser, gestora!.estado, async p => {
       await p.goto('/admin/team')
       const linha = p.getByRole('row', { name: new RegExp(`Socia das${marca}`) })

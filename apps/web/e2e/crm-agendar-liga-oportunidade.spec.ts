@@ -114,7 +114,7 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('agendar a cliente que tem oportunidade aberta', () => {
-  test('pelo card, o SDR de UNIDADE agenda como comercial, e o card fica onde está (crm-05)', async ({ browser }) => {
+  test('pelo card, quem tem o CRM e uma unidade só agenda como comercial, e o card fica onde está (crm-05)', async ({ browser }) => {
     const { clientId, leadId } = await clienteComLead('Pelo card', etapas!.novo)
     await como(browser, sdr!, async p => {
       await p.goto(`/${slug}/oportunidades`)
@@ -132,7 +132,7 @@ test.describe.serial('agendar a cliente que tem oportunidade aberta', () => {
     expect((await db().from('lead_events').select('type').eq('lead_id', leadId).eq('type', 'STAGE_CHANGED')).data ?? []).toHaveLength(0)
   })
 
-  test('pela agenda, a recepção agenda a cliente com oportunidade aberta: COMMERCIAL, e o card fica onde está', async ({ browser }) => {
+  test('pela agenda, quem tem a Agenda sem o CRM agenda a cliente com oportunidade aberta: COMMERCIAL, e o card fica onde está', async ({ browser }) => {
     const { clientId, leadId } = await clienteComLead('Pela agenda', etapas!.novo)
     await como(browser, recepcao!, p => agendarPelaAgenda(p, clientId, diaDaquiA2(), '11:00'))
     expect((await agendamentosDe(clientId)).map(a => a.source)).toEqual(['COMMERCIAL'])
@@ -212,7 +212,7 @@ test.describe.serial('agendar a cliente que tem oportunidade aberta', () => {
   })
 })
 
-test('A16: a oportunidade tem "Agendar" — o SDR agenda pelo card aberto no quadro, e a ficha nasce ligada ao card', async ({ browser }) => {
+test('A16: a oportunidade tem "Agendar" — quem tem o CRM agenda pelo card aberto no quadro, e a ficha nasce ligada ao card', async ({ browser }) => {
   test.setTimeout(180_000)
   // A Pri não tinha onde agendar a Alice a partir do card do quadro (só pelo
   // inbox): a recepção cadastrou e agendou à parte, e o card nunca soube.

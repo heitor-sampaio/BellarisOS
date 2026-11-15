@@ -1917,7 +1917,7 @@ revisão, só se escreve o plano. Nada se implementa.
 | PDV4 | ~~**Plano de tratamento**: a comanda nasce ao iniciar o PRIMEIRO atendimento do plano.~~ **Revisto no Plano de tratamento (PT1):** a comanda do plano nasce no ACEITE, com o valor inteiro. Sai o "Fechar checkout" | PDV2; **Bloco: Plano de tratamento** |
 | PDV5 | **Pacote**: vendido como um produto, na hora, pelo PDV | PDV2 |
 | PDV6 | **Produto**: o PDV vende o que está marcado como Venda direta | E2 |
-| PDV7 | Sai o **"Vender" da ficha**; o do **inbox** leva ao PDV. Sai a cobrança da conclusão do atendimento como porta própria (vira a comanda) | PDV1–PDV3 |
+| PDV7 | Sai o **"Vender" da ficha**; o do **inbox** leva ao PDV. Sai a cobrança da conclusão do atendimento como porta própria (vira a comanda). ✅ a janela de pagamento da tela do atendimento e o `?receber=1` saíram 16/11: o "Receber no PDV" leva à comanda | PDV1–PDV3 |
 | PDV8 | **Não existe pagamento sem forma de pagamento** (o Heitor, 13/11: "sempre tem que ter forma de pagamento, o crediario é uma forma de pagamento, não existe pagamento sem forma de pagamento"). O **Crediário** é uma das formas, ao lado de Pix, Dinheiro, Débito, Crédito e Crédito na rede: escolhido, a venda fica registrada como Crediário. Se houver entrada, ela pede a forma dela. Sai o "sem entrada, não precisa" (`rotuloDoMeioNoCrediario`, o `metodo: ''` de `EntradaDoPagamento`, o `pagamento.metodo` vazio nos documentos, que passa a dizer "Crediário"), e sai o "Meio de pagamento (opcional)" do "a receber". Quando o dinheiro entra (a parcela no PDV, CX1, ou a baixa no Financeiro, CX2), a forma é pedida, sempre. ✅ fase 5a (14/11) | PDV1, CX1, CX2 |
 | — | Mantém, dentro da comanda: o crediário (entrada + parcelas), o "a receber", o cartão em N vezes, o desconto, "Quem vendeu", o estorno e a devolução, as comissões | — |
 
@@ -1930,7 +1930,7 @@ PDV; o resto é do Financeiro.**
 |---|---|---|
 | CX1 | **O PDV recebe** toda comanda e também a **parcela do crediário** que a cliente veio pagar: abrir a cliente no PDV mostra as parcelas em aberto dela, e recebe-se ali. ✅ a comanda na fase 1, a parcela na fase 5a (14/11) | PDV1–PDV3 |
 | CX2 | **O Financeiro** tem a lista de tudo que falta receber, de todas as clientes, e dá baixa só no que entra sem passar pelo balcão (a transferência que caiu na conta). A baixa pedindo a forma sempre: ✅ fase 5a (14/11); a lista: ✅ FI3 (14/11) | — |
-| CX3 | Os **"Concluídos a receber"** viram as **comandas abertas** do PDV (sai a lista à parte na agenda, no Fechamento e na ficha) | PDV3 |
+| CX3 | Os **"Concluídos a receber"** viram as **comandas abertas** do PDV (sai a lista à parte na agenda, no Fechamento e na ficha). ✅ 16/11: a folha da agenda e a ficha levam à comanda no PDV (a ficha mostra só o resumo das comandas abertas) | PDV3 |
 | CX4 | **O Fechamento do dia mora no PDV** ("Fechar o dia"): uma linha por forma de pagamento, **o que o sistema registrou × o que foi conferido**; o fundo de troco segue opcional na linha do dinheiro | PDV1 |
 | CX5 | **Os avisos do Fechamento** ficam dois: **"há comanda aberta"** e **"entrou dinheiro depois do fechamento"**. "Por quem recebeu" e os estornos do dia ficam como detalhe recolhido | CX4 |
 | CX6 | **Vão para o Financeiro:** as taxas da maquininha estimadas, o que a operadora ainda vai depositar, a venda sem taxa cadastrada e a planilha da contadora (o CSV) | CX4 |
@@ -2119,7 +2119,7 @@ e este passa a limpo o que sobrou.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| V0 | **Nenhum cargo como se fosse fixo** em tela, regra (`docs/regras/`), teste e CLAUDE.md: fala-se em permissão ("quem tem o Estoque em Gerenciar"). Os nomes dos cargos-modelo continuam nomes de cargos editáveis telas ✅ 16/11, docs ✅ 16/11 (no código: falta — uns 90 títulos de teste e nomes de spec ainda falam no cargo, como `permissoes-gerente-de-unidade.spec.ts` e "a recepção" nos títulos) | — |
+| V0 | **Nenhum cargo como se fosse fixo** em tela, regra (`docs/regras/`), teste e CLAUDE.md: fala-se em permissão ("quem tem o Estoque em Gerenciar"). Os nomes dos cargos-modelo continuam nomes de cargos editáveis telas ✅ 16/11, docs ✅ 16/11, código ✅ 16/11 (os títulos dos testes e o `permissoes-gerente-de-unidade.spec.ts` → `permissoes-config-de-quem-tem-uma-unidade.spec.ts`; a trava em `tests/vocabulario-no-texto.test.ts`) | — |
 | V1 | **"Clínica" sai** das telas (o portal e o app da cliente inclusive), dos avisos, da política de privacidade, das regras e do CLAUDE.md: é "a rede" ou o nome dela (PO2/CA1). Fica só no site, como mercado (SI1) ✅ 16/11 (telas, docs e código — ficam a rota `/auth/clinicas`, as chaves do banco, a `CLINICA_URL` e os nomes SQL) | PO2, CA1 |
 | V2 | **"Filial" sai de vez**: do CLAUDE.md, das regras e dos nomes internos do código (`filial`, `trocarFilial…` → unidade) ✅ 16/11 (telas, docs e código) | — |
 

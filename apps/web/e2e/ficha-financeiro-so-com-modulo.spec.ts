@@ -55,7 +55,7 @@ async function pagina(browser: Browser, m: MembroDeTeste, fn: (p: Page, html: st
   } finally { await ctx.close() }
 }
 
-test('o SDR não vê a aba nem os lançamentos; o caixa vê', async ({ browser }) => {
+test('quem tem só o CRM não vê a aba nem os lançamentos; quem tem o PDV em Gerenciar vê', async ({ browser }) => {
   await pagina(browser, sdr!, async (p, html) => {
     await expect(p.getByText('Cliente financeiro').first()).toBeVisible()
     await expect(p.getByRole('button', { name: 'Financeiro', exact: true })).toHaveCount(0)

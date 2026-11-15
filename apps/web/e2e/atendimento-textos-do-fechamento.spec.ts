@@ -81,7 +81,7 @@ test('J-35: no avulso, o botão diz que gera o plano, e a tela diz que basta o "
   })
 })
 
-test('J-40: a sessão do plano já pago não diz que a recepção vai confirmar o pagamento', async ({ browser }) => {
+test('J-40: a sessão do plano já pago não diz que o pagamento ainda vai ser confirmado', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Plano')
   await responderAnamnese(cliente, rede!.tenantId)
   const { data: plano, error: ePl } = await db().from('treatment_plans').insert({
@@ -101,12 +101,12 @@ test('J-40: a sessão do plano já pago não diz que a recepção vai confirmar 
     await p.getByRole('button', { name: 'Finalizar atendimento' }).click()
     const janela = p.getByRole('dialog', { name: 'Finalizar atendimento' })
     await expect(janela).toBeVisible()
-    await expect(janela, 'a sessão do plano não tem o que a recepção confirmar').not.toContainText('será confirmado pela recep')
+    await expect(janela, 'a sessão do plano não tem pagamento a confirmar').not.toContainText('será confirmado pela recep')
     await expect(janela.locator('[data-pagamento-ao-finalizar]')).toContainText('Sessão do plano de tratamento')
   })
 })
 
-test('J-40: o avulso com preço continua dizendo que a recepção recebe', async ({ browser }) => {
+test('J-40: o avulso com preço continua dizendo que o pagamento se recebe no PDV', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Avulso2')
   await responderAnamnese(cliente, rede!.tenantId)
   const id = await emCurso(cliente)

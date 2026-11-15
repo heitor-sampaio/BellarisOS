@@ -14,7 +14,7 @@ import { responderAnamnese } from './apoio/anamnese'
  *   a janela dizia "Complete o CPF ou a data de nascimento" e só levava ao cadastro.
  * - A13: as duas fotos do atendimento saíam "Foto clínica — 10/11/2026", sem
  *   como marcar antes e depois.
- * - A14: "Este agendamento já foi encerrado." logo abaixo de "Receber pagamento".
+ * - A14: "Este agendamento já foi encerrado." logo abaixo de "Receber pagamento" (hoje "Receber no PDV", PDV7).
  * - A15: a sessão do pacote trazido de fora dizia "paga na venda do pacote" — não
  *   houve venda.
  * - A17: o Agendar aceitava 04:15 sem dizer que é encaixe, como diz o plano.
@@ -106,13 +106,13 @@ test('A5: no agendamento DELA, um botão de chegada em destaque — e o que cada
   })
 })
 
-test('A14: o concluído a receber não diz "já foi encerrado" embaixo do "Receber pagamento"', async ({ browser }) => {
+test('A14: o concluído a receber não diz "já foi encerrado" embaixo do "Receber no PDV"', async ({ browser }) => {
   const { id } = await agendamento('A receber', { status: 'COMPLETED', price: 150 })
   await como(browser, dona!, async p => {
     await p.goto(`/admin/agenda?date=${hoje}`)
     await p.locator(`[data-agendamento="${id}"]`).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
-    await expect(janela.getByRole('link', { name: 'Receber pagamento' })).toBeVisible()
+    await expect(janela.getByRole('link', { name: 'Receber no PDV' })).toBeVisible()
     await expect(janela.getByText('Este agendamento já foi encerrado.')).toHaveCount(0)
   })
 })
@@ -194,7 +194,7 @@ test('A19: o insumo do atendimento concluído sai com vírgula', async ({ browse
   })
 })
 
-test('A20: a gerente lê "quem conclui é o profissional" ANTES de iniciar', async ({ browser }) => {
+test('A20: quem abre o atendimento de outra pessoa lê "quem conclui é o profissional" ANTES de iniciar', async ({ browser }) => {
   const { id } = await agendamento('Gerente', { status: 'CONFIRMED', profissional: rede!.professionalId })
   await como(browser, gerente!, async p => {
     // Na tela do atendimento, ao lado do "Iniciar".

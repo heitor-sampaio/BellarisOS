@@ -16,6 +16,16 @@ export async function quemDesfazNoCaixa(tenantId: string, branchId: string | nul
 }
 
 /**
+ * Quem RECEBE no PDV (PDV1/CX1, a revisão do Heitor de 2026-11-13): a régua da
+ * página do PDV (`podeReceber`) — o PDV ou o Financeiro em Gerenciar. Para quem
+ * não recebe ler com quem fica a parcela (A28 da 9ª). A Admin da rede entra
+ * sempre.
+ */
+export async function quemRecebeNoPdv(tenantId: string, branchId: string | null): Promise<string[]> {
+  return quemTemEmGerenciar(tenantId, branchId, ['cashier', 'financial'])
+}
+
+/**
  * Quem TROCA pontos por recompensa e ajusta pontos (A38 da 9ª simulação; a regra
  * de cargo fica: é a Fidelidade em Gerenciar) — a recepção com a Fidelidade em
  * Ver não tinha o botão nem lia a quem pedir, e o app dizia só "A troca é feita

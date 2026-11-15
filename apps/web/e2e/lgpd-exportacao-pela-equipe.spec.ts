@@ -56,7 +56,7 @@ test.afterAll(async () => {
   await soVe?.limpar(); await recepcao?.limpar(); await rede?.limpar()
 })
 
-test('a recepção exporta pela ficha: o pedido é da equipe, registrado, e o download sai da ficha', async ({ browser }) => {
+test('quem tem Clientes em Gerenciar exporta pela ficha: o pedido é da equipe, registrado, e o download sai da ficha', async ({ browser }) => {
   await comSessao(browser, recepcao!, async p => {
     await p.goto(`/admin/clients/${cliente}`)
     await p.getByRole('button', { name: 'Mais ações' }).click()

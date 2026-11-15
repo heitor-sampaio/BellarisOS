@@ -187,7 +187,7 @@ test('a Talita vê e inicia o atendimento DELA no Batel pela Água Verde, e não
   expect((await db().from('appointments').select('status').eq('id', daOutra).single<{ status: string }>()).data?.status).toBe('CONFIRMED')
 })
 
-test('a gerente de unidade fixa marca e desmarca só a unidade dela', async ({ browser }) => {
+test('quem tem só uma unidade, com a Equipe em Gerenciar, marca e desmarca só a unidade dela', async ({ browser }) => {
   // Uma profissional do Batel que a dona também marcou na Água Verde.
   const nome = `${PREFIXO} Bia atb${marca}`
   const bia = await criarMembro(`atb${marca}`, { tenant: rede!.tenantId, branchId: batel, rotulo: 'Bia', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'OWN' }] })

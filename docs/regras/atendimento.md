@@ -442,7 +442,9 @@
   (`podeConcluir`) e a tela do atendimento dizem "Quem conclui é o
   profissional" já no agendado/confirmado/chegou, não só depois de iniciar. E
   o concluído A RECEBER não diz "Este agendamento já foi encerrado." embaixo
-  do "Receber pagamento" (A14). Prova: `e2e/atendimento-uso-da-10.spec.ts`.
+  do "Receber no PDV" (A14; era o "Receber pagamento" — desde o PDV7 a
+  janela leva à comanda do atendimento no PDV, `rotaDaComanda`). Prova:
+  `e2e/atendimento-uso-da-10.spec.ts`.
 - **A agenda "só os meus" vale também pelo ID** (D4 da simulação de
   2026-10-28, decisão do Heitor): com `agenda` OWN, a tela do atendimento
   (`app/_shared/sessao-de-atendimento.tsx`, os dois portais) de um
@@ -3236,7 +3238,8 @@ O resto do fluxo:
   andamento" encostava no cronômetro. O topo quebra linha (`.sessao-topo`: o
   título com a largura da tela, as ações embaixo) e, abaixo de 768 px, a ação
   principal do estado — Marcar chegada e iniciar, Check-in, Iniciar,
-  Finalizar, Confirmar pagamento (`[data-acao-principal]`) — é uma barra presa
+  Finalizar, Receber no PDV (`[data-acao-principal]`; era o "Confirmar
+  pagamento", que abria a janela do pagamento — saiu no PDV7) — é uma barra presa
   no rodapé, com a barra de navegação do Android (`env(safe-area-inset-bottom)`)
   e um espaço no fim da página para não cobrir nada; o botão do Copilot sobe
   acima dela (`subidaDoBotaoDoCopilot`). No computador nada muda de lugar.

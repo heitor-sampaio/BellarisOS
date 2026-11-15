@@ -89,7 +89,7 @@ test('D12: a transferência diz o nome das unidades — "para Batel" na origem, 
  * conferir o saldo do destino (a tela dela mostra só a unidade dela). Agora o
  * aviso de "deu certo" diz os dois saldos: "Batel agora tem 2 un".
  */
-test('A16: a transferência diz o saldo do destino depois, também para a gerente de unidade fixa', async ({ browser }) => {
+test('A16: a transferência diz o saldo do destino depois, também para quem tem só uma unidade', async ({ browser }) => {
   const gerente = await criarMembro(`tnf${marca}`, {
     tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Gerente', permissoes: [{ modulo: 'stock', nivel: 'MANAGE' }],
   })

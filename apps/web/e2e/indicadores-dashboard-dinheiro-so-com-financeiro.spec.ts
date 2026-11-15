@@ -106,7 +106,7 @@ test('a comercial (Relatórios só com a aba Comercial) não vê dinheiro no das
   })
 })
 
-test('a recepção (sem Financeiro) não vê os rankings de receita nem de margem', async ({ browser }) => {
+test('quem não tem o Financeiro não vê os rankings de receita nem de margem', async ({ browser }) => {
   await dashboardComo(browser, recepcao!, async p => {
     await expect(p.getByText('Ranking — Procedimentos realizados')).toBeVisible()
     await semDinheiro(p)

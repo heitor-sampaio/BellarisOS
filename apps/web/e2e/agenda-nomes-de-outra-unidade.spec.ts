@@ -103,7 +103,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('a gerente fixa em B vê a cliente de A e o profissional da rede no cartão e na janela', async ({ browser }) => {
+test('quem tem só a unidade B, com a Agenda em Gerenciar, vê a cliente de A e o profissional da rede no cartão e na janela', async ({ browser }) => {
   await como(browser, gerenteDeB!.estado, async p => {
     await p.goto(`/${slugB}/agenda?date=${DIA}`)
     const cartao = p.locator(`[data-agendamento="${agendamentos[0]}"]`)

@@ -97,7 +97,7 @@ test('C24: a categoria de outra rede e o mínimo negativo são recusados', async
 // mesma regra para categoria, marca e fornecedor") o reverteu: quem tem o Estoque
 // em Gerenciar, de uma unidade só, cria e exclui. A prova inteira das três listas
 // está em e2e/estoque-marcas-e-fornecedores.spec.ts.
-test('E4 (revê o C71): a gerente de unidade, com o Estoque em Gerenciar, cria e exclui categoria', async ({ browser }) => {
+test('E4 (revê o C71): quem tem só uma unidade, com o Estoque em Gerenciar, cria e exclui categoria', async ({ browser }) => {
   const nome = `${PREFIXO} Cat da gerente ${marca}`
   const { data: cat } = await db().from('product_categories').insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Cat da rede ${marca}` }).select('id').single<{ id: string }>()
   await como(browser, gerente, async p => {
@@ -115,7 +115,7 @@ test('E4 (revê o C71): a gerente de unidade, com o Estoque em Gerenciar, cria e
 // quem tem permissão de gerenciar") o tirou: a gerente de unidade, com o Estoque
 // em Gerenciar, cria e edita produto, e a regra não existe mais. A prova da
 // unidade do estoque inicial está em e2e/estoque-produto-por-unidades.spec.ts.
-test('E13 (revê o C63): a gerente de unidade, com o Estoque em Gerenciar, cria e edita produto', async ({ browser }) => {
+test('E13 (revê o C63): quem tem só uma unidade, com o Estoque em Gerenciar, cria e edita produto', async ({ browser }) => {
   const nome = `${PREFIXO} Novo da gerente ${marca}`
   await como(browser, gerente, async p => {
     const r = await chamarAcaoComFormulario(p, 'actions/stock.ts', 'updateProduct', rota(), [undefined], edicao({ name: `${nomeSerum} pela gerente` }))

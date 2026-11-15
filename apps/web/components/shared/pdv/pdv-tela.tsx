@@ -294,7 +294,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
           ) : aReceber && c.agendamentoId ? (
             <FormularioDeReceberAtendimento key={`${c.id}:${c.valor}`} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}
               clienteId={c.clienteId} pagamentoCombinado={e.pagamentoCombinado} pacotesParaAbater={e.pacotesParaAbater}
-              emBlocos onFeito={aoReceber} />
+              onFeito={aoReceber} />
           ) : null}
         </div>
       </div>

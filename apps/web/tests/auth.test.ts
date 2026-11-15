@@ -46,7 +46,7 @@ describe('can', () => {
 })
 
 describe('podeReceber', () => {
-  it('caixa sozinho basta', () => {
+  it('o PDV em Gerenciar sozinho basta', () => {
     expect(podeReceber(ctx({ permissions: { ...NO_PERMISSIONS, cashier: 'MANAGE' } }))).toBe(true)
   })
 

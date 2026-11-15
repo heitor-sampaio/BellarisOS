@@ -94,7 +94,7 @@ const formDoLead = (leadId: string, extra: Record<string, string>) => ({
 })
 
 test.describe.serial('F70 — CRM', () => {
-  test('C27: a SDR com "só os meus" não mexe pelo id no card de outra pessoa — nem na pessoa, nem na linha do tempo', async ({ browser }) => {
+  test('C27: quem tem o CRM com "só os meus" não mexe pelo id no card de outra pessoa — nem na pessoa, nem na linha do tempo', async ({ browser }) => {
     const b = db()
     const { count: eventosAntes } = await b.from('lead_events').select('id', { count: 'exact', head: true }).eq('lead_id', f!.leadDaGestora)
     const r = await como(browser, f!.sdr, p => chamarAcaoComFormulario(p, 'actions/leads.ts', 'updateLead', '/admin/oportunidades', [undefined],

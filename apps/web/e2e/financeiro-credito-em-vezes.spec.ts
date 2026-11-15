@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { receberAtendimentoNoPdv, escolherFormaPorValor } from './apoio/vender'
 
 /**
  * As formas de pagamento dizem o que foram (A33 e A35 da simulação de
@@ -97,9 +98,9 @@ test.describe.serial('as formas de pagamento', () => {
     ])
     expect(error).toBeNull()
     await como(browser, async p => {
-      await p.goto(`/${slug}/agenda/${aReceber}?receber=1`)
-      const janela = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-      await janela.getByLabel('Forma de pagamento').selectOption('CREDIT_CARD')
+      // PDV7/CX3: recebe-se na comanda do atendimento, no PDV.
+      const janela = await receberAtendimentoNoPdv(p, `/${slug}`, aReceber)
+      await escolherFormaPorValor(janela, 'CREDIT_CARD')
       await janela.getByLabel('Vezes no cartão').selectOption('3')
       await expect(janela.locator('[data-aviso-taxa]')).toContainText(/3x/)
       // F16-2: sem a taxa exata, 0% — não mais a do 2x (4,50%).

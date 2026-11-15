@@ -120,7 +120,7 @@ test('D13: o check-in de quem tem parcela vencida avisa, e a chegada vale', asyn
   await expect.poll(async () => (await db().from('appointments').select('status').eq('id', agendamento).single()).data?.status).toBe('ARRIVED')
 })
 
-test('A37: o Financeiro em Gerenciar remarca o vencimento, com o histórico; a recepção não vê', async ({ browser }) => {
+test('A37: o Financeiro em Gerenciar remarca o vencimento, com o histórico; quem tem o PDV sem o Financeiro não vê', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/admin/clients/${mariana!.clientId}?aba=financeiro`)
     await expect(p.locator('[data-transacao-da-ficha]').first()).toBeVisible()

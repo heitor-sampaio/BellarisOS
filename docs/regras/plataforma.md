@@ -809,7 +809,7 @@ um muro que não depende de cada trava do código.
   financeiro da rede (migration `20261111006001`). Só a rede nova; os
   cargos já gravados não mudam (princípio 6). Prova:
   `e2e/configuracoes-atritos-da-12.spec.ts` ("A3").
-- Prova: `e2e/permissoes-gerente-de-unidade.spec.ts` (a action direta de cada
+- Prova: `e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts` (a action direta de cada
   área recusada para quem não tem “A rede inteira”, com a Admin da rede como controle; a aba Unidade; as
   telas).
 

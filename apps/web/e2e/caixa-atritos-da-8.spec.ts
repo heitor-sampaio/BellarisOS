@@ -73,7 +73,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A33: a recepção lê na ficha a quem pedir o estorno, a devolução e o cancelamento do pacote', async ({ browser }) => {
+test('A33: quem tem o PDV sem o Financeiro lê na ficha a quem pedir o estorno, a devolução e o cancelamento do pacote', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/clients/${cliente}?aba=financeiro`)
     const nota = p.locator('[data-quem-desfaz]')

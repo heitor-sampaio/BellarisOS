@@ -108,7 +108,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('D3: a recepção da Pampulha vê as sessões do pacote vendido na Savassi e agenda uma na Pampulha', async ({ browser }) => {
+test('D3: quem tem só a unidade Pampulha vê as sessões do pacote vendido na Savassi e agenda uma na Pampulha', async ({ browser }) => {
   await como(browser, recepcaoDeB, async p => {
     const rota = `/${slugB}/clients/${cliente}`
     await p.goto(rota)

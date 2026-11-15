@@ -84,7 +84,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('decisão 1: a recepção vende R$ 300 de crédito interno no Pix — caixa, fechamento, pontos e saldo, sem comissão', async ({ browser }) => {
+test('decisão 1: quem tem o PDV em Gerenciar vende R$ 300 de crédito interno no Pix — caixa, fechamento, pontos e saldo, sem comissão', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     const dlg = await abrirVendaNoPdv(p, `/${slug}`, rosana)
     await dlg.getByRole('button', { name: 'Crédito interno', exact: true }).click()

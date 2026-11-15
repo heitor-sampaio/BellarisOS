@@ -1,28 +1,26 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { X, Loader2, CheckCircle2 } from 'lucide-react'
 import { confirmPayment, previaDoPagamento } from '@/actions/appointments'
 import { abaterDoPacote } from '@/actions/a-receber'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { formatarPontos } from '@/lib/fidelidade/formato'
 import { CampoDoDesconto, LembreteDoMotivo, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
-import { JanelaModal } from '@/components/shared/janela-modal'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
-import { rotuloDaForma } from '@/lib/financeiro/formas'
 
 /**
  * Receber um atendimento: a forma (com as vezes, a bandeira e a maquininha do
  * cartão), o desconto, o voucher e os pontos — a mesma conta que o servidor
- * refaz em `confirmPayment`. Mora aqui desde o PDV (2026-11-13): a comanda do
- * atendimento recebe por ele, e a janela "Confirmar pagamento" da tela do
- * atendimento também, até sair (PDV7).
+ * refaz em `confirmPayment`. É o "Receber" da comanda do atendimento no PDV
+ * (PDV1). A janela "Confirmar pagamento" da tela do atendimento saiu (PDV7, a
+ * revisão do Heitor de 2026-11-13: "Sai a cobrança da conclusão do atendimento
+ * como porta própria (vira a comanda)"): todo caminho leva à comanda.
  */
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -90,22 +88,19 @@ export interface ReceberAtendimentoProps {
 }
 
 /**
- * O formulário do recebimento. `emBlocos`: a forma em blocos com ícone e o
- * botão "Receber R$ X" (o PDV); sem ele, a lista e "Confirmar pagamento" (a
- * janela da tela do atendimento).
+ * O formulário do recebimento: a forma em blocos com ícone e o botão
+ * "Receber R$ X" (o PDV).
  */
 export function FormularioDeReceberAtendimento({
-  appointmentId, slug, price, pagamentoCombinado, pacotesParaAbater = [], clienteId, onFeito, onVoltar, emBlocos = false, onPendente,
+  appointmentId, slug, price, pagamentoCombinado, pacotesParaAbater = [], clienteId, onFeito, onVoltar, onPendente,
 }: ReceberAtendimentoProps & {
   onFeito:   () => void
   onVoltar?: () => void
-  emBlocos?: boolean
-  /** Enquanto grava: a janela não fecha no meio. */
+  /** Enquanto grava: quem chama não fecha no meio. */
   onPendente?: (gravando: boolean) => void
 }) {
-  // A37 da 6ª simulação: a forma nasce VAZIA (o Pix era o padrão calado, e o
-  // ?receber=1 abre esta janela sozinha — um clique gravava no Pix). Só o meio
-  // combinado no contrato vem escolhido.
+  // A37 da 6ª simulação: a forma nasce VAZIA (o Pix era o padrão calado — um
+  // clique gravava no Pix). Só o meio combinado no contrato vem escolhido.
   const metodoInicial = (FORMAS_DO_BALCAO as readonly string[]).includes(pagamentoCombinado?.metodo ?? '') ? pagamentoCombinado!.metodo! : ''
   // Controlado só para saber se é crédito: aí aparecem as vezes na maquininha.
   const [metodoEscolhido, setMetodoEscolhido] = useState(metodoInicial)
@@ -150,7 +145,6 @@ export function FormularioDeReceberAtendimento({
   const maximo  = previa && regras ? maximoDePontos(previa.saldo, base, regras) : 0
   const totalZero = resgate.restante === 0 && !resgate.motivo
   const total = resgate.motivo ? base : resgate.restante
-  const comAbatimento = resgate.pontos > 0 || !!voucher || doDesconto.reais > 0
   if (feito) return null
 
   const camposDoCartao = (
@@ -244,71 +238,23 @@ export function FormularioDeReceberAtendimento({
           )}
         </div>
       )}
-      {emBlocos ? (
-        totalZero ? (
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>Nada a receber — sem forma de pagamento.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <FormasDePagamento valor={metodoEscolhido} aoMudar={setMetodoEscolhido} name="payment_method" />
-            {camposDoCartao}
-          </div>
-        )
+      {totalZero ? (
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>Nada a receber — sem forma de pagamento.</p>
       ) : (
-        <div className="form-2col">
-          {totalZero ? (
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', alignSelf: 'end' }}>
-              Nada a receber — sem forma de pagamento.
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label className="field-label" htmlFor="pagamento-forma">Forma de pagamento *</label>
-              <select id="pagamento-forma" name="payment_method" className="field" value={metodoEscolhido} onChange={e => setMetodoEscolhido(e.target.value)} required>
-                <option value="">Selecione…</option>
-                {FORMAS_DO_BALCAO.map(m => <option key={m} value={m}>{rotuloDaForma(m)}</option>)}
-              </select>
-              {camposDoCartao}
-            </div>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="field-label">{comAbatimento ? 'Total a receber' : 'Valor (R$)'}</label>
-            <p data-testid="total-a-receber" style={{
-              fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em',
-              color: comAbatimento ? 'var(--brand)' : 'var(--text)', padding: '6px 0',
-            }}>
-              {brl(total)}
-            </p>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <FormasDePagamento valor={metodoEscolhido} aoMudar={setMetodoEscolhido} name="payment_method" />
+          {camposDoCartao}
         </div>
       )}
       {state?.error && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
         {onVoltar && <button type="button" onClick={onVoltar} className="btn-secondary"><X size={13} /> Voltar</button>}
         <button type="submit" disabled={pending || !!doDesconto.recusa || (!totalZero && !metodoEscolhido) || (!totalZero && !!faltaAMaquininha)} className="btn-primary"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center', flex: emBlocos ? 1 : undefined }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center', flex: 1 }}>
           {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-          {pending ? 'Registrando…' : emBlocos ? `Receber ${brl(total)}` : 'Confirmar pagamento'}
+          {pending ? 'Registrando…' : `Receber ${brl(total)}`}
         </button>
       </div>
     </form>
-  )
-}
-
-/** A janela "Confirmar pagamento" da tela do atendimento. */
-export function PaymentModal({ onClose, ...props }: ReceberAtendimentoProps & { onClose: () => void }) {
-  const router = useRouter()
-  const [travado, setTravado] = useState(false)
-  return (
-    <JanelaModal onFechar={onClose} rotulo="Confirmar pagamento" largura={440} travado={travado}>
-      <div>
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <CheckCircle2 size={16} style={{ color: 'var(--brand)' }} />
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Confirmar pagamento</h2>
-          <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={15} /></button>
-        </div>
-        <div style={{ padding: '20px 24px' }}>
-          <FormularioDeReceberAtendimento {...props} onVoltar={onClose} onPendente={setTravado} onFeito={() => { onClose(); router.refresh() }} />
-        </div>
-      </div>
-    </JanelaModal>
   )
 }

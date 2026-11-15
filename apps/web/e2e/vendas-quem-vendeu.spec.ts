@@ -89,7 +89,7 @@ test.afterAll(async () => {
   await outra?.limpar()
 })
 
-test('a recepção registra e a profissional vendeu: a venda é dela, e a comissão também', async ({ browser }) => {
+test('quem tem o PDV registra e a profissional vendeu: a venda é dela, e a comissão também', async ({ browser }) => {
   await como(browser, async p => {
     const janela = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await janela.getByRole('button', { name: 'Produto' }).click()

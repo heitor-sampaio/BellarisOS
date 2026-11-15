@@ -1182,7 +1182,7 @@ cards, criar e editar oportunidades continua com quem opera o quadro
 rede inteira. Prova: `e2e/crm-funis-pede-configuracoes.spec.ts`. E é da
 REDE (H7, 2026-11-01): quem não tem “A rede inteira” não configura o funil nem com
 Configurações em Gerenciar (`recusaDaConfigDaRede`; o botão some do quadro
-da unidade). Prova: `e2e/permissoes-gerente-de-unidade.spec.ts`.
+da unidade). Prova: `e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts`.
 
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
 a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um

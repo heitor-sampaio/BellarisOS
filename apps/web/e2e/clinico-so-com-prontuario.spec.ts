@@ -136,7 +136,7 @@ async function conteudo(p: Page, url: string): Promise<string> {
 }
 
 test.describe.serial('dado clínico só com prontuário', () => {
-  test('evolução do atendimento: o admin vê, a recepção não', async ({ browser }) => {
+  test('evolução do atendimento: quem tem o Prontuário vê, quem não tem não', async ({ browser }) => {
     await comSessao(browser, f!.admin.estado, async p => {
       expect(await conteudo(p, `/admin/agenda/${f!.agendamentoId}`)).toContain(EVOLUCAO)
     })
@@ -147,7 +147,7 @@ test.describe.serial('dado clínico só com prontuário', () => {
     })
   })
 
-  test('laudo na ficha do cliente: o admin vê, a recepção não — nem apaga pela action', async ({ browser }) => {
+  test('laudo na ficha do cliente: quem tem o Prontuário vê, quem não tem não — nem apaga pela action', async ({ browser }) => {
     // PR1b (2026-11-14): o laudo mora na aba Prontuário, em "Anexos clínicos".
     await comSessao(browser, f!.admin.estado, async p => {
       expect(await conteudo(p, `/admin/clients/${f!.clienteId}?aba=fichas`)).toContain(LAUDO)

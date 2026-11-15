@@ -71,7 +71,7 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
         {/* A51 da 5ª simulação: a janela não dizia que a cobrança do atendimento reabre. */}
         {alvo.doAtendimento && !produto && (
           <p data-cobranca-reabre style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
-            O atendimento volta a receber: a cobrança dele reabre, e o “Confirmar pagamento” vale de novo.
+            O atendimento volta a receber: a cobrança dele reabre, e a comanda dele volta a ficar aberta no PDV.
           </p>
         )}
         {reabre && !produto && (

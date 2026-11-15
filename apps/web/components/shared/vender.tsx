@@ -7,12 +7,11 @@ import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
 import Link from 'next/link'
 import { X, AlertTriangle, Plus } from 'lucide-react'
 import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
-import { rotaDoRecebimento } from '@/components/shared/atendimentos-a-receber'
 import { formatBRL, parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
 import { venderCredito, acessoDaClienteAoApp } from '@/actions/credito-interno'
 import { textoDoBonus } from '@/lib/creditos/bonus'
-import { rotaCliente } from '@/lib/rotas'
+import { rotaCliente, rotaDaComanda } from '@/lib/rotas'
 import { venderProduto } from '@/actions/produtos'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -449,7 +448,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
             Esta cliente tem {jaAtendido.procedureName ?? 'este procedimento'} de {new Date(jaAtendido.scheduledAt).toLocaleDateString('pt-BR', { timeZone: fuso })} concluído
             e <strong>a receber ({formatBRL(jaAtendido.price)})</strong>. Para cobrar esse atendimento, receba por ele —
             vender de novo cobraria duas vezes.{' '}
-            <Link href={rotaDoRecebimento(pathname, jaAtendido.branchSlug, jaAtendido.appointmentId)} style={{ color: 'var(--brand)', fontWeight: 700 }}>
+            <Link href={rotaDaComanda(pathname, jaAtendido.branchSlug, jaAtendido.branchId, jaAtendido.comandaId)} style={{ color: 'var(--brand)', fontWeight: 700 }}>
               Receber o atendimento
             </Link>
           </p>

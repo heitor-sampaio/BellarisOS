@@ -187,7 +187,7 @@ const camposComComissao = () => ({
   comissao: JSON.stringify({ tipo: 'PERCENTAGE', valor: 50 }),
 })
 
-test('quem não muda comissão não grava a do produto pelo cadastro: a gerente de unidade fixa (H7) e quem só cuida do estoque', async ({ browser }) => {
+test('quem não muda comissão não grava a do produto pelo cadastro: quem tem só uma unidade (H7) e quem tem só o Estoque', async ({ browser }) => {
   const slug = (await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()).data!.slug
   const gerente = await criarMembro(`cppg${marca}`, {
     tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Gerente',

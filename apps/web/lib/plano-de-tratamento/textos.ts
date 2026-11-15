@@ -15,18 +15,20 @@ export function textoDoPlanoDoConcluido(): string {
 
 /**
  * O rodapé do plano FECHADO (J-42): o que está em aberto se recebe onde. A28 da
- * 9ª: a recepcionista sem o Financeiro lia "a que vence depois se recebe no
- * financeiro", tela que ela não abre — com os nomes de quem tem o Financeiro em
- * Gerenciar (`quemDesfazNoCaixa`, a mesma lista da A33 da 8ª), diz com quem
- * fica. `quem` nulo: quem lê já tem o Financeiro.
+ * 9ª: quem não abre a tela de receber lia "se recebe no financeiro" — diz com
+ * quem fica. Desde o PDV (PDV1/CX1, a revisão do Heitor de 2026-11-13: "o
+ * pagamento acontece por dentro desse PDV, seja do que for"), a parcela do
+ * crediário se recebe no PDV, e quem recebe é quem tem o PDV ou o Financeiro em
+ * Gerenciar (`podeReceber`, a régua da página do PDV): `quem` são os nomes
+ * (`quemRecebeNoPdv`); nulo, quem lê já recebe.
  */
 export function rodapeDoPlanoFechado(aReceber: number, quem: string[] | null): string {
   if (!(aReceber > 0)) return 'Plano fechado e pago.'
-  const base = 'Plano fechado. A parcela vencida é cobrada no check-in do atendimento; a que vence depois se recebe no Financeiro'
+  const base = 'Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV'
   if (!quem) return `${base}.`
   return quem.length
-    ? `${base}, com quem tem o Financeiro em Gerenciar: ${quem.join(', ')}.`
-    : `${base}, com quem tem o Financeiro em Gerenciar.`
+    ? `${base}, com quem tem o PDV ou o Financeiro em Gerenciar: ${quem.join(', ')}.`
+    : `${base}, com quem tem o PDV ou o Financeiro em Gerenciar.`
 }
 
 /** "2", "2 e 4", "2, 4 e 6". */

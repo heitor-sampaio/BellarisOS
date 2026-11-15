@@ -65,7 +65,7 @@ test.describe.serial('o documento chega ao app só quando a rede envia', () => {
     })
   })
 
-  test('sem o prontuário, a recepção não envia a foto clínica (pelo id)', async ({ browser }) => {
+  test('quem tem Clientes sem o Prontuário não envia a foto clínica (pelo id)', async ({ browser }) => {
     await como(browser, recepcao!.estado, async p => {
       const r = await chamarAcao(p, 'actions/client-documents.ts', 'enviarDocumentoACliente',
         `/${slug}/clients/${cliente!.clientId}`, [foto, true])

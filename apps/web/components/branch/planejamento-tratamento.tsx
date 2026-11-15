@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { rotaNoPortal } from '@/lib/rotas'
+import { rotaNoPortal, rotaDaClienteNoPdv } from '@/lib/rotas'
 import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
 import {
   getPlanosDoCliente, salvarPlanoNovo, salvarPlanoDoCliente, getPlanoParaEditar, salvarDocumentosExcluidosDoPlano,
@@ -577,7 +577,7 @@ function situacaoDoLancamento(l: LancamentoDoPlano, fuso = 'America/Sao_Paulo'):
   if (!l.vencimento) return { texto: 'A receber', cor: 'var(--warning)' }
   const venceu = new Date(l.vencimento).getTime() <= endOfDayTZ(new Date(), fuso).getTime()
   return venceu
-    ? { texto: `Vencida em ${diaNoFuso(new Date(l.vencimento), fuso)} · cobrada no check-in`, cor: 'var(--danger)' }
+    ? { texto: `Vencida em ${diaNoFuso(new Date(l.vencimento), fuso)} · receba no PDV`, cor: 'var(--danger)' }
     : { texto: `A vencer em ${diaNoFuso(new Date(l.vencimento), fuso)}`, cor: 'var(--text-muted)' }
 }
 
@@ -587,8 +587,10 @@ function ResumoDoPlano({ planId, slug, onCancelado, semFaltaReceber = false }: {
   // PT1b: aceito e ainda não recebido — a comanda está no PDV.
   const [faltaReceber, setFaltaReceber] = useState<{ comandaId: string | null; branchId: string; podeReceber: boolean } | null>(null)
   const [resumo, setResumo] = useState<FinanceiroDoPlano | null>(null)
-  // A28 da 9ª: a quem a recepção sem o Financeiro pede a parcela que vence depois.
+  // A27 da 10ª: a quem pedir o cancelamento (quem tem o Financeiro em Gerenciar).
   const [quemRecebe, setQuemRecebe] = useState<string[] | null>(null)
+  // A28 da 9ª, desde o PDV: o que falta se recebe no PDV — o link a quem recebe, e com quem fica a quem não.
+  const [noPdv, setNoPdv] = useState<{ quem: string[] | null; receber: { unidadeId: string; clienteId: string } | null }>({ quem: null, receber: null })
   // A27 da 10ª: o "Cancelar plano" também aqui, e a quem pedir para quem não pode.
   const [cancelamento, setCancelamento] = useState<{ cancelavel: boolean; podeCancelar: boolean }>({ cancelavel: false, podeCancelar: false })
   const [cancelando, setCancelando] = useState(false)
@@ -596,7 +598,7 @@ function ResumoDoPlano({ planId, slug, onCancelado, semFaltaReceber = false }: {
   useEffect(() => {
     let vivo = true
     getResumoDoPlano(planId)
-      .then(res => { if (vivo) { if (res.resumo) { setResumo(res.resumo); setFaltaReceber(res.faltaReceber ?? null); setQuemRecebe(res.quemRecebe ?? null); setCancelamento({ cancelavel: !!res.cancelavel, podeCancelar: !!res.podeCancelar }) } else setErro(res.error ?? 'Não foi possível ler o plano.') } })
+      .then(res => { if (vivo) { if (res.resumo) { setResumo(res.resumo); setFaltaReceber(res.faltaReceber ?? null); setQuemRecebe(res.quemRecebe ?? null); setNoPdv({ quem: res.quemRecebeNoPdv ?? null, receber: res.receberNoPdv ?? null }); setCancelamento({ cancelavel: !!res.cancelavel, podeCancelar: !!res.podeCancelar }) } else setErro(res.error ?? 'Não foi possível ler o plano.') } })
       .catch(() => { if (vivo) setErro('Não foi possível ler o pagamento do plano.') })
     return () => { vivo = false }
   }, [planId])
@@ -663,7 +665,13 @@ function ResumoDoPlano({ planId, slug, onCancelado, semFaltaReceber = false }: {
 
       <p data-rodape-do-plano style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: resumo.aReceber > 0 ? 'var(--text-muted)' : 'var(--success)', fontWeight: 600 }}>
         <CheckCircle2 size={13} style={{ flexShrink: 0 }} />
-        {rodapeDoPlanoFechado(resumo.aReceber, quemRecebe)}
+        <span style={{ flex: 1 }}>{rodapeDoPlanoFechado(resumo.aReceber, noPdv.quem)}</span>
+        {resumo.aReceber > 0 && noPdv.receber && (
+          <Link href={rotaDaClienteNoPdv(pathname, slug, noPdv.receber.unidadeId, noPdv.receber.clienteId)}
+            style={{ color: 'var(--brand)', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            Receber no PDV
+          </Link>
+        )}
       </p>
 
       {cancelamento.cancelavel && (cancelamento.podeCancelar ? (

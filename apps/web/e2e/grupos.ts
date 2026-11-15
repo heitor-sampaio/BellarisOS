@@ -433,8 +433,8 @@ export const ISOLADOS = [
   'relatorios-so-os-meus.spec.ts',
   'permissoes-clientes-sem-acesso.spec.ts',
   'permissoes-escopo-sem-modulo.spec.ts',
-  // F4 da 5ª simulação (2026-11-01): o botão só para quem pode e a gerente só na unidade.
-  'permissoes-gerente-de-unidade.spec.ts',
+  // F4 da 5ª simulação (2026-11-01): o botão só para quem pode, e quem tem só uma unidade só mexe nela.
+  'permissoes-config-de-quem-tem-uma-unidade.spec.ts',
   'permissoes-gerente-modelo.spec.ts',
   'permissoes-quem-so-ve.spec.ts',
   'comissoes-procedimento-da-admin.spec.ts',

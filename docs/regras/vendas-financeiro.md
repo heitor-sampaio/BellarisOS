@@ -382,14 +382,18 @@ plano").
   calado. Na ficha, embaixo do cartão "Tratamento em andamento", e ao agendar a
   sessão (a ficha de tratamento → "Gerenciar sessões"): "R$ 300,00 deste
   pacote ainda em aberto (3 parcelas do crediário). As sessões seguem
-  liberadas; o que falta se recebe no Financeiro." (`AvisoDoPacoteEmAberto`,
+  liberadas; o que falta se recebe no PDV." e o "Receber no PDV", que leva à
+  "Nova venda" com a cliente no PDV da unidade do pacote, onde as parcelas
+  dela aparecem (CX1; `rotaDaClienteNoPdv`, `lib/rotas.ts` — dizia "no
+  Financeiro" até 2026-11-16) (`AvisoDoPacoteEmAberto`,
   `[data-pacote-em-aberto]`), só a quem recebe (o dinheiro é do caixa, como o
   saldo do plano — A39 da 7ª). A conta é do banco (`metrics_em_aberto_dos_pacotes`
   → `getEmAbertoDosPacotes`, `lib/metrics/pacote-em-aberto.ts`; migration
   `20261110005604`). Prova: `e2e/vendas-atritos-da-11.spec.ts` ("A41").
 - **"Abater do pacote": o pacote vendido DEPOIS paga o avulso já concluído**
-  (D9 da simulação de 2026-10-28, decisão do Heitor). Na janela do
-  "Confirmar pagamento" de um avulso CONCLUÍDO e a receber, se a cliente tem
+  (D9 da simulação de 2026-10-28, decisão do Heitor). No recebimento de um
+  avulso CONCLUÍDO e a receber — a comanda dele no PDV, desde o PDV7 (a
+  janela "Confirmar pagamento" da tela do atendimento saiu) —, se a cliente tem
   pacote (na validade) com sessão livre do MESMO procedimento, a tela oferece
   "Abater do pacote" (`abaterDoPacote`, `actions/a-receber.ts`, quem recebe —
   `cashier` — e unidade ao alcance; a sessão é conferida como crédito,
@@ -1255,24 +1259,42 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     Cláudia em 11/11/2026 às 01:51; Bateu", `situacaoDoFechamento`). Prova:
     `e2e/financeiro-atritos-da-12.spec.ts` ("A47").
   - Prova: `e2e/fechamento-do-dia.spec.ts`.
-- **O atendimento CONCLUÍDO a receber tem porta e lista** (D5 da simulação
-  de 2026-10-27, decisões do Heitor). A conta é UMA, no banco
+- **O atendimento CONCLUÍDO a receber é uma comanda aberta do PDV** (D5 da
+  simulação de 2026-10-27; desde CX3/PDV7, a revisão do Heitor de
+  2026-11-13: "Os 'Concluídos a receber' viram as comandas abertas do PDV
+  (sai a lista à parte na agenda, no Fechamento e na ficha)" e "Sai a
+  cobrança da conclusão do atendimento como porta própria (vira a comanda)").
+  A conta é UMA, no banco
   (`atendimentos_a_receber`, `getAtendimentosAReceber` em
   `lib/metrics/a-receber.ts`): concluído, com preço, avulso (sem plano, sem
   sessão de pacote, sem unidade pré-paga) e sem recebimento pago — o mesmo
   conjunto que `confirmar_pagamento_do_atendimento` aceita. Ela alimenta:
-  - a janela da agenda (`situacaoDaCobranca`, `actions/a-receber.ts`):
-    "Receber pagamento", que leva à tela do atendimento com `?receber=1` (a
-    janela do pagamento já aberta), pelos dois portais (`lib/rotas`);
+  - a janela da agenda (`situacaoDaCobranca`, `actions/a-receber.ts`, que
+    devolve a comanda do atendimento): "Receber no PDV", que abre a comanda no
+    PDV da unidade dela (`rotaDaComanda`, `lib/rotas.ts`: `/pdv?unidade=…&comanda=…`,
+    pelos dois portais); a quem não recebe, "Pagamento a receber no PDV.". Era
+    o "Receber pagamento", que levava à tela do atendimento com `?receber=1`;
+  - a tela do atendimento concluído não tem mais janela de pagamento (saíram
+    o `PaymentModal`, o "Confirmar pagamento" e o `?receber=1`): a quem recebe,
+    o "Receber no PDV" leva à comanda (`comandaId`, lido em
+    `sessao-de-atendimento.tsx`). Tudo o que a janela fazia o PDV faz — o mesmo
+    `FormularioDeReceberAtendimento`: abater do pacote (D9), desconto e motivo,
+    voucher, pontos, maquininha, vezes, bandeira, saldo do crédito interno e o
+    combinado do contrato;
   - (o Fechamento do dia listava os "Concluídos a receber" até o CX5,
     2026-11-14: hoje o concluído sem pagamento é comanda aberta do PDV, e o
     fechamento só avisa quantas há);
-  - a ficha da cliente ("Atendimentos a receber") e a "Nova venda" do PDV
-    (aba Procedimento, `aReceber`; era o "Vender" da ficha), que avisa quando
-    há um a receber do MESMO procedimento (cobraria duas vezes).
-  O botão "Receber" da ficha é de quem tem `cashier` (`podeReceberAtendimento`
-  na página da ficha); `confirmPayment` aceita também o Financeiro em
-  Gerenciar (`podeReceber`).
+  - a ficha da cliente: não lista mais (saiu o "Atendimentos a receber"):
+    o resumo "N comanda(s) aberta(s) no PDV · R$ X" (`ComandasAbertasDaFicha`,
+    `[data-comandas-abertas]`) e, a quem recebe, o "Receber no PDV" para a
+    comanda mais antiga numa unidade ao alcance (`comandaParaReceber`, em
+    `financeiroDaFicha`); a quem não recebe, "Recebe-se no PDV, com quem tem o
+    PDV ou o Financeiro em Gerenciar.";
+  - a "Nova venda" do PDV (aba Procedimento, `aReceber`; era o "Vender" da
+    ficha), que avisa quando há um a receber do MESMO procedimento (cobraria
+    duas vezes) e leva à comanda dele.
+  Quem recebe é quem tem o PDV ou o Financeiro em Gerenciar (`podeReceber`),
+  na ficha, na agenda, na tela do atendimento e em `confirmPayment`.
   Prova: `e2e/financeiro-a-receber-concluido.spec.ts`.
 - **A aba Financeiro da ficha da cliente** é UMA leitura nos dois portais
   (`financeiroDaFicha`, `lib/clientes/financeiro-da-ficha.ts`): os
@@ -1648,8 +1670,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   obrigatória, com o Boleto; a despesa que já tem forma baixa direto, como
   antes. Prova: `e2e/financeiro-atritos-da-9.spec.ts` ("A14", "A15").
 - **A forma nasce VAZIA em toda tela de cobrança** (A37 da 6ª simulação,
-  2026-11-04; princípio 3): o "Confirmar pagamento" do atendimento (que o
-  `?receber=1` abre sozinho — e só abre, nunca confirma), o "Receber" do plano
+  2026-11-04; princípio 3): o recebimento do atendimento (a comanda dele no
+  PDV, desde o PDV7; era o "Confirmar pagamento" que o `?receber=1` abria), o "Receber" do plano
   no check-in, o checkout do plano (nenhum meio marcado) e o `CamposDoPagamento`
   (o "Vender" de pacote, pré-pago e produto, e o pagamento do contrato); o
   "Pagar" de uma receita no Financeiro também. O que se recebe
@@ -2227,8 +2249,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   é recebido agora (à vista ou entrada + parcelas), ele entra junto, à vista e
   no mesmo meio, por `confirmar_pagamento_do_atendimento` — com o
   `appointment_id`, como qualquer avulso (comissão e métricas iguais). "A
-  receber" e "no atendimento" o deixam para o "Confirmar pagamento" da tela
-  dele. Na simulação, a limpeza de R$ 180 que gerou um plano nunca foi
+  receber" e "no atendimento" o deixam para a comanda dele no PDV (era o
+  "Confirmar pagamento" da tela dele, até o PDV7). Na simulação, a limpeza de R$ 180 que gerou um plano nunca foi
   cobrada: o checkout ("Novo paciente") cobrava só o plano. Prova:
   `e2e/checkout-de-plano.spec.ts`.
   - **A tela diz UMA coisa sobre ele** (A38 da 6ª simulação, 2026-11-04): o
@@ -2346,17 +2368,21 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `metrics_financeiro_do_plano` → `getFinanceiroDoPlano`,
   `lib/metrics/plano.ts`; o recebido é a regra única de receita), cada
   lançamento — entrada e "Parcela 2/3", com "Pago em … · Pix", "A vencer em
-  …" ou "Vencida em … · cobrada no check-in" — e "1 de 3 sessões feitas · 1
+  …" ou "Vencida em … · receba no PDV" (dizia "cobrada no check-in" até
+  2026-11-16) — e "1 de 3 sessões feitas · 1
   agendada". Dizia só "O que estiver em aberto é recebido no check-in", e o
   check-in só cobra o que venceu. Migration `20261029001801`. Prova:
   `e2e/plano-tela-mostra-o-pago.spec.ts`. **O rodapé diz com quem fica a
   parcela que vence depois** (A28 da 9ª simulação; a regra de cargo fica): a
   pessoa sem o Financeiro lia "se recebe no financeiro", tela que ela
-  não abre; para quem não tem o Financeiro em Gerenciar, "…a que vence depois
-  se recebe no Financeiro, com quem tem o Financeiro em Gerenciar: Lúcia,
-  Fernanda." (`rodapeDoPlanoFechado`, `lib/plano-de-tratamento/textos.ts`; os
-  nomes de `quemDesfazNoCaixa`, a lista da A33 da 8ª, pela unidade do plano;
-  `[data-rodape-do-plano]`). Prova: `e2e/plano-atritos-da-9.spec.ts` ("A28"),
+  não abre. Desde o PDV (PDV1/CX1, 2026-11-16), o lugar é o PDV: "Plano
+  fechado. O que falta (as parcelas em aberto) se recebe no PDV." e, a quem
+  recebe, o "Receber no PDV" (a "Nova venda" com a cliente, `rotaDaClienteNoPdv`);
+  a quem não recebe, "…se recebe no PDV, com quem tem o PDV ou o Financeiro em
+  Gerenciar: Lúcia, Fernanda." (`rodapeDoPlanoFechado`,
+  `lib/plano-de-tratamento/textos.ts`; os nomes de `quemRecebeNoPdv`,
+  `lib/equipe/quem-desfaz.ts` — `cashier` ou `financial` em Gerenciar —, pela
+  unidade do plano; `[data-rodape-do-plano]`). Prova: `e2e/plano-atritos-da-9.spec.ts` ("A28"),
   `tests/textos-do-plano-da-9.test.ts`.
 - **Desconto de fidelidade** fica em `loyalty_discount`, FORA de `amount`: o
   lançamento registra o dinheiro que entrou (§9.2.2). Pago todo com pontos, o
@@ -2416,7 +2442,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `transaction_id` que o consumiu. Estornar um pagamento feito com crédito
   devolve o crédito. **A tela de cobrança diz o saldo antes** (A36 da 8ª
   simulação, 2026-11-06; princípio 3): escolhido o crédito interno — no
-  "Vender" (`CamposDoPagamento`), no "Confirmar pagamento" do atendimento e
+  "Vender" (`CamposDoPagamento`), no recebimento do atendimento (a comanda no PDV) e
   no checkout do plano —, "Crédito interno: R$ 270,00 · depois deste
   pagamento: R$ 170,00", ou que não cobre e quanto falta
   (`[data-saldo-do-credito]`, `SaldoDoCredito`; o saldo do banco,
@@ -2589,7 +2615,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     receita de um atendimento avulso, ele volta aos concluídos a receber
     (`atendimentos_a_receber` e a guarda de
     `confirmar_pagamento_do_atendimento` só contam como pago o lançamento
-    VIVO, sem `notes = 'Estornada'`), e o "Confirmar pagamento" vale de novo —
+    VIVO, sem `notes = 'Estornada'`), e a comanda dele volta a ficar aberta no PDV —
     um lançamento NOVO, com cliente, pontos e comissão pelos gatilhos de
     sempre. A unicidade de `financial_transactions.appointment_id` é só do
     lançamento vivo (índice parcial): o estornado fica no histórico ao lado.
@@ -2610,8 +2636,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     volta a receber: a cobrança dele reabre…" (`ConfirmarEstorno
     doAtendimento`); o histórico do agendamento ganha `PAYMENT_REVERSED`,
     "Pagamento estornado — <motivo>" (`reverseTransaction`; dizia
-    "Pagamento recebido" duas vezes e nenhum estorno); recebido de novo, a
-    tela tira o `?receber=1` da URL e não mostra mais o "Fechar agora" (o
+    "Pagamento recebido" duas vezes e nenhum estorno); recebido de novo (na
+    comanda do PDV), a tela do atendimento não mostra mais o "Fechar agora" (o
     checkout do plano aqui mesmo — ao lado do "Pagamento confirmado" ele se lia
     como receber de novo; o "Enviar ao PDV" fica). Na lista
     dos dois financeiros, o contra-lançamento é "Estorno" (não "Despesa") e

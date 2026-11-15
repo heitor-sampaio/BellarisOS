@@ -167,7 +167,7 @@ test('oportunidade: cria no funil e move de etapa — com o evento "via Copilot"
   })
 })
 
-test('as travas: o caixa dá baixa (de verdade) mas não lança; o financeiro sem caixa não dá baixa', async ({ browser }) => {
+test('as travas: quem tem o PDV dá baixa (de verdade) mas não lança; quem tem o Financeiro só com os próprios, sem o PDV, não dá baixa', async ({ browser }) => {
   const { data: tx, error } = await db().from('financial_transactions').insert({
     branch_id: rede.outra.branchId, type: 'INCOME', category: 'Outro', description: `${PREFIXO} A receber copges${marca}`,
     amount: 80, is_paid: false, created_by: 'e2e',
@@ -198,7 +198,7 @@ test('as travas: o caixa dá baixa (de verdade) mas não lança; o financeiro se
   expect((await db().from('financial_transactions').select('is_paid, payment_method').eq('id', tx!.id).single()).data).toEqual({ is_paid: true, payment_method: 'CASH' })
 })
 
-test('o caixa de OUTRA unidade não dá baixa no lançamento desta', async ({ browser }) => {
+test('quem tem o PDV só em OUTRA unidade não dá baixa no lançamento desta', async ({ browser }) => {
   const { data: b, error } = await db().from('branches').insert({ tenant_id: rede.outra.tenantId, name: `${PREFIXO} Unidade B ${marca}`, slug: `e2e-ung-${marca}` }).select('id, slug').single<{ id: string; slug: string }>()
   expect(error).toBeNull()
   const { data: tx } = await db().from('financial_transactions').insert({

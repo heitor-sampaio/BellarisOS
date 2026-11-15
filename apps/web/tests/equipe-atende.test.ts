@@ -10,7 +10,7 @@ describe('atendeQueGrava', () => {
   it('a marca numa unidade desativada (que a tela não mostra) fica', () => {
     expect(atendeQueGrava({ pedido: ['A'], antes: ['A', 'Z'], ativas, unidadeDeQuemEdita: null })).toEqual(['A', 'Z'])
   })
-  it('a gerente de unidade fixa muda só a dela; as outras marcas ficam', () => {
+  it('quem tem só uma unidade muda só a dela; as outras marcas ficam', () => {
     expect(atendeQueGrava({ pedido: ['A', 'C'], antes: ['A', 'B'], ativas, unidadeDeQuemEdita: 'B' })).toEqual(['A'])
     expect(atendeQueGrava({ pedido: ['B'], antes: ['A'], ativas, unidadeDeQuemEdita: 'B' })).toEqual(['A', 'B'])
     expect(atendeQueGrava({ pedido: ['C'], antes: [], ativas, unidadeDeQuemEdita: 'B' })).toEqual([])

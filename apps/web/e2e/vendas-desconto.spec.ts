@@ -4,7 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
-import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix, receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 
 /**
  * Desconto em todas as vendas (decisão do Heitor, 2026-09-30 — migration
@@ -201,7 +201,7 @@ test.describe.serial('desconto nas vendas', () => {
     expect((depois ?? []).map(x => n(x.price)).sort((x, y) => y - x)).toEqual([300, 100])
   })
 
-  test('recepção pela tela: desconto de R$ 50 no avulso — recebe 150 e a comissão sai sobre o vendido', async ({ browser }) => {
+  test('pela tela, no PDV: desconto de R$ 50 no avulso — recebe 150 e a comissão sai sobre o vendido', async ({ browser }) => {
     const cliente = await rede!.criarCliente('Avulso')
     const { data: ap } = await db().from('appointments').insert({
       branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: rede!.procedureId,
@@ -218,14 +218,14 @@ test.describe.serial('desconto nas vendas', () => {
     expect(eFim, 'concluir o atendimento').toBeNull()
 
     await comSessao(browser, async p => {
-      await p.goto(`/admin/agenda/${ap!.id}`)
-      await p.getByRole('button', { name: 'Confirmar pagamento' }).click()
-      await p.getByLabel('Desconto', { exact: true }).fill('50')
-      await expect(p.getByTestId('total-a-receber')).toContainText('150,00')
+      // PDV7/CX3: recebe-se na comanda do atendimento, no PDV.
+      const comanda = await receberAtendimentoNoPdv(p, '/admin', ap!.id)
+      await comanda.getByLabel('Desconto', { exact: true }).fill('50')
+      await expect(botaoDeReceber(comanda)).toHaveText(/Receber R\$\s?150,00/)
       // J-47: o motivo do desconto, opcional, fica gravado com ele.
-      await p.getByLabel('Motivo do desconto (opcional)').fill('Cliente fiel')
-      await p.locator('select[name="payment_method"]').selectOption('PIX')
-      await p.locator('form').getByRole('button', { name: 'Confirmar pagamento' }).click()
+      await comanda.getByLabel('Motivo do desconto (opcional)').fill('Cliente fiel')
+      await escolherFormaPorValor(comanda, 'PIX')
+      await botaoDeReceber(comanda).click()
       await expect.poll(async () => (await db().from('financial_transactions').select('is_paid').eq('appointment_id', ap!.id).maybeSingle()).data?.is_paid,
         { message: 'o pagamento é gravado' }).toBe(true)
     })
@@ -239,7 +239,7 @@ test.describe.serial('desconto nas vendas', () => {
     expect(hist?.[0]?.description).toMatch(/desconto de R\$ 50,00 \(Cliente fiel\)/)
   })
 
-  test('recepção: a função recusa desconto maior que o atendimento', async () => {
+  test('a função recusa desconto maior que o atendimento', async () => {
     const cliente = await rede!.criarCliente('Avulso recusa')
     const { data: ap } = await db().from('appointments').insert({
       branch_id: rede!.branchId, client_id: cliente, professional_id: rede!.professionalId, procedure_id: rede!.procedureId,

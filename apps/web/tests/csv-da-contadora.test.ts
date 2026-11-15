@@ -4,7 +4,7 @@ import { csvDoDre, csvDoFechamento } from '@/lib/financeiro/csv-da-contadora'
 // A31 da 10ª simulação (2026-11-10): o DRE e o Fechamento do dia se exportam,
 // com o que fica fora do resultado (a compra no estoque, com fornecedor e nota,
 // e a perda). Os números chegam prontos; o CSV só escreve.
-describe('A31: o CSV da contadora', () => {
+describe('A31: o CSV para a contabilidade', () => {
   it('o DRE com os custos negativos e o que fica fora do resultado', () => {
     const csv = csvDoDre({
       periodo: 'Novembro de 2026', receita: 5538, despesaOperacional: 15200, insumos: 79.98, taxas: 265.92, comissoes: 735.36, lucro: -10743.26,

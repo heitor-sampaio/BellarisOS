@@ -17,8 +17,9 @@ import { receberPlanoNoPdv } from './apoio/vender'
  *   50 min), mesmo que a tela mande os da sessão vizinha — o servidor lê a sessão.
  * - A18: o "+ Agendar" da ficha oferece a sessão do plano no "Já pago" (como o
  *   pacote), e o cartão "Tratamento em andamento" diz que abre.
- * - A28: o rodapé do plano fechado diz a quem a recepção (sem o Financeiro) pede
- *   a parcela que vence depois.
+ * - A28: o rodapé do plano fechado diz onde se recebe o que falta — no PDV
+ *   (PDV1/CX1: o dinheiro entra pelo PDV) —, com o link a quem recebe, e a quem
+ *   não recebe, com quem fica (quem tem o PDV ou o Financeiro em Gerenciar).
  * - A35: o checkout avisa, antes de emitir, que o contrato vai sem o documento
  *   da cliente (sem recusar — princípio 2).
  * - A36: reabrir o checkout com o contrato assinado traz o pagamento assinado
@@ -165,14 +166,32 @@ test.describe.serial('o plano e o pacote da 9ª', () => {
     })
   })
 
-  test('A28: o rodapé do plano fechado diz à recepção sem o Financeiro com quem fica a parcela que vence depois', async ({ browser }) => {
+  test('A28: o rodapé do plano fechado diz que o que falta se recebe no PDV — com o link a quem recebe, e com quem fica a quem não recebe', async ({ browser }) => {
+    // Quem tem o PDV em Gerenciar (sem o Financeiro): o PDV e o link para a cliente nele.
     await comSessao(browser, recepcao!.estado, async p => {
       await p.goto(`/admin/planejamentos/${plano}`)
-      const resumo = p.locator('[data-resumo-do-plano]')
-      await expect(resumo).toBeVisible()
-      await expect(resumo.locator('[data-rodape-do-plano]')).toContainText(`com quem tem o Financeiro em Gerenciar: ${PREFIXO} Gestão pla9g${marca}`)
-      await expect(resumo.locator('[data-rodape-do-plano]')).not.toContainText('se recebe no financeiro.')
+      const rodape = p.locator('[data-resumo-do-plano] [data-rodape-do-plano]')
+      await expect(rodape).toContainText('se recebe no PDV')
+      await expect(rodape).not.toContainText('Financeiro')
+      await expect(rodape.getByRole('link', { name: 'Receber no PDV' }))
+        .toHaveAttribute('href', `/admin/pdv?unidade=${rede!.branchId}&nova=1&cliente=${cliente!.clientId}`)
     })
+    // Quem só tem a Agenda: com quem fica (quem tem o PDV ou o Financeiro em Gerenciar), sem link.
+    const soAgenda = await criarMembro(`pla9a${marca}`, {
+      tenant: rede!.tenantId, rotulo: 'Só agenda', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],
+    })
+    try {
+      await comSessao(browser, soAgenda.estado, async p => {
+        await p.goto(`/admin/planejamentos/${plano}`)
+        const rodape = p.locator('[data-resumo-do-plano] [data-rodape-do-plano]')
+        await expect(rodape).toContainText('se recebe no PDV, com quem tem o PDV ou o Financeiro em Gerenciar:')
+        await expect(rodape).toContainText(`${PREFIXO} Gestão pla9g${marca}`)
+        await expect(rodape).toContainText(`${PREFIXO} Recepção pla9r${marca}`)
+        await expect(rodape.getByRole('link', { name: 'Receber no PDV' })).toHaveCount(0)
+      })
+    } finally {
+      await soAgenda.limpar()
+    }
   })
 
   // PT3 (a revisão do Heitor de 2026-11-13): a sessão do plano aceito se agenda

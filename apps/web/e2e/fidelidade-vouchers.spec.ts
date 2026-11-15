@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { receberAtendimentoNoPdv, botaoDeReceber } from './apoio/vender'
 
 /**
  * Fidelidade, fase 3 — catálogo de recompensas e vouchers
@@ -107,13 +108,13 @@ test.describe.serial('fidelidade: recompensas e vouchers', () => {
       await p.getByTestId('trocar-pontos').getByRole('button', { name: 'Fechar' }).click()
 
       // 3. No pagamento: o voucher zera o atendimento — sem forma de pagamento.
-      await p.goto(`/admin/agenda/${ap}`)
-      await p.getByRole('button', { name: 'Confirmar pagamento' }).click()
+      // PDV7/CX3: recebe-se na comanda do atendimento, no PDV.
+      const comanda = await receberAtendimentoNoPdv(p, '/admin', ap)
       const idDoVoucher = (await db().from('loyalty_vouchers').select('id').eq('client_id', c).single()).data!.id as string
-      await p.locator('select[name="voucher_id"]').selectOption(idDoVoucher)
-      await expect(p.getByTestId('total-a-receber')).toContainText('0,00')
-      await expect(p.locator('select[name="payment_method"]')).toHaveCount(0)
-      await p.locator('form').getByRole('button', { name: 'Confirmar pagamento' }).click()
+      await comanda.locator('select[name="voucher_id"]').selectOption(idDoVoucher)
+      await expect(botaoDeReceber(comanda)).toHaveText(/Receber R\$\s?0,00/)
+      await expect(comanda.getByRole('radiogroup', { name: /Forma de pagamento/ })).toHaveCount(0)
+      await botaoDeReceber(comanda).click()
       await expect.poll(async () => (await voucher(idDoVoucher))?.status).toBe('USADO')
     })
 

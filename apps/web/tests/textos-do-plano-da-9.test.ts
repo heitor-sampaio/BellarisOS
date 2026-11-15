@@ -6,8 +6,9 @@ import { rodapeDoPlanoFechado, textoDoPlanoDoConcluido, quemMarcaAsSessoes } fro
  * - A27: a drenagem avulsa concluída dizia "A avaliação está concluída: o plano
  *   nasce ligado a ela…" — e não era avaliação. O texto não decide pelo
  *   procedimento: diz "o atendimento".
- * - A28: o rodapé do plano fechado mandava a recepcionista sem o Financeiro
+ * - A28: o rodapé do plano fechado mandava quem não tem o Financeiro
  *   "receber no financeiro", que ela não abre. Diz com quem fica (como a A33 da 8ª).
+ *   Desde o PDV, o lugar é o PDV, e quem fica é quem tem a permissão dele.
  */
 describe('A27: o atendimento concluído que gera um plano', () => {
   it('não chama de avaliação o que não é', () => {
@@ -23,15 +24,21 @@ describe('A28: o rodapé do plano fechado', () => {
     expect(rodapeDoPlanoFechado(0, null)).toBe('Plano fechado e pago.')
     expect(rodapeDoPlanoFechado(0, ['Lúcia'])).toBe('Plano fechado e pago.')
   })
-  it('quem tem o Financeiro em Gerenciar: o de sempre', () => {
+  // PDV1/CX1 (a revisão do Heitor de 2026-11-13): o dinheiro entra pelo PDV —
+  // a parcela do crediário também. O PDV é de quem tem o PDV ou o Financeiro
+  // em Gerenciar (`podeReceber`).
+  it('quem recebe (o PDV ou o Financeiro em Gerenciar): o que falta se recebe no PDV', () => {
     expect(rodapeDoPlanoFechado(414, null))
-      .toBe('Plano fechado. A parcela vencida é cobrada no check-in do atendimento; a que vence depois se recebe no Financeiro.')
+      .toBe('Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV.')
   })
-  it('quem não tem: diz com quem fica a parcela que vence depois', () => {
+  it('quem não recebe: diz com quem fica, pela permissão do PDV', () => {
     expect(rodapeDoPlanoFechado(414, ['Lúcia', 'Fernanda']))
-      .toBe('Plano fechado. A parcela vencida é cobrada no check-in do atendimento; a que vence depois se recebe no Financeiro, com quem tem o Financeiro em Gerenciar: Lúcia, Fernanda.')
+      .toBe('Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV, com quem tem o PDV ou o Financeiro em Gerenciar: Lúcia, Fernanda.')
     expect(rodapeDoPlanoFechado(414, []))
-      .toBe('Plano fechado. A parcela vencida é cobrada no check-in do atendimento; a que vence depois se recebe no Financeiro, com quem tem o Financeiro em Gerenciar.')
+      .toBe('Plano fechado. O que falta (as parcelas em aberto) se recebe no PDV, com quem tem o PDV ou o Financeiro em Gerenciar.')
+  })
+  it('nada de "Financeiro" como o lugar de receber', () => {
+    expect(rodapeDoPlanoFechado(414, null)).not.toMatch(/no Financeiro|check-in/)
   })
 })
 

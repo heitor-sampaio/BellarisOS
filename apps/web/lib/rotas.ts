@@ -39,6 +39,34 @@ export function rotaAtendimento(pathname: string, slug: string | null | undefine
   return rotaNoPortal(pathname, slug, `/agenda/${appointmentId}`)
 }
 
+/**
+ * Uma comanda no PDV (PDV7/CX3, a revisão do Heitor de 2026-11-13: "o
+ * pagamento acontece por dentro desse PDV, seja do que for"): a unidade da
+ * comanda (`?unidade=`, para o PDV da rede) e a comanda já aberta. Sem a
+ * comanda, o PDV da unidade.
+ */
+export function rotaDaComanda(
+  pathname: string, slug: string | null | undefined, unidadeId: string, comandaId?: string | null,
+): string {
+  const q = new URLSearchParams({ unidade: unidadeId })
+  if (comandaId) q.set('comanda', comandaId)
+  return `${rotaNoPortal(pathname, slug, '/pdv')}?${q.toString()}`
+}
+
+/**
+ * A cliente no PDV (CX1): a "Nova venda" com ela escolhida, onde aparecem as
+ * parcelas do crediário e os a receber dela nesta unidade.
+ */
+export function rotaDaClienteNoPdv(
+  pathname: string, slug: string | null | undefined, unidadeId: string | null | undefined, clienteId: string,
+): string {
+  const q = new URLSearchParams()
+  if (unidadeId) q.set('unidade', unidadeId)
+  q.set('nova', '1')
+  q.set('cliente', clienteId)
+  return `${rotaNoPortal(pathname, slug, '/pdv')}?${q.toString()}`
+}
+
 /** Agenda. */
 export function rotaAgenda(pathname: string, slug?: string | null): string {
   return rotaNoPortal(pathname, slug, '/agenda')

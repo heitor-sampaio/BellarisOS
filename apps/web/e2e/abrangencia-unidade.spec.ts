@@ -282,7 +282,7 @@ test.describe.serial('quem tem unidade fixa age só na dela', () => {
   // da A arquiva e reativa também a cliente CADASTRADA na B, como já editava
   // os dados dela. Até aqui a recusa ("Esta cliente é de outra unidade.") era
   // a regra; a prova da tela é `e2e/ficha-de-outra-unidade.spec.ts`.
-  test('clientes: a recepção da A arquiva a cliente da B (a cliente é da rede) e a da A', async ({ browser }) => {
+  test('clientes: quem tem só a unidade A arquiva a cliente da B (a cliente é da rede) e a da A', async ({ browser }) => {
     await como(browser, 'recepcaoA', async p => {
       const r = await acao(p, 'recepcaoA', 'clients', 'toggleClientStatus', [f!.cliente, false, f!.unidadeA.slug])
       expect(devolvido(r.texto), 'a action aceita').toEqual({})

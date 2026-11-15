@@ -136,7 +136,7 @@ test.describe.serial('procedimento pré-pago', () => {
     expect((txs ?? []).map(t => [n(t.amount), t.is_paid, t.parcela_numero])).toEqual([[210, true, null], [300, false, 1], [300, false, 2]])
   })
 
-  test('a unidade no atendimento: conclusão a usa, recepção não cobra, comissão só com a venda paga inteira', async () => {
+  test('a unidade no atendimento: conclusão a usa, o PDV não cobra, comissão só com a venda paga inteira', async () => {
     const ap = await agendar(cliente)
     const { data: u1 } = await db().from('procedure_sale_units').select('id').eq('sale_id', venda).eq('numero', 1).single()
     await db().from('procedure_sale_units').update({ appointment_id: ap }).eq('id', u1!.id)

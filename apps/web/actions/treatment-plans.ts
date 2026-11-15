@@ -32,7 +32,7 @@ import { lerPreviaDoCancelamento, agendamentosCancelados, type PreviaDoCancelame
 import { EntradaDoCancelamento } from '@/lib/pacotes/entrada-do-cancelamento'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment } from '@/lib/appointments/avisos'
-import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
+import { quemDesfazNoCaixa, quemRecebeNoPdv } from '@/lib/equipe/quem-desfaz'
 import { retratoDoCancelamento, type RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
 import { montaPlano, RECUSA_QUEM_MONTA } from '@/lib/plano-de-tratamento/quem-monta'
 import { situacoesDosPlanos, andamentoDosPlanos, type DocumentosDoPlano, type SituacaoDoContrato } from '@/lib/plano-de-tratamento/andamento-do-plano'
@@ -777,10 +777,17 @@ export async function listarPlanejamentos(opcoes?: {
 export async function getResumoDoPlano(planId: string): Promise<{
   resumo?: FinanceiroDoPlano
   /**
-   * A28 da 9ª: quem tem o Financeiro em Gerenciar (a quem a recepção sem o
-   * Financeiro pede a parcela que vence depois). Nulo: quem lê já o tem.
+   * Quem tem o Financeiro em Gerenciar (a quem pedir o cancelamento do plano,
+   * A27 da 10ª). Nulo: quem lê já o tem.
    */
   quemRecebe?: string[] | null
+  /**
+   * A28 da 9ª, desde o PDV (CX1): a quem pedir o que falta receber — quem tem
+   * o PDV ou o Financeiro em Gerenciar (`quemRecebeNoPdv`). Nulo: quem lê recebe.
+   */
+  quemRecebeNoPdv?: string[] | null
+  /** Quem lê recebe: o PDV da unidade do plano com a cliente (as parcelas dela, CX1). */
+  receberNoPdv?: { unidadeId: string; clienteId: string } | null
   /**
    * A27 da 10ª: o "Cancelar plano" também na página do plano — quem tem o
    * Financeiro em Gerenciar (a permissão do pacote) e o plano fechado (ACCEPTED).
@@ -799,10 +806,13 @@ export async function getResumoDoPlano(planId: string): Promise<{
   const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
   const gerencia = can(ctx, 'financial', 'MANAGE')
-  const [resumo, quemRecebe] = await Promise.all([
+  const recebe = podeReceber(ctx)
+  const [resumo, quemRecebe, quemNoPdv] = await Promise.all([
     getFinanceiroDoPlano(ctx.tenantId!, planId),
     gerencia ? Promise.resolve(null) : quemDesfazNoCaixa(ctx.tenantId!, plan.branch_id as string),
+    recebe ? Promise.resolve(null) : quemRecebeNoPdv(ctx.tenantId!, plan.branch_id as string),
   ])
+  const receberNoPdv = recebe && plan.client_id ? { unidadeId: plan.branch_id as string, clienteId: plan.client_id as string } : null
   const cancelavel = plan.status === 'ACCEPTED'
   let faltaReceber: { comandaId: string | null; branchId: string; podeReceber: boolean } | null = null
   if (plan.status === 'ACCEPTED') {
@@ -813,7 +823,7 @@ export async function getResumoDoPlano(planId: string): Promise<{
     ])
     if (!(vivo ?? []).length) faltaReceber = { comandaId: (comanda?.id as string | undefined) ?? null, branchId: plan.branch_id as string, podeReceber: podeReceber(ctx) }
   }
-  return { resumo, quemRecebe, cancelavel, podeCancelar: cancelavel && gerencia, faltaReceber }
+  return { resumo, quemRecebe, quemRecebeNoPdv: quemNoPdv, receberNoPdv, cancelavel, podeCancelar: cancelavel && gerencia, faltaReceber }
 }
 
 export async function getPlanoParaEditar(planId: string): Promise<{

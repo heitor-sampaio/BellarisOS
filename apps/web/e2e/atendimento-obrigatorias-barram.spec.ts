@@ -137,7 +137,7 @@ test('"Finalizar" não conclui com obrigatória em branco: a tela aponta TODAS d
   expect((data?.form_data as { ficha?: { answers?: unknown } } | null)?.ficha?.answers).toMatchObject({ fototipo: 'III' })
 })
 
-test('A31: a recepção (sem o prontuário) não recebe a anamnese para responder de novo', async ({ browser }) => {
+test('A31: quem tem a Agenda sem o Prontuário não recebe a anamnese para responder de novo', async ({ browser }) => {
   const recepcao = await criarMembro(`obr${marca}`, {
     tenant: rede!.tenantId, branchId: rede!.branchId, rotulo: 'Recepcao',
     permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }],
@@ -213,7 +213,7 @@ test('a anamnese que a cliente respondeu pelo app vale: só a ficha do procedime
   expect(data?.general_anamnesis, 'a ficha da cliente continua dela').toMatchObject({ origem: 'CLIENTE_APP' })
 })
 
-test('"Enviar para a recepção" também barra no servidor: sem a ficha obrigatória, nenhum plano nasce', async ({ browser }) => {
+test('"Gerar plano" também barra no servidor: sem a ficha obrigatória, nenhum plano nasce', async ({ browser }) => {
   const { id, cliente } = await atendimentoEmCurso('Plano')
   const respostas = await responderAnamnese(cliente, rede!.tenantId)
   await como(browser, async p => {

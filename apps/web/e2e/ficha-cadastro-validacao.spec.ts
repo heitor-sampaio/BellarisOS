@@ -101,7 +101,7 @@ test('D13: o telefone incompleto é recusado', async ({ browser }) => {
   expect(await fichasDe(nome('fone curto'))).toEqual([])
 })
 
-test('D13 (r2-cli-01): o telefone de outra cliente pergunta "Já existe a ficha de X", e a recepção cadastra mesmo assim (mãe e filha)', async ({ browser }) => {
+test('D13 (r2-cli-01): o telefone de outra cliente pergunta "Já existe a ficha de X", e quem tem Clientes em Gerenciar cadastra mesmo assim (mãe e filha)', async ({ browser }) => {
   const fone = telefone('0002')
   const { data: mae, error } = await db().from('clients').insert({
     tenant_id: rede!.tenantId, branch_id: rede!.branchId, name: nome('mãe'), phone: fone, document: '52998224725', is_active: true,

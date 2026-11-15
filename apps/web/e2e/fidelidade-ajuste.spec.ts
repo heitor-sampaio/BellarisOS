@@ -94,7 +94,7 @@ test.describe.serial('fidelidade pela tela', () => {
     expect(await saldo(cliente)).toBe(50)
   })
 
-  test('a recepção só vê: sem botão, e a action recusa (o gestor é o controle)', async ({ browser }) => {
+  test('quem tem a Fidelidade só em Ver não vê o botão, e a action recusa (quem a tem em Gerenciar é o controle)', async ({ browser }) => {
     const rota = `/admin/clients/${cliente}`
     await como(browser, recepcao!, async p => {
       await p.goto(rota)

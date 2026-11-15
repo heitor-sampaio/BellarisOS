@@ -58,7 +58,7 @@ async function ficha() {
   return data as { name: string; phone: string | null; notes: string | null; branch_id: string }
 }
 
-test('a recepção fixa em B edita os dados e as anotações da cliente cadastrada em A', async ({ browser }) => {
+test('quem tem só a unidade B, com Clientes em Gerenciar, edita os dados e as anotações da cliente cadastrada em A', async ({ browser }) => {
   const novoNome = `${PREFIXO} Marlene Souza ${marca}`
   await como(browser, recepcaoDeB!.estado, async p => {
     await p.goto(`/${slugB}/clients/${clienteDeA}?aba=dados`)
@@ -84,7 +84,7 @@ test('a recepção fixa em B edita os dados e as anotações da cliente cadastra
   expect(depois.branch_id).toBe(rede!.branchId)
 })
 
-test('a recepção fixa em B arquiva e reativa a cliente cadastrada em A', async ({ browser }) => {
+test('quem tem só a unidade B, com Clientes em Gerenciar, arquiva e reativa a cliente cadastrada em A', async ({ browser }) => {
   await como(browser, recepcaoDeB!.estado, async p => {
     await p.goto(`/${slugB}/clients/${clienteDeA}`)
     await p.getByRole('button', { name: 'Mais ações' }).click()

@@ -369,7 +369,7 @@ test.describe.serial('checkout de plano', () => {
     })
   })
 
-  test('o caixa sem o módulo de Termos colhe a assinatura do checkout (2026-10-20)', async ({ browser }) => {
+  test('quem tem o PDV sem o módulo Documentos colhe a assinatura do checkout (2026-10-20)', async ({ browser }) => {
     // Na simulação de um dia de clínica, o caixa (Recebimentos, sem Termos)
     // travou em "Colher assinatura" com um "Forbidden" cru. Decisão do Heitor:
     // quem recebe colhe a assinatura DAQUELE checkout; o resto dos documentos

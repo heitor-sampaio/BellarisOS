@@ -7,10 +7,9 @@ import { SessaoDeAtendimento } from '@/app/_shared/sessao-de-atendimento'
 import { ler } from '@/lib/db'
 
 export default async function AppointmentSessionPage({
-  params, searchParams,
+  params,
 }: {
   params: Promise<{ slug: string; id: string }>
-  searchParams: Promise<{ receber?: string }>
 }) {
   const { slug, id } = await params
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
@@ -43,6 +42,5 @@ export default async function AppointmentSessionPage({
     if (ctx.internalUserId && alcancaOAgendamento(ctx, ag.branch_id, ag.professional_id)) unidadeDoAtendimento = ag.branch_id
   }
 
-  const { receber } = await searchParams
-  return <SessaoDeAtendimento branchId={unidadeDoAtendimento} slug={slug} id={id} abrirRecebimento={receber === '1'} />
+  return <SessaoDeAtendimento branchId={unidadeDoAtendimento} slug={slug} id={id} />
 }

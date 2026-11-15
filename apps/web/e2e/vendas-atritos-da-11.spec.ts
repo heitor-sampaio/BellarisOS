@@ -73,11 +73,18 @@ test('A41: a ficha e o agendar da sessão dizem os R$ 300,00 em aberto do pacote
     const aviso = p.locator('[data-pacote-em-aberto]').first()
     await expect(aviso).toContainText(/R\$\s300,00/)
     await expect(aviso).toContainText('seguem liberadas')
+    // PDV1/CX1: o que falta se recebe no PDV (dizia "no Financeiro"), e o aviso
+    // leva a cliente ao PDV da unidade do pacote, onde as parcelas dela aparecem.
+    const noPdv = `/${slug}/pdv?unidade=${rede.branchId}&nova=1&cliente=${cliente}`
+    await expect(aviso).toContainText('o que falta se recebe no PDV')
+    await expect(aviso).not.toContainText('Financeiro')
+    await expect(aviso.getByRole('link', { name: 'Receber no PDV' })).toHaveAttribute('href', noPdv)
     // Ao agendar a sessão: a ficha de tratamento → "Gerenciar sessões".
     await p.locator('[data-tratamento-que-abre]').click()
     await p.getByRole('button', { name: /Gerenciar sessões/ }).click()
     const doAgendar = p.locator('[data-pacote-em-aberto]').first()
     await expect(doAgendar).toContainText(/R\$\s300,00/)
+    await expect(doAgendar.getByRole('link', { name: 'Receber no PDV' })).toHaveAttribute('href', noPdv)
     // Liberadas: a sessão 1 se agenda (o botão existe).
     await expect(p.getByRole('button', { name: /Agendar/ }).first()).toBeVisible()
   })

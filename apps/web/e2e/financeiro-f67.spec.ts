@@ -120,7 +120,7 @@ test('C36: quem só recebe não cancela a unidade pré-paga', async ({ browser }
   expect(r.texto).toContain('Seu cargo não libera esta ação.')
 })
 
-test('C33: o check-in do plano é de Recebimentos — o Financeiro em Gerenciar sem o caixa não recebe', async ({ browser }) => {
+test('C33: o check-in do plano é do PDV — quem tem o Financeiro em Gerenciar sem o PDV não recebe', async ({ browser }) => {
   const { cliente, plano, appt } = await planoPago('Checkin')
   await ins('financial_transactions', {
     branch_id: rede!.branchId, client_id: cliente, treatment_plan_id: plano, type: 'INCOME', category: 'Serviços',

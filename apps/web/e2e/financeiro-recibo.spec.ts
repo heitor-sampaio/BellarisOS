@@ -85,7 +85,7 @@ test.afterAll(async () => {
   await rede?.limpar(); await outra?.limpar()
 })
 
-test('a recepção tira o recibo do pagamento pela lista do Financeiro: um PDF com quem pagou, quanto, o quê e como', async ({ browser }) => {
+test('quem tem o PDV em Gerenciar tira o recibo do pagamento pela lista do Financeiro: um PDF com quem pagou, quanto, o quê e como', async ({ browser }) => {
   await como(browser, caixa.estado, async p => {
     await p.goto(`/${slug}/financeiro?aba=movimentacoes`)
     const link = p.locator(`[data-lancamento="${pago}"]`).getByRole('link', { name: 'Recibo' })

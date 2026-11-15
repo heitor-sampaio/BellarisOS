@@ -1,6 +1,6 @@
 import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
 import type { TenantContext } from '@estetica-os/types'
-import { can, isOwnScope, podeReceber } from '@/lib/auth'
+import { can, isOwnScope, podeReceber, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
@@ -31,6 +31,11 @@ export interface FinanceiroDaFicha {
   internalCredits: ProfileInternalCredit[]
   totais:          { pago: number; aReceber: number; credito: number | null }
   aReceber:        ListaAReceber
+  /**
+   * CX3: a comanda do PDV a que o "Receber no PDV" da ficha leva — a do
+   * atendimento a receber mais antigo numa unidade ao alcance de quem lê.
+   */
+  comandaParaReceber: { comandaId: string | null; unidadeId: string; slug: string } | null
 }
 
 const VAZIO: ListaAReceber = { itens: [], total: { n: 0, valor: 0 } }
@@ -48,7 +53,7 @@ type Linha = {
 export async function financeiroDaFicha(ctx: TenantContext, clientId: string): Promise<FinanceiroDaFicha> {
   const veFinanceiro = can(ctx, 'financial', 'VIEW') || podeReceber(ctx)
   if (!veFinanceiro) {
-    return { veFinanceiro, soOsProprios: false, transactions: [], internalCredits: [], totais: { pago: 0, aReceber: 0, credito: null }, aReceber: VAZIO }
+    return { veFinanceiro, soOsProprios: false, transactions: [], internalCredits: [], totais: { pago: 0, aReceber: 0, credito: null }, aReceber: VAZIO, comandaParaReceber: null }
   }
   const soOsProprios = isOwnScope(ctx, 'financial') && ctx.permissions.cashier !== 'MANAGE'
   const meu = soOsProprios ? (ctx.internalUserId ?? '00000000-0000-0000-0000-000000000000') : null
@@ -110,8 +115,10 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     doAtendimento:  !!l.appointment_id,
   })))
 
+  const primeira = aReceber.itens.find(a => alcancaUnidade(ctx, a.branchId)) ?? null
   return {
     veFinanceiro, soOsProprios, transactions, aReceber,
+    comandaParaReceber: primeira ? { comandaId: primeira.comandaId, unidadeId: primeira.branchId, slug: primeira.branchSlug } : null,
     internalCredits: ((creditos ?? []) as { id: string; amount: number | string; description: string; created_at: string; concedido: boolean | null; transaction_id: string | null; credito_vendido_id: string | null }[])
       // A41 da 9ª: de onde veio cada crédito (o concedido nunca teve dinheiro).
       // A29 da 10ª: o comprado (o "vale" do Vender), que entra no Investido total na compra.

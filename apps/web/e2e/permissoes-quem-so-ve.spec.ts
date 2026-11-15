@@ -124,7 +124,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('D4: o SDR com Clientes em Ver não vê "Cadastrar cliente" no inbox, e a action recusa com { error }', async ({ browser }) => {
+test('D4: quem tem o CRM e Clientes em Ver não vê "Cadastrar cliente" no inbox, e a action recusa com { error }', async ({ browser }) => {
   await como(browser, sdr!, async p => {
     await p.goto('/admin/inbox')
     await p.locator('button.inbox-conversa').filter({ hasText: `Lead do inbox ${marca}` }).click()
@@ -176,7 +176,7 @@ test('D5, D6, A23: na ficha, quem só vê não edita os Dados, não agenda, não
   })
 })
 
-test('D7: a contadora (Financeiro em Ver) não vê "Novo lançamento", e a recusa fala português', async ({ browser }) => {
+test('D7: quem tem o Financeiro em Ver não vê "Novo lançamento", e a recusa fala português', async ({ browser }) => {
   await como(browser, contadora!, async p => {
     await p.goto('/admin/financeiro')
     await expect(p.getByRole('heading', { name: /Financeiro/ }).first()).toBeVisible()

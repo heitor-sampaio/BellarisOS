@@ -5,7 +5,7 @@ import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
-import { documentosDoAgendamento, pagamentoCombinadoDoAtendimento } from '@/lib/documentos/leitura'
+import { documentosDoAgendamento } from '@/lib/documentos/leitura'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -31,7 +31,6 @@ import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { anotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { deOutroProfissional } from '@/lib/appointments/alteracoes'
-import { creditosDoCliente } from '@/lib/creditos/credito'
 import { nomeDaSessao } from '@/lib/plano-de-tratamento/nome'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { avisoDoBloqueioNoAtendimento } from '@/lib/agenda/bloqueio'
@@ -52,13 +51,11 @@ import { podeEstornar } from '@/lib/financeiro/so-os-meus'
  * chama resolve a unidade, mas a consulta não abre mão do recorte.
  */
 export async function SessaoDeAtendimento({
-  branchId, slug, id, abrirRecebimento = false,
+  branchId, slug, id,
 }: {
   branchId: string
   slug:     string
   id:       string
-  /** `?receber=1`: abre a janela do pagamento (D5, 2026-10-27). */
-  abrirRecebimento?: boolean
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
@@ -564,16 +561,13 @@ export async function SessaoDeAtendimento({
     ? { paymentMethod: estornado.payment_method, amount: Number(estornado.amount), cartaoVezes: estornado.cartao_vezes, cartaoBandeira: estornado.cartao_bandeira, maquininha: maquininhaDoRotulo(maquininhas, estornado.maquininha_id), motivo: estornado.estorno_motivo }
     : null
 
-  // "Abater do pacote" (D9, 2026-10-28): o avulso concluído e a receber, com
-  // pacote da cliente que tem sessão livre do MESMO procedimento. Só para quem
-  // recebe — é a mesma janela do "Confirmar pagamento".
-  const avulsoAReceber = canPayment && apptRaw.status === 'COMPLETED' && !pago && !isPartOfPlan
-    && !sessaoDePacote && !unidadePrePaga && Number(apptRaw.price) > 0 && !!procedureId
-  const pacotesParaAbater = avulsoAReceber
-    ? (await creditosDoCliente(admin, ctx.tenantId!, cli.id))
-        .filter(c => c.tipo === 'PACOTE' && c.procedureId === procedureId)
-        .map(c => ({ sessaoId: c.id, pacote: c.origem, restantes: c.restantes, preco: c.preco }))
-    : []
+  // O recebimento é na COMANDA do atendimento no PDV (PDV7/CX3, a revisão do
+  // Heitor de 2026-11-13): o "Abater do pacote", o desconto, o voucher, os
+  // pontos e as formas moram no "Receber" de lá. Aqui, só o caminho até ela.
+  const comandaId = podeReceber(ctx) && apptRaw.status === 'COMPLETED' && !pago
+    ? ((await ler(admin.from('comandas').select('id').eq('appointment_id', appointment.id).eq('tenant_id', ctx.tenantId!)
+        .is('cancelada_em', null).maybeSingle(), 'buscar a comanda do atendimento')) as { id: string } | null)?.id ?? null
+    : null
 
   // A ficha do procedimento (construtor) + as respostas já salvas.
   // Eram DUAS consultas, para dois modelos que eram a mesma coisa com nomes
@@ -651,7 +645,7 @@ export async function SessaoDeAtendimento({
         isProfessional={ctx.providesServices}
         paymentTransaction={paymentTransaction}
         pagamentoEstornado={pagamentoEstornado}
-        pacotesParaAbater={pacotesParaAbater}
+        comandaId={comandaId}
         treatmentProcedures={treatmentProcedures}
         treatmentPackages={treatmentPackages}
         existingPlan={existingPlan}
@@ -669,8 +663,6 @@ export async function SessaoDeAtendimento({
         quemEstorna={podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? await quemDesfazNoCaixa(ctx.tenantId!, branchId) : null}
         // A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos — a régua da ficha) estorna daqui, pela mesma janela.
         podeEstornar={podeEstornar(ctx)}
-        pagamentoCombinado={canPayment ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, appointment.id) : null}
-        abrirRecebimento={abrirRecebimento}
         planoEmAberto={planoEmAberto}
         documentos={can(ctx, 'documents', 'VIEW')
           // Os documentos seguem o prontuário "só os meus" (2026-10-29): de

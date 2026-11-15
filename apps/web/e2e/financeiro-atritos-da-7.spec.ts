@@ -3,7 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { apagarDocumentosEmitidos } from './apoio/limpeza'
-import { abrirVendaNoPdv, euVendi, pagoNoPix, receberPlanoNoPdv } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix, receberPlanoNoPdv, receberAtendimentoNoPdv } from './apoio/vender'
 
 /**
  * Os atritos do caixa da 7ª simulação (2026-11-05), da F32:
@@ -194,7 +194,7 @@ test('A47: vendido o pacote, a venda oferece agendar a 1ª sessão agora', async
   })
 })
 
-test('A49: com desconto e sem motivo, a janela do pagamento lembra que o motivo existe (segue opcional)', async ({ browser }) => {
+test('A49: com desconto e sem motivo, o recebimento no PDV lembra que o motivo existe (segue opcional)', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Desconto')
   const agora = new Date().toISOString()
   const ag = await db().from('appointments').insert({
@@ -203,8 +203,8 @@ test('A49: com desconto e sem motivo, a janela do pagamento lembra que o motivo 
   }).select('id').single<{ id: string }>()
   expect(ag.error).toBeNull()
   await como(browser, caixa!, async p => {
-    await p.goto(`/${slug}/agenda/${ag.data!.id}?receber=1`)
-    const janela = p.getByRole('dialog')
+    // PDV7/CX3: recebe-se na comanda do atendimento, no PDV.
+    const janela = await receberAtendimentoNoPdv(p, `/${slug}`, ag.data!.id)
     await janela.getByLabel('Desconto', { exact: true }).fill('100')
     const lembrete = janela.locator('[data-lembrete-do-motivo]')
     await expect(lembrete).toContainText('Sem motivo')

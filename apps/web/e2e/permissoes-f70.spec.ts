@@ -68,7 +68,7 @@ test('C58: a claim NETWORK_ADMIN no token não vale mais que o cargo do banco', 
   expect(proc!.is_active, 'o procedimento continua ativo: o cargo só vê').toBe(true)
 })
 
-test('C61: o /setup da gerente de unidade fixa leva à unidade dela, com o aviso', async ({ browser }) => {
+test('C61: o /setup de quem tem só uma unidade, com Configurações em Gerenciar, leva à unidade dela, com o aviso', async ({ browser }) => {
   await como(browser, gerente!.estado, async p => {
     const r = await p.request.get('/setup', { maxRedirects: 0 })
     expect([303, 307, 308], 'redireciona').toContain(r.status())
@@ -278,7 +278,7 @@ test('A1 da 13ª: Cargos → Novo diz que o cargo novo começa sem acesso, sem a
   }
 })
 
-test('A2 da 13ª: Configurações → Geral, para a gerente de unidade fixa, é texto — sem campo que parece editável', async ({ browser }) => {
+test('A2 da 13ª: Configurações → Geral, para quem tem só uma unidade, é texto — sem campo que parece editável', async ({ browser }) => {
   await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede!.tenantId)
   // A gerente (unidade fixa, Configurações em Gerenciar) lê os dados da clínica: não os edita (H7).
   await como(browser, gerente!.estado, async p => {

@@ -47,7 +47,7 @@ test.afterAll(async () => {
   await recepcao?.limpar(); await profissional?.limpar(); await rede?.limpar()
 })
 
-test('A18: a recepção vê na aba Planejamento quem monta o plano', async ({ browser }) => {
+test('A18: quem tem a Agenda sem o Prontuário vê na aba Planejamento quem monta o plano', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/clients/${cliente}?aba=planejamento`)
     await expect(p.getByText('Nenhum plano ainda')).toBeVisible()

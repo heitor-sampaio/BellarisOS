@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 
 /**
  * Os atritos do dinheiro da 9ª simulação (2026-11-07), da F44:
@@ -103,7 +104,7 @@ test('A30: o "A receber da operadora" e o fluxo de caixa dizem o LÍQUIDO, com o
   }
 })
 
-test('acessibilidade: no recebimento do atendimento, o seletor de vezes se acha pelo rótulo e grava 6x', async ({ browser }) => {
+test('acessibilidade: no recebimento do atendimento (no PDV), o seletor de vezes se acha pelo rótulo e grava 6x', async ({ browser }) => {
   const b = db()
   // A clínica parcela até 12x (sem depender das taxas cadastradas acima).
   expect((await b.from('tenants').update({ cartao_max_vezes: 12 }).eq('id', rede!.tenantId)).error).toBeNull()
@@ -115,15 +116,16 @@ test('acessibilidade: no recebimento do atendimento, o seletor de vezes se acha 
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/agenda/${ap!.id}?receber=1`)
-    const dlg = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-    await dlg.getByRole('combobox', { name: 'Forma de pagamento' }).selectOption('CREDIT_CARD')
+    // PDV7/CX3: recebe-se na comanda do atendimento, no PDV.
+    const dlg = await receberAtendimentoNoPdv(p, `/${slug}`, ap!.id)
+    await escolherFormaPorValor(dlg, 'CREDIT_CARD')
     // A opção diz "6x", como em toda tela de cobrança (era "6x no cartão" só aqui).
     await dlg.getByRole('combobox', { name: 'Vezes no cartão' }).selectOption({ label: '6x' })
-    await dlg.getByRole('button', { name: 'Confirmar pagamento' }).click()
-    await expect(dlg).toBeHidden({ timeout: 15_000 })
+    await botaoDeReceber(dlg).click()
+    // Ainda com a página aberta: a action termina antes de a sessão fechar.
+    await expect.poll(async () => (await b.from('financial_transactions').select('cartao_vezes').eq('appointment_id', ap!.id).maybeSingle()).data?.cartao_vezes,
+      { timeout: 20_000 }).toBe(6)
   })
-  await expect.poll(async () => (await b.from('financial_transactions').select('cartao_vezes').eq('appointment_id', ap!.id).maybeSingle()).data?.cartao_vezes).toBe(6)
 })
 
 test('A34: o débito com a bandeira "Não informada" diz a taxa que vai valer', async ({ browser }) => {
@@ -137,9 +139,8 @@ test('A34: o débito com a bandeira "Não informada" diz a taxa que vai valer', 
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
   await como(browser, dona!, async p => {
-    await p.goto(`/${slug}/agenda/${ap!.id}?receber=1`)
-    const dlg = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-    await dlg.getByRole('combobox', { name: 'Forma de pagamento' }).selectOption('DEBIT_CARD')
+    const dlg = await receberAtendimentoNoPdv(p, `/${slug}`, ap!.id)
+    await escolherFormaPorValor(dlg, 'DEBIT_CARD')
     const aviso = dlg.locator('[data-taxa-do-debito]')
     await expect(aviso).toContainText('Taxa da maquininha no débito: 1,6%')
     await expect(aviso).toContainText(/a rede recebe R\$\s186,96/)

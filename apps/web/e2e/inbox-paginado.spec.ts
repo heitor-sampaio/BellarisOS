@@ -120,7 +120,7 @@ test.describe.serial('inbox paginado', () => {
     })
   })
 
-  test('pela conversa: o SDR vê as conversas dos seus leads mesmo com mais de 1000', async ({ browser }) => {
+  test('pela conversa: quem tem o CRM com "só os meus" vê as conversas dos seus leads mesmo com mais de 1000', async ({ browser }) => {
     const b = db()
     const t = f!.outra.tenantId
     expect((await b.from('tenants').update({ inbox_visibilidade: 'conversa' }).eq('id', t)).error).toBeNull()

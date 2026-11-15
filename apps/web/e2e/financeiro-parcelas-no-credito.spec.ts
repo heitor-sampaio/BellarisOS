@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { receberAtendimentoNoPdv, escolherFormaPorValor } from './apoio/vender'
 import { chamarAcao } from './apoio/acao-direta'
 import { primeiraMaquininha } from './apoio/maquininha'
 
@@ -63,9 +64,9 @@ test.afterAll(async () => {
 })
 
 async function vezesOferecidas(p: Page): Promise<string[]> {
-  await p.goto(`/${slug}/agenda/${aReceber}?receber=1`)
-  const janela = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-  await janela.getByLabel('Forma de pagamento').selectOption('CREDIT_CARD')
+  // PDV7/CX3: recebe-se na comanda do atendimento, no PDV.
+  const janela = await receberAtendimentoNoPdv(p, `/${slug}`, aReceber)
+  await escolherFormaPorValor(janela, 'CREDIT_CARD')
   const vezes = janela.getByLabel('Vezes no cartão')
   await expect(vezes.locator('option').nth(1)).toBeAttached()
   return vezes.locator('option').evaluateAll(os => os.map(o => (o as HTMLOptionElement).value))

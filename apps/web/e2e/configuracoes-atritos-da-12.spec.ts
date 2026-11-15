@@ -185,7 +185,7 @@ test('A9: com custo R$ 0,00, a calculadora não mostra "Margem de lucro 100%"', 
   })
 })
 
-test('A11: a gerente de unidade fixa lê por que a aba e a Equipe não abrem, e o /admin diz por que a levou à unidade', async ({ browser }) => {
+test('A11: quem tem só uma unidade, com Configurações em Gerenciar, lê por que a aba e a Equipe não abrem, e o /admin diz por que a levou à unidade', async ({ browser }) => {
   const { data: b } = await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()
   const slug = b!.slug
   const gerente = await criarMembro(`cfg12g${marca}`, {

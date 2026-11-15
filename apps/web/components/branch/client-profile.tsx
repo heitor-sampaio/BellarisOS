@@ -42,7 +42,7 @@ import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
 import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
 import { AcessosAoProntuario, type AcessoNaFicha } from '@/components/branch/acessos-ao-prontuario'
-import { AtendimentosAReceber } from '@/components/shared/atendimentos-a-receber'
+import { ComandasAbertasDaFicha } from '@/components/shared/comandas-abertas-da-ficha'
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
@@ -135,8 +135,8 @@ export interface ProfilePackage {
   usadasAntes?:  number
   /** Do pacote trazido: sem valor de referência (a comissão de execução é R$ 0 — princípio 4). */
   semValorDeReferencia?: boolean
-  /** A41 da 11ª: o que ainda está em aberto deste pacote (o crediário) — só a quem recebe. */
-  emAberto?:     { valor: number; parcelas: number } | null
+  /** A41 da 11ª: o que ainda está em aberto deste pacote (o crediário) — só a quem recebe; `unidadeId`, a do pacote (o PDV dele). */
+  emAberto?:     { valor: number; parcelas: number; unidadeId?: string | null } | null
 }
 
 export interface ProfileTransaction {
@@ -359,9 +359,11 @@ interface Props {
   anotacoesEVersoes?:    AnotacoesEVersoes
   /** PR2a: acrescentar anotação (o Prontuário em Gerenciar; a action confere o alcance). */
   podeAnotar?:           boolean
-  /** Os atendimentos concluídos e não pagos desta cliente (D5, 2026-10-27). */
+  /** Os atendimentos concluídos e não pagos desta cliente (D5, 2026-10-27): as comandas abertas dela no PDV (CX3). */
   aReceber?:             ListaAReceber
-  /** Receber o atendimento (o módulo de recebimentos, como `confirmPayment`). */
+  /** CX3: a comanda a que o "Receber no PDV" leva (numa unidade ao alcance). */
+  comandaParaReceber?:   { comandaId: string | null; unidadeId: string; slug: string } | null
+  /** Quem recebe (`podeReceber`: o PDV ou o Financeiro em Gerenciar), a régua do PDV. */
   podeReceberAtendimento?: boolean
 }
 
@@ -1495,7 +1497,7 @@ export function ClientProfile({
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemUnidade = false, perguntaAUnidade = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
-  aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
+  aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
   const router   = useRouter()
@@ -1849,8 +1851,9 @@ export function ClientProfile({
         ))}
       </div>
 
-      {/* O atendido e ainda não pago, com a porta para receber (D5). */}
-      <AtendimentosAReceber lista={aReceber} titulo="Atendimentos a receber" mostrarCliente={false} podeReceber={podeReceberAtendimento} />
+      {/* O atendido e ainda não pago é comanda aberta do PDV (CX3): sem lista
+          à parte — o resumo e o caminho para a comanda. */}
+      <ComandasAbertasDaFicha total={aReceber.total} receber={comandaParaReceber} podeReceber={podeReceberAtendimento} />
 
       {/* A alergia em destaque (só chega aqui com o prontuário à vista). */}
       <AlertaDeAlergia alergias={alergiasDaAnamnese(generalAnamnesis)} />
@@ -1954,7 +1957,7 @@ export function ClientProfile({
               </p>
             </div>
             {/* A41 da 11ª: o pacote segue liberando; a ficha diz o que falta pagar dele. */}
-            {activePackage.emAberto && <AvisoDoPacoteEmAberto valor={activePackage.emAberto.valor} parcelas={activePackage.emAberto.parcelas} />}
+            {activePackage.emAberto && <AvisoDoPacoteEmAberto valor={activePackage.emAberto.valor} parcelas={activePackage.emAberto.parcelas} clienteId={client.id} unidadeId={activePackage.emAberto.unidadeId} slug={slug} />}
             {activePackage.deFora && activePackage.semValorDeReferencia && (
               <p data-pacote-sem-valor style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 600, lineHeight: 1.45 }}>
                 Sem valor de referência: as sessões deste pacote não geram comissão de execução (R$ 0) nem entram na receita dos atendimentos.

@@ -10,7 +10,8 @@ import { lerTodas } from '@/lib/db'
  * avaliação) não entra: não tem o que receber (D9). É o mesmo conjunto que
  * `confirmar_pagamento_do_atendimento` aceita.
  *
- * Quem usa: a janela da agenda, o Fechamento do dia e a ficha da cliente.
+ * Quem usa: a janela da agenda, a ficha da cliente (o resumo das comandas
+ * abertas dela, CX3) e a "Nova venda" do PDV.
  */
 export interface AtendimentoAReceber {
   appointmentId:    string
@@ -24,6 +25,13 @@ export interface AtendimentoAReceber {
   price:            number
   scheduledAt:      string
   completedAt:      string | null
+  /**
+   * A comanda aberta do atendimento no PDV (CX3, a revisão do Heitor de
+   * 2026-11-13: "Os 'Concluídos a receber' viram as comandas abertas do
+   * PDV"). É para onde todo "Receber" leva (`rotaDaComanda`). Nula só no
+   * atendimento de antes do PDV.
+   */
+  comandaId:        string | null
 }
 
 export interface ListaAReceber {
@@ -57,6 +65,7 @@ export async function getAtendimentosAReceber(args: {
     })
     .order('completed_at').order('appointment_id')
     .range(de, ate), 'listar os atendimentos a receber')
+  const comandas = await comandasDosAtendimentos(linhas.map(l => l.appointment_id))
   return {
     itens: linhas.map(l => ({
       appointmentId:    l.appointment_id,
@@ -70,9 +79,27 @@ export async function getAtendimentosAReceber(args: {
       price:            Number(l.price),
       scheduledAt:      l.scheduled_at,
       completedAt:      l.completed_at,
+      comandaId:        comandas.get(l.appointment_id) ?? null,
     })),
     total: { n: Number(linhas[0]?.total_n ?? 0), valor: Number(linhas[0]?.total_valor ?? 0) },
   }
+}
+
+/**
+ * A comanda aberta (não cancelada) de cada atendimento. A lista de ids vai no
+ * `.in()`, que viaja na URL: no máximo 150 de cada vez.
+ */
+async function comandasDosAtendimentos(ids: string[]): Promise<Map<string, string>> {
+  const saida = new Map<string, string>()
+  const admin = createAdminClient()
+  for (let i = 0; i < ids.length; i += 150) {
+    const lote = ids.slice(i, i + 150)
+    const { data, error } = await admin.from('comandas').select('id, appointment_id')
+      .in('appointment_id', lote).is('cancelada_em', null)
+    if (error) throw new Error(`[metrics] ler as comandas dos atendimentos a receber: ${error.message}`)
+    for (const c of (data ?? []) as { id: string; appointment_id: string }[]) saida.set(c.appointment_id, c.id)
+  }
+  return saida
 }
 
 /**

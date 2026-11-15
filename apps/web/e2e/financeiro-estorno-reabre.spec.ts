@@ -3,12 +3,13 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamneseDoAgendamento } from './apoio/anamnese'
+import { receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 
 /**
  * O estorno REABRE a cobrança (D6 da simulação de 2026-10-28).
  *
  * A simulação achou: estornado o Pix de R$ 199,50 da Mariana, o atendimento
- * continuava "Pagamento confirmado", não voltava aos "Concluídos a receber",
+ * continuava "Pagamento confirmado", não voltava aos "Concluídos a receber" (hoje, a comanda aberta no PDV),
  * e o único jeito de relançar era o "Novo lançamento" manual — sem cliente,
  * pontos nem comissão. O portal da cliente listava o estornado como "Pago" ao
  * lado de "Total investido R$ 0,00"; a ficha mostrava o estorno POSITIVO e o
@@ -120,7 +121,8 @@ test.describe('o estorno reabre a cobrança', () => {
       await p.goto(`/${slug}/agenda/${ap}`)
       await expect(p.getByText(/Pagamento estornado/).first()).toBeVisible()
       await expect(p.getByText(/Pagamento confirmado/)).toHaveCount(0)
-      await expect(p.getByRole('button', { name: 'Confirmar pagamento' })).toBeVisible()
+      // PDV7/CX3: receber de novo é na comanda do atendimento, no PDV.
+      await expect(p.getByRole('link', { name: 'Receber no PDV' })).toBeVisible()
 
       // O Fechamento do dia (no PDV) não lista mais o a receber (CX5,
       // 2026-11-14): o atendimento reaberto é uma comanda aberta, e o
@@ -154,13 +156,14 @@ test.describe('o estorno reabre a cobrança', () => {
     })
   })
 
-  test('receber de novo pela tela: com cliente, pontos e comissão — uma vez só', async ({ browser }) => {
+  test('receber de novo pela tela (a comanda no PDV): com cliente, pontos e comissão — uma vez só', async ({ browser }) => {
     await como(recepcao!, browser, async p => {
+      const comanda = await receberAtendimentoNoPdv(p, `/${slug}`, ap)
+      await escolherFormaPorValor(comanda, 'PIX')
+      await botaoDeReceber(comanda).click()
+      await expect.poll(async () => (await db().from('financial_transactions').select('id')
+        .eq('appointment_id', ap).eq('type', 'INCOME')).data?.length ?? 0, { message: 'o recebimento novo', timeout: 20_000 }).toBe(2)
       await p.goto(`/${slug}/agenda/${ap}`)
-      await p.getByRole('button', { name: 'Confirmar pagamento' }).click()
-      const janela = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-      await janela.getByLabel('Forma de pagamento').selectOption('PIX')
-      await janela.getByRole('button', { name: 'Confirmar pagamento' }).click()
       await expect(p.getByText(/Pagamento confirmado/).first()).toBeVisible({ timeout: 20_000 })
     })
 

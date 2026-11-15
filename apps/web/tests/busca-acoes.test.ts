@@ -44,7 +44,7 @@ describe('acoesDoCliente', () => {
       ['vender', '/admin/pdv?nova=1&cliente=c1'],
     ])
   })
-  it('vender é de quem recebe (caixa ou financeiro em Gerenciar)', () => {
+  it('vender é de quem recebe (o PDV ou o Financeiro em Gerenciar)', () => {
     expect(acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ financial: 'MANAGE' }), agendaPropria: false }, 'c1').map(x => x.id)).toEqual(['vender'])
     expect(acoesDoCliente({ pathname: REDE, slug: null, permissoes: com({ financial: 'VIEW' }), agendaPropria: false }, 'c1')).toEqual([])
   })

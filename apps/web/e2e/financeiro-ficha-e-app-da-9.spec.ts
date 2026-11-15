@@ -105,7 +105,7 @@ test('A31: o Financeiro diz qual "resultado" é o do período e qual é o caixa 
   })
 })
 
-test('A38: a recepção (Fidelidade em Ver) lê a quem pedir a troca; o app diz o mesmo', async ({ browser }) => {
+test('A38: quem tem a Fidelidade em Ver lê a quem pedir a troca; o app diz o mesmo', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/admin/clients/${marina}`)
     const nota = p.locator('[data-quem-troca]')

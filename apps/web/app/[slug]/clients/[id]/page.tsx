@@ -194,7 +194,11 @@ export default async function ClientProfilePage({
       ...camposDoPacoteDeFora(activePkg as { de_fora?: boolean; usadas_antes?: number; valor_referencia?: number | null }),
     }
     // A41 da 11ª: o crediário do pacote ainda em aberto (só a quem recebe — o dinheiro é do caixa, A39 da 7ª).
-    if (podeReceber(ctx)) activePackage.emAberto = (await getEmAbertoDosPacotes(ctx.tenantId!, [activePkg.id as string]))[activePkg.id as string] ?? null
+    if (podeReceber(ctx)) {
+      const emAberto = (await getEmAbertoDosPacotes(ctx.tenantId!, [activePkg.id as string]))[activePkg.id as string] ?? null
+      // CX1: o aviso leva ao PDV da unidade do pacote, onde as parcelas dele estão.
+      activePackage.emAberto = emAberto ? { ...emAberto, unidadeId: (activePkg as { branch_id?: string | null }).branch_id ?? null } : null
+    }
   }
 
   // Fallback: plano de tratamento avulso ACCEPTED (sem client_package) — modelo sessão-primeiro
@@ -260,7 +264,7 @@ export default async function ClientProfilePage({
   // receber — é UMA leitura (lib/clientes/financeiro-da-ficha.ts), com o "só os
   // próprios" do financeiro (D6, 2026-10-27).
   const financeiro = await financeiroDaFicha(ctx, id)
-  const { veFinanceiro, transactions, internalCredits, aReceber } = financeiro
+  const { veFinanceiro, transactions, internalCredits, aReceber, comandaParaReceber } = financeiro
 
   // Documents — bucket privado: assinamos os paths (signed URLs, 1h) para download
   type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string; enviado_em: string | null; enviado_por_nome: string | null; momento: string | null; atendimento: { id: string; scheduled_at: string; procedures: { name: string } | null } | null }
@@ -555,7 +559,8 @@ export default async function ClientProfilePage({
       // PT2: monta o plano quem ATENDE nesta unidade (o "Atende" — não é permissão).
       podeMontarPlano={montaPlano(ctx, branch.id)}
       aReceber={aReceber}
-      podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
+      comandaParaReceber={comandaParaReceber}
+        podeReceberAtendimento={podeReceber(ctx)}
       prePagos={prePagos}
       podeAgendar={can(ctx, 'agenda', 'MANAGE')}
       podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}

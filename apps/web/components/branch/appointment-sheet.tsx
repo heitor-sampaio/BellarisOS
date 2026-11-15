@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { updateAppointmentStatus, rescheduleAppointment, chegarEIniciar, avisosDoRemarcar } from '@/actions/appointments'
 import { situacaoDaCobranca } from '@/actions/a-receber'
 import { historicoDoAgendamento, type PassoDoHistorico } from '@/actions/historico-do-agendamento'
-import { rotaAtendimento } from '@/lib/rotas'
+import { rotaAtendimento, rotaDaComanda } from '@/lib/rotas'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { toast } from 'sonner'
 import { ehODiaDoAgendamento } from '@/lib/agenda/chegada'
@@ -552,14 +552,15 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
         )}
 
         {/* O concluído a receber tem porta (D5, 2026-10-27): a janela só dizia
-            "encerrado", e o "Confirmar pagamento" morava numa URL que ninguém
-            achava. O de R$ 0 diz que não há cobrança (D9). */}
+            "encerrado". Desde o PDV (PDV7/CX3, 2026-11-13) a porta é a COMANDA
+            do atendimento no PDV — a tela do atendimento não recebe mais.
+            O de R$ 0 diz que não há cobrança (D9). */}
         {appointment.status === 'COMPLETED' && cobranca?.situacao === 'A_RECEBER' && (
-          cobranca.podeReceber ? (
-            <Link href={`${rotaAtendimento(pathname, slug, appointment.id)}?receber=1`} onClick={onClose}
+          cobranca.podeReceber && cobranca.comanda ? (
+            <Link href={rotaDaComanda(pathname, slug, cobranca.comanda.unidadeId, cobranca.comanda.id)} onClick={onClose}
               className="btn-primary"
               style={{ width: '100%', justifyContent: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-              <HandCoins size={14} /> Receber pagamento
+              <HandCoins size={14} /> Receber no PDV
             </Link>
           ) : (
             <p style={{ textAlign: 'center', color: 'var(--warning)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, marginBottom: 10 }}>
@@ -595,7 +596,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
           </button>
         )}
         {/* A14 da 10ª: com o pagamento ainda a receber, o atendimento não está
-            "encerrado" — a frase contradizia o "Receber pagamento" logo acima. */}
+            "encerrado" — a frase contradizia o "Receber no PDV" logo acima. */}
         {isDone && cobranca?.situacao !== 'A_RECEBER' && (
           <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-xs-sz)' }}>
             Este agendamento já foi encerrado.

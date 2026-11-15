@@ -9,7 +9,7 @@ import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
   XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard, ClipboardList, FileText,
-  AlertCircle, Info, StickyNote, Syringe,
+  AlertCircle, Info, StickyNote, Syringe, HandCoins,
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
@@ -37,7 +37,7 @@ import { FotosDoAtendimento, type FotoDoAtendimento } from '@/components/branch/
 import { lerRascunho, gravarRascunho, limparRascunho, type RespostaDaFicha } from '@/lib/atendimento/rascunho'
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
-import { rotaAgenda, rotaNoPortal } from '@/lib/rotas'
+import { rotaAgenda, rotaNoPortal, rotaDaComanda } from '@/lib/rotas'
 import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
@@ -49,7 +49,6 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes, useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
-import { PaymentModal, type PacoteParaAbater } from '@/components/shared/receber-atendimento'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
@@ -198,8 +197,12 @@ interface Props {
   paymentTransaction: { id: string; paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null; maquininha?: string | null } | null
   /** O último recebimento ESTORNADO, quando não há outro vivo: a cobrança reabriu (D6, 2026-10-28). */
   pagamentoEstornado?: { paymentMethod: string; amount: number; cartaoVezes?: number | null; cartaoBandeira?: string | null; maquininha?: string | null; motivo: string | null } | null
-  /** Sessões livres de pacote da cliente, do mesmo procedimento: "Abater do pacote" (D9). */
-  pacotesParaAbater?: PacoteParaAbater[]
+  /**
+   * A comanda aberta do atendimento no PDV (PDV7/CX3, a revisão do Heitor de
+   * 2026-11-13): o recebimento é lá — o "Abater do pacote", o desconto, o
+   * voucher, os pontos e as formas, tudo no "Receber" da comanda.
+   */
+  comandaId?:         string | null
   treatmentProcedures:   TreatmentProcedure[]
   treatmentPackages:     TreatmentPackage[]
   existingPlan:          ExistingPlan | null
@@ -225,15 +228,13 @@ interface Props {
   isPrePago?:            boolean
   /**
    * Pode receber (caixa ou financeiro) — quem fecha a venda da avaliação sem
-   * mandar o cliente para a recepção. O mesmo critério de "Confirmar pagamento".
+   * mandar a cliente a outra pessoa. O mesmo critério do PDV (`podeReceber`).
    */
   podeReceber?:          boolean
   /** A35 da 12ª: quem recebe e não estorna — a quem pedir o estorno (os nomes de quemDesfazNoCaixa). */
   quemEstorna?:          string[] | null
   /** A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos) vê o "Estornar" ao lado do Recibo — a janela do Financeiro. */
   podeEstornar?:         boolean
-  /** O pagamento combinado no contrato do procedimento (o recebimento já vem com o meio). */
-  pagamentoCombinado?:   { metodo: string | null; rotulo: string } | null
   /**
    * Saldo do plano de tratamento ligado a este atendimento. Nulo quando não há
    * plano ou quando não sobrou nada a receber.
@@ -241,11 +242,6 @@ interface Props {
   planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number; aVencer: number; proximoVencimento: string | null } | null
   /** Termos e contratos deste atendimento. Nulo = cargo sem o módulo `documents`. */
   documentos?:           { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean; temAcessoAoApp?: boolean } | null
-  /**
-   * Abre a janela do pagamento ao chegar (`?receber=1`): é para onde levam o
-   * "Receber pagamento" da agenda, o Fechamento do dia e a ficha (D5, 2026-10-27).
-   */
-  abrirRecebimento?:     boolean
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -1025,10 +1021,9 @@ function DorasCard({ value, onChange, readonly, erro }: {
 export function AppointmentSession({
   appointment, client, anamnesis, fichaDeSaudeVencidaEm = null, fichaPreAtendimento, ficha, respostasDaFicha, products, availableProducts, lotesDosInsumos,
   professionals, history, branchId, slug,
-  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, pacotesParaAbater = [],
+  canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, quemEstorna = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true,
-  pagamentoCombinado = null, abrirRecebimento = false,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1040,22 +1035,15 @@ export function AppointmentSession({
   const [showFinish,    setShowFinish]    = useState(false)
   // O que falta para finalizar, a lista inteira (A30): a janela diz, a página marca.
   const [oQueFalta,     setOQueFalta]     = useState<GrupoQueFalta[] | null>(null)
-  // O mesmo critério do botão "Confirmar pagamento", logo abaixo.
-  const aReceber = appointment.status === 'COMPLETED' && !paymentTransaction && canPayment
+  // O concluído a receber, para quem recebe (o PDV ou o Financeiro em
+  // Gerenciar): o "Receber no PDV" leva à comanda dele. A tela do atendimento
+  // não tem mais janela de pagamento própria (PDV7, a revisão do Heitor de
+  // 2026-11-13: "Sai a cobrança da conclusão do atendimento como porta
+  // própria (vira a comanda)").
+  const aReceber = appointment.status === 'COMPLETED' && !paymentTransaction && podeReceber
     && !isPartOfPlan && !isPackageSession && !isPrePago && appointment.price > 0
-  // Recebido, o `?receber=1` (a janela do pagamento aberta ao chegar) sai da
-  // URL (A51 da 5ª simulação): recarregar não reabre nada, e o endereço não
-  // diz "receber" de um atendimento pago.
-  useEffect(() => {
-    if (!paymentTransaction || typeof window === 'undefined') return
-    const url = new URL(window.location.href)
-    if (!url.searchParams.has('receber')) return
-    url.searchParams.delete('receber')
-    router.replace(url.pathname + (url.search ? url.search : ''), { scroll: false })
-  }, [paymentTransaction, router])
   // Atendimento de R$ 0 (a avaliação) não tem o que receber (D9, 2026-10-27).
   const semCobranca = !(appointment.price > 0) && !isPartOfPlan && !isPackageSession && !isPrePago
-  const [showPayment,   setShowPayment]   = useState(() => abrirRecebimento && aReceber)
   const [starting,      setStarting]      = useState(false)
   const [erroAoIniciar, setErroAoIniciar] = useState<string | null>(null)
   const [checkingIn,    setCheckingIn]    = useState(false)
@@ -1675,13 +1663,6 @@ export function AppointmentSession({
           }}
         />
       )}
-      {showPayment && (
-        <PaymentModal
-          appointmentId={appointment.id} slug={slug} price={appointment.price} pagamentoCombinado={pagamentoCombinado}
-          pacotesParaAbater={pacotesParaAbater} clienteId={client.id}
-          onClose={() => setShowPayment(false)}
-        />
-      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -1802,17 +1783,16 @@ export function AppointmentSession({
               </button>
             )}
 
-            {/* Confirmar pagamento (COMPLETED sem pagamento + canPayment) — oculto para sessões de plano */}
-            {/* Atendimento sem preço não tem o que receber: o botão aparecia
-                mesmo em avaliação de R$ 0,00. E quando há plano fechado, o
-                rótulo diz de QUE valor se trata — o do plano já foi pago no
-                checkout, este é o do atendimento. */}
+            {/* O concluído a receber (oculto para sessões de plano, de pacote e
+                pré-pagas, e no de R$ 0): o recebimento é na comanda do PDV
+                (PDV7/CX3) — com o "Abater do pacote", o desconto, o voucher,
+                os pontos e as formas de lá. */}
             {aReceber && (
-              <button type="button" onClick={() => setShowPayment(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
-                <CheckCircle2 size={14} />
-                Confirmar pagamento
-              </button>
+              <Link href={rotaDaComanda(pathname, slug, branchId, comandaId)}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', textDecoration: 'none', boxShadow: 'var(--shadow-brand-btn)' }}>
+                <HandCoins size={14} aria-hidden />
+                Receber no PDV
+              </Link>
             )}
             </div>}
 
@@ -2008,7 +1988,7 @@ export function AppointmentSession({
             plano={planoEmAberto}
             appointmentId={appointment.id}
             slug={slug}
-            // C33: receber o plano no check-in é de Recebimentos (o mesmo do "Confirmar pagamento").
+            // C33: receber o plano no check-in é de Recebimentos (o mesmo de receber o atendimento no PDV).
             podeReceber={canPayment}
           />
         )}
@@ -2124,7 +2104,7 @@ export function AppointmentSession({
                   <>
                     {pagamentoEstornado && (
                       // O estorno reabre a cobrança (D6, 2026-10-28): diz o que
-                      // foi estornado, e o "Confirmar pagamento" volta a valer.
+                      // foi estornado, e a comanda volta a abrir no PDV.
                       <p data-pagamento-estornado style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                         Pagamento estornado — {rotuloDaForma(pagamentoEstornado.paymentMethod, pagamentoEstornado.cartaoVezes, { bandeira: pagamentoEstornado.cartaoBandeira, maquininha: pagamentoEstornado.maquininha })} · {fmtBRL(pagamentoEstornado.amount)}
                         {pagamentoEstornado.motivo ? ` (${pagamentoEstornado.motivo})` : ''}. O atendimento voltou a receber.

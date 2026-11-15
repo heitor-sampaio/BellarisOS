@@ -100,7 +100,7 @@ test.afterAll(async () => {
   await propria?.limpar(); await recepcao?.limpar(); await rede?.limpar()
 })
 
-test('"só os meus": a tela do atendimento de outra profissional diz de quem é, sem nada dele; a dela abre, e a recepção abre a de todas', async ({ browser }) => {
+test('"só os meus": a tela do atendimento de outra profissional diz de quem é, sem nada dele; a dela abre, e quem tem a Agenda de todos abre a de todas', async ({ browser }) => {
   const daOutra = await agendado('Bianca', rede!.professionalId)
   const dela    = await agendado('Helena', propria!.userId)
   const nomeDaOutra = (await db().from('users').select('name').eq('id', rede!.professionalId).single<{ name: string }>()).data!.name
@@ -126,7 +126,7 @@ test('"só os meus": a tela do atendimento de outra profissional diz de quem é,
   })
 })
 
-test('"só os meus" não marca a chegada do agendamento de outra pelo id; a recepção marca', async ({ browser }) => {
+test('"só os meus" não marca a chegada do agendamento de outra pelo id; quem tem a Agenda de todos marca', async ({ browser }) => {
   const daOutra = await agendado('Luíza', rede!.professionalId)
   const dela    = await agendado('Sessão', propria!.userId)
   await como(browser, propria!, async p => {

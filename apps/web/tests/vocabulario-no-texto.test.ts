@@ -209,6 +209,63 @@ function nomesErrados(): string[] {
   return saida
 }
 
+/**
+ * V0 nos TÍTULOS dos testes: o título diz quem faz pela PERMISSÃO ("quem tem a
+ * Agenda sem o Prontuário") ou pela abrangência ("quem tem só a unidade B"),
+ * nunca pelo cargo ("a recepção", "a gerente", "a contadora", "o SDR"). Ficam:
+ * o NOME de um cargo-modelo dito como modelo ("o Gerente modelo", "o modelo
+ * Recepcionista"), os papéis FIXOS da equipe da plataforma (ADMIN, GERENTE,
+ * SUPORTE — `apps/sistema`) e o nome que a rede deu a um número de WhatsApp.
+ */
+const CARGO_NO_TITULO = /(?<![\w-])(?:recep[çc][ãa]o|recepcionistas?|gerentes?|contadoras?|SDRs?)(?![\w-])/i
+/** O nome do cargo-modelo como modelo: some antes de procurar. */
+const CARGO_MODELO = /\b(?:modelos?|cargo-modelo)\s+["“]?(?:Gerente|Recepcionista)\b|\b(?:Gerente|Recepcionista)["”]?\s+modelo\b/g
+/** Os arquivos da equipe da PLATAFORMA (o papel é fixo de verdade) e a própria trava. */
+const TITULOS_DA_PLATAFORMA = /(?:^|\/)(?:e2e\/plataforma-gerente\.spec|e2e\/sistema-[\w-]+\.spec|e2e\/planos-comparativo\.spec|tests\/plataforma-hosts\.test|tests\/vocabulario-no-texto\.test)\.ts$/
+/** O nome que a rede deu a um número de WhatsApp (arquivo, começo do título). */
+const TITULOS_COM_NOME: readonly (readonly [string, string])[] = [
+  ['apps/web/e2e/whatsapp-remover-numero.spec.ts', 'r3-f14-11: o filtro "Número" escolhe VÁRIOS números — Recepção + Comercial'],
+]
+
+/** Os títulos (o primeiro argumento de test/it/describe e variações) que falam no cargo. */
+function titulosComCargo(arquivo: string, texto: string): string[] {
+  const fonte = ts.createSourceFile(arquivo, texto, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const saida: string[] = []
+  const visitar = (no: ts.Node) => {
+    if (ts.isCallExpression(no) && /^(?:test|it|describe)(?:\.\w+)*$/.test(no.expression.getText(fonte))) {
+      const arg = no.arguments[0]
+      let titulo: string | null = null
+      if (arg && (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))) titulo = arg.text
+      else if (arg && ts.isTemplateExpression(arg)) titulo = [arg.head.text, ...arg.templateSpans.map(s => s.literal.text)].join('…')
+      if (arg && titulo !== null && CARGO_NO_TITULO.test(titulo.replace(CARGO_MODELO, ''))) {
+        const { line } = fonte.getLineAndCharacterOfPosition(arg.getStart(fonte))
+        saida.push(`${line + 1}: ${titulo.replace(/\s+/g, ' ').trim()}`)
+      }
+    }
+    ts.forEachChild(no, visitar)
+  }
+  visitar(fonte)
+  return saida
+}
+
+function titulosErrados(): string[] {
+  const alvos: [string, RegExp][] = [[join(RAIZ, 'e2e'), /\.spec\.ts$/], [join(RAIZ, 'tests'), /\.test\.ts$/]]
+  const saida: string[] = []
+  for (const [pasta, fim] of alvos) {
+    for (const f of arquivos(pasta)) {
+      if (!fim.test(f)) continue
+      const rel = relative(MONO, f).split(sep).join('/')
+      if (TITULOS_DA_PLATAFORMA.test(rel)) continue
+      for (const a of titulosComCargo(f, readFileSync(f, 'utf8'))) {
+        const titulo = a.slice(a.indexOf(': ') + 2)
+        if (TITULOS_COM_NOME.some(([arq, ini]) => arq === rel && titulo.startsWith(ini))) continue
+        saida.push(`${rel}:${a}`)
+      }
+    }
+  }
+  return saida
+}
+
 describe('Vocabulário: o texto que se lê fala o sistema revisado', { timeout: 120_000 }, () => {
   it('V1 / PO2 / CA1: nenhuma tela, aviso, e-mail ou erro diz "clínica"', () => {
     expect(errados(CLINICA), 'é "a rede" ou o nome dela ("clínica" só no site, como mercado)').toEqual([])
@@ -228,6 +285,26 @@ describe('Vocabulário: o texto que se lê fala o sistema revisado', { timeout: 
 
   it('V0: nenhum cargo como se fosse fixo ("a recepção", "a gerente", "a contadora")', () => {
     expect(errados(CARGO_FIXO), 'fala-se em permissão, em "a equipe" ou em "quem atende"').toEqual([])
+  })
+
+  it('V0 nos títulos dos testes: quem faz é dito pela permissão, nunca pelo cargo', () => {
+    expect(titulosErrados(), 'diga a permissão ("quem tem a Agenda sem o Prontuário") ou a abrangência ("quem tem só a unidade B")').toEqual([])
+  })
+
+  it('a trava dos títulos enxerga o cargo e deixa o cargo-modelo e o que não é título', () => {
+    const exemplo = [
+      "test('a recepção arquiva a cliente', async () => {})",
+      "test.describe.serial('o SDR de unidade agenda', () => {})",
+      "it(`a contadora baixa o CSV de ${mes}`, () => {})",
+      "test('o Gerente modelo da rede nova nasce com Configurações em Gerenciar', async () => {})",
+      "test('o modelo Recepcionista vê as próprias comissões', async () => {})",
+      "const nome = 'a recepção'; expect(nome).toBe('a gerente')",
+      "test('quem tem a Agenda sem o Prontuário não recebe a anamnese', async () => {})",
+      "test('a gerente de unidade fixa, no cargo modelo, abre a aba Unidade', async () => {})",
+    ].join('\n')
+    expect(titulosComCargo('exemplo.spec.ts', exemplo).map(l => l.split(':')[0])).toEqual(['1', '2', '3', '8'])
+    expect(TITULOS_DA_PLATAFORMA.test('apps/web/e2e/plataforma-gerente.spec.ts')).toBe(true)
+    expect(TITULOS_DA_PLATAFORMA.test('apps/web/e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts')).toBe(false)
   })
 
   it('o crédito vendido tem UM nome na equipe: "Crédito interno" (o rótulo de INTERNAL_CREDIT), nunca "Crédito na rede"', () => {

@@ -15,11 +15,18 @@ import { abrirVendaNoPdv } from './apoio/vender'
  * "Vender" da ficha cobraria a limpeza de novo. A avaliação de R$ 0 ficava
  * "Aguardando confirmação de pagamento" para sempre.
  *
- * Decisões do Heitor (2026-10-27): a janela da agenda mostra "Receber
- * pagamento", que leva à tela que confirma (pelos dois portais); o Fechamento
- * ganha "Concluídos a receber"; a ficha mostra o atendimento a receber com o
- * mesmo botão, e o "Vender" avisa quando há um a receber do mesmo
- * procedimento. O de R$ 0 diz "Sem cobrança" e não entra em lista nenhuma.
+ * Decisões do Heitor (2026-10-27): a janela da agenda mostra o caminho do
+ * recebimento (pelos dois portais); a ficha mostra o atendimento a receber, e
+ * o "Vender" avisa quando há um a receber do mesmo procedimento. O de R$ 0 diz
+ * "Sem cobrança" e não entra em lista nenhuma.
+ *
+ * Desde o PDV (PDV7 e CX3 da revisão de 2026-11-13: "Sai a cobrança da
+ * conclusão do atendimento como porta própria (vira a comanda)"; "Os
+ * 'Concluídos a receber' viram as comandas abertas do PDV (sai a lista à parte
+ * na agenda, no Fechamento e na ficha)"): todo caminho leva à COMANDA do
+ * atendimento no PDV (`/<portal>/pdv?unidade=…&comanda=…`). A tela do
+ * atendimento não tem janela de pagamento própria, e a ficha não tem lista à
+ * parte — tem o resumo das comandas abertas dela, com "Receber no PDV".
  */
 
 const marca = Date.now().toString(36)
@@ -30,6 +37,13 @@ let slug = ''
 let procLimpeza = ''
 const HOJE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
 const agendamentos: string[] = []
+/** A comanda aberta do atendimento (nasce no gatilho, PDV3). */
+const comandaDo = async (agendamentoId: string) => {
+  const { data, error } = await db().from('comandas').select('id').eq('appointment_id', agendamentoId)
+    .is('cancelada_em', null).single<{ id: string }>()
+  expect(error, 'a comanda do atendimento').toBeNull()
+  return data!.id
+}
 
 async function como(m: MembroDeTeste, browser: Browser, fn: (p: Page) => Promise<void>) {
   const ctx = await browser.newContext({ storageState: m.estado })
@@ -100,7 +114,7 @@ test.describe.serial('o atendimento concluído a receber', () => {
     expect(tx ?? []).toHaveLength(0)
   })
 
-  test('D5: a janela da agenda leva ao recebimento do concluído', async ({ browser }) => {
+  test('D5 + CX3: a janela da agenda leva à comanda do concluído no PDV', async ({ browser }) => {
     // A grade de hoje rola sozinha para agora: o clique de mouse pode cair
     // noutro horário (e abrir o "Novo agendamento"). O evento vai direto ao
     // bloco — e, no next dev, pode chegar antes da hidratação da grade e se
@@ -115,16 +129,30 @@ test.describe.serial('o atendimento concluído a receber', () => {
     }
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/agenda?date=${HOJE}`)
-      const receber = (await abrirJanela(p, limpeza)).getByRole('link', { name: 'Receber pagamento' })
-      await expect(receber).toBeVisible()
+      const comanda = await comandaDo(limpeza)
+      const receber = (await abrirJanela(p, limpeza)).getByRole('link', { name: 'Receber no PDV' })
+      await expect(receber).toHaveAttribute('href', `/${slug}/pdv?unidade=${rede!.branchId}&comanda=${comanda}`)
       await receber.click()
-      await expect(p).toHaveURL(new RegExp(`/${slug}/agenda/${limpeza}\\?receber=1`))
-      await expect(p.getByRole('dialog', { name: 'Confirmar pagamento' })).toBeVisible()
+      await expect(p.locator(`[data-comanda-aberta="${comanda}"]`)).toBeVisible()
+      await expect(p.locator(`[data-comanda-aberta="${comanda}"]`).getByRole('button', { name: /Receber R\$\s?180,00/ })).toBeVisible()
 
       // A avaliação de R$ 0, na mesma janela: nada a receber.
       await p.goto(`/${slug}/agenda?date=${HOJE}`)
       await expect((await abrirJanela(p, avaliacao)).getByText('Sem cobrança')).toBeVisible()
-      await expect(p.getByRole('link', { name: 'Receber pagamento' })).toHaveCount(0)
+      await expect(p.getByRole('link', { name: 'Receber no PDV' })).toHaveCount(0)
+    })
+  })
+
+  test('PDV7: a tela do atendimento concluído não abre janela de pagamento — leva à comanda no PDV', async ({ browser }) => {
+    const comanda = await comandaDo(limpeza)
+    await como(recepcao!, browser, async p => {
+      // O endereço antigo (`?receber=1`) não abre janela nenhuma.
+      await p.goto(`/${slug}/agenda/${limpeza}?receber=1`)
+      await expect(p.getByText('Aguardando o pagamento no PDV')).toBeVisible()
+      await expect(p.getByRole('dialog', { name: 'Confirmar pagamento' })).toHaveCount(0)
+      await expect(p.getByRole('button', { name: 'Confirmar pagamento' })).toHaveCount(0)
+      await expect(p.getByRole('link', { name: 'Receber no PDV' }).first())
+        .toHaveAttribute('href', `/${slug}/pdv?unidade=${rede!.branchId}&comanda=${comanda}`)
     })
   })
 
@@ -139,19 +167,26 @@ test.describe.serial('o atendimento concluído a receber', () => {
     })
   })
 
-  test('D5: a ficha mostra o atendimento a receber, e a venda no PDV avisa do mesmo procedimento', async ({ browser }) => {
+  test('CX3: a ficha não tem a lista à parte — as comandas abertas dela levam ao PDV; a venda no PDV avisa do mesmo procedimento', async ({ browser }) => {
+    const comanda = await comandaDo(limpeza)
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/clients/${joana}`)
-      const card = p.locator('[data-a-receber]')
-      await expect(card).toContainText(`Limpeza ${marca}`)
+      const card = p.locator('[data-comandas-abertas]')
       await expect(card).toContainText('180,00')
-      await expect(card.getByRole('link', { name: 'Receber' })).toHaveAttribute('href', `/${slug}/agenda/${limpeza}?receber=1`)
+      await expect(p.getByText('Atendimentos a receber')).toHaveCount(0)
+      await expect(p.locator('[data-a-receber]')).toHaveCount(0)
+      const receber = card.getByRole('link', { name: 'Receber no PDV' })
+      await expect(receber).toHaveAttribute('href', `/${slug}/pdv?unidade=${rede!.branchId}&comanda=${comanda}`)
+      await receber.click()
+      await expect(p.locator(`[data-comanda-aberta="${comanda}"]`)).toBeVisible()
 
       // Só se vende pelo PDV (PDV7, 2026-11-13): o aviso segue no formulário de lá.
       const venda = await abrirVendaNoPdv(p, `/${slug}`, joana)
       await venda.getByLabel('Procedimento').selectOption(procLimpeza)
       await expect(venda.locator('[data-aviso-a-receber]')).toContainText(/a receber/i)
       await expect(venda.locator('[data-aviso-a-receber]')).toContainText('180,00')
+      await expect(venda.locator('[data-aviso-a-receber]').getByRole('link', { name: 'Receber o atendimento' }))
+        .toHaveAttribute('href', `/${slug}/pdv?unidade=${rede!.branchId}&comanda=${comanda}`)
     })
   })
 
@@ -163,7 +198,8 @@ test.describe.serial('o atendimento concluído a receber', () => {
     expect(error).toBeNull()
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/clients/${joana}`)
-      await expect(p.locator(`[data-a-receber] [data-agendamento="${limpeza}"]`)).toHaveCount(0)
+      await expect(p.getByText(`Joana ar${marca}`).first()).toBeVisible()
+      await expect(p.locator('[data-comandas-abertas]')).toHaveCount(0)
     })
   })
 })

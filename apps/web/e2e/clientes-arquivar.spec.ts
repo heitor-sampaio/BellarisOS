@@ -74,7 +74,7 @@ test.describe.serial('arquivar a cliente', () => {
     expect(await novosNoDashboard(), 'reativada, volta').toBe(1)
   })
 
-  test('a recepção arquiva e reativa pela ficha, no menu "Mais ações"', async ({ browser }) => {
+  test('quem tem Clientes em Gerenciar arquiva e reativa pela ficha, no menu "Mais ações"', async ({ browser }) => {
     const id = await rede!.criarCliente('Arquivada pela recepção')
     const ctx = await browser.newContext({ storageState: recepcao!.estado })
     try {

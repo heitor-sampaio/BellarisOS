@@ -16,10 +16,9 @@ import { SessaoDeAtendimento } from '@/app/_shared/sessao-de-atendimento'
  * actions da tela usam no `revalidatePath`.
  */
 export default async function AdminAppointmentSessionPage({
-  params, searchParams,
+  params,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ receber?: string }>
 }) {
   const { id } = await params
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
@@ -40,6 +39,5 @@ export default async function AdminAppointmentSessionPage({
   const branch = appt?.branches as unknown as { slug: string; tenant_id: string } | null
   if (!appt?.branch_id || !branch?.slug || branch.tenant_id !== ctx.tenantId) notFound()
 
-  const { receber } = await searchParams
-  return <SessaoDeAtendimento branchId={appt.branch_id as string} slug={branch.slug} id={id} abrirRecebimento={receber === '1'} />
+  return <SessaoDeAtendimento branchId={appt.branch_id as string} slug={branch.slug} id={id} />
 }

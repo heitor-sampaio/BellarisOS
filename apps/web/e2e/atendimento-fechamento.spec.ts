@@ -3,6 +3,7 @@ import { banco, tenantId, unidadeQueAtende, PREFIXO } from './apoio/banco'
 import { capturarAcao, reenviarAcao } from './apoio/acao'
 import { apagarClientes } from './apoio/limpeza'
 import { responderAnamnese } from './apoio/anamnese'
+import { receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 
 /**
  * O atendimento de ponta a ponta, pela tela: check-in, iniciar, finalizar e
@@ -234,19 +235,18 @@ test.describe.serial('fechar um atendimento', () => {
 
   test('receber: crédito sem saldo é recusado; Pix lança a receita paga', async ({ page }) => {
     const db = banco()
-    await page.goto(`/admin/agenda/${c!.agendamento}`)
-    await page.getByRole('button', { name: 'Confirmar pagamento' }).click()
-    const form = page.locator('form').filter({ has: page.locator('select[name="payment_method"]') })
+    // PDV7/CX3: o atendimento concluído se recebe na comanda dele, no PDV.
+    const form = await receberAtendimentoNoPdv(page, '/admin', c!.agendamento)
 
-    await form.locator('select[name="payment_method"]').selectOption('INTERNAL_CREDIT')
-    await form.getByRole('button', { name: 'Confirmar pagamento' }).click()
+    await escolherFormaPorValor(form, 'INTERNAL_CREDIT')
+    await botaoDeReceber(form).click()
     await expect(form.getByText(/crédito interno insuficiente/i), 'a recusa aparece na tela').toBeVisible()
     const { data: nada } = await db.from('financial_transactions').select('id').eq('appointment_id', c!.agendamento)
     expect(nada ?? [], 'recusado, nada pode ter entrado').toHaveLength(0)
 
-    await form.locator('select[name="payment_method"]').selectOption('PIX')
+    await escolherFormaPorValor(form, 'PIX')
     const chamada = capturarAcao(page, corpo => corpo.includes(c!.agendamento) && corpo.includes('PIX'))
-    await form.getByRole('button', { name: 'Confirmar pagamento' }).click()
+    await botaoDeReceber(form).click()
     const req = await chamada
 
     await expect.poll(async () => {
@@ -268,6 +268,6 @@ test.describe.serial('fechar um atendimento', () => {
 
     await page.goto(`/admin/agenda/${c!.agendamentoDoPacote}`)
     await expect(page.getByText('Sessão de pacote — paga na venda do pacote.')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Confirmar pagamento' }), 'nem o botão aparece').toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Receber no PDV' }), 'nem o caminho ao PDV aparece').toHaveCount(0)
   })
 })

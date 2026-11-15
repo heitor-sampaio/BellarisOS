@@ -1,7 +1,7 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { abrirVendaNoPdv, receberPlanoNoPdv } from './apoio/vender'
+import { abrirVendaNoPdv, receberPlanoNoPdv, receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
 
@@ -164,14 +164,13 @@ test('com mais de uma, todo caminho do cartão pergunta "Qual maquininha?" e esp
   expect((await db().from('treatment_plan_session_procedures').insert({ session_id: ses!.id, procedure_id: rede!.procedureId, price: 200 })).error).toBeNull()
 
   await como(browser, async p => {
-    // O atendimento avulso: escolhe a Stone e confirma.
-    await p.goto(`/${slug}/agenda/${ap!.id}?receber=1`)
-    const dlg = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-    await dlg.getByLabel('Forma de pagamento').selectOption('CREDIT_CARD')
-    await expect(dlg.getByRole('button', { name: /Confirmar/ }), 'sem a maquininha, espera').toBeDisabled()
+    // O atendimento avulso (na comanda dele no PDV, PDV7): escolhe a Stone e recebe.
+    const dlg = await receberAtendimentoNoPdv(p, `/${slug}`, ap!.id)
+    await escolherFormaPorValor(dlg, 'CREDIT_CARD')
+    await expect(botaoDeReceber(dlg), 'sem a maquininha, espera').toBeDisabled()
     await dlg.getByLabel('Qual maquininha?').selectOption({ label: 'Stone' })
-    await expect(dlg.getByRole('button', { name: /Confirmar/ })).toBeEnabled()
-    await dlg.getByRole('button', { name: /Confirmar/ }).click()
+    await expect(botaoDeReceber(dlg)).toBeEnabled()
+    await botaoDeReceber(dlg).click()
     await expect.poll(async () => (await db().from('financial_transactions').select('maquininha_id')
       .eq('appointment_id', ap!.id).eq('type', 'INCOME').maybeSingle()).data?.maquininha_id, { message: 'gravou na Stone' }).toBe(segunda)
 

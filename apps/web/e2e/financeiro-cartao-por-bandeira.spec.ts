@@ -4,7 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
-import { abrirVendaNoPdv, euVendi, pagoNoPix } from './apoio/vender'
+import { abrirVendaNoPdv, euVendi, pagoNoPix, receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 import { primeiraMaquininha, taxasDaPrimeira, taxaDoPix, seletorDaBandeira } from './apoio/maquininha'
 
 /**
@@ -202,16 +202,16 @@ test.describe.serial('o cartão por bandeira', () => {
     expect(error?.message).toContain('Bandeira')
   })
 
-  test('o recebimento do atendimento pela tela tem "Bandeira" no cartão, e a grava', async ({ browser }) => {
+  test('o recebimento do atendimento no PDV tem "Bandeira" no cartão, e a grava', async ({ browser }) => {
     const ap = await atendimentoConcluido()
     await como(browser, gestor!, async p => {
-      await p.goto(`/${slug}/agenda/${ap}?receber=1`)
-      const janela = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-      await expect(janela.getByLabel('Bandeira'), 'no Pix não há bandeira').toHaveCount(0)
-      await janela.getByLabel('Forma de pagamento').selectOption('CREDIT_CARD')
+      // PDV7/CX3: recebe-se na comanda do atendimento, no PDV.
+      const janela = await receberAtendimentoNoPdv(p, `/${slug}`, ap)
+      await expect(janela.getByLabel('Bandeira'), 'sem o cartão não há bandeira').toHaveCount(0)
+      await escolherFormaPorValor(janela, 'CREDIT_CARD')
       await janela.getByLabel('Vezes no cartão').selectOption('3')
       await janela.getByLabel('Bandeira').selectOption({ label: 'Elo' })
-      await janela.getByRole('button', { name: /Confirmar/ }).last().click()
+      await botaoDeReceber(janela).click()
       await expect.poll(async () => (await db().from('financial_transactions').select('cartao_bandeira').eq('appointment_id', ap).maybeSingle()).data?.cartao_bandeira,
         { message: 'pago na Elo' }).toBe('ELO')
     })

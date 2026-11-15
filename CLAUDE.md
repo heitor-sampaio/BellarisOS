@@ -708,7 +708,7 @@ Regras:
   C63 e a C71 saíram), com a unidade do estoque inicial entre as da pessoa
   (E13). A
   lista dos dois lados está em `docs/regras/plataforma.md`. Prova:
-  `e2e/permissoes-gerente-de-unidade.spec.ts`.
+  `e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts`.
 - **A abrangência se confere na ACTION, não só no layout.** Registro de
   unidade que chega por id (agendamento, lançamento, plano, mapa, membro,
   unidade) passa por `alcancaUnidade` / `assertUnidade` (`lib/auth.ts`)

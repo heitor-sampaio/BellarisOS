@@ -66,7 +66,7 @@ test.afterAll(async () => {
 })
 
 test.describe('a sessão só lê: a escrita é do servidor', () => {
-  test('cargos: a recepcionista da rede não se dá acesso pela chave pública', async () => {
+  test('cargos: quem tem só o CRM, da rede inteira, não se dá acesso pela chave pública', async () => {
     const db = banco()
     const s = comToken(daRede!.accessToken)
 

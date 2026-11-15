@@ -348,7 +348,7 @@ export function can(ctx: TenantContext, module: AppModule, required: 'VIEW' | 'M
  *
  * Dois módulos, o mesmo gesto: `cashier` recebe na recepção, `financial` lança
  * e estorna. Quem tem qualquer um dos dois pode fechar uma venda — é o mesmo
- * critério que a tela de atendimento já usa para "Confirmar pagamento".
+ * critério do "Receber no PDV" (a comanda do atendimento).
  *
  * Existe porque o checkout do plano de tratamento exigia `procedures: MANAGE`,
  * o módulo do CATÁLOGO: a recepção precisava poder editar preço de procedimento

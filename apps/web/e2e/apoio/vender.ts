@@ -103,3 +103,38 @@ export async function receberPlanoNoPdv(page: Page, portal: string, planId: stri
   await expect(janela).toBeVisible()
   return janela
 }
+
+/**
+ * O atendimento concluído se recebe na comanda dele, no PDV (PDV7/CX3, a
+ * revisão do Heitor de 2026-11-13: sai a janela "Confirmar pagamento" da tela
+ * do atendimento e o `?receber=1`). Abre a comanda do atendimento (nasce no
+ * gatilho, PDV3) no PDV do portal pedido (`/<slug>` ou `/admin`) e devolve a
+ * comanda aberta — com a forma em blocos e o "Receber R$ X".
+ */
+export async function receberAtendimentoNoPdv(page: Page, portal: string, appointmentId: string): Promise<Locator> {
+  const { banco } = await import('./banco')
+  const { data: ap } = await banco().from('appointments').select('branch_id').eq('id', appointmentId)
+    .single<{ branch_id: string }>()
+  expect(ap, 'o atendimento existe').toBeTruthy()
+  let comandaId = ''
+  await expect.poll(async () => {
+    const { data } = await banco().from('comandas').select('id').eq('appointment_id', appointmentId)
+      .is('cancelada_em', null).maybeSingle<{ id: string }>()
+    comandaId = data?.id ?? ''
+    return comandaId
+  }, { message: 'a comanda do atendimento nasceu' }).not.toBe('')
+  await page.goto(`${portal}/pdv?unidade=${ap!.branch_id}&comanda=${comandaId}`)
+  const comanda = page.locator(`[data-comanda-aberta="${comandaId}"]`)
+  await expect(comanda).toBeVisible({ timeout: 30_000 })
+  return comanda
+}
+
+/** A forma da cobrança pelo valor (`PIX`, `CREDIT_CARD`…): o bloco `[data-forma]`. */
+export async function escolherFormaPorValor(janela: Locator, forma: string) {
+  await janela.locator(`[role="radiogroup"] [data-forma="${forma}"]`).click()
+}
+
+/** O botão "Receber R$ X" do recebimento no PDV. */
+export function botaoDeReceber(janela: Locator): Locator {
+  return janela.getByRole('button', { name: /^Receber R\$/ })
+}

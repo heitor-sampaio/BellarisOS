@@ -112,7 +112,7 @@ test('a sessão de atendimento e o arquivo do tratamento também ficam registrad
     .toBe(plano!.id)
 })
 
-test('o admin da rede vê quem abriu; o gerente da unidade não', async ({ browser }) => {
+test('a Admin da rede vê quem abriu; quem tem o Prontuário em Gerenciar numa unidade só, não', async ({ browser }) => {
   await como(browser, dono!, async p => {
     await p.goto(`/admin/clients/${cliente}?aba=fichas`)
     const secao = p.getByRole('region', { name: 'Acessos ao prontuário' })

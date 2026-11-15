@@ -146,7 +146,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('client_packages')
-      .select('id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, de_fora, usadas_antes, valor_referencia, service_packages(name, procedure_id, price, procedures(name, duration_min)), package_sessions(status, appointment_id)')
+      .select('id, branch_id, total_sessions, used_sessions, expires_at, purchased_at, cancelado_em, cancelamento_motivo, cancelamento, de_fora, usadas_antes, valor_referencia, service_packages(name, procedure_id, price, procedures(name, duration_min)), package_sessions(status, appointment_id)')
       .eq('client_id', id)
       .order('purchased_at', { ascending: false })
       .limit(10), 'carregar os pacotes'),
@@ -259,7 +259,11 @@ export default async function AdminClientProfilePage({
       ...camposDoPacoteDeFora(activePkg as { de_fora?: boolean; usadas_antes?: number; valor_referencia?: number | null }),
     }
     // A41 da 11ª: o crediário do pacote ainda em aberto (só a quem recebe — o dinheiro é do caixa, A39 da 7ª).
-    if (podeReceber(ctx)) activePackage.emAberto = (await getEmAbertoDosPacotes(ctx.tenantId!, [activePkg.id as string]))[activePkg.id as string] ?? null
+    if (podeReceber(ctx)) {
+      const emAberto = (await getEmAbertoDosPacotes(ctx.tenantId!, [activePkg.id as string]))[activePkg.id as string] ?? null
+      // CX1: o aviso leva ao PDV da unidade do pacote, onde as parcelas dele estão.
+      activePackage.emAberto = emAberto ? { ...emAberto, unidadeId: (activePkg as { branch_id?: string | null }).branch_id ?? null } : null
+    }
   }
 
   if (!activePackage && activePlansRaw && activePlansRaw.length > 0) {
@@ -323,7 +327,7 @@ export default async function AdminClientProfilePage({
   // receber — é UMA leitura (lib/clientes/financeiro-da-ficha.ts), com o "só os
   // próprios" do financeiro (D6, 2026-10-27).
   const financeiro = await financeiroDaFicha(ctx, id)
-  const { veFinanceiro, transactions, internalCredits, aReceber } = financeiro
+  const { veFinanceiro, transactions, internalCredits, aReceber, comandaParaReceber } = financeiro
 
   type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string; enviado_em: string | null; enviado_por_nome: string | null; momento: string | null; atendimento: { id: string; scheduled_at: string; procedures: { name: string } | null } | null }
   // Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem sai daqui.
@@ -530,7 +534,8 @@ export default async function AdminClientProfilePage({
         // sem a unidade escolhida, atender em alguma basta, e a gravação confere.
         podeMontarPlano={montaPlano(ctx, perguntaAUnidade ? null : branchId)}
         aReceber={aReceber}
-        podeReceberAtendimento={ctx.permissions.cashier === 'MANAGE'}
+        comandaParaReceber={comandaParaReceber}
+        podeReceberAtendimento={podeReceber(ctx)}
         perguntaAUnidade={perguntaAUnidade}
         prePagos={prePagos}
         podeAgendar={can(ctx, 'agenda', 'MANAGE')}

@@ -3,13 +3,15 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamneseDoAgendamento } from './apoio/anamnese'
+import { receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 
 /**
  * Os atritos do estorno (5ª simulação):
  * - A51: a janela do estorno não dizia que a cobrança do atendimento reabre;
  *   o histórico do agendamento registrava "Pagamento recebido" duas vezes e
  *   nenhum estorno; e, recebido de novo, a URL ficava com `?receber=1` e o
- *   "Fechar agora" continuava à vista;
+ *   "Fechar agora" continuava à vista (desde o PDV7, recebe-se de novo na
+ *   comanda do atendimento, no PDV — o `?receber=1` saiu);
  * - A52: a lista do Financeiro mostrava o estorno como "Despesa · Pago ·
  *   −R$ 98", sem dizer que anula a receita.
  */
@@ -38,6 +40,8 @@ test.beforeAll(async () => {
   // A gestora da clínica: recebe, estorna e monta plano (o "Fechar agora" é dela).
   gestora = await criarMembro(`eatg${marca}`, {
     tenant: rede.tenantId, branchId: null, rotulo: 'Gestora',
+    // Monta o plano no atendimento concluído: quem atende na unidade (PT2, 14/11).
+    atendeEm: [rede.branchId],
     permissoes: [
       { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' },
       { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' },
@@ -95,14 +99,17 @@ test('A52: na lista do Financeiro (unidade e rede), o estorno se chama "Estorno"
   })
 })
 
-test('A51: recebido de novo pela tela do atendimento, a URL perde o ?receber=1 e o "Fechar agora" some', async ({ browser }) => {
+test('A51: recebido de novo na comanda do PDV, a tela do atendimento diz pago e o "Fechar agora" some', async ({ browser }) => {
   await como(browser, async p => {
-    await p.goto(`/${slug}/agenda/${ap}?receber=1`)
-    const janela = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-    await janela.getByLabel('Forma de pagamento').selectOption('PIX')
-    await janela.getByRole('button', { name: 'Confirmar pagamento' }).click()
+    // PDV7/CX3: o estornado volta à comanda do atendimento, no PDV.
+    const comanda = await receberAtendimentoNoPdv(p, `/${slug}`, ap)
+    await escolherFormaPorValor(comanda, 'PIX')
+    await botaoDeReceber(comanda).click()
+    await expect.poll(async () => (await db().from('financial_transactions').select('id')
+      .eq('appointment_id', ap).eq('is_paid', true).eq('type', 'INCOME').neq('id', tx)).data?.length ?? 0,
+      { message: 'a receita nova', timeout: 20_000 }).toBeGreaterThan(0)
+    await p.goto(`/${slug}/agenda/${ap}`)
     await expect(p.getByText(/Pagamento confirmado/).first()).toBeVisible({ timeout: 20_000 })
-    await expect(p).not.toHaveURL(/receber=1/)
     // Fase 3 do PDV (PT1b): o "Fechar agora" (que cobrava) saiu; o que ficou é
     // o "Aceitar plano", sem dinheiro — e não se lê como receber de novo.
     await expect(p.getByRole('button', { name: 'Fechar agora' }), 'pago, nada que se confunda com receber').toHaveCount(0)

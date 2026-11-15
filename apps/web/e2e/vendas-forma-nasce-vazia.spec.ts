@@ -1,7 +1,7 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco, PREFIXO } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { abrirVendaNoPdv, receberPlanoNoPdv } from './apoio/vender'
+import { abrirVendaNoPdv, receberPlanoNoPdv, receberAtendimentoNoPdv, botaoDeReceber } from './apoio/vender'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 
 /**
@@ -10,7 +10,8 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
  * peeling do Jorge no Pix, que ele pagou no cartão (e virou um estorno). A
  * forma nasce VAZIA e é obrigatória (princípio 3): nada se confirma sem ela.
  *
- * As telas: o "Confirmar pagamento" do atendimento (e o `?receber=1`), o
+ * As telas: o recebimento do atendimento (desde o PDV7, a comanda dele no
+ * PDV — a janela "Confirmar pagamento" e o `?receber=1` saíram), o
  * "Receber" do plano no check-in, o checkout do plano e o "Vender" da ficha
  * (`CamposDoPagamento`: pacote, pré-pago, produto e o pagamento do contrato).
  *
@@ -58,7 +59,7 @@ test.afterAll(async () => {
   expect(falhas).toEqual([])
 })
 
-test('o "Confirmar pagamento" que o ?receber=1 abre não tem forma: nada se confirma sem escolher', async ({ browser }) => {
+test('a comanda do atendimento no PDV não tem forma: nada se recebe sem escolher', async ({ browser }) => {
   const c = await rede!.criarCliente('Jorge')
   const agora = new Date().toISOString()
   const { data: ap, error } = await db().from('appointments').insert({
@@ -67,11 +68,11 @@ test('o "Confirmar pagamento" que o ?receber=1 abre não tem forma: nada se conf
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
   await como(browser, async p => {
-    await p.goto(`/${slug}/agenda/${ap!.id}?receber=1`)
-    const dlg = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-    await expect(dlg).toBeVisible()
-    await expect(dlg.getByLabel('Forma de pagamento')).toHaveValue('')
-    await expect(dlg.getByRole('button', { name: /Confirmar/ })).toBeDisabled()
+    const dlg = await receberAtendimentoNoPdv(p, `/${slug}`, ap!.id)
+    const formas = dlg.getByRole('radiogroup', { name: /Forma de pagamento/ })
+    await expect(formas).toBeVisible()
+    await expect(formas.locator('[aria-checked="true"]')).toHaveCount(0)
+    await expect(botaoDeReceber(dlg)).toBeDisabled()
   })
   expect((await db().from('financial_transactions').select('id').eq('appointment_id', ap!.id)).data, 'nada foi gravado').toEqual([])
 })

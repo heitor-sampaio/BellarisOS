@@ -13,15 +13,19 @@ import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
  * agendamento já foi encerrado.", e o recebimento ficava sem porta.
  *
  * - `A_RECEBER`: concluído, com preço, avulso e sem pagamento — a conta de
- *   `atendimentos_a_receber`, a mesma do Fechamento e da ficha;
+ *   `atendimentos_a_receber`, a mesma da ficha e do PDV;
  * - `SEM_COBRANCA`: R$ 0 (a avaliação) — nada a receber;
  * - `RESOLVIDO`: pago, ou pago em outro lugar (plano, pacote, pré-pago).
  *
- * `podeReceber` é o módulo de recebimentos, o de `confirmPayment`.
+ * `podeReceber` é quem recebe (o PDV ou o Financeiro em Gerenciar), o de
+ * `confirmPayment`. O A_RECEBER traz a comanda do atendimento: o recebimento
+ * é no PDV (PDV7/CX3, a revisão do Heitor de 2026-11-13), e a janela leva a ela.
  */
 export async function situacaoDaCobranca(appointmentId: string): Promise<{
   situacao: 'A_RECEBER' | 'SEM_COBRANCA' | 'RESOLVIDO'
   podeReceber: boolean
+  /** A comanda aberta no PDV (só no A_RECEBER). */
+  comanda?: { id: string | null; unidadeId: string } | null
 } | null> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
@@ -35,7 +39,9 @@ export async function situacaoDaCobranca(appointmentId: string): Promise<{
   const recebe = podeReceber(ctx)
   if (!appt.treatment_plan_id && !(Number(appt.price) > 0)) return { situacao: 'SEM_COBRANCA', podeReceber: recebe }
   const { itens } = await getAtendimentosAReceber({ tenantId: ctx.tenantId!, agendamentoId: appointmentId })
-  return { situacao: itens.length > 0 ? 'A_RECEBER' : 'RESOLVIDO', podeReceber: recebe }
+  const item = itens[0]
+  if (!item) return { situacao: 'RESOLVIDO', podeReceber: recebe }
+  return { situacao: 'A_RECEBER', podeReceber: recebe, comanda: { id: item.comandaId, unidadeId: item.branchId } }
 }
 
 /**
@@ -71,7 +77,8 @@ export async function abaterDoPacote(appointmentId: string, sessaoId: string): P
 
     revalidatePath(`/${unidade.slug}/agenda`)
     revalidatePath(`/${unidade.slug}/agenda/${appointmentId}`)
-    revalidatePath(`/${unidade.slug}/fechamento`)
+    revalidatePath(`/${unidade.slug}/pdv`)
+    revalidatePath('/admin/pdv')
     revalidateTag(`appointments:${ctx.tenantId!}`, { expire: 0 })
     return {}
   } catch (e) {

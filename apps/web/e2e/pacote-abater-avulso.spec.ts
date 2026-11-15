@@ -4,6 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { chamarAcao } from './apoio/acao-direta'
+import { receberAtendimentoNoPdv } from './apoio/vender'
 
 /**
  * O pacote vendido DEPOIS reconhece a sessão avulsa já concluída (D9 da
@@ -137,15 +138,16 @@ test('o "Receber" oferece "Abater do pacote": o atendimento vira sessão do paco
   expect((await comanda())?.cancelada_em).toBeNull()
 
   await como(browser, async p => {
-    await p.goto(`/${slug}/agenda/${ap}`)
-    await p.getByRole('button', { name: 'Confirmar pagamento' }).click()
-    const janela = p.getByRole('dialog', { name: 'Confirmar pagamento' })
+    // PDV7/CX3: o "Receber" do atendimento é a comanda dele, no PDV.
+    const janela = await receberAtendimentoNoPdv(p, `/${slug}`, ap)
     const oferta = janela.locator('[data-abater-do-pacote]')
     await expect(oferta).toContainText(`10 drenagens ${marca}`)
     await expect(oferta).toContainText('10 sessões')
     await oferta.getByRole('button', { name: 'Abater do pacote' }).click()
+    await expect.poll(async () => (await comanda())?.cancelada_motivo, { message: 'abatido', timeout: 20_000 }).toBe('Sessão do pacote')
+    await p.goto(`/${slug}/agenda/${ap}`)
     await expect(p.getByText(/Sessão de pacote/).first()).toBeVisible({ timeout: 20_000 })
-    await expect(p.getByRole('button', { name: 'Confirmar pagamento' })).toHaveCount(0)
+    await expect(p.getByRole('link', { name: 'Receber no PDV' })).toHaveCount(0)
   })
 
   // O banco: a sessão usada e ligada, o contador, fora do a receber, sem cobrança.
@@ -177,10 +179,8 @@ test('só oferece com o MESMO procedimento e sessão sobrando', async ({ browser
   const ap = await avulsoConcluido(c, limpeza, 200)
   await venderPacote(c)
   await como(browser, async p => {
-    await p.goto(`/${slug}/agenda/${ap}`)
-    await p.getByRole('button', { name: 'Confirmar pagamento' }).click()
-    const janela = p.getByRole('dialog', { name: 'Confirmar pagamento' })
-    await expect(janela.getByLabel('Forma de pagamento')).toBeVisible()
+    const janela = await receberAtendimentoNoPdv(p, `/${slug}`, ap)
+    await expect(janela.getByRole('radiogroup', { name: /Forma de pagamento/ })).toBeVisible()
     await expect(janela.locator('[data-abater-do-pacote]')).toHaveCount(0)
   })
 })

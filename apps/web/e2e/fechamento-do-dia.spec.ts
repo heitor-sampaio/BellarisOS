@@ -47,7 +47,7 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('o fechamento do dia', () => {
-  test('a recepção vê o dia por forma de pagamento, conta o dinheiro e fecha', async ({ browser }) => {
+  test('quem tem o PDV em Gerenciar vê o dia por forma de pagamento, conta o dinheiro e fecha', async ({ browser }) => {
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/dashboard`)
       await p.getByRole('navigation').getByText('Fechamento do dia').click()

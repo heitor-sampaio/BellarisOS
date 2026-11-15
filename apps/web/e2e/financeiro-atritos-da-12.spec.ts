@@ -121,7 +121,7 @@ test('A32: no celular, o estorno também está na aba Financeiro da ficha', asyn
   }, 412)
 })
 
-test('A35: a recepção recebe a parcela na ficha e, no atendimento pago, lê a quem pedir o estorno', async ({ browser }) => {
+test('A35: quem tem o PDV sem o Financeiro recebe a parcela na ficha e, no atendimento pago, lê a quem pedir o estorno', async ({ browser }) => {
   await como(browser, caixa, async p => {
     await p.goto(`/${slug}/clients/${carla}?aba=financeiro`)
     await p.locator(`[data-lancamento="${parcelaDaCarla}"]`).getByRole('button', { name: 'Receber' }).click()
@@ -160,7 +160,7 @@ test('A36, A37 e A38: a 1440 px as ações da linha cabem, o "A pagar" fica na l
   })
 })
 
-test('A42 e A43: a contadora lê "Ver a lista"; as contas a pagar de qualquer mês têm lista', async ({ browser }) => {
+test('A42 e A43: quem tem o Financeiro em Ver lê "Ver a lista"; as contas a pagar de qualquer mês têm lista', async ({ browser }) => {
   await como(browser, contadora, async p => {
     await p.goto('/admin/financeiro?period=month')
     const aReceber = p.locator('[data-kpi="a-receber"] [data-em-aberto]')

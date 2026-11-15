@@ -121,7 +121,7 @@ const CASOS: Caso[] = [
     gravou: q => conta('notification_campaigns', 'name', nome('Campanha', q)) },
 ]
 
-test('a gerente de unidade fixa não grava configuração da rede pela action direta; a dona grava', async ({ browser }) => {
+test('quem tem só uma unidade, com tudo em Gerenciar, não grava configuração da rede pela action direta; a Admin da rede grava', async ({ browser }) => {
   // O controle primeiro: a dona grava cada uma (e a página fica compilada).
   await como(browser, dona!, async p => {
     for (const c of CASOS) {
@@ -137,7 +137,7 @@ test('a gerente de unidade fixa não grava configuração da rede pela action di
   })
 })
 
-test('a gerente de unidade fixa continua mexendo na unidade dela: os dados, o horário e as salas', async ({ browser }) => {
+test('quem tem só uma unidade continua mexendo na unidade dela: os dados, o horário e as salas', async ({ browser }) => {
   const sala = `${PREFIXO} Sala da gerente ${marca}`
   const telefone = '(48) 3333-4444'
   await como(browser, gerente!, async p => {
@@ -154,7 +154,7 @@ test('a gerente de unidade fixa continua mexendo na unidade dela: os dados, o ho
   expect((await db().from('rooms').select('id').eq('branch_id', rede!.branchId).eq('name', sala)).data?.length, 'a sala dela').toBe(1)
 })
 
-test('na tela, a gerente lê "Esta configuração é da rede toda" e não acha o botão; a dona edita', async ({ browser }) => {
+test('na tela, quem tem só uma unidade lê "Esta configuração é da rede toda" e não acha o botão; a Admin da rede edita', async ({ browser }) => {
   await como(browser, gerente!, async p => {
     for (const aba of ['tags', 'permissions', 'fichas', 'documentos', 'integrations', 'general']) {
       await p.goto(`/${slug}/settings?tab=${aba}`)

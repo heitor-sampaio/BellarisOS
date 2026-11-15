@@ -3,6 +3,7 @@ import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
+import { receberAtendimentoNoPdv, escolherFormaPorValor, botaoDeReceber } from './apoio/vender'
 
 /**
  * Fidelidade, fase 2 — pontos como desconto no pagamento
@@ -97,16 +98,16 @@ test.describe.serial('fidelidade: pontos como desconto no pagamento', () => {
     const ctx = await browser.newContext({ storageState: recepcao!.estado })
     try {
       const p = await ctx.newPage()
-      await p.goto(`/admin/agenda/${ap}`)
-      await p.getByRole('button', { name: 'Confirmar pagamento' }).click()
-      const bloco = p.getByTestId('usar-pontos')
+      // PDV7/CX3: recebe-se na comanda do atendimento, no PDV.
+      const comanda = await receberAtendimentoNoPdv(p, '/admin', ap)
+      const bloco = comanda.getByTestId('usar-pontos')
       await expect(bloco).toContainText('1.500 pontos')
       await bloco.getByRole('button', { name: 'Usar o máximo' }).click()
       // Teto de 50% de R$ 200 = R$ 100 = 1.000 pontos a R$ 0,10.
       await expect(bloco.locator('input[name="pontos"]')).toHaveValue('1000')
-      await expect(p.getByTestId('total-a-receber')).toContainText('100,00')
-      await p.locator('select[name="payment_method"]').selectOption('PIX')
-      await p.locator('form').getByRole('button', { name: 'Confirmar pagamento' }).click()
+      await expect(botaoDeReceber(comanda)).toHaveText(/Receber R\$\s?100,00/)
+      await escolherFormaPorValor(comanda, 'PIX')
+      await botaoDeReceber(comanda).click()
       await expect.poll(async () => (await tx(ap))?.is_paid, { message: 'o pagamento é gravado' }).toBe(true)
     } finally { await ctx.close() }
 

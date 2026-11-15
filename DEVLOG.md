@@ -1774,6 +1774,98 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — CX3 e PDV7 até o fim: o atendimento concluído se recebe só na comanda do PDV, os textos do plano e do pacote dizem o PDV, e o V0 nos títulos dos testes
+
+As contradições que a revisão dos docs achou (o "Para o Heitor" da entrada
+abaixo). O plano já dizia o que fazer: PDV7 ("Sai a cobrança da conclusão do
+atendimento como porta própria (vira a comanda)") e CX3 ("Os 'Concluídos a
+receber' viram as comandas abertas do PDV (sai a lista à parte na agenda, no
+Fechamento e na ficha)").
+
+- **A folha da agenda** (`appointment-sheet.tsx`): o "Receber pagamento"
+  (→ `/atendimento?receber=1`) virou **"Receber no PDV"**, que abre a comanda
+  do atendimento no PDV da unidade dela (`rotaDaComanda`, `lib/rotas.ts`:
+  `/pdv?unidade=…&comanda=…`, nos dois portais). `situacaoDaCobranca` devolve
+  a comanda; `getAtendimentosAReceber` ganhou `comandaId`. A quem não recebe:
+  "Pagamento a receber no PDV.".
+- **A tela do atendimento** (`appointment-session.tsx`) perdeu a janela de
+  pagamento própria (`showPayment`, o `PaymentModal`, o "Confirmar pagamento"
+  e o `?receber=1` nas duas páginas `agenda/[id]`). A quem recebe
+  (`podeReceber`: o PDV ou o Financeiro em Gerenciar — era só o `cashier`), o
+  "Receber no PDV" leva à comanda (`comandaId`, lido em
+  `sessao-de-atendimento.tsx`). **Nada do que a janela fazia ficou sem lugar**:
+  o PDV usa o mesmo `FormularioDeReceberAtendimento` — abater do pacote (D9),
+  desconto e motivo, voucher, pontos, maquininha, vezes, bandeira, saldo do
+  crédito interno e o combinado do contrato. (O "Abater do pacote" do PDV só
+  aparece na comanda sem produto, como decidido na fase 5b.)
+- **A ficha** (`client-profile.tsx`): saiu a lista "Atendimentos a receber"
+  (`atendimentos-a-receber.tsx` apagado). No lugar, o resumo
+  `ComandasAbertasDaFicha` ("N comanda(s) aberta(s) no PDV · R$ X",
+  `[data-comandas-abertas]`) e, a quem recebe, "Receber no PDV" para a comanda
+  mais antiga numa unidade ao alcance (`comandaParaReceber`, em
+  `financeiroDaFicha`). A quem não recebe: "Recebe-se no PDV, com quem tem o
+  PDV ou o Financeiro em Gerenciar.".
+- **`receber-atendimento.tsx` fica** (o PDV usa o formulário), só sem a
+  janela e sem o modo de seletor (`emBlocos` saiu: a forma é sempre em
+  blocos). **`confirmar_pagamento_do_atendimento` fica** — é quem o PDV chama
+  (`confirmPayment`).
+- **"Se recebe no Financeiro" virou "no PDV"**:
+  - o rodapé do plano fechado (`rodapeDoPlanoFechado`): "Plano fechado. O que
+    falta (as parcelas em aberto) se recebe no PDV." e, a quem não recebe,
+    "…, com quem tem o PDV ou o Financeiro em Gerenciar: X, Y." (os nomes de
+    `quemRecebeNoPdv`, `lib/equipe/quem-desfaz.ts`). A quem recebe, o
+    "Receber no PDV" (a "Nova venda" com a cliente, onde as parcelas dela
+    aparecem — `rotaDaClienteNoPdv`). A linha da parcela vencida dizia
+    "cobrada no check-in": diz "receba no PDV";
+  - o aviso do pacote em aberto (`AvisoDoPacoteEmAberto`, na ficha e no
+    "Gerenciar sessões"): "…o que falta se recebe no PDV." com o "Receber no
+    PDV" para a unidade do pacote;
+  - a janela do estorno: "…e a comanda dele volta a ficar aberta no PDV" (dizia
+    que o "Confirmar pagamento" valia de novo).
+- **V0 nos testes**: 61 títulos em 47 arquivos, mais os 8 que sobravam
+  (J-40, A20, o contrato, o desconto) falam em permissão. O
+  `permissoes-gerente-de-unidade.spec.ts` virou (`git mv`)
+  `permissoes-config-de-quem-tem-uma-unidade.spec.ts`, com as referências no
+  CLAUDE.md, em `docs/regras/` e no `e2e/grupos.ts`. O
+  `permissoes-gerente-modelo` fica (é do cargo-modelo). A trava cresceu:
+  `tests/vocabulario-no-texto.test.ts` lê os TÍTULOS de todo spec e teste
+  (`test`/`it`/`describe`), deixando o nome do cargo-modelo dito como modelo e
+  os papéis fixos da plataforma.
+- **Os specs que recebiam pela janela** passaram a receber na comanda
+  (`receberAtendimentoNoPdv`, `escolherFormaPorValor`, `botaoDeReceber`, em
+  `e2e/apoio/vender.ts`): atendimento-fechamento, atendimento-uso-da-10 (A14),
+  documentos-contrato-pagamento, fidelidade-desconto-no-pagamento,
+  fidelidade-vouchers, vendas-desconto, financeiro-atritos-da-7 (A49) e -da-9,
+  financeiro-cartao-por-bandeira, -credito-em-vezes, -estorno-atritos (A51),
+  -estorno-reabre, -parcelas-no-credito, maquininhas-f67, pacote-abater-avulso
+  e vendas-forma-nasce-vazia. Uma sobra do PT2 corrigida: a gestora do
+  estorno-atritos não "atende" e por isso não via mais o "Aceitar plano" do
+  concluído; ganhou `atendeEm`.
+- **TDD**: antes do código, falharam pelo motivo certo — o rodapé do plano
+  ("…a que vence depois se recebe no Financeiro"), a folha (sem o link
+  "Receber no PDV"), a tela do atendimento (a janela "Confirmar pagamento"
+  abria: esperado 0, veio 1), a ficha (sem `[data-comandas-abertas]`), o aviso
+  do pacote ("…se recebe no Financeiro") e o A28 ("…com quem tem o Financeiro
+  em Gerenciar: [e2e] Gestão…").
+- **Verificação**: os specs acima, um por vez, verdes (mais
+  financeiro-a-receber-concluido 6/6, vendas-atritos-da-11 3/3,
+  plano-atritos-da-9 6/6, atendimento-textos-do-fechamento 3/3 e os vizinhos
+  pdv-comanda-do-atendimento 5/5 e pdv-comanda-varios-itens-e-pontos 6/6);
+  `typecheck` e `lint` limpos; vitest: web com 294 arquivos e 2519 testes,
+  mais os demais pacotes.
+- **Sem migration.**
+- **Para o Heitor**:
+  - **O crediário no atendimento avulso continua faltando.** A comanda do
+    atendimento no PDV só aceita as formas do balcão (Pix, dinheiro, débito,
+    crédito, crédito interno — `FORMAS_DO_BALCAO`), e
+    `confirmar_pagamento_do_atendimento` grava um lançamento à vista. Para o
+    crediário, a função transacional teria de criar a entrada e as parcelas e
+    acertar comissão, pontos e comanda; e a regra não está clara: o crediário
+    de um avulso nasce no recebimento ou na comanda, e com que entrada?
+  - Vale uma completa: mexeu em `lib/auth` (só comentário), `lib/rotas`,
+    `lib/metrics/a-receber`, nas páginas da agenda e da ficha dos dois portais
+    e no `e2e/apoio/vender.ts`.
+
 ### 2026-11-16 — O fim do plano de adaptação: V2 nos nomes do código, "unidade fixa" nas regras, os docs no comportamento de hoje e as pendências pequenas
 
 O que sobrava do plano antes da completa.
@@ -1878,19 +1970,8 @@ O que sobrava do plano antes da completa.
     criar a entrada e as parcelas, e acertar a comissão, os pontos e a
     comanda. É grande, e a regra não está clara: o crediário de um avulso
     nasce no recebimento ou na comanda? E com que entrada?
-  - **Contradições que a revisão dos docs achou** (o código não foi mexido):
-    - **CX3** está marcado ✅, mas a ficha ainda tem "Atendimentos a receber"
-      com "Receber" (`client-profile.tsx`), e a folha da agenda tem "Receber
-      pagamento" → `/atendimento?receber=1` (`appointment-sheet.tsx`).
-    - **PDV7**: a sessão de atendimento ainda abre a própria janela de
-      pagamento (`appointment-session.tsx`, `showPayment`).
-  - **Ainda dizem "se recebe no Financeiro"**:
-    `lib/plano-de-tratamento/textos.ts` (o aceite do plano) e
-    `components/shared/aviso-do-pacote-em-aberto.tsx`. Com o PDV seria "no
-    PDV", mas o do plano nomeia quem tem o Financeiro em Gerenciar, e trocar
-    muda a regra.
-  - **V0 no código não terminou**: uns 90 títulos de teste e alguns nomes de
-    spec (`permissoes-gerente-*`) ainda falam no cargo como se fosse fixo.
+  - (As contradições de CX3/PDV7, os textos "se recebe no Financeiro" e o V0
+    no código foram resolvidos na entrada de cima.)
   - **Vale uma completa.** A renomeação tocou arquivos compartilhados: o
     núcleo, `lib/auth`, os layouts, o proxy, a CSP e o `e2e/apoio`.
 
