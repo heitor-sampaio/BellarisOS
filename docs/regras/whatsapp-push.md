@@ -36,18 +36,18 @@
   cruzamento — A48 da 11ª, `atendimento.md` §9.5)
 - Notificações para cliente: confirmação, lembrete 24h antes, promoções
 - **O aviso da cliente vai aos aparelhos de TODAS as fichas do login dela**
-  (2026-10-19: a mesma pessoa pode ser cliente de várias clínicas com uma
-  conta só). O aparelho fica registrado pela ficha da clínica em que ela
+  (2026-10-19: a mesma pessoa pode ser cliente de várias redes com uma
+  conta só). O aparelho fica registrado pela ficha da rede em que ela
   estava; `notifyClient` busca por `aparelhos_da_cliente(ficha)` — os de
   todas as fichas do mesmo login, e só dele. O registro (`client_notifications`)
   continua sendo da ficha que o aviso diz respeito, e o link do aviso leva ao
-  portal daquela clínica. **A campanha também** (C51, F69): `enviarCampanha`
+  portal daquela rede. **A campanha também** (C51, F69): `enviarCampanha`
   lê por `aparelhos_das_clientes(fichas)` (a mesma régua, em lote), e o "vai
   receber no celular" (`publico_com_aparelho`) conta igual. Prova:
   `e2e/campanha-defeitos-do-levantamento.spec.ts` ("C51").
 - **O aparelho é de UMA pessoa OU de UMA cliente** (C56, F69): `push_tokens`
   tem `check (num_nonnulls(user_id, client_id) = 1)` — o aparelho com os dois
-  levaria o aviso da clínica à equipe e o da equipe à cliente.
+  levaria o aviso da rede à equipe e o da equipe à cliente.
 - Fallback de notificação WhatsApp para quando push falhar (uazapi ou API oficial, conforme o que a rede tiver conectado)
 
 ### 9.8.0 Os números de WhatsApp da rede
@@ -108,10 +108,10 @@ tabela veio remover.
   - no inbox, a conversa abre e aparece na lista com "Nome · número removido"
     (sempre, mesmo sem outras caixas), e o painel de filtros tem **"Número"**
     (`p_filtros.numeros` em `inbox_pagina`, as opções em `inbox_opcoes` —
-    os números da clínica e os removidos que têm conversa; `passaNosFiltros`
+    os números da rede e os removidos que têm conversa; `passaNosFiltros`
     a mesma conta);
   - responder diz por que não dá: texto, template e mídia recusam com "O
-    número desta conversa (X) foi removido da clínica: por ele não sai mais
+    número desta conversa (X) foi removido da rede: por ele não sai mais
     nada…" (`lib/inbox/numero-removido.ts`), e o composer mostra o mesmo
     texto no lugar do campo (`[data-numero-removido]`);
   - **e oferece "Responder pelo X"** (r3-f14-04, o Heitor em 2026-11-03: "Um
@@ -141,7 +141,7 @@ tabela veio remover.
    conversa que chegou por outra caixa;
 2. a caixa **da conversa**;
 3. o **padrão da rede** — é por ele que sai tudo que o SISTEMA inicia. A
-   automação NÃO abre conversa por ele, a não ser que a clínica ligue no passo
+   automação NÃO abre conversa por ele, a não ser que a rede ligue no passo
    "Para quem não tem conversa aberta: abrir pelo número padrão" (H1 do
    levantamento das regras, 2026-11-11; `automacoes.md` §9.9).
 
@@ -152,7 +152,7 @@ ligada à ficha; sem ela, a do telefone do cadastro (com e sem o 9 do
 celular); nunca a encerrada nem a de um número REMOVIDO (por ela nada sai — a
 automação escolhia a mais recente, e era essa); a em que a cliente falou por
 último primeiro. A usam a automação ("Mandar mensagem"), o link de assinatura
-e o da ficha de pré-atendimento pela conversa, e a conta antes de ligar uma
+e o da Ficha de saúde pela conversa, e a conta antes de ligar uma
 automação (`publico_com_conversa`). Prova:
 `e2e/automacoes-defeitos-do-levantamento.spec.ts` ("C55").
 
@@ -204,8 +204,8 @@ um recorte recente das conversas (ele decide quanto) e a uazapi o guarda.
   canal ficam de fora.
 - Grava como o histórico da coexistência: `importada`, lida, sem evento de
   conversa (`semEventos`), sem anúncio de origem, sem baixar mídia; a enviada
-  pela clínica (`fromMe`) entra como saída, com a identidade do CLIENTE (a da
-  conversa — no `fromMe` o `sender_pn` é a clínica). `lerDoHistorico` e o
+  pela rede (`fromMe`) entra como saída, com a identidade do CLIENTE (a da
+  conversa — no `fromMe` o `sender_pn` é a rede). `lerDoHistorico` e o
   `parseInbound` dividem `montarMensagem`.
 - Dispara sozinho na travessia para conectada (`marcarConectada`; a conta
   própria, em `salvarNumeroWhatsApp`), depois da resposta (`after`), e a tela
@@ -338,12 +338,12 @@ gravar: sairia com as chaves no texto do cliente.
 ⚠️ Os exports de `actions/uazapi-connection.ts` são **endpoints públicos**, e
 recebem `numeroId`. Toda uma delas passa por `numeroDaRede()`, que confirma a
 posse — sem isso, um id de outra rede entrega o QR code, desconecta e apaga a
-instância paga de outra clínica.
+instância paga de outra rede.
 
 ### 9.8.1 WhatsApp oficial: coexistência × Cloud API
 
 São dois jeitos de ligar o MESMO número à API da Meta, e a escolha é da
-clínica porque a consequência é dela. Guardada em
+rede porque a consequência é dela. Guardada em
 `whatsapp_numbers.config.modo`; os textos moram em
 `lib/whatsapp/modo-oficial.ts`, fora do componente, porque a explicação é
 o que importa e precisa sobreviver a refação de tela.
@@ -367,9 +367,9 @@ servidor), e a escolha da tela vira o `featureType` —
 `whatsapp_business_app_onboarding` na coexistência, nada na Cloud API.
 - **O SDK da Meta carrega SÓ nesse botão** (2026-10-22): o componente põe o
   `sdk.js` na página ao montar, com o `appId` lido no servidor, e SEM
-  `logPageView`. Até então ele vinha no layout raiz e toda página da clínica
+  `logPageView`. Até então ele vinha no layout raiz e toda página do app da rede
   avisava a Meta da visita — inclusive o portal da cliente e o link público
-  da ficha de pré-atendimento, com o token no endereço. O CSP libera
+  da Ficha de saúde, com o token no endereço. O CSP libera
   `connect.facebook.net` e `www.facebook.com` nas conexões. Prova:
   `e2e/sdk-da-meta-so-onde-usa.spec.ts`.
 - **A janela devolve duas coisas por dois canais**: o código (no `FB.login`,
@@ -407,7 +407,7 @@ servidor), e a escolha da tela vira o `featureType` —
   token nem o PIN (`listarNumerosWhatsApp`), e o formulário manual só liga e
   desliga essa caixa — gravar por cima apagaria a credencial. Trocar de conta
   é conectar de novo. O formulário manual continua, recolhido em "avançado",
-  para a clínica com app PRÓPRIO na Meta.
+  para a rede com app PRÓPRIO na Meta.
 - **O formulário manual INSCREVE a conta nos webhooks** (F7c, achado do
   Heitor em 2026-11-02; decisão: fazer a inscrição em vez de só avisar). Sem o
   `subscribed_apps` o número ficava "conectado" e nenhuma mensagem chegava.
@@ -415,7 +415,7 @@ servidor), e a escolha da tela vira o `featureType` —
   `POST /{waba}/subscribed_apps` com o token informado
   (`inscreverContaNosWebhooks`, `lib/whatsapp/cadastro-incorporado.ts`) — é o
   app DONO do token que passa a receber. Falhou, ou não há WABA ID: salva
-  mesmo assim (a credencial é da clínica) e a tela mostra o AVISO ("Sem isso,
+  mesmo assim (a credencial é da rede) e a tela mostra o AVISO ("Sem isso,
   nenhuma mensagem chega…"); o webhook (URL e Verify Token) continua no
   painel do app dela. Os formulários manuais passaram a mostrar o erro e os
   avisos do salvar (`RetornoDoSalvar`), que descartavam.
@@ -429,7 +429,7 @@ servidor), e a escolha da tela vira o `featureType` —
   `e2e/whatsapp-credencial-manual.spec.ts`.
 - **Os webhooks da coexistência** (`lib/whatsapp/coexistencia.ts`; no painel da
   Meta, assinar `history`, `smb_app_state_sync` e `smb_message_echoes`):
-  - `smb_message_echoes` — o que a clínica mandou PELO CELULAR: entra como
+  - `smb_message_echoes` — o que a rede mandou PELO CELULAR: entra como
     saída, ao vivo (zera o "aguardando");
   - `history` — até 180 dias, em pedaços e fora de ordem: entra IMPORTADO
     (`messages.importada`) e LIDO. O gatilho `on_new_message` não deixa
@@ -447,7 +447,7 @@ servidor), e a escolha da tela vira o `featureType` —
 
 ### 9.8.2 O que a Meta cobra (2026-10-15)
 
-**Quem paga a Meta é a CLÍNICA**, na conta do WhatsApp dela (a WABA é dela; o
+**Quem paga a Meta é a REDE**, na conta do WhatsApp dela (a WABA é dela; o
 BellarisOS é Tech Provider, não Solution Partner — não revende nem repassa).
 Sem forma de pagamento na conta, a Meta recusa todo template (código
 `131042`); a conversa livre continua. O sistema não cobra: INFORMA.
@@ -477,7 +477,7 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
   `falhaDoEnvio`), e fica na mensagem (`erro_texto`, que a bolha mostra). Até
   2026-10-15 a regra procurava "OAuth", "24" e "10" no texto: todo erro da
   Cloud API traz `"type":"OAuthException"`, então QUALQUER recusa virava "a
-  conexão expirou" — e o 131042 mandava a clínica reconectar o número quando
+  conexão expirou" — e o 131042 mandava a rede reconectar o número quando
   faltava um cartão.
 - Prova: `e2e/whatsapp-cobranca.spec.ts` (rede própria, Graph falsa com
   `falharMensagens`) e `tests/whatsapp-cobranca.test.ts`.
@@ -512,7 +512,7 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Importar o histórico da uazapi pelo parseInbound (ele descarta o fromMe e tira a identidade do remetente) — é lerDoHistorico
 ❌ Trabalho em after() com linha "em aberto" sem sinal de vida (um deploy no meio a deixa aberta e trava a próxima)
 ❌ Pedir o estado da conexão gerenciada sem dizer QUAL caixa (era o "Adicionar número" que reabria a conectada) — null é conexão nova
-❌ Mostrar "uazapi" à clínica (tela, aviso, erro que chega à tela) — é "WhatsApp Web", por nomeDoProvedor; o nome fica no código e nos dados
+❌ Mostrar "uazapi" à rede (tela, aviso, erro que chega à tela) — é "WhatsApp Web", por nomeDoProvedor; o nome fica no código e nos dados
 ❌ E2E que cria instância gerenciada contra a uazapi real (cada uma é cobrada) — é a falsa, UAZAPI_BASE_URL na porta 3197
 ❌ Decidir o motivo de uma falha por pedaço do texto do erro ("OAuth", "24", "10") — é o código, em falhaDoEnvio
 ❌ Escrever preço da Meta fora de TABELA_DA_META, ou contar "cobrado" por regra nossa em vez do pricing.billable do status
@@ -521,6 +521,6 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Testar "a conexão da rede" (o padrão) quando a tela fala de UM número — é testWhatsAppConnection(provider, numeroId), e o resultado diz qual número respondeu
 ❌ Ligar um número oficial pela credencial manual sem inscrever a WABA (subscribed_apps) nem avisar — conecta e não chega mensagem
 ❌ Apagar a linha de whatsapp_numbers, ou juntar as conversas do número que sai — é marcarNumeroComoRemovido (r2-cfg-06: as conversas ficam como estão)
-❌ Ler os números da clínica (lista, escolha de saída) sem tirar os removidos (removido_em) — getNumerosDaRede já tira
+❌ Ler os números da rede (lista, escolha de saída) sem tirar os removidos (removido_em) — getNumerosDaRede já tira
 ❌ Abrir conversa por outro número sem procurar a que o contato já tem nele (é abrirConversaNoNumero: a da pessoa ou do telefone, depois a nova)
 ```

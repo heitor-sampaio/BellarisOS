@@ -1,19 +1,19 @@
-# Termos e contratos
+# Documentos
 
 > Regras do BellarisOS para esta área, tiradas do `CLAUDE.md` em 2026-10-06
 > para ele caber no contexto (o índice está no §9 de lá). As regras gerais —
 > rede e RLS, permissões, `gravar`/`ler`/`tentar`, portais — continuam no
 > `CLAUDE.md` e valem aqui. Os números de seção são os de sempre.
 
-### 9.4.1 Termos e contratos (2026-09-30)
+### 9.4.1 Documentos — termos e contratos (2026-09-30)
 
 A rede monta (no editor, com variáveis) ou envia (PDF pronto, assinado como
 está) os modelos de termo e contrato, e o cliente assina eletronicamente —
-na clínica, no portal, por link ou no papel. Plano aprovado em 2026-09-29, em
+na tela (presencialmente), no portal, por link ou no papel. Plano aprovado em 2026-09-29, em
 seis fases, **todas no ar**: modelos; emissão pelo atendimento com
-assinatura na clínica e no papel; checkout do plano; PDF assinado e
+assinatura na tela e no papel; checkout do plano; PDF assinado e
 verificação pública; portal do cliente; link público. O desenho inteiro está no
-DEVLOG ("Termos e contratos").
+DEVLOG ("Termos e contratos", o nome da seção de lá).
 
 - **Cinco tipos** (DC1, Bloco Documentos, 2026-11-14): **Termo**
   (`TERMO`), **Contrato do procedimento** (`CONTRATO`), **Contrato de plano**
@@ -206,19 +206,19 @@ DEVLOG ("Termos e contratos").
   os modelos são da REDE: quem tem unidade fixa não os cria nem muda (H7,
   2026-11-01; `recusaDaConfigDaClinica`, `plataforma.md`).
   - **Quem não colhe lê quem colhe** (D8 da 5ª simulação, 2026-11-01): com os
-    Termos em Ver (o médico), o termo que bloqueia aparecia "Para assinar ·
+    Documentos em Ver, o termo que bloqueia aparecia "Para assinar ·
     bloqueia" sem ação nenhuma. `TermosDoCliente` diz, havendo documento em
-    aberto, "A assinatura é colhida pela recepção (quem tem os Termos em
-    Gerenciar): na clínica, por link ou pelo app da cliente."
+    aberto, "A assinatura é colhida por quem tem os Documentos em
+    Gerenciar: na tela, por link ou pelo app da cliente."
     (`data-quem-colhe`), na ficha e no atendimento. Decisão desta frente: só o
-    texto, sem botão de "pedir à recepção" (não há para onde mandar o pedido
+    texto, sem botão de "pedir a quem colhe" (não há para onde mandar o pedido
     além do aviso que a tela já dá). Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
   - **Exceção do checkout** (decisão do Heitor, 2026-10-20): quem RECEBE
     (`podeReceber`) colhe a assinatura do documento de um plano que está no
     checkout (`treatment_plan_id` de plano PROPOSED) — abrir, assinar na tela,
     no papel e montar de novo (`assertPodeColher`, `actions/documentos.ts`).
-    O caixa da simulação de um dia de clínica travava ali. Fora do checkout,
-    continua o módulo de Termos. Prova: `e2e/checkout-de-plano.spec.ts`.
+    Quem recebia no PDV, na simulação de um dia de operação, travava ali. Fora do checkout,
+    continua o módulo Documentos. Prova: `e2e/checkout-de-plano.spec.ts`.
 - O banco recusa modelo de outra rede no procedimento (chave composta com
   `tenant_id`) e o tipo errado no campo (gatilho
   `trg_procedimento_modelos_do_tipo`).
@@ -259,14 +259,14 @@ DEVLOG ("Termos e contratos").
   depois. Prova: `e2e/documentos-tipos-e-nascimento.spec.ts` ("PC2").
   **A janela do agendamento leva a colher** (A23 da 9ª): o termo que falta
   assinar tem "Colher assinatura" (`[data-colher-assinatura]`, a tela
-  `/documentos/[id]/assinar` com a volta à agenda) para quem tem os Termos em
+  `/documentos/[id]/assinar` com a volta à agenda) para quem tem os Documentos em
   Gerenciar; quem só vê, só a situação. Prova: o mesmo spec ("A23").
 - **O texto concorda com o sexo da ficha** (A50 da 6ª simulação,
   2026-11-04: o termo dizia "fui informada(o)" ao Bruno, com o sexo
   cadastrado). Ao montar, o par "a(o)"/"o(a)" no fim de uma palavra — ou
   sozinho, "o(a) paciente" — vira a forma do sexo da ficha (F: "informada",
   "a paciente"; M: "informado", "o paciente"); sem o dado, ou "Outro", fica
-  como a clínica escreveu (`concordarComOGenero`, `lib/documentos/concordancia.ts`,
+  como a rede escreveu (`concordarComOGenero`, `lib/documentos/concordancia.ts`,
   só no texto do MODELO, não no valor das variáveis — o `ajustar` de
   `interpolar`). O documento montado é o que se assina e o que o hash cobre.
   Prova: `tests/documentos-concordancia.test.ts`.
@@ -280,7 +280,7 @@ DEVLOG ("Termos e contratos").
 - **O bloqueio é gatilho** (`trg_documentos_bloqueiam_inicio`): nenhuma porta
   põe IN_PROGRESS com documento BLOQUEIA aberto. Dispensar (com motivo) cumpre.
 - **A janela da agenda diz os documentos do agendamento** (A34 da 6ª
-  simulação, 2026-11-04: só a sessão dizia, e a recepção descobria ao iniciar):
+  simulação, 2026-11-04: só a sessão dizia, e a equipe descobria ao iniciar):
   `DocumentosDaJanela` (`[data-documentos-do-agendamento]`,
   `documentosDaJanela` em `actions/documentos-da-janela.ts`) lista o título e
   a situação — "Assinado", "Falta assinar · bloqueia o início", "Faltam dados
@@ -297,7 +297,7 @@ DEVLOG ("Termos e contratos").
   Documentos, leva 2, 2026-11-14). O MOMENTO de um documento
   (`documentosDoMomento`, `lib/documentos/momento.ts`) é o agendamento, o
   pacote vendido ou o plano, de UMA cliente; os abertos prontos dele
-  (PENDENTE) vão juntos — no link, no aparelho entregue na clínica e no portal
+  (PENDENTE) vão juntos — no link, no aparelho entregue na unidade e no portal
   ("Assinar todos", `/[slug]/cliente/documentos/assinar`).
   - A tela (`AssinarJuntos`, `components/shared/assinar-juntos.tsx`) lista os
     documentos; a cliente abre cada um ("Ler"), marca o aceite, que DIZ os
@@ -310,7 +310,7 @@ DEVLOG ("Termos e contratos").
   - O de "faltam dados" (INCOMPLETO) fica de fora, e a tela diz qual e o que
     falta (`[data-fora-do-link]`). Papel e "dispensar com motivo" continuam
     por documento.
-  - Na clínica, "Entregar ao cliente" leva os abertos do momento juntos
+  - Presencialmente, "Entregar ao cliente" leva os abertos do momento juntos
     (`[data-assinam-juntos]`, `assinarJuntosNaClinica`); no portal,
     `assinarJuntosNoPortal` (só os da ficha DELA).
 - **A tela de assinar tem UM gesto** (J-62, 2026-10-30): marcar "li e
@@ -380,8 +380,8 @@ DEVLOG ("Termos e contratos").
   `contratoSemDocumentoDaCliente`). O checkout segue. Prova: o mesmo spec ("A35").
 - **O contrato do PROCEDIMENTO também cita o pagamento** (decisão do Heitor,
   2026-09-30): `pagamento.*` vale em CONTRATO e CONTRATO_PLANO. No avulso o
-  pagamento só é recebido depois do atendimento, então a recepção o DEFINE
-  antes da assinatura (`definirPagamentoDoContrato`, ficha e painel da sessão;
+  pagamento só é recebido depois do atendimento, então quem tem os Documentos em
+  Gerenciar o DEFINE antes da assinatura (`definirPagamentoDoContrato`, ficha e painel da sessão;
   o mesmo `PagamentoDoPlano` do checkout, guardado em `payment_snapshot`).
   - Sem retrato, o pagamento está "não combinado" — diferente de "no
     atendimento" (`{ forma: 'NADA_AGORA' }`): as variáveis ficam vazias e a
@@ -389,12 +389,12 @@ DEVLOG ("Termos e contratos").
     não sai por link, e se BLOQUEIA trava o início do atendimento.
   - Troca até a assinatura (o texto e o hash são montados de novo); assinado,
     não muda.
-  - O recebimento na recepção já vem com o meio combinado
+  - O recebimento no PDV já vem com o meio combinado
     (`pagamentoCombinadoDoAtendimento`) — orienta, não trava.
   - **No "entrada + parcelas", o meio é da ENTRADA** (D5/D6 da 6ª simulação,
     2026-11-04): `pagamento.forma` diz "entrada de R$ 1.000,00 no cartão de
-    crédito em 3x + 2 parcelas de R$ 1.700,00 com a clínica: R$ 1.700,00 em
-    04/12/2026 e R$ 1.700,00 em 04/01/2027" — as parcelas são o crediário da clínica, não o cartão (dizia
+    crédito em 3x + 2 parcelas de R$ 1.700,00 no crediário: R$ 1.700,00 em
+    04/12/2026 e R$ 1.700,00 em 04/01/2027" — as parcelas são o crediário da rede, não o cartão (dizia
     "+ 2 parcelas … no cartão de crédito"). `pagamento.metodo` é o meio da
     entrada (sem entrada, vazio). O retrato guarda as vezes da entrada quando
     passam de 1. Prova: `e2e/checkout-entrada-no-cartao.spec.ts`,
@@ -404,10 +404,10 @@ DEVLOG ("Termos e contratos").
     dizia "3 parcelas de R$ 890,67" — a média, que soma R$ 2.672,01 — e o
     banco gravou 890,66 + 890,66 + 890,68. `valoresDoPagamento` divide pela
     MESMA conta dos lançamentos (`dividirEmParcelas`): `pagamento.forma` diz
-    "3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) com a clínica: R$ 890,66
+    "3 parcelas (2x de R$ 890,66 + 1x de R$ 890,68) no crediário: R$ 890,66
     em 05/12/2026, R$ 890,66 em 05/01/2027 e R$ 890,68 em 05/02/2027" (iguais:
-    "2 parcelas de R$ 1.700,00 com a clínica: R$ 1.700,00 em … e R$ 1.700,00
-    em …"; uma só, "1 parcela de R$ 300,00 com a clínica, com vencimento em
+    "2 parcelas de R$ 1.700,00 no crediário: R$ 1.700,00 em … e R$ 1.700,00
+    em …"; uma só, "1 parcela de R$ 300,00 no crediário, com vencimento em
     05/12/2026"). O "a primeira em 06/12/2026" antes da lista saiu: repetia a
     data da primeira (A39 da 8ª simulação, 2026-11-06). E
     `pagamento.valor_parcela` "R$ 890,66 (a última, R$ 890,68)" — também no
@@ -441,7 +441,7 @@ DEVLOG ("Termos e contratos").
   nome completo, IP nem conteúdo. "Conferir um arquivo" calcula o hash no
   navegador. O PDF da equipe sai por `/api/documentos/[id]/pdf` (sessão +
   `documents: VIEW` + rede + unidade).
-- **O link de conferência impresso no PDF é o endereço PÚBLICO da clínica**
+- **O link de conferência impresso no PDF é o endereço PÚBLICO do app da rede**
   (D11 da 13ª simulação, F69): `urlDeVerificacao` usa `urlDaClinica()` —
   `CLINICA_URL`, lido em tempo de execução. O `NEXT_PUBLIC_APP_URL` é gravado
   no BUILD, e o PDF assinado saía com o domínio do Railway (o QR de quem
@@ -454,12 +454,12 @@ DEVLOG ("Termos e contratos").
   texto GENÉRICO — o título pode dizer o procedimento, e o push aparece na tela
   de bloqueio. Cliente sem conta no portal: recusado — e **a tela nem oferece**
   (A26 da 7ª simulação, 2026-11-05: o botão aparecia e só no clique dizia que
-  ela não tem o app): sem login, "Pedir no portal" some dos Termos (a ficha e
+  ela não tem o app): sem login, "Pedir no portal" some dos Documentos (a ficha e
   o atendimento, `temAcessoAoApp`) e a tela diz antes "Sem acesso ao app:
-  colha na clínica, por link ou no papel." (`[data-sem-portal]`). Prova:
+  colha na tela, por link ou no papel." (`[data-sem-portal]`). Prova:
   `e2e/ficha-cadastro-atritos-da-7.spec.ts` ("A26"). **Sem o portal no
-  PLANO da clínica, também** (C57a, F69): "Pedir no portal" some, e a action
-  recusa ("O plano desta clínica não tem o portal do cliente…") sem gravar
+  PLANO da rede, também** (C57a, F69): "Pedir no portal" some, e a action
+  recusa ("O plano desta rede não tem o portal da cliente…") sem gravar
   NOTIFICADO_PORTAL — antes respondia "Pedido enviado" e o `notifyClient`
   pulava o aviso calado. O "Enviar à cliente" do anexo recusa igual
   (`enviarDocumentoACliente`) e, desde a F73, nem aparece — no anexo da ficha
@@ -475,7 +475,7 @@ DEVLOG ("Termos e contratos").
   O detalhe do agendamento no portal tem "Documentos deste atendimento"
   (J-63, `documentosDoAgendamento`): o título e a situação — "Falta a sua
   assinatura" (com "Assinar"), "Assinado em …" (com "Ver"), "Em preparação
-  pela clínica", "Dispensado pela clínica". O que falta no cadastro e o
+  pela equipe", "Dispensado pela equipe". O que falta no cadastro e o
   motivo da dispensa ficam com a equipe. Prova:
   `e2e/portal-cliente-documentos-do-agendamento.spec.ts`.
 - **Link público** (`/assinar/[token]`, rota pública; `gerarLinkDeAssinatura`
@@ -492,7 +492,7 @@ DEVLOG ("Termos e contratos").
     link se mostra UMA vez; perdeu, gera outro.
   - Antes de ver o documento o cliente confirma o CPF, ou a data de nascimento
     se o cadastro não tem CPF (sem nenhum dos dois, o link não é gerado).
-    Antes disso a página mostra só a clínica e "um documento".
+    Antes disso a página mostra só a rede e "um documento".
   - A conferência e as contas moram no banco, com o link travado
     (`documento_link_abrir`): 5 erros revogam o link, 20 erros na hora param
     o IP. Devolve jsonb em vez de lançar — a tentativa errada tem de ficar
@@ -508,7 +508,7 @@ DEVLOG ("Termos e contratos").
   - WhatsApp mínimo: mensagem pronta (genérica) + `wa.me`; não depende de
     caixa conectada nem da janela de 24h.
   - **O texto do link é UM** (`mensagemDoLink`, `lib/saudacao.ts`), o mesmo
-    da ficha de pré-atendimento: saúda pelo nome SEM o tratamento
+    da Ficha de saúde: saúda pelo nome SEM o tratamento
     (`nomeParaSaudar`: "Dona Ivone Becker" é "Olá, Ivone!"; só o tratamento,
     "Olá!") e concorda com o que se confirma — "o seu CPF", "a sua data de
     nascimento". Dizia "Olá, Dona! … confirme o seu data de nascimento" (D19
@@ -525,7 +525,7 @@ DEVLOG ("Termos e contratos").
     Não exige `crm`: quem manda não lê a conversa. Janela de 24h fechada: não
     sai, e o link volta para copiar. Sem conversa: recusa ANTES de gerar
     (não revoga o link que existe).
-    A mesma chave vale para a ficha de saúde (pré-atendimento, §9.4 —
+    A mesma chave vale para a Ficha de saúde (§9.4 —
     `enviarFichaPelaConversa`, 2026-10-21): a configuração diz os dois.
 - **A tela de Documentos** (`/admin/documentos` e `/[slug]/documentos`, corpo
   em `app/_shared/documentos-emitidos.tsx`, menu Atendimento; pedido do
@@ -567,7 +567,7 @@ DEVLOG ("Termos e contratos").
     PDF (`/api/documentos/[id]/pdf`) respondem como se o documento não
     existisse.
   - Sem o prontuário no cargo (NONE), o escopo não vale (CLAUDE.md §11): quem
-    tem só os Termos vê todos. O checkout do plano (quem recebe) segue como
+    tem só os Documentos vê todos. O checkout do plano (quem recebe) segue como
     estava. Prova: `e2e/documentos-so-os-meus.spec.ts`.
 - **Os atritos dos termos da 11ª simulação** (2026-11-10; princípio 3):
   - **O termo tem a profissional** (A5: o termo de injetável saía com
@@ -586,7 +586,7 @@ DEVLOG ("Termos e contratos").
     diferente fica como foi escrito (`semONumeroDigitado`).
   - **O link de assinatura onde a assinatura é pedida** (A8: só a ficha tinha
     "Enviar link"; sair do checkout para pegá-lo reabria o checkout do início):
-    a janela da agenda (`DocumentosDaJanela`, quem tem os Termos em Gerenciar,
+    a janela da agenda (`DocumentosDaJanela`, quem tem os Documentos em Gerenciar,
     o documento PENDENTE) e o passo Documentação do checkout têm "Enviar link de
     assinatura" (`EnviarLinkDeAssinatura`, o mesmo `gerarLinkDeAssinatura` da
     ficha: uso único, 7 dias, gerar outro revoga). No checkout, quem RECEBE
@@ -605,7 +605,7 @@ DEVLOG ("Termos e contratos").
 - **A variável opcional que sai vazia se diz** (D6 da 12ª simulação, 2026-11-11;
   princípios 2 e 3 — avisar, nada se bloqueia): o contrato do plano no Visa 6x
   saiu assinado com "Entrada: , em 6 parcelas de R$ 105,00, primeiro vencimento
-  em ." — a cláusula da dona juntava `pagamento.forma` (que já é a frase
+  em ." — a cláusula que a rede escreveu juntava `pagamento.forma` (que já é a frase
   inteira) com as opcionais, vazias por desenho quando o pagamento não as tem.
   - O menu "Inserir variável" diz, junto de cada opcional, QUANDO ela sai vazia
     ("Valor da entrada (vazia sem entrada (à vista, cartão em vezes, a
@@ -656,7 +656,7 @@ DEVLOG ("Termos e contratos").
   - Prova: `e2e/documentos-atritos-da-12.spec.ts`, `tests/documentos-atritos-da-12.test.ts`.
 - O que os canais têm em comum mora em `lib/documentos/assinar.ts` (IP,
   assinante, o evento e o PDF depois de assinar), fora de `actions/`.
-- O export da LGPD traz os termos e contratos na parte GERAL (sem dado
+- O export da LGPD traz os documentos na parte GERAL (sem dado
   clínico, por construção) e copia os PDFs assinados para o pacote.
 - Prova: `e2e/documentos-modelos.spec.ts`, `e2e/documentos-atendimento.spec.ts`,
   `e2e/checkout-de-plano.spec.ts`, `e2e/documentos-verificacao.spec.ts`,

@@ -1774,6 +1774,133 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — Bloco Copilot (CP1, o último do plano de adaptação): as ferramentas conferidas contra o sistema adaptado, e a gravação dele na Auditoria "pelo Copilot"
+
+Cada ferramenta foi conferida contra o sistema adaptado (o PDV e as comandas,
+as unidades da pessoa, a Auditoria, contato e oportunidade, a permissão no
+lugar do cargo).
+
+- **A Auditoria diz "pelo Copilot".** O Confirmar (`efetivarAcao`) roda a
+  ferramenta dentro de `comViaDoCopilot` (`packages/nucleo/src/lib/supabase/via-da-escrita.ts`,
+  um `AsyncLocalStorage`). Toda escrita do `createAdminClient` ali dentro leva
+  `x-bellaris-via: copilot`, inclusive a dos núcleos que abrem o próprio cliente
+  (`createAppointmentCore`, a oportunidade). Por isso a marca é por contexto, e
+  não um cliente a mais. O `private.auditar` (migration `20261116300001`) só
+  lê o cabeçalho com a chave de serviço, e só aceita o valor `copilot`. A linha
+  ganha a coluna `via` e o nome "Fulana (pelo Copilot)", com o `ator_user_id`
+  dela: a tela e o filtro "Quem" não mudaram. O corpo da função parte da
+  definição viva e troca só cinco trechos; se algum não estiver lá, a
+  migration para.
+- **O que mudou em cada ferramenta:**
+
+  | Ferramenta | O que mudou |
+  |---|---|
+  | `fazer_check_in` | aceita o agendamento **confirmado** (recusava, contra a própria descrição e o `checkinCore`) |
+  | todas que recebem `unidade` (`resolverUnidade`) | quem tem várias unidades (EQ1a) escolhe entre as dela; a unidade de fora é recusada com o motivo (antes virava a da página, calada) |
+  | `cliente` | os atendimentos de todas as unidades da pessoa; "cliente desde" pelo `cliente_desde` (a importada); "crédito interno" |
+  | `documentos` | a unidade pedida entre as da pessoa |
+  | `marcar_pago`, `lancar` | o **boleto** na despesa, como a tela (dizia "ou boleto" e recusava); a receita recusa com o motivo |
+  | `lancamentos` | o rótulo do boleto |
+  | `indicadores` | as vendas com o **número da comanda** e os tipos do PDV (produto, crédito interno fora do total); "comercial" é a aba Oportunidades; "permissão" no lugar de "cargo" |
+  | `agendamentos`, `criar_oportunidade`, executor, rota | "permissão" no lugar de "o seu cargo" |
+  | o Confirmar com escolhas | o "Sim, é <nome>" da oportunidade **nunca gravava**: a chave `mesma:<uuid>` (42 caracteres) era cortada em 40 por `decidirAcaoDoCopilot`. Agora o corte é em 80, e o cartão mostra a recusa que o deixa pendente (era calada) |
+  | o prompt | as unidades da pessoa; o PDV (vender e receber a comanda são de lá); Documentos; a Ficha de saúde; as tags são da rede; permissão |
+  | as demais (`agendar`, `remarcar`, `cancelar_agendamento`, `confirmar_agendamento`, `cadastrar_cliente`, `atualizar_contato`, `marcar_tags`, `criar_acesso_ao_app`, `entrada_de_estoque`, `ajuste_de_estoque`, `mover_etapa`, `trocar_responsavel`, `oportunidades`, `estoque`, `procedimentos`, `buscar`, `horarios_livres`, `cobranca_do_whatsapp`, `clientes`) | já usavam o núcleo da tela; só comentários e textos |
+
+- **Provas** (TDD; cada uma falhou antes, pelo motivo certo):
+  - `e2e/copilot-auditoria-cp1.spec.ts`: recebeu "Dono …" e `via` nula onde se
+    esperava "(pelo Copilot)" e `'copilot'`; também o cabeçalho forjado pela
+    sessão e o valor desconhecido;
+  - `e2e/copilot-cp1-ferramentas.spec.ts`: "Este agendamento está
+    confirmado."; o cartão com a unidade da página no lugar da B; a C fora do
+    alcance aceita;
+  - `tests/copilot-cp1.test.ts`: o prompt sem as unidades, o boleto, a comanda
+    e as descrições;
+  - `copilot-oportunidade-mesma-pessoa-f73` falhava antes desta entrega (o
+    corte da chave).
+  - Dois specs foram ajustados ao comportamento novo: em `copilot-leituras`,
+    a unidade de fora agora é recusada com o motivo; em
+    `copilot-dinheiro-pelas-abas.test`, o texto "não abre a aba".
+- **Verificação**: `e2e/copilot*` e `auditoria.spec` em série, contra o
+  `next dev` com a OpenAI falsa. 84 passaram e 2 falharam: o F73, pelo corte
+  da chave, e o `copilot-leituras`, pelo texto novo. Depois das correções,
+  os dois specs e mais o `copilot-gravacoes` passaram (14 de 14 nos dois
+  últimos, 4 de 4 no de leituras). `typecheck` e `lint` limpos; vitest: web
+  293 arquivos, 2507 testes, todos passando. Advisor de segurança: só o
+  `planos_do_site` de sempre.
+- **Fica de fora (para o Heitor decidir se vira ferramenta)**:
+  - vender e receber no PDV, e listar as comandas abertas: o prompt indica o
+    PDV;
+  - ler e aceitar o plano de tratamento;
+  - a ficha da cliente pelo Copilot não diz os planos nem as parcelas em
+    aberto do crediário;
+  - o check-in do Copilot não dá o aviso das parcelas vencidas que a agenda
+    dá (`avisoDasVencidasNaChegada`).
+- **Para o Heitor**:
+  - A migration `20261116300001_auditoria_pelo_copilot` foi aplicada. Não é
+    destrutiva: põe a coluna `via` e troca o corpo de `private.auditar`. Sem
+    backfill.
+  - Mexeu no `createAdminClient` do núcleo (`comVia`, só nas escritas dentro
+    do Confirmar): vale uma completa quando quiser.
+  - Fora do Copilot, o aviso da chegada ainda diz "receba no Financeiro"
+    (`actions/appointments.ts`), e com o PDV seria "no PDV".
+
+### 2026-11-16 — Bloco Vocabulário (os docs: V0, V1, V2): o CLAUDE.md e as regras falam "rede", "unidade" e permissão
+
+A segunda parte do bloco (a primeira foram as telas, logo abaixo). Só texto de
+documentação: o CLAUDE.md e todos os arquivos de `docs/regras/` menos o
+`copilot.md` (que estava sendo mexido em paralelo e fica para a passada dele).
+Nenhuma regra mudou de sentido; nenhuma data, nome de arquivo, função ou teste.
+
+- **"clínica" → "a rede"** (a organização: "a rede decide", "cliente da
+  rede", os princípios do §1), **"a unidade"** (o lugar: "respondeu na
+  unidade", "a unidade 24 h") ou **"o app da rede"** (o `apps/web` em
+  contraste com o sistema e o suporte: o proxy, o CSP, "o membro mora no APP
+  DA REDE"). No portal da cliente, o texto citado é o da tela de hoje ("Falar
+  com a equipe", "Ligar", "Seu crédito").
+- **"filial" → "unidade"**: "Portal Web Filial" é "Portal da unidade" e
+  "Portal não é filial" é "Portal não é a unidade do registro" (CLAUDE.md
+  §1/§6); "por filial" e os rankings de filial nos Indicadores.
+- **Cargo fixo → permissão**: "a recepção cancela" → "quem tem a Agenda em
+  Gerenciar"; "a contadora sem agenda" → "quem não tinha a Agenda"; "a
+  gerente de unidade fixa" → "quem tem só uma unidade"; "a dona que atende" →
+  "a Admin da rede que atende" (o cargo de sistema, que a regra nomeia); o
+  "SDR" → o membro com o CRM. O histórico ("até 2026-09-28…") manteve a data.
+  A claim `role` do JWT ganhou nota no §5 e no §6: é legada, não é cargo.
+- **Nomes de hoje**: PDV (era Recebimentos), Documentos (era Termos e
+  contratos; a seção é "9.4.1 Documentos — termos e contratos"), Crédito
+  interno (era Crédito na clínica; a seção é "9.3.4 Crédito interno
+  VENDIDO"), ficha de saúde (era anamnese/pré-atendimento), ficha de
+  atendimento (era ficha do procedimento), oportunidade (era lead no texto),
+  a aba "Oportunidades" (era Funil comercial / Comercial). O índice do §9
+  acompanhou.
+- **O que fica de propósito**: as citações literais do Heitor; os
+  identificadores do código (`recusaDaConfigDaClinica`, `/auth/clinicas`,
+  `urlDaClinica`, `CLINICA_URL`, `'CLINICA'`, `actions/credito-na-clinica.ts`,
+  os nomes de spec); as tabelas e colunas (`leads`, `pre_atendimento*`,
+  `general_anamnesis`); "clínica de estética" como mercado (o §1 e o site); o
+  adjetivo clínico ("foto clínica", "tabela clínica"); os papéis fixos da
+  equipe da PLATAFORMA (ADMIN, GERENTE); os cargos-modelo pelo nome; a
+  política "Operacional acessa financeiro da filial" (nome no banco); o texto
+  velho citado como histórico de simulação; "profissional" no sentido de quem
+  atende o agendamento.
+- **Para o Heitor**:
+  - Ficaram para conferir, porque descrevem COMPORTAMENTO que pode ter
+    mudado (só o nome foi trocado, ou nem isso): os botões velhos do
+    atendimento ("Enviar para a recepção", "Fechar agora", "Gerar plano e
+    enviar à recepção") em `atendimento.md`; o "Fechar checkout" e o "Vender"
+    na ficha e no inbox (a PDV2 pôs a venda no PDV) e o `cashier` que "não
+    abre tela nenhuma" (hoje abre o PDV) em `vendas-financeiro.md`; o "Cartão
+    da clínica" e o "Não é um parcelamento da cliente com a clínica." do
+    Fechamento, que não se acham mais no código.
+  - "Quem tem unidade fixa" segue em várias regras: com o EQ1a/b (várias
+    unidades por membro) o recorte talvez seja "quem não tem “A rede
+    inteira”". Não troquei, para não mudar o sentido.
+  - A aba do Vender diz "Crédito na rede"; a forma de pagamento e o
+    lançamento dizem "Crédito interno": dois nomes para a mesma coisa.
+  - Os nomes internos do código (V1/V2: "identificadores do código: a
+    seguir") e o `docs/regras/copilot.md` ficam para a próxima.
+
 ### 2026-11-16 — Bloco Vocabulário (as telas: V0, V1, V2), Bloco Cargos (CG1–CG3), PO2 dos Portais e CA1 do Portal da cliente: "clínica", "filial" e cargo fixo saem do texto que se lê
 
 A revisão do Heitor (13/11, CLAUDE.md §1): "Clinica é a mesma coisa que rede

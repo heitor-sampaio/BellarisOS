@@ -58,7 +58,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   - **O suporte: só o fato que o SUPORTE gravou não dispara** (C2 que sobrou,
     F71; CLAUDE.md §14). O suporte grava pelo cliente de serviço, e o gatilho
     SQL não sabia quem gravou: até a F71 o cron calava todo fato ocorrido com
-    uma sessão de suporte ativa na rede, inclusive o pagamento que a recepção
+    uma sessão de suporte ativa na rede, inclusive o pagamento que a equipe
     recebeu no mesmo período. Agora toda ESCRITA do cliente de serviço numa
     requisição da sessão de suporte leva o cabeçalho `x-bellaris-suporte-sessao`
     (`comMarcaDoSuporte`, `packages/nucleo/src/lib/supabase/marca-do-suporte.ts`,
@@ -177,12 +177,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   oportunidade ABERTA mais recente da cliente (`dados.clienteId`) — ganho e
   perdido não entram. O `agendamento.criado` leva o `leadId` da oportunidade
   a que o agendamento se ligou (o card por onde se agendou). É o que deixa a
-  clínica montar o movimento que o sistema deixou de fazer sozinho
+  rede montar o movimento que o sistema deixou de fazer sozinho
   ("Agendamento criado → Mover de etapa", "Atendimento concluído → Mover para
   Fechado"): "não existe movimento automático padrão nos funis" (`crm-inbox.md`).
   O modelo "Agendou: o card muda de etapa" (`agendou-move-o-card`) nasce com a
-  etapa vazia — a validação não deixa ligar até a clínica escolher a do funil
-  dela. **Ele nasce DESLIGADO e só se a clínica o pedir** (r2-cfg-04, o
+  etapa vazia — a validação não deixa ligar até a rede escolher a do funil
+  dela. **Ele nasce DESLIGADO e só se a rede o pedir** (r2-cfg-04, o
   Heitor em 2026-11-03: "pode manter o modelo, desativado, rede usa se
   quiser"): não há semente de automação na rede nova (`semearRede`,
   `crm_funil_padrao` e os gatilhos de `tenants` não criam automação); ele só
@@ -211,13 +211,13 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   (`agendamento.cancelado`) e **pontos de fidelidade**
   (`fidelidade.pontos_ganhos`, com os pontos e o saldo do fato)) e
   `criarAutomacaoDeModelo` grava o grafo DO SERVIDOR (o navegador manda só a
-  chave), em RASCUNHO, para a clínica revisar. O procedimento fica no passo
+  chave), em RASCUNHO, para a rede revisar. O procedimento fica no passo
   "Se", nunca no gatilho. Modelo novo usa só nodes e eventos do catálogo, e
   nasce com tudo ligado (`tests/automacoes-modelos.test.ts` confere).
 - **Regra do "Se" sem valor não liga** (D-4): "Procedimento é ___" nunca é
   verdade; o validador acusa erro em toda regra que compara (tudo menos "está
   vazio"/"está preenchido") sem valor. É o que segura o modelo de retorno até
-  a clínica escolher o procedimento. Prova: `e2e/automacoes-modelos.spec.ts`.
+  a rede escolher o procedimento. Prova: `e2e/automacoes-modelos.spec.ts`.
 - **Sem WhatsApp conectado, a mensagem vai como aviso no celular** (A14 da 5ª
   simulação, 2026-11-03). "Conectado" = um `whatsapp_numbers` ATIVO da rede
   (`redeTemWhatsapp`, `lib/automacoes/canal-da-rede.ts`, só no servidor). A
@@ -225,7 +225,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   (`semWhatsapp`, `lib/automacoes/modelos.ts`). O passo "Mandar mensagem"
   ganhou o canal **Aviso no celular (push)** — `notifyClient`: o sino do
   portal, o app e o navegador da cliente, sem conversa (a resposta não chega
-  no inbox); o título é o nome da clínica. O passo em WhatsApp numa rede sem
+  no inbox); o título é o nome da rede. O passo em WhatsApp numa rede sem
   número mostra o aviso com "Mandar como aviso no celular".
 - **A automação e a cliente SEM conversa aberta** (H1 do levantamento das
   regras, o Heitor, 2026-11-11, opção d, com a a valendo já; princípios 1, 3
@@ -236,12 +236,12 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   no WhatsApp." **Depois:** o passo ganha "Para quem não tem conversa
   aberta", desligado por padrão — ( ) Não mandar · ( ) Abrir pelo número
   padrão · ( ) Mandar como aviso no celular. Abrir pelo número padrão é a
-  clínica escolhendo correr o risco de banimento do WhatsApp Web; na API
+  rede escolhendo correr o risco de banimento do WhatsApp Web; na API
   oficial pede um template aprovado, e o envio de template na automação ainda
   precisa ser construído. A conta é `contarAntesDeLigar` (`actions/automacoes.ts`):
   a busca do passo "Buscar clientes" (com o teto) e, entre as achadas, as que
   têm a conversa (`publico_com_conversa`, a mesma régua do envio — §9.8.0 de
-  `whatsapp-push.md`); sem o passo de busca, as clientes ativas da clínica. A
+  `whatsapp-push.md`); sem o passo de busca, as clientes ativas da rede. A
   janela "Ligar a automação?" (`[data-antes-de-ligar]`) abre para **todo fluxo
   que chega à cliente** — o passo "Mandar mensagem" por qualquer canal, o
   aviso no celular incluído (A10 da 14ª, F71: o modelo da rede sem WhatsApp
@@ -385,7 +385,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   (`dispatchCampaignInline`: a imediata, a agendada e a de todo ano — as
   automáticas de antes saíram com o MK1). **"Sem visita há mais de N dias"** =
   nenhum atendimento concluído desde N dias atrás (nem a última visita do
-  sistema de antes) E cliente da clínica de antes disso
+  sistema de antes) E cliente da rede de antes disso
   (`cliente_desde_antes`: `coalesce(cliente_desde, created_at)` — a cadastrada
   ontem não "sumiu", a régua do "Reativar clientes"); o resumo diz "Sem visita
   há mais de 60 dias". "Com ao menos N visitas" (`min_visits`) conta os
@@ -453,7 +453,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   motor faz com o momento que já passou ("Marcado com menos de 1 dia de
   antecedência: sai na hora", A11). Prova:
   `e2e/automacoes-campanhas-atritos-da-14.spec.ts`.
-- **Automações e Campanhas são da clínica, e ficam só no portal da rede**
+- **Automações e Campanhas são da rede, e ficam só no portal da rede**
   (D-2, decisão do Heitor, 2026-10-29: "a automação é da clínica, mesmo que o
   alvo seja a unidade"). Não há tela delas em `/[slug]`; quem tem unidade fixa
   não as alcança, tenha o módulo que tiver. A tela de Cargos diz isso na linha

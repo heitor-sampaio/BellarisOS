@@ -47,8 +47,9 @@ export const documentos: FerramentaDeLeitura<{
   async executar(c, args) {
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
-    // Como a tela: quem tem unidade fixa vê a dela; a rede, todas (null) ou a escolhida.
-    const branchIds = c.ctx.branchId ? [c.ctx.branchId] : u.unidade ? [u.unidade.id] : null
+    // Como a tela: quem tem unidades vê a escolhida entre as dela (ou a em que
+    // está — EQ1a, CP1); a rede, todas (null) ou a escolhida.
+    const branchIds = u.unidade ? [u.unidade.id] : c.ctx.branchId ? [c.ctx.branchId] : null
     // O período no fuso do recorte (F62b), como a tela de Documentos.
     const fuso = await fusoDoRecorte(c.ctx.tenantId, branchIds)
     const periodo = args.periodo === 'custom' || (args.de && args.ate)

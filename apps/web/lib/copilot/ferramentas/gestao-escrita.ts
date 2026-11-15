@@ -29,18 +29,23 @@ import { maquininhasDaRede } from '@/lib/financeiro/vezes-da-rede'
  * dinheiro nem apaga nada).
  */
 
-const FORMA_LEGIVEL: Record<string, string> = { CASH: 'dinheiro', PIX: 'Pix', DEBIT_CARD: 'cartão de débito', CREDIT_CARD: 'cartão de crédito' }
+export const FORMA_LEGIVEL: Record<string, string> = { CASH: 'dinheiro', PIX: 'Pix', DEBIT_CARD: 'cartão de débito', CREDIT_CARD: 'cartão de crédito', BOLETO: 'boleto' }
 const FORMA_DO_TEXTO: Record<string, string> = {
   dinheiro: 'CASH', especie: 'CASH', pix: 'PIX', debito: 'DEBIT_CARD', 'cartao de debito': 'DEBIT_CARD',
-  credito: 'CREDIT_CARD', 'cartao de credito': 'CREDIT_CARD', cartao: 'CREDIT_CARD',
+  credito: 'CREDIT_CARD', 'cartao de credito': 'CREDIT_CARD', cartao: 'CREDIT_CARD', boleto: 'BOLETO',
 }
 const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-function formaDePagamento(pedido?: string): string | null | { erro: string } {
+/**
+ * A forma pedida, para o lançamento de `tipo`. O boleto é só da DESPESA, como
+ * a baixa e o lançamento da tela (`marcarPagoCore`, `FORMAS_DA_DESPESA`): o
+ * Copilot dizia "ou boleto, na despesa" e recusava o boleto (CP1).
+ */
+export function formaDePagamento(pedido: string | undefined, tipo: 'INCOME' | 'EXPENSE'): string | null | { erro: string } {
   if (!pedido) return null
   const p = pedido.toUpperCase()
-  if ((FORMAS_DE_PAGAMENTO as readonly string[]).includes(p)) return p
-  const achada = FORMA_DO_TEXTO[semAcento(pedido)]
-  return achada ?? { erro: `Forma de pagamento "${pedido}" não reconhecida: dinheiro, Pix, débito ou crédito.` }
+  const achada = (FORMAS_DE_PAGAMENTO as readonly string[]).includes(p) || p === 'BOLETO' ? p : FORMA_DO_TEXTO[semAcento(pedido)]
+  if (achada === 'BOLETO' && tipo !== 'EXPENSE') return { erro: 'Boleto é forma de pagar uma despesa: a receita é em dinheiro, Pix, débito ou crédito.' }
+  return achada ?? { erro: `Forma de pagamento "${pedido}" não reconhecida: dinheiro, Pix, débito ou crédito${tipo === 'EXPENSE' ? ' (ou boleto, na despesa)' : ''}.` }
 }
 /** A bandeira do cartão (r3-f13-01), pelo nome ("Elo", "master"…), só no cartão. */
 function bandeiraDoPedido(pedido: string | undefined, forma: string | null): string | null | { erro: string } {
@@ -86,7 +91,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   modulo: 'financial', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'financial'),
   recurso: 'financeiro',
-  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}), vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N. No cartão pago, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.`,
+  descricao: `Lança uma receita ou despesa avulsa (não ligada a atendimento): descrição, valor em reais, categoria (receita: ${CATEGORIAS_DE_RECEITA.join(', ')}; despesa: ${CATEGORIAS_DE_DESPESA.join(', ')}), vencimento (AAAA-MM-DD) se for a pagar/receber, ou pago=true com a forma (dinheiro, Pix, débito, crédito; na despesa, também boleto) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita paga no crédito, as vezes se a pessoa disser ("no crédito em 3x" → vezes=3): é um pagamento só, que a operadora deposita em N. No cartão pago, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.`,
   parametros: z.object({
     tipo: z.enum(['receita', 'despesa']),
     descricao: z.string().min(2).max(200),
@@ -105,7 +110,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
     if ('erro' in u) return { erro: u.erro }
     const cat = categoria(a.tipo, a.categoria)
     if (typeof cat !== 'string') return cat
-    const forma = formaDePagamento(a.forma)
+    const forma = formaDePagamento(a.forma, a.tipo === 'receita' ? 'INCOME' : 'EXPENSE')
     if (forma && typeof forma !== 'string') return forma
     const pago = !!a.pago
     if (!pago && !a.vencimento) return { erro: 'Já foi pago (e como), ou qual é o vencimento?' }
@@ -160,14 +165,14 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
   // dava baixa em qualquer lançamento da unidade.
   modulo: 'cashier', nivel: 'MANAGE',
   recurso: 'financeiro',
-  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.',
+  descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; na despesa, também boleto; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.',
   parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional(), bandeira: z.string().max(30).optional(), vezes: z.number().int().min(1).max(12).optional(), maquininha: z.string().max(60).optional() }),
   async preparar(c, a) {
     const tx = await lancamentoAoAlcance(c.admin, c.ctx, a.lancamento)
     if (!tx) return { erro: 'Lançamento não encontrado.' }
     if (tx.is_paid) return { erro: 'Esse lançamento já está pago.' }
     if (tx.notes === 'Estornada') return { erro: 'Esse lançamento foi estornado.' }
-    const forma = formaDePagamento(a.forma)
+    const forma = formaDePagamento(a.forma, tx.type === 'EXPENSE' ? 'EXPENSE' : 'INCOME')
     if (forma && typeof forma !== 'string') return forma
     // C34 (F67): sem meio no lançamento, a baixa pede a forma — como a tela.
     // PDV8: a receita pede a forma SEMPRE (o meio combinado não é o que entrou).
@@ -408,7 +413,7 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
     // Escolher o responsável é a mesma trava da tela: CRM em Gerenciar, "todos".
     let responsavel: { id: string; name: string } | null = null
     if (a.responsavel) {
-      if (!podeTrocarResponsavel(c.ctx)) return { erro: 'O seu cargo não escolhe o responsável da oportunidade: ela nasce com você.' }
+      if (!podeTrocarResponsavel(c.ctx)) return { erro: 'Sua permissão não escolhe o responsável da oportunidade: ela nasce com você.' }
       const r = await resolverMembro(c, a.responsavel)
       if ('erro' in r) return { erro: r.erro }
       responsavel = r

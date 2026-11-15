@@ -245,7 +245,7 @@ de procedimentos já estabelecidos previamente". O pacote é do CATÁLOGO (Venda
 → Pacotes) e se vende igual a qualquer cliente; o plano nasce da avaliação,
 para UMA cliente, e se fecha no checkout do plano. Os dois têm "Quem vendeu" e
 comissão de venda (`comissoes.md`): a do pacote é do cadastro de cada pacote; a
-do plano, um percentual da clínica (Configurações → Comissões → "Venda de
+do plano, um percentual da rede (Configurações → Comissões → "Venda de
 plano").
 
 - **Documentos do pacote** (PC2/PC7, Bloco Documentos leva 1, 2026-11-14): a
@@ -276,10 +276,10 @@ plano").
 - **Agendar uma sessão** usa o procedimento, a parte do preço e a duração DELA
   (`schedulePackageSession` recusa outro procedimento — o navegador não
   escolhe).
-- **O tratamento comprado é da CLÍNICA; o dinheiro dele, do caixa da unidade
+- **O tratamento comprado é da REDE; o dinheiro dele, do caixa da unidade
   da venda** (D3 da 14ª simulação, F73; H5, CLAUDE.md §5: "A cliente é da
   clínica, pode agendar em qualquer unidade da clínica"). Vale para o pacote,
-  o plano fechado e o pré-pago. A recepção da Pampulha abria o pacote que a
+  o plano fechado e o pré-pago. Quem agendava na Pampulha abria o pacote que a
   Marina comprou na Savassi e via "0 / 6 sessões", sem erro: a lista e o
   agendar estavam presos à unidade da venda. São DUAS regras, cada uma com o
   seu nome (`lib/tratamento/alcance.ts`):
@@ -288,7 +288,7 @@ plano").
     `schedulePackageSession`, `schedulePlanSession`, `agendarUnidadePrePaga`,
     a ficha de tratamento do plano por `planoDaClinica`). A unidade do
     AGENDAMENTO segue pelo alcance, no núcleo (`conferirPecasDoAgendamento`):
-    a recepção da Pampulha agenda na Pampulha, não na Savassi;
+    quem tem só a Pampulha agenda na Pampulha, não na Savassi;
   - **cancelar, estornar, fechar** — `alcancaOCaixaDoTratamento`: a rede E a
     unidade da venda ao alcance (`pacoteDaClienteAoAlcance`,
     `planoFechadoAoAlcance`, `unidadeAoAlcance` do pré-pago). O checkout e a
@@ -373,7 +373,7 @@ plano").
     sem o dia.
 - **O pacote no crediário segue liberando, e a tela diz o que falta pagar**
   (A41 da 11ª simulação, 2026-11-10; decidido pelos princípios — o pacote
-  segue liberando: princípio 1, nada muda sem a clínica pedir; a tela avisa:
+  segue liberando: princípio 1, nada muda sem a rede pedir; a tela avisa:
   princípio 2). O pacote de entrada R$ 150 + 3 × R$ 100 liberava as 6 sessões
   calado. Na ficha, embaixo do cartão "Tratamento em andamento", e ao agendar a
   sessão (a ficha de tratamento → "Gerenciar sessões"): "R$ 300,00 deste
@@ -419,15 +419,15 @@ plano").
     parte diminui. Ex.: entrada R$ 300 + 3 × R$ 1.000, 2 de 6 sessões de
     R$ 550 feitas (usado R$ 1.100): caem a 3ª e a 2ª inteiras e R$ 200 da 1ª,
     que fica com R$ 800. Nada a devolver.
-  - **O pago além do usado volta, como a recepção escolher**: ESTORNO (o
+  - **O pago além do usado volta, como quem cancela escolher**: ESTORNO (o
     estorno de sempre, `estornar_transacao`, do lançamento mais novo para o
     mais antigo; o último em parte — o lançamento fica com o que sobra e um
     contra-lançamento "Estorno parcial", na mesma forma, leva o resto, com os
-    pontos daquele pagamento na proporção) ou CRÉDITO NA CLÍNICA
+    pontos daquele pagamento na proporção) ou CRÉDITO INTERNO
     (`internal_credits`, "Cancelamento do pacote X"; o dinheiro fica e os
     pontos também — ele não voltou). Ex.: Pix de R$ 3.300, 2 de 6 feitas:
     R$ 2.200 de crédito, ou o Pix fica com R$ 1.100 e R$ 2.200 voltam.
-  - **O pagamento que volta EM PARTE: duas formas, a recepção escolhe**
+  - **O pagamento que volta EM PARTE: duas formas, quem cancela escolhe**
     (r2-ven-05, o Heitor, 2026-11-03: "dar as duas opções, não sabemos como a
     operadora da clínica vai lidar com essa parte de estorno, não sabemos se
     vai ser possível fazer estorno parcial, então precisamos dar opção.
@@ -437,13 +437,13 @@ plano").
     "Estorno parcial" leva o resto; (b) **Estornar o pagamento inteiro e
     lançar o usado de novo** — o estorno de sempre do pagamento todo
     (`estornar_transacao`, com os pontos dele) e um pagamento NOVO do usado,
-    pago agora, na forma que a recepção escolher ("Forma do pagamento do
+    pago agora, na forma que quem cancela escolher ("Forma do pagamento do
     usado", e as vezes no crédito, até o limite da rede), com o pacote
     (`client_package_id`), os pontos e a comissão pelos gatilhos de sempre.
     **A forma do usado já vem a ORIGINAL** (A41 da 8ª simulação, 2026-11-06;
     decidido pelo princípio 5): escolhido o "inteiro" (no cartão, ele já vem),
     a "Forma do pagamento do usado" vem com o meio, as vezes e a bandeira do
-    pagamento estornado — "Crédito 3x" —, e a recepção troca se a cliente
+    pagamento estornado — "Crédito 3x" —, e quem cancela troca se a cliente
     pagar de outro jeito. Vinha em branco, e o Pix de R$ 800 da Helena foi
     inventado (`comOPagamentoInteiro`, `escolha-da-devolucao.tsx`; vale no
     pacote, na unidade do pré-pago e na devolução de produto). Prova:
@@ -463,7 +463,7 @@ plano").
     um invólucro dela sem a escolha (fora do cartão, parcial; no cartão,
     recusa). Prova: `e2e/pacote-cancelar.spec.ts` (as duas formas no Pix, o
     cartão), `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`.
-  - **As sessões já agendadas**: a recepção escolhe cancelar os agendamentos
+  - **As sessões já agendadas**: quem cancela escolhe cancelar os agendamentos
     (status, motivo "Pacote cancelado: …", histórico na transação; o evento
     `agendamento.cancelado` e o aviso à cliente e à equipe depois, na action,
     como todo cancelamento) ou mantê-los como atendimento AVULSO (soltos do
@@ -482,7 +482,7 @@ plano").
     (`indicadores.md`).
   - Na ficha, o pacote cancelado sai do "Tratamento em andamento" e entra no
     Histórico ("Pacote cancelado: X — 4 sessões canceladas · R$ 2.200,00 em
-    crédito na clínica · Motivo: …"); no app da cliente, sai dos tratamentos
+    crédito interno · Motivo: …"); no app da cliente, sai dos tratamentos
     em curso; o lembrete de vencimento (cron) não o lembra; o pacote LGPD diz
     "cancelado em". **E o app diz o que aconteceu com o dinheiro** (A46 da 6ª
     simulação, 2026-11-04): no Histórico → Pagamentos e no Financeiro, o
@@ -520,7 +520,7 @@ plano").
     R$ 585, caem R$ 729 — a 2ª parcela inteira e R$ 322 da 1ª, que fica com
     R$ 85 — e nada a devolver. O crediário que passa do usado cai antes; o
     pago além dele volta como estorno (parcial ou o inteiro com o usado lançado
-    de novo; no cartão, só o inteiro) ou crédito na clínica, a escolher; as
+    de novo; no cartão, só o inteiro) ou crédito interno, a escolher; as
     sessões agendadas se cancelam (com o evento e o aviso) ou ficam AVULSAS, a
     cobrar, com o preço da sessão. Sessão em atendimento agora recusa. As
     sessões agendadas se cancelam juntas, com UM motivo (o A19 da 9ª: cancelar
@@ -614,7 +614,7 @@ plano").
     "Pacote de antes: 4 de 6 restantes" (`restantesDoPacoteDeFora`) — sem
     pagamento nem recibo.
   - **Cancelar o pacote trazido** é o cancelamento de sempre: nada foi pago à
-    clínica por ele, então não há o que devolver nem parcela a cair, e nenhum
+    rede por ele, então não há o que devolver nem parcela a cair, e nenhum
     lançamento nem crédito nasce (prova: o caso "sobra da F35" de
     `e2e/pacote-de-fora.spec.ts`).
   - Os pacotes "Saldo migrado" a R$ 0 que a Hortênsia criou antes disso são
@@ -623,33 +623,33 @@ plano").
 - **A tela de Pacotes manda ao "Vender" da ficha** (A46): dizia "Vender pacote",
   e o botão se chama "Vender" (escolha Pacote).
 - **A taxa e o líquido da maquininha no Vender são de quem vê o financeiro da
-  clínica** (A19 da 12ª simulação, 2026-11-11: a Rita, com Recebimentos e "só
-  as próprias comissões", via "Taxa da maquininha… a clínica recebe R$ …"): o
+  rede** (A19 da 12ª simulação, 2026-11-11: a Rita, com o PDV e "só
+  as próprias comissões", via "Taxa da maquininha… a rede recebe R$ …"): o
   `[data-liquido-do-cartao]` e o `[data-taxa-do-debito]` com a taxa só aparecem
   a quem tem o Financeiro com escopo de todos (`mostraOLiquidoDaMaquininha`,
   `veComissaoDeTodos`) — a régua de "quem vê quanto cada um ganha" e do texto do
-  cargo de Recebimentos ("não vê o financeiro da unidade", A39). Quem só recebe
+  cargo do PDV ("não vê o financeiro da unidade", A39). Quem só recebe
   segue vendo o aviso de taxa NÃO cadastrada (sem valor). Muda a A40 da 8ª,
-  que os mostrava a toda a recepção. **Confirmado pelo Heitor no levantamento
+  que os mostrava a todo mundo que recebe. **Confirmado pelo Heitor no levantamento
   das regras** (D7, 2026-11-11, opção a; princípio 3: a tela de quem só recebe
-  não mostra o financeiro da clínica), e o servidor também deixa de mandar os
+  não mostra o financeiro da rede), e o servidor também deixa de mandar os
   números a quem só recebe (F63, C3): `taxasDoCartaoDeCredito`, `taxaDoDebito`
   e `cartaoPorBandeiraDaRede` mandam a quem não vê o financeiro de todos só
   QUAIS vezes e bandeiras estão cadastradas, com a taxa 0 e sem o prazo — é
   o que o aviso "não há taxa cadastrada" precisa; sem `podeReceber`, a
   bandeira nem responde. E a sessão não lê `payment_fees` pela chave pública
   (migration `20261112006302`). Prova: `e2e/vendas-atritos-da-12.spec.ts`
-  ("A19"), `e2e/caixa-atritos-da-8.spec.ts` ("A40", agora com a dona),
+  ("A19"), `e2e/caixa-atritos-da-8.spec.ts` ("A40", agora com a Admin da rede),
   `e2e/permissoes-respostas-sem-permissao.spec.ts` (a resposta da action).
 - **Quem vende é quem RECEBE, e a tela diz** (D1 da 12ª simulação, 2026-11-11;
   princípio 3 — quem vende segue decidido pelo cargo, princípio 1): a Rita, com
   Procedimentos, CRM e Clientes em Gerenciar, lia "fechar a venda do pacote" na
-  linha de Procedimentos e não via o "Vender" (`podeReceber`: Recebimentos, ou o
+  linha de Procedimentos e não via o "Vender" (`podeReceber`: o PDV, ou o
   Financeiro em Gerenciar). A linha de Procedimentos em Gerenciar não promete mais
-  a venda ("Vender (o “Vender” da ficha) é de Recebimentos."), o resumo do cargo
-  ("O que essa pessoa vai ver") diz "Não vende pelo “Vender” da ficha: vender é
-  de Recebimentos (ou do Financeiro em Gerenciar)." — ou "Vende pelo “Vender” da
-  ficha…" — (`quemVendeNoResumo`, `[data-quem-vende]`), e a tela de Pacotes diz o
+  a venda ("Vender é no PDV, de quem tem o PDV."), o resumo do cargo
+  ("O que essa pessoa vai ver") diz "Não vende no PDV: vender é de quem tem o
+  PDV (ou o Financeiro em Gerenciar)." — ou "Vende no PDV (procedimento,
+  pacote, produto e crédito)." — (`quemVendeNoResumo`, `[data-quem-vende]`), e a tela de Pacotes diz o
   mesmo (`TEXTO_DA_VENDA_DO_PACOTE`, `lib/permissions-copy.ts`). A trava não mudou.
   Prova: `tests/defeitos-da-12.test.ts` ("D1").
 - Prova: `e2e/pacotes-venda.spec.ts`.
@@ -672,7 +672,7 @@ o procedimento avulso pago antes.
 - A sessão só LÊ (equipe que alcança a unidade; o cliente, o que é dele).
 - **No atendimento**: o agendamento liga a unidade (`appointment_id`, único);
   `concluir_atendimento` a marca USADA e liga a linha de comissão à venda
-  (origem `PRE_PAGO`); a recepção RECUSA cobrar (`confirmar_pagamento…`),
+  (origem `PRE_PAGO`); o recebimento RECUSA cobrar (`confirmar_pagamento…`),
   e a tela esconde o botão.
 - **Agendar usando o que já foi pago** (unidade pré-paga OU sessão de pacote)
   é o **crédito** do agendamento, e passa pelo NÚCLEO:
@@ -719,7 +719,7 @@ o procedimento avulso pago antes.
   `trg_pre_pago_libera`): pode remarcar. Decisão do Heitor.
 - **Cancelar a unidade vai pelo fluxo do PACOTE** (D1 da 6ª simulação,
   2026-11-04; a regra de 30/09, "registra para fazer estorno" como DEVOLUÇÃO a
-  pagar, ficou para trás com as decisões do pacote — F2b: a clínica escolhe;
+  pagar, ficou para trás com as decisões do pacote — F2b: a rede escolhe;
   F13/r2-fin-03: no cartão, o pagamento inteiro). Com motivo, só a DISPONÍVEL
   e não agendada, por quem tem o **Financeiro em Gerenciar** (C36 da F67: era
   de quem recebe, e o caixa devolvia dinheiro por ali; como cancelar o pacote)
@@ -730,10 +730,10 @@ o procedimento avulso pago antes.
   `previaDoCancelamentoDaUnidade`): a venda passa a valer o vendido menos as
   unidades canceladas; o a receber que passa disso cai ANTES (a parcela
   inteira sai `Estornada`, a que cai em parte diminui); o pago além disso
-  volta como a recepção escolher — ESTORNO (o de sempre; o pagamento pego em
+  volta como quem cancela escolher — ESTORNO (o de sempre; o pagamento pego em
   parte, estorno parcial ou o pagamento inteiro estornado e o que fica lançado
   de novo, na forma escolhida — no CARTÃO só o inteiro, e os recebíveis da
-  operadora dele caem pelo gatilho) ou CRÉDITO NA CLÍNICA (`internal_credits`,
+  operadora dele caem pelo gatilho) ou CRÉDITO INTERNO (`internal_credits`,
   "Cancelamento da unidade 2 de Peeling"; o dinheiro e os pontos ficam). A
   escolha é o mesmo componente do pacote (`EscolhaDaDevolucao`). Os pontos
   seguem o estorno; a comissão das unidades usadas se acerta pela venda que
@@ -785,7 +785,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   sozinho ainda vale) e `produto_vender_itens` (migration `20261101001103`)
   grava numa transação: cada saldo travado na ordem do produto, a baixa de
   cada um pelo FEFO, a venda e os itens (`product_sale_items`: produto,
-  quantidade, preço, custo e o movimento dele), a comissão (uma sobre o total, ou uma por item quando a clínica comissiona por produto — r2-ven-10, `comissoes.md`) e
+  quantidade, preço, custo e o movimento dele), a comissão (uma sobre o total, ou uma por item quando a rede comissiona por produto — r2-ven-10, `comissoes.md`) e
   o dinheiro. Sem estoque de UM, nada grava. A venda guarda o total (tabela,
   desconto, vendido, custo, unidades); as colunas de antes
   (`product_id`, `preco_unitario`, `stock_movement_id`) ficam com o PRIMEIRO
@@ -799,7 +799,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   faturamento e ticket médio. O relatório de vendas ganha o tipo **Produto**
   (`metrics_vendas`: na data da venda, pelo vendido, "quem vendeu" na coluna
   Profissional).
-- Pontos: só se a clínica ligar (Configurações → Fidelidade → "Venda de
+- Pontos: só se a rede ligar (Configurações → Fidelidade → "Venda de
   produto", `fidelidade.md`). **A janela da venda DIZ** (A48 da 5ª
   simulação): com a fidelidade ligada, "A venda de produto não gera pontos de
   fidelidade (Configurações → Fidelidade)." ou "A venda gera pontos de
@@ -855,9 +855,9 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   desconto rateado pela tabela, como a comissão por produto), o que a venda
   passa a valer, o a receber que cai antes e o que volta. O dinheiro é o fluxo
   do cancelamento da unidade do pré-pago: o a receber que passa do novo valor
-  cai antes; o pago além dele volta como a recepção escolher — ESTORNO (o
+  cai antes; o pago além dele volta como quem cancela escolher — ESTORNO (o
   "Estorno parcial" na mesma forma, ou, no CARTÃO, o pagamento inteiro
-  estornado e o que fica lançado de novo, r2-fin-03) ou CRÉDITO NA CLÍNICA. O
+  estornado e o que fica lançado de novo, r2-fin-03) ou CRÉDITO INTERNO. O
   estoque: voltou, um `SALE_RETURN` das unidades, aos lotes de onde a venda as
   tirou (`private.devolver_aos_lotes`); não voltou, fica, e é perda. Cada
   devolução fica em `product_sale_returns` (com o retrato; só o servidor lê) e
@@ -881,7 +881,7 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
   dela); as restritivas do suporte valem.
 - Prova: `e2e/vendas-produto.spec.ts`.
 
-### 9.3.4 Crédito na clínica VENDIDO — o "vale" (decisão 1 do Heitor sobre a 9ª simulação, 2026-11-07)
+### 9.3.4 Crédito interno VENDIDO — o "vale" (decisão 1 do Heitor sobre a 9ª simulação, 2026-11-07)
 
 O Heitor: "concordo" com a recomendação — "'Crédito na clínica' no Vender, para
 quem recebe, com a forma de pagamento; entra no caixa, no fechamento e no
@@ -889,10 +889,10 @@ faturamento no dia em que o dinheiro entrou (princípio 5), e o uso depois segue
 a regra de hoje (não é receita de novo); os pontos na VENDA do crédito, pelo
 dinheiro pago, não no uso; sem comissão de venda; o 'Conceder crédito' continua
 como está, para o que não teve dinheiro". A Rosana pagou R$ 300 no Pix para usar
-depois em qualquer coisa, e a recepção só achou o "Conceder crédito" (fora do
+depois em qualquer coisa, e quem recebia só achou o "Conceder crédito" (fora do
 caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 
-- **A porta é o "Vender"**, aba "Crédito na clínica" (`FormularioDoCredito`,
+- **A porta é o "Vender"**, aba "Crédito na rede" (`FormularioDoCredito`,
   `components/shared/vender.tsx`), na ficha (os dois portais) e no painel do
   inbox, para quem recebe (`podeReceber`); a aba existe em toda unidade (não
   depende de catálogo). "Valor do crédito" (`parseDinheiro`) e a forma — só À
@@ -905,9 +905,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   crediário nem "a receber" para ele — o crédito sem dinheiro é a concessão.
 - **Uma transação, `credito_vender`** (`venderCredito`, `actions/credito-na-clinica.ts`;
   a chave do envio vale, D10): a venda (`creditos_vendidos`, só o servidor
-  lê), o lançamento de receita PAGO agora ("Crédito na clínica", categoria
-  "Crédito na clínica", `financial_transactions.credito_vendido_id`) e o
-  crédito (`internal_credits` +valor, "Crédito na clínica comprado", com o
+  lê), o lançamento de receita PAGO agora ("Crédito interno", categoria
+  "Crédito interno", `financial_transactions.credito_vendido_id`) e o
+  crédito (`internal_credits` +valor, "Crédito interno comprado", com o
   `credito_vendido_id`). Migrations `20261107004401` e `…004402`.
 - **O dinheiro**: o lançamento é receita paga com cliente — a regra única
   (`metrics_receitas_pagas`) o conta sem mudar nada: caixa, Fechamento do dia
@@ -938,7 +938,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   Decidido pelo princípio 3: o crédito é um saldo só, então "o que ela não
   usou" é o saldo dela hoje, até o vendido (a tela mostra a conta).
 - **O lançamento solto não se estorna**: `estornar_transacao` recusa o da venda
-  do crédito ("Este lançamento é de uma venda de crédito na clínica: estorne a
+  do crédito ("Este lançamento é de uma venda de crédito interno: estorne a
   venda…") — só `credito_estornar_venda` o deixa passar
   (`set_config('bellaris.estorno_do_credito', …)`), como a venda de produto.
 - O **"Conceder crédito"** (`grantInternalCredit`) continua como está: fora do
@@ -948,7 +948,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   2026-11-10: "No estorno sai o bonus junto, a clinica decide se integral ou
   parcial" — e "não vamos fazer as clinicas perderem dinheiro"). A Marta quis
   vender R$ 500 de crédito que vira R$ 550.
-  - "Bônus (opcional)" no "Crédito na clínica", VAZIO por padrão (princípio 6;
+  - "Bônus (opcional)" no "Crédito na rede", VAZIO por padrão (princípio 6;
     só o negativo é recusado). A janela diz a conta antes de vender ("A cliente
     fica com R$ 550,00 de crédito: R$ 500,00 pagos + R$ 50,00 de bônus. O
     caixa recebe só os R$ 500,00 pagos…", `[data-conta-do-bonus]`).
@@ -962,7 +962,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     (`textoDoBonus`, `lib/creditos/bonus.ts`): na linha do crédito da ficha (a
     descrição do crédito comprado) e no app, no Início e no Financeiro, ao lado
     do saldo (`bonusDosCreditosDaCliente`, as compras de pé).
-  - **No estorno o bônus SAI junto, e a clínica escolhe como** (a janela
+  - **No estorno o bônus SAI junto, e a rede escolhe como** (a janela
     pergunta "Como o bônus sai?", `[data-como-sai-o-bonus]`, com a conta do banco
     de cada opção; sem escolher, não confirma, e o banco recusa): INTEIRO — o
     bônus sai todo (até o saldo), e volta o saldo menos o bônus, até o pago —
@@ -987,7 +987,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   incorretos"): "Esta cliente não tem acesso ao app: ela não vai ver o saldo do
   crédito pelo celular. Dar acesso ao app na aba Dados da ficha."
   (`[data-sem-acesso-ao-app]`, `acessoDaClienteAoApp`). Só aviso: quem cria o
-  acesso continua sendo a clínica, na ficha (CLAUDE.md §5). Prova: o mesmo spec.
+  acesso continua sendo a rede, na ficha (CLAUDE.md §5). Prova: o mesmo spec.
 
 ---
 
@@ -1042,7 +1042,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     chegada (duas abas, "tentar de novo") ouve "Este plano já foi fechado.
     Recarregue a tela.". "Quem vendeu" fica no plano (`vendido_por`, A13) e a
     tela o retoma. Prova: `e2e/plano-checkout-uma-transacao.spec.ts`.
-  - **A baixa é de Recebimentos (o caixa) em todo caminho** (C33): o
+  - **A baixa é do PDV (o caixa) em todo caminho** (C33): o
     Financeiro em Gerenciar sem o caixa não tem "Pagar"/"Receber", e o
     check-in do plano usa o caixa, como o avulso.
   - **A baixa do lançamento sem meio exige a forma** (C34), no
@@ -1070,7 +1070,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `RealtimeRefresher`).
   - **A sessão não lê nem grava lançamento** (F75, a sobra da F63; C1 do
     levantamento): a política "Operacional acessa financeiro da filial" era ALL
-    para todo membro da unidade, sem o módulo — a profissional sem o
+    para todo membro da unidade, sem o módulo — um membro sem o
     Financeiro lia o caixa pela chave pública, e qualquer membro gravava um
     recebimento falso. A lista do Financeiro da unidade lê pelo cliente de
     serviço, depois do `assertPermission`, do "só os meus" e do alcance
@@ -1205,9 +1205,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       CAIXA. Ele sai da lista (e do CSV); no outro dia, é ENTRADA do caixa na
       forma dele (no mesmo dia, um anula o outro). A linha do Financeiro do
       contra-lançamento de uma despesa diz "Anula a despesa estornada"
-      (`[data-anula-a-despesa]`). O estorno do uso do crédito na clínica
+      (`[data-anula-a-despesa]`). O estorno do uso do crédito interno
       também sai (não é dinheiro do caixa). **E por isso quem só tem
-      Recebimentos não lê no Fechamento a descrição nem o motivo de uma
+      o PDV não lê no Fechamento a descrição nem o motivo de uma
       despesa** (A39 da 12ª): as saídas aparecem só pela forma; a descrição e
       o motivo da despesa ficam no Financeiro, de quem o tem. Prova: o mesmo
       spec ("D3", "A39").
@@ -1296,7 +1296,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   confirmação de pagamento" para sempre. (Não havia lançamento de zero preso
   na produção: os dois concluídos de R$ 0 não tinham lançamento.)
 - O módulo `cashier` **sobreviveu com outro significado**: RECEBER o pagamento
-  do atendimento e do plano, na recepção. Não abre tela nenhuma por si só — o
+  do atendimento e do plano, no balcão. Não abre tela nenhuma por si só — o
   financeiro da unidade e o da rede pedem `financial`. `podeReceber` (cashier OU
   financial) continua sendo o gate de quem fecha uma venda.
 - `FinancialTransaction` criada automaticamente ao concluir `Appointment`
@@ -1347,7 +1347,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **O fluxo de caixa dos PRÓXIMOS meses** (r2-fin-04, o Heitor, 2026-11-03:
   "crie o gráfico"). Nos dois financeiros, o cartão "Fluxo de caixa — próximos
   6 meses" (`FluxoDeCaixa`, `components/shared/fluxo-de-caixa.tsx`) — **3, 6 ou
-  12 meses, a clínica escolhe no cartão** (r3-f13-11, o Heitor: "quem vende
+  12 meses, a rede escolhe no cartão** (r3-f13-11, o Heitor: "quem vende
   pacote em 10x quer ver o ano"; 6 por padrão, o título acompanha: o servidor
   manda os 12, a tela mostra os primeiros N): por mês
   (Brasília, a partir do atual), o que ENTRA — o a receber da cliente (os
@@ -1380,11 +1380,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   usa só a operacional). Prova: `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A31").
   **E é o caixa de verdade** (D9 e D2 da 12ª simulação, 2026-11-11; princípio
   3): "13 lançamentos · caixa da lista R$ 3.383,64" ao lado da receita de
-  R$ 3.203,64 — os R$ 180 pagos com crédito na clínica entravam, e a própria
+  R$ 3.203,64 — os R$ 180 pagos com crédito interno entravam, e a própria
   linha dizia "não é receita". Cada lançamento conta no caixa o que o BANCO diz
   (`metrics_caixa_dos_lancamentos` → `getTaxaDosLancamentos`, `no_caixa`): o
   pagamento pelo valor que entrou, o estorno ligado com o sinal dele, e nada o
-  em aberto, o uso do crédito na clínica (e o estorno dele) e o pago todo em
+  em aberto, o uso do crédito interno (e o estorno dele) e o pago todo em
   pontos — a mesma régua do Fechamento (`metrics_movimentos_pagos`). Somado na
   lista do dia, é o saldo do Fechamento do dia (`resultadoDaLista` soma o
   `no_caixa`; sem ele, a regra de antes, sem o crédito interno). Prova:
@@ -1397,9 +1397,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (desde o FI3, a aba A receber, `?aba=a-receber`; `[data-so-o-em-aberto]`,
   nos dois financeiros), com o "Pagar" na linha.
   **A quem só vê, "Ver a lista"** (A42 da 12ª simulação, 2026-11-11; princípio
-  3: a Ivone, contadora, lia "Ver e dar baixa" e "use “Pagar” na linha" sem
+  3: a Ivone, que só vê o Financeiro, lia "Ver e dar baixa" e "use “Pagar” na linha" sem
   botão nenhum): sem a baixa (`canPay`), o link é "Ver a lista" e a faixa diz
-  "Dar baixa é de quem tem Recebimentos (o caixa)…" (`NotaDoVencimento
+  "Dar baixa é de quem tem o PDV no cargo." (`NotaDoVencimento
   podeDarBaixa`). **E o a PAGAR também** (A43 da 12ª): o cartão "A pagar" diz
   "Em aberto, todos os vencimentos: R$ 5.200,00 · Ver e pagar" (ou "Ver a
   lista") — `metrics_a_pagar_em_aberto` → `getAPagarEmAberto` (migration
@@ -1426,7 +1426,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     05/11)… Ver no Financeiro" (`ParcelasVencidas`, `[data-parcelas-vencidas]`).
   - O app (Financeiro e Histórico → Pagamentos) diz "Vencida em 05/11" e a
     situação "Vencida".
-  - **O check-in avisa, sem recusar**: a recepção marca "Chegou" e lê
+  - **O check-in avisa, sem recusar**: quem marca "Chegou" lê
     "Mariana tem 1 parcela vencida (R$ 1.294,00, desde 05/11): receba no
     Financeiro." (`updateAppointmentStatus`/`checkinAppointment` devolvem
     `aviso`, só para quem recebe). A cobrança no check-in continua só a do
@@ -1442,7 +1442,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   motivo). A linha diz "Vencimento remarcado: era 05/11 (Lúcia, em 07/11 —
   combinado com a cliente)" (`[data-vencimento-remarcado]`). O pago e o
   estornado não se remarcam. Prova: `e2e/financeiro-vencidas-da-9.spec.ts` ("A37").
-- **O CSV das movimentações** (A44 da 8ª: a contadora só tinha o de Comissões):
+- **O CSV das movimentações** (A44 da 8ª: quem só via o Financeiro só tinha o de Comissões):
   "Exportar CSV" na lista dos dois financeiros — o que a lista tem, com os
   filtros da tela (na rede, todas as movimentações do recorte, não só as 100
   que a tabela desenha), com Data; Descrição; Cliente; (Unidade;) Categoria;
@@ -1451,7 +1451,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `lib/financeiro/csv-dos-lancamentos.ts`; o arquivo
   "lancamentos-AAAA-MM-DD-a-AAAA-MM-DD.csv"). Prova: o mesmo spec,
   `tests/financeiro-csv-dos-lancamentos.test.ts`.
-  **E é o pacote da contadora** (A31 da 10ª simulação, 2026-11-10: a Lúcia não
+  **E é o pacote da contabilidade** (A31 da 10ª simulação, 2026-11-10: a Lúcia não
   fechava o mês com o que exportava): o CSV ganhou Taxa da maquininha e Líquido
   (da receita paga, pela MESMA conta do lucro — `metrics_taxa_dos_lancamentos`,
   `getTaxaDosLancamentos`, `lib/metrics/contadora.ts`), Vencimento, Pago em,
@@ -1459,7 +1459,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   e "Nota fiscal" (`financial_transactions.fornecedor`/`nota_fiscal`, migration
   `20261110005102`; os três caminhos do lançamento os gravam). A "competência"
   pedida não existe como regra (a despesa entra quando é paga — `indicadores.md`):
-  o CSV dá o vencimento e o dia do pagamento, e a contadora monta a dela. E se
+  o CSV dá o vencimento e o dia do pagamento, e a contabilidade monta a dela. E se
   exportam também o **DRE** (Relatórios → Financeiro, "Exportar o DRE (CSV)":
   as linhas do DRE e o que fica FORA do resultado — as compras no estoque, ao
   custo, com fornecedor e nota, e as perdas —, `csvDoDre`) e o **Fechamento do
@@ -1471,7 +1471,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   baixa pelo servidor (`csvDoFechamentoDoDia`, `actions/fechamento.ts` — a
   mesma conta de antes; vê quem tem o Financeiro de todos em Ver,
   `can(financial, VIEW)` e não "só os próprios"; unidade ao alcance).
-  A compra e a perda chegam à contadora, que não abre o Estoque: embaixo do DRE,
+  A compra e a perda chegam a quem tem o Financeiro sem o Estoque: embaixo do DRE,
   "Fora do resultado no período: compras no estoque R$ X · perdas R$ Y"
   (`[data-fora-do-resultado]`, `metrics_entradas_de_estoque` →
   `getEntradasDeEstoque`). Prova: `e2e/financeiro-uso-da-10.spec.ts` ("A31"),
@@ -1486,7 +1486,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `e2e/financeiro-dinheiro-da-12.spec.ts` ("A45"), `tests/financeiro-csv-dos-lancamentos.test.ts`.
   **E tem a bandeira, o desconto, a profissional e a unidade** (A44 da 12ª;
   princípio 3: a Ivone concilia com a operadora por bandeira e fecha o mês com
-  o desconto e quem atendeu): as colunas Unidade (sempre, também na clínica de
+  o desconto e quem atendeu): as colunas Unidade (sempre, também na rede de
   uma só), Profissional (quem atendeu; na venda, quem vendeu — a coluna
   Profissional das Vendas), Bandeira (do cartão) e Desconto (em reais: o do
   avulso no lançamento; o da venda UMA vez, no lançamento do motivo ou no
@@ -1533,9 +1533,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (`notaDoEstornoParcialParaACliente`, `[data-devolvido-em-parte]`, no
   Financeiro do app). Prova: `e2e/financeiro-dinheiro-da-12.spec.ts` ("A57"),
   `tests/financeiro-notas-do-lancamento.test.ts`.
-- **O uso do crédito na clínica diz que não é receita** (A37 da 11ª): a linha
+- **O uso do crédito interno diz que não é receita** (A37 da 11ª): a linha
   "Receita · Pago · + R$ 130,00" do pagamento com `INTERNAL_CREDIT` ganha "Uso
-  do crédito na clínica: não é receita — o caixa foi quando o crédito foi
+  do crédito interno: não é receita — o caixa foi quando o crédito foi
   comprado…" (`notaDoUsoDeCredito`, `[data-uso-de-credito]`). A regra F7 fica.
 - **O "A receber da operadora" diz o débito** (A38 da 11ª; princípio 4: o
   débito e o Pix não têm prazo configurado): "Débito no período: R$ 540,00 —
@@ -1551,7 +1551,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **As Vendas fazem a ponte com o caixa** (A30 da 10ª; princípio 5): embaixo
   dos cartões de Relatórios → Vendas, "O Total vendido é a venda, no dia em
   que foi feita; o caixa do período é o dinheiro, no dia em que entrou: R$ X
-  (Financeiro). A diferença é a regra…" — o crédito na clínica vendido, o
+  (Financeiro). A diferença é a regra…" — o crédito interno vendido, o
   pacote e o plano inteiros, a sessão que não é venda de novo
   (`[data-ponte-vendas-caixa]`; o caixa é o `revenueCash` do núcleo). Prova:
   ("A30").
@@ -1655,7 +1655,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (`e2e/apoio/vender.ts`) escolhe o Pix onde a forma não é o assunto. Prova:
   `e2e/vendas-forma-nasce-vazia.spec.ts`.
 - **Cartão de crédito em N vezes é PAGO na hora PELA CLIENTE** (decisão do
-  Heitor, 2026-10-20): quem paga a clínica é a maquininha, então para o
+  Heitor, 2026-10-20): quem paga a rede é a maquininha, então para o
   cliente está quitado. É o "À vista" com o meio Cartão de crédito e "Vezes
   no cartão" (1–12): UM lançamento pago, com
   `financial_transactions.cartao_vezes` (2–12, só no crédito — a restrição do
@@ -1677,7 +1677,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     o vencimento a cada N DIAS CORRIDOS contados da venda — a parcela k em
     venda + k × N (r2-fin-01, o Heitor, 2026-11-03: "como a operadora paga de
     verdade e configurável o prazo"; era o mesmo dia de cada mês). O N é da
-    clínica: Configurações → Comissões → "Prazo da operadora (dias)", junto
+    rede: Configurações → Comissões → "Prazo da operadora (dias)", junto
     das taxas (`tenants.cartao_prazo_dias`, 30 por padrão, 1–120;
     `salvarPrazoDaOperadora`, a mesma permissão e abrangência das taxas). O
     vencimento é retratado na parcela: mudar o prazo vale para as próximas
@@ -1703,13 +1703,13 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       - **Quem decide a maquininha da venda**: a escolhida; sem escolha, o
         banco põe a PRIMEIRA ativa (`private.maquininha_do_lancamento`, por
         `ordem`); o estorno herda a do pagamento; a de outra rede é recusada
-        ("Esta maquininha não é desta clínica."); a DESPESA no cartão não tem
+        ("Esta maquininha não é desta rede."); a DESPESA no cartão não tem
         maquininha (20261112006709). **Com mais de uma ativa, o cartão não
         segue sem ela** — na tela (o botão espera) e no servidor
         (`recusaDasVezesDaRede`: "Escolha a maquininha do cartão."): a
         primeira não vale calada (princípio 3). Todos os caminhos: avulso,
-        check-in do plano, checkout, pacote, pré-pago, produto, crédito na
-        clínica, Novo lançamento, "Receber no cartão" e o Copilot (`lancar`
+        check-in do plano, checkout, pacote, pré-pago, produto, crédito
+        interno, Novo lançamento, "Receber no cartão" e o Copilot (`lancar`
         e `marcar_pago` pedem o nome; com mais de uma, sem ele, perguntam).
         O pagamento combinado do CONTRATO não pergunta (é só texto: a
         maquininha se escolhe quando o dinheiro entra).
@@ -1773,7 +1773,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       (`salvarCartaoPorBandeira`, a mesma permissão e abrangência das taxas;
       a tela diz "Com regra própria: Elo"). O de antes é a **REGRA GERAL**:
       vale para a bandeira sem regra própria (o campo vazio mostra a geral) e
-      para o pagamento sem bandeira — a clínica que não mexe não vê diferença.
+      para o pagamento sem bandeira — a rede que não mexe não vê diferença.
       **O campo vazio da bandeira é a regra geral DAQUELAS vezes** (r4-f15-01,
       o Heitor, revisão das decisões da F15, 2026-11-03; migration
       `20261103001602`): a bandeira vale com a taxa EXATA daquele número de
@@ -1792,7 +1792,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       Nada é recusado: a venda grava normalmente. A taxa que existe mora em
       `private.taxa_da_maquininha` (a da bandeira, senão a geral exata,
       `private.taxa_geral_exata`; ou nula), e `comissao_taxa_pct` é ela ou 0.
-      **A clínica fica sabendo**: em "Taxas da maquininha", a linha sem taxa
+      **A rede fica sabendo**: em "Taxas da maquininha", a linha sem taxa
       (na regra geral; na bandeira, quando nem ela nem a geral têm) aparece em
       destaque de aviso — "Sem taxa: as vendas em 4x saem sem desconto da
       operadora." (`data-sem-taxa`) —, menos o Pix (sem taxa é comum) e o
@@ -1844,7 +1844,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       diz "é a faixa da tabela da operadora (o 1x e o 12x)… o sistema não
       inventa as do meio" (`[data-faixa-da-operadora]`) e o botão (ou o
       Enter) abre o colar já com "1x 3,1% / … / 12x 11,9%" — as pontas; o meio
-      a clínica cola ou digita (princípio 4: não chutar número). Prova:
+      a rede cola ou digita (princípio 4: não chutar número). Prova:
       `e2e/configuracoes-atritos-da-8.spec.ts` ("A4 da 9ª"),
       `tests/tabela-da-operadora.test.ts`.
     - **O "Preencher" diz antes o que vai pôr, e a taxa que BAIXA com mais
@@ -1854,7 +1854,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       parcela" mostra, enquanto se digita, "Vai preencher: 1x 0,99% · 2x
       1,98% …" e "o crédito à vista (1x) deixa de ser 2,80%"
       (`data-vai-preencher`), e tem o "Colar a tabela da operadora" ali dentro.
-      O "Salvar taxas" grava o que a clínica escolheu e, quando mais vezes sai
+      O "Salvar taxas" grava o que a rede escolheu e, quando mais vezes sai
       mais barato (na regra geral ou numa bandeira), avisa: "2x (1,98%) sai
       mais barato que o crédito à vista (2,80%)… Ficou salvo como está."
       (`avisoDaTaxaQueBaixa`, `lib/financeiro/bandeiras.ts`;
@@ -1913,7 +1913,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       3): com a bandeira "Não informada" vale a regra geral, e a tela não
       dizia qual. Embaixo do "Bandeira (opcional)", no débito, "Taxa da
       maquininha no débito: 1,6% — a regra geral (bandeira não informada) (R$
-      3,04); a clínica recebe R$ 186,96" — a da bandeira quando ela tem a sua
+      3,04); a rede recebe R$ 186,96" — a da bandeira quando ela tem a sua
       (`AvisoDaTaxaDoDebito`, `[data-taxa-do-debito]`, em `CampoDaBandeira` com
       o `total`; sem nenhuma cadastrada, "sai sem desconto (0%)"). Prova:
       `e2e/financeiro-atritos-da-9.spec.ts` ("A34").
@@ -1931,7 +1931,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     - **O "Novo lançamento" escolhe as vezes no crédito** (F16-5, o Heitor,
       revisão das decisões da F16: "ajuste isso para permitir escolher
       parcelas"): a RECEITA PAGA no crédito tem "Vezes no cartão" (até o
-      limite da clínica, `useOpcoesDeVezes`, com o valor da parcela e o aviso
+      limite da rede, `useOpcoesDeVezes`, com o valor da parcela e o aviso
       da taxa), gravado em `cartao_vezes` — UM lançamento pago, que a
       operadora deposita em N (`recebiveis_do_cartao`, pelo gatilho, com o
       prazo e a taxa da bandeira), exatamente como o crédito em N vezes do
@@ -1944,7 +1944,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     - **A baixa no crédito também escolhe as vezes** (F17-5, o Heitor:
       "pode"): o "Receber no cartão" (`ReceberNoCartao`, nos dois
       financeiros) de um pendente no CRÉDITO pergunta "Vezes no cartão" (até o
-      limite da clínica, com o valor da parcela e o aviso da taxa), além da
+      limite da rede, com o valor da parcela e o aviso da taxa), além da
       bandeira; `markTransactionPaid` → `marcarPagoCore` (`vezes`) grava
       `cartao_vezes` junto do `is_paid`, e o gatilho faz as parcelas da
       operadora com o prazo e a taxa daquelas vezes e da bandeira. R$ 1.200 em
@@ -2017,7 +2017,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       recebido é ESTORNADO (a operadora toma de volta: `estornado`).
     - **O crédito À VISTA (1x) também vira recebível** (D4 da 6ª simulação,
       F20; migration `20261104002050`): UMA parcela, no prazo da bandeira
-      (ou no da clínica), com a taxa do 1x — como as N vezes. O débito e o Pix
+      (ou no da rede), com a taxa do 1x — como as N vezes. O débito e o Pix
       seguem recebidos no dia: não há prazo configurado para eles (princípio
       4). A receita continua da venda, no dia dela (princípio 5); o Fechamento
       não muda (a taxa do 1x já era estimada), e o "A receber da operadora", a
@@ -2030,23 +2030,23 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     - As vendas antigas no cartão N× (3 na produção em 2026-11-01: Aurora
       R$ 600, Jasmim R$ 150, Lótus R$ 280) ficam como estão, sem parcelas.
     - Migration `20261101000261`. Prova:
-      `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`. "Entrada + parcelas" é o CREDIÁRIO da própria clínica: cada
+      `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`. "Entrada + parcelas" é o CREDIÁRIO da própria rede: cada
   parcela a receber, e a comissão espera a última. Vale nas cinco portas: pacote e pré-pago
   (`lancamentosDoPagamento`), checkout do plano, recebimento do plano no
   check-in e o pagamento do atendimento avulso (`p_dados.cartao_vezes`).
   Até aqui "3x no cartão" só cabia em entrada + parcelas, a receber.
   - **O crediário NÃO é cartão** (D6 da 6ª simulação, 2026-11-04): as
-    parcelas do saldo, que a cliente paga à CLÍNICA, nascem SEM meio de
+    parcelas do saldo, que a cliente paga à REDE, nascem SEM meio de
     pagamento (`payment_method` nulo) — o meio se escolhe ao receber cada uma.
     Nasciam com o meio da entrada (`CREDIT_CARD`), e o contrato dizia "+ 2
     parcelas de R$ 1.700,00 no cartão de crédito". O meio, as vezes e a
     bandeira do "entrada + parcelas" são da ENTRADA. O contrato
     (`pagamento.forma`) diz "entrada de R$ 1.000,00 no cartão de crédito em 3x
-    + 2 parcelas de R$ 1.700,00 com a clínica: R$ 1.700,00 em 04/12/2026 e R$ 1.700,00 em 04/01/2027"
+    + 2 parcelas de R$ 1.700,00 no crediário: R$ 1.700,00 em 04/12/2026 e R$ 1.700,00 em 04/01/2027"
     (`pagamento.metodo` é o da entrada; sem entrada, vazio), a tela e a linha
     do tempo dizem o mesmo (`frasesDoPagamento`, `rotuloDoPagamento`: "entrada
-    de R$ 1.000,00 em Crédito 3x + 2x com a clínica"), e a ficha e o app
-    mostram a parcela sem meio como "Com a clínica" (`formaDoLancamento`,
+    de R$ 1.000,00 em Crédito 3x + 2x no crediário"), e a ficha e o app
+    mostram a parcela sem meio como "Crediário" (`formaDoLancamento`,
     `lib/financeiro/formas.ts`). O "Pagar" do Financeiro (os dois portais) de
     uma receita sem meio abre "Receber", com "Forma de pagamento" vazia e
     obrigatória — e, no cartão, a bandeira e as vezes (`ReceberNoCartao`,
@@ -2060,7 +2060,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     "Entrada + parcelas" com a entrada no cartão de crédito, "Vezes no cartão
     (a entrada)" — no checkout do plano, no `CamposDoPagamento` (pacote,
     pré-pago, produto, contrato) e no recebimento do plano no check-in —, com
-    o limite da clínica, a dica do valor e o aviso da taxa, como o à vista. A
+    o limite da rede, a dica do valor e o aviso da taxa, como o à vista. A
     entrada é UM lançamento pago com `cartao_vezes`, e a operadora a deposita
     em N (`recebiveis_do_cartao`, com a taxa daquelas vezes e da bandeira).
     `PagamentoDoPlano` PARCELADO ganhou `vezes`; `vezesNoCartao` devolve as
@@ -2073,7 +2073,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     1/2" (era "— checkout novo paciente —" e "— recebimento no check-in —",
     que chegavam ao app e ao recibo da cliente; os de antes foram trocados na
     migration `20261104002006`).
-  - **A clínica diz até quantas vezes** (D-15, decisão do Heitor,
+  - **A rede diz até quantas vezes** (D-15, decisão do Heitor,
     2026-10-29: "A clínica configura 'parcela até Nx'. O padrão é o maior
     número de parcelas com taxa cadastrada."): Configurações → Comissões →
     "Parcelar no crédito até" (`tenants.cartao_max_vezes`, 1–12, migration
@@ -2099,9 +2099,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     pré-pago, produto, o pagamento do contrato), o checkout do plano e o
     check-in do plano. A tela oferece até o limite da rede e o servidor recusa
     acima dele, nos três (C38, F67: `tenants.crediario_max_parcelas`, no
-    card "Crediário da clínica" da aba de Comissões; o Vender cortava em 12 e
+    card "Crediário" da aba de Comissões; o Vender cortava em 12 e
     o checkout e o check-in em 48, calados — `maximoDeParcelasDaRede`). A
-    DESPESA não muda: parcelada de 2 a 48, recorrente de 2 a 60 (é a clínica
+    DESPESA não muda: parcelada de 2 a 48, recorrente de 2 a 60 (é a rede
     pagando, não vendendo).
   - **O crediário tem UM nome, diz o limite e só pede a forma da entrada**
     (A23 da 14ª simulação, F75; princípio 7; PDV8, 2026-11-14): a
@@ -2110,7 +2110,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     BLOCO de forma, ao lado dos meios, com o nome "Crediário"
     (`ROTULO_DO_CREDIARIO`, `lib/financeiro/parcelas-do-crediario.ts`; na
     comanda, `rotuloDaForma('CREDIARIO')`), e a lista das parcelas diz "até
-    6x, o limite da clínica" (`limiteDoCrediarioEmTexto`). Com entrada, ela
+    6x, o limite da rede" (`limiteDoCrediarioEmTexto`). Com entrada, ela
     pede a forma dela ("Forma da entrada *"); sem entrada, nada se recebe
     agora e forma nenhuma é pedida — na tela (`recusaDoPagamento`) e no
     servidor (`EntradaDoPagamento`: o meio é um meio ou nulo, nunca `''`;
@@ -2130,7 +2130,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     `tests/resumo-do-pagamento.test.ts`. **E a taxa e o líquido aparecem ao
     escolher** (A40 da 8ª simulação, 2026-11-06; só apareciam no Financeiro):
     com a taxa daquelas vezes (e bandeira) cadastrada, "Taxa da maquininha no
-    crédito 3x: 2,97% (R$ 2,97) — a clínica recebe R$ 97,03, que a operadora
+    crédito 3x: 2,97% (R$ 2,97) — a rede recebe R$ 97,03, que a operadora
     deposita em 3 parcelas." (`[data-liquido-do-cartao]`, no `AvisoDaTaxa` —
     sem a taxa, o aviso de sempre; a conta é `liquidoNaMaquininha`,
     `lib/metrics/resultado.ts`); e, à vista, a linha das vezes diz para que
@@ -2229,7 +2229,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **A assinatura que trava o checkout diz de onde vem a exigência** (A28 da 10ª
   simulação, 2026-11-10; princípio 1): com um documento que "Bloqueia" sem
   assinatura, o passo da documentação diz "Quem exige a assinatura de “Contrato
-  do plano” é o modelo do documento: em Configurações → Documentos, a clínica
+  do plano” é o modelo do documento: em Configurações → Documentos, a rede
   escolhe se ele “Bloqueia” o checkout ou “Só avisa”." (`textoDaExigenciaDoModelo`,
   `lib/checkout/exigencia-do-modelo.ts`, `[data-exigencia-do-modelo]`). Prova:
   `tests/checkout-exigencia-do-modelo.test.ts`.
@@ -2251,7 +2251,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `quemVendeu`, antes do dinheiro). Fica em `treatment_plans.vendido_por` e
   leva a comissão de VENDA do plano (`comissoes.md`). O chamador que não manda
   `equipe` (os de antes) fecha sem comissão de venda. A coluna "Profissional"
-  das Vendas do plano é quem vendeu (D14 da 8ª; sem ele, a dona do plano —
+  das Vendas do plano é quem vendeu (D14 da 8ª; sem ele, a profissional do plano —
   `indicadores.md`). Prova:
   `e2e/comissoes-venda-do-plano.spec.ts`.
 - **O CPF e o telefone com máscara no checkout e no atendimento** (A45 da 11ª;
@@ -2309,10 +2309,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   oferecia "Receber R$ 600" de um plano parcelado: cobrança em dobro (a
   simulação de 2026-10-20 achou). Prova: `e2e/plano-recebimento.spec.ts`.
   **O saldo do plano aparece a quem RECEBE** (A39 da 7ª simulação,
-  2026-11-05; decidido pelo princípio 3): a profissional sem o Financeiro e sem
-  receber via "Plano · R$ 2.672 a vencer" na tela do atendimento — dinheiro que
+  2026-11-05; decidido pelo princípio 3): quem atende, sem o Financeiro e sem
+  receber, via "Plano · R$ 2.672 a vencer" na tela do atendimento — dinheiro que
   não é dela tratar. O banner do plano (`[data-plano-em-aberto]`, o em aberto e
-  o a vencer) só é lido e mostrado com `podeReceber`; a recepção o vê como
+  o a vencer) só é lido e mostrado com `podeReceber`; quem recebe o vê como
   antes. Prova: `e2e/atendimento-atritos-da-7.spec.ts` ("A39").
   - **Uma transação, com o plano travado** (F11, sobra da F9): o app calcula o
     que cobrar e os lançamentos novos, e `plano_receber` grava tudo de uma
@@ -2331,7 +2331,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   check-in só cobra o que venceu. Migration `20261029001801`. Prova:
   `e2e/plano-tela-mostra-o-pago.spec.ts`. **O rodapé diz com quem fica a
   parcela que vence depois** (A28 da 9ª simulação; a regra de cargo fica): a
-  recepcionista sem o Financeiro lia "se recebe no financeiro", tela que ela
+  pessoa sem o Financeiro lia "se recebe no financeiro", tela que ela
   não abre; para quem não tem o Financeiro em Gerenciar, "…a que vence depois
   se recebe no Financeiro, com quem tem o Financeiro em Gerenciar: Lúcia,
   Fernanda." (`rodapeDoPlanoFechado`, `lib/plano-de-tratamento/textos.ts`; os
@@ -2342,7 +2342,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   lançamento registra o dinheiro que entrou (§9.2.2). Pago todo com pontos, o
   lançamento é de R$ 0 e sem forma de pagamento.
 - **Desconto em todas as vendas** (decisão do Heitor, 2026-09-30): pacote,
-  checkout do plano e o recebimento do avulso na recepção, em R$ ou %, SEM
+  checkout do plano e o recebimento do avulso no PDV, em R$ ou %, SEM
   TETO, e fica registrado quem deu. A conta é uma só (`lib/vendas/desconto.ts`,
   em centavos; a tela usa `CampoDoDesconto`): o servidor a refaz a partir do
   pedido, e a função do banco confere.
@@ -2395,27 +2395,27 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `internal_credits.amount` — concessão positiva, uso NEGATIVO com o
   `transaction_id` que o consumiu. Estornar um pagamento feito com crédito
   devolve o crédito. **A tela de cobrança diz o saldo antes** (A36 da 8ª
-  simulação, 2026-11-06; princípio 3): escolhido o crédito na clínica — no
+  simulação, 2026-11-06; princípio 3): escolhido o crédito interno — no
   "Vender" (`CamposDoPagamento`), no "Confirmar pagamento" do atendimento e
-  no checkout do plano —, "Crédito na clínica: R$ 270,00 · depois deste
+  no checkout do plano —, "Crédito interno: R$ 270,00 · depois deste
   pagamento: R$ 170,00", ou que não cobre e quanto falta
   (`[data-saldo-do-credito]`, `SaldoDoCredito`; o saldo do banco,
   `getCreditoInternoDoCliente`, pela action `saldoDoCreditoDaCliente`, de quem
   recebe). Prova: `e2e/caixa-atritos-da-8.spec.ts`.
 - **O crédito comprado conta no Investido total na compra, e a ficha diz** (A29
   da 10ª simulação, 2026-11-10: logo depois da venda do vale, o LTV foi a R$ 650
-  sem nota): com um crédito na clínica comprado (`internal_credits.credito_vendido_id`),
-  "Inclui o crédito na clínica comprado: o dinheiro conta aqui no dia da compra,
+  sem nota): com um crédito interno comprado (`internal_credits.credito_vendido_id`),
+  "Inclui o crédito interno comprado: o dinheiro conta aqui no dia da compra,
   e usar o crédito depois não conta de novo." (`[data-pago-com-credito]`). Prova:
   `e2e/ficha-uso-da-10.spec.ts` ("A29").
 - **A ficha diz o que ela pagou com crédito** (A43 da 8ª): "+ R$ 180,00 pagos
-  com crédito na clínica: não contam aqui…" embaixo do "Investido total" e na
+  com crédito interno: não contam aqui…" embaixo do "Investido total" e na
   aba Financeiro (`[data-pago-com-credito]`,
   `metrics_pago_com_credito_do_cliente`, migration `20261106003803`) — o
   crédito não é receita (F7), e a ficha dizia "R$ 0" ao lado do "Preço médio
   R$ 450" sem explicar. **E diz de onde veio o crédito** (A41 da 9ª; princípio
   3): "o dinheiro entrou quando o crédito nasceu" era falso no CONCEDIDO.
-  Agora "o crédito foi concedido pela clínica, sem dinheiro — não é receita",
+  Agora "o crédito foi concedido, sem dinheiro — não é receita",
   "o dinheiro entrou quando o crédito foi comprado (ou ficou de um
   cancelamento)" ou as duas coisas (`textoDaOrigemDoCredito`,
   `lib/creditos/origem.ts`), pela origem de cada crédito:
@@ -2440,7 +2440,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   Financeiro da ficha, o lançamento pago tem "Estornar" para quem estorna (o
   Financeiro em Gerenciar, sem "só os meus") — a MESMA janela dos financeiros
   (`ConfirmarEstorno`, com os pontos que saem; a venda de crédito abre a dela) —
-  e a parcela em aberto tem "Receber" para quem recebe (Recebimentos), que
+  e a parcela em aberto tem "Receber" para quem recebe (o PDV), que
   pergunta a forma (`ReceberNoCartao`) — `AcoesDoLancamentoDaFicha`
   (`components/shared/acoes-do-lancamento-da-ficha.tsx`). As actions conferem
   tudo de novo. Prova: `e2e/financeiro-atritos-da-12.spec.ts` ("A32", "A35").
@@ -2456,14 +2456,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 - **O plano PROPOSTO no app** (D-18, decisão do Heitor, 2026-10-30): a home
   do portal mostra o plano proposto (`data-plano-proposto`) com as sessões e
   os procedimentos, o valor (a soma dos preços das sessões, em centavos), a
-  validade e "Falar com a clínica" (o WhatsApp da unidade do endereço,
-  `aClinicaDoEndereco`). O app NÃO aceita: o texto diz "O aceite é feito na
-  clínica". A anotação do profissional (`professional_notes`) e a da sessão
+  validade e "Falar com a equipe" (o WhatsApp da unidade do endereço,
+  `aClinicaDoEndereco`). O app NÃO aceita: o aceite é feito na
+  unidade. A anotação do profissional (`professional_notes`) e a da sessão
   (`treatment_plan_sessions.notes`) são clínicas e nem são lidas pela tela.
   A validade é da REDE (`tenants.plano_validade_dias`, 30 por padrão, 1–365,
   Configurações → Geral; migration `20261029001202`), contada de quando o
   plano foi proposto; vencida, o app diz "Proposta vencida em …". É só
-  informação: o checkout na clínica não recusa o plano vencido. Prova:
+  informação: o checkout na unidade não recusa o plano vencido. Prova:
   `e2e/portal-cliente-plano-proposto.spec.ts`, `e2e/configuracoes-geral.spec.ts`.
 - **O plano e o avulso do MESMO procedimento AVISAM** (D-18, "Reforça" item
   12, e A68 da 5ª simulação: a Rosana via o plano de R$ 3.600 — 2×
@@ -2485,22 +2485,22 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   Só aviso: nada se liga sozinho nem se bloqueia; quem fecha cancela o avulso
   e agenda pela sessão, ou ajusta o plano. Prova: `e2e/plano-e-avulso.spec.ts`.
 - **A cliente vê o saldo do crédito no app** (D-17, decisão do Heitor,
-  2026-10-30): o Financeiro do portal mostra "Crédito na clínica" com o saldo
-  da ficha da clínica do ENDEREÇO (`ctx.clientId`), só quando é maior que
+  2026-10-30): o Financeiro do portal mostra "Seu crédito" com o saldo
+  da ficha da rede do ENDEREÇO (`ctx.clientId`), só quando é maior que
   zero — `getCreditoInternoDoCliente` (`lib/metrics/unidade.ts`, a conta de
   `metrics_financeiro_do_cliente`, a mesma da ficha). Só o saldo: os
   lançamentos do crédito (com a descrição interna) ficam com a equipe.
   Prova: `e2e/portal-cliente-credito-interno.spec.ts`. **E o Início também**
   (A46 da 9ª simulação: a Rosana, sem plano, só chegou ao Financeiro pela URL —
-  o único link ficava no detalhe de um plano): o cartão "Crédito na clínica ·
-  R$ 181,00 · Use em qualquer atendimento ou produto · Ver no Financeiro"
+  o único link ficava no detalhe de um plano): o cartão "Seu crédito ·
+  R$ 181,00 · Use em qualquer atendimento ou produto. · Ver no Financeiro"
   (`[data-credito-na-clinica-no-inicio]`), com o mesmo saldo. Prova:
   `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A46").
 - **Os pagamentos do app dizem o vencimento e o que falta pagar** (A64 da 5ª
   simulação; Histórico → Pagamentos): a parcela pendente diz "Parcela 2 de 3 ·
   vence em 01/12/2026" (`due_date`, senão `data_de_referencia`, por
   `formatDia`), e o atendimento avulso concluído e não pago aparece "A pagar
-  na clínica" — a conta de `atendimentos_a_receber` (`getAtendimentosAReceber`),
+  na unidade" — a conta de `atendimentos_a_receber` (`getAtendimentosAReceber`),
   a mesma do Fechamento e da ficha. Prova: `e2e/portal-cliente-pagamentos.spec.ts`.
   **E o Financeiro do app também** (D4 da 7ª simulação, 2026-11-05; princípio
   3): as três parcelas da Larissa apareciam com a data de CRIAÇÃO (05/11), na
@@ -2527,7 +2527,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `lib/financeiro/recibo.ts`, pelo gerador simples de `lib/pdf.ts`): nº,
   quem pagou (com o CPF, ou o passaporte/RNE), a quantia, o referente, a
   forma ("Crédito 3x"), quando, o desconto e o motivo quando há, e quem
-  recebeu (clínica, unidade, CNPJ, endereço, telefone) — e "Este recibo não
+  recebeu (rede, unidade, CNPJ, endereço, telefone) — e "Este recibo não
   substitui a nota fiscal." Prova: `e2e/financeiro-recibo.spec.ts`.
   **O recibo do ATENDIMENTO diz o que foi pago** (A43 da 7ª simulação,
   2026-11-05: dizia "Atendimento concluído", a descrição do lançamento): o
@@ -2542,7 +2542,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   cobrança** (H2 do levantamento das regras, o Heitor, 2026-11-11, opção a; a
   mesma regra da D6 de 28/10 para o atendimento avulso). O "Estornar" da lista
   devolve o dinheiro, e aquele pagamento volta a ser "a receber" da mesma
-  venda, com o mesmo vencimento — a clínica não perde dinheiro sem perceber, e
+  venda, com o mesmo vencimento — a rede não perde dinheiro sem perceber, e
   corrigir a forma continua possível (estorna e recebe de novo). A janela diz
   isso antes: "Estornar o Pix de R$ 900,00 do pacote 6 limpezas? O dinheiro
   volta à cliente, e o pacote volta a ter R$ 900,00 a receber. Para desfazer a
@@ -2593,7 +2593,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     "Pagamento recebido" duas vezes e nenhum estorno); recebido de novo, a
     tela tira o `?receber=1` da URL e não mostra mais o "Fechar agora" (o
     checkout do plano aqui mesmo — ao lado do "Pagamento confirmado" ele se lia
-    como receber de novo; o "Gerar plano e enviar à recepção" fica). Na lista
+    como receber de novo; o "Enviar ao PDV" fica). Na lista
     dos dois financeiros, o contra-lançamento é "Estorno" (não "Despesa") e
     diz "Anula a receita estornada". Prova: `e2e/financeiro-estorno-atritos.spec.ts`.
 
@@ -2624,14 +2624,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Mexer no preço dos procedimentos do plano no checkout fora de plano_aplicar_desconto
 ❌ Reaproveitar pacote (client_packages) para o procedimento pré-pago — são separados (decisão do Heitor)
 ❌ Vender pré-pago fora de procedimento_vender, ou cancelar unidade fora de procedimento_cancelar_unidade_devolvendo
-❌ Gravar a parcela do crediário da clínica com o meio da entrada (é sem meio, escolhido ao receber — D6), ou dizer no contrato que ela é "no cartão de crédito"
+❌ Gravar a parcela do crediário da rede com o meio da entrada (é sem meio, escolhido ao receber — D6), ou dizer no contrato que ela é "no cartão de crédito"
 ❌ Deixar uma forma de pagamento escolhida de antemão numa tela de cobrança (o Pix calado — A37): nasce vazia, salvo o meio combinado no contrato
 ❌ Gravar na descrição de um lançamento texto interno da tela ("checkout novo paciente") — ela chega à cliente (A47)
-❌ Registrar o que volta de um cancelamento como despesa "Devolução" a pagar — é estorno ou crédito na clínica, a escolha da recepção (D1, 6ª simulação)
+❌ Registrar o que volta de um cancelamento como despesa "Devolução" a pagar — é estorno ou crédito interno, a escolha de quem cancela (D1, 6ª simulação)
 ❌ Ligar crédito (unidade pré-paga ou sessão de pacote) a agendamento fora de createAppointmentCore/ligarCredito, ou com o preço que o navegador mandou
 ❌ Gravar due_date como "AAAA-MM-DD" cru (meia-noite UTC = 21h da VÉSPERA em Brasília) — use vencimentoDoDia (lib/financeiro/lancamento.ts)
 ❌ Dar baixa sem a guarda do já pago/estornado (marcarPagoCore confere a linha devolvida)
-❌ Gravar "cartão de crédito em N vezes" como parcelas a receber DA CLIENTE (ela pagou na hora: é UM lançamento pago, com cartao_vezes) — entrada + parcelas é o crediário da clínica; o que a operadora deposita em parcelas mora em recebiveis_do_cartao, nascido pelo gatilho
+❌ Gravar "cartão de crédito em N vezes" como parcelas a receber DA CLIENTE (ela pagou na hora: é UM lançamento pago, com cartao_vezes) — entrada + parcelas é o crediário da rede; o que a operadora deposita em parcelas mora em recebiveis_do_cartao, nascido pelo gatilho
 ❌ Contar a parcela da operadora (recebiveis_do_cartao) como receita ou como dívida da cliente — a receita é da venda, no dia dela
 ❌ Ler a taxa ou o prazo do cartão sem a bandeira do pagamento (é private.comissao_taxa_pct com a bandeira e private.prazo_da_operadora; o de 3 argumentos é só a regra geral)
 ❌ Dar à bandeira a taxa de OUTRA quantidade de vezes dela (a Elo do 3x no 5x) — sem a taxa exata na bandeira, vale a regra geral daquelas vezes (r4-f15-01)
@@ -2639,7 +2639,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Cair na taxa de OUTRA quantidade de vezes, na bandeira ou na regra geral (o 3x no 4x) — sem a taxa exata, é 0% e a tela avisa (F16-2); a taxa que existe é private.taxa_da_maquininha
 ❌ Ler a taxa, o prazo ou o "parcelar até" sem a maquininha da venda (C75): é private.taxa_da_maquininha / comissao_taxa_pct / prazo_da_operadora COM financial_transactions.maquininha_id; payment_fees e tenants.cartao_* são só o espelho da 1ª maquininha até a limpeza
 ❌ Caminho novo de cartão sem "Qual maquininha?" (CampoDaMaquininha + useFaltaAMaquininha/useRecusaDoPagamento na tela, recusaDasVezesDaRede com a maquininha e o método no servidor) — com mais de uma, a primeira não vale calada
-❌ Pôr maquininha em despesa (o cartão da clínica não é maquininha) ou assinar financial_transactions no Realtime (é o sinal financeiro_sinais)
+❌ Pôr maquininha em despesa (o cartão da rede não é maquininha) ou assinar financial_transactions no Realtime (é o sinal financeiro_sinais)
 ❌ Ler ou gravar financial_transactions pela sessão (é o servidor, depois da trava e do alcance — a política restritiva financeiro_so_pelo_servidor recusa)
 ❌ Montar o rótulo de um pagamento de cartão sem a maquininha quando a rede tem mais de uma (é rotuloDaForma com maquininhaDoRotulo; no banco, private.rotulo_do_pagamento)
 ❌ Escrever "Entrada + parcelas" à mão numa tela (é ROTULO_DO_CREDIARIO)
@@ -2662,16 +2662,16 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Trocar o due_date de um lançamento sem lancamento_remarcar_vencimento (o histórico da remarcação se perde — A37 da 9ª)
 ❌ Calcular a taxa ou o líquido de um lançamento na tela (o CSV) — é metrics_taxa_dos_lancamentos, a conta do lucro (A31 da 10ª)
 ❌ Rotular o cartão do caixa só "Despesas": é "Despesas pagas (caixa)", que tem a compra de estoque e o pagamento das comissões (A24 da 10ª)
-❌ Vender crédito na clínica pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, o "Crédito na clínica" do Vender (decisão 1 da 9ª)
+❌ Vender crédito interno pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, o "Crédito na rede" do Vender (decisão 1 da 9ª)
 ❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem
-❌ Lançar o bônus do crédito na clínica como receita, ou deixar o bônus no saldo depois do estorno da venda (ele sai junto, inteiro ou na proporção — a clínica escolhe; A20 da 11ª)
+❌ Lançar o bônus do crédito interno como receita, ou deixar o bônus no saldo depois do estorno da venda (ele sai junto, inteiro ou na proporção — a rede escolhe; A20 da 11ª)
 ❌ Tirar do dia do pagamento um estorno feito noutro dia (o Fechamento de um dia passado não muda): o estorno é a saída do dia em que foi feito — metrics_movimentos_pagos (D2 da 12ª, princípio 5)
 ❌ Gravar um contra-lançamento de estorno (category = 'Estorno') sem estorno_de (o pagamento que ele estorna): sem a ligação, ele cai na regra antiga e some dos dois dias
 ❌ Somar ENTRADAS a partir de metrics_receitas_pagas sem separar o estorno de outro dia (estorno_de, linha negativa): é saída, não entrada negativa
 ❌ Pôr o estorno de uma DESPESA nos "Estornos do dia" ou com o sinal de devolução à cliente: o dinheiro voltou ao caixa (D3 da 12ª)
 ❌ Somar o "caixa da lista" (ou a coluna do CSV) por uma regra própria: é o no_caixa de metrics_caixa_dos_lancamentos (D9 e A45 da 12ª)
 ❌ Pôr o desconto de uma venda em cada parcela do CSV (ele sai UMA vez por venda — extrasDoCsv, A44 da 12ª)
-❌ Dizer "Ver e dar baixa" ou "use Pagar na linha" a quem não tem a baixa (a contadora só vê — A42 da 12ª)
+❌ Dizer "Ver e dar baixa" ou "use Pagar na linha" a quem não tem a baixa (quem só vê o Financeiro — A42 da 12ª)
 ❌ Link para o Financeiro com ?aberto=todos ou ?aberto=a-pagar: é ?aba=a-receber / ?aba=a-pagar (linkDaAba, lib/financeiro/abas.ts — FI1)
 ❌ Pôr no topo do Financeiro outro botão além do "Novo lançamento" (o crédito interno é da ficha da cliente — FI7)
 ❌ Ler a lista de lançamentos no Resumo (ele é feito dos números de lib/metrics; a lista é das abas — FI2)

@@ -47,12 +47,12 @@ só quando o Heitor pede) continuam no §15 do `CLAUDE.md`.
   (`E2E_BUILD`, ligado por `playwright.build.config.ts`).
 
 **Os três apps no E2E (2026-10-06).** Contra o build sobem TRÊS servidores,
-cada um no seu host — cookie não separa porta, só host, e a sessão da clínica
+cada um no seu host — cookie não separa porta, só host, e a sessão do app da rede
 e a da plataforma não podem se encostar:
 
 | App | Endereço | Variável no teste |
 |---|---|---|
-| clínica (`apps/web`) | `http://127.0.0.1:3100` | `E2E_BASE_URL` |
+| app da rede (`apps/web`) | `http://127.0.0.1:3100` | `E2E_BASE_URL` |
 | sistema | `http://127.0.0.2:3101` | `E2E_SISTEMA_URL` |
 | suporte | `http://127.0.0.3:3102` | `E2E_SUPORTE_URL` |
 
@@ -73,9 +73,9 @@ e a da plataforma não podem se encostar:
   chegar duas janelas atrasado ("Invalid TOTP code entered").
 - `chamarAcao` aceita rota absoluta: no host do sistema ou do suporte, lê os
   manifestos de `apps/<app>/.next`.
-- O "entrar como" abre a conta numa ABA NOVA (`entrarComo` devolve `page`, a
-  clínica, e `painel`, o suporte); `sessaoDoNavegador` lê só os cookies da
-  clínica. `pedirEntrada` faz o POST do painel sem a tela e devolve o código.
+- O "entrar como" abre a conta numa ABA NOVA (`entrarComo` devolve `page`, o
+  app da rede, e `painel`, o suporte); `sessaoDoNavegador` lê só os cookies do
+  app da rede. `pedirEntrada` faz o POST do painel sem a tela e devolve o código.
 
 **Sessão no E2E (2026-10-06)** — os cookies são httpOnly e, no build, Secure.
 - O arquivo de sessão de cada pessoa nasce de um `request.newContext` VAZIO
@@ -89,7 +89,7 @@ e a da plataforma não podem se encostar:
 **Apoio do E2E** (`apps/web/e2e/apoio/`). O E2E roda contra o banco da
 produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 - `sessao.ts` — `criarMembro` (cargo com a matriz que o teste descrever, de
-  rede ou de unidade), `membroComEscopoProprio` (o SDR) e `clienteComSessao`
+  rede ou de unidade), `membroComEscopoProprio` (um membro com o CRM em Gerenciar e "só os meus") e `clienteComSessao`
   (cliente final no portal). Todos devolvem `estado` (cookies), `accessToken`
   (para falar com o PostgREST como a pessoa) e `destino` do login.
 - `limpeza.ts` — `apagarClientes` / `apagarAgendamentos` na ordem das FKs, e
@@ -201,7 +201,7 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
     build DELE (`pnpm --filter=site build`), em 127.0.0.4:3103, sem sessão nem
     global-setup. Mexeu em `apps/site/`, roda este.
   - `playwright.capturas.config.ts` + `e2e-capturas/`: não é teste, é a
-    câmera das telas reais do site. Herda o build da clínica (com a OpenAI
+    câmera das telas reais do site. Herda o build do app da rede (com a OpenAI
     falsa), monta a "Clínica Aurora" fictícia numa rede `[e2e]` e grava em
     `apps/site/public/telas/`. Roda à mão quando uma tela mostrada no site
     mudou — e as fotos novas entram no commit.
@@ -281,7 +281,7 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   - **O que a action grava DEPOIS do que o teste espera se lê com
     `expect.poll`** (a completa de 06/11, F39, com o banco engasgado): o
     evento do agendamento sai no `after()` do `createAppointmentCore` (depois
-    do "Feito"), e a anamnese fecha o pré-atendimento numa segunda gravação,
+    do "Feito"), e a ficha de saúde fecha o pendente (`pre_atendimentos`) numa segunda gravação,
     depois do prontuário. Lidos logo em seguida, com um `.single()`, davam
     `null` ou o pendente ainda aberto — só quando o banco estava lento.
     Provas: `copilot-gravacoes` ("agendar"), `ficha-pre-atendimento` ("salvar

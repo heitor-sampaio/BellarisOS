@@ -146,7 +146,7 @@ Princípios inegociáveis:
 - **A saudação da topbar segue a hora de Brasília** (`saudacao`, `lib/saudacao.ts`):
   "Bom dia" das 05:00 às 11:59, "Boa tarde" até as 17:59, "Boa noite" até as
   23:59 e, de madrugada (00:00–04:59), "Olá" — A55 da 7ª simulação
-  (2026-11-05): "Boa noite" às 04h30 numa clínica 24 h. Prova:
+  (2026-11-05): "Boa noite" às 04h30 numa unidade 24 h. Prova:
   `tests/saudacao-e-iniciais.test.ts`. **E não dá erro de hidratação** (D18 da
   9ª simulação, 2026-11-07): o servidor e o navegador calculavam cada um, e na
   virada das faixas (ou com o relógio do aparelho adiantado) o React #418
@@ -155,14 +155,17 @@ Princípios inegociáveis:
   seguida e a cada minuto (`useSyncExternalStore` na topbar). Texto que depende
   da HORA num componente de cliente segue o mesmo caminho. Prova:
   `e2e/atendimento-atritos-da-9.spec.ts` ("D18", o navegador 12 h à frente).
-- **A clínica de UMA unidade não fala "rede"** (F8 da 5ª simulação,
-  2026-11-02, levando o D-19 de `docs/regras/indicadores.md` a toda tela). A
-  régua é a mesma, `redeTemUmaUnidade`; o texto passa por
-  `lib/unidades/vocabulario.ts`: "rede" vira "clínica" ("da rede" → "da
-  clínica", "Rede inteira" → "Clínica toda") e o cargo de sistema "Admin da
+- **A rede de UMA unidade fala o nome dela no rótulo que é só a rede** (F8
+  da 5ª simulação, 2026-11-02, levando o D-19 de `docs/regras/indicadores.md`
+  a toda tela; PO2, 2026-11-16). A régua é a mesma, `redeTemUmaUnidade`; o
+  texto passa por `lib/unidades/vocabulario.ts` (`falaDeUmaUnidade`): o
+  rótulo que é SÓ a rede ("Rede", "A rede", "Da rede", "Toda a rede", o grupo
+  das Configurações) vira o NOME dela, a frase continua dizendo "rede" ("A
+  rede inteira" fica: é o nome da abrangência), e o cargo de sistema "Admin da
   rede" se chama **"Admin"** — só o rótulo; a chave `NETWORK_ADMIN` é a mesma.
-  Com a segunda unidade, o texto volta como foi escrito.
-  - No servidor: `vocabulario(await redeTemUmaUnidade(ctx.tenantId!))(texto)`.
+  Até o PO2 a frase trocava "rede" por outra palavra. Com a segunda unidade, o
+  texto volta como foi escrito.
+  - No servidor: `(await falaDaTela(ctx.tenantId))(texto)` (`lib/unidades/uma-so.ts`).
     No navegador: `useFala()` ou `<Fala>{texto}</Fala>`
     (`components/shared/uma-unidade.tsx`); os layouts dos dois portais põem a
     régua no `UmaUnidadeProvider`.
@@ -177,7 +180,7 @@ Princípios inegociáveis:
     (`recusaDeMexerNaAdmin`, a comissão da Admin, a Equipe) e as de abrangência
     ("vale para a rede inteira: quem muda é quem administra a rede", nas
     comissões, taxas, pacotes, fidelidade, documentos e planos); a dica, por
-    `fala()`. Na clínica de uma unidade: "Só quem é Admin altera uma Admin.".
+    `fala()`. Na rede de uma unidade: "Só quem é Admin altera uma Admin.".
     Ficaram como estão as recusas de id que não é da rede ("…não encontrada
     nesta rede"), que a tela não oferece. Prova: `e2e/rede-de-uma-unidade.spec.ts`
     (as dicas de cada tela, a recusa da Admin e, com duas unidades, nenhum
@@ -186,7 +189,7 @@ Princípios inegociáveis:
     Equipe, lançamento); a pergunta que não tem o que perguntar some (crédito
     para cliente, "Disponível nas unidades" e o preço por unidade do
     procedimento, a unidade do checkout).
-  - **A clínica de uma opção só** (A2 da 10ª simulação, 2026-11-10; CLAUDE.md
+  - **A rede de uma opção só** (A2 da 10ª simulação, 2026-11-10; CLAUDE.md
     §1): com UMA profissional, UMA sala livre, UMA unidade, ela vem
     escolhida — a regra é UMA, `unicaOpcao`/`aUnica` (`lib/uma-opcao.ts`;
     `unidadeInicial` passa por ela): o Agendar (unidade, profissional, sala —
@@ -199,10 +202,11 @@ Princípios inegociáveis:
     (`lib/setup/proximos-passos.ts`). "Quem vendeu" fica fora: nasce sempre
     vazio (r2-ven-12, `comissoes.md`). Prova:
     `e2e/agenda-clinica-de-uma-opcao.spec.ts`, `tests/setup-proximos-passos.test.ts`.
-  - Texto novo com "rede" na clínica passa pela fala. Prova:
+  - Texto novo com "rede" na tela passa pela fala. Prova:
     `e2e/rede-de-uma-unidade.spec.ts` percorre as telas dos dois portais e os
-    modais e não acha "rede"/"filial"; com a segunda unidade, o vocabulário
-    volta (o controle). `tests/vocabulario-da-clinica.test.ts`.
+    modais atrás das palavras que saíram do sistema, confere o nome da rede
+    no grupo das Configurações e na Equipe, e, com a segunda unidade, "A
+    rede" de volta (o controle). `tests/vocabulario-de-uma-unidade.test.ts`.
 
 ### Formulários (2026-10-21)
 
@@ -219,7 +223,7 @@ Princípios inegociáveis:
 - **Telefone com máscara enquanto se digita**: `maskPhoneDigitando`
   (@estetica-os/utils); para mostrar, `maskPhone`.
 - **O exemplo do campo não é de uma cidade** (A21 da 5ª simulação, uma
-  clínica de SC e outra do RS liam "(11) 99999-9999" e "SP"): telefone
+  rede de SC e outra do RS liam "(11) 99999-9999" e "SP"): telefone
   "(00) 00000-0000", CEP "00000-000", UF "UF", cidade "Nome da cidade".
 - **Dinheiro no campo é texto com centavos** ("380,00"), nunca
   `type="number"` (A11: o insumo de R$ 380 aparecia "380").

@@ -8,6 +8,7 @@ import { painelComercial } from '@/lib/metrics/painel-comercial'
 import { getRelatorioDosModulos, getCoreDosModulos } from '@/lib/metrics/dos-modulos'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
+import { comandaDaVenda, FORA_DO_TOTAL, type Venda } from '@/lib/metrics/vendas-comum'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
@@ -17,7 +18,7 @@ import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
  *
  * Todo número vem de `lib/metrics` (§13.1) — a ferramenta só escolhe o que
- * mostrar. A aba de relatório segue a do cargo (`podeVerRelatorio`), e o
+ * mostrar. A aba de relatório segue a permissão (`podeVerRelatorio`), e o
  * escopo "só a minha unidade" dos relatórios obriga a escolher uma unidade.
  *
  * "Só os meus" (decisão do Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só
@@ -28,6 +29,11 @@ import { resultadoDoPeriodo } from '@/lib/metrics/resultado'
  * e o valor do estoque, a comissão das outras) não vai ao modelo.
  */
 
+
+/** Uma venda como vai ao modelo: com a comanda do PDV ("Nº 12"), como a lista dos Relatórios (CP1). */
+export function vendaParaOModelo(v: Venda) {
+  return { data: v.data, comanda: comandaDaVenda(v), tipo: ROTULO_DO_TIPO[v.tipo], descricao: descricaoDaVenda(v), cliente: v.cliente, profissional: v.profissional, valor: dinheiro(v.valor) }
+}
 
 export const procedimentos: FerramentaDeLeitura<{ busca?: string; unidade?: string }> = {
   nome: 'procedimentos',
@@ -56,7 +62,7 @@ export const indicadores: FerramentaDeLeitura<{
   nome: 'indicadores',
   tipo: 'leitura',
   modulo: 'reports', nivel: 'VIEW',
-  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos, novos clientes, comissões), financeiro (por unidade, forma de pagamento, categoria), vendas (cada venda: procedimento, pacote, pré-pago e plano, com o total por tipo), agenda (por status, dia da semana, origem), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (funil). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate.',
+  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos, novos clientes, comissões), financeiro (por unidade, forma de pagamento, categoria), vendas (cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (por status, dia da semana, origem), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (a aba Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate.',
   parametros: z.object({
     aba: z.enum(REPORT_TABS).optional(),
     periodo: z.enum(PERIODOS).optional(),
@@ -66,7 +72,7 @@ export const indicadores: FerramentaDeLeitura<{
   async executar(c, args) {
     const aba = args.aba ?? 'overview'
     if (!podeVerRelatorio(c.ctx, aba)) {
-      return { dados: { erro: `O seu cargo não vê a aba "${aba}" dos relatórios. Abas liberadas: ${c.ctx.reportTabs.join(', ') || 'nenhuma'}.` } }
+      return { dados: { erro: `A sua permissão não abre a aba "${aba}" dos relatórios. Abas liberadas: ${c.ctx.reportTabs.join(', ') || 'nenhuma'}.` } }
     }
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
@@ -96,7 +102,7 @@ export const indicadores: FerramentaDeLeitura<{
     ].filter(Boolean)
     const cabecalho = {
       periodo: periodo.label, unidade: u.unidade?.name ?? 'todas as unidades',
-      ...(partes.length ? { recorte: `${partes.join('; ')} (o seu cargo vê "só os meus" nesse módulo)` } : {}),
+      ...(partes.length ? { recorte: `${partes.join('; ')} (a sua permissão é "só os meus" nesse módulo)` } : {}),
     }
 
     if (aba === 'overview') {
@@ -179,7 +185,8 @@ export const indicadores: FerramentaDeLeitura<{
           ...cabecalho,
           total: dinheiro(resumo.geral.total), vendas: resumo.geral.quantidade,
           porTipo: Object.entries(resumo.porTipo).map(([tipo, x]) => ({ tipo: ROTULO_DO_TIPO[tipo as keyof typeof ROTULO_DO_TIPO], vendas: x.quantidade, total: dinheiro(x.total) })),
-          ultimas: ultimas.map(v => ({ data: v.data, tipo: ROTULO_DO_TIPO[v.tipo], descricao: descricaoDaVenda(v), cliente: v.cliente, profissional: v.profissional, valor: dinheiro(v.valor) })),
+          ultimas: ultimas.map(vendaParaOModelo),
+          ...(resumo.porTipo.CREDITO?.quantidade ? { foraDoTotal: `${FORA_DO_TOTAL.map(t => ROTULO_DO_TIPO[t]).join(', ')}: entra na lista e não no total vendido (é dinheiro guardado, que vira atendimento depois).` } : {}),
           nota: resumo.geral.quantidade > ultimas.length ? 'A lista traz as 30 mais recentes; a completa está em Relatórios → Vendas.' : undefined,
         },
       }

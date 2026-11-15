@@ -67,7 +67,9 @@ export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
     void (async () => {
       try {
         const r = await decidirAcaoDoCopilot(cartao.acaoId, decisao, pagina, escolha ?? null)
-        if (r.error && r.status === 'falhou' && !r.resultado) { setErro(r.error); return }
+        // A recusa que deixa o cartão pendente ("Escolha uma das opções") também
+        // aparece: calada, o clique parecia não fazer nada (CP1).
+        if (r.error && (r.status === 'pendente' || (r.status === 'falhou' && !r.resultado))) { setErro(r.error); return }
         aoMudar?.({ ...cartao, status: r.status, resultado: r.resultado ?? (r.error ? { mensagem: r.error } : null) })
         // A tela por trás mostra o que mudou (o agendamento novo na agenda) —
         // o refresh corre à parte; o "Feito" é do que o servidor respondeu.

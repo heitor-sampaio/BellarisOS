@@ -21,8 +21,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   tela, teste e conversa falam em PERMISSÃO ("quem tem o Estoque em
   Gerenciar"), nunca em "a gerente", "a recepção", "a profissional", "a
   contadora".
-- O texto que ainda diz "clínica" ou "filial" (telas, regras em
-  `docs/regras/`, este arquivo) é pendência da revisão — não é regra.
+- As telas, as regras (`docs/regras/`) e este arquivo já falam "rede" e
+  "unidade" (16/11). O que ainda diz "clínica" ou "filial" são nomes internos
+  do código (`recusaDaConfigDaClinica`, `/auth/clinicas`, `trocarFilial…`) —
+  pendência da revisão, não regra.
 
 ### Tags (o Heitor, 2026-11-13 — vale para o sistema inteiro)
 
@@ -44,26 +46,26 @@ gente já apresenta ali fixos em cada página."
 (aberta pelo Heitor em 2026-11-13). Enquanto ela corre, nada se implementa.
 
 BellarisOS é o **ERP + CRM** de clínicas de estética — a ferramenta em que a
-clínica opera o dia inteiro: agenda, prontuário, clientes, conversas, estoque,
+rede opera o dia inteiro: agenda, prontuário, clientes, conversas, estoque,
 comercial e financeiro. Não é um sistema financeiro com agenda em volta; o
 financeiro é uma parte, não o centro.
 
-**O tamanho real do cliente é uma clínica só.** Multiunidade existe no modelo
+**O tamanho real do cliente é uma rede de uma unidade só.** Multiunidade existe no modelo
 (tudo carrega `tenantId` + `branchId`, e o portal da rede consolida), mas é a
 exceção: rede grande costuma ser franquia, e franquia já chega com o sistema
-dela. Na dúvida de projeto, otimize para a clínica única — sem tornar a segunda
+dela. Na dúvida de projeto, otimize para a rede de uma unidade — sem tornar a segunda
 unidade impossível.
 
 É composto por três superfícies:
 
-- **Portal Web Admin** (`/admin`) — visão consolidada da rede inteira
-- **Portal Web Filial** (`/[slug]`) — operação isolada de cada unidade
+- **Portal da rede** (`/admin`) — visão consolidada da rede inteira
+- **Portal da unidade** (`/[slug]`) — operação isolada de cada unidade
 - **Portal do cliente final** (`/[slug]/cliente`) — agendamento self-service, histórico, financeiro, LGPD
 - **App Android** (`apps/native`) — o MESMO portal web dentro de um Capacitor, com push nativo. Não há
   app com código próprio, nem iOS: tela nova é tela web.
 
 E a PLATAFORMA — a equipe do BellarisOS — em dois apps próprios, cada um no seu
-host, fora da clínica (2026-10-06): o **sistema** (`apps/sistema`,
+host, fora do app da rede (2026-10-06): o **sistema** (`apps/sistema`,
 admin.bellarisos.com: o ADMIN administra, o GERENTE só vê) e o **suporte** (`apps/suporte`,
 suporte.bellarisos.com). Regras em `docs/regras/plataforma.md`.
 
@@ -78,9 +80,9 @@ aí me pergunta; se não, segue a regra." Decisão pequena que um destes
 princípios resolve, decida e anote no DEVLOG — não leve ao Heitor. Leve só a
 regra de negócio que não está clara ou que contraria um deles.
 
-1. **Flexibilidade: a clínica decide.** Na dúvida entre dois comportamentos,
-   é configuração da clínica, com um padrão sensato.
-2. **Não recusar o valor que a clínica escolheu** (taxa, percentual, preço,
+1. **Flexibilidade: a rede decide.** Na dúvida entre dois comportamentos,
+   é configuração da rede, com um padrão sensato.
+2. **Não recusar o valor que a rede escolheu** (taxa, percentual, preço,
    prazo): no máximo, avisar. Só o que é impossível (negativo, a rede errada,
    sem permissão) é recusado.
 3. **O que a tela mostra é o que vale na conta.** Nada de regra escondida
@@ -90,10 +92,10 @@ regra de negócio que não está clara ou que contraria um deles.
 5. **Sem execução, sem valor**: o indicador de execução conta o dinheiro no
    dia em que o atendimento foi feito; o caixa e o faturamento, no dia em que
    o dinheiro entrou.
-6. **Nada se move sozinho**: automação nasce como modelo desligado; a clínica
+6. **Nada se move sozinho**: automação nasce como modelo desligado; a rede
    liga se quiser.
 7. **Simples primeiro.** O caso comum aparece; o raro fica guardado até a
-   clínica precisar. Tela que uma pessoa nova não entende sozinha é defeito.
+   rede precisar. Tela que uma pessoa nova não entende sozinha é defeito.
    (O Heitor, 2026-11-11, sobre a tela de Taxas: "o sistema precisa ser
    intuitivo, me parece que ta virando um monstro".) Simplificar NÃO é
    tirar recurso ("simplificar não é reduzir funcionalidade, é melhorar a
@@ -137,7 +139,7 @@ em página com streaming (#99028). Subir de versão exige a suíte contra o BUIL
 ```
 estetica-os/                          (raiz do monorepo)
 ├── apps/
-│   ├── web/                          a CLÍNICA (app.bellarisos.com): Next.js
+│   ├── web/                          o app da REDE (app.bellarisos.com): Next.js
 │   │   ├── app/                      (auth)/, admin/ (rede), [slug]/ (unidade),
 │   │   │                             [slug]/cliente/ (cliente final), api/, _shared/
 │   │   ├── components/               shared/, admin/, branch/, client-portal/
@@ -146,7 +148,7 @@ estetica-os/                          (raiz do monorepo)
 │   ├── sistema/                      a ADMINISTRAÇÃO da plataforma (admin.*, ADMIN; GERENTE vê)
 │   ├── suporte/                      o ATENDIMENTO da plataforma (suporte.*)
 │   ├── site/                         o SITE (bellarisos.com): a página de apresentação
-│   └── native/                       Capacitor — casca Android da clínica
+│   └── native/                       Capacitor — casca Android do app da rede
 ├── packages/
 │   ├── nucleo/                       o que os três apps dividem (§7)
 │   ├── types/  validators/  utils/
@@ -199,8 +201,8 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
 - **Credencial não tem política nenhuma.** `integration_configs`,
   `whatsapp_numbers` e `whatsapp_number_users` têm RLS ligada e ZERO políticas
   (migration `20260928000005`): a sessão não lê nem escreve, só o servidor
-  (service role). Até 2026-09-28 conferiam só a rede, e um SDR lia o token da
-  Meta pela chave pública. Tela que precise de algo dali pelo navegador não
+  (service role). Até 2026-09-28 conferiam só a rede, e qualquer membro dela (sem
+  integração nenhuma no cargo) lia o token da Meta pela chave pública. Tela que precise de algo dali pelo navegador não
   reabre a tabela: expõe só as colunas sem segredo, numa view ou função.
   Prova: `e2e/credenciais-fora-da-sessao.spec.ts`.
 - **Configuração e dado sensível: a sessão só LÊ** (F63, 2026-11-12). Cargos,
@@ -263,13 +265,17 @@ action e das consultas com filtro está em `docs/regras/convencoes.md`.
 | Role no JWT | NETWORK_ADMIN, BRANCH_ADMIN, RECEPTIONIST, PROFESSIONAL, FINANCIAL | CLIENT |
 | `tenant_id` no JWT | Preenchido | `null` |
 | `client_id` no JWT | `null` | Preenchido — só a MARCA "é cliente" (ver abaixo) |
-| Login | E-mail + senha | E-mail + senha (a inicial é o CPF; a clínica cria o acesso no cadastro) |
+| Login | E-mail + senha | E-mail + senha (a inicial é o CPF; a rede cria o acesso no cadastro) |
 | Plataformas | Web + app Android | Portal do cliente (web + app Android) |
-| Acesso ao banco | Filtra por `tenantId` / `branchId` | Filtra por `ctx.clientId` (a ficha da clínica do endereço) |
+| Acesso ao banco | Filtra por `tenantId` / `branchId` | Filtra por `ctx.clientId` (a ficha da rede do endereço) |
 
-### O acesso da cliente — e a mesma pessoa em várias clínicas (2026-10-19)
+A claim `role` da equipe (`NETWORK_ADMIN`, `BRANCH_ADMIN`…) é legada: são
+identificadores do código, não cargos. Quem decide o que a pessoa faz é a
+permissão do cargo dela (§11).
 
-Só a CLÍNICA cria o acesso (cadastro com acesso, ou o Copilot): não existe
+### O acesso da cliente — e a mesma pessoa em várias redes (2026-10-19)
+
+Só a REDE cria o acesso (cadastro com acesso, ou o Copilot): não existe
 cadastro da cliente pelo app. Login = e-mail, senha inicial = CPF — ou, sem
 CPF, o número do passaporte ou do RNE da ficha (decisão 1 do Heitor,
 2026-11-05: "concordo"; era "sem CPF, sem acesso por enquanto") —
@@ -277,40 +283,40 @@ CPF, o número do passaporte ou do RNE da ficha (decisão 1 do Heitor,
 `e2e/ficha-acesso-sem-cpf.spec.ts`.
 
 **Senha dada por outra pessoa é provisória** (2026-10-21, decisão do Heitor):
-o membro criado pela Equipe e a cliente com o acesso criado pela clínica
+o membro criado pela Equipe e a cliente com o acesso criado pela rede
 nascem com `app_metadata.senha_provisoria`, e o proxy leva a
 `/update-password?primeiro=1` até a troca (a sessão de suporte passa).
 `createUser` com senha sem a marca: `tests/senha-provisoria.test.ts` trava.
 Prova: `e2e/autenticacao-senha-inicial.spec.ts`.
 
-**Um login por pessoa, uma ficha em cada clínica** (decisão do Heitor). A
-conta é dela; as fichas são de cada clínica, e cada clínica só vê a sua.
+**Um login por pessoa, uma ficha em cada rede** (decisão do Heitor). A
+conta é dela; as fichas são de cada rede, e cada rede só vê a sua.
 - **No banco**: no máximo uma ficha por login EM CADA REDE
   (`clients_um_login_por_rede`); o lado CLIENT das políticas usa
   `private.clientes_do_login()` — as fichas deste login, todas e só as dela.
   Política nova do lado da cliente passa por ela, nunca pela claim nem por
   `auth_id = auth.uid() … limit 1`.
-- **No app, a ficha é a da clínica do ENDEREÇO** (`fichaDaRequisicao`, no
+- **No app, a ficha é a da rede do ENDEREÇO** (`fichaDaRequisicao`, no
   `buildContext`, pelo `x-bellaris-caminho`): `ctx.clientId` muda com a
-  clínica. A claim `client_id` é só a marca "é cliente" — nunca escolha dado
-  por ela. Rota sem clínica no endereço (`/api/*`) confere as fichas do login
+  rede. A claim `client_id` é só a marca "é cliente" — nunca escolha dado
+  por ela. Rota sem unidade no endereço (`/api/*`) confere as fichas do login
   (`getCachedFichasDoLogin`), não `ctx.clientId`.
 - **Dar acesso a quem já tem conta** (`login_de_cliente_para_ligar_doc`):
   e-mail de CLIENTE com uma ficha de mesmo CPF — ou, sem CPF, do mesmo
   passaporte/RNE (tipo e número) — → a ficha nova entra nessa conta, sem
   mexer na senha nem no token. Documento diferente, e-mail de equipe ou da
   plataforma → recusado. Rollback só apaga login NOVO.
-- **A entrada**: uma clínica → direto; várias → o seletor `/auth/clinicas`
-  no primeiro login (e uma vez de novo quando entra uma clínica nova), depois
+- **A entrada**: uma rede → direto; várias → o seletor `/auth/clinicas`
+  no primeiro login (e uma vez de novo quando entra uma rede nova), depois
   a última usada (`destinoDaCliente`, o único caminho dos quatro pontos de
-  login). Clínica fechada (bloqueada, sem portal no plano) não tranca as
+  login). Rede fechada (bloqueada, sem portal no plano) não tranca as
   outras.
 - Avisos no celular vão aos aparelhos de todas as fichas do login
-  (`aparelhos_da_cliente`); o bônus de primeiro acesso é por clínica.
-- Fica de fora: a mesma pessoa como EQUIPE de uma clínica e cliente de outra
+  (`aparelhos_da_cliente`); o bônus de primeiro acesso é por rede.
+- Fica de fora: a mesma pessoa como EQUIPE de uma rede e cliente de outra
   com o mesmo e-mail (usa outro e-mail).
 - Prova: `e2e/portal-cliente-varias-clinicas.spec.ts`.
-- **A ficha é da CLÍNICA, não da unidade de cadastro** (H5, 2026-11-02: "A
+- **A ficha é da REDE, não da unidade de cadastro** (H5, 2026-11-02: "A
   cliente é da clínica, pode agendar em qualquer unidade da clínica"). O portal
   de QUALQUER unidade ativa da rede da ficha abre a mesma ficha
   (`slugsDaClinica` em `fichaDaRequisicao`; o layout de `[slug]` confere a
@@ -322,8 +328,8 @@ conta é dela; as fichas são de cada clínica, e cada clínica só vê a sua.
 - **O endereço (slug) da unidade é único no sistema inteiro**
   (`branches_slug_unico`, 2026-10-19) — é o que deixa o endereço decidir a
   ficha. `createBranch` escolhe um livre sozinho (`lib/unidades/endereco.ts`):
-  o nome; ocupado por outra clínica ou por uma rota do sistema
-  (`ENDERECOS_RESERVADOS`), o nome com a clínica no fim; depois, numerado.
+  o nome; ocupado por outra rede ou por uma rota do sistema
+  (`ENDERECOS_RESERVADOS`), o nome com o da rede no fim; depois, numerado.
   Pasta nova no topo de `app/` entra na reserva
   (`tests/endereco-da-unidade.test.ts` trava). Prova:
   `e2e/estrutura-endereco-da-unidade.spec.ts`.
@@ -337,8 +343,12 @@ conta é dela; as fichas são de cada clínica, e cada clínica só vê a sua.
 | Rota | Portal | Acesso |
 |---|---|---|
 | `/admin/*` | Rede | NETWORK_ADMIN |
-| `/[slug]/*` | Filial | BRANCH_ADMIN, RECEPTIONIST, PROFESSIONAL, FINANCIAL |
+| `/[slug]/*` | Unidade | BRANCH_ADMIN, RECEPTIONIST, PROFESSIONAL, FINANCIAL |
 | `/[slug]/cliente/*` | Cliente final | CLIENT (autenticado) |
+
+A coluna "Acesso" e o redirect abaixo citam a claim `role` (legada, §5): não
+são cargos. O que a pessoa abre em cada portal é a abrangência e a permissão
+do cargo (§11).
 
 **Não existe agendamento público sem login.** Só há dois caminhos para criar um
 agendamento: a equipe autenticada, ou o próprio cliente pelo portal/app — e
@@ -356,9 +366,9 @@ Com a sessão aberta, `/login` leva ao destino (`destinoPelosClaims`,
 volta de um portão), `/admin` vai ao painel pelo layout e a cliente em
 `/setup` vai ao portal (J-67). Prova: `e2e/rotas-com-sessao-levam-ao-destino.spec.ts`.
 
-### Portal não é filial
+### Portal não é a unidade do registro
 
-O `slug` que um componente recebe é a **filial do registro**; o portal é **onde a
+O `slug` que um componente recebe é a **unidade do registro**; o portal é **onde a
 pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava em
 "+ Agendar" para dentro de uma unidade.
 
@@ -372,10 +382,10 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   vira `redirect()` de uma linha, como em `app/[slug]/stock/page.tsx`.
 - Tela que existe na unidade e é útil à rede ganha a versão em `/admin`, com o
   corpo em `app/_shared/` (pasta privada: o `_` a mantém fora do roteamento) e
-  as duas páginas finas — a da unidade resolve a filial pelo slug, a da rede
+  as duas páginas finas — a da unidade resolve a unidade pelo slug, a da rede
   pelo próprio registro. Ver `sessao-de-atendimento.tsx`, `checkout-de-plano.tsx`.
 - Drill-down da rede (“ver esta unidade”) é `?unidade=<id|slug>` na tela da
-  rede, não link para o portal da filial. A única saída de portal que sobra é o
+  rede, não link para o portal da unidade. A única saída de portal que sobra é o
   card “Abrir unidade” no dashboard, onde entrar nela é a intenção.
 - **Toda `page.tsx` chama `assertPermission` por si**, mesmo com o layout já
   conferindo: o layout protege a navegação, não a URL. E mais: **layout e
@@ -396,7 +406,7 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   não estiver na lista — a página pode não pedir sessão e mesmo assim nunca ser
   vista. Hoje são: `/`, `/privacidade`, `/verificar*` (conferir documento
   assinado), `/assinar/*` (o link de assinatura), `/pre-atendimento/*` (o
-  link da ficha de pré-atendimento), `/schedule*` e
+  link da ficha de saúde), `/schedule*` e
   `/api/*`, mais as telas de autenticação.
   - Quem precisa disso: o que é lido por quem **ainda não entrou** ou **nunca
     vai entrar**. A política de privacidade é o caso típico — e loja de
@@ -433,7 +443,7 @@ Em `docs/regras/busca.md`.
 
 Em `docs/regras/plataforma.md`: os apps `sistema` e `suporte` (outros hosts),
 as assinaturas pelo Asaas, a rede bloqueada, o "entrar como" entre origens, o
-cache entre processos e os chamados. ⚠️ A clínica RECUSA a marca da
+cache entre processos e os chamados. ⚠️ O app da rede RECUSA a marca da
 plataforma. Mexeu em `buildContext`, `jwt_claim`, no proxy ou nos destinos de
 login, leia antes: o portão da rede bloqueada e a sessão de suporte moram ali.
 
@@ -455,7 +465,7 @@ local, liberar só na cópia local.
 - `packages/validators` — só os schemas de autenticação; schema novo entra
   quando tiver quem o importe.
 - `packages/utils` — `formatBRL`, `formatDate`, `maskCPF`.
-- **`packages/nucleo`** (2026-10-06) — o código que a clínica, o sistema e o
+- **`packages/nucleo`** (2026-10-06) — o código que o app da rede, o sistema e o
   suporte DIVIDEM, na mesma árvore do `apps/web` (`src/lib/…`,
   `src/components/…`): `db`, os clientes do Supabase e o cookie da sessão,
   `origem`, `notify`/`push`, `redes/*` (situação, cache, leitura da
@@ -466,8 +476,8 @@ local, liberar só na cópia local.
     continua certo. Arquivo NOVO compartilhado nasce direto no núcleo.
   - O núcleo não importa de app nenhum (`@/` ali dentro resolveria para o
     app que compila): `tests/nucleo-sem-app.test.ts` trava.
-  - O que fala com o Asaas NÃO é núcleo (`lib/redes/cobranca.ts`): a clínica
-    não carrega a cobrança.
+  - O que fala com o Asaas NÃO é núcleo (`lib/redes/cobranca.ts`): o app da
+    rede não carrega a cobrança.
 
 ---
 
@@ -512,9 +522,9 @@ código ou no DEVLOG cita "CLAUDE.md §9.7" acha a seção pela tabela.
 | `atendimento.md` | §9.1 Agenda, §9.3 Procedimentos, §9.4 Prontuário, §9.5 Estoque, §10 Conclusão do atendimento | `appointments`, `lib/appointments/`, `createAppointmentCore`, `procedures`, `medical_records*`, `forms`, `pre_atendimento*`, `lib/pre-atendimento/`, `lib/anamnese-geral.ts`, `stock_*`, `product_batches`, `lib/estoque/`, `finishSession`, `concluir_atendimento`, agenda, sessão de atendimento |
 | `crm-inbox.md` | §9.2 Clientes / CRM (com LGPD), §9.2.1 Contato, conversa, oportunidade e cliente | `clients`, `contacts`, `conversations`, `leads`, `lead_events`, `lib/inbox/`, `lib/crm/`, `lib/contatos/`, `inbox_pagina`, `actions/inbox.ts`, `actions/lgpd.ts`, inbox, quadro de oportunidades, ficha do cliente |
 | `fidelidade.md` | §9.2.2 Fidelidade | `loyalty_*`, `lib/fidelidade/`, `confirmar_pagamento_do_atendimento`, pontos, vouchers, recompensas |
-| `vendas-financeiro.md` | §9.3.1 Pacotes, §9.3.2 Pré-pago, §9.3.4 Crédito na clínica vendido, §9.6 Financeiro | `service_packages*`, `client_packages`, `package_sessions`, `procedure_sales*`, `financial_transactions`, `internal_credits`, `creditos_vendidos`, `actions/credito-na-clinica.ts`, `estornar_transacao`, `lib/checkout/`, `lib/vendas/`, `lib/pacotes/`, `lib/creditos/`, `actions/pre-pago.ts`, `actions/financial.ts`, checkout do plano, "Vender", desconto, parcelas |
+| `vendas-financeiro.md` | §9.3.1 Pacotes, §9.3.2 Pré-pago, §9.3.4 Crédito interno vendido, §9.6 Financeiro | `service_packages*`, `client_packages`, `package_sessions`, `procedure_sales*`, `financial_transactions`, `internal_credits`, `creditos_vendidos`, `actions/credito-na-clinica.ts`, `estornar_transacao`, `lib/checkout/`, `lib/vendas/`, `lib/pacotes/`, `lib/creditos/`, `actions/pre-pago.ts`, `actions/financial.ts`, checkout do plano, "Vender", desconto, parcelas |
 | `comissoes.md` | §9.7 Comissões | `commission_*`, `commissions`, `payment_fees`, `lib/comissoes/`, `comissao_*`, Financeiro → Comissões |
-| `documentos.md` | §9.4.1 Termos e contratos | `issued_documents`, `document_*`, `consent_terms`, `lib/documentos/`, `components/admin/editor-rico/`, `/verificar`, `/assinar`, PDF assinado, tela de Documentos |
+| `documentos.md` | §9.4.1 Documentos (termos e contratos) | `issued_documents`, `document_*`, `consent_terms`, `lib/documentos/`, `components/admin/editor-rico/`, `/verificar`, `/assinar`, PDF assinado, tela de Documentos |
 | `whatsapp-push.md` | §9.8 Push, §9.8.0 Números de WhatsApp, §9.8.1 Coexistência × Cloud API | `whatsapp_numbers*`, `integration_configs`, `lib/whatsapp/`, `lib/channels/`, `lib/templates/`, `lib/notifications/`, `lib/integracoes/`, `actions/uazapi-connection.ts`, `/api/webhooks/whatsapp` e `/meta`, templates, push |
 | `automacoes.md` | §9.9 Eventos de domínio e automações | `domain_events`, `automation_*`, `lib/events/`, `lib/automacoes/`, `packages/types/src/eventos.ts`, campanhas |
 | `plataforma.md` | §6 Plataforma e suporte (os apps sistema e suporte, Asaas, "entrar como", chamados) | `apps/sistema`, `apps/suporte`, `lib/plataforma/`, `lib/suporte/`, `lib/redes/`, `lib/asaas/`, `/auth/suporte-*`, `/api/interno/`, `support_*`, `platform_*`, `tenant_subscriptions`, `subscription_invoices`, `buildContext`, `jwt_claim`, `/conta-suspensa`, Ajuda da topbar |
@@ -523,7 +533,7 @@ código ou no DEVLOG cita "CLAUDE.md §9.7" acha a seção pela tabela.
 | `busca.md` | §6 Busca universal | `busca_universal`, `lib/busca/`, `actions/busca.ts`, `busca-universal.tsx` |
 | `design.md` | §13 Design System ("Rosé Vivo") | qualquer componente visual, `globals.css`, seletor, modal, popover, menu |
 | `indicadores.md` | §13.1 Indicadores | `lib/metrics/`, `metrics_*`, `lib/datetime.ts`, `resolvePeriod`, dashboard, relatórios (inclusive o de vendas), qualquer número na tela |
-| `infra.md` | §12 Variáveis de ambiente, §14.1 Cron, o CSP da clínica | env, `scripts/cron.mjs`, `app/api/cron/`, Railway, Dockerfile, `lib/seguranca/csp.ts` |
+| `infra.md` | §12 Variáveis de ambiente, §14.1 Cron, o CSP do app da rede | env, `scripts/cron.mjs`, `app/api/cron/`, Railway, Dockerfile, `lib/seguranca/csp.ts` |
 | `e2e.md` | §15 A completa em duas metades e o apoio do E2E | `apps/web/e2e/`, `playwright*.config.ts`, `.github/workflows/e2e.yml` |
 | `convencoes.md` | §4/§8 os modelos de action e de consulta | a primeira action ou consulta nova da sessão |
 
@@ -574,8 +584,8 @@ transação). Prova: `e2e/equipe-varias-unidades.spec.ts`.
 
 **O escopo só vale em módulo que o cargo TEM** (D6, 2026-10-29): módulo NONE —
 no cargo, no plano da rede ou Relatórios sem aba — é ALL no contexto
-(`resolveScopes` + `escoposDoQueTem`, no fim do `buildContext`). A contadora
-sem agenda tinha o OWN esmaecido da agenda gravado, e o dashboard a recortava
+(`resolveScopes` + `escoposDoQueTem`, no fim do `buildContext`). Quem não
+tinha a Agenda guardava o OWN esmaecido da agenda, e o dashboard a recortava
 ("Meu faturamento R$ 0"). O cargo salvo GUARDA o escopo do módulo desligado
 (revisão do Heitor, 2026-10-29): religar devolve o "só os meus" que estava —
 quem lê o escopo é que o ignora enquanto o módulo está em NONE.
@@ -654,7 +664,7 @@ Regras:
   **Desativar oferece repassar** os agendamentos futuros e as oportunidades
   abertas, caso a caso ou todos de uma vez (H6, `lib/equipe/repasse.ts`).
   Prova: `e2e/membro-desativado.spec.ts`, `e2e/equipe-desativar-repassa.spec.ts`.
-- **Nenhum login da clínica sem vínculo** (o Heitor, 2026-11-01: "ou é rede ou
+- **Nenhum login do app da rede sem vínculo** (o Heitor, 2026-11-01: "ou é rede ou
   é unidade"): todo login é membro de uma rede ou cliente com ficha (a
   plataforma à parte). Login novo grava o vínculo por `comLoginNovo`, que
   apaga o login se o vínculo falha; o que sobrar não entra ("Esta conta não
@@ -670,7 +680,7 @@ Regras:
   `reactivateTeamMember`, `salvarRegrasDoProfissional` e o valor dela na
   comissão do procedimento, `recusaDaComissaoDaAdmin`) recusam. A própria
   Admin edita em si o "atende" e o horário com o cargo travado (é assim que a
-  dona que atende se marca profissional, D2), e não muda o próprio cargo; a
+  Admin da rede que atende se marca profissional, D2), e não muda o próprio cargo; a
   última Admin ativa não é rebaixada nem desativada.
   ⚠️ É a EXCEÇÃO à regra de não decidir por cargo, porque a regra do Heitor é
   sobre ESTE cargo: ela confere o cargo de sistema pela chave no banco
@@ -678,16 +688,16 @@ Regras:
   `ctx.role`), num lugar só — `lib/equipe/admin-da-rede.ts`
   (`cargoEhAdminDaRede`, `souAdminDaRede`, `recusaDeMexerNaAdmin`). Seletor
   de cargo com valor fora das opções fica em "Selecione…", nunca no primeiro
-  da lista (era o que rebaixava a dona). Prova:
+  da lista (era o que rebaixava a Admin da rede). Prova:
   `e2e/equipe-dona-que-atende.spec.ts`.
-- **A configuração da clínica toda é de quem é da rede** (H7, decisão do
+- **A configuração da rede toda é de quem tem “A rede inteira”** (H7, decisão do
   Heitor, 2026-11-01: "gerente de uma unidade só mexe no que é da unidade").
   Com os módulos em Gerenciar, quem não tem "A rede inteira" (`ctx.branchId !== null` — uma unidade ou várias, EQ1b)
-  não grava tags, funis, cargos, fichas, termos, integrações, automações,
+  não grava tags, funis, cargos, fichas, modelos de documento, integrações, automações,
   campanhas, templates, as Importações nem os
   dados da rede: a action devolve
   `recusaDaConfigDaClinica` (`lib/configuracao-da-rede.ts`) e a aba diz "Esta
-  configuração é da clínica toda". Continua com a dela: a aba Unidade (dados,
+  configuração é da rede toda". Continua com a dela: a aba Unidade (dados,
   horário, salas), o estoque e a equipe. As respostas rápidas são de cada
   pessoa (H8 do levantamento das regras, 2026-11-11 — C72 na F69; a C73
   ainda não entrou). O cadastro de produtos, as categorias, as marcas e os
@@ -703,8 +713,8 @@ Regras:
   depois de conferida a rede: quem é da rede alcança todas, quem tem unidades
   só as DELA (`ctx.unidades`), e registro sem unidade é da rede. Leitura que recebe
   `branchId` usa `ctx.branchId ?? branchId` — o pedido não vence a
-  abrangência. Até 2026-09-28 a recepção da A cancelava, recebia e estornava
-  na B pelo id. Prova: `e2e/abrangencia-unidade.spec.ts`.
+  abrangência. Até 2026-09-28 quem tinha só a unidade A cancelava, recebia e
+  estornava na B pelo id. Prova: `e2e/abrangencia-unidade.spec.ts`.
 - **Todo caminho que cria ou move agendamento passa por
   `conferirPecasDoAgendamento`** (`lib/appointments/core.ts`): unidade,
   profissional, cliente e sala da rede, e a unidade ao alcance. O checkout,
@@ -789,14 +799,14 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
 ❌ Política de ESCRITA em tabela de configuração que confere só eh_da_rede() (sem o módulo, qualquer membro da rede grava) — a sessão lê, o servidor grava
 ❌ Policy de leitura numa tabela do Realtime sem `to authenticated` (o inscrito anônimo a estoura e o lote some para todos)
-❌ Escolher a ficha da cliente pela claim client_id ou por auth_id … limit 1 (ela tem uma ficha por clínica: é ctx.clientId no app, clientes_do_login() no banco)
+❌ Escolher a ficha da cliente pela claim client_id ou por auth_id … limit 1 (ela tem uma ficha por rede: é ctx.clientId no app, clientes_do_login() no banco)
 ❌ Gravar o slug de uma unidade sem escolherEndereco (lib/unidades/endereco.ts) — é único no sistema inteiro, e nunca o nome de uma rota
 ❌ Criar política de RLS em tabela de credencial (integration_configs, whatsapp_numbers) — só o servidor lê
 ❌ Função security definer em public que recebe tenant por parâmetro e fica aberta a anon/authenticated
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão
 ❌ Limpar um estado da rede ANTES de conferir o id que vai recebê-lo (setDefaultFunnel zerava o padrão)
 ❌ Action que recebe id de registro de UNIDADE e confere só a rede (use alcancaUnidade depois da rede)
-❌ Action que grava configuração da clínica toda sem recusaDaConfigDaClinica (a gerente de unidade fixa a mudava para todas — H7)
+❌ Action que grava configuração da rede toda sem recusaDaConfigDaClinica (quem tinha só uma unidade a mudava para todas — H7)
 ❌ Botão que a pessoa não pode usar (o módulo em Ver, sem o módulo): a tela esconde, e a action devolve { error } em vez de lançar dentro do useActionState
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
@@ -817,11 +827,11 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Implementar feature sem o teste escrito antes e visto falhando (§15, TDD)
 ❌ Gravar cookie de sessão sem opcoesDoCookieDeSessao, ou ler/guardar a sessão no JS (o refresh token iria junto)
 ❌ Usar o primeiro do x-forwarded-for como IP de limite (o cliente o forja) — é o X-Real-IP
-❌ Script, imagem, iframe, mídia ou conexão de fora nova na clínica sem liberar no CSP (lib/seguranca/csp.ts) — ele BLOQUEIA desde 2026-10-22, e só no build
+❌ Script, imagem, iframe, mídia ou conexão de fora nova no app da rede sem liberar no CSP (lib/seguranca/csp.ts) — ele BLOQUEIA desde 2026-10-22, e só no build
 ❌ Route handler que AGE pela sessão (POST) sem conferir o Origin — os hosts *.bellarisos.com são o mesmo SITE, e o cookie lax vai junto
 ❌ Rota [id] que leva o id da URL ao banco sem idOu404 (lib/id-da-rota) — o que não é uuid dá 22P02 e a tela de erro no lugar do 404
 ❌ Validar o destino `next` de um link com startsWith('/') — é caminhoInterno (lib/origem; `/\x.com` e tab viram `//x.com`)
-❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico
+❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, ficha de saúde) sem podeVerClinico
 ❌ Tela nova que mostra dado clínico sem registrarAcessoAoProntuario (lib/prontuario/acessos.ts) — quem viu tem de ficar registrado
 ❌ Mandar config de integração ao navegador sem mascararSegredos (ou criar chave de credencial fora da lista)
 ❌ Gravar config de integração sem cifrarSegredos (lib/integracoes/cofre.ts) — o token iria em texto ao banco

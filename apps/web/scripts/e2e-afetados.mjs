@@ -116,8 +116,8 @@ const AREAS = [
     specs: /^(anuncios|mensagens-meta)/ },
   // A auditoria (CF3 do Bloco Configurações, 2026-11-16): o registro, a permissão, a tela e o CSV.
   { nome: 'auditoria',
-    chaves: ['auditoria', 'audit', 'marca-do-suporte', 'supabase/admin', 'prontuario/acessos'],
-    specs: /^(auditoria|configuracoes-grupos|prontuario-acessos|api-sem)/ },
+    chaves: ['auditoria', 'audit', 'marca-do-suporte', 'supabase/admin', 'via-da-escrita', 'prontuario/acessos'],
+    specs: /^(auditoria|configuracoes-grupos|prontuario-acessos|api-sem|copilot-auditoria)/ },
   { nome: 'rotas de API',
     chaves: ['app/api/'],
     specs: /^(api-sem-credencial)/ },

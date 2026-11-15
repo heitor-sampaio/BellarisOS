@@ -117,7 +117,7 @@
     vencimento (D-14, `getAReceberEmAberto` — `vendas-financeiro.md`). Na
     rede, esse em aberto inclui a unidade DESATIVADA (ind-11, 2026-11-02: "a
     unidade pode ter sido desativada comercialmente mas ainda tem contas a
-    receber"), que também aparece no "Por filial" enquanto tiver conta em
+    receber"), que também aparece no "Por unidade" enquanto tiver conta em
     aberto (prova: `e2e/financeiro-a-receber-todos-os-vencimentos.spec.ts`).
     E o atendimento CONCLUÍDO sem pagamento ("Reforça", item 4 da 5ª,
     2026-11-02) aparece no mesmo cartão, SEPARADO e nomeado — "Atendimentos
@@ -170,7 +170,7 @@
     marcado: contar pela conclusão pura mudaria o atendimento de dia e de mês.
     Indicador novo de atendimento filtra por `aconteceu_em`, nunca por
     `scheduled_at`. Prova: `e2e/indicadores-concluido-antes-da-hora.spec.ts`.
-  - **`ticketMedio` = a média de quanto cada CLIENTE gasta na clínica**
+  - **`ticketMedio` = a média de quanto cada CLIENTE gasta na rede**
     (decisão do Heitor, 2026-10-29; muda a regra de 2026-10-27): o que as
     clientes pagaram no período ÷ as clientes que pagaram — quem não pagou não
     entra. Pelo eixo da receita paga (`metrics_receitas_pagas`), entra tudo
@@ -183,11 +183,11 @@
     que zero** (D7 da 8ª simulação, 2026-11-06): a cliente só com lançamento
     pago de R$ 0 (o pacote migrado a zero, a venda com 100% de desconto) não
     entra no denominador — na unidade, o que ela pagou nela; no total, o que
-    pagou na clínica (migration `20261106003402`). Eram "R$ 437 · 10 clientes
+    pagou na rede (migration `20261106003402`). Eram "R$ 437 · 10 clientes
     que pagaram" no lugar de R$ 4.368 ÷ 8 = R$ 546. Prova:
     `e2e/indicadores-ticket-medio.spec.ts` ("D7"). É UM indicador só com o
     antigo "Gasto médio" de Relatórios → Clientes (o mesmo número), que passou
-    a se chamar "Ticket médio": dashboards (o cartão e a coluna por filial),
+    a se chamar "Ticket médio": dashboards (o cartão e a coluna por unidade),
     financeiro da unidade, Relatórios (Visão geral, Clientes, Procedimentos) e
     Copilot. Com o financeiro "só os meus", é o DELA (o dinheiro dos
     atendimentos dela). O subtítulo diz a conta ("pago pelas clientes ÷ 2
@@ -215,7 +215,7 @@
     trava). **As taxas dos Relatórios também** (decisão do Heitor, 2026-10-29):
     a taxa de conclusão da agenda (no total e por unidade, `taxaDeConclusao`),
     a retenção (`taxaDeRetencao`), o giro do estoque (`giroDoEstoque`), a
-    conversão por vendedor do Comercial (`conversaoDasOportunidades`, em
+    conversão por vendedor das Oportunidades (`conversaoDasOportunidades`, em
     `getPainelComercial`) e a variação contra o período anterior dos cartões
     (`variacaoPercentual`) moram em `lib/metrics/resultado.ts`; a tela só
     formata. Os números não mudaram (`tests/metrics-divisoes-dos-relatorios`
@@ -384,7 +384,7 @@
     **Recortada a UMA unidade, o preço e a mão de obra dela** (sobra da F40,
     9ª simulação, 2026-11-07): com o preço por unidade (D2,
     `private.preco_na_unidade`), o ranking do dashboard da rede com
-    `?unidade=` (ou a unidade fixa, ou a clínica de uma só) usa o preço DELA e a
+    `?unidade=` (ou a unidade fixa, ou a rede de uma só) usa o preço DELA e a
     mão de obra dela (`procedure_branch_pricing.labor_cost`), com o insumo e os
     outros custos do catálogo — `metrics_margem_procedimentos_na_unidade`
     (migration `20261107004408`), por `getMargemPorProcedimento({ unidadeId })`.
@@ -455,11 +455,11 @@
     `resumoDoFunil` usa no dashboard, no funil dos Relatórios e no quadro de
     Oportunidades ("33,3% de conversão (1 de 3 ganhas)"). O quadro a chama no
     recorte que mostra (`getFunilDoQuadro`): o funil de AGORA, sem período, e
-    com o CRM "só os meus" os leads da pessoa e os sem dono; o dashboard, os
-    criados no período. **Funil sem etapa de ganho não tem conversão: "—"**
+    com o CRM "só os meus" as oportunidades da pessoa e as sem dono; o dashboard, as
+    criadas no período. **Funil sem etapa de ganho não tem conversão: "—"**
     (num pós-venda ela nasceria 0% ou 100% sem dizer nada).
     - **Onde a tela junta funis, junta as oportunidades deles**: o painel de
-      Relatórios → Comercial (`metrics_comercial`: `ganhos` de qualquer funil
+      Relatórios → Oportunidades (`metrics_comercial`: `ganhos` de qualquer funil
       ÷ as oportunidades do período; `tem_ganho` = a rede tem alguma etapa de
       ganho) e a coluna "Conv." do ranking por vendedor (a mesma conta sobre
       as dele, em `getPainelComercial` — a tela não divide). Migration
@@ -486,8 +486,8 @@
     recorrência dentro da janela, que em períodos curtos dá zero por construção.
     **"A cliente é da clínica, o atendimento é da profissional"** (decisão do
     Heitor, 2026-10-29): com a agenda "só os meus", entram as clientes que ELA
-    atendeu no período, e "voltou" é quem a CLÍNICA já tinha atendido antes —
-    por qualquer profissional, em QUALQUER unidade da clínica (ind-08,
+    atendeu no período, e "voltou" é quem a REDE já tinha atendido antes —
+    por qualquer profissional, em QUALQUER unidade da rede (ind-08,
     2026-11-02, migration `20261101000706`: era "nas unidades do recorte", e
     a Carla atendida na Moinhos contava como nova olhando a Zona Sul — prova:
     `e2e/indicadores-retencao-clinica-inteira.spec.ts`; migration anterior
@@ -525,9 +525,9 @@
     sai de `metrics_fechamento_por_maquininha` (forma, maquininha, bandeira) —
     a mesma régua dos movimentos pagos. Só quando o DIA teve mais de uma
     maquininha a tela agrupa ("Stone: Visa R$ …, Elo R$ …") e o CSV da
-    contadora ganha a coluna ("Forma, maquininha e bandeira"); com uma só,
+    contabilidade ganha a coluna ("Forma, maquininha e bandeira"); com uma só,
     fica como era (princípio 7). A despesa não tem maquininha (o cartão da
-    clínica não é maquininha).
+    rede não é maquininha).
   - A régua é UMA: `metrics_movimentos_pagos` (migration `20261111005901`) — o
     pagamento da janela pelo que entrou, menos o estorno na própria janela, e o
     estorno feito na janela de um pagamento de FORA dela como linha negativa
@@ -599,7 +599,7 @@ aquele prova que estão CERTOS. Mexeu numa `metrics_*`, o cenário tem de contin
 batendo — ou mudar junto, com o porquê. `new_clients` da UNIDADE são as
 clientes novas ATENDIDAS nela — com agendamento não cancelado na unidade (T1
 do Bloco Tags, 2026-11-14, migration `20261114800001`; decisão por H16 e
-princípio 3: é o FATO, não a tag nem o cadastro). A clínica inteira (nulo ou
+princípio 3: é o FATO, não a tag nem o cadastro). A rede inteira (nulo ou
 todas as unidades ativas, `public.recorte_e_a_clinica`) conta todas — também
 a nova ainda sem agendamento. Foi `clients.branch_id` (a unidade de cadastro)
 até a F68 e a tag "Unidade: <nome>" de 2026-11-12 (C6 da F68) a 2026-11-14.
@@ -632,7 +632,7 @@ KPI que não fazia nenhum dos dois.
   R$ 300 que entraram. Função nova que soma receita paga parte de
   `metrics_receitas_pagas` ou repete o predicado INTEIRO, com o crédito
   interno fora. Prova: `e2e/indicadores-credito-interno.spec.ts`.
-- **O crédito na clínica VENDIDO é receita no dia em que o dinheiro entrou**
+- **O Crédito interno VENDIDO é receita no dia em que o dinheiro entrou**
   (decisão 1 do Heitor sobre a 9ª simulação, 2026-11-07; princípio 5;
   `vendas-financeiro.md` §9.3.4): o lançamento pago da venda do "vale"
   (`credito_vendido_id`) é receita paga com cliente — a regra única o conta
@@ -654,7 +654,7 @@ KPI que não fazia nenhum dos dois.
   (§9.5); o de consumo do cadastro só como reserva. Dashboard, estoque e
   relatórios. **Entra no lucro** (decisão do Heitor, 2026-10-29; acima, em
   "Lucro e margem") — e a movimentação de estoque NUNCA gera despesa (D13
-  revisto, 2026-10-28): a compra paga, se a clínica quiser no caixa, é um
+  revisto, 2026-10-28): a compra paga, se a rede quiser no caixa, é um
   lançamento manual na categoria "Compra de estoque", que fica fora do lucro.
   O ponto do gráfico "Evolução do Período" vem pronto de `pontosDaEvolucao`
   (`lib/metrics/evolucao.ts`), com o custo do LUCRO (a despesa sem a compra
@@ -692,7 +692,7 @@ KPI que não fazia nenhum dos dois.
 simulação, 2026-11-06; a regra F18 fica — a receita dos atendimentos é a PAGA,
 e o crédito interno não é receita, F7): nas tabelas por procedimento e por
 profissional dos Relatórios, embaixo da receita, "R$ 160,00 concluídos sem
-pagamento (1)" e "R$ 450,00 pagos com crédito na clínica (não é receita)"
+pagamento (1)" e "R$ 450,00 pagos com crédito interno (não é receita)"
 (`[data-sem-receita]`) — `metrics_atendimentos_sem_receita` (o avulso
 concluído no período, o conjunto de `atendimentos_a_receber`; migration
 `20261106003803`) → `getAtendimentosSemReceita`. A Rafaela via R$ 474 de
@@ -704,27 +704,27 @@ linha — `metrics_vendas` (migration `20261014000001`), paginada por
 `metrics_vendas_pagina` e totalizada por `metrics_vendas_resumo` (por tipo e
 geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - **Cada linha é uma COMANDA do PDV** (RL1 da revisão do Heitor, 2026-11-14:
-  "rl1 ok"): atendimento avulso, pacote, pré-pago, plano, produto e crédito na
-  clínica, com o número da comanda (`metrics_vendas.comanda`, coluna
+  "rl1 ok"): atendimento avulso, pacote, pré-pago, plano, produto e crédito
+  interno, com o número da comanda (`metrics_vendas.comanda`, coluna
   "Comanda" na tela e no CSV; "—" na venda de antes do PDV). O produto vendido
   dentro do atendimento leva o número da comanda do atendimento
   (`comanda_itens.product_sale_id`). O filtro por tipo tem os seis
   ("Atendimentos avulsos", "Pacotes", "Pré-pagos", "Planos", "Produtos",
   "Créditos"). Migration `20261115700003`.
-- **O crédito na clínica vendido** (`creditos_vendidos`, tipo `CREDITO`, na
+- **O Crédito interno vendido** (`creditos_vendidos`, tipo `CREDITO`, na
   data da venda, o valor menos o devolvido; o estornado inteiro sai) aparece
   na lista e no CSV, mas o "Total vendido" NÃO o soma: o que se paga com ele
   é que é a venda, e somar os dois contaria o mesmo dinheiro duas vezes. A
   conta mora no banco — `metrics_vendas_resumo` devolve o geral sem o crédito
-  e `linhas` (quantas linhas a lista tem, a paginação); a tela diz "R$ X em
-  crédito na clínica, fora do total" (`[data-credito-fora-do-total]`,
+  e `linhas` (quantas linhas a lista tem, a paginação); a tela diz "Fora do total:
+  N créditos internos vendidos, R$ X — a venda é o que for pago com ele." (`[data-credito-fora-do-total]`,
   princípio 3; `FORA_DO_TOTAL`, `lib/metrics/vendas-comum.ts`). O crédito não
   tem quem vendeu: no "só os meus" ele não entra. Prova:
   `e2e/relatorio-vendas-comandas.spec.ts`, `tests/relatorio-vendas-comandas.test.ts`.
 - **Atendimento avulso** (era "Procedimento"): atendimento concluído, com preço, que não consumiu
   nada já vendido. A sessão de pacote, a unidade pré-paga e a sessão de plano
   não são venda de novo. Data `aconteceu_em` (o dia em que aconteceu — D13; o eixo de `serviceRevenue`);
-  vale o preço menos o desconto comercial da recepção (`sale_discount`; ponto
+  vale o preço menos o desconto comercial da venda (`sale_discount`; ponto
   é forma de pagamento, não desconto).
 - **Pacote** (`purchased_at`, o vendido, quem vendeu) e **pré-pago**
   (`sold_at`, o vendido, quem vendeu). O parcelado é UMA venda.
@@ -760,8 +760,8 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   `20261107004103`): a soma menos `treatment_plans.valor_cancelado`; o que caiu
   inteiro sai. O cancelado antes desta regra (sem `cancelado_em`) segue fora. **É de quem
   VENDEU** (D14 da 8ª simulação, 2026-11-06): a coluna "Profissional" é o
-  "Quem vendeu" do checkout (`treatment_plans.vendido_por`); a dona do plano
-  só quando ninguém foi marcado (os planos de antes). Era sempre a dona — a
+  "Quem vendeu" do checkout (`treatment_plans.vendido_por`); a responsável pelo plano
+  só quando ninguém foi marcado (os planos de antes). Era sempre a responsável — a
   "Dra. Paula" no plano que a Marta vendeu. O "só os meus" segue a mesma
   pessoa (migration `20261106003404`). Prova:
   `e2e/relatorio-vendas-plano-de-quem-vendeu.spec.ts`.
@@ -776,7 +776,7 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
 - Quem já via a aba Financeiro ganhou a Vendas na migration; daí em diante ela
   se marca em Cargos. Prova: `e2e/relatorio-vendas.spec.ts`.
 
-**A clínica de UMA unidade só não vê rede** (D-19, decisão do Heitor,
+**A rede de UMA unidade só não vê os quadros de rede** (D-19, decisão do Heitor,
 2026-10-29: "Com UMA unidade ativa, somem os termos e gráficos de rede
 ('TOTAL REDE', 'por filial', os rankings de filial, 'Voltar para a rede') e o
 seletor de unidade. O modelo não muda: tudo volta quando nascer a segunda
@@ -785,10 +785,10 @@ unidade."). A régua é UMA: `redeTemUmaUnidade(tenantId)`
 `getCachedNetworkBranches`, tag `branches:<rede>` — criar, editar e
 ativar/desativar unidade a expiram na hora); a tela que já tem a lista das
 ativas usa `umaUnidadeSo(n)`, a mesma regra. Com uma unidade: o dashboard da
-rede é "Visão geral" (sem "N unidades"), sem o "Ranking de filiais", com
+rede é "Visão geral" (sem "N unidades"), sem o "Ranking de unidades", com
 "Hoje" e "Aproveitamento" (era "Ocupação"; ind-13, 2026-11-02: a
-ocupação da unidade é outra conta — conta outra, nome outro); o financeiro da rede sem "Por filial", "Total rede" e o
-filtro de filial; Relatórios com o nome da unidade no lugar de "Rede" e sem
+ocupação da unidade é outra conta — conta outra, nome outro); o financeiro da rede sem "Por unidade", "Total rede" e o
+filtro de unidade; Relatórios com o nome da unidade no lugar de "Rede" e sem
 "Faturamento por Unidade" e "Saúde do Estoque por Unidade"; o estoque sem
 "Consolidado / Por unidade" e "TOTAL REDE"; o portal da unidade sem "Voltar
 para a rede" nem o seletor de unidade. Os números não mudam — só o que só
@@ -796,7 +796,8 @@ faz sentido com duas. Seletor de unidade que já some com `length > 1` (agenda
 da rede, filtro dos Relatórios, estoque) segue a mesma regra. Prova:
 `e2e/rede-de-uma-unidade.spec.ts`. O VOCABULÁRIO das outras telas (o menu,
 o cargo "Admin", Equipe, Configurações…) segue a mesma régua desde a F8 da 5ª
-simulação: `docs/regras/design.md`, "A clínica de UMA unidade não fala rede".
+simulação (refeita pelo PO2, 16/11): `docs/regras/design.md`, "A rede de UMA
+unidade fala o nome dela no rótulo que é só a rede".
 
 **O número diz o que conta** (J-55/J-56, 2026-10-30): a dica `<Dica>`
 (`components/shared/dica.tsx`, o "i" que abre a definição) fica ao lado do
@@ -827,11 +828,11 @@ cada"). Era a ordem alfabética, calada. Prova:
 **O dashboard da rede recorta a unidade do `?unidade=<id|slug>`** (J-54,
 2026-10-30; o drill-down do CLAUDE.md §6, que ele ignorava): o título é a
 unidade, os números são os dela (o núcleo, as séries, os rankings, o hoje, o
-estoque — `branchIds` dela), os quadros "por filial" saem como na clínica de
+estoque — `branchIds` dela), os quadros "por unidade" saem como na rede de
 uma unidade só, e "Ver a rede inteira" volta guardando o período. A
 abrangência vence o pedido (`ctx.branchId ?? unidade`); valor desconhecido cai
-na rede; com uma unidade só (D-19) não há recorte. O nome da filial no
-"Ranking de filiais" leva a esse recorte. O funil de oportunidades continua o
+na rede; com uma unidade só (D-19) não há recorte. O nome da unidade no
+"Ranking de unidades" leva a esse recorte. O funil de oportunidades continua o
 da rede. Clientes do /admin NÃO recorta: a cliente é da rede (CL2 do Bloco
 Tags, 2026-11-14) — sem filtro nem contador por unidade; o contador é o da
 rede (`getClientesAtivos`, contado no banco; o "2 ativos na Zona Sul" da A24
@@ -844,8 +845,8 @@ leva a eles** (A47 da 11ª, 2026-11-10: `/admin/relatorios` dava 404):
 `…/reports`, com a URL que veio (CLAUDE.md §6, "caminho antigo vira
 redirect"). Prova: `e2e/relatorios-atritos-da-11.spec.ts`.
 Prova: `e2e/indicadores-unidade-na-url.spec.ts`.
-Recortado a uma unidade, o total de clientes continua o da CLÍNICA (H5: "a
-cliente é da clínica") — e a tela diz "N clientes da clínica" no subtítulo e
+Recortado a uma unidade, o total de clientes continua o da REDE (H5: "a
+cliente é da clínica") — e a tela diz "N clientes da rede" no subtítulo e
 no cartão de novos clientes (A42 da 6ª simulação, 2026-11-04: "13 clientes"
 em cada unidade parecia ser de cada uma). Prova: o mesmo spec.
 
@@ -920,14 +921,14 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
 - **O dashboard da rede tem os quadros de clientes da unidade** (F7b, H3: "a
   dona vê tudo, sempre"): "Clientes no período" (o mesmo núcleo dos cartões,
   no período escolhido, até agora) e "Reativar clientes". Na rede, as
-  sumidas da CLÍNICA inteira — sem visita em NENHUMA unidade há 90 dias
+  sumidas da REDE inteira — sem visita em NENHUMA unidade há 90 dias
   (`metrics_clientes_para_reativar_rede` → `getClientesParaReativarDaRede`,
   migration `20261102000702`): quem foi a outra unidade não está sumida —,
   com a unidade de cada uma (a da última visita concluída; quem nunca veio,
   a do cadastro). Recortada a uma unidade pelo `?unidade=`, é o quadro da
   unidade (`metrics_clientes_para_reativar`: as clientes atendidas nela —
-  agendamento não cancelado —, T1 do Bloco Tags; era a tag). **Na clínica de
-  UMA unidade, é o da clínica** (r2-ind-03, o Heitor, 2026-11-03: "na clínica
+  agendamento não cancelado —, T1 do Bloco Tags; era a tag). **Na rede de
+  UMA unidade, é o da rede** (r2-ind-03, o Heitor, 2026-11-03: "na clínica
   de uma unidade, a clínica e a unidade são a mesma coisa"): todas as
   clientes ativas, também as nunca atendidas — no /admin e no
   dashboard da unidade (`redeTemUmaUnidade` → `getClientesParaReativarDaRede`).
@@ -948,7 +949,7 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   não mudou. Prova: `e2e/ficha-uso-da-10.spec.ts` ("A35").
   **E o Copilot dá a mesma resposta** (r3-f13-10, o Heitor, 2026-11-03: "os
   dois têm de dar a mesma resposta"): a escolha entre a conta da unidade e a
-  da clínica mora num lugar só, `getClientesParaReativarDoRecorte`
+  da rede mora num lugar só, `getClientesParaReativarDoRecorte`
   (`lib/metrics/unidade.ts`), que os dois dashboards e o "sem visita" do
   Copilot chamam (com a agenda "só os meus" também lá). O Copilot, sem
   unidade, juntava as listas de cada unidade pela tag e deixava de fora a
@@ -977,10 +978,10 @@ juntam-se (`getCoreDosModulos`, `getRelatorioDosModulos`: as tabelas por
 procedimento e por profissional casam pelo nome — execuções da agenda, receita
 do dinheiro). Escondido: com o FINANCEIRO dela, o que não se atribui a ela
 (custo, lucro, margem, DRE, parcelas a receber, saldo e valor do estoque, a
-comissão das outras); com a AGENDA dela, a ocupação por filial; com qualquer
-dos dois, o ranking de filiais (mistura o dinheiro e a agenda de cada
+comissão das outras); com a AGENDA dela, a ocupação por unidade; com qualquer
+dos dois, o ranking de unidades (mistura o dinheiro e a agenda de cada
 unidade). Módulo NONE vale ALL (D6) — com o financeiro NONE, a aba de
-dinheiro dos Relatórios que o cargo tiver marcada mostra a clínica. Prova:
+dinheiro dos Relatórios que o cargo tiver marcada mostra a rede. Prova:
 `e2e/indicadores-cada-numero-no-seu-modulo.spec.ts`, `tests/metrics-escopo.test.ts`.
 Os parágrafos abaixo (28/10) descrevem os PREDICADOS de cada recorte, que não
 mudaram; o que mudou é qual módulo decide cada número.
@@ -993,16 +994,16 @@ profissional por receita e por margem, o "Valor gasto" das clientes e o LTV
 por CEP vão a quem tem o Financeiro OU a aba Financeiro dos Relatórios
 (`veDinheiro = can(ctx, 'financial') || podeVerRelatorio(ctx, 'financeiro')`,
 a régua dos Relatórios e do Copilot). Sem ela as props vão VAZIAS — o valor
-nem chega ao navegador — e a tela esconde os cartões. A comercial só com a aba
-Comercial via o gráfico e o ranking de unidades (`can('reports')`), a
-recepção os rankings de receita e margem (`can('procedures')`). O dashboard
+nem chega ao navegador — e a tela esconde os cartões. Quem tinha só a aba
+Oportunidades via o gráfico e o ranking de unidades (`can('reports')`), e
+quem tinha os Procedimentos, os rankings de receita e margem (`can('procedures')`). O dashboard
 da unidade já pedia o Financeiro. Prova:
 `e2e/indicadores-dashboard-dinheiro-so-com-financeiro.spec.ts`.
 
 **Dashboard com "só os meus" (D7 da simulação de 2026-10-28; "quem tem 'só os
 meus' vê 'só os meus', em qualquer lugar", decisão do Heitor no mesmo dia)**:
 com o módulo em OWN — e ABERTO no cargo: o OWN de um módulo NONE não vale (D6
-de 2026-10-29, CLAUDE.md §11; a contadora sem agenda via "Meu faturamento
+de 2026-10-29, CLAUDE.md §11; quem não tinha a Agenda via "Meu faturamento
 R$ 0") —, os números DAQUELE módulo nos dois dashboards (rede e
 unidade) são os DELA — o `professionalId` vai a cada função de `lib/metrics`
 (`metrics_core`, `_series`, `_top_procedures`, `_top_professionals`,
@@ -1042,8 +1043,8 @@ checkout (`treatment_plans.professional_id`), as clientes a reativar (as dela
 que sumiram da UNIDADE — sem visita nela com qualquer profissional) e, no da
 unidade, o "Meu faturamento" dos 6 meses. Fica escondido o que não se atribui
 a ela: o custo e o lucro, a margem por procedimento (custo do catálogo), o
-ranking e a ocupação por filial, e o ranking de comissão (de todas). Com o
-**CRM** "só os meus", o funil do dashboard conta os leads dela e os sem dono
+ranking e a ocupação por unidade, e o ranking de comissão (de todas). Com o
+**CRM** "só os meus", o funil do dashboard conta as oportunidades dela e as sem dono
 (`p_owner`, o recorte do quadro). Prova:
 `e2e/indicadores-dashboard-da-rede-so-os-meus.spec.ts`.
 
@@ -1077,7 +1078,7 @@ consumo dela; a comissão dela; o saldo do estoque segue o da unidade — quem
 mostra o esconde) e `metrics_vendas` (+ `_pagina`, `_resumo`). **Venda dela**
 é a pessoa da coluna "Profissional" da venda: quem atendeu o avulso, quem
 vendeu o pacote, o pré-pago, o produto e o plano (no plano sem "Quem vendeu",
-a dona dele — D14 da 8ª, abaixo).
+a responsável por ele — D14 da 8ª, abaixo).
 
 **Os Relatórios com "só os meus"** (`reports-bi-section`, os dois portais):
 cada número da aba no recorte do seu módulo (acima) — o da agenda a
@@ -1085,9 +1086,9 @@ cada número da aba no recorte do seu módulo (acima) — o da agenda a
 e às vendas (e ao CSV de `/api/relatorios/vendas`), os dois a
 `getCoreDosModulos` e `getRelatorioDosModulos`
 (`metrics_retention`/`metrics_new_clients_series`, migration
-`20261028000804`: as clientes que ELA atendeu; "voltou" = a CLÍNICA já a
-tinha atendido antes — `20261029001103`, acima). Com o CRM em OWN, a aba Comercial é a dos leads
-dela e dos sem dono: o funil (`ownerId`), o painel (`metrics_comercial`:
+`20261028000804`: as clientes que ELA atendeu; "voltou" = a REDE já a
+tinha atendido antes — `20261029001103`, acima). Com o CRM em OWN, a aba Oportunidades é a das oportunidades
+dela e das sem dono: o funil (`ownerId`), o painel (`metrics_comercial`:
 também os agendamentos que ela marcou) e os motivos de perda
 (`metrics_motivos_de_perda`), todos com `p_owner`. Com o FINANCEIRO em OWN,
 some da tela (`soOsMeus`) o que não se atribui a ela: despesa, lucro, margem e DRE (visão geral e
@@ -1097,12 +1098,12 @@ zerados, por categoria, por unidade, validades) — fica o consumo dos
 atendimentos dela. A comissão que chega já é a dela e aparece. Prova:
 `e2e/relatorios-so-os-meus.spec.ts`.
 
-**Agenda DELA, dinheiro da clínica** (ind-05, revisão de 2026-11-02): as
+**Agenda DELA, dinheiro da rede** (ind-05, revisão de 2026-11-02): as
 tabelas por procedimento e por profissional dos Relatórios juntam as
-execuções dela e a receita da clínica. A linha sem execução DELA sai
+execuções dela e a receita da rede. A linha sem execução DELA sai
 (`getRelatorioDosModulos`) — a Renata via "Toxina · 0 execuções · R$ 2.400",
-como se tivesse gerado a receita — e a coluna diz "Receita paga (da
-clínica)". Prova: `e2e/relatorios-procedimentos-agenda-dela.spec.ts`.
+como se tivesse gerado a receita — e a coluna diz que a receita é de todos (hoje "Receita dos atendimentos
+(de todos)", abaixo). Prova: `e2e/relatorios-procedimentos-agenda-dela.spec.ts`.
 
 **A receita por procedimento e por profissional é a PAGA dos atendimentos**
 (D3 da 5ª simulação, 2026-11-02): o que entrou pela regra única
@@ -1143,7 +1144,7 @@ profissional e `receita_dos_atendimentos`, e
 `metrics_receita_por_categoria_de_procedimento`; migration
 `20261103001305`). O nome passou a ser "receita dos atendimentos" ("Ranking —
 Profissionais por receita dos atendimentos", "Receita dos atendimentos
-(da clínica)"), e a dica diz que é a conta da EXECUÇÃO e que o "Meu
+(de todos)"), e a dica diz que é a conta da EXECUÇÃO e que o "Meu
 faturamento" é a da VENDA. Não conta duas vezes: a sessão não tem
 lançamento. **E também a unidade PRÉ-PAGA usada e a sessão de PLANO feita**
 (r3-f13-07, o Heitor, 2026-11-03: "para quem atende, sessão de pacote, de
@@ -1190,7 +1191,7 @@ sem ela ("Só cada procedimento"), a média das dos procedimentos daquele
 atendimento. A margem por faixa segue o preço do atendimento. O ranking e a tabela por PROFISSIONAL contam
 ATENDIMENTOS: a sessão é um atendimento (+1, com os R$ 2.000) — decisão da
 F17, confirmada pelo Heitor no levantamento das regras (H11, 2026-11-11,
-opção a: "atendimento" é como a clínica mede o trabalho da profissional, e a
+opção a: "atendimento" é como a rede mede o trabalho da profissional, e a
 execução já tem o seu lugar no ranking de procedimentos); a coluna se chama
 "Atendimentos". Prova:
 `e2e/indicadores-pacote-de-quem-vendeu-e-de-quem-atendeu.spec.ts` (com os
@@ -1217,7 +1218,7 @@ Prova: `e2e/indicadores-avaliacao-com-uma-nota.spec.ts`,
 contado no banco). Era quem teve produção no período, contado na tela (a
 Renata, sem atendimento, ficava de fora). A tabela "Comissões por
 Profissional" lista quem atende (e quem atendeu no período); a comissão de
-quem NÃO atende (a recepção, pela venda do pacote) fica numa linha à parte
+quem NÃO atende (quem só vendeu, como na venda do pacote) fica numa linha à parte
 ("Também têm comissão, sem atender: …"), sem sumir. Prova:
 `e2e/relatorios-profissionais-ativos.spec.ts`.
 
@@ -1246,13 +1247,13 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   o agendamento por `aconteceu_em`; o "Reativar" da unidade mostra a última
   visita NA unidade.
 - ~~A unidade da cliente é a tag~~ (C6/C45) — desfeito no Bloco Tags
-  (2026-11-14, H16): as novas clientes do cartão, da série e do "Por filial"
+  (2026-11-14, H16): as novas clientes do cartão, da série e do "Por unidade"
   de uma unidade são as ATENDIDAS nela (a que foi atendida em duas conta nas
   duas linhas e uma vez no total), e o público das campanhas e do "Buscar
   clientes" (`clientes_do_publico`) não tem mais filtro de unidade (MK2).
 - **O total da rede conta a unidade desativada** (C45): o dashboard e o
   Financeiro da rede inteira somam todas as unidades — a desativada com
-  movimento já aparecia no "Por filial", e o total não fechava. Desde a F72
+  movimento já aparecia no "Por unidade", e o total não fechava. Desde a F72
   (H6; D1 da 14ª) o recorte de uma unidade, as listas e os filtros de LEITURA
   também a alcançam enquanto ela tiver o que ficou ou movimento no período
   (`unidadesParaLer`, `lib/unidades/da-tela.ts`, com o selo "Unidade
@@ -1282,16 +1283,16 @@ mudou, pelos princípios (3: o que a tela mostra é o que vale; 4: não chutar):
   ticket dela contam as unidades em que ela ATENDE (`unidadesDoQueEDela`,
   `lib/metrics/escopo.ts`; só as ativas), e dizem "nas 2 unidades"; o horário
   de fora diz a unidade. Como a Minha agenda e a tela de comissões.
-- **O total de clientes do cabeçalho do dashboard da rede é o da clínica**
-  (D12 da 13ª): as ativas (`getClientesAtivos`), com "da clínica" quando a
+- **O total de clientes do cabeçalho do dashboard da rede é o da rede inteira**
+  (D12 da 13ª): as ativas (`getClientesAtivos`), com "da rede" quando a
   tela está recortada (unidade ou "só os meus"). O "só os meus" da agenda não
   recorta a ficha.
 - **Cada quadro de clientes diz o seu recorte** (A10 da 13ª):
-  `deQuemSaoAsClientes` — "atendidas na unidade", "da clínica", "que você
+  `deQuemSaoAsClientes` — "atendidas na unidade", "da rede", "que você
   atendeu" — no subtítulo do "Clientes no mês" e no "Reativar".
 - **O Copilot usa as funções da tela** (C5): o "a receber" é o do Financeiro
   (`getEmAberto` até o fim do período), a aba agenda vai até o fim do período,
-  e o comercial é o painel da aba Comercial (`painelComercial`, que saiu da
+  e o comercial é o painel da aba Oportunidades (`painelComercial`, que saiu da
   tela para `lib/metrics/painel-comercial.ts`: o funil padrão, a conversão dos
   funis ativos, os motivos e a conversão por origem).
 Prova: `e2e/indicadores-f68-contas.spec.ts`, `e2e/indicadores-f68-telas.spec.ts`,

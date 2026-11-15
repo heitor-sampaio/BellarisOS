@@ -269,7 +269,8 @@ interface PayloadTags { clientId: string; adicionar: string[]; remover: string[]
 /**
  * Marcar e desmarcar tags (o vocabulário da rede, 2026-10-13). Marca só o que
  * EXISTE no vocabulário, com o nome dele ("vip" vira "VIP"); criar tag é de
- * Configurações → Tags. As "Unidade: …" são do sistema e ficam como estão.
+ * Configurações → Tags. Tag é filtro que a REDE cria (o Heitor, 2026-11-13):
+ * o Copilot só marca e desmarca quando a pessoa pede — nunca por conta própria.
  */
 export const marcarTags: FerramentaDeEscrita<ArgsTags, PayloadTags> = {
   nome: 'marcar_tags',

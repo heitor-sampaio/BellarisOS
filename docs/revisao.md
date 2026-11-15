@@ -2119,9 +2119,9 @@ e este passa a limpo o que sobrou.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| V0 | **Nenhum cargo como se fosse fixo** em tela, regra (`docs/regras/`), teste e CLAUDE.md: fala-se em permissão ("quem tem o Estoque em Gerenciar"). Os nomes dos cargos-modelo continuam nomes de cargos editáveis telas ✅ 16/11 (docs e código: a seguir) | — |
-| V1 | **"Clínica" sai** das telas (o portal e o app da cliente inclusive), dos avisos, da política de privacidade, das regras e do CLAUDE.md: é "a rede" ou o nome dela (PO2/CA1). Fica só no site, como mercado (SI1) telas ✅ 16/11 (docs e código: a seguir) | PO2, CA1 |
-| V2 | **"Filial" sai de vez**: do CLAUDE.md, das regras e dos nomes internos do código (`filial`, `trocarFilial…` → unidade) telas ✅ 16/11 (docs e código: a seguir) | — |
+| V0 | **Nenhum cargo como se fosse fixo** em tela, regra (`docs/regras/`), teste e CLAUDE.md: fala-se em permissão ("quem tem o Estoque em Gerenciar"). Os nomes dos cargos-modelo continuam nomes de cargos editáveis telas ✅ 16/11, docs ✅ 16/11 (identificadores do código: a seguir) | — |
+| V1 | **"Clínica" sai** das telas (o portal e o app da cliente inclusive), dos avisos, da política de privacidade, das regras e do CLAUDE.md: é "a rede" ou o nome dela (PO2/CA1). Fica só no site, como mercado (SI1) telas ✅ 16/11, docs ✅ 16/11 (identificadores do código: a seguir) | PO2, CA1 |
+| V2 | **"Filial" sai de vez**: do CLAUDE.md, das regras e dos nomes internos do código (`filial`, `trocarFilial…` → unidade) telas ✅ 16/11, docs ✅ 16/11 (identificadores do código: a seguir) | — |
 
 ### Bloco: Cargos
 
@@ -2138,7 +2138,7 @@ Vai por ÚLTIMO entre os blocos: os textos descrevem o sistema já adaptado.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| CP1 | **As ferramentas acompanham o sistema adaptado**: cada mudança da revisão que mexe no que o Copilot lê ou grava (o PDV e as comandas, o aceite do plano, contato e oportunidade, a ficha de saúde, as unidades da pessoa, o link único dos documentos, a Auditoria…) muda a ferramenta junto. A gravação dele entra na Auditoria em nome de quem pediu, com "pelo Copilot". Conferido ferramenta por ferramenta no fim | todos os blocos |
+| CP1 | **As ferramentas acompanham o sistema adaptado**: cada mudança da revisão que mexe no que o Copilot lê ou grava (o PDV e as comandas, o aceite do plano, contato e oportunidade, a ficha de saúde, as unidades da pessoa, o link único dos documentos, a Auditoria…) muda a ferramenta junto. A gravação dele entra na Auditoria em nome de quem pediu, com "pelo Copilot". Conferido ferramenta por ferramenta no fim ✅ 16/11 (`via = 'copilot'` e "Nome (pelo Copilot)" na `auditoria`, migration `20261116300001`; o check-in do confirmado, o boleto da despesa, a unidade entre as da pessoa, a comanda nas vendas, a permissão no lugar do cargo — a tabela no DEVLOG) | todos os blocos |
 
 ## O que já estava pendente, para entrar no módulo dele
 

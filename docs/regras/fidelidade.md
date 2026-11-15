@@ -41,7 +41,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   cliente pagou tudo na maquininha. O que a operadora deposita em parcelas
   (`recebiveis_do_cartao`) não é pagamento e não pontua de novo. Prova:
   `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`.
-- **O crédito na clínica VENDIDO pontua na venda, pelo dinheiro pago** (decisão
+- **O crédito interno VENDIDO pontua na venda, pelo dinheiro pago** (decisão
   1 do Heitor sobre a 9ª simulação, 2026-11-07: "os pontos na VENDA do
   crédito, pelo dinheiro pago, não no uso"; `vendas-financeiro.md` §9.3.4):
   `floor(valor × points_per_real)` em QUALQUER modo de ganho — também "por
@@ -77,7 +77,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   pontos por recompensa e ajustar pontos é de quem tem a Fidelidade em
   Gerenciar: Lúcia, Fernanda." (`[data-quem-troca]`, `quemTrocaPontos`,
   `lib/equipe/quem-desfaz.ts`: ativos, ao alcance da unidade, e a Admin da
-  rede); no app sem a troca pelo portal, "A troca é feita na recepção, com
+  rede); no app sem a troca pelo portal, "A troca é feita pela equipe, com
   quem cuida da fidelidade: Lúcia." (pela unidade do endereço). Prova:
   `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A38").
 - **Pontos como desconto no pagamento** (fase 2; o lugar é o PDV desde a
@@ -134,8 +134,8 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   pontos seguem o estorno. Devolvido como ESTORNO, cada lançamento estornado
   inteiro tira o que deu (`estornar_transacao`), e o estornado EM PARTE tira
   na proporção do que voltou (ESTORNO_GANHO de `pontos × voltou ÷ pago`,
-  ligado ao contra-lançamento "Estorno parcial"). Devolvido como CRÉDITO na
-  clínica, os pontos ficam: o dinheiro não voltou (e pagar com crédito interno
+  ligado ao contra-lançamento "Estorno parcial"). Devolvido como CRÉDITO
+  interno, os pontos ficam: o dinheiro não voltou (e pagar com crédito interno
   não pontua). Parcela a receber que caiu nunca deu ponto. Prova:
   `e2e/pacote-cancelar.spec.ts`. **E a janela diz os pontos antes** (A26 da 10ª
   simulação, 2026-11-10: a Camila tinha trocado os pontos do pacote, e o estorno
@@ -146,7 +146,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   `fidelidade_pontos_do_conjunto`, migration `20261110005103`). A regra não
   mudou. Prova: `e2e/ficha-uso-da-10.spec.ts` ("A26"). **A unidade cancelada do pré-pago** segue a
   mesma regra (D1 da 6ª simulação, 2026-11-04): o estorno tira os pontos do
-  que voltou, o crédito na clínica os deixa. Prova:
+  que voltou, o crédito interno os deixa. Prova:
   `e2e/pre-pago-cancelar-unidade.spec.ts`.
 - **Catálogo de recompensas e vouchers** (fase 3): a rede cadastra recompensas
   (`loyalty_rewards`: procedimento grátis, desconto R$ ou %, produto) em
@@ -179,7 +179,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     `data-procedimento-da-recompensa`), e o custo diz "2.000 pontos valem
     R$ 20,00 pelo valor do ponto (R$ 0,01…) — o procedimento custa R$ 150,00
     na tabela" (`data-valor-dos-pontos`, o `redeem_points_value` da
-    configuração). Nada é recusado: a clínica decide o custo (princípio 2).
+    configuração). Nada é recusado: a rede decide o custo (princípio 2).
     Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A5").
 - A conta do saldo depois de uma saída de estoque é UMA: `lib/estoque/baixa.ts`
   (conclusão do atendimento e entrega de produto).
@@ -212,10 +212,10 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     (`first_access_bonus`): lançamento BONUS, uma vez por `bonus_ref`
     (`ANIVERSARIO:<ano>`, `PRIMEIRO_ACESSO`) — é o índice único que impede dar
     duas vezes, não o app. Quem nasceu em 29/02 ganha em 28/02 fora de ano
-    bissexto. O primeiro acesso é POR FICHA (por clínica, desde 2026-10-19:
+    bissexto. O primeiro acesso é POR FICHA (por rede, desde 2026-10-19:
     a mesma pessoa pode ser cliente de várias com um login só) — o login marca
     a ficha do token, e o layout do portal marca cada outra na primeira vez
-    que ela abre aquela clínica. É o primeiro login do cliente
+    que ela abre aquela rede. É o primeiro login do cliente
     (`clients.app_account_created_at`, marcado por `fidelidade_primeiro_acesso`
     no `loginAction` e na sessão do app); quem já tinha entrado antes da
     opção existir não ganha.
@@ -246,7 +246,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     o texto é UM, `faltamPontos` (`lib/fidelidade/formato.ts`). Sem a troca pelo
     app (`client_redeem` desligado), o app mostra o "Faltam N pontos" embaixo do
     custo da recompensa (A58 da 5ª simulação) — **e, com o saldo que alcança,
-    "Você já pode trocar: peça na recepção."** (A53 da 12ª, 2026-11-11:
+    "Você já pode trocar: peça à equipe."** (A53 da 12ª, 2026-11-11:
     com 780 pontos, a de 500 dizia só "a troca é feita na recepção";
     `jaPodeTrocar`, `[data-ja-pode-trocar]`). Prova:
     `tests/fidelidade-faltam-pontos.test.ts`, `e2e/fidelidade-opcionais.spec.ts`,
@@ -255,7 +255,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     `avisos_de_vencimento` REIVINDICA o aviso antes de o push sair (a conta
     guarda até onde já avisou) — um aviso por lote novo na janela, nunca um
     por dia nem dois por passagem concorrente.
-  - O dia do aniversário e o "vence em" do aviso são os da clínica (F62b:
+  - O dia do aniversário e o "vence em" do aviso são os da rede (F62b:
     `fusoDaRede`; Brasília de padrão). Prova: `tests/fuso-da-unidade.test.ts`.
   - A rotina é o cron `fidelidade`: expirar → aniversário → avisos, nessa
     ordem (avisar antes de expirar contaria o que acabou de vencer).
@@ -266,16 +266,16 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
 - **A indicação que premia** (A43 da 10ª simulação e o caso da Ana Clara e da
   Marina; decisão do Heitor, 2026-11-10: "1 - sim"; migrations
   `20261110005202`, `20261110005203`). A Ana indicou a Marina, a Marina pagou e
-  a Ana não ganhou nada — a dona deu +300 à mão em "Ajustar pontos".
-  - **"Indicada por" é um VÍNCULO com outra ficha da mesma clínica**
+  a Ana não ganhou nada — quem tinha a Fidelidade em Gerenciar deu +300 à mão em "Ajustar pontos".
+  - **"Indicada por" é um VÍNCULO com outra ficha da mesma rede**
     (`clients.indicada_por`), não um texto: escolhe-se pela busca do nome ou do
     telefone (`CampoIndicadaPor`, `buscarQuemIndicou` — a regra de
     `buscar_clientes`) no Novo cliente, no Agendar com cliente nova
     (`garantirClienteRapido`) e na ficha, aba Dados (`updateClientContactData`,
     `indicadaPor`). O id vem do navegador e é conferido antes de gravar
     (`conferirIndicadaPor`, `lib/clients/indicada-por.ts`: "A ficha de quem
-    indicou não é desta clínica.") e de novo no banco (`trg_indicada_por_confere`:
-    de outra clínica ou a própria ficha, recusado). A **importação** liga pelo
+    indicou não é desta rede.") e de novo no banco (`trg_indicada_por_confere`:
+    de outra rede ou a própria ficha, recusado). A **importação** liga pelo
     nome quando ele bate com UMA ficha ativa (sem caixa nem acento,
     `fichas_pelo_nome`); quando não bate (nenhuma ou mais de uma), guarda o
     texto em `referred_by`, como sempre, e o resultado diz "Indicada por
@@ -315,9 +315,8 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     pagamento dela é o primeiro que vale e premia. O estorno PARCIAL (o
     cancelamento do pacote que devolve parte) não tira o prêmio: o pagamento
     continua de pé. **A configuração diz isso** (A24 da 12ª simulação,
-    2026-11-11; princípio 3): "…o primeiro atendimento ou a primeira compra na
-    clínica (a venda de pacote, pré-pago, produto ou crédito na clínica também
-    conta)… Se esse pagamento for estornado por inteiro, o prêmio sai junto; o
+    2026-11-11; princípio 3): "…o primeiro atendimento ou a primeira compra (a
+    venda de pacote, pré-pago, produto ou crédito interno também conta)… Se esse pagamento for estornado por inteiro, o prêmio sai junto; o
     estorno de uma parte não tira o prêmio." **E o número que vem é sugestão**
     (A6): os 300 pontos que o campo traz ao ligar dizem "300 pontos é uma
     sugestão: ajuste ao seu programa." (`[data-sugestao-de-pontos]`). Prova:
@@ -334,8 +333,8 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   - **No app, "Indique uma amiga" só com o prêmio ligado, e diz o prêmio**
     (`[data-indique-uma-amiga]` em Meus pontos, `textoDoIndiqueUmaAmiga`): "você
     ganha 300 pontos" ou "um voucher: …". **A cliente não cadastra a amiga pelo
-    app** — só a clínica cria ficha (CLAUDE.md §5): "É só ela dizer o seu nome
-    na recepção…". **E também no Início do app** (A54 da 12ª, 2026-11-11: só
+    app** — só a rede cria ficha (CLAUDE.md §5): "É só ela dizer o seu nome
+    à equipe…". **E também no Início do app** (A54 da 12ª, 2026-11-11: só
     estava em Meus pontos): o mesmo texto e o caminho para Meus pontos
     (`[data-indique-uma-amiga]` na home; só com o prêmio ligado e a
     recompensa ativa).
@@ -360,7 +359,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
 ❌ Ler o voucher pela recompensa (o voucher tem o retrato de quando foi trocado) ou deixar o cliente trocar pontos sem client_redeem ligado
 ❌ Chamar expirar_pontos / fidelidade_bonus_aniversario / avisos_de_vencimento em teste sem p_tenant (vale para as redes reais)
 ❌ Dar o prêmio por indicação no TypeScript, ou sem o pagamento da indicada (é o gatilho do pagamento, private.indicacao_premiar — uma vez por indicada)
-❌ Gravar "Indicada por" como texto livre na tela, ou com o id do navegador sem conferirIndicadaPor (a ficha é da clínica e não é a própria)
-❌ Deixar a cliente cadastrar a amiga pelo app (só a clínica cria ficha — CLAUDE.md §5)
+❌ Gravar "Indicada por" como texto livre na tela, ou com o id do navegador sem conferirIndicadaPor (a ficha é da rede e não é a própria)
+❌ Deixar a cliente cadastrar a amiga pelo app (só a rede cria ficha — CLAUDE.md §5)
 ❌ Recortar o saldo de pontos ou os vouchers por unidade, ou trazer de volta uma opção "só na unidade" (o saldo é um só, da rede — FD3; tests/fidelidade-saldo-da-rede.test.ts trava)
 ```

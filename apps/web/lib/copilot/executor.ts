@@ -9,6 +9,7 @@ import type { ContextoDaFerramenta, Ferramenta } from '@/lib/copilot/ferramentas
 import type { FerramentaParaOModelo } from '@/lib/copilot/openai'
 import type { Cartao, ResultadoDaAcao, ResumoDaAcao, StatusDaAcao } from '@/lib/copilot/tipos'
 import { gravarMensagem } from '@/lib/copilot/conversa'
+import { comViaDoCopilot } from '@estetica-os/nucleo/lib/supabase/via-da-escrita'
 
 /**
  * O executor das ferramentas — a trava ÚNICA do Copilot.
@@ -74,7 +75,7 @@ export async function executarChamada(
 ): Promise<ResultadoDaChamada> {
   const ferramenta = ferramentasDoCargo(c.ctx).find(f => f.nome === chamada.nome)
   if (!ferramenta) {
-    return { paraOModelo: { erro: 'Esta ferramenta não está liberada para o cargo desta pessoa (ou não existe). Diga isso a ela.' } }
+    return { paraOModelo: { erro: 'Esta ferramenta não está liberada pelas permissões desta pessoa (ou não existe). Diga isso a ela.' } }
   }
 
   let bruto: unknown
@@ -118,7 +119,7 @@ export async function executarChamada(
     }
   } catch (e) {
     if (ehSemAcesso(e as { message?: string; digest?: string })) {
-      return { paraOModelo: { erro: 'Sem permissão: o cargo desta pessoa não libera isso.' } }
+      return { paraOModelo: { erro: 'Sem permissão: as permissões desta pessoa não liberam isso.' } }
     }
     console.error(`[copilot] ferramenta ${ferramenta.nome}:`, e)
     return { paraOModelo: { erro: `Falhou: ${mensagemDoErro(e)}` } }
@@ -232,7 +233,7 @@ async function efetivarAcao(
 ): Promise<{ status: 'feita' | 'falhou'; resultado: ResultadoDaAcao }> {
   const falhou = (mensagem: string) => ({ status: 'falhou' as const, resultado: { mensagem } })
   const ferramenta = ferramentasDoCargo(ctx).find(f => f.nome === atual.ferramenta)
-  if (!ferramenta || ferramenta.tipo !== 'escrita') return falhou('O seu cargo não libera mais esta ação.')
+  if (!ferramenta || ferramenta.tipo !== 'escrita') return falhou('Sua permissão não libera mais esta ação.')
   const args = ferramenta.parametros.safeParse(atual.payload?.args)
   if (!args.success) return falhou('A ação guardada é inválida.')
 
@@ -248,11 +249,14 @@ async function efetivarAcao(
       || (atual.payload?.preparado !== undefined && canonico(preparo.payload) !== canonico(atual.payload.preparado))) {
       return falhou('A situação mudou desde o cartão. Peça de novo ao Copilot para conferir.')
     }
-    const r = await ferramenta.efetivar(cf, preparo.payload, escolha)
+    // Só a GRAVAÇÃO leva a marca "pelo Copilot" à Auditoria (CP1): o que o
+    // cliente de serviço escreve aqui dentro — também pelos núcleos que abrem o
+    // próprio cliente — sai com `x-bellaris-via: copilot`, em nome de quem pediu.
+    const r = await comViaDoCopilot(() => ferramenta.efetivar(cf, preparo.payload, escolha))
     if ('erro' in r) return falhou(r.erro)
     return { status: 'feita', resultado: r }
   } catch (e) {
-    if (ehSemAcesso(e as { message?: string; digest?: string })) return falhou('O seu cargo não libera esta ação.')
+    if (ehSemAcesso(e as { message?: string; digest?: string })) return falhou('Sua permissão não libera esta ação.')
     console.error(`[copilot] efetivar ${ferramenta.nome}:`, e)
     return falhou(mensagemDoErro(e))
   }

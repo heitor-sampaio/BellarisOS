@@ -3,20 +3,20 @@
 > Área nova (2026-10-17). O índice está no §9 do `CLAUDE.md`. As regras gerais
 > continuam lá; as de design, em `design.md` (e a skill `/lumiere-design`).
 
-A página de quem AINDA NÃO conhece o BellarisOS: a dona da clínica que chegou
-por um link, por uma busca ou por indicação. O trabalho dela é um só — levar ao
-**teste grátis de 14 dias** (o `/register` da clínica: conta criada pela
-própria clínica, tudo liberado, sem cartão).
+A página de quem AINDA NÃO conhece o BellarisOS: quem tem uma clínica de
+estética e chegou por um link, por uma busca ou por indicação. O trabalho dela
+é um só — levar ao **teste grátis de 14 dias** (o `/register` do app da rede:
+a rede criada por quem vai usar, tudo liberado, sem cartão).
 
 ## Decisões do Heitor (2026-10-16)
 
-- **Mora em bellarisos.com**, num app próprio (`apps/site`), não no `/` da
-  clínica. O `/` de app.bellarisos.com só decide a porta: com sessão, o
+- **Mora em bellarisos.com**, num app próprio (`apps/site`), não no `/` do
+  app da rede. O `/` de app.bellarisos.com só decide a porta: com sessão, o
   portal; sem sessão, o login (é o que o app Android abre).
 - **A chamada é o teste grátis.**
 - **Os preços aparecem, e são os do sistema** (`platform_plans`), não escritos
   na página.
-- **O produto aparece em telas REAIS**, fotografadas de uma clínica fictícia.
+- **O produto aparece em telas REAIS**, fotografadas de uma rede fictícia.
 
 ## O posicionamento (decisão do Heitor, 2026-10-18)
 
@@ -45,17 +45,17 @@ clínicas." O site diz isso em três lugares:
   - O app é UM só, para todos (o mesmo sistema, no navegador ou no app
     Android): quem decide o que se vê é o login. A cliente que entra vê só a
     visão dela — por isso "o app dela". Não é um aplicativo separado, nem um
-    app da clínica na loja (esclarecimento do Heitor, 2026-10-19).
-  - O texto diz só o que o portal FAZ: agendar sozinha (o que a clínica
+    app de cada rede na loja (esclarecimento do Heitor, 2026-10-19).
+  - O texto diz só o que o portal FAZ: agendar sozinha (o que a rede
     liberar), assinar com o dedo, pacotes/créditos/planos, pontos e
     recompensas, confirmar e avaliar, avisos no celular, LGPD, e — desde
-    2026-10-21 — remarcar e cancelar até o prazo da clínica (24h por padrão;
+    2026-10-21 — remarcar e cancelar até o prazo da rede (24h por padrão;
     depois, "fala com a clínica"). Desde a revisão (SI2, 2026-11-16): aceita
     o plano de tratamento pelo celular (PT1b), agenda as sessões do plano e
     do pacote (PT3/CA3) e assina todos os documentos abertos de uma vez (CA4).
     Ele NÃO cobra (o financeiro é consulta; o aceite do plano é um gesto, o
-    pagamento é no PDV da clínica) e leva o nome da unidade — não a logo da
-    clínica.
+    pagamento é no PDV da unidade) e leva o nome da unidade — não a logo da
+    rede.
 
 ## Como é feito
 
@@ -64,7 +64,7 @@ clínicas." O site diz isso em três lugares:
   CSP própria e curta (`lib/csp.ts`): nada carrega de fora além das fontes do
   Google. Os cabeçalhos de segurança são os do suporte, menos o `noindex` e o
   `no-store`: aqui o buscador é bem-vindo.
-- **A página renderiza a cada pedido** (`connection()`): os links da clínica
+- **A página renderiza a cada pedido** (`connection()`): os links do app da rede
   (`CLINICA_URL`) e os planos vêm do ambiente e do banco, e o build do Docker
   não tem variável nenhuma.
 - **Os planos**: `lerPlanos()` (`lib/planos.ts`) chama `planos_do_site()`
@@ -90,7 +90,7 @@ clínicas." O site diz isso em três lugares:
   `app/site.css`, como token. Moldura de tela flutua: `--shadow-overlay`.
 - **As telas**: `lib/telas.ts` é o catálogo (arquivo, tamanho, texto
   alternativo). Quem as fotografa é `apps/web/e2e-capturas/telas-do-site.spec.ts`
-  (`playwright.capturas.config.ts`, contra o build da clínica): monta a
+  (`playwright.capturas.config.ts`, contra o build do app da rede): monta a
   "Clínica Aurora" numa rede `[e2e]` própria — agenda do dia, conversas, um
   pacote, o financeiro do mês, injetáveis, automação, termos, o portal da
   Mariana — e apaga tudo no fim. Nos destaques, a foto sai sem o menu lateral.
@@ -163,9 +163,9 @@ fonte, raios, sombras de quem flutua).
   o recebimento: "Recebeu no PDV"), "oportunidade" (não "lead"), e NENHUM
   cargo como se fosse fixo — "a equipe", "quem atende", "as permissões dela",
   nunca "a recepção", "a gerente", "a profissional", "a contadora" (quem
-  decide é a permissão; o cargo é um conjunto de permissões que a clínica
+  decide é a permissão; o cargo é um conjunto de permissões que a rede
   monta). "Termo de consentimento" segue: é um dos tipos de documento.
-  "Clínica de estética" fica: é o MERCADO, o que a dona procura no buscador,
+  "Clínica de estética" fica: é o MERCADO, o que se procura no buscador,
   não a rede dentro do sistema. Trava: `apps/site/tests/texto-adaptado.test.ts`
   (o texto dos arquivos, as perguntas, as telas e o catálogo do plano) e o
   caso "o texto fala o sistema adaptado" de `e2e-site/site.spec.ts`. Novo no
@@ -181,7 +181,7 @@ fonte, raios, sombras de quem flutua).
   `TermosNaTela` a mantém dentro da tela do celular. Hoje: ERP e CRM, WhatsApp
   oficial, modelos aprovados, tarifa da Meta, DRE, inbox, funil e horário de
   silêncio. Explicação só diz o que o sistema faz.
-- Funcionalidade nova que muda o que a clínica ganha → a página muda junto
+- Funcionalidade nova que muda o que a rede ganha → a página muda junto
   (texto e, se for o caso, uma tela no catálogo e na câmera).
 - **"Em breve"** (`#em-breve`, pedido do Heitor, 2026-10-22): o que está
   chegando mora numa seção PRÓPRIA, depois de "E ainda" — cartão tracejado e o
@@ -211,8 +211,8 @@ fonte, raios, sombras de quem flutua).
 ❌ Esconder conteúdo (opacity 0) fora de .site-movimento — sem JS ou com o script bloqueado, ficaria invisível
 ❌ Animação infinita fora de .site-movimento (quem pede menos movimento a veria)
 ❌ Demonstração que conta o que as telas não mostram (é a história da Clínica Aurora, não promessa nova)
-❌ Levar a exceção do movimento ou do gradiente de fundo para a clínica (lá vale a skill /lumiere-design)
-❌ Prometer no app da cliente pagar ou a logo da clínica (o portal não faz) — ou cancelar/remarcar sem o prazo da clínica
+❌ Levar a exceção do movimento ou do gradiente de fundo para o app da rede (lá vale a skill /lumiere-design)
+❌ Prometer no app da cliente pagar ou a logo da rede (o portal não faz) — ou cancelar/remarcar sem o prazo da rede
 ❌ Chamar o app da cliente de "portal" na página (um nome por conceito: "App da cliente")
 ❌ Nome velho do sistema ("Termos e contratos", "anamnese", "lead") ou cargo como se fosse fixo ("a recepção", "a profissional", "a gerente", "a contadora", "o cargo dela decide") — SI1; apps/site/tests/texto-adaptado.test.ts trava
 ❌ Dizer que a cliente baixa um app à parte ou "o app da sua clínica" (é o mesmo app; o login abre a visão dela)

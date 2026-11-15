@@ -64,7 +64,18 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     a linha (pendente → executando numa escrita só), prepara DE NOVO e só grava
     se o resumo E o payload forem os mesmos do cartão (`canonico` — o jsonb
     reordena as chaves);
-  - o Copilot age com o nome "Fulana (via Copilot)" nos eventos e no histórico.
+  - o Copilot age com o nome "Fulana (via Copilot)" nos eventos e no histórico;
+  - **na Auditoria, a gravação é de quem pediu, "pelo Copilot"** (CP1,
+    2026-11-16): o `efetivarAcao` roda `ferramenta.efetivar` dentro de
+    `comViaDoCopilot` (`packages/nucleo/src/lib/supabase/via-da-escrita.ts`,
+    um `AsyncLocalStorage`), e toda ESCRITA do cliente de serviço ali dentro —
+    também a dos núcleos que abrem o próprio `createAdminClient()` — leva
+    `x-bellaris-via: copilot`. O gatilho `private.auditar` (migration
+    `20261116300001`) só lê o cabeçalho com a chave de SERVIÇO (pela sessão
+    não vale, como o `x-bellaris-ator`) e só o valor `copilot`: grava
+    `via = 'copilot'` e `ator_nome` "Fulana (pelo Copilot)", com o
+    `ator_user_id` dela. O preparar e as leituras não levam marca. Prova:
+    `e2e/copilot-auditoria-cp1.spec.ts`.
 - **As ferramentas** (`lib/copilot/ferramentas/`) chamam os MESMOS núcleos da
   tela: `createAppointmentCore`, `remarcarCore`/`cancelarCore`/`confirmarCore`
   (`lib/appointments/alteracoes.ts`), `garantirClienteRapido`, `atualizarClienteCore`
@@ -74,6 +85,18 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   saldo também na unidade de consumo, D3 da 7ª), `criarOportunidadeCore`/
   `moverEtapaCore` (`lib/crm/oportunidade.ts`), `checkinCore`, o acesso ao app
   (`lib/clients/acesso.ts`), `lib/metrics`.
+- **A unidade de que a ferramenta fala** (`resolverUnidade`, `comum.ts`):
+  quem é da rede escolhe qualquer uma; quem tem unidades (EQ1a, uma ou
+  várias) escolhe entre AS DELA, e sem escolha fica na unidade em que está (a
+  da página — a rota ajusta o `ctx.branchId`). Pedir uma de fora é recusado
+  com o motivo ("fora do seu alcance. As suas: …") — até o CP1 a ferramenta
+  ficava calada na da página. O prompt diz todas as unidades dela. Prova:
+  `e2e/copilot-cp1-ferramentas.spec.ts`.
+- **O PDV** (CP1): vender (pacote, pré-pago, produto, crédito interno) e
+  receber a comanda são do PDV — o Copilot não vende nem recebe comanda, e o
+  prompt manda indicar o PDV. O `marcar_pago` é a baixa do Financeiro
+  (`markTransactionPaid`, Caixa em Gerenciar), com o boleto na despesa, como
+  a tela. As vendas dos indicadores levam o número da comanda.
 - **Anexos** (`lib/copilot/anexos.ts`) são lidos no pedido e DESCARTADOS (a
   conversa guarda nome e tipo). Tipo pelo conteúdo. Imagem ≤ 5 MB (a foto
   grande é reduzida no navegador), PDF como arquivo, txt/csv como texto, voz
@@ -306,4 +329,8 @@ dele, sem rolagem que os tirasse. Prova: `e2e/configuracoes-atritos-da-10.spec.t
 ❌ Comparar tag com caixa (contains exato): "VIP" e "vip" são a mesma tag da rede
 ❌ Copilot criando tag fora do vocabulário (criar tag é de Configurações → Tags)
 ❌ Funcionalidade nova na clínica sem perguntar o que o Copilot precisa saber dela (ferramenta, ou ao menos a tela na lista)
+❌ Gravação do Copilot fora do comViaDoCopilot (a Auditoria a daria à pessoa sem o "pelo Copilot") — ou o cabeçalho x-bellaris-via fora do Confirmar
+❌ Ferramenta que troca a unidade pedida pela da página calada (resolverUnidade recusa a de fora com o motivo)
+❌ Falar de cargo como se fosse fixo no prompt ou nas mensagens ("o seu cargo…"): é a permissão
+❌ Cortar a chave da escolha do cartão abaixo do tamanho dela ("mesma:<uuid>" tem 42; o corte em 40 fazia o "Sim, é X" nunca valer — CP1)
 ```

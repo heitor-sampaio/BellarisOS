@@ -154,8 +154,10 @@ test('quem tem unidade fixa não lê a outra unidade, nem pedindo por ela', asyn
   const { data: unidade } = await banco().from('branches').select('slug').eq('id', segundaUnidade).single<{ slug: string }>()
   await comSessao(browser, m.estado, async p => {
     await p.goto(`/${unidade!.slug}/dashboard`)
+    // Pedir a de fora é recusado com o motivo (CP1) — não vira a dela calado.
     const ag = await chamar(p, 'agendamentos', { de: AMANHA, unidade: rede.outra.branchId })
-    expect(ag.saida!.agendamentos).toEqual([])
+    expect(ag.saida!.agendamentos).toBeUndefined()
+    expect(String(ag.saida?.erro)).toContain('fora do seu alcance')
     const fin = await chamar(p, 'lancamentos', { situacao: 'todos' })
     expect(JSON.stringify(fin.saida)).not.toContain(`Receber copl${marca}`)
   })

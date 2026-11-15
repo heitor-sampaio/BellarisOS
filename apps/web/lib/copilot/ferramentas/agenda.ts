@@ -50,7 +50,7 @@ export const agendamentos: FerramentaDeLeitura<{
     if (args.profissional) {
       const p = await resolverProfissional(c, args.profissional, u.unidade?.id)
       if ('erro' in p) return { dados: { erro: p.erro } }
-      if (profissionalId && p.id !== profissionalId) return { dados: { erro: 'O seu cargo só vê a sua própria agenda.' } }
+      if (profissionalId && p.id !== profissionalId) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
       profissionalId = p.id
     }
 
@@ -116,7 +116,7 @@ export const horariosLivres: FerramentaDeLeitura<{ data: string; profissional: s
     const p = await resolverProfissional(c, args.profissional, u.unidade?.id)
     if ('erro' in p) return { dados: { erro: p.erro } }
     const dono = ownerFilter(c.ctx, 'agenda')
-    if (dono && p.id !== dono) return { dados: { erro: 'O seu cargo só vê a sua própria agenda.' } }
+    if (dono && p.id !== dono) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
 
     const unidadeId = u.unidade?.id ?? p.branch_id ?? c.ctx.branchId
     if (!unidadeId) {

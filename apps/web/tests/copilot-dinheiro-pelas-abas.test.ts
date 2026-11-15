@@ -34,7 +34,7 @@ describe('o dinheiro do Copilot segue as abas de Relatórios', () => {
     const soAgenda = ctx({ reports: 'VIEW' }, ['agenda'])
     for (const aba of ['overview', 'financeiro', 'vendas', 'procedimentos', 'profissionais', 'clientes'] as const) {
       const r = await executar(soAgenda, aba)
-      expect(r.dados, aba).toEqual({ erro: expect.stringContaining(`não vê a aba "${aba}"`) })
+      expect(r.dados, aba).toEqual({ erro: expect.stringContaining(`não abre a aba "${aba}"`) })
     }
   })
 

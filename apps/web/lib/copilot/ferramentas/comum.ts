@@ -29,25 +29,31 @@ export async function unidadesDaRede(c: ContextoDaFerramenta): Promise<Unidade[]
 }
 
 /**
- * A unidade de que a ferramenta fala. Quem tem unidade fixa fica SEMPRE na
- * dela (o pedido não vence a abrangência). Quem é da rede escolhe por id ou
- * nome; sem escolha, null (= todas), ou a única, quando a rede tem uma só.
+ * A unidade de que a ferramenta fala, sempre dentro da abrangência da pessoa
+ * (o pedido não vence a abrangência). Quem é da rede escolhe por id ou nome;
+ * sem escolha, null (= todas), ou a única, quando a rede tem uma só. Quem tem
+ * unidades (EQ1a — uma ou várias) escolhe entre AS DELA; sem escolha, fica na
+ * unidade em que está (a da página). Pedir uma de fora é recusado com o
+ * motivo — não vira a dela calado (princípio 3, CP1).
  */
 export async function resolverUnidade(
   c: ContextoDaFerramenta, pedido?: string | null, opcoes: { exigir?: boolean } = {},
 ): Promise<{ unidade: Unidade | null } | { erro: string }> {
   const todas = await unidadesDaRede(c)
-  if (c.ctx.branchId) {
-    const propria = todas.find(u => u.id === c.ctx.branchId)
-    return propria ? { unidade: propria } : { erro: 'A sua unidade não está ativa.' }
-  }
   if (pedido) {
     const p = pedido.trim().toLowerCase()
     const achada = todas.find(u => u.id === pedido) ?? todas.find(u => u.name.toLowerCase() === p)
       ?? todas.filter(u => u.name.toLowerCase().includes(p)).at(0)
-    if (!achada) return { erro: `Unidade "${pedido}" não encontrada. Unidades: ${todas.map(u => u.name).join(', ')}.` }
-    if (!alcancaUnidade(c.ctx, achada.id)) return { erro: 'Essa unidade está fora do seu alcance.' }
+    const minhas = c.ctx.branchId ? todas.filter(u => alcancaUnidade(c.ctx, u.id)) : todas
+    if (!achada) return { erro: `Unidade "${pedido}" não encontrada. Unidades: ${minhas.map(u => u.name).join(', ')}.` }
+    if (!alcancaUnidade(c.ctx, achada.id)) {
+      return { erro: `Essa unidade está fora do seu alcance. As suas: ${minhas.map(u => u.name).join(', ') || 'nenhuma ativa'}.` }
+    }
     return { unidade: achada }
+  }
+  if (c.ctx.branchId) {
+    const propria = todas.find(u => u.id === c.ctx.branchId)
+    return propria ? { unidade: propria } : { erro: 'A sua unidade não está ativa.' }
   }
   if (todas.length === 1) return { unidade: todas[0]! }
   if (opcoes.exigir) return { erro: `Qual unidade? ${todas.map(u => u.name).join(', ')}.` }

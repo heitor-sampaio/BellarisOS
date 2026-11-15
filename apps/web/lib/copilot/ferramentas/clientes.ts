@@ -1,6 +1,6 @@
 import 'server-only'
 import { z } from 'zod/v4'
-import { can, ownerFilter, podeReceber, temRecurso } from '@/lib/auth'
+import { can, ownerFilter, podeReceber, temRecurso, unidadesDoContexto } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { creditosDoCliente } from '@/lib/creditos/credito'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
@@ -43,34 +43,36 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
   nome: 'cliente',
   tipo: 'leitura',
   modulo: 'clients', nivel: 'VIEW',
-  descricao: 'A ficha de UM cliente (por id, nome ou telefone): contato, nascimento, tags, próximos e últimos atendimentos, pacotes e pré-pagos com sessões restantes, crédito em R$ e pontos de fidelidade (conforme o cargo). Nada clínico.',
+  descricao: 'A ficha de UM cliente (por id, nome ou telefone): contato, nascimento, tags, próximos e últimos atendimentos, pacotes e pré-pagos com sessões restantes, crédito interno em R$ e pontos de fidelidade (conforme as permissões da pessoa). Nada clínico (a Ficha de saúde e o prontuário ficam na tela).',
   parametros: z.object({ cliente: z.string().min(2).max(120).describe('Id, nome ou telefone do cliente.') }),
   async executar(c, { cliente: pedido }) {
     const achado = await resolverCliente(c, pedido)
     if ('erro' in achado) return { dados: { erro: achado.erro } }
     const ficha = await ler(c.admin.from('clients')
-      .select('id, name, phone, email, document, birth_date, gender, city, tags, is_active, created_at, app_account_created_at')
+      .select('id, name, phone, email, document, birth_date, gender, city, tags, is_active, created_at, cliente_desde, app_account_created_at')
       .eq('id', achado.id).eq('tenant_id', c.ctx.tenantId!).single(), 'ler o cliente') as {
         id: string; name: string; phone: string | null; email: string | null; document: string | null; birth_date: string | null
-        gender: string | null; city: string | null; tags: string[] | null; is_active: boolean; created_at: string; app_account_created_at: string | null
+        gender: string | null; city: string | null; tags: string[] | null; is_active: boolean; created_at: string; cliente_desde: string | null; app_account_created_at: string | null
       }
 
     const agora = new Date().toISOString()
     const verAgenda = can(c.ctx, 'agenda', 'VIEW')
+    // Os atendimentos nas unidades DELA (EQ1a: uma ou várias); da rede, todos (CP1).
+    const minhas = unidadesDoContexto(c.ctx)
     const dono = ownerFilter(c.ctx, 'agenda')
     const [proximos, ultimos, creditos, internos, pontos] = await Promise.all([
       verAgenda ? (() => {
         let q = c.admin.from('appointments').select('id, scheduled_at, status, procedure_id, professional_id, branch_id')
           .eq('client_id', ficha.id).gte('scheduled_at', agora).in('status', ['SCHEDULED', 'CONFIRMED', 'ARRIVED']).order('scheduled_at').limit(5)
         if (dono) q = q.eq('professional_id', dono)
-        if (c.ctx.branchId) q = q.eq('branch_id', c.ctx.branchId)
+        if (minhas) q = q.in('branch_id', minhas)
         return ler(q, 'ler os próximos atendimentos')
       })() : Promise.resolve([]),
       verAgenda ? (() => {
         let q = c.admin.from('appointments').select('id, scheduled_at, status, procedure_id, professional_id, branch_id')
           .eq('client_id', ficha.id).lt('scheduled_at', agora).order('scheduled_at', { ascending: false }).limit(5)
         if (dono) q = q.eq('professional_id', dono)
-        if (c.ctx.branchId) q = q.eq('branch_id', c.ctx.branchId)
+        if (minhas) q = q.in('branch_id', minhas)
         return ler(q, 'ler os últimos atendimentos')
       })() : Promise.resolve([]),
       creditosDoCliente(c.admin, c.ctx.tenantId!, ficha.id),
@@ -109,7 +111,8 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
         cpf: cpfMascarado(ficha.document), nascimento: ficha.birth_date?.slice(0, 10) ?? null, idade: idade(ficha.birth_date, fusoDoPortal),
         genero: ficha.gender, cidade: ficha.city, ativo: ficha.is_active,
         tags: ficha.tags ?? [],
-        clienteDesde: ficha.created_at.slice(0, 10),
+        // "Cliente desde" como a ficha e o dashboard: o informado (a importada de 2021), senão o cadastro.
+        clienteDesde: diaDeClienteDesde({ clienteDesde: ficha.cliente_desde, createdAt: ficha.created_at }, fusoDoPortal),
         temAcessoAoApp: !!ficha.app_account_created_at,
         href,
         ...(verAgenda ? { proximosAtendimentos: ((proximos ?? []) as Ag[]).map(fmt), ultimosAtendimentos: ((ultimos ?? []) as Ag[]).map(fmt) } : {}),

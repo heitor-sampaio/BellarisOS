@@ -72,7 +72,7 @@ action monta (status, caminho de arquivo, matriz de cargos):
 - a sessão tem só política de LEITURA — ou nenhuma, como as credenciais e
   as comissões —, e a action grava pelo **cliente de serviço**
   (`createAdminClient`), depois da trava, da recusa da configuração da
-  clínica e do `bloqueioDoSuporte`, sempre com o `.eq('tenant_id', ctx.tenantId)`;
+  rede e do `bloqueioDoSuporte`, sempre com o `.eq('tenant_id', ctx.tenantId)`;
 - política de escrita que confere só `eh_da_rede()` (sem o módulo) é a mesma
   porta aberta: a migration `20261112006302` tirou as dos cargos, campanhas,
   categorias do estoque, disponibilidade e preço por unidade, o
@@ -145,7 +145,7 @@ comissões, no checkout, nas automações e nos injetáveis.
 
 ### O id que vem da URL — conferido antes do banco (2026-10-29)
 
-Toda rota `[id]` (`[planId]`, `[mapId]`) da clínica chama `idOu404(id)`
+Toda rota `[id]` (`[planId]`, `[mapId]`) do app da rede chama `idOu404(id)`
 (`lib/id-da-rota.ts`) logo depois de ler os `params`, ANTES de qualquer
 consulta. As colunas são uuid: o id que não é uuid (`/agenda/comissoes`) fazia o
 Postgres responder 22P02, e `ler` lançava — "A tela não conseguiu carregar" no
@@ -187,7 +187,7 @@ edições do sistema". O mecanismo é UM:
   conteúdo enfileirado); o DINHEIRO — o lançamento manual
   (`createTransactionAdvanced`), o crédito interno (`grantInternalCredit`, nas
   duas telas), as vendas de pacote, de pré-pago e de produto (`venderPacote`,
-  `venderProcedimento`, `venderProduto`, e o crédito na clínica vendido,
+  `venderProcedimento`, `venderProduto`, e o crédito interno vendido,
   `venderCredito`: a chave é o último argumento); o
   ESTOQUE — a entrada (`adminAddStock`, também a do leitor de código de
   barras), a transferência e a perda; os PONTOS — o ajuste e a troca por

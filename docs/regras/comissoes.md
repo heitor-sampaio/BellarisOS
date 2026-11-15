@@ -25,7 +25,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     `financial_transactions`: a quitação olha a VENDA, e elas nunca deixam a
     comissão "aguardando" (prova:
     `e2e/financeiro-cartao-a-receber-da-operadora.spec.ts`). O que espera é só o que a cliente ainda deve à
-    CLÍNICA — o crediário (entrada + parcelas a receber), o avulso concluído
+    REDE — o crediário (entrada + parcelas a receber), o avulso concluído
     sem pagamento —, e ele libera quando a última parcela entra ("f2 ok,
     concordamos", o Heitor, 2026-11-01);
   - o estorno de um pagamento tira a quitação: a comissão volta a aguardar
@@ -98,7 +98,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     mesma para todos" tira a exceção dela e conta como mexer; a regra geral
     nova num procedimento em que ela não tem valor próprio é do procedimento,
     não dela — confirmado pelo Heitor no levantamento das regras (H9,
-    2026-11-11, opção a: a dona já controla quem tem o Financeiro em
+    2026-11-11, opção a: a Admin da rede já controla quem tem o Financeiro em
     Gerenciar). **Com o aviso** (princípio 3): quando a regra geral nova muda o
     que uma Admin ganha, a janela diz antes de salvar — "A mesma para todos:
     20%. Vale também para a Dra. Ana (Admin da rede), que hoje recebe 40% pelo
@@ -111,7 +111,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   procedimentos da rede). A sessão só LÊ — até 2026-09-30
   qualquer funcionário gravava `commission_rules` pelo PostgREST.
 - **A aba se chama "Comissões e taxas"** (A2 da 14ª simulação, F74,
-  2026-11-13: a dona procurava as taxas da maquininha e não achava; a aba
+  2026-11-13: a Admin da rede procurava as taxas da maquininha e não achava; a aba
   guardava as duas coisas e só dizia uma). A chave segue `comissoes`; todo
   texto que manda à aba diz "Configurações → Comissões e taxas" (trava em
   `tests/configuracoes-e-menu-da-14.test.ts`). O passo do setup segue "Taxas
@@ -122,7 +122,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   (`desconta_insumos`, `desconta_taxa`), `base_com_pontos` (PRECO | VALOR_PAGO,
   veio de `loyalty_configs.commission_base`) e `periodo` do fechamento
   (MENSAL | QUINZENAL | SEMANAL). O padrão é a **base cheia**, e a tela diz
-  com essas palavras (J-46, 2026-10-30: a dona achava que a comissão
+  com essas palavras (J-46, 2026-10-30: a Admin da rede achava que a comissão
   descontava taxa e insumo): a configuração e o extrato usam a MESMA frase,
   `rotuloDaBase` — "base cheia (sem taxa nem insumo descontados)" ou o que
   saiu dela —, o extrato pelo retrato de cada linha (`comissoes_extrato`
@@ -192,7 +192,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `e2e/vendas-produto.spec.ts` ("a comissão da venda de produto").
   - **Uma regra sobre o total OU por produto** (r2-ven-10, o Heitor,
     2026-11-03: "deixar a clínica decidir, flexibilidade"). Em Configurações →
-    Comissões → "Venda de produto", a clínica escolhe
+    Comissões → "Venda de produto", a rede escolhe
     (`commission_configs.produto_modo`): "Uma regra sobre o total" (o de cima:
     UMA linha sobre o vendido do kit inteiro) ou "Por produto" — cada produto
     de revenda com "% do vendido" ou "R$ por unidade"
@@ -206,10 +206,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     (`comissaoDoProdutoNoFormulario`, `lib/comissoes/gravacao.ts`, conferido
     ANTES de gravar). Mostra e grava SÓ quem muda comissão — o Financeiro em
     Gerenciar, comissões no plano e abrangência de rede
-    (`podeMudarComissaoDoProcedimento`; a gerente de unidade fixa e quem só
-    cuida do estoque não veem a seção, e o servidor recusa o campo: "Seu cargo
+    (`podeMudarComissaoDoProcedimento`; quem tem só uma unidade e quem só
+    tem o Estoque não veem a seção, e o servidor recusa o campo: "Seu cargo
     não muda a comissão dos produtos."). Com "Uma regra sobre o total", o
-    cadastro não oferece campo: diz "A clínica comissiona a venda de produto
+    cadastro não oferece campo: diz "A rede comissiona a venda de produto
     por uma regra sobre o total (5% do vendido)…" com o caminho para
     Configurações → Comissões (decisão da F14, para o Heitor revisar). Em
     Configurações → Comissões ficam a escolha e a regra geral, e o RESUMO só
@@ -243,15 +243,15 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   função; a responsável do pacote tem de atender NESTA unidade. O chamador que
   não manda o campo (`vendedorId` ausente) segue como antes: quem registrou.
   Prova: `e2e/vendas-quem-vendeu.spec.ts`. **A lista vem em grupos** (A15 da
-  8ª simulação, 2026-11-06: a Contadora, que só vê, aparecia no meio): "Quem
-  atende" (nesta unidade), "Quem recebe" (o caixa ou o financeiro em
+  8ª simulação, 2026-11-06: quem tinha o cargo Contadora, que só vê, aparecia no meio): "Quem
+  atende" (nesta unidade), "Quem recebe" (o PDV ou o Financeiro em
   Gerenciar, ou a Admin) e "Quem tem Vendas no cargo" (`equipeDaVenda`).
   **E só quem VENDE** (A42 da 11ª simulação, 2026-11-10 — a frente F56: "a
-  lista 'Quem vendeu' só com quem tem Vendas"; a lista trazia a estoquista, e
+  lista 'Quem vendeu' só com quem tem Vendas"; a lista trazia quem só tinha o Estoque, e
   dava para pôr comissão de venda em quem nem entra em Vendas; até aqui era
   "ninguém sai"): fica quem atende NESTA unidade, quem recebe, ou quem tem o
   grupo Vendas no cargo (`crm` ou `procedures` abertos — `cargosQueVendem`,
-  `lib/vendas/equipe-da-venda.ts`); a clínica decide quem vende pelo cargo
+  `lib/vendas/equipe-da-venda.ts`); a rede decide quem vende pelo cargo
   (princípio 1). O servidor confere o mesmo (`quemVendeu`: "Quem vendeu:
   escolha quem vende — quem atende aqui, quem recebe ou quem tem Vendas no
   cargo."). Prova: `e2e/equipe-atritos-da-8.spec.ts` ("A15"),
@@ -305,7 +305,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     profissional (`REGRA`) sobre a parte da sessão no rateio do valor de
     referência (`package_sessions.preco`), e libera na conclusão — o pacote
     não tem preço de venda (`client_packages.price` nulo: nada que a cliente
-    deva à clínica, `comissao_conta`). Sem valor de referência, R$ 0 e a tela
+    deva à rede, `comissao_conta`). Sem valor de referência, R$ 0 e a tela
     avisa (princípio 4): `linhasDoAtendimento` não cria a linha para a sessão
     sem preço de um pacote `de_fora` — nem a regra de "R$ fixo" (a decisão
     disse R$ 0). Prova: `e2e/pacote-de-fora.spec.ts`.
@@ -353,7 +353,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   extrato diz "Venda do plano X" (`comissoes_extrato_linhas`, origem
   `PLANO_VENDA`, com a cliente e o dia do aceite); o lucro desconta como toda
   comissão lançada. Prova: `e2e/comissoes-venda-do-plano.spec.ts`.
-- **O crédito na clínica VENDIDO não tem comissão de venda** (decisão 1 do
+- **O Crédito interno VENDIDO não tem comissão de venda** (decisão 1 do
   Heitor sobre a 9ª simulação, 2026-11-07; `vendas-financeiro.md` §9.3.4): a
   venda do "vale" não pergunta "Quem vendeu" e nenhuma linha nasce. Quem
   atende depois, pago com o crédito, recebe a comissão de EXECUÇÃO do
@@ -367,7 +367,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   2026-11-14 (migration `20261114900901`). Prova: `e2e/configuracoes-atritos-da-11.spec.ts` ("A14
   (revista)") e `e2e/configuracoes-atritos-da-12.spec.ts` ("A4 (revista)").
 - **A comissão de venda POR PESSOA** (A17 da 11ª simulação, 2026-11-10;
-  decidido pelo princípio 1 — a clínica decide; configuração com padrão que não
+  decidido pelo princípio 1 — a rede decide; configuração com padrão que não
   muda nada: os dois times quiseram um percentual de venda por vendedora).
   "Comissão de venda (%)" no cadastro de comissão de cada pessoa, na Equipe, ao
   lado da de execução (`[data-comissao-de-venda-da-pessoa]`), VAZIO por padrão
@@ -378,11 +378,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   - **a regra do item vence a da pessoa**, como na execução: o "De venda" do
     pacote, a comissão do produto (no "Por produto") — **também quando é 0%**
     (D13 do levantamento das regras, o Heitor, 2026-11-11; princípio 2: o 0 é
-    o valor que a clínica escolheu). A tela do Vender e o
+    o valor que a rede escolheu). A tela do Vender e o
     `pacote_vender_com_equipe` seguem isso desde a F67 (C40; liam
     `valor > 0`); **sem nenhuma das duas, a
-    da clínica** — o "venda de plano (%)" e a "venda de produto" (a geral ou a
-    regra sobre o total). O pacote e o pré-pago não têm regra da clínica.
+    da rede** — o "venda de plano (%)" e a "venda de produto" (a geral ou a
+    regra sobre o total). O pacote e o pré-pago não têm regra da rede.
   - **O pré-pago ganhou a linha de venda**: `origem = 'PRE_PAGO'` SEM
     atendimento (como a venda do plano é a `PLANO` sem atendimento), sobre o
     vendido, que cai na proporção das unidades canceladas (`comissao_conta_detalhe`
@@ -391,7 +391,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     e no plano cancelados, na devolução de produto).
   - **A tela diz de onde veio o percentual**: a linha guarda
     `commission_lines.regra_de` (ITEM, PESSOA, CLINICA), e o extrato e o CSV
-    dizem "3% — da Tatiane", "10% — do pacote", "5% — da clínica"
+    dizem "3% — da Tatiane", "10% — do pacote", "5% — da rede"
     (`regraDoLancamento`, `lib/comissoes/extrato-texto.ts`; o extrato é
     `comissoes_extrato_com_regra` — o `comissoes_extrato_com_base` ficou sem
     chamador no app). As linhas de antes dizem só a regra.
@@ -402,7 +402,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     a comissão de venda de quem vendeu…" — dizia "Quem vende o pacote não
     recebe comissão", falso desde a A17 (`[data-ajuda-da-venda]`). Prova:
     `e2e/configuracoes-atritos-da-12.spec.ts` ("A5").
-  - O crédito na clínica vendido continua SEM comissão de venda (abaixo).
+  - O Crédito interno vendido continua SEM comissão de venda (abaixo).
   - As funções: `pacote_vender_com_equipe`, `plano_comissao_de_venda`,
     `procedimento_vender_com_equipe`, `produto_vender_itens`
     (`private.comissao_venda_da_pessoa`; migration `20261110005603`). Prova:
@@ -417,10 +417,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   2026-11-11; princípio 3: a Rita só sabia pelo extrato): escolhido quem
   vendeu, embaixo do campo, "Comissão de venda de Rita: 8% do vendido — da
   Rita. Sai quando a venda estiver paga inteira." ("5% do vendido — do
-  pacote", "2% do vendido — da clínica"; no kit, cada produto com a sua) —
+  pacote", "2% do vendido — da rede"; no kit, cada produto com a sua) —
   `[data-comissao-da-venda]`, `textoDaComissaoDaVenda`
   (`lib/comissoes/comissao-da-venda.ts`), a MESMA precedência do banco (item >
-  pessoa > clínica; o pré-pago só a da pessoa; a do produto só no "Por
+  pessoa > rede; o pré-pago só a da pessoa; a do produto só no "Por
   produto"). Só a REGRA: o valor em reais é do banco (`comissao_conta`). A
   comissão de OUTRA pessoa só aparece a quem vê a de todos
   (`veComissaoDeTodos`, `lib/comissoes/quem-ve.ts`; `equipeDaVenda` só manda a
@@ -564,7 +564,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     pagamento). A regra não mudou. Prova: `e2e/comissoes-uso-da-10.spec.ts` ("A32").
   - **Pagar só parte: marcar e desmarcar os lançamentos** (A21 da 10ª
     simulação; decisão do Heitor, 2026-11-10: "concordo com marcar e
-    desmarcar" — a dona queria pagar parte da comissão da Camila agora e o
+    desmarcar" — a Admin da rede queria pagar parte da comissão da Camila agora e o
     resto depois). O "Fechar e pagar" lista os lançamentos a pagar da pessoa na
     unidade (os de antes do período inclusive), TODOS MARCADOS
     (`[data-lancamentos-do-fechamento]`), e o "Pagar agora" se refaz ao
@@ -603,7 +603,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   servidor. Antes ficavam sob `team` e `reports`, e mostravam a de todos.
   **A tela de Cargos diz isso** (A48 da 7ª simulação, 2026-11-05: o cargo
   Consultor vende e não via as próprias comissões; decidido pelos princípios
-  3 — nada de regra escondida — e 1 — a clínica decide no cargo): com o
+  3 — nada de regra escondida — e 1 — a rede decide no cargo): com o
   Financeiro em "Sem acesso", o resumo "O que essa pessoa vai ver" diz "Não vê
   as próprias comissões. Para ver, Financeiro em “Ver”, só os próprios: vira
   “Minhas comissões”." (`[data-sem-minhas-comissoes]`). A regra de quem vê não
@@ -627,7 +627,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Gravar em commissions fora de comissao_acertar_linha, ou calcular valor de comissão no TypeScript (a conta é comissao_alvo)
 ❌ Mostrar o preço da linha (commission_lines.preco) como "base", ou refazer a base no TypeScript — é a de comissao_conta_detalhe (comissoes_extrato_com_base — D3 da 10ª); mudou a conta, muda nela (comissao_conta lê dela)
 ❌ Escrever no lançamento antigo a base de HOJE (o fator do cancelamento que veio depois dele): é a da hora do lançamento (private.comissao_fator_em — D7 da 11ª)
-❌ Liberar comissão sobre o que a cliente ainda deve à clínica (crediário, avulso sem pagamento) — só com o pagamento integral; o cartão em N vezes JÁ é pago
+❌ Liberar comissão sobre o que a cliente ainda deve à rede (crediário, avulso sem pagamento) — só com o pagamento integral; o cartão em N vezes JÁ é pago
 ❌ Criar linha de comissão em outro modo que não INTEGRAL (o gatilho trg_comissao_linha_integral garante), ou reescrever o modo de uma linha antiga
 ❌ Decidir a regra de um procedimento sem as gerais (regraAplicavel sem o terceiro argumento ignora "a mesma para todos")
 ❌ Mandar ao banco a base de comissão que o navegador enviou (plano e pacote se leem em linhasDoAtendimento)
@@ -640,7 +640,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Pagar parte de um lançamento, ou um valor digitado no fechamento: o lançamento é pago inteiro ou fica (A21 da 10ª — "marcar e desmarcar")
 ❌ Contar no lucro a despesa paga "Comissões" do fechamento (a comissão já desconta quando é lançada — 2026-11-04): ela fica só no caixa
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
-❌ Criar comissão de venda sem a precedência item > pessoa > clínica, ou sem gravar de onde veio (commission_lines.regra_de — A17 da 11ª)
+❌ Criar comissão de venda sem a precedência item > pessoa > rede, ou sem gravar de onde veio (commission_lines.regra_de — A17 da 11ª)
 ❌ Aceitar em "Quem vendeu" quem não vende (não atende na unidade, não recebe, sem Vendas no cargo) — A42 da 11ª
 ❌ Mandar ao navegador a comissão de venda de outra pessoa a quem vê só as próprias (equipeDaVenda sem veComissaoDeTodos — A18 da 12ª)
 ❌ Criar a comissão de venda do plano com outra conta que não a da linha PLANO sem atendimento (plano_comissao_de_venda + comissao_conta), ou deixá-la inteira no plano cancelado (ela vale o usado, na proporção — D4 da 9ª)

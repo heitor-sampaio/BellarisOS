@@ -18,7 +18,7 @@
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=         # apenas server-side
-CREDENCIAIS_CHAVE=                 # SÓ no serviço BellarisOS (a clínica): 32 bytes em base64.
+CREDENCIAIS_CHAVE=                 # SÓ no serviço BellarisOS (o app da rede): 32 bytes em base64.
                                    # Cifra os tokens de integração no banco (lib/integracoes/cofre.ts).
                                    # A MESMA no .env.local e no secret `e2e` do GitHub. Perdê-la é
                                    # reconectar toda integração: tem cópia com o Heitor.
@@ -28,7 +28,7 @@ UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_REST_TOKEN=
 
 # Os TRÊS apps (2026-10-06) — cada serviço do Railway leva os três endereços.
-CLINICA_URL=https://app.bellarisos.com       # a clínica (apps/web)
+CLINICA_URL=https://app.bellarisos.com       # o app da rede (apps/web)
 SISTEMA_URL=https://admin.bellarisos.com     # o sistema (apps/sistema, só ADMIN)
 SUPORTE_URL=https://suporte.bellarisos.com   # o suporte (apps/suporte)
 INTERNO_SECRET=                    # 32+ caracteres, o MESMO nos três: /api/interno/expirar (lib/interno.ts)
@@ -61,7 +61,7 @@ META_APP_SECRET=                   # troca de código por token + assinatura dos
 META_VERIFY_TOKEN=                 # handshake dos webhooks (/api/webhooks/whatsapp e /meta)
 META_ES_CONFIG_ID=                 # config_id do cadastro incorporado (lido no servidor)
 
-# Copilot (a secretária virtual, docs/regras/copilot.md) — SÓ no serviço da clínica.
+# Copilot (a secretária virtual, docs/regras/copilot.md) — SÓ no serviço do app da rede.
 # Sem a chave, o Copilot não aparece (nem para rede que o tem no plano).
 OPENAI_API_KEY=                    # só no servidor
 OPENAI_MODEL=gpt-5-mini            # o modelo do chat (function calling + visão)
@@ -114,9 +114,9 @@ como build arg por estar declarada (`ARG`) no Dockerfile:
 | Notification Cron / Automations Cron | `web` (imagem) | — | `APP_URL`, `SISTEMA_URL`, `CRON_SECRET` |
 
 O COMUM, nos três apps: as chaves do Supabase, `CLINICA_URL`, `SISTEMA_URL`,
-`SUPORTE_URL`, `INTERNO_SECRET` (o mesmo valor) e VAPID/FCM (o sino da
-clínica também toca a partir do sistema e do suporte). `CRON_SECRET` é o
-mesmo valor na clínica, no sistema e nos dois serviços de cron. Os dois
+`SUPORTE_URL`, `INTERNO_SECRET` (o mesmo valor) e VAPID/FCM (o sino do
+app da rede também toca a partir do sistema e do suporte). `CRON_SECRET` é o
+mesmo valor no app da rede, no sistema e nos dois serviços de cron. Os dois
 serviços novos sobem SEM domínio `*.up.railway.app`: é um segundo endereço que
 ninguém precisa (e pularia um muro na frente do domínio, se um dia houver).
 No Supabase (Auth → URL Configuration) entram os dois hosts novos nas
@@ -189,9 +189,9 @@ performance, `query_logs` (`edge_logs` por minuto, `postgres_logs`,
   `auth_db_connections_absolute`). Subir de tamanho é decisão de custo do
   Heitor; ver o relatório da F45.
 
-## O CSP da clínica (bloqueia desde 2026-10-22)
+## O CSP do app da rede (bloqueia desde 2026-10-22)
 
-Toda página da clínica leva `Content-Security-Policy` (`lib/seguranca/csp.ts`,
+Toda página do app da rede leva `Content-Security-Policy` (`lib/seguranca/csp.ts`,
 posto pelo proxy em `lib/supabase/middleware.ts`): script só com o nonce da
 requisição (`strict-dynamic`), e uma lista curta do que vem de fora — o
 Supabase (e o `wss` do tempo real), as fontes do Google, os ladrilhos do
@@ -234,13 +234,13 @@ o recém-criado, que é do `after()` — e teste que precisa de um pendente
 
 **Cada job vai ao app DONO dele** (2026-10-06, `baseDoJob` em
 `scripts/cron.mjs`): `assinaturas` ao sistema (`SISTEMA_URL`, que tem a chave do
-Asaas); o resto à clínica (`APP_URL`) — inclusive `suporte-sessoes`, porque o
-cache da sessão de suporte mora no processo da clínica. O serviço de cron leva
+Asaas); o resto ao app da rede (`APP_URL`) — inclusive `suporte-sessoes`, porque o
+cache da sessão de suporte mora no processo do app da rede. O serviço de cron leva
 as duas variáveis; sem `SISTEMA_URL`, o `assinaturas` é PULADO com aviso (o sistema ainda não está no ar); sem `APP_URL`, falha.
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|
-| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns` (a campanha Agendada: a numa data e hora sai na hora marcada; a de todo ano, no dia, a partir das 09:00 da rede — MK1, 2026-11-14: o gatilho de cliente da antiga "Automática" saiu para as Automações), `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`, `documentos-pdf`, `suporte-sessoes`, `copilot-retencao` (as conversas do Copilot com mais de 90 dias), `importacoes` (a importação de contatos parada vira interrompida; o relatório de erros some em 7 dias), `crm-lembretes` (o retorno combinado e o ganho a marcar, no sino de quem tem o lead — A42/A45 da 9ª; o retorno do dia a partir das 7h), `assinaturas`) |
+| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns` (a campanha Agendada: a numa data e hora sai na hora marcada; a de todo ano, no dia, a partir das 09:00 da rede — MK1, 2026-11-14: o gatilho de cliente da antiga "Automática" saiu para as Automações), `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`, `documentos-pdf`, `suporte-sessoes`, `copilot-retencao` (as conversas do Copilot com mais de 90 dias), `importacoes` (a importação de contatos parada vira interrompida; o relatório de erros some em 7 dias), `crm-lembretes` (o retorno combinado e o ganho a marcar, no sino de quem tem a oportunidade — A42/A45 da 9ª; o retorno do dia a partir das 7h), `assinaturas`) |
 | **Automations Cron** | `*/5 * * * *` (5 min) | `automacoes` |
 
 O segundo existe porque **granularidade de uma hora não serve a automação**:

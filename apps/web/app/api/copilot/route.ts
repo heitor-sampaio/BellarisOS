@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   if (!origemConfere(req)) return recusa(403, 'Pedido de outra origem.')
   if (ctxDaPessoa.isClient || !ctxDaPessoa.tenantId || !ctxDaPessoa.internalUserId) return recusa(403, 'O Copilot é da equipe da rede.')
   if (!copilotNoPlano(ctxDaPessoa)) return recusa(403, 'O Copilot não faz parte do plano da sua rede.')
-  if (!copilotNoCargo(ctxDaPessoa)) return recusa(403, 'O seu cargo não tem acesso ao Copilot.')
+  if (!copilotNoCargo(ctxDaPessoa)) return recusa(403, 'Sua permissão não dá acesso ao Copilot.')
   if (ctxDaPessoa.suporte) return recusa(403, 'No modo suporte o Copilot fica desligado.')
   if (!copilotConfigurado()) return recusa(503, 'O Copilot não está configurado nesta instalação.')
 
@@ -149,15 +149,20 @@ export async function POST(req: NextRequest) {
           { role: 'user', content: [{ type: 'input_text', text: fala || '(a pessoa mandou só o anexo)' }, ...conteudo] },
         ]
 
-        const [rede, unidade] = await Promise.all([
+        const [rede, unidade, todasAsUnidades] = await Promise.all([
           getCachedRede(ctx.tenantId!),
           ctx.branchId
             ? ler(admin.from('branches').select('name').eq('id', ctx.branchId).maybeSingle(), 'ler a unidade') as Promise<{ name: string } | null>
             : Promise.resolve(null),
+          ctx.unidades && ctx.unidades.length > 1 ? getCachedTodasAsUnidades(ctx.tenantId!) : Promise.resolve([]),
         ])
         // O relógio do portal (F62b): o "Agora" e o "amanhã" são os da unidade.
         const fuso = await fusoDoPortal({ ctx, admin, pagina, slugDoPortal })
-        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, pagina, slugDoPortal, fuso })
+        // Quem tem várias unidades (EQ1a): o prompt diz todas as dela (CP1).
+        const unidades = ctx.unidades && ctx.unidades.length > 1
+          ? (() => { const nomes = new Map(todasAsUnidades.map(u => [u.id, u.name])); return ctx.unidades!.map(id => nomes.get(id)).filter((n): n is string => !!n) })()
+          : undefined
+        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, unidades, pagina, slugDoPortal, fuso })
         const disponiveis = ferramentasDoCargo(ctx)
         const ferramentas = paraOModelo(disponiveis)
         const cf = { ctx, admin, pagina, slugDoPortal, conversaId: conversa.id }

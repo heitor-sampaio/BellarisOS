@@ -28,7 +28,7 @@
   passaporte/RNE — no cadastro, na aba Dados ("Dar acesso ao app") e no
   Copilot (`criar_acesso_ao_app`). **Sem documento nenhum, segue sem acesso**,
   e a tela diz por quê ("precisa do e-mail e de um documento (CPF, passaporte
-  ou RNE)"). **A mesma pessoa em outra clínica, sem CPF, só se liga com o MESMO
+  ou RNE)"). **A mesma pessoa em outra rede, sem CPF, só se liga com o MESMO
   documento** (tipo e número; decidido pelo §5 do CLAUDE.md — "a mesma pessoa"
   é provada pelo documento): `login_de_cliente_para_ligar_doc` (migration
   `20261105002901`; a de antes, só CPF, ficou sem chamador); outro documento
@@ -53,13 +53,13 @@
   bloco alto, a linha dele — sobra da F29 feita na F30) e
   a tela do atendimento mostram "Menor" e o responsável, ou a falta dele. O
   termo cita o responsável e é assinado por ele (`documentos.md`). O que a
-  recepção escreveu nas Anotações antes disso não foi migrado. Prova:
+  equipe escreveu nas Anotações antes disso não foi migrado. Prova:
   `e2e/ficha-menor-de-idade.spec.ts`, `tests/menor-de-idade.test.ts`.
-- `authId` em `Client` é opcional — preenchido quando a CLÍNICA dá o acesso ao
+- `authId` em `Client` é opcional — preenchido quando a REDE dá o acesso ao
   app. **O mesmo login pode estar em várias fichas, uma por rede** (a mesma
-  pessoa cliente de várias clínicas, 2026-10-19 — regras no §5 do
-  `CLAUDE.md`). Cada ficha continua da sua clínica: a LGPD (pedido, exportação)
-  é por ficha, e cada clínica responde pelos dados dela.
+  pessoa cliente de várias redes, 2026-10-19 — regras no §5 do
+  `CLAUDE.md`). Cada ficha continua da sua rede: a LGPD (pedido, exportação)
+  é por ficha, e cada rede responde pelos dados dela.
 - **A cliente de balcão** (2026-10-21, decisão do Heitor): "Novo cliente"
   pede só nome e telefone; e-mail e CPF são opcionais (preenchidos, válidos).
   O acesso ao app é a caixa "Criar o acesso ao app", que só se marca com os
@@ -139,9 +139,9 @@
     agendar rápido, o Copilot — `atualizarFichaComOPreenchido`). Prova: `e2e/ficha-cadastro-ja-existe.spec.ts`,
     `tests/ja-existe.test.ts`, o caso r2-cli-01 de `e2e/copilot-gravacoes.spec.ts`;
   - o telefone de uma PESSOA do CRM (`contacts`, pelas formas do WhatsApp,
-    `variantesDoTelefone`) que ainda não é cliente — o lead, até o PERDIDO
+    `variantesDoTelefone`) que ainda não é cliente — a oportunidade, até a PERDIDA
     que voltou, ou só a conversa — faz a tela perguntar "É a mesma pessoa do
-    lead X?" (D-9, frente de cadastro de 2026-10-29; `pessoaDoCrmDoTelefone`,
+    contato X?" (D-9, frente de cadastro de 2026-10-29; `pessoaDoCrmDoTelefone`,
     `lib/clients/pessoa-do-crm.ts`). "Sim" liga à ficha nova as oportunidades
     e as conversas da pessoa que quem cadastra ALCANÇA (`leadAoAlcance`,
     `conversaAoAlcance`; sem o CRM não pergunta): a mais recente segue a
@@ -149,23 +149,23 @@
     Conversões), as outras ganham `client_id` e CONVERTED. "Não" cadastra sem
     ligar. Resposta em `_pessoaDoCrm` (`mesma:`/`outra:<contato>`). Quem
     cadastra pelo card ou pela conversa não é perguntado (já disse quem é).
-    **A pessoa do lead criado à mão também é achada** (A16 da 6ª simulação,
+    **A pessoa da oportunidade criada à mão também é achada** (A16 da 6ª simulação,
     2026-11-04: a Alice, criada no quadro com "(81) 99600-0070", virou uma
-    ficha solta na recepção, e a Pri não soube que ela agendou): o gatilho do
-    lead gravava o identificador "81996000070", sem o 55. Agora a pessoa nasce
+    ficha solta na unidade, e a Pri não soube que ela agendou): o gatilho da
+    oportunidade gravava o identificador "81996000070", sem o 55. Agora a pessoa nasce
     no formato do WhatsApp (abaixo), e a busca do cadastro olha também a forma
     antiga, sem o 55 (`formasParaAcharAPessoa`, `lib/importacao/normalizar.ts`).
     Prova: `e2e/ficha-cadastro-mesma-pessoa-do-lead.spec.ts`;
-  - **e o inverso: o lead NOVO com o telefone de uma cliente** (D11 da 9ª
+  - **e o inverso: a oportunidade NOVA com o telefone de uma cliente** (D11 da 9ª
     simulação, 2026-11-07: a "Camila D. (repetida)" nascia em Novo, sem "✓
-    Cliente", com o telefone da Camila Duarte). O "Novo lead" pergunta, junto
+    Cliente", com o telefone da Camila Duarte). O "Nova oportunidade" pergunta, junto
     ao telefone e antes do clique, "Este telefone é da ficha de Camila Duarte.
     É a mesma pessoa?" (`fichaDoTelefoneDoLead`, as fichas ATIVAS por
     `fichas_do_telefone`; `[data-ficha-do-telefone]`): "Sim, é ela" → a
     oportunidade nasce ligada à ficha (`leads.client_id`); "Não, é outra
-    pessoa" → sem ficha. Sem resposta, "Criar lead" não envia e diz o que falta
+    pessoa" → sem ficha. Sem resposta, "Criar oportunidade" não envia e diz o que falta
     (`[data-falta-responder]`), e o `createLead` confere de novo e recusa. Quem
-    não vê Clientes lê "de uma cliente da clínica", sem o nome. A pessoa que
+    não vê Clientes lê "de uma cliente da rede", sem o nome. A pessoa que
     veio da busca (`_contatoId`) já disse quem é. Prova:
     `e2e/crm-atritos-da-9.spec.ts` ("D11");
   - o telefone de uma ficha ARQUIVADA (A20 da 5ª simulação — virou o "Valdir
@@ -186,7 +186,7 @@
     **"Cadastrar" com a pergunta sem resposta diz o que falta** (A22 da 7ª
     simulação, 2026-11-05: o clique não fazia nada nem dizia por quê): o
     formulário não envia, rola até a pergunta e diz junto do botão
-    "Responda antes de cadastrar: é a mesma pessoa do lead X? (“Sim, é a
+    "Responda antes de cadastrar: é a mesma pessoa do contato X? (“Sim, é a
     mesma pessoa” ou “Não, é outra pessoa”, logo abaixo do telefone e do
     e-mail)" (`oQueFaltaResponder`, `[data-falta-responder]`);
     a resposta dada depois disso envia, como a que veio do clique. Prova:
@@ -215,25 +215,25 @@
 - **O portal fala com a pessoa pelo sexo da ficha** (`clients.gender`: F, M,
   O ou vazio; D17 da simulação de 2026-10-29): "Bem-vinda"/"Bem-vindo" e, sem
   sexo ou "Outro", "Boas-vindas" (`boasVindas`, `lib/saudacao.ts`). O que a
-  CLÍNICA diz (o fim da ficha, a assinatura recebida) é neutro ("Tudo certo!",
+  EQUIPE diz (o fim da ficha, a assinatura recebida) é neutro ("Tudo certo!",
   não "Obrigada!"). Texto novo do portal no feminino fixo é o defeito de
   volta. Prova: `e2e/portal-cliente-tratamento.spec.ts`.
-- **O cartão "A clínica" do app** (J-66, 2026-10-30): o fim da home do
+- **O cartão "A unidade" do app** (J-66, 2026-10-30): o fim da home do
   portal mostra a unidade do ENDEREÇO (o slug) — nome, endereço, telefone,
   horário (`resumoDoHorario` da unidade) e os botões WhatsApp e Ligar. A
   leitura é UMA, `aClinicaDoEndereco` (`lib/clientes/a-clinica.ts`), a mesma
-  do "Falar com a clínica" do plano proposto. **O WhatsApp é o número
+  do "Falar com a equipe" do plano proposto. **O WhatsApp é o número
   CONECTADO** (por-03, revisão do Heitor de 2026-11-02: a conversa cai no
   inbox e fica registrada): o ativo rotulado com a unidade do endereço, senão
   o padrão da rede; sem nenhum, o telefone da unidade (ou o da rede). Só o
   número sai de `whatsapp_numbers`, pelo servidor — nunca a credencial. O
-  "Ligar" é sempre o telefone. **"Falar com a clínica" abre com a mensagem
+  "Ligar" é sempre o telefone. **"Falar com a equipe" abre com a mensagem
   pronta** (A66, `comMensagem`): o plano proposto ("Vi no app o plano de
   tratamento proposto (N sessões, R$ X)…") e o agendamento ("Quero falar
   sobre o meu agendamento de X em DD/MM HH:MM"). Sem nenhum dado cadastrado,
   o cartão não aparece. **E o cadastro da unidade diz isso** (A3 da 9ª
   simulação, 2026-11-07): junto do telefone, no setup e em Unidades, "Em
-  branco, o app da cliente mostra o telefone da clínica…"
+  branco, o app da cliente mostra o telefone da rede…"
   (`[data-telefone-vazio-no-app]`; prova: `e2e/setup-atritos-da-9.spec.ts`).
   Prova: `e2e/portal-cliente-a-clinica.spec.ts`,
   `e2e/portal-cliente-plano-proposto.spec.ts`,
@@ -241,16 +241,16 @@
 - **Os atritos do portal da 8ª simulação** (2026-11-06; princípio 3, o que a
   tela mostra é o que vale):
   - **A sessão "A agendar" do plano diz quem marca** (A51): com procedimento que
-    não está no app (o laser), "quem marca é a clínica — fale com ela para
+    não está no app (o laser), "quem marca é a equipe — fale com ela para
     escolher o dia"; com todos no app, "agende pelo app em Agendar"
     (`[data-quem-marca-a-sessao]`, o cartão do plano fechado do Início).
     **E cada sessão diz a dela** (A47 da 9ª simulação, 2026-11-07): o plano que
     alterna criolipólise (fora do app) e drenagem (no app) dizia "quem marca é
     a clínica" para todas, e o app deixava a Luana marcar a drenagem. Cada
     sessão "A agendar" diz "A agendar · pelo app" ou "A agendar · quem marca é
-    a clínica" (`[data-sessao-do-plano]`), e o resumo separa: "Sessão 2: agende
+    a equipe" (`[data-sessao-do-plano]`), e o resumo separa: "Sessão 2: agende
     pelo app em “Agendar” (já está paga no plano)." / "Sessões 3 e 5: quem
-    marca é a clínica…" (`quemMarcaAsSessoes`, `lib/plano-de-tratamento/textos.ts`).
+    marca é a equipe…" (`quemMarcaAsSessoes`, `lib/plano-de-tratamento/textos.ts`).
     A régua é a do agendar do app (`pagoParaAgendar`): pelo app vai a sessão
     cujo PRIMEIRO procedimento está no app. Prova: `e2e/plano-atritos-da-9.spec.ts`
     ("A47"), `tests/textos-do-plano-da-9.test.ts`.
@@ -262,7 +262,7 @@
     unidades, o próximo agendamento mostra o nome e o endereço da unidade
     DELE (`[data-unidade-do-agendamento]`) — a drenagem da Água Verde aparecia
     no portal do Batel sem dizer onde —, e cada atendimento do Histórico diz
-    onde foi (`[data-unidade-do-atendimento]`). O cartão "A clínica" segue o do
+    onde foi (`[data-unidade-do-atendimento]`). O cartão "A unidade" segue o do
     endereço.
   - **A nota dada se lê** (A54): as estrelas do Histórico dizem "4/5" e se
     anunciam ("Atendimento: 4 de 5 estrelas", `[data-avaliacao-dada]`);
@@ -273,7 +273,7 @@
     resumo).
   - Prova: `e2e/portal-cliente-atritos-da-8.spec.ts`.
 - A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
-- **"Indicada por" é a ligação a OUTRA ficha da clínica** (`clients.indicada_por`;
+- **"Indicada por" é a ligação a OUTRA ficha da rede** (`clients.indicada_por`;
   decisão do Heitor, 2026-11-10 — a regra inteira, com o prêmio, está em
   `fidelidade.md` §9.2.2, "A indicação que premia"): escolhida pela busca no Novo
   cliente, no Agendar com cliente nova e na aba Dados; a Visão geral diz "Indicada
@@ -289,25 +289,25 @@ de unidade, existem tags, a rede cria a tag que quiser e usa elas como filtro
 depois, do que quiser, com nome que quiser. Não complica." — e antes: "o
 cliente não é da unidade, o cliente é da rede. Se a rede quiser ela pode
 colocar um tag pra ajudar a filtrar"). A cliente é da REDE (H5). Tag é só da
-clínica: quem cria, dá nome e usa como filtro é ela. O sistema NÃO cria tag
+rede: quem cria, dá nome e usa como filtro é ela. O sistema NÃO cria tag
 e não dá significado a nenhuma pelo nome. Isto desfaz:
 - o gatilho `trg_appointment_unit_tag` (julho de 2026), que punha
   "Unidade: X" na ficha a cada agendamento — sai (nada se move sozinho,
   princípio 6). As "Unidade: …" já gravadas ficam como tags comuns da
-  clínica (nada se apaga; ela renomeia, arquiva ou tira se quiser) e entram
+  rede (nada se apaga; ela renomeia, arquiva ou tira se quiser) e entram
   no vocabulário como qualquer outra (o `trg_registrar_tags` deixa de
   pular `Unidade: %`);
 - toda leitura que tomava "Unidade: X" como "a unidade da cliente" (C6/C45
   da F68, `tags_das_unidades`): o público das campanhas e o "Buscar
   clientes" das automações filtrados por unidade, as novas clientes por
-  unidade (cartão, série, "Por filial"), o "Reativar", a lista de Clientes
+  unidade (cartão, série, "Por unidade"), o "Reativar", a lista de Clientes
   do portal da unidade e o A25 da F73 (`unidadeDaTag`, a tag escolhendo a
   unidade do Agendar);
 - a conta pela unidade de CADASTRO (`clients.branch_id`) também não volta:
   ela é só onde a ficha nasceu.
 Onde uma tela ou conta precisa de "a cliente nesta unidade", vale o FATO: a
 cliente atendida (agendamento) naquela unidade — nunca uma tag nem o
-cadastro. A lista de Clientes da unidade é a da clínica (a cliente é da rede).
+cadastro. A lista de Clientes da unidade é a da rede inteira (a cliente é da rede).
 
 **Feito no Bloco Tags do plano de adaptação (2026-11-14, T1–T4, CL1–CL3,
 AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
@@ -316,7 +316,7 @@ AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
   As novas clientes de uma unidade (`metrics_core`, `metrics_new_clients_series`,
   `metrics_by_branch`) e o "Reativar" da unidade
   (`metrics_clientes_para_reativar`, sem o `p_tag`) são as clientes com
-  agendamento NÃO CANCELADO na unidade; o recorte que é a clínica inteira
+  agendamento NÃO CANCELADO na unidade; o recorte que é a rede inteira
   (`recorte_e_a_clinica`: nulo, ou todas as unidades ativas — a rede de uma
   unidade só) conta todas. Quem foi atendida em duas conta em cada uma, e uma
   vez no total (o ranking diz isso). A tela diz "atendidas na unidade".
@@ -335,7 +335,7 @@ AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
   na linha, sem o filtro "Unidade", sem contador por unidade
   (`getClientesAtivos` conta só a rede), e a última visita é a da rede. A
   busca "fora da unidade" (A17 da 8ª) saiu com `actions/clientes-da-clinica.ts`.
-  A ficha não tem mais "Unidades que frequenta"; o lead não tem mais o evento
+  A ficha não tem mais "Unidades que frequenta"; a oportunidade não tem mais o evento
   "Unidade" (`UNIT_CHANGED` fica só para os antigos).
 - **AG2** — o "Agendar" do card e do inbox escolhe a unidade numa caixa
   simples, que só aparece com mais de uma unidade (com uma, ela já vem
@@ -382,7 +382,7 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `metrics_by_branch`, `metrics_new_clients_series`, A24). Prova: `e2e/clientes-arquivar.spec.ts`.
 - **O "só os meus" não recorta a ficha da cliente** (o Heitor, 2026-11-07, 9ª simulação: "ve tudo,
   só os meus não se aplica para visualização de clientes pq os clientes são da clinica, isso já foi
-  decidido antes"): a profissional com a Agenda ou o Prontuário em "só os meus" abre a ficha de
+  decidido antes"): quem tem a Agenda ou o Prontuário em "só os meus" abre a ficha de
   qualquer cliente e vê a Visão geral e o Histórico inteiros — os atendimentos de outras
   profissionais, os valores, o plano e o contrato. O escopo continua valendo onde é do módulo: a
   aba Prontuário (o dado clínico de quem ela não atendeu) e a aba Financeiro (o OWN do Financeiro).
@@ -393,18 +393,18 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   planejamentos e a lista de acessos só no Prontuário. As outras leituras vão num `Promise.all`. Dado
   novo que uma aba só mostra entra na condição dela; o que a Visão geral usa, fora. Prova:
   `e2e/clientes-ficha-carrega-a-aba-aberta.spec.ts`.
-- **A ficha é da CLÍNICA, não da unidade de cadastro** (H5, "A cliente é da clínica, pode agendar
+- **A ficha é da REDE, não da unidade de cadastro** (H5, "A cliente é da clínica, pode agendar
   em qualquer unidade da clínica"; F6 da 5ª simulação, o Heitor: "concordo"): quem tem Clientes em
   Gerenciar edita os dados, as anotações e as tags e ARQUIVA/REATIVA a ficha de qualquer cliente da
-  rede, mesmo cadastrada em outra unidade — a recepção fixa na Zona Sul cuida da Marlene da
+  rede, mesmo cadastrada em outra unidade — quem tem só a Zona Sul (com Clientes em Gerenciar) cuida da Marlene da
   Moinhos. Toda gravação da ficha vai pelo SERVIDOR (cliente de serviço) com a rede na consulta:
   `atualizarClienteCore` e `toggleClientStatus` (até 2026-11-02 o arquivar ia pela sessão, e a RLS
   de `clients`, que recorta pela unidade de cadastro, o recusava com "Esta cliente é de outra
   unidade."). A RLS não foi alargada. Prova: `e2e/ficha-de-outra-unidade.spec.ts`,
   `e2e/abrangencia-unidade.spec.ts`.
   **E a lista da unidade é a da rede** (CL3 do Bloco Tags, 2026-11-14): o
-  portal de qualquer unidade lista TODAS as clientes da rede — a recepção
-  fixa do Batel acha a Helena da Água Verde na própria lista. A busca "Não
+  portal de qualquer unidade lista TODAS as clientes da rede — quem tem
+  só o Batel acha a Helena da Água Verde na própria lista. A busca "Não
   está nesta unidade?" da A17 da 8ª (2026-11-06), que remendava a lista pela
   tag, saiu junto. Prova: `e2e/tags-sem-unidade.spec.ts` (CL3).
 - **As abas da ficha são ABAS** (`tablist` "Abas da ficha" / `tab`, a escolhida com
@@ -473,7 +473,7 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 - **A aba Financeiro da ficha é do financeiro** (2026-10-20): os pagamentos e
   o crédito interno do cliente só são carregados para `financial: VIEW` ou
   quem recebe (`podeReceber`), e a aba some para os outros. Carregava para
-  quem tinha só o cadastro, e o SDR via cada pagamento. Os KPIs da visão geral
+  quem tinha só o cadastro, e quem tinha só Clientes e o CRM via cada pagamento. Os KPIs da visão geral
   (LTV, ticket) ficam: são agregados comerciais. Prova:
   `e2e/ficha-financeiro-so-com-modulo.spec.ts`.
 - `LgpdRequest`: pedido de acesso aos dados pelo titular. Só `type: "export"`
@@ -481,10 +481,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   guarda legal de prontuário e de registros fiscais. **Confirmado pelo Heitor
   no levantamento das regras** (H15, 2026-11-11, opção a: "não agora"): o
   sistema não registra pedido de eliminação; a cliente pede a eliminação pelo
-  contato da clínica, que responde à mão. **E a /privacidade diz isso** (D6,
+  contato da rede, que responde à mão. **E a /privacidade diz isso** (D6,
   de acordo; princípio 3 e "LGPD: só exportação" de 09/09): a página pública
   deixa de prometer uma eliminação que o sistema não faz — a eliminação é
-  feita sob pedido, pelo contato da clínica, respeitando as guardas legais
+  feita sob pedido, pelo contato da rede, respeitando as guardas legais
   (prontuário 20 anos, fiscal 5 anos). (C30, feita na F70: a /privacidade diz
   como pedir e os prazos; prova em `e2e/privacidade-publica.spec.ts`.) O aviso
   do pedido de exportação com prontuário chega também a quem tem o Prontuário
@@ -512,18 +512,18 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `prontuario_acessos`; baixar o pacote com prontuário pede o mesmo. O
   suporte não exporta (`bloqueioDoSuporte`). O pacote da equipe não aparece
   nos pedidos da cliente no app. Prova: `e2e/lgpd-exportacao-pela-equipe.spec.ts`.
-- **O pedido feito pelo app avisa a clínica, e a ficha aponta onde responder**
+- **O pedido feito pelo app avisa a equipe, e a ficha aponta onde responder**
   (A49 da 9ª simulação, 2026-11-07: a Beatriz procurou o pedido da Marina na
   ficha e no sino; ele estava em Configurações → LGPD). O `requestDataExport`
   avisa no sino, no `after()`, quem responde — Configurações em Gerenciar da
-  clínica toda e a Admin da rede (`avisarPedidoDaCliente`,
+  rede toda e a Admin da rede (`avisarPedidoDaCliente`,
   `lib/lgpd/aviso-do-pedido.ts`): "Pedido de dados (LGPD): Marina — … Responder
   até 22/11/2026 (15 dias do pedido), em Configurações → LGPD", com o "Abrir"
   da aba (`data.caminho`). A Visão geral da ficha diz o pedido do app
   (`[data-pedido-lgpd-da-ficha]`): o em aberto, "responder até …", e o dos
   últimos 30 dias já entregue, "o pacote já está no app dela"; a quem responde,
-  o link "Abrir Configurações → LGPD"; aos outros, "Quem administra a clínica
-  responde em Configurações → LGPD". O pacote da equipe (`requested_via =
+  o link "Abrir Configurações → LGPD"; aos outros, "A resposta é em
+  Configurações → LGPD." O pacote da equipe (`requested_via =
   'equipe'`) não entra. Prova: `e2e/lgpd-atritos-da-9.spec.ts`.
 - **O plano cancelado diz o cancelamento no pacote** (sobra da F41, 9ª
   simulação): `cancelamento: { em, valorUsado, valorQueCaiu }` no JSON e, no
@@ -558,10 +558,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   `e2e/lgpd-responsavel-legal.spec.ts`, `tests/lgpd-responsavel-no-pacote.test.ts`.
 - **O pedido diz o PRAZO** (A60 da 5ª simulação; `data-request-card.tsx`): em
   preparo, "costuma ficar pronto em poucos minutos"; com o prontuário à espera
-  da clínica, "responde até DD/MM (15 dias do pedido)" — o prazo da LGPD
-  (art. 19, II). Prova: `e2e/lgpd-exportacao.spec.ts`. **A aba LGPD da clínica
+  da liberação, "responde até DD/MM (15 dias do pedido)" — o prazo da LGPD
+  (art. 19, II). Prova: `e2e/lgpd-exportacao.spec.ts`. **A aba LGPD da rede
   diz o MESMO prazo** (A50 da 8ª simulação, 2026-11-06: a cliente via "até
-  21/11" e a clínica não via nada): "Responder até 21/11/2026 (15 dias do
+  21/11" e a equipe não via nada): "Responder até 21/11/2026 (15 dias do
   pedido)" (`[data-prazo-de-resposta]`) no pedido com o prontuário a liberar ou
   ainda em preparo, e, decidido o prontuário, "Prontuário liberado em 06/11/2026
   · o pacote novo, com o prontuário, fica pronto em poucos minutos" (ou
@@ -579,8 +579,8 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   liberado — era sempre "não incluído", como se não tivesse pedido
   (simulação de 2026-10-20). **E o pedido também** (A56 da 8ª): ao lado do
   `solicitacao.incluiProntuario`, `solicitacao.prontuario` diz "pedido —
-  pendente de liberação pela clínica", "pedido — liberado e incluído neste
-  pacote", "pedido — não liberado pela clínica" ou "não pedido"
+  pendente de liberação pela equipe", "pedido — liberado e incluído neste
+  pacote", "pedido — não liberado pela equipe" ou "não pedido"
   (`prontuarioNaSolicitacao`, `lib/lgpd/situacao-do-prontuario.ts`). Prova:
   `tests/lgpd-situacao-do-prontuario.test.ts`, `e2e/lgpd-exportacao.spec.ts`.
   **Liberar pede confirmação** (o prontuário vai para a cliente; a confirmação
@@ -619,7 +619,7 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   baixa — no JSON (`insumos`, lista vazia quando nada foi usado) e no PDF ("—
   insumos: Gel condutor 1 un"). A entrada sem atendimento segue com o
   `products_used` de antes. Prova: `e2e/lgpd-insumos-do-atendimento.spec.ts`.
-- **A ficha de saúde (pré-atendimento) no pacote** (2026-10-21): o
+- **A ficha de saúde no pacote** (2026-10-21): o
   HISTÓRICO (`fichasDeSaude`: quando foi mandada, ficha completa ou
   confirmação, a situação, quando e por onde foi respondida) vai na parte
   geral; as perguntas e respostas, pergunta a pergunta e com o rótulo da
@@ -633,8 +633,8 @@ nos dois portais — pedido do Heitor, saiu de Clientes e de Oportunidades;
 prévia → importação em segundo plano. ⚠️ A aba abre com `clients` OU `crm` em
 Gerenciar (`alternativas` em `lib/configuracoes/abas.ts`, lidas por
 `abaLiberada` na tela, na busca e no menu; a página de Configurações aceita
-`MODULOS_DAS_ABAS`): a SDR que só tem o CRM também importa a lista de leads
-dela — e vê Configurações só com essa aba.
+`MODULOS_DAS_ABAS`): quem só tem o CRM em Gerenciar também importa a lista de
+contatos dela — e vê Configurações só com essa aba.
 - **O arquivo escolhido antes de a tela hidratar vale** (A54 da 7ª simulação,
   2026-11-05: o "Continuar" ficava desligado — o `onChange` do React ainda não
   existia, e o arquivo ficava no campo sem chegar ao estado): ao montar, o
@@ -646,8 +646,8 @@ dela — e vê Configurações só com essa aba.
   clientes ou o que for, e na importação poder escolher se aquilo pertence a
   uma unidade"): quem tem unidade fixa não importa (`recusaDaConfigDaClinica`;
   a aba diz "Esta configuração é da rede toda"), e a importação escolhe a
-  unidade a que os registros pertencem. (Correção C73: hoje a gerente importa
-  para a unidade dela.) `plataforma.md`, "A configuração da clínica toda".
+  unidade a que os registros pertencem. (Correção C73: hoje quem tem só uma unidade importa
+  para a unidade dela.) `plataforma.md`, "A configuração da rede toda".
 - **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
   escolhida; `clients: MANAGE`) ou *contatos do CRM* (só a
   pessoa: nome, telefone, e-mail, rede social, tags; `crm: MANAGE`). Oportunidade no funil é
@@ -658,13 +658,13 @@ dela — e vê Configurações só com essa aba.
 - **Os campos que se oferecem dependem da importação** (`camposDoDestino`,
   2026-10-13 — "quanto mais completa, melhor"): a oportunidade se decide no
   PASSO 1, antes das colunas, porque com ela entram os campos do CARD —
-  origem (as origens DA CLÍNICA primeiro — `crm_origens`, A14 da 7ª —, depois
+  origem (as origens DA REDE primeiro — `crm_origens`, A14 da 7ª —, depois
   os apelidos: "facebook" é Meta Ads; o desconhecido vira "Outro", não erro;
   `normalizarOrigem` com `refs.origens`), valor estimado ("R$ 1.500,00"),
   observações, procedimento de interesse, etapa (do funil escolhido), responsável
   (nome ou e-mail da equipe ativa), UTM source/medium/campaign e tags da
   oportunidade. Etapa e responsável da linha vencem os da tela; vazio, valem os
-  da tela. ⚠️ A COLUNA de responsável distribui leads: a action a recusa para
+  da tela. ⚠️ A COLUNA de responsável distribui oportunidades: a action a recusa para
   quem não tem `podeTrocarResponsavel` (a tela nem a oferece).
 - **O que a linha cita por nome** (unidade, etapa, responsável, procedimento) é
   resolvido sem acento nem caixa; não achado — ou ambíguo, como dois membros
@@ -672,7 +672,7 @@ dela — e vê Configurações só com essa aba.
   página manda; o servidor monta as suas (`referenciasDaRede`,
   `lib/importacao/referencias.ts`).
 - **No cliente**: a situação (ativo/inativo) vale só para quem NASCE (quem já
-  existe fica como a clínica tem); a unidade POR LINHA só na rede (quem é de
+  existe fica como a rede tem); a unidade POR LINHA só na rede (quem é de
   unidade importa para a dela), e a escolhida na tela vale para as linhas sem.
   A rede social não é da ficha: no destino clientes ela só vai para o card.
 - **O arquivo é lido no navegador** (`csv.ts`: UTF-8 ou Windows-1252, `;` `,`
@@ -682,7 +682,7 @@ dela — e vê Configurações só com essa aba.
 - **O telefone se EXIBE formatado em toda tela, seja qual for o formato gravado** (A25, 2026-10-27):
   `maskPhone` (`@estetica-os/utils`) aceita só dígitos, máscara, "+55" e o 55 do WhatsApp, e devolve
   como veio o que não é número nacional. Tela nova que mostra telefone passa por ele; a ficha
-  criada (cadastro, conversão do lead) grava `(48) 99000-0011`, como a de balcão. Prova:
+  criada (cadastro, conversão da oportunidade) grava `(48) 99000-0011`, como a de balcão. Prova:
   `e2e/telefone-formatado.spec.ts`, `packages/utils/tests/format.test.ts`.
 - **Telefone no formato do WhatsApp** (só dígitos, 55 + DDD + número): é o que
   `contacts.identifiers` guarda e o webhook manda. Sem DDD é erro (não se
@@ -691,7 +691,7 @@ dela — e vê Configurações só com essa aba.
   a planilha o traz COM — procurar uma só dobrava a pessoa. A oportunidade vai
   com o telefone da pessoa ACHADA (o gatilho a liga pelo número exato).
 - **Quem já existe só tem o VAZIO completado** e as tags juntadas — nunca se
-  troca o que a clínica tem; importar de novo é seguro. Cliente: pelo CPF; sem
+  troca o que a rede tem; importar de novo é seguro. Cliente: pelo CPF; sem
   achar, a ficha SEM CPF do mesmo telefone (`cliente_por_telefone`,
   `p_sem_cpf`) — a regra do cadastro manual (telefone de ficha com CPF pode
   ser de outra pessoa). Contato: pelo telefone exato; sem telefone, pelo
@@ -774,7 +774,7 @@ dela — e vê Configurações só com essa aba.
   e `.avisos`, com o nome da linha; `com_aviso`). Prova:
   `e2e/importacao-migracao.spec.ts`, `tests/importacao-migracao.test.ts`.
 - **O relatório e o histórico** (A6 da 8ª simulação: a aba voltava ao passo 1
-  sem histórico, e a dona só descobria a recusada pela ausência). O CSV
+  sem histórico, e quem importava só descobria a recusada pela ausência). O CSV
   (`/api/importacoes/[id]/erros`, "Baixar o relatório") traz "Linha; Nome;
   Situação; Motivo" — as recusadas e as importadas com aviso. A aba mostra
   "Importações anteriores" (`importacoesAnteriores`,
@@ -888,7 +888,7 @@ São quatro entidades e é fácil confundi-las. A regra é:
 | **`contacts`** | a **PESSOA** | uma por rede |
 | **`conversations`** | a **THREAD** — um canal, uma caixa | várias por pessoa |
 | **`leads`** | a **OPORTUNIDADE** no funil | várias por pessoa |
-| **`clients`** | a **FICHA** na clínica (CPF, prontuário, financeiro) | no máximo uma por pessoa |
+| **`clients`** | a **FICHA** na rede (CPF, prontuário, financeiro) | no máximo uma por pessoa |
 
 **A conversa NÃO é a pessoa.** Ela era, e isso funcionava enquanto cada pessoa
 tinha uma conversa só. Deixou de funcionar com vários números: o dedup inclui a
@@ -898,8 +898,8 @@ dois nomes, duas listas de tags e duas atribuições de anúncio. E
 `leads.conversation_id` é singular, então o card ficava preso numa delas
 enquanto o atendimento acontecia na outra.
 
-O buraco aparecia exatamente no **handoff** — lead entra pelo número de
-marketing, a SDR qualifica e agenda, a unidade assume por outro número —, que é
+O buraco aparecia exatamente no **handoff** — o contato entra pelo número de
+marketing, quem cuida do comercial qualifica e agenda, a unidade assume por outro número —, que é
 o momento em que ler o histórico é o que mais importa. E já acontecia antes dos
 múltiplos números, entre Instagram e WhatsApp: ali a mesma pessoa sempre foram
 duas conversas.
@@ -983,7 +983,7 @@ migration `20260928000007`), e o fim da lista busca a próxima pelo cursor
   carregadas: o dono que só aparece na página 5 sumiria do menu.
 - **O realtime recarrega o tanto que já está na tela**, com os filtros de
   agora — recarregar "do zero" encolheria a lista de quem rolou.
-- O alcance entra na mesma consulta: no modo "pela conversa" os leads do dono
+- O alcance entra na mesma consulta: no modo "pela conversa" as oportunidades do dono
   vêm de `leads_do_dono` (um array só; o select parava em 1000).
 - **O filtro "Número"** (r2-cfg-06, 2026-11-03): as conversas de um número
   de WhatsApp — também o REMOVIDO, cujas conversas ficam no inbox
@@ -1017,7 +1017,7 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
 - ⚠️ **O dono é posto por GATILHO** (`trg_oportunidade_ganha_contato`): a
   pessoa da conversa de origem, senão a do telefone (só dígitos, o formato do
   webhook), senão uma nova. O cadastro manual (`createLead`) nunca gravou
-  `conversation_id`, e o lead nascia sem pessoa — o motivo de não ser código.
+  `conversation_id`, e a oportunidade nascia sem pessoa — o motivo de não ser código.
   **O telefone digitado vira o do WhatsApp** (A16 da 6ª simulação; migration
   `20261104002301`): o número nacional (10 ou 11 dígitos, sem "+") ganha o
   55, a busca olha as duas formas do celular e a forma antiga sem o 55, e a
@@ -1027,7 +1027,7 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
 - **A oportunidade tem "Agendar"** (A16 da 6ª simulação, 2026-11-04): o
   card do quadro (os dois portais) tem o botão ao lado de "Ir para a
   conversa", a MESMA janela do painel do inbox (`ScheduleModal`,
-  `createCrmAppointment`): nome e telefone do lead, a ficha nasce ligada ao
+  `createCrmAppointment`): nome e telefone da oportunidade, a ficha nasce ligada ao
   card (`leads.client_id`), o agendamento é COMMERCIAL e a linha do tempo
   do card diz que houve o agendamento. Aparece com o CRM em Gerenciar e a
   agenda no plano (`podeAgendar`). Prova: `e2e/crm-agendar-liga-oportunidade.spec.ts` ("A16").
@@ -1037,7 +1037,7 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   `lib/unidades/unidade-inicial.ts` — com uma só, ela). Prova:
   `tests/agenda-sobras-da-f33.test.ts`. **A unidade é uma caixa simples**
   (AG2 do Bloco Tags, 2026-11-14): aparece só com mais de uma unidade — com
-  uma, ela já vem escolhida e a caixa some. A tag do lead não escolhe nada (o
+  uma, ela já vem escolhida e a caixa some. A tag da oportunidade não escolhe nada (o
   A25 da 14ª, `unidadeDaTag`, saiu: não existe tag de unidade). Prova:
   `e2e/tags-sem-unidade.spec.ts` ("AG2").
 - **Os separadores de dia da conversa são do dia de Brasília** (sobra da F33):
@@ -1049,7 +1049,7 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   o histórico junto (`lead_events` em cascata). A que não vai adiante é marcada
   perdida. Não há action, botão nem política de DELETE — e `lead_events` é
   append-only pela sessão (ler e acrescentar). Prova: `e2e/lead-nao-se-apaga.spec.ts`.
-- **Com escopo OWN, o inbox segue a pessoa OU a conversa — escolha da clínica**
+- **Com escopo OWN, o inbox segue a pessoa OU a conversa — escolha da rede**
   (`tenants.inbox_visibilidade`, Configurações → Cargos, pede `roles: MANAGE`).
   Decisão do Heitor em 2026-09-26: "pessoa" é o padrão, mas configurável.
   - **Pela pessoa:** tem oportunidade sua → você vê todas as threads dela; só
@@ -1090,15 +1090,15 @@ em "Ver" pede ao menos um relatório antes de salvar. `escopoInicial`
 **O RESPONSÁVEL da oportunidade** (`leads.owner_id`, 2026-10-09). Na tela e no
 histórico é sempre "Responsável", nunca "Dono" (decisão do Heitor: o mesmo
 conceito não pode ter dois nomes) — no código segue `owner`.
-- Nasce de quem cria o lead; o card mostra as iniciais (o nome no `title`), e
-  o modal do lead tem o campo "Responsável" (os membros ATIVOS da rede, mais
+- Nasce de quem cria a oportunidade; o card mostra as iniciais (o nome no `title`), e
+  o modal da oportunidade tem o campo "Responsável" (os membros ATIVOS da rede, mais
   "Sem responsável" — que devolve o card ao bolo comum).
-- **O lead novo ABRE com quem o cria, e o vazio só tira o responsável quando
+- **A oportunidade nova ABRE com quem a cria, e o vazio só tira o responsável quando
   a tela mostrou o campo** (D1 da 11ª simulação, 2026-11-10; princípio 3: a
-  Tatiane criou 6 leads seguidos e 4 nasceram "Sem responsável"). Da 2ª
-  abertura do "Novo lead" em diante a lista de responsáveis já estava em
+  Tatiane criou 6 oportunidades seguidas e 4 nasceram "Sem responsável"). Da 2ª
+  abertura do "Nova oportunidade" em diante a lista de responsáveis já estava em
   memória: o select aparecia em "Sem responsável" até o servidor responder, e
-  o lead gravado nesse meio-tempo mandava `owner_id=''`. Agora o modal abre
+  a oportunidade gravada nesse meio-tempo mandava `owner_id=''`. Agora o modal abre
   com o `eu` da lista em memória, a resposta que chega depois não troca o que
   a pessoa escolheu, e o select vai com a marca `_responsavelNaTela`; sem ela,
   o `owner_id` vazio não troca nada (`responsavelDoForm`, `createLead` e
@@ -1146,7 +1146,7 @@ banco deixava funil sem etapa. Prova: `e2e/crm-funil-padrao.spec.ts`,
 existe movimento automático padrão nos funis; caso queiram, podem fazer isso
 através do módulo de automações com as regras que quiserem, lembre-se, o
 objetivo é ser o mais flexível possível"). Quem move é a pessoa (arraste,
-painel do inbox, modal, Copilot) ou uma AUTOMAÇÃO da clínica ("Mover de
+painel do inbox, modal, Copilot) ou uma AUTOMAÇÃO da rede ("Mover de
 etapa", "Marcar ganho/perdido"). Agendar não leva mais o card à etapa
 "Agendado" (era o A12, pela `crm_stages.marca`, que ficou sem leitor); a
 linha do tempo continua dizendo que houve o agendamento. Para ter o
@@ -1172,8 +1172,8 @@ etapas, a cor e o desfecho da etapa e os motivos de perda pedem
 (`actions/crm-funnels.ts`, `crm-stages.ts`, `crm-motivos.ts`) e na tela
 ("Configurar funis" só aparece com Configurações, nos dois portais). Mover os
 cards, criar e editar oportunidades continua com quem opera o quadro
-(`crm: MANAGE`). Antes bastava o CRM em Gerenciar, e a SDR mexia no funil da
-clínica inteira. Prova: `e2e/crm-funis-pede-configuracoes.spec.ts`. E é da
+(`crm: MANAGE`). Antes bastava o CRM em Gerenciar, e quem tinha só o CRM mexia no funil da
+rede inteira. Prova: `e2e/crm-funis-pede-configuracoes.spec.ts`. E é da
 REDE (H7, 2026-11-01): quem tem unidade fixa não configura o funil nem com
 Configurações em Gerenciar (`recusaDaConfigDaClinica`; o botão some do quadro
 da unidade). Prova: `e2e/permissoes-gerente-de-unidade.spec.ts`.
@@ -1183,14 +1183,14 @@ a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um
 motivo da lista da REDE (`crm_motivos_perda`, editada em Configurar funis →
 "Motivos de perda"; desativar tira da escolha sem apagar) e uma observação
 opcional. Vale no arraste do quadro, no painel do inbox (marcar perdida ou
-escolher a etapa) e no modal do lead.
+escolher a etapa) e no modal da oportunidade.
 - Tudo passa por `moverEtapaCore` com `exigirMotivo: true` (`updateLeadStage`,
   `definirSituacaoOportunidade` — que até então gravava a etapa direto, sem
   linha do tempo nem evento de ganho/perda) ou por `camposDaPerda`
   (`updateLead`). Sem motivo, a action recusa.
-- O Copilot e as automações movem sem perguntar: o lead fica sem motivo e
+- O Copilot e as automações movem sem perguntar: a oportunidade fica sem motivo e
   conta como "Sem motivo" no relatório.
-- No lead: `motivo_perda_id`, `motivo_perda_obs`, `perdido_em`; sair da
+- Na oportunidade: `motivo_perda_id`, `motivo_perda_obs`, `perdido_em`; sair da
   etapa perdida limpa os três (a linha do tempo guarda o histórico, com o
   motivo na mudança do `STAGE_CHANGED`).
 - Relatórios → Comercial → "Motivos de perda": `metrics_motivos_de_perda`
@@ -1204,18 +1204,18 @@ escolher a etapa) e no modal do lead.
   horário que sirva, Desistiu, Outro (gatilho `trg_motivos_perda_na_rede_nova`).
 Prova: `e2e/crm-motivo-da-perda.spec.ts`.
 
-**As origens do lead são da CLÍNICA** (A14 da 7ª simulação, 2026-11-05;
-princípio 1, "a clínica decide"): eram uma lista fixa (`LEAD_SOURCES`), e a
+**As origens da oportunidade são da REDE** (A14 da 7ª simulação, 2026-11-05;
+princípio 1, "a rede decide"): eram uma lista fixa (`LEAD_SOURCES`), e a
 Gardênia não tinha onde pôr "Feira de noivas". `crm_origens` (migration
 `20261105003101`; RLS sem política permissiva, com as restritivas do suporte),
-editada em Configurar funis → "Origens dos leads" como os motivos de perda
+editada em Configurar funis → "Origens das oportunidades" como os motivos de perda
 (`OrigensDoLeadConfig`, `actions/crm-origens.ts`: Configurações em Gerenciar,
 da rede — H7). A rede nasce com as de sempre (Meta Ads, Google Ads, Orgânico,
 Instagram, Indicação, WhatsApp, Telefone, Site, Evento, Outro — gatilho
 `trg_origens_na_rede_nova`; as redes que já existiam ganharam as mesmas).
 Desativar tira da escolha sem apagar. `leads.source` segue o NOME (texto): nada
 se reescreve, e a origem do anúncio continua vindo da atribuição. Oferecem as
-da clínica: o modal do lead (o select passou a controlado — a lista chega
+da rede: o modal da oportunidade (o select passou a controlado — a lista chega
 depois de abrir), o painel do inbox (`useOrigensDaRede`), o Copilot
 (`criar_oportunidade`) e a importação (acima). Prova:
 `e2e/crm-atritos-da-7.spec.ts` ("A14"), `e2e/crm-funis-pede-configuracoes.spec.ts`.
@@ -1236,10 +1236,10 @@ no botão, pelo `updateLeadStage` de sempre. Uma ida ao banco para o quadro
 inteiro (`crm_sinais_dos_clientes`, migration `20261105003102`, só
 `service_role`; `lib/crm/sinais-do-card.ts`). **Os lembretes do CRM são avisos para a pessoa, nunca o card andando** (A42 e
 A45 da 9ª simulação, 2026-11-07; princípio 6). Migration `20261107004302`.
-- **O lembrete de retorno** (A42: a SDR só tinha as Observações para "ligar de
+- **O lembrete de retorno** (A42: quem cuidava do card só tinha as Observações para "ligar de
   novo na quinta"): o card tem "Lembrete de retorno" — "Retornar em" (o DIA,
-  `leads.retornar_em`) e "O que fazer no retorno" (`retornar_obs`), no "Novo
-  lead" e na edição (`diaDoRetorno`, `lib/crm/retorno.ts`) — e o quadro diz
+  `leads.retornar_em`) e "O que fazer no retorno" (`retornar_obs`), no "Nova
+  oportunidade" e na edição (`diaDoRetorno`, `lib/crm/retorno.ts`) — e o quadro diz
   "Retornar 12/11", "Retornar hoje" (aviso) ou "Retorno atrasado (10/11)"
   (`[data-retornar-em]`, `textoDoRetorno`). No dia, o cron `crm-lembretes` (de
   hora em hora) avisa o RESPONSÁVEL no sino: "Retorno de hoje: X" a partir das
@@ -1247,7 +1247,7 @@ A45 da 9ª simulação, 2026-11-07; princípio 6). Migration `20261107004302`.
   (10/11)"; uma vez por dia marcado (`retorno_avisado_em`, reivindicado antes
   de sair; trocar a data o zera). Card ganho ou perdido não avisa; sem
   responsável, não há a quem avisar (o card mostra).
-- **O ganho a marcar** (A45: a SDR criou o lead, outra pessoa vendeu o plano, e
+- **O ganho a marcar** (A45: uma pessoa criou a oportunidade, outra vendeu o plano, e
   o card ficou em "Mover para Fechado"): quando a cliente ligada compra (pacote,
   pré-pago ou plano aceito) com a oportunidade aberta — a régua da sugestão do
   card (A18 da 7ª) —, o responsável recebe "Marque o ganho: X — X comprou Plano
@@ -1264,17 +1264,17 @@ A45 da 9ª simulação, 2026-11-07; princípio 6). Migration `20261107004302`.
 **O resumo do quadro diz a base e leva aos perdidos** (A44 da 9ª simulação,
 2026-11-07): "0,0% de conversão: 0 ganhas de 7 oportunidades do funil (abertas,
 ganhas e perdidas)" (`ResumoDoQuadro`, `[data-resumo-do-quadro]`) — era "0 de 7
-ganhas", sem dizer que a base é todo lead; e o "N perdidos" é um botão que leva
+ganhas", sem dizer que a base é toda oportunidade; e o "N perdidos" é um botão que leva
 à coluna de desfecho LOST, fora da primeira dobra (`IrParaOsPerdidos`). A
 conta não mudou. **"Ir para a conversa" sem canal diz que não há canal** (A43):
 sem conversa da pessoa e sem WhatsApp conectado (`redeTemWhatsapp`),
 `openLeadConversation` não cria mais a conversa de WhatsApp com o banner "não
-está conectado": diz "Ainda não há conversa com X, e a clínica não tem um
+está conectado": diz "Ainda não há conversa com X, e a rede não tem um
 WhatsApp conectado…", com o caminho (Configurações → Integrações, ou pedir a
 quem administra). Prova: `e2e/crm-atritos-da-9.spec.ts` ("A43", "A44").
 
 **A idade do card é pelo DIA de Brasília** (D12 da 12ª simulação, 2026-11-11;
-princípio 3): o lead criado às 23:20 de 10/11 dizia "hoje" às 00:05 de 11/11 —
+princípio 3): a oportunidade criada às 23:20 de 10/11 dizia "hoje" às 00:05 de 11/11 —
 era `differenceInDays`, 24 h corridas. "hoje", "ontem" e "há N dias" são os
 dias de calendário (`idadeDoLead`, `lib/crm/idade-do-lead.ts`, por `dayKeyTZ`).
 Prova: `tests/defeitos-da-12.test.ts` ("D12").
@@ -1356,8 +1356,8 @@ o contato junto.
 ❌ Ler os insumos do atendimento de medical_record_entries.products_used (nada grava ali) — moram no estoque: o movimento PROCEDURE_USAGE do appointment_id (D18 da 8ª)
 ❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
 ❌ Editar nome/telefone numa cópia (conversa, oportunidade) sem propagarDadosDaPessoa
-❌ Buscar oportunidades por leads.conversation_id (é a thread de ORIGEM; a dona é contato_id)
-❌ Ler leads pela SESSÃO numa tela que roda na unidade (a política de leitura só deixa passar quem é da rede, e o lead é sempre da rede: o quadro da unidade via "0 leads" até 2026-10-20) — o servidor lê pelo cliente de serviço, com a rede e o ownerFilter na consulta
+❌ Buscar oportunidades por leads.conversation_id (é a thread de ORIGEM; a pessoa é contato_id)
+❌ Ler leads pela SESSÃO numa tela que roda na unidade (a política de leitura só deixa passar quem é da rede, e a oportunidade é sempre da rede: o quadro da unidade via "0 leads" até 2026-10-20) — o servidor lê pelo cliente de serviço, com a rede e o ownerFilter na consulta
 ❌ Agrupar a fila do inbox por pessoa — é uma linha por conversa (decisão de 2026-09-26)
 ❌ Ler tags de conversations.tags (é semente; a fonte é contacts.tags)
 ❌ Procurar "o anúncio do cliente" na conversa mais recente em vez da mais recente COM anúncio
@@ -1367,8 +1367,8 @@ o contato junto.
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
 ❌ Escrever "lead" em texto que se lê (tela, aviso, erro da action, o "Não consegui ___", rótulo, relatório, Copilot) — a pessoa é o "contato", o card é a "oportunidade" (CR1; tests/oportunidade-no-texto trava)
 ❌ Chamar o cadastro da pessoa do card de "Converter" — é "Cadastrar cliente" / "Cadastrar como cliente", no quadro e no inbox (CR2)
-❌ Mover o card sozinho por um fato do sistema (agendar, concluir, pagar) — "não existe movimento automático padrão nos funis": é a automação da clínica (crm-05)
-❌ Levar lead a etapa perdida pela tela sem o motivo, ou gravar crm_stage_id fora de moverEtapaCore / camposDaPerda (o motivo e o perdido_em ficam velhos)
+❌ Mover o card sozinho por um fato do sistema (agendar, concluir, pagar) — "não existe movimento automático padrão nos funis": é a automação da rede (crm-05)
+❌ Levar oportunidade a etapa perdida pela tela sem o motivo, ou gravar crm_stage_id fora de moverEtapaCore / camposDaPerda (o motivo e o perdido_em ficam velhos)
 ❌ Importar (planilha, lote) emitindo evento de domínio, ou trocando dado que a ficha já tem
 ❌ Recusar a linha da planilha por um campo OPCIONAL ilegível (CPF, e-mail, data, unidade, etapa…): ela entra sem ele, com o aviso — só o impossível recusa (D2 da 8ª, princípio 2)
 ❌ Gravar a "última visita" da planilha como atendimento (inventa agendamento, receita e comissão): é clients.ultima_visita_antes (F35)
@@ -1379,17 +1379,17 @@ o contato junto.
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
 ❌ Ler o owner_id vazio sem a marca _responsavelNaTela como "Sem responsável", ou abrir a "Nova oportunidade" com um Responsável diferente do que a tela vai mandar (D1 da 11ª)
 ❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
-❌ Oferecer a origem do lead da lista fixa (LEAD_SOURCES) onde a clínica escolhe — são as origens dela (crm_origens: origensDaRede, useOrigensDaRede); LEAD_SOURCES fica para a atribuição do anúncio e o fallback (A14 da 7ª)
+❌ Oferecer a origem da oportunidade da lista fixa (LEAD_SOURCES) onde a rede escolhe — são as origens dela (crm_origens: origensDaRede, useOrigensDaRede); LEAD_SOURCES fica para a atribuição do anúncio e o fallback (A14 da 7ª)
 ❌ Dizer "hoje"/"ontem" de um registro por 24 h corridas (differenceInDays) — é o dia de Brasília (idadeDoLead, dayKeyTZ — D12 da 12ª)
 ❌ Mover o card porque a cliente comprou — o card SUGERE ("Mover para Fechado"), quem move é a pessoa (A18 da 7ª, crm-05)
 ❌ Renomear a ficha sem levar o nome às pessoas ligadas a ela (atualizarClienteCore → propagarDadosDaPessoa — A21 da 7ª)
 ❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)
-❌ Gravar a ficha da cliente (dados, anotações, arquivar) pela SESSÃO — a RLS recorta pela unidade de cadastro e a cliente é da clínica: é pelo servidor, com a rede na consulta
+❌ Gravar a ficha da cliente (dados, anotações, arquivar) pela SESSÃO — a RLS recorta pela unidade de cadastro e a cliente é da rede: é pelo servidor, com a rede na consulta
 ❌ Lançar a trava de módulo (assertPermission) num layout.tsx de seção: sai antes do streaming e a resposta é 500 — o layout sem o módulo só deixa passar a página, e a trava é dela (D11 da 7ª)
 ❌ Recusar o acesso ao app de quem tem passaporte ou RNE, ou escolher a senha inicial fora de documentoDoAcesso (o CPF, senão o documento da ficha — decisão 1 da 7ª)
-❌ Ligar a ficha à conta de outra clínica sem o MESMO documento (login_de_cliente_para_ligar_doc: o CPF, ou o tipo e o número do passaporte/RNE)
+❌ Ligar a ficha à conta de outra rede sem o MESMO documento (login_de_cliente_para_ligar_doc: o CPF, ou o tipo e o número do passaporte/RNE)
 ❌ Comparar telefone pelos últimos 8 dígitos no SQL (dois números do mesmo final viram a mesma pessoa): é private.telefone_casa com o número inteiro (≥ 10 dígitos), e no navegador telefoneCasaComDigitos (F70, C28)
-❌ Gravar o telefone de lead, contato ou card sem telefoneParaGravar (lib/contatos/propagar.ts): o formato do WhatsApp, e o incompleto recusado (F70, C28)
+❌ Gravar o telefone da oportunidade, do contato ou do card sem telefoneParaGravar (lib/contatos/propagar.ts): o formato do WhatsApp, e o incompleto recusado (F70, C28)
 ❌ Editar o card (updateLead) sem leadAoAlcance ANTES de gravar, nem conferir a linha devolvida (F70, C27)
 ❌ Procurar cliente com ilike no nome ou no telefone cru (Copilot, seletores): é a regra única buscar_clientes / clienteCasaComBusca (D6 da 8ª; F70, C5)
 ❌ Importar (importarContatos, retomarImportacao) sem recusaDaConfigDaClinica: as Importações são de quem é da rede (H8; F70, C73)

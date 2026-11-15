@@ -17,7 +17,7 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
   própria dele não o acha aqui. O navegador manda só o termo e o slug do
   portal; `buscarTudo` (`actions/busca.ts`) decide os tipos por
   `tiposPermitidos(ctx.permissions)` (o módulo da tela de cada tipo), o dono
-  por `ownerFilter` (CRM e agenda) e a unidade por `ctx.branchId ?? filial do
+  por `ownerFilter` (CRM e agenda) e a unidade por `ctx.branchId ?? unidade do
   slug` com `assertUnidade`. Cliente final é recusado.
 - **Conversas passam por `idsDaPaginaDoInbox`** (`lib/inbox/pagina.ts`), a
   MESMA conta da lista do inbox (dono, modo pessoa × conversa, caixas do cargo)
@@ -48,7 +48,7 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
     Gerenciar e as oportunidades no plano — no portal da unidade, só quem é da
     rede (H7: a unidade fixa não configura funis);
   - duas telas achadas pelo mesmo apelido dizem qual é qual
-    (`SUBTITULO_PELO_APELIDO`): "Os termos e contratos emitidos e assinados" ×
+    (`SUBTITULO_PELO_APELIDO`): "Os documentos emitidos e assinados" ×
     "Os modelos de termo e contrato (a configuração)";
   - no portal da unidade, quem é da REDE acha também as abas que só a rede tem
     (as taxas e comissões, a fidelidade, as unidades…), com o endereço da rede
@@ -88,7 +88,7 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
   `service_role`, a regra de casar da `busca_universal`). Quem tem
   oportunidade ou conversa já se acha por elas, com o alcance de lá. Só para
   quem CRIA oportunidade (CRM em Gerenciar, e o recurso `oportunidades`):
-  abrir leva ao quadro com `?contato=<id>`, e o "Novo lead" abre sozinho com
+  abrir leva ao quadro com `?contato=<id>`, e o "Nova oportunidade" abre sozinho com
   o nome, o telefone e o e-mail dela, lidos no SERVIDOR
   (`pessoaParaNovoLead`, `lib/crm/pessoa-para-novo-lead.ts`); a oportunidade
   nasce ligada a ESSA pessoa (`_contatoId` em `createLead`, conferido: da rede

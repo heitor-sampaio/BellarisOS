@@ -126,7 +126,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     // O "Já pago" (C5, F65): o que a cliente já pagou deste procedimento — a
     // sessão livre do plano, ou o crédito de pacote/pré-pago — entra sozinho,
     // como na janela "+ Agendar" (A20 da 8ª, princípio 3). Sem ele, o Copilot
-    // agendava avulso e o checkout cobrava de novo.
+    // agendava avulso e a comanda do PDV cobrava de novo.
     const pago = clientId ? await pagoParaAgendar(c.admin, c.ctx.tenantId!, clientId, proc.id) : null
     const credito: CreditoDeAgendamento | null = pago?.tipo === 'CREDITO' ? pago.credito
       : pago?.tipo === 'PLANO' ? { tipo: 'PLANO', id: pago.sessionId } : null
@@ -191,7 +191,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       scheduledAt: p.scheduledAt, notes: p.notes, source: 'INTERNAL', credito,
     })
     // O crédito que outro agendamento pegou entre o cartão e o Confirmar: agenda
-    // avulso, como o app (o checkout cobra) — e a mensagem diz.
+    // avulso, como o app (a comanda do PDV cobra) — e a mensagem diz.
     let r = await agendarCom(p.credito ?? null)
     let semOCredito = false
     if ('error' in r && p.credito && r.error === CREDITO_JA_USADO) { r = await agendarCom(null); semOCredito = true }
@@ -349,7 +349,9 @@ export const fazerCheckIn: FerramentaDeEscrita<{ agendamento: string }, { appoin
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
     if (!ag) return { erro: 'Agendamento não encontrado.' }
-    if (ag.status !== 'SCHEDULED') return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
+    // O agendado E o confirmado, como o núcleo da agenda (checkinCore) e a
+    // descrição — recusava o confirmado (CP1).
+    if (ag.status !== 'SCHEDULED' && ag.status !== 'CONFIRMED') return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
     return {
       resumo: {
         titulo: 'Check-in — o cliente chegou',

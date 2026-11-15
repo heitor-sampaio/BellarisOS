@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { comMarcaDoSuporte, sessaoDeSuporteDaEscrita } from './marca-do-suporte'
 import { atorDaEscrita, comAtor } from './ator-da-escrita'
+import { comVia } from './via-da-escrita'
 
 // Client com service role — usa HTTPS, não precisa de DATABASE_URL
 // Nunca expor no client-side
@@ -11,10 +12,13 @@ import { atorDaEscrita, comAtor } from './ator-da-escrita'
 //
 // E toda ESCRITA leva QUEM grava (`x-bellaris-ator`, CF3b — `ator-da-escrita.ts`):
 // a auditoria diz o nome da pessoa que o servidor atendeu, não "o servidor".
+//
+// E a gravação do Confirmar do Copilot leva POR ONDE (`x-bellaris-via: copilot`,
+// CP1 — `via-da-escrita.ts`): a auditoria diz "Nome (pelo Copilot)".
 export function createAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { global: { fetch: comAtor(comMarcaDoSuporte((input, init) => fetch(input, init), sessaoDeSuporteDaEscrita), atorDaEscrita) } },
+    { global: { fetch: comVia(comAtor(comMarcaDoSuporte((input, init) => fetch(input, init), sessaoDeSuporteDaEscrita), atorDaEscrita)) } },
   )
 }

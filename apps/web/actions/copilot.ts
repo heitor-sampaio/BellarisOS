@@ -64,7 +64,9 @@ export async function decidirAcaoDoCopilot(
   const primeiro = caminho.split('?')[0]!.split('/').filter(Boolean)[0] ?? 'admin'
   const r = await decidirAcao({
     ctx, admin: createAdminClient(), pagina: caminho, slugDoPortal: primeiro === 'admin' ? null : primeiro,
-  }, acaoId, decisao, typeof escolha === 'string' ? escolha.slice(0, 40) : null)
+    // A chave da escolha cabe inteira: "mesma:<uuid>" tem 42 caracteres, e o
+    // corte em 40 fazia o "Sim, é <nome>" da oportunidade nunca valer (CP1).
+  }, acaoId, decisao, typeof escolha === 'string' ? escolha.slice(0, 80) : null)
   // A tela por trás do painel mostra o que mudou (a agenda com o agendamento novo).
   if (r.status === 'feita') revalidatePath(caminho.split('?')[0]!)
   return r

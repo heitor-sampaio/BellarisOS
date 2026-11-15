@@ -18,7 +18,7 @@ import { DATA, UUID, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, idsDasUnidad
  * lib/metrics, §13.1) — somar aqui seria uma regra própria de receita.
  */
 
-const FORMA: Record<string, string> = { CASH: 'dinheiro', PIX: 'Pix', DEBIT_CARD: 'débito', CREDIT_CARD: 'crédito', INTERNAL_CREDIT: 'crédito interno' }
+const FORMA: Record<string, string> = { CASH: 'dinheiro', PIX: 'Pix', DEBIT_CARD: 'débito', CREDIT_CARD: 'crédito', INTERNAL_CREDIT: 'crédito interno', BOLETO: 'boleto' }
 
 export const lancamentos: FerramentaDeLeitura<{
   tipo?: 'receita' | 'despesa'; situacao?: 'em_aberto' | 'vencidos' | 'pagos' | 'todos'; de?: string; ate?: string; unidade?: string; cliente?: string
