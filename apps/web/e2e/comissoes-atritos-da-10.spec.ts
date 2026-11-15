@@ -66,7 +66,11 @@ test.beforeAll(async () => {
   const outra = await rede.criarCliente('Tatiane')
   const { data: pl, error: ePl } = await b.from('treatment_plans').insert({
     branch_id: rede.branchId, professional_id: rede.professionalId, client_id: outra, status: 'CANCELLED',
-    name: `${PREFIXO} Plano ${marca}`, valor_cancelado: 1000, cancelado_em: new Date().toISOString(),
+    name: `${PREFIXO} Plano ${marca}`, valor_cancelado: 1000,
+    // Um minuto antes (F48): a liberação usa o now() do BANCO, e o relógio de
+    // quem roda o teste pode estar adiantado — o cancelamento "viria depois" e
+    // o fator do instante seria 1.
+    cancelado_em: new Date(Date.now() - 60_000).toISOString(),
   }).select('id').single<{ id: string }>()
   expect(ePl).toBeNull()
   planoId = pl!.id
