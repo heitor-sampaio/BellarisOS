@@ -4,6 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { responderAnamnese } from './apoio/anamnese'
 import { apagarAgendamentos } from './apoio/limpeza'
+import { haMinutosHoje, daquiAMinutosHoje } from './apoio/datas'
 
 /**
  * F68 — os indicadores na TELA (as contas no banco estão em
@@ -71,7 +72,7 @@ test.beforeAll(async () => {
   const cliente = await rede.criarCliente('Na Água Verde')
   const { data: ap, error } = await b.from('appointments').insert({
     branch_id: unidadeB, client_id: cliente, professional_id: dela.userId, procedure_id: rede.procedureId,
-    scheduled_at: new Date(Date.now() - 60 * 60_000).toISOString(), duration_min: 30, price: 300, status: 'IN_PROGRESS', source: 'INTERNAL',
+    scheduled_at: haMinutosHoje(60), duration_min: 30, price: 300, status: 'IN_PROGRESS', source: 'INTERNAL',
   }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
   agendamentos.push(ap!.id)
@@ -88,7 +89,7 @@ test.beforeAll(async () => {
   const outra = await rede.criarCliente('No Batel')
   const { data: ap2, error: e2 } = await b.from('appointments').insert({
     branch_id: rede.branchId, client_id: outra, professional_id: dela.userId, procedure_id: rede.procedureId,
-    scheduled_at: new Date(Date.now() + 30 * 60_000).toISOString(), duration_min: 30, price: 200, status: 'SCHEDULED', source: 'INTERNAL',
+    scheduled_at: daquiAMinutosHoje(30), duration_min: 30, price: 200, status: 'SCHEDULED', source: 'INTERNAL',
   }).select('id').single<{ id: string }>()
   expect(e2).toBeNull()
   agendamentos.push(ap2!.id)
@@ -130,7 +131,8 @@ test('D12: o total de clientes do cabeçalho da vendedora é o da rede', async (
   expect(count).toBeGreaterThan(0)
   await comSessao(browser, vendedora!, async p => {
     await p.goto('/admin/dashboard')
-    await expect(p.getByText(new RegExp(`· ${count} clientes? da clínica`))).toBeVisible({ timeout: 20_000 })
+    // "da rede" desde o vocabulário (PO2/V0, 2026-11-16): "da clínica" saiu do sistema.
+    await expect(p.getByText(new RegExp(`· ${count} clientes? da rede`))).toBeVisible({ timeout: 20_000 })
   })
 })
 

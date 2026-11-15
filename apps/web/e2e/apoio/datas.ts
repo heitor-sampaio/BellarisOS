@@ -42,3 +42,15 @@ export function haMinutosHoje(minutos: number, agora = new Date()): string {
 export function cabeHoje(minutos: number, agora = new Date()): boolean {
   return dayKeyTZ(new Date(agora.getTime() + minutos * 60_000)) === dayKeyTZ(agora)
 }
+
+/**
+ * "Daqui a N minutos" (ISO), mas sem sair de HOJE em Brasília: perto da
+ * meia-noite, para meia hora antes do fim do dia (o inverso de `haMinutosHoje`,
+ * a completa de 14–15/11). O "mais tarde hoje" de um teste que lê o que é de
+ * HOJE (o "Meus agendamentos hoje") caía amanhã depois das 23:30.
+ */
+export function daquiAMinutosHoje(minutos: number, agora = new Date()): string {
+  const depois = agora.getTime() + minutos * 60_000
+  const fimDoDia = startOfDayTZ(agora).getTime() + 24 * 60 * 60_000 - 31 * 60_000
+  return new Date(Math.min(depois, fimDoDia)).toISOString()
+}

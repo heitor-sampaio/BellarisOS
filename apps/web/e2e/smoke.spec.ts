@@ -32,7 +32,9 @@ const TELAS: { rota: string; titulo: RegExp }[] = [
 ]
 
 /** As abas de Configurações são telas distintas atrás da mesma rota. */
-const ABAS_DE_CONFIG = ['unidades', 'permissions', 'fichas', 'integrations', 'lgpd', 'eventos', 'general']
+// Os Eventos foram para as Automações (CF2, 2026-11-16): o `?tab=eventos` antigo
+// redireciona, e é conferido à parte, abaixo.
+const ABAS_DE_CONFIG = ['unidades', 'permissions', 'fichas', 'integrations', 'lgpd', 'general']
 
 async function abrir(page: Page, rota: string) {
   const res = await page.goto(rota, { waitUntil: 'domcontentloaded' })
@@ -57,6 +59,12 @@ test.describe('portal da rede', () => {
       await expect(page.getByRole('heading', { name: 'Configurações' })).toBeVisible()
     })
   }
+
+  test('a aba eventos antiga de Configurações leva ao "O que já aconteceu" das Automações', async ({ page }) => {
+    await abrir(page, '/admin/settings?tab=eventos')
+    await expect(page).toHaveURL(/\/admin\/automacoes\/eventos$/)
+    await expect(page.getByRole('heading', { name: 'O que já aconteceu' })).toBeVisible()
+  })
 
   test('quem é da rede não é expulso para o portal de uma unidade', async ({ page }) => {
     await abrir(page, '/admin/dashboard')

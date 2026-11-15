@@ -76,8 +76,10 @@ test('A23: na agenda da rede, o bloqueio de uma profissional é uma faixa estrei
     await p.goto(`/admin/agenda?date=${DIA}`)
     const faixa = p.locator('[data-bloqueio]').first()
     await expect(faixa).toBeAttached()
-    const caixa = await faixa.boundingBox()
-    expect(caixa!.width, 'a faixa cobre a coluna da unidade inteira').toBeLessThanOrEqual(10)
+    // Lido com poll: na completa de 14–15/11 (às 23:39) o `boundingBox` veio
+    // null — a grade se redesenhou entre o toBeAttached e a medida.
+    await expect.poll(async () => (await faixa.boundingBox())?.width ?? Infinity,
+      { message: 'a faixa cobre a coluna da unidade inteira' }).toBeLessThanOrEqual(10)
     await expect(p.locator('[data-rotulo-do-bloqueio]').first()).toContainText('Almoço')
   })
 })

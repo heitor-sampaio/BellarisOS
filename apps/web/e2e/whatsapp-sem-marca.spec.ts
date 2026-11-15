@@ -24,7 +24,11 @@ test('o cartão do WhatsApp não mostra "uazapi" — nem no caminho da conta pr�
   await expect(corpo.getByText('WhatsApp', { exact: true }).first()).toBeVisible()
   await expect(corpo).not.toContainText(/uazapi/i)
 
-  await page.getByRole('button', { name: 'Adicionar número' }).click()
+  // Com algum número, o formulário se abre pelo "Adicionar número"; sem nenhum
+  // (a rede de teste nascida do script de 13/11 não tem), ele já vem aberto.
+  // Não supor que a rede real tem um número (docs/regras/e2e.md).
+  const adicionar = page.getByRole('button', { name: 'Adicionar número' })
+  if (await adicionar.count()) await adicionar.click()
   await expect(page.getByRole('button', { name: /^WhatsApp Web/ })).toBeVisible()
   await expect(corpo).not.toContainText(/uazapi/i)
 

@@ -157,8 +157,11 @@ test.describe.serial('documentos: link pela conversa do inbox', () => {
   test('quem é de uma unidade não liga a opção da rede', async ({ browser }) => {
     await como(browser, daUnidade!.estado, async page => {
       const r = await chamarAcao(page, 'actions/modelos-de-documento.ts', 'definirEnvioDoLinkPelaConversa', `/${slug}/settings?tab=documentos`, [true])
-      // A rede de teste tem UMA unidade: "rede inteira" é "clínica toda" (r2-cfg-02).
-      expect(r.texto).toContain('rede toda')
+      // A rede de teste tem UMA unidade, e a recusa diz "rede inteira" assim
+      // mesmo: desde o PO2 (2026-11-16) a fala de uma unidade só troca o RÓTULO
+      // que é só a rede pelo nome dela — "clínica toda" saiu do sistema.
+      expect(r.texto).toContain('Esta escolha vale para a rede inteira')
+      expect(r.texto).not.toMatch(/cl[ií]nica/i)
     })
     expect((await db().from('tenants').select('documentos_link_pela_conversa').eq('id', rede!.tenantId).single()).data)
       .toEqual({ documentos_link_pela_conversa: false })

@@ -16,3 +16,22 @@ export async function cartaoNaGradeDoDia(p: Page, agendamentoId: string): Promis
   await expect(p.locator('[data-grade-do-dia][data-rolagem="pronta"]')).toBeVisible()
   return p.locator(`[data-agendamento="${agendamentoId}"]`).first()
 }
+
+/**
+ * Clica no horário vazio da grade da AGENDA DA REDE, `y` px abaixo do topo da
+ * coluna (a completa de 14–15/11).
+ *
+ * A grade da rede rola sozinha ao abrir (D13 da 13ª): hoje, para uma hora
+ * antes de agora. Às 23:40 o topo da coluna ficava ~1.500 px acima da área
+ * visível, e o clique em `caixa.y + 2 * 72` caía FORA da grade (no cabeçalho
+ * da página) — o "Novo agendamento" não abria. Depois da rolagem pronta, rola
+ * a grade até o ponto e só então mede a coluna.
+ */
+export async function clicarNoHorarioDaRede(p: Page, coluna: Locator, y: number): Promise<void> {
+  const grade = p.locator('[data-grade-da-rede][data-rolagem="pronta"]')
+  await expect(grade).toBeVisible()
+  await grade.evaluate((el, alvo) => { el.scrollTop = Math.max(0, alvo - 80) }, y)
+  const caixa = await coluna.boundingBox()
+  if (!caixa) throw new Error('não achei a coluna da grade')
+  await p.mouse.click(caixa.x + caixa.width / 2, caixa.y + y)
+}

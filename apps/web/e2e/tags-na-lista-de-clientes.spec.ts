@@ -96,7 +96,10 @@ test('os seletores da barra têm o MESMO marcador (quadrado), e abrir as tags n�
     const antes = (await linha.boundingBox())!
     const largura = p.viewportSize()!.width
 
-    for (const gatilho of ['Situação', 'Unidade', 'Tags']) {
+    // O filtro de Unidade saiu da lista (CL1–CL3 do Bloco Tags, 2026-11-14: a
+    // cliente é da rede, e o portal da unidade vê todas): a barra tem dois.
+    await expect(p.getByRole('button', { name: 'Unidade', exact: true })).toHaveCount(0)
+    for (const gatilho of ['Situação', 'Tags']) {
       await p.getByRole('button', { name: gatilho, exact: true }).click()
       const marcadores = p.locator('[data-marcador]')
       await expect(marcadores.first()).toBeVisible()

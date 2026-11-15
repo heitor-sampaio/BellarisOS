@@ -1774,6 +1774,88 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — A completa de 14–15/11 (run 43668652558, sobre o c13a6b7d): 44 falhas, nenhuma do produto
+
+Isolados 1536 ✓ / 26 ✘ / 30 sem rodar; compartilhados 724 ✓ / 18 ✘ / 3 sem
+rodar (rodou das 23:39 de 14/11 às 00:48 de Brasília). Os 33 "sem rodar" são
+os seguintes de um `describe.serial` que caiu (clientes-arquivar,
+chamados, clinico-so-com-prontuario, checkout-de-plano,
+checkout-entrada-no-cartao, documentos-link-conversa,
+portal-cliente-documento-enviado, sistema-redes, suporte-impersonar,
+whatsapp-responder-por-outro-numero, agenda-procedimento-e-quem-atende,
+plano-recebimento).
+
+- **O banco (a maioria).** O Postgres da produção REINICIOU três vezes no
+  meio da rodada (`postgres_logs`, "starting PostgreSQL": 02:47:03, 02:56:49
+  e 03:28:05 UTC) e, entre 03:04 e 03:28, respondeu em 20 a 49 s
+  (`edge_logs`, o maior `origin_time` por minuto). Caíram nessas janelas:
+  - às 02:46–02:48 (521/520 do Cloudflare, `PGRST002`, "Too many
+    connections"): checkout-entrada-no-cartao (as duas), clientes-aniversariantes,
+    clientes-arquivar, clientes-ficha-aba-oportunidades,
+    clientes-ficha-proximos-depois-de-agendar, clientes-telefone-de-outro-pais,
+    chamados, clinico-so-com-prontuario, checkout-de-plano ("Failed to
+    fetch"), e nos compartilhados agenda-horario-de-funcionamento (o D12),
+    agenda-ja-existe-sem-clientes, agenda-mais-de-mil,
+    agenda-ocupacao-diz-o-desconto, agenda-procedimento-e-quem-atende,
+    agenda-profissional-proximo — o "padrão da agenda" dos compartilhados era
+    só a ordem alfabética caindo na queda;
+  - logo depois do reinício das 02:56: fechamento-do-dia-avisos (CX6) e
+    ficha-pre-atendimento (A27);
+  - na lentidão das 03:04–03:28: financeiro-atritos-da-12 (A44, estourou os
+    240 s), fase1-dinheiro (a janela não fechou), plano-tratamento-leva-1
+    (PT1a) e -leva-2 (DC1c), portal-cliente-documento-enviado, pdv-comanda-do-plano
+    (PDV4: "Não consegui fechar o plano." é a gravação que não voltou),
+    sistema-redes (o "Rede religada." não chegou em 15 s), suporte-impersonar,
+    whatsapp-responder-por-outro-numero (as duas, no reinício das 03:28) e
+    plano-recebimento.
+  Rodados de novo contra o `next dev`, um por vez, todos passam SEM mudança
+  (os 33 que não tinham rodado, inclusive). Os da plataforma (chamados,
+  sistema-redes, suporte-impersonar) só rodam contra o build e não se
+  repetiram aqui — caíram no reinício das 02:47 e na lentidão das 03:22–03:25.
+- **financeiro-estorno-atritos (A51)**: o spec do c13a6b7d ainda esperava a
+  janela de pagamento da sessão; o 7d148a7e já o passou à comanda do PDV.
+- **Spec velho (o texto ou a tela mudou no plano de adaptação)**:
+  - `documentos-link-conversa` (a recusa diz "rede inteira": o PO2 não troca
+    mais a frase por "clínica toda"), `relatorio-vendas-comandas` ("Crédito
+    interno" no CSV), `setup-retoma` ("Documentos" no lugar de "Termos e
+    contratos"), `indicadores-f68-telas` D12 ("· N clientes da rede"),
+    `smoke` (a aba eventos de Configurações virou o "O que já aconteceu" das
+    Automações: o teste confere o redirecionamento);
+  - `agenda-pago-antes` (A63): desde o PT3 a sessão COMPRADA se agenda pelo
+    app mesmo fora do "Permitir auto agendamento"; o "agende com a equipe"
+    agora se prova com o procedimento desativado, e o fora do app ganha o
+    "Agendar";
+  - `tags-na-lista-de-clientes`: o filtro de Unidade saiu da lista no Bloco
+    Tags (CL1–CL3) — o teste clicava nele e esperava 5 min;
+  - `fase4-permissoes`: cobrava a matriz inteira gravada no cargo "Admin da
+    rede" (a migração de 2026-09-18). A rede nova nasce com o cargo de
+    sistema e SEM linhas (`seed_tenant_admin_role`, assim desde 2026-10-21) e
+    o tudo vem do cargo pela chave (`ehAdminDaRede` → `ALL_PERMISSIONS`); a
+    rede de teste nascida do script de 13/11 foi a primeira a mostrar. O
+    teste confere agora o cargo de sistema, o admin nele e o `ALL_PERMISSIONS`.
+    Nenhuma função do banco lê a matriz do Admin (conferido no `pg_proc`);
+  - `agenda-horario-de-funcionamento` ("a rede configura o horário pela
+    tela"): a gestora do teste (Configurações e Equipe) escolhia o cargo
+    "Profissional" para o membro, e desde a F70 (H7: ninguém dá cargo com
+    mais acesso que o próprio) ele vem desligado — o `selectOption` esperava
+    os 5 min do teste. Reproduzido no `next dev`; vai o primeiro cargo que
+    ela pode dar;
+  - `whatsapp-sem-marca`: a rede de teste nova não tem número de WhatsApp, e
+    sem número o formulário já vem aberto (o "Adicionar número" só existe com
+    a lista) — o mesmo "não supor que a rede real tem um número".
+- **O relógio (a completa cruzou a meia-noite)**:
+  - `agenda-clique-no-horario` e `agenda-grade-madrugada`: às 23:40 a grade
+    da rede rola sozinha para perto de agora (D13 da 13ª), e o clique em
+    "topo da coluna + 2 h" caía fora da grade. Novo `clicarNoHorarioDaRede`
+    (`apoio/agenda.ts`): espera a rolagem pronta, rola até o ponto e só então
+    mede;
+  - `indicadores-f68-telas` D10: o atendimento "uma hora atrás" e o horário
+    "daqui a 30 min" saíam do dia — `haMinutosHoje` e o novo
+    `daquiAMinutosHoje` (`apoio/datas.ts`);
+  - `agenda-atritos-da-11` A23: o `boundingBox` da faixa veio null (a grade
+    redesenhou entre o `toBeAttached` e a medida) — lido com `expect.poll`.
+- **Defeito do produto: nenhum.** Sem migration.
+
 ### 2026-11-16 — CX3 e PDV7 até o fim: o atendimento concluído se recebe só na comanda do PDV, os textos do plano e do pacote dizem o PDV, e o V0 nos títulos dos testes
 
 As contradições que a revisão dos docs achou (o "Para o Heitor" da entrada

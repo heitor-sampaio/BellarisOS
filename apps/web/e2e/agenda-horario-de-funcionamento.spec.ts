@@ -108,7 +108,12 @@ test('a rede configura o horário pela tela: a unidade e o profissional', async 
     await p.goto('/admin/team')
     await p.getByTitle(/^Editar \[e2e\] Prof/).click()
     // O profissional da rede de teste nasce sem cargo: o formulário exige um.
-    await p.locator('select[name="roleId"]').selectOption({ label: 'Profissional' })
+    // Quem edita só dá cargo que não passa do dela (H7, F70): o "Profissional"
+    // vem desligado para quem tem só Configurações e Equipe — e o selectOption
+    // num desligado esperava até o fim do teste (a completa de 14–15/11). Vai
+    // o primeiro que ela pode dar.
+    const cargo = p.locator('select[name="roleId"] option:not([disabled])').first()
+    await p.locator('select[name="roleId"]').selectOption((await cargo.getAttribute('value'))!)
     const doMembro = p.locator('form').filter({ has: p.getByLabel('Segue o horário da unidade') }).locator('input[name="horario"]')
     await expect(async () => {
       const segue = p.getByLabel('Segue o horário da unidade')

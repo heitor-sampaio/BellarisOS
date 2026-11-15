@@ -125,21 +125,29 @@ test('o app da cliente mostra os dois como já pagos, sem o valor a pagar', asyn
 
 // A63 (5ª simulação): o cartão do pacote "6 lasers" levava a "Agendar
 // procedimento", cuja lista não tinha o Laser, e dizia "1 de 6" sem "restam 5".
-// Agora diz quantas restam e leva ao agendamento DO procedimento do pacote; se
-// ele não é agendável pelo app, diz para agendar com a clínica.
+// Agora diz quantas restam e leva ao agendamento DO procedimento do pacote. A
+// sessão do pacote já foi comprada: se agenda pelo app mesmo com o procedimento
+// fora do "Permitir auto agendamento" (PT3, 2026-11-14); só o procedimento
+// desativado manda agendar com a equipe.
 test('A63: o cartão do pacote diz quantas restam e leva ao agendamento do procedimento dele', async ({ browser }) => {
   await como(browser, cliente!.estado, async p => {
-    // O procedimento NÃO está no app: agendar é com a clínica.
+    // O procedimento desativado: agendar é com a equipe.
+    expect((await db().from('procedures').update({ is_active: false }).eq('id', rede!.procedureId)).error).toBeNull()
+    try {
+      await p.goto(`/${slug}/cliente/home`)
+      const cartao = p.locator('[data-pacote]', { hasText: nomeDoPacote })
+      await expect(cartao).toContainText('restam 2')
+      await expect(cartao).toContainText('agende com a equipe')
+      await expect(cartao.getByRole('link', { name: /^Agendar/ })).toHaveCount(0)
+    } finally {
+      expect((await db().from('procedures').update({ is_active: true }).eq('id', rede!.procedureId)).error).toBeNull()
+    }
+
+    // Fora do app (sem o auto agendamento), a sessão comprada se agenda pelo app (PT3).
     expect((await db().from('procedures').update({ visible_on_client_app: false }).eq('id', rede!.procedureId)).error).toBeNull()
     await p.goto(`/${slug}/cliente/home`)
-    let cartao = p.locator('[data-pacote]', { hasText: nomeDoPacote })
-    await expect(cartao).toContainText('restam 2')
-    await expect(cartao).toContainText('agende com a equipe')
-    await expect(cartao.getByRole('link', { name: /^Agendar/ })).toHaveCount(0)
-
-    expect((await db().from('procedures').update({ visible_on_client_app: true }).eq('id', rede!.procedureId)).error).toBeNull()
-    await p.goto(`/${slug}/cliente/home`)
-    cartao = p.locator('[data-pacote]', { hasText: nomeDoPacote })
+    const cartao = p.locator('[data-pacote]', { hasText: nomeDoPacote })
+    await expect(cartao).not.toContainText('agende com a equipe')
     const agendar = cartao.getByRole('link', { name: /^Agendar/ })
     await expect(agendar).toHaveAttribute('href', `/${slug}/cliente/agendamentos/novo?procedimento=${rede!.procedureId}`)
     await agendar.click()

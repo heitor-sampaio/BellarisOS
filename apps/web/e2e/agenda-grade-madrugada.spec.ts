@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { clicarNoHorarioDaRede } from './apoio/agenda'
 
 /**
  * D5 da simulação de 2026-10-28: a "Minha agenda" (profissional) e a agenda da
@@ -116,8 +117,7 @@ test('/admin/agenda: o atendimento de madrugada aparece, abre e o horário vazio
     await p.reload()
     const coluna = p.locator('.agenda-coluna').first()
     await expect(p.locator(`[data-agendamento="${ids.d}"]`)).toBeVisible()
-    const caixa = (await coluna.boundingBox())!
-    await p.mouse.click(caixa.x + caixa.width / 2, caixa.y + 3 * 72 + 4)
+    await clicarNoHorarioDaRede(p, coluna, 3 * 72 + 4)
     await expect(p.getByRole('heading', { name: 'Novo agendamento' })).toBeVisible()
     await expect(p.locator('input[type="datetime-local"]').first()).toHaveValue(/T05:00$/)
   } finally { await ctx.close() }

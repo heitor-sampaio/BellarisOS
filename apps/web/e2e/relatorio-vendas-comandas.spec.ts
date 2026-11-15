@@ -115,7 +115,7 @@ test('o CSV leva a comanda e o crédito', async ({ browser }) => {
     const csv = (await r.text()).replace(/^﻿/, '').trim().split(/\r?\n/)
     expect(csv[0]).toBe('Data;Comanda;Tipo;Descrição;Cliente;Profissional;Unidade;Valor')
     expect(csv).toHaveLength(3)
-    expect(csv[1]).toMatch(new RegExp(`^14/05/2021;${comandaDoCredito};Crédito na clínica;`))
+    expect(csv[1]).toMatch(new RegExp(`^14/05/2021;${comandaDoCredito};Crédito interno;`))
     expect(csv[1]).toContain('300,00')
     expect(csv[2]).toMatch(new RegExp(`^12/05/2021;${comandaDoPacote};Pacote;`))
   })

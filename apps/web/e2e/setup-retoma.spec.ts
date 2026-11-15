@@ -94,7 +94,7 @@ test('A3/A1: o fim do setup sugere os próximos passos na ordem, como links — 
       [/Salas/, /\/admin\/settings\?tab=unidades#salas$/],
       [/Estoque/, /\/admin\/estoque$/],
       [/Fichas/, /\/admin\/settings\?tab=fichas$/],
-      [/Termos e contratos/, /\/admin\/settings\?tab=documentos$/],
+      [/Documentos/,/\/admin\/settings\?tab=documentos$/],
       [/Procedimentos/, /\/admin\/procedures$/],
       [/Taxas da maquininha/, /\/admin\/settings\?tab=comissoes$/],
       [/Fidelidade/, /\/admin\/settings\?tab=fidelidade$/],
