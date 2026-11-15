@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { situacaoDepois, contextoDoNavegador, tipoDaImagem, ehSituacao } from '@/lib/suporte/chamados-regras'
 
 describe('situacaoDepois', () => {
-  it('a clínica escrevendo abre (e reabre o resolvido)', () => {
+  it('a rede escrevendo abre (e reabre o resolvido)', () => {
     expect(situacaoDepois('aguardando_clinica', 'usuario')).toBe('aberto')
     expect(situacaoDepois('resolvido', 'usuario')).toBe('aberto')
   })
 
-  it('a resposta do suporte espera a clínica, salvo escolha', () => {
+  it('a resposta do suporte espera a rede, salvo escolha', () => {
     expect(situacaoDepois('aberto', 'suporte')).toBe('aguardando_clinica')
     expect(situacaoDepois('aberto', 'suporte', { escolhida: 'resolvido' })).toBe('resolvido')
   })

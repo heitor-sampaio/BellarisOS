@@ -1,5 +1,5 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
-import { banco, tenantId, filiaisAtivas, PREFIXO } from './apoio/banco'
+import { banco, tenantId, unidadesAtivas, PREFIXO } from './apoio/banco'
 import { criarMembro, clienteComSessao, type ClienteDeTeste, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
@@ -55,7 +55,7 @@ test.describe.serial('portal do cliente', () => {
   test.beforeAll(async () => {
     const b = db()
     const tenant = await tenantId()
-    const unidade = (await filiaisAtivas())[0]!
+    const unidade = (await unidadesAtivas())[0]!
     const proc = async (rotulo: string, extra: Record<string, unknown>) => {
       const { data, error } = await b.from('procedures').insert({
         tenant_id: tenant, name: `${PREFIXO} ${rotulo} ${marca}`, category: 'e2e',

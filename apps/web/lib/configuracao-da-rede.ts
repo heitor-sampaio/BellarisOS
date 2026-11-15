@@ -17,14 +17,14 @@
  * a mesma regra.
  */
 
-export const CONFIG_DA_CLINICA = 'Esta configuração é da rede toda: quem muda é quem tem “A rede inteira”.'
+export const CONFIG_DA_REDE = 'Esta configuração é da rede toda: quem muda é quem tem “A rede inteira”.'
 
 /** Quem é da rede (sem unidade fixa) mexe na configuração da clínica. */
-export function mexeNaConfigDaClinica(ctx: { branchId: string | null }): boolean {
+export function mexeNaConfigDaRede(ctx: { branchId: string | null }): boolean {
   return ctx.branchId === null
 }
 
 /** A recusa da action que grava configuração da clínica, ou nulo. */
-export function recusaDaConfigDaClinica(ctx: { branchId: string | null }): string | null {
-  return mexeNaConfigDaClinica(ctx) ? null : CONFIG_DA_CLINICA
+export function recusaDaConfigDaRede(ctx: { branchId: string | null }): string | null {
+  return mexeNaConfigDaRede(ctx) ? null : CONFIG_DA_REDE
 }

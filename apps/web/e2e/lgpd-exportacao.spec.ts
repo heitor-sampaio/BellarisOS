@@ -1,5 +1,5 @@
 import { test, expect, type Request } from '@playwright/test'
-import { banco, filiaisAtivas, PREFIXO } from './apoio/banco'
+import { banco, unidadesAtivas, PREFIXO } from './apoio/banco'
 import { clienteComSessao, type ClienteDeTeste } from './apoio/sessao'
 import { capturarAcao, reenviarAcao } from './apoio/acao'
 
@@ -37,7 +37,7 @@ test.describe.serial('LGPD: exportação de dados', () => {
   let baixar: Request | null = null
 
   test.beforeAll(async () => {
-    const unidade = (await filiaisAtivas())[0]!
+    const unidade = (await unidadesAtivas())[0]!
     cliente = await clienteComSessao(`lgpd${marca}`, unidade)
     intruso = await clienteComSessao(`lgpdx${marca}`, unidade)
     // Um prontuário com anamnese — é por ele que se sabe se a parte clínica entrou.
@@ -143,7 +143,7 @@ test.describe.serial('LGPD: exportação de dados', () => {
     expect(aberto!.id).toBeTruthy()
   })
 
-  test('a clínica libera o prontuário e o pacote é regerado com ele', async ({ page }) => {
+  test('a rede libera o prontuário e o pacote é regerado com ele', async ({ page }) => {
     const db = banco()
     const nome = `${PREFIXO} Cliente portal lgpd${marca}`
     await page.goto('/admin/settings?tab=lgpd')

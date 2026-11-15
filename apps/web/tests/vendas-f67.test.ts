@@ -4,14 +4,14 @@ import { textoDaComissaoDaVenda } from '@/lib/comissoes/comissao-da-venda'
 /** F67 (2026-11-12): vendas, financeiro e comissões — o que o levantamento das regras pediu. */
 
 describe('C42: o checkout do plano diz a comissão de venda antes de vender', () => {
-  it('a da pessoa vence a "Venda de plano" da clínica; sem ela, vale a da clínica', () => {
-    expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: 8 }, clinicaPct: 5 }))
+  it('a da pessoa vence a "Venda de plano" da rede; sem ela, vale a da rede', () => {
+    expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: 8 }, redePct: 5 }))
       .toBe('Comissão de venda de Rita: 8% do vendido — da Rita. Sai quando a venda estiver paga inteira.')
-    expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: null }, clinicaPct: 5 }))
+    expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: null }, redePct: 5 }))
       .toBe('Comissão de venda de Rita: 5% do vendido — da rede. Sai quando a venda estiver paga inteira.')
   })
   it('sem as duas, diz que não há', () => {
-    expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: null }, clinicaPct: null }))
+    expect(textoDaComissaoDaVenda({ tipo: 'PLANO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: null }, redePct: null }))
       .toBe('Rita não tem comissão de venda neste plano: nem ela nem a rede ("Venda de plano") têm regra de venda.')
   })
 })
@@ -21,8 +21,8 @@ describe('C40 (D13): a regra do item vence mesmo com 0%', () => {
     expect(textoDaComissaoDaVenda({ tipo: 'PACOTE', itens: [{ regra: { tipo: 'PERCENTAGE', valor: 0 } }], pessoa: { nome: 'Rita', pct: 8 } }))
       .toBe('Comissão de venda de Rita: 0% do vendido — do pacote. Sai quando a venda estiver paga inteira.')
   })
-  it('o produto com 0% não cai na da pessoa nem na da clínica', () => {
-    expect(textoDaComissaoDaVenda({ tipo: 'PRODUTO', itens: [{ nome: 'Sérum', regra: { tipo: 'PERCENTAGE', valor: 0 } }], pessoa: { nome: 'Rita', pct: 8 }, clinicaPct: 2 }))
+  it('o produto com 0% não cai na da pessoa nem na da rede', () => {
+    expect(textoDaComissaoDaVenda({ tipo: 'PRODUTO', itens: [{ nome: 'Sérum', regra: { tipo: 'PERCENTAGE', valor: 0 } }], pessoa: { nome: 'Rita', pct: 8 }, redePct: 2 }))
       .toContain('0% do vendido — do produto')
   })
 })
@@ -49,7 +49,7 @@ describe('A5 da 13ª: o pacote sem "De venda" próprio diz que vale a regra de q
   })
 })
 
-describe('A11 da 13ª: o Top 5 da Visão geral diz o pago com crédito na clínica, como as tabelas', () => {
+describe('A11 da 13ª: o Top 5 da Visão geral diz o pago com crédito interno, como as tabelas', () => {
   it('uma linha por nome do Top 5 que tem crédito; o resto fica calado', async () => {
     const { notasDoTop5 } = await import('@/lib/relatorios/nota-do-top5')
     const zero = { n: 0, valor: 0 }

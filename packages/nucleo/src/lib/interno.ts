@@ -13,7 +13,7 @@ import { timingSafeEqual } from 'node:crypto'
  * permissão ou de outro cache. A lista: `rede:`, `suporte-sessao:`, `user:`
  * (o membro, que o suporte reativa) e `plataforma:` (o atendente, que o
  * sistema desativa e cujo cache mora também no suporte). O mesmo handler
- * atende os três apps (`rotaDeExpirar`, em `plataforma/expirar-na-clinica.ts`).
+ * atende os três apps (`rotaDeExpirar`, em `plataforma/expirar-no-app-da-rede.ts`).
  *
  * É ACESSÓRIO: o TTL (60 s da rede, 15 s da sessão) e a RLS, que barra na
  * hora pelo estado no banco, seguem valendo se o aviso falhar. Isto é para a

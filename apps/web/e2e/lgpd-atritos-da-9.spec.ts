@@ -38,7 +38,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A49: o pedido de dados feito pelo app avisa a clínica no sino, e a ficha aponta para Configurações → LGPD', async ({ browser }) => {
+test('A49: o pedido de dados feito pelo app avisa a rede no sino, e a ficha aponta para Configurações → LGPD', async ({ browser }) => {
   await como(browser, cliente.estado, async p => {
     await p.goto(`/${cliente.slug}/cliente/perfil`)
     // Com o prontuário: a parte dele espera a clínica (o pedido segue em aberto).

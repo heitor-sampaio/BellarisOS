@@ -14,7 +14,7 @@ import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 interface Props {
   branchId?:  string
   slug?:      string
-  /** Modo admin: lista de filiais para o seletor */
+  /** Modo admin: lista de unidades para o seletor */
   branches?:  { id: string; name: string; slug: string }[]
   trigger?:   React.ReactNode
 }
@@ -183,7 +183,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
             <input type="hidden" name="_branchId" value={selectedBranchId} />
             <input type="hidden" name="_slug"     value={selectedBranchSlug} />
 
-            {/* Seletor de filial — apenas no modo admin */}
+            {/* Seletor de unidade — apenas no modo admin */}
             {isAdminMode && !unica && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <Label>Unidade *</Label>

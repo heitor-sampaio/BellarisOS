@@ -36,7 +36,7 @@ export default async function AdminEstoquePage({
 
   const admin = createAdminClient()
 
-  // Primeira rodada: produtos com estoque, filiais e categorias.
+  // Primeira rodada: produtos com estoque, unidades e categorias.
   //
   // O erro do embed aninhado (`products → branch_product_stock → branches`) era
   // descartado: qualquer recusa do PostgREST deixava o estoque da rede inteiro
@@ -111,7 +111,7 @@ export default async function AdminEstoquePage({
   const desativadas = new Set(branches.filter(b => !b.ativa).map(b => b.id))
   const productIds = products.map(p => p.id)
 
-  // `?unidade=` (id ou slug) recorta a tela para uma filial. Os KPIs seguem o
+  // `?unidade=` (id ou slug) recorta a tela para uma unidade. Os KPIs seguem o
   // recorte: com a tabela filtrada em Centro e o topo somando a rede, os dois
   // blocos diriam números diferentes sobre a mesma tela.
   const unidade   = branches.find(b => b.id === unidadeParam || b.slug === unidadeParam) ?? null
@@ -133,7 +133,7 @@ export default async function AdminEstoquePage({
   const monthStart = startOfMonthTZ(now, fuso)
 
   // Valor em estoque e giro do mês somados no banco — a mesma conta da tela da
-  // filial e do dashboard. Giro = consumo em procedimentos no mês (não qualquer
+  // unidade e do dashboard. Giro = consumo em procedimentos no mês (não qualquer
   // saída: transferência entre unidades não é consumo). Somar as linhas aqui
   // cortava em 1000 (§13.1). Fim do MÊS, não "agora" (relógio do Postgres).
   const [valorEstoque, valorGiro, lotes, valores] = productIds.length > 0

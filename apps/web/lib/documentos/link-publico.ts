@@ -18,7 +18,7 @@ import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 
 export interface Espiada {
   estado:  EstadoDoLink
-  clinica: string | null
+  remetente: string | null
   pede:    'CPF' | 'NASCIMENTO'
   /** Quantos documentos o link pede (a página diz "2 documentos", sem os títulos). */
   documentos: number
@@ -26,11 +26,11 @@ export interface Espiada {
 
 /** O que a página mostra antes da identidade: a clínica, quantos documentos e o que vai pedir. */
 export async function espiarLink(token: string): Promise<Espiada> {
-  if (!tokenValido(token)) return { estado: 'invalido', clinica: null, pede: 'CPF', documentos: 1 }
+  if (!tokenValido(token)) return { estado: 'invalido', remetente: null, pede: 'CPF', documentos: 1 }
   const admin = createAdminClient()
   const r = await ler(admin.rpc('documento_link_espiar', { p_token_hash: hashDoToken(token) }), 'abrir o link de assinatura') as
     { estado: EstadoDoLink; clinica?: string | null; pede?: 'CPF' | 'NASCIMENTO'; documentos?: number }
-  return { estado: r.estado, clinica: r.clinica ?? null, pede: r.pede ?? 'CPF', documentos: Math.max(1, r.documentos ?? 1) }
+  return { estado: r.estado, remetente: r.clinica ?? null, pede: r.pede ?? 'CPF', documentos: Math.max(1, r.documentos ?? 1) }
 }
 
 export interface Identidade { token: unknown; cpf?: unknown; nascimento?: unknown }

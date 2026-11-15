@@ -3,6 +3,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { subirOpenaiFalsa, type OpenaiFalsa } from './apoio/openai-falsa'
 import { redeDoCopilot, contraAFalsa, comSessao, falarComOCopilot, esperarResposta, type RedeDoCopilot } from './apoio/copilot'
+import { haMinutosHoje } from './apoio/datas'
 
 /**
  * CP1 — o bloco Copilot do plano de adaptação (docs/revisao.md): as
@@ -70,7 +71,9 @@ test.afterAll(async () => {
 test('o check-in do agendamento CONFIRMADO: o cartão sai e o Confirmar registra a chegada', async ({ browser }) => {
   const { data: ag, error } = await db().from('appointments').insert({
     branch_id: rede.outra.branchId, client_id: cliente, professional_id: rede.outra.professionalId, procedure_id: rede.outra.procedureId,
-    scheduled_at: new Date(Date.now() + 3_600_000).toISOString(), duration_min: 30, price: 100, status: 'CONFIRMED',
+    // De HOJE em Brasília: "daqui a 1 h" virava amanhã depois das 23h, e a chegada
+    // só se marca no dia (a ferramenta recusava, com razão).
+    scheduled_at: haMinutosHoje(5), duration_min: 30, price: 100, status: 'CONFIRMED',
     confirmed_at: new Date().toISOString(),
   }).select('id').single<{ id: string }>()
   expect(error, error?.message).toBeNull()

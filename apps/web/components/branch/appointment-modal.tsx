@@ -38,7 +38,7 @@ interface AppointmentModalProps {
   /**
    * Unidades da rede. Quando vem preenchida, o modal pergunta em qual unidade é
    * o atendimento e carrega procedimentos, profissionais e salas dela — no
-   * portal da rede não existe "a filial atual".
+   * portal da rede não existe "a unidade atual".
    */
   unidades?:     Unidade[]
   defaultDate?:  string   // ISO datetime hint (from calendar click)

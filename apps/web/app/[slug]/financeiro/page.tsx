@@ -198,7 +198,7 @@ export default async function FinancialPage({
   // card ficava zerado. O período vem do atendimento e o pagamento, de `status`.
   // Alcance "só as próprias comissões": o cargo continua entrando na tela, mas
   // ela se resume ao que é dele. O resto (receita, despesas, lançamentos da
-  // filial) não é renderizado — ver `ownScope` no hub.
+  // unidade) não é renderizado — ver `ownScope` no hub.
   const ownFinancial = ownerFilter(ctx, 'financial')
 
   const commissions = (await getCommissionsDetail({

@@ -82,7 +82,7 @@ test('A33: a recepção lê na ficha a quem pedir o estorno, a devolução e o c
   })
 })
 
-test('A43: a ficha diz que ela pagou com crédito na clínica (fora do investido e do "Total pago")', async ({ browser }) => {
+test('A43: a ficha diz que ela pagou com crédito interno (fora do investido e do "Total pago")', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/clients/${cliente}`)
     await expect(p.locator('[data-pago-com-credito]').first()).toContainText(/R\$\s180,00 pagos com crédito interno/)

@@ -56,7 +56,7 @@ test.afterAll(async () => {
   await profissional?.limpar(); await recepcao?.limpar(); await cliente?.limpar(); await rede?.limpar()
 })
 
-test.describe.serial('o documento chega ao app só quando a clínica envia', () => {
+test.describe.serial('o documento chega ao app só quando a rede envia', () => {
   test('a foto clínica anexada não aparece no app da cliente', async ({ browser }) => {
     await como(browser, cliente!.estado, async p => {
       await abrirDocumentosDoPortal(p)

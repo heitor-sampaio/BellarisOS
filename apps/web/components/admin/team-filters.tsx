@@ -73,7 +73,7 @@ export function TeamFilters({
         />
       </div>
 
-      {/* Filial */}
+      {/* Unidade */}
       <select className="filtro-select"
         value={initialBranch}
         onChange={e => handleSelect('branch', e.target.value)}

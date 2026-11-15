@@ -7,7 +7,7 @@ import { avisoDoPreAtendimento } from '@/lib/pre-atendimento/aviso'
  * saúde dela no texto — só o convite e o link para a ficha.
  */
 describe('avisoDoPreAtendimento', () => {
-  it('leva à ficha no portal da clínica do agendamento', () => {
+  it('leva à ficha no portal da rede do agendamento', () => {
     const a = avisoDoPreAtendimento('clinica-bela', 'COMPLETO')
     expect(a.type).toBe('pre_atendimento')
     expect(a.data).toEqual({ link: '/clinica-bela/cliente/pre-atendimento' })

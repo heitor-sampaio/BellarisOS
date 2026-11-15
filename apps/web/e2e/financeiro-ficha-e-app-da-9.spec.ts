@@ -154,10 +154,10 @@ test('A41: o crédito CONCEDIDO não diz que o dinheiro entrou quando ele nasceu
   })
 })
 
-test('A46: o crédito na clínica aparece no Início do app, com o caminho para o Financeiro', async ({ browser }) => {
+test('A46: o crédito interno aparece no Início do app, com o caminho para o Financeiro', async ({ browser }) => {
   await como(browser, rosana!, async p => {
     await p.goto(`/${slug}/cliente/home`)
-    const cartao = p.locator('[data-credito-na-clinica-no-inicio]')
+    const cartao = p.locator('[data-credito-interno-no-inicio]')
     await expect(cartao).toContainText(/R\$\s181,00/)
     await cartao.click()
     await expect(p).toHaveURL(new RegExp(`/${slug}/cliente/financeiro`))

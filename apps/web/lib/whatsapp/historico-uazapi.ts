@@ -157,7 +157,7 @@ async function importarConversa(
 ): Promise<number | null> {
   const chatid = chat.wa_chatid
   if (!chatid) return null
-  const lidas: { msg: InboundMsg; daClinica: boolean }[] = []
+  const lidas: { msg: InboundMsg; daRede: boolean }[] = []
   let offset = 0
   while (lidas.length < MAX_POR_CONVERSA) {
     const { mensagens, temMais } = await provider.buscarMensagens(chatid, offset, PAGINA_MENSAGENS)
@@ -178,11 +178,11 @@ async function importarConversa(
   const conversa = await resolveConversation(tenantId, lidas[0]!.msg, 'whatsapp', caixa, undefined, { semEventos: true })
   if (!conversa) return null
   let novas = 0
-  for (const { msg, daClinica } of lidas) {
+  for (const { msg, daRede } of lidas) {
     const entrou = await insertMensagemDoAplicativo(conversa.conversationId, tenantId, msg, {
-      direction: daClinica ? 'outbound' : 'inbound',
+      direction: daRede ? 'outbound' : 'inbound',
       importada: true,
-      status:    daClinica ? 'delivered' : 'read',
+      status:    daRede ? 'delivered' : 'read',
     }, caixa)
     if (entrou) novas++
   }

@@ -523,7 +523,7 @@ async function concederCredito(ctx: TenantContext, formData: FormData): Promise<
 
   const admin = createAdminClient()
 
-  // O comentário acima prometia conferir o cliente e conferia só a filial: com
+  // O comentário acima prometia conferir o cliente e conferia só a unidade: com
   // o id de um cliente de outra rede, o crédito ia para ele.
   const cliente = await ler(admin
     .from('clients').select('id').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(),

@@ -39,7 +39,7 @@ test('o Gerente modelo da rede nova nasce com Configurações em Gerenciar', asy
   expect(data, 'a linha de Configurações do Gerente modelo').toEqual({ level: 'MANAGE', scope: 'ALL' })
 })
 
-test('a gerente de unidade fixa, no cargo modelo, abre a aba Unidade e não a configuração da clínica toda', async ({ browser }) => {
+test('a gerente de unidade fixa, no cargo modelo, abre a aba Unidade e não a configuração da rede toda', async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: gerente!.estado })
   try {
     const p = await ctx.newPage()

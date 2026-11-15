@@ -286,10 +286,10 @@ interface Props {
   financeiroSoOsProprios?: boolean
   isNetworkWide:         boolean
   /**
-   * Cliente da REDE: `clients.branch_id` nulo. Os gestos que gravam por filial
+   * Cliente da REDE: `clients.branch_id` nulo. Os gestos que gravam por unidade
    * (credito interno) passam a perguntar a unidade em vez de herdarem uma.
    */
-  clienteSemFilial?:     boolean
+  clienteSemUnidade?:     boolean
   /**
    * A ficha da REDE com duas ou mais unidades (D1 e A14 da 8ª simulação; H5:
    * "nada se prende a clients.branch_id"): o que grava por unidade — a venda,
@@ -1134,7 +1134,7 @@ function GrantCreditForm({
   clientId: string; branchId: string; slug: string; onClose: () => void
   /**
    * Unidades para escolher. So vem preenchida quando o cliente e da REDE (sem
-   * filial propria): antes a tela usava a primeira filial em ordem alfabetica,
+   * unidade propria): antes a tela usava a primeira unidade em ordem alfabetica,
    * e o credito — que e dinheiro no caixa da unidade — ia parar na errada.
    */
   unidades?: { id: string; name: string }[]
@@ -1239,7 +1239,7 @@ function FinanceiroTab({
   clientId:        string
   branchId:        string
   slug:            string
-  /** Preenchida so quando o cliente nao tem filial propria. */
+  /** Preenchida so quando o cliente nao tem unidade propria. */
   unidadesParaCredito?: { id: string; name: string }[]
   /**
    * Os totais vêm do banco (metrics_financeiro_do_cliente): a aba somava na
@@ -1492,7 +1492,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemFilial = false, perguntaAUnidade = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemUnidade = false, perguntaAUnidade = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, podeReceberAtendimento = false,
@@ -1502,7 +1502,7 @@ export function ClientProfile({
   const pathname = usePathname()
   const fuso     = useFuso()
   /*
-   * `slug` é a filial DO CLIENTE, não o portal: serve às actions e ao que só
+   * `slug` é a unidade DO CLIENTE, não o portal: serve às actions e ao que só
    * existe na unidade. Para onde navegar quem decide é `lib/rotas`, pelo
    * caminho atual — mandar quem veio de /admin para `/<unidade>/…` trocava o
    * portal da rede pelo de uma unidade sem ninguém ter pedido.
@@ -2320,7 +2320,7 @@ export function ClientProfile({
           clientId={client.id}
           branchId={branchId}
           slug={slug}
-          unidadesParaCredito={clienteSemFilial || perguntaAUnidade ? branches : []}
+          unidadesParaCredito={clienteSemUnidade || perguntaAUnidade ? branches : []}
           totais={totaisFinanceiros}
           soOsProprios={financeiroSoOsProprios}
           quemDesfaz={quemDesfaz}

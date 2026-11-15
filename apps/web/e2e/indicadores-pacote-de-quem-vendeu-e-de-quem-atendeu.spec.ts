@@ -161,8 +161,8 @@ test('r2-ven-15: o pacote e o pré-pago entram inteiros no "Meu faturamento" de 
   const { data: daRenata } = await db().rpc('metrics_core', { ...p, p_professional_id: rede!.professionalId })
   expect(n(daRenata![0]!.revenue_cash), 'o faturamento da Renata').toBe(0)
   // A clínica: o mesmo dinheiro, uma vez só.
-  const { data: clinica } = await db().rpc('metrics_core', p)
-  expect(n(clinica![0]!.revenue_cash)).toBe(1200)
+  const { data: daRede } = await db().rpc('metrics_core', p)
+  expect(n(daRede![0]!.revenue_cash)).toBe(1200)
 
   await como(browser, async pg => {
     await pg.goto(`/${slug}/dashboard`)
@@ -272,8 +272,8 @@ test('r3-f13-07: a unidade pré-paga e a sessão de plano feitas também entram 
   expect(n(dela![0]!.revenue_cash)).toBe(1200)
   const { data: daRenata } = await db().rpc('metrics_core', { ...p, p_professional_id: rede!.professionalId })
   expect(n(daRenata![0]!.revenue_cash)).toBe(0)
-  const { data: clinica } = await db().rpc('metrics_core', p)
-  expect(n(clinica![0]!.revenue_cash)).toBe(1200)
+  const { data: daRede } = await db().rpc('metrics_core', p)
+  expect(n(daRede![0]!.revenue_cash)).toBe(1200)
 })
 
 // r4-f15-03 (o Heitor, revisão das decisões da F15, 03/11): a sessão de plano

@@ -491,7 +491,7 @@ export class UazapiProvider implements WhatsAppProvider {
    * O anúncio de origem não entra (atribuir agora uma conversa de semanas atrás
    * mexeria na conta das campanhas).
    */
-  lerDoHistorico(m: MensagemDoHistorico, chat: ChatDoHistorico): { msg: InboundMsg; daClinica: boolean } | null {
+  lerDoHistorico(m: MensagemDoHistorico, chat: ChatDoHistorico): { msg: InboundMsg; daRede: boolean } | null {
     const chatid = String(m.chatid ?? chat.wa_chatid ?? '')
     if (m.isGroup === true || chat.wa_isGroup === true) return null
     if (ehConversaDeGrupo(chatid, chat.wa_chatid, chat.phone)) return null
@@ -501,10 +501,10 @@ export class UazapiProvider implements WhatsAppProvider {
 
     const identidade = montarIdentidade([chat.phone, chat.wa_chatid, m.chatid, chat.wa_chatlid])
     if (!identidade) return null
-    const daClinica = m.fromMe === true
-    const nome = chat.wa_contactName ?? chat.wa_name ?? chat.name ?? (daClinica ? undefined : (m.senderName ?? m.pushName))
+    const daRede = m.fromMe === true
+    const nome = chat.wa_contactName ?? chat.wa_name ?? chat.name ?? (daRede ? undefined : (m.senderName ?? m.pushName))
     const msg = this.montarMensagem(m, { message: m }, identidade, nome, false)
-    return msg ? { msg, daClinica } : null
+    return msg ? { msg, daRede } : null
   }
 
   /** A mensagem no formato da entrada de conversa — o mesmo para o ao vivo e o histórico. */

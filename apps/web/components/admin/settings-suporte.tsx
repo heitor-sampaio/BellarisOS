@@ -7,7 +7,7 @@ import {
   autorizarSuporte, revogarAutorizacaoDeSuporte, oQueFoiFeitoNaSessao,
 } from '@/actions/suporte-autorizacao'
 import { HORAS_DE_AUTORIZACAO, HORAS_PADRAO, ROTULO_DAS_HORAS, type HorasDeAutorizacao } from '@/lib/suporte/regras'
-import type { DadosDaAbaSuporte } from '@/lib/suporte/painel-da-clinica'
+import type { DadosDaAbaSuporte } from '@/lib/suporte/painel-da-rede'
 import { useFuso } from '@/components/shared/fuso'
 
 /**

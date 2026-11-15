@@ -14,7 +14,7 @@ import { euVendi, pagoNoPix } from './apoio/vender'
  * tá? Porque só vende pelo PDV." Uma venda, uma comanda (PDV-P1).
  *
  * - "Nova venda": escolhe a cliente, o que vender (procedimento, pacote,
- *   produto, crédito na rede) e como paga — a venda é uma comanda.
+ *   produto, crédito interno) e como paga — a venda é uma comanda.
  * - Toda venda (pela tela ou pela action) nasce com a comanda dela.
  * - A ficha não tem mais o "Vender"; a busca leva ao PDV com a cliente.
  */
@@ -86,11 +86,11 @@ test('PDV2/PDV5: a "Nova venda" escolhe a cliente, vende e a venda vira uma coma
   expect(comandas![0]!.procedure_sale_id).not.toBeNull()
 })
 
-test('PDV2: toda venda nasce com a comanda — o crédito na rede, pela action, também; parcelas não fazem outra', async ({ browser }) => {
+test('PDV2: toda venda nasce com a comanda — o crédito interno, pela action, também; parcelas não fazem outra', async ({ browser }) => {
   const cliente = await rede!.criarCliente(`Credito ${marca}`)
   await como(balcao!, browser, async p => {
     await p.goto(`/${slug}/pdv`)
-    const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'venderCredito', `/${slug}/pdv`, [cliente, rede!.branchId, '150', { forma: 'AVISTA', metodo: 'PIX' }, null])
+    const r = await chamarAcao(p, 'actions/credito-interno.ts', 'venderCredito', `/${slug}/pdv`, [cliente, rede!.branchId, '150', { forma: 'AVISTA', metodo: 'PIX' }, null])
     expect(r.status).toBe(200)
   })
   const { data: comandas } = await db().from('comandas').select('origem, credito_vendido_id').eq('client_id', cliente)
@@ -109,7 +109,7 @@ test('PDV7: a venda abre no PDV com a cliente escolhida (?cliente=), e a ficha n
     await p.goto(`/${slug}/pdv?nova=1&cliente=${cliente}`)
     const venda = p.getByRole('region', { name: 'Vender' })
     await expect(venda.locator('[data-cliente-da-venda]')).toContainText(`Ficha ${marca}`)
-    await expect(venda.getByRole('button', { name: 'Crédito na rede', exact: true })).toBeVisible()
+    await expect(venda.getByRole('button', { name: 'Crédito interno', exact: true })).toBeVisible()
   })
 })
 

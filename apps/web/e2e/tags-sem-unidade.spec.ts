@@ -147,7 +147,7 @@ test('CL3: o portal da unidade vê todas as clientes da rede, sem a busca "fora 
     await expect(lista).toContainText(nome('Bianca da B'))
     await lista.getByPlaceholder('Buscar por nome ou telefone…').fill('Bianca da B')
     await expect(lista).toContainText(nome('Bianca da B'))
-    await expect(p.locator('[data-da-clinica-fora-da-unidade]')).toHaveCount(0)
+    await expect(p.locator('[data-da-rede-fora-da-unidade]')).toHaveCount(0)
   })
 })
 

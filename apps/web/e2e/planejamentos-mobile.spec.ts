@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, nomeDeTeste, filiaisAtivas } from './apoio/banco'
+import { banco, nomeDeTeste, unidadesAtivas } from './apoio/banco'
 
 /**
  * Tratamentos: o plano aberto é uma tela, não uma camada.
@@ -39,7 +39,7 @@ test('criar um plano abre a tela dele; voltar traz a lista', async ({ page }) =>
   // nascia (foi o "intermitente" que parecia ser tempo).
   // Na janela do "Novo plano": a lista tem o seletor da situação (PT1f) antes dela.
   const unidade = page.getByRole('dialog').locator('select').first()
-  if (await unidade.count()) await unidade.selectOption((await filiaisAtivas())[0]!.id)
+  if (await unidade.count()) await unidade.selectOption((await unidadesAtivas())[0]!.id)
 
   await page.getByRole('button', { name: 'Criar', exact: true }).click()
 
@@ -87,7 +87,7 @@ test('o plano abre pela lista e renomear volta para a lista', async ({ page }) =
 })
 
 test('a mesma navegação existe no portal da unidade', async ({ page }) => {
-  const unidade = (await filiaisAtivas())[0]
+  const unidade = (await unidadesAtivas())[0]
   test.skip(!unidade, 'a rede de teste não tem unidade ativa')
 
   await page.goto(`/${unidade!.slug}/planejamentos/${planId}`)

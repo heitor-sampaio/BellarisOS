@@ -40,7 +40,7 @@ export default async function ClientPortalLayout({
     registrarEntradaNoPortal(ctx.clientId!),
   ])
   // Cliente de mais de uma clínica: o nome da unidade no topo leva ao seletor.
-  const variasClinicas = fichas.filter(f => f.slug).length > 1
+  const variasRedes = fichas.filter(f => f.slug).length > 1
   // O primeiro acesso é POR CLÍNICA: o login marca o da ficha do token, e cada
   // outra clínica dela, na primeira vez que ela abre o portal de lá. O banco
   // decide (uma vez por ficha); o bônus é acessório e nunca lança.
@@ -78,8 +78,8 @@ export default async function ClientPortalLayout({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, minWidth: 0 }}>
             <span style={{ fontSize: 'var(--text-card-title)', color: 'var(--brand)', fontWeight: 800, marginRight: 8, lineHeight: 1 }}>✦</span>
-            {variasClinicas ? (
-              <Link href={ROTA_DO_SELETOR} aria-label="Trocar de rede" title="Trocar de rede" className="portal-trocar-clinica">
+            {variasRedes ? (
+              <Link href={ROTA_DO_SELETOR} aria-label="Trocar de rede" title="Trocar de rede" className="portal-trocar-rede">
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{branchName}</span>
                 <ChevronsUpDown size={16} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
               </Link>

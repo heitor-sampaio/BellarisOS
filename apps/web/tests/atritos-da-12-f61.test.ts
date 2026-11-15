@@ -86,7 +86,7 @@ describe('A49: a embalagem no plural', () => {
   })
 })
 
-describe('A55: o plano no app diz o nome que a clínica deu e o desconto', () => {
+describe('A55: o plano no app diz o nome que a rede deu e o desconto', () => {
   it('o nome, senão "Plano de tratamento"', () => {
     expect(nomeDoPlanoNoApp('Manchas — laser')).toBe('Manchas — laser')
     expect(nomeDoPlanoNoApp(null)).toBe('Plano de tratamento')

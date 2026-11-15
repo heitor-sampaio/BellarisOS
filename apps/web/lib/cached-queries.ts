@@ -31,7 +31,7 @@ export type CachedMember = {
    * Vem do banco pelo mesmo motivo que `role_id` vem: trocar a abrangência de
    * alguém tem de valer na hora. Com o valor só no JWT, promover alguém a
    * abrangência de rede o deixava até uma hora trancado fora do `/admin`, que é
-   * de onde o layout manda sair quem tem filial fixa.
+   * de onde o layout manda sair quem tem unidade fixa.
    */
   branchId: string | null
   /**
@@ -108,7 +108,7 @@ export function getCachedFichasDoLogin(authId: string) {
         const unidade = c.branches as unknown as { slug: string; name: string; tenants: { name: string } | null } | null
         return {
           clientId: c.id as string, tenantId: c.tenant_id as string,
-          slugsDaClinica: unidades.filter(u => u.tenant_id === c.tenant_id).map(u => u.slug),
+          slugsDaRede: unidades.filter(u => u.tenant_id === c.tenant_id).map(u => u.slug),
           slug: unidade?.slug ?? null, unidade: unidade?.name ?? '', rede: unidade?.tenants?.name ?? '',
         }
       })
@@ -180,7 +180,7 @@ export function getCachedNetworkBranches(tenantId: string) {
   )()
 }
 
-// ─── Filial por slug (lookup feito em quase toda página de filial) ────────────
+// ─── Unidade por slug (lookup feito em quase toda página de unidade) ────────────
 /**
  * TODAS as unidades da rede (ativas ou não), com o slug — o contexto acha por
  * aqui a unidade do endereço da pessoa de várias unidades (EQ1a/PO1), e a
@@ -263,7 +263,7 @@ export function getCachedRoleReportTabs(tenantId: string, roleId: string) {
   )()
 }
 
-// ─── Procedimentos da filial (base da rede + locais) ──────────────────────────
+// ─── Procedimentos da unidade (base da rede + locais) ──────────────────────────
 export function getCachedBranchProcedures(branchId: string, tenantId: string) {
   return unstable_cache(
     async () => {
@@ -347,7 +347,7 @@ export function getCachedBranchProfessionals(branchId: string, tenantId: string)
   )()
 }
 
-// ─── Salas da filial ──────────────────────────────────────────────────────────
+// ─── Salas da unidade ──────────────────────────────────────────────────────────
 export function getCachedRoomsByBranch(branchId: string, tenantId: string) {
   return unstable_cache(
     async () => {

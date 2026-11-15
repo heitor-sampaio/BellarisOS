@@ -27,7 +27,7 @@ describe('D5: as vezes no cartão da entrada', () => {
     const [entrada] = lancamentosDoPagamento(4400, dap, 'Plano')
     expect(entrada).toMatchObject({ amount: 1000, payment_method: 'CREDIT_CARD', is_paid: true, cartao_vezes: 3, cartao_bandeira: 'ELO' })
   })
-  it('as vezes da entrada valem para o limite da clínica (vezesNoCartao)', () => {
+  it('as vezes da entrada valem para o limite da rede (vezesNoCartao)', () => {
     expect(vezesNoCartao(dap)).toBe(3)
     expect(vezesNoCartao({ ...dap, entrada: 0 }), 'sem entrada, nada passa pela maquininha').toBe(1)
     expect(vezesNoCartao({ ...dap, metodo: 'PIX' }), 'só no crédito').toBe(1)
@@ -44,13 +44,13 @@ describe('D5: as vezes no cartão da entrada', () => {
   })
 })
 
-describe('D6: o crediário da clínica não é cartão', () => {
+describe('D6: o crediário da rede não é cartão', () => {
   it('as parcelas do saldo nascem SEM meio de pagamento', () => {
     const [, ...parcelas] = lancamentosDoPagamento(4400, dap, 'Plano')
     expect(parcelas.map(p => [p.amount, p.is_paid, p.payment_method])).toEqual([[1700, false, null], [1700, false, null]])
     expect(parcelas.every(p => p.cartao_vezes === undefined && p.cartao_bandeira === undefined)).toBe(true)
   })
-  it('o contrato diz a entrada no cartão e as parcelas com a clínica', () => {
+  it('o contrato diz a entrada no cartão e as parcelas com a rede', () => {
     expect(valoresDoPagamento(dap, 4400)['pagamento.forma']).toMatch(
       /^entrada de R\$\s1\.000,00 no cartão de crédito em 3x \+ 2 parcelas de R\$\s1\.700,00 no crediário: R\$\s1\.700,00 em 04\/12\/2026 e R\$\s1\.700,00 em 04\/01\/2027$/)
     expect(valoresDoPagamento({ ...dap, vezes: undefined }, 4400)['pagamento.forma']).toMatch(

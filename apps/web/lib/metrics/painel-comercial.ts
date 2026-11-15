@@ -31,7 +31,7 @@ export interface DadosComerciais {
  * Funil, conversão e ranking do time comercial.
  *
  * Duas fronteiras diferentes de propósito: os **leads são da rede**
- * (`leads.branch_id` é nulo — é assim que o inbox os cria, e filtrar por filial
+ * (`leads.branch_id` é nulo — é assim que o inbox os cria, e filtrar por unidade
  * esvaziava o painel inteiro), enquanto os **atendimentos respeitam o recorte**
  * de unidade escolhido no topo da tela.
  */

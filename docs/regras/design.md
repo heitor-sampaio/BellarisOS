@@ -201,7 +201,7 @@ Princípios inegociáveis:
     8ª). Os próximos passos do setup terminam pela outra unidade, não começam
     (`lib/setup/proximos-passos.ts`). "Quem vendeu" fica fora: nasce sempre
     vazio (r2-ven-12, `comissoes.md`). Prova:
-    `e2e/agenda-clinica-de-uma-opcao.spec.ts`, `tests/setup-proximos-passos.test.ts`.
+    `e2e/agenda-rede-de-uma-opcao.spec.ts`, `tests/setup-proximos-passos.test.ts`.
   - Texto novo com "rede" na tela passa pela fala. Prova:
     `e2e/rede-de-uma-unidade.spec.ts` percorre as telas dos dois portais e os
     modais atrás das palavras que saíram do sistema, confere o nome da rede

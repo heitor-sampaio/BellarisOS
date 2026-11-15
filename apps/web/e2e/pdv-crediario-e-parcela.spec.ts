@@ -12,7 +12,7 @@ import { euVendi } from './apoio/vender'
  * PDV8 — o Heitor, 13/11: "sempre tem que ter forma de pagamento, o crediario
  * é uma forma de pagamento, não existe pagamento sem forma de pagamento". O
  * Crediário é uma das formas, ao lado de Pix, Dinheiro, Débito, Crédito e
- * Crédito na rede: escolhido, a venda fica registrada como Crediário. Se
+ * Crédito interno: escolhido, a venda fica registrada como Crediário. Se
  * houver entrada, ela pede a forma dela. Sai o "sem entrada, não precisa" e o
  * "Meio de pagamento (opcional)" do "a receber". Quando o dinheiro entra (a
  * parcela no PDV ou a baixa no Financeiro), a forma é pedida, sempre.

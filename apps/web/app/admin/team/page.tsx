@@ -207,7 +207,7 @@ export default async function AdminTeamPage({
           <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 320 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {/* Filial e cargo saem da tabela no celular e reaparecem sob o
+                {/* Unidade e cargo saem da tabela no celular e reaparecem sob o
                     nome: cinco colunas em 390px ou viram rolagem lateral sem
                     fim, ou espremem o nome — que é a única coluna que importa
                     para achar alguém. */}
@@ -255,7 +255,7 @@ export default async function AdminTeamPage({
                           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                             {m.email}
                           </p>
-                          {/* Cargo, filial e "atende" moram AQUI no celular,
+                          {/* Cargo, unidade e "atende" moram AQUI no celular,
                               numa linha só. As colunas próprias existem, mas
                               saem com .so-desktop: repetidas no card elas diziam
                               a mesma coisa duas vezes, e o chip do cargo não

@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Computa o destino final usando as claims do JWT (sem DB extras para roles de rede).
-  // Para roles com branchId/clientId, uma query mínima busca o slug da filial.
+  // Para roles com branchId/clientId, uma query mínima busca o slug da unidade.
   const usuario = data.session.user
 
   const claims = usuario.app_metadata as JwtClaims

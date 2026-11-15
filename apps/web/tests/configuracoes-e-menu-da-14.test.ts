@@ -41,7 +41,7 @@ describe('A1: quem é da rede chega, pelo portal da unidade, ao que só a rede t
     expect(motivo).toBe('A aba Comissões e taxas fica nas Configurações da rede. Abrimos Unidade.')
   })
 
-  it('as abas que só a rede tem, para a lista "Na clínica toda" da unidade — com a permissão e o plano de cada uma', () => {
+  it('as abas que só a rede tem, para a lista "Na rede toda" da unidade — com a permissão e o plano de cada uma', () => {
     const todas = abasSoDaRede(gerenciaTudo, null).map(a => a.key)
     expect(todas).toEqual(expect.arrayContaining(['comissoes', 'fidelidade', 'lgpd', 'assinatura']))
     expect(todas.some(k => ABAS_DA_UNIDADE.includes(k)), 'nenhuma aba que a unidade já tem').toBe(false)

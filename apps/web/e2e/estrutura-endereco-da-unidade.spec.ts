@@ -45,7 +45,7 @@ async function criarUnidadePelaTela(browser: Browser, gestor: MembroDeTeste, nom
   }
 }
 
-test.describe('o endereço da unidade é único entre as clínicas', () => {
+test.describe('o endereço da unidade é único entre as redes', () => {
   test.beforeAll(async () => {
     A = await criarOutraRede(`eua${marca}`)
     B = await criarOutraRede(`eub${marca}`)
@@ -63,7 +63,7 @@ test.describe('o endereço da unidade é único entre as clínicas', () => {
     await B?.limpar()
   })
 
-  test('o mesmo nome em duas clínicas: a segunda ganha o nome da clínica no endereço', async ({ browser }) => {
+  test('o mesmo nome em duas redes: a segunda ganha o nome da rede no endereço', async ({ browser }) => {
     const nome = `Centro ${marca}`
     expect(await criarUnidadePelaTela(browser, gestorA, nome)).toBe(`centro-${marca}`)
     expect(await criarUnidadePelaTela(browser, gestorB, nome)).toBe(`centro-${marca}-e2e-clinica-bela-${marca}`)

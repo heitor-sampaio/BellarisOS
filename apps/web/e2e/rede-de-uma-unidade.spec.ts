@@ -303,10 +303,10 @@ test.describe.serial('a clínica de uma unidade só', () => {
       await expect(p.getByText('Por unidade', { exact: true })).toBeVisible()
 
       const DE_FILIAL = /\b(filial|filiais)\b/i
-      const comFilial: string[] = []
-      for (const url of ['/admin/dashboard', '/admin/financeiro', '/admin/estoque']) comFilial.push(...await falasDeRede(p, url, DE_FILIAL))
+      const comUnidade: string[] = []
+      for (const url of ['/admin/dashboard', '/admin/financeiro', '/admin/estoque']) comUnidade.push(...await falasDeRede(p, url, DE_FILIAL))
       await expect(p.getByText('ESTOQUE POR UNIDADE')).toBeVisible()
-      expect(comFilial).toEqual([])
+      expect(comUnidade).toEqual([])
 
       await p.goto(`/${slug}/dashboard`)
       await expect(p.getByText('Voltar para a rede')).toBeVisible()

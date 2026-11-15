@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, filiaisAtivas, nomeDeTeste, tenantId } from './apoio/banco'
+import { banco, unidadesAtivas, nomeDeTeste, tenantId } from './apoio/banco'
 
 /**
  * O estorno, que era a gravação mais arriscada do sistema.
@@ -13,8 +13,8 @@ import { banco, filiaisAtivas, nomeDeTeste, tenantId } from './apoio/banco'
  * O que se prova aqui:
  *
  *  - os dois lados existem depois de um estorno pela tela;
- *  - a contra-transação nasce na filial DO REGISTRO — a action recebia a
- *    filial do cliente e dava para lançar a despesa em outra unidade;
+ *  - a contra-transação nasce na unidade DO REGISTRO — a action recebia a
+ *    unidade do cliente e dava para lançar a despesa em outra unidade;
  *  - estornar duas vezes é recusado, em vez de gerar uma segunda
  *    contra-transação.
  *
@@ -32,10 +32,10 @@ test.afterAll(async () => {
   await db.from('financial_transactions').delete().eq('description', `Estorno: ${descricao}`)
 })
 
-test('estornar grava os dois lados, na filial do registro, e não repete', async ({ page }) => {
+test('estornar grava os dois lados, na unidade do registro, e não repete', async ({ page }) => {
   const db = banco()
   const tenant = await tenantId()
-  const unidades = await filiaisAtivas()
+  const unidades = await unidadesAtivas()
   const unidade = unidades[0]!
 
   // Uma receita paga, direto no banco: o que está sob teste é o estorno, e
@@ -96,7 +96,7 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
   expect(contra!.category).toBe('Estorno')      // é por ela que a métrica acha
   expect(Number(contra!.amount)).toBe(150)
   expect(contra!.is_paid).toBe(true)
-  // A filial vem do registro estornado, não de quem chamou.
+  // A unidade vem do registro estornado, não de quem chamou.
   expect(contra!.branch_id).toBe(unidade.id)
 
   // -- Estornar de novo é recusado -------------------------------------------
@@ -133,7 +133,7 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
 
 test('estorno de outra rede não encontra o lançamento', async () => {
   const db = banco()
-  const unidades = await filiaisAtivas()
+  const unidades = await unidadesAtivas()
 
   const { data: alvo, error } = await db
     .from('financial_transactions')
@@ -171,7 +171,7 @@ test('lançamento não pago não se estorna', async () => {
   // dinheiro saindo do caixa por nada. Pendente se cancela, não se estorna.
   const db = banco()
   const tenant = await tenantId()
-  const unidade = (await filiaisAtivas())[0]!
+  const unidade = (await unidadesAtivas())[0]!
   const { data: pendente, error } = await db.from('financial_transactions')
     .insert({
       branch_id: unidade.id, type: 'INCOME', category: 'Serviço',

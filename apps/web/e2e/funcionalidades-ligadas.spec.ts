@@ -1,5 +1,5 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
-import { banco, filiaisAtivas, PREFIXO } from './apoio/banco'
+import { banco, unidadesAtivas, PREFIXO } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
@@ -24,7 +24,7 @@ test.beforeAll(async () => {
     tenant: outra.tenantId, rotulo: 'Gestão',
     permissoes: [{ modulo: 'automations', nivel: 'MANAGE' }, { modulo: 'marketing', nivel: 'MANAGE' }],
   })
-  cliente = await clienteComSessao(`lig${marca}`, (await filiaisAtivas())[0]!)
+  cliente = await clienteComSessao(`lig${marca}`, (await unidadesAtivas())[0]!)
 })
 
 test.afterAll(async () => {

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, filiaisAtivas, nomeDeTeste, tenantId, PREFIXO } from './apoio/banco'
+import { banco, unidadesAtivas, nomeDeTeste, tenantId, PREFIXO } from './apoio/banco'
 import { capturarAcao, reenviarAcao } from './apoio/acao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { apagarClientes } from './apoio/limpeza'
@@ -26,7 +26,7 @@ test.describe.serial('ações de dinheiro e estoque entre redes', () => {
 
   test('lançamento: não cai na unidade de outra rede', async ({ page }) => {
     const db = banco()
-    const unidade = (await filiaisAtivas())[0]!
+    const unidade = (await unidadesAtivas())[0]!
     const legitimo = nomeDeTeste('lanc legitimo')
     const invasor  = nomeDeTeste('lanc invasor')
 
@@ -61,7 +61,7 @@ test.describe.serial('ações de dinheiro e estoque entre redes', () => {
 
   test('estoque: entrada não mexe em produto nem unidade de outra rede', async ({ page }) => {
     const db = banco()
-    const unidade = (await filiaisAtivas())[0]!
+    const unidade = (await unidadesAtivas())[0]!
     const nome = nomeDeTeste('Produto acoes')
     const alheio = await outra!.criarProduto('Produto alheio', 10)
     let meu: string | null = null
@@ -117,7 +117,7 @@ test.describe.serial('ações de dinheiro e estoque entre redes', () => {
 
   test('crédito interno: não vai para cliente de outra rede', async ({ page }) => {
     const db = banco()
-    const unidade = (await filiaisAtivas())[0]!
+    const unidade = (await unidadesAtivas())[0]!
     const alheio = await outra!.criarCliente('Cliente alheio')
     const { data: cli, error } = await db.from('clients')
       .insert({ tenant_id: await tenantId(), branch_id: unidade.id, name: `${PREFIXO} Cliente credito ${marca}`, phone: '5548' + String(Date.now()).slice(-9) })

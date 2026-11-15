@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getTenantContext } from '@/lib/auth'
 import { getCachedFichasDoLogin } from '@/lib/cached-queries'
 import AuthLayout from '@/app/(auth)/layout'
-import { SeletorDeClinica } from '@/components/client-portal/seletor-de-clinica'
+import { SeletorDeRede } from '@/components/client-portal/seletor-de-rede'
 import { BotaoSairDoPortal } from '@/components/client-portal/botao-sair'
 import { fichasQueAbrem } from '@/lib/clientes/disponibilidade'
 
@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
  * e pelo nome da unidade no topo do portal. Mora em `/auth/…`, fora do espaço
  * dos slugs: nenhuma unidade o sombreia.
  */
-export default async function SeletorDeClinicaPage() {
+export default async function SeletorDeRedePage() {
   const ctx = await getTenantContext()
   if (!ctx.isClient) redirect('/auth/redirect')
 
@@ -40,7 +40,7 @@ export default async function SeletorDeClinicaPage() {
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '6px 0 18px' }}>
           Sua conta está em mais de uma rede. Dá para trocar depois, pelo nome no topo.
         </p>
-        <SeletorDeClinica clinicas={fichas.map(f => ({
+        <SeletorDeRede redes={fichas.map(f => ({
           clientId: f.clientId, unidade: f.unidade, rede: f.rede, disponivel: abertas.has(f.clientId),
         }))} />
       </div>

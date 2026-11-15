@@ -81,7 +81,7 @@ test('A47 + A43: e a de cada profissional', async ({ browser }) => {
   })
 })
 
-test('A11 da 13ª (F67): o Top 5 da Visão geral diz o pago com crédito na clínica, como as tabelas', async ({ browser }) => {
+test('A11 da 13ª (F67): o Top 5 da Visão geral diz o pago com crédito interno, como as tabelas', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto('/admin/reports?period=month&tab=overview')
     const notas = p.locator('[data-top5-com-credito]')

@@ -165,7 +165,7 @@ test('o mesmo nome com a mesma data de nascimento, de outro telefone, também pe
   expect(await fichasDe(rosa), 'a pessoa decidiu: duas fichas').toHaveLength(2)
 })
 
-test('o mesmo CPF: só "Unificar com a ficha" — o CPF é único na clínica', async ({ browser }) => {
+test('o mesmo CPF: só "Unificar com a ficha" — o CPF é único na rede', async ({ browser }) => {
   const dono = nome('dona do CPF')
   const id = await ficha(dono, telefone(), { document: '39053344705' })
   await como(browser, async p => {

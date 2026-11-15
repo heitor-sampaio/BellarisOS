@@ -171,7 +171,7 @@ test.describe('F68 — as contas no banco', () => {
     expect(await publico(rede!.branchId)).toEqual([cliente])
   })
 
-  test('T1/C45: as novas clientes de cada unidade são as atendidas nela (não a tag); o total da rede, a clínica inteira', async () => {
+  test('T1/C45: as novas clientes de cada unidade são as atendidas nela (não a tag); o total da rede, a rede inteira', async () => {
     // Uma nova atendida só na B (cadastrada na A, com a tag "Unidade: A" — que
     // não conta), uma nas duas, uma sem atendimento, uma com o da B cancelado.
     const soB = await rede!.criarCliente('Nova da B')
@@ -205,7 +205,7 @@ test.describe('F68 — as contas no banco', () => {
     expect(await novas(null)).toBe((todas ?? []).length)
     expect(atendidasEm(unidadeB), 'a da B e a das duas; a cancelada não').toBeGreaterThanOrEqual(2)
 
-    // O "Por filial" (metrics_by_branch) conta a MESMA régua.
+    // O "Por unidade" (metrics_by_branch) conta a MESMA régua.
     const { data: porUnidade, error } = await db().rpc('metrics_by_branch', { p_tenant: rede!.tenantId, ...janelaDeHoje })
     expect(error).toBeNull()
     const linha = (id: string) => Number((porUnidade as { branch_id: string; new_clients: number }[]).find(l => l.branch_id === id)!.new_clients)

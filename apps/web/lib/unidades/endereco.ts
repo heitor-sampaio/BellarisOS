@@ -38,15 +38,15 @@ export function slugDoTexto(texto: string): string {
 }
 
 /** Os candidatos, na ordem: o nome, o nome com a clínica, numerados. */
-export function candidatosDeEndereco(base: string, nomeDaClinica: string): string[] {
-  const clinica = slugDoTexto(nomeDaClinica)
+export function candidatosDeEndereco(base: string, nomeDaRede: string): string[] {
+  const sufixo = slugDoTexto(nomeDaRede)
   const lista = [base]
-  if (clinica && clinica !== base) lista.push(`${base}-${clinica}`)
+  if (sufixo && sufixo !== base) lista.push(`${base}-${sufixo}`)
   for (let n = 2; n <= 50; n++) lista.push(`${base}-${n}`)
   return lista.filter(c => !ENDERECOS_RESERVADOS.includes(c))
 }
 
 /** O primeiro candidato livre (`ocupados`: os que já existem no banco). */
-export function escolherEndereco(base: string, nomeDaClinica: string, ocupados: ReadonlySet<string>): string | null {
-  return candidatosDeEndereco(base, nomeDaClinica).find(c => !ocupados.has(c)) ?? null
+export function escolherEndereco(base: string, nomeDaRede: string, ocupados: ReadonlySet<string>): string | null {
+  return candidatosDeEndereco(base, nomeDaRede).find(c => !ocupados.has(c)) ?? null
 }

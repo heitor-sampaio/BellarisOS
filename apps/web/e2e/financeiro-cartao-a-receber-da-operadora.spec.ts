@@ -324,7 +324,7 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
     expect(await devidoDoAtendimento(atendimentoDaVenda), 'o estorno devolve a comissão, como sempre').toBe(0)
   })
 
-  test('a clínica muda o prazo da operadora para 15 dias em Configurações → Comissões, e a próxima venda cai a cada 15 dias', async ({ browser }) => {
+  test('a rede muda o prazo da operadora para 15 dias em Configurações → Comissões, e a próxima venda cai a cada 15 dias', async ({ browser }) => {
     await comSessao(browser, dona!.estado, async p => {
       await p.goto('/admin/settings?tab=comissoes')
       const campo = p.getByLabel('Prazo da operadora (dias)')

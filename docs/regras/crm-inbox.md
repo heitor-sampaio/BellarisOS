@@ -221,7 +221,7 @@
 - **O cartão "A unidade" do app** (J-66, 2026-10-30): o fim da home do
   portal mostra a unidade do ENDEREÇO (o slug) — nome, endereço, telefone,
   horário (`resumoDoHorario` da unidade) e os botões WhatsApp e Ligar. A
-  leitura é UMA, `aClinicaDoEndereco` (`lib/clientes/a-clinica.ts`), a mesma
+  leitura é UMA, `aUnidadeDoEndereco` (`lib/clientes/a-unidade.ts`), a mesma
   do "Falar com a equipe" do plano proposto. **O WhatsApp é o número
   CONECTADO** (por-03, revisão do Heitor de 2026-11-02: a conversa cai no
   inbox e fica registrada): o ativo rotulado com a unidade do endereço, senão
@@ -235,7 +235,7 @@
   simulação, 2026-11-07): junto do telefone, no setup e em Unidades, "Em
   branco, o app da cliente mostra o telefone da rede…"
   (`[data-telefone-vazio-no-app]`; prova: `e2e/setup-atritos-da-9.spec.ts`).
-  Prova: `e2e/portal-cliente-a-clinica.spec.ts`,
+  Prova: `e2e/portal-cliente-a-unidade.spec.ts`,
   `e2e/portal-cliente-plano-proposto.spec.ts`,
   `e2e/portal-cliente-alterar-agendamento.spec.ts`.
 - **Os atritos do portal da 8ª simulação** (2026-11-06; princípio 3, o que a
@@ -249,10 +249,16 @@
     a clínica" para todas, e o app deixava a Luana marcar a drenagem. Cada
     sessão "A agendar" diz "A agendar · pelo app" ou "A agendar · quem marca é
     a equipe" (`[data-sessao-do-plano]`), e o resumo separa: "Sessão 2: agende
-    pelo app em “Agendar” (já está paga no plano)." / "Sessões 3 e 5: quem
-    marca é a equipe…" (`quemMarcaAsSessoes`, `lib/plano-de-tratamento/textos.ts`).
-    A régua é a do agendar do app (`pagoParaAgendar`): pelo app vai a sessão
-    cujo PRIMEIRO procedimento está no app. Prova: `e2e/plano-atritos-da-9.spec.ts`
+    pelo app em “Agendar” (faz parte do seu plano)." / "Sessões 3 e 5: quem
+    marca é a equipe…" (`quemMarcaAsSessoes`, `lib/plano-de-tratamento/textos.ts`;
+    dizia "já está paga no plano" — o plano aceito pode não ter sido recebido).
+    A régua é a do agendar do app (`agendavelPeloApp`,
+    `lib/clientes/agendavel-no-app.ts`; era `pagoParaAgendar` e o PRIMEIRO
+    procedimento no app): desde o PT3 (revisão do Heitor, 2026-11-13: "se for
+    uma sessão de plano ou pacote, pode agendar") a sessão do plano ACEITO vai
+    pelo app mesmo com o procedimento fora do "Permitir auto agendamento", e
+    só a de procedimento INATIVO (o primeiro da sessão) fica com a equipe — o
+    laser e a criolipólise do A51 e do A47 também. Prova: `e2e/plano-atritos-da-9.spec.ts`
     ("A47"), `tests/textos-do-plano-da-9.test.ts`.
   - **O Confirmar avisa ANTES quando o horário fica dentro do prazo do app**
     (A52; `tenants.portal_prazo_alteracao_horas`): "Este horário fica a menos
@@ -344,7 +350,7 @@ AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
 
 **As tags da rede** (2026-10-13, pedido do Heitor; **Configurações → Tags**,
 nos dois portais, para quem tem `clients` OU `crm` em Gerenciar — e é da rede:
-quem tem unidade fixa lê "Esta configuração é da rede toda", e
+quem não tem “A rede inteira” lê "Esta configuração é da rede toda", e
 `criarTag`/`renomearTag`/`arquivarTag` recusam, H7 de 2026-11-01,
 `plataforma.md`). Até aqui a
 ficha oferecia oito tags fixas no código, e a tag que vinha de fora
@@ -644,9 +650,9 @@ contatos dela — e vê Configurações só com essa aba.
 - **A importação é de quem é da REDE** (H8 do levantamento das regras, o
   Heitor, 2026-11-11: "Importações é da rede, ela que vai importar os seus
   clientes ou o que for, e na importação poder escolher se aquilo pertence a
-  uma unidade"): quem tem unidade fixa não importa (`recusaDaConfigDaClinica`;
+  uma unidade"): quem não tem “A rede inteira” não importa (`recusaDaConfigDaRede`;
   a aba diz "Esta configuração é da rede toda"), e a importação escolhe a
-  unidade a que os registros pertencem. (Correção C73: hoje quem tem só uma unidade importa
+  unidade a que os registros pertencem. (Correção C73: hoje quem não tem “A rede inteira” importa
   para a unidade dela.) `plataforma.md`, "A configuração da rede toda".
 - **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
   escolhida; `clients: MANAGE`) ou *contatos do CRM* (só a
@@ -1174,8 +1180,8 @@ etapas, a cor e o desfecho da etapa e os motivos de perda pedem
 cards, criar e editar oportunidades continua com quem opera o quadro
 (`crm: MANAGE`). Antes bastava o CRM em Gerenciar, e quem tinha só o CRM mexia no funil da
 rede inteira. Prova: `e2e/crm-funis-pede-configuracoes.spec.ts`. E é da
-REDE (H7, 2026-11-01): quem tem unidade fixa não configura o funil nem com
-Configurações em Gerenciar (`recusaDaConfigDaClinica`; o botão some do quadro
+REDE (H7, 2026-11-01): quem não tem “A rede inteira” não configura o funil nem com
+Configurações em Gerenciar (`recusaDaConfigDaRede`; o botão some do quadro
 da unidade). Prova: `e2e/permissoes-gerente-de-unidade.spec.ts`.
 
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
@@ -1392,7 +1398,7 @@ o contato junto.
 ❌ Gravar o telefone da oportunidade, do contato ou do card sem telefoneParaGravar (lib/contatos/propagar.ts): o formato do WhatsApp, e o incompleto recusado (F70, C28)
 ❌ Editar o card (updateLead) sem leadAoAlcance ANTES de gravar, nem conferir a linha devolvida (F70, C27)
 ❌ Procurar cliente com ilike no nome ou no telefone cru (Copilot, seletores): é a regra única buscar_clientes / clienteCasaComBusca (D6 da 8ª; F70, C5)
-❌ Importar (importarContatos, retomarImportacao) sem recusaDaConfigDaClinica: as Importações são de quem é da rede (H8; F70, C73)
+❌ Importar (importarContatos, retomarImportacao) sem recusaDaConfigDaRede: as Importações são de quem é da rede (H8; F70, C73)
 ❌ Unificar ficha trocando o documento que ela já tem (CPF por passaporte, um passaporte por outro): a ficha tem UM documento (F70, C31)
 ❌ Barrar o cadastro ou o atendimento da menor sem responsável (é aviso — princípio 2), ou decidir "menor" fora de ehMenorDeIdade
 ❌ Oferecer cadastrar ou editar cliente a quem tem Clientes em Ver, ou recusar isso lançando semAcesso dentro do useActionState (é { error: SO_CONSULTA_CLIENTES })

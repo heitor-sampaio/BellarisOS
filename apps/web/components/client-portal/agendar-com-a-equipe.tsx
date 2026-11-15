@@ -1,14 +1,14 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import type { AClinica } from '@/lib/clientes/a-clinica'
-import { CartaoDaClinica } from '@/components/client-portal/cartao-da-clinica'
+import type { AUnidade } from '@/lib/clientes/a-unidade'
+import { CartaoDaUnidade } from '@/components/client-portal/cartao-da-unidade'
 
 /**
  * O agendar do app da cliente ARQUIVADA (o Heitor: "concordo", F6 da 5ª
  * simulação): em vez do passo a passo, "Fale com a clínica para agendar" e o
  * cartão da unidade do endereço, com o WhatsApp e o telefone.
  */
-export function AgendarComAClinica({ slug, clinica }: { slug: string; clinica: AClinica | null }) {
+export function AgendarComAEquipe({ slug, unidade }: { slug: string; unidade: AUnidade | null }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -19,7 +19,7 @@ export function AgendarComAClinica({ slug, clinica }: { slug: string; clinica: A
           Novo agendamento
         </h1>
       </div>
-      <div data-agendar-com-a-clinica className="card" style={{ padding: '18px 20px' }}>
+      <div data-agendar-com-a-equipe className="card" style={{ padding: '18px 20px' }}>
         <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 4 }}>
           Fale com a equipe para agendar.
         </p>
@@ -27,7 +27,7 @@ export function AgendarComAClinica({ slug, clinica }: { slug: string; clinica: A
           O agendamento pelo app não está disponível para o seu cadastro. A equipe marca o seu horário.
         </p>
       </div>
-      {clinica && <CartaoDaClinica clinica={clinica} />}
+      {unidade && <CartaoDaUnidade unidade={unidade} />}
     </div>
   )
 }

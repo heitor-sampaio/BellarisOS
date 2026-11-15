@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, tenantId, filiaisAtivas, PREFIXO } from './apoio/banco'
+import { banco, tenantId, unidadesAtivas, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
@@ -38,7 +38,7 @@ const em = (dias: number, hora: number) => {
 test.beforeAll(async () => {
   const b = db()
   const tenant = await tenantId()
-  const [unidade, segunda] = await filiaisAtivas()
+  const [unidade, segunda] = await unidadesAtivas()
   const ins = async (tabela: string, linha: Record<string, unknown>) => {
     const { data, error } = await b.from(tabela).insert(linha).select('id').single<{ id: string }>()
     expect(error, `criar ${tabela}`).toBeNull()

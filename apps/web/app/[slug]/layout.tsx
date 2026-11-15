@@ -64,7 +64,7 @@ export default async function BranchLayout({
   }
 
   // Usuário operacional (não-cliente). O acesso a cada módulo é gateado por
-  // assertPermission nas páginas; aqui só validamos vínculo com a filial (abaixo).
+  // assertPermission nas páginas; aqui só validamos vínculo com a unidade (abaixo).
   const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
 
   if (!branch) notFound()

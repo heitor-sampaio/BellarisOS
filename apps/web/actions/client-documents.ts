@@ -62,7 +62,7 @@ export async function uploadClientDocument(
 
   const admin = createAdminClient()
 
-  // A filial era conferida; o cliente, não — com a própria filial e o id de um
+  // A unidade era conferida; o cliente, não — com a própria unidade e o id de um
   // cliente de outra rede, o documento ia para a ficha dele. Achado em
   // 2026-09-27. Antes do upload, para nada subir para quem não é desta rede.
   const cliente = await ler(admin

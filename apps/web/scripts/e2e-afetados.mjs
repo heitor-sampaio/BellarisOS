@@ -40,7 +40,7 @@ const AREAS = [
   // O CSP da clínica e o que vem de fora (o SDK da Meta, só na tela que o usa).
   { nome: 'CSP e scripts de fora',
     chaves: ['seguranca/csp', 'csp-relatorio', 'app/layout.tsx', 'conectar-whatsapp-meta', 'sdk-da-meta'],
-    specs: /^(csp-clinica|sdk-da-meta)/ },
+    specs: /^(csp-app-da-rede|sdk-da-meta)/ },
   // As listas que o PostgREST cortava em 1000 linhas (a varredura de
   // 2026-10-22): a prova de cada uma mora num spec só.
   { nome: 'listas longas (sem o corte de 1000)',
@@ -97,7 +97,7 @@ const AREAS = [
     specs: /^(autenticacao|sessao-httponly|plataforma-hosts|permissoes|fase4|membro|equipe|portais|abrangencia|rls|api-sem|privacidade|acoes-entre-redes|rotas-com-sessao)/ },
   { nome: 'a entrada da clínica (o /)',
     chaves: ['apps/web/app/page.tsx', 'auth-redirect', 'app/auth/redirect', 'not-found', '[...rota]'],
-    specs: /^(raiz-da-clinica|sessao-httponly|privacidade|autenticacao|nao-encontrada|rotas-com-sessao)/ },
+    specs: /^(raiz-do-app-da-rede|sessao-httponly|privacidade|autenticacao|nao-encontrada|rotas-com-sessao)/ },
   { nome: 'configurações e rede',
     chaves: ['settings', 'configurac', 'branch', 'unidade', 'tenant', 'rede', 'integrac', 'integration', 'lotes', 'historico', 'setup'],
     specs: /^(configuracoes|estrutura|equipe|anuncios|abrangencia|credenciais|acoes-entre-redes|acoes-em-lote|setup|rede-de-uma-unidade)/ },

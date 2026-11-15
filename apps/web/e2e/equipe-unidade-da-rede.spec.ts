@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, filiaisAtivas } from './apoio/banco'
+import { banco, unidadesAtivas } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { capturarAcao, reenviarAcao } from './apoio/acao'
@@ -23,7 +23,7 @@ let alvo: MembroDeTeste | null = null
 let outra: OutraRede | null = null
 
 test.beforeAll(async () => {
-  const unidade = (await filiaisAtivas())[0]!
+  const unidade = (await unidadesAtivas())[0]!
   alvo  = await criarMembro(`unid${marca}`, { rotulo: 'Unidade', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }], branchId: unidade.id })
   outra = await criarOutraRede(`unid${marca}`)
 })
@@ -37,7 +37,7 @@ test.afterAll(async () => {
 })
 
 test('editar o membro não aceita unidade de outra rede', async ({ page }) => {
-  const [unidade, segunda] = await filiaisAtivas()
+  const [unidade, segunda] = await unidadesAtivas()
   test.skip(!segunda, 'o controle precisa de uma segunda unidade real na rede')
   const unidadeDoMembro = async () =>
     (await banco().from('users').select('branch_id').eq('id', alvo!.userId).single()).data?.branch_id

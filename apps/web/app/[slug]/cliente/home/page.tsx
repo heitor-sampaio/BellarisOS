@@ -7,8 +7,8 @@ import { ler, contar } from '@/lib/db'
 import Link from 'next/link'
 import { CalendarDays, ChevronRight, ClipboardList, FileSignature, MapPin, MessageCircle, Sparkles } from 'lucide-react'
 import { formatBRL, formatDia } from '@estetica-os/utils'
-import { aClinicaDoEndereco, comMensagem } from '@/lib/clientes/a-clinica'
-import { CartaoDaClinica } from '@/components/client-portal/cartao-da-clinica'
+import { aUnidadeDoEndereco, comMensagem } from '@/lib/clientes/a-unidade'
+import { CartaoDaUnidade } from '@/components/client-portal/cartao-da-unidade'
 import { preAtendimentoPendente } from '@/lib/pre-atendimento/ficha'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { STATUS_DO_PROXIMO, inicioDosProximos, jaPassouDaHora } from '@/lib/clientes/agenda-do-portal'
@@ -170,9 +170,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   }) : null
   // A46 da 9ª: o crédito na clínica aparece no Início (só estava no Financeiro, e o
   // caminho até lá ficava dentro do detalhe de um plano). A conta é a do Financeiro do app.
-  const creditoNaClinica = redeDoCliente ? await getCreditoInternoDoCliente(redeDoCliente, ctx.clientId!) : 0
+  const creditoInterno = redeDoCliente ? await getCreditoInternoDoCliente(redeDoCliente, ctx.clientId!) : 0
   // A20 da 11ª: o bônus do crédito comprado, dito ao lado do saldo.
-  const bonusDoCredito = redeDoCliente && creditoNaClinica > 0 ? await bonusDosCreditosDaCliente(redeDoCliente, ctx.clientId!) : []
+  const bonusDoCredito = redeDoCliente && creditoInterno > 0 ? await bonusDosCreditosDaCliente(redeDoCliente, ctx.clientId!) : []
   // O plano FECHADO abre (A45): as sessões e o dinheiro dele, de lib/metrics.
   const financeiroDosPlanos = new Map(redeDoCliente ? await Promise.all(activePlans
     .filter(p => p.status === 'ACCEPTED')
@@ -195,12 +195,12 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
     // A desativada que ainda tem agendamento conta (F72, lib/unidades/da-tela).
     ? (await unidadesParaLer(redeDoCliente)).length > 1
     : false
-  const [validadeDias, aClinica] = await Promise.all([
+  const [validadeDias, aUnidade] = await Promise.all([
     temProposto && redeDoCliente
       ? ler(admin.from('tenants').select('plano_validade_dias').eq('id', redeDoCliente).maybeSingle(), 'ler a validade do plano proposto')
           .then(t => Number((t as { plano_validade_dias?: number } | null)?.plano_validade_dias ?? 30))
       : Promise.resolve(30),
-    aClinicaDoEndereco(slug),
+    aUnidadeDoEndereco(slug),
   ])
   // O avulso agendado de um procedimento do plano proposto (A68): a cliente
   // não sabia se pagaria os dois — o cartão do plano diz que ele é à parte.
@@ -311,13 +311,13 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       )}
 
       {/* -- Crédito na clínica (A46 da 9ª) ----------------------------- */}
-      {creditoNaClinica > 0 && (
-        <Link href={`/${slug}/cliente/financeiro`} prefetch={false} data-credito-na-clinica-no-inicio className="card" style={{
+      {creditoInterno > 0 && (
+        <Link href={`/${slug}/cliente/financeiro`} prefetch={false} data-credito-interno-no-inicio className="card" style={{
           padding: '14px 18px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         }}>
           <div>
             <p className="overline">Seu crédito</p>
-            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{formatBRL(creditoNaClinica)}</p>
+            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{formatBRL(creditoInterno)}</p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Use em qualquer atendimento ou produto.</p>
             {bonusDoCredito.map((b, i) => (
               <p key={i} data-bonus-do-credito style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Crédito comprado: {b}.</p>
@@ -478,8 +478,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                   ) : (
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10 }}>
                       {proc.name}: agende com a equipe.
-                      {aClinica?.whatsapp && (
-                        <> <a href={comMensagem(aClinica.whatsapp, `Olá! Quero agendar a próxima sessão do meu pacote (${proc.name}).`)!}
+                      {aUnidade?.whatsapp && (
+                        <> <a href={comMensagem(aUnidade.whatsapp, `Olá! Quero agendar a próxima sessão do meu pacote (${proc.name}).`)!}
                           target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 700 }}>Falar no WhatsApp</a></>
                       )}
                     </p>
@@ -506,7 +506,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
             ))}
 
             {activePlans.filter(p => p.status === 'PROPOSED').map(plan => (
-              <PlanoProposto key={plan.id} plano={plan} slug={slug} validadeDias={validadeDias} whatsapp={aClinica?.whatsapp ?? null} telefone={aClinica?.telefone ?? null}
+              <PlanoProposto key={plan.id} plano={plan} slug={slug} validadeDias={validadeDias} whatsapp={aUnidade?.whatsapp ?? null} telefone={aUnidade?.telefone ?? null}
                 avulsos={avulsosPorPlano.get(plan.id) ?? []} />
             ))}
 
@@ -563,7 +563,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       </Link>
 
       {/* -- A clínica (J-66) ---------------------------------------- */}
-      {aClinica && <CartaoDaClinica clinica={aClinica} />}
+      {aUnidade && <CartaoDaUnidade unidade={aUnidade} />}
 
     </div>
   )

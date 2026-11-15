@@ -6,7 +6,7 @@ import { oQueAvalia, type NotaDoProcedimento, type OQueAClienteAvalia } from '@/
 type Admin = ReturnType<typeof createAdminClient>
 
 /** O que a clínica pede à cliente (F17-3). */
-export async function oQueAClinicaAvalia(admin: Admin, tenantId: string): Promise<OQueAClienteAvalia> {
+export async function oQueARedeAvalia(admin: Admin, tenantId: string): Promise<OQueAClienteAvalia> {
   const t = await ler(admin.from('tenants').select('avaliacao_o_que').eq('id', tenantId).maybeSingle(),
     'ler o que a cliente avalia') as { avaliacao_o_que: string | null } | null
   return oQueAvalia(t?.avaliacao_o_que)

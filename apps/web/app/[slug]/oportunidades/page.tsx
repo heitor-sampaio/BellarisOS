@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { origensDaRede } from '@/lib/crm/origens'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
-import { mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
@@ -73,7 +73,7 @@ export default async function BranchOportunidadesPage({
   const stages    = allStages.filter(s => s.funnel_id === selecionado?.id)
   const stageIds  = stages.map(s => s.id)
 
-  // Procedimentos disponíveis nesta filial
+  // Procedimentos disponíveis nesta unidade
   const allProcs = await ler(supabase
     .from('procedures')
     .select('id, name, procedure_branch_availability(branch_id)')
@@ -92,7 +92,7 @@ export default async function BranchOportunidadesPage({
   // Leads do funil aberto.
   //
   // ⚠️ Sem recorte por unidade — o lead é da REDE. Isto aqui já filtrou por
-  // `.eq('branch_id', branch.id)`, e como nenhum lead tem filial o quadro da
+  // `.eq('branch_id', branch.id)`, e como nenhum lead tem unidade o quadro da
   // unidade nunca mostrou um lead sequer. Depois filtrou por tag de unidade,
   // escondendo o que estava marcado para outra — o que é decidir distribuição
   // no código. Quem decide de quem é o lead são as pessoas (tag e dono) e, no
@@ -171,7 +171,7 @@ export default async function BranchOportunidadesPage({
   // clínica: Configurações em Gerenciar (D-1, decisão do Heitor, 2026-10-29).
   // Mover os cards continua com quem opera o quadro (`crm`).
   // E é da clínica toda: quem tem unidade fixa não configura (H7, 2026-11-01).
-  const podeConfigurar = can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaClinica(ctx)
+  const podeConfigurar = can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)
 
   return (
     <div className="crm-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

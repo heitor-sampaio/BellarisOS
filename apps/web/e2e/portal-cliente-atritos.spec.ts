@@ -24,7 +24,7 @@ test.beforeAll(async () => {
 })
 test.afterAll(async () => { await cliente?.limpar(); await rede?.limpar() })
 
-test('o login fala com a clínica E com a cliente, e diz que a senha inicial é o CPF', async ({ browser }) => {
+test('o login fala com a rede E com a cliente, e diz que a senha inicial é o CPF', async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   try {
     const p = await ctx.newPage()

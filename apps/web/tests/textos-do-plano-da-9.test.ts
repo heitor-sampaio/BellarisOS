@@ -42,7 +42,7 @@ describe('A28: o rodapé do plano fechado', () => {
  * app (`pagoParaAgendar`): a sessão cujo primeiro procedimento está no app.
  */
 describe('A47: quem marca cada sessão do plano', () => {
-  it('separa as sessões que a cliente marca pelo app das que a clínica marca', () => {
+  it('separa as sessões que a cliente marca pelo app das que a rede marca', () => {
     expect(quemMarcaAsSessoes([{ numero: 2, peloApp: true }, { numero: 3, peloApp: false }])).toEqual([
       'Sessão 2: agende pelo app em “Agendar” (faz parte do seu plano).',
       'Sessão 3: quem marca é a equipe — fale com ela para escolher o dia.',

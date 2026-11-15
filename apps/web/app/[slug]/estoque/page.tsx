@@ -5,7 +5,7 @@ import { loteDaUrl } from '@/lib/estoque/lote-da-url'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { filiaisAtivas } from '@/lib/branches'
+import { unidadesAtivas } from '@/lib/branches'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
 import { startOfMonthTZ, endOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 import { getGiroDeEstoque } from '@/lib/metrics/demografia'
@@ -58,7 +58,7 @@ export default async function BranchStockPage({
     marcasEFornecedoresDosProdutos(ctx.tenantId!),
   ])
 
-  // Normaliza — filtra estoque apenas desta filial
+  // Normaliza — filtra estoque apenas desta unidade
   // D1: o desativado só aparece onde ainda tem saldo — nesta unidade.
   const comSaldoAqui = (p: ProdutoDoEstoque) => (p.branch_product_stock ?? []).some(b => b.branches?.id === branchId
     && (Number(b.current_stock) > 0 || Number(b.current_rendimento ?? 0) > 0))
@@ -111,9 +111,9 @@ export default async function BranchStockPage({
 
   const branchData   = [{ id: branch.id, name: branch.name, slug: branch.slug }]
   // As outras unidades entram só como DESTINO de transferência: a lista visível
-  // continua sendo a desta filial. Sem isto, a aba Transferência sumia — a
+  // continua sendo a desta unidade. Sem isto, a aba Transferência sumia — a
   // unidade não tinha para onde mandar produto.
-  const unidadesDaRede = await filiaisAtivas(ctx.tenantId!)
+  const unidadesDaRede = await unidadesAtivas(ctx.tenantId!)
   // E13 + EQ1d: o estoque inicial do produto novo oferece as unidades ATIVAS
   // que a pessoa alcança — uma só, escrita e travada; mais, a lista com as
   // dela, já com esta (a do endereço). A action confere de novo.

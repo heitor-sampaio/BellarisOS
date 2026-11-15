@@ -70,7 +70,7 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('a senha inicial', () => {
-  test('a cliente com o acesso criado pela clínica entra com o CPF e troca a senha antes de tudo', async ({ browser }) => {
+  test('a cliente com o acesso criado pela rede entra com o CPF e troca a senha antes de tudo', async ({ browser }) => {
     const equipe = await browser.newContext({ storageState: recepcao!.estado })
     try {
       const p = await equipe.newPage()

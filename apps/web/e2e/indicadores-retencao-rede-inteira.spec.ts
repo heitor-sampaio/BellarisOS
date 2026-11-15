@@ -54,7 +54,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('olhando só a Zona Sul, a Carla VOLTOU: a clínica já a tinha atendido na Moinhos', async ({ browser }) => {
+test('olhando só a Zona Sul, a Carla VOLTOU: a rede já a tinha atendido na Moinhos', async ({ browser }) => {
   const { data, error } = await db().rpc('metrics_retention', {
     p_tenant: rede!.tenantId, p_branch_ids: [zonaSul.id], p_from: de, p_to: ate, p_professional_id: null,
   })

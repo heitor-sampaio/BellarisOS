@@ -922,7 +922,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
     { op: 'ajuste',        label: 'Ajuste',         icon: <SlidersHorizontal size={13}/>, color: 'var(--warning)' },
     { op: 'perda',         label: 'Perda',          icon: <PackageX         size={13} />, color: 'var(--danger)' },
   ]
-  // Transferir some so quando nao ha para onde: a filial mandava produto para
+  // Transferir some so quando nao ha para onde: a unidade mandava produto para
   // lugar nenhum porque recebia apenas a propria unidade na lista.
   const MOV_OPTS = allBranches.length > 1
     ? allMovOpts
@@ -1024,7 +1024,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
 // -- Histórico ---------------------------------------------------------
 //
 // De onde saiu e para onde entrou. Existia no back-end (`getProductMovements`)
-// e não tinha porta nenhuma na interface desde que a filial passou a usar este
+// e não tinha porta nenhuma na interface desde que a unidade passou a usar este
 // modal — dava para movimentar sem nunca ver o que já tinha sido movimentado.
 
 const MOV_LABEL: Record<string, string> = {

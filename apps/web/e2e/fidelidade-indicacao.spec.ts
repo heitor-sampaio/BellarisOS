@@ -187,7 +187,7 @@ test('o estorno do pagamento que premiou, com outro pagamento dela de pé: o pr�
   expect(premios).toHaveLength(2)
 })
 
-test('com o prêmio desligado, nada sai; e a ficha de outra clínica ou a própria não se escolhem', async () => {
+test('com o prêmio desligado, nada sai; e a ficha de outra rede ou a própria não se escolhem', async () => {
   await regra('DESLIGADO')
   const indicada = await rede!.criarCliente('Paula')
   expect((await db().from('clients').update({ indicada_por: ana!.clientId }).eq('id', indicada)).error).toBeNull()

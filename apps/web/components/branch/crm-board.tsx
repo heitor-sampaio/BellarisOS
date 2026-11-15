@@ -436,7 +436,7 @@ interface CRMBoardProps {
   procedures:   Procedure[]
   branchId:     string
   slug:         string
-  /** Modo rede: exibe badge de filial nos cards e oculta "+" por coluna */
+  /** Modo rede: exibe badge de unidade nos cards e oculta "+" por coluna */
   networkMode?: boolean
   branches?:    { id: string; name: string; slug: string }[]
   /**
@@ -921,7 +921,7 @@ function LeadCard({
           </p>
         )}
 
-        {/* Badge de filial (modo rede) */}
+        {/* Badge de unidade (modo rede) */}
         {lead.branch_name && (
           <div style={{ marginTop: 8 }}>
             <span style={{

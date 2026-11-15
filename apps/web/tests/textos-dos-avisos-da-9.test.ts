@@ -10,7 +10,7 @@ describe('os avisos à cliente', () => {
     expect(textoDoConcluido('Avaliação')).toBe('Atendimento concluído: Avaliação. Confirme e avalie pelo app.')
     expect(textoDoPagamento('Drenagem linfática')).toBe('Pagamento confirmado: Drenagem linfática.')
   })
-  it('o remarcado e o cancelado dizem a unidade quando a clínica tem mais de uma', () => {
+  it('o remarcado e o cancelado dizem a unidade quando a rede tem mais de uma', () => {
     expect(textoDoRemarcado('Avaliação', '07/11 às 10:00', 'Moinhos')).toBe('Novo horário: Avaliação em 07/11 às 10:00, na unidade Moinhos.')
     expect(textoDoRemarcado('Avaliação', '07/11 às 10:00', null)).toBe('Novo horário: Avaliação em 07/11 às 10:00.')
     expect(textoDoCancelado('Avaliação', '07/11 às 10:00', 'Moinhos', null))

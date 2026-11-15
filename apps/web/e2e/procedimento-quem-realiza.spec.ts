@@ -152,7 +152,7 @@ test.describe.serial('quem realiza o procedimento', () => {
     expect([bia!.userId, cris!.userId]).toContain(data![0]!.professional_id)
   })
 
-  test('a agenda da clínica avisa quando a profissional escolhida não realiza', async ({ browser }) => {
+  test('a agenda da rede avisa quando a profissional escolhida não realiza', async ({ browser }) => {
     await como(browser, gestora!.estado, async p => {
       await p.goto(`/${slug}/agenda?date=${diaEmQueAUnidadeAbre(2)}`)
       await p.getByRole('button', { name: 'Agendar', exact: true }).click()

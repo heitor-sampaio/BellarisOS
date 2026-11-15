@@ -34,10 +34,10 @@ test.afterAll(async () => {
   await cliente?.limpar(); await rede?.limpar()
 })
 
-test('a home do app tem o cartão "A clínica" com endereço, telefone, WhatsApp e horário', async ({ browser }) => {
+test('a home do app tem o cartão "A unidade" com endereço, telefone, WhatsApp e horário', async ({ browser }) => {
   await como(browser, cliente!, async p => {
     await p.goto(`/${slug}/cliente/home`)
-    const cartao = p.locator('[data-a-clinica]')
+    const cartao = p.locator('[data-a-unidade]')
     await expect(cartao).toContainText('A unidade')
     await expect(cartao).toContainText(`Unidade ac${marca}`)
     await expect(cartao).toContainText('Rua das Flores, 120, Curitiba – PR, 80000-000')
@@ -61,7 +61,7 @@ test('por-03: o WhatsApp do cartão é o número conectado da unidade', async ({
   try {
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/home`)
-      const cartao = p.locator('[data-a-clinica]')
+      const cartao = p.locator('[data-a-unidade]')
       await expect(cartao.getByRole('link', { name: /WhatsApp/ })).toHaveAttribute('href', 'https://wa.me/5541977776666')
       await expect(cartao.getByRole('link', { name: /Ligar/ })).toHaveAttribute('href', 'tel:+5541998765432')
     })

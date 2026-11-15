@@ -35,7 +35,7 @@ export function textoDaComissaoDaVenda(o: {
   itens: { nome?: string; regra: RegraDeVenda | null }[]
   pessoa: { nome: string; pct: number | null | undefined }
   /** A "Venda de produto" (no produto) ou a "Venda de plano" (no plano) da clínica. */
-  clinicaPct?: number | null
+  redePct?: number | null
 }): string | null {
   const daPessoa = o.pessoa.pct
   const resolvidos: ({ regra: RegraDeVenda; de: Origem } | null)[] = []
@@ -44,8 +44,8 @@ export function textoDaComissaoDaVenda(o: {
     if (o.tipo !== 'PRE_PAGO' && o.tipo !== 'PLANO' && it.regra) { resolvidos.push({ regra: it.regra, de: 'ITEM' }); continue }
     if (daPessoa === undefined) return null
     if (daPessoa != null && daPessoa > 0) { resolvidos.push({ regra: { tipo: 'PERCENTAGE', valor: daPessoa }, de: 'PESSOA' }); continue }
-    if ((o.tipo === 'PRODUTO' || o.tipo === 'PLANO') && o.clinicaPct != null && o.clinicaPct > 0) {
-      resolvidos.push({ regra: { tipo: 'PERCENTAGE', valor: o.clinicaPct }, de: 'CLINICA' }); continue
+    if ((o.tipo === 'PRODUTO' || o.tipo === 'PLANO') && o.redePct != null && o.redePct > 0) {
+      resolvidos.push({ regra: { tipo: 'PERCENTAGE', valor: o.redePct }, de: 'CLINICA' }); continue
     }
     resolvidos.push(null)
   }

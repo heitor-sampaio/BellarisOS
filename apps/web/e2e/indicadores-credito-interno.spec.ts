@@ -9,7 +9,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * cancelado, que ficou), e o crédito é só o saldo dela na clínica. Quando ela
  * USA o crédito num atendimento, o lançamento "Crédito interno" é pago — e
  * `metrics_receitas_pagas` (a fonte única), o núcleo, a série, o "por
- * filial", a composição e o top de clientes o somavam: R$ 600 de receita para
+ * unidade", a composição e o top de clientes o somavam: R$ 600 de receita para
  * R$ 300 que entraram.
  */
 
@@ -84,9 +84,9 @@ test('o uso do crédito interno não soma receita: R$ 300 entraram, não R$ 600'
   expect(e3).toBeNull()
   expect((serie as { revenue: number }[]).reduce((s, x) => s + Number(x.revenue), 0)).toBe(300)
 
-  const { data: porFilial, error: e4 } = await db().rpc('metrics_by_branch', { p_tenant: rede!.tenantId, p_from: de, p_to: ate })
+  const { data: porUnidade, error: e4 } = await db().rpc('metrics_by_branch', { p_tenant: rede!.tenantId, p_from: de, p_to: ate })
   expect(e4).toBeNull()
-  expect(Number((porFilial as { branch_id: string; revenue_cash: number }[]).find(b => b.branch_id === rede!.branchId)!.revenue_cash)).toBe(300)
+  expect(Number((porUnidade as { branch_id: string; revenue_cash: number }[]).find(b => b.branch_id === rede!.branchId)!.revenue_cash)).toBe(300)
 
   const { data: comp, error: e5 } = await db().rpc('metrics_financeiro_composicao', p)
   expect(e5).toBeNull()

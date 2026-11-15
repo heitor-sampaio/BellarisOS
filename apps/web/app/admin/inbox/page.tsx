@@ -1,6 +1,6 @@
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { filiaisAtivas } from '@/lib/branches'
+import { unidadesAtivas } from '@/lib/branches'
 import { getConversations, opcoesDoInbox } from '@/actions/inbox'
 import { canaisConectados } from '@/lib/channels/factory'
 import { CRMInbox } from '@/components/admin/crm-inbox'
@@ -22,7 +22,7 @@ export default async function AdminInboxPage({
   const { c: convParam } = await searchParams
 
   const admin    = createAdminClient()
-  const branches = await filiaisAtivas(ctx.tenantId!)
+  const branches = await unidadesAtivas(ctx.tenantId!)
 
   // `convParam` entra aqui: a conversa vinda de um card do funil pode não ter
   // mensagem nenhuma, e sem isso ela não estaria na lista para ser aberta.

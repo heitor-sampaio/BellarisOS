@@ -201,7 +201,7 @@ test.describe.serial('procedimento pré-pago', () => {
 
   // D1 da 6ª simulação: o que foi pago além volta como estorno ou crédito na
   // clínica (e2e/pre-pago-cancelar-unidade.spec.ts); a "Devolução" a pagar saiu.
-  test('cancelar unidade já paga: o que volta vira crédito na clínica, sem "Devolução" a pagar; agendada, recusa', async ({ browser }) => {
+  test('cancelar unidade já paga: o que volta vira crédito interno, sem "Devolução" a pagar; agendada, recusa', async ({ browser }) => {
     const c = await rede!.criarCliente('Cancela pago')
     const v = await vender(c, 2, [{ amount: 600, payment_method: 'PIX', is_paid: true }])
     const { data: us } = await db().from('procedure_sale_units').select('id').eq('sale_id', v).order('numero')

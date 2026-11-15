@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isStageOutcome, type StageOutcome } from '@/lib/crm'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -37,8 +37,8 @@ export async function createStage(
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
 
     const name     = (formData.get('name')       as string)?.trim()
     const color    = (formData.get('color')      as string)?.trim() || '#c34d6b'
@@ -98,8 +98,8 @@ export async function renameStage(stageId: string, name: string, slug: string): 
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     if (!name.trim()) return { error: 'Dê um nome à etapa.' }
 
     const { data, error } = await createAdminClient()
@@ -129,7 +129,7 @@ export async function updateStageColor(stageId: string, color: string, slug: str
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    if (recusaDaConfigDaClinica(ctx)) return
+    if (recusaDaConfigDaRede(ctx)) return
 
     const { error } = await createAdminClient()
       .from('crm_stages')
@@ -160,8 +160,8 @@ export async function updateStageOutcome(
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     if (!isStageOutcome(outcome)) return { error: 'Resultado inválido.' }
 
     const { error } = await createAdminClient()
@@ -189,8 +189,8 @@ export async function deleteStage(stageId: string, slug: string): Promise<Result
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
 
     const admin = createAdminClient()
 
@@ -249,7 +249,7 @@ export async function reorderStages(orderedIds: string[], slug: string) {
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    if (recusaDaConfigDaClinica(ctx)) return
+    if (recusaDaConfigDaRede(ctx)) return
 
     const admin = createAdminClient()
     // Cada update olhado: com o erro descartado, a ordem nova "salvava" e a

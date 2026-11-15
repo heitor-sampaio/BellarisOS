@@ -21,7 +21,7 @@ import ts from 'typescript'
  * do CR1 (`oportunidade-no-texto`): o texto do JSX e as strings de frase (com
  * espaço, ou começando por maiúscula), pela árvore do TypeScript, nos três
  * apps da plataforma (a clínica, o sistema, o suporte) e no núcleo. O
- * comentário, o identificador (`aClinicaDoEndereco`), a chave em maiúsculas
+ * comentário, o identificador (que tem a trava dele, abaixo), a chave em maiúsculas
  * (`'CLINICA'`), o nome de variável de ambiente (`CLINICA_URL`), o caminho
  * (`/auth/clinicas`), as colunas de uma consulta e o log não contam. O site
  * (`apps/site`) fica de fora: lá "clínica de estética" é o mercado (SI1).
@@ -155,6 +155,60 @@ function errados(padrao: RegExp): string[] {
   return saida
 }
 
+/**
+ * Os NOMES internos (V1/V2, 16/11): identificador (variável, função, tipo,
+ * componente, atributo `data-*`) e nome de arquivo também dizem "rede" e
+ * "unidade". Ficam: o adjetivo ("foto clínica": `foto_clinica`,
+ * `FOTO_CLINICA`, `CATEGORIAS_CLINICAS`, `includes_clinical`), a chave
+ * gravada no banco (`CLINICA` do canal de assinatura e da regra da comissão,
+ * `aguardando_clinica` da situação do chamado),
+ * a variável de ambiente (`CLINICA_URL`), a rota que já existe
+ * (`/auth/clinicas`) e as migrations (o nome de arquivo é histórico). O site
+ * (`apps/site`) fica de fora, como na trava do texto: lá é o mercado.
+ */
+const NOME_VELHO = /filia(?:l|is)|(?<!(?:foto|FOTO|CATEGORIAS)[_-]?)cl[ií]nicas?(?!l|mente)/i
+const NOMES_QUE_FICAM = new Set(['CLINICA', 'CLINICA_URL', 'aguardando_clinica'])
+const ROTAS_QUE_FICAM = /\/app\/auth\/clinicas\//
+/** Campo que espelha a chave do JSON de uma função do banco (`r.clinica` de `*_link_espiar`). */
+const CHAVES_DO_BANCO: readonly (readonly [string, string])[] = [
+  ['apps/web/lib/documentos/link-publico.ts', 'clinica'],
+  ['apps/web/lib/pre-atendimento/link-publico.ts', 'clinica'],
+]
+/** As travas do vocabulário nomeiam a palavra que procuram. */
+const TRAVAS_DO_VOCABULARIO = /(?:vocabulario-no-texto|vocabulario-de-uma-unidade)\.test\.ts$|rede-de-uma-unidade\.spec\.ts$/
+
+function identificadoresErrados(arquivo: string, texto: string): string[] {
+  const fonte = ts.createSourceFile(arquivo, texto, ts.ScriptTarget.Latest, true, arquivo.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+  const saida: string[] = []
+  const visitar = (no: ts.Node) => {
+    if ((ts.isIdentifier(no) || ts.isPrivateIdentifier(no)) && NOME_VELHO.test(no.text) && !NOMES_QUE_FICAM.has(no.text)) {
+      const { line } = fonte.getLineAndCharacterOfPosition(no.getStart())
+      saida.push(`${line + 1}: ${no.text}`)
+    }
+    ts.forEachChild(no, visitar)
+  }
+  visitar(fonte)
+  return saida
+}
+
+function nomesErrados(): string[] {
+  const pastas = [...PASTAS, join(RAIZ, 'e2e'), join(RAIZ, 'e2e-site'), join(RAIZ, 'tests'), join(RAIZ, 'scripts')]
+  const saida: string[] = []
+  for (const pasta of pastas) {
+    for (const f of arquivos(pasta)) {
+      const rel = relative(MONO, f).split(sep).join('/')
+      if (NOME_VELHO.test(rel.replace(ROTAS_QUE_FICAM, '/'))) saida.push(`${rel}: o nome do arquivo`)
+      if (TRAVAS_DO_VOCABULARIO.test(rel)) continue
+      for (const a of identificadoresErrados(f, readFileSync(f, 'utf8'))) {
+        const nome = a.slice(a.indexOf(': ') + 2)
+        if (CHAVES_DO_BANCO.some(([arq, n]) => arq === rel && n === nome)) continue
+        saida.push(`${rel}:${a}`)
+      }
+    }
+  }
+  return saida
+}
+
 describe('Vocabulário: o texto que se lê fala o sistema revisado', { timeout: 120_000 }, () => {
   it('V1 / PO2 / CA1: nenhuma tela, aviso, e-mail ou erro diz "clínica"', () => {
     expect(errados(CLINICA), 'é "a rede" ou o nome dela ("clínica" só no site, como mercado)').toEqual([])
@@ -174,6 +228,31 @@ describe('Vocabulário: o texto que se lê fala o sistema revisado', { timeout: 
 
   it('V0: nenhum cargo como se fosse fixo ("a recepção", "a gerente", "a contadora")', () => {
     expect(errados(CARGO_FIXO), 'fala-se em permissão, em "a equipe" ou em "quem atende"').toEqual([])
+  })
+
+  it('o crédito vendido tem UM nome na equipe: "Crédito interno" (o rótulo de INTERNAL_CREDIT), nunca "Crédito na rede"', () => {
+    expect(errados(/cr[ée]dito na rede/i), 'é "Crédito interno" (e "Seu crédito" no app da cliente)').toEqual([])
+  })
+
+  it('V1 / V2 nos nomes internos: nenhum identificador nem arquivo diz "clínica" ou "filial"', () => {
+    expect(nomesErrados(), 'é "rede" ou "unidade" também no código (16/11)').toEqual([])
+  })
+
+  it('a trava dos nomes internos enxerga o identificador e deixa o adjetivo, a chave e o env', () => {
+    const exemplo = [
+      'const recusaDaConfigDaClinica = 1',
+      'let filial = 2',
+      'type Filial = { id: string }',
+      'const x = <p data-a-clinica />',
+      "const k = { CLINICA: 'na tela' }",
+      'const u = process.env.CLINICA_URL',
+      "const f = 'foto_clinica'; const FOTO_CLINICA = 1; const CATEGORIAS_CLINICAS = 2",
+      'const includes_clinical = true',
+    ].join('\n')
+    expect(identificadoresErrados('exemplo.tsx', exemplo).map(l => l.split(':')[0])).toEqual(['1', '2', '3', '4'])
+    expect(NOME_VELHO.test('apps/web/app/auth/clinicas/page.tsx'.replace(ROTAS_QUE_FICAM, ''))).toBe(false)
+    expect(NOME_VELHO.test('cartao-da-clinica.tsx')).toBe(true)
+    expect(NOME_VELHO.test('atendimento-foto-clinica.spec.ts')).toBe(false)
   })
 
   it('a trava de "clínica" enxerga o nome e deixa o adjetivo e o código', () => {

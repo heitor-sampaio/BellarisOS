@@ -282,7 +282,7 @@
     rede abre no endereço da unidade DO AGENDAMENTO** (D10 da 9ª simulação,
     2026-11-07): a Carolina, na agenda da Menino Deus, clicava num da Moinhos
     e ia a `/menino-deus/agenda/<id da Moinhos>` — 404. O link da lista é o
-    da unidade dele (o portal dela para quem tem unidade fixa), e
+    da unidade dele (o portal dela para quem não tem “A rede inteira”), e
     `/[slug]/agenda/[id]` de outra unidade ao alcance redireciona ao endereço
     certo. A lista mostra só o que está EM ABERTO (o concluído de hoje
     aparecia como pendente). Prova: `e2e/agenda-unidade-da-9.spec.ts` ("D10"). "Minhas comissões" (o
@@ -291,7 +291,7 @@
   - **`provides_services` = "atende em alguma unidade"**, mantido junto da
     lista por um gatilho só (`private.atende_em_sincronizar`): gravar a lista
     acerta o `provides_services`; gravar só o `provides_services` (o caminho de
-    antes) liga com o que a pessoa alcança (unidade fixa → a dela; da rede → as
+    antes) liga com o que a pessoa alcança (sem “A rede inteira” → as dela; da rede → as
     ativas de agora) ou esvazia a lista; trocar a abrangência sem mexer na
     lista leva junto a lista que seguia a abrangência. A lista só aceita
     unidade da rede. Coluna, não tabela membro × unidade: a tabela com
@@ -301,7 +301,7 @@
     dela (e a da rede) diz "Ninguém atende nesta unidade ainda" (`[data-ninguem-atende]`),
     como o cartão dela em Configurações → Unidades ("N pessoas atendem aqui",
     `[data-quem-atende-na-unidade]`).
-  - **Quem tem só uma unidade (com a Equipe em Gerenciar) marca e desmarca só a DELA** (H7): as outras
+  - **Quem não tem “A rede inteira” (com a Equipe em Gerenciar) marca e desmarca só as DELA** (H7): as outras
     unidades aparecem travadas no checklist, e `updateTeamMember`/
     `createTeamMember` mudam só a dela (`atendeQueGrava`, `lib/equipe/atende.ts`).
     Quem é de fora e atende ali aparece na Equipe da unidade ("Da rede" ou
@@ -315,7 +315,7 @@
   `nomesDosRegistros` (`lib/nomes-dos-registros.ts`, cliente de serviço, com
   a rede, só os ids dos registros já lidos). Pela sessão, `clients_select`
   mostra a ficha só à unidade de CADASTRO e a política de `users` mostra a
-  quem tem unidade fixa só os membros da unidade dele: a cliente cadastrada
+  quem não tem “A rede inteira” só os membros das unidades dele: a cliente cadastrada
   em outra unidade e o profissional da rede viravam "—". A RLS de `clients` e
   `users` não foi alargada (decisão de produto). Prova:
   `e2e/agenda-nomes-de-outra-unidade.spec.ts`.
@@ -383,7 +383,7 @@
   cargo, e SEM ações: cargo, comissão e acesso se mexem na Equipe da rede
   (quem é da rede vê o lápis que leva para lá). A sessão de unidade não lê
   membros da rede (RLS): essa lista vem pelo servidor. **E diz o recorte**
-  (A12 da 6ª simulação, 2026-11-04: quem tinha só uma unidade via 3 de 7 sem saber por
+  (A12 da 6ª simulação, 2026-11-04: quem não tinha “A rede inteira” via 3 de 7 sem saber por
   quê): "Equipe da unidade Casa Forte: quem é dela e quem é da rede e atende
   aqui. Quem é da rede e não atende fica na Equipe da rede."
   (`[data-recorte-da-equipe]`); o "Adicionar membro" dela diz "Entra na
@@ -706,7 +706,7 @@
   comentário. **O que ela avalia é da rede** (Configurações → Geral, "O que
   a cliente avalia", `tenants.avaliacao_o_que`): "O atendimento e cada
   procedimento" (`OS_DOIS`, o padrão), "Só o atendimento" ou "Só cada
-  procedimento"; quem tem só uma unidade não muda (`recusaDaConfigDaClinica`).
+  procedimento"; quem não tem “A rede inteira” não muda (`recusaDaConfigDaRede`).
   - A nota do **ATENDIMENTO** ("Atendimento — como foi, com a Dra. X") é
     `appointments.client_rating` e vale para o atendimento e a profissional.
     Era o "Profissional" de antes.
@@ -855,12 +855,12 @@
   **Com UMA profissional que realiza, o passo nem aparece** (A2 da 10ª
   simulação, 2026-11-10): o procedimento leva direto à data, com "Com X" e
   quando ela atende; o Voltar volta ao procedimento. Prova:
-  `e2e/agenda-clinica-de-uma-opcao.spec.ts`.
+  `e2e/agenda-rede-de-uma-opcao.spec.ts`.
 - **A cliente agenda em QUALQUER unidade da rede pelo app** (H5, decisão do
   Heitor, 2026-11-01: "A cliente é da clínica, pode agendar em qualquer
   unidade da clínica"; A62/A65 da 5ª simulação). A ficha é da REDE: o portal
   de qualquer unidade ATIVA da rede da ficha abre a mesma ficha
-  (`slugsDaClinica` em `fichaDaRequisicao`, e o layout de `[slug]` confere a
+  (`slugsDaRede` em `fichaDaRequisicao`, e o layout de `[slug]` confere a
   rede, não a unidade de cadastro — que abre mesmo desativada, por ser o
   destino do login). Com mais de uma unidade, o agendar começa por "Em qual
   unidade?": cada uma é o agendar do endereço DELA, e os procedimentos, as
@@ -894,7 +894,7 @@
   que o app não emitia. Só a sessão livre do PLANO se liga depois, no app.
 - **A cliente ARQUIVADA não agenda pelo app** (o Heitor: "concordo"): o
   agendar mostra "Fale com a equipe para agendar." e o cartão da unidade
-  (`AgendarComAClinica`), e `createClientAppointment` recusa com a mesma frase
+  (`AgendarComAEquipe`), e `createClientAppointment` recusa com a mesma frase
   (`CLIENTE_ARQUIVADA_NO_APP`). Prova: o mesmo spec.
 - **O cartão do pacote leva ao agendamento DELE** (A63 da 5ª simulação): na
   home do app, o pacote diz "N de M sessões realizadas · restam R" e, pela
@@ -1171,7 +1171,7 @@
     `e2e/crm-agendar-liga-oportunidade.spec.ts` ("D12"). **A unidade de UMA
     sala, livre no horário, a traz escolhida** no Agendar (A2 da 10ª, a unidade
     de uma opção só — `unicaOpcao`, `design.md`), e a profissional única
-    também; prova: `e2e/agenda-clinica-de-uma-opcao.spec.ts`. **Unidade sem sala: o
+    também; prova: `e2e/agenda-rede-de-uma-opcao.spec.ts`. **Unidade sem sala: o
     campo nem aparece.** **A sala é opcional** em todo agendamento e
     atendimento (decisão do Heitor, 2026-11-01: "não deve ser obrigatório
     selecionar sala"): o app da cliente, o checkout, as sessões e o Copilot
@@ -1288,7 +1288,7 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   de `actions/procedures.ts` e a abrangência de `quemGerencia`). O catálogo
   tem um corpo só, `app/_shared/catalogo-de-procedimentos.tsx`: o portal da
   rede o mostra sempre, e o da unidade a quem tem o módulo em Gerenciar — a
-  pessoa de unidade fixa cuida dele dali, sem ir à rede. Quem só vê lê, no
+  pessoa sem “A rede inteira” cuida dele dali, sem ir à rede. Quem só vê lê, no
   portal da unidade, a consulta com o preço daquela unidade e "quem cria e
   muda é quem tem Procedimentos em Gerenciar" (`[data-catalogo-da-rede]`); na
   rede, "Seu cargo só consulta o catálogo" (`[data-catalogo-so-consulta]`).
@@ -1442,8 +1442,10 @@ const procedures = await ler(
     de plano (ou a rede sem planos) a têm dentro da "Ficha de atendimento".
     Faltava no primeiro desde 2026-09-25, e a profissional concluía sem ela.
     Só vai à tela com `canViewRecords` (o acesso já é registrado na sessão).
-    A obrigatória barra o "Salvar ficha", o "Enviar para a recepção" e,
-    desde a revisão do Heitor de 2026-10-29, também o "Finalizar" (§10). Prova:
+    A obrigatória barra o "Salvar ficha", os dois botões do plano ("Aceitar
+    plano" e "Gerar plano · a cliente vai pensar" — era o "Enviar para a
+    recepção") e, desde a revisão do Heitor de 2026-10-29, também o
+    "Finalizar" (§10). Prova:
     `e2e/atendimento-ficha-do-procedimento.spec.ts`.
   - **Não confundir com `medical_records.general_anamnesis`**: aquilo é o
     questionário de saúde do CLIENTE, preenchido uma vez, que alimenta o termo
@@ -1706,7 +1708,7 @@ const procedures = await ler(
     A regra ficou, e o Heitor a confirmou no levantamento das regras (H13,
     2026-11-11, opção a: pelo princípio 1 a rede decide pelo cargo quem tem
     o Prontuário em Gerenciar, e pela H7 o controle da rede toda é de quem é
-    da rede; quem tem só uma unidade não vê o bloco). O escopo não muda a regra,
+    da rede; quem não tem “A rede inteira” não vê o bloco). O escopo não muda a regra,
     e o texto diz isso desde a A35 da 6ª simulação (2026-11-04): "… sem
     unidade fixa — também com o escopo “só os meus”" (o Igor, médico da rede
     com o prontuário "só os meus", via a lista e o texto parecia excluí-lo).
@@ -2047,7 +2049,8 @@ const procedures = await ler(
   os planos da cliente (`getPlanosDoCliente`, o Planejamento da ficha e do
   atendimento) e TODA action pelo id do plano que passa por `planoDoTenant`
   (cabeçalho, editar, salvar, renomear, ligar cliente, enviar ao PDV,
-  fechar o checkout, o arquivo do tratamento), mais `getTreatmentPlanSessions`,
+  aceitar o plano — `aceitarPlano` —, receber dele no PDV —
+  `checkoutTreatmentPlan` —, o arquivo do tratamento), mais `getTreatmentPlanSessions`,
   só valem para o plano DELA (`planoDaProfissional`). Cancelar o plano fechado
   é do Financeiro em Gerenciar, como o pacote (D4 da 9ª, `vendas-financeiro.md`).
   **"O plano é da cliente, não da profissional"** (revisão do Heitor,
@@ -2092,7 +2095,9 @@ const procedures = await ler(
   dele ("Tratamento"), e o Planejamento aberto por cima (`planoNaTela`) lista
   os planos da cliente mas não oferece "Novo plano" — diz que o plano desta
   avaliação se monta na própria tela. Eram dois "Nova sessão" no mesmo gesto,
-  e o plano feito no Planejamento ficava fora do "Enviar para a recepção".
+  e o plano feito no Planejamento ficava fora do plano gerado na avaliação
+  (então o "Enviar para a recepção"; hoje os dois botões do plano, "Aceitar
+  plano" e "Gerar plano · a cliente vai pensar").
   Prova: `e2e/plano-dica-do-pacote.spec.ts`.
 
 ---
@@ -2169,7 +2174,7 @@ const procedures = await ler(
   Prova: `e2e/estoque-transferencia-com-nomes.spec.ts`,
   `tests/estoque-transferencia-nota.test.ts`.
   **O "deu certo" diz os dois saldos** (A16 da 8ª simulação, 2026-11-06): quem
-  tem só uma unidade vê só o estoque dela e não tinha como conferir o
+  não tem “A rede inteira” vê só o estoque das unidades dela e não tinha como conferir o
   destino. `estoque_transferir` devolve os saldos depois (com as linhas
   travadas), e o aviso diz "Transferido: Batel agora tem 5 un; Água Verde
   ficou com 3 un." Prova: o mesmo spec ("A16").
@@ -2693,7 +2698,7 @@ indicada é a do consolidado do levantamento):
   - **Criar, renomear, excluir: quem tem o Estoque em Gerenciar, e só isso**
     (E4/E5: "é só quem tem permissão de gerenciar, mesma regra para
     categoria, marca e fornecedor"). Ser da rede deixou de contar — a
-    `recusaDaConfigDaClinica` saiu dessas gravações (era a C71 e a D4/C76).
+    `recusaDaConfigDaRede` saiu dessas gravações (era a C71 e a D4/C76).
     Uma action para as três listas: `criarItemDoEstoque`,
     `renomearItemDoEstoque`, `excluirItemDoEstoque` (`actions/stock.ts`); a
     sessão só LÊ (`marcas_select`), o servidor grava. Renomear a categoria
@@ -2982,8 +2987,8 @@ O resto do fluxo:
   `e2e/atendimento-plano-gerado-mantem-a-sessao.spec.ts`.
   **E é UM estado só na tela** (D8 e A29 da 6ª simulação, 2026-11-04;
   princípio 3): o formulário da avaliação e o de sempre (o do plano gerado)
-  tinham dois estados para o mesmo campo, e depois de "Gerar plano e enviar à
-  recepção" a tela trocava para o segundo — Evolução e Intercorrências vazias,
+  tinham dois estados para o mesmo campo, e depois de gerar o plano (então
+  "Gerar plano e enviar à recepção") a tela trocava para o segundo — Evolução e Intercorrências vazias,
   sem o cartão "Insumos utilizados" —, e o "Finalizar" levava o vazio. Agora
   o que se escreveu continua, o cartão de insumos fica no ramo do plano gerado
   até concluir, e o rascunho guarda um campo só (o de antes, com dois, vale
@@ -3021,7 +3026,8 @@ O resto do fluxo:
   for obrigatório é obrigatório e barra qualquer progressão se não for
   feito"). A pergunta obrigatória sem resposta — na FICHA DE SAÚDE (a da
   rede) ou na FICHA DE ATENDIMENTO — barra o "Finalizar
-  atendimento", o "Enviar para a recepção" e o "Fechar agora". Era o
+  atendimento", o "Aceitar plano" e o "Gerar plano · a cliente vai pensar"
+  (eram o "Fechar agora" e o "Enviar para a recepção"). Era o
   contrário ("a cliente já foi atendida", D2/D3 de 28/10 e D1 de 29/10).
   - **A tela aponta TODAS de uma vez** (A30 da 6ª simulação, 2026-11-04;
     era uma por clique): cada obrigatória vazia — da ficha de saúde e da ficha —
@@ -3086,8 +3092,8 @@ O resto do fluxo:
     (`responderAnamnese`, `e2e/apoio/anamnese.ts`) — também o que conclui
     pela FUNÇÃO (`responderAnamneseDoAgendamento`), que agora recusa.
 - **O plano da avaliação é UMA gravação** (revisão do Heitor, 2026-10-29;
-  migration `20261029000801`). O "Enviar para a recepção" e o "Fechar agora"
-  salvavam a ficha de atendimento numa action e depois geravam o plano em
+  migration `20261029000801`). Os botões do plano (então o "Enviar para a
+  recepção" e o "Fechar agora") salvavam a ficha de atendimento numa action e depois geravam o plano em
   outra — e o plano gravava a ficha de saúde, o plano, as sessões e as dores em
   passos soltos: o plano que falhava deixava a ficha, a ficha de saúde e um plano
   PROPOSTO sem procedimento. Agora `generateEvaluationPlan` CALCULA (a
@@ -3101,7 +3107,10 @@ O resto do fluxo:
   fica. A função confere que todo procedimento do plano é da rede, recusa o
   agendamento cancelado e o plano já fechado (ACCEPTED/COMPLETED), e só o
   servidor a chama. A action confere também a agenda "só os meus" pelo id
-  (`deOutroProfissional`). Prova: `e2e/atendimento-ficha-e-plano-juntos.spec.ts`.
+  (`deOutroProfissional`). O "Aceitar plano" aceita DEPOIS, em outra action
+  (`aceitarPlano`, no `gerarPlano` de `appointment-session.tsx`): falhou o
+  aceite, o plano gerado fica proposto e a tela diz "Plano gerado, mas não
+  foi aceito: …". Prova: `e2e/atendimento-ficha-e-plano-juntos.spec.ts`.
 - **Os dois botões do plano na avaliação** (o PDV, fase 3 — 2026-11-13):
   "Aceitar plano" (era o "Fechar agora": gera e ACEITA o plano, sem dinheiro;
   a comanda do plano vai ao PDV, onde a cliente assina o contrato e paga) e
@@ -3111,10 +3120,11 @@ O resto do fluxo:
   ao PDV. Não há mais checkout do plano dentro do atendimento. Onde o texto
   abaixo diz "Fechar agora", "enviar à recepção" ou "checkout do plano", leia
   o aceite e o receber no PDV (`vendas-financeiro.md`, "A comanda do plano").
-- **O botão é "Gerar plano e enviar à recepção"** (J-35, 2026-10-30): era
+- **O botão que só gera o plano é "Gerar plano · a cliente vai pensar"**
+  (J-35, 2026-10-30, quando virou "Gerar plano e enviar à recepção"; era
   "Enviar para a recepção" e, no atendimento avulso, parecia um segundo
-  "concluir". Ele gera o plano; a tela diz que, sem plano, basta o "Finalizar
-  atendimento". E a janela do "Finalizar" diz de onde vem o pagamento (J-40):
+  "concluir"). Ele gera o plano; a tela diz que, sem plano, basta o "Finalizar
+  atendimento" (`[data-dica-do-avulso]`). E a janela do "Finalizar" diz de onde vem o pagamento (J-40):
   sessão do plano, de pacote, pré-pago, sem cobrança — ou "O pagamento é
   recebido no PDV" no avulso com preço (dizia isso na sessão do plano
   já pago). Prova: `e2e/atendimento-textos-do-fechamento.spec.ts`.
@@ -3148,8 +3158,8 @@ O resto do fluxo:
   do concluído (`textoDoRegistroTravado`, `lib/atendimento/registro-travado.ts`).
   Dizia "Atendimento concluído. Para corrigir, use…". Prova:
   `tests/registro-travado.test.ts`.
-- **Gerar o plano na avaliação ABERTA (o "Aceitar plano" e o "Gerar plano e
-  enviar à recepção") pede o Prontuário em Gerenciar** (D9 da 5ª simulação,
+- **Gerar o plano na avaliação ABERTA (o "Aceitar plano" e o "Gerar plano ·
+  a cliente vai pensar") pede o Prontuário em Gerenciar** (D9 da 5ª simulação,
   2026-11-01): grava a avaliação no prontuário (`generateEvaluationPlan`). Na
   avaliação CONCLUÍDA, só o plano nasce: monta quem atende na unidade (PT2,
   "Montar plano desta avaliação"). Com ele só em Ver, o
@@ -3159,7 +3169,8 @@ O resto do fluxo:
 - **A avaliação concluída gera o plano** (revisão do Heitor, 2026-10-29: "é
   preciso avaliar primeiro pra depois decidir o que fazer"). O A30 tinha tirado
   o "Fechar agora" e o "Enviar para a recepção" porque gerar o plano regravava
-  o registro fechado; os botões VOLTARAM, e gerar o plano ali grava SÓ o plano,
+  o registro fechado; os botões VOLTARAM (hoje "Aceitar plano" e "Gerar plano
+  · a cliente vai pensar"), e gerar o plano ali grava SÓ o plano,
   ligado à avaliação (`evaluation_appointment_id`): as dores, a evolução, a
   ficha e a ficha de saúde daquele dia ficam como estão — a tela não as manda e
   `gerar_plano_da_avaliacao` não as grava com o atendimento COMPLETED, nem
@@ -3186,8 +3197,10 @@ O resto do fluxo:
   frase acima do botão, no fim de uma página longa. O servidor continua
   recusando com a mesma frase. Prova: `e2e/atendimento-campos-da-tela.spec.ts`. As dores só vão à tela com
   `canViewRecords`, aparecem na aba Prontuário da ficha e no pacote LGPD
-  (parte clínica). O "Enviar para a recepção" grava nelas; o envio do plano
-  em rascunho aceita as dores OU a observação, como antes.
+  (parte clínica). Gerar o plano na avaliação aberta (os dois botões do plano,
+  `gerar_plano_da_avaliacao`) grava nelas; o envio do plano em rascunho (o
+  "Enviar ao PDV" do editor e o aceite, `recusaDoEnvioDoPlano`) aceita as
+  dores OU a observação, como antes.
 - **A evolução escrita tem rascunho, e ele morre com a aba** (A31 da
   simulação de 2026-10-27, decisão do Heitor): a evolução e a intercorrência
   da tela do atendimento (dos dois formulários) — e, desde o D3 de 2026-10-28,
@@ -3329,7 +3342,7 @@ O resto do fluxo:
 ❌ Gravar o custo do produto ao editar o cadastro (o custo vem das entradas — C17)
 ❌ Campo de categoria, marca ou fornecedor em texto livre (ou num select sem busca) numa porta de entrada nova — é CampoDaLista (a lista da rede, com busca e "+ Nova …" — E6)
 ❌ Pôr marca ou fornecedor no PRODUTO — são da entrada (E10)
-❌ Recusar quem tem só uma unidade nas categorias, marcas e fornecedores por ser de unidade — a regra é o Estoque em Gerenciar, e só isso (E4)
+❌ Recusar quem não tem “A rede inteira” nas categorias, marcas e fornecedores por ser de unidade — a regra é o Estoque em Gerenciar, e só isso (E4)
 ❌ Decidir quem cadastra produto por ser da rede ou de unidade (era a C63) — é o Estoque em Gerenciar, e só isso; a unidade do estoque inicial é das que a pessoa alcança, conferida na action (E13)
 ❌ Gravar o produto e o estoque inicial em passos soltos (o produto ficava se o estoque falhasse) — é produto_cadastrar, uma transação com todas as linhas (E11)
 ❌ Avisar um lote sem reivindicá-lo antes (vencimento_avisado_em — C25)

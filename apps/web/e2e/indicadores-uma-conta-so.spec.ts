@@ -202,7 +202,7 @@ test.describe('D10: a conversão é da OPORTUNIDADE (ganhas ÷ do funil), uma co
 })
 
 test.describe('Ticket médio = média de quanto cada CLIENTE gasta (pago ÷ clientes que pagaram)', () => {
-  test('dashboard da rede: R$ 300 (R$ 600 ÷ 2 clientes), no cartão e na linha da filial', async ({ browser }) => {
+  test('dashboard da rede: R$ 300 (R$ 600 ÷ 2 clientes), no cartão e na linha da unidade', async ({ browser }) => {
     await como(browser, gestor, async p => {
       await p.goto('/admin/dashboard?period=month')
       const ticket = cartao(p, 'Ticket médio')

@@ -27,7 +27,7 @@ test.afterAll(async () => {
   if (authId) expect((await banco().auth.admin.deleteUser(authId)).error).toBeNull()
 })
 
-test('o login sem rede nem ficha não entra e diz que a conta não tem acesso a nenhuma clínica', async ({ page }) => {
+test('o login sem rede nem ficha não entra e diz que a conta não tem acesso a nenhuma rede', async ({ page }) => {
   await page.goto('/login')
   await page.getByLabel('E-mail').fill(email)
   await page.getByLabel('Senha').fill(senha)

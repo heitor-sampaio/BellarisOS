@@ -36,7 +36,7 @@ export default async function BranchProceduresPage({
   if (can(ctx, 'procedures', 'MANAGE')) return <CatalogoDeProcedimentos termo={busca} />
 
   const [allProcs, sessionsMap] = await Promise.all([
-    ler(// Procedures (rede + locais da filial)
+    ler(// Procedures (rede + locais da unidade)
     admin
       .from('procedures')
       .select(`
@@ -50,16 +50,16 @@ export default async function BranchProceduresPage({
       .order('category')
       .order('name'), 'carregar os procedimentos'),
 
-    // Sessões concluídas por procedimento nesta filial, contadas no banco:
+    // Sessões concluídas por procedimento nesta unidade, contadas no banco:
     // trazer uma linha por atendimento cortava em 1000 (§13.1).
     getSessoesPorProcedimento([branch.id]),
   ])
   // O preço DA UNIDADE, quando ela tem um (D2 da 9ª).
   const daUnidade = await precosDaUnidade(admin, branch.id as string)
 
-  // Filtra procedimentos de rede pela disponibilidade de filial
+  // Filtra procedimentos de rede pela disponibilidade de unidade
   const procedures = (allProcs ?? []).filter(p => {
-    if (p.branch_id !== null) return true  // local da filial — sempre inclui
+    if (p.branch_id !== null) return true  // local da unidade — sempre inclui
     const av = p.procedure_branch_availability as { branch_id: string }[] | null
     if (!av || av.length === 0) return true  // sem restrição → toda a rede
     return av.some(a => a.branch_id === branch.id)

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, filiaisAtivas, nomeDeTeste } from './apoio/banco'
+import { banco, unidadesAtivas, nomeDeTeste } from './apoio/banco'
 
 /**
  * Produto novo com estoque inicial, cadastrado pela rede.
@@ -29,7 +29,7 @@ test.afterAll(async () => {
 
 test('produto com estoque inicial grava movimento, saldo, lote e custo — sem despesa', async ({ page }) => {
   const db = banco()
-  const unidades = await filiaisAtivas()
+  const unidades = await unidadesAtivas()
   const unidade  = unidades[0]!
 
   await page.goto('/admin/estoque')

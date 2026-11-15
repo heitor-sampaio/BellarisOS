@@ -45,7 +45,7 @@ describe('as abas do Financeiro (FI1)', () => {
 
 /**
  * FI8 (o Heitor, 13/11: "ok"): a política antiga "Operacional acessa
- * financeiro da filial" sai — já não tinha efeito (a restritiva
+ * financeiro da unidade" sai — já não tinha efeito (a restritiva
  * `financeiro_so_pelo_servidor` fecha a sessão, F75). A trava: uma migration a
  * derruba, e nenhuma depois dela a recria.
  */

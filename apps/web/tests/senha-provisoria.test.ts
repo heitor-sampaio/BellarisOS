@@ -22,7 +22,7 @@ function arquivos(dir: string): string[] {
 }
 
 describe('senha provisória', () => {
-  it('todo createUser com senha, na clínica, marca senha_provisoria', () => {
+  it('todo createUser com senha, no app da rede, marca senha_provisoria', () => {
     const achados: string[] = []
     const sem: string[] = []
     for (const f of arquivos(WEB)) {

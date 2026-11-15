@@ -85,7 +85,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test.describe.serial('a cliente agenda em outra unidade da clínica pelo app', () => {
+test.describe.serial('a cliente agenda em outra unidade da rede pelo app', () => {
   test('a URL da Zona Sul fica na Zona Sul (não volta à unidade de cadastro)', async ({ browser }) => {
     await como(browser, async p => {
       await p.goto(`/${slugB}/cliente/home`)
@@ -135,7 +135,7 @@ test.describe.serial('a cliente agenda em outra unidade da clínica pelo app', (
     })
   })
 
-  test('a arquivada não agenda pelo app: "Fale com a clínica para agendar", e a action recusa', async ({ browser }) => {
+  test('a arquivada não agenda pelo app: "Fale com a rede para agendar", e a action recusa', async ({ browser }) => {
     expect((await db().from('clients').update({ is_active: false }).eq('id', cliente!.clientId)).error).toBeNull()
     try {
       await como(browser, async p => {

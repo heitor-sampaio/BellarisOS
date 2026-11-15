@@ -6,7 +6,7 @@ import { chamarAcaoComFormulario } from './apoio/acao-direta'
 
 /**
  * cfg-01 (revisão do Heitor de 2026-11-02, "mudar"): a unidade nova herdava o
- * CNPJ da rede sem dizer nada (a Magnólia abriu a Zona Sul sem CNPJ e a filial
+ * CNPJ da rede sem dizer nada (a Magnólia abriu a Zona Sul sem CNPJ e a unidade
  * ficou com o da matriz). A nota dele: "se em branco, avisa e confirma
  * decisão. Talvez uma clínica possa ter 2 unidades físicas operando no mesmo
  * CNPJ. Uma unidade física não precisa necessariamente de um novo CNPJ.
@@ -57,7 +57,7 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('o CNPJ da unidade nova', () => {
-  test('em branco, a tela avisa e oferece o CNPJ da clínica — nada é criado antes da resposta', async ({ browser }) => {
+  test('em branco, a tela avisa e oferece o CNPJ da rede — nada é criado antes da resposta', async ({ browser }) => {
     const nome = `${PREFIXO} Zona Sul ${marca}`
     await como(browser, async p => {
       const janela = await abrirNovaUnidade(p, nome)

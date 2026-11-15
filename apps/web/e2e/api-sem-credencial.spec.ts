@@ -155,7 +155,7 @@ test('expirar cache (a conversa entre os apps) exige o segredo, e só as tags da
   }
 })
 
-test('levar o valor ao Asaas (a clínica pede ao sistema) exige o segredo', async ({ request }) => {
+test('levar o valor ao Asaas (a rede pede ao sistema) exige o segredo', async ({ request }) => {
   test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build')
   const rota = `${urlDaPlataforma('sistema')}/api/interno/levar-valor`
   const rede = '2b3c4d5e-6f70-4812-9a3b-4c5d6e7f8091'
@@ -172,7 +172,7 @@ test('o token do Realtime no suporte exige a sessão de lá', async ({ request }
   expect(await r.text()).not.toContain('access_token')
 })
 
-test('o Copilot exige sessão (e, com ela, a origem da clínica — e2e/copilot-esqueleto.spec.ts)', async ({ request }) => {
+test('o Copilot exige sessão (e, com ela, a origem da rede — e2e/copilot-esqueleto.spec.ts)', async ({ request }) => {
   const anonimo = await request.post('/api/copilot', { multipart: { texto: 'oi', pagina: '/admin' } })
   expect(anonimo.status()).toBe(401)
 })

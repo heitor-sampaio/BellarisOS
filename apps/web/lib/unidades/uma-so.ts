@@ -4,7 +4,7 @@ import { vocabulario } from '@/lib/unidades/vocabulario'
 /**
  * A clínica de UMA unidade só (D-19, decisão do Heitor em 2026-10-29): "Com
  * UMA unidade ativa, somem os termos e gráficos de rede ('TOTAL REDE', 'por
- * filial', os rankings de filial, 'Voltar para a rede') e o seletor de
+ * unidade', os rankings de unidade, 'Voltar para a rede') e o seletor de
  * unidade. O modelo não muda: tudo volta quando nascer a segunda unidade."
  *
  * É a régua ÚNICA das telas: a contagem das unidades ATIVAS da rede, pelo

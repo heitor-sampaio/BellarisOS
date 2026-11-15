@@ -39,7 +39,7 @@ describe('ferramentasDoCargo', () => {
     expect(n).not.toContain('estoque')
   })
 
-  it('financeiro "só as próprias comissões" não recebe os lançamentos da clínica', () => {
+  it('financeiro "só as próprias comissões" não recebe os lançamentos da rede', () => {
     const base = { permissions: { ...SEM_NADA, financial: 'VIEW' } as ResolvedPermissions }
     expect(nomes(ctx(base))).toContain('lancamentos')
     expect(nomes(ctx({ ...base, scopes: { ...ALL_SCOPES, financial: 'OWN' } }))).not.toContain('lancamentos')

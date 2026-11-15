@@ -51,7 +51,7 @@ function resumo(t: LinhaDoChamado): ChamadoResumo {
 }
 
 /** Os chamados de uma pessoa (ou da rede inteira, para quem administra). */
-export async function chamadosDaClinica(tenantId: string, filtro: { userId?: string }): Promise<ChamadoResumo[]> {
+export async function chamadosDaRede(tenantId: string, filtro: { userId?: string }): Promise<ChamadoResumo[]> {
   let q = createAdminClient().from('support_tickets').select(SELECT_CHAMADO).eq('tenant_id', tenantId)
   if (filtro.userId) q = q.eq('opened_by_user_id', filtro.userId)
   const linhas = await ler(q.order('last_message_at', { ascending: false }).limit(50), 'carregar os chamados') as unknown as LinhaDoChamado[] | null

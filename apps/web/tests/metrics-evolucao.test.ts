@@ -23,7 +23,7 @@ describe('pontosDaEvolucao', () => {
     ])
   })
 
-  it('por hora: as 24 horas do dia, no fuso da clínica', () => {
+  it('por hora: as 24 horas do dia, no fuso da unidade', () => {
     const pontos = pontosDaEvolucao(
       [{ bucket: '2026-10-01T13:00:00Z', revenue: 100, expenses: 0 }], // 10h em Brasília
       { granularidade: 'hour', de, ate: new Date('2026-10-02T02:59:59.999Z') },

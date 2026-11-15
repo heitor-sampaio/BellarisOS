@@ -12,7 +12,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mensagemDoErro } from '@/lib/db'
 import { normalizeFormSchema, validateFormSchema } from '@/lib/anamnesis'
@@ -30,8 +30,8 @@ export async function criarFicha(input: { name: string; schema: unknown }): Prom
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // A ficha é da clínica toda (H7): quem tem unidade fixa não muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
     assertRecurso(ctx, 'fichas')
 
@@ -64,8 +64,8 @@ export async function atualizarFicha(input: {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // A ficha é da clínica toda (H7): quem tem unidade fixa não muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
     assertRecurso(ctx, 'fichas')
 
@@ -101,8 +101,8 @@ export async function definirFichaAtiva(id: string, isActive: boolean): Promise<
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // A ficha é da clínica toda (H7): quem tem unidade fixa não muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
     assertRecurso(ctx, 'fichas')
     const admin = createAdminClient()
@@ -126,8 +126,8 @@ export async function apagarFicha(id: string): Promise<Result> {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // A ficha é da clínica toda (H7): quem tem unidade fixa não muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
     assertRecurso(ctx, 'fichas')
     const admin = createAdminClient()

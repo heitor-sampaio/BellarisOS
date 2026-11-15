@@ -12,7 +12,7 @@ import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
 import { BranchEditForm } from '@/components/admin/branch-edit-form'
 import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-unidade'
-import { CONFIG_DA_CLINICA, mexeNaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { CONFIG_DA_REDE, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { Lock } from 'lucide-react'
 import { MODULE_LABELS } from '@/lib/permissions'
 import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
@@ -31,13 +31,13 @@ import { SettingsTags } from '@/components/admin/settings-tags'
 import { listarTagsComUso } from '@/actions/tags'
 import { acoesEmLote } from '@/lib/lotes/acoes'
 import { SettingsGeral } from '@/components/admin/settings-geral'
-import { enderecosDoAppDaClinica } from '@/lib/unidades/app-da-cliente'
+import { enderecosDoAppDaRede } from '@/lib/unidades/app-da-cliente'
 import { lerDadosDaRede, lerVisibilidadeDoInbox } from '@/actions/rede'
 import { SettingsVisibilidadeInbox } from '@/components/admin/settings-visibilidade-inbox'
 import { lerCaixas } from '@/lib/inbox/visibilidade'
 import { ler } from '@/lib/db'
 import { mascararSegredos } from '@/lib/integracoes/sem-segredo'
-import { dadosDaAbaSuporte } from '@/lib/suporte/painel-da-clinica'
+import { dadosDaAbaSuporte } from '@/lib/suporte/painel-da-rede'
 import { podeIncluirClinico } from '@/lib/suporte/regras'
 import { SettingsSuporte } from '@/components/admin/settings-suporte'
 import { SettingsAssinatura } from '@/components/admin/settings-assinatura'
@@ -52,10 +52,10 @@ import { configDeComissaoDaRede, profissionaisSemComissao, comissoesDosProdutos 
 import { maquininhasDaRede, taxaDoPixDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { maximoDeParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import {
-  ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_CLINICA_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
+  ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, ABAS_DA_REDE_TODA, abaNoPlano, abaLiberada, type ChaveDeAba,
   chaveDaAbaPedida, motivoDaAbaFechada, linkDaAbaNaRede, abasSoDaRede, abasEmGrupos,
 } from '@/lib/configuracoes/abas'
-import { quemMudaNaClinica } from '@/lib/equipe/quem-desfaz'
+import { quemMudaNaRede } from '@/lib/equipe/quem-desfaz'
 import Link from 'next/link'
 
 /**
@@ -73,8 +73,8 @@ import Link from 'next/link'
  *
  * Quem tem UNIDADE FIXA (H7, decisão do Heitor, 2026-11-01: "gerente de uma
  * unidade só mexe no que é da unidade") abre as abas da clínica toda
- * (`ABAS_DA_CLINICA_TODA`) e lê de quem elas são, sem o editor — a action
- * também recusa (`recusaDaConfigDaClinica`). Dela são a aba Unidade (os dados,
+ * (`ABAS_DA_REDE_TODA`) e lê de quem elas são, sem o editor — a action
+ * também recusa (`recusaDaConfigDaRede`). Dela são a aba Unidade (os dados,
  * o horário e as salas da unidade do portal) e as Importações.
  */
 
@@ -150,7 +150,7 @@ export async function Configuracoes({
   // não acessa — em vez de renderizar a tela vazia.
   // Sem aba pedida, quem tem unidade fixa abre na primeira que é DELA (a
   // Unidade, as Importações), não num aviso de que a aba é da clínica toda.
-  const primeira = tabs.find(t => mexeNaConfigDaClinica(ctx) || !ABAS_DA_CLINICA_TODA.includes(t.key)) ?? tabs[0]!
+  const primeira = tabs.find(t => mexeNaConfigDaRede(ctx) || !ABAS_DA_REDE_TODA.includes(t.key)) ?? tabs[0]!
   const activeTab: ChaveDeAba =
     requested && tabs.some(t => t.key === requested) ? requested : primeira.key
   // A11 da 12ª (princípio 3): a aba pedida que não abre diz por quê — antes a
@@ -158,32 +158,32 @@ export async function Configuracoes({
   const abaFechada = requested && requested !== activeTab
     ? motivoDaAbaFechada(requested, {
         noPortal: abas, gerencia: m => can(ctx, m, 'MANAGE'), noPlano: a => abaNoPlano(a, ctx.plano),
-        unidadeFixa: !mexeNaConfigDaClinica(ctx), nomeDoModulo: m => MODULE_LABELS[m],
+        unidadeFixa: !mexeNaConfigDaRede(ctx), nomeDoModulo: m => MODULE_LABELS[m],
         abriu: tabs.find(t => t.key === activeTab)?.label ?? primeira.label,
       })
     : null
 
   // A1 da 14ª: a aba que só a rede tem leva a /admin, para quem é da rede.
   const linkDaAbaFechada = abaFechada && requested
-    ? linkDaAbaNaRede(requested, { noPortal: abas, unidadeFixa: !mexeNaConfigDaClinica(ctx) })
+    ? linkDaAbaNaRede(requested, { noPortal: abas, unidadeFixa: !mexeNaConfigDaRede(ctx) })
     : null
   // A1 da 14ª (CLAUDE.md §1, "otimize para a clínica única"): no portal da
   // unidade, quem é da rede tem à mão as abas que só a clínica toda tem
   // (Comissões e taxas, Fidelidade, LGPD…) — antes, só pela busca ou pelo /admin.
-  const abasDaClinica = unidadeDaTela && mexeNaConfigDaClinica(ctx)
+  const abasDaRede = unidadeDaTela && mexeNaConfigDaRede(ctx)
     ? abasSoDaRede(m => can(ctx, m, 'MANAGE'), ctx.plano)
     : []
 
   // H7 (decisão do Heitor, 2026-11-01): quem tem unidade fixa abre a aba da
   // configuração da clínica toda e lê de quem ela é — sem o editor, e sem ler
   // o que só o editor usa. A Geral mostra os dados, só para ler.
-  const daClinicaToda = !mexeNaConfigDaClinica(ctx) && ABAS_DA_CLINICA_TODA.includes(activeTab)
-  const conteudo: ChaveDeAba | null = daClinicaToda && activeTab !== 'general' ? null : activeTab
+  const daRedeToda = !mexeNaConfigDaRede(ctx) && ABAS_DA_REDE_TODA.includes(activeTab)
+  const conteudo: ChaveDeAba | null = daRedeToda && activeTab !== 'general' ? null : activeTab
   // A5 da 14ª (princípios 3 e 7): a aba da clínica toda diz QUEM muda, pelo
   // nome — como o estorno diz quem estorna (A33 da 8ª).
   const abaAtiva = TABS.find(t => t.key === activeTab)!
-  const quemMuda = daClinicaToda
-    ? await quemMudaNaClinica(ctx.tenantId!, [abaAtiva.module, ...((abaAtiva as { alternativas?: readonly AppModule[] }).alternativas ?? [])])
+  const quemMuda = daRedeToda
+    ? await quemMudaNaRede(ctx.tenantId!, [abaAtiva.module, ...((abaAtiva as { alternativas?: readonly AppModule[] }).alternativas ?? [])])
     : []
 
   const supabase = await createClient()
@@ -419,10 +419,10 @@ export async function Configuracoes({
           ))}
         </nav>
         {/* A1 da 14ª: as abas que só a clínica toda tem, à mão no portal da unidade. */}
-        {abasDaClinica.length > 0 && (
-          <p data-abas-da-clinica style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10, lineHeight: 'var(--leading-snug)' }}>
+        {abasDaRede.length > 0 && (
+          <p data-abas-da-rede style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 10, lineHeight: 'var(--leading-snug)' }}>
             {fala('Nas Configurações da rede:')}{' '}
-            {abasDaClinica.map((a, i) => (
+            {abasDaRede.map((a, i) => (
               <span key={a.key}>
                 {i > 0 && ' · '}
                 <Link href={a.href} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>{a.label}</Link>
@@ -451,11 +451,11 @@ export async function Configuracoes({
 
 
       {/* A configuração da clínica toda, para quem tem unidade fixa (H7). */}
-      {daClinicaToda && (
-        <div className="card" data-config-da-clinica style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '14px 18px', marginBottom: conteudo ? 20 : 0 }}>
+      {daRedeToda && (
+        <div className="card" data-config-da-rede style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '14px 18px', marginBottom: conteudo ? 20 : 0 }}>
           <Lock size={15} aria-hidden style={{ color: 'var(--text-faint)', flexShrink: 0, marginTop: 2 }} />
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
-            {CONFIG_DA_CLINICA}
+            {CONFIG_DA_REDE}
             {quemMuda.length > 0 && <> <span data-quem-muda>Quem muda: {quemMuda.join(', ')}.</span></>}
           </p>
         </div>
@@ -603,8 +603,8 @@ export async function Configuracoes({
 
       {conteudo === 'general' && (
         dadosDaRede
-          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaClinica(ctx)} naRede={ctx.branchId === null}
-              appDaCliente={await enderecosDoAppDaClinica(ctx.tenantId!)} />
+          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE') && mexeNaConfigDaRede(ctx)} naRede={ctx.branchId === null}
+              appDaCliente={await enderecosDoAppDaRede(ctx.tenantId!)} />
           : (
             <div className="card">
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>

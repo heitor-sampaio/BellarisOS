@@ -9,8 +9,7 @@ import { z } from 'zod'
 import { after } from 'next/server'
 import { alcancaOTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, alcancaOAgendamento, can, temRecurso, podeReceber } from '@/lib/auth'
-import { getAReceberVencido, parcelasVencidas } from '@/lib/metrics/vencidas'
-import { formatBRL } from '@estetica-os/utils'
+import { avisoDasVencidasNaChegada } from '@/lib/appointments/vencidas-na-chegada'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -164,7 +163,7 @@ export async function updateAppointmentStatus(
   try {
     await updateAppointmentStatusInterno(...args)
     // D13 da 9ª: a chegada de quem tem parcela vencida avisa (sem recusar).
-    if (args[1] === 'ARRIVED') return { aviso: await avisoDasVencidasNaChegada(args[0]) }
+    if (args[1] === 'ARRIVED') return { aviso: await avisoDasVencidasNaChegada(await getTenantContext(), args[0]) }
     return {}
   } catch (e) {
     if (e && typeof e === 'object' && 'digest' in e) throw e
@@ -412,7 +411,7 @@ async function checkinAppointmentInterno(
 
     revalidarAgendamento(ctx, appointmentId, slug || null)
     notifyCheckin(appointmentId)
-    return { aviso: await avisoDasVencidasNaChegada(appointmentId) }
+    return { aviso: await avisoDasVencidasNaChegada(ctx, appointmentId) }
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }
@@ -2071,7 +2070,7 @@ export async function confirmAndRateAppointment(params: {
 
 // --- Apoio ao modal de agendamento --------------------------------
 //
-// A agenda da REDE não tem "a filial atual": a unidade é escolhida na hora, e
+// A agenda da REDE não tem "a unidade atual": a unidade é escolhida na hora, e
 // procedimentos, profissionais e salas mudam com ela. Por isso estes dados vêm
 // sob demanda, em vez de virem prontos da página como no portal da unidade.
 
@@ -2298,31 +2297,3 @@ export async function avisoDoPlanoAoAgendar(clientId: string, procedureId: strin
   }
 }
 
-/**
- * D13 da 9ª simulação (decidido pelo princípio 3): o check-in de quem tem
- * parcela VENCIDA avisa — "Mariana tem 1 parcela vencida (R$ 1.294,00, desde
- * 05/11): receba no Financeiro." —, sem recusar a chegada. Só para quem recebe
- * (a A39 da 7ª: o saldo é de quem cuida do dinheiro). A conta é a de
- * `getAReceberVencido` (a do cartão "A receber da cliente"). Acessório: se a
- * leitura falha, a chegada vale e o motivo vai ao log.
- */
-async function avisoDasVencidasNaChegada(appointmentId: string): Promise<string | null> {
-  try {
-    const ctx = await getTenantContext()
-    if (!podeReceber(ctx)) return null
-    const admin = createAdminClient()
-    const ag = await ler(admin.from('appointments')
-      .select('client_id, clients(name), branches!inner(tenant_id)').eq('id', appointmentId).maybeSingle(), 'buscar a cliente do agendamento')
-    const tenant = (ag?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-    if (!ag?.client_id || tenant !== ctx.tenantId) return null
-    const { total } = await getAReceberVencido({ tenantId: ctx.tenantId!, clientId: ag.client_id as string })
-    if (total.quantidade <= 0) return null
-    const nome = ((ag.clients as unknown as { name: string } | null)?.name ?? 'A cliente').split(' ')[0]
-    const desde = total.maisAntiga
-      ? `, desde ${new Date(total.maisAntiga).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })}` : ''
-    return `${nome} tem ${parcelasVencidas(total.quantidade)} (${formatBRL(total.valor)}${desde}): receba no Financeiro.`
-  } catch (e) {
-    console.error('[agenda] aviso das parcelas vencidas na chegada:', e)
-    return null
-  }
-}

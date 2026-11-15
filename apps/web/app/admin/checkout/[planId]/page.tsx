@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { CheckoutDePlano } from '@/app/_shared/checkout-de-plano'
 
 /**
- * Checkout visto do portal da rede: a filial vem do próprio plano, não da URL.
+ * Checkout visto do portal da rede: a unidade vem do próprio plano, não da URL.
  * O `slug` resolvido aqui é o endereço da unidade, que as actions do wizard
  * usam no `revalidatePath` — não o portal.
  */

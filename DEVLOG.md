@@ -1774,6 +1774,126 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — O fim do plano de adaptação: V2 nos nomes do código, "unidade fixa" nas regras, os docs no comportamento de hoje e as pendências pequenas
+
+O que sobrava do plano antes da completa.
+
+- **V1/V2 no código** (renomeação, sem comportamento novo; apoiada nos testes
+  que já existiam):
+  - Os identificadores com "filial" viraram "unidade" (`trocarFilialDoAgendamento`
+    → `trocarUnidadeDoAgendamento`, `clienteSemFilial`, `filiaisAtivas`,
+    `porFilial`…). Os com "clinica" viraram "rede", "unidade", "equipe" ou "tela",
+    conforme o que eram:
+    - `recusaDaConfigDaClinica` → `recusaDaConfigDaRede`, `ABAS_DA_CLINICA_TODA`
+      → `ABAS_DA_REDE_TODA`;
+    - `urlDaClinica` → `urlDoAppDaRede`, `expirarNaClinica` → `expirarNoAppDaRede`;
+    - `CartaoDaClinica` → `CartaoDaUnidade`, `SeletorDeClinica` → `SeletorDeRede`;
+    - `assinarNaClinica` → `assinarNaTela`, `creditoNaClinica` → `creditoInterno`.
+  - Também mudaram as classes CSS e os `data-*`, os comentários com "filial" e os
+    títulos dos testes com "clínica".
+  - **23 arquivos foram renomeados com `git mv`**: `actions/credito-interno.ts`,
+    `actions/portal-redes.ts`, os componentes do app da cliente, 9 specs, 3
+    testes, `lib/clientes/a-unidade.ts`, `lib/suporte/painel-da-rede.ts` e, no
+    núcleo, `expirar-no-app-da-rede.ts`. As referências foram atualizadas no
+    CLAUDE.md, em `docs/regras/`, em `e2e/grupos.ts` e no `e2e-afetados`.
+  - **Ficam de propósito**, por serem endereço, dado gravado ou ambiente:
+    - a rota `/auth/clinicas`;
+    - as chaves do banco (`'CLINICA'`, `aguardando_clinica`, a chave `clinica`
+      do link público, que no app virou o campo `remetente`);
+    - a `CLINICA_URL`, os nomes SQL e de migration;
+    - o adjetivo (`foto_clinica`, `atendimento-foto-clinica.spec`);
+    - o site, onde "clínica" é o mercado.
+  - **A trava foi estendida**: `tests/vocabulario-no-texto.test.ts` agora anda
+    pela AST de todo `.ts`/`.tsx` dos apps, do núcleo, do e2e, dos testes e dos
+    scripts, e recusa um identificador com filial/clínica fora dessa lista.
+    Antes da renomeação, ela listava 763.
+- **"Unidade fixa" nas regras.** Desde a EQ1 a pessoa tem uma ou várias
+  unidades, e o código decide por "não tem “A rede inteira”"
+  (`ctx.branchId !== null`, `ctx.unidades`, `alcancaUnidade`). O CLAUDE.md e
+  nove arquivos de `docs/regras/` dizem isso agora. Não mudaram as citações
+  da história nem a "rede de uma unidade só". No código não sobrou decisão de
+  alcance por `=== ctx.branchId`.
+- **Os docs no comportamento de hoje** (o atendimento, a venda e o financeiro,
+  os indicadores, o CRM, as convenções): os botões do plano, o PDV no lugar
+  do "Fechar checkout", o "Cartão" sem "da clínica", a venda pela ficha pela
+  Nova venda do PDV.
+- **Pendências pequenas** (com TDD):
+  - **O aviso das parcelas vencidas na chegada diz "receba no PDV"** (dizia
+    "no Financeiro"). Sem nome, diz "A cliente tem…" (dizia "A tem…").
+    - Mora em `lib/appointments/vencidas-na-chegada.ts`, com o texto puro em
+      `texto-das-vencidas.ts`.
+    - O **check-in do Copilot** (`fazer_check_in`) agora dá o mesmo aviso
+      ("Check-in feito. Mariana tem 1 parcela vencida…").
+  - **Um nome para o crédito vendido**: "Crédito interno" para a equipe (o
+    botão do PDV, a Auditoria, as regras) e "Seu crédito" no app da cliente.
+    Decidido pelo pedido do plano, contra o "Crédito na rede" do desenho
+    (`docs/desenhos/pdv.html`) e do texto da PDV8. A trava recusa
+    "crédito na rede".
+  - **`/api/*` que lê `ctx.branchId`:** em `/api/*` não há unidade no
+    endereço, e o `ctx.branchId` é a principal.
+    - **`/api/relatorios/vendas`** exportava, sem `?branch=`, só a principal de
+      quem tem várias unidades. Agora exporta as unidades dela (`alcancaUnidade`),
+      e a pedida continua entre elas.
+    - As outras já estavam certas:
+      - `recibos/[id]`, `documentos/[id]/pdf` e `importacoes/[id]/erros`
+        conferem por `alcancaUnidade`;
+      - `auditoria/csv` usa `unidadesDoContexto`;
+      - o Copilot usa `unidadeEmQueEsta`;
+      - `auth/session` usa a última unidade usada;
+      - `geocode` e `oauth/meta` não têm unidade.
+- **Provas** (cada uma falhou antes, pelo motivo certo):
+  - `tests/vencidas-na-chegada.test.ts`: "receba no Financeiro" onde se
+    esperava "no PDV", "A tem" onde se esperava "A cliente tem", e a agenda e
+    o Copilot sem o mesmo helper;
+  - `tests/vocabulario-no-texto.test.ts`: `lib/auditoria/frase.ts: o crédito
+    na rede` e `components/shared/vender.tsx: Crédito na rede`; nos nomes, as
+    763;
+  - `e2e/pdv-nova-venda.spec.ts` (PDV7): o botão "Crédito interno" não
+    existia;
+  - `e2e/relatorio-vendas-varias-unidades.spec.ts` (novo, isolado): o CSV
+    sem a "Bia B", só com a principal;
+  - `e2e/financeiro-vencidas-da-9.spec.ts`: o D13 passou a esperar "receba
+    no PDV".
+- **Verificação** (E2E em série, contra o `next dev`):
+  - Os vizinhos passaram, 34 de 34: `relatorio-vendas-varias-unidades`,
+    `financeiro-vencidas-da-9`, `pdv-nova-venda`, `vendas-credito-interno`,
+    `vendas-credito-bonus`, `portal-cliente-a-unidade`,
+    `portal-cliente-varias-redes` e `permissoes-gerente-de-unidade`.
+  - `copilot-cp1-ferramentas` e `copilot-extras`, com a OpenAI falsa, passaram
+    9 de 9.
+    - Contra o `next dev`, os specs do Copilot pedem o `OPENAI_API_KEY` falso,
+      o `OPENAI_BASE_URL_TESTE`, o `E2E_BASE_URL` e o `INTERNO_SECRET`. Sem a
+      chave, o botão do Copilot nem aparece.
+    - Uma sobra foi corrigida no spec do CP1: o agendamento "daqui a 1 h"
+      virava amanhã depois das 23h, e a chegada só se marca no dia. Ele passou
+      a usar `haMinutosHoje`.
+  - `typecheck` e `lint` limpos. O vitest passou: web com 294 arquivos e 2516
+    testes, mais os demais pacotes.
+- **Sem migration.**
+- **Para o Heitor**:
+  - **O crediário no avulso não foi feito.** O "Receber" do atendimento
+    (`receber-atendimento.tsx`) só oferece as formas do balcão, e
+    `confirmar_pagamento_do_atendimento` grava um lançamento por coisa
+    vendida. Para dar o crediário ali, essa função transacional teria de
+    criar a entrada e as parcelas, e acertar a comissão, os pontos e a
+    comanda. É grande, e a regra não está clara: o crediário de um avulso
+    nasce no recebimento ou na comanda? E com que entrada?
+  - **Contradições que a revisão dos docs achou** (o código não foi mexido):
+    - **CX3** está marcado ✅, mas a ficha ainda tem "Atendimentos a receber"
+      com "Receber" (`client-profile.tsx`), e a folha da agenda tem "Receber
+      pagamento" → `/atendimento?receber=1` (`appointment-sheet.tsx`).
+    - **PDV7**: a sessão de atendimento ainda abre a própria janela de
+      pagamento (`appointment-session.tsx`, `showPayment`).
+  - **Ainda dizem "se recebe no Financeiro"**:
+    `lib/plano-de-tratamento/textos.ts` (o aceite do plano) e
+    `components/shared/aviso-do-pacote-em-aberto.tsx`. Com o PDV seria "no
+    PDV", mas o do plano nomeia quem tem o Financeiro em Gerenciar, e trocar
+    muda a regra.
+  - **V0 no código não terminou**: uns 90 títulos de teste e alguns nomes de
+    spec (`permissoes-gerente-*`) ainda falam no cargo como se fosse fixo.
+  - **Vale uma completa.** A renomeação tocou arquivos compartilhados: o
+    núcleo, `lib/auth`, os layouts, o proxy, a CSP e o `e2e/apoio`.
+
 ### 2026-11-16 — Bloco Copilot (CP1, o último do plano de adaptação): as ferramentas conferidas contra o sistema adaptado, e a gravação dele na Auditoria "pelo Copilot"
 
 Cada ferramenta foi conferida contra o sistema adaptado (o PDV e as comandas,

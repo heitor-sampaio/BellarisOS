@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NEW_FUNNEL_STAGES } from '@/lib/crm'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -38,8 +38,8 @@ export async function createFunnel(
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
 
     const name = (formData.get('name') as string)?.trim()
     const slug = (formData.get('_slug') as string)?.trim() ?? ''
@@ -96,8 +96,8 @@ export async function renameFunnel(funnelId: string, name: string, slug: string)
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     if (!name.trim()) return { error: 'Dê um nome ao funil.' }
 
     const { data, error } = await createAdminClient()
@@ -130,8 +130,8 @@ export async function setDefaultFunnel(funnelId: string, slug: string): Promise<
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
 
     const admin = createAdminClient()
 
@@ -178,8 +178,8 @@ export async function setFunnelArchived(
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
 
     const admin = createAdminClient()
 
@@ -229,8 +229,8 @@ export async function deleteFunnel(funnelId: string, slug: string): Promise<Resu
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
 
     const admin = createAdminClient()
 
@@ -299,7 +299,7 @@ export async function reorderFunnels(orderedIds: string[], slug: string) {
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    if (recusaDaConfigDaClinica(ctx)) return
+    if (recusaDaConfigDaRede(ctx)) return
 
     const admin = createAdminClient()
     // Cada update olhado: com o erro descartado, a ordem nova "salvava" e a

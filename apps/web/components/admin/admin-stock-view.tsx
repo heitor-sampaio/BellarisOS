@@ -64,7 +64,7 @@ type ProductStock = {
   /** O mínimo do cadastro do produto (D11 da 12ª): vale na unidade que ainda não tem linha. */
   minimoDoCadastro?: number | null
   totalStock:       number
-  totalRendimento:  number | null  // soma de current_rendimento das filiais; null se produto sem consumptionUnit
+  totalRendimento:  number | null  // soma de current_rendimento das unidades; null se produto sem consumptionUnit
   /** O valor do produto nas unidades da linha, do banco (saldo em consumo × custo de consumo). */
   valor:            number
   branches:         BranchStock[]
@@ -97,12 +97,12 @@ interface Props {
    * Unidade já selecionada ao abrir (`?unidade=` na URL).
    *
    * É o destino do "ver o estoque desta unidade" no dashboard da rede, que
-   * antes mandava a pessoa para o portal da filial.
+   * antes mandava a pessoa para o portal da unidade.
    */
   unidadeInicial?:   string
   /**
    * Todas as unidades da rede — só para as operações que envolvem outra
-   * unidade (transferir). `branches` continua sendo o recorte VISÍVEL: a filial
+   * unidade (transferir). `branches` continua sendo o recorte VISÍVEL: a unidade
    * não passa a ver o estoque das outras, só ganha para onde transferir.
    */
   unidadesDaRede?:   Branch[]
@@ -285,7 +285,7 @@ export function AdminStockView({ products, branches, productCategories = [], mar
   // Lido uma vez (o lote vencido se marca em vermelho; Date.now não roda no render).
   const [agora] = useState(() => Date.now())
   // Rede de verdade só com mais de uma unidade na tela (J-44): no portal da
-  // unidade, "TOTAL REDE" e "ESTOQUE POR FILIAL" eram a mesma unidade.
+  // unidade, "TOTAL REDE" e "ESTOQUE POR UNIDADE" eram a mesma unidade.
   const variasUnidades = branches.length > 1
 
   useEffect(() => {
@@ -311,12 +311,12 @@ export function AdminStockView({ products, branches, productCategories = [], mar
         if (marca && !(p.marcaIds ?? []).includes(marca)) return false
         if (fornecedor && !(p.fornecedorIds ?? []).includes(fornecedor)) return false
 
-        // filtro por filial (só relevante na view por-unidade, mas aplica em ambas)
+        // filtro por unidade (só relevante na view por-unidade, mas aplica em ambas)
         if (branchId) {
           if (!p.branches.some(b => b.branchId === branchId)) return false
         }
 
-        // filtro por status (baseado em qualquer filial)
+        // filtro por status (baseado em qualquer unidade)
         if (status !== 'all') {
           const stocksToCheck = branchId
             ? p.branches.filter(b => b.branchId === branchId)
@@ -336,7 +336,7 @@ export function AdminStockView({ products, branches, productCategories = [], mar
       })
   }, [products, search, category, marca, fornecedor, branchId, status, sortDir])
 
-  // Para "por unidade": expande em linhas produto × filial
+  // Para "por unidade": expande em linhas produto × unidade
   const rowsByUnit = useMemo(() => {
     const rows: (ProductStock & { branch: BranchStock })[] = []
     for (const p of filtered) {
@@ -411,7 +411,7 @@ export function AdminStockView({ products, branches, productCategories = [], mar
           {fornecedores.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
         </select>
 
-        {/* Filial */}
+        {/* Unidade */}
         {branches.length > 1 && (
           <select className="filtro-select" value={branchId} onChange={e => setBranchId(e.target.value)}>
             <option value="">Todas as unidades</option>

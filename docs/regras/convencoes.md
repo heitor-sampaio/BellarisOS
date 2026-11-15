@@ -211,8 +211,9 @@ edições do sistema". O mecanismo é UM:
   Prova: `e2e/plano-checkout-uma-transacao.spec.ts`.
 - **Fica para depois** (não acumulam dinheiro nem estoque; o duplo clique
   cria um segundo registro visível, que se arquiva): o agendamento (`addAppointment`: o choque
-  de horário já recusa o segundo do mesmo profissional), oportunidade e lead,
-  procedimento, produto e categoria do estoque, membro (o e-mail é
+  de horário já recusa o segundo do mesmo profissional), a oportunidade e o
+  contato que nasce com ela (`criarOportunidadeCore`; as tabelas `leads` e
+  `contacts`), procedimento, produto e categoria do estoque, membro (o e-mail é
   único), tag, sala, cargo, ficha, funil e etapa, motivo de perda, campanha,
   automação, pacote e recompensa (o cadastro), plano do cliente.
 - As chaves velhas não se apagam: a tabela ganha uma linha pequena por envio.

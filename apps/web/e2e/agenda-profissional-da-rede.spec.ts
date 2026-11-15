@@ -9,7 +9,7 @@ import { diaEmQueAUnidadeAbre } from './apoio/datas'
  * D1 da simulação de 2026-10-28 (rede de duas unidades): a profissional DA
  * REDE (`provides_services`, `branch_id` nulo) não aparecia em unidade
  * nenhuma — a agenda do Kobrasol dizia "Nenhum profissional cadastrado nesta
- * filial", e o Centro e o app da cliente só ofereciam a esteticista. A toxina
+ * unidade", e o Centro e o app da cliente só ofereciam a esteticista. A toxina
  * saiu com a comissão errada.
  *
  * Decisão do Heitor: quem atende e é da rede é profissional de TODAS as

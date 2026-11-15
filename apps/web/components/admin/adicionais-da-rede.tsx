@@ -43,7 +43,7 @@ const FEITO: Record<ChaveDeAdicional, [string, string]> = {
   copilot:  ['Copilot contratado.', 'Copilot cancelado.'],
 }
 
-export function AdicionaisDaClinica({ adicionais, totalCentavos, cobranca, semContratar }: {
+export function AdicionaisDaRede({ adicionais, totalCentavos, cobranca, semContratar }: {
   adicionais: AdicionalNaTela[]
   totalCentavos: number
   /** O estado da cobrança: ligada (há fatura a mudar), pausada pela cortesia (volta ao haver valor), ou nenhuma. */
@@ -57,26 +57,26 @@ export function AdicionaisDaClinica({ adicionais, totalCentavos, cobranca, semCo
   if (!visiveis.length) return null
 
   return (
-    <section className="card adicionais-da-clinica" aria-label="Adicionais">
+    <section className="card adicionais-da-rede" aria-label="Adicionais">
       <p className="overline">Adicionais</p>
-      <p className="adicionais-da-clinica-ajuda">Contrate além do plano. O valor entra na mensalidade.</p>
-      <ul className="adicionais-da-clinica-lista">
+      <p className="adicionais-da-rede-ajuda">Contrate além do plano. O valor entra na mensalidade.</p>
+      <ul className="adicionais-da-rede-lista">
         {visiveis.map(a => (
           <li key={a.chave}>
-            <span className="adicionais-da-clinica-icone" aria-hidden>
+            <span className="adicionais-da-rede-icone" aria-hidden>
               {a.chave === 'whatsapp' ? <MessageCircle size={16} /> : <Sparkles size={16} />}
             </span>
-            <div className="adicionais-da-clinica-texto">
-              <p className="adicionais-da-clinica-nome">
+            <div className="adicionais-da-rede-texto">
+              <p className="adicionais-da-rede-nome">
                 {a.chave === 'whatsapp' ? 'Conexões de WhatsApp adicionais' : a.rotulo}
                 {a.emBreve && <span className="chip-em-breve">em breve</span>}
               </p>
               {a.precoCentavos != null && (
-                <p className="adicionais-da-clinica-preco">
+                <p className="adicionais-da-rede-preco">
                   {reaisDe(a.precoCentavos)} {a.chave === 'whatsapp' ? 'por conexão, por mês' : 'por mês'}
                 </p>
               )}
-              <p className="adicionais-da-clinica-estado">
+              <p className="adicionais-da-rede-estado">
                 {a.chave === 'whatsapp'
                   ? (a.quantidade === 0 ? 'Nenhuma contratada.' : a.quantidade === 1 ? '1 contratada.' : `${a.quantidade} contratadas.`)
                   : (a.quantidade > 0 ? (a.emBreve ? 'Contratado · em breve' : 'Contratado') : 'Não contratado.')}
@@ -84,7 +84,7 @@ export function AdicionaisDaClinica({ adicionais, totalCentavos, cobranca, semCo
               </p>
             </div>
             {podeContratar && (
-              <div className="adicionais-da-clinica-acoes">
+              <div className="adicionais-da-rede-acoes">
                 {a.quantidade > 0 && (
                   <button type="button" className="btn-ghost"
                     onClick={() => setPedido({ chave: a.chave, quantidade: a.quantidade - 1, contratar: false })}>
@@ -102,7 +102,7 @@ export function AdicionaisDaClinica({ adicionais, totalCentavos, cobranca, semCo
           </li>
         ))}
       </ul>
-      {semContratar && <p className="adicionais-da-clinica-ajuda">{semContratar}</p>}
+      {semContratar && <p className="adicionais-da-rede-ajuda">{semContratar}</p>}
       {pedido && (
         <Confirmacao pedido={pedido} adicional={adicionais.find(a => a.chave === pedido.chave)!}
           totalCentavos={totalCentavos} cobranca={cobranca} onFechar={() => setPedido(null)} />
@@ -133,8 +133,8 @@ function Confirmacao({ pedido, adicional, totalCentavos, cobranca, onFechar }: {
 
   return (
     <JanelaModal onFechar={onFechar} rotulo={titulo} largura={460} travado={pendente} papel="alertdialog">
-      <div className="adicionais-da-clinica-janela">
-        <div className="adicionais-da-clinica-janela-topo">
+      <div className="adicionais-da-rede-janela">
+        <div className="adicionais-da-rede-janela-topo">
           <h2>{titulo}</h2>
           <button type="button" onClick={onFechar} className="btn-ghost" aria-label="Fechar" disabled={pendente}><X size={15} /></button>
         </div>
@@ -147,12 +147,12 @@ function Confirmacao({ pedido, adicional, totalCentavos, cobranca, onFechar }: {
               : 'O valor entra na mensalidade quando a cobrança começar.'}
         </p>
         {pedido.contratar && pedido.chave === 'copilot' && adicional.emBreve && (
-          <p className="adicionais-da-clinica-ajuda">
+          <p className="adicionais-da-rede-ajuda">
             O Copilot ainda está em desenvolvimento, e a cobrança começa já, antes de ele entrar no ar.
           </p>
         )}
-        {erro && <p className="adicionais-da-clinica-erro" role="alert">{erro}</p>}
-        <div className="adicionais-da-clinica-janela-acoes">
+        {erro && <p className="adicionais-da-rede-erro" role="alert">{erro}</p>}
+        <div className="adicionais-da-rede-janela-acoes">
           <button type="button" className="btn-ghost" onClick={onFechar} disabled={pendente}>Voltar</button>
           <button type="button" className="btn-primary" onClick={confirmar} disabled={pendente}>
             {pendente ? 'Salvando…' : pedido.contratar ? 'Confirmar contratação' : 'Confirmar cancelamento'}

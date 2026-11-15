@@ -57,10 +57,13 @@ comanda (PDV-P1).
   "Nova venda" (`?nova=1`) escolhe a cliente (busca na rede inteira,
   `buscarClientesParaVender`) e mostra os MESMOS formulários do antigo
   "Vender" (`VendaNaTela`, `components/shared/vender.tsx`): procedimento
-  pré-pago, pacote, produto e crédito na rede, com desconto, "Quem vendeu" e
-  pagamento. A unidade da venda é a do PDV — não há mais "Unidade da venda".
-  A ficha não tem o "Vender"; o "Vender" do inbox e o da busca universal levam
-  a `/<portal>/pdv?nova=1&cliente=<id>` (no inbox, a pessoa sem ficha passa
+  pré-pago, pacote, produto e crédito interno, com desconto, "Quem vendeu" e
+  pagamento. A unidade da venda é a do PDV: o catálogo, o estoque, "Quem
+  vendeu" e o caixa são os dela; no PDV da rede sem unidade na URL (e com
+  mais de uma), a "Nova venda" pergunta antes "Em qual unidade é a venda?"
+  (`[data-unidade-da-venda]`, `nova-venda.tsx`; `unidadeEscolhida` em
+  `app/admin/pdv/page.tsx`). A ficha não tem o "Vender"; o "Vender" do inbox
+  e o da busca universal levam a `/<portal>/pdv?nova=1&cliente=<id>` (no inbox, a pessoa sem ficha passa
   pelo cadastro e chega lá).
   ⚠️ Onde este arquivo ainda diz o "Vender" (da ficha, do inbox), leia a
   "Nova venda" do PDV: o formulário e as regras são os mesmos.
@@ -286,18 +289,18 @@ plano").
   - **ver e agendar as sessões** — `alcancaOTratamento`: o registro é da rede
     de quem chama (`getClientPackageSessions`, `getPlannedSessionAppointments`,
     `schedulePackageSession`, `schedulePlanSession`, `agendarUnidadePrePaga`,
-    a ficha de tratamento do plano por `planoDaClinica`). A unidade do
+    a ficha de tratamento do plano por `planoDaRede`). A unidade do
     AGENDAMENTO segue pelo alcance, no núcleo (`conferirPecasDoAgendamento`):
     quem tem só a Pampulha agenda na Pampulha, não na Savassi;
   - **cancelar, estornar, fechar** — `alcancaOCaixaDoTratamento`: a rede E a
     unidade da venda ao alcance (`pacoteDaClienteAoAlcance`,
     `planoFechadoAoAlcance`, `unidadeAoAlcance` do pré-pago). O checkout e a
     edição do plano (`planoDoTenant`) seguem na unidade do plano.
-  `tests/tratamento-da-clinica.test.ts` trava a action que voltar a decidir
+  `tests/tratamento-da-rede.test.ts` trava a action que voltar a decidir
   por conta própria. A primeira janela do pacote na ficha ("Abrir para ver e
   agendar as sessões") já lista as sessões, cada livre com "Agendar", que abre
   o agendar DELA (A21 da 14ª; "Gerenciar sessões" continua). Prova:
-  `e2e/pacote-plano-da-clinica-f73.spec.ts`.
+  `e2e/pacote-plano-da-rede-f73.spec.ts`.
 
 - **Catálogo da rede** em Vendas → Pacotes (`/admin/pacotes` e
   `/[slug]/pacotes`, corpo em `app/_shared/pacotes.tsx`, `PacotesCatalogo`):
@@ -318,47 +321,48 @@ plano").
   menus). Nasce aberta; fechada, ainda mostra o item da página aberta; lembra
   por navegador (`localStorage`); com a barra recolhida em ícones, não recolhe.
   Prova: `e2e/menu-lateral.spec.ts`.
-- **Venda na ficha do cliente** ("Vender pacote", `VenderPacote`), para quem
-  recebe (`podeReceber`), com o vocabulário do plano: à vista, entrada +
+- **Venda à cliente** (era a "Venda na ficha do cliente", "Vender pacote",
+  `VenderPacote`; desde o PDV7, 2026-11-13, é a "Nova venda" do PDV), para
+  quem recebe (`podeReceber`), com o vocabulário do plano: à vista, entrada +
   parcelas, a receber (`CamposDoPagamento`, o mesmo do pagamento do contrato).
-  - A venda sai pelo botão **"Vender"** (`components/shared/vender.tsx`),
-    que pergunta Procedimento (pré-pago, §9.3.2) ou Pacote — os dois são
-    separados no banco, só dividem a porta. Vender é o que o cliente compra
-    e como paga; Agendar, quando ele vem.
-  - O botão fica no cabeçalho da ficha, à esquerda do "+ Agendar".
-  - **Na ficha da REDE com duas ou mais unidades, a venda pergunta a unidade**
-    (D1 da 8ª simulação, 2026-11-06; H5: "nada se prende a clients.branch_id";
+  - Os formulários são os do antigo **"Vender"** (`VendaNaTela`,
+    `components/shared/vender.tsx`), em abas: Procedimento (pré-pago,
+    §9.3.2), Pacote, Produto e Crédito interno — separados no banco, só
+    dividem a porta. Vender é o que o cliente compra e como paga; Agendar,
+    quando ele vem.
+  - O botão "Vender" saiu do cabeçalho da ficha (PDV7: "O vender da ficha
+    sai"); a ficha segue com o "+ Agendar".
+  - **A venda pergunta a unidade na REDE com duas ou mais** (D1 da 8ª
+    simulação, 2026-11-06; H5: "nada se prende a clients.branch_id";
     decidido pelo princípio 3: nenhuma vem escolhida). Era a unidade de
     CADASTRO da cliente — ou a primeira em ordem alfabética —, sem perguntar:
     a Patrícia (Água Verde) via "Hidratante — sem estoque", e a venda no Batel
     só deu pelo portal do Batel; o "Quem vendeu" era a equipe da Água Verde.
-    Agora "Unidade da venda" (`[data-unidade-da-venda]`, "Selecione a
-    unidade…") vem antes de tudo, e o catálogo (procedimento, pacote,
-    produto com o estoque DELA) e a equipe são os da escolhida
-    (`VendaDaUnidade`, lido por unidade na página); o caixa, a baixa e a
-    comissão saem dela. O mesmo vale para o que a ficha da rede grava por
-    unidade: o crédito interno, o ajuste de pontos, a troca e a entrega do
+    Hoje a unidade é a do PDV, e o PDV da rede sem unidade escolhida pergunta
+    "Em qual unidade é a venda?" (`[data-unidade-da-venda]`) antes de tudo;
+    o catálogo (procedimento, pacote, produto com o estoque DELA), a equipe,
+    o caixa, a baixa e a comissão são os dela. O mesmo vale para o que a
+    ficha da rede grava por unidade: o crédito interno, o ajuste de pontos, a troca e a entrega do
     voucher (o produto baixa no estoque da escolhida) e o agendar da unidade
     pré-paga e da sessão — todos nascem sem unidade (`perguntaAUnidade`). Com
     uma unidade só, nada a perguntar; no portal da unidade, é ela. Prova:
     `e2e/vendas-unidade-da-venda.spec.ts`.
   - Também no painel da direita do inbox, com as ações da pessoa
-    (`getConversationCard` → `venda`), **com ou sem ficha**. A
-    unidade é a de quem atende (a unidade fixa), senão a única da rede; **na
-    rede com duas ou mais, quem é da rede ESCOLHE** — "Unidade da venda", sem
-    nenhuma escolhida, como na ficha da rede (`venda.unidades`; sobra da F33
-    da 8ª simulação, 2026-11-06; H5: "nada se prende a clients.branch_id" —
-    era "senão a do cliente", a unidade de cadastro). Com cliente, fora do
-    alcance ou sem nada à venda, o botão não aparece. Como as outras ações da
-    pessoa, também some com o painel só de leitura (sem `crm: MANAGE`). Prova:
-    `e2e/agenda-atritos-da-8.spec.ts` ("sobra da F33").
+    (`getConversationCard` → `venda`), **com ou sem ficha**: o "Vender" é um
+    link ao PDV do portal em que a pessoa está, com a cliente escolhida
+    (`rotaDaVenda` em `inbox-lead-panel.tsx` →
+    `/<portal>/pdv?nova=1&cliente=<id>`; PDV7: "o do inbox… pode levar pro
+    PDV"). `venda` é só o sinal de quem recebe (`podeReceber`): o catálogo e
+    a unidade são os do PDV, que pergunta a unidade na rede com duas ou mais
+    (sobra da F33 da 8ª simulação, 2026-11-06; H5: "nada se prende a
+    clients.branch_id" — era "senão a do cliente", a unidade de cadastro).
+    Como as outras ações da pessoa, o botão some com o painel só de leitura
+    (sem `crm: MANAGE`). Prova: `e2e/agenda-atritos-da-8.spec.ts` ("sobra
+    da F33").
   - **Sem ficha, primeiro o cadastro** (decisão do Heitor, 2026-09-30): o
-    botão abre o "Cadastrar como cliente" com o aviso, e ao salvar a venda
-    abre sozinha para o cliente novo (`abrirSinal` do `Vender`). Rede
-    com várias unidades só sabe a unidade da venda depois do cadastro. Por
-    isso ali `branchId` vem nulo e as listas vazias: é só o sinal de que a
-    rede tem o que vender. Se a unidade escolhida não tiver nada à venda, a
-    tela diz isso em vez de abrir.
+    "Vender" (a quem também pode cadastrar, Clientes em Gerenciar) abre o
+    cadastro, e ao salvar leva ao PDV com a cliente nova
+    (`venderAposCadastro`).
   - `lancamentosDoPagamento` (`lib/checkout/lancamentos.ts`) monta o dinheiro:
     o recebido agora e o a receber em lançamentos separados; a última parcela
     leva o arredondamento.
@@ -565,7 +569,8 @@ plano").
   vezes, na hora.
 - **Vendido o pacote, a janela oferece "Agendar a 1ª sessão agora"** (A47 da 7ª
   simulação, 2026-11-05: o pré-pago oferecia, o pacote não). A quem tem a Agenda
-  em Gerenciar, a janela do "Vender" diz "Venda registrada. Agendar a 1ª sessão
+  em Gerenciar, a "Nova venda" do PDV (o formulário do antigo "Vender",
+  `podeAgendar` em `app/_shared/pdv.tsx`) diz "Venda registrada. Agendar a 1ª sessão
   agora?" com o procedimento da sessão nº 1 (`venderPacote` devolve
   `primeiraSessao`), e o agendar é o de sempre das sessões
   (`schedulePackageSession`, pelo núcleo; `[data-agendar-a-primeira-sessao]`).
@@ -620,8 +625,9 @@ plano").
   - Os pacotes "Saldo migrado" a R$ 0 que a Hortênsia criou antes disso são
     dado de [sim] e ficaram como estão.
   - Prova: `e2e/pacote-de-fora.spec.ts`.
-- **A tela de Pacotes manda ao "Vender" da ficha** (A46): dizia "Vender pacote",
-  e o botão se chama "Vender" (escolha Pacote).
+- **A tela de Pacotes manda à "Nova venda" do PDV** (A46; era o "Vender" da
+  ficha, e antes "Vender pacote"): "A venda é no PDV, em “Nova venda”
+  (escolha Pacote)…" (`TEXTO_DA_VENDA_DO_PACOTE`, `lib/permissions-copy.ts`).
 - **A taxa e o líquido da maquininha no Vender são de quem vê o financeiro da
   rede** (A19 da 12ª simulação, 2026-11-11: a Rita, com o PDV e "só
   as próprias comissões", via "Taxa da maquininha… a rede recebe R$ …"): o
@@ -760,9 +766,10 @@ faturamento." Até aqui a única saída era o ajuste, sem receita nem caixa.
 - **Só produto de REVENDA** (ou "os dois", `products.uso` — D-6, §9.5), ativo
   e com preço de venda: `produtosAVenda` (`lib/produtos/leitura.ts`) diz
   também quantas EMBALAGENS INTEIRAS há na unidade (a aberta não se vende).
-- **A porta é o "Vender"** (aba "Produto", `FormularioDoProduto` em
-  `components/shared/vender.tsx`), na ficha (os dois portais) e no painel do
-  inbox, para quem recebe (`podeReceber`). **Exige cliente cadastrada**: no
+- **A porta é a "Nova venda" do PDV** (aba "Produto", `FormularioDoProduto` em
+  `components/shared/vender.tsx`; era o "Vender" da ficha), nos dois portais,
+  para quem recebe (`podeReceber`) — o "Vender" do inbox e o da busca levam a
+  ela com a cliente. **Exige cliente cadastrada**: no
   inbox sem ficha o botão abre o cadastro (o rápido serve) antes, e a action
   recusa sem a ficha da rede.
 - `venderProduto` (`actions/produtos.ts`) confere permissão, rede e alcance,
@@ -892,9 +899,10 @@ como está, para o que não teve dinheiro". A Rosana pagou R$ 300 no Pix para us
 depois em qualquer coisa, e quem recebia só achou o "Conceder crédito" (fora do
 caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 
-- **A porta é o "Vender"**, aba "Crédito na rede" (`FormularioDoCredito`,
-  `components/shared/vender.tsx`), na ficha (os dois portais) e no painel do
-  inbox, para quem recebe (`podeReceber`); a aba existe em toda unidade (não
+- **A porta é a "Nova venda" do PDV**, aba "Crédito interno"
+  (`FormularioDoCredito`, `components/shared/vender.tsx`; era o "Vender" da
+  ficha), nos dois portais, para quem recebe (`podeReceber`) — o "Vender" do
+  inbox e o da busca levam a ela com a cliente; a aba existe em toda unidade (não
   depende de catálogo). "Valor do crédito" (`parseDinheiro`) e a forma — só À
   VISTA: Pix, dinheiro, débito ou crédito em N vezes (com a bandeira), nunca
   "Crédito do cliente" (`CamposDoPagamento semCredito`). Sem "Quem vendeu":
@@ -903,7 +911,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `[data-regra-do-credito]`). Decidido pelo princípio 5 ("sem dinheiro, sem
   crédito vendido"): o crédito vendido é o dinheiro que entrou, então não há
   crediário nem "a receber" para ele — o crédito sem dinheiro é a concessão.
-- **Uma transação, `credito_vender`** (`venderCredito`, `actions/credito-na-clinica.ts`;
+- **Uma transação, `credito_vender`** (`venderCredito`, `actions/credito-interno.ts`;
   a chave do envio vale, D10): a venda (`creditos_vendidos`, só o servidor
   lê), o lançamento de receita PAGO agora ("Crédito interno", categoria
   "Crédito interno", `financial_transactions.credito_vendido_id`) e o
@@ -943,12 +951,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (`set_config('bellaris.estorno_do_credito', …)`), como a venda de produto.
 - O **"Conceder crédito"** (`grantInternalCredit`) continua como está: fora do
   caixa, para o crédito de fora e o que não teve dinheiro.
-- Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
+- Prova: `e2e/vendas-credito-interno.spec.ts`.
 - **O bônus no crédito** (A20 da 11ª simulação; DECIDIDO pelo Heitor,
   2026-11-10: "No estorno sai o bonus junto, a clinica decide se integral ou
   parcial" — e "não vamos fazer as clinicas perderem dinheiro"). A Marta quis
   vender R$ 500 de crédito que vira R$ 550.
-  - "Bônus (opcional)" no "Crédito na rede", VAZIO por padrão (princípio 6;
+  - "Bônus (opcional)" no "Crédito interno", VAZIO por padrão (princípio 6;
     só o negativo é recusado). A janela diz a conta antes de vender ("A cliente
     fica com R$ 550,00 de crédito: R$ 500,00 pagos + R$ 50,00 de bônus. O
     caixa recebe só os R$ 500,00 pagos…", `[data-conta-do-bonus]`).
@@ -1259,9 +1267,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   - (o Fechamento do dia listava os "Concluídos a receber" até o CX5,
     2026-11-14: hoje o concluído sem pagamento é comanda aberta do PDV, e o
     fechamento só avisa quantas há);
-  - a ficha da cliente ("Atendimentos a receber") e o "Vender" da ficha, que
-    avisa quando há um a receber do MESMO procedimento (cobraria duas vezes).
-  O botão "Receber" é de quem tem `cashier` (o mesmo de `confirmPayment`).
+  - a ficha da cliente ("Atendimentos a receber") e a "Nova venda" do PDV
+    (aba Procedimento, `aReceber`; era o "Vender" da ficha), que avisa quando
+    há um a receber do MESMO procedimento (cobraria duas vezes).
+  O botão "Receber" da ficha é de quem tem `cashier` (`podeReceberAtendimento`
+  na página da ficha); `confirmPayment` aceita também o Financeiro em
+  Gerenciar (`podeReceber`).
   Prova: `e2e/financeiro-a-receber-concluido.spec.ts`.
 - **A aba Financeiro da ficha da cliente** é UMA leitura nos dois portais
   (`financeiroDaFicha`, `lib/clientes/financeiro-da-ficha.ts`): os
@@ -1295,10 +1306,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   ("Atendimento sem cobrança"). A avaliação de R$ 0 ficava "Aguardando
   confirmação de pagamento" para sempre. (Não havia lançamento de zero preso
   na produção: os dois concluídos de R$ 0 não tinham lançamento.)
-- O módulo `cashier` **sobreviveu com outro significado**: RECEBER o pagamento
-  do atendimento e do plano, no balcão. Não abre tela nenhuma por si só — o
-  financeiro da unidade e o da rede pedem `financial`. `podeReceber` (cashier OU
-  financial) continua sendo o gate de quem fecha uma venda.
+- O módulo `cashier` **é o PDV** (o rótulo na tela de Cargos, `MODULE_LABELS`
+  em `lib/permissions.ts`; só "Sem acesso" ou Gerenciar): vender e receber —
+  a "Nova venda", a comanda do atendimento e do plano, as parcelas — e o
+  Fechamento do dia. Abre a tela do PDV (`/[slug]/pdv`, `/admin/pdv`; o
+  item "PDV" do menu, `recebe` em `lib/menu.ts`) e o "Fechamento do dia"
+  (`/pdv?fechar=1`, `veFechamento`). O financeiro da unidade e o da rede
+  continuam pedindo `financial`. `podeReceber` (`cashier` OU `financial` em
+  Gerenciar) é o gate de quem vende e recebe — também da página do PDV.
 - `FinancialTransaction` criada automaticamente ao concluir `Appointment`
 - **Cada parcela é um LANÇAMENTO** (pedido do Heitor, 2026-09-30): o
   parcelado grava a entrada ("— entrada") e uma linha de
@@ -1726,8 +1741,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
         ativa não se arquiva; um "Salvar taxas" grava o Pix e as maquininhas
         que mudaram. A bandeira aparece só com a opção marcada.
       - **O Fechamento** separa o cartão por maquininha quando o dia teve mais
-        de uma (`metrics_fechamento_por_maquininha`; a despesa no cartão
-        aparece como "Cartão da clínica"), na tela e no CSV.
+        de uma (`metrics_fechamento_por_maquininha`; a despesa no cartão não
+        tem maquininha — migration `20261112006709` — e aparece como
+        "Cartão", `fechamento-do-dia-tela.tsx` e `csv-da-contadora.ts`), na
+        tela e no CSV.
       - Prova: `e2e/maquininhas-f67.spec.ts`, `tests/maquininhas.test.ts`; os
         specs das taxas leem pela `e2e/apoio/maquininha.ts`.
       - **A rede cadastra as maquininhas que usa** (Stone, Mercado Pago…):
@@ -1934,10 +1951,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       limite da rede, `useOpcoesDeVezes`, com o valor da parcela e o aviso
       da taxa), gravado em `cartao_vezes` — UM lançamento pago, que a
       operadora deposita em N (`recebiveis_do_cartao`, pelo gatilho, com o
-      prazo e a taxa da bandeira), exatamente como o crédito em N vezes do
-      "Vender". A tela diz a diferença: "Um pagamento só: a cliente pagou tudo
-      agora, e a operadora deposita em 3 parcelas… Não é um parcelamento da
-      cliente com a clínica." (o "Parcelado" do modal é o da despesa). Débito
+      prazo e a taxa da bandeira), exatamente como o crédito em N vezes da
+      "Nova venda" do PDV. A tela diz a diferença: "Um pagamento só: a cliente
+      pagou tudo agora, e a operadora deposita em 3 parcelas (no “A receber da
+      operadora”). Não é o crediário da cliente." (o mesmo texto no "Receber no
+      cartão", `ReceberNoCartao`; o "Parcelado" do modal é o da despesa). Débito
       é 1x; o lançamento PENDENTE não pergunta — as vezes são da baixa.
       `lancarCore` (`vezes`) recusa acima do limite (`recusaDasVezesDaRede`).
       Prova: `e2e/financeiro-cartao-por-bandeira.spec.ts` ("F16-5").
@@ -2055,7 +2073,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     do plano e `plano_receber` (migration `20261104002005`). As parcelas já
     gravadas com meio (17 nas redes [sim] e de teste, em 2026-11-04) ficaram
     como estão. Prova: `e2e/checkout-entrada-no-cartao.spec.ts`,
-    `tests/checkout-crediario-da-clinica.test.ts`.
+    `tests/checkout-crediario-da-rede.test.ts`.
   - **A ENTRADA no crédito também tem as vezes** (D5 da 6ª simulação): no
     "Entrada + parcelas" com a entrada no cartão de crédito, "Vezes no cartão
     (a entrada)" — no checkout do plano, no `CamposDoPagamento` (pacote,
@@ -2193,12 +2211,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   saiu): em Tratamentos, quem RECEBE e não monta o plano vê "Aceitar plano" no
   passo ① do plano PROPOSTO. Prova:
   `e2e/plano-fechar-checkout-na-pagina.spec.ts`.
-  **E o erro fica junto do botão; o plano aceito diz "Continuar o
-  checkout"** (A24 da 14ª, F75): o erro do "Aceitar plano", do "Cliente vai
-  pensar" e do "Fechar checkout" aparece ao lado deles (`ErroDoBotao`,
-  `[data-erro-do-botao]`), não no topo da página; e no PROPOSTO (o checkout
-  ficou pela metade) quem escreve no plano vê "Continuar o checkout". Prova:
-  `e2e/plano-f75-aceitar.spec.ts`.
+  **E o erro fica junto do botão** (A24 da 14ª, F75): o erro do "Aceitar
+  plano" e do "Cliente vai pensar" (este só no rascunho) aparece ao lado
+  deles (`ErroDoBotao`, `[data-erro-do-botao]`, em
+  `planejamento-tratamento.tsx`), não no topo da página. No PROPOSTO quem
+  escreve no plano vê o "Aceitar plano" (era o "Continuar o checkout"); o
+  aceito com saldo diz "Plano aceito. Falta receber: a comanda do plano está
+  no PDV…" e, a quem recebe, "Receber no PDV" (`passos-do-plano.tsx`,
+  `ResumoDoPlano`). Prova: `e2e/plano-f75-aceitar.spec.ts`.
 - **O checkout do plano cobra também o "atendimento de hoje"** (decisão do
   Heitor, 2026-10-20): o atendimento que GEROU o plano
   (`evaluation_appointment_id`), quando está concluído, tem preço, é avulso e
@@ -2457,7 +2477,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   do portal mostra o plano proposto (`data-plano-proposto`) com as sessões e
   os procedimentos, o valor (a soma dos preços das sessões, em centavos), a
   validade e "Falar com a equipe" (o WhatsApp da unidade do endereço,
-  `aClinicaDoEndereco`). O app NÃO aceita: o aceite é feito na
+  `aUnidadeDoEndereco`). O app NÃO aceita: o aceite é feito na
   unidade. A anotação do profissional (`professional_notes`) e a da sessão
   (`treatment_plan_sessions.notes`) são clínicas e nem são lidas pela tela.
   A validade é da REDE (`tenants.plano_validade_dias`, 30 por padrão, 1–365,
@@ -2494,7 +2514,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   (A46 da 9ª simulação: a Rosana, sem plano, só chegou ao Financeiro pela URL —
   o único link ficava no detalhe de um plano): o cartão "Seu crédito ·
   R$ 181,00 · Use em qualquer atendimento ou produto. · Ver no Financeiro"
-  (`[data-credito-na-clinica-no-inicio]`), com o mesmo saldo. Prova:
+  (`[data-credito-interno-no-inicio]`), com o mesmo saldo. Prova:
   `e2e/financeiro-ficha-e-app-da-9.spec.ts` ("A46").
 - **Os pagamentos do app dizem o vencimento e o que falta pagar** (A64 da 5ª
   simulação; Histórico → Pagamentos): a parcela pendente diz "Parcela 2 de 3 ·
@@ -2662,7 +2682,7 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Trocar o due_date de um lançamento sem lancamento_remarcar_vencimento (o histórico da remarcação se perde — A37 da 9ª)
 ❌ Calcular a taxa ou o líquido de um lançamento na tela (o CSV) — é metrics_taxa_dos_lancamentos, a conta do lucro (A31 da 10ª)
 ❌ Rotular o cartão do caixa só "Despesas": é "Despesas pagas (caixa)", que tem a compra de estoque e o pagamento das comissões (A24 da 10ª)
-❌ Vender crédito interno pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, o "Crédito na rede" do Vender (decisão 1 da 9ª)
+❌ Vender crédito interno pelo "Conceder crédito" (fica fora do caixa) ou por um lançamento manual (o crédito não nasce): é credito_vender, a aba "Crédito interno" da Nova venda (decisão 1 da 9ª)
 ❌ Estornar o lançamento da venda de crédito fora de credito_estornar_venda (o dinheiro voltava e o crédito ficava), ou devolver mais que o saldo que a cliente ainda tem
 ❌ Lançar o bônus do crédito interno como receita, ou deixar o bônus no saldo depois do estorno da venda (ele sai junto, inteiro ou na proporção — a rede escolhe; A20 da 11ª)
 ❌ Tirar do dia do pagamento um estorno feito noutro dia (o Fechamento de um dia passado não muda): o estorno é a saída do dia em que foi feito — metrics_movimentos_pagos (D2 da 12ª, princípio 5)

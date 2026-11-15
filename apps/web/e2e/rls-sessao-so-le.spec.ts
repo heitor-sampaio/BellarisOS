@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { banco, tenantId, filiaisAtivas, PREFIXO } from './apoio/banco'
+import { banco, tenantId, unidadesAtivas, PREFIXO } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 
 /**
@@ -47,7 +47,7 @@ const limpar: (() => PromiseLike<unknown>)[] = []
 test.beforeAll(async () => {
   test.setTimeout(240_000)
   tenant = await tenantId()
-  const [u] = await filiaisAtivas()
+  const [u] = await unidadesAtivas()
   unidade = { id: u!.id, slug: u!.slug }
   // A recepcionista da rede: só o CRM — nada de Cargos, Marketing, Estoque.
   daRede = await criarMembro(`ssl${marca}`, { rotulo: 'Recepção da rede', permissoes: [{ modulo: 'crm', nivel: 'MANAGE' }] })

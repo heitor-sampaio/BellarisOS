@@ -39,7 +39,7 @@ test.afterAll(async () => {
   await cliente?.limpar(); await semCredito?.limpar(); await rede?.limpar()
 })
 
-test('o Financeiro do app mostra o saldo do crédito na clínica', async ({ browser }) => {
+test('o Financeiro do app mostra o saldo do crédito interno', async ({ browser }) => {
   await como(browser, cliente!, async p => {
     await p.goto(`/${slug}/cliente/financeiro`)
     const cartao = p.locator('[data-credito-interno]')

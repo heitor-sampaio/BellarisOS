@@ -30,7 +30,7 @@ const VER_E_AGENDAR: [string, string][] = [
   ['actions/appointments.ts', 'schedulePackageSessionInterno'],
   ['actions/appointments.ts', 'schedulePlanSessionInterno'],
   ['actions/pre-pago.ts', 'agendarUnidadePrePaga'],
-  ['actions/treatment-plans.ts', 'planoDaClinica'],
+  ['actions/treatment-plans.ts', 'planoDaRede'],
 ]
 
 const O_DINHEIRO: [string, string][] = [
@@ -39,7 +39,7 @@ const O_DINHEIRO: [string, string][] = [
   ['actions/pre-pago.ts', 'unidadeAoAlcance'],
 ]
 
-describe('ver e agendar as sessões é da clínica; o dinheiro, do caixa', () => {
+describe('ver e agendar as sessões é da rede; o dinheiro, do caixa', () => {
   it.each(VER_E_AGENDAR)('%s → %s confere a REDE (alcancaOTratamento), não a unidade da venda', (arquivo, nome) => {
     const c = corpo(arquivo, nome)
     expect(c, 'use alcancaOTratamento (lib/tratamento/alcance.ts)').toMatch(/alcancaOTratamento\(/)
@@ -50,8 +50,8 @@ describe('ver e agendar as sessões é da clínica; o dinheiro, do caixa', () =>
     expect(corpo(arquivo, nome)).toMatch(/alcancaOCaixaDoTratamento\(/)
   })
 
-  it('a ficha de tratamento (a lista das sessões do plano) lê pelo plano da clínica', () => {
-    expect(corpo('actions/treatment-plans.ts', 'getTreatmentPlanDetails')).toMatch(/planoDaClinica\(/)
+  it('a ficha de tratamento (a lista das sessões do plano) lê pelo plano da rede', () => {
+    expect(corpo('actions/treatment-plans.ts', 'getTreatmentPlanDetails')).toMatch(/planoDaRede\(/)
   })
 })
 

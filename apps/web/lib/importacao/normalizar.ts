@@ -159,10 +159,10 @@ const ORIGENS: Record<string, string> = {
   evento: 'Evento', eventos: 'Evento', feira: 'Evento',
   outro: 'Outro', outros: 'Outro',
 }
-export function normalizarOrigem(bruto: string, daClinica: string[] = []): string {
+export function normalizarOrigem(bruto: string, daRede: string[] = []): string {
   // A origem que a clínica cadastrou (A14 da 7ª: "Feira de noivas") vale como está.
   const k = semAcento(bruto)
-  const cadastrada = daClinica.find(o => semAcento(o) === k)
+  const cadastrada = daRede.find(o => semAcento(o) === k)
   if (cadastrada) return cadastrada
   return ORIGENS[k] ?? 'Outro'
 }

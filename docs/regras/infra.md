@@ -205,13 +205,13 @@ aviso; os avisos de duas semanas e um inventário do código fecharam a lista.
 - **O navegador relata o que barrou** em `/api/csp-relatorio`, e o log do
   serviço BellarisOS ganha `[csp] <diretiva> barrou <origem> em <página>`.
   Linha nova ali é uma tela que perdeu algo: se for legítimo, liberar na
-  política (com o teste em `tests/csp-clinica.test.ts`).
+  política (com o teste em `tests/csp-app-da-rede.test.ts`).
 - **Página precisa ser dinâmica.** O nonce entra na renderização; página
   pré-gerada no build sai sem ele e fica sem JavaScript. Hoje só o
   `/_global-error` é estático.
 - **O app Android fica fora dela**: o Capacitor busca o HTML sozinho (para
   injetar a ponte nativa) e o entrega ao WebView sem os cabeçalhos.
-- Prova: `e2e/csp-clinica.spec.ts` (o cabeçalho que bloqueia no build e
+- Prova: `e2e/csp-app-da-rede.spec.ts` (o cabeçalho que bloqueia no build e
   treze telas abertas sem nenhuma violação).
 
 ## 14.1 Jobs agendados (cron)

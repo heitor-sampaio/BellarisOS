@@ -119,7 +119,7 @@ export function SessionScheduler({
   const fuso = useFuso()
   const [branchId,     setBranchId]     = useState(currentBranchId)
   const [profs,        setProfs]        = useState<{ id: string; name: string }[]>([])
-  // Nasce carregando quando já há filial; cada troca liga de novo no handler.
+  // Nasce carregando quando já há unidade; cada troca liga de novo no handler.
   const [loadingProfs, setLoadingProfs] = useState(!!currentBranchId)
   const [profId,       setProfId]       = useState('')
   const [date,         setDate]         = useState('')
@@ -136,7 +136,7 @@ export function SessionScheduler({
   const [error,        setError]        = useState<string | null>(null)
 
   // Os resets acontecem no handler que muda a escolha; os efeitos só buscam.
-  function trocarFilial(id: string) {
+  function trocarUnidade(id: string) {
     setBranchId(id)
     if (!id) return
     setLoadingProfs(true)
@@ -234,7 +234,7 @@ export function SessionScheduler({
             className="filtro-select"
             aria-label="Unidade da sessão"
             value={branchId ?? ''}
-            onChange={e => trocarFilial(e.target.value)}
+            onChange={e => trocarUnidade(e.target.value)}
           >
             {/* Sem unidade escolhida (a ficha da rede — D1 da 8ª), nenhuma vem marcada. */}
             {!branchId && <option value="">Selecione a unidade…</option>}

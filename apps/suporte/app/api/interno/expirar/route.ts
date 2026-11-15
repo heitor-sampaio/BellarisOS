@@ -1,5 +1,5 @@
 import { type NextRequest } from 'next/server'
-import { rotaDeExpirar } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
+import { rotaDeExpirar } from '@estetica-os/nucleo/lib/plataforma/expirar-no-app-da-rede'
 
 /**
  * Expira caches DESTE processo a pedido de outro app (2026-10-06). Pública no

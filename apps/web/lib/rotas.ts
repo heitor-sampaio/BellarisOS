@@ -2,7 +2,7 @@
  * Endereços que existem nos dois portais.
  *
  * O portal (rede ou unidade) não vem do dado: vem de onde a pessoa está. Usar o
- * slug da filial do registro para navegar trocava o portal no meio do caminho —
+ * slug da unidade do registro para navegar trocava o portal no meio do caminho —
  * abrir um atendimento pelo perfil do cliente no /admin levava para
  * `/<unidade>/agenda/<id>`, e o mesmo acontecia com cadastrar cliente, voltar
  * para a lista e agendar.

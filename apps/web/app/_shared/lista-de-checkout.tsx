@@ -12,16 +12,16 @@ import { falaDaTela } from '@/lib/unidades/uma-so'
  * o plano se aceita na página dele e o dinheiro é no PDV) — a mesma lista nos
  * dois portais. Cada linha leva à página do plano.
  *
- * Sem nome de filial é a rede inteira: quem opera a rede vê o que está parado
+ * Sem nome de unidade é a rede inteira: quem opera a rede vê o que está parado
  * em qualquer unidade sem entrar no portal de cada uma. Aí cada linha diz de
  * qual unidade é — a informação que some quando a lista deixa de ser de uma
- * filial só.
+ * unidade só.
  */
 export async function ListaDeCheckout({
   branchIds, branchName, slug,
 }: {
   /**
-   * Filiais que entram na lista — uma no portal da unidade, todas as ativas na
+   * Unidades que entram na lista — uma no portal da unidade, todas as ativas na
    * rede. `treatment_plans` não tem `tenant_id`: o recorte de rede é por
    * `branch_id`, e é quem chama que resolve quais.
    */

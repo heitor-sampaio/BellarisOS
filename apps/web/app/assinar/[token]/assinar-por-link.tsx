@@ -31,7 +31,7 @@ async function postar<T>(rota: string, corpo: unknown): Promise<T & { erro?: str
   }
 }
 
-export function AssinarPorLink({ token, clinica, pede, quantos }: { token: string; clinica: string; pede: 'CPF' | 'NASCIMENTO'; quantos: number }) {
+export function AssinarPorLink({ token, remetente, pede, quantos }: { token: string; remetente: string; pede: 'CPF' | 'NASCIMENTO'; quantos: number }) {
   const [valor, setValor] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [bloqueado, setBloqueado] = useState(false)
@@ -95,7 +95,7 @@ export function AssinarPorLink({ token, clinica, pede, quantos }: { token: strin
       <div>
         <p className="overline">{quantos === 1 ? 'Documento para assinar' : 'Documentos para assinar'}</p>
         <h1 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', marginTop: 4 }}>
-          {clinica} pediu a sua assinatura em {quantos === 1 ? 'um documento' : `${quantos} documentos`}.
+          {remetente} pediu a sua assinatura em {quantos === 1 ? 'um documento' : `${quantos} documentos`}.
         </h1>
       </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8 }}>

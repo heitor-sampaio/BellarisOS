@@ -6,7 +6,7 @@ import { registrarNaPlataforma } from '@estetica-os/nucleo/lib/plataforma/audito
 import { sessoesEmCurso, tagDaSessao } from '@estetica-os/nucleo/lib/suporte/sessao'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@estetica-os/nucleo/lib/db'
-import { expirarEm, expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
+import { expirarEm, expirarNoAppDaRede } from '@estetica-os/nucleo/lib/plataforma/expirar-no-app-da-rede'
 import { enviarConvite } from '@/lib/equipe/convite'
 
 /**
@@ -129,7 +129,7 @@ export async function ativarAtendente(staffId: string, ativo: boolean): Promise<
         await gravar(admin.rpc('suporte_sessao_encerrar', { p_sessao: s.id, p_motivo: 'atendente desativado' }), 'encerrar a sessão de suporte')
         if (s.authSessionId) {
           revalidateTag(tagDaSessao(s.authSessionId), { expire: 0 })
-          await expirarNaClinica([tagDaSessao(s.authSessionId)])
+          await expirarNoAppDaRede([tagDaSessao(s.authSessionId)])
         }
       }
     }

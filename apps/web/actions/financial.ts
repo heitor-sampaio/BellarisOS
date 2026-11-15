@@ -218,7 +218,7 @@ export async function markTransactionPaid(
  * indicadores leem os dois lados (CLAUDE.md §13.1), a metade que sobra faz o
  * estorno bater duas vezes no resultado.
  *
- * A filial saiu da assinatura: ela vem do registro estornado. Recebê-la do
+ * A unidade saiu da assinatura: ela vem do registro estornado. Recebê-la do
  * cliente permitia estornar o lançamento de uma unidade e jogar a despesa em
  * outra.
  *

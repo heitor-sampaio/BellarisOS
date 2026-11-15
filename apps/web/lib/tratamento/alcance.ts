@@ -19,7 +19,7 @@ import { alcancaUnidade } from '@/lib/auth'
  *    checkout — só quem alcança a unidade em que o dinheiro entrou.
  *
  * Toda action de pacote, plano ou pré-pago escolhe UMA das duas pelo nome:
- * `tests/tratamento-da-clinica.test.ts` trava quem voltar a decidir por conta
+ * `tests/tratamento-da-rede.test.ts` trava quem voltar a decidir por conta
  * própria.
  */
 export function alcancaOTratamento(

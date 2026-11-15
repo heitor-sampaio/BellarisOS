@@ -7,7 +7,7 @@ import { modeloDeAutomacao } from '@/lib/automacoes/modelos'
 // F69 — documentos, automações, campanhas, WhatsApp e push (levantamento das
 // regras de 2026-11-11 e o D11 da 13ª simulação).
 
-describe('D11: o link de conferência do PDF é o endereço público da clínica', () => {
+describe('D11: o link de conferência do PDF é o endereço público da rede', () => {
   const antes = { ...process.env }
   afterEach(() => { process.env = { ...antes } })
 

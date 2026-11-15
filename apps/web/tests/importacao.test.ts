@@ -122,7 +122,7 @@ describe('os campos novos', () => {
     expect(normalizarOrigem('organico')).toBe('Orgânico')
     expect(normalizarOrigem('Feira de noivas')).toBe('Outro')
   })
-  it('A14 da 7ª: a origem que a clínica cadastrou vale como está (sem acento nem caixa)', () => {
+  it('A14 da 7ª: a origem que a rede cadastrou vale como está (sem acento nem caixa)', () => {
     expect(normalizarOrigem('feira de NOIVAS', ['Feira de noivas', 'Instagram'])).toBe('Feira de noivas')
     expect(normalizarOrigem('facebook', ['Feira de noivas'])).toBe('Meta Ads')
     expect(normalizarOrigem('Rádio', ['Feira de noivas'])).toBe('Outro')

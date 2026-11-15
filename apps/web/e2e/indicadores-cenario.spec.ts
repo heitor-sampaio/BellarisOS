@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, tenantId, filiaisAtivas, PREFIXO } from './apoio/banco'
+import { banco, tenantId, unidadesAtivas, PREFIXO } from './apoio/banco'
 import { apagarClientes, apagarAgendamentos } from './apoio/limpeza'
 
 /**
@@ -35,7 +35,7 @@ test.describe.serial('indicadores com cenário conhecido', () => {
   test.beforeAll(async () => {
     const db = banco()
     const tenant = await tenantId()
-    const outra = (await filiaisAtivas())[0]!
+    const outra = (await unidadesAtivas())[0]!
     const ins = async <T = { id: string }>(tabela: string, linha: Record<string, unknown>) => {
       const { data, error } = await db.from(tabela).insert(linha).select('id').single()
       expect(error, `criar ${tabela}`).toBeNull()

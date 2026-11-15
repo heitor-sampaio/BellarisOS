@@ -70,7 +70,7 @@ test('o público não vê o aviso interno de documento incompleto (A46)', async 
 // C30 do levantamento das regras (F70; D6 e H15 = a): a página prometia que "o
 // pedido de eliminação é atendido", e o sistema não tem eliminação — ela é feita
 // a pedido, pelo contato da clínica, respeitando as guardas legais.
-test('a eliminação é pelo contato da clínica, com as guardas do prontuário e do fiscal', async ({ page }) => {
+test('a eliminação é pelo contato da rede, com as guardas do prontuário e do fiscal', async ({ page }) => {
   await page.goto('/privacidade')
   const main = page.locator('main')
   await expect(main).toContainText('Para pedir a eliminação dos seus dados')

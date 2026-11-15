@@ -51,11 +51,11 @@ test.beforeAll(async ({ browser }) => {
   // As duas vendas do dia: R$ 100 no Pix pela Elaine, R$ 50 em dinheiro pela Fabiana.
   const rota = `/${slug}/pdv`
   await como(browser, elaine, async p => {
-    const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'venderCredito', rota, [rosana, rede.branchId, '100', { forma: 'AVISTA', metodo: 'PIX' }, null])
+    const r = await chamarAcao(p, 'actions/credito-interno.ts', 'venderCredito', rota, [rosana, rede.branchId, '100', { forma: 'AVISTA', metodo: 'PIX' }, null])
     expect(r.texto).toContain('vendaId')
   })
   await como(browser, fabiana, async p => {
-    const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'venderCredito', rota, [rosana, rede.branchId, '50', { forma: 'AVISTA', metodo: 'CASH' }, null])
+    const r = await chamarAcao(p, 'actions/credito-interno.ts', 'venderCredito', rota, [rosana, rede.branchId, '50', { forma: 'AVISTA', metodo: 'CASH' }, null])
     expect(r.texto).toContain('vendaId')
   })
 })
@@ -112,7 +112,7 @@ test('A36 e A37: o pagamento estornado em parte diz o que foi pago e o que volto
   expect(error).toBeNull()
   const venda = await lancamentoDoCredito(100)
   await como(browser, dona, async p => {
-    const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'estornarVendaDeCredito', `/${slug}/financeiro`,
+    const r = await chamarAcao(p, 'actions/credito-interno.ts', 'estornarVendaDeCredito', `/${slug}/financeiro`,
       [venda.id, { motivo: 'Desistiu [e2e]', estorno: 'PARCIAL', esperado: 30, novo: null }])
     expect(r.texto).toContain('"volta":30')
   })

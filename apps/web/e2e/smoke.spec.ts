@@ -27,7 +27,7 @@ const TELAS: { rota: string; titulo: RegExp }[] = [
   { rota: '/admin/reports?tab=comercial', titulo: /comercial/i },
   { rota: '/admin/team',          titulo: /equipe/i },
   { rota: '/admin/procedures',    titulo: /procedimentos/i },
-  { rota: '/admin/branches',      titulo: /unidades|filiais/i },
+  { rota: '/admin/branches',      titulo: /unidades/i },
   { rota: '/admin/settings',      titulo: /configura/i },
 ]
 

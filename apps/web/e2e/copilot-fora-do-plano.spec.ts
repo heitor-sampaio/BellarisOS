@@ -53,7 +53,7 @@ test('A51: no teste grátis, a dona vê que o Copilot não está no plano — e 
   })
 })
 
-test('A51: fora do teste, diz que o Copilot não faz parte do plano da clínica', async ({ browser }) => {
+test('A51: fora do teste, diz que o Copilot não faz parte do plano da rede', async ({ browser }) => {
   expect((await db().from('tenants').update({ plan_status: 'active' }).eq('id', rede!.tenantId)).error).toBeNull()
   try {
     await como(browser, dona!, async p => {
@@ -66,7 +66,7 @@ test('A51: fora do teste, diz que o Copilot não faz parte do plano da clínica'
   }
 })
 
-test('A51: quem não administra a clínica não vê o aviso', async ({ browser }) => {
+test('A51: quem não administra a rede não vê o aviso', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/agenda`)
     await expect(p.getByRole('heading').first()).toBeVisible()

@@ -106,7 +106,7 @@ test.describe.serial('portal da plataforma', () => {
   // "O atendente não entra nos portais das redes" mora em plataforma-hosts.spec
   // desde 2026-10-06: a clínica é outro host, e lá a marca é recusada.
 
-  test('o membro da rede não entra no suporte (o cookie dele é da clínica)', async ({ browser }) => {
+  test('o membro da rede não entra no suporte (o cookie dele é da rede)', async ({ browser }) => {
     await comSessao(browser, f!.membro.estado, async p => {
       await p.goto(`${SUP()}/redes/${f!.outra.tenantId}`)
       await expect(p).toHaveURL(`${SUP()}/login`)

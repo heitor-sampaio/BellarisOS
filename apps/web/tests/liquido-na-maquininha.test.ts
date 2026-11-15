@@ -3,7 +3,7 @@ import { liquidoNaMaquininha } from '@/lib/metrics/resultado'
 
 // A40 da 8ª simulação: a taxa e o líquido ao escolher o cartão e as vezes.
 describe('A40: o líquido na maquininha', () => {
-  it('R$ 100 a 2,97%: R$ 2,97 de taxa, R$ 97,03 para a clínica', () => {
+  it('R$ 100 a 2,97%: R$ 2,97 de taxa, R$ 97,03 para a rede', () => {
     expect(liquidoNaMaquininha(100, 2.97)).toEqual({ taxa: 2.97, liquido: 97.03 })
   })
   it('em centavos: R$ 180 a 2,97% são R$ 5,35', () => {

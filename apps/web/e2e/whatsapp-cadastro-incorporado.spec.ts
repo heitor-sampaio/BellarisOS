@@ -33,7 +33,7 @@ const WABA = `9${sufixo}01`
 const FONE_ID = `8${sufixo}01`
 const WABA_CLOUD = `9${sufixo}02`
 const FONE_ID_CLOUD = `8${sufixo}02`
-const DA_CLINICA = `5548999${sufixo.slice(-6)}`
+const DA_REDE = `5548999${sufixo.slice(-6)}`
 const CLIENTE = `5548988${sufixo.slice(-6)}`
 const TOKEN = `tok-negocio-${marca}`
 
@@ -47,7 +47,7 @@ test.skip(!process.env.META_GRAPH_BASE_TESTE, 'só contra o build: o servidor pr
 test.beforeAll(async () => {
   const graph = await subirGraphFalsa(PORTA)
   graph.responder('/oauth/access_token', { access_token: TOKEN })
-  graph.responder(`/${WABA}/phone_numbers`, { data: [{ id: FONE_ID, display_phone_number: `+${DA_CLINICA}`, verified_name: `Clínica ${marca}` }] })
+  graph.responder(`/${WABA}/phone_numbers`, { data: [{ id: FONE_ID, display_phone_number: `+${DA_REDE}`, verified_name: `Clínica ${marca}` }] })
   graph.responder(`/${WABA_CLOUD}/phone_numbers`, { data: [{ id: FONE_ID_CLOUD, display_phone_number: '+5548911110000', verified_name: `Cloud ${marca}` }] })
   const outra = await criarOutraRede(`es${marca}`)
   f = {
@@ -105,7 +105,7 @@ async function entregar(p: Page, campo: string, valor: Record<string, unknown>) 
     object: 'whatsapp_business_account',
     entry: [{ id: WABA, changes: [{ field: campo, value: {
       messaging_product: 'whatsapp',
-      metadata: { display_phone_number: DA_CLINICA, phone_number_id: FONE_ID },
+      metadata: { display_phone_number: DA_REDE, phone_number_id: FONE_ID },
       ...valor,
     } }] }],
   })
@@ -245,7 +245,7 @@ test.describe.serial('WhatsApp pelo cadastro incorporado da Meta', () => {
     const velho = Math.floor(new Date('2026-03-10T12:00:00Z').getTime() / 1000)
     const historico = { history: [{ metadata: { phase: 0, chunk_order: 1, progress: 100 }, threads: [{ id: CLIENTE, messages: [
       { from: CLIENTE, id: `wamid.hist1.${marca}`, timestamp: String(velho), type: 'text', text: { body: 'Oi, tem horário?' }, history_context: { status: 'READ' } },
-      { from: DA_CLINICA, to: CLIENTE, id: `wamid.hist2.${marca}`, timestamp: String(velho + 60), type: 'text', text: { body: 'Tem sim, às 10h.' }, history_context: { status: 'READ' } },
+      { from: DA_REDE, to: CLIENTE, id: `wamid.hist2.${marca}`, timestamp: String(velho + 60), type: 'text', text: { body: 'Tem sim, às 10h.' }, history_context: { status: 'READ' } },
     ] }] }] }
     await entregar(page, 'history', historico)
 
@@ -272,7 +272,7 @@ test.describe.serial('WhatsApp pelo cadastro incorporado da Meta', () => {
     // 3. A clínica responde pelo celular, agora.
     const agora = Math.floor(Date.now() / 1000)
     await entregar(page, 'smb_message_echoes', {
-      message_echoes: [{ from: DA_CLINICA, to: CLIENTE, id: `wamid.eco.${marca}`, timestamp: String(agora), type: 'text', text: { body: 'Confirmado!' } }],
+      message_echoes: [{ from: DA_REDE, to: CLIENTE, id: `wamid.eco.${marca}`, timestamp: String(agora), type: 'text', text: { body: 'Confirmado!' } }],
     })
     const depois = await mensagens()
     expect(depois.at(-1)).toEqual({ external_id: `wamid.eco.${marca}`, direction: 'outbound', importada: false, is_read: true, content: 'Confirmado!' })

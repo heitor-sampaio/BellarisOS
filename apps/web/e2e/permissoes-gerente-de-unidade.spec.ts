@@ -121,7 +121,7 @@ const CASOS: Caso[] = [
     gravou: q => conta('notification_campaigns', 'name', nome('Campanha', q)) },
 ]
 
-test('a gerente de unidade fixa não grava configuração da clínica pela action direta; a dona grava', async ({ browser }) => {
+test('a gerente de unidade fixa não grava configuração da rede pela action direta; a dona grava', async ({ browser }) => {
   // O controle primeiro: a dona grava cada uma (e a página fica compilada).
   await como(browser, dona!, async p => {
     for (const c of CASOS) {
@@ -158,7 +158,7 @@ test('na tela, a gerente lê "Esta configuração é da rede toda" e não acha o
   await como(browser, gerente!, async p => {
     for (const aba of ['tags', 'permissions', 'fichas', 'documentos', 'integrations', 'general']) {
       await p.goto(`/${slug}/settings?tab=${aba}`)
-      await expect.soft(p.locator('[data-config-da-clinica]'), `a aba ${aba} diz de quem é`).toContainText('Esta configuração é da rede toda')
+      await expect.soft(p.locator('[data-config-da-rede]'), `a aba ${aba} diz de quem é`).toContainText('Esta configuração é da rede toda')
     }
     await p.goto(`/${slug}/settings?tab=tags`)
     await expect(p.getByRole('button', { name: 'Criar tag' }), 'sem o botão de criar tag').toHaveCount(0)
@@ -172,7 +172,7 @@ test('na tela, a gerente lê "Esta configuração é da rede toda" e não acha o
   await como(browser, dona!, async p => {
     await p.goto('/admin/settings?tab=tags')
     await expect(p.getByRole('button', { name: 'Criar tag' }), 'controle: a dona cria tag').toBeVisible()
-    await expect(p.locator('[data-config-da-clinica]')).toHaveCount(0)
+    await expect(p.locator('[data-config-da-rede]')).toHaveCount(0)
     await p.goto('/admin/oportunidades')
     await expect(p.getByTitle('Configurar funis').first(), 'controle: a dona configura os funis').toBeVisible()
   })

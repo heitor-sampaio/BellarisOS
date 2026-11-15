@@ -96,7 +96,7 @@ export default async function AdminFinanceiroPage({
   // Os links antigos (`?aberto=todos|vencidas|a-pagar`) levam à aba nova (FI1).
   if (pedida.destino) redirect(`/admin/financeiro${pedida.destino}`)
   // C45 (F68): os TOTAIS da rede contam todas as unidades — a desativada que
-  // ainda tem movimento aparece no "Por filial" (getByBranch), e o total não
+  // ainda tem movimento aparece no "Por unidade" (getByBranch), e o total não
   // fechava com a soma das linhas. A lista e o seletor seguem as ativas.
   const metricArgs = { tenantId: ctx.tenantId!, branchIds: null, from: start, to: end }
 
@@ -194,7 +194,7 @@ export default async function AdminFinanceiroPage({
   const prevRevenue  = prevCore.revenueCash
   const prevExpenses = prevCore.expensesCash
 
-  // KPIs por filial
+  // KPIs por unidade
   const branchNameMap = Object.fromEntries(branches.map(b => [b.id, b.name]))
   const branchSlugMap = Object.fromEntries(branches.map(b => [b.id, b.slug]))
 
@@ -221,7 +221,7 @@ export default async function AdminFinanceiroPage({
     txCount:     movimentacoes.porUnidade[b.branchId] ?? 0,
   }))
 
-  // Transações enriquecidas com nome da filial — e o desconto embaixo do valor (fin-01).
+  // Transações enriquecidas com nome da unidade — e o desconto embaixo do valor (fin-01).
   const descontos = await descontosDosLancamentos(txs)
   // A23 e A31 da 10ª: o pago com voucher/pontos e a taxa e o líquido de cada receita (do banco).
   // A44 da 12ª: o desconto em reais e a profissional de cada lançamento, para o CSV.

@@ -110,7 +110,7 @@ test('A35: para quem tem o prontuário "só os meus", a ficha diz que os termos 
   })
 })
 
-test('A30: a ficha de pré-atendimento acrescenta o modelo de perguntas de injetáveis, se a clínica quiser', async ({ browser }) => {
+test('A30: a ficha de pré-atendimento acrescenta o modelo de perguntas de injetáveis, se a rede quiser', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=fichas')
     await p.locator('[data-pre-atendimento]').getByRole('button', { name: 'Editar perguntas' }).click()

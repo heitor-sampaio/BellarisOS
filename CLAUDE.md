@@ -21,10 +21,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   tela, teste e conversa falam em PERMISSÃO ("quem tem o Estoque em
   Gerenciar"), nunca em "a gerente", "a recepção", "a profissional", "a
   contadora".
-- As telas, as regras (`docs/regras/`) e este arquivo já falam "rede" e
-  "unidade" (16/11). O que ainda diz "clínica" ou "filial" são nomes internos
-  do código (`recusaDaConfigDaClinica`, `/auth/clinicas`, `trocarFilial…`) —
-  pendência da revisão, não regra.
+- As telas, as regras (`docs/regras/`), este arquivo e os nomes internos do
+  código (identificadores, arquivos, títulos de teste) já falam "rede" e
+  "unidade" — feito em 16/11; `tests/vocabulario-no-texto.test.ts` trava.
+  Ficam de propósito, por serem endereço, dado gravado ou ambiente: a rota
+  `/auth/clinicas`, as chaves do banco (`'CLINICA'`, `aguardando_clinica`), a
+  `CLINICA_URL`, os nomes SQL e de migration, e o adjetivo (`foto_clinica`).
 
 ### Tags (o Heitor, 2026-11-13 — vale para o sistema inteiro)
 
@@ -315,11 +317,11 @@ conta é dela; as fichas são de cada rede, e cada rede só vê a sua.
   (`aparelhos_da_cliente`); o bônus de primeiro acesso é por rede.
 - Fica de fora: a mesma pessoa como EQUIPE de uma rede e cliente de outra
   com o mesmo e-mail (usa outro e-mail).
-- Prova: `e2e/portal-cliente-varias-clinicas.spec.ts`.
+- Prova: `e2e/portal-cliente-varias-redes.spec.ts`.
 - **A ficha é da REDE, não da unidade de cadastro** (H5, 2026-11-02: "A
   cliente é da clínica, pode agendar em qualquer unidade da clínica"). O portal
   de QUALQUER unidade ativa da rede da ficha abre a mesma ficha
-  (`slugsDaClinica` em `fichaDaRequisicao`; o layout de `[slug]` confere a
+  (`slugsDaRede` em `fichaDaRequisicao`; o layout de `[slug]` confere a
   rede); o agendar do app usa a unidade do ENDEREÇO, pergunta "Em qual
   unidade?" quando há mais de uma e grava pelo `createAppointmentCore`. Na
   equipe, quem tem Clientes em Gerenciar edita, arquiva e reativa a cliente de
@@ -398,7 +400,7 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   Desde 2026-10-21 o layout também LEVA a cliente que abre uma tela da equipe
   ao portal dela (`/[slug]/cliente`) — a trava da página continua valendo.
 - Redirecionamento por abrangência (outra unidade pela URL, `/admin` de quem
-  tem unidade fixa) leva o motivo: `comAviso(…)` → `?aviso=`, que o
+  não tem “A rede inteira”) leva o motivo: `comAviso(…)` → `?aviso=`, que o
   `<AvisoDaUrl>` dos layouts mostra e tira da URL (`lib/aviso-da-url.ts`,
   J-29). Prova: `e2e/abrangencia-aviso-ao-redirecionar.spec.ts`.
 - **Rota PÚBLICA se declara em `lib/supabase/middleware.ts`**, não só deixando
@@ -522,7 +524,7 @@ código ou no DEVLOG cita "CLAUDE.md §9.7" acha a seção pela tabela.
 | `atendimento.md` | §9.1 Agenda, §9.3 Procedimentos, §9.4 Prontuário, §9.5 Estoque, §10 Conclusão do atendimento | `appointments`, `lib/appointments/`, `createAppointmentCore`, `procedures`, `medical_records*`, `forms`, `pre_atendimento*`, `lib/pre-atendimento/`, `lib/anamnese-geral.ts`, `stock_*`, `product_batches`, `lib/estoque/`, `finishSession`, `concluir_atendimento`, agenda, sessão de atendimento |
 | `crm-inbox.md` | §9.2 Clientes / CRM (com LGPD), §9.2.1 Contato, conversa, oportunidade e cliente | `clients`, `contacts`, `conversations`, `leads`, `lead_events`, `lib/inbox/`, `lib/crm/`, `lib/contatos/`, `inbox_pagina`, `actions/inbox.ts`, `actions/lgpd.ts`, inbox, quadro de oportunidades, ficha do cliente |
 | `fidelidade.md` | §9.2.2 Fidelidade | `loyalty_*`, `lib/fidelidade/`, `confirmar_pagamento_do_atendimento`, pontos, vouchers, recompensas |
-| `vendas-financeiro.md` | §9.3.1 Pacotes, §9.3.2 Pré-pago, §9.3.4 Crédito interno vendido, §9.6 Financeiro | `service_packages*`, `client_packages`, `package_sessions`, `procedure_sales*`, `financial_transactions`, `internal_credits`, `creditos_vendidos`, `actions/credito-na-clinica.ts`, `estornar_transacao`, `lib/checkout/`, `lib/vendas/`, `lib/pacotes/`, `lib/creditos/`, `actions/pre-pago.ts`, `actions/financial.ts`, checkout do plano, "Vender", desconto, parcelas |
+| `vendas-financeiro.md` | §9.3.1 Pacotes, §9.3.2 Pré-pago, §9.3.4 Crédito interno vendido, §9.6 Financeiro | `service_packages*`, `client_packages`, `package_sessions`, `procedure_sales*`, `financial_transactions`, `internal_credits`, `creditos_vendidos`, `actions/credito-interno.ts`, `estornar_transacao`, `lib/checkout/`, `lib/vendas/`, `lib/pacotes/`, `lib/creditos/`, `actions/pre-pago.ts`, `actions/financial.ts`, checkout do plano, "Vender", desconto, parcelas |
 | `comissoes.md` | §9.7 Comissões | `commission_*`, `commissions`, `payment_fees`, `lib/comissoes/`, `comissao_*`, Financeiro → Comissões |
 | `documentos.md` | §9.4.1 Documentos (termos e contratos) | `issued_documents`, `document_*`, `consent_terms`, `lib/documentos/`, `components/admin/editor-rico/`, `/verificar`, `/assinar`, PDF assinado, tela de Documentos |
 | `whatsapp-push.md` | §9.8 Push, §9.8.0 Números de WhatsApp, §9.8.1 Coexistência × Cloud API | `whatsapp_numbers*`, `integration_configs`, `lib/whatsapp/`, `lib/channels/`, `lib/templates/`, `lib/notifications/`, `lib/integracoes/`, `actions/uazapi-connection.ts`, `/api/webhooks/whatsapp` e `/meta`, templates, push |
@@ -696,7 +698,7 @@ Regras:
   não grava tags, funis, cargos, fichas, modelos de documento, integrações, automações,
   campanhas, templates, as Importações nem os
   dados da rede: a action devolve
-  `recusaDaConfigDaClinica` (`lib/configuracao-da-rede.ts`) e a aba diz "Esta
+  `recusaDaConfigDaRede` (`lib/configuracao-da-rede.ts`) e a aba diz "Esta
   configuração é da rede toda". Continua com a dela: a aba Unidade (dados,
   horário, salas), o estoque e a equipe. As respostas rápidas são de cada
   pessoa (H8 do levantamento das regras, 2026-11-11 — C72 na F69; a C73
@@ -722,7 +724,7 @@ Regras:
 - **A unidade do membro é da rede** (`assertBranchInTenant` em
   `actions/team.ts`), e **o agendamento só nasce com peças da rede**:
   `createAppointmentCore` confere unidade, profissional, cliente e sala, e quem
-  tem unidade fixa só agenda nela. É o núcleo da agenda E do comercial — a
+  não tem “A rede inteira” só agenda nas unidades dela. É o núcleo da agenda E do comercial — a
   conferência mora nele, não em cada chamador.
 - Teste de regra de alcance precisa de um membro com escopo OWN de verdade:
   `membroComEscopoProprio` (`e2e/apoio/sessao.ts`). Como admin a tela abre de
@@ -806,7 +808,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão
 ❌ Limpar um estado da rede ANTES de conferir o id que vai recebê-lo (setDefaultFunnel zerava o padrão)
 ❌ Action que recebe id de registro de UNIDADE e confere só a rede (use alcancaUnidade depois da rede)
-❌ Action que grava configuração da rede toda sem recusaDaConfigDaClinica (quem tinha só uma unidade a mudava para todas — H7)
+❌ Action que grava configuração da rede toda sem recusaDaConfigDaRede (quem não tinha “A rede inteira” a mudava para todas — H7)
 ❌ Botão que a pessoa não pode usar (o módulo em Ver, sem o módulo): a tela esconde, e a action devolve { error } em vez de lançar dentro do useActionState
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)

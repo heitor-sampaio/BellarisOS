@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { revalidateTag } from 'next/cache'
-import { expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
+import { expirarNoAppDaRede } from '@estetica-os/nucleo/lib/plataforma/expirar-no-app-da-rede'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { tentar, mensagemDoErro } from '@estetica-os/nucleo/lib/db'
 import { tokenDoWebhookConfere, EVENTOS_DE_COBRANCA, EVENTOS_DE_ASSINATURA } from '@/lib/asaas/webhook'
@@ -24,7 +24,7 @@ export const dynamic = 'force-dynamic'
 // Aqui e na CLÍNICA, que guarda o cache da rede (o `buildContext` lê a cada tela).
 const expirar = async (tag: string) => {
   revalidateTag(tag, { expire: 0 })
-  await expirarNaClinica([tag])
+  await expirarNoAppDaRede([tag])
 }
 
 export async function POST(req: NextRequest) {

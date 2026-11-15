@@ -72,13 +72,13 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('documentos: PDF assinado e verificação pública', () => {
-  test('assinado na clínica, o PDF final aparece sozinho e o hash gravado é o do arquivo', async ({ browser }) => {
+  test('assinado na unidade, o PDF final aparece sozinho e o hash gravado é o do arquivo', async ({ browser }) => {
     await como(browser, async page => {
       // Abrir a tela monta o texto e o hash.
       await page.goto(`/admin/documentos/${doc!.id}/assinar`)
       await expect(page.getByRole('button', { name: 'Entregar ao cliente' })).toBeVisible()
       const { content_sha256 } = await pdfDoDocumento(doc!.id)
-      const r = await chamarAcao(page, 'actions/documentos.ts', 'assinarNaClinica', `/admin/documentos/${doc!.id}/assinar`, [{
+      const r = await chamarAcao(page, 'actions/documentos.ts', 'assinarNaTela', `/admin/documentos/${doc!.id}/assinar`, [{
         id: doc!.id, assinatura: PNG, hashExibido: content_sha256, identidadeConferida: true, aceite: 'li e concordo',
       }])
       // O payload do dev traz outros "error" do React: quem diz se assinou é o banco.

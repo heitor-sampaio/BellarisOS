@@ -74,7 +74,7 @@ export default async function AgendaPage({ params, searchParams }: {
   }
 
   // A lista de clientes saiu daqui: a busca do agendamento passou a ser feita
-  // no servidor, por nome ou telefone. Carregar a filial inteira para filtrar
+  // no servidor, por nome ou telefone. Carregar a unidade inteira para filtrar
   // em JavaScript para de funcionar quando a base cresce — e não achava o
   // telefone mascarado de qualquer forma.
   const [

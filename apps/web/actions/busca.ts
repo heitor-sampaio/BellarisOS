@@ -50,10 +50,10 @@ export async function buscarTudo(termo: string, slug: string | null): Promise<
     // fica na dela; quem é da rede, num portal de unidade, fica nela também.
     let unidadeDoPortal: string | null = null
     if (typeof slug === 'string' && slug) {
-      const filial = await getCachedBranchBySlug(slug, ctx.tenantId) as { id: string } | null
-      if (filial) {
-        assertUnidade(ctx, filial.id)
-        unidadeDoPortal = filial.id
+      const unidadeDaPagina = await getCachedBranchBySlug(slug, ctx.tenantId) as { id: string } | null
+      if (unidadeDaPagina) {
+        assertUnidade(ctx, unidadeDaPagina.id)
+        unidadeDoPortal = unidadeDaPagina.id
       }
     }
     const unidade = ctx.branchId ?? unidadeDoPortal

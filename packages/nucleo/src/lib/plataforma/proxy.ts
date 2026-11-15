@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { opcoesDoCookieDeSessao } from '../supabase/cookie-de-sessao'
-import { aceitaNoHost, urlDaClinica, type HostDaPlataforma } from './destino'
+import { aceitaNoHost, urlDoAppDaRede, type HostDaPlataforma } from './destino'
 import { ipPermitido, politicaDeConteudo } from './porta'
 
 /**
@@ -43,7 +43,7 @@ export async function proxyDaPlataforma(
   if (comCsp) {
     const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
     let formulario: string[] = []
-    if (host === 'suporte') { try { formulario = [new URL(urlDaClinica()).origin] } catch { /* sem CLINICA_URL */ } }
+    if (host === 'suporte') { try { formulario = [new URL(urlDoAppDaRede()).origin] } catch { /* sem CLINICA_URL */ } }
     csp = politicaDeConteudo({
       nonce, supabase: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '', formulario, dev: process.env.NODE_ENV === 'development',
     })

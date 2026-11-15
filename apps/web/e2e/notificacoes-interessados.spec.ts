@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, filiaisAtivas, nomeDeTeste, tenantId } from './apoio/banco'
+import { banco, unidadesAtivas, nomeDeTeste, tenantId } from './apoio/banco'
 
 /**
  * Todo mundo com interesse no fato recebe a notificação.
@@ -81,9 +81,9 @@ test('o aviso vai para quem responde pelo módulo na unidade, e só para ele', a
 
   const db      = banco()
   const tenant  = await tenantId()
-  const filiais = await filiaisAtivas()
-  const unidade = filiais[0]!
-  const outra   = filiais[1]
+  const ativas = await unidadesAtivas()
+  const unidade = ativas[0]!
+  const outra   = ativas[1]
 
   const cargoGerente = await cargoCom(tenant, 'stock', 'MANAGE', 'gerente de estoque')
   const cargoOlheiro = await cargoCom(tenant, 'stock', 'VIEW',   'olheiro de estoque')

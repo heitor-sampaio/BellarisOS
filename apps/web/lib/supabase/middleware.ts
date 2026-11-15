@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 import { opcoesDoCookieDeSessao } from './cookie-de-sessao'
-import { cabecalhoDoCsp, politicaDaClinica } from '@/lib/seguranca/csp'
+import { cabecalhoDoCsp, politicaDoAppDaRede } from '@/lib/seguranca/csp'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function updateSession(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function updateSession(request: NextRequest) {
     if (!request.nextUrl.pathname.startsWith('/api/')) {
       const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
       const dev = process.env.NODE_ENV === 'development'
-      csp = politicaDaClinica({ nonce, supabase: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '', dev })
+      csp = politicaDoAppDaRede({ nonce, supabase: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '', dev })
       nomeDoCsp = cabecalhoDoCsp(dev)
       cabecalhos.set(nomeDoCsp, csp)
       cabecalhos.set('x-nonce', nonce)

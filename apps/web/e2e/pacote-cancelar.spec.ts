@@ -218,7 +218,7 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('cancelar pacote', () => {
-  test('pela ficha: 6 sessões, 2 feitas, no Pix — cancelar com crédito na clínica e cancelar o agendamento', async ({ browser }) => {
+  test('pela ficha: 6 sessões, 2 feitas, no Pix — cancelar com crédito interno e cancelar o agendamento', async ({ browser }) => {
     const cp = await vender([{ amount: 3300, payment_method: 'PIX', is_paid: true }])
     const feitas = [await sessaoFeita(cp, 1), await sessaoFeita(cp, 2)]
     const agendada = await sessaoAgendada(cp, 3)

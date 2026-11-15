@@ -2,7 +2,7 @@
 
 // Agendamento a partir do CRM (/admin) — reutiliza o núcleo createAppointmentCore.
 // Garante o cliente (lead de rede -> cliente de rede) antes de agendar.
-// A filial do agendamento (branchId) é a UNIDADE onde o cliente será atendido —
+// A unidade do agendamento (branchId) é a UNIDADE onde o cliente será atendido —
 // é a dimensão de métrica por unidade (o cliente pertence à rede).
 
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
@@ -47,7 +47,7 @@ async function assertBranchInTenant(branchId: string, tenantId: string): Promise
   return !!data
 }
 
-/** Profissionais, procedimentos e salas de uma filial (para o form de agendamento). */
+/** Profissionais, procedimentos e salas de uma unidade (para o form de agendamento). */
 export async function getCrmSchedulingData(branchId: string): Promise<CrmSchedulingData> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')

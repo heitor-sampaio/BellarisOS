@@ -109,7 +109,7 @@ test('A26: no celular, a agenda da unidade mostra as duas profissionais inteiras
   }, { width: 412, height: 860 })
 })
 
-test('A26: na clínica 24 h, a "Minha agenda" do celular abre perto de agora, e o próximo atendimento abre a tela dele', async ({ browser }) => {
+test('A26: na unidade 24 h, a "Minha agenda" do celular abre perto de agora, e o próximo atendimento abre a tela dele', async ({ browser }) => {
   const agora = new Date()
   const hora = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(agora))
   test.skip(hora < 2 || !cabeHoje(90), 'de madrugada a grade já abre no começo, e perto da meia-noite não cabe o próximo de hoje')

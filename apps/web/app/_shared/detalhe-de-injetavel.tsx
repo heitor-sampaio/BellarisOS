@@ -14,7 +14,7 @@ export async function DetalheDeInjetavel({
   mapId, slug, basePath,
 }: {
   mapId:    string
-  /** Filial do registro; vazio no portal da rede. */
+  /** Unidade do registro; vazio no portal da rede. */
   slug:     string
   basePath: string
 }) {

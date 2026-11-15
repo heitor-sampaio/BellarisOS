@@ -168,7 +168,7 @@ interface Props {
   prevRevenue:      number
   prevExpenses:     number
   branchStats:      BranchStat[]
-  /** A rede tem UMA unidade ativa (D-19): sem "Por filial", "Total rede" nem o filtro de filial. */
+  /** A rede tem UMA unidade ativa (D-19): sem "Por unidade", "Total rede" nem o filtro de unidade. */
   umaUnidade?:      boolean
   transactions:     AdminTx[]
   /** D13 da 9ª: o A receber só com as VENCIDAS (`?aba=a-receber&aberto=vencidas`). */
@@ -182,7 +182,7 @@ interface Props {
    * Unidade já recortada ao abrir (`?unidade=` na URL).
    *
    * É o destino do "ver o financeiro desta unidade" — no dashboard da rede e na
-   * própria tabela por filial, que antes saíam para o portal da unidade.
+   * própria tabela por unidade, que antes saíam para o portal da unidade.
    */
   unidadeInicial?:  string
   /** Lança (Financeiro em Gerenciar): sem isso, o "Novo lançamento" não aparece (D7, 2026-11-01). */

@@ -51,7 +51,7 @@ export interface CRMLeadModalHandle {
 export interface CRMBranch { id: string; name: string; slug: string }
 
 interface CRMLeadModalProps {
-  /** Modo filial: passar branchId + slug diretamente */
+  /** Modo unidade: passar branchId + slug diretamente */
   branchId?:       string
   slug?:           string
   /** Modo rede: a presença desta lista é o que liga o modo rede do card. */
@@ -213,8 +213,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const vocabulario = useTagsDaRede(aberto)
     // A14 da 7ª simulação: as origens são da clínica (Configurar funis); sem
     // a lista (carregando, falhou), as de sempre.
-    const origensDaClinica = useOrigensDaRede(aberto)
-    const origens = origensDaClinica?.length ? origensDaClinica : LEAD_SOURCES.map(x => x.key)
+    const origensDaRede = useOrigensDaRede(aberto)
+    const origens = origensDaRede?.length ? origensDaRede : LEAD_SOURCES.map(x => x.key)
     // Controlada: a lista chega depois de abrir, e o select sem dono perdia a
     // escolha quando as opções mudavam.
     const [origem, setOrigem] = useState(existing?.source ?? '')
@@ -223,7 +223,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const suggestedTags = useMemo(() => [...new Set(vocabulario ?? [])], [vocabulario])
 
     const networkMode = !!branches && branches.length > 0
-    // Sem filial no lead, o portal da rede não tem slug de unidade para
+    // Sem unidade no lead, o portal da rede não tem slug de unidade para
     // revalidar; a action revalida /admin/oportunidades de qualquer jeito.
     const activeBranchSlug = networkMode ? '' : (slug ?? '')
 

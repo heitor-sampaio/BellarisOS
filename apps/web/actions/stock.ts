@@ -368,12 +368,12 @@ async function toggleProductActiveInterno(productId: string, isActive: boolean) 
   }
 }
 
-// --- Estoque por filial -------------------------------------------
+// --- Estoque por unidade -------------------------------------------
 
 // `createStockMovement` e `updateBranchMinStock` foram removidas: as operações
 // de estoque passaram todas pelo modal de gerenciar (adminAddStock,
 // adminTransferStock, adminAdjustStock, adminUpdateMinStock), que os dois
-// portais usam. Ficaram sem chamador quando a filial adotou esse modal, e
+// portais usam. Ficaram sem chamador quando a unidade adotou esse modal, e
 // todo export de um arquivo `use server` é um endpoint público.
 
 /**
@@ -1195,7 +1195,7 @@ export async function desfazerPerdaDeEstoque(movimentoId: string, motivo: string
 // Três cadastros de texto livre da rede, com a MESMA regra (o Heitor, 13/11:
 // "é só quem tem permissão de gerenciar, mesma regra para categoria, marca e
 // fornecedor"): criar, renomear, excluir — quem tem o Estoque em Gerenciar, e
-// só isso. Ser da rede deixou de contar (era a recusaDaConfigDaClinica, H7).
+// só isso. Ser da rede deixou de contar (era a recusaDaConfigDaRede, H7).
 
 export type ListaDoEstoque = 'categorias' | 'marcas' | 'fornecedores'
 type DefinicaoDaLista = { tabela: 'product_categories' | 'marcas' | 'fornecedores'; coluna: 'name' | 'nome'; artigo: 'a' | 'o'; nome: string }

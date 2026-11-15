@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { maskPhone } from '@estetica-os/utils'
 
@@ -15,8 +15,8 @@ export async function updateTenantProfile(data: {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // O dado da rede é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
 
   const name     = data.name?.trim()
   // Só os dígitos: com máscara, o mesmo CNPJ viraria dois documentos para qualquer busca.
@@ -42,8 +42,8 @@ export async function completeOnboarding() {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // O setup da rede é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
 
   const admin = createAdminClient()
   const { error } = await admin

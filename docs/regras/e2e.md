@@ -15,7 +15,7 @@ só quando o Heitor pede) continuam no §15 do `CLAUDE.md`.
   as duas JUNTAS, contra um servidor só (`E2E_SERVIDOR_PRONTO`); no
   `test:e2e:completa` local, em sequência (a máquina não aguenta quatro
   navegadores e o servidor). Isolado é o spec que cria a própria rede
-  (`criarOutraRede`), não lê a rede real (`tenantId()`, `filiaisAtivas()`…),
+  (`criarOutraRede`), não lê a rede real (`tenantId()`, `unidadesAtivas()`…),
   não usa a sessão padrão (o `page` do fixture é o admin da rede real) e não
   chama cron — `tests/e2e-grupos.test.ts` confere a lista. Juntas é seguro
   porque a varredura de sobras só leva `[e2e]` com mais de uma hora; e cada
@@ -152,7 +152,7 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 - `outra-rede.ts` — `criarOutraRede`: uma SEGUNDA rede `[e2e]` inteira (unidade,
   profissional, procedimento, e sob pedido cliente e produto), alvo dos
   testes de "uma rede não grava na outra". Com ela no banco, `tenantId()` e
-  `filiaisAtivas()` filtram a rede de verdade — antes pegavam "a primeira".
+  `unidadesAtivas()` filtram a rede de verdade — antes pegavam "a primeira".
   O `limpar()` dela apaga a rede INTEIRA (ver "A limpeza da rede de teste",
   abaixo): a segunda unidade, a sala, o pacote que o teste criou nela vão
   junto — o spec não apaga mais a unidade e a rede "de novo" depois dele.

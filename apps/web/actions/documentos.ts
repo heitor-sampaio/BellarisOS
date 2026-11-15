@@ -86,7 +86,7 @@ async function assertPodeColher(ctx: TenantContext, doc: DocumentoAssinavel): Pr
 
 // ─── Na clínica, na tela ─────────────────────────────────────────────────────
 
-export async function assinarNaClinica(input: {
+export async function assinarNaTela(input: {
   id: string
   assinatura: string
   hashExibido: string
@@ -137,10 +137,10 @@ export async function assinarNaClinica(input: {
 /**
  * DC3 (leva 2): o aparelho entregue na clínica, com TODOS os abertos do
  * momento — a cliente lê cada um e assina uma vez. Cada id passa pelo mesmo
- * portão de `assinarNaClinica` (rede, unidade, escopo, quem colhe), e o banco
+ * portão de `assinarNaTela` (rede, unidade, escopo, quem colhe), e o banco
  * confere que são de uma cliente só.
  */
-export async function assinarJuntosNaClinica(input: {
+export async function assinarJuntosNaTela(input: {
   itens: { id: string; hashExibido: string }[]
   assinatura: string
   identidadeConferida: boolean
@@ -504,12 +504,12 @@ async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{
     doc.branch_id ? ler(admin.from('branches').select('name').eq('id', doc.branch_id).maybeSingle(), 'buscar a unidade') : Promise.resolve(null),
     ler(admin.from('tenants').select('name').eq('id', ctx.tenantId!).single(), 'buscar a rede'),
   ])
-  const clinica = (unidade?.name as string) || (rede?.name as string) || 'a equipe'
+  const remetente = (unidade?.name as string) || (rede?.name as string) || 'a equipe'
   const url = `${origemPublicaDe(await headers())}/assinar/${token}`
   // Genérica de propósito: a prévia do WhatsApp aparece na tela de bloqueio.
   const mensagem = mensagemDoLink({
     nome: cliente?.name as string | null,
-    pedido: `${clinica} pediu a sua assinatura em ${abertos.length === 1 ? 'um documento' : `${abertos.length} documentos`}.`,
+    pedido: `${remetente} pediu a sua assinatura em ${abertos.length === 1 ? 'um documento' : `${abertos.length} documentos`}.`,
     acao: 'Para ler e assinar', temCpf, dias: VALIDADE_DO_LINK_DIAS, url,
   })
   const numero = telefoneParaWhatsApp(cliente?.phone as string | null)

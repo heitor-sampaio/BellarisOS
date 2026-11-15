@@ -9,9 +9,9 @@ import { prefillDaBusca } from '@/lib/busca/acoes'
  * Cadastro de cliente pelo portal da rede.
  *
  * Só existia por unidade, e a lista da rede escondia o botão — quem opera a
- * rede tinha de entrar no portal de uma filial para cadastrar alguém. Aqui não
+ * rede tinha de entrar no portal de uma unidade para cadastrar alguém. Aqui não
  * há unidade corrente, então a unidade de cadastro é escolhida no formulário:
- * é ela que vira a tag `Unidade: X`, por onde a lista de cada filial filtra.
+ * é ela que vira a tag `Unidade: X`, por onde a lista de cada unidade filtra.
  */
 export default async function AdminNewClientPage({ searchParams }: { searchParams: Promise<{ nome?: string; telefone?: string }> }) {
   // A busca universal manda o termo que não achou ninguém (`?nome=` ou `?telefone=`).

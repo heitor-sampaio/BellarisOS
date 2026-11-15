@@ -2119,9 +2119,9 @@ e este passa a limpo o que sobrou.
 
 | # | O que muda | Depende de |
 |---|---|---|
-| V0 | **Nenhum cargo como se fosse fixo** em tela, regra (`docs/regras/`), teste e CLAUDE.md: fala-se em permissão ("quem tem o Estoque em Gerenciar"). Os nomes dos cargos-modelo continuam nomes de cargos editáveis telas ✅ 16/11, docs ✅ 16/11 (identificadores do código: a seguir) | — |
-| V1 | **"Clínica" sai** das telas (o portal e o app da cliente inclusive), dos avisos, da política de privacidade, das regras e do CLAUDE.md: é "a rede" ou o nome dela (PO2/CA1). Fica só no site, como mercado (SI1) telas ✅ 16/11, docs ✅ 16/11 (identificadores do código: a seguir) | PO2, CA1 |
-| V2 | **"Filial" sai de vez**: do CLAUDE.md, das regras e dos nomes internos do código (`filial`, `trocarFilial…` → unidade) telas ✅ 16/11, docs ✅ 16/11 (identificadores do código: a seguir) | — |
+| V0 | **Nenhum cargo como se fosse fixo** em tela, regra (`docs/regras/`), teste e CLAUDE.md: fala-se em permissão ("quem tem o Estoque em Gerenciar"). Os nomes dos cargos-modelo continuam nomes de cargos editáveis telas ✅ 16/11, docs ✅ 16/11 (no código: falta — uns 90 títulos de teste e nomes de spec ainda falam no cargo, como `permissoes-gerente-de-unidade.spec.ts` e "a recepção" nos títulos) | — |
+| V1 | **"Clínica" sai** das telas (o portal e o app da cliente inclusive), dos avisos, da política de privacidade, das regras e do CLAUDE.md: é "a rede" ou o nome dela (PO2/CA1). Fica só no site, como mercado (SI1) ✅ 16/11 (telas, docs e código — ficam a rota `/auth/clinicas`, as chaves do banco, a `CLINICA_URL` e os nomes SQL) | PO2, CA1 |
+| V2 | **"Filial" sai de vez**: do CLAUDE.md, das regras e dos nomes internos do código (`filial`, `trocarFilial…` → unidade) ✅ 16/11 (telas, docs e código) | — |
 
 ### Bloco: Cargos
 

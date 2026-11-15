@@ -8,7 +8,7 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 export const FORMAS_DO_BALCAO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'INTERNAL_CREDIT'] as const
 
 /**
- * As formas de quem paga AGORA, sem o crédito na rede: a parcela do crediário
+ * As formas de quem paga AGORA, sem o crédito interno: a parcela do crediário
  * e o a receber recebidos no PDV ou no Financeiro (a baixa — as do "Novo
  * lançamento"). O crediário não paga uma parcela do crediário.
  */

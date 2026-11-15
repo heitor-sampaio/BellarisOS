@@ -26,7 +26,7 @@ export function cabecalhoDoCsp(dev: boolean): 'content-security-policy' | 'conte
   return dev ? 'content-security-policy-report-only' : 'content-security-policy'
 }
 
-export function politicaDaClinica(o: { nonce: string; supabase: string; dev: boolean }): string {
+export function politicaDoAppDaRede(o: { nonce: string; supabase: string; dev: boolean }): string {
   const supa = o.supabase.replace(/\/+$/, '')
   const realtime = supa.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:')
   return [

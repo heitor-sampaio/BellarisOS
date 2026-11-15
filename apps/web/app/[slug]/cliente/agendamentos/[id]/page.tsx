@@ -8,7 +8,7 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { formatarTelefone } from '@/lib/documentos/valores'
-import { aClinicaDoEndereco, comMensagem, linkDoWhatsapp } from '@/lib/clientes/a-clinica'
+import { aUnidadeDoEndereco, comMensagem, linkDoWhatsapp } from '@/lib/clientes/a-unidade'
 import { AlterarAgendamento } from '@/components/client-portal/alterar-agendamento'
 import { FusoProvider } from '@/components/shared/fuso'
 import { fusoValido } from '@/lib/unidades/fuso'
@@ -112,12 +112,12 @@ export default async function AgendamentoDaClientePage({ params }: { params: Pro
   const fuso = fusoValido(a.branches.fuso)
   // O WhatsApp é o conectado da unidade (por-03), com a mensagem pronta sobre
   // ESTE agendamento (A66).
-  const aClinica = await aClinicaDoEndereco(slug)
+  const aUnidade = await aUnidadeDoEndereco(slug)
   // Fora do prazo do app (A53 da 7ª), a mensagem já diz o que ela quer.
   const quandoTexto = quando.toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-  const whatsappParaAlterar = comMensagem(aClinica?.whatsapp ?? linkDoWhatsapp(telefone),
+  const whatsappParaAlterar = comMensagem(aUnidade?.whatsapp ?? linkDoWhatsapp(telefone),
     `Olá! Preciso cancelar ou remarcar o meu agendamento de ${a.procedures?.name ?? 'procedimento'} em ${quandoTexto} (o prazo do app já passou).`)
-  const whatsapp = comMensagem(aClinica?.whatsapp ?? linkDoWhatsapp(telefone),
+  const whatsapp = comMensagem(aUnidade?.whatsapp ?? linkDoWhatsapp(telefone),
     `Olá! Quero falar sobre o meu agendamento de ${a.procedures?.name ?? 'procedimento'} em ${quando.toLocaleString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.`)
 
   const linha = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text-soft)' } as const

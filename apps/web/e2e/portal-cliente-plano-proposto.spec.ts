@@ -56,7 +56,7 @@ test.afterAll(async () => {
   await cliente?.limpar(); await rede?.limpar()
 })
 
-test('o plano proposto mostra procedimentos, valor e validade, e leva a falar com a clínica', async ({ browser }) => {
+test('o plano proposto mostra procedimentos, valor e validade, e leva a falar com a rede', async ({ browser }) => {
   await como(browser, cliente!, async p => {
     await p.goto(`/${slug}/cliente/home`)
     const cartao = p.locator('[data-plano-proposto]')

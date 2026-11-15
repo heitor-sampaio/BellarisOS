@@ -10,7 +10,7 @@ import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
 import { rotaDoRecebimento } from '@/components/shared/atendimentos-a-receber'
 import { formatBRL, parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
-import { venderCredito, acessoDaClienteAoApp } from '@/actions/credito-na-clinica'
+import { venderCredito, acessoDaClienteAoApp } from '@/actions/credito-interno'
 import { textoDoBonus } from '@/lib/creditos/bonus'
 import { rotaCliente } from '@/lib/rotas'
 import { venderProduto } from '@/actions/produtos'
@@ -29,7 +29,7 @@ import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 /**
  * Vender (decisão do Heitor, 2026-09-30; desde 2026-11-13, só pelo PDV — PDV7):
  * a tela pergunta o QUÊ — um procedimento (pré-pago: N unidades, agendadas
- * depois), um pacote do catálogo, um produto ou crédito na rede — e como paga.
+ * depois), um pacote do catálogo, um produto ou crédito interno — e como paga.
  * São coisas separadas no banco; aqui só dividem a porta.
  */
 
@@ -43,7 +43,7 @@ export interface ProdutoAVenda {
   /** A18 da 12ª: a comissão de venda DO PRODUTO (só no "Por produto"); nula = sem a dele. */
   comissaoDoItem?: RegraDeVenda | null
   /** A18 da 12ª: a "Venda de produto" da clínica (%), a que vale sem a do produto e a da pessoa. */
-  comissaoDaClinicaPct?: number | null
+  comissaoDaRedePct?: number | null
 }
 
 /** Alguém da equipe numa venda (com-04/com-06): a responsável do pacote sai de quem atende. */
@@ -65,8 +65,8 @@ export interface MembroDaVenda {
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE' | 'PRODUTO' | 'CREDITO'
 
-/** O crédito na clínica (decisão 1 da 9ª) se vende em qualquer unidade: a aba existe sempre. */
-const ABA_DO_CREDITO = { key: 'CREDITO', label: 'Crédito na rede' }
+/** O crédito interno (decisão 1 da 9ª) se vende em qualquer unidade: a aba existe sempre. Um nome só com a forma de pagamento (INTERNAL_CREDIT). */
+const ABA_DO_CREDITO = { key: 'CREDITO', label: 'Crédito interno' }
 
 /**
  * A venda NA TELA do PDV (PDV2, a revisão do Heitor de 2026-11-13: "só vende
@@ -489,7 +489,7 @@ function comissaoDosProdutos(quem: MembroDaVenda | undefined, produtos: ProdutoA
   if (!quem) return null
   return textoDaComissaoDaVenda({
     tipo: 'PRODUTO', pessoa: { nome: quem.nome, pct: quem.comissaoVendaPct },
-    clinicaPct: produtos[0]?.comissaoDaClinicaPct ?? null,
+    redePct: produtos[0]?.comissaoDaRedePct ?? null,
     itens: produtos.map(p => ({ nome: p.name, regra: p.comissaoDoItem ?? null })),
   })
 }

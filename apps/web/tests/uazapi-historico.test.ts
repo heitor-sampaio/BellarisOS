@@ -18,19 +18,19 @@ describe('lerDoHistorico', () => {
       messageid: 'ABC1', chatid: chat.wa_chatid, sender_pn: '5548999990000@s.whatsapp.net',
       fromMe: false, messageType: 'conversation', text: 'Oi, tem horário amanhã?', messageTimestamp: 1760000000000,
     }, chat)
-    expect(r?.daClinica).toBe(false)
+    expect(r?.daRede).toBe(false)
     expect(r?.msg).toMatchObject({
       externalId: 'ABC1', content: 'Oi, tem horário amanhã?', phone: '5548999990000',
       displayName: 'Maria Souza', timestamp: new Date(1760000000000).toISOString(), type: 'text',
     })
   })
 
-  it('a da clínica entra como saída, com a identidade do CLIENTE (não a do remetente)', () => {
+  it('a da rede entra como saída, com a identidade do CLIENTE (não a do remetente)', () => {
     const r = p.lerDoHistorico({
       messageid: 'ABC2', chatid: chat.wa_chatid, sender_pn: '5548911112222@s.whatsapp.net', senderName: 'Clínica',
       fromMe: true, text: 'Temos às 15h!', messageTimestamp: 1760000060,
     }, chat)
-    expect(r?.daClinica).toBe(true)
+    expect(r?.daRede).toBe(true)
     expect(r?.msg.phone).toBe('5548999990000')
     expect(r?.msg.displayName).toBe('Maria Souza')
     expect(r?.msg.timestamp).toBe(new Date(1760000060 * 1000).toISOString())

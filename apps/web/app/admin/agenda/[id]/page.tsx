@@ -7,12 +7,12 @@ import { SessaoDeAtendimento } from '@/app/_shared/sessao-de-atendimento'
 /**
  * Atendimento visto do portal da rede.
  *
- * Quem opera a rede alcança qualquer unidade, então a filial vem do próprio
+ * Quem opera a rede alcança qualquer unidade, então a unidade vem do próprio
  * agendamento em vez do slug da URL — antes esta tela só existia em
  * `/[slug]/agenda/[id]` e abrir um atendimento pelo perfil do cliente
  * empurrava a pessoa para o portal de uma unidade.
  *
- * O `slug` resolvido aqui não é o portal: é o endereço da filial, que as
+ * O `slug` resolvido aqui não é o portal: é o endereço da unidade, que as
  * actions da tela usam no `revalidatePath`.
  */
 export default async function AdminAppointmentSessionPage({
@@ -26,7 +26,7 @@ export default async function AdminAppointmentSessionPage({
   idOu404(id)
   const ctx    = await getTenantContext()
 
-  // `appointments` NÃO tem `tenant_id` — o recorte de rede é pela filial. Com um
+  // `appointments` NÃO tem `tenant_id` — o recorte de rede é pela unidade. Com um
   // `.eq('tenant_id', …)` aqui a consulta falhava e o `maybeSingle()` devolvia
   // nulo: toda a tela virava 404, sem erro à vista.
   const admin = createAdminClient()

@@ -71,7 +71,7 @@ export const lancamentos: FerramentaDeLeitura<{
       due_date: string | null; paid_at: string | null; is_paid: boolean; client_id: string | null; branch_id: string
       parcela_numero: number | null; parcela_total: number | null; notes: string | null
     }[] | null) ?? []
-    const [clientes, filiais, fusos] = await Promise.all([
+    const [clientes, nomesDasUnidades, fusos] = await Promise.all([
       nomesPorId(c, 'clients', linhas.map(l => l.client_id)),
       nomesPorId(c, 'branches', linhas.map(l => l.branch_id)),
       fusosPorUnidade(c, linhas.map(l => l.branch_id)),
@@ -88,7 +88,7 @@ export const lancamentos: FerramentaDeLeitura<{
             : (l.due_date && diaDe(l.due_date)! < hoje ? 'vencido' : 'em aberto'),
           forma: l.payment_method ? (FORMA[l.payment_method] ?? l.payment_method) : null,
           cliente: l.client_id ? (clientes.get(l.client_id) ?? null) : null,
-          unidade: filiais.get(l.branch_id) ?? null,
+          unidade: nomesDasUnidades.get(l.branch_id) ?? null,
           parcela: l.parcela_total && l.parcela_total > 1 ? `${l.parcela_numero}/${l.parcela_total}` : null,
         })),
         ...(linhas.length === 50 ? { aviso: 'Mostrando os 50 primeiros.' } : {}),
@@ -140,7 +140,7 @@ export const estoque: FerramentaDeLeitura<{
     const unidades = await idsDasUnidades(c, u.unidade)
     if (!unidades.length) return { dados: { itens: [] } }
     const filtro = args.filtro ?? (args.produto ? 'produto' : 'abaixo_do_minimo')
-    const filiais = await nomesPorId(c, 'branches', unidades)
+    const nomesDasUnidades = await nomesPorId(c, 'branches', unidades)
 
     if (filtro === 'vencendo') {
       // A validade é um DIA, gravado à meia-noite UTC (D1 da 7ª): até o fim daquele dia.
@@ -161,7 +161,7 @@ export const estoque: FerramentaDeLeitura<{
           lotes: lotes.map(l => ({
             produto: l.products.name, lote: l.batch_number, vence: l.expires_at.slice(0, 10),
             jaVenceu: loteVencido(l.expires_at, new Date(), fusosDosLotes.get(l.branch_id) ?? fusoDoLote),
-            quantidade: `${formatarQuantidade(Number(l.quantity))} ${medidaNoPlural(l.products.unit ?? '', Number(l.quantity))}`.trim(), unidade: filiais.get(l.branch_id) ?? null,
+            quantidade: `${formatarQuantidade(Number(l.quantity))} ${medidaNoPlural(l.products.unit ?? '', Number(l.quantity))}`.trim(), unidade: nomesDasUnidades.get(l.branch_id) ?? null,
           })),
         },
       }
@@ -185,7 +185,7 @@ export const estoque: FerramentaDeLeitura<{
             const e = extra.get(`${l.product_id}:${l.branch_id}`)
             const medidas = e?.products ?? { unit: l.unit, consumption_unit: null, units_per_package: null }
             return {
-              produto: l.name, produtoId: l.product_id, unidade: filiais.get(l.branch_id) ?? null,
+              produto: l.name, produtoId: l.product_id, unidade: nomesDasUnidades.get(l.branch_id) ?? null,
               saldo: saldoDaPrateleira({ current_stock: l.current_stock, current_rendimento: e?.current_rendimento ?? null }, medidas),
               minimo: Number(l.min_stock), minimoNaTela: minimoNaRegua(Number(l.min_stock), medidas),
             }
@@ -211,7 +211,7 @@ export const estoque: FerramentaDeLeitura<{
       dados: {
         filtro,
         itens: linhas.map(l => ({
-          produto: l.products.name, produtoId: l.products.id, unidade: filiais.get(l.branch_id) ?? null,
+          produto: l.products.name, produtoId: l.products.id, unidade: nomesDasUnidades.get(l.branch_id) ?? null,
           saldo: saldoDaPrateleira(l, l.products), minimo: l.min_stock != null ? Number(l.min_stock) : null,
           ...(l.min_stock != null && Number(l.min_stock) > 0 ? { minimoNaTela: minimoNaRegua(Number(l.min_stock), l.products) } : {}),
         })),

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   numerosOficiais, configDaWaba, importarCatalogoDaWaba, limparCatalogosSemNumero,
@@ -113,8 +113,8 @@ export async function saveTemplate(
   assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
   // O template é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
   const admin = createAdminClient()
 
   const rascunho: TemplateRascunho = {
@@ -232,8 +232,8 @@ export async function submitTemplate(
   assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
   // O template é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
   const admin = createAdminClient()
 
   const { data, error } = await admin
@@ -300,8 +300,8 @@ export async function deleteTemplate(id: string): Promise<{ ok: boolean; error?:
   assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
   // O template é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
   const admin = createAdminClient()
 
   const { data, error } = await admin
@@ -350,8 +350,8 @@ export async function syncTemplates(): Promise<{ ok: boolean; atualizados?: numb
   assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
   // O template é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
   const admin = createAdminClient()
 
   const contas = [...new Set((await numerosOficiais(ctx.tenantId!)).map(n => n.wabaId))]

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, nomeDeTeste, filiaisAtivas } from './apoio/banco'
+import { banco, nomeDeTeste, unidadesAtivas } from './apoio/banco'
 
 /**
  * Injetáveis no celular: uma tela por vez.
@@ -59,7 +59,7 @@ test('abrir um planejamento tira a lista da tela; voltar a traz', async ({ page 
 })
 
 test('a mesma navegação existe no portal da unidade', async ({ page }) => {
-  const unidade = (await filiaisAtivas())[0]
+  const unidade = (await unidadesAtivas())[0]
   test.skip(!unidade, 'a rede de teste não tem unidade ativa')
 
   // A tela da unidade é a mesma, com outro basePath: o que se confere aqui é

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
@@ -25,8 +25,8 @@ export async function criarMotivoDePerda(nome: string): Promise<Resultado> {
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     const limpo = (nome ?? '').trim().slice(0, 60)
     if (!limpo) return { error: 'Dê um nome ao motivo.' }
     const admin = createAdminClient()
@@ -53,8 +53,8 @@ export async function alternarMotivoDePerda(id: string, ativo: boolean): Promise
     assertPermission(ctx, 'settings', 'MANAGE')
     assertPermission(ctx, 'crm', 'VIEW')
     // O funil é configuração da clínica toda (H7): quem tem unidade fixa não o muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     if (!z.string().uuid().safeParse(id).success) return { error: 'Motivo não encontrado.' }
     const feitas = await gravar(createAdminClient().from('crm_motivos_perda').update({ ativo: !!ativo })
       .eq('id', id).eq('tenant_id', ctx.tenantId!).select('id'), 'mudar o motivo') as { id: string }[] | null

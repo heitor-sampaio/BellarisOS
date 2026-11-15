@@ -41,7 +41,7 @@ describe('recusaDoHost — o que o login de cada host diz a quem não é dele', 
 
 describe('linkDeDefinirSenha — para onde volta o e-mail de convite', () => {
   const env = { CLINICA_URL: 'https://app.bellarisos.com', SISTEMA_URL: 'https://admin.bellarisos.com', SUPORTE_URL: 'https://suporte.bellarisos.com' }
-  it('membro de rede (o responsável da rede nova, o reenviar acesso): a clínica', () => {
+  it('membro de rede (o responsável da rede nova, o reenviar acesso): a rede', () => {
     expect(linkDeDefinirSenha({ para: 'membro' }, env)).toBe('https://app.bellarisos.com/auth/confirm?next=/update-password')
   })
   it('atendente: o host do papel dele', () => {

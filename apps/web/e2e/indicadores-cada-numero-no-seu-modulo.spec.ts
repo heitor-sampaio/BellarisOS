@@ -93,7 +93,7 @@ const card = (p: Page, rotulo: string) =>
 const dinheiro = (t: string) => Number((/R\$\s*([\d.]+(?:,\d{2})?)/.exec(t)?.[1] ?? 'NaN').replace(/\./g, '').replace(',', '.'))
 
 test.describe('agenda de todos, financeiro "só os meus" (a Fernanda)', () => {
-  test('dashboard da unidade: os agendamentos são os da clínica; o faturamento e o ticket são os dela', async ({ browser }) => {
+  test('dashboard da unidade: os agendamentos são os da rede; o faturamento e o ticket são os dela', async ({ browser }) => {
     await como(browser, fernanda!, async p => {
       await p.goto(`/${slug}/dashboard`)
       const main = p.locator('main')
@@ -107,7 +107,7 @@ test.describe('agenda de todos, financeiro "só os meus" (a Fernanda)', () => {
     })
   })
 
-  test('dashboard da rede: "Minha receita" R$ 120 e os atendimentos da clínica (3), com a ocupação por filial', async ({ browser }) => {
+  test('dashboard da rede: "Minha receita" R$ 120 e os atendimentos da rede (3), com a ocupação por unidade', async ({ browser }) => {
     await como(browser, fernanda!, async p => {
       await p.goto('/admin/dashboard?period=month')
       await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
@@ -118,7 +118,7 @@ test.describe('agenda de todos, financeiro "só os meus" (a Fernanda)', () => {
     })
   })
 
-  test('Relatórios → Visão geral: o faturamento dela (R$ 120) e os atendimentos da clínica (3)', async ({ browser }) => {
+  test('Relatórios → Visão geral: o faturamento dela (R$ 120) e os atendimentos da rede (3)', async ({ browser }) => {
     await como(browser, fernanda!, async p => {
       await p.goto('/admin/reports?tab=overview&period=month')
       await expect.poll(async () => dinheiro(await card(p, 'Faturamento').innerText()), { timeout: 10_000 }).toBe(120)
@@ -129,7 +129,7 @@ test.describe('agenda de todos, financeiro "só os meus" (a Fernanda)', () => {
 })
 
 test.describe('agenda "só os meus", financeiro de todos (a Agnes)', () => {
-  test('dashboard da unidade: os agendamentos são os dela (1); o faturamento é o da clínica (R$ 470)', async ({ browser }) => {
+  test('dashboard da unidade: os agendamentos são os dela (1); o faturamento é o da rede (R$ 470)', async ({ browser }) => {
     await como(browser, agnes!, async p => {
       await p.goto(`/${slug}/dashboard`)
       const main = p.locator('main')
@@ -142,7 +142,7 @@ test.describe('agenda "só os meus", financeiro de todos (a Agnes)', () => {
     })
   })
 
-  test('dashboard da rede: a receita da clínica (R$ 470) com o custo; os atendimentos dela (1), sem a ocupação por filial', async ({ browser }) => {
+  test('dashboard da rede: a receita da rede (R$ 470) com o custo; os atendimentos dela (1), sem a ocupação por unidade', async ({ browser }) => {
     await como(browser, agnes!, async p => {
       await p.goto('/admin/dashboard?period=month')
       await expect(p.getByRole('heading', { name: /^Visão geral/ })).toBeVisible()
@@ -153,7 +153,7 @@ test.describe('agenda "só os meus", financeiro de todos (a Agnes)', () => {
     })
   })
 
-  test('Relatórios → Visão geral: o faturamento da clínica (R$ 470), os atendimentos dela (1) e a despesa', async ({ browser }) => {
+  test('Relatórios → Visão geral: o faturamento da rede (R$ 470), os atendimentos dela (1) e a despesa', async ({ browser }) => {
     await como(browser, agnes!, async p => {
       await p.goto('/admin/reports?tab=overview&period=month')
       await expect.poll(async () => dinheiro(await card(p, 'Faturamento').innerText()), { timeout: 10_000 }).toBe(470)

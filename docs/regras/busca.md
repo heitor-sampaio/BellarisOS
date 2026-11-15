@@ -46,13 +46,13 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
     Configurar funis" (`?configurar=funis`, a porta por URL da janela
     `CRMStageSettings`, que tira o parâmetro ao abrir), para quem tem o CRM em
     Gerenciar e as oportunidades no plano — no portal da unidade, só quem é da
-    rede (H7: a unidade fixa não configura funis);
+    rede (H7: quem não tem “A rede inteira” não configura funis);
   - duas telas achadas pelo mesmo apelido dizem qual é qual
     (`SUBTITULO_PELO_APELIDO`): "Os documentos emitidos e assinados" ×
     "Os modelos de termo e contrato (a configuração)";
   - no portal da unidade, quem é da REDE acha também as abas que só a rede tem
     (as taxas e comissões, a fidelidade, as unidades…), com o endereço da rede
-    (`daRede`, do layout da unidade à topbar); quem tem unidade fixa, não — não
+    (`daRede`, do layout da unidade à topbar); quem não tem “A rede inteira”, não — não
     abre.
   Prova: `tests/busca-configuracoes.test.ts`, `e2e/busca-configuracoes.spec.ts`.
 - **Destinos por URL:** registro sem tela própria abre a lista filtrada

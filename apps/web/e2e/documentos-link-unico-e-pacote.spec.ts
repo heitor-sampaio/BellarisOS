@@ -288,7 +288,7 @@ test.describe.serial('documentos: o link único, uma assinatura para todos e o p
     expect(assinar.error, 'assinar não é da sessão').not.toBeNull()
   })
 
-  test('DC3 na clínica: "Entregar ao cliente" leva os abertos do agendamento juntos, e uma assinatura assina todos', async ({ browser }) => {
+  test('DC3 na unidade: "Entregar ao cliente" leva os abertos do agendamento juntos, e uma assinatura assina todos', async ({ browser }) => {
     const d = await agendar(cliente, 4)
     await como(browser, gestor!.estado, async p => {
       await p.goto(`/admin/documentos/${d.termo}/assinar`)

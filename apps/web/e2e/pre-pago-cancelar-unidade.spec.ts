@@ -114,7 +114,7 @@ async function recebiveis(tx: string) {
 }
 
 test.describe('D1: cancelar a unidade do pré-pago, como o pacote', () => {
-  test('no Pix, pela ficha: a janela diz o que volta e pergunta; "Crédito na clínica" deixa o Pix e os pontos', async ({ browser }) => {
+  test('no Pix, pela ficha: a janela diz o que volta e pergunta; "Crédito interno" deixa o Pix e os pontos', async ({ browser }) => {
     const c = await rede!.criarCliente('Pré-pago crédito')
     const { venda } = await vender(c, 2, [{ amount: 500, payment_method: 'PIX', is_paid: true }])
     await expect.poll(() => pontos(c)).toBe(500)

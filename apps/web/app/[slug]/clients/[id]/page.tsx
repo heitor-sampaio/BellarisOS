@@ -77,7 +77,7 @@ export default async function ClientProfilePage({
   if (!branch) notFound()
 
   // Cliente pertence à REDE: abre qualquer cliente do tenant a partir de qualquer
-  // portal de filial (a unidade é apenas uma TAG, não um lock de acesso).
+  // portal de unidade (a unidade é apenas uma TAG, não um lock de acesso).
   const raw = await ler(admin
     .from('clients')
     .select('*')

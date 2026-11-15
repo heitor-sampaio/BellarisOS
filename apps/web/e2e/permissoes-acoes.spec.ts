@@ -1,5 +1,5 @@
 import { test, expect, type Browser } from '@playwright/test'
-import { banco, tenantId, filiaisAtivas, PREFIXO } from './apoio/banco'
+import { banco, tenantId, unidadesAtivas, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste, type Permissao } from './apoio/sessao'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarClientes } from './apoio/limpeza'
@@ -106,7 +106,7 @@ test.describe.serial('permissões nas actions, chamadas direto', () => {
   test.beforeAll(async () => {
     const b = db()
     const tenant = await tenantId()
-    const unidade = (await filiaisAtivas())[0]!
+    const unidade = (await unidadesAtivas())[0]!
     const ins = async (tabela: string, linha: Record<string, unknown>) => {
       const { data, error } = await b.from(tabela).insert(linha).select('id').single<{ id: string }>()
       expect(error, `criar ${tabela}`).toBeNull()

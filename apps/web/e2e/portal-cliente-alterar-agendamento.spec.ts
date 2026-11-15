@@ -91,7 +91,7 @@ test.describe.serial('o agendamento no portal', () => {
     expect((await linha(id)).cancellation_reason).toContain('Viagem')
   })
 
-  test('dentro do prazo, só o caminho para falar com a clínica — e a action recusa', async ({ browser }) => {
+  test('dentro do prazo, só o caminho para falar com a rede — e a action recusa', async ({ browser }) => {
     const id = await agendado(cliente!.clientId, new Date(Date.now() + 5 * 3600_000))
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
@@ -141,7 +141,7 @@ test.describe('atritos da remarcação (frente 8)', () => {
     })
   })
 
-  test('A41: dentro do prazo, o agendamento diz por quê e mostra o contato da clínica', async ({ browser }) => {
+  test('A41: dentro do prazo, o agendamento diz por quê e mostra o contato da rede', async ({ browser }) => {
     expect((await db().from('branches').update({ phone: '11987654321' }).eq('id', rede!.branchId)).error).toBeNull()
     const id = await agendado(cliente!.clientId, new Date(Date.now() + 4 * 3600_000))
     await como(browser, cliente!, async p => {
@@ -156,7 +156,7 @@ test.describe('atritos da remarcação (frente 8)', () => {
   // A53 da 7ª simulação (2026-11-05): fora do prazo, cancelar só levava a
   // "Falar com a equipe" — a regra fica; a saída diz o prazo, liga e manda a
   // mensagem certa ("preciso cancelar ou remarcar"), e a lista já avisa.
-  test('A53: fora do prazo, a saída diz o prazo, liga para a clínica e já pede para alterar', async ({ browser }) => {
+  test('A53: fora do prazo, a saída diz o prazo, liga para a rede e já pede para alterar', async ({ browser }) => {
     expect((await db().from('branches').update({ phone: '11987654321' }).eq('id', rede!.branchId)).error).toBeNull()
     const id = await agendado(cliente!.clientId, new Date(Date.now() + 3 * 3600_000))
     await como(browser, cliente!, async p => {

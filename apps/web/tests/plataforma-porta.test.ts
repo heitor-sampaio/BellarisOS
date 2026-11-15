@@ -34,7 +34,7 @@ describe('politicaDeConteudo', () => {
     const csp = politicaDeConteudo(base)
     expect(csp).toMatch(/connect-src 'self' https:\/\/x\.supabase\.co wss:\/\/x\.supabase\.co/)
   })
-  it('o formulário só vai para onde se disser (o suporte manda o código à clínica)', () => {
+  it('o formulário só vai para onde se disser (o suporte manda o código à rede)', () => {
     expect(politicaDeConteudo(base)).toContain("form-action 'self';")
     expect(politicaDeConteudo({ ...base, formulario: ['https://app.bellarisos.com'] })).toContain("form-action 'self' https://app.bellarisos.com;")
   })

@@ -122,7 +122,7 @@ describe('a agenda e o agendar no fuso da unidade (F62, fatia 2)', () => {
   })
 })
 
-describe('o cron no fuso da clínica (F62, fatia 5)', () => {
+describe('o cron no fuso da unidade (F62, fatia 5)', () => {
   it('as 09:00 e o aniversário da campanha são os do relógio dela', async () => {
     const { relogioDaCampanha } = await import('@/lib/notifications/relogio-da-campanha')
     // 12:30 UTC = 09:30 em Brasília, 08:30 em Manaus: a campanha de Manaus ainda espera as 09:00.
@@ -189,7 +189,7 @@ describe('as automações no fuso da unidade (F62b)', () => {
     expect(manaus.liberaEm?.toISOString()).toBe('2026-11-12T12:00:00.000Z')
   })
 
-  it('o gatilho "todo dia às 09:00" é às 09:00 da clínica', async () => {
+  it('o gatilho "todo dia às 09:00" é às 09:00 da rede', async () => {
     const { estaNaHora } = await import('@/lib/automacoes/tempo')
     const cfg = { frequencia: 'diaria' as const, hora: '09:00' }
     // 12:30Z = 09:30 em Brasília = 08:30 em Manaus.
@@ -210,7 +210,7 @@ describe('as automações no fuso da unidade (F62b)', () => {
     expect(ehAniversarioHoje('1990-11-11T00:00:00+00:00', noite, 'America/Manaus')).toBe(true)
   })
 
-  it('a busca "aniversariantes de hoje" pede o dia da clínica', async () => {
+  it('a busca "aniversariantes de hoje" pede o dia da rede', async () => {
     const publico = await import('@/lib/clientes/publico')
     const espiao = vi.spyOn(publico, 'lerPublicoAte').mockResolvedValue([])
     const { buscarClientes } = await import('@/lib/automacoes/tempo')
@@ -227,7 +227,7 @@ describe('as automações no fuso da unidade (F62b)', () => {
   })
 })
 
-describe('a rotina da fidelidade no fuso da clínica (F62b)', () => {
+describe('a rotina da fidelidade no fuso da unidade (F62b)', () => {
   it('o bônus de aniversário pede o "hoje" de cada rede, no fuso dela', async () => {
     const { diasDoBonusDeAniversario } = await import('@/lib/fidelidade/rotina')
     // 03:30Z de 12/11 = 00:30 de 12/11 em Brasília = 23:30 de 11/11 em Manaus.

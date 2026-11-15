@@ -54,7 +54,7 @@ describe('avisoDaUnidadeDeCadastro', () => {
     expect(t).toMatch(/todas as unidades/)
     expect(t).not.toMatch(/desta unidade|busca do Agendar/)
   })
-  it('numa clínica de uma unidade só, não há o que dizer (D-19)', () => {
+  it('numa rede de uma unidade só, não há o que dizer (D-19)', () => {
     expect(avisoDaUnidadeDeCadastro(false)).toBeNull()
   })
 })

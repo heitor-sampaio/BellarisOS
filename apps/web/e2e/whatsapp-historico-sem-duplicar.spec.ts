@@ -23,7 +23,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 const marca = Date.now().toString(36)
 const sufixo = String(Date.now()).slice(-7)
 const FONE_ID = `7${sufixo}11`
-const DA_CLINICA = `5548977${sufixo.slice(-6)}`
+const DA_REDE = `5548977${sufixo.slice(-6)}`
 const CLIENTE = `5548966${sufixo.slice(-6)}`
 const SEGREDO = `segredo-${marca}`
 
@@ -57,7 +57,7 @@ async function entregar(request: APIRequestContext, valor: Record<string, unknow
     object: 'whatsapp_business_account',
     entry: [{ id: `waba-hist-${marca}`, changes: [{ field: 'history', value: {
       messaging_product: 'whatsapp',
-      metadata: { display_phone_number: DA_CLINICA, phone_number_id: FONE_ID },
+      metadata: { display_phone_number: DA_REDE, phone_number_id: FONE_ID },
       ...valor,
     } }] }],
   })
@@ -90,7 +90,7 @@ test.describe('a mesma mensagem do WhatsApp entra uma vez', () => {
     const velho = Math.floor(new Date('2026-05-08T16:00:00Z').getTime() / 1000)
     const historico = { history: [{ metadata: { phase: 0, chunk_order: 1, progress: 100 }, threads: [{ id: CLIENTE, messages: [
       { from: CLIENTE, id: `wamid.h1.${marca}`, timestamp: String(velho), type: 'text', text: { body: 'Oi, tem horário?' }, history_context: { status: 'READ' } },
-      { from: DA_CLINICA, to: CLIENTE, id: `wamid.h2.${marca}`, timestamp: String(velho + 30), type: 'text', text: { body: 'Tem sim.' }, history_context: { status: 'READ' } },
+      { from: DA_REDE, to: CLIENTE, id: `wamid.h2.${marca}`, timestamp: String(velho + 30), type: 'text', text: { body: 'Tem sim.' }, history_context: { status: 'READ' } },
       { from: CLIENTE, id: `wamid.h3.${marca}`, timestamp: String(velho + 60), type: 'text', text: { body: 'Às 10h?' }, history_context: { status: 'READ' } },
     ] }] }] }
 

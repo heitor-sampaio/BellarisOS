@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, filiaisAtivas, nomeDeTeste } from './apoio/banco'
+import { banco, unidadesAtivas, nomeDeTeste } from './apoio/banco'
 
 /**
  * Dinheiro pelo portal da rede: lançar e dar baixa numa pendência.
@@ -27,7 +27,7 @@ test.afterAll(async () => {
 
 test('lançar receita na unidade escolhida e dar baixa — tudo pelo /admin', async ({ page }) => {
   const db = banco()
-  const unidades = await filiaisAtivas()
+  const unidades = await unidadesAtivas()
   const unidade  = unidades[0]!
 
   // -- Receita já paga --------------------------------------------------------
@@ -46,7 +46,7 @@ test('lançar receita na unidade escolhida e dar baixa — tudo pelo /admin', as
   const paga = await esperarTransacao(descricaoPaga)
   criadas.push(paga.id)
   expect(paga.is_paid).toBe(true)
-  // A unidade vem do formulário: sem ela o lançamento da rede não teria filial.
+  // A unidade vem do formulário: sem ela o lançamento da rede não teria unidade.
   expect(paga.branch_id).toBe(unidade.id)
   expect(paga.paid_at).not.toBeNull()
 

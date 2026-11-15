@@ -81,7 +81,7 @@ test.afterAll(async () => {
 test('A20: R$ 500 pagos + R$ 50 de bônus — o caixa e os pontos sobre o pago, o saldo de R$ 550, a ficha e o app dizem', async ({ browser }) => {
   await como(browser, recepcao.estado, async p => {
     const dlg = await abrirVendaNoPdv(p, `/${slug}`, daniela.clientId)
-    await dlg.getByRole('button', { name: 'Crédito na rede', exact: true }).click()
+    await dlg.getByRole('button', { name: 'Crédito interno', exact: true }).click()
     // Vazio por padrão.
     await expect(dlg.getByLabel('Bônus (opcional)')).toHaveValue('')
     // A55: a Daniela tem acesso ao app — nada a avisar.
@@ -117,7 +117,7 @@ test('A20: R$ 500 pagos + R$ 50 de bônus — o caixa e os pontos sobre o pago, 
   })
 })
 
-test('A20: no estorno o bônus sai junto — na proporção, a clínica escolhe; nunca volta mais do que entrou', async ({ browser }) => {
+test('A20: no estorno o bônus sai junto — na proporção, a rede escolhe; nunca volta mais do que entrou', async ({ browser }) => {
   // A Daniela usa R$ 130 (sobram R$ 420 dos R$ 550).
   expect((await db().from('financial_transactions').insert({
     branch_id: rede.branchId, client_id: daniela.clientId, type: 'INCOME', category: 'Serviços', description: 'Drenagem paga com crédito [e2e]',
@@ -155,16 +155,16 @@ test('A20: no estorno o bônus sai junto — na proporção, a clínica escolhe;
 test('A20: o bônus inteiro — e sem escolher, o estorno com bônus recusa', async ({ browser }) => {
   const rota = `/${slug}/pdv`
   await como(browser, recepcao.estado, async p => {
-    const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'venderCredito', rota, [rosana, rede.branchId, '200', { forma: 'AVISTA', metodo: 'PIX' }, null, '20'])
+    const r = await chamarAcao(p, 'actions/credito-interno.ts', 'venderCredito', rota, [rosana, rede.branchId, '200', { forma: 'AVISTA', metodo: 'PIX' }, null, '20'])
     expect(r.texto).toContain('vendaId')
   })
   expect(await saldoDe(rosana)).toBe(220)
   const tx = await pagamentoDoCredito(rosana)
   await como(browser, dona.estado, async p => {
-    const sem = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'estornarVendaDeCredito', `/${slug}/financeiro`,
+    const sem = await chamarAcao(p, 'actions/credito-interno.ts', 'estornarVendaDeCredito', `/${slug}/financeiro`,
       [tx.id, { motivo: 'e2e', estorno: null, novo: null, esperado: 200 }])
     expect(sem.texto).toContain('bônus')
-    const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'estornarVendaDeCredito', `/${slug}/financeiro`,
+    const r = await chamarAcao(p, 'actions/credito-interno.ts', 'estornarVendaDeCredito', `/${slug}/financeiro`,
       [tx.id, { motivo: 'e2e', estorno: null, novo: null, esperado: 200, bonus: 'INTEIRO' }])
     expect(r.texto).toContain('"volta":200')
   })
@@ -174,7 +174,7 @@ test('A20: o bônus inteiro — e sem escolher, o estorno com bônus recusa', as
 test('A55: a venda do crédito avisa que a cliente não tem acesso ao app', async ({ browser }) => {
   await como(browser, recepcao.estado, async p => {
     const dlg = await abrirVendaNoPdv(p, `/${slug}`, rosana)
-    await dlg.getByRole('button', { name: 'Crédito na rede', exact: true }).click()
+    await dlg.getByRole('button', { name: 'Crédito interno', exact: true }).click()
     const aviso = dlg.locator('[data-sem-acesso-ao-app]')
     await expect(aviso).toContainText('não tem acesso ao app')
     await expect(aviso.getByRole('link', { name: /Dar acesso ao app/ })).toHaveAttribute('href', new RegExp(`/clients/${rosana}\\?aba=dados`))

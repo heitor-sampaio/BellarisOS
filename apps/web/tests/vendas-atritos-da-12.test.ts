@@ -18,11 +18,11 @@ describe('A18: o Vender diz a comissão de venda de quem vendeu e de onde vem', 
     expect(textoDaComissaoDaVenda({ tipo: 'PRE_PAGO', itens: [{ regra: null }], pessoa: { nome: 'Rita', pct: null } }))
       .toBe('Rita não tem comissão de venda: o pré-pago usa a comissão de venda da pessoa (Equipe → Comissão).')
   })
-  it('o produto: a do produto, senão a da pessoa, senão a da clínica — e cada item com a sua', () => {
-    expect(textoDaComissaoDaVenda({ tipo: 'PRODUTO', itens: [{ nome: 'Sérum', regra: null }], pessoa: { nome: 'Rita', pct: null }, clinicaPct: 2 }))
+  it('o produto: a do produto, senão a da pessoa, senão a da rede — e cada item com a sua', () => {
+    expect(textoDaComissaoDaVenda({ tipo: 'PRODUTO', itens: [{ nome: 'Sérum', regra: null }], pessoa: { nome: 'Rita', pct: null }, redePct: 2 }))
       .toContain('2% do vendido — da rede')
     expect(textoDaComissaoDaVenda({
-      tipo: 'PRODUTO', pessoa: rita, clinicaPct: 2,
+      tipo: 'PRODUTO', pessoa: rita, redePct: 2,
       itens: [{ nome: 'Sérum', regra: { tipo: 'PERCENTAGE', valor: 10 } }, { nome: 'Protetor', regra: { tipo: 'FIXED_AMOUNT', valor: 3 } }, { nome: 'Gel', regra: null }],
     })?.replace(/\s/g, ' ')).toBe('Comissão de venda de Rita: Sérum, 10% do vendido — do produto; Protetor, R$ 3,00 por unidade — do produto; Gel, 8% do vendido — da Rita. Sai quando a venda estiver paga inteira.')
   })

@@ -69,7 +69,7 @@ export const agendamentos: FerramentaDeLeitura<{
       branch_id: string; client_id: string; procedure_id: string; professional_id: string | null
     }[] | null) ?? []
 
-    const [clientes, procs, profs, filiais, fusos] = await Promise.all([
+    const [clientes, procs, profs, nomesDasUnidades, fusos] = await Promise.all([
       nomesPorId(c, 'clients', linhas.map(l => l.client_id)),
       nomesPorId(c, 'procedures', linhas.map(l => l.procedure_id)),
       nomesPorId(c, 'users', linhas.map(l => l.professional_id)),
@@ -85,7 +85,7 @@ export const agendamentos: FerramentaDeLeitura<{
       clienteId: l.client_id,
       procedimento: procs.get(l.procedure_id) ?? '—',
       profissional: l.professional_id ? (profs.get(l.professional_id) ?? '—') : 'sem profissional',
-      unidade: filiais.get(l.branch_id) ?? '—',
+      unidade: nomesDasUnidades.get(l.branch_id) ?? '—',
       status: STATUS_DO_AGENDAMENTO[l.status] ?? l.status,
       href: rota(c, `/agenda/${l.id}`),
     }))

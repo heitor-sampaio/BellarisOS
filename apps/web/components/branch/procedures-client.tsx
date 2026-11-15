@@ -11,7 +11,7 @@ import { useFala } from '@/components/shared/uma-unidade'
  * Procedimento é dado da rede: incluir, editar e remover é de quem tem
  * abrangência de rede, em `/admin/procedures` (decisão de produto de
  * 2026-09-18). Existia aqui um "Novo procedimento" que criava um procedimento
- * local da filial com metade dos campos — sem insumos, sem fichas e sem preço
+ * local da unidade com metade dos campos — sem insumos, sem fichas e sem preço
  * por unidade —, e ele saiu junto com a action que o atendia.
  */
 

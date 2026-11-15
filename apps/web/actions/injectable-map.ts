@@ -111,13 +111,13 @@ export async function criarPlanejamentoInjetavel({
     if (!daRede || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
   }
 
-  let filial = branchId ?? (ctx.branchId || null)
+  let unidadeId = branchId ?? (ctx.branchId || null)
   if (clientId) {
     const cliente = await clienteDoTenant(admin, clientId, ctx.tenantId!)
     if (!cliente) return { error: 'Cliente não encontrado.' }
     // A unidade do planejamento é a de onde ele está sendo feito; sem ela, a de
     // cadastro do cliente. Cliente é da rede, então isso pode ser nulo.
-    filial = filial || (cliente.branch_id as string | null)
+    unidadeId = unidadeId || (cliente.branch_id as string | null)
 
     // A35 da 7ª simulação: cada clique em "Novo planejamento" criava um vazio
     // (4 na ficha da Ana, com 15 s de intervalo). A cliente que já tem um
@@ -131,7 +131,7 @@ export async function criarPlanejamentoInjetavel({
     .insert({
       tenant_id:  ctx.tenantId!,
       client_id:  clientId,
-      branch_id:  filial,
+      branch_id:  unidadeId,
       name:       titulo,
       view:       'front',
       points:     [],

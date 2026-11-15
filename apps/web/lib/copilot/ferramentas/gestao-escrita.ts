@@ -422,9 +422,9 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
     // Configurar funis): fora dela, o indicador por origem quebra.
     let origem: string | null = null
     if (a.origem) {
-      const daClinica = (await origensDaRede(c.admin, c.ctx.tenantId!)).map(o => o.nome)
-      origem = daClinica.find(k => semAcento(k) === semAcento(a.origem!)) ?? null
-      if (!origem) return { erro: `Origem "${a.origem}" não existe. Origens: ${daClinica.join(', ')}.` }
+      const daRede = (await origensDaRede(c.admin, c.ctx.tenantId!)).map(o => o.nome)
+      origem = daRede.find(k => semAcento(k) === semAcento(a.origem!)) ?? null
+      if (!origem) return { erro: `Origem "${a.origem}" não existe. Origens: ${daRede.join(', ')}.` }
     }
     // O incompleto é recusado e o número vai no formato do WhatsApp (C28, F70).
     let digitos = ''

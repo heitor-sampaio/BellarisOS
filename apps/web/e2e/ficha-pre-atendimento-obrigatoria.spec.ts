@@ -30,7 +30,7 @@ const COMPLETA = {
 
 let R: OutraRede
 let cliente: ClienteDeTeste
-let clinica: MembroDeTeste
+let daRede: MembroDeTeste
 const slug = () => `e2e-un-po${marca}`
 const portal = () => `/${slug()}/cliente`
 
@@ -67,7 +67,7 @@ test.describe('a ficha de saúde não se responde vazia (D2)', () => {
     R = await criarOutraRede(`po${marca}`)
     expect((await db().from('tenants').update({ pre_atendimento_envio: true }).eq('id', R.tenantId)).error).toBeNull()
     cliente = await clienteComSessao(`poc${marca}`, { id: R.branchId, slug: slug() }, { tenant: R.tenantId })
-    clinica = await criarMembro(`pom${marca}`, {
+    daRede = await criarMembro(`pom${marca}`, {
       tenant: R.tenantId, rotulo: 'Profissional',
       permissoes: [
         { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' },
@@ -77,7 +77,7 @@ test.describe('a ficha de saúde não se responde vazia (D2)', () => {
   })
   test.afterAll(async () => {
     if (R) await db().from('appointments').delete().eq('branch_id', R.branchId)
-    await clinica?.limpar(); await cliente?.limpar(); await R?.limpar()
+    await daRede?.limpar(); await cliente?.limpar(); await R?.limpar()
   })
 
   test('a ficha padrão nasce com alergia, gestação, medicamentos e condições de saúde obrigatórios', async () => {
@@ -158,7 +158,7 @@ test.describe('a ficha de saúde não se responde vazia (D2)', () => {
     expect((await db().from('clients').update({ document: cpf }).eq('id', cliente.clientId)).error).toBeNull()
     const ag = (await db().from('pre_atendimentos').select('appointment_id').eq('client_id', cliente.clientId)
       .eq('status', 'PENDENTE').single<{ appointment_id: string }>()).data!.appointment_id
-    const ctx = await browser.newContext({ storageState: clinica.estado })
+    const ctx = await browser.newContext({ storageState: daRede.estado })
     let token = ''
     try {
       const page = await ctx.newPage()
@@ -207,7 +207,7 @@ test.describe('a ficha de saúde não se responde vazia (D2)', () => {
   test('a ficha gravada vazia não é "respondida" no atendimento: sem selo, e a tela diz que está vazia', async ({ browser }) => {
     const outra = await clienteComFichaVazia('Vazia tela')
     const ag = await agendar(outra, 2)
-    const ctx = await browser.newContext({ storageState: clinica.estado })
+    const ctx = await browser.newContext({ storageState: daRede.estado })
     try {
       const page = await ctx.newPage()
       await page.goto(`/admin/agenda/${ag}`)

@@ -63,7 +63,7 @@ describe('os modelos prontos de automação', () => {
     expect(erros.some(m => /etapa de destino/.test(m))).toBe(true)
   })
 
-  it('a regra do "Se" sem valor não deixa ligar: a clínica escolhe o procedimento antes', () => {
+  it('a regra do "Se" sem valor não deixa ligar: a rede escolhe o procedimento antes', () => {
     const grafo = modeloDeAutomacao('retorno-depois-do-atendimento')!.grafo()
     const erros = validarGrafo(grafo).filter(p => p.grau === 'erro').map(p => p.mensagem)
     expect(erros.some(m => /sem o valor|Procedimento/.test(m))).toBe(true)

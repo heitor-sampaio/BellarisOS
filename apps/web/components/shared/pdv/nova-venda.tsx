@@ -30,7 +30,7 @@ export interface VendaDoPdv {
 /**
  * A "Nova venda" do PDV (PDV2, PDV5–PDV7; o desenho aprovado pelo Heitor em
  * 2026-11-13): primeiro a cliente, depois o que vender — procedimento, pacote,
- * produto ou crédito na rede — e como paga. A cliente escolhida vai para a URL
+ * produto ou crédito interno — e como paga. A cliente escolhida vai para a URL
  * (`?cliente=`), que é o que a busca e o inbox usam para chegar aqui com ela.
  */
 export function NovaVenda({ unidadeId, slugDaUnidade, venda, aviso, unidades, hrefDaCliente, hrefCancelar, aoVender }: {

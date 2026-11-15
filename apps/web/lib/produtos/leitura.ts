@@ -35,7 +35,7 @@ export async function produtosAVenda(tenantId: string, branchId: string | null):
   const comissoes = await ler(createAdminClient().from('commission_configs').select('produto_modo, produto_pct')
     .eq('tenant_id', tenantId).maybeSingle(), 'carregar a comissão de venda de produto') as { produto_modo: string | null; produto_pct: number | string | null } | null
   const porProduto = comissoes?.produto_modo === 'POR_PRODUTO'
-  const clinicaPct = comissoes?.produto_pct != null ? Number(comissoes.produto_pct) : null
+  const redePct = comissoes?.produto_pct != null ? Number(comissoes.produto_pct) : null
   return linhas.map(p => {
     const saldo = (p.branch_product_stock ?? []).find(s => s.branch_id === branchId)
     const upp = Number(p.units_per_package ?? 0)
@@ -45,6 +45,6 @@ export async function produtosAVenda(tenantId: string, branchId: string | null):
     const disponivel = Math.max(0, Math.floor(temConsumo ? Math.round(rendimento / upp * 1e6) / 1e6 : embalagens))
     const doItem = porProduto && (p.comissao_tipo === 'PERCENTAGE' || p.comissao_tipo === 'FIXED_AMOUNT') && p.comissao_valor != null
       ? { tipo: p.comissao_tipo as 'PERCENTAGE' | 'FIXED_AMOUNT', valor: Number(p.comissao_valor) } : null
-    return { id: p.id, name: p.name, price: Number(p.sale_price ?? 0), unidade: p.unit, disponivel, fidelidade, comissaoDoItem: doItem, comissaoDaClinicaPct: clinicaPct }
+    return { id: p.id, name: p.name, price: Number(p.sale_price ?? 0), unidade: p.unit, disponivel, fidelidade, comissaoDoItem: doItem, comissaoDaRedePct: redePct }
   })
 }

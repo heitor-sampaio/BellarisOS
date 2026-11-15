@@ -277,7 +277,7 @@ async function addProcedureInterno(
 
   if (error || !procedure) return { error: 'Erro ao criar procedimento.' }
 
-  // Disponibilidade por filial (vazio = todas)
+  // Disponibilidade por unidade (vazio = todas)
   if (branchIds.length > 0) {
     await gravar(admin.from('procedure_branch_availability').insert(
       branchIds.map(bid => ({ procedure_id: procedure.id, branch_id: bid }))
@@ -291,7 +291,7 @@ async function addProcedureInterno(
     ), 'salvar os insumos do procedimento')
   }
 
-  // Overrides de preço/custo por filial
+  // Overrides de preço/custo por unidade
   if (branchPricing.length > 0) {
     await gravar(admin.from('procedure_branch_pricing').insert(
       branchPricing.map(bp => ({ procedure_id: procedure.id, branch_id: bp.branch_id, price: bp.price, labor_cost: bp.labor_cost }))
@@ -426,7 +426,7 @@ async function updateProcedureInterno(
 
   if (error) return { error: 'Erro ao atualizar procedimento.' }
 
-  // Substitui disponibilidade por filial (delete + insert)
+  // Substitui disponibilidade por unidade (delete + insert)
   await gravar(admin.from('procedure_branch_availability').delete().eq('procedure_id', procedureId), 'limpar as unidades do procedimento')
   if (branchIds.length > 0) {
     await gravar(admin.from('procedure_branch_availability').insert(
@@ -442,7 +442,7 @@ async function updateProcedureInterno(
     ), 'salvar os insumos do procedimento')
   }
 
-  // Substitui overrides de preço/custo por filial (delete + insert)
+  // Substitui overrides de preço/custo por unidade (delete + insert)
   await gravar(admin.from('procedure_branch_pricing').delete().eq('procedure_id', procedureId), 'limpar os preços por unidade')
   if (branchPricing.length > 0) {
     await gravar(admin.from('procedure_branch_pricing').insert(

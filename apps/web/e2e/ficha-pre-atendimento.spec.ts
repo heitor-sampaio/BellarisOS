@@ -185,20 +185,20 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
   let B: OutraRede
   let gestor: MembroDeTeste
   let daUnidade: MembroDeTeste
-  let clinica: MembroDeTeste
+  let daRede: MembroDeTeste
 
   test.beforeAll(async () => {
     B = await criarOutraRede(`pb${marca}`)
     const fichas = [{ modulo: 'forms' as const, nivel: 'MANAGE' as const }]
     gestor = await criarMembro(`pbg${marca}`, { tenant: B.tenantId, permissoes: fichas })
     daUnidade = await criarMembro(`pbu${marca}`, { tenant: B.tenantId, branchId: B.branchId, permissoes: fichas })
-    clinica = await criarMembro(`pbc${marca}`, {
+    daRede = await criarMembro(`pbc${marca}`, {
       tenant: B.tenantId,
       permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
     })
   })
   test.afterAll(async () => {
-    await clinica?.limpar(); await daUnidade?.limpar(); await gestor?.limpar()
+    await daRede?.limpar(); await daUnidade?.limpar(); await gestor?.limpar()
     await B?.limpar()
   })
 
@@ -273,7 +273,7 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
     })
     expect((await db().from('pre_atendimentos').select('status').eq('client_id', cliente)).data, 'a anamnese de 2025 venceu: pendente').toEqual([{ status: 'PENDENTE' }])
 
-    const ctx = await browser.newContext({ storageState: clinica.estado })
+    const ctx = await browser.newContext({ storageState: daRede.estado })
     const page = await ctx.newPage()
     try {
       await page.goto(`/admin/agenda/${ap!.id}`)
@@ -306,7 +306,7 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
       branch_id: B.branchId, client_id: cliente, procedure_id: B.procedureId, professional_id: B.professionalId,
       status: 'IN_PROGRESS', source: 'INTERNAL', scheduled_at: new Date().toISOString(), started_at: new Date().toISOString(), duration_min: 30, price: 0,
     }).select('id').single<{ id: string }>()
-    const ctx = await browser.newContext({ storageState: clinica.estado })
+    const ctx = await browser.newContext({ storageState: daRede.estado })
     const page = await ctx.newPage()
     try {
       await chamarAcao(page, 'actions/treatment-plans.ts', 'generateEvaluationPlan', `/admin/agenda/${ap!.id}`, [
@@ -339,7 +339,7 @@ test.describe('o pré-atendimento: a equipe edita a ficha e a anamnese', () => {
       branch_id: B.branchId, client_id: cliente, procedure_id: B.procedureId, professional_id: B.professionalId,
       status: 'IN_PROGRESS', source: 'INTERNAL', scheduled_at: new Date().toISOString(), started_at: new Date().toISOString(), duration_min: 30, price: 0,
     }).select('id').single<{ id: string }>()
-    const ctx = await browser.newContext({ storageState: clinica.estado })
+    const ctx = await browser.newContext({ storageState: daRede.estado })
     const page = await ctx.newPage()
     try {
       await chamarAcao(page, 'actions/treatment-plans.ts', 'generateEvaluationPlan', `/admin/agenda/${ap!.id}`, [
@@ -681,7 +681,7 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     }
   })
 
-  test('A48: "Ficha já respondida" mostra o contato da clínica', async ({ browser }) => {
+  test('A48: "Ficha já respondida" mostra o contato da rede', async ({ browser }) => {
     expect((await db().from('branches').update({ phone: '(47) 99999-1234' }).eq('id', D.branchId)).error).toBeNull()
     const { cliente, agendamento } = await agendada('Ja respondida')
     const { token } = await gerarLink(browser, agendamento)
@@ -692,7 +692,7 @@ test.describe('o pré-atendimento: o link para quem não tem o app', () => {
     try {
       await page.goto(`/pre-atendimento/${token}`)
       await expect(page.getByText('Ficha já respondida')).toBeVisible()
-      const contato = page.locator('[data-contato-da-clinica]')
+      const contato = page.locator('[data-contato-da-equipe]')
       await expect(contato).toContainText('(47) 99999-1234')
       await expect(contato.getByRole('link', { name: /WhatsApp/ })).toHaveAttribute('href', 'https://wa.me/5547999991234')
     } finally {

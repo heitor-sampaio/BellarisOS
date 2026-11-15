@@ -31,7 +31,7 @@ export default async function AdminAgendaPage({
   const admin       = createAdminClient()
   const view        = ((rawView ?? 'day') as AgendaView)
 
-  // -- Filiais -------------------------------------------------------
+  // -- Unidades -------------------------------------------------------
   // F72 (D2 da 14ª; H6): as unidades de LEITURA — a desativada com agenda
   // marcada (ou movimento na semana olhada) segue alcançável pelo `?unidade=`,
   // com o selo: o "Ver os agendamentos" da janela de desativar abria a outra.
@@ -44,7 +44,7 @@ export default async function AdminAgendaPage({
   })
   const todasUnidades = todasUnidadesComHorario.map(u => ({ id: u.id, name: nomeNaTela(u), slug: u.slug, ativa: u.ativa }))
 
-  // `?unidade=` recorta a rede a uma filial — é para onde o dashboard aponta ao
+  // `?unidade=` recorta a rede a uma unidade — é para onde o dashboard aponta ao
   // se olhar uma unidade, em vez de mandar a pessoa para o portal dela. Aceita
   // id ou slug: quem linka daqui de dentro tem o id, o dashboard tem o slug, e
   // `?unidade=centro` ainda é legível para quem olha a URL. Valor desconhecido

@@ -9,7 +9,7 @@ import { contextoDoNavegador } from '@/lib/suporte/chamados-regras'
 import { revalidateTag } from 'next/cache'
 import { sessoesEmCurso, tagDaSessao } from '@/lib/suporte/sessao'
 import {
-  chamadosDaClinica, lerChamado, guardarAnexo, removerAnexo,
+  chamadosDaRede, lerChamado, guardarAnexo, removerAnexo,
   type ChamadoResumo, type ChamadoCompleto, type AnexoDoChamado,
 } from '@/lib/suporte/chamados'
 
@@ -121,8 +121,8 @@ export async function meusChamados(): Promise<Resultado<{ chamados: ChamadoResum
   try {
     const daRede = veARede(ctx)
     // Sem o id interno não há "os meus" — e nunca cai em "todos".
-    const chamados = daRede ? await chamadosDaClinica(ctx.tenantId, {})
-      : ctx.internalUserId ? await chamadosDaClinica(ctx.tenantId, { userId: ctx.internalUserId }) : []
+    const chamados = daRede ? await chamadosDaRede(ctx.tenantId, {})
+      : ctx.internalUserId ? await chamadosDaRede(ctx.tenantId, { userId: ctx.internalUserId }) : []
     return { ok: true, chamados, daRede, podeClinico: podeIncluirClinico(ctx) }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }

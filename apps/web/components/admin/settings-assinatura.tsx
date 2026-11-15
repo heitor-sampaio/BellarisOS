@@ -3,7 +3,7 @@ import { rotuloDaSituacao } from '@/lib/redes/situacao'
 import type { AssinaturaLida } from '@/lib/redes/assinatura'
 import { PlanoDaRede } from '@/components/admin/plano-da-rede'
 import { nomeDoPlanoNaTela } from '@/lib/redes/texto-do-plano'
-import { AdicionaisDaClinica } from '@/components/admin/adicionais-da-clinica'
+import { AdicionaisDaRede } from '@/components/admin/adicionais-da-rede'
 import { ADICIONAIS } from '@estetica-os/nucleo/lib/planos/recursos'
 import { recursosEfetivos } from '@estetica-os/nucleo/lib/planos/adicionais'
 import { brutoDosItens, descreverCondicao, totalComCondicoes, valorComCondicao, ITENS_DA_ASSINATURA } from '@estetica-os/nucleo/lib/planos/condicoes'
@@ -125,7 +125,7 @@ export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso,
       )}
 
       {assinatura?.recursos && (
-        <AdicionaisDaClinica
+        <AdicionaisDaRede
           semContratar={rede.planStatus === 'canceled' ? 'A assinatura está cancelada. Para voltar a contratar, fale com o BellarisOS pela Ajuda.' : semContratar}
           totalCentavos={assinatura.totalCentavos}
           cobranca={assinatura.cobranca}

@@ -101,7 +101,7 @@ async function plano() {
   return { planId: pl!.id, cliente }
 }
 
-test.describe('a entrada no cartão e o crediário da clínica', () => {
+test.describe('a entrada no cartão e o crediário da rede', () => {
   // D2 e A42 da 7ª simulação: a tela e o contrato diziam "3x de R$ 890,67"
   // (a média, que soma 2.672,01) e o banco gravou 890,66 + 890,66 + 890,68; o
   // contrato não dizia cada parcela com a data. Uma conta só, a gravada.
@@ -138,7 +138,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
     expect((fts ?? []).map(f => n(f.amount)), 'o banco gravou o que a tela e o contrato disseram').toEqual([890.66, 890.66, 890.68])
   })
 
-  test('checkout do plano: a entrada no Elo em 3x (com a taxa e o recebível), as parcelas com a clínica, e o contrato diz isso', async ({ browser }) => {
+  test('checkout do plano: a entrada no Elo em 3x (com a taxa e o recebível), as parcelas com a rede, e o contrato diz isso', async ({ browser }) => {
     test.setTimeout(150_000)
     const { planId } = await plano()
     await como(browser, async page => {
@@ -208,7 +208,7 @@ test.describe('a entrada no cartão e o crediário da clínica', () => {
     ])
   })
 
-  test('a parcela do crediário, sem meio: a ficha e o app dizem "Com a clínica", e o "Pagar" do Financeiro pergunta a forma', async ({ browser }) => {
+  test('a parcela do crediário, sem meio: a ficha e o app dizem "Crediário", e o "Pagar" do Financeiro pergunta a forma', async ({ browser }) => {
     const { data: un } = await db().from('branches').select('slug').eq('id', rede!.branchId).single<{ slug: string }>()
     const cliente = await clienteComSessao(`cecc${marca}`, { id: rede!.branchId, slug: un!.slug }, { tenant: rede!.tenantId })
     try {

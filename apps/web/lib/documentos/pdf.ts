@@ -16,7 +16,7 @@ import { sha256 } from './renderizar'
 import { ROTULO_DO_EVENTO } from './situacao'
 import { FUSO_PADRAO, fusoValido, nomeDoFuso } from '@/lib/unidades/fuso'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
-import { urlDaClinica } from '@/lib/plataforma/destino'
+import { urlDoAppDaRede } from '@/lib/plataforma/destino'
 
 /**
  * O PDF final de um documento assinado: o documento (desenhado da MESMA árvore
@@ -65,7 +65,7 @@ function mascararDocumento(doc: string | null): string | null {
  * com o domínio do Railway — o link de quem confere morre com ele.
  */
 export function urlDeVerificacao(codigo: string): string {
-  return `${urlDaClinica()}/verificar/${codigo}`
+  return `${urlDoAppDaRede()}/verificar/${codigo}`
 }
 
 async function pngDoDataUrl(pdf: PDFDocument, dataUrl: string | null): Promise<PDFImage | null> {

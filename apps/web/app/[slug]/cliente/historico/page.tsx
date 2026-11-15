@@ -61,7 +61,7 @@ export type PagamentoItem = {
   /** A46: o pagamento de um pacote cancelado — o dia do cancelamento. */
   pacoteCancelado?: string | null
   /** O atendimento avulso concluído e não pago (A64): não é um lançamento, é `atendimentos_a_receber`. */
-  aPagarNaClinica?: boolean
+  aPagarNaUnidade?: boolean
   /** Estornado: o dinheiro voltou — não é "Pago" nem tem recibo (como o Financeiro do app). */
   estornado?:     boolean
   /** O dia de referência (o do pagamento; o vencimento no em aberto): a ordem da lista (D17). */
@@ -209,7 +209,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     is_paid:        false,
     paid_at:        null,
     procedure_name: a.procedureName,
-    aPagarNaClinica: true,
+    aPagarNaUnidade: true,
   })))
 
   // -- De antes do sistema (A42 da 10ª) ----------------------------

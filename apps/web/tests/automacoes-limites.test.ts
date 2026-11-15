@@ -82,7 +82,7 @@ describe('limitesDe', () => {
     })
   })
 
-  it('o que a clínica configurou vence o padrão', () => {
+  it('o que a rede configurou vence o padrão', () => {
     expect(limitesDe({ tetoPorClienteDia: 1 }).tetoPorClienteDia).toBe(1)
   })
 })

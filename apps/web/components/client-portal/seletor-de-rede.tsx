@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { entrarNaClinica } from '@/actions/portal-clinicas'
+import { entrarNaRede } from '@/actions/portal-redes'
 
-export interface ClinicaDoSeletor {
+export interface RedeDoSeletor {
   clientId: string
   unidade: string
   rede: string
@@ -14,10 +14,10 @@ export interface ClinicaDoSeletor {
 
 /**
  * As clínicas da conta dela — cada uma é um botão que entra no portal daquela
- * clínica (`entrarNaClinica`). Lista, não seletor de filtro: é uma escolha de
+ * clínica (`entrarNaRede`). Lista, não seletor de filtro: é uma escolha de
  * DESTINO, um toque e pronto.
  */
-export function SeletorDeClinica({ clinicas }: { clinicas: ClinicaDoSeletor[] }) {
+export function SeletorDeRede({ redes }: { redes: RedeDoSeletor[] }) {
   const [entrando, startEntrar] = useTransition()
   const [escolhida, setEscolhida] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -26,20 +26,20 @@ export function SeletorDeClinica({ clinicas }: { clinicas: ClinicaDoSeletor[] })
     setEscolhida(clientId)
     setErro(null)
     startEntrar(async () => {
-      const r = await entrarNaClinica(clientId)
+      const r = await entrarNaRede(clientId)
       if (r?.error) setErro(r.error)
     })
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {clinicas.map(c => (
+      {redes.map(c => (
         <button
           key={c.clientId}
           type="button"
           onClick={() => entrar(c.clientId)}
           disabled={entrando || !c.disponivel}
-          className="seletor-de-clinica-item"
+          className="seletor-de-rede-item"
           aria-busy={entrando && escolhida === c.clientId}
         >
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, textAlign: 'left' }}>

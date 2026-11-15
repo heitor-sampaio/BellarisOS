@@ -178,7 +178,7 @@ test.describe.serial('planos com funcionalidades e limites — o catálogo e o r
  * MÓDULO inteiro (estoque, automações…) sai da rede quando o plano não a tem
  * — inclusive para o DONO (NETWORK_ADMIN, que tem tudo). Sem plano, tudo.
  */
-test.describe.serial('o plano corta módulos inteiros na clínica — inclusive para o dono', () => {
+test.describe.serial('o plano corta módulos inteiros no app da rede — inclusive para o dono', () => {
   let dono: MembroDeTeste | null = null
   const SEM_ACESSO = 'Você não tem acesso a esta área'
   const retrato = (funcionalidades: string[]) => db().from('tenant_subscriptions')

@@ -18,7 +18,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * o giro dos atendimentos dela, os planos dela aguardando checkout, as
  * clientes dela a reativar, e o gráfico do faturamento (só a receita). O que
  * não se atribui a ela — o custo, o lucro, a margem do catálogo, o ranking e
- * a ocupação por filial — segue escondido. Com o CRM "só os meus", o funil
+ * a ocupação por unidade — segue escondido. Com o CRM "só os meus", o funil
  * conta os leads dela e os sem dono, como o quadro.
  */
 
@@ -201,9 +201,9 @@ test('"só os meus": os rankings, a demografia, o giro, os planos e o funil são
     const corpo = p.locator('main')
     // D12 da 13ª (F68): o total do cabeçalho é o da CLÍNICA — o "só os meus" não
     // recorta a ficha —, e diz que é ("da clínica"). Era o das clientes que ela atendeu.
-    const { count: daClinica } = await banco().from('clients').select('id', { count: 'exact', head: true })
+    const { count: daRede } = await banco().from('clients').select('id', { count: 'exact', head: true })
       .eq('tenant_id', rede!.tenantId).eq('is_active', true)
-    await expect.soft(corpo, 'o total: as clientes da clínica').toContainText(new RegExp(` · ${daClinica} clientes da rede`))
+    await expect.soft(corpo, 'o total: as clientes da clínica').toContainText(new RegExp(` · ${daRede} clientes da rede`))
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'o procedimento dela').toContainText(`Proc dr${marca}`)
     await expect.soft(card(p, 'Ranking — Procedimentos realizados'), 'não o da outra').not.toContainText(outroProc)
     await expect.soft(card(p, 'Ranking — Procedimentos por receita dos atendimentos'), 'a receita por procedimento dela').toContainText('R$ 120,00')

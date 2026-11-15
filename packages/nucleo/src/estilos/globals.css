@@ -475,7 +475,7 @@
      ao lado — o buraco mais visível do dashboard e do estoque. */
   .kpi-grid-auto > :last-child:nth-child(odd) { grid-column: 1 / -1; }
   .kpi-grid { gap: 10px; }
-  /* Coluna de filial da agenda da rede: com 180px cabia uma e meia na tela e a
+  /* Coluna de unidade da agenda da rede: com 180px cabia uma e meia na tela e a
      grade lia como cortada. A 138px entram duas e meia — e a terça parte
      visível é o que diz que dá para arrastar. */
   :root { --agenda-col: 138px; }
@@ -986,7 +986,7 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .grid-stack-md { grid-template-columns: 1fr !important; }
 }
 
-/* Linha de ocupação por filial: desktop em colunas; mobile em card compacto. */
+/* Linha de ocupação por unidade: desktop em colunas; mobile em card compacto. */
 @media (max-width: 639px) {
   .occupancy-row {
     grid-template-columns: 1fr auto !important;
@@ -2381,25 +2381,25 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .plano-da-rede-lista li[data-dentro="false"] svg { color: var(--text-faint); }
 .plano-da-rede-estado { font-size: var(--text-xs-sz); color: var(--text-muted); }
 /* Os adicionais do plano, na aba Assinatura da clínica (2026-10-07). */
-.adicionais-da-clinica { display: flex; flex-direction: column; gap: 12px; }
-.adicionais-da-clinica-ajuda { font-size: var(--text-xs-sz); color: var(--text-muted); }
-.adicionais-da-clinica-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-.adicionais-da-clinica-lista li { display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-row); padding: 12px 14px; }
-.adicionais-da-clinica-icone { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--radius-row); background: var(--brand-soft); color: var(--brand); }
-.adicionais-da-clinica-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adicionais-da-clinica-nome { font-size: var(--text-sm-sz); font-weight: var(--weight-bold); color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.adicionais-da-clinica-preco { font-size: var(--text-sm-sz); color: var(--text); }
-.adicionais-da-clinica-estado { font-size: var(--text-xs-sz); color: var(--text-muted); }
-.adicionais-da-clinica-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.adicionais-da-rede { display: flex; flex-direction: column; gap: 12px; }
+.adicionais-da-rede-ajuda { font-size: var(--text-xs-sz); color: var(--text-muted); }
+.adicionais-da-rede-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.adicionais-da-rede-lista li { display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-row); padding: 12px 14px; }
+.adicionais-da-rede-icone { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--radius-row); background: var(--brand-soft); color: var(--brand); }
+.adicionais-da-rede-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adicionais-da-rede-nome { font-size: var(--text-sm-sz); font-weight: var(--weight-bold); color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.adicionais-da-rede-preco { font-size: var(--text-sm-sz); color: var(--text); }
+.adicionais-da-rede-estado { font-size: var(--text-xs-sz); color: var(--text-muted); }
+.adicionais-da-rede-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .chip-em-breve { font-size: var(--text-xs-sz); font-weight: var(--weight-semibold); color: var(--brand); background: var(--brand-soft); border: 1px solid var(--brand-soft-border); border-radius: var(--radius-chip); padding: 1px 8px; }
-.adicionais-da-clinica-janela { display: flex; flex-direction: column; gap: 14px; padding: 20px 24px; font-size: var(--text-sm-sz); color: var(--text); }
-.adicionais-da-clinica-janela-topo { display: flex; align-items: center; gap: 10px; }
-.adicionais-da-clinica-janela-topo h2 { flex: 1; font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); }
-.adicionais-da-clinica-janela-acoes { display: flex; gap: 8px; justify-content: flex-end; }
-.adicionais-da-clinica-erro { font-size: var(--text-sm-sz); font-weight: var(--weight-semibold); color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger-border); border-radius: var(--radius-row); padding: 8px 10px; }
+.adicionais-da-rede-janela { display: flex; flex-direction: column; gap: 14px; padding: 20px 24px; font-size: var(--text-sm-sz); color: var(--text); }
+.adicionais-da-rede-janela-topo { display: flex; align-items: center; gap: 10px; }
+.adicionais-da-rede-janela-topo h2 { flex: 1; font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); }
+.adicionais-da-rede-janela-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+.adicionais-da-rede-erro { font-size: var(--text-sm-sz); font-weight: var(--weight-semibold); color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger-border); border-radius: var(--radius-row); padding: 8px 10px; }
 @media (max-width: 640px) {
-  .adicionais-da-clinica-lista li { grid-template-columns: 32px 1fr; }
-  .adicionais-da-clinica-acoes { grid-column: 1 / -1; justify-content: flex-start; }
+  .adicionais-da-rede-lista li { grid-template-columns: 32px 1fr; }
+  .adicionais-da-rede-acoes { grid-column: 1 / -1; justify-content: flex-start; }
 }
 .plano-limite-valor { font-weight: var(--weight-bold); color: var(--text); text-align: center; }
 /* Adicionais à venda (2026-10-07): a caixa de oferecer e o preço ao lado. */
@@ -2744,7 +2744,7 @@ body:has(.copilot-botao:not([data-subir="sim"])) main {
 /* ── O seletor de clínica da cliente (/auth/clinicas, 2026-10-19) ─────────── */
 /* A mesma pessoa cliente de várias clínicas escolhe em qual entrar. Cada
    clínica é uma linha-botão: branca com borda, realce rosé no hover. */
-.seletor-de-clinica-item {
+.seletor-de-rede-item {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   width: 100%; padding: 14px 16px;
   background: var(--surface); border: 1px solid var(--border);
@@ -2752,20 +2752,20 @@ body:has(.copilot-botao:not([data-subir="sim"])) main {
   font-family: inherit; cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
 }
-.seletor-de-clinica-item:hover:not(:disabled) { background: var(--brand-soft); border-color: var(--brand-soft-border); }
-.seletor-de-clinica-item:disabled { cursor: progress; }
-.seletor-de-clinica-item[aria-busy="true"] { background: var(--brand-soft); border-color: var(--brand-soft-border); }
+.seletor-de-rede-item:hover:not(:disabled) { background: var(--brand-soft); border-color: var(--brand-soft-border); }
+.seletor-de-rede-item:disabled { cursor: progress; }
+.seletor-de-rede-item[aria-busy="true"] { background: var(--brand-soft); border-color: var(--brand-soft-border); }
 /* O nome da unidade no topo do portal, quando a conta tem mais de uma clínica:
    leva ao seletor. Mesmo texto do título, com a seta de troca. */
-.portal-trocar-clinica {
+.portal-trocar-rede {
   display: inline-flex; align-items: center; gap: 4px; min-width: 0;
   margin: -4px -6px; padding: 4px 6px; border-radius: var(--radius-field-token);
   font-size: var(--text-card-title); font-weight: var(--weight-bold); color: var(--text);
   letter-spacing: -0.01em; text-decoration: none;
   transition: background 120ms ease;
 }
-.portal-trocar-clinica:hover { background: var(--brand-soft); }
-.seletor-de-clinica-item:disabled:not([aria-busy="true"]) { cursor: not-allowed; background: var(--bg-app); }
+.portal-trocar-rede:hover { background: var(--brand-soft); }
+.seletor-de-rede-item:disabled:not([aria-busy="true"]) { cursor: not-allowed; background: var(--bg-app); }
 
 /* ── A ficha de pré-atendimento em Configurações → Fichas (2026-10-20) ─────── */
 .pre-atendimento-config { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }

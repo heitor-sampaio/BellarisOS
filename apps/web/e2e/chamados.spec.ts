@@ -87,7 +87,7 @@ async function rest(token: string, caminho: string): Promise<unknown[]> {
 }
 
 test.describe.serial('chamados de suporte', () => {
-  test('a clínica abre o chamado pela Ajuda, com print e autorização', async ({ browser }) => {
+  test('a rede abre o chamado pela Ajuda, com print e autorização', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: alvo.estado })
     try {
       const page = await ctx.newPage()
@@ -230,7 +230,7 @@ test.describe.serial('chamados de suporte', () => {
     expect(t!.status).toBe('aberto')
   })
 
-  test('"Pedir autorização" deixa a decisão com a clínica', async ({ browser }) => {
+  test('"Pedir autorização" deixa a decisão com a rede', async ({ browser }) => {
     // Um chamado do colega, sem autorização.
     const { data: novo, error } = await db().rpc('chamado_abrir', {
       p_tenant: outra!.tenantId, p_branch: null, p_user: colega.userId, p_assunto: `Sem acesso ${marca}`,

@@ -13,7 +13,7 @@ describe('o endereço (slug) da unidade é único no sistema inteiro', () => {
     expect(escolherEndereco('centro', 'Clínica Aurora', new Set())).toBe('centro')
   })
 
-  it('ocupado por outra clínica: com o nome da clínica; depois, numerado', () => {
+  it('ocupado por outra rede: com o nome da rede; depois, numerado', () => {
     expect(escolherEndereco('centro', 'Clínica Aurora', new Set(['centro']))).toBe('centro-clinica-aurora')
     expect(escolherEndereco('centro', 'Clínica Aurora', new Set(['centro', 'centro-clinica-aurora']))).toBe('centro-2')
     expect(escolherEndereco('centro', 'Clínica Aurora', new Set(['centro', 'centro-clinica-aurora', 'centro-2']))).toBe('centro-3')

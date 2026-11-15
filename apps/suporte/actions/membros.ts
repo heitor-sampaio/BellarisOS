@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { EVENTOS } from '@estetica-os/types'
 import { getPlatformContext } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { registrarNaPlataforma } from '@estetica-os/nucleo/lib/plataforma/auditoria'
-import { urlDaClinica } from '@estetica-os/nucleo/lib/plataforma/destino'
+import { urlDoAppDaRede } from '@estetica-os/nucleo/lib/plataforma/destino'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@estetica-os/nucleo/lib/db'
 import { gravarEvento, retratoDoMembro } from '@estetica-os/nucleo/lib/events/gravar'
@@ -43,7 +43,7 @@ export async function reenviarAcesso(tenantId: string, userId: string): Promise<
     const membro = await membroDaRede(tenantId, userId)
     if (!membro) return { ok: false, error: 'Membro não encontrado nesta rede.' }
     const { error } = await createAdminClient().auth.resetPasswordForEmail(membro.email, {
-      redirectTo: `${urlDaClinica()}/auth/confirm?next=/update-password`,
+      redirectTo: `${urlDoAppDaRede()}/auth/confirm?next=/update-password`,
     })
     if (error) return { ok: false, error: `O Auth recusou o envio: ${error.message}` }
     await registrarNaPlataforma(ctx, 'acesso.reenviado', { tenantId, targetUserId: userId, dados: { email: membro.email } })

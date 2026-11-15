@@ -9,7 +9,7 @@ describe('a agenda do portal da cliente', () => {
   const agora = new Date('2026-10-29T00:20:00-03:00')
   const a = (id: string, status: string, quando: string) => ({ id, status, scheduled_at: quando })
   const lista = [
-    a('passou-na-clinica', 'ARRIVED', '2026-10-28T23:50:00-03:00'),
+    a('passou-na-unidade', 'ARRIVED', '2026-10-28T23:50:00-03:00'),
     a('passou-em-atendimento', 'IN_PROGRESS', '2026-10-27T10:00:00-03:00'),
     a('passou-agendado', 'SCHEDULED', '2026-10-20T10:00:00-03:00'),
     a('amanha', 'CONFIRMED', '2026-10-29T10:00:00-03:00'),
@@ -24,7 +24,7 @@ describe('a agenda do portal da cliente', () => {
   it('o que já passou vai ao histórico, mesmo sem ter sido fechado — nada some', () => {
     const { proximos, historico } = separarAgendaDoPortal(lista, agora)
     expect(historico.map(x => x.id).sort()).toEqual(
-      ['cancelado-futuro', 'concluido', 'passou-agendado', 'passou-em-atendimento', 'passou-na-clinica'].sort())
+      ['cancelado-futuro', 'concluido', 'passou-agendado', 'passou-em-atendimento', 'passou-na-unidade'].sort())
     expect(proximos.length + historico.length).toBe(lista.length)
   })
 })

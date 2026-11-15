@@ -7,9 +7,9 @@ import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { NewAppointmentWizard } from '@/components/client-portal/new-appointment-wizard'
 import { ler } from '@/lib/db'
 import { normalizarHorario, resumoDoHorario } from '@/lib/agenda/horario'
-import { aClinicaDoEndereco } from '@/lib/clientes/a-clinica'
+import { aUnidadeDoEndereco } from '@/lib/clientes/a-unidade'
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
-import { AgendarComAClinica } from '@/components/client-portal/agendar-com-a-clinica'
+import { AgendarComAEquipe } from '@/components/client-portal/agendar-com-a-equipe'
 import { jaPagoNoApp, procedimentosComSessaoComprada } from '@/lib/creditos/pago-no-app'
 import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
@@ -47,7 +47,7 @@ export default async function NewClientAppointmentPage({ params, searchParams }:
 
   // A arquivada não agenda pelo app (o Heitor: "concordo"): fala com a clínica.
   if (clientRecord.is_active === false) {
-    return <AgendarComAClinica slug={slug} clinica={await aClinicaDoEndereco(slug)} />
+    return <AgendarComAEquipe slug={slug} unidade={await aUnidadeDoEndereco(slug)} />
   }
 
   const branchTyped = branch as { id: string; name: string; tenant_id: string }

@@ -54,7 +54,7 @@ test('C43: o pacote em 3 parcelas de R$ 33,33 dá os 100 pontos dos R$ 100', asy
   expect((linhas ?? []).reduce((s, l) => s + Number(l.points), 0), 'R$ 100 pagos, 100 pontos').toBe(100)
 })
 
-test('A6: a aba Fidelidade diz que o crédito na clínica vendido pontua', async ({ browser }) => {
+test('A6: a aba Fidelidade diz que o crédito interno vendido pontua', async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: dona!.estado })
   try {
     const p = await ctx.newPage()

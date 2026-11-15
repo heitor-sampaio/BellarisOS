@@ -122,7 +122,7 @@ test.afterAll(async () => {
   expect(falhas).toEqual([])
 })
 
-test('Configurações → Comissões: "Venda de plano" nasce vazia, e a clínica põe o percentual', async ({ browser }) => {
+test('Configurações → Comissões: "Venda de plano" nasce vazia, e a rede põe o percentual', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto('/admin/settings?tab=comissoes')
     const como_ = p.getByLabel('Como a comissão acontece')

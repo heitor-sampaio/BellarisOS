@@ -247,7 +247,7 @@ test.describe.serial('a venda de produto', () => {
     expect(soma, 'as duas vendas pagas, no faturamento').toBe(549)
   })
 
-  test('a comissão da venda de produto é da clínica configurar: 10% para quem vendeu, quando a venda é paga', async ({ browser }) => {
+  test('a comissão da venda de produto é da rede configurar: 10% para quem vendeu, quando a venda é paga', async ({ browser }) => {
     // Sem a configuração, as vendas de antes não geraram comissão.
     const { data: antes } = await db().from('commission_lines').select('id').eq('tenant_id', rede!.tenantId)
     expect(antes ?? []).toEqual([])

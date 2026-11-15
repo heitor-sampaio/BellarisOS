@@ -219,12 +219,12 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                   {p.parcela && `${p.parcela} · `}
                   {p.paid_at
                     ? new Date(p.paid_at).toLocaleDateString('pt-BR', { timeZone: fuso })
-                    : p.aPagarNaClinica
+                    : p.aPagarNaUnidade
                       ? 'A pagar na unidade'
                       : p.vencida && p.vencimento ? `Vencida em ${(formatDia(p.vencimento) ?? "").slice(0, 5)}`
                       : p.vencimento ? `vence em ${formatDia(p.vencimento)}` : 'Pendente'}
                   {/* D6: a parcela do crediário sem meio diz "Com a clínica" (a forma pronta da página). */}
-                  {!p.aPagarNaClinica && (p.forma !== undefined ? (p.forma ? ` · ${p.forma}` : '') : p.payment_method ? ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}` : '')}
+                  {!p.aPagarNaUnidade && (p.forma !== undefined ? (p.forma ? ` · ${p.forma}` : '') : p.payment_method ? ` · ${rotuloDaForma(p.payment_method, p.cartao_vezes)}` : '')}
                 </p>
                 {/* A46: o pagamento de um pacote cancelado diz isso. */}
                 {p.pacoteCancelado && (
@@ -250,7 +250,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                   </span>
                 </div>
                 {/* r2-ven-13: o recibo do que ela pagou (PDF), também aqui. */}
-                {p.is_paid && !p.estornado && !p.estorno && !p.aPagarNaClinica && (
+                {p.is_paid && !p.estornado && !p.estorno && !p.aPagarNaUnidade && (
                   <a href={`/api/recibos/${p.id}`} target="_blank" rel="noopener" data-recibo
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>
                     <FileText size={11} aria-hidden /> Recibo

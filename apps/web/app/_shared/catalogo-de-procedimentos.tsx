@@ -146,7 +146,7 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
     professional_ids:              realizam.get(p.id) ?? [],
   }))
 
-  // Usa as filiais já carregadas para montar o mapa de nomes (sem embed PostgREST)
+  // Usa as unidades já carregadas para montar o mapa de nomes (sem embed PostgREST)
   const branchNameMap = Object.fromEntries((branches ?? []).map(b => [b.id, b.name]))
 
   // Os INSUMOS (D-6): o produto só de revenda não se escolhe como insumo —

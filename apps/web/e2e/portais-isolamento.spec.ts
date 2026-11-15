@@ -1,5 +1,5 @@
 import { test, expect, type Browser } from '@playwright/test'
-import { banco, unidadeQueAtende, filiaisAtivas, type Filial } from './apoio/banco'
+import { banco, unidadeQueAtende, unidadesAtivas, type UnidadeDoBanco } from './apoio/banco'
 import { criarOutraRede } from './apoio/outra-rede'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 
@@ -53,7 +53,7 @@ test.describe('sem sessão', () => {
   }
 
   test('portal da unidade e do cliente também', async ({ browser }) => {
-    const unidade = (await filiaisAtivas())[0]
+    const unidade = (await unidadesAtivas())[0]
     test.skip(!unidade, 'nenhuma unidade ativa')
     for (const url of [`/${unidade!.slug}/dashboard`, `/${unidade!.slug}/cliente/home`]) {
       const { ctx, page } = await abrir(browser, undefined, url)
@@ -65,7 +65,7 @@ test.describe('sem sessão', () => {
 })
 
 test.describe.serial('gente de unidade', () => {
-  let unidade: Filial | null = null
+  let unidade: UnidadeDoBanco | null = null
   let membro: MembroDeTeste | null = null
 
   test.beforeAll(async () => {
@@ -97,7 +97,7 @@ test.describe.serial('gente de unidade', () => {
 
   test('não entra em outra unidade', async ({ browser }) => {
     test.skip(!membro, 'nenhuma unidade com profissional')
-    const outra = (await filiaisAtivas()).find(f => f.id !== unidade!.id)
+    const outra = (await unidadesAtivas()).find(f => f.id !== unidade!.id)
     test.skip(!outra, 'a rede de dev tem uma unidade só')
     const { ctx, page } = await abrir(browser, membro!.estado, `/${outra!.slug}/agenda`)
     try {
@@ -138,11 +138,11 @@ test.describe.serial('cargo de rede sem um módulo', () => {
 })
 
 test.describe.serial('cliente final', () => {
-  let unidade: Filial | null = null
+  let unidade: UnidadeDoBanco | null = null
   let cliente: ClienteDeTeste | null = null
 
   test.beforeAll(async () => {
-    unidade = (await filiaisAtivas())[0] ?? null
+    unidade = (await unidadesAtivas())[0] ?? null
     if (unidade) cliente = await clienteComSessao(marca, unidade)
   })
   test.afterAll(async () => { await cliente?.limpar() })
@@ -175,9 +175,9 @@ test.describe.serial('cliente final', () => {
   // em qualquer unidade da clínica" — o portal de OUTRA unidade da MESMA rede
   // abre a mesma ficha (prova inteira em portal-cliente-outra-unidade.spec.ts).
   // O que continua barrado é o portal de outra REDE.
-  test('entra no portal de cliente de outra unidade da mesma clínica', async ({ browser }) => {
+  test('entra no portal de cliente de outra unidade da mesma rede', async ({ browser }) => {
     test.skip(!cliente, 'nenhuma unidade ativa')
-    const outra = (await filiaisAtivas()).find(f => f.id !== unidade!.id)
+    const outra = (await unidadesAtivas()).find(f => f.id !== unidade!.id)
     test.skip(!outra, 'a rede de dev tem uma unidade só')
     const { ctx, page } = await abrir(browser, cliente!.estado, `/${outra!.slug}/cliente/home`)
     try {

@@ -30,7 +30,7 @@ export interface FichaDoLogin {
    * Moinhos em `/zona-sul/cliente` é a mesma ficha. Até aqui só o `slug` da
    * unidade de cadastro valia, e a Zona Sul voltava à Moinhos sem aviso.
    */
-  slugsDaClinica?: string[]
+  slugsDaRede?: string[]
 }
 
 /** O primeiro pedaço do caminho ("MÉTODO /caminho?query") — o slug, quando é uma rota de unidade. */
@@ -47,10 +47,10 @@ export function fichaDaRequisicao<F extends FichaDoLogin>(
   const rota = (caminho.includes(' ') ? caminho.slice(caminho.indexOf(' ') + 1) : caminho).split('?')[0] ?? ''
   const [primeiro, segundo] = rota.split('/').filter(Boolean)
 
-  const daClinica = primeiro
-    ? fichas.find(f => f.slug === primeiro) ?? fichas.find(f => f.slugsDaClinica?.includes(primeiro))
+  const daRede = primeiro
+    ? fichas.find(f => f.slug === primeiro) ?? fichas.find(f => f.slugsDaRede?.includes(primeiro))
     : undefined
-  if (daClinica) return daClinica
+  if (daRede) return daRede
   if (primeiro && segundo === 'cliente') return 'fora'
 
   return fichas.find(f => f.clientId === marcaDoToken) ?? fichas[0]!

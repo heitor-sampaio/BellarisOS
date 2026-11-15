@@ -95,7 +95,7 @@ export interface ReportsBiProps {
    * A agenda é DELA e o dinheiro é da clínica (ind-05): a receita das tabelas
    * por procedimento e por profissional é a da clínica, e a tela diz isso.
    */
-  receitaDaClinica?: boolean
+  receitaDeTodos?: boolean
   /**
    * A47 e A43 da 8ª: por procedimento e por profissional (pelo nome), o que
    * ficou FORA da receita dos atendimentos — o concluído sem pagamento e o
@@ -622,7 +622,7 @@ function TabVendas(p: ReportsBiProps) {
           (princípio 5: o caixa no dia em que o dinheiro entrou), e a tela a diz. */}
       <p data-ponte-vendas-caixa style={{ margin: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
         O Total vendido é a venda, no dia em que foi feita; o caixa do período é o dinheiro, no dia em que entrou:{' '}
-        <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito na
+        <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito
         interno vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
         cliente usar); o pacote e o plano entram aqui
         inteiros, no dia da venda, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo.
@@ -991,7 +991,7 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'name',     label: 'Procedimento'  },
     { key: 'category', label: 'Categoria'     },
     { key: 'count',    label: 'Execuções',    align: 'center' },
-    { key: 'revenue',  label: p.receitaDaClinica ? 'Receita dos atendimentos (de todos)' : 'Receita dos atendimentos', align: 'right',
+    { key: 'revenue',  label: p.receitaDeTodos ? 'Receita dos atendimentos (de todos)' : 'Receita dos atendimentos', align: 'right',
       render: (v, row) => <>{fmtBRLFull(Number(v))}<NotaSemReceita s={p.semReceita?.porProcedimento[String(row.name)]} /></> },
     // Receita do procedimento ÷ as execuções dele: não é o ticket médio (que só
     // conta os cobrados), e o nome diz isso (D11).
@@ -1095,7 +1095,7 @@ function TabProfissionais(p: ReportsBiProps) {
   const commCols: TableColumn[] = [
     { key: 'name',    label: 'Profissional'   },
     { key: 'appts',   label: 'Atendimentos',   align: 'center' },
-    { key: 'revenue', label: p.receitaDaClinica ? 'Receita dos atendimentos (de todos)' : 'Receita dos atendimentos', align: 'right',
+    { key: 'revenue', label: p.receitaDeTodos ? 'Receita dos atendimentos (de todos)' : 'Receita dos atendimentos', align: 'right',
       render: (v, row) => <>{fmtBRLFull(Number(v))}<NotaSemReceita s={p.semReceita?.porProfissional[String(row.name)]} /></> },
     { key: 'open',    label: 'Comissão Aberta', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'paid',    label: 'Comissão Paga',   align: 'right', render: (v) => fmtBRLFull(Number(v)) },

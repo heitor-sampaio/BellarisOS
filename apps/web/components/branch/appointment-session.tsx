@@ -1032,7 +1032,7 @@ export function AppointmentSession({
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
-  // FILIAL dele, usado pelas actions; a volta tem de respeitar quem veio de
+  // UNIDADE dele, usado pelas actions; a volta tem de respeitar quem veio de
   // /admin, senão a rede é trocada pela unidade no meio do caminho.
   const pathname = usePathname()
 

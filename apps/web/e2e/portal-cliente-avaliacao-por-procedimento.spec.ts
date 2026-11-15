@@ -104,7 +104,7 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('a avaliação do atendimento e de cada procedimento', () => {
-  test('Configurações → Geral: "O que a cliente avalia" nasce nos dois, e a clínica escolhe', async ({ browser }) => {
+  test('Configurações → Geral: "O que a cliente avalia" nasce nos dois, e a rede escolhe', async ({ browser }) => {
     expect((await db().from('tenants').select('avaliacao_o_que').eq('id', rede!.tenantId).single()).data?.avaliacao_o_que, 'o padrão').toBe('OS_DOIS')
     await como(browser, dona!.estado, async p => {
       await p.goto('/admin/settings?tab=general')

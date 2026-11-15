@@ -10,7 +10,7 @@ import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
 import { VisualizadorDePdf } from '@/components/shared/visualizador-de-pdf'
 import { SignaturePad } from '@/components/shared/signature-pad'
 import { lerConteudo, type DocumentoResolvido } from '@/lib/documentos/arvore'
-import { assinarNaClinica, assinarJuntosNaClinica, marcarAssinadoEmPapel, montarDocumentoDeNovo } from '@/actions/documentos'
+import { assinarNaTela, assinarJuntosNaTela, marcarAssinadoEmPapel, montarDocumentoDeNovo } from '@/actions/documentos'
 import { AssinarJuntos } from '@/components/shared/assinar-juntos'
 import { assinarNoPortal } from '@/actions/documentos-portal'
 import { nomeParaSaudar } from '@/lib/saudacao'
@@ -143,7 +143,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
         ? await assinarPorFora({ assinatura, hashExibido: hash, aceite: textoDoAceite })
         : noPortal
         ? await assinarNoPortal({ id: doc.id, assinatura, hashExibido: hash, aceite: textoDoAceite })
-        : await assinarNaClinica({ id: doc.id, assinatura, hashExibido: hash, identidadeConferida: conferido, aceite: textoDoAceite })
+        : await assinarNaTela({ id: doc.id, assinatura, hashExibido: hash, identidadeConferida: conferido, aceite: textoDoAceite })
       if (r.error) { setErro(r.error); return }
       setCodigo(r.codigo ?? null)
       setModo('feito')
@@ -210,7 +210,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
           assinante={assinante}
           cabecalho={`${assinante}: leia os documentos e assine uma vez no fim.`}
           final="Devolva o aparelho à equipe."
-          assinar={d => assinarJuntosNaClinica({ ...d, identidadeConferida: conferido })}
+          assinar={d => assinarJuntosNaTela({ ...d, identidadeConferida: conferido })}
           rodape={aoTerminar
             ? <button type="button" className="btn-primary" onClick={aoTerminar}>Continuar</button>
             : <Link href={voltar ?? '/'} className="btn-primary">Voltar</Link>}

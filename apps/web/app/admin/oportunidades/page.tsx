@@ -2,7 +2,7 @@ import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, te
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { origensDaRede } from '@/lib/crm/origens'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { filiaisAtivas } from '@/lib/branches'
+import { unidadesAtivas } from '@/lib/branches'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { getFunilDoQuadro } from '@/lib/metrics/queries'
 import { resumoDoFunil } from '@/lib/metrics/resultado'
@@ -43,9 +43,9 @@ export default async function AdminOportunidadesPage({
   // id; o alcance é o da lista abaixo — lead que ela não carrega não abre.
   const leadAberto = rawLead && UUID.test(rawLead) ? rawLead : null
 
-  // Filiais da rede
+  // Unidades da rede
   const admin    = createAdminClient()
-  const branches = await filiaisAtivas(ctx.tenantId!)
+  const branches = await unidadesAtivas(ctx.tenantId!)
 
   const canEdit = can(ctx, 'crm', 'MANAGE')
   // `?contato=` (a busca universal, A15): o "Novo lead" abre com a pessoa do

@@ -184,7 +184,7 @@ test.describe.serial('o banco: contratar e tirar adicional', () => {
     await db().from('tenants').update({ plan_status: antes!.plan_status }).eq('id', outra.tenantId)
   })
 
-  test('preço especial do sistema não se estende ao que a clínica compra (nem a cortesia)', async () => {
+  test('preço especial do sistema não se estende ao que a rede compra (nem a cortesia)', async () => {
     await redeCom()
     // O sistema dá uma conexão de cortesia: preço 0, diferente da oferta.
     expect((await definir('whatsapp', 1, 0)).error).toBeNull()
@@ -312,7 +312,7 @@ test.describe.serial('o sistema: a oferta no plano e os adicionais da rede', () 
   })
 })
 
-test.describe.serial('a clínica: ver e contratar o adicional pela aba Assinatura', () => {
+test.describe.serial('a rede: ver e contratar o adicional pela aba Assinatura', () => {
   const SIS = () => urlDaPlataforma('sistema')
   const RECUSADA = /BELLARIS_SEM_ACESSO|Forbidden|Seu cargo não libera/
   let dono: MembroDeTeste | null = null
@@ -387,7 +387,7 @@ test.describe.serial('a clínica: ver e contratar o adicional pela aba Assinatur
     await db().from('whatsapp_numbers').delete().eq('tenant_id', outra.tenantId)
   })
 
-  test('o que a clínica não pode: unidade, sem configurações, sem oferta', async ({ browser }) => {
+  test('o que a rede não pode: unidade, sem configurações, sem oferta', async ({ browser }) => {
     const contratar = async (estado: string, chave = 'whatsapp', quantidade = 2) => {
       let texto = ''
       await comSessao(browser, estado, async p => {
@@ -404,7 +404,7 @@ test.describe.serial('a clínica: ver e contratar o adicional pela aba Assinatur
     expect((await assinatura()).adicionais).toEqual({})
   })
 
-  test('o que o sistema contrata a clínica enxerga na próxima tela', async ({ browser }) => {
+  test('o que o sistema contrata a rede enxerga na próxima tela', async ({ browser }) => {
     await comOferta()
     await comSessao(browser, admin.estado, async p => {
       expect((await chamarAcao(p, 'actions/sistema.ts', 'definirAdicional', `${SIS()}/redes/${outra.tenantId}`,

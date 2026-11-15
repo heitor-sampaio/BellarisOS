@@ -7,7 +7,7 @@ import type { ResolvedPermissions, ResolvedScopes } from '@estetica-os/types'
  * regra para pré-visualizar o que um cargo vai enxergar. Três cópias da mesma
  * lista divergiriam na primeira mudança — daí a fonte única.
  *
- * Ícones e o prefixo de rota da filial ficam com quem renderiza: aqui mora só
+ * Ícones e o prefixo de rota da unidade ficam com quem renderiza: aqui mora só
  * o que existe, como se chama e o que precisa para aparecer.
  */
 
@@ -38,7 +38,7 @@ export type MenuEntry = {
   group?:  MenuGroupKey
   /** Rótulo fixo, ou derivado das permissões (e do escopo) quando ele muda com o acesso. */
   label:   string | ((p: ResolvedPermissions, s?: Partial<ResolvedScopes>) => string)
-  /** Rota absoluta na rede; sufixo depois de `/[slug]` na filial. */
+  /** Rota absoluta na rede; sufixo depois de `/[slug]` na unidade. */
   href:    string
   /** `s`: o escopo de cada módulo, quando o item depende dele (o Fechamento do dia). */
   visible: (p: ResolvedPermissions, s?: Partial<ResolvedScopes>) => boolean
@@ -141,7 +141,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'auditoria',    group: 'gestao',       label: 'Auditoria',     href: '/admin/auditoria',      visible: p => has(p, 'audit') },
   { key: 'team',         group: 'gestao',       label: 'Equipe',        href: '/admin/team',           visible: p => has(p, 'team') },
   // Só na rede: a automação reage a fatos de todas as unidades, e uma versão
-  // por filial prometeria um recorte que o motor não faz.
+  // por unidade prometeria um recorte que o motor não faz.
   { key: 'automations',  group: 'gestao',       label: 'Automações',    href: '/admin/automacoes',     visible: p => has(p, 'automations') },
   // Uma tela, quatro módulos: quem só tem cargos ou fichas continua chegando lá,
   // e quem administra o financeiro da rede, à aba de comissões.

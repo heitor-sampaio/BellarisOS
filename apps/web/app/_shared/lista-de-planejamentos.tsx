@@ -29,7 +29,7 @@ export async function ListaDePlanejamentos({
   assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'agenda', 'VIEW')
 
-  // Na rede não existe "a filial atual", e o plano precisa de uma: é ela que
+  // Na rede não existe "a unidade atual", e o plano precisa de uma: é ela que
   // decide o caixa que recebe e a agenda onde as sessões caem. Por isso o
   // portal da rede pergunta a unidade ao criar, em vez de recusar depois.
   const [{ planos }, unidades] = await Promise.all([

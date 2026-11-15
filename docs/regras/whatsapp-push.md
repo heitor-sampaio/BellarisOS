@@ -489,7 +489,7 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ```
 ❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê
 ❌ Achar "a conversa de WhatsApp da cliente" por uma consulta própria — é conversa_de_whatsapp_da_cliente (pula o número removido, acha pelo telefone)
-❌ Montar o endereço do webhook ou de link público com NEXT_PUBLIC_APP_URL no servidor (é o do BUILD) — é urlDaClinica() (CLINICA_URL, lido agora — D11)
+❌ Montar o endereço do webhook ou de link público com NEXT_PUBLIC_APP_URL no servidor (é o do BUILD) — é urlDoAppDaRede() (CLINICA_URL, lido agora — D11)
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Gravar config de integração com chave fora da lista do provedor, ou baseUrl não pública (SSRF)

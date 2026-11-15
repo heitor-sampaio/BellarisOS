@@ -98,11 +98,11 @@ um muro que não depende de cada trava do código.
     autenticador, um código) em cada. Não há atalho de um host para o outro
     (o seletor saiu em 2026-10-06, a pedido do Heitor): cada um se abre pelo
     seu endereço.
-- **URL entre hosts vem do ambiente** (`urlDoHost`, `urlDaClinica`), nunca do
+- **URL entre hosts vem do ambiente** (`urlDoHost`, `urlDoAppDaRede`), nunca do
   pedido. O e-mail de "definir senha" volta pelo app da rede para membro de rede e
   pelo host do papel para atendente (`linkDeDefinirSenha`).
-- **Cache que um app muda e outro guarda** (`expirarEm`/`expirarNaClinica`,
-  `lib/plataforma/expirar-na-clinica.ts`): a situação da rede (`rede:`), a
+- **Cache que um app muda e outro guarda** (`expirarEm`/`expirarNoAppDaRede`,
+  `lib/plataforma/expirar-no-app-da-rede.ts`): a situação da rede (`rede:`), a
   sessão de suporte (`suporte-sessao:`) e o membro (`user:`) moram no APP DA REDE;
   a pessoa da plataforma (`plataforma:`) também no SUPORTE. Quem muda chama
   `/api/interno/expirar` do dono, com `INTERNO_SECRET` (32+, tempo constante)
@@ -379,7 +379,7 @@ um muro que não depende de cada trava do código.
     aumenta a quantidade dele — senão uma conexão de cortesia virava dez de
     graça. Com a cobrança ligada, nenhum adicional deixa a mensalidade em
     R$ 0 (o Asaas não cobra zero; encerrar é com o BellarisOS).
-  - **No app da rede contrata quem é da rede** (sem unidade fixa) com
+  - **No app da rede contrata quem é da rede** (com “A rede inteira”) com
     configurações MANAGE; a sessão de suporte não contrata
     (`bloqueioDoSuporte`). Rede cancelada não contrata. Cada mudança vai à
     auditoria da plataforma (`assinatura.adicional`, com a origem).
@@ -642,11 +642,11 @@ um muro que não depende de cada trava do código.
 
 **A configuração da rede toda (H7, decisão do Heitor, 2026-11-01:
 "gerente de uma unidade só mexe no que é da unidade"):**
-- Quem tinha só uma unidade, com os módulos em Gerenciar, abria Configurações
+- Quem não tinha “A rede inteira”, com os módulos em Gerenciar, abria Configurações
   no portal da unidade e gravava o que vale para todas as unidades (A6 da 5ª
   simulação) — a tela só avisava "alterar aqui muda para todas". A trava é da
-  ABRANGÊNCIA (`ctx.branchId`), nunca do nome do cargo: `mexeNaConfigDaClinica`
-  / `recusaDaConfigDaClinica` (`lib/configuracao-da-rede.ts`), na action E na
+  ABRANGÊNCIA (`ctx.branchId`), nunca do nome do cargo: `mexeNaConfigDaRede`
+  / `recusaDaConfigDaRede` (`lib/configuracao-da-rede.ts`), na action E na
   tela.
 - **Quem é da rede chega, pelo portal da UNIDADE, ao que só a rede tem** (A1
   da 14ª simulação, F74, 2026-11-13; CLAUDE.md §1, a rede de uma unidade só: quem tem o cargo Admin da rede
@@ -658,15 +658,15 @@ um muro que não depende de cada trava do código.
   (`paginasDaBusca`, `opcoes.daRede`) e as CONFIGURAÇÕES da unidade (a aba
   pedida que só a rede tem vira link, `linkDaAbaNaRede`; e as abas da rede toda
   ficam numa linha "Nas Configurações da rede: …", `abasSoDaRede`, com a
-  permissão e o plano de cada uma). Quem tem unidade fixa não vê nada disso
+  permissão e o plano de cada uma). Quem não tem “A rede inteira” não vê nada disso
   (não entra em `/admin`). Trava: `tests/configuracoes-e-menu-da-14.test.ts`
   (toda entrada de `ADMIN_MENU` chega ao menu da unidade de quem é da rede).
 - **A aba da rede toda diz QUEM muda** (A5 da 14ª, princípio 3): depois de
   "Esta configuração é da rede toda", "Quem muda: …" com os nomes de quem é
-  da rede e tem o módulo da aba em Gerenciar (`quemMudaNaClinica`,
+  da rede e tem o módulo da aba em Gerenciar (`quemMudaNaRede`,
   `lib/equipe/quem-desfaz.ts` — a mesma consulta do "quem desfaz").
 - **Fica com quem é da rede** (a action recusa, a aba diz "Esta configuração é
-  da rede toda" sem o editor, `ABAS_DA_CLINICA_TODA`): tags
+  da rede toda" sem o editor, `ABAS_DA_REDE_TODA`): tags
   (`actions/tags.ts`), funis, etapas e motivos de perda (`crm-funnels`,
   `crm-stages`, `crm-motivos`; o "Configurar funis" some do quadro da
   unidade), cargos, a matriz e quem vê o inbox (`roles`, `permissions`,
@@ -701,9 +701,8 @@ um muro que não depende de cada trava do código.
     (`atendimento.md` §9.5). Para a história:
   - **O catálogo de produtos é decisão da REDE** (princípio 1): uma
     configuração da rede, "Quem cadastra e edita os produtos", com "A unidade"
-    (quem tem só uma unidade cria e edita, `createProduct`/`updateProduct`;
-    o produto aparece em todas as unidades) ou "Só a rede" (quem tem só uma
-    unidade usa os produtos e lança o estoque deles, mas não cria, edita nem desativa; a
+    (quem não tem “A rede inteira” cria e edita, `createProduct`/`updateProduct`;
+    o produto aparece em todas as unidades) ou "Só a rede" (quem não tem “A rede inteira” usa os produtos e lança o estoque deles, mas não cria, edita nem desativa; a
     action recusa com `recusaDoCatalogo` e a tela diz por quê). O padrão é "A
     unidade", que é o comportamento de hoje (princípio 6: nada muda sozinho).
     **Feito na F66 (C63, 2026-11-12):** `tenants.catalogo_de_produtos`
@@ -717,10 +716,10 @@ um muro que não depende de cada trava do código.
     Estoque em Gerenciar, e só isso** (Bloco Estoque do plano de adaptação,
     2026-11-14, o Heitor, 13/11: "é só quem tem permissão de gerenciar, mesma
     regra para categoria, marca e fornecedor"). Substitui a C71 (as categorias
-    eram da rede toda e recusavam a unidade fixa com
-    `recusaDaConfigDaClinica`) e a mesma regra dos Fornecedores (D4, C76): ser
+    eram da rede toda e recusavam quem não tem “A rede inteira” com
+    `recusaDaConfigDaRede`) e a mesma regra dos Fornecedores (D4, C76): ser
     da rede deixou de contar. As três listas são da rede (todas as unidades
-    usam as mesmas), e quem tem só uma unidade, com o Estoque em Gerenciar,
+    usam as mesmas), e quem não tem “A rede inteira”, com o Estoque em Gerenciar,
     cria, renomeia e exclui (`criarItemDoEstoque`, `renomearItemDoEstoque`,
     `excluirItemDoEstoque`). Regra em `atendimento.md` §9.5; prova:
     `e2e/estoque-marcas-e-fornecedores.spec.ts`.
@@ -739,11 +738,11 @@ um muro que não depende de cada trava do código.
     `e2e/inbox-minhas-respostas-rapidas.spec.ts`.
   - **As Importações são de quem é da rede**, e a importação escolhe a que
     unidade os registros pertencem (a ficha da cliente, os produtos). Quem
-    tem só uma unidade não importa: a aba diz "Esta configuração é da
+    não tem “A rede inteira” não importa: a aba diz "Esta configuração é da
     rede toda", e a action recusa (`importarContatos`,
-    `retomarImportacao`; a aba está em `ABAS_DA_CLINICA_TODA`). Prova:
+    `retomarImportacao`; a aba está em `ABAS_DA_REDE_TODA`). Prova:
     `e2e/permissoes-f70.spec.ts` ("C73").
-- Sem aba pedida, quem tem unidade fixa abre Configurações na primeira aba que
+- Sem aba pedida, quem não tem “A rede inteira” abre Configurações na primeira aba que
   é DELA.
 - **A aba pedida que não abre diz por quê** (A11 da 12ª simulação, 2026-11-11;
   princípio 3: quem tinha só a Acácia abria `?tab=commissions` e
@@ -755,7 +754,7 @@ um muro que não depende de cada trava do código.
   link antigo valem pela aba: `chaveDaAbaPedida`, `lib/configuracoes/abas.ts`).
   **E a Equipe só para ver diz** "Você vê a equipe. Cadastrar e editar é de
   quem tem a Equipe em Gerenciar no cargo." (`[data-equipe-so-leitura]`, nos
-  dois portais). O `/admin/settings` de quem tem unidade fixa já levava à
+  dois portais). O `/admin/settings` de quem não tem “A rede inteira” já levava à
   unidade com o aviso do portal da rede (J-29) — o aviso some da URL depois de
   mostrado. Prova: `e2e/configuracoes-atritos-da-12.spec.ts` ("A11").
 - **Quem ATENDE na outra unidade é levado à própria agenda** (A20 da 14ª,
@@ -778,7 +777,7 @@ um muro que não depende de cada trava do código.
   vem primeiro no seletor de cargo** da Equipe (A9), como na tela de Cargos.
   Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A7/A8", "A9"),
   `tests/resumo-do-cargo.test.ts`. **A linha de Configurações na matriz diz o
-  que vem junto e o que a unidade fixa alcança** (A10 da 10ª, 2026-11-10;
+  que vem junto e o que as unidades da pessoa alcançam** (A10 da 10ª, 2026-11-10;
   princípio 3): o Gerenciar cita as integrações (o WhatsApp e as contas de
   anúncio, na aba Integrações), e a nota deixou de dizer "Só funciona para
   quem tem abrangência de rede" — falso desde a H7: "Quem não tem “A rede
@@ -811,7 +810,7 @@ um muro que não depende de cada trava do código.
   cargos já gravados não mudam (princípio 6). Prova:
   `e2e/configuracoes-atritos-da-12.spec.ts` ("A3").
 - Prova: `e2e/permissoes-gerente-de-unidade.spec.ts` (a action direta de cada
-  área recusada para quem tem só uma unidade, com a Admin da rede como controle; a aba Unidade; as
+  área recusada para quem não tem “A rede inteira”, com a Admin da rede como controle; a aba Unidade; as
   telas).
 
 **Decididas no levantamento das regras** (o Heitor, 2026-11-11; as três
@@ -1058,8 +1057,8 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
 ❌ Pôr tela ou rota da plataforma no apps/web, ou código só da plataforma no núcleo (o app da rede não carrega a plataforma)
 ❌ Levar a sessão do atendente ao domínio do app da rede (o "entrar como" é o código de uso único; não há cookie de volta)
 ❌ /api/entrar sem conferir o Origin do PRÓPRIO painel (um script no app da rede abriria sessões pelo cookie do atendente)
-❌ Montar URL de outro host a partir do pedido — é urlDoHost / urlDaClinica (o ambiente)
-❌ Mudar no sistema/suporte um cache que o app da rede guarda sem expirarNaClinica (rede:, suporte-sessao:, user:)
+❌ Montar URL de outro host a partir do pedido — é urlDoHost / urlDoAppDaRede (o ambiente)
+❌ Mudar no sistema/suporte um cache que o app da rede guarda sem expirarNoAppDaRede (rede:, suporte-sessao:, user:)
 ❌ Abrir /api/interno/expirar a tag fora da lista fechada de lib/interno.ts
 ❌ Gravar evento da plataforma por emitirEvento (dispara automação da rede) — é gravarEvento
 ❌ Decidir "rede bloqueada" fora de lib/redes/situacao.ts (ou a cobrança religar uma rede DESLIGADA à mão — is_active é só do admin)
@@ -1071,7 +1070,7 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
 ❌ Criar cliente ou assinatura no Asaas sem procurar antes pelo externalReference (o Asaas aceita duplicado)
 ❌ Webhook do Asaas que responde diferente de 200 para o que já gravou (o Asaas repete e, com 15 falhas, pausa a fila)
 ❌ Mandar automação, campanha ou push ao paciente de uma rede bloqueada (redeEstaBloqueada)
-❌ Action ou tela que grava configuração da rede toda sem recusaDaConfigDaClinica / mexeNaConfigDaClinica (quem tinha só uma unidade mudava para todas — H7), ou decidir isso pelo nome do cargo
+❌ Action ou tela que grava configuração da rede toda sem recusaDaConfigDaRede / mexeNaConfigDaRede (quem não tinha “A rede inteira” mudava para todas — H7), ou decidir isso pelo nome do cargo
 ❌ Chamar assinaturas_aplicar_regras em teste sem p_tenant (vale para as redes reais)
 ❌ Ler pela SESSÃO a unidade do membro que vem do banco (ctx.branchId) com .single(): com a claim velha a RLS a esconde e a tela dá 500 (D9 da 9ª) — é pelo servidor, com a rede
 ❌ Abrir a leitura da auditoria pela sessão, gravar nela fora do gatilho/da função, ou pôr nela o TEXTO de um registro clínico ou de credencial (só os nomes das colunas)

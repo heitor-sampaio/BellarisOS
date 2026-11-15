@@ -117,7 +117,7 @@ test('A17: o pacote sem "De venda" usa a da pessoa; o que tem, o dele (a regra d
   expect((await linhasDe({ client_package_id: comRegra })).map(l => [l.origem, n(l.regra_valor), l.regra_de])).toEqual([['PACOTE_VENDA', 10, 'ITEM']])
 })
 
-test('A17: o produto e o pré-pago — a da pessoa vence a da clínica; o pré-pago ganha a linha de venda', async ({ browser }) => {
+test('A17: o produto e o pré-pago — a da pessoa vence a da rede; o pré-pago ganha a linha de venda', async ({ browser }) => {
   expect((await db().from('users').update({ comissao_venda_pct: 3 }).eq('id', tatiane.userId)).error).toBeNull()
   const rota = `/${slug}/pdv`
   let venda = '', prePago = ''
@@ -139,7 +139,7 @@ test('A17: o produto e o pré-pago — a da pessoa vence a da clínica; o pré-p
   }).toBe(30)
 })
 
-test('A17: o plano — a da pessoa vence o "venda de plano (%)" da clínica; sem a da pessoa, a da clínica', async () => {
+test('A17: o plano — a da pessoa vence o "venda de plano (%)" da rede; sem a da pessoa, a da rede', async () => {
   const b = db()
   expect((await b.from('users').update({ comissao_venda_pct: 3 }).eq('id', tatiane.userId)).error).toBeNull()
   const p1 = await rede.criarPlanoProposto('Plano A', { semTermo: true })

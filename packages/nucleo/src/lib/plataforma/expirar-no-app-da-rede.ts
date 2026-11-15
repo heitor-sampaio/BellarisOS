@@ -2,7 +2,7 @@ import 'server-only'
 import { NextResponse, type NextRequest } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { segredoInternoConfere, tagsParaExpirar } from '../interno'
-import { urlDaClinica, urlDoHost } from './destino'
+import { urlDoAppDaRede, urlDoHost } from './destino'
 
 /**
  * O cache que um app muda e OUTRO app guarda (2026-10-06). Cada processo tem
@@ -16,7 +16,7 @@ import { urlDaClinica, urlDoHost } from './destino'
  * estado no banco a cada transação) seguem valendo; o aviso é para a TELA não
  * ficar atrasada.
  */
-export type OndeExpirar = 'clinica' | 'sistema' | 'suporte'
+export type OndeExpirar = 'rede' | 'sistema' | 'suporte'
 
 export async function expirarEm(onde: OndeExpirar, tags: string[]): Promise<void> {
   const lista = tags.filter(Boolean)
@@ -24,7 +24,7 @@ export async function expirarEm(onde: OndeExpirar, tags: string[]): Promise<void
   try {
     const segredo = process.env.INTERNO_SECRET
     if (!segredo) { console.error('[expirarEm] INTERNO_SECRET não definida'); return }
-    const base = onde === 'clinica' ? urlDaClinica() : urlDoHost(onde)
+    const base = onde === 'rede' ? urlDoAppDaRede() : urlDoHost(onde)
     const r = await fetch(`${base}/api/interno/expirar`, {
       method: 'POST',
       headers: { authorization: `Bearer ${segredo}`, 'content-type': 'application/json' },
@@ -39,7 +39,7 @@ export async function expirarEm(onde: OndeExpirar, tags: string[]): Promise<void
 }
 
 /** Atalho: o que mora na clínica. */
-export const expirarNaClinica = (tags: string[]) => expirarEm('clinica', tags)
+export const expirarNoAppDaRede = (tags: string[]) => expirarEm('rede', tags)
 
 /**
  * O handler de `/api/interno/expirar` (o mesmo nos três apps): segredo,

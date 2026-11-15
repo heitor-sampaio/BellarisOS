@@ -7,7 +7,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 /**
  * Automações — só no portal da REDE.
  *
- * O motor reage a fatos de todas as unidades, e uma versão por filial
+ * O motor reage a fatos de todas as unidades, e uma versão por unidade
  * prometeria um recorte que ele não faz. Mesmo raciocínio de procedimentos e
  * integrações (CLAUDE.md §6).
  */

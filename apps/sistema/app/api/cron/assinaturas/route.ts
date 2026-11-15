@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
-import { expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
+import { expirarNoAppDaRede } from '@estetica-os/nucleo/lib/plataforma/expirar-no-app-da-rede'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { depoisDaMudanca, registrarAutomatico } from '@estetica-os/nucleo/lib/redes/assinatura'
 import { aplicarCobranca, assinaturaEncerradaNoAsaas, sincronizarCobranca, levarValoresPendentes } from '@/lib/redes/cobranca'
@@ -29,7 +29,7 @@ export const maxDuration = 60
 // Aqui e na CLÍNICA, que guarda o cache da rede (o `buildContext` lê a cada tela).
 const expirar = async (tag: string) => {
   revalidateTag(tag, { expire: 0 })
-  await expirarNaClinica([tag])
+  await expirarNoAppDaRede([tag])
 }
 
 export async function GET(req: NextRequest) {

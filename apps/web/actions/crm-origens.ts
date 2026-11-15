@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { origensDaRede } from '@/lib/crm/origens'
@@ -34,8 +34,8 @@ function revalidar() {
 export async function criarOrigemDoLead(nome: string): Promise<Resultado> {
   try {
     const ctx = await contextoDeQuemConfigura()
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     const limpo = (nome ?? '').trim().replace(/\s+/g, ' ').slice(0, 40)
     if (!limpo) return { error: 'Dê um nome à origem.' }
     const admin = createAdminClient()
@@ -55,8 +55,8 @@ export async function criarOrigemDoLead(nome: string): Promise<Resultado> {
 export async function alternarOrigemDoLead(id: string, ativo: boolean): Promise<Resultado> {
   try {
     const ctx = await contextoDeQuemConfigura()
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     if (!z.string().uuid().safeParse(id).success) return { error: 'Origem não encontrada.' }
     const feitas = await gravar(createAdminClient().from('crm_origens').update({ ativo: !!ativo })
       .eq('id', id).eq('tenant_id', ctx.tenantId!).select('id'), 'mudar a origem') as { id: string }[] | null

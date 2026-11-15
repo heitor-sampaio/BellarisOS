@@ -72,7 +72,7 @@ test('lançar despesa e dar baixa: o cartão, nada antes; o Confirmar grava', as
 // F17-5 (o Heitor: "pode"): o Copilot aceita as vezes no crédito — "registra
 // R$ 1.200 no crédito em 3x" → 3x —, pelo mesmo núcleo da tela e com a mesma
 // trava do limite. A operadora deposita 3 × R$ 400.
-test('F17-5: lançar e dar baixa no crédito em 3x; acima do limite da clínica, nem vira cartão', async ({ browser }) => {
+test('F17-5: lançar e dar baixa no crédito em 3x; acima do limite da rede, nem vira cartão', async ({ browser }) => {
   expect((await db().from('tenants').update({ cartao_max_vezes: 3 }).eq('id', rede.outra.tenantId)).error).toBeNull()
   const parcelas = async (tx: string) => {
     const { data, error } = await db().rpc('recebiveis_do_cartao_lista', { p_tenant: rede.outra.tenantId, p_branch_ids: null, p_from: null, p_to: null })

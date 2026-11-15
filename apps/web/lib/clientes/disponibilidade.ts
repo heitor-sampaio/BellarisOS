@@ -11,7 +11,7 @@ import { redeBloqueada } from '@/lib/redes/situacao'
  * tranca a conta dela inteira: o contexto, o destino do login e o seletor
  * pulam a fechada; "conta suspensa" só quando nenhuma abre.
  */
-export async function clinicaAbreParaCliente(tenantId: string): Promise<boolean> {
+export async function redeAbreParaCliente(tenantId: string): Promise<boolean> {
   const rede = await getCachedRede(tenantId)
   if (!rede) return true
   if (redeBloqueada(rede)) return false
@@ -21,6 +21,6 @@ export async function clinicaAbreParaCliente(tenantId: string): Promise<boolean>
 /** As fichas (com endereço de portal) cujas clínicas abrem. */
 export async function fichasQueAbrem<F extends { tenantId: string; slug: string | null }>(fichas: F[]): Promise<F[]> {
   const comPortal = fichas.filter(f => f.slug)
-  const abre = await Promise.all(comPortal.map(f => clinicaAbreParaCliente(f.tenantId)))
+  const abre = await Promise.all(comPortal.map(f => redeAbreParaCliente(f.tenantId)))
   return comPortal.filter((_, i) => abre[i])
 }

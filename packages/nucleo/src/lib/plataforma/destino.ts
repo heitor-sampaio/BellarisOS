@@ -63,7 +63,7 @@ export function urlDoHost(host: HostDaPlataforma, env: Ambiente = process.env): 
 }
 
 /** O endereço da clínica (`CLINICA_URL`), para o que a plataforma manda para lá. */
-export function urlDaClinica(env: Ambiente = process.env): string {
+export function urlDoAppDaRede(env: Ambiente = process.env): string {
   const url = env.CLINICA_URL ?? env.NEXT_PUBLIC_APP_URL
   if (!url) throw new Error('CLINICA_URL não está definida')
   return url.replace(/\/+$/, '')
@@ -78,7 +78,7 @@ export function linkDeDefinirSenha(
   quem: { para: 'membro' } | { para: 'atendente'; papel: 'ADMIN' | 'SUPORTE' | 'GERENTE' },
   env: Ambiente = process.env,
 ): string {
-  const base = quem.para === 'membro' ? urlDaClinica(env) : urlDoHost(quem.papel === 'SUPORTE' ? 'suporte' : 'sistema', env)
+  const base = quem.para === 'membro' ? urlDoAppDaRede(env) : urlDoHost(quem.papel === 'SUPORTE' ? 'suporte' : 'sistema', env)
   return `${base}/auth/confirm?next=/update-password`
 }
 

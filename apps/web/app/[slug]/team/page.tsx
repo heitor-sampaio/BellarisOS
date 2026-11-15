@@ -47,7 +47,7 @@ export default async function TeamPage({
   // `?q=` filtra por nome ou e-mail (a busca universal entra por aqui).
   const termo    = termoDaUrl((await searchParams).q)
   const ctx = await getTenantContext()
-  // A página lista a equipe da filial e todos os cargos do tenant. Sem este gate
+  // A página lista a equipe da unidade e todos os cargos do tenant. Sem este gate
   // bastava a URL direta: o cargo sem acesso a Equipe via tudo, só sem botões.
   assertPermission(ctx, 'team', 'VIEW')
   const supabase = await createClient()

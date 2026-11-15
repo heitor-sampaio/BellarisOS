@@ -232,7 +232,7 @@ async function planoDoTenant(
  * com a agenda "só os meus", dela. Editar, fechar e cancelar seguem pelo
  * `planoDoTenant` / `planoFechadoAoAlcance` (a unidade do plano ao alcance).
  */
-async function planoDaClinica(
+async function planoDaRede(
   admin: ReturnType<typeof createAdminClient>,
   planId: string,
   ctx: TenantContext,
@@ -415,7 +415,7 @@ export async function criarPlanoDoCliente(
   if (!montaPlano(ctx)) return { error: RECUSA_QUEM_MONTA }
   const admin = createAdminClient()
 
-  let filial = branchId
+  let unidadePedida = branchId
 
   if (clientId) {
     const cliente = await ler(admin
@@ -424,19 +424,19 @@ export async function criarPlanoDoCliente(
       .eq('id', clientId)
       .maybeSingle(), 'buscar o cliente')
     if (!cliente || cliente.tenant_id !== ctx.tenantId) return { error: 'Cliente não encontrado.' }
-    // A filial do plano é a de onde ele está sendo feito; sem ela, a de cadastro
+    // A unidade do plano é a de onde ele está sendo feito; sem ela, a de cadastro
     // do cliente. É o que o aceite usa depois para o caixa e os agendamentos.
-    filial = filial || (cliente.branch_id as string | null) || ''
+    unidadePedida = unidadePedida || (cliente.branch_id as string | null) || ''
   }
 
-  if (!filial) return { error: 'Selecione a unidade do plano.' }
+  if (!unidadePedida) return { error: 'Selecione a unidade do plano.' }
   // Da rede e ao alcance: até 2026-09-28 a unidade do plano era gravada como
   // chegava — inclusive a de outra clínica.
   const unidadeDoPlano = await ler(admin.from('branches').select('id')
-    .eq('id', filial).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
-  if (!unidadeDoPlano || !alcancaUnidade(ctx, filial)) return { error: 'Unidade não encontrada.' }
+    .eq('id', unidadePedida).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+  if (!unidadeDoPlano || !alcancaUnidade(ctx, unidadePedida)) return { error: 'Unidade não encontrada.' }
   // PT2: monta quem ATENDE na unidade do plano.
-  if (!montaPlano(ctx, filial)) return { error: RECUSA_QUEM_MONTA }
+  if (!montaPlano(ctx, unidadePedida)) return { error: RECUSA_QUEM_MONTA }
   // "Montar plano desta avaliação": a avaliação é da rede, do mesmo cliente e
   // ao alcance de quem monta (o id vem do navegador).
   if (appointmentId) {
@@ -449,7 +449,7 @@ export async function criarPlanoDoCliente(
     .from('treatment_plans')
     .insert({
       client_id:                 clientId,
-      branch_id:                 filial,
+      branch_id:                 unidadePedida,
       professional_id:           ctx.internalUserId!,
       evaluation_appointment_id: appointmentId ?? null,
       name:                      nome?.trim() || 'Plano de tratamento',
@@ -664,13 +664,13 @@ export async function listarPlanejamentos(opcoes?: {
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  // `treatment_plans` não tem tenant_id: o recorte é pela filial.
-  const filiais = await ler(admin
+  // `treatment_plans` não tem tenant_id: o recorte é pela unidade.
+  const unidadesDaRede = await ler(admin
     .from('branches')
     .select('id, name')
     .eq('tenant_id', ctx.tenantId!), 'carregar as unidades')
   // Quem tem unidade fixa lista só a dele, qualquer que seja o pedido (§11).
-  const doTenant = ((filiais ?? []) as { id: string; name: string }[]).filter(b => alcancaUnidade(ctx, b.id))
+  const doTenant = ((unidadesDaRede ?? []) as { id: string; name: string }[]).filter(b => alcancaUnidade(ctx, b.id))
   const alcance  = opcoes?.branchId
     ? doTenant.filter(b => b.id === opcoes.branchId)
     : doTenant
@@ -1150,7 +1150,7 @@ export async function getDocumentosDoPlano(planId: string | null): Promise<Docum
   const admin = createAdminClient()
   let excluidos: string[] = []
   if (planId) {
-    const plan = await planoDaClinica(admin, planId, ctx)
+    const plan = await planoDaRede(admin, planId, ctx)
     if (!plan) return null
     const linha = await ler(admin.from('treatment_plans').select('documentos_excluidos').eq('id', planId).maybeSingle(),
       'ler os documentos excluídos do plano') as { documentos_excluidos: string[] | null } | null
@@ -2217,7 +2217,7 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
 
     const admin = createAdminClient()
     // Ver as sessões é da clínica (H5; F73): a recepção de outra unidade abre a ficha de tratamento.
-    if (!(await planoDaClinica(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
+    if (!(await planoDaRede(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
 
     // 1. Busca o plano (sem joins — evita erro de FK alias no PostgREST)
     const { data: plan, error: planErr } = await admin

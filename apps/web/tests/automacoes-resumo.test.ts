@@ -36,7 +36,7 @@ describe('as alças do "Se" falam português', () => {
     expect(rotuloDaSaida('padrao')).toBe('Padrão')
   })
 
-  it('a chave de um caso escrito pela clínica passa como está', () => {
+  it('a chave de um caso escrito pela rede passa como está', () => {
     expect(rotuloDaSaida('botox')).toBe('botox')
   })
 })

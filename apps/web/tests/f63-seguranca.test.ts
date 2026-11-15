@@ -42,7 +42,7 @@ describe('C1: as telas de comissão escutam o sinal', () => {
   })
 })
 
-describe('C7: o suporte não muda a clínica por estas actions', () => {
+describe('C7: o suporte não muda a rede por estas actions', () => {
   it.each([
     ['actions/team.ts', 'deactivateTeamMember'],
     ['actions/team.ts', 'reactivateTeamMember'],

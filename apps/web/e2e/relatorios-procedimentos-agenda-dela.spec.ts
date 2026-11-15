@@ -63,7 +63,7 @@ test.afterAll(async () => {
   await renata?.limpar(); await rede?.limpar()
 })
 
-test('com a agenda dela e o financeiro da clínica, a tabela não mostra "0 execuções" com a receita de outra', async ({ browser }) => {
+test('com a agenda dela e o financeiro da rede, a tabela não mostra "0 execuções" com a receita de outra', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto('/admin/reports?period=month&tab=procedimentos')
     const tabela = p.locator('table').filter({ hasText: 'Execuções' })

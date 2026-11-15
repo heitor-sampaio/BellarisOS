@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, filiaisAtivas, nomeDeTeste } from './apoio/banco'
+import { banco, unidadesAtivas, nomeDeTeste } from './apoio/banco'
 
 /**
  * O lançamento aparece na lista NO INSTANTE em que é criado.
@@ -29,7 +29,7 @@ test.afterAll(async () => {
 for (const rodada of [1, 2, 3]) {
   test(`lançamento criado agora está na lista — rodada ${rodada}`, async ({ page }) => {
     const db = banco()
-    const unidade = (await filiaisAtivas())[0]!
+    const unidade = (await unidadesAtivas())[0]!
     const texto = `${descricao} ${rodada}`
 
     // Sem folga entre gravar e abrir: é o pior caso, e era ele que falhava.

@@ -455,7 +455,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   `e2e/automacoes-campanhas-atritos-da-14.spec.ts`.
 - **Automações e Campanhas são da rede, e ficam só no portal da rede**
   (D-2, decisão do Heitor, 2026-10-29: "a automação é da clínica, mesmo que o
-  alvo seja a unidade"). Não há tela delas em `/[slug]`; quem tem unidade fixa
+  alvo seja a unidade"). Não há tela delas em `/[slug]`; quem não tem “A rede inteira”
   não as alcança, tenha o módulo que tiver. A tela de Cargos diz isso na linha
   de Marketing e de Automações, ligadas ou não (`SO_NA_REDE_NOTE`,
   `lib/permissions-copy.ts`; os dois em `NETWORK_ONLY`). Prova:

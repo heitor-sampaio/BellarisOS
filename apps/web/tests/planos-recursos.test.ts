@@ -80,7 +80,7 @@ describe('modulosForaDoPlano (o corte nas permissões)', () => {
     expect(modulosForaDoPlano(lerRecursos({ funcionalidades: ['anuncios'], limites: {} }))).not.toContain('marketing')
     expect(modulosForaDoPlano(lerRecursos({ funcionalidades: [], limites: {} }))).toContain('marketing')
   })
-  it('clientes, procedimentos e equipe nunca saem (são o mínimo da clínica)', () => {
+  it('clientes, procedimentos e equipe nunca saem (são o mínimo da rede)', () => {
     const fora = modulosForaDoPlano(lerRecursos({ funcionalidades: [], limites: {} }))
     for (const m of ['clients', 'procedures', 'team', 'settings', 'cashier', 'forms']) expect(fora).not.toContain(m)
   })

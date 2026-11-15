@@ -89,7 +89,7 @@ async function lead(rotulo: string, campos: Record<string, unknown> = {}): Promi
   return data!.id
 }
 
-test('A43: "Ir para a conversa" numa clínica sem WhatsApp diz que não há canal, e não cria conversa', async ({ browser }) => {
+test('A43: "Ir para a conversa" numa rede sem WhatsApp diz que não há canal, e não cria conversa', async ({ browser }) => {
   const id = await lead('Instagram A43', { source: 'Instagram' })
   await como(browser, sdr, async p => {
     await p.goto('/admin/oportunidades')

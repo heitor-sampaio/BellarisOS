@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { O_QUE_A_CLIENTE_AVALIA, oQueAvalia, type OQueAClienteAvalia } from '@/lib/avaliacao/notas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
@@ -78,8 +78,8 @@ export async function atualizarDadosDaRede(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // O dado da rede é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
 
   const texto = (k: string) => (formData.get(k) as string | null)?.trim() || null
 
@@ -171,8 +171,8 @@ export async function atualizarVisibilidadeDoInbox(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
   // Quem vê o inbox é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
 
   if (modo !== 'pessoa' && modo !== 'conversa') return { error: 'Opção inválida.' }
 

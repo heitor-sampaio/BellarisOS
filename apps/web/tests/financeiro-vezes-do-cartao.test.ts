@@ -6,7 +6,7 @@ import { maximoDeVezes, recusaDasVezes, opcoesDeVezes } from '@/lib/financeiro/v
  * Nx'. O padrão é o maior número de parcelas com taxa cadastrada." Sem
  * nenhuma taxa do crédito, o de hoje: 12x.
  */
-describe('até quantas vezes a clínica parcela no crédito', () => {
+describe('até quantas vezes a rede parcela no crédito', () => {
   it('sem valor gravado, é a maior parcela do crédito com taxa', () => {
     expect(maximoDeVezes(null, [1, 3, 6])).toBe(6)
     expect(maximoDeVezes(null, [1])).toBe(1)
@@ -16,7 +16,7 @@ describe('até quantas vezes a clínica parcela no crédito', () => {
     expect(maximoDeVezes(null, [])).toBe(12)
   })
 
-  it('o que a clínica gravou vence o padrão', () => {
+  it('o que a rede gravou vence o padrão', () => {
     expect(maximoDeVezes(4, [1, 3, 6])).toBe(4)
     expect(maximoDeVezes(10, [1, 3])).toBe(10)
   })

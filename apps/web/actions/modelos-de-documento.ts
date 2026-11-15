@@ -18,7 +18,7 @@ import { createHash } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { PDFDocument } from 'pdf-lib'
 import { getTenantContext, assertPermission } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro, ErroDeBanco } from '@/lib/db'
 import { ensurePrivateBucket, getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
@@ -123,8 +123,8 @@ export async function salvarModeloDoEditor(input: Configuracao & { documento: un
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
 
     const recusa = conferir(input)
     if (recusa) return { error: recusa }
@@ -164,8 +164,8 @@ export async function salvarModeloDeArquivo(formData: FormData): Promise<Resulta
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
 
     const c: Configuracao = {
       id:        (formData.get('id') as string) || null,
@@ -234,8 +234,8 @@ export async function definirModeloAtivo(id: string, ativo: boolean): Promise<Re
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     const admin = createAdminClient()
     // Ligar um contrato de plano (ou de pacote) é TROCAR o ativo (D-5): pelo
     // mesmo caminho do "Tornar ativo", numa transação, em vez de bater no
@@ -271,8 +271,8 @@ export async function tornarContratoAtivo(id: string): Promise<Resultado> {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     return await trocarContratoDaRede(ctx.tenantId!, String(id ?? ''))
   } catch (e) {
     return { error: mensagem(e) }
@@ -305,8 +305,8 @@ export async function enviarImagemDoModelo(formData: FormData): Promise<{
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
-    const daClinica = recusaDaConfigDaClinica(ctx)
-    if (daClinica) return { error: daClinica }
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
     const file = formData.get('imagem')
     if (!(file instanceof File) || file.size === 0) return { error: 'Escolha a imagem.' }
     if (file.size > MAX_BYTES_DA_IMAGEM) return { error: 'A imagem passou de 2 MB.' }

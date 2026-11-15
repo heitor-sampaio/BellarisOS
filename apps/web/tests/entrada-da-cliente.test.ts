@@ -11,12 +11,12 @@ describe('escolherEntrada — para onde a cliente vai depois do login', () => {
     expect(escolherEntrada([ficha('a', { slug: null })])).toBeNull()
   })
 
-  it('uma clínica só: direto para ela (como sempre foi)', () => {
+  it('uma rede só: direto para ela (como sempre foi)', () => {
     expect(escolherEntrada([ficha('a')])).toEqual({ tipo: 'portal', ficha: ficha('a') })
     expect(escolherEntrada([ficha('a'), ficha('b', { slug: null })])).toMatchObject({ tipo: 'portal', ficha: { clientId: 'a' } })
   })
 
-  it('duas clínicas, nunca escolheu: o seletor', () => {
+  it('duas redes, nunca escolheu: o seletor', () => {
     expect(escolherEntrada([ficha('a'), ficha('b')])).toEqual({ tipo: 'seletor' })
   })
 
@@ -28,7 +28,7 @@ describe('escolherEntrada — para onde a cliente vai depois do login', () => {
     expect(escolherEntrada(fichas)).toMatchObject({ tipo: 'portal', ficha: { clientId: 'b' } })
   })
 
-  it('uma clínica NOVA foi ligada depois da última entrada: o seletor de novo, uma vez', () => {
+  it('uma rede NOVA foi ligada depois da última entrada: o seletor de novo, uma vez', () => {
     const fichas = [
       ficha('a', { ultimaEntradaEm: '2026-10-05T10:00:00Z' }),
       ficha('b', { ligadaEm: '2026-10-09T10:00:00Z' }),

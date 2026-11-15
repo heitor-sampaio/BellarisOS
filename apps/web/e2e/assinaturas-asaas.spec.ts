@@ -249,7 +249,7 @@ test.describe.serial('os adicionais levam o total ao Asaas', () => {
     expect((await valores()).valor_no_asaas_centavos).toBe(14900)
   })
 
-  test('a clínica contrata: o sistema leva o total ao Asaas', async ({ browser }) => {
+  test('a rede contrata: o sistema leva o total ao Asaas', async ({ browser }) => {
     await comSessao(browser, dono2.estado, async p => {
       const r = await chamarAcao(p, 'actions/assinatura.ts', 'contratarAdicional', '/admin/settings?tab=assinatura', ['copilot', 1])
       expect(r.texto).toContain('"ok":true')

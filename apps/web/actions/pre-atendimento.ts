@@ -331,13 +331,13 @@ async function montarLinkDaFicha(
 ): Promise<LinkDoPreAtendimento> {
   const admin = createAdminClient()
   const unidade = await ler(admin.from('branches').select('name').eq('id', ap.branch_id).maybeSingle(), 'buscar a unidade')
-  const clinica = (unidade?.name as string) || 'A equipe'
+  const remetente = (unidade?.name as string) || 'A equipe'
   const url = `${origemPublicaDe(await headers())}/pre-atendimento/${token}`
   // A prévia aparece na tela de bloqueio do celular: nada de saúde (nem no
   // nome da ficha — PR3 trocou "pré-atendimento" por "ficha de saúde" no que
   // se lê DENTRO do link, não aqui).
   const mensagem = mensagemDoLink({
-    nome: cliente?.name as string | null, pedido: `${clinica} mandou uma ficha para você responder.`,
+    nome: cliente?.name as string | null, pedido: `${remetente} mandou uma ficha para você responder.`,
     acao: 'Para responder', temCpf, dias: VALIDADE_DO_LINK_DIAS, url,
   })
   const numero = telefoneParaWhatsApp(cliente?.phone as string | null)

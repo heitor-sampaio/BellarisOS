@@ -90,7 +90,7 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
       </div>
       <ComoAcontece inicial={inicial} podeEditar={podeEditar} produtos={produtos} />
       <TabelaDeTaxas maquininhas={maquininhas} pixGravado={taxaDoPix} podeEditar={podeEditar} />
-      <CrediarioDaClinica gravado={crediarioMax} podeEditar={podeEditar} />
+      <CrediarioDaRede gravado={crediarioMax} podeEditar={podeEditar} />
     </div>
   )
 }
@@ -300,7 +300,7 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
  * clínica. Padrão 12. Vale no Vender, no checkout e no check-in do plano; a
  * despesa parcelada não muda.
  */
-function CrediarioDaClinica({ gravado, podeEditar }: { gravado: number; podeEditar: boolean }) {
+function CrediarioDaRede({ gravado, podeEditar }: { gravado: number; podeEditar: boolean }) {
   const router = useRouter()
   const [n, setN] = useState(String(gravado))
   const [erro, setErro] = useState<string | null>(null)

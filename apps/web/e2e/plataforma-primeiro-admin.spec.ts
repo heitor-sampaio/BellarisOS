@@ -70,7 +70,7 @@ test.describe.serial('primeiro admin por variável', () => {
     expect((await db().from('platform_staff').select('papel').eq('auth_id', criado.user!.id)).data).toEqual([{ papel: 'ADMIN' }])
   })
 
-  test('na clínica, o e-mail da variável NÃO é promovido', async ({ browser }) => {
+  test('no app da rede, o e-mail da variável NÃO é promovido', async ({ browser }) => {
     await apagarOAdmin()
     const senha = `Senha-${Date.now().toString(36)}-8y`
     const { data: criado, error } = await db().auth.admin.createUser({ email: EMAIL, password: senha, email_confirm: true })

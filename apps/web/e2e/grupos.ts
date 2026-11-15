@@ -8,7 +8,7 @@
  *
  * 1. cria a própria rede (`criarOutraRede`);
  * 2. não lê nem mexe na rede REAL (`tenantId()`, `unidadeQueAtende()`,
- *    `filiaisAtivas()`);
+ *    `unidadesAtivas()`);
  * 3. não usa a sessão padrão (o `page` do fixture é o admin da rede real) —
  *    entra com membros que ele mesmo cria;
  * 4. não chama cron nem função que passa por TODAS as redes.
@@ -176,6 +176,8 @@ export const ISOLADOS = [
   'estoque-custo-de-consumo.spec.ts',
   'estoque-transferencia-com-nomes.spec.ts',
   'relatorio-vendas-plano-de-quem-vendeu.spec.ts',
+  // V2/EQ1 (2026-11-16): a exportação das vendas de quem tem várias unidades.
+  'relatorio-vendas-varias-unidades.spec.ts',
   'indicadores-reativar-sem-visita.spec.ts',
   'estoque-negativo-e-sem-saldo.spec.ts',
   'estoque-vazio.spec.ts',
@@ -239,7 +241,7 @@ export const ISOLADOS = [
   'relatorios-taxa-sem-denominador.spec.ts',
   'relatorios-unidade-na-url.spec.ts',
   'relatorios-conversao-funis-ativos.spec.ts',
-  'indicadores-retencao-clinica-inteira.spec.ts',
+  'indicadores-retencao-rede-inteira.spec.ts',
   'indicadores-custo-um-nome-so.spec.ts',
   'comissoes-sem-quem-atende.spec.ts',
   // O Bloco Tags do plano de adaptação (2026-11-14): sem tag de unidade.
@@ -255,7 +257,7 @@ export const ISOLADOS = [
   'pacote-sessao-agendar.spec.ts',
   'pacotes-venda.spec.ts',
   'portal-cliente-tratamento.spec.ts',
-  'portal-cliente-varias-clinicas.spec.ts',
+  'portal-cliente-varias-redes.spec.ts',
   'pre-pago.spec.ts',
   'pre-pago-cancelar-unidade.spec.ts',
   'pre-pago-agendados.spec.ts',
@@ -311,7 +313,7 @@ export const ISOLADOS = [
   'documentos-inicio-da-9.spec.ts',
   'atendimento-atritos-da-9.spec.ts',
   // F44 (o dinheiro da 9ª simulação), cada um na sua rede [e2e].
-  'vendas-credito-na-clinica.spec.ts',
+  'vendas-credito-interno.spec.ts',
   'financeiro-vencidas-da-9.spec.ts',
   'financeiro-atritos-da-9.spec.ts',
   'financeiro-ficha-e-app-da-9.spec.ts',
@@ -333,7 +335,7 @@ export const ISOLADOS = [
   'comissoes-uso-da-10.spec.ts',
   'ficha-uso-da-10.spec.ts',
   // F50 (os atritos da 10ª: a clínica de uma opção só, setup, importação, agenda e atendimento).
-  'agenda-clinica-de-uma-opcao.spec.ts',
+  'agenda-rede-de-uma-opcao.spec.ts',
   'atendimento-uso-da-10.spec.ts',
   'configuracoes-atritos-da-10.spec.ts',
   'portal-cliente-historico-da-10.spec.ts',
@@ -381,7 +383,7 @@ export const ISOLADOS = [
   'portal-cliente-credito-interno.spec.ts',
   'portal-cliente-plano-proposto.spec.ts',
   'portal-cliente-plano-fechado.spec.ts',
-  'portal-cliente-a-clinica.spec.ts',
+  'portal-cliente-a-unidade.spec.ts',
   'portal-cliente-prazo-na-tela.spec.ts',
   'portal-cliente-documentos-do-agendamento.spec.ts',
   'documentos-assinar-sem-passo-extra.spec.ts',
@@ -402,7 +404,7 @@ export const ISOLADOS = [
   'indicadores-dashboard-e-agenda.spec.ts',
   'indicadores-uma-conta-so.spec.ts',
   'indicadores-cada-numero-no-seu-modulo.spec.ts',
-  'indicadores-retencao-da-clinica.spec.ts',
+  'indicadores-retencao-da-rede.spec.ts',
   'indicadores-lucro-desconta-insumo.spec.ts',
   'financeiro-a-receber-todos-os-vencimentos.spec.ts',
   'prontuario-evolucao.spec.ts',
@@ -484,7 +486,7 @@ export const ISOLADOS = [
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */
 export function motivoDeNaoSerIsolado(texto: string): string | null {
   if (!/criarOutraRede\(/.test(texto)) return 'não cria a própria rede'
-  if (/\b(tenantId|unidadeQueAtende|filiaisAtivas)\(/.test(texto)) return 'lê a rede real'
+  if (/\b(tenantId|unidadeQueAtende|unidadesAtivas)\(/.test(texto)) return 'lê a rede real'
   if (/async \(\{[^}]*\bpage\b[^}]*\}\)/.test(texto) && !/test\.use\(\{\s*storageState/.test(texto)) {
     return 'usa a sessão padrão (admin da rede real)'
   }

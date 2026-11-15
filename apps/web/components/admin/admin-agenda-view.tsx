@@ -234,12 +234,12 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
 
   return (
     <div ref={rolagemRef} data-grade-da-rede style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>
-      {/* A largura da coluna de filial vem do CSS (`--agenda-col`): no celular
+      {/* A largura da coluna de unidade vem do CSS (`--agenda-col`): no celular
           ela encolhe para 138px, senão com 180px cabia UMA coluna e meia na
           tela e a grade parecia cortada em vez de rolável. */}
       <div style={{ minWidth: `calc(${TIME_COL}px + ${branches.length} * var(--agenda-col, 180px))` }}>
 
-        {/* Cabeçalho com nomes das filiais */}
+        {/* Cabeçalho com nomes das unidades */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: `${TIME_COL}px repeat(${branches.length}, 1fr)`,
@@ -287,7 +287,7 @@ function DayGrid({ branches, appointments, dia, janela, onSelecionar, onHorarioV
             ))}
           </div>
 
-          {/* Colunas por filial */}
+          {/* Colunas por unidade */}
           {branches.map(b => {
             const appts = byBranch[b.id] ?? []
 

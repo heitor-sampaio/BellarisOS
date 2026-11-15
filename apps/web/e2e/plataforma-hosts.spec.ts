@@ -21,7 +21,7 @@ test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o 
 const marca = Date.now().toString(36)
 const db = () => banco()
 const SENHA = `Senha-e2e-${marca}`
-const CLINICA = () => process.env.E2E_BASE_URL!
+const APP_DA_REDE = () => process.env.E2E_BASE_URL!
 
 interface Fx {
   admin: AtendenteDeTeste; suporte: AtendenteDeTeste
@@ -129,16 +129,16 @@ test.describe.serial('a plataforma em hosts próprios', () => {
     } finally { await sem.limpar() }
   })
 
-  test('a clínica não tem mais nada da plataforma (telas, webhook do Asaas, entrada do suporte)', async ({ browser }) => {
+  test('a rede não tem mais nada da plataforma (telas, webhook do Asaas, entrada do suporte)', async ({ browser }) => {
     // Com a sessão de um membro: sem sessão, o proxy manda QUALQUER caminho ao
     // login (inclusive o que não existe), e o 404 nem chegaria a aparecer.
     await com(browser, f!.membro.estado, async p => {
       for (const caminho of ['/sistema', '/sistema/redes', '/suporte', '/suporte/chamados']) {
-        const r = await p.request.get(`${CLINICA()}${caminho}`, { maxRedirects: 0 })
+        const r = await p.request.get(`${APP_DA_REDE()}${caminho}`, { maxRedirects: 0 })
         expect(r.status(), caminho).toBe(404)
       }
       for (const caminho of ['/api/webhooks/asaas', '/api/suporte/entrar', '/api/cron/assinaturas']) {
-        const r = await p.request.post(`${CLINICA()}${caminho}`, { data: {}, maxRedirects: 0 })
+        const r = await p.request.post(`${APP_DA_REDE()}${caminho}`, { data: {}, maxRedirects: 0 })
         expect(r.status(), caminho).toBe(404)
       }
     })
@@ -175,20 +175,20 @@ test.describe.serial('a plataforma em hosts próprios', () => {
     }
   })
 
-  test('quem é da plataforma não entra na clínica — nem pela tela, nem com a sessão no bolso', async ({ browser }) => {
+  test('quem é da plataforma não entra no app da rede — nem pela tela, nem com a sessão no bolso', async ({ browser }) => {
     // `sessaoDeTeste` (teste anterior) troca a senha por uma aleatória.
     const { error } = await db().auth.admin.updateUserById(f!.suporte.authId, { password: SENHA })
     expect(error).toBeNull()
     await com(browser, null, async p => {
-      await entrarPelaTela(p, CLINICA(), f!.suporte.email)
+      await entrarPelaTela(p, APP_DA_REDE(), f!.suporte.email)
       await expect(p.getByText(/equipe da plataforma entra por/i)).toBeVisible()
       await expect(p).toHaveURL(/\/login/)
     })
     const { sessao } = await sessaoDeTeste(f!.suporte.authId, f!.suporte.email)
-    const arq = `${f!.suporte.estado}.na-clinica.json`
-    await gravarSessaoNoHost(sessao, CLINICA(), arq)
+    const arq = `${f!.suporte.estado}.no-app-da-rede.json`
+    await gravarSessaoNoHost(sessao, APP_DA_REDE(), arq)
     await com(browser, arq, async p => {
-      await p.goto(`${CLINICA()}/admin/dashboard`)
+      await p.goto(`${APP_DA_REDE()}/admin/dashboard`)
       await expect(p).toHaveURL(/\/login\?acesso=plataforma/)
       await expect(p.getByText(/equipe da plataforma entra por/i)).toBeVisible()
     })

@@ -130,7 +130,7 @@ async function status(p: Page, valor: Record<string, unknown>) {
   expect(r.status(), await r.text()).toBe(200)
 }
 
-test.describe.serial('o que a Meta cobra da clínica', () => {
+test.describe.serial('o que a Meta cobra da rede', () => {
   test('o template diz quanto a Meta cobra antes de enviar', async ({ browser }) => {
     await comoGestor(browser, async p => {
       await p.setViewportSize({ width: 1280, height: 860 })
@@ -211,7 +211,7 @@ test.describe.serial('o que a Meta cobra da clínica', () => {
     })
   })
 
-  test('ao conectar um número oficial, o aviso de que a Meta cobra na conta da clínica', async ({ browser }) => {
+  test('ao conectar um número oficial, o aviso de que a Meta cobra na conta da rede', async ({ browser }) => {
     await comoGestor(browser, async p => {
       await p.goto('/admin/settings?tab=integrations')
       await p.getByRole('button', { name: 'Adicionar número' }).click()

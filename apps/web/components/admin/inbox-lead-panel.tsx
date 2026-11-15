@@ -184,7 +184,7 @@ export function InboxLeadPanel({
   /**
    * Unidade em que o painel está — vazio no portal da rede.
    *
-   * É a FILIAL, não o portal: serve ao `revalidatePath` das actions e ao padrão
+   * É a UNIDADE, não o portal: serve ao `revalidatePath` das actions e ao padrão
    * da unidade de cadastro. Para onde navegar, quem decide é `lib/rotas`, pelo
    * caminho atual.
    */
@@ -772,8 +772,8 @@ function OportunidadeItem({
   const [notes,   setNotes]   = useState(o.notes ?? '')
   const [source,  setSource]  = useState(o.source ?? '')
   // A14 da 7ª simulação: as origens são da clínica (Configurar funis).
-  const origensDaClinica = useOrigensDaRede(aberta)
-  const origens = origensDaClinica?.length ? origensDaClinica : LEAD_SOURCES.map(x => x.key)
+  const origensDaRede = useOrigensDaRede(aberta)
+  const origens = origensDaRede?.length ? origensDaRede : LEAD_SOURCES.map(x => x.key)
   const [valor,   setValor]   = useState(o.value === null ? '' : String(o.value).replace('.', ','))
   const [procs,   setProcs]   = useState<string[]>(o.procedure_ids)
   const [salvando, startSave] = useTransition()
@@ -1147,7 +1147,7 @@ export function ScheduleModal({
     setData(null); setProcedureId(credito?.procedureId ?? ''); setProfessionalId(''); setRoomId(''); setSlots([]); setSlot('')
   }
 
-  // Carrega profissionais/procedimentos/salas da filial
+  // Carrega profissionais/procedimentos/salas da unidade
   useEffect(() => {
     if (!branchId) return
     let active = true

@@ -21,7 +21,7 @@ import { autorizarPor, entrarComo, limparSuporteDaRede, pedirEntrada, sessoesAti
 test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
 
 const marca = Date.now().toString(36)
-const CLINICA = () => process.env.E2E_BASE_URL!
+const APP_DA_REDE = () => process.env.E2E_BASE_URL!
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex')
 
 let outra: OutraRede | null = null
@@ -60,7 +60,7 @@ const pedido = () => ({ tenantId: outra!.tenantId, userId: alvo!.userId, motivo:
 
 /** O POST que a página do painel faz sozinha, com o Origin que o navegador poria. */
 async function usarCodigo(ctx: BrowserContext, codigo: string, origem = new URL(urlDaPlataforma('suporte')).origin) {
-  return ctx.request.post(`${CLINICA()}/auth/suporte-entrada`, {
+  return ctx.request.post(`${APP_DA_REDE()}/auth/suporte-entrada`, {
     form: { codigo }, headers: { origin: origem }, maxRedirects: 0,
   })
 }
@@ -75,14 +75,14 @@ async function encerrarTudo() {
 }
 
 test.describe.serial('o "entrar como" entre origens', () => {
-  test('o painel entrega um código de uso único, que vai à clínica no corpo — nunca na URL', async ({ browser }) => {
+  test('o painel entrega um código de uso único, que vai à rede no corpo — nunca na URL', async ({ browser }) => {
     await autorizarPor(browser, gestor!.estado, alvo!.userId)
     await comAtendente(browser, async ctx => {
       const r = await pedirEntrada(ctx, pedido())
       expect(r.status).toBe(200)
       expect(r.codigo, 'a página traz o código').toBeTruthy()
       expect(r.codigo!.length).toBeGreaterThanOrEqual(40)
-      expect(r.destino).toBe(`${CLINICA()}/auth/suporte-entrada`)
+      expect(r.destino).toBe(`${APP_DA_REDE()}/auth/suporte-entrada`)
       // A página tem de deixar o navegador mandar o Origin dela: com
       // `no-referrer` (ou `same-origin`), o POST entre origens sai com
       // `Origin: null` pela especificação Fetch, e a clínica o recusaria.
@@ -111,14 +111,14 @@ test.describe.serial('o "entrar como" entre origens', () => {
     await encerrarTudo()
   })
 
-  test('o pedido de entrada só vale vindo do PRÓPRIO painel — a clínica (mesmo site) não abre sessão pelo cookie do atendente', async ({ browser }) => {
+  test('o pedido de entrada só vale vindo do PRÓPRIO painel — a rede (mesmo site) não abre sessão pelo cookie do atendente', async ({ browser }) => {
     await comAtendente(browser, async ctx => {
       // app.* e suporte.* são o mesmo SITE: o cookie lax do atendente vai
       // junto num formulário que parta da clínica. Sem conferir o Origin, um
       // script na clínica abriria sessões em outras contas pelo atendente.
-      const daClinica = await pedirEntrada(ctx, pedido(), new URL(CLINICA()).origin)
-      expect(daClinica.status).toBe(403)
-      expect(daClinica.codigo).toBeNull()
+      const daRede = await pedirEntrada(ctx, pedido(), new URL(APP_DA_REDE()).origin)
+      expect(daRede.status).toBe(403)
+      expect(daRede.codigo).toBeNull()
       const semOrigem = await pedirEntrada(ctx, pedido(), null)
       expect(semOrigem.status).toBe(403)
     })
@@ -157,13 +157,13 @@ test.describe.serial('o "entrar como" entre origens', () => {
     await encerrarTudo()
   })
 
-  test('pela tela: aba nova na clínica com o banner; a sessão do atendente não vai para lá; "Sair" volta ao painel', async ({ browser }) => {
+  test('pela tela: aba nova no app da rede com o banner; a sessão do atendente não vai para lá; "Sair" volta ao painel', async ({ browser }) => {
     const sup = await entrarComo(browser, atendente!.estado, outra!.tenantId, `Alvo sealvo${marca}`)
     try {
       // Na clínica, só a sessão do MEMBRO — e nenhum cookie de volta.
-      const naClinica = await sup.ctx.cookies(CLINICA())
-      expect(naClinica.map(c => c.name)).not.toContain('bellaris_suporte_volta')
-      const sessao = naClinica.filter(c => /^sb-.*-auth-token/.test(c.name))
+      const noAppDaRede = await sup.ctx.cookies(APP_DA_REDE())
+      expect(noAppDaRede.map(c => c.name)).not.toContain('bellaris_suporte_volta')
+      const sessao = noAppDaRede.filter(c => /^sb-.*-auth-token/.test(c.name))
       expect(sessao.length).toBeGreaterThan(0)
       for (const c of sessao) expect(c.httpOnly).toBe(true)
       const valor = sessao.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(c => c.value).join('')

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { filiaisAtivas } from './apoio/banco'
+import { unidadesAtivas } from './apoio/banco'
 import { clienteComSessao } from './apoio/sessao'
 
 /**
@@ -34,7 +34,7 @@ test('no portal da rede: dentro do layout, com a barra lateral e a volta ao dash
  * de onde `configDoSupabaseNoNavegador` lê (tests/supabase-config-do-navegador).
  */
 test('no 404 de cada portal, a config do Supabase está no documento mesmo sem o script', async ({ page }) => {
-  const unidade = (await filiaisAtivas())[0]
+  const unidade = (await unidadesAtivas())[0]
   for (const url of ['/admin/equipe-que-nao-existe', ...(unidade ? [`/${unidade.slug}/cashier`] : [])]) {
     await page.goto(url)
     await expect(page.getByRole('heading', { name: TITULO })).toBeVisible()
@@ -44,7 +44,7 @@ test('no 404 de cada portal, a config do Supabase está no documento mesmo sem o
 })
 
 test('no portal da unidade: dentro do layout e a volta ao dashboard dela', async ({ page }) => {
-  const unidade = (await filiaisAtivas())[0]
+  const unidade = (await unidadesAtivas())[0]
   test.skip(!unidade, 'nenhuma unidade ativa')
   await page.goto(`/${unidade!.slug}/cashier`)
   await expect(page.getByRole('heading', { name: TITULO })).toBeVisible()
@@ -58,7 +58,7 @@ test('no portal da unidade: dentro do layout e a volta ao dashboard dela', async
  * monitor e cache leem o status, não o texto: tem de ser 404 de verdade.
  */
 test('a rota inexistente responde HTTP 404 (e não 200) em cada lugar', async ({ page, browser }) => {
-  const unidade = (await filiaisAtivas())[0]
+  const unidade = (await unidadesAtivas())[0]
   test.skip(!unidade, 'nenhuma unidade ativa')
   const status = async (url: string) => (await page.goto(url))!.status()
   expect.soft(await status('/relatorios-que-nao-existe'), 'na raiz').toBe(404)
@@ -86,7 +86,7 @@ test('a rota inexistente responde HTTP 404 (e não 200) em cada lugar', async ({
  */
 test('o id que não é uuid dá a tela de não encontrada, não a de erro, em toda rota [id]', async ({ page, browser }) => {
   test.setTimeout(240_000)
-  const unidade = (await filiaisAtivas())[0]
+  const unidade = (await unidadesAtivas())[0]
   test.skip(!unidade, 'nenhuma unidade ativa')
   const s = unidade!.slug
   const confere = async (p: typeof page, url: string) => {

@@ -92,14 +92,14 @@ export async function createBranch(
   // clínica no fim; depois, numerado. Sem erro na tela. Dois cadastros ao mesmo
   // tempo batem no índice (23505): procura de novo.
   const rede = await ler(supabase.from('tenants').select('name, document').eq('id', ctx.tenantId!).single(), 'buscar a rede')
-  const nomeDaClinica = (rede?.name as string | undefined) ?? ''
+  const nomeDaRede = (rede?.name as string | undefined) ?? ''
   const documentoDaRede = documentoLegivel((rede?.document as string | null) ?? null)
   if (!documentoDoForm && !respostaDoCnpj) return { perguntaCnpj: { cnpjDaRede: documentoDaRede } }
   const document = documentoDoForm ?? (respostaDoCnpj === 'rede' ? documentoDaRede : null)
 
   // O mesmo envio (duplo clique) cria UMA unidade (D10, `lib/envio-unico.ts`).
   return umaVez(ctx.tenantId!, 'createBranch', chaveDoEnvio(formData),
-    () => inserirUnidade(ctx.tenantId!, base, nomeDaClinica, {
+    () => inserirUnidade(ctx.tenantId!, base, nomeDaRede, {
       name, document, state_registration: stateRegistration, email, phone, address, city, state, zip_code: zipCode,
       ...(horario ? { horario } : {}),
       ...(fuso ? { fuso } : {}),
@@ -109,13 +109,13 @@ export async function createBranch(
 
 /** Grava a unidade com um endereço livre (lib/unidades/endereco.ts). */
 async function inserirUnidade(
-  tenantId: string, base: string, nomeDaClinica: string, campos: Record<string, unknown>,
+  tenantId: string, base: string, nomeDaRede: string, campos: Record<string, unknown>,
 ): Promise<RespostaDeCriarUnidade> {
   const supabase = createAdminClient()
   for (let tentativa = 0; tentativa < 3; tentativa++) {
-    const candidatos = candidatosDeEndereco(base, nomeDaClinica)
+    const candidatos = candidatosDeEndereco(base, nomeDaRede)
     const ocupados = await ler(supabase.from('branches').select('slug').in('slug', candidatos), 'conferir os endereços') as { slug: string }[] | null
-    const slug = escolherEndereco(base, nomeDaClinica, new Set((ocupados ?? []).map(o => o.slug)))
+    const slug = escolherEndereco(base, nomeDaRede, new Set((ocupados ?? []).map(o => o.slug)))
     if (!slug) return { error: 'Não achei um endereço livre para esta unidade. Tente outro nome.' }
 
     const { error: insertError } = await supabase.from('branches').insert({ tenant_id: tenantId, slug, ...campos })

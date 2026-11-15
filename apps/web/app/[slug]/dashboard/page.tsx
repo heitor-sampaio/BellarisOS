@@ -504,7 +504,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </div>
         )}
 
-        {/* Ocupação (filial) OU Meus atendimentos (profissional) */}
+        {/* Ocupação (unidade) OU Meus atendimentos (profissional) */}
         {canAgenda && (professionalOnly ? (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

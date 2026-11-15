@@ -73,7 +73,7 @@ export default async function AdminClientProfilePage({
 
   const admin = createAdminClient()
 
-  // Cliente por id + tenant (sem trava de filial).
+  // Cliente por id + tenant (sem trava de unidade).
   //
   // Erro de consulta não é cliente inexistente: com o erro descartado, uma
   // recusa do PostgREST virava um 404 e a ficha sumia sem explicação.
@@ -86,7 +86,7 @@ export default async function AdminClientProfilePage({
   if (clientErr) throw new Error('Não foi possível carregar o cliente: ' + clientErr.message)
   if (!raw) notFound()
 
-  // Cliente pertence à REDE — pode não ter filial vinculada (branch_id nullable).
+  // Cliente pertence à REDE — pode não ter unidade vinculada (branch_id nullable).
   const branchRow = raw.branches as { id: string; name: string; slug: string } | null
 
   const client: ProfileClient = {
@@ -176,9 +176,9 @@ export default async function AdminClientProfilePage({
       .order('created_at', { ascending: false }), 'carregar o histórico de planos'),
   ])
 
-  // Filial "efetiva": a vinculada ao cliente ou, na ausência, a primeira ativa
+  // Unidade "efetiva": a vinculada ao cliente ou, na ausência, a primeira ativa
   // da rede. Serve de CONTEXTO para links e leituras — nunca para gravar por
-  // filial: cliente de rede não tem filial (`clients.branch_id` é nulo desde a
+  // unidade: cliente de rede não tem unidade (`clients.branch_id` é nulo desde a
   // migração de clientes de rede), e herdar a primeira em ordem alfabética
   // mandava o crédito interno para o caixa de outra unidade. Quem grava pergunta.
   const effBranch = branchRow ?? ((branchesRaw?.[0] ?? null) as { id: string; name: string; slug: string } | null)
@@ -458,7 +458,7 @@ export default async function AdminClientProfilePage({
 
   // Procedimentos e insumos do editor de plano — a aba Planejamento monta o
   // plano do cliente sem depender de nenhum atendimento. O catálogo e o preço
-  // são os da unidade em que o plano NOVO nasce (a filial efetiva, a mesma que
+  // são os da unidade em que o plano NOVO nasce (a unidade efetiva, a mesma que
   // a aba passa a `salvarPlanoNovo`): D4 da 14ª (F73), princípio 3 — com o
   // catálogo da rede inteira, o editor oferecia o que o servidor recusa. O
   // plano que já existe abre com o catálogo da unidade dele (`getPlanoParaEditar`).
@@ -545,7 +545,7 @@ export default async function AdminClientProfilePage({
         quemDesfaz={quemDesfaz}
         pagoComCredito={pagoComCredito}
         isNetworkWide={ctx.branchId === null}
-        clienteSemFilial={!branchRow}
+        clienteSemUnidade={!branchRow}
         clientHistory={clientHistory}
         opportunities={oportunidades}
       />

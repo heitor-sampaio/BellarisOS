@@ -45,11 +45,11 @@ import { podeEstornar } from '@/lib/financeiro/so-os-meus'
  *
  * Mora em `app/_shared` (pasta privada: o `_` a mantém fora do roteamento)
  * porque quem opera a rede precisa abrir o atendimento sem ser jogado para o
- * portal da unidade. As duas páginas só diferem em como chegam à filial: pelo
+ * portal da unidade. As duas páginas só diferem em como chegam à unidade: pelo
  * slug da URL na unidade, pelo próprio agendamento no admin.
  *
  * `branchId` continua sendo exigido e conferido contra o agendamento — quem
- * chama resolve a filial, mas a consulta não abre mão do recorte.
+ * chama resolve a unidade, mas a consulta não abre mão do recorte.
  */
 export async function SessaoDeAtendimento({
   branchId, slug, id, abrirRecebimento = false,

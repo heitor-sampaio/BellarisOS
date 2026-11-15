@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { banco, filiaisAtivas, nomeDeTeste } from './apoio/banco'
+import { banco, unidadesAtivas, nomeDeTeste } from './apoio/banco'
 
 /**
  * Transferência e ajuste de estoque pela tela, e os dois eventos de estoque
@@ -44,7 +44,7 @@ async function saldo(branchId: string): Promise<number> {
 
 test('transferir, ajustar e o alerta de mínimo — com os eventos do gatilho', async ({ page }) => {
   const db = banco()
-  const unidades = await filiaisAtivas()
+  const unidades = await unidadesAtivas()
   test.skip(unidades.length < 2, 'transferência precisa de duas unidades')
   const [a, b] = [unidades[0]!, unidades[1]!]
 

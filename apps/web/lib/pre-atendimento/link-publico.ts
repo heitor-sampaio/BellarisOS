@@ -36,7 +36,7 @@ export const MENSAGEM_DO_LINK_DA_FICHA: Record<Exclude<EstadoDoLinkDaFicha, 'val
 
 export interface EspiadaDaFicha {
   estado:  EstadoDoLinkDaFicha
-  clinica: string | null
+  remetente: string | null
   /** O telefone da unidade (para quem precisa corrigir a ficha), se houver. */
   telefone: string | null
   pede:    'CPF' | 'NASCIMENTO'
@@ -44,12 +44,12 @@ export interface EspiadaDaFicha {
 
 /** O que a página mostra antes da identidade: a clínica, e o que vai pedir. */
 export async function espiarLinkDaFicha(token: string): Promise<EspiadaDaFicha> {
-  if (!tokenValido(token)) return { estado: 'invalido', clinica: null, telefone: null, pede: 'CPF' }
+  if (!tokenValido(token)) return { estado: 'invalido', remetente: null, telefone: null, pede: 'CPF' }
   const admin = createAdminClient()
   const r = await ler(admin.rpc('pre_atendimento_link_espiar', { p_token_hash: hashDoToken(token) }), 'abrir o link da ficha') as
     { estado: EstadoDoLinkDaFicha; conferir?: boolean; clinica?: string | null; telefone?: string | null; pede?: 'CPF' | 'NASCIMENTO' }
   // O banco diz 'usado' com `conferir` (a função serve também ao código de antes do A52).
-  return { estado: r.conferir ? 'conferir' : r.estado, clinica: r.clinica ?? null, telefone: r.telefone ?? null, pede: r.pede ?? 'CPF' }
+  return { estado: r.conferir ? 'conferir' : r.estado, remetente: r.clinica ?? null, telefone: r.telefone ?? null, pede: r.pede ?? 'CPF' }
 }
 
 export interface IdentidadeDaFicha { token: unknown; cpf?: unknown; nascimento?: unknown }

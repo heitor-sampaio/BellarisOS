@@ -103,8 +103,8 @@ export default async function AdminDashboardPage({
   // rankings de valor, o gasto das clientes, o LTV por CEP e o giro (o insumo
   // é custo). O que não se atribui a ela não é consultado nem mostrado: com o
   // financeiro dela, o custo, o lucro, a margem do catálogo e a comissão das
-  // outras; com a agenda dela, a ocupação por filial; com qualquer dos dois, o
-  // ranking de filiais (que mistura o dinheiro e a agenda de cada unidade).
+  // outras; com a agenda dela, a ocupação por unidade; com qualquer dos dois, o
+  // ranking de unidades (que mistura o dinheiro e a agenda de cada unidade).
   // Até aqui qualquer "só os meus" recortava tudo (D7 de 2026-10-28).
   const recorte        = recorteDosModulos(ctx)
   const agendaDela     = recorte.agenda
@@ -115,8 +115,8 @@ export default async function AdminDashboardPage({
   const admin = createAdminClient()
   const now   = new Date()
 
-  // -- Filiais -------------------------------------------------------
-  // Falha de consulta não é rede sem filial — o erro sobe em vez de virar um
+  // -- Unidades -------------------------------------------------------
+  // Falha de consulta não é rede sem unidade — o erro sobe em vez de virar um
   // dashboard vazio com cara de rede nova.
   // F72 (D1 e D2 da 14ª; H6, C45): as unidades de LEITURA — a desativada com
   // movimento no período ou com o que ficou (agenda, estoque, a receber,
@@ -125,7 +125,7 @@ export default async function AdminDashboardPage({
   const todasAsUnidades = await unidadesParaLer<{ city: string | null; state: string | null; zip_code: string | null }>(ctx.tenantId!, {
     periodo: await periodoDaTela(ctx.tenantId!, rawPeriod, rawFrom, rawTo), colunas: 'city, state, zip_code',
   })
-  // D-19: a clínica de uma unidade só não vê ranking nem "por filial" — uma nos
+  // D-19: a clínica de uma unidade só não vê ranking nem "por unidade" — uma nos
   // NÚMEROS (F72): a desativada com dado no período ainda conta.
   const umaUnidade = umaUnidadeSo(todasAsUnidades.length)
   // `?unidade=<id|slug>` recorta a rede a uma unidade (J-54, 2026-10-30): é o
@@ -141,7 +141,7 @@ export default async function AdminDashboardPage({
   const branchIds = branches.map(b => b.id)
   const fuso = await fusoDoRecorte(ctx.tenantId, branchIds)
   // C45 (F68): o TOTAL da rede inteira inclui a unidade desativada — o "Por
-  // filial" a mostra quando ela teve movimento no período, e o total não
+  // unidade" a mostra quando ela teve movimento no período, e o total não
   // fechava com a soma das linhas. Recortado a uma unidade, só ela.
   const idsDosNumeros = unidadeId
     ? branchIds
@@ -225,8 +225,8 @@ export default async function AdminDashboardPage({
     // agenda (atendimentos, novos clientes, minutos) do recorte da agenda.
     getCoreDosModulos({ ...janela, recorte }),
     getCoreDosModulos({ ...janela, from: prevStart, to: prevEnd, recorte }),
-    // Por unidade: o ranking de filiais (dinheiro e agenda de cada unidade, só
-    // sem "só os meus") e a ocupação por filial (a agenda: sem a agenda dela).
+    // Por unidade: o ranking de unidades (dinheiro e agenda de cada unidade, só
+    // sem "só os meus") e a ocupação por unidade (a agenda: sem a agenda dela).
     agendaDela ? Promise.resolve([]) : getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate })
       .then(linhas => unidadeId ? linhas.filter(l => l.branchId === unidadeId) : linhas),
     // A série é dinheiro: com o financeiro dela, a receita DELA (só a receita).
@@ -336,7 +336,7 @@ export default async function AdminDashboardPage({
   const ticketMedio = ticket?.total.valor ?? null
   const clientesQuePagaram = ticket?.total.clientesQuePagaram ?? 0
 
-  // -- Por filial ----------------------------------------------------
+  // -- Por unidade ----------------------------------------------------
   // Unidade desativada só entra se teve movimento no período (simulação de 2026-10-20).
   const branchStats: BranchStat[] = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal).map(b => ({
     id:           b.branchId,
@@ -349,7 +349,7 @@ export default async function AdminDashboardPage({
     ticketMedio:  ticket?.porUnidade[b.branchId]?.valor ?? 0,
   }))
 
-  // -- Hoje por filial -----------------------------------------------
+  // -- Hoje por unidade -----------------------------------------------
   const todayByBranch: TodayBranchStat[] = branches
     .map(branch => {
       const bToday = todayAppts.filter(a => a.branch_id === branch.id)
@@ -429,7 +429,7 @@ export default async function AdminDashboardPage({
 
   const evolutionData = pontosDaEvolucao(seriesData, { granularidade: granularity, de: startDate, ate: endDate }, await seriesDoResultadoP, fuso)
 
-  // -- Aproveitamento da agenda por filial ---------------------------
+  // -- Aproveitamento da agenda por unidade ---------------------------
   // Renomeado de "ocupação": o denominador é o total marcado, não a
   // capacidade instalada. É taxa de comparecimento, e o rótulo agora diz isso.
   const branchOccupancy = branchMetrics.filter(b => b.isActive || b.revenueCash || b.revenuePending || b.expensesCash || b.appointmentsTotal).map(b => ({
@@ -724,7 +724,7 @@ export default async function AdminDashboardPage({
         clientesQuePagaram={veDinheiro ? clientesQuePagaram : 0}
         totalClientsEver={totalClientsEver ?? 0}
         branchCount={branches.length}
-        // Recortada a uma unidade, os quadros "por filial" saem como na
+        // Recortada a uma unidade, os quadros "por unidade" saem como na
         // clínica de uma unidade só — e o título diz qual.
         umaUnidade={umaUnidade || !!unidadeRecortada}
         unidadeRecortada={unidadeRecortada}

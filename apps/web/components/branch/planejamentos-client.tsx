@@ -88,7 +88,7 @@ export function PlanejamentosClient({
     return () => { vivo = false; clearTimeout(t) }
   }, [termoCliente, podeBuscarCliente])
 
-  // Unidade do plano novo. Na filial é a própria; na rede, a escolhida — e com
+  // Unidade do plano novo. Na unidade é a própria; na rede, a escolhida — e com
   // uma só unidade não há o que perguntar.
   const [novaUnidade, setNovaUnidade] = useState(
     branchId || (unidades.length === 1 ? unidades[0]!.id : ''),

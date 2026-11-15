@@ -89,7 +89,7 @@ export async function tratarCoexistencia(
   for (const m of mudancas) {
     const v = m.value ?? {}
     // O número da CLÍNICA, para saber de que lado está cada mensagem do histórico.
-    const daClinica = digitos(v.metadata?.display_phone_number)
+    const daRede = digitos(v.metadata?.display_phone_number)
 
     if (m.field === 'smb_message_echoes') {
       for (const eco of v.message_echoes ?? []) {
@@ -117,7 +117,7 @@ export async function tratarCoexistencia(
           if (!digitos(cliente)) continue
           let conversaId: string | null = null
           for (const h of thread.messages ?? []) {
-            const daClinicaEsta = !!daClinica && digitos(h.from) === daClinica
+            const daRedeEsta = !!daRede && digitos(h.from) === daRede
             const msg = mensagemDoAplicativo(h, cliente!, `hist:${cliente}:${h.timestamp}`)
             if (!msg) continue
             if (!conversaId) {
@@ -126,7 +126,7 @@ export async function tratarCoexistencia(
               conversaId = conversa.conversationId
             }
             await insertMensagemDoAplicativo(conversaId, tenantId, msg, {
-              direction: daClinicaEsta ? 'outbound' : 'inbound',
+              direction: daRedeEsta ? 'outbound' : 'inbound',
               importada: true,
               status:    STATUS_DO_HISTORICO[h.history_context?.status ?? ''] ?? 'delivered',
             }, caixa)

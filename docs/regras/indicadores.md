@@ -384,7 +384,7 @@
     **Recortada a UMA unidade, o preço e a mão de obra dela** (sobra da F40,
     9ª simulação, 2026-11-07): com o preço por unidade (D2,
     `private.preco_na_unidade`), o ranking do dashboard da rede com
-    `?unidade=` (ou a unidade fixa, ou a rede de uma só) usa o preço DELA e a
+    `?unidade=` (ou a unidade em que está quem não tem “A rede inteira”, ou a rede de uma só) usa o preço DELA e a
     mão de obra dela (`procedure_branch_pricing.labor_cost`), com o insumo e os
     outros custos do catálogo — `metrics_margem_procedimentos_na_unidade`
     (migration `20261107004408`), por `getMargemPorProcedimento({ unidadeId })`.
@@ -490,10 +490,10 @@
     por qualquer profissional, em QUALQUER unidade da rede (ind-08,
     2026-11-02, migration `20261101000706`: era "nas unidades do recorte", e
     a Carla atendida na Moinhos contava como nova olhando a Zona Sul — prova:
-    `e2e/indicadores-retencao-clinica-inteira.spec.ts`; migration anterior
+    `e2e/indicadores-retencao-rede-inteira.spec.ts`; migration anterior
     `20261029001103`). Era "já tinha vindo a ela" (20261028000804), e a cliente
     que trocou de profissional contava como primeira vez. Prova:
-    `e2e/indicadores-retencao-da-clinica.spec.ts`.
+    `e2e/indicadores-retencao-da-rede.spec.ts`.
 - **Zero é um dado, não ausência de dado.** Em métricas de anúncio, `0 ||
   undefined` transformava "zero clique no link" em "Indisponível" e escondia
   justamente a campanha problemática. Só use `undefined` quando a origem
@@ -640,7 +640,7 @@ KPI que não fazia nenhum dos dois.
   o pagamento com crédito interno, fora da receita (acima). Em Relatórios →
   Vendas ele é uma LINHA (a comanda dele, desde o RL1, 2026-11-14), mas fica
   FORA do "Total vendido": a venda é a do que for pago com ele. Prova:
-  `e2e/vendas-credito-na-clinica.spec.ts`, `e2e/relatorio-vendas-comandas.spec.ts`.
+  `e2e/vendas-credito-interno.spec.ts`, `e2e/relatorio-vendas-comandas.spec.ts`.
 - **LTV é o que o cliente PAGOU**, desde sempre (`metrics_do_cliente`,
   `metrics_top_clients`). Não é "preço dos atendimentos": atendimento concluído
   e não pago não é dinheiro que entrou.
@@ -1110,15 +1110,18 @@ como se tivesse gerado a receita — e a coluna diz que a receita é de todos (h
 (`metrics_receitas_pagas`) ligado a um atendimento (`appointment_id`), pelo
 procedimento e pela profissional dele — `metrics_top_procedures`,
 `metrics_top_professionals`, `metrics_relatorio` (por procedimento, por
-profissional e o total `receita_dos_atendimentos`, o "Receita paga dos
-atendimentos" da aba Procedimentos e o denominador do "% do Total") e
+profissional e o total `receita_dos_atendimentos`, o card "Receita dos
+atendimentos" da aba Procedimentos — era "Receita paga dos atendimentos" — e
+o denominador do "% do Total"; `reports-bi-view.tsx`) e
 `metrics_receita_por_categoria_de_procedimento` (migration
 `20261101000704`). Era a soma do PREÇO dos concluídos com o nome "Receita
 bruta"/"Receita Gerada": entravam o avulso concluído e não pago, a sessão de
 pacote/pré-pago já vendida e o preço sem o desconto (Laser R$ 1.200 contra
-R$ 780 de receita no mês). O nome é "receita paga", com a dica
-`DEFINICOES.receitaDosAtendimentos`. Pacote, pré-pago, plano e produto não
-são de um atendimento e não entram aqui. **A receita entra no dia da
+R$ 780 de receita no mês). O nome foi "receita paga"; hoje é "receita dos
+atendimentos" (abaixo, r2-ind-01), com a dica
+`DEFINICOES.receitaDosAtendimentos`. O produto não é de um atendimento e não
+entra aqui; o pacote, o pré-pago e o plano entraram depois, pela sessão feita
+(abaixo). **A receita entra no dia da
 EXECUÇÃO** (F18, o Heitor: "contar no dia que foi feita"; princípio 5 do
 CLAUDE.md): o pagamento do avulso conta no `aconteceu_em` do atendimento
 concluído, qualquer que seja o dia em que foi pago — a Limpeza feita em 31/10

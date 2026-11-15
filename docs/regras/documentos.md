@@ -203,8 +203,8 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   altera (gatilho); modelo não se apaga (desativa).
 - **Modelos são `forms: MANAGE`** (Configurações → Documentos); colher a
   assinatura é o módulo `documents`; ligar ao procedimento é `procedures`. E
-  os modelos são da REDE: quem tem unidade fixa não os cria nem muda (H7,
-  2026-11-01; `recusaDaConfigDaClinica`, `plataforma.md`).
+  os modelos são da REDE: quem não tem “A rede inteira” não os cria nem muda (H7,
+  2026-11-01; `recusaDaConfigDaRede`, `plataforma.md`).
   - **Quem não colhe lê quem colhe** (D8 da 5ª simulação, 2026-11-01): com os
     Documentos em Ver, o termo que bloqueia aparecia "Para assinar ·
     bloqueia" sem ação nenhuma. `TermosDoCliente` diz, havendo documento em
@@ -311,7 +311,7 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     falta (`[data-fora-do-link]`). Papel e "dispensar com motivo" continuam
     por documento.
   - Presencialmente, "Entregar ao cliente" leva os abertos do momento juntos
-    (`[data-assinam-juntos]`, `assinarJuntosNaClinica`); no portal,
+    (`[data-assinam-juntos]`, `assinarJuntosNaTela`); no portal,
     `assinarJuntosNoPortal` (só os da ficha DELA).
 - **A tela de assinar tem UM gesto** (J-62, 2026-10-30): marcar "li e
   concordo", desenhar no quadro e "Assinar documento". O "Confirmar
@@ -442,7 +442,7 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   navegador. O PDF da equipe sai por `/api/documentos/[id]/pdf` (sessão +
   `documents: VIEW` + rede + unidade).
 - **O link de conferência impresso no PDF é o endereço PÚBLICO do app da rede**
-  (D11 da 13ª simulação, F69): `urlDeVerificacao` usa `urlDaClinica()` —
+  (D11 da 13ª simulação, F69): `urlDeVerificacao` usa `urlDoAppDaRede()` —
   `CLINICA_URL`, lido em tempo de execução. O `NEXT_PUBLIC_APP_URL` é gravado
   no BUILD, e o PDF assinado saía com o domínio do Railway (o QR de quem
   confere morre com ele). O webhook da uazapi segue a mesma régua. Prova:
@@ -536,7 +536,7 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   trilha. "Enviado" = há `LINK_GERADO`, `NOTIFICADO_PORTAL` ou
   `LINK_ENVIADO_CONVERSA`; a coluna mostra o envio mais recente, o link
   valendo (ou vencido) e se o cliente abriu (`IDENTIDADE_OK`).
-  - É só LEITURA (`documents: VIEW`); quem tem unidade fixa vê a dela. A
+  - É só LEITURA (`documents: VIEW`); quem não tem “A rede inteira” vê as dela. A
     janela do documento mostra a trilha (`trilhaDoDocumento`, sem o CPF de
     quem assinou), o PDF e "Abrir na ficha" — as ações ficam na ficha.
   - O A_GERAR da página é montado ao listar (`renderizarPendentes`), como na
@@ -686,6 +686,6 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
 ❌ Pôr no link, ou na assinatura de juntos, documento de outra cliente, de outro momento ou com "faltam dados"
 ❌ Fazer a venda do pacote esperar a assinatura (o "Bloqueia" do pacote trava a SESSÃO, não a venda — PC2)
 ❌ Abrir no editor (ou gravar) o JSON do modelo sem normalizarListasDoEditor: a edição mostraria o que o documento não diz (A16 da 12ª)
-❌ Montar o link de /verificar com NEXT_PUBLIC_APP_URL (é o do build) — é urlDaClinica() (D11)
+❌ Montar o link de /verificar com NEXT_PUBLIC_APP_URL (é o do build) — é urlDoAppDaRede() (D11)
 ❌ Registrar "notificado no portal" (ou dizer "enviado") quando o plano não tem o portal: o aviso não sai (C57a)
 ```

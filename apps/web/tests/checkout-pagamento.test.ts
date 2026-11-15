@@ -58,7 +58,7 @@ describe('o retrato do pagamento', () => {
     expect(mesmoPagamento(null, pagamentoNormalizado(null))).toBe(false)
   })
 
-  it('volta ao pagamento sem trocar o dia no fuso da clínica', () => {
+  it('volta ao pagamento sem trocar o dia no fuso da unidade', () => {
     const de = pagamentoDoRetrato(pagamentoNormalizado(parcelado))
     expect(valoresDoPagamento(de, 400)['pagamento.primeiro_vencimento']).toBe('10/10/2026')
     expect(pagamentoDoRetrato({ forma: 'NADA_AGORA' })).toBeNull()

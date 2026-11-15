@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { filiaisAtivas } from './apoio/banco'
+import { unidadesAtivas } from './apoio/banco'
 
 /**
  * Nenhuma tela renderiza com defeito estrutural.
@@ -91,7 +91,7 @@ for (const { rota, abrir } of TELAS) {
 
 for (const tela of TELAS_DA_UNIDADE) {
   test(`/[unidade]/${tela} renderiza sem aviso do React`, async ({ page }) => {
-    const unidade = (await filiaisAtivas())[0]!
+    const unidade = (await unidadesAtivas())[0]!
     await conferir(page, `/${unidade.slug}/${tela}`, `/${unidade.slug}/${tela}`)
   })
 }

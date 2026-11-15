@@ -44,15 +44,15 @@ function listaDeNumeros(ns: number[]): string {
  */
 export function quemMarcaAsSessoes(aAgendar: { numero: number; peloApp: boolean }[]): string[] {
   const peloApp = aAgendar.filter(s => s.peloApp).map(s => s.numero)
-  const pelaClinica = aAgendar.filter(s => !s.peloApp).map(s => s.numero)
+  const pelaEquipe = aAgendar.filter(s => !s.peloApp).map(s => s.numero)
   const saida: string[] = []
   if (peloApp.length) {
     saida.push(peloApp.length === 1
       ? `Sessão ${peloApp[0]}: agende pelo app em “Agendar” (faz parte do seu plano).`
       : `Sessões ${listaDeNumeros(peloApp)}: agende pelo app em “Agendar” (fazem parte do seu plano).`)
   }
-  if (pelaClinica.length) {
-    saida.push(`${pelaClinica.length === 1 ? 'Sessão' : 'Sessões'} ${listaDeNumeros(pelaClinica)}: quem marca é a equipe — fale com ela para escolher o dia.`)
+  if (pelaEquipe.length) {
+    saida.push(`${pelaEquipe.length === 1 ? 'Sessão' : 'Sessões'} ${listaDeNumeros(pelaEquipe)}: quem marca é a equipe — fale com ela para escolher o dia.`)
   }
   return saida
 }

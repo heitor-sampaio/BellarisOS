@@ -19,7 +19,7 @@ export function enderecoDoAppDaCliente(origem: string, slugDaUnidade: string): s
   return `${origem}/${slugDaUnidade}/cliente`
 }
 
-export async function enderecosDoAppDaClinica(tenantId: string): Promise<{ unidade: string; url: string }[]> {
+export async function enderecosDoAppDaRede(tenantId: string): Promise<{ unidade: string; url: string }[]> {
   const [origem, unidades] = await Promise.all([origemDoApp(), getCachedNetworkBranches(tenantId)])
   return (unidades as { name: string; slug: string }[]).map(u => ({ unidade: u.name, url: enderecoDoAppDaCliente(origem, u.slug) }))
 }

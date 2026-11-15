@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { cabecalhoDoCsp, politicaDaClinica, resumoDoRelatorio } from '@/lib/seguranca/csp'
+import { cabecalhoDoCsp, politicaDoAppDaRede, resumoDoRelatorio } from '@/lib/seguranca/csp'
 
 /**
  * O CSP da clínica (2026-10-08), por enquanto em REPORT-ONLY: avisa, não
  * bloqueia. A política é a que um dia vai bloquear — estrita como a dos
  * hosts da plataforma —, e os avisos dizem o que falta liberar.
  */
-describe('politicaDaClinica', () => {
-  const p = politicaDaClinica({ nonce: 'abc123', supabase: 'https://x.supabase.co', dev: false })
+describe('politicaDoAppDaRede', () => {
+  const p = politicaDoAppDaRede({ nonce: 'abc123', supabase: 'https://x.supabase.co', dev: false })
   it('script só com o nonce da requisição (e o que ele carregar)', () => {
     expect(p).toContain("script-src 'self' 'nonce-abc123' 'strict-dynamic'")
     expect(p).not.toContain('unsafe-eval')
@@ -38,7 +38,7 @@ describe('politicaDaClinica', () => {
     expect(p).toMatch(/img-src [^;]*https:\/\/\*\.fbcdn\.net/)
     expect(p).toMatch(/img-src [^;]*https:\/\/www\.facebook\.com/)
   })
-  it('manda os avisos para a rota da clínica', () => {
+  it('manda os avisos para a rota da rede', () => {
     expect(p).toContain('report-uri /api/csp-relatorio')
   })
   it('sem moldura e sem plugin', () => {

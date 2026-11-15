@@ -21,7 +21,7 @@ import { rotuloDaSituacao } from './situacao'
  * Depois de cada mudança, `depoisDaMudanca` expira o cache da rede (o portão
  * vale na próxima tela), avisa quem administra a rede e registra.
  */
-/** Expira uma tag — aqui e, se for o caso, no processo que guarda o cache (ver expirar-na-clinica). */
+/** Expira uma tag — aqui e, se for o caso, no processo que guarda o cache (ver expirar-no-app-da-rede). */
 export type Expirar = (tag: string) => void | Promise<void>
 
 export interface AssinaturaLida {

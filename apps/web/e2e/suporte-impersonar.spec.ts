@@ -170,7 +170,7 @@ async function entrar(browser: Browser): Promise<{ ctx: BrowserContext; page: Pa
 // --- provas ---------------------------------------------------------------------
 
 test.describe.serial('suporte: entrar como', () => {
-  test('sem autorização da clínica, não entra', async ({ browser }) => {
+  test('sem autorização da rede, não entra', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: f!.atendente.estado })
     try {
       const p = await ctx.newPage()
@@ -205,7 +205,7 @@ test.describe.serial('suporte: entrar como', () => {
     await db().from('support_grants').update({ revoked_at: new Date().toISOString() }).eq('id', g!.id)
   })
 
-  test('com autorização, entra na conta com o aviso fixo — e a clínica é avisada', async ({ browser }) => {
+  test('com autorização, entra na conta com o aviso fixo — e a rede é avisada', async ({ browser }) => {
     await autorizar(browser)
     sup = await entrar(browser)
     expect(await sessoesAtivas()).toHaveLength(1)
@@ -279,9 +279,9 @@ test.describe.serial('suporte: entrar como', () => {
     expect(await notas()).toBe(`escrito pelo membro ${marca}`)
   })
 
-  test('na clínica, nada do atendente: nem a sessão dele, nem cookie de volta, nem o painel', async () => {
-    const naClinica = await sup!.ctx.cookies(process.env.E2E_BASE_URL)
-    expect(naClinica.map(c => c.name)).not.toContain('bellaris_suporte_volta')
+  test('no app da rede, nada do atendente: nem a sessão dele, nem cookie de volta, nem o painel', async () => {
+    const noAppDaRede = await sup!.ctx.cookies(process.env.E2E_BASE_URL)
+    expect(noAppDaRede.map(c => c.name)).not.toContain('bellaris_suporte_volta')
     const r = await sup!.page.goto('/suporte/redes')
     expect(r?.status()).toBe(404)
   })
@@ -302,7 +302,7 @@ test.describe.serial('suporte: entrar como', () => {
     sup = null
   })
 
-  test('a clínica revoga no meio: a sessão cai na próxima tela', async ({ browser }) => {
+  test('a rede revoga no meio: a sessão cai na próxima tela', async ({ browser }) => {
     sup = await entrar(browser)
     const capturada = await sessaoDoNavegador(sup.ctx)
     const { data: g } = await db().from('support_grants').select('id').eq('target_user_id', f!.alvo.userId).is('revoked_at', null).single<{ id: string }>()

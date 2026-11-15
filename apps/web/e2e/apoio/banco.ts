@@ -90,7 +90,7 @@ export async function criarLoginDeTeste(db: SupabaseClient, email: string, oQue:
 /**
  * A senha de teste no login, com a mesma paciência (F46 — a completa de 07/11,
  * com o banco parado ~40 s às 22:19Z: o PUT do Auth respondeu 504 depois de
- * 36 s, e `portal-cliente-varias-clinicas` morreu em "pôr a senha de teste:
+ * 36 s, e `portal-cliente-varias-redes` morreu em "pôr a senha de teste:
  * {}"). Pôr a MESMA senha de novo não muda nada: repete o Auth que caiu (5xx,
  * erro sem mensagem, o fetch que não voltou). O erro com mensagem (o login não
  * existe) é o Auth falando, e volta na hora.
@@ -156,7 +156,7 @@ export async function tenantId(): Promise<string> {
   return data.id as string
 }
 
-export type Filial = { id: string; name: string; slug: string }
+export type UnidadeDoBanco = { id: string; name: string; slug: string }
 
 /**
  * Uma unidade em que dá para marcar: tem profissional que atende.
@@ -166,7 +166,7 @@ export type Filial = { id: string; name: string; slug: string }
  * falta de dado no ambiente, não defeito da tela. O teste que depende disso
  * pula com explicação em vez de falhar.
  */
-export async function unidadeQueAtende(): Promise<Filial | null> {
+export async function unidadeQueAtende(): Promise<UnidadeDoBanco | null> {
   const db = banco()
   const { data, error } = await db
     .from('users')
@@ -178,13 +178,13 @@ export async function unidadeQueAtende(): Promise<Filial | null> {
   if (error) throw new Error(`Não consegui achar uma unidade com profissional: ${error.message}`)
 
   for (const linha of data ?? []) {
-    const b = linha.branches as unknown as Filial & { is_active: boolean }
+    const b = linha.branches as unknown as UnidadeDoBanco & { is_active: boolean }
     if (b?.is_active) return { id: b.id, name: b.name, slug: b.slug }
   }
   return null
 }
 
-export async function filiaisAtivas(): Promise<Filial[]> {
+export async function unidadesAtivas(): Promise<UnidadeDoBanco[]> {
   // Só da rede de verdade: sem o filtro, a unidade `[e2e]` da segunda rede de
   // teste vinha primeiro na ordem alfabética (o `[` vem antes das letras).
   //
@@ -199,8 +199,8 @@ export async function filiaisAtivas(): Promise<Filial[]> {
     .eq('is_active', true)
     .not('name', 'like', `${PREFIXO}%`)
     .order('name')
-  if (error) throw new Error(`Não consegui listar as filiais: ${error.message}`)
-  return (data ?? []) as Filial[]
+  if (error) throw new Error(`Não consegui listar as unidades: ${error.message}`)
+  return (data ?? []) as UnidadeDoBanco[]
 }
 
 /**

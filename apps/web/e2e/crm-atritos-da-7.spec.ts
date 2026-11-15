@@ -104,7 +104,7 @@ test('A12/A13: a lista diz "Rascunho"; o editor tem o "Salvar" à vista e avisa 
   })
 })
 
-test('A14: a clínica nasce com as origens de sempre e cadastra a dela, que a "Nova oportunidade" oferece', async ({ browser }) => {
+test('A14: a rede nasce com as origens de sempre e cadastra a dela, que a "Nova oportunidade" oferece', async ({ browser }) => {
   const { data: padrao } = await db().from('crm_origens').select('nome').eq('tenant_id', rede.tenantId)
   expect((padrao ?? []).map(o => o.nome)).toEqual(expect.arrayContaining(['Meta Ads', 'Instagram', 'Indicação', 'Outro']))
   await como(browser, dona, async p => {

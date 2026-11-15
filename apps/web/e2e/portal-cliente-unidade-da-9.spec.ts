@@ -37,7 +37,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('D12: o atalho do procedimento pergunta a unidade quando a clínica tem mais de uma', async ({ browser }) => {
+test('D12: o atalho do procedimento pergunta a unidade quando a rede tem mais de uma', async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: rosana!.estado })
   try {
     const p = await ctx.newPage()

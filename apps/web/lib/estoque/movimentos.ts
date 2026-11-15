@@ -18,7 +18,7 @@ type Admin = ReturnType<typeof createAdminClient>
  * O produto e as unidades vieram do formulário: são desta rede?
  *
  * Sem isto, quem é da rede (`ctx.branchId` nulo — a trava de "fora da sua
- * filial" não vale para ele) gravava no produto ou na unidade de OUTRA rede.
+ * unidade" não vale para ele) gravava no produto ou na unidade de OUTRA rede.
  */
 export async function produtoEUnidadesDaRede(
   admin: Admin, tenantId: string, productId: string, branchIds: string[],

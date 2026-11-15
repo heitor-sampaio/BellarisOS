@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getPlatformContext } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { registrarNaPlataforma } from '@estetica-os/nucleo/lib/plataforma/auditoria'
-import { urlDaClinica, urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
+import { urlDoAppDaRede, urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 import { urlPublica } from '@estetica-os/nucleo/lib/origem'
 import { abrirSessaoDeSuporte } from '@estetica-os/nucleo/lib/suporte/entrar'
 import { DIGEST_SEM_ACESSO } from '@estetica-os/nucleo/lib/sem-acesso'
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     tenantId, targetUserId: userId, dados: { sessao: r.valor.sessaoId, motivo, chamado: chamadoId },
   })
 
-  const destino = `${urlDaClinica()}/auth/suporte-entrada`
+  const destino = `${urlDoAppDaRede()}/auth/suporte-entrada`
   const nonce = randomBytes(16).toString('base64')
   const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Entrando na conta…</title></head>

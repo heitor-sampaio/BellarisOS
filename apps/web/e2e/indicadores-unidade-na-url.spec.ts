@@ -10,7 +10,7 @@ import { apagarAgendamentos } from './apoio/limpeza'
  * ignoravam: `/admin/dashboard?unidade=b` mostrava a rede inteira.
  *
  * Agora o dashboard recorta a unidade (o título é ela, os números são os dela,
- * os quadros "por filial" saem e há "Ver a rede inteira"). A lista de
+ * os quadros "por unidade" saem e há "Ver a rede inteira"). A lista de
  * Clientes não recorta: a cliente é da rede (CL2 do Bloco Tags, 2026-11-14).
  */
 

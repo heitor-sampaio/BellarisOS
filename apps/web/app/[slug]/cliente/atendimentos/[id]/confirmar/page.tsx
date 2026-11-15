@@ -6,7 +6,7 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ConfirmAppointmentForm } from '@/components/client-portal/confirm-appointment-form'
 import { ler } from '@/lib/db'
-import { oQueAClinicaAvalia, procedimentosDoAtendimento } from '@/lib/avaliacao/leitura'
+import { oQueARedeAvalia, procedimentosDoAtendimento } from '@/lib/avaliacao/leitura'
 import { avaliaOAtendimento, avaliaOsProcedimentos } from '@/lib/avaliacao/notas'
 
 export const dynamic = 'force-dynamic'
@@ -44,7 +44,7 @@ export default async function ConfirmAppointmentPage({
   // F17-3: o que a clínica pede — o atendimento, cada procedimento feito, ou os dois.
   const tenant = (appt!.branches as unknown as { tenant_id: string }).tenant_id
   const [oQue, procedimentos] = await Promise.all([
-    oQueAClinicaAvalia(admin, tenant),
+    oQueARedeAvalia(admin, tenant),
     procedimentosDoAtendimento(admin, appt!.id as string, (appt!.procedure_id as string | null) ?? null),
   ])
   const pedeOsProcedimentos = avaliaOsProcedimentos(oQue)

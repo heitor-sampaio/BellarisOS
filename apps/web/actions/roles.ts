@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar } from '@/lib/db'
@@ -26,8 +26,8 @@ export async function createRole(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
   // O cargo é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
   const travado = bloqueioDoSuporte(ctx, 'criar cargo')
   if (travado) return { error: travado }
 
@@ -62,8 +62,8 @@ export async function updateRole(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
   // O cargo é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
   const travado = bloqueioDoSuporte(ctx, 'mudar as permissões de um cargo')
   if (travado) return { error: travado }
 
@@ -107,8 +107,8 @@ export async function deleteRole(roleId: string): Promise<{ error: string } | { 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
   // O cargo é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
   const travado = bloqueioDoSuporte(ctx, 'excluir cargo')
   if (travado) return { error: travado }
 

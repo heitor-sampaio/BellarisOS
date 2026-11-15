@@ -84,10 +84,10 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('decisão 1: a recepção vende R$ 300 de crédito na clínica no Pix — caixa, fechamento, pontos e saldo, sem comissão', async ({ browser }) => {
+test('decisão 1: a recepção vende R$ 300 de crédito interno no Pix — caixa, fechamento, pontos e saldo, sem comissão', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     const dlg = await abrirVendaNoPdv(p, `/${slug}`, rosana)
-    await dlg.getByRole('button', { name: 'Crédito na rede', exact: true }).click()
+    await dlg.getByRole('button', { name: 'Crédito interno', exact: true }).click()
     // A tela diz a regra (princípio 3): entra no caixa hoje, o uso não conta de novo.
     await expect(dlg.locator('[data-regra-do-credito]')).toContainText('Entra no caixa hoje')
     await expect(dlg.locator('[data-regra-do-credito]')).toContainText('não conta como receita de novo')
@@ -161,7 +161,7 @@ test('decisão 1: quem não recebe não vende crédito (a action recusa)', async
     await p.goto(`/${slug}/pdv?nova=1&cliente=${rosana}`)
     await expect(p.getByText('Você não tem acesso a esta área')).toBeVisible()
     await expect(p.getByRole('region', { name: 'Vender' })).toHaveCount(0)
-    const r = await chamarAcao(p, 'actions/credito-na-clinica.ts', 'venderCredito', `/${slug}/pdv`,
+    const r = await chamarAcao(p, 'actions/credito-interno.ts', 'venderCredito', `/${slug}/pdv`,
       [rosana, rede!.branchId, '50', { forma: 'AVISTA', metodo: 'PIX' }, null])
     expect(r.texto).not.toContain('"ok":true')
   })

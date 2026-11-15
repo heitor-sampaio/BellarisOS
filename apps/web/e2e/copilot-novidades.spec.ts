@@ -265,7 +265,7 @@ test('o que a Meta cobrou no mês, por número — só para quem vê as integra�
 // resposta"): "quem eu devo reativar?" no Copilot é o "Reativar clientes" do
 // dashboard — na clínica de uma unidade, todas as clientes ativas, também a
 // que não tem a tag da unidade (importação, dado antigo).
-test('r3-f13-10: "sem visita" no Copilot é o "Reativar clientes" do dashboard — na clínica de uma unidade, também a cliente sem a tag', async ({ browser }) => {
+test('r3-f13-10: "sem visita" no Copilot é o "Reativar clientes" do dashboard — na rede de uma unidade, também a cliente sem a tag', async ({ browser }) => {
   const t = rede.outra.tenantId
   const desde = new Date(Date.now() - 90 * 86_400_000).toISOString()
   // Cadastrada ANTES da janela: a cliente nova de hoje ainda não é "para

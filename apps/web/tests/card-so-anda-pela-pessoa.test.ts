@@ -34,7 +34,7 @@ function arquivos(dir: string, saida: string[] = []): string[] {
   return saida
 }
 
-describe('o card só anda pela pessoa ou por uma automação da clínica (r2-cfg-04)', () => {
+describe('o card só anda pela pessoa ou por uma automação da rede (r2-cfg-04)', () => {
   it('nenhum outro arquivo grava a etapa da oportunidade', () => {
     const gravam = ['app', 'actions', 'lib', 'components']
       .flatMap(d => arquivos(join(RAIZ, d)))

@@ -15,7 +15,7 @@ import { normalizarHorario, resumoDoHorario } from '@/lib/agenda/horario'
  * da rede). Só o número sai da tabela de credencial, lido pelo servidor —
  * nunca a credencial. O "Ligar" é sempre o telefone.
  */
-export interface AClinica {
+export interface AUnidade {
   nome:      string
   endereco:  string | null
   telefone:  string | null
@@ -48,7 +48,7 @@ async function numeroConectado(admin: ReturnType<typeof createAdminClient>, tena
   return (numeros.find(n => n.branch_id === branchId) ?? numeros.find(n => n.is_default))?.phone_e164 ?? null
 }
 
-export async function aClinicaDoEndereco(slug: string): Promise<AClinica | null> {
+export async function aUnidadeDoEndereco(slug: string): Promise<AUnidade | null> {
   const admin = createAdminClient()
   const u = await ler(admin.from('branches')
     .select('id, tenant_id, name, phone, address, city, state, zip_code, horario, tenants!inner(name, phone)')

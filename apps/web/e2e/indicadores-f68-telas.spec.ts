@@ -18,7 +18,7 @@ import { apagarAgendamentos } from './apoio/limpeza'
  *   agenda, não atende) é o da clínica — era "0 clientes".
  * - C48: o ticket sem cliente que pagou é "—", não R$ 0,00.
  * - C45: a receita da rede inteira conta a unidade desativada que teve
- *   movimento (o "Por filial" a mostra; o total não fechava com as linhas).
+ *   movimento (o "Por unidade" a mostra; o total não fechava com as linhas).
  */
 
 const marca = Date.now().toString(36)
@@ -125,7 +125,7 @@ test('D10: o "Meus…" do dashboard conta o que é dela nas duas unidades, e diz
   })
 })
 
-test('D12: o total de clientes do cabeçalho da vendedora é o da clínica', async ({ browser }) => {
+test('D12: o total de clientes do cabeçalho da vendedora é o da rede', async ({ browser }) => {
   const { count } = await db().from('clients').select('id', { count: 'exact', head: true }).eq('tenant_id', rede!.tenantId).eq('is_active', true)
   expect(count).toBeGreaterThan(0)
   await comSessao(browser, vendedora!, async p => {

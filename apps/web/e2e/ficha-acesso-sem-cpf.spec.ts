@@ -136,7 +136,7 @@ test('sem documento nenhum, segue sem acesso — e a tela diz por quê', async (
   })
 })
 
-test('em outra clínica, o mesmo e-mail com o MESMO passaporte liga a ficha à conta; com outro, recusa', async ({ browser }) => {
+test('em outra rede, o mesmo e-mail com o MESMO passaporte liga a ficha à conta; com outro, recusa', async ({ browser }) => {
   // A Sophie do primeiro teste já tem conta (rede A). Outro passaporte com o
   // mesmo e-mail é outra pessoa: recusa, e nada nasce.
   await como(browser, recepcaoB, async p => {

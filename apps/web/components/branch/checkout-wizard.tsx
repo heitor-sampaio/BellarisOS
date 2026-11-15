@@ -122,7 +122,7 @@ interface Props {
 function comissaoDaVendaDoPlano(plan: CheckoutPlan, vendedorId: string): string | null {
   const quem = (plan.equipe ?? []).find(m => m.id === vendedorId)
   if (!quem) return null
-  return textoDaComissaoDaVenda({ tipo: 'PLANO', pessoa: { nome: quem.nome, pct: quem.comissaoVendaPct }, itens: [{ regra: null }], clinicaPct: plan.comissaoDoPlanoPct ?? null })
+  return textoDaComissaoDaVenda({ tipo: 'PLANO', pessoa: { nome: quem.nome, pct: quem.comissaoVendaPct }, itens: [{ regra: null }], redePct: plan.comissaoDoPlanoPct ?? null })
 }
 
 function fmtBRL(v: number) {
@@ -243,7 +243,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // Agendamento — compartilhado por todas as sessões
   const [schedBranchId, setSchedBranchId] = useState(plan.currentBranchId)
   const [schedProfs,    setSchedProfs]    = useState<{ id: string; name: string }[]>([])
-  // Nasce carregando quando já há filial; cada troca liga de novo no handler.
+  // Nasce carregando quando já há unidade; cada troca liga de novo no handler.
   const [loadingProfs,  setLoadingProfs]  = useState(!!plan.currentBranchId)
   const [schedProfId,   setSchedProfId]   = useState('')
 
@@ -254,7 +254,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const activeDate = sessionDates[activeSession]?.date ?? ''
   const activeTime = sessionDates[activeSession]?.time ?? ''
 
-  // Os horários do dia valem para UMA combinação de filial, profissional, data
+  // Os horários do dia valem para UMA combinação de unidade, profissional, data
   // e sessão. Guardados junto com a chave dela: enquanto a resposta da chave
   // atual não chega, a lista é vazia e "carregando" — derivado, sem zerar nada
   // dentro de efeito.
@@ -274,9 +274,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [showCancel,   setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
 
-  // Trocar a filial zera o profissional e liga o "carregando"; o efeito abaixo
+  // Trocar a unidade zera o profissional e liga o "carregando"; o efeito abaixo
   // só busca a equipe dela.
-  function trocarFilialDoAgendamento(id: string) {
+  function trocarUnidadeDoAgendamento(id: string) {
     setSchedBranchId(id)
     if (!id) return
     setLoadingProfs(true)
@@ -1067,21 +1067,21 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     <div>
       {progressBar}
 
-      {/* Filial + Profissional (compartilhados) */}
+      {/* Unidade + Profissional (compartilhados) */}
       <div className="card" style={{ padding: '18px 20px', marginBottom: 14 }}>
         <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
           {/* Com uma unidade só, não há unidade a escolher (F8). */}
           {plan.branches.length > 1 ? 'Unidade e profissional' : 'Profissional'}
         </p>
 
-        {/* Filial */}
+        {/* Unidade */}
         {plan.branches.length > 1 && (
           <div style={{ marginBottom: 14 }}>
             <select
               className="filtro-select"
               aria-label="Unidade do agendamento"
               value={schedBranchId ?? ''}
-              onChange={e => trocarFilialDoAgendamento(e.target.value)}
+              onChange={e => trocarUnidadeDoAgendamento(e.target.value)}
             >
               {plan.branches.map(b => (
                 <option key={b.id} value={b.id}>

@@ -206,7 +206,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     (`comissaoDoProdutoNoFormulario`, `lib/comissoes/gravacao.ts`, conferido
     ANTES de gravar). Mostra e grava SÓ quem muda comissão — o Financeiro em
     Gerenciar, comissões no plano e abrangência de rede
-    (`podeMudarComissaoDoProcedimento`; quem tem só uma unidade e quem só
+    (`podeMudarComissaoDoProcedimento`; quem não tem “A rede inteira” e quem só
     tem o Estoque não veem a seção, e o servidor recusa o campo: "Seu cargo
     não muda a comissão dos produtos."). Com "Uma regra sobre o total", o
     cadastro não oferece campo: diz "A rede comissiona a venda de produto
@@ -357,7 +357,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   Heitor sobre a 9ª simulação, 2026-11-07; `vendas-financeiro.md` §9.3.4): a
   venda do "vale" não pergunta "Quem vendeu" e nenhuma linha nasce. Quem
   atende depois, pago com o crédito, recebe a comissão de EXECUÇÃO do
-  atendimento, como sempre. Prova: `e2e/vendas-credito-na-clinica.spec.ts`.
+  atendimento, como sempre. Prova: `e2e/vendas-credito-interno.spec.ts`.
 - **Não existe "sem comissão, de propósito"** (o Heitor, 2026-11-13: "Só tira
   o \"de proposito\" na caixa tambem"). Saíram o botão "É de propósito" da
   linha da Equipe (A4 da 12ª), o "Desfazer" dele (A6 da 14ª) e a caixa da

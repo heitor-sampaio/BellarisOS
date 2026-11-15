@@ -62,7 +62,7 @@ test('a equipe da unidade, em /login e /admin, vai ao painel dela', async ({ bro
 // destino pelos claims era /admin/dashboard, o portão do /admin devolvia ao
 // /login, e o /login (J-67) mandava de novo ao destino — milhares de idas e
 // voltas, a tela em branco (completa de 2026-10-30, plataforma-primeiro-admin).
-test('um login sem clínica nenhuma não entra: fica no formulário, diz o porquê, sem dar volta', async ({ browser }) => {
+test('um login sem rede nenhuma não entra: fica no formulário, diz o porquê, sem dar volta', async ({ browser }) => {
   const email = `e2e-sem-clinica-${marca}@bellaris.invalid`
   const senha = `Senha-${marca}-7z`
   const { data: criado, error } = await db().auth.admin.createUser({ email, password: senha, email_confirm: true })

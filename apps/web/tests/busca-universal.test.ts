@@ -175,7 +175,7 @@ describe('resultadoDaLinha', () => {
     })?.subtitulo).toBe('SDR · Rede · desativado')
   })
 
-  it('agendamento no fuso da clínica', () => {
+  it('agendamento no fuso da unidade', () => {
     const sub = resultadoDaLinha({
       tipo: 'agendamento', id: 'a1', titulo: 'Ana', subtitulo: 'Limpeza',
       extra: { quando: '2026-10-08T17:30:00Z', profissional: 'Dra. Lu', unidade: 'Centro' },

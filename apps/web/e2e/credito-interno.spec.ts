@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, filiaisAtivas, tenantId, PREFIXO } from './apoio/banco'
+import { banco, unidadesAtivas, tenantId, PREFIXO } from './apoio/banco'
 import { apagarClientes } from './apoio/limpeza'
 
 /**
@@ -28,7 +28,7 @@ test.describe.serial('crédito interno como forma de pagamento', () => {
 
   test.beforeAll(async () => {
     const db = banco()
-    branchId = (await filiaisAtivas())[0]!.id
+    branchId = (await unidadesAtivas())[0]!.id
     const { data, error } = await db.from('clients')
       .insert({ tenant_id: await tenantId(), branch_id: branchId, name: `${PREFIXO} Cliente com credito ${marca}`, phone: '5548' + String(Date.now()).slice(-9) })
       .select('id').single<{ id: string }>()
@@ -105,7 +105,7 @@ test('estornar o pagamento de um ATENDIMENTO funciona', async () => {
   // UNIQUE nele: todo estorno de atendimento falhava com 23505.
   const db = banco()
   const tenant = await tenantId()
-  const branch = (await filiaisAtivas())[0]!.id
+  const branch = (await unidadesAtivas())[0]!.id
   const { data: cli } = await db.from('clients')
     .insert({ tenant_id: tenant, branch_id: branch, name: `${PREFIXO} Cliente estorno atend ${marca}`, phone: '5548' + String(Date.now() + 7).slice(-9) })
     .select('id').single<{ id: string }>()

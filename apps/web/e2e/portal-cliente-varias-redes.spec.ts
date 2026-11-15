@@ -62,7 +62,7 @@ async function agendamento(rede: OutraRede, clienteId: string): Promise<string> 
   return data!.id
 }
 
-test.describe('a mesma cliente em duas clínicas', () => {
+test.describe('a mesma cliente em duas redes', () => {
   test.beforeAll(async () => {
     A = await criarOutraRede(`vca${marca}`)
     B = await criarOutraRede(`vcb${marca}`)
@@ -86,7 +86,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
     await A?.limpar()
   })
 
-  test('com o token dela, o banco mostra as fichas dela nas duas clínicas — e só as dela', async () => {
+  test('com o token dela, o banco mostra as fichas dela nas duas redes — e só as dela', async () => {
     const { error: eN } = await db().from('client_notifications').insert([
       { client_id: cliente.clientId, title: 'Aviso da A' },
       { client_id: fichaB, title: 'Aviso da B' },
@@ -123,7 +123,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
 
   // A clínica é a do ENDEREÇO: o app acha a ficha dela naquela clínica — a
   // claim `client_id` do token é só a marca "é cliente" (é a da A, aqui).
-  test('no portal de cada clínica ela vê e edita a ficha DAQUELA clínica', async ({ browser }) => {
+  test('no portal de cada rede ela vê e edita a ficha DAQUELA rede', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: cliente.estado })
     const page = await ctx.newPage()
     try {
@@ -158,7 +158,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
   // A clínica B cadastra pela TELA quem já usa o BellarisOS na A: e-mail e CPF
   // batem → a ficha nova é ligada à conta que ela já tem (decisão do Heitor:
   // liga sozinho). CPF diferente, ou e-mail de alguém da equipe, é recusado.
-  test('a clínica B cadastra quem já tem conta: liga a ficha à mesma conta', async ({ browser }) => {
+  test('a rede B cadastra quem já tem conta: liga a ficha à mesma conta', async ({ browser }) => {
     const pessoa = await clienteComSessao(`vd${marca}`, { id: A.branchId, slug: `e2e-un-vca${marca}` }, { tenant: A.tenantId })
     const recepcao = await criarMembro(`vdb${marca}`, {
       tenant: B.tenantId, branchId: B.branchId, permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }],
@@ -222,7 +222,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
   // Decisão do Heitor: no primeiro login com mais de uma clínica, ela escolhe;
   // depois, entra na última que usou. No portal, o nome da unidade no topo
   // leva de volta ao seletor.
-  test('com duas clínicas: o primeiro login é o seletor; depois, a última clínica usada', async ({ browser }) => {
+  test('com duas redes: o primeiro login é o seletor; depois, a última rede usada', async ({ browser }) => {
     await db().from('clients').update({ portal_ultima_entrada_em: null }).in('id', [cliente.clientId, fichaB])
     const email = `e2e-cliente-vc${marca}@bellaris.invalid`
     const estado = path.join(__dirname, '.auth', `cliente-vc-entrada-${marca}.json`)
@@ -249,7 +249,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
     }
   })
 
-  test('com UMA clínica só, o login vai direto para ela e o topo não oferece troca', async ({ browser }) => {
+  test('com UMA rede só, o login vai direto para ela e o topo não oferece troca', async ({ browser }) => {
     const sozinha = await clienteComSessao(`vs${marca}`, { id: A.branchId, slug: `e2e-un-vca${marca}` }, { tenant: A.tenantId })
     try {
       expect(sozinha.destino).toBe(`/e2e-un-vca${marca}/cliente`)
@@ -266,7 +266,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
 
   // O aparelho é registrado pela ficha da clínica em que ela estava; o aviso
   // de QUALQUER clínica dela tem de chegar nele (e nunca no de outra pessoa).
-  test('os aparelhos dela recebem o aviso de qualquer clínica dela', async () => {
+  test('os aparelhos dela recebem o aviso de qualquer rede dela', async () => {
     const token = `e2e-tok-${marca}`
     const endpoint = `https://e2e.invalido/push/${marca}`
     const { error: eT } = await db().from('push_tokens').insert({ token, platform: 'android', client_id: cliente.clientId })
@@ -288,7 +288,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
     }
   })
 
-  test('o bônus de primeiro acesso vale em cada clínica, na primeira vez que ela abre o portal dela', async ({ browser }) => {
+  test('o bônus de primeiro acesso vale em cada rede, na primeira vez que ela abre o portal dela', async ({ browser }) => {
     const { error: eC } = await db().from('loyalty_configs')
       .upsert({ tenant_id: B.tenantId, enabled: true, first_access_bonus: 50 }, { onConflict: 'tenant_id' })
     expect(eC, 'ligar a fidelidade da B com o bônus').toBeNull()
@@ -311,7 +311,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
     }
   })
 
-  test('numa clínica em que ela não tem ficha, o portal não abre', async ({ browser }) => {
+  test('numa rede em que ela não tem ficha, o portal não abre', async ({ browser }) => {
     const C = await criarOutraRede(`vcc${marca}`)
     const ctx = await browser.newContext({ storageState: cliente.estado })
     const page = await ctx.newPage()
@@ -327,7 +327,7 @@ test.describe('a mesma cliente em duas clínicas', () => {
   // Por último: a B fica bloqueada até o cache da rede (60 s) vencer de novo.
   // Clínica bloqueada (assinatura, ou desligada pela plataforma) não tranca a
   // conta dela inteira: as outras seguem, e o seletor diz qual não abre.
-  test('clínica bloqueada: as outras seguem abertas, e o seletor avisa', async ({ browser }) => {
+  test('rede bloqueada: as outras seguem abertas, e o seletor avisa', async ({ browser }) => {
     test.setTimeout(240_000)
     await db().from('tenants').update({ is_active: false }).eq('id', B.tenantId)
     const ctx = await browser.newContext({ storageState: cliente.estado })

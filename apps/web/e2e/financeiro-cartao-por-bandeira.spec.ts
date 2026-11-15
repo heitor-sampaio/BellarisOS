@@ -125,7 +125,7 @@ test.afterAll(async () => {
 })
 
 test.describe.serial('o cartão por bandeira', () => {
-  test('a clínica dá à Elo o prazo de 32 dias e a taxa de 3% no crédito 3x, pela tela — e a regra geral fica como estava', async ({ browser }) => {
+  test('a rede dá à Elo o prazo de 32 dias e a taxa de 3% no crédito 3x, pela tela — e a regra geral fica como estava', async ({ browser }) => {
     await como(browser, dona!, async p => {
       await p.goto('/admin/settings?tab=comissoes')
       const card = p.locator('[aria-label="Taxas da maquininha"]')

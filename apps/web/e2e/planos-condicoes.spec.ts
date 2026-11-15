@@ -116,12 +116,12 @@ test.describe.serial('o banco: cortesia e desconto por item', () => {
     expect((await condicao('plano', { tipo: 'cortesia' })).error?.message ?? '').toMatch(/sem plano/i)
   })
 
-  test('item com condição é condição especial: a clínica cancela, não aumenta', async () => {
+  test('item com condição é condição especial: a rede cancela, não aumenta', async () => {
     await redeComTudo()
     expect((await condicao('whatsapp', { tipo: 'percentual', percentual: 50 })).error).toBeNull()
-    const clinica = (q: number) => db().rpc('assinatura_adicional_definir', { p_tenant: outra.tenantId, p_chave: 'whatsapp', p_quantidade: q, p_valor_centavos: null })
-    expect((await clinica(3)).error?.message ?? '').toMatch(/condição especial/i)
-    expect((await clinica(1)).error, 'diminuir pode').toBeNull()
+    const pelaRede = (q: number) => db().rpc('assinatura_adicional_definir', { p_tenant: outra.tenantId, p_chave: 'whatsapp', p_quantidade: q, p_valor_centavos: null })
+    expect((await pelaRede(3)).error?.message ?? '').toMatch(/condição especial/i)
+    expect((await pelaRede(1)).error, 'diminuir pode').toBeNull()
   })
 
   test('a rede toda de cortesia vai a ativa, e a regra de atraso não a move', async () => {
@@ -273,7 +273,7 @@ test.describe.serial('o sistema: dar cortesia e desconto na tela da rede', () =>
   })
 })
 
-test.describe.serial('a clínica vê a cortesia e o desconto', () => {
+test.describe.serial('a rede vê a cortesia e o desconto', () => {
   let dono: MembroDeTeste | null = null
   test.beforeAll(async () => {
     expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', outra.tenantId)).error).toBeNull()

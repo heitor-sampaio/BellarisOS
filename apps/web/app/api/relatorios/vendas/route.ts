@@ -36,7 +36,11 @@ export async function GET(req: NextRequest) {
   }
 
   const q = req.nextUrl.searchParams
-  const pedida = q.get('branch') ?? ctx.branchId
+  // A unidade pedida, dentre as da pessoa. Sem pedido: quem tem UMA unidade
+  // fica nela; quem tem várias (EQ1a), todas as DELA — em `/api/*` não há
+  // unidade no endereço, e o `ctx.branchId` é só a principal (exportava ela,
+  // calada). Quem é da rede, a rede.
+  const pedida = q.get('branch') ?? (ctx.unidades?.length === 1 ? ctx.unidades[0]! : null)
   // F72: as mesmas unidades da aba de Vendas — as de LEITURA (a desativada com
   // movimento no período segue no total e na exportação, com o selo).
   const unidades = await unidadesParaLer(ctx.tenantId, {
@@ -52,7 +56,7 @@ export async function GET(req: NextRequest) {
     branchIds = [pedida]
   } else {
     if (isOwnScope(ctx, 'reports')) return NextResponse.json({ error: 'Escolha uma unidade.' }, { status: 403 })
-    branchIds = [...nomeDe.keys()]
+    branchIds = [...nomeDe.keys()].filter(id => alcancaUnidade(ctx, id))
   }
 
   const tipo = q.get('tipo')

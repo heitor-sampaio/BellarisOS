@@ -48,7 +48,7 @@ describe('opcoesDoCookieDeSessao', () => {
     }
   })
 
-  it('nunca ganha domínio: o cookie é do host (a clínica e a plataforma não dividem sessão)', () => {
+  it('nunca ganha domínio: o cookie é do host (a rede e a plataforma não dividem sessão)', () => {
     const o = opcoesDoCookieDeSessao('x', { domain: '.bellarisos.com' }, true)
     expect(o.domain).toBeUndefined()
   })

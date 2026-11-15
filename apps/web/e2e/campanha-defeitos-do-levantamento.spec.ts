@@ -56,7 +56,7 @@ test.afterAll(async () => {
   if (login) await db().auth.admin.deleteUser(login)
 })
 
-test('C51: o "vai receber" conta o aparelho que ela registrou pela outra clínica', async () => {
+test('C51: o "vai receber" conta o aparelho que ela registrou pela outra rede', async () => {
   const { data: n, error } = await db().rpc('publico_com_aparelho', { p_tenant: A.tenantId, p_filtros: { client_ids: [fichaA] } })
   expect(error, error?.message).toBeNull()
   expect(n, 'a Ana da A tem o celular registrado pela B').toBe(1)

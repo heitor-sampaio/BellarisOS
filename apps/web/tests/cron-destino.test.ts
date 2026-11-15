@@ -10,7 +10,7 @@ describe('baseDoJob', () => {
   it('assinaturas vai ao sistema', () => {
     expect(baseDoJob('assinaturas', env)).toBe('https://admin.bellarisos.com')
   })
-  it('o resto vai à clínica', () => {
+  it('o resto vai à rede', () => {
     for (const j of ['notification-campaigns', 'suporte-sessoes', 'automacoes']) expect(baseDoJob(j, env)).toBe('https://app.bellarisos.com')
   })
   it('sem SISTEMA_URL, o job do sistema não tem para onde ir (null — o cron o pula, com aviso)', () => {

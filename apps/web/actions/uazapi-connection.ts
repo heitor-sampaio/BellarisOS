@@ -3,7 +3,7 @@
 import { conferirLimite } from '@estetica-os/nucleo/lib/planos/limites'
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
-import { recusaDaConfigDaClinica } from '@/lib/configuracao-da-rede'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { UazapiConfig, NumeroDeWhatsApp } from '@/lib/whatsapp/types'
 import {
@@ -19,7 +19,7 @@ import { cifrarSegredos } from '@/lib/integracoes/cofre'
 import { MAX_ROTULO } from '@/lib/whatsapp/rotulo'
 import { marcarNumeroComoRemovido } from '@/lib/whatsapp/remover'
 import { dispararHistoricoUazapi, ultimaImportacaoDoHistorico } from '@/lib/whatsapp/historico-uazapi'
-import { urlDaClinica } from '@/lib/plataforma/destino'
+import { urlDoAppDaRede } from '@/lib/plataforma/destino'
 
 /**
  * Conexão de WhatsApp gerenciada pelo BellarisOS.
@@ -109,8 +109,8 @@ export async function trazerHistoricoUazapi(numeroId: string): Promise<{ ok: boo
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
   if (!numero.isActive) return { ok: false, error: 'Conecte o número antes de trazer o histórico.' }
@@ -245,8 +245,8 @@ export async function criarConexaoUazapi(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
   const admin = createAdminClient()
 
   if (!conexaoGerenciadaDisponivel()) {
@@ -270,7 +270,7 @@ export async function criarConexaoUazapi(
 
   // O endereço PÚBLICO da clínica, lido agora (D11, F69): o NEXT_PUBLIC_APP_URL
   // é o do build, e o webhook nascia no domínio do Railway.
-  const appUrl = enderecoDaClinica()
+  const appUrl = enderecoDoAppDaRede()
   if (!appUrl) {
     return { ok: false, error: 'CLINICA_URL não configurada — o webhook nasceria apontando para lugar nenhum.' }
   }
@@ -382,14 +382,14 @@ export async function repararConexaoUazapi(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
 
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
   const config = numero.config as UazapiConfig
 
-  const appUrl = enderecoDaClinica()
+  const appUrl = enderecoDoAppDaRede()
   if (!appUrl) return { ok: false, error: 'CLINICA_URL não configurada.' }
 
   try {
@@ -410,8 +410,8 @@ export async function getQrCodeUazapi(numeroId: string): Promise<{
 }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
 
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
@@ -449,8 +449,8 @@ export async function getCodigoPareamentoUazapi(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
 
   const digitos = telefone.replace(/\D/g, '')
   if (digitos.length < 10) return { ok: false, error: 'Informe o número com DDD.' }
@@ -537,8 +537,8 @@ export async function desconectarUazapi(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
 
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
@@ -580,8 +580,8 @@ export async function removerConexaoUazapi(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // A integração é da clínica toda (H7): quem tem unidade fixa não muda.
-  const daClinica = recusaDaConfigDaClinica(ctx)
-  if (daClinica) return { ok: false, error: daClinica }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { ok: false, error: daRede }
 
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero?.managed) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
@@ -612,6 +612,6 @@ export async function removerConexaoUazapi(
   return { ok: true }
 }
 
-function enderecoDaClinica(): string | null {
-  try { return urlDaClinica() } catch { return null }
+function enderecoDoAppDaRede(): string | null {
+  try { return urlDoAppDaRede() } catch { return null }
 }

@@ -105,8 +105,8 @@ export interface AdminDashboardProps {
   totalClientsEver: number
   branchCount:      number
   /**
-   * A rede tem UMA unidade ativa (D-19): somem o ranking de filiais e os
-   * termos de rede ("da rede", "por filial"). Volta com a segunda unidade.
+   * A rede tem UMA unidade ativa (D-19): somem o ranking de unidades e os
+   * termos de rede ("da rede", "por unidade"). Volta com a segunda unidade.
    */
   umaUnidade?:      boolean
   /** O nome da unidade do `?unidade=` (J-54): o dashboard da rede recortado a ela. */
@@ -151,10 +151,10 @@ export interface AdminDashboardProps {
   /**
    * O FINANCEIRO "só os meus" (cada número segue o seu módulo, 2026-10-29): o
    * dinheiro é o da pessoa, e o que não se atribui a ela (custo, lucro, margem
-   * do catálogo, o ranking de filiais) não aparece.
+   * do catálogo, o ranking de unidades) não aparece.
    */
   recorteProprio?: boolean
-  /** A AGENDA "só os meus": a ocupação e o ranking por filial (a agenda de cada unidade) não aparecem. */
+  /** A AGENDA "só os meus": a ocupação e o ranking por unidade (a agenda de cada unidade) não aparecem. */
   agendaPropria?: boolean
   procedureMargins:   { name: string; price: number; cost: number; marginPct: number }[]
 
@@ -595,13 +595,13 @@ export function AdminDashboardView({
         </div>
         )}
 
-        {/* Ranking de filiais + gráfico de evolução (com o lucro). */}
+        {/* Ranking de unidades + gráfico de evolução (com o lucro). */}
         {veDinheiro && !recorteProprio && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Gráfico animado */}
           <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} />
 
-          {/* O ranking de filiais mistura o dinheiro e a AGENDA de cada unidade:
+          {/* O ranking de unidades mistura o dinheiro e a AGENDA de cada unidade:
               com a agenda "só os meus", fica de fora (a evolução segue). */}
           {!agendaPropria && !umaUnidade && (<>
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -721,7 +721,7 @@ export function AdminDashboardView({
           </div>
           {todayByBranch.length === 0 ? (
             // Vazio em UMA linha, ícone ao lado do texto. Empilhado e
-            // centralizado, este estado ocupava a altura de quatro filiais
+            // centralizado, este estado ocupava a altura de quatro unidades
             // listadas — e como a coluna da direita é mais curta que a
             // esquerda, o branco do card somava ao branco do fim da coluna.
             <div style={{
@@ -774,7 +774,7 @@ export function AdminDashboardView({
           }[stockStatus]
           return (
             // `flex: 1` fecha a coluna na mesma altura da esquerda. A direita
-            // tem menos conteúdo — gráfico e ranking de filiais somam bem mais
+            // tem menos conteúdo — gráfico e ranking de unidades somam bem mais
             // que dois cards —, e a sobra virava uma faixa nude de uns 200px
             // ao lado do ranking: a "coluna em branco". Com o card ocupando o
             // que resta, as duas colunas terminam juntas e o respiro fica

@@ -114,7 +114,7 @@ test.describe.serial('API oficial com credencial colada à mão', () => {
     }
   })
 
-  test('sem o WABA ID: salva, e a tela avisa que a inscrição fica com a conta da clínica', async ({ browser }) => {
+  test('sem o WABA ID: salva, e a tela avisa que a inscrição fica com a conta da rede', async ({ browser }) => {
     const antes = graph!.terminadasEm('/subscribed_apps').length
     const r = await como(browser, p => salvar(p, { accessToken: 'tok-manual' }, true))
     expect(r.texto).toContain('"ok":true')

@@ -124,7 +124,7 @@ test('A18: o Vender diz a comissão de venda de quem vendeu e de onde vem o perc
   })
 })
 
-test('A19: a taxa e o líquido da maquininha no Vender são de quem vê o financeiro da clínica', async ({ browser }) => {
+test('A19: a taxa e o líquido da maquininha no Vender são de quem vê o financeiro da rede', async ({ browser }) => {
   const noCartaoEm3x = async (p: Page) => {
     const dlg = await abrirVender(p)
     await dlg.getByRole('button', { name: 'Produto', exact: true }).click()

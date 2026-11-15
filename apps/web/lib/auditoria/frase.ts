@@ -48,7 +48,7 @@ const COISA: Record<string, string> = {
   injectable_maps: 'o mapa de injetáveis',
   installments: 'a parcela',
   integration_configs: 'a integração',
-  internal_credits: 'o crédito na rede',
+  internal_credits: 'o crédito interno',
   issued_documents: 'o documento',
   leads: 'a oportunidade',
   lgpd_requests: 'o pedido de LGPD',

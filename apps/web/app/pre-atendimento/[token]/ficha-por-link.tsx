@@ -29,8 +29,8 @@ async function postar<T>(rota: string, corpo: unknown): Promise<T & { erro?: str
   }
 }
 
-export function FichaPorLink({ token, clinica, pede, conferir = false }: {
-  token: string; clinica: string; pede: 'CPF' | 'NASCIMENTO'
+export function FichaPorLink({ token, remetente, pede, conferir = false }: {
+  token: string; remetente: string; pede: 'CPF' | 'NASCIMENTO'
   /** A52: a equipe já preencheu a ficha — a cliente confere (e completa) as respostas. */
   conferir?: boolean
 }) {
@@ -81,7 +81,7 @@ export function FichaPorLink({ token, clinica, pede, conferir = false }: {
           {/* A50 da 9ª: antes do CPF a página não diz nada da ficha — nem que a
               clínica já a preencheu. Depois dele, o modo CONFERIR diz
               "Confira as respostas que a equipe preencheu". */}
-          {`${clinica} mandou a sua ficha de saúde.`}
+          {`${remetente} mandou a sua ficha de saúde.`}
         </h1>
       </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8 }}>

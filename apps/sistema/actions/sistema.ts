@@ -7,7 +7,7 @@ import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro, tentar } from '@estetica-os/nucleo/lib/db'
 import { linkDeDefinirSenha } from '@estetica-os/nucleo/lib/plataforma/destino'
 import { tagDaRede } from '@estetica-os/nucleo/lib/redes/cache'
-import { expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
+import { expirarNoAppDaRede } from '@estetica-os/nucleo/lib/plataforma/expirar-no-app-da-rede'
 import { semearRede, fimDoTesteParaHoje, soDigitos } from '@estetica-os/nucleo/lib/redes/criar'
 import { tagDaSessao } from '@estetica-os/nucleo/lib/suporte/sessao'
 import { avisarQuemAdministraARede } from '@estetica-os/nucleo/lib/suporte/avisos'
@@ -22,11 +22,11 @@ import { normalizarCondicao, ITENS_DA_ASSINATURA } from '@estetica-os/nucleo/lib
 /**
  * Expira uma tag AQUI e na CLÍNICA: a situação da rede e a sessão de suporte
  * são cache do processo da clínica (o `buildContext` lê a cada tela), e o
- * `updateTag` daqui não chega lá (`expirarNaClinica`).
+ * `updateTag` daqui não chega lá (`expirarNoAppDaRede`).
  */
 async function expirarAqui(tag: string): Promise<void> {
   revalidateTag(tag, { expire: 0 })
-  await expirarNaClinica([tag])
+  await expirarNoAppDaRede([tag])
 }
 
 /**

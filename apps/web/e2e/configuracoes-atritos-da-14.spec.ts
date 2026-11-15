@@ -68,7 +68,7 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
-test('A1: na unidade, a aba da clínica vira link, as abas da clínica ficam à mão, e o menu leva às Automações — só para quem é da rede', async ({ browser }) => {
+test('A1: na unidade, a aba da rede vira link, as abas da rede ficam à mão, e o menu leva às Automações — só para quem é da rede', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto(`/${slug}/settings?tab=comissoes`)
     const aviso = p.locator('[data-aba-fora-do-acesso]')
@@ -77,9 +77,9 @@ test('A1: na unidade, a aba da clínica vira link, as abas da clínica ficam à 
     await expect(link).toHaveAttribute('href', '/admin/settings?tab=comissoes')
 
     // As abas que só a clínica tem, à mão nas Configurações da unidade.
-    const daClinica = p.locator('[data-abas-da-clinica]')
-    await expect(daClinica.getByRole('link', { name: 'Fidelidade' })).toHaveAttribute('href', '/admin/settings?tab=fidelidade')
-    await expect(daClinica.getByRole('link', { name: 'Comissões e taxas' })).toHaveAttribute('href', '/admin/settings?tab=comissoes')
+    const daRede = p.locator('[data-abas-da-rede]')
+    await expect(daRede.getByRole('link', { name: 'Fidelidade' })).toHaveAttribute('href', '/admin/settings?tab=fidelidade')
+    await expect(daRede.getByRole('link', { name: 'Comissões e taxas' })).toHaveAttribute('href', '/admin/settings?tab=comissoes')
 
     // O menu da unidade traz as entradas da clínica, levando a /admin.
     const menu = p.locator('aside nav')
@@ -91,8 +91,8 @@ test('A1: na unidade, a aba da clínica vira link, as abas da clínica ficam à 
   // A gerente de unidade fixa não entra em /admin: nem o link, nem as entradas.
   await como(browser, gerente, async p => {
     await p.goto(`/${slug}/settings?tab=tags`)
-    await expect(p.locator('[data-config-da-clinica]')).toBeVisible()
-    await expect(p.locator('[data-abas-da-clinica]')).toHaveCount(0)
+    await expect(p.locator('[data-config-da-rede]')).toBeVisible()
+    await expect(p.locator('[data-abas-da-rede]')).toHaveCount(0)
     await expect(p.locator('aside nav').getByRole('link', { name: 'Automações' })).toHaveCount(0)
   })
 })
@@ -134,10 +134,10 @@ test('A4: com o menu cortado pela altura da tela, um sinal diz que ele continua'
   }, { width: 1440, height: 1400 })
 })
 
-test('A5: a aba da clínica toda diz quem muda, pelo nome', async ({ browser }) => {
+test('A5: a aba da rede toda diz quem muda, pelo nome', async ({ browser }) => {
   await como(browser, gerente, async p => {
     await p.goto(`/${slug}/settings?tab=tags`)
-    const aviso = p.locator('[data-config-da-clinica]')
+    const aviso = p.locator('[data-config-da-rede]')
     await expect(aviso).toContainText('Esta configuração é da rede toda')
     await expect(aviso.locator('[data-quem-muda]')).toContainText(nomeDaDona)
     await expect(aviso.locator('[data-quem-muda]'), 'a própria gerente não entra').not.toContainText(await nome(gerente))

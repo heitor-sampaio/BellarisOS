@@ -80,7 +80,7 @@ test.afterAll(async () => {
   if (segunda) await db().from('branches').delete().eq('id', segunda)
 })
 
-test('a dona vê no /admin as clientes a reativar da clínica inteira, com a unidade de cada uma', async ({ browser }) => {
+test('a dona vê no /admin as clientes a reativar da rede inteira, com a unidade de cada uma', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto('/admin/dashboard')
     const quadro = p.locator('[data-reativar-clientes]')
@@ -118,7 +118,7 @@ test('com ?unidade=, o quadro é o da unidade (a Carla sumiu da primeira)', asyn
   })
 })
 
-test('r2-ind-03: na clínica de UMA unidade, o quadro conta todas as clientes ativas — também a que nunca foi atendida', async ({ browser }) => {
+test('r2-ind-03: na rede de UMA unidade, o quadro conta todas as clientes ativas — também a que nunca foi atendida', async ({ browser }) => {
   // O Heitor (revisão de 03/11): "na clínica de uma unidade, a clínica e a unidade são a mesma coisa".
   const umaSo = await criarOutraRede(`rcu${marca}`)
   let donaDaUma: MembroDeTeste | null = null

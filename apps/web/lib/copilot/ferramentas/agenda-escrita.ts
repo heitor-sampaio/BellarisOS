@@ -9,6 +9,7 @@ import { conferirCredito, type CreditoDeAgendamento } from '@/lib/creditos/credi
 import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-realiza'
 import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { notifyCancelledAppointment, notifyCheckin, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
+import { avisoDasVencidasNaChegada } from '@/lib/appointments/vencidas-na-chegada'
 import { garantirClienteRapido, comPermissaoDeUnificar } from '@/lib/clients/cliente-rapido'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { trechoDoBloqueio } from '@/lib/agenda/bloqueio'
@@ -370,6 +371,8 @@ export const fazerCheckIn: FerramentaDeEscrita<{ agendamento: string }, { appoin
     if ('error' in r) return { erro: r.error }
     revalidarAgendamento(c.ctx, p.appointmentId)
     notifyCheckin(p.appointmentId)
-    return { mensagem: 'Check-in feito.', href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
+    // O aviso das parcelas vencidas, o mesmo da agenda (D13; ficou de fora do CP1).
+    const aviso = await avisoDasVencidasNaChegada(c.ctx, p.appointmentId)
+    return { mensagem: aviso ? `Check-in feito. ${aviso}` : 'Check-in feito.', href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
   },
 }

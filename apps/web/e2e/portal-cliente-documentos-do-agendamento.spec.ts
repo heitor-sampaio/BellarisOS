@@ -66,7 +66,7 @@ test('o detalhe do agendamento diz que o termo falta assinar e leva a ele', asyn
   })
 })
 
-test('dispensado pela clínica, o detalhe diz isso', async ({ browser }) => {
+test('dispensado pela rede, o detalhe diz isso', async ({ browser }) => {
   expect((await db().from('issued_documents').update({ status: 'DISPENSADO' }).eq('id', doc)).error).toBeNull()
   await como(browser, cliente!, async p => {
     await p.goto(`/${slug}/cliente/agendamentos/${agendamento}`)

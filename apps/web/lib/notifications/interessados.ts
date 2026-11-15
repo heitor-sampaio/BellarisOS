@@ -62,10 +62,10 @@ async function responsaveisPeloModulo(
   // fica com os envolvidos diretos.
   if (!branchId) return []
 
-  const filial = await ler(admin
+  const linhaDaUnidade = await ler(admin
     .from('branches').select('tenant_id').eq('id', branchId).maybeSingle(),
     'descobrir a rede da unidade')
-  const tenantId = filial?.tenant_id as string | undefined
+  const tenantId = linhaDaUnidade?.tenant_id as string | undefined
   if (!tenantId) return []
   // Módulo fora do PLANO da rede (lib/planos/recursos.ts): ninguém responde
   // por ele — o mesmo corte que o buildContext faz nas permissões.

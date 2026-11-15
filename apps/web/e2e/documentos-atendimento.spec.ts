@@ -103,7 +103,7 @@ async function rabiscar(page: Page) {
   await page.mouse.up()
 }
 
-test.describe.serial('documentos: emissão pelo atendimento e assinatura na clínica', () => {
+test.describe.serial('documentos: emissão pelo atendimento e assinatura na unidade', () => {
   let ag1 = ''
 
   test('nasce ao agendar (os dois, DC4); confirmar e o check-in não emitem; iniciar é recusado sem assinatura', async ({ browser }) => {
@@ -309,7 +309,7 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na clí
 
     const [meu] = await documentos({ client_id: cliente, status: 'ASSINADO' })
     await como(browser, async page => {
-      const r = await chamarAcao(page, 'actions/documentos.ts', 'assinarNaClinica', `/admin/documentos/${meu!.id}/assinar`, [{
+      const r = await chamarAcao(page, 'actions/documentos.ts', 'assinarNaTela', `/admin/documentos/${meu!.id}/assinar`, [{
         id: docAlheio!.id, assinatura: 'data:image/png;base64,AAAA', hashExibido: docAlheio!.content_sha256 ?? 'x',
         identidadeConferida: true, aceite: 'invasão',
       }])

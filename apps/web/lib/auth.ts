@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedFichasDoLogin, getCachedRolePermissions, getCachedRoleReportTabs, getCachedTodasAsUnidades } from '@/lib/cached-queries'
 import { unidadesDoMembro, unidadeEmQueEsta } from '@/lib/unidades/do-membro'
 import { fichaDaRequisicao, slugDoCaminho } from '@/lib/clientes/ficha-da-requisicao'
-import { clinicaAbreParaCliente, fichasQueAbrem } from '@/lib/clientes/disponibilidade'
+import { redeAbreParaCliente, fichasQueAbrem } from '@/lib/clientes/disponibilidade'
 import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
 import { redeBloqueada } from '@/lib/redes/situacao'
 import {
@@ -67,10 +67,10 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     // Clínica FECHADA (bloqueada, ou sem o portal no plano) não tranca a conta
     // inteira: fora do portal dela, vale uma ficha que abre; no portal dela, o
     // seletor. Nenhuma abre → segue, e o portão abaixo manda à conta suspensa.
-    if (ficha && !(await clinicaAbreParaCliente(ficha.tenantId))) {
+    if (ficha && !(await redeAbreParaCliente(ficha.tenantId))) {
       const abertas = await fichasQueAbrem(fichas)
       const slugDaRota = slugDoCaminho(caminho)
-      if (abertas.length && slugDaRota && (slugDaRota === ficha.slug || ficha.slugsDaClinica?.includes(slugDaRota))) {
+      if (abertas.length && slugDaRota && (slugDaRota === ficha.slug || ficha.slugsDaRede?.includes(slugDaRota))) {
         redirect(ROTA_DO_SELETOR)
       } else if (abertas.length) {
         ficha = abertas.find(f => f.clientId === clientId) ?? abertas[0]!
@@ -97,7 +97,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
 
   // A abrangência segue a mesma regra, pelo mesmo motivo. Ela decide em quais
   // unidades a pessoa trabalha e qual portal ela abre (`app/admin/layout.tsx`
-  // manda embora quem tem filial fixa): lendo só do JWT, promover alguém a
+  // manda embora quem tem unidade fixa): lendo só do JWT, promover alguém a
   // abrangência de rede o deixava até uma hora trancado fora do portal certo.
   // `undefined` = membro não carregado (cliente final); `null` = rede.
   //
@@ -468,7 +468,7 @@ export function assertUnidade(ctx: TenantContext, branchId: string | null | unde
 }
 
 
-// Destino pós-login: abrangência de filial → dashboard da filial; rede → /admin.
+// Destino pós-login: abrangência de unidade → dashboard da unidade; rede → /admin.
 // A autorização fina de cada página é feita por assertPermission.
 export function getRedirectPath(_role: string, branchSlug?: string | null): string {
   if (branchSlug) return `/${branchSlug}/dashboard`
