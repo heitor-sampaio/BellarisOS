@@ -108,7 +108,13 @@ test('a agenda e o dashboard da unidade B mostram a profissional da rede', async
     // A ocupação da unidade conta o horário dela: sem profissional, era "—".
     await p.goto(`/${slugB}/dashboard`)
     const ocupacao = p.locator('.card', { has: p.getByText('Taxa de ocupação') })
-    await expect(ocupacao).toContainText(/\d+%/)
+    await expect(ocupacao, 'a da rede entra na base da ocupação de B').toContainText('o horário de 1 profissional que atende')
+    // O dashboard é o de HOJE: no domingo B (horário padrão) está fechada, e
+    // "—" é o certo (C48) — a completa de 15/11 rodou num domingo.
+    const hoje = diaEmQueAUnidadeAbre(0)
+    const abreHoje = hoje === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+    if (abreHoje) await expect(ocupacao).toContainText(/\d+%/)
+    else await expect(ocupacao).toContainText('0 min abertos')
   })
 })
 

@@ -1774,6 +1774,23 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — A segunda completa (run 43677659176, sobre o 30af2730): 32 falhas, o banco caiu outra vez
+
+Isolados 1515 ✓ / 25 ✘ / 57 sem rodar; compartilhados 730 ✓ / 7 ✘ / 9 sem
+rodar (01:38–02:34 de Brasília, 15/11). Nenhuma falha é do produto.
+
+- **O banco (31 das 32).** O log mostra o Supabase cedendo aos poucos:
+  - às 04:47 UTC, "criar o login … tentando de novo", que se repete às 04:53, 04:59, 05:05 e 05:12;
+  - às 04:51, um `statement_timeout` no DELETE;
+  - às 05:16, um 504 no "pôr a senha de teste";
+  - a partir de 05:20, o 521 do Cloudflare ("Web server is down") em tudo, com 11 "criar a outra rede" no `beforeAll`.
+
+  Rodados de novo, um por vez, contra o `next dev`, todos passam sem mudança. A exceção é o `copilot-novidades`, que só roda contra o build e fica para a próxima completa.
+- **`agenda-profissional-da-rede` (relógio).** A completa rodou num DOMINGO. A unidade B tem o horário padrão (segunda a sábado), e o painel de hoje diz "0 min abertos", que é o certo (C48). O spec agora confere em qualquer dia que a base da ocupação de B conta "o horário de 1 profissional que atende", que é o que prova o D1. O "N%" só é cobrado quando B abre hoje.
+- **Para o Heitor:**
+  - **O banco cai sob a carga da completa.** Duas rodadas seguidas caíram (três reinícios em 14–15/11 e esta), e a de 12/11, antes da Auditoria (CF3b), não caiu: isolados em 29,9 min, contra 39,7 min agora. A Auditoria grava uma linha a cada comando em 88 tabelas, e é a suspeita principal da carga a mais. Pode ser também o tamanho do computador do projeto no Supabase, que vale olhar no painel (CPU e memória nessas janelas). Nada foi mudado no banco por isso.
+  - **O timeout do job de 75 para 95 min.** A metade compartilhada já leva de 48 a 72 min, mais uns 7 min de limpeza, e a run 43668652558 foi cancelada na limpeza. O push de `.github/workflows/e2e.yml` é recusado: o token não tem o escopo `workflow`. A mudança é uma linha (`timeout-minutes: 75` → `95`) e precisa ser feita por você.
+
 ### 2026-11-16 — A completa de 14–15/11 (run 43668652558, sobre o c13a6b7d): 44 falhas, nenhuma do produto
 
 Isolados 1536 ✓ / 26 ✘ / 30 sem rodar; compartilhados 724 ✓ / 18 ✘ / 3 sem
