@@ -3,7 +3,8 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import type { TenantContext } from '@estetica-os/types'
 import { EVENTOS } from '@estetica-os/types'
 import type { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { renderizarPendentes, COLUNAS_DO_DOCUMENTO, type DocumentoEmitido } from '@/lib/documentos/renderizar'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { camposAlterados } from '@/lib/events/emitir'
 import { documentoEstrangeiroRepetido, type ColunasDoDocumento } from '@/lib/clients/documento'
@@ -64,6 +65,20 @@ export async function atualizarClienteCore(
   // a linha do tempo de cada uma).
   if (alterou.includes('name') && typeof depois?.name === 'string' && depois.name.trim()) {
     await propagarNomeDaFicha(admin, ctx, clientId, depois.name)
+  }
+
+  // D1 da 15ª simulação: o documento com "faltam dados" só se montava de novo
+  // quando alguém com os Documentos o abria — o contrato do pacote seguia
+  // INCOMPLETO com o endereço já completo, e as contagens que leem o status
+  // ("faltam dados") mentiam. Salvo o cadastro, os incompletos da cliente se
+  // montam de novo. O cadastro já está gravado: falhar aqui não o desfaz (eles
+  // se montam de novo ao abrir, como antes).
+  try {
+    const incompletos = await ler(admin.from('issued_documents').select(COLUNAS_DO_DOCUMENTO)
+      .eq('tenant_id', ctx.tenantId!).eq('client_id', clientId).eq('status', 'INCOMPLETO'), 'buscar os documentos incompletos da cliente')
+    if (incompletos?.length) await renderizarPendentes(ctx.tenantId!, incompletos as unknown as DocumentoEmitido[])
+  } catch (e) {
+    console.error('[cliente] montar os documentos incompletos:', mensagemDoErro(e))
   }
 
   if (slug) revalidatePath(`/${slug}/clients/${clientId}`)

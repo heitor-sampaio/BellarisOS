@@ -102,7 +102,8 @@ export interface AdminDashboardProps {
   ticketMedio:      number | null
   /** O denominador do ticket: as clientes que pagaram no período. */
   clientesQuePagaram: number
-  totalClientsEver: number
+  /** O total de clientes da rede; nulo quando o cargo não lê nenhum módulo do núcleo (D10 da 15ª: some o número). */
+  totalClientsEver: number | null
   branchCount:      number
   /**
    * A rede tem UMA unidade ativa (D-19): somem o ranking de unidades e os
@@ -501,7 +502,7 @@ export function AdminDashboardView({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 4 }}>
             {/* Recortada a uma unidade, ou com o "só os meus", o total segue o da CLÍNICA (H5: a cliente é da
                 clínica; D12 da 13ª: o "só os meus" não recorta a ficha) — e diz (A42). */}
-            {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`} · {totalClientsEver.toLocaleString('pt-BR')} {totalClientsEver === 1 ? 'cliente' : 'clientes'}{unidadeRecortada || agendaPropria || recorteProprio ? ' da rede' : ''}
+            {monthLabel}{umaUnidade ? '' : ` · ${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`}{totalClientsEver !== null && <> · {totalClientsEver.toLocaleString('pt-BR')} {totalClientsEver === 1 ? 'cliente' : 'clientes'}{unidadeRecortada || agendaPropria || recorteProprio ? ' da rede' : ''}</>}
             {unidadeRecortada && (
               <> · <Link href={hrefDaRede} style={{ color: 'var(--brand)', fontWeight: 700 }}>Ver a rede inteira</Link></>
             )}
@@ -566,7 +567,7 @@ export function AdminDashboardView({
           label="Novos clientes"
           value={newClients}
           format="int"
-          sub={`${totalClientsEver.toLocaleString('pt-BR')} ${unidadeRecortada || agendaPropria ? 'clientes da rede' : 'no total'}`}
+          sub={totalClientsEver === null ? undefined : `${totalClientsEver.toLocaleString('pt-BR')} ${unidadeRecortada || agendaPropria ? 'clientes da rede' : 'no total'}`}
           delta={deltaNewClients}
           semBase={prevNewClients === 0}
           anterior={rotulo.anterior}

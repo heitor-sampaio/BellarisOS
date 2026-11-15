@@ -318,7 +318,9 @@ export default async function AdminDashboardPage({
   // clínica (as ativas) — o "só os meus" da agenda não recorta a ficha
   // (Clientes não é módulo escopável). Era a demografia recortada pela agenda
   // dela: a vendedora que não atende via "0 clientes" com 11 na lista.
-  const totalClientsEver = needsCore ? (await getClientesAtivos({ tenantId: ctx.tenantId! })).total : 0
+  // D10 da 15ª: sem um módulo do núcleo o total não se lê — e sem o dado não
+  // se mostra número (princípio 4): nulo, o cabeçalho não diz "0 clientes".
+  const totalClientsEver = needsCore ? (await getClientesAtivos({ tenantId: ctx.tenantId! })).total : null
 
   const todayAppts = (todayApptsRaw ?? []) as AgendamentoDeHoje[]
 
@@ -722,7 +724,7 @@ export default async function AdminDashboardPage({
         newClients={newClients}
         ticketMedio={veDinheiro ? ticketMedio : null}
         clientesQuePagaram={veDinheiro ? clientesQuePagaram : 0}
-        totalClientsEver={totalClientsEver ?? 0}
+        totalClientsEver={totalClientsEver}
         branchCount={branches.length}
         // Recortada a uma unidade, os quadros "por unidade" saem como na
         // clínica de uma unidade só — e o título diz qual.

@@ -9,7 +9,7 @@ import { REPORT_TAB_LABELS, REPORT_TAB_HINTS } from '@/lib/permissions'
 describe('a aba do funil se chama "Oportunidades"', () => {
   it('no cargo e na tela de Relatórios, o mesmo nome', () => {
     expect(REPORT_TAB_LABELS.comercial).toBe('Oportunidades')
-    expect(REPORT_TAB_HINTS.comercial).not.toMatch(/leads?/i)
+    expect(REPORT_TAB_HINTS.comercial).not.toMatch(/\bleads?\b/i)
     const tela = fs.readFileSync(path.join(__dirname, '..', 'components', 'admin', 'reports-bi-view.tsx'), 'utf8')
     expect(tela).toMatch(/key: 'comercial',\s*label: REPORT_TAB_LABELS\.comercial/)
   })

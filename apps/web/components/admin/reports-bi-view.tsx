@@ -706,7 +706,7 @@ function TabVendas(p: ReportsBiProps) {
           )}
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele); o crédito internonão tem. A sessão de pacote, de plano ou pré-paga não aparece de novo — já foi vendida. A venda de antes do PDV não tem comanda (—).
+          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele); o crédito interno não tem. A sessão de pacote, de plano ou pré-paga não aparece de novo — já foi vendida. A venda de antes do PDV não tem comanda (—).
         </p>
       </SCard>
     </div>

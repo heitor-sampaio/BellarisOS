@@ -49,7 +49,7 @@ test('A2: o alcance do cargo novo nasce sem escolha, some sem o módulo, e o Rel
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=permissions')
     await p.getByRole('button', { name: 'Novo' }).click()
-    await p.getByPlaceholder('Ex.: Recepção').fill(rotulo)
+    await p.getByPlaceholder('Ex.: Agenda e caixa').fill(rotulo)
     await p.getByRole('button', { name: 'Criar' }).click()
     await expect(p.getByRole('heading', { name: /O que .* acessa/ })).toContainText(rotulo)
 

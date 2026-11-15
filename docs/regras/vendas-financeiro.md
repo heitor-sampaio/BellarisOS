@@ -2284,6 +2284,15 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `lib/checkout/sessoes-sem-data.ts`) — caía na ficha calado. Prova:
   `e2e/checkout-entrada-no-cartao.spec.ts` ("D2, A42"),
   `tests/checkout-sessoes-sem-data.test.ts`.
+  - **Parte das sessões já agendadas** (D3 da 15ª simulação, 2026-11-15;
+    princípio 3): a sessão que já tem agendamento vivo antes do checkout (a
+    cliente marca pelo app ou pela página do plano antes de pagar — PT1d/PT3)
+    aparece como "Sessão 1 — já agendada: 16/11 às 14:00", no fuso da unidade
+    (`agendada` de `getTreatmentPlanSessions`, `textoDaSessaoJaAgendada`), não
+    é oferecida de novo no agendamento, e o servidor não a agenda de novo
+    (`checkoutTreatmentPlan` a pula). O aviso do fim a conta: "Plano fechado:
+    5 sessões. 1 já agendada, 4 sem data — …". Prova:
+    `e2e/checkout-de-plano-sessao-ja-agendada.spec.ts`, `tests/defeitos-da-15.test.ts`.
 - **O checkout do plano tem "Quem vendeu"** (decisão 4 da 7ª simulação,
   2026-11-05: "concordo"): no passo do pagamento, nascendo VAZIO como em toda
   venda (`CampoQuemVendeu`, `[data-quem-vendeu-do-plano]`); vazio, "Ir para a

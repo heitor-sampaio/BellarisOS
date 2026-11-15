@@ -92,7 +92,7 @@ test('RL2: a aba do funil se chama "Oportunidades", no relatório e no cargo', a
     // Os relatórios liberados do cargo: o mesmo nome, e a dica sem "leads".
     await p.goto('/admin/settings?tab=permissions')
     await p.getByRole('button', { name: 'Novo' }).click()
-    await p.getByPlaceholder('Ex.: Recepção').fill(`${PREFIXO} Comercial ${marca}`)
+    await p.getByPlaceholder('Ex.: Agenda e caixa').fill(`${PREFIXO} Comercial ${marca}`)
     await p.getByRole('button', { name: 'Criar' }).click()
     const relatorios = p.locator('[data-modulo="reports"]')
     await relatorios.getByRole('button', { name: 'Ver', exact: true }).click()

@@ -46,13 +46,27 @@ export async function quemMudaNaRede(tenantId: string, modulos: readonly AppModu
   return quemTemEmGerenciar(tenantId, null, modulos)
 }
 
-async function quemTemEmGerenciar(tenantId: string, branchId: string | null, modulo: AppModule | readonly AppModule[]): Promise<string[]> {
+/**
+ * Quem VÊ os Documentos (D1 da 15ª simulação): quem vendeu o pacote sem o
+ * módulo lia "Estão na ficha, em Documentos" e não achava nada lá. O aviso diz
+ * quem tem — os Documentos em Ver ou Gerenciar, ao alcance da unidade; a Admin
+ * da rede entra sempre.
+ */
+export async function quemVeOsDocumentos(tenantId: string, branchId: string | null): Promise<string[]> {
+  return quemTemNoNivel(tenantId, branchId, 'documents', ['VIEW', 'MANAGE'])
+}
+
+function quemTemEmGerenciar(tenantId: string, branchId: string | null, modulo: AppModule | readonly AppModule[]): Promise<string[]> {
+  return quemTemNoNivel(tenantId, branchId, modulo, ['MANAGE'])
+}
+
+async function quemTemNoNivel(tenantId: string, branchId: string | null, modulo: AppModule | readonly AppModule[], niveis: readonly ('VIEW' | 'MANAGE')[]): Promise<string[]> {
   const admin = createAdminClient()
   const modulos = typeof modulo === 'string' ? [modulo] : [...modulo]
   const [perms, admins] = await Promise.all([
     lerTodas((de, ate) => admin.from('role_permissions').select('role_id')
-      .eq('tenant_id', tenantId).in('module', modulos).eq('level', 'MANAGE')
-      .order('role_id').order('module').range(de, ate), 'carregar os cargos que desfazem no caixa'),
+      .eq('tenant_id', tenantId).in('module', modulos).in('level', [...niveis])
+      .order('role_id').order('module').range(de, ate), 'carregar os cargos com o módulo'),
     lerTodas((de, ate) => admin.from('tenant_roles').select('id')
       .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true)
       .order('id').range(de, ate), 'carregar o cargo de Admin da rede'),
@@ -64,6 +78,6 @@ async function quemTemEmGerenciar(tenantId: string, branchId: string | null, mod
       .eq('tenant_id', tenantId).eq('is_active', true).in('role_id', cargos)
     q = branchId ? q.or(`branch_id.is.null,branch_id.eq.${branchId}`) : q.is('branch_id', null)
     return q.order('name').order('id').range(de, ate)
-  }, 'carregar quem desfaz no caixa')
+  }, 'carregar quem tem o módulo')
   return (membros ?? []).map(m => (m.name as string | null) ?? '—').filter(n => n !== '—')
 }

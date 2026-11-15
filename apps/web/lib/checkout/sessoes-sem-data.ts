@@ -13,9 +13,26 @@ export function textoDasSessoesSemData(numeros: number[]): string | null {
     : `As sessões ${lista} ficam sem data: agende pela ficha da cliente (Tratamentos) quando ela marcar.`
 }
 
-/** O "deu certo" do checkout: o plano fechou, e o que ficou para depois. */
-export function avisoDoPlanoFechado(totalDeSessoes: number, semData: number[]): string {
+/**
+ * O "deu certo" do checkout: o plano fechou, e o que ficou para depois.
+ *
+ * `jaAgendadas` (D3 da 15ª simulação): as sessões que já tinham agendamento
+ * ANTES do checkout — a cliente marca a sessão pelo app antes de pagar
+ * (PT1d/PT3). Sem contá-las, a Lia leu "Nenhuma agendada ainda" com a sessão 1
+ * marcada. `semData` já vem sem elas.
+ */
+export function avisoDoPlanoFechado(totalDeSessoes: number, semData: number[], jaAgendadas = 0): string {
   const base = `Plano fechado: ${totalDeSessoes} ${totalDeSessoes === 1 ? 'sessão' : 'sessões'}.`
-  return semData.length === 0 ? `${base} Todas com data.`
-    : `${base} ${semData.length === totalDeSessoes ? 'Nenhuma agendada ainda' : `${semData.length} sem data`} — agende pela ficha quando a cliente marcar.`
+  if (semData.length === 0) return `${base} Todas com data.`
+  const agendadas = jaAgendadas > 0 ? `${jaAgendadas} já ${jaAgendadas === 1 ? 'agendada' : 'agendadas'}, ` : ''
+  const resto = semData.length === totalDeSessoes ? 'Nenhuma agendada ainda' : `${agendadas}${semData.length} sem data`
+  return `${base} ${resto} — agende pela ficha quando a cliente marcar.`
+}
+
+/** "já agendada: 16/11 às 14:00", no fuso da unidade — a sessão que o checkout não oferece de novo (D3 da 15ª). */
+export function textoDaSessaoJaAgendada(iso: string, fuso: string): string {
+  const d = new Date(iso)
+  const dia = d.toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: '2-digit' })
+  const hora = d.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })
+  return `já agendada: ${dia} às ${hora}`
 }

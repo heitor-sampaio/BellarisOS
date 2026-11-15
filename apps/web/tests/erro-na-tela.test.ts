@@ -16,7 +16,7 @@ describe('erroParaTela', () => {
 
   it('falta de permissão é reconhecida pelo digest, mesmo com a mensagem trocada', () => {
     const e = erroDoServidorEmProducao(semAcesso().digest)
-    expect(erroParaTela(e, 'Não foi possível salvar.')).toBe('Seu cargo não libera esta ação.')
+    expect(erroParaTela(e, 'Não foi possível salvar.')).toBe('Você não tem acesso a esta ação.')
   })
 
   it('erro do próprio navegador mantém a mensagem', () => {

@@ -27,7 +27,7 @@ import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado, estad
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
-import { textoDasSessoesSemData, avisoDoPlanoFechado } from '@/lib/checkout/sessoes-sem-data'
+import { textoDasSessoesSemData, avisoDoPlanoFechado, textoDaSessaoJaAgendada } from '@/lib/checkout/sessoes-sem-data'
 import { toast } from 'sonner'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
@@ -249,7 +249,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
   // Por sessão: key = planSessionId → { date, time }
   const [sessionDates,  setSessionDates]  = useState<Record<string, { date: string; time: string }>>({})
-  const [activeSession, setActiveSession] = useState(plan.sessions[0]?.id ?? '')
+  // D3 da 15ª: a sessão já agendada antes do checkout (pelo app, pela página do
+  // plano) não se agenda de novo — a primeira a agendar é a primeira sem data.
+  const aAgendar = plan.sessions.filter(s => !s.agendada)
+  const jaAgendadas = plan.sessions.length - aAgendar.length
+  const [activeSession, setActiveSession] = useState(aAgendar[0]?.id ?? '')
 
   const activeDate = sessionDates[activeSession]?.date ?? ''
   const activeTime = sessionDates[activeSession]?.time ?? ''
@@ -298,7 +302,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   function setProfId(v: string) {
     setSchedProfId(v)
     setSessionDates({})
-    setActiveSession(plan.sessions[0]?.id ?? '')
+    setActiveSession(aAgendar[0]?.id ?? '')
   }
 
   // Busca slots quando profissional + sessão ativa + data mudam
@@ -467,8 +471,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     setError(recusaDaEntrada ?? fid.recusa)
     if (recusaDaEntrada || fid.recusa) return
     const semData = plan.sessions.map((s, i) => ({ s, n: i + 1 }))
-      .filter(({ s }) => !(sessionDates[s.id]?.date && sessionDates[s.id]?.time && schedProfId && schedBranchId)).map(x => x.n)
-    const schedules: SessionScheduleInput[] = plan.sessions
+      .filter(({ s }) => !s.agendada && !(sessionDates[s.id]?.date && sessionDates[s.id]?.time && schedProfId && schedBranchId)).map(x => x.n)
+    const schedules: SessionScheduleInput[] = aAgendar
       .filter(s => {
         const d = sessionDates[s.id]
         return d?.date && d?.time && schedProfId && schedBranchId
@@ -496,7 +500,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       // D8 da 12ª: a sala única do procedimento estava ocupada — a sessão foi sem sala.
       if ('avisoDaSala' in result && result.avisoDaSala) toast.warning(result.avisoDaSala, { duration: 10_000 })
       // A37 da 8ª: concluir caía na ficha sem confirmação nenhuma.
-      toast.success(avisoDoPlanoFechado(plan.sessions.length, semData))
+      toast.success(avisoDoPlanoFechado(plan.sessions.length, semData, jaAgendadas))
       if (onDone) { onDone(plan.clientId); return }
       router.push(rotaCliente(pathname, slug, plan.clientId))
     })
@@ -660,11 +664,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       {/* Sessões do plano */}
       <div className="card" style={{ padding: '18px 20px', marginBottom: 16 }}>
         <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
-          Plano de tratamento — {plan.sessions.length} sessão(ões)
+          Plano de tratamento — {plan.sessions.length} {plan.sessions.length === 1 ? 'sessão' : 'sessões'}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {plan.sessions.map((sess, i) => (
-            <div key={sess.id} style={{
+            <div key={sess.id} data-sessao-do-checkout={i + 1} style={{
               borderRadius: 10, background: 'var(--bg-app)', border: '1px solid var(--hairline)', overflow: 'hidden',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: '1px solid var(--hairline)' }}>
@@ -673,6 +677,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                     {i + 1}
                   </div>
                   <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Sessão {i + 1}</span>
+                  {sess.agendada && (
+                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)' }}>
+                      <Check size={11} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
+                      {textoDaSessaoJaAgendada(sess.agendada, fuso)}
+                    </span>
+                  )}
                 </div>
                 <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)' }}>{fmtBRL(sess.totalPrice)}</span>
               </div>
@@ -1061,7 +1071,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
   // PASSO 3: Agendamento
   const minDate = dayKeyTZ(new Date(), fuso)
-  const scheduledCount = plan.sessions.filter(s => sessionDates[s.id]?.date && sessionDates[s.id]?.time).length
+  const scheduledCount = aAgendar.filter(s => sessionDates[s.id]?.date && sessionDates[s.id]?.time).length
 
   return (
     <div>
@@ -1117,9 +1127,21 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             Agendamento por sessão
           </p>
 
+          {/* D3 da 15ª: as já agendadas ficam com o agendamento delas, ditas aqui. */}
+          {jaAgendadas > 0 && (
+            <div data-sessoes-ja-agendadas style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+              {plan.sessions.map((sess, i) => sess.agendada && (
+                <p key={sess.id} style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)' }}>
+                  <Check size={11} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
+                  Sessão {i + 1} — {textoDaSessaoJaAgendada(sess.agendada, fuso)}
+                </p>
+              ))}
+            </div>
+          )}
+
           {/* Tabs */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-            {plan.sessions.map((sess, i) => {
+            {plan.sessions.map((sess, i) => sess.agendada ? null : (() => {
               const hasDate  = !!(sessionDates[sess.id]?.date && sessionDates[sess.id]?.time)
               const isActive = activeSession === sess.id
               const label    = plan.sessions.length === 1
@@ -1139,7 +1161,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                   {subLabel && <span style={{ fontSize: 'var(--text-overline)', fontWeight: 500, opacity: 0.7 }}>{subLabel}</span>}
                 </button>
               )
-            })}
+            })())}
           </div>
 
           {/* Data */}
@@ -1180,11 +1202,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       )}
 
       {/* Resumo de sessões agendadas */}
-      {scheduledCount > 0 && (
+      {scheduledCount + jaAgendadas > 0 && (
         <div className="card" style={{ padding: '14px 20px', marginBottom: 14 }}>
           <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--success)', letterSpacing: '0.06em' }}>
             <Check size={12} style={{ display: 'inline', marginRight: 4 }} />
-            {scheduledCount} de {plan.sessions.length} {plan.sessions.length === 1 ? 'sessão' : 'sessões'} com data definida
+            {scheduledCount + jaAgendadas} de {plan.sessions.length} {plan.sessions.length === 1 ? 'sessão' : 'sessões'} com data definida
           </p>
         </div>
       )}
@@ -1192,7 +1214,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       {/* A37 da 8ª: as sessões que ficam sem data, ditas antes de concluir. */}
       {(() => {
         const texto = textoDasSessoesSemData(plan.sessions.map((s, i) => ({ s, n: i + 1 }))
-          .filter(({ s }) => !(sessionDates[s.id]?.date && sessionDates[s.id]?.time)).map(x => x.n))
+          .filter(({ s }) => !s.agendada && !(sessionDates[s.id]?.date && sessionDates[s.id]?.time)).map(x => x.n))
         return texto && (
           <p data-sessoes-sem-data style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 14 }}>{texto}</p>
         )

@@ -314,7 +314,7 @@ test.describe.serial('o sistema: a oferta no plano e os adicionais da rede', () 
 
 test.describe.serial('a rede: ver e contratar o adicional pela aba Assinatura', () => {
   const SIS = () => urlDaPlataforma('sistema')
-  const RECUSADA = /BELLARIS_SEM_ACESSO|Forbidden|Seu cargo não libera/
+  const RECUSADA = /BELLARIS_SEM_ACESSO|Forbidden|Você não tem acesso a esta ação/
   let dono: MembroDeTeste | null = null
   let gestorDaUnidade: MembroDeTeste | null = null
   let semConfig: MembroDeTeste | null = null

@@ -178,7 +178,7 @@ test('A13: o cargo novo grava a Agenda em Gerenciar "só a própria" — o cliqu
     await como(browser, dona!.estado, async p => {
       await p.goto('/admin/settings?tab=permissions')
       await p.getByRole('button', { name: 'Novo' }).click()
-      await p.getByPlaceholder('Ex.: Recepção').fill(rotulo)
+      await p.getByPlaceholder('Ex.: Agenda e caixa').fill(rotulo)
       await p.getByRole('button', { name: 'Criar' }).click()
       await expect(p.getByRole('heading', { name: new RegExp(`O que .*${rotulo.replace(/[[\]]/g, '\\$&')} acessa`) })).toBeVisible()
       const agenda = p.locator('[data-modulo="agenda"]')

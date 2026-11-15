@@ -621,7 +621,9 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     })
   }
 
-  // -- Enviar ao PDV ------------------------------------------
+  // -- Propor o plano (DRAFT → PROPOSED) ----------------------
+  // D5 da 15ª: o plano proposto NÃO vai ao PDV — a comanda nasce no aceite
+  // (PDV4, PT1a–PT1c). O texto dizia "enviado ao PDV".
 
   function handlePropose() {
     if (!existingPlan?.id && sessions.length === 0) {
@@ -635,7 +637,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
       const propResult = await proposeTreatmentPlan(saveResult.planId!, slug)
       const erroDaProposta = (propResult as { error?: string } | undefined)?.error
       if (erroDaProposta) setMsg(`Erro: ${erroDaProposta}`)
-      else setMsg('Plano enviado ao PDV.')
+      else setMsg('Plano proposto. A comanda vai ao PDV quando a cliente aceitar.')
     })
   }
 
@@ -826,7 +828,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
             </button>
             <button type="button" onClick={handlePropose} disabled={isPending || sessions.length === 0}
               className="btn-primary" style={{ justifyContent: 'center' }}>
-              <Send size={13} /> Enviar ao PDV
+              <Send size={13} /> Propor o plano
             </button>
           </div>
         )}

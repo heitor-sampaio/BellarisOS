@@ -1021,6 +1021,12 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
   unidades vê só as linhas DELAS (`unidadesDoContexto`); a linha sem unidade
   (a tag, o cargo, a ficha da cliente) é da rede — como no `alcancaUnidade`. A
   unidade pedida na URL não vence a abrangência.
+- **O filtro "Quem" sai das linhas que a pessoa alcança** (D7 da 15ª
+  simulação, 2026-11-15): quem é da rede inteira lê todos os membros; quem tem
+  unidades lê quem AGIU nelas (`auditoria_pessoas_das_unidades`, migration
+  `20261116400002`, só o servidor). Era `users.branch_id in (as dela)`: ficava
+  de fora quem tem "A rede inteira", com as ações dele na tela. Prova:
+  `e2e/auditoria-pessoas-do-filtro.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:
   trancar a venda porque o registro dela falhou seria pior; calar esconderia o

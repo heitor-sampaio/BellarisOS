@@ -117,7 +117,7 @@ test('C35: o Financeiro em "só os meus" não estorna pela action', async ({ bro
 test('C36: quem só recebe não cancela a unidade pré-paga', async ({ browser }) => {
   const r = await como(browser, caixa!, p => chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', '/admin/clients',
     [crypto.randomUUID(), { motivo: 'teste', destino: 'ESTORNO' }]))
-  expect(r.texto).toContain('Seu cargo não libera esta ação.')
+  expect(r.texto).toContain('Você não tem acesso a esta ação.')
 })
 
 test('C33: o check-in do plano é do PDV — quem tem o Financeiro em Gerenciar sem o PDV não recebe', async ({ browser }) => {
@@ -129,7 +129,7 @@ test('C33: o check-in do plano é do PDV — quem tem o Financeiro em Gerenciar 
   const rota = `/admin/agenda/${appt}`
   const r = await como(browser, financeiro!, p => chamarAcao(p, 'actions/treatment-plans.ts', 'receberDoPlano', rota,
     [plano, { forma: 'AVISTA', metodo: 'PIX' }, appt, '']))
-  expect(r.texto).toContain('Seu cargo não libera esta ação.')
+  expect(r.texto).toContain('Você não tem acesso a esta ação.')
   // E a lista do Financeiro da rede não mostra a baixa a quem não tem Recebimentos.
   await como(browser, financeiro!, async p => {
     await p.goto('/admin/financeiro?aba=a-receber#movimentacoes')

@@ -104,14 +104,24 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
   return { clientes: mapa(c), membros: mapa(m), unidades: mapa(u) }
 }
 
-/** As pessoas do filtro "Quem" — os membros da rede (ao alcance), em ordem de nome. */
+/**
+ * As pessoas do filtro "Quem", em ordem de nome. Quem é da rede inteira lê
+ * todos os membros. Quem tem unidades lê quem AGIU nelas — as linhas que ela
+ * alcança (D7 da 15ª simulação: a lista eram os membros com `branch_id` nas
+ * unidades dela, e quem tem "A rede inteira" não aparecia, com as ações dele
+ * na tela).
+ */
 export async function pessoasDaAuditoria(ctx: TenantContext): Promise<{ id: string; name: string }[]> {
   const minhas = unidadesDoContexto(ctx)
   const admin = createAdminClient()
-  const todas = await lerTodas<{ id: string; name: string | null }>((de, ate) => {
-    let q = admin.from('users').select('id, name').eq('tenant_id', ctx.tenantId!)
-    if (minhas !== null) q = q.in('branch_id', minhas)
-    return q.order('name').order('id').range(de, ate)
-  }, 'ler a equipe da auditoria')
+  if (minhas !== null) {
+    if (minhas.length === 0) return []
+    const lidas = await ler(admin.rpc('auditoria_pessoas_das_unidades', { p_tenant: ctx.tenantId!, p_unidades: minhas }),
+      'ler quem agiu nas unidades') as { id: string; name: string | null }[] | null
+    return (lidas ?? []).map(u => ({ id: u.id, name: u.name ?? '' }))
+  }
+  const todas = await lerTodas<{ id: string; name: string | null }>((de, ate) =>
+    admin.from('users').select('id, name').eq('tenant_id', ctx.tenantId!).order('name').order('id').range(de, ate),
+  'ler a equipe da auditoria')
   return todas.map(u => ({ id: u.id, name: u.name ?? '' }))
 }

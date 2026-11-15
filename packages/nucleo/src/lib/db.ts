@@ -148,7 +148,7 @@ export function mensagemDoErro(e: unknown): string {
   // A trava de permissão (semAcesso) lança 'Forbidden': embrulhado aqui, ia
   // cru para a tela (o caixa da simulação de 2026-10-20 viu "Forbidden").
   if (e && typeof e === 'object' && ehSemAcesso(e as { message?: string; digest?: string })) {
-    return 'Seu cargo não libera esta ação.'
+    return 'Você não tem acesso a esta ação.'
   }
   if (e instanceof ErroDeBanco) {
     return CODIGOS_DE_REGRA.has(e.causa.code ?? '') && e.causa.message

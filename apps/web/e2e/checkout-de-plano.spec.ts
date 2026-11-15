@@ -425,7 +425,7 @@ test.describe.serial('checkout de plano', () => {
         try {
           const p = await ctx2.newPage()
           const r = await chamarAcao(p, 'actions/documentos.ts', 'documentoParaAssinar', `/${slug}/pdv`, [avulso.id])
-          expect(r.texto).toContain('Seu cargo não libera esta ação.')
+          expect(r.texto).toContain('Você não tem acesso a esta ação.')
         } finally { await ctx2.close() }
       }
     } finally {

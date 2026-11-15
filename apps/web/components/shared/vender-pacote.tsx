@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
+import { avisoDosDocumentosDaVenda } from '@/lib/documentos/aviso-da-venda'
 import { formatBRL } from '@estetica-os/utils'
 import { venderPacote, type DocumentoDaVenda } from '@/actions/pacotes'
 import Link from 'next/link'
@@ -37,15 +38,6 @@ export interface PacoteAVenda {
   comissaoVenda?: RegraDeVenda | null
 }
 
-/** O que ficou para assinar depois da venda (PC2) — a venda não espera a assinatura. */
-function avisoDosDocumentos(docs: DocumentoDaVenda[]): string {
-  const incompletos = docs.filter(d => d.status === 'INCOMPLETO').length
-  const base = docs.length === 1
-    ? `Ficou 1 documento para a cliente assinar: ${docs[0]!.titulo}.`
-    : `Ficaram ${docs.length} documentos para a cliente assinar, numa assinatura só.`
-  return incompletos ? `${base} ${incompletos === 1 ? '1 depende' : `${incompletos} dependem`} de completar o cadastro. Estão na ficha, em Documentos.` : `${base} Estão na ficha, em Documentos.`
-}
-
 /** O formulário da venda do pacote — dentro do "Vender" (`components/shared/vender.tsx`). */
 export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe = [], podeAgendar = false, fidelidade = null }: {
   clienteId: string; branchId: string; pacotes: PacoteAVenda[]; onFim: () => void
@@ -63,6 +55,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const [vendida, setVendida] = useState<{ id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null>(null)
   // PC2: os documentos que a venda deixou para assinar — a venda não espera.
   const [docsDaVenda, setDocsDaVenda] = useState<DocumentoDaVenda[]>([])
+  // D1 da 15ª: quem tem os Documentos, para quem vendeu sem eles (nulo = ela vê).
+  const [quemVeOsDocs, setQuemVeOsDocs] = useState<string[] | null>(null)
   const [pacoteId, setPacoteId] = useState(pacotes[0]!.id)
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
   // C75: com mais de uma maquininha, o cartão não segue sem "Qual maquininha?".
@@ -100,9 +94,10 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       envio.renovar()
       router.refresh()
       const docs = r.documentos ?? []
-      if (podeAgendar && r.primeiraSessao) { setDocsDaVenda(docs); setVendida(r.primeiraSessao); return }
+      const quemVe = r.quemVeOsDocumentos ?? null
+      if (podeAgendar && r.primeiraSessao) { setDocsDaVenda(docs); setQuemVeOsDocs(quemVe); setVendida(r.primeiraSessao); return }
       toast.success(avisoDaVenda(pacote.name, fid.aPagar, estado.forma),
-        docs.length ? { description: avisoDosDocumentos(docs) } : undefined)
+        docs.length ? { description: avisoDosDocumentosDaVenda(docs, quemVe) } : undefined)
       onFim()
     })
   }
@@ -114,8 +109,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       </p>
       {docsDaVenda.length > 0 && (
         <div data-documentos-da-venda style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{avisoDosDocumentos(docsDaVenda)}</p>
-          {docsDaVenda.some(d => d.status === 'PENDENTE') && (
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{avisoDosDocumentosDaVenda(docsDaVenda, quemVeOsDocs)}</p>
+          {quemVeOsDocs === null && docsDaVenda.some(d => d.status === 'PENDENTE') && (
             <Link href={rotaNoPortal(pathname, pathname.split('/')[1], `/documentos/${docsDaVenda.find(d => d.status === 'PENDENTE')!.id}/assinar`)}
               style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
               Colher a assinatura agora

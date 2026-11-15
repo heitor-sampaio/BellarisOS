@@ -60,6 +60,7 @@ import { textoDaOrigemDoCredito } from '@/lib/creditos/origem'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
 import { useFuso } from '@/components/shared/fuso'
+import { avisoDaAbaFechada } from '@/lib/clients/aba-fechada'
 
 // -- Types --------------------------------------------------------------------
 
@@ -1867,7 +1868,7 @@ export function ClientProfile({
       {abaFechada && (
         <p data-aba-sem-acesso={abaFechada.key} role="status"
           style={{ margin: '0 0 10px', padding: '8px 12px', borderRadius: 'var(--radius-field)', background: 'var(--warning-soft)', color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
-          Seu cargo não abre a aba {abaFechada.label} desta ficha: abrimos a Visão geral.
+          {avisoDaAbaFechada(abaFechada, temModuloProntuario)}
         </p>
       )}
       <div className="tabs-bar" role="tablist" aria-label="Abas da ficha" style={{ gap: 0 }}>

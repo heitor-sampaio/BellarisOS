@@ -129,6 +129,12 @@ export interface PlanSessionForCheckout {
     products:    { productId: string; name: string; unit: string; quantity: number }[]
   }[]
   appointmentId:   string | null
+  /**
+   * D3 da 15ª simulação: a sessão que já tem agendamento vivo ANTES do
+   * checkout (a cliente marca pelo app antes de pagar — PT1d/PT3), com o
+   * início dele. O checkout a mostra como "já agendada" e não a agenda de novo.
+   */
+  agendada:        string | null
 }
 
 
@@ -994,6 +1000,14 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
   type RawProc = { procedure_id: string; price: number; sort_order: number; products: RawProcProduct[]; procedures: { name: string; duration_min: number } | null }
   type RawSess = { id: string; sort_order: number; appointment_id: string | null; treatment_plan_session_procedures: RawProc[] }
 
+  // D3 da 15ª: o agendamento vivo de cada sessão (cancelado e falta não contam).
+  const idsDosAgendamentos = ((rawSessions ?? []) as unknown as RawSess[]).map(s => s.appointment_id).filter((x): x is string => !!x)
+  const agendados = idsDosAgendamentos.length
+    ? await ler(admin.from('appointments').select('id, scheduled_at')
+        .in('id', idsDosAgendamentos).not('status', 'in', '(CANCELLED,NO_SHOW)'), 'ler os agendamentos das sessões')
+    : []
+  const inicioDoAgendamento = new Map(((agendados ?? []) as { id: string; scheduled_at: string }[]).map(a => [a.id, a.scheduled_at]))
+
   // A unidade do insumo é a de consumo do produto, lida agora (D9).
   const unidades = await unidadesDosInsumos(ctx.tenantId!, ((rawSessions ?? []) as unknown as RawSess[])
     .flatMap(s => (s.treatment_plan_session_procedures ?? []).flatMap(p => (p.products ?? []).map(pr => pr.product_id))))
@@ -1019,6 +1033,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
       mainDurationMin: procs.reduce((sum, p) => sum + p.durationMin, 0),
       procedures:      procs,
       appointmentId:   s.appointment_id ?? null,
+      agendada:        s.appointment_id ? inicioDoAgendamento.get(s.appointment_id) ?? null : null,
     }
   })
 
@@ -1804,6 +1819,8 @@ async function checkoutTreatmentPlanInterno(
   // inclusive os de outra clínica.
   if (can(ctx, 'agenda', 'MANAGE')) {
     for (const sched of sessionSchedules) {
+      // D3 da 15ª: a já agendada não se agenda de novo (o laço de baixo a pula).
+      if (sessions.find(s => s.id === sched.planSessionId)?.agendada) continue
       const recusa = await conferirPecasDoAgendamento(admin, ctx, {
         branchId: sched.branchId, professionalId: sched.professionalId,
       })
@@ -1894,7 +1911,8 @@ async function checkoutTreatmentPlanInterno(
   const agendamentos: Record<string, unknown>[] = []
   for (const sess of sessions) {
     const sched = podeAgendar ? sessionSchedules.find(s => s.planSessionId === sess.id) ?? null : null
-    if (!sched || !sess.mainProcedureId) continue
+    // D3 da 15ª: a sessão já agendada antes do checkout fica com o agendamento dela.
+    if (!sched || !sess.mainProcedureId || sess.agendada) continue
     const sala = await salaUnicaDoHorario(admin, {
       tenantId: ctx.tenantId!, branchId: sched.branchId, procedureId: sess.mainProcedureId,
       inicio: new Date(sched.scheduledAt), duracaoMin: sess.mainDurationMin || 60,

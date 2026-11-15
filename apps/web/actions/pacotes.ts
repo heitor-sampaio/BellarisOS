@@ -12,7 +12,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { z } from 'zod'
 import { alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
-import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso, can } from '@/lib/auth'
 import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -39,6 +39,9 @@ import { EVENTOS } from '@estetica-os/types'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
 import { prepararDocumentosDoPacote } from '@/lib/documentos/pacote'
+import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
+import { oQueFalta } from '@/lib/documentos/o-que-falta'
+import { quemVeOsDocumentos } from '@/lib/equipe/quem-desfaz'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -124,9 +127,14 @@ type ResultadoDaVendaDoPacote = {
    * ficou para assinar. A venda não espera por eles (princípios 2 e 6).
    */
   documentos?: DocumentoDaVenda[]
+  /**
+   * D1 da 15ª: quem tem os Documentos, para quem vendeu SEM eles (nulo = ela
+   * vê). O aviso diz a quem pedir em vez de "Estão na ficha, em Documentos".
+   */
+  quemVeOsDocumentos?: string[] | null
 }
 
-/** Um documento da venda do pacote, como a tela da venda o mostra. */
+/** Um documento da venda do pacote, como a tela da venda o mostra (`faltando`: como a pessoa lê, "Endereço"). */
 export interface DocumentoDaVenda { id: string; titulo: string; status: string; faltando: string[] }
 
 /** A pergunta quando o pacote paga quem atende sobre o valor dele e ninguém foi marcado (com-04). */
@@ -246,16 +254,22 @@ async function venderPacoteUmaVez(
     try {
       documentos = (await prepararDocumentosDoPacote(ctx.tenantId!, clientPackageId, lido.data, reais))
         .filter(d => d.status === 'PENDENTE' || d.status === 'INCOMPLETO' || d.status === 'A_GERAR')
-        .map(d => ({ id: d.id, titulo: d.title, status: d.status, faltando: d.missing_fields ?? [] }))
+        .map(d => ({ id: d.id, titulo: d.title, status: d.status, faltando: oQueFalta((d.missing_fields ?? []).map(rotuloDoQueFalta)) }))
     } catch (e) {
       console.error('[pacote] documentos da venda:', mensagemDoErro(e))
+    }
+    let quemVe: string[] | null = null
+    if (documentos.length && !can(ctx, 'documents', 'VIEW')) {
+      try { quemVe = await quemVeOsDocumentos(ctx.tenantId!, branchId) } catch (e) {
+        console.error('[pacote] quem vê os documentos:', mensagemDoErro(e)); quemVe = []
+      }
     }
 
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')
     revalidatePath('/admin/financeiro')
     revalidatePath('/[slug]/financeiro', 'page')
-    return { clientPackageId, primeiraSessao, documentos }
+    return { clientPackageId, primeiraSessao, documentos, quemVeOsDocumentos: quemVe }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

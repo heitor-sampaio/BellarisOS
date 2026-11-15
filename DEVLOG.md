@@ -1774,6 +1774,37 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — A 15ª simulação (Íris, uma unidade; Orquídea, três) e os defeitos dela
+
+A primeira rodada depois do plano de adaptação inteiro, na produção, em 15/11 entre 04:46 e 06:15. Dois times usaram o sistema:
+- **"[sim] Íris"**: uma unidade, com a Admin da rede, quem tem o PDV sem o Financeiro, quem atende e três clientes (uma com passaporte).
+- **"[sim] Orquídea"**: três unidades, uma pessoa em duas delas, um membro desativado com repasse e um cliente no app.
+
+**O dinheiro bate nos dois times, centavo a centavo**, em PDV, Fechamento, Financeiro, Relatórios, CSV e banco. O resultado foi 10 defeitos (3 médios, 7 baixos) e 37 atritos. O relatório consolidado fica em `.sim/relatorio.md`.
+
+Corrigidos (cada um com o teste antes, visto falhando):
+- **D1.** O contrato do pacote ficava "faltam dados", e quem vendeu não o via.
+  - O aviso da venda diz o que falta ("Falta no cadastro: Endereço…").
+  - A quem não tem os Documentos, o aviso diz quem tem.
+  - Salvar o cadastro da cliente monta de novo os documentos INCOMPLETOS dela (`atualizarClienteCore`). Antes, eles só se montavam quando alguém com os Documentos os abria, e as contagens liam um status velho.
+- **D3.** O checkout do plano mostra a sessão já agendada ("Sessão 1 — já agendada: 16/11 às 14:00"), não a oferece de novo, e o servidor não a agenda de novo. O aviso conta as agendadas.
+- **D4.** Um byte 0x01 colado no texto do relatório de Vendas ("crédito internonão"), regressão do V1. A varredura (`tests/defeitos-da-15.test.ts`) agora pega caractere de controle em todo o código.
+- **D5.** "Plano de tratamento proposto — N sessões" no histórico (era "enviado ao PDV — N sessão(ões)" para um plano só proposto). O botão virou "Propor o plano". Migration `20261116400001`.
+- **D6.** O "Não definido" dizia "Acesso total à rede" com cadeado. Agora diz "Sem acesso: é o cargo de quem ainda não tem um".
+- **D7.** O filtro "Quem" da Auditoria, para quem tem unidades, sai de quem AGIU nelas, inclusive quem tem "A rede inteira". Migration `20261116400002`: `auditoria_pessoas_das_unidades`, só para o service_role.
+- **D8.** O PDV ganhou o ícone no menu.
+- **D9.** "ficha de saúde" acha Configurações → Fichas, e o subtítulo "Clínica" da busca saiu.
+- **D10.** O dashboard sem o dado não diz "0 clientes" (princípio 4).
+- **Vocabulário:**
+  - "Ex.: Recepção" saiu dos exemplos de nome, e a trava do V0 pega exemplo de cargo.
+  - O sem-acesso genérico diz "Você não tem acesso a esta ação." (era "Seu cargo…", e o motivo pode ser a unidade ou o plano).
+  - A aba Prontuário fechada por "só os próprios" diz o motivo.
+  - A Fidelidade fala da "venda de produto", não mais da "vendida na ficha".
+
+**Para o Heitor: as 8 tags com que a rede nova nasce (D2).** Desde 13/10, toda rede nova ganha VIP, Indicação, Retorno, Alergias, Gestante, Idoso, Plano e Desconto no catálogo de tags (`private.tags_padrao()`, `docs/regras/crm-inbox.md`). Elas não vão para ninguém sozinhas, mas aparecem em todo cadastro e filtro. Três papéis estranharam nos dois times. A sua regra de 13/11 ("ela cria uma tag com o que ela quiser") e a semente brigam. A rede nova nasce sem tag nenhuma, ou as oito ficam como sugestão que a rede apaga? Não mexi.
+
+Os atritos (A1–A37) vão na próxima leva. Mexer em `packages/nucleo/src/lib/db.ts` (o texto do sem-acesso) pede uma completa.
+
 ### 2026-11-16 — A segunda e a terceira completa (runs 43677659176 e 43684680309): o banco cai, ou para, sob a suíte
 
 Isolados 1515 ✓ / 25 ✘ / 57 sem rodar; compartilhados 730 ✓ / 7 ✘ / 9 sem

@@ -1487,7 +1487,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
             </label>
             <input id="whatsapp-nome-novo" className="field" value={nomeNovo} maxLength={60}
               onChange={e => setNomeNovo(e.target.value)}
-              placeholder="Ex.: Recepção, Comercial, Dra. Ana" />
+              placeholder="Ex.: Principal, Comercial, Dra. Ana" />
             <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0 }}>
               É como ele aparece no inbox, nos templates e nas configurações. Dá para mudar depois.
             </p>

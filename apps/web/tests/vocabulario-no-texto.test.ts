@@ -65,14 +65,11 @@ const NOMES_VELHOS = /[Tt]ermos e contratos|TERMOS E CONTRATOS|(?<![\w-])Recebim
 
 /**
  * O cargo como quem faz (V0): "a recepção", "pela recepcionista", "a gerente",
- * "a contadora". O EXEMPLO de nome de cargo ou de número ("Ex.: Recepção",
- * "Recepção, Comercial…") é um nome que a rede escolhe, e não conta — está
- * nas exceções abaixo, pelo texto inteiro.
+ * "a contadora". Nem como EXEMPLO de nome (15ª simulação: "Ex.: Recepção" lia
+ * como um cargo fixo) — o exemplo do nome do cargo e do número fala do que a
+ * pessoa faz ("Agenda e caixa", "Principal, Comercial…").
  */
 const CARGO_FIXO = /(?<![\w-])(?:recep[çc][ãa]o|recepcionistas?|gerentes?|contadoras?)(?![\w-])/i
-
-/** Exemplos de NOME (o que a rede digita): não é texto que fala de um cargo fixo. */
-const EXEMPLOS_DE_NOME = new Set(['Ex.: Recepção', 'Recepção, Comercial…', 'Ex.: Recepção, Comercial, Dra. Ana'])
 
 /** A string é frase (texto que alguém lê) — e não chave, caminho ou id? */
 function ehFrase(s: string): boolean {
@@ -103,7 +100,6 @@ function achados(arquivo: string, texto: string, padrao: RegExp): string[] {
   const saida: string[] = []
   const anotar = (no: ts.Node, s: string) => {
     if (!padrao.test(s)) return
-    if (padrao === CARGO_FIXO && EXEMPLOS_DE_NOME.has(s.trim())) return
     const { line } = fonte.getLineAndCharacterOfPosition(no.getStart())
     saida.push(`${line + 1}: ${s.replace(/\s+/g, ' ').trim().slice(0, 120)}`)
   }
@@ -349,13 +345,13 @@ describe('Vocabulário: o texto que se lê fala o sistema revisado', { timeout: 
     expect(r.map(l => l.split(':')[0])).toEqual(['1', '2', '3', '10'])
   })
 
-  it('a trava de cargo deixa o exemplo de nome', () => {
+  it('a trava de cargo pega também o exemplo de nome de cargo', () => {
     const exemplo = [
       "const a = 'Fale com a recepção.'",
       '<input placeholder="Ex.: Recepção" />',
       "const b = 'O pagamento é confirmado pela recepcionista.'",
       "const c = <p>A contadora baixa o CSV</p>",
     ].join('\n')
-    expect(achados('exemplo.tsx', exemplo, CARGO_FIXO).map(l => l.split(':')[0])).toEqual(['1', '3', '4'])
+    expect(achados('exemplo.tsx', exemplo, CARGO_FIXO).map(l => l.split(':')[0])).toEqual(['1', '2', '3', '4'])
   })
 })

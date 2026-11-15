@@ -285,7 +285,7 @@ function LinhaDoNumero({ numero, opcoes, ocupadas, onMudou, onConfigurar }: {
               className="field"
               value={rotulo}
               onChange={e => setRotulo(e.target.value)}
-              placeholder="Recepção, Comercial…"
+              placeholder="Principal, Comercial…"
               style={{ fontSize: 'var(--text-base-sz)' }}
             />
           </Campo>

@@ -58,7 +58,9 @@ const APELIDOS_DA_ABA: Record<string, readonly string[]> = {
   unidades:     ['salas', 'filiais', 'horário de funcionamento'],
   unidade:      ['salas', 'horário de funcionamento', 'endereço da unidade'],
   permissions:  ['permissões', 'acessos', 'perfis'],
-  fichas:       ['anamnese', 'formulários'],
+  // D9 da 15ª: a tela e os textos dizem "ficha de saúde" (PR3/FC1), e a busca
+  // por ela só achava "Cadastrar como cliente".
+  fichas:       ['ficha de saúde', 'fichas de saúde', 'anamnese', 'formulários'],
   documentos:   ['termos', 'contratos', 'assinatura'],
   integrations: ['whatsapp', 'meta', 'instagram', 'conexões'],
   fidelidade:   ['pontos', 'recompensas', 'vouchers'],
@@ -90,6 +92,17 @@ const SUBTITULO_PELO_APELIDO: Record<string, string> = {
   documentos:            'Os documentos emitidos e assinados',
   'settings:documentos': 'Os modelos de termo e contrato (a configuração)',
   oportunidades:         'O quadro das oportunidades',
+}
+
+/**
+ * O apelido que só serve para ACHAR: a palavra velha que alguém ainda digita
+ * ("clínica", "filiais") leva à tela, mas não vai ao subtítulo (vocabulário da
+ * 15ª simulação: "Configurações → Geral" aparecia com o subtítulo "Clínica").
+ * O subtítulo diz o nome de hoje.
+ */
+const SUBTITULO_NO_LUGAR_DO_APELIDO: Record<string, string> = {
+  'clínica': 'Os dados da rede',
+  'filiais': 'As unidades da rede',
 }
 
 /**
@@ -217,7 +230,7 @@ export function paginasQueCasam(
     .map(p => {
       const apelido = apelidoQueCasou(p, termo)
       const ancora = apelido ? ANCORA_DO_APELIDO[apelido.toLowerCase()] ?? '' : ''
-      const subtitulo = apelido ? (SUBTITULO_PELO_APELIDO[p.key] ?? apelido) : null
+      const subtitulo = apelido ? (SUBTITULO_PELO_APELIDO[p.key] ?? SUBTITULO_NO_LUGAR_DO_APELIDO[apelido.toLowerCase()] ?? apelido) : null
       return { tipo: 'pagina' as const, id: p.key, titulo: p.titulo, subtitulo, href: p.href + ancora }
     })
 }

@@ -185,7 +185,7 @@ test('D7: quem tem o Financeiro em Ver não vê "Novo lançamento", e a recusa f
       _branchId: rede!.branchId, _slug: slug, type: 'EXPENSE', category: 'Outros', description: `${PREFIXO} furo ${marca}`, amount: '10',
     })
     expect(r.texto).not.toContain('Forbidden')
-    expect(r.texto).toContain('Seu cargo não libera esta ação.')
+    expect(r.texto).toContain('Você não tem acesso a esta ação.')
   })
 })
 

@@ -61,7 +61,7 @@ export function TelaDeErro({
           lineHeight: 'var(--leading-snug)', marginBottom: 20,
         }}>
           {forbidden
-            ? 'Seu cargo não libera esta tela. Se precisar dela para trabalhar, fale com quem administra a rede.'
+            ? 'Esta tela não está liberada para você. Se precisar dela para trabalhar, fale com quem administra a rede.'
             : limite
             ? 'O plano chegou ao limite de unidades, membros ou números de WhatsApp. Para ampliar, fale com o BellarisOS.'
             : 'A tela não conseguiu carregar. Tentar de novo costuma resolver; se insistir, avise quem administra a rede.'}

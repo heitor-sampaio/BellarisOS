@@ -81,11 +81,11 @@ test('A1: o "Agendar" do card traz o procedimento de interesse escolhido, e diz 
   })
 })
 
-test('A2: o Prontuário pela URL, para quem não o abre, diz que o cargo não abre a aba', async ({ browser }) => {
+test('A2: o Prontuário pela URL, para quem não o abre, diz que as permissões não abrem a aba', async ({ browser }) => {
   const cliente = await rede.criarCliente('Helena A2')
   await como(browser, tatiane, async p => {
     await p.goto(`/admin/clients/${cliente}?aba=fichas`)
-    await expect(p.locator('[data-aba-sem-acesso="fichas"]')).toContainText('Seu cargo não abre a aba Prontuário')
+    await expect(p.locator('[data-aba-sem-acesso="fichas"]')).toContainText('Suas permissões não abrem a aba Prontuário')
     await expect(p.getByRole('tab', { name: 'Visão geral' })).toHaveAttribute('aria-selected', 'true')
   })
 })

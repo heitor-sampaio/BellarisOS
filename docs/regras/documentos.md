@@ -541,6 +541,20 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     quem assinou), o PDF e "Abrir na ficha" — as ações ficam na ficha.
   - O A_GERAR da página é montado ao listar (`renderizarPendentes`), como na
     ficha: sem isso ele não saberia se falta dado.
+- **Salvar o cadastro da cliente monta de novo os documentos INCOMPLETOS
+  dela** (D1 da 15ª simulação, 2026-11-15; princípio 3): `atualizarClienteCore`
+  (a ficha, o próprio portal e o Copilot) chama `renderizarPendentes` nos
+  INCOMPLETOS da cliente. Até a 15ª o contrato do pacote seguia "faltam dados"
+  com o endereço já completo, até alguém com os Documentos o abrir — e as
+  contagens que leem o status mentiam. Falhar aí não desfaz o cadastro.
+- **O aviso da venda do pacote diz o que falta e onde estão** (D1 da 15ª):
+  "Falta no cadastro: Endereço (rua, número e bairro)." (`oQueFalta`,
+  `lib/documentos/o-que-falta.ts`, o mesmo da janela da agenda) e, a quem
+  vendeu SEM os Documentos, "Para colher a assinatura, fale com quem tem os
+  Documentos: …" (`quemVeOsDocumentos`, `lib/equipe/quem-desfaz.ts`) no lugar
+  de "Estão na ficha, em Documentos" — e sem o "Colher a assinatura agora"
+  (`avisoDosDocumentosDaVenda`, `lib/documentos/aviso-da-venda.ts`). Prova:
+  `e2e/documentos-venda-do-pacote-faltam-dados.spec.ts`.
   - Os rótulos da trilha são UM só (`lib/documentos/situacao.ts`), na tela e
     na página de evidências do PDF.
   - Canal de envio novo grava o seu evento em `issued_document_events` e

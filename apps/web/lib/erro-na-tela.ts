@@ -21,7 +21,7 @@ export function erroParaTela(e: unknown, padrao: string): string {
       : 'O BellarisOS foi atualizado. Recarregue a página.'
   }
   if (e && typeof e === 'object' && ehSemAcesso(e as { message?: string; digest?: string })) {
-    return 'Seu cargo não libera esta ação.'
+    return 'Você não tem acesso a esta ação.'
   }
   if (e && typeof e === 'object' && ehLimiteDoPlano(e as { digest?: string })) {
     return 'O plano chegou ao limite. Para ampliar, fale com o BellarisOS.'

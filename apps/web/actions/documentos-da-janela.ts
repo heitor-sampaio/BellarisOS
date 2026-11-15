@@ -8,6 +8,7 @@ import { documentosDoAgendamento, rotuloDoQueFalta } from '@/lib/documentos/leit
 import { valoresDoDocumento, type DadosDoDocumento } from '@/lib/documentos/valores'
 import { variavelObrigatoria } from '@/lib/documentos/variaveis'
 import { ehMenorDeIdade } from '@/lib/clients/menor'
+import { oQueFalta } from '@/lib/documentos/o-que-falta'
 
 /**
  * Os termos e contratos de um agendamento, para a JANELA da agenda (A34 da 6ª
@@ -36,16 +37,6 @@ export interface DocumentoDaJanela {
   /** A ficha da cliente, para "Completar o cadastro" (quem edita Clientes). */
   clienteId: string | null
   podeCompletar: boolean
-}
-
-/** "Cliente · CPF" → "CPF"; "Pagamento · …" → "o pagamento do contrato" (uma vez). */
-function oQueFalta(faltando: string[]): string[] {
-  const saida: string[] = []
-  for (const f of faltando) {
-    const t = f.startsWith('Pagamento ·') ? 'o pagamento do contrato' : f.replace(/^Cliente · /, '')
-    if (!saida.includes(t)) saida.push(t)
-  }
-  return saida
 }
 
 const SITUACAO: Record<string, string> = {

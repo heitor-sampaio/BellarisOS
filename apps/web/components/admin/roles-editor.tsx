@@ -23,6 +23,7 @@ import { Fala } from '@/components/shared/uma-unidade'
 import type {
   AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ResolvedScopes, ReportTab,
 } from '@estetica-os/types'
+import { resumoDoCargoDeSistema, explicacaoDoCargoDeSistema } from '@/lib/cargos/de-sistema'
 
 export interface EditorRole {
   id:           string
@@ -219,7 +220,7 @@ function RoleListPanel({
         >
           <input
             name="label" type="text" required autoFocus
-            className="field" placeholder="Ex.: Recepção"
+            className="field" placeholder="Ex.: Agenda e caixa"
             style={{ background: 'var(--surface)' }}
           />
           {createState && 'error' in createState && createState.error && (
@@ -350,7 +351,7 @@ function RoleCard({
       </div>
 
       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-        {role.is_system ? <Fala>Acesso total à rede</Fala> : summarize(perms)}
+        {role.is_system ? <Fala>{resumoDoCargoDeSistema(role.key)}</Fala> : summarize(perms)}
       </p>
 
       {/* A contagem explica por que a exclusão é recusada, então conta ativos e
@@ -434,9 +435,7 @@ function SystemRoleCard({ role }: { role: EditorRole }) {
         </h3>
       </div>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', lineHeight: 'var(--leading-snug)' }}>
-        É o cargo do sistema: tem acesso a tudo na rede, em todas as unidades, e por isso não passa
-        por esta matriz. Ele não pode ser editado nem excluído — se pudesse, dava para trancar a si
-        mesmo para fora da própria rede.
+        {explicacaoDoCargoDeSistema(role.key)}
       </p>
     </div>
   )

@@ -266,7 +266,7 @@ test('A1 da 13ª: Cargos → Novo diz que o cargo novo começa sem acesso, sem a
       await expect(p.getByRole('button', { name: 'Salvar acessos' })).toBeVisible()
       // Criado, o painel passa ao cargo novo.
       await p.getByRole('button', { name: 'Novo' }).click()
-      await p.getByPlaceholder('Ex.: Recepção').fill(`Novo f70 ${marca}`)
+      await p.getByPlaceholder('Ex.: Agenda e caixa').fill(`Novo f70 ${marca}`)
       await p.getByRole('button', { name: 'Criar', exact: true }).click()
       await expect(p.getByText(`Novo f70 ${marca}`).first()).toBeVisible({ timeout: 20_000 })
       await expect(p.getByText('Cargo novo: começa sem acesso nenhum')).toBeHidden()

@@ -59,7 +59,7 @@ test('A6: a aba Fidelidade diz que o crédito interno vendido pontua', async ({ 
   try {
     const p = await ctx.newPage()
     await p.goto('/admin/settings?tab=fidelidade')
-    await expect(p.getByText('O produto vendido na ficha não dá pontos.', { exact: false }))
+    await expect(p.getByText('A venda de produto não dá pontos.', { exact: false }))
       .toContainText('o crédito interno vendido')
   } finally { await ctx.close() }
 })
