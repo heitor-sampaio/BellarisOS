@@ -7,8 +7,9 @@ import { Fala } from '@/components/shared/uma-unidade'
 
 /**
  * Configurações → Tags (2026-10-13): o vocabulário da rede, um só para a ficha
- * do cliente e o CRM. Tag gravada em qualquer lugar (importação, card,
- * automação) entra aqui sozinha; aqui se cria, renomeia — em todo lugar, e
+ * do cliente e o CRM. Tag que a equipe grava em outro lugar (importação, card,
+ * a ação "Adicionar tag" de uma automação da rede) também aparece aqui — o
+ * sistema não põe tag sozinho (A27 da 16ª); aqui se cria, renomeia — em todo lugar, e
  * junta se o nome já existe — e arquiva (sai das opções, fica em quem tem).
  */
 
@@ -78,8 +79,9 @@ export function SettingsTags({ iniciais }: { iniciais: TagDaRede[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-        <Fala>As tags da rede</Fala>, as mesmas na ficha do cliente e no CRM. A que alguém grava por outro caminho
-        — o card da oportunidade, a importação, uma automação — entra aqui sozinha. Renomear troca a
+        <Fala>As tags da rede</Fala>, as mesmas na ficha do cliente e no CRM. A tag nova que a equipe grava
+        no card da oportunidade ou na importação, ou que a ação “Adicionar tag” de uma automação da rede
+        grava, também passa a aparecer aqui. O sistema não põe tag em ninguém sozinho. Renomear troca a
         tag em todos os clientes, contatos e oportunidades; arquivar tira das opções, mas quem já tem
         continua com ela.
       </p>

@@ -12,6 +12,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
 ## Decisões do Heitor (2026-10-08)
 
 - **Toda gravação passa por um cartão** com Confirmar/Cancelar. Consulta é livre.
+  **O cartão é a confirmação** (A32 da 16ª): o prompt não pede "responda
+  Confirmar" antes nem repete no texto os dados que o cartão mostra. O
+  cartão "Agendar atendimento" diz o aviso que chega DE FATO à cliente
+  (`avisoDoAgendarParaACliente`, A33): "Ela recebe o aviso “Horário marcado”
+  no app", ou "Nada é enviado a ela agora" — sem acesso ao app, ou sem o app
+  da cliente no plano. O cadastro termina em "Ficha de X criada" (A34). O
+  painel vazio oferece "Continuar a conversa anterior: <título>" (A31).
 - **Nada clínico vai à OpenAI**: nenhuma ferramenta lê prontuário, evolução,
   anamnese, foto clínica ou anotação clínica de plano. O prompt manda dizer que
   isso fica na tela, e o painel avisa para não mandar.

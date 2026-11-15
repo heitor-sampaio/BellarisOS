@@ -68,7 +68,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   /** Quem informou o fundo de troco do dia, e quando (ven-03). */
   fundoInformado?: { quem: string | null; quando: string } | null
   /** A42 da 8ª: o que foi estornado no dia (do banco; o total, de lib/metrics). */
-  estornos?: { itens: EstornoDoDia[]; total: number; deOutrosDias?: number } | null
+  estornos?: { itens: EstornoDoDia[]; total: number; deOutrosDias?: number; mesmoDiaPorForma?: Record<string, number> } | null
   /** A40 da 11ª: as entradas do dia de cada pessoa que recebeu, por forma (do banco). */
   porQuemRecebeu?: RecebidoPorPessoa[]
   /** A45 da 8ª: o dia de cada unidade e o da rede (o portal da rede). */
@@ -224,6 +224,12 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                     <td data-label="" style={{ padding: '11px 16px', fontWeight: 700, color: 'var(--text)' }}>
                       {rotulo}
                       <span style={DETALHE}>Entradas {brl(l.entradas)} · saídas {brl(l.saidas)}</span>
+                      {/* A3 da 16ª (princípio 3): o estorno de hoje já saiu das entradas — a linha diz quanto. */}
+                      {(estornos?.mesmoDiaPorForma?.[l.forma] ?? 0) > 0 && (
+                        <span data-estornado-hoje style={DETALHE}>
+                          {brl(estornos!.mesmoDiaPorForma![l.forma]!)} estornado de um pagamento de hoje: já fora das entradas
+                        </span>
+                      )}
                       {detalheDasBandeiras(l.forma)}
                       {dinheiro && resumo.fundoDeTroco != null && resumo.fundoDeTroco > 0 && (
                         <span data-esperado-conta style={DETALHE}>

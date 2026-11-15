@@ -120,7 +120,7 @@ for (const portal of ['unidade', 'rede'] as const) {
       await expect(p.locator('[data-lancamento]').first()).toHaveAttribute('data-lancamento', ids.atrasada)
       await expect(linha(p, ids.recebido)).toHaveCount(0)
       await expect(linha(p, ids.conta)).toHaveCount(0)
-      await expect(linha(p, ids.atrasada).getByRole('button', { name: 'Pagar' })).toBeVisible()
+      await expect(linha(p, ids.atrasada).getByRole('button', { name: 'Receber', exact: true })).toBeVisible()
       await expect(linha(p, ids.atrasada).getByRole('button', { name: 'Remarcar vencimento' })).toBeVisible()
 
       // FI4: as despesas em aberto.
@@ -172,7 +172,7 @@ test('quem só vê: as abas e as listas, sem lançar, dar baixa nem remarcar', a
     await p.goto(`/${slug}/financeiro?aba=a-receber`)
     await expect(abas(p).getByRole('tab')).toHaveText(ABAS)
     await expect(linha(p, ids.atrasada)).toBeVisible()
-    await expect(linha(p, ids.atrasada).getByRole('button', { name: 'Pagar' })).toHaveCount(0)
+    await expect(linha(p, ids.atrasada).getByRole('button', { name: /^(Pagar|Receber)$/ })).toHaveCount(0)
     await expect(linha(p, ids.atrasada).getByRole('button', { name: 'Remarcar vencimento' })).toHaveCount(0)
     await expect(p.getByRole('button', { name: 'Novo lançamento' })).toHaveCount(0)
     await p.goto('/admin/financeiro?aba=a-pagar')

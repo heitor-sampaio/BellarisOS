@@ -147,7 +147,7 @@ describe('A9 da 13ª: a base diz o que saiu da capacidade', async () => {
       { minutos: 60, quem: 'Ana', onde: null },
     ])
     expect(baseDaOcupacao({ agendados: 300, abertos: 1000, profissionais: 2, descontos }))
-      .toBe('300 min agendados de 1.000 min abertos (o horário de 2 profissionais que atendem, menos 140 min da Patrícia na Água Verde e 60 min bloqueados da Ana)')
+      .toBe('300 min agendados de 1.000 min abertos (o horário de 2 profissionais que atendem, menos 140 min de Patrícia atendendo em Água Verde e 60 min bloqueados de Ana)')
   })
   it('o bloqueio que cai sobre o da outra unidade não sai duas vezes', () => {
     const descontos = descontosDaOcupacao(umDia, [{ nome: 'Patrícia', horario: null, blocos: [

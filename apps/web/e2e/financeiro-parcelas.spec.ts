@@ -104,7 +104,8 @@ test('parcelado: a entrada no dia, cada parcela no mês dela, e o "Pagar" quita 
 
     // "Pagar" na 2/3: só ela sai paga. A parcela do crediário nasce sem meio
     // (D6 da 6ª simulação): a baixa pergunta a forma.
-    await linhas.first().getByRole('button', { name: 'Pagar' }).click()
+    // A2 da 16ª: na receita o botão é "Receber".
+    await linhas.first().getByRole('button', { name: 'Receber', exact: true }).click()
     const receber = p.getByRole('dialog', { name: 'Receber' })
     await receber.getByLabel('Forma de pagamento').selectOption('PIX')
     await receber.getByRole('button', { name: 'Confirmar recebimento' }).click()

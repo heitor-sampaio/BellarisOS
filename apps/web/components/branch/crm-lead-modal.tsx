@@ -131,8 +131,15 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [selectedProcs,   setSelectedProcs]   = useState<string[]>(
       existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [],
     )
+    /**
+     * A16 da 16ª (princípio 3): o campo "Etapa" lista só as etapas do funil do
+     * card — com os dois funis juntos, "Perdido" aparecia duas vezes. Mudar de
+     * funil é o "Mover para outro funil" do menu do card.
+     */
+    const funilDoCard = stages.find(s => s.id === (existing?.crm_stage_id ?? initialStageId))?.funnel_id ?? funnelId ?? null
+    const etapasDoFunil = funilDoCard ? stages.filter(s => s.funnel_id === funilDoCard) : []
     const [stageId, setStageId] = useState(
-      existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '',
+      existing?.crm_stage_id ?? initialStageId ?? (etapasDoFunil[0] ?? stages[0])?.id ?? '',
     )
     const [tags,      setTags]      = useState<string[]>(existing?.tags ?? [])
 
@@ -572,7 +579,9 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   <Label htmlFor={idEtapa}>Etapa</Label>
                   <select id={idEtapa} name="crm_stage_id" className="field"
                     value={stageId} onChange={e => setStageId(e.target.value)}>
-                    <StageOptions funnels={funnels ?? []} stages={stages} />
+                    {etapasDoFunil.length > 0
+                      ? <StageOptions funnels={[]} stages={etapasDoFunil} />
+                      : <StageOptions funnels={funnels ?? []} stages={stages} />}
                   </select>
                 </div>
               </div>

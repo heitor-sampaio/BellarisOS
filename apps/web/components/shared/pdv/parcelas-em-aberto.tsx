@@ -24,12 +24,16 @@ function tituloDaParcela(p: ParcelaEmAberto): string {
  * (CX1, o desenho aprovado pelo Heitor em 2026-11-13, tela 3): cada parcela
  * com o vencimento e o "Receber esta parcela" — que pede a forma (PDV8).
  */
-export function ParcelasEmAberto({ parcelas, slug }: { parcelas: ParcelaEmAberto[]; slug: string }) {
+export function ParcelasEmAberto({ parcelas, slug, titulo = 'Em aberto com a cliente' }: {
+  parcelas: ParcelaEmAberto[]; slug: string
+  /** A1 da 16ª: na comanda do crediário, "Parcelas desta venda". */
+  titulo?: string
+}) {
   const [aberta, setAberta] = useState<ParcelaEmAberto | null>(null)
   if (!parcelas.length) return null
   return (
     <div data-em-aberto-da-cliente style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p className="field-label">Em aberto com a cliente</p>
+      <p className="field-label">{titulo}</p>
       {parcelas.map(p => (
         <div key={p.id} data-parcela-em-aberto={p.id} style={{
           display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 'var(--radius-field)',

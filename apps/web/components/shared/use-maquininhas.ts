@@ -8,7 +8,7 @@ import { maquininhasParaAVenda, type MaquininhaNaVenda } from '@/actions/maquini
  * para todos os campos da mesma tela (o "Qual maquininha?", o aviso da taxa e
  * as "Vezes no cartão" pedem juntos): a promessa fica guardada alguns segundos.
  */
-type Leitura = { lista: MaquininhaNaVenda[]; mostra: boolean }
+type Leitura = { lista: MaquininhaNaVenda[]; mostra: boolean; quemCadastra?: string[] | null }
 let emCurso: { quando: number; promessa: Promise<Leitura> } | null = null
 
 function lerAsMaquininhas(): Promise<Leitura> {

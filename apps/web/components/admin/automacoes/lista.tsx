@@ -117,6 +117,10 @@ export function ListaDeAutomacoes({
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
                   O modelo cria a automação desligada, com o fluxo montado. Revise e ligue quando estiver do seu jeito.
                 </p>
+                {/* A28 da 16ª: o envio da ficha de saúde não é automação — mora nas Fichas. */}
+                <p data-ficha-de-saude-mora-nas-fichas style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                  Mandar a ficha de saúde quando a cliente for agendada é em Configurações → Fichas.
+                </p>
               </div>
               <button type="button" className="btn-ghost" aria-label="Fechar" onClick={() => setVendoModelos(false)} disabled={criando}>
                 <X size={15} />

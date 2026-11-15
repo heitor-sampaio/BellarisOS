@@ -34,14 +34,16 @@ import { Check, Search } from 'lucide-react'
  */
 
 /** Onde o painel cabe: abaixo (ou acima) do gatilho, inteiro na tela. */
-interface Posicao { left: number; largura: number; top?: number; bottom?: number }
+export interface PosicaoDoPainel { left: number; largura: number; top?: number; bottom?: number }
+type Posicao = PosicaoDoPainel
 const ALTURA_ESTIMADA = 260
-function posicaoDoPainel(gatilho: DOMRect, larguraPainel: number): Posicao {
+/** Também o menu "···" do card de oportunidade (A15 da 16ª): o mesmo lugar, inteiro na tela. */
+export function posicaoDoPainel(gatilho: DOMRect, larguraPainel: number, alturaEstimada = ALTURA_ESTIMADA): Posicao {
   const largura = Math.min(larguraPainel, window.innerWidth - 16)
   let left = gatilho.left
   if (left + largura > window.innerWidth - 8) left = Math.max(8, gatilho.right - largura)
   const embaixo = window.innerHeight - gatilho.bottom
-  return embaixo < ALTURA_ESTIMADA && gatilho.top > embaixo
+  return embaixo < alturaEstimada && gatilho.top > embaixo
     ? { left, largura, bottom: window.innerHeight - gatilho.top + 4 }
     : { left, largura, top: gatilho.bottom + 4 }
 }

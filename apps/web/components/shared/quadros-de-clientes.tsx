@@ -37,7 +37,11 @@ export function AvatarDaCliente({ name, size = 32 }: { name: string; size?: numb
   )
 }
 
-export interface EtapaDoCiclo { label: string; count: number; color: string }
+export interface EtapaDoCiclo {
+  label: string; count: number; color: string
+  /** A12 da 16ª: o que a conta "até agora" não diz — "2 ainda hoje". */
+  nota?: string
+}
 
 /** O ciclo de clientes: novos, agendamentos, concluídos, cancelados/faltas. */
 export function ClientesDoPeriodo({ titulo, subtitulo, etapas }: {
@@ -70,6 +74,11 @@ export function ClientesDoPeriodo({ titulo, subtitulo, etapas }: {
               <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: 'var(--text)', minWidth: 28, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                 {f.count}
               </span>
+              {f.nota && (
+                <span data-nota-da-etapa style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  {f.nota}
+                </span>
+              )}
             </div>
           )
         })}
@@ -112,7 +121,7 @@ export function vazioDoReativar(comVisita: number, recentesSemVisita: number, de
       : 'Nenhuma cliente tem visita registrada ainda.'
   }
   return 'Ninguém sumiu: quem já veio voltou nos últimos 90 dias 🎉'
-    + (recentesSemVisita > 0 ? ` ${recentes} ainda ${recentesSemVisita === 1 ? 'não tem' : 'não têm'} visita.` : '')
+    + (recentesSemVisita > 0 ? ` ${recentes} ainda ${recentesSemVisita === 1 ? 'não tem' : 'não têm'} visita concluída.` : '')
 }
 
 /**
@@ -122,7 +131,8 @@ export function vazioDoReativar(comVisita: number, recentesSemVisita: number, de
  * cancelado — T1 do Bloco Tags; era a tag "Unidade: X").
  */
 export function deQuemSaoAsClientes(r: { daUnidade: boolean; dela: boolean }): string {
-  if (r.dela) return 'que você atendeu'
+  // A12 da 16ª: são as com horário com ela (não cancelado), não só as já atendidas.
+  if (r.dela) return 'com horário com você'
   return r.daUnidade ? 'atendidas na unidade' : 'da rede'
 }
 

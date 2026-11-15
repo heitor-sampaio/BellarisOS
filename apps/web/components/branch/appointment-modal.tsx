@@ -10,7 +10,7 @@ import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
-import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle, CheckCircle2, Ban } from 'lucide-react'
+import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle, CheckCircle2, Ban, FileSignature } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { PerguntaJaExiste } from '@/components/shared/pergunta-ja-existe'
 import Link from 'next/link'
@@ -21,6 +21,12 @@ import { useFuso } from '@/components/shared/fuso'
 import { textoDoProximoLivre } from '@/lib/agenda/proximo-livre'
 import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
+
+/** "“A”", "“A” e “B”", "“A”, “B” e “C”". */
+const emListaDeNomes = (nomes: readonly string[]) => {
+  const q = nomes.map(n => `“${n}”`)
+  return q.length <= 1 ? (q[0] ?? '') : `${q.slice(0, -1).join(', ')} e ${q[q.length - 1]}`
+}
 
 interface Client      { id: string; name: string; phone: string }
 interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number; /** Quem realiza (por-01; vazio = todas). */ realizam?: string[] }
@@ -366,7 +372,7 @@ export function AppointmentModal({
   // não emite o termo do avulso (o plano tem os dele).
   const chaveDaFalta = selectedClient?.id && procedimentoDoAgendamento && credito?.tipo !== 'PLANO'
     ? `${selectedClient.id}|${procedimentoDoAgendamento}` : ''
-  const [faltaNoCadastro, setFaltaNoCadastro] = useState<{ chave: string; termos: FaltaNoCadastroDoTermo[]; podeCompletar: boolean } | null>(null)
+  const [faltaNoCadastro, setFaltaNoCadastro] = useState<{ chave: string; termos: FaltaNoCadastroDoTermo[]; podeCompletar: boolean; bloqueiam: string[] } | null>(null)
   useEffect(() => {
     if (!chaveDaFalta || !selectedClient?.id) return
     let vivo = true
@@ -690,7 +696,17 @@ export function AppointmentModal({
                 </span>
               </p>
             )}
-            {faltaNoCadastroAgora && selectedClient && (
+            {/* A9 da 16ª (princípio 3): antes de agendar, os documentos sem os quais o atendimento não se inicia. */}
+            {faltaNoCadastroAgora && selectedClient && faltaNoCadastroAgora.bloqueiam.length > 0 && (
+              <p data-aviso-documentos-que-bloqueiam role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
+                <FileSignature size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden />
+                <span>
+                  Sem assinatura, o atendimento não se inicia: {emListaDeNomes(faltaNoCadastroAgora.bloqueiam)}.
+                  {' '}O “Enviar link de assinatura” fica no card do agendamento.
+                </span>
+              </p>
+            )}
+            {faltaNoCadastroAgora && selectedClient && faltaNoCadastroAgora.termos.length > 0 && (
               <p data-aviso-falta-no-cadastro role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4 }}>
                 <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden />
                 <span>

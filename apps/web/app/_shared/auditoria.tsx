@@ -80,6 +80,7 @@ export async function TelaDaAuditoria({
         {filtros.to && <input type="hidden" name="to" value={filtros.to} />}
         <select name="pessoa" defaultValue={filtros.pessoa ?? ''} className="filtro-select" aria-label="Quem">
           <option value="">Qualquer pessoa</option>
+          <option value="copilot">Só o que foi pelo Copilot</option>
           {pessoas.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <select name="tipo" defaultValue={filtros.tipo ?? ''} className="filtro-select" aria-label="O que foi feito">

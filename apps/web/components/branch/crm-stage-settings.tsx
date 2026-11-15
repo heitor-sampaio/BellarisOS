@@ -517,6 +517,14 @@ export function CRMStageSettings({
 
   useEffect(() => { if (stageState?.success)  router.refresh() }, [stageState?.success, router])
   useEffect(() => { if (funnelState?.success) router.refresh() }, [funnelState?.success, router])
+  // A19 da 16ª (princípio 7): o funil criado abre selecionado, com as etapas
+  // dele. Ajustado no render; enquanto o refresh não traz o funil, o
+  // `selecionado` cai no primeiro — e volta a ele quando a lista chega.
+  const [funilCriadoAnterior, setFunilCriadoAnterior] = useState<string | undefined>(undefined)
+  if (funnelState?.id && funilCriadoAnterior !== funnelState.id) {
+    setFunilCriadoAnterior(funnelState.id)
+    setSelectedId(funnelState.id)
+  }
 
   return (
     <>

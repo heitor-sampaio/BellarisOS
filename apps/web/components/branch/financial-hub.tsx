@@ -649,7 +649,9 @@ export function FinancialHub({
     />
   )
   // A42 da 12ª: quem só vê o financeiro não tem o "Pagar" na linha.
+  // A2 da 16ª: a frase cita o botão que a linha mostra — "Receber" na conta a receber, "Pagar" na conta a pagar.
   const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem o PDV no cargo.'
+  const fraseDoReceber = canPay ? 'Para receber, use “Receber” na linha.' : 'Receber é de quem tem o PDV no cargo.'
   const tabela = (ordemInicial: 'asc' | 'desc') => (
     <FinancialTable
       nomeDoCsv={nomeDoCsv}
@@ -862,9 +864,9 @@ export function FinancialHub({
           </div>
           <p data-so-o-em-aberto style={faixa}>
             {soAsVencidas
-              ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
-              : 'Todo o a receber em aberto, de qualquer vencimento — as atrasadas primeiro, as parcelas do crediário inclusive.'}{' '}
-            {fraseDaBaixa}
+              ? 'Só as vencidas: as contas a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
+              : 'Todas as contas a receber em aberto, de qualquer vencimento: as atrasadas primeiro, e as parcelas do crediário também.'}{' '}
+            {fraseDoReceber}
           </p>
           {tabela('asc')}
         </div>

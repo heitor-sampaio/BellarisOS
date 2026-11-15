@@ -1060,9 +1060,30 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     o contrato e as sessões gravados junto ficam guardados na linha.
     Prova: `tests/auditoria-defeitos-da-16.test.ts`, `e2e/auditoria-defeitos-da-16.spec.ts`.
   - O campo se nomeia (a lista `CAMPO`); a coluna fora dela sai pelo próprio
-    nome, sem "um campo"/"outros campos".
+    nome, sem "um campo"/"outros campos". Toda coisa da auditoria tem o plural
+    (`COISA_DA_AUDITORIA` × `PLURAL_DA_AUDITORIA`: "Criou 2 links de
+    assinatura"); o lançamento criado diz o que é e quanto ("Criou a despesa
+    Material de limpeza (R$ 120,00)"), e a sala, a unidade ("Criou a sala
+    Cabine 1 em Moinhos") (A35 da 16ª).
+  - **O que a cliente fez pelo link é dela** (A36 da 16ª): o link público não
+    tem sessão e o banco grava "O sistema"; a leitura diz "Dona Cida, pelo
+    link" (tipo cliente) na edição da ficha de saúde, do link dela, do link
+    de assinatura e do documento, na assinatura e na ficha de saúde do
+    prontuário (`feitoPeloLink`). O link CRIADO segue de quem o criou. A
+    resposta da ficha é o fato da gravação: "Respondeu a ficha de saúde" (pela
+    equipe, "Preencheu a ficha de saúde de X").
+  - **Abrir o documento sem mudar nada não grava** (A35 da 16ª):
+    `garantirRenderizado` só chama `documento_registrar_texto` quando a
+    montagem muda a situação, o hash ou os campos que faltam, ou leva um
+    pagamento (`montagemMudou`, `lib/documentos/montagem-mudou.ts`) — eram 14
+    "Editou o documento (geração…)" de quem só abriu a tela.
+  - O filtro "Quem" tem "Só o que foi pelo Copilot" (`pessoa=copilot` →
+    `via = 'copilot'`, A37 da 16ª).
   - A página segue por gravação (`?antes=<id>`): a gravação que começa numa
-    página termina nela. O CSV segue uma linha por registro.
+    página termina nela. O CSV segue uma linha por registro, e cada uma leva a
+    frase da gravação dela na coluna "Gravação" (`linhasDoCsvDaAuditoria`,
+    A38 da 16ª: quem procura "Estornou" no arquivo acha); o CSV lê todas as
+    páginas antes de agrupar, para a gravação não se partir.
   - O filtro "Abriu o prontuário" sai da lista de quem tem unidades
     (`operacoesDoFiltro`): a abertura é da rede, e ela nunca a alcança.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.

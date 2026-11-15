@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import { getFechamentoDoDia } from '@/lib/metrics/queries'
+import { estornadoNoMesmoDiaPorForma } from '@/lib/metrics/estornos-por-forma'
 
 /**
  * O que o Fechamento do dia mostra AO LADO do resumo por forma (8ª simulação,
@@ -29,7 +30,7 @@ export interface EstornoDoDia {
  * dia, é a SAÍDA deste (princípio 5 — o pagamento fica no dia dele). A lista e
  * os totais são do banco (`metrics_estornos_das_clientes_do_dia`).
  */
-export async function getEstornosDoDia(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<{ itens: EstornoDoDia[]; total: number; deOutrosDias: number }> {
+export async function getEstornosDoDia(args: { tenantId: string; branchId: string; from: Date; to: Date }): Promise<{ itens: EstornoDoDia[]; total: number; deOutrosDias: number; mesmoDiaPorForma: Record<string, number> }> {
   const linhas = await lerTodas((de, ate) => createAdminClient().rpc('metrics_estornos_das_clientes_do_dia', {
     p_tenant: args.tenantId, p_branch: args.branchId, p_from: args.from.toISOString(), p_to: args.to.toISOString(),
   }).range(de, ate), 'carregar os estornos do dia') as {
@@ -40,7 +41,8 @@ export async function getEstornosDoDia(args: { tenantId: string; branchId: strin
     id: t.id, descricao: String(t.descricao ?? 'Estorno'), forma: t.forma ?? null, vezes: t.vezes ?? null,
     valor: Number(t.valor ?? 0), motivo: t.motivo ?? null, pagoEm: t.pago_em ?? null, mesmoDia: Boolean(t.mesmo_dia),
   }))
-  return { itens, total: Number(linhas?.[0]?.total ?? 0), deOutrosDias: Number(linhas?.[0]?.total_de_outros_dias ?? 0) }
+  // A3 da 16ª: o de hoje, por forma, para a linha da forma dizer o que já saiu das entradas.
+  return { itens, total: Number(linhas?.[0]?.total ?? 0), deOutrosDias: Number(linhas?.[0]?.total_de_outros_dias ?? 0), mesmoDiaPorForma: estornadoNoMesmoDiaPorForma(itens) }
 }
 
 /** O que não traz receita nas execuções, por nome (A47 e A43 da 8ª). */

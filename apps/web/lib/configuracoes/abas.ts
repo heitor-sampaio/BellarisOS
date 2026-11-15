@@ -177,6 +177,8 @@ export function abasSoDaRede(
 const APELIDOS_DE_ABA: Record<string, ChaveDeAba> = {
   commissions: 'comissoes', comissao: 'comissoes', roles: 'permissions', cargos: 'permissions',
   units: 'unidades', integracoes: 'integrations', loyalty: 'fidelidade', geral: 'general',
+  // A29 da 16ª: a aba se chama "Ações em lote"; quem cola o nome dela chega a ela.
+  'acoes-em-lote': 'lotes',
 }
 
 /** A chave da aba pedida na URL, com os apelidos resolvidos. */

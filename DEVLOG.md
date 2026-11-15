@@ -1800,6 +1800,21 @@ O relatório consolidado ficou em `apps/web/.sim/relatorio.md`, e a 15ª foi arq
   - **D3:** o embed `users!appointments_professional_id_fkey`. A entidade que não carrega faz o passo FALHAR (fica na execução), e a regra sobre entidade ausente só vale para "vazio". O lembrete nunca sai para agendamento cancelado.
   - **D6/D7:** a Auditoria lê a gravação pelo registro do FATO (o agendamento, o recebimento, a venda), que dá a frase, a unidade e o link: "Recebeu R$ 1.600,00 (Pix) — Rita Moura", "Recebeu a parcela 1/4 (R$ 200,00, Pix)", "Vendeu o pacote …". O que se grava não mudou.
   - **Fica para trás:** a linha de dentro da conclusão gravada sem unidade ("—") continua assim, porque é a gravação, e a mudança foi só na leitura.
+- **Os atritos: 33 feitos, sem migration.** Os que mudam o que a pessoa vê:
+  - **A1:** a comanda paga com valor em aberto mostra "Parcelas desta venda" e recebe a parcela ali.
+  - **A2:** a conta a receber tem "Receber", com o valor e a cliente.
+  - **A7:** a aba do PDV se chama "Procedimento pré-pago".
+  - **A13:** a ocupação diz "atendendo em outra unidade".
+  - **A15–A19:** no CRM, o menu do card fica inteiro na tela, a Etapa mostra só as do funil, o resumo com filtro diz que os números são do funil inteiro e o funil criado já abre selecionado.
+  - **A24:** o pacote diz o desconto sobre as sessões avulsas.
+  - **A29:** `/equipe` e `/procedimentos` levam às telas.
+  - **A31–A34:** o Copilot oferece continuar a conversa anterior, o cartão é a confirmação e diz o aviso que chega de fato à cliente, e o cadastro termina em "Ficha de X criada".
+  - **A35–A38:** a Auditoria ganha os campos em português, o valor e a unidade no que se cria, "Dona Cida, pelo link", o filtro "Só o que foi pelo Copilot" e a coluna "Gravação" no CSV.
+  - **Documento montado igual ao guardado não se grava de novo** (o ruído das 14 "gerações"). O código de verificação também não muda ao reabrir.
+- **Atritos que ficaram:**
+  - **A4:** o "Quem vendeu?" continua perguntando sempre, pela regra com-06 de `comissoes.md`.
+  - **A30:** a ordem dos próximos passos do `/setup` não mudou, pela regra A2 da 10ª. Só o "Ver detalhes" virou "Salas e detalhes".
+  - **Fora, por serem funcionalidade nova ou já tratados:** A10, A11, A18, A21 e A26.
 
 ### 2026-11-16 — A 15ª simulação (Íris, uma unidade; Orquídea, três) e os defeitos dela
 

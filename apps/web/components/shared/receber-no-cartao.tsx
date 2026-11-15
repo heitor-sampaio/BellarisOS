@@ -30,8 +30,10 @@ const FORMAS_DE_PAGAMENTO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as cons
  * quem recebe confirma ou troca (a cliente que ia pagar no Pix pagou em
  * dinheiro).
  */
-export function ReceberNoCartao({ descricao, metodo, valor, pending, aoConfirmar, aoFechar }: {
+export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, pending, aoConfirmar, aoFechar }: {
   descricao: string
+  /** A2 da 16ª (princípio 3): de quem é o dinheiro — "Receber R$ 200,00 — Paula Neves". */
+  cliente?: string | null
   /** O meio combinado no lançamento: vem escolhido; nulo, nada escolhido. */
   metodo: string | null
   valor: number
@@ -52,6 +54,9 @@ export function ReceberNoCartao({ descricao, metodo, valor, pending, aoConfirmar
     <JanelaModal onFechar={aoFechar} rotulo={titulo} largura={420} travado={pending}>
       <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{titulo}</h2>
+        <p data-receber-quanto style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
+          {valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}{cliente ? ` — ${cliente}` : ''}
+        </p>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           {descricao}{metodo ? <> · combinado: {rotuloDaForma(metodo)}</> : null}
         </p>

@@ -12,6 +12,7 @@ import {
   COMISSAO_DO_PACOTE_PADRAO, rotuloDaComissaoDoPacote,
   type ComissaoDoPacote, type ExecucaoDoPacote, type TipoDeRegra,
 } from '@/lib/comissoes/config'
+import { descontoDoPacote } from '@/lib/pacotes/desconto'
 import { documentosPuxadosDoPacote, type ModeloAtivo, type ProcedimentoComDocumentos } from '@/lib/pacotes/documentos'
 
 /**
@@ -117,7 +118,7 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, podeComiss
           </div>
         )}
         {podeEditar && !editando && procedimentos.length > 0 && (
-          <button type="button" className="btn-secondary" onClick={() => setEditando(vazio(procedimentos[0]!.id))}>
+          <button type="button" className="btn-secondary" onClick={() => setEditando(vazio(''))}>
             <Plus size={15} aria-hidden /> Novo pacote
           </button>
         )}
@@ -196,12 +197,18 @@ function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTermin
     setErro(null)
     const preco = numero(precoNaTela)
     if (!Number.isFinite(preco) || preco < 0 || !precoNaTela.trim()) { setErro('Informe o preço do pacote.'); return }
+    // A23 da 16ª: a linha nova nasce sem procedimento. A que ficou de todo
+    // vazia sai; a que tem sessões e não tem procedimento pede o procedimento.
+    const itens = r.itens.filter(i => i.procedureId || i.quantidade.trim())
+    const semProcedimento = itens.findIndex(i => !i.procedureId)
+    if (semProcedimento >= 0) { setErro(`Escolha o procedimento da linha ${semProcedimento + 1}.`); return }
+    if (itens.length === 0) { setErro('Escolha ao menos um procedimento.'); return }
     const comissao = podeComissao ? comissaoDoRascunho(r.comissao) : null
     if (comissao && 'erro' in comissao) { setErro(comissao.erro); return }
     iniciar(async () => {
       const res = await salvarPacote({
         id: r.id, name: r.name, price: preco,
-        itens: r.itens.map(i => ({ procedure_id: i.procedureId, quantity: Number(i.quantidade) })),
+        itens: itens.map(i => ({ procedure_id: i.procedureId, quantity: Number(i.quantidade) })),
         validity_days: r.validade.trim() ? Number(r.validade) : null, is_active: r.ativo,
         // Só quem pode manda a comissão: o campo ausente não mexe nela.
         ...(comissao ? { comissao: comissao.entrada } : {}),
@@ -228,6 +235,7 @@ function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTermin
         {r.itens.map((it, i) => (
           <div key={i} data-item-do-pacote={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 88px auto', gap: 8, alignItems: 'center' }}>
             <select className="field" aria-label={`Procedimento ${i + 1}`} value={it.procedureId} onChange={e => mudarItem(i, { procedureId: e.target.value })}>
+              <option value="" disabled>Escolha o procedimento</option>
               {procedimentos.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <input className="field" type="number" min={1} max={100} placeholder="Ex.: 5" aria-label={`Sessões do procedimento ${i + 1}`}
@@ -240,9 +248,9 @@ function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTermin
         ))}
         <button type="button" className="btn-ghost" style={{ alignSelf: 'flex-start' }}
           onClick={() => {
-            // O próximo da lista que ainda não está no pacote (repetido vira uma linha só ao salvar).
-            const livre = procedimentos.find(p => !r.itens.some(i => i.procedureId === p.id)) ?? procedimentos[0]!
-            mudar({ itens: [...r.itens, { procedureId: livre.id, quantidade: '1' }] })
+            // A23 da 16ª (princípio 7): a linha nova vem vazia — pré-escolhida,
+            // ela entrava no pacote sem ninguém a escolher ("+ 1× Avaliação").
+            mudar({ itens: [...r.itens, { procedureId: '', quantidade: '' }] })
           }}>
           <Plus size={15} aria-hidden /> Adicionar procedimento
         </button>
@@ -257,6 +265,10 @@ function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTermin
           <input className="field" inputMode="decimal" aria-label="Preço do pacote" value={precoNaTela} placeholder="0,00"
             onChange={e => { setPrecoMexido(true); mudar({ preco: e.target.value }) }} />
           {!precoMexido && <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>A soma das sessões. Pode alterar.</span>}
+          {precoMexido && (() => {
+            const desconto = descontoDoPacote(numero(precoNaTela), avulso)
+            return desconto && <span data-desconto-do-pacote style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{desconto}.</span>
+          })()}
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={rotulo}>Validade em dias (vazio = sem validade)</span>
@@ -264,7 +276,7 @@ function Formulario({ inicial, procedimentos, documentos, podeComissao, aoTermin
         </label>
       </div>
       {documentos && (
-        <DocumentosDoPacote documentos={documentos} procedimentosDoPacote={r.itens.map(i => i.procedureId)}
+        <DocumentosDoPacote documentos={documentos} procedimentosDoPacote={r.itens.map(i => i.procedureId).filter(Boolean)}
           excluidos={r.excluidos} mudar={excluidos => mudar({ excluidos })} />
       )}
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>

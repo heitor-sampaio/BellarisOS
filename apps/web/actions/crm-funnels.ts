@@ -19,7 +19,7 @@ function revalidarCRM(slug?: string | null) {
   revalidatePath('/admin/oportunidades')
 }
 
-type Resultado = { error?: string; success?: boolean }
+type Resultado = { error?: string; success?: boolean; id?: string }
 
 // As leituras (seedDefaultFunnel, listStages, listAllStages) moram em
 // lib/crm/funis.ts: aqui, recebendo a rede por parâmetro, eram endpoints.
@@ -78,7 +78,8 @@ export async function createFunnel(
     if (erroEtapas) return { error: `Funil criado, mas as etapas falharam: ${erroEtapas.message}` }
 
     revalidarCRM(slug)
-    return { success: true }
+    // A19 da 16ª: o id volta para a janela selecionar o funil recém-criado.
+    return { success: true, id: funil.id }
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }

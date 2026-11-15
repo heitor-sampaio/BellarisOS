@@ -11,6 +11,7 @@ import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
 import { notaDoEstornoParcialParaACliente } from '@/lib/financeiro/notas-do-lancamento'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 import { fusoValido } from '@/lib/unidades/fuso'
+import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 
 type TxRow = {
   id:             string
@@ -121,11 +122,15 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
   if (!ficha) throw new Error('Cadastro do cliente não encontrado.')
   // O crédito interno é o da ficha DESTA clínica (ctx.clientId é a do
   // endereço, §5): D-17, 2026-10-30.
-  const [{ ltv: total }, credito, bonus] = await Promise.all([
+  const [{ ltv: total }, credito, bonus, aReceber] = await Promise.all([
     getDoCliente(ficha.tenant_id as string, ctx.clientId!),
     getCreditoInternoDoCliente(ficha.tenant_id as string, ctx.clientId!),
     // A20 da 11ª: "R$ 500,00 pagos + R$ 50,00 de bônus" ao lado do saldo.
     bonusDosCreditosDaCliente(ficha.tenant_id as string, ctx.clientId!),
+    // A14 da 16ª (princípio 3): o atendimento concluído e não pago (sem
+    // lançamento) também é dela a pagar — o Histórico já o mostrava, e o
+    // Financeiro dizia "Nenhuma transação". A mesma conta (`atendimentos_a_receber`).
+    getAtendimentosAReceber({ tenantId: ficha.tenant_id as string, clienteId: ctx.clientId! }),
   ])
 
   return (
@@ -164,7 +169,30 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
         </div>
       )}
 
-      {rows.length === 0 && (
+      {aReceber.itens.length > 0 && (
+        <div data-a-pagar-na-unidade style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+          {aReceber.itens.map(a => (
+            <div key={a.appointmentId} className="card" style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
+                  {a.procedureName ?? 'Atendimento'}
+                </p>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                  {new Date(a.completedAt ?? a.scheduledAt).toLocaleDateString('pt-BR', { timeZone: fuso })}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+                  {formatBRL(a.price)}
+                </p>
+                <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--warning)' }}>A pagar na unidade</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {rows.length === 0 && aReceber.itens.length === 0 && (
         <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)', padding: '48px 0' }}>
           Nenhuma transação encontrada.
         </p>

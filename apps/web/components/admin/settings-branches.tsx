@@ -75,7 +75,7 @@ export async function SettingsBranches() {
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
             {/* A clínica de uma unidade não fala "rede" (F8). */}
-            {umaUnidade ? 'A unidade e as salas dela' : 'Gerencie as unidades da rede. As salas ficam no “Ver detalhes” de cada unidade.'}
+            {umaUnidade ? 'A unidade e as salas dela' : 'Gerencie as unidades da rede. As salas de cada unidade ficam em “Salas e detalhes”, na linha dela.'}
           </p>
         </div>
         <BranchForm cnpjDaRede={daRede?.document ?? null} />
@@ -220,7 +220,8 @@ export async function SettingsBranches() {
                     className="btn-ghost"
                     style={{ fontSize: 'var(--text-xs-sz)', gap: 4, color: 'var(--brand)', textDecoration: 'none', display: 'flex', alignItems: 'center' }}
                   >
-                    Ver detalhes <ChevronRight size={13} />
+                    {/* A30 da 16ª: o link diz que é ali que estão as salas. */}
+                    Salas e detalhes <ChevronRight size={13} />
                   </Link>
                 </div>
               </div>

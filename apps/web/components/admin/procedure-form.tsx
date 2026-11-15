@@ -471,6 +471,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           nome="consent_template_id" rotulo="Termo de consentimento"
           opcoes={modelos?.termos ?? []} inicial={existing?.consent_template_id ?? null}
           vazio="Nenhum termo cadastrado ainda — crie em Configurações → Documentos."
+          criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')}
           aoMudar={setTermoEscolhido}
         />
         <SeletorDeModelo
@@ -478,6 +479,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           opcoes={modelos?.contratos ?? []} inicial={existing?.contract_template_id ?? null}
           vazio="Nenhum contrato de procedimento cadastrado — crie em Configurações → Documentos."
           sempre="só no atendimento avulso (a sessão de pacote e a de plano não pedem)"
+          criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')}
           aoMudar={setContratoEscolhido}
         />
         {modelos && (
@@ -884,8 +886,10 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
  * atendimento — é isso que muda o dia da recepção, e quem liga o modelo
  * precisa ver sem abrir Configurações. Todo documento nasce ao agendar (DC4).
  */
-function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre, aoMudar }: {
+function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre, criar, aoMudar }: {
   nome: string; rotulo: string; opcoes: OpcaoDeModeloDoProcedimento[]; inicial: string | null; vazio: string
+  /** A22 da 16ª: sem modelo nenhum, o caminho até a aba Documentos, clicável. */
+  criar?: string
   /** O que vale para o campo, escolhido ou não (o contrato: só no avulso). */
   sempre?: string
   /** O escolhido, para "Outros documentos" não o oferecer de novo (A36 da 15ª). */
@@ -909,6 +913,12 @@ function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre, aoMudar
         <option value="">Nenhum</option>
         {visiveis.map(o => <option key={o.id} value={o.id}>{o.nome}{o.ativo ? '' : ' (inativo)'}</option>)}
       </select>
+      {visiveis.length === 0 && criar && (
+        <Link href={criar} target="_blank" data-criar-modelo
+          style={{ fontSize: 'var(--text-2xs)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
+          Abrir Configurações → Documentos
+        </Link>
+      )}
     </Field>
   )
 }

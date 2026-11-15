@@ -11,7 +11,8 @@
  *   conferido" (princípio 4: nunca se supõe que bateu). A diferença é contra o
  *   retrato do MESMO fechamento (o `resumo` guardado), em centavos.
  * - "Sem forma" (os pontos, a despesa sem meio) não se confere: não é dinheiro
- *   de gaveta nem de extrato.
+ *   de gaveta nem de extrato. Nem a forma só com saída (A8 da 16ª): não há
+ *   entrada a conferir.
  *
  * Puro (sem banco): o servidor monta as linhas, a tela só as desenha.
  */
@@ -77,7 +78,9 @@ export function linhasDaConferencia(args: {
   for (const f of formas) {
     if (vistas.has(f.forma)) continue
     vistas.add(f.forma)
-    const conferivel = formaConferivel(f.forma)
+    // A8 da 16ª (princípio 3): a forma só com SAÍDA (o Pix de uma despesa) não tem o que
+    // conferir — não pede o campo nem fica "não conferido". A conferida antes segue com ele.
+    const conferivel = formaConferivel(f.forma) && (f.entradas > 0 || conferidoDe(f.forma) != null)
     const conferido = conferivel ? conferidoDe(f.forma) : null
     linhas.push({
       forma: f.forma, entradas: f.entradas, saidas: f.saidas, registrado: f.saldo, conferivel, conferido,

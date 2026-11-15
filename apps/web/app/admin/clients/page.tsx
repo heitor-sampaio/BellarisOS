@@ -21,7 +21,7 @@ export default async function AdminClientsIndexPage() {
         Selecione um cliente para ver o perfil
       </p>
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', textAlign: 'center', maxWidth: 280 }}>
-        Use a barra lateral para filtrar por unidade, buscar por nome ou segmentar por tag.
+        Use a lista ao lado para buscar por nome ou telefone, ou filtrar por tag.
       </p>
     </div>
   )

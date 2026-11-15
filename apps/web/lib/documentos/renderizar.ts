@@ -13,6 +13,7 @@ import { valoresDoDocumento, validadeDoPacote, type DadosDoDocumento } from './v
 import { fusoValido } from '@/lib/unidades/fuso'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { gerarCodigoDeVerificacao } from './codigo'
+import { montagemMudou } from './montagem-mudou'
 import {
   valoresDoPagamento, pagamentoNormalizado, pagamentoDoRetrato, descontoDoRetrato, type PagamentoDoPlano,
 } from '@/lib/checkout/pagamento'
@@ -298,10 +299,14 @@ export async function garantirRenderizado(
     hash = versao.file_sha256 as string
   }
 
+  // A35 da 16ª: montado igual ao guardado, nada se grava (nem um código novo).
+  const status = faltando.length ? 'INCOMPLETO' : 'PENDENTE'
+  if (!montagemMudou(doc, { status, hash, faltando, comPagamento: !!opcoes.pagamento })) return { ...doc, vazias }
+
   await gravar(admin.rpc('documento_registrar_texto', {
     p_doc:      doc.id,
     p_tenant:   tenantId,
-    p_status:   faltando.length ? 'INCOMPLETO' : 'PENDENTE',
+    p_status:   status,
     p_conteudo: conteudo,
     p_texto:    texto,
     p_sha256:   hash,

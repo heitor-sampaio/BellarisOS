@@ -91,6 +91,11 @@ export interface FaltaNoCadastroDoTermo {
  */
 export async function faltaNoCadastroAoAgendar(clientId: string, procedureId: string): Promise<{
   termos: FaltaNoCadastroDoTermo[]; podeCompletar: boolean
+  /**
+   * A9 da 16ª (princípio 3): os documentos que BLOQUEIAM o início, pelo nome —
+   * o "Para assinar · bloqueia" só aparecia no card e na ficha, depois de agendado.
+   */
+  bloqueiam: string[]
 } | null> {
   try {
     const ctx = await getTenantContext()
@@ -128,7 +133,8 @@ export async function faltaNoCadastroAoAgendar(clientId: string, procedureId: st
         .filter(v => /^(cliente|responsavel)\./.test(v) && variavelObrigatoria(v, { menor }) && !valores[v])
       if (faltam.length) termos.push({ titulo: m.name, bloqueia: m.enforcement === 'BLOQUEIA', faltando: oQueFalta(faltam.map(rotuloDoQueFalta)) })
     }
-    return termos.length ? { termos, podeCompletar: can(ctx, 'clients', 'MANAGE') } : null
+    const bloqueiam = (modelos ?? []).filter(m => m.enforcement === 'BLOQUEIA').map(m => m.name)
+    return termos.length || bloqueiam.length ? { termos, podeCompletar: can(ctx, 'clients', 'MANAGE'), bloqueiam } : null
   } catch (e) {
     console.error('[agenda] o que falta no cadastro para os termos:', e instanceof Error ? e.message : e)
     return null

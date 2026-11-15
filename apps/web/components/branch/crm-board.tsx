@@ -25,12 +25,15 @@ import {
 } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { FunnelSelect } from '@/components/shared/funnel-select'
-import { PickerCompacto } from '@/components/shared/picker-compacto'
+import { PickerCompacto, posicaoDoPainel, type PosicaoDoPainel } from '@/components/shared/picker-compacto'
+import { createPortal } from 'react-dom'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFuso } from '@/components/shared/fuso'
 
 // --- Filtros e ordenação -----------------------------------------
 const SEM_DONO = '__sem_dono__'
+/** A largura do menu "···" do card (A15 da 16ª): cabe "Marcar como perdido (…)" sem quebrar. */
+const LARGURA_DO_MENU = 248
 
 interface FiltersState {
   sources:      string[]
@@ -531,8 +534,17 @@ function LeadCard({
   const moveRef    = useRef<HTMLDialogElement>(null)
   const menuRef    = useRef<HTMLDivElement>(null)
   const cardRef    = useRef<HTMLDivElement>(null)
+  const painelDoMenuRef = useRef<HTMLDivElement>(null)
 
   const [menuAberto, setMenuAberto] = useState(false)
+  // A15 da 16ª (design.md: o menu abre dentro da tela): o menu flutua fora da
+  // coluna (portal no body), em posição fixa medida do botão — como o
+  // PickerCompacto. Na coluna da esquerda ele saía cortado ("ER PARA A ETAPA").
+  const [posDoMenu, setPosDoMenu] = useState<PosicaoDoPainel | null>(null)
+  function abrirOuFecharOMenu(botao: HTMLElement) {
+    if (!menuAberto) setPosDoMenu(posicaoDoPainel(botao.getBoundingClientRect(), LARGURA_DO_MENU, 320))
+    setMenuAberto(v => !v)
+  }
 
   // Aberto pela URL (`?lead=`): rola o card para a vista e abre o modal, uma
   // vez só — quem decide que já abriu é o quadro (`onAbertoAoMontar`).
@@ -548,10 +560,24 @@ function LeadCard({
   useEffect(() => {
     if (!menuAberto) return
     function fora(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuAberto(false)
+      const alvo = e.target as Node
+      if (menuRef.current?.contains(alvo) || painelDoMenuRef.current?.contains(alvo)) return
+      setMenuAberto(false)
     }
+    // Fixo na tela, ele não acompanha a coluna que rola: rolar (fora dele) ou mudar a janela fecha.
+    function rolou(e: Event) {
+      if (painelDoMenuRef.current?.contains(e.target as Node)) return
+      setMenuAberto(false)
+    }
+    const fechar = () => setMenuAberto(false)
     document.addEventListener('mousedown', fora)
-    return () => document.removeEventListener('mousedown', fora)
+    window.addEventListener('scroll', rolou, true)
+    window.addEventListener('resize', fechar)
+    return () => {
+      document.removeEventListener('mousedown', fora)
+      window.removeEventListener('scroll', rolou, true)
+      window.removeEventListener('resize', fechar)
+    }
   }, [menuAberto])
 
   // Mover de funil só existe se houver para onde mover.
@@ -773,7 +799,7 @@ function LeadCard({
               title="Ações da oportunidade"
               aria-haspopup="menu"
               aria-expanded={menuAberto}
-              onClick={e => { e.stopPropagation(); setMenuAberto(v => !v) }}
+              onClick={e => { e.stopPropagation(); abrirOuFecharOMenu(e.currentTarget) }}
               disabled={moving}
               style={{
                 width: 24, height: 24, borderRadius: 6,
@@ -787,13 +813,16 @@ function LeadCard({
               <MoreHorizontal size={12} />
             </button>
 
-            {menuAberto && (
+            {menuAberto && posDoMenu && createPortal(
               <div
+                ref={painelDoMenuRef}
                 role="menu"
                 onClick={e => e.stopPropagation()}
+                onMouseDown={e => e.stopPropagation()}
                 style={{
-                  position: 'absolute', top: 28, right: 0, zIndex: 20,
-                  minWidth: 190, padding: 5,
+                  position: 'fixed', zIndex: 'calc(var(--z-popover) + 1)',
+                  left: posDoMenu.left, top: posDoMenu.top, bottom: posDoMenu.bottom, width: posDoMenu.largura,
+                  maxHeight: 'calc(100dvh - 16px)', overflowY: 'auto', padding: 5,
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
                   borderRadius: 'var(--radius-field-token)',
@@ -830,7 +859,8 @@ function LeadCard({
                   Mover para outro funil
                 </MenuItem>
                 )}
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
           )}
@@ -1300,6 +1330,12 @@ export function CRMBoard({
         onSortChange={setSort}
         onClear={() => { setFilters(DEFAULT_FILTERS); setSort('newest') }}
       />
+      {/* A17 da 16ª (princípio 3): com filtro, o quadro diz quantas mostra — e que o resumo do topo é do funil inteiro. */}
+      {visibleLeads.length !== leads.length && (
+        <p data-filtro-do-quadro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '0 0 10px' }}>
+          Mostrando {visibleLeads.length} de {leads.length} {leads.length === 1 ? 'oportunidade' : 'oportunidades'}: os números do topo são do funil inteiro.
+        </p>
+      )}
       {/* A34 da 15ª (princípio 7): o contato sem oportunidade (o da Importação)
           não mora no quadro — o vazio diz onde ele se acha. Não é tela nova. */}
       {leads.length === 0 && (

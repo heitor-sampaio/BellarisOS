@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantContext, can } from '@/lib/auth'
 import { lerAuditoria } from '@/lib/auditoria/leitura'
-import { linhaDaAuditoria } from '@/lib/auditoria/frase'
-import type { FiltrosDaAuditoria } from '@/lib/auditoria/tipos'
+import { linhasDoCsvDaAuditoria } from '@/lib/auditoria/frase'
+import type { FiltrosDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from '@/lib/auditoria/tipos'
 
 /**
  * A Auditoria em CSV (CF3a): os MESMOS filtros e a mesma abrangência da tela
@@ -43,16 +43,28 @@ export async function GET(req: NextRequest) {
     unidade: q.get('unidade') ?? undefined, cliente: q.get('cliente') ?? undefined,
   }
 
-  const linhas: string[] = ['Quando;Quem;O quê;Unidade']
+  // A38 da 16ª: a coluna "Gravação" leva a frase da gravação inteira (a da
+  // tela). Uma gravação pode cair em duas páginas do banco: lê tudo, junta os
+  // nomes, e só então agrupa.
+  const linhas: string[] = ['Quando;Quem;O quê;Gravação;Unidade']
+  const registros: RegistroDaAuditoria[] = []
+  const nomes: NomesDaAuditoria = { clientes: {}, membros: {}, unidades: {}, produtos: {}, cargos: {}, pacotes: {}, lancamentos: {} }
   let cortou = false
   for (let pagina = 1; ; pagina++) {
     const r = await lerAuditoria(ctx, { ...filtros, pagina: String(pagina) }, { porPagina: POR_PAGINA })
-    for (const reg of r.registros) {
-      const l = linhaDaAuditoria(reg, r.nomes, '/admin/auditoria', null)
-      linhas.push([l.quando, l.quem, l.oQue, l.unidade ?? ''].map(celula).join(';'))
-    }
+    registros.push(...r.registros)
+    Object.assign(nomes.clientes, r.nomes.clientes)
+    Object.assign(nomes.membros, r.nomes.membros)
+    Object.assign(nomes.unidades, r.nomes.unidades)
+    Object.assign(nomes.produtos!, r.nomes.produtos ?? {})
+    Object.assign(nomes.cargos!, r.nomes.cargos ?? {})
+    Object.assign(nomes.pacotes!, r.nomes.pacotes ?? {})
+    Object.assign(nomes.lancamentos!, r.nomes.lancamentos ?? {})
     if (!r.temMais) break
     if (pagina >= PAGINAS_NO_MAXIMO) { cortou = true; break }
+  }
+  for (const l of linhasDoCsvDaAuditoria(registros, nomes)) {
+    linhas.push([l.quando, l.quem, l.oQue, l.gravacao, l.unidade ?? ''].map(celula).join(';'))
   }
   if (cortou) linhas.push(celula(`Parou em ${POR_PAGINA * PAGINAS_NO_MAXIMO} linhas: escolha um período menor para ver o resto.`))
 

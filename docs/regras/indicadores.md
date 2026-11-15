@@ -362,6 +362,10 @@
     grupo por vez (o bloqueio sobre o horário da outra unidade não sai duas
     vezes; a soma é o que a capacidade perdeu). Prova:
     `e2e/agenda-ocupacao-diz-o-desconto.spec.ts`, `tests/metrics-ocupacao.test.ts` ("A9 da 13ª").
+    **Sem gênero e sem a agenda de fora** (A13 da 16ª): "menos 70 min de Dr.
+    Caio Brandão atendendo em outra unidade" — "de", não "da/do", e a outra
+    unidade só sai pelo nome a quem a alcança (`alcancaUnidade`); a quem não,
+    "outra unidade".
   - **composição do financeiro** (receita por forma de pagamento, receita e
     despesa por categoria) = `metrics_financeiro_composicao`
     (`getComposicaoFinanceira`, 2026-10-21), com a regra de `metrics_core`.
@@ -904,6 +908,11 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   dois dashboards), "Contados até agora, os cancelados e as faltas também.
   Relatórios → Agenda conta o período inteiro, com os que ainda vão acontecer."
   (`[data-recorte-dos-cancelados]`). Prova: `e2e/relatorios-atritos-da-8.spec.ts`.
+  **E diz os que ainda vêm hoje** (A12 da 16ª: "Agendamentos 0" com 2
+  marcados para mais tarde): o recorte "até agora" continua, e a etapa
+  Agendamentos do dashboard da unidade leva "2 ainda hoje"
+  (`aindaHojeNaAgenda`, `lib/metrics/agenda-do-dia.ts`: os de hoje depois de
+  agora, sem os cancelados e as faltas; `[data-nota-da-etapa]`).
 - O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
   dos Relatórios. **Cada ponto diz o que é** (A44 da 6ª simulação,
   2026-11-04): `rotulo` — "03h" na série por hora (o "Hoje"), a DATA ("04/11",

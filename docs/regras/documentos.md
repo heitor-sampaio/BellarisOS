@@ -273,7 +273,15 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
 - **O gatilho só cria a linha (A_GERAR)**; o texto é montado pelo app
   (`lib/documentos/renderizar.ts` → `documento_registrar_render`), e toda tela
   que mostra um documento chama `garantirRenderizado` antes. Faltou dado
-  obrigatório: INCOMPLETO, não assina.
+  obrigatório: INCOMPLETO, não assina. **Montado igual ao guardado, nada se
+  grava** (A35 da 16ª): mesma situação, mesmo hash, mesmos campos que faltam
+  e sem pagamento novo (`montagemMudou`) — nem o código de verificação muda;
+  cada abertura gravava de novo e enchia a Auditoria.
+- **O agendar diz os documentos que BLOQUEIAM o início** (A9 da 16ª): a
+  janela "+ Agendar" nomeia os modelos com "bloqueia" do procedimento ("Sem
+  assinatura, o atendimento não se inicia: “X” e “Y”. O “Enviar link de
+  assinatura” fica no card do agendamento.", `[data-aviso-documentos-que-bloqueiam]`,
+  `faltaNoCadastroAoAgendar().bloqueiam`).
 - **A forma canônica é TEXTO** (`issued_documents.content`): jsonb reordenaria as
   chaves e o hash não bateria. O navegador calcula o SHA-256 dos bytes que
   recebeu; `documento_assinar` só aceita se bater com o gravado.

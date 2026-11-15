@@ -192,12 +192,13 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     const docDoAcesso: DocumentoDoAcesso | null = p.cpf ? { tipo: 'CPF', numero: p.cpf } : p.estrangeiro ? { tipo: p.estrangeiro.tipo, numero: p.estrangeiro.numero } : null
     if (p.criarAcesso && p.email && docDoAcesso) {
       const acesso = await darAcessoAoCliente(c.admin, c.ctx, r.clientId, p.email, docDoAcesso)
-      if ('error' in acesso) return { mensagem: `${p.nome} cadastrado, mas o acesso ao app não saiu: ${acesso.error}`, ...ficha }
+      // A34 da 16ª: "Ficha de X criada" — sem o gênero do "cadastrado".
+      if ('error' in acesso) return { mensagem: `Ficha de ${p.nome} criada, mas o acesso ao app não saiu: ${acesso.error}`, ...ficha }
       return { mensagem: acesso.contaLigada
-        ? `${p.nome} cadastrado, e a ficha entrou na conta que ela já tem no app (a senha continua a dela).`
-        : `${p.nome} cadastrado, com acesso ao app.`, ...ficha }
+        ? `Ficha de ${p.nome} criada, e ela entrou na conta que a cliente já tem no app (a senha continua a dela).`
+        : `Ficha de ${p.nome} criada, com acesso ao app.`, ...ficha }
     }
-    return { mensagem: `${p.nome} cadastrado.`, ...ficha }
+    return { mensagem: `Ficha de ${p.nome} criada.`, ...ficha }
   },
 }
 

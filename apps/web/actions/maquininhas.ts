@@ -13,7 +13,8 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, assertRecurso, podeReceber } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, can, podeReceber } from '@/lib/auth'
+import { quemMudaNaRede } from '@/lib/equipe/quem-desfaz'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, mensagemDoErro } from '@/lib/db'
 import { falaDaRede } from '@/lib/unidades/uma-so'
@@ -130,9 +131,9 @@ export interface MaquininhaNaVenda {
  * de todos). D7 (C3 do levantamento): a quem só recebe vai a PRESENÇA de cada
  * taxa (0), nunca o valor nem o prazo. Sem rede, nada.
  */
-export async function maquininhasParaAVenda(): Promise<{ lista: MaquininhaNaVenda[]; mostra: boolean }> {
+export async function maquininhasParaAVenda(): Promise<{ lista: MaquininhaNaVenda[]; mostra: boolean; quemCadastra: string[] | null }> {
   const ctx = await getTenantContext()
-  if (!ctx.tenantId) return { lista: [], mostra: false }
+  if (!ctx.tenantId) return { lista: [], mostra: false, quemCadastra: null }
   const recebe = podeReceber(ctx)
   const mostra = recebe && veComissaoDeTodos(ctx)
   const presenca = (t: Record<string, number>) => Object.fromEntries(Object.keys(t).map(k => [k, mostra ? t[k]! : 0]))
@@ -146,5 +147,8 @@ export async function maquininhasParaAVenda(): Promise<{ lista: MaquininhaNaVend
       ? Object.fromEntries(Object.entries(m.porBandeira).map(([b, r]) => [b, { taxas: presenca(r?.taxas ?? {}) }])) as CartaoPorBandeira
       : {},
   }))
-  return { lista, mostra }
+  // A5 da 16ª: a quem não cadastra a taxa, o aviso diz quem cadastra (nulo: ela cadastra).
+  const cadastra = can(ctx, 'financial', 'MANAGE') && ctx.branchId === null
+  const quemCadastra = cadastra || !recebe ? null : await quemMudaNaRede(ctx.tenantId, ['financial'])
+  return { lista, mostra, quemCadastra }
 }

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, isOwnScope, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, isOwnScope, can, alcancaUnidade } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizarHorario, janelaDaGrade, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
@@ -129,7 +129,8 @@ export default async function AgendaPage({ params, searchParams }: {
       ? new Map(((await getCachedNetworkBranches(ctx.tenantId!)) as { id: string; name: string }[]).map(b => [b.id, b.name]))
       : new Map<string, string>()
     for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number; branch_id: string }[]) {
-      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min, onde: nomes.get(a.branch_id) ?? 'outra unidade' })
+      // A13 da 16ª: a agenda de uma unidade fora do alcance não se cita pelo nome.
+      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min, onde: alcancaUnidade(ctx, a.branch_id) ? (nomes.get(a.branch_id) ?? 'outra unidade') : 'outra unidade' })
     }
   }
 

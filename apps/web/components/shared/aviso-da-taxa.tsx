@@ -6,6 +6,7 @@ import { taxaNaMaquininha } from '@/lib/financeiro/maquininhas'
 import { liquidoNaMaquininha } from '@/lib/metrics/resultado'
 import { formatBRL } from '@estetica-os/utils'
 import { useMaquininhas, maquininhaEscolhida } from '@/components/shared/use-maquininhas'
+import { textoDeQuemCadastraATaxa } from '@/lib/financeiro/quem-cadastra-a-taxa'
 
 const pct = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
 
@@ -48,7 +49,7 @@ export function AvisoDaTaxa({ vezes, bandeira, total, maquininha }: {
       <span>
         {/* F16-2: sem a taxa exata, 0% — nunca a de outras vezes. */}
         Não há taxa da maquininha{naMaquininha} cadastrada para o crédito {rotulo}: a venda sai sem desconto da operadora (0%), também na comissão.
-        {' '}Cadastre em Configurações → Comissões e taxas.
+        {' '}{textoDeQuemCadastraATaxa(leitura.quemCadastra ?? null)}
       </span>
     </p>
   )
@@ -68,7 +69,7 @@ export function AvisoDaTaxaDoDebito({ bandeira, total, maquininha }: { bandeira?
   if (taxa == null) {
     return (
       <p data-taxa-do-debito role="note" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-        Não há taxa da maquininha{naMaquininha} cadastrada para o débito: a venda sai sem desconto da operadora (0%). Cadastre em Configurações → Comissões e taxas.
+        Não há taxa da maquininha{naMaquininha} cadastrada para o débito: a venda sai sem desconto da operadora (0%). {textoDeQuemCadastraATaxa(leitura.quemCadastra ?? null)}
       </p>
     )
   }

@@ -76,6 +76,8 @@ export async function lerAuditoria(
     if (minhas !== null) q = q.in('branch_id', minhas)
     if (unidade) q = q.eq('branch_id', unidade)
     if (filtros.pessoa && UUID.test(filtros.pessoa)) q = q.eq('ator_user_id', filtros.pessoa)
+    // A37 da 16ª: "Só o que foi pelo Copilot" — a marca que a gravação do Copilot deixa (`via`).
+    else if (filtros.pessoa === 'copilot') q = q.eq('via', 'copilot')
     if (filtros.tipo && OPERACOES.some(o => o.key === filtros.tipo)) q = q.eq('operacao', filtros.tipo)
     if (clientesDoFiltro) q = q.in('client_id', clientesDoFiltro)
     return q

@@ -6,7 +6,7 @@
  */
 export const PROXIMOS_PASSOS = [
   { titulo: 'Equipe', porque: 'Quem atende, e em quais unidades: sem profissional, o procedimento não tem quem o realize.', href: '/admin/team' },
-  { titulo: 'Salas', porque: 'As salas ou cabines: o agendar oferece a livre. Com duas unidades, ficam no “Ver detalhes” de cada uma.', href: '/admin/settings?tab=unidades#salas' },
+  { titulo: 'Salas', porque: 'As salas ou cabines: o agendar oferece a livre. Com duas unidades, ficam em “Salas e detalhes”, na linha de cada uma.', href: '/admin/settings?tab=unidades#salas' },
   { titulo: 'Estoque', porque: 'Os insumos: o procedimento só baixa o que já está cadastrado.', href: '/admin/estoque' },
   // A1 da 7ª simulação: o procedimento pede a ficha e o termo JÁ existentes.
   { titulo: 'Fichas', porque: 'A ficha de atendimento de cada procedimento: ele escolhe uma ficha que já existe.', href: '/admin/settings?tab=fichas', recurso: 'fichas' },

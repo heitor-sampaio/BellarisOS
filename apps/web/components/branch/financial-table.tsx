@@ -129,7 +129,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
   const [aDevolverParte, setADevolverParte] = useState<string | null>(null)
   // Decisão 1 da 9ª: o estorno da venda de crédito na clínica (volta o saldo não usado).
   const [creditoAEstornar, setCreditoAEstornar] = useState<{ id: string; descricao: string } | null>(null)
-  const [noCartao, setNoCartao] = useState<{ id: string; descricao: string; metodo: string | null; valor: number } | null>(null)
+  const [noCartao, setNoCartao] = useState<{ id: string; descricao: string; metodo: string | null; valor: number; cliente: string | null } | null>(null)
   // A15 da 9ª: a despesa sem forma pergunta a forma na baixa.
   const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; descricao: string; valor: number } | null>(null)
   function handleMarkPaid(id: string, bandeira?: string | null, vezes?: number, forma?: string | null, maquininha?: string | null) {
@@ -194,7 +194,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
     )}
     {noCartao && (
       <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
-        valor={noCartao.valor}
+        valor={noCartao.valor} cliente={noCartao.cliente}
         aoConfirmar={(b, v, f, m) => handleMarkPaid(noCartao.id, b, v, f, m)} aoFechar={() => setNoCartao(null)} />
     )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -439,17 +439,18 @@ export function FinancialTable({ transactions, slug, canReverse, canPay, podeRem
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           {!tx.is_paid && !isReversed && canPay && (
                             <button type="button" onClick={() => tx.type === 'INCOME'
-                              ? setNoCartao({ id: tx.id, descricao: tx.description ?? 'Lançamento', metodo: tx.payment_method ?? null, valor: Number(tx.amount) })
+                              ? setNoCartao({ id: tx.id, descricao: tx.description ?? 'Lançamento', metodo: tx.payment_method ?? null, valor: Number(tx.amount), cliente: tx.cliente?.name ?? null })
                               : tx.type === 'EXPENSE' && !tx.payment_method
                               ? setDespesaAPagar({ id: tx.id, descricao: tx.description ?? 'Despesa', valor: Number(tx.amount) })
-                              : handleMarkPaid(tx.id)} title="Marcar como pago" style={{
+                              : handleMarkPaid(tx.id)} title={tx.type === 'INCOME' ? 'Receber' : 'Marcar como pago'} style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,
                               fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
                               border: '1.5px solid var(--success)', background: 'var(--success-bg)',
                               color: 'var(--success)', cursor: 'pointer',
                             }}>
                               <CheckCircle2 size={12} />
-                              Pagar
+                              {/* A2 da 16ª: a conta a receber se RECEBE; a despesa se paga. */}
+                              {tx.type === 'INCOME' ? 'Receber' : 'Pagar'}
                             </button>
                           )}
                           {/* A37 da 9ª: remarcar o vencimento do que está em aberto. */}

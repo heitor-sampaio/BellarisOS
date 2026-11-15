@@ -174,6 +174,12 @@ export function Copilot() {
   const [titulo, setTitulo] = useState<string | null>(null)
   const [mensagens, setMensagens] = useState<MensagemNaTela[]>([])
   const [conversas, setConversas] = useState<ConversaNaLista[] | null>(null)
+  /**
+   * A31 da 16ª (princípio 7): o painel abre numa conversa nova, e a anterior
+   * só aparecia pelo ícone de histórico, sem rótulo. A tela vazia oferece
+   * "Continuar a conversa anterior" — a mais recente da pessoa.
+   */
+  const [anterior, setAnterior] = useState<ConversaNaLista | null>(null)
   const [texto, setTexto] = useState('')
   const [anexos, setAnexos] = useState<File[]>([])
   const [enviando, setEnviando] = useState(false)
@@ -219,6 +225,17 @@ export function Copilot() {
     if (estavaAberto) setAberto(true)
     if (id) void carregarConversa(id)
   }, [carregarConversa])
+
+  // A31 da 16ª: aberta a tela vazia, busca a conversa mais recente para oferecer.
+  const vazio = aberto && vista === 'chat' && !conversaId && mensagens.length === 0 && !carregando
+  useEffect(() => {
+    if (!vazio) return
+    let vale = true
+    listarConversasDoCopilot()
+      .then(lista => { if (vale) setAnterior(lista[0] ?? null) })
+      .catch(() => { if (vale) setAnterior(null) })
+    return () => { vale = false }
+  }, [vazio])
 
   // Atalho: Ctrl/Cmd + J abre e fecha; Esc fecha.
   useEffect(() => {
@@ -437,6 +454,12 @@ export function Copilot() {
             {!carregando && mensagens.length === 0 && (
               <div className="copilot-vazio">
                 <p>Olá! Peça o que precisar: consultar a agenda, achar um cliente, ver números, cadastrar ou agendar. Toda gravação passa pela sua confirmação.</p>
+                {anterior && (
+                  <button type="button" className="copilot-sugestao" data-continuar-conversa
+                    onClick={() => { setTitulo(anterior.titulo); void carregarConversa(anterior.id) }}>
+                    Continuar a conversa anterior: {anterior.titulo}
+                  </button>
+                )}
                 {SUGESTOES.map(s => (
                   <button key={s} type="button" className="copilot-sugestao" onClick={() => { setTexto(s); campoRef.current?.focus() }}>{s}</button>
                 ))}

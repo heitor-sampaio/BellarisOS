@@ -1146,6 +1146,14 @@ de escolha única com o MESMO marcador quadrado dos vizinhos — `marcadorQuadra
 o gatilho mostra a escolhida, e sem divisor entre eles), e o período tem
 "Personalizado": De/Até no rodapé do painel, que só filtra ao aplicar e
 compara o DIA da criação no fuso do negócio (`dayKeyTZ`).
+**Com filtro, o quadro diz o recorte** (A17 da 16ª, princípio 3): "Mostrando
+2 de 3 oportunidades: os números do topo são do funil inteiro."
+(`[data-filtro-do-quadro]`) — o resumo do topo continua o do funil.
+**O campo "Etapa" da janela lista só as etapas do funil do card** (A16 da
+16ª: com dois funis, "Perdido" aparecia duas vezes); mudar de funil é o
+"Mover para outro funil" do menu "···" do card. O menu abre num portal
+(`posicaoDoPainel`), inteiro na tela, também no card da primeira coluna e no
+celular (A15). Prova: `e2e/crm-atritos-da-16.spec.ts`.
 
 **O funil da rede NOVA** (`DEFAULT_STAGES`, `lib/crm.ts`, criado no primeiro
 acesso por `seedDefaultFunnel`): Novo, Em contato, Avaliação, Em negociação,
@@ -1193,6 +1201,8 @@ rede inteira. Prova: `e2e/crm-funis-pede-configuracoes.spec.ts`. E é da
 REDE (H7, 2026-11-01): quem não tem “A rede inteira” não configura o funil nem com
 Configurações em Gerenciar (`recusaDaConfigDaRede`; o botão some do quadro
 da unidade). Prova: `e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts`.
+O funil criado na janela abre selecionado, com as etapas dele (A19 da 16ª:
+`createFunnel` devolve o id). Prova: `e2e/crm-atritos-da-16.spec.ts` ("A19").
 
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
 a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um

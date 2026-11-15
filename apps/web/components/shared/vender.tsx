@@ -88,7 +88,8 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
 }) {
   const [aba, setAba] = useState<Aba>(procedimentos.length ? 'PROCEDIMENTO' : pacotes.length ? 'PACOTE' : produtos.length ? 'PRODUTO' : 'CREDITO')
   const abas = [
-    ...(procedimentos.length ? [{ key: 'PROCEDIMENTO', label: 'Procedimento' }] : []),
+    // A7 da 16ª (princípios 3 e 7): a aba vende o PRÉ-PAGO (a cliente agenda depois); o avulso se cobra na comanda do atendimento.
+    ...(procedimentos.length ? [{ key: 'PROCEDIMENTO', label: 'Procedimento pré-pago' }] : []),
     ...(pacotes.length ? [{ key: 'PACOTE', label: 'Pacote' }] : []),
     ...(produtos.length ? [{ key: 'PRODUTO', label: 'Produto' }] : []),
     ABA_DO_CREDITO,

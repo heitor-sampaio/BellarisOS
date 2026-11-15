@@ -8,7 +8,7 @@ import { dayKeyTZ } from '../lib/datetime'
  * A9 da 13ª simulação (F65): a base da ocupação dizia "N min abertos" já sem o
  * que a profissional tinha agendado na OUTRA unidade — a conta não fechava
  * com o horário da tela, e ninguém sabia por quê (princípio 3). Agora a base
- * diz o desconto: "… menos 40 min da Patrícia na Água Verde", na agenda e no
+ * diz o desconto: "… menos 40 min de Patrícia atendendo em Água Verde", na agenda e no
  * dashboard da unidade.
  */
 
@@ -58,10 +58,12 @@ test.afterAll(async () => {
 })
 
 test('A9: a base da ocupação diz o que ela tem na outra unidade, na agenda e no dashboard', async ({ browser }) => {
-  const desconto = `menos 40 min da ${NOME} na ${OUTRA}`
+  // A13 da 16ª: quem só tem esta unidade não lê o nome da outra ("atendendo em outra unidade").
+  const desconto = `menos 40 min de ${NOME} atendendo em outra unidade`
   await como(browser, gestor!, async p => {
     await p.goto(`/${slug}/dashboard`)
     await expect(p.locator('[data-base-da-ocupacao]').last(), 'no dashboard').toContainText(desconto)
+    await expect(p.locator('[data-base-da-ocupacao]').last()).not.toContainText(OUTRA)
     await p.goto(`/${slug}/agenda?date=${hoje}`)
     await expect(p.locator('[data-base-da-ocupacao]').first(), 'na agenda').toContainText(desconto)
   })

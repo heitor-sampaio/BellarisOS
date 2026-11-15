@@ -280,8 +280,10 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
                   const branchCount  = availability?.length ?? 0
                   // A24 da 15ª (princípio 3): uma unidade diz o nome; várias, "3 de 4" com os nomes na dica.
                   const nomesDasUnidades = (availability ?? []).map(a => branchNameMap[a.branch_id]).filter((n): n is string => !!n)
+                  // A25 da 16ª: na rede de uma unidade, "Toda a rede" virava o nome
+                  // da rede (PO2) — o chip diz o nome da unidade.
                   const branchLabel  = branchCount === 0
-                    ? fala('Toda a rede')
+                    ? (branchList.length === 1 ? branchList[0]!.name : fala('Toda a rede'))
                     : branchCount === 1
                       ? nomesDasUnidades[0] ?? '1 unidade'
                       : `${branchCount} de ${branchList.length}`

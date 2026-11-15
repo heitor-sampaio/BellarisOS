@@ -128,7 +128,7 @@ test.describe.serial('agendar com crédito', () => {
     const { dia } = amanha('09:00')
     await comSessao(browser, async p => {
       const dlg = await abrirVendaNoPdv(p, '/admin', cliente, rede!.branchId)
-      await dlg.getByRole('button', { name: 'Procedimento', exact: true }).click()
+      await dlg.getByRole('button', { name: 'Procedimento pré-pago', exact: true }).click()
       await dlg.getByLabel('Procedimento', { exact: true }).selectOption(rede!.procedureId)
       await pagoNoPix(dlg)
       await euVendi(dlg)

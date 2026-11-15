@@ -37,10 +37,11 @@ export function baseDaOcupacao(n: { agendados: number; abertos: number; profissi
   const min = (v: number) => `${Math.round(v).toLocaleString('pt-BR')} min`
   const quem = n.profissionais === 1 ? '1 profissional que atende' : `${n.profissionais} profissionais que atendem`
   // A9 da 13ª (princípio 3): o que saiu da capacidade, dito — "menos 140 min
-  // da Patrícia na Água Verde". Sem isso, os minutos abertos não fechavam com
+  // de Patrícia atendendo em Água Verde". Sem isso, os minutos abertos não fechavam com
   // o horário que a tela mostra.
   const partes = (n.descontos ?? []).filter(d => d.minutos > 0)
-    .map(d => d.onde ? `${min(d.minutos)} da ${d.quem} na ${d.onde}` : `${min(d.minutos)} bloqueados da ${d.quem}`)
+    // A13 da 16ª: "de" (sem gênero) e "atendendo em" (a unidade fora do alcance vem como "outra unidade").
+    .map(d => d.onde ? `${min(d.minutos)} de ${d.quem} atendendo em ${d.onde}` : `${min(d.minutos)} bloqueados de ${d.quem}`)
   const menos = partes.length
     ? `, menos ${partes.length === 1 ? partes[0] : `${partes.slice(0, -1).join(', ')} e ${partes.at(-1)}`}`
     : ''

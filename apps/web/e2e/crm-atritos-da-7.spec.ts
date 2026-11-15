@@ -206,7 +206,8 @@ test('A19: a 1440 px, perder pelo menu do card e pelo arraste, sem rolar até a 
     const card = p.locator(`[data-lead-id="${id}"]`)
     // O menu do card (o clique também espera a tela hidratar).
     await card.getByTitle('Ações da oportunidade').click()
-    await card.getByRole('menuitem', { name: 'Marcar como perdido' }).click()
+    // A15 da 16ª: o menu abre num portal (inteiro na tela), fora do card.
+    await p.getByRole('menu').getByRole('menuitem', { name: 'Marcar como perdido' }).click()
     await expect(p.getByRole('heading', { name: 'Por que perdeu?' })).toBeVisible()
     await p.getByRole('button', { name: 'Voltar' }).click()
     await expect(p.getByRole('heading', { name: 'Por que perdeu?' })).toHaveCount(0)

@@ -15,6 +15,8 @@ import { SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, t
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
 import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
+import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
+import { ParcelasEmAberto } from '@/components/shared/pdv/parcelas-em-aberto'
 
 export interface ComandaEscolhida {
   comanda:            ComandaDoPdv
@@ -28,6 +30,8 @@ export interface ComandaEscolhida {
   pagamentoCombinado: { metodo: string | null; rotulo: string; desconto?: number } | null
   /** A2 da 15ª: na comanda paga, quem estorna — só a quem não tem o Financeiro em Gerenciar (nulo: não diz). */
   quemEstorna?:       string[] | null
+  /** A1 da 16ª: as parcelas em aberto da venda desta comanda, com o "Receber esta parcela". */
+  parcelasDaComanda?: ParcelaEmAberto[]
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -170,7 +174,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
           {visiveis.length === 0 ? (
             <p style={{ padding: '24px 16px 28px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>
               {busca.trim() ? `Nenhuma comanda de “${busca.trim()}”.`
-                : situacao === 'ABERTAS' ? 'Nenhuma comanda aberta. Ela nasce quando um atendimento é iniciado.'
+                : situacao === 'ABERTAS' ? 'Nenhuma comanda aberta. Ela nasce quando um atendimento é iniciado e tem o que cobrar.'
                 : situacao === 'PAGAS' ? 'Nenhuma comanda paga hoje.' : 'Nenhuma comanda hoje.'}
             </p>
           ) : (
@@ -298,6 +302,9 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
                 }}>
                   {emAberto}
                 </p>
+              )}
+              {e.parcelasDaComanda && e.parcelasDaComanda.length > 0 && (
+                <ParcelasEmAberto parcelas={e.parcelasDaComanda} slug={slugDaUnidade} titulo="Parcelas desta venda" />
               )}
               {/* A2 da 15ª: a quem não estorna, de quem é o estorno — a frase da ficha. */}
               {e.quemEstorna && (

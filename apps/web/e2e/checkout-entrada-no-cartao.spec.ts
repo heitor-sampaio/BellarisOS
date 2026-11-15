@@ -236,11 +236,11 @@ test.describe('a entrada no cartão e o crediário da rede', () => {
         await p.goto(`/admin/clients/${cliente.clientId}?aba=financeiro`)
         await expect(p.locator(`[data-lancamento="${tx!.id}"] [data-forma-do-lancamento]`)).toHaveText('Crediário')
 
-        // O Financeiro: "Pagar" pergunta a forma (nasce vazia) antes de dar baixa.
+        // O Financeiro: "Receber" (A2 da 16ª: era "Pagar") pergunta a forma (nasce vazia) antes de dar baixa.
         const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
         const ate = new Date(Date.now() + 40 * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
         await p.goto(`/${un!.slug}/financeiro?aba=movimentacoes&period=custom&from=${hoje}&to=${ate}`)
-        await p.getByRole('row').filter({ hasText: `Pacote crediário ${marca}` }).getByRole('button', { name: 'Pagar' }).click()
+        await p.getByRole('row').filter({ hasText: `Pacote crediário ${marca}` }).getByRole('button', { name: 'Receber', exact: true }).click()
         const dlg = p.getByRole('dialog', { name: 'Receber' })
         const forma = dlg.getByLabel('Forma de pagamento')
         await expect(forma).toHaveValue('')

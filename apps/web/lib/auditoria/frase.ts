@@ -13,7 +13,7 @@ import type { LinhaDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from './
  */
 
 /** O que é cada registro, com o artigo. Tabela fora daqui: "um registro (tabela)". */
-const COISA: Record<string, string> = {
+export const COISA_DA_AUDITORIA: Record<string, string> = {
   agenda_bloqueios: 'o bloqueio da agenda',
   appointments: 'o agendamento',
   automations: 'a automação',
@@ -138,6 +138,12 @@ const CAMPO: Record<string, string> = {
   medical_reviewed_at: 'revisão do prontuário', medical_reviewed_by: 'quem revisou', medical_status: 'revisão do prontuário',
   processadas: 'andamento', sem_mudanca: 'andamento', novas: 'andamento', iniciada_em: 'início', concluida_em: 'conclusão',
   execucao: 'andamento', erros_expiram_em: 'validade dos erros', token_cifrado: 'link', category: 'categoria', description: 'descrição',
+  // A35 da 16ª: as que ainda saíam em inglês ("used sessions", "failed attempts").
+  used_sessions: 'sessões usadas', total_sessions: 'total de sessões', plan_name: 'plano', plan_status: 'situação do plano',
+  trial_ends_at: 'fim do teste grátis', failed_attempts: 'tentativas erradas', used_transaction_id: 'lançamento usado',
+  color: 'cor', position: 'posição', outcome: 'resultado', archived_at: 'arquivamento', type: 'tipo', discount: 'desconto',
+  valid_until: 'validade', session_number: 'número da sessão', package_id: 'pacote', client_id: 'cliente', user_id: 'membro',
+  avatar_url: 'foto', photo_url: 'foto', sort_order: 'ordem', locked_until: 'bloqueio',
 }
 
 const VERBO: Record<string, string> = { criou: 'Criou', editou: 'Editou', apagou: 'Apagou' }
@@ -218,7 +224,7 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
   if (r.operacao === 'entrou') return 'Entrou no sistema'
   if (r.operacao === 'abriu') return cliente ? `Abriu o prontuário de ${cliente}` : 'Abriu o prontuário'
-  if (r.incompleto) return `${VERBO[r.operacao] ?? 'Mudou'} ${COISA[r.tabela] ?? 'um registro'} (registro incompleto)`
+  if (r.incompleto) return `${VERBO[r.operacao] ?? 'Mudou'} ${COISA_DA_AUDITORIA[r.tabela] ?? 'um registro'} (registro incompleto)`
 
   // A28 da 15ª: o desativar e o reativar são o fato, não "Editou o membro (ativo)".
   if (r.tabela === 'users' && r.operacao === 'editou' && r.colunas.includes('is_active')
@@ -231,8 +237,22 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     const movimento = fraseDoMovimento(r, nomes)
     if (movimento) return movimento
   }
+  // A35 da 16ª: o lançamento criado diz o que é e quanto ("Criou o lançamento" não dizia).
+  if (r.tabela === 'financial_transactions' && r.operacao === 'criou') {
+    const tipo = texto(r.depois.type)
+    const categoria = texto(r.depois.category)
+    const valor = numero(r.depois.amount)
+    const oQue = categoria === 'Estorno' ? 'o estorno' : tipo === 'EXPENSE' ? 'a despesa' : tipo === 'INCOME' ? 'a receita' : 'o lançamento'
+    const nomeDele = categoria && categoria !== 'Estorno' ? ` ${categoria}` : ''
+    return `Criou ${oQue}${nomeDele}${valor != null ? ` (${brl(valor)})` : ''}${cliente ? ` — ${cliente}` : ''}`
+  }
+  // A36 da 16ª: a resposta da ficha de saúde é o fato. Pela cliente (o link, o app) ela "respondeu"; pela equipe, "preencheu".
+  if (r.tabela === 'pre_atendimentos' && r.operacao === 'editou' && r.colunas.includes('respondido_em')) {
+    if (r.ator_tipo === 'sistema' || r.ator_tipo === 'cliente') return 'Respondeu a ficha de saúde'
+    return `Preencheu a ficha de saúde${cliente ? ` de ${cliente}` : ''}`
+  }
 
-  let coisa = COISA[r.tabela] ?? `um registro (${r.tabela})`
+  let coisa = COISA_DA_AUDITORIA[r.tabela] ?? `um registro (${r.tabela})`
   let nome = r.tabela === 'clients' ? null : nomeDoRegistro(r, nomes)
   // A permissão diz o módulo e o cargo: "Criou a permissão de Agenda do cargo X".
   const cargo = r.tabela === 'role_permissions' && r.registro_id ? nomes.cargos?.[r.registro_id] : null
@@ -240,6 +260,8 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   let frase = `${VERBO[r.operacao] ?? 'Mudou'} ${coisa}${nome ? ` ${nome}` : ''}`
   if (r.tabela === 'clients' && cliente) frase += ` de ${cliente}`
   else if (cliente) frase += ` — ${cliente}`
+  // A35 da 16ª: com duas unidades, a sala de qual.
+  if (r.tabela === 'rooms' && r.branch_id && nomes.unidades[r.branch_id]) frase += ` em ${nomes.unidades[r.branch_id]}`
   if (r.operacao === 'editou') {
     const campos = camposMudados(r.colunas)
     if (campos) frase += ` (${campos})`
@@ -268,14 +290,38 @@ export function quandoDaAuditoria(iso: string, fuso?: string): string {
   return `${d(p.day)}/${d(p.month)}/${p.year} ${d(p.hour)}:${d(p.minute)}`
 }
 
+/**
+ * A36 da 16ª: o que a cliente fez pelo LINK público (responder a ficha de
+ * saúde, assinar o documento, errar o código) não tem sessão, e o banco o
+ * grava como "O sistema". A gravação é dela: o link é da ficha dela, e só a
+ * mudança que vem de quem o abre conta — o link CRIADO (pela automação, pela
+ * equipe) segue de quem o criou.
+ */
+function feitoPeloLink(r: RegistroDaAuditoria): boolean {
+  if (r.ator_tipo !== 'sistema' || !r.client_id) return false
+  switch (r.tabela) {
+    case 'document_signatures': return true
+    case 'pre_atendimentos': case 'pre_atendimento_links': case 'document_sign_links': case 'issued_documents':
+      return r.operacao === 'editou'
+    case 'medical_records': return r.operacao === 'editou' && r.colunas.includes('general_anamnesis')
+    default: return false
+  }
+}
+
+/** Quem agiu, como a tela o diz: a cliente, pelo link, onde o banco disse "O sistema". */
+function quemAgiu(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): { quem: string; tipoDeAtor: RegistroDaAuditoria['ator_tipo'] } {
+  const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
+  if (cliente && feitoPeloLink(r)) return { quem: `${cliente}, pelo link`, tipoDeAtor: 'cliente' }
+  return { quem: r.ator_nome, tipoDeAtor: r.ator_tipo }
+}
+
 export function linhaDaAuditoria(
   r: RegistroDaAuditoria, nomes: NomesDaAuditoria, pathname: string, slug: string | null, fuso?: string,
 ): LinhaDaAuditoria {
   return {
     id:         r.id,
     quando:     quandoDaAuditoria(r.criado_em, fuso),
-    quem:       r.ator_nome,
-    tipoDeAtor: r.ator_tipo,
+    ...quemAgiu(r, nomes),
     oQue:       fraseDaAuditoria(r, nomes),
     unidade:    r.branch_id ? nomes.unidades[r.branch_id] ?? null : null,
     href:       linkDaAuditoria(r, pathname, slug),
@@ -305,7 +351,7 @@ const FILHAS: Record<string, string> = {
   treatment_plan_items: 'itens', comanda_itens: 'itens', product_sale_items: 'itens',
 }
 /** O plural de cada coisa, sem o artigo. Fora daqui: "registros". */
-const PLURAL: Record<string, string> = {
+export const PLURAL_DA_AUDITORIA: Record<string, string> = {
   role_permissions: 'permissões dos cargos', role_report_tabs: 'abas de relatório dos cargos', tenant_roles: 'cargos',
   tags: 'tags', crm_origens: 'origens', crm_motivos_perda: 'motivos de perda', crm_stages: 'etapas do funil', crm_funnels: 'funis',
   procedure_categories: 'categorias de procedimento', product_categories: 'categorias de produto', forms: 'fichas',
@@ -318,6 +364,22 @@ const PLURAL: Record<string, string> = {
   treatment_plan_sessions: 'sessões do plano', treatment_plan_items: 'itens do plano', issued_documents: 'documentos',
   package_sessions: 'sessões do pacote', procedure_sale_units: 'sessões pré-pagas', comanda_itens: 'itens da comanda',
   installments: 'parcelas', service_package_items: 'itens do pacote', loyalty_rewards: 'recompensas',
+  // A35 da 16ª: toda coisa da auditoria tem plural ("Criou 2 links de assinatura", não "registros (document_sign_links)").
+  agenda_bloqueios: 'bloqueios da agenda', automations: 'automações', cash_registers: 'caixas', client_documents: 'documentos da cliente',
+  client_packages: 'pacotes da cliente', comandas: 'comandas', commission_configs: 'regras gerais das comissões',
+  commission_payouts: 'pagamentos de comissão', consent_terms: 'termos do prontuário', creditos_vendidos: 'créditos vendidos',
+  document_sign_links: 'links de assinatura', document_signatures: 'assinaturas de documento', fechamentos_do_dia: 'fechamentos do dia',
+  fornecedores: 'fornecedores', fundos_de_troco: 'fundos de troco', importacoes: 'importações', indicacao_premios: 'prêmios de indicação',
+  injectable_applications: 'aplicações de injetável', injectable_maps: 'mapas de injetáveis', integration_configs: 'integrações',
+  internal_credits: 'créditos internos', lgpd_requests: 'pedidos de LGPD', loyalty_configs: 'configurações da fidelidade',
+  loyalty_vouchers: 'vouchers', marcas: 'marcas', medical_record_entries: 'evoluções do prontuário', medical_records: 'prontuários',
+  notification_campaigns: 'campanhas', pre_atendimento_links: 'links da ficha de saúde', pre_atendimentos: 'fichas de saúde',
+  procedure_branch_availability: 'disponibilidades do procedimento nas unidades', procedure_branch_pricing: 'preços do procedimento nas unidades',
+  procedure_sales: 'vendas de procedimento', product_batches: 'lotes', product_sale_items: 'itens da venda de produto',
+  product_sale_returns: 'devoluções de produto', product_sales: 'vendas de produto', prontuario_anotacoes: 'anotações do prontuário',
+  service_packages: 'pacotes', support_grants: 'liberações do suporte', support_sessions: 'atendimentos do suporte',
+  tenants: 'dados da rede', treatment_plans: 'planos de tratamento', whatsapp_number_users: 'pessoas nos números de WhatsApp',
+  whatsapp_numbers: 'números de WhatsApp',
 }
 const ORDEM_DAS_OPERACOES: readonly string[] = ['criou', 'editou', 'apagou']
 
@@ -357,7 +419,7 @@ function resumoDasTabelas(linhas: readonly RegistroDaAuditoria[]): string {
   const porTabela = new Map<string, number>()
   for (const l of linhas) porTabela.set(l.tabela, (porTabela.get(l.tabela) ?? 0) + 1)
   const partes = [...porTabela.entries()].sort((a, b) => b[1] - a[1])
-    .map(([t, n]) => `${n} ${n === 1 ? (COISA[t] ?? 'registro').replace(/^(o|a|os|as) /, '') : PLURAL[t] ?? 'registros'}`)
+    .map(([t, n]) => `${n} ${n === 1 ? (COISA_DA_AUDITORIA[t] ?? 'registro').replace(/^(o|a|os|as) /, '') : PLURAL_DA_AUDITORIA[t] ?? 'registros'}`)
   return partes.length > 5 ? `${partes.slice(0, 5).join(', ')}…` : partes.join(', ')
 }
 
@@ -558,6 +620,9 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
 
   const estorno = fraseDoEstorno(linhas, nomes)
   if (estorno) return estorno
+  // A36 da 16ª: a resposta da ficha grava o link e o prontuário junto; o fato é a resposta.
+  const resposta = linhas.find(l => l.tabela === 'pre_atendimentos' && l.operacao === 'editou' && l.colunas.includes('respondido_em'))
+  if (resposta) return fraseDaAuditoria(resposta, nomes)
   const transferencia = fraseDaTransferencia(linhas, nomes)
   if (transferencia) return transferencia
   const fato = fatoDaGravacao(linhas, nomes)
@@ -568,7 +633,7 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (pai) {
     const filhas = new Map<string, number>()
     for (const f of linhas) if (PAI[f.tabela] === pai.tabela) filhas.set(f.tabela, (filhas.get(f.tabela) ?? 0) + 1)
-    const doPai = [...filhas.entries()].map(([t, n]) => `${n} ${FILHAS[t] ?? PLURAL[t] ?? 'registros'}`).join(', ')
+    const doPai = [...filhas.entries()].map(([t, n]) => `${n} ${FILHAS[t] ?? PLURAL_DA_AUDITORIA[t] ?? 'registros'}`).join(', ')
     const base = fraseDaAuditoria(pai, nomes)
     return base.endsWith(')') ? `${base.slice(0, -1)}; ${doPai})` : `${base} (${doPai})`
   }
@@ -576,7 +641,7 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   // Muitas linhas da mesma tabela: "Criou 3 e apagou 3 insumos do procedimento".
   const tabela = linhas[0]!.tabela
   if (linhas.every(l => l.tabela === tabela && ORDEM_DAS_OPERACOES.includes(l.operacao))) {
-    let coisas = PLURAL[tabela] ?? `registros (${tabela})`
+    let coisas = PLURAL_DA_AUDITORIA[tabela] ?? `registros (${tabela})`
     if (tabela === 'role_permissions') {
       const cargos = [...new Set(linhas.map(l => (l.registro_id && nomes.cargos?.[l.registro_id]) || null))]
       if (cargos.length === 1 && cargos[0]) coisas = `permissões do cargo ${cargos[0]}`
@@ -604,5 +669,19 @@ export function gruposDaAuditoria(
     const fato = linhas.some(l => l.tabela === 'tenants' && l.operacao === 'criou') || estorno ? null : fatoDaGravacao(linhas, nomes)
     const principal = fato?.principal ?? paiDaGravacao(linhas) ?? linhas.find(l => l.client_id) ?? linhas[linhas.length - 1]!
     return { ...linhaDaAuditoria(principal, nomes, pathname, slug, fuso), id: linhas[0]!.id, oQue: fraseDoGrupo(linhas, nomes), detalhes }
+  })
+}
+
+/**
+ * As linhas do CSV (A38 da 16ª): uma por registro, como a regra pede, e cada
+ * uma com a frase da GRAVAÇÃO a que pertence — quem procura "Estornou" no
+ * arquivo acha as linhas do estorno.
+ */
+export function linhasDoCsvDaAuditoria(
+  registros: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, fuso?: string,
+): (LinhaDaAuditoria & { gravacao: string })[] {
+  return agruparAuditoria(registros).flatMap(linhas => {
+    const gravacao = fraseDoGrupo(linhas, nomes)
+    return linhas.map(l => ({ ...linhaDaAuditoria(l, nomes, '/admin/auditoria', null, fuso), gravacao }))
   })
 }

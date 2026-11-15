@@ -182,7 +182,7 @@ test.describe.serial('o CNPJ da unidade nova', () => {
       await expect(janela.locator('#br-doc'), 'o da rede, à vista — trocar ou apagar é da pessoa').toHaveValue(CNPJ_COM_MASCARA)
       // Com duas unidades ou mais, as salas são de cada uma: a aba diz onde.
       await p.goto('/admin/settings?tab=unidades')
-      await expect(p.getByText('As salas ficam no “Ver detalhes” de cada unidade.')).toBeVisible()
+      await expect(p.getByText('As salas de cada unidade ficam em “Salas e detalhes”, na linha dela.', { exact: false })).toBeVisible()
     })
   })
 })

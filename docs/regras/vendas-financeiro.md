@@ -83,6 +83,14 @@ comanda (PDV-P1).
   produto que ela leva ("Limpeza de pele + 1 produto", A3). A comanda paga
   diz, a quem não tem o Financeiro em Gerenciar, de quem é o estorno — a
   mesma frase da ficha, com os nomes (A2). Prova: `e2e/pdv-atritos-da-15.spec.ts`.
+  **A comanda do crediário recebe a parcela ali mesmo** (A1 da 16ª,
+  princípio 7): a comanda paga com o em aberto traz "Parcelas desta venda",
+  o mesmo `ParcelasEmAberto` da Nova venda, só com as parcelas DESTA venda
+  (`parcelasEmAbertoDaCliente({ daVenda })`, pelas chaves da comanda), a
+  quem pode receber (`podeReceber`). O PDV vazio diz "Ela nasce quando um
+  atendimento é iniciado e tem o que cobrar" (A6), e a aba da Nova venda que
+  vende o pré-pago se chama "Procedimento pré-pago" (A7: o avulso se cobra na
+  comanda do atendimento). Prova: `e2e/pdv-atritos-da-16.spec.ts` ("A1").
 - **A comanda do plano nasce no ACEITE** (PDV4 e PT1a–PT1c; o Heitor: "a
   partir do momento que a cliente aceita o plano, ela precisa daí pagar e
   agendar as sessões"; sobre perguntar a forma no aceite: "pode ser
@@ -516,7 +524,10 @@ plano").
     saída — "− R$ 600,00 · Estorno" (`data-estorno`; a contra-transação,
     `category = 'Estorno'`, com o `client_id` dela). A Márcia via só "Pacote
     R$ 200 Pix Pago". O "Total investido" segue o do banco. Prova:
-    `e2e/portal-cliente-pacote-cancelado.spec.ts`.
+    `e2e/portal-cliente-pacote-cancelado.spec.ts`. O Financeiro do app
+    também mostra o que está **"A pagar na unidade"** (A14 da 16ª: só
+    aparecia em Histórico → Pagamentos), pela mesma leitura do Histórico
+    (`getAtendimentosAReceber`, `[data-a-pagar-na-unidade]`).
   - Prova: `e2e/pacote-cancelar.spec.ts`.
 - **Cancelar o plano fechado é o "Cancelar pacote"** (D4 da 9ª simulação,
   2026-11-07; decisão 2 do Heitor: "sim usa a mesma coisa do pacote, como ja
@@ -1037,8 +1048,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     lista de lançamentos.
   - **A receber** (`?aba=a-receber`): todo o a receber em aberto das
     clientes, de qualquer vencimento, do mais antigo para o mais novo (as
-    vencidas primeiro), com "Pagar"/"Receber" (CX2) e "Remarcar vencimento"
-    na linha; "Só as vencidas" é `&aberto=vencidas`. Embaixo, as parcelas da
+    vencidas primeiro), com "Receber" (CX2) e "Remarcar vencimento"
+    na linha; "Só as vencidas" é `&aberto=vencidas`. **O botão da receita é
+    "Receber", o da despesa "Pagar"** (A2 da 16ª, princípio 3), e a janela diz
+    quanto e de quem (`[data-receber-quanto]`: "R$ 200,00 — Paula Neves").
+    Prova: `e2e/pdv-atritos-da-16.spec.ts` ("A2"). Embaixo, as parcelas da
     operadora (`#recebiveis-da-operadora`, CX6).
   - **A pagar** (`?aba=a-pagar`): toda conta a pagar em aberto, de qualquer
     mês, do vencimento mais próximo; o "Novo lançamento" lança a avulsa, a
@@ -1151,7 +1165,14 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     forma é do dia (`conferidoValido`, `lib/financeiro/conferencia-do-fechamento.ts`)
     e grava só os preenchidos em `fechamentos_do_dia.conferido` (jsonb,
     migration `20261113008301`; o Dinheiro segue em `contado_dinheiro`). Os
-    pontos e o "Sem forma" não se conferem. Depois de fechar, cada linha
+    pontos e o "Sem forma" não se conferem, e **a forma só com saída também
+    não** (A8 da 16ª: o Pix com R$ 120 de saída e nenhuma entrada ficava "não
+    conferido" sem ter o que conferir) — a não ser que já tenha sido
+    conferida no último fechamento. A linha da forma diz o estornado de um
+    pagamento de HOJE ("R$ 320,00 estornado de um pagamento de hoje: já fora
+    das entradas", `[data-estornado-hoje]`, `estornadoNoMesmoDiaPorForma`,
+    A3 da 16ª): a regra de que no mesmo dia um anula o outro continua, e a
+    tela a diz. Depois de fechar, cada linha
     mostra o último conferido e a diferença contra o registrado do RETRATO
     daquele fechamento ("Bateu", "Faltou R$ X", "Sobrou R$ X", "não
     conferido"); "Fechar de novo" reabre com os valores do último. A tela não
@@ -2213,7 +2234,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     a venda sai sem desconto da operadora (0%), também na comissão
     (`taxaQueVale`, o espelho de `private.comissao_taxa_pct` — F16-2: nunca
     a de outras vezes). As taxas vão de à vista a 12x em Configurações →
-    Comissões.
+    Comissões. A quem não cadastra a taxa (sem o Financeiro em Gerenciar, ou
+    sem "A rede inteira"), o aviso diz QUEM cadastra, pelo nome
+    (`textoDeQuemCadastraATaxa`, `quemMudaNaRede(…, ['financial'])` em
+    `maquininhasParaAVenda`), em vez de mandar a Configurações (A5 da 16ª).
   - **A linha do tempo também diz a forma pelo nome** (D18 da simulação de
     2026-10-29; migration `20261029000301`): "Pagamento confirmado via
     Crédito 3x", "via Dinheiro" — era "via CREDIT_CARD em 3x". No banco,

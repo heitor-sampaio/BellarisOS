@@ -349,7 +349,7 @@ test.describe('CF3a: a tela', () => {
       expect(csv.status()).toBe(200)
       expect(csv.headers()['content-type']).toContain('text/csv')
       const texto = await csv.text()
-      expect(texto.split('\n')[0]).toMatch(/Quando;Quem;O quê;Unidade/)
+      expect(texto.split('\n')[0]).toMatch(/Quando;Quem;O quê;Gravação;Unidade/)
       expect(texto).toContain(`Criou a tag ${TAG}`)
     })
   })

@@ -110,7 +110,7 @@ test('A18: o Vender diz a comissão de venda de quem vendeu e de onde vem o perc
     await quem.selectOption(paula.userId)
     await expect(linha).toHaveCount(0)
 
-    await dlg.getByRole('button', { name: 'Procedimento', exact: true }).click()
+    await dlg.getByRole('button', { name: 'Procedimento pré-pago', exact: true }).click()
     await dlg.getByLabel('Procedimento', { exact: true }).selectOption(rede.procedureId)
     await dlg.getByLabel('Quem vendeu').selectOption(rita.userId)
     await expect(dlg.locator('[data-comissao-da-venda]'), 'o pré-pago: a da pessoa').toContainText('8%')

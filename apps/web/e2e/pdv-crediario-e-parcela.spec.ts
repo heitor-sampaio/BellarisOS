@@ -233,7 +233,7 @@ test('PDV8/CX2: a baixa no Financeiro pede a forma sempre — também a do a rec
     const r = await chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', `/${slug}/financeiro`, [tx!.id, slug])
     expect(r.texto, 'a action não dá baixa sem a forma').toContain('Escolha a forma de pagamento.')
     const linha = p.locator('tr', { hasText: `combinado ${marca}` })
-    await linha.getByRole('button', { name: /Pagar/ }).click()
+    await linha.getByRole('button', { name: 'Receber', exact: true }).click()
     const janela = p.getByRole('dialog', { name: 'Receber' })
     await expect(janela.getByLabel('Forma de pagamento')).toHaveValue('PIX')
     await janela.getByLabel('Forma de pagamento').selectOption('CASH')

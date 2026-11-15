@@ -3,11 +3,12 @@ import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { Dica } from '@/components/shared/dica'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { baseDaOcupacao, descontosDaOcupacao } from '@/lib/metrics/ocupacao'
+import { aindaHojeNaAgenda } from '@/lib/metrics/agenda-do-dia'
 import { notFound, redirect } from 'next/navigation'
 import { capacidadeEmMinutos, normalizarHorario, type BlocoOcupado } from '@/lib/agenda/horario'
 import { blocosDosBloqueios } from '@/lib/agenda/horario-livre'
 import { bloqueiosDoPeriodo } from '@/lib/agenda/bloqueios'
-import { getTenantContext, isOwnScope } from '@/lib/auth'
+import { getTenantContext, isOwnScope, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug, filtroDeQuemAtendeNaUnidade } from '@/lib/cached-queries'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
@@ -255,6 +256,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const clientesQuePagaram = ticket?.total.clientesQuePagaram ?? 0
 
   const validToday    = (todayAppts ?? []).filter(a => !['CANCELLED', 'NO_SHOW'].includes(a.status))
+  const aindaHoje     = aindaHojeNaAgenda(todayAppts ?? [], now)
   const todayCount    = validToday.length
   const awaitingCount = validToday.filter(a => a.status === 'SCHEDULED').length
   const scheduledMin  = validToday.reduce((s, a) => s + (a.duration_min ?? 0), 0)
@@ -281,7 +283,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       ? new Map(((await ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!), 'ler as unidades da rede')) ?? []).map(b => [b.id as string, b.name as string]))
       : new Map<string, string>()
     for (const a of (fora ?? []) as { professional_id: string; scheduled_at: string; duration_min: number; branch_id: string }[]) {
-      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min, onde: nomes.get(a.branch_id) ?? 'outra unidade' })
+      // A13 da 16ª: a agenda de uma unidade fora do alcance não se cita pelo nome.
+      (ocupadoFora[a.professional_id] ??= []).push({ inicio: a.scheduled_at, minutos: a.duration_min, onde: alcancaUnidade(ctx, a.branch_id) ? (nomes.get(a.branch_id) ?? 'outra unidade') : 'outra unidade' })
     }
     // O tempo BLOQUEADO de cada uma (D15 da 8ª simulação) também sai da
     // capacidade: "430 min de 4.230 min disponíveis" contava as 23 h e meia da
@@ -334,7 +337,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // mês (D12), com os horários de mais tarde e o cancelado de amanhã.
   const funnel = [
     { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
-    { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)' },
+    // A12 da 16ª: a conta é até agora; a etapa diz também os de hoje que ainda vêm.
+    { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)',
+      nota: aindaHoje > 0 ? `${aindaHoje} ainda hoje` : undefined },
     { label: 'Concluídos',        count: core.appointmentsCompleted, color: 'var(--brand-3)' },
     { label: 'Cancelados/faltas', count: core.appointmentsCancelled + core.appointmentsNoShow, color: 'var(--border)' },
   ]

@@ -15,6 +15,8 @@ import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { trechoDoBloqueio } from '@/lib/agenda/bloqueio'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { escolhasDaFichaQueJaExiste } from '@/lib/copilot/ferramentas/clientes-escrita'
+import { avisoDoAgendarParaACliente } from '@/lib/copilot/ferramentas/aviso-do-agendar'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import {
@@ -66,7 +68,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'agenda'),
-  descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id — passe o nome que a pessoa disse, "Dr. Caio": a ferramenta acha pelo nome entre quem atende na unidade, sem precisar buscar antes, e sem achar diz quem atende); data (AAAA-MM-DD) e hora (HH:MM, no horário da unidade). Confira os horários livres antes. O cliente é avisado da confirmação.',
+  descricao: 'Agenda um atendimento: cliente (id, nome ou telefone de quem já é cliente) OU clienteNovo {nome, telefone com DDD} para quem ainda não é; procedimento e profissional (nome ou id — passe o nome que a pessoa disse, "Dr. Caio": a ferramenta acha pelo nome entre quem atende na unidade, sem precisar buscar antes, e sem achar diz quem atende); data (AAAA-MM-DD) e hora (HH:MM, no horário da unidade). Confira os horários livres antes. O cartão diz se a cliente recebe aviso no app.',
   parametros: z.object({
     cliente: z.string().min(2).max(120).optional(),
     clienteNovo: z.object({ nome: z.string().min(2).max(120), telefone: z.string().min(8).max(24) }).optional(),
@@ -147,6 +149,11 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     // encaixe é da clínica (princípio 2).
     const naoRealiza = !realiza(await quemRealizaOProcedimento(c.admin, proc.id), prof.id)
     const avisoDoRealiza = naoRealiza ? `${prof.name} não está em “Quem realiza” deste procedimento. ` : ''
+    // A33 da 16ª: o aviso que chega de fato — só pelo app, e só a quem tem acesso.
+    const temAcesso = clientId
+      ? !!(await ler(c.admin.from('clients').select('auth_id').eq('id', clientId).eq('tenant_id', c.ctx.tenantId!).maybeSingle(), 'conferir o acesso da cliente') as { auth_id: string | null } | null)?.auth_id
+      : false
+    const avisoDaCliente = avisoDoAgendarParaACliente({ temAcesso, portalNoPlano: await redeTemRecurso(c.ctx.tenantId!, 'portal') })
 
     return {
       resumo: {
@@ -163,8 +170,8 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
           ...(a.observacao ? [{ rotulo: 'Observação', valor: a.observacao }] : []),
         ],
         aviso: avisoDoRealiza + (jaExiste
-          ? `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: agende numa ficha nova mesmo assim, ou na ficha que existe. O cliente recebe a confirmação do agendamento.`
-          : 'O cliente recebe a confirmação do agendamento.'),
+          ? `${textoDaFichaQueJaExiste(jaExiste)} Nada foi gravado: agende numa ficha nova mesmo assim, ou na ficha que existe. ${avisoDaCliente}`
+          : avisoDaCliente),
         ...(jaExiste ? { escolhas: escolhasDaFichaQueJaExiste(jaExiste) } : {}),
       },
       payload: {

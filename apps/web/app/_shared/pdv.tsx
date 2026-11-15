@@ -12,14 +12,14 @@ import { FusoProvider } from '@/components/shared/fuso'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { PdvTela, type ComandaEscolhida } from '@/components/shared/pdv/pdv-tela'
 import type { VendaDoPdv } from '@/components/shared/pdv/nova-venda'
-import { can, podeVerFechamento } from '@/lib/auth'
+import { can, podeReceber, podeVerFechamento } from '@/lib/auth'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import { produtosAVenda } from '@/lib/produtos/leitura'
 import { equipeDaVenda } from '@/lib/vendas/equipe-da-venda'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
-import { parcelasEmAbertoDaCliente } from '@/lib/pdv/parcelas-da-cliente'
+import { parcelasEmAbertoDaCliente, CHAVES_DA_VENDA, type VendaDaComanda } from '@/lib/pdv/parcelas-da-cliente'
 import { itensDaComanda } from '@/lib/pdv/itens-da-comanda'
 import { fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
@@ -98,6 +98,14 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       // A2 da 15ª (princípios 3 e 7): a comanda paga diz a quem não estorna de quem é o estorno.
       quemEstorna: comanda.paga && !comanda.estornada && !can(ctx, 'financial', 'MANAGE')
         ? await quemDesfazNoCaixa(ctx.tenantId!, unidadeId) : null,
+      // A1 da 16ª (princípio 7): a comanda do crediário recebe as parcelas dela ali mesmo.
+      parcelasDaComanda: comanda.paga && !comanda.estornada && comanda.emAberto > 0 && podeReceber(ctx)
+        ? await parcelasEmAbertoDaCliente({
+            branchId: unidadeId, clienteId: comanda.clienteId, fuso,
+            daVenda: (await ler(admin.from('comandas').select(CHAVES_DA_VENDA.join(', '))
+              .eq('id', comanda.id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler a venda da comanda') as VendaDaComanda | null) ?? {},
+          })
+        : [],
     }
   }
 

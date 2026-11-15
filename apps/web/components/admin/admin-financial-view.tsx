@@ -304,7 +304,7 @@ export function AdminFinancialView({
   // exatamente como estava — indistinguível de "ainda não atualizou".
   // r3-f13-01: no cartão, a baixa pergunta a bandeira antes (opcional).
   // D6: a receita SEM meio (a parcela do crediário) pergunta a forma na mesma janela.
-  const [noCartao, setNoCartao] = useState<{ id: string; slug: string; descricao: string; metodo: string | null; valor: number } | null>(null)
+  const [noCartao, setNoCartao] = useState<{ id: string; slug: string; descricao: string; metodo: string | null; valor: number; cliente: string | null } | null>(null)
   // A15 da 9ª: a despesa sem forma pergunta a forma na baixa.
   const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; slug: string; descricao: string; valor: number } | null>(null)
   function marcarPago(id: string, slug: string, bandeira?: string | null, vezes?: number, forma?: string | null, maquininha?: string | null) {
@@ -487,16 +487,17 @@ export function AdminFinancialView({
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap', minWidth: 120 }}>
             {!t.is_paid && !estornada && canPay && (
               <button type="button" onClick={() => t.type === 'INCOME'
-                ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method ?? null, valor: Number(t.amount) })
+                ? setNoCartao({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Lançamento', metodo: t.payment_method ?? null, valor: Number(t.amount), cliente: t.clienteNome ?? null })
                 : t.type === 'EXPENSE' && !t.payment_method
                 ? setDespesaAPagar({ id: t.id, slug: slugDaTx, descricao: t.description ?? 'Despesa', valor: Number(t.amount) })
-                : marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{
+                : marcarPago(t.id, slugDaTx)} title={t.type === 'INCOME' ? 'Receber' : 'Marcar como pago'} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
                 fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
                 border: '1.5px solid var(--success)', background: 'var(--success-bg)',
                 color: 'var(--success)', cursor: 'pointer', whiteSpace: 'nowrap',
               }}>
-                <CheckCircle2 size={12} /> Pagar
+                {/* A2 da 16ª: a conta a receber se RECEBE; a despesa se paga. */}
+                <CheckCircle2 size={12} /> {t.type === 'INCOME' ? 'Receber' : 'Pagar'}
               </button>
             )}
             {/* A37 da 9ª: remarcar o vencimento do que está em aberto. */}
@@ -557,7 +558,9 @@ export function AdminFinancialView({
   }
   const daAba = (a: AbaDoFinanceiro, extra: Record<string, string> = {}) => linkDaAba(base, a, manter, extra)
   // A42 da 12ª: quem só vê o Financeiro lia "use Pagar na linha" sem botão nenhum.
+  // A2 da 16ª: a frase cita o botão que a linha mostra — "Receber" na conta a receber, "Pagar" na conta a pagar.
   const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem o PDV no cargo.'
+  const fraseDoReceber = canPay ? 'Para receber, use “Receber” na linha.' : 'Receber é de quem tem o PDV no cargo.'
   const faixa: React.CSSProperties = { fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', margin: 0 }
 
   // A receber e a pagar (2026-10-21): a unidade mostrava, a rede não.
@@ -693,7 +696,7 @@ export function AdminFinancialView({
       )}
       {noCartao && (
         <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
-          valor={noCartao.valor}
+          valor={noCartao.valor} cliente={noCartao.cliente}
           aoConfirmar={(b, v, f, m) => marcarPago(noCartao.id, noCartao.slug, b, v, f, m)} aoFechar={() => setNoCartao(null)} />
       )}
 
@@ -902,9 +905,9 @@ export function AdminFinancialView({
         </div>
         <p data-so-o-em-aberto style={faixa}>
           {soAsVencidas
-            ? 'Só as vencidas: o a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
-            : 'Todo o a receber em aberto, de qualquer vencimento — as atrasadas primeiro, as parcelas do crediário inclusive.'}{' '}
-          {fraseDaBaixa}
+            ? 'Só as vencidas: as contas a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
+            : 'Todas as contas a receber em aberto, de qualquer vencimento: as atrasadas primeiro, e as parcelas do crediário também.'}{' '}
+          {fraseDoReceber}
         </p>
         {tabela('Das clientes')}
         {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
