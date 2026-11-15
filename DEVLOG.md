@@ -1774,7 +1774,7 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
-### 2026-11-16 — A segunda completa (run 43677659176, sobre o 30af2730): 32 falhas, o banco caiu outra vez
+### 2026-11-16 — A segunda e a terceira completa (runs 43677659176 e 43684680309): o banco cai, ou para, sob a suíte
 
 Isolados 1515 ✓ / 25 ✘ / 57 sem rodar; compartilhados 730 ✓ / 7 ✘ / 9 sem
 rodar (01:38–02:34 de Brasília, 15/11). Nenhuma falha é do produto.
@@ -1788,7 +1788,10 @@ rodar (01:38–02:34 de Brasília, 15/11). Nenhuma falha é do produto.
   Rodados de novo, um por vez, contra o `next dev`, todos passam sem mudança. A exceção é o `copilot-novidades`, que só roda contra o build e fica para a próxima completa.
 - **`agenda-profissional-da-rede` (relógio).** A completa rodou num DOMINGO. A unidade B tem o horário padrão (segunda a sábado), e o painel de hoje diz "0 min abertos", que é o certo (C48). O spec agora confere em qualquer dia que a base da ocupação de B conta "o horário de 1 profissional que atende", que é o que prova o D1. O "N%" só é cobrado quando B abre hoje.
 - **Para o Heitor:**
-  - **O banco cai sob a carga da completa.** Duas rodadas seguidas caíram (três reinícios em 14–15/11 e esta), e a de 12/11, antes da Auditoria (CF3b), não caiu: isolados em 29,9 min, contra 39,7 min agora. A Auditoria grava uma linha a cada comando em 88 tabelas, e é a suspeita principal da carga a mais. Pode ser também o tamanho do computador do projeto no Supabase, que vale olhar no painel (CPU e memória nessas janelas). Nada foi mudado no banco por isso.
+  - **O banco cai sob a carga da completa.** Duas rodadas seguidas caíram (três reinícios em 14–15/11 e esta), e a de 12/11, antes da Auditoria (CF3b), não caiu: isolados em 29,9 min, contra 39,7 min agora. A Auditoria grava uma linha a cada comando em 88 tabelas, e é a suspeita principal da carga a mais. Pode ser também o tamanho do computador do projeto no Supabase, que vale olhar no painel (CPU e memória nessas janelas). Medido depois, numa transação desfeita: criar uma rede leva 11 ms sem a Auditoria e 46 ms com ela, e o insert de uma tag 0,10 ms contra 1,70 ms. A consulta grande do gatilho era replanejada a cada chamada. A migration `20261116300002_auditoria_plano_generico` fixa `plan_cache_mode = force_generic_plan` em `private.auditar()`, e o insert cai para 0,54 ms, sem mudar o que se grava (conferido: criou, editou e apagou, com os valores e as colunas). Se um `create or replace` futuro tirar o ajuste, `tests/auditoria-plano-generico.test.ts` trava. **Não bastou.** A terceira completa (run 43684680309, sobre o 4533dd5f, já com o ajuste desde os primeiros minutos) estourou os 75 min do job no meio da suíte e foi CANCELADA. O GitHub não guardou o log.
+  Pelos `edge_logs` do Supabase, o banco não caiu, mas PAROU várias vezes. Toda requisição (leitura também, de qualquer tabela) esperou de 25 a 66 s e voltou no mesmo instante: 06:37, 06:45, 06:59, 07:07, 07:12–07:18 e 07:30 UTC, com 521 no fim. Os `postgres_logs` mostram "archive command failed" e checkpoints de 200 a 266 s para 2.000 buffers.
+  Uma pausa global que piora ao longo do dia, depois de horas de E2E local, combina com o **orçamento diário de disco** da instância esgotado. Instância pequena tem pico de disco por um tempo limitado por dia e depois fica estrangulada, e a Auditoria dobra a escrita de cada gravação: o registro e os 6 índices dele. Isso não se vê por SQL.
+  **Para o Heitor:** vale olhar no painel do Supabase (Reports → Database: Disk IO e CPU de 14–15/11) e decidir se sobe o tamanho do computador do projeto. Eu não mexo no que custa. Enquanto isso, a completa no GitHub fica no limite do job, com 75 min e o banco estrangulado.
   - **O timeout do job de 75 para 95 min.** A metade compartilhada já leva de 48 a 72 min, mais uns 7 min de limpeza, e a run 43668652558 foi cancelada na limpeza. O push de `.github/workflows/e2e.yml` é recusado: o token não tem o escopo `workflow`. A mudança é uma linha (`timeout-minutes: 75` → `95`) e precisa ser feita por você.
 
 ### 2026-11-16 — A completa de 14–15/11 (run 43668652558, sobre o c13a6b7d): 44 falhas, nenhuma do produto

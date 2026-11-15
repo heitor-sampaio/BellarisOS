@@ -980,6 +980,11 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
   linhas que o comando mude. A lista das tabelas (e as que ficam de fora, com
   o porquê) está na migration. Tabela nova que guarda o que alguém FAZ entra
   na lista; a que só registra andamento (fila, sinal, cache, log) não.
+  A função roda com `plan_cache_mode = force_generic_plan` (migration
+  `20261116300002`). Com o plano personalizado, cada gravação custava 1,7 ms,
+  contra 0,54 ms agora, e o banco cedeu sob a completa. Um `create or replace`
+  da função tem de repor o ajuste: `tests/auditoria-plano-generico.test.ts`
+  trava.
 - **Quem agiu sai da requisição, nunca do corpo.** Pela sessão (role
   `authenticated`), o dono do token. Pelo servidor (`service_role`), o
   cabeçalho `x-bellaris-ator` — o login da requisição, que o
