@@ -1806,6 +1806,7 @@ O relatório ficou em `apps/web/.sim/relatorio.md`, e a 18ª foi arquivada em `.
   - **CRM (A23, A31):** toda exclusão de etapa pergunta antes; o lembrete do motivo da perda fica neutro até o salvar barrar.
   - **Auditoria (A32–A36):** os campos do lançamento em português; "Devolveu o voucher"; o "Fechou de novo" com o conferido; "Remarcou" e "Repassou" no lugar de "Editou o agendamento"; a geração do contrato dentro da venda; "Da rede" na coluna Unidade.
   - **Ficaram de fora:** o A4 em parte (a taxa e o líquido no Vender são só de quem vê o financeiro, A19 da 12ª); o A8 em parte (o botão do Copilot sobre o "Fechar e pagar"); o A17 e o A26, já com o Heitor.
+- **A completa local sobre o 7c32380d** (16/11, 08:20–10:50): 1594 + 767 passaram, 6 falharam e 16 não rodaram. Nenhuma falha é do produto: o Postgres reiniciou às 12:03 e às 12:32 UTC (`database system was interrupted`), e as 6 passaram em dev (35/35 nos 6 specs). Uma delas foi o 520 do Cloudflare em "criar a unidade da outra rede".
 
 ### 2026-11-16 — A 18ª simulação (Hortênsia, uma unidade; Gardênia, três, com o Copilot) e os defeitos dela
 
