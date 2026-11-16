@@ -1,0 +1,4 @@
+select 'defacl '||pg_get_userbyid(defaclrole)||' '||coalesce(n.nspname,'*')||' '||defaclobjtype::text||' '||array_to_string(defaclacl,',') from pg_default_acl d left join pg_namespace n on n.oid=d.defaclnamespace order by 1;
+select 'md5_acl_func '||md5(string_agg(n.nspname||p.proname||pg_get_function_identity_arguments(p.oid)||coalesce(p.proacl::text,'nul'), ',' order by n.nspname,p.proname,pg_get_function_identity_arguments(p.oid))) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','private');
+select 'md5_acl_rel '||md5(string_agg(n.nspname||c.relname||coalesce(c.relacl::text,'nul'), ',' order by n.nspname,c.relname)) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('public','private') and c.relkind in ('r','v','m','S','p');
+select 'schema '||nspname||' '||coalesce(nspacl::text,'nul') from pg_namespace where nspname in ('public','private') order by 1;

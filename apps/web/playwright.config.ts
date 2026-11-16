@@ -7,6 +7,9 @@ import dotenv from 'dotenv'
 // autenticar a suíte. Nada de credencial no repositório.
 dotenv.config({ path: path.resolve(__dirname, '.env.local') })
 
+// Com `scripts/com-banco-local.mjs`, o ambiente já chega com o Supabase LOCAL
+// (e a porta 3010): o `.env.local` não sobrescreve o que está no processo.
+
 // Um arquivo por metade da suíte (`E2E_GRUPO`): as duas rodam juntas no CI, e
 // cada global-setup grava a sua sessão — no mesmo arquivo, uma leria o JSON
 // pela metade enquanto a outra escrevia.
@@ -41,7 +44,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'pnpm dev',
+    // A porta da BASE_URL: o banco local usa a 3010, e um `next dev` na 3000
+    // contra a nuvem não pode ser o reaproveitado.
+    command: `pnpm dev --port ${new URL(BASE_URL).port || '3000'}`,
     cwd: __dirname,
     url: BASE_URL,
     reuseExistingServer: true,

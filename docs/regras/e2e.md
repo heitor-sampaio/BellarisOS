@@ -314,6 +314,50 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   - No `next dev`, o painel do Next (`data-nextjs-dev-overlay`) é um
     `<script>` sem nonce. Ele não existe no build.
 
+## O banco de testes local (2026-11-16)
+
+O Heitor: "vamos subir um banco separado pra testes usando supabase self
+hosted… local aqui na maquina". A suíte e as simulações usavam o MESMO banco
+da produção, e a instância Small reiniciava sob a carga (as completas de
+14–16/11). O banco local é um Supabase no Docker da máquina, com a ESTRUTURA
+da nuvem e NENHUM dado dela (LGPD: nem as redes reais, nem as `[sim]`).
+
+- **A base é o dump só de esquema da nuvem**, não as migrations: elas não
+  reconstroem o banco (ele nasceu de clones em 08/07 e houve SQL aplicado
+  direto). `infra/banco-de-teste/` tem o projeto do Supabase CLI
+  (`supabase/config.toml`, Postgres 17; analytics, edge runtime e vetores
+  desligados), a `previa.sql`/`fim.sql` (desligam e religam as permissões
+  padrão em `public` enquanto a base nasce — sem isso a função que a nuvem
+  fechou para a anon key nascia aberta: o `rls-isolamento` pegou), a
+  `extras.sql` (o que o dump não leva: os gatilhos do suporte em `auth` e os
+  7 buckets), a semente (`supabase/seed.sql`: os planos e a configuração da
+  plataforma, sem rede nem pessoa) e a `base-inclui.txt` (as migrations do
+  repositório que a base já tem). O dump e a base montada ficam fora do git.
+- Conferido em 16/11: tabelas, funções, políticas, gatilhos, índices,
+  publicação do Realtime, buckets, colunas e as permissões (GRANTs) de cada
+  função e tabela iguais às da nuvem, pela impressão digital
+  (`infra/banco-de-teste/inventario.sql` e `acl.sql`, rodados nos dois bancos).
+- **Por cima da base, as migrations novas**: `banco-local.mjs preparar` copia
+  as do repositório que não estão na `base-inclui.txt`, refaz o banco do zero
+  (`supabase db reset`), grava `apps/web/.env.banco-local` (as chaves LOCAIS)
+  e cria a rede de teste (`scripts/rede-de-teste.mjs`).
+- **Rodar contra ele**: `node scripts/com-banco-local.mjs <comando>` carrega o
+  `.env.banco-local` por cima do ambiente (o `.env.local` não sobrescreve o que
+  já está no processo) e recusa rodar se a URL não for local. Ele usa a porta
+  3010 (`E2E_BASE_URL`): um `next dev` aberto na 3000 contra a nuvem seria
+  reaproveitado (`reuseExistingServer`) e a suíte falaria com os dois bancos.
+- Refazer a base (quando a nuvem ganhar SQL fora das migrations):
+  `node scripts/banco-local.mjs base`, com a URI do Session pooler em
+  `apps/web/.env.banco-cloud` (fora do git; a nuvem tem restrição de rede: o IP
+  da máquina tem de estar liberado no painel).
+
+```
+cd apps/web
+node scripts/banco-local.mjs preparar
+node scripts/com-banco-local.mjs pnpm exec playwright test e2e/x.spec.ts --workers=1
+node scripts/com-banco-local.mjs pnpm test:e2e:completa
+```
+
 ---
 
 ## O que nunca fazer aqui

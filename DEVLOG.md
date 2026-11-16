@@ -1774,6 +1774,17 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — O banco de testes local: um Supabase no Docker com a estrutura da nuvem e nenhum dado
+
+O Heitor: "vamos subir um banco separado pra testes usando supabase self hosted… local aqui na maquina" (o motivo é o custo: ele não quer subir plano). A suíte e as simulações usavam o banco da produção, e a instância Small reiniciava sob a carga.
+
+- Ele instalou o WSL e o Docker. `infra/banco-de-teste/` tem o projeto do Supabase CLI, com Postgres 17 e o que o teste não usa desligado.
+- **A base é o dump só de esquema da nuvem**: as migrations não reconstroem o banco (clones de 08/07 e SQL direto, como o Heitor lembrou). Sem dado nenhum. A semente traz só os planos e a configuração da plataforma.
+- Conferido pela impressão digital: tabelas, funções, políticas, gatilhos, índices, Realtime, buckets, colunas e os GRANTs, todos iguais. O primeiro teste pegou uma diferença de verdade: as permissões padrão do Supabase abriam para a anon key funções que a nuvem fecha. A `previa.sql`/`fim.sql` resolve.
+- `apps/web/scripts/banco-local.mjs preparar` aplica por cima da base as migrations novas, refaz o banco e cria a rede de teste. `com-banco-local.mjs <comando>` roda qualquer coisa contra ele, na porta 3010. Regras em `docs/regras/e2e.md`.
+- Contra ele passaram `autenticacao`, `pdv-varias-formas-e-crediario-avulso`, `rls-isolamento`, `credenciais-fora-da-sessao`, `rls-sessao-so-le` e `api-sem-credencial` (40 testes).
+- Falta: a completa inteira contra ele e o GitHub Actions com `supabase start` no job. A base fora do git pede uma decisão de onde guardá-la para o CI.
+
 ### 2026-11-16 — A 20ª simulação (Ateliê Dália, uma unidade; Rede Tulipa, duas, com o Copilot): o loop pausa aqui
 
 Os dois times rodaram na produção de 11:01 a ~12:10, sobre os consertos da 19ª (`7c32380d`). O relatório tem 4 defeitos, todos novos e nenhum conserto da 19ª voltou, mais 37 atritos e 22 enganos/regras/artefatos.

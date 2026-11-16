@@ -1,0 +1,7 @@
+# A base (o dump da nuvem) e as migrations copiadas do repositório são geradas
+# por apps/web/scripts/banco-local.mjs; o dump, nunca no git.
+supabase/migrations/
+supabase/.branches
+supabase/.temp
+dump/
+.env*
