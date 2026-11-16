@@ -1805,6 +1805,11 @@ O relatório consolidado ficou em `apps/web/.sim/relatorio.md`, e a 16ª foi arq
   - **A26 a A28:** a Auditoria diz de quem é a comissão paga, o voucher, os pontos, o item, o "Fechou de novo" e o estorno do atendimento. A oportunidade e o contato aparecem pelo nome lido agora, e o filtro por unidade vale pela unidade da gravação.
   - **A6 a A21, A29 e A30:** a hora em que a ficha foi ao app; a dose do insumo como parte da embalagem; a foto enviada no histórico; a hora real no "Confirmar e avaliar"; o aviso no celular sem pedir resposta; o aviso ao apagar a última etapa de perda; o botão da importação dizendo o que entra; o "Sim" dizendo o que muda no contato; os links do procedimento em outra aba; "Cargo salvo" e o Copilot no resumo do cargo; o aviso das comissões ao cadastrar quem atende; o card da unidade sem cidade; a unidade principal na Equipe; o desativar sem "sai da agenda"; o vocabulário por permissão e sem cargo no feminino.
   - **Ficaram de fora:** o A13 (as tags, com o Heitor) e, do A24, o nome de quem pode mudar a comissão, que exigiria uma leitura nova da equipe por permissão.
+- **A completa local sobre o dc6b0863:**
+  - **Placar:** isolados com 1589 passando, 8 falhando e 18 que não rodaram; compartilhados com 760 passando.
+  - **Nenhuma falha era do produto.** Cinco caíram no reinício forçado do Postgres às 02:14 UTC ("database system was interrupted", com 520, 521 e PGRST002). Uma foi statement timeout, e duas ficaram lentas na mesma janela.
+  - **Os 8 specs passam rodados de novo:** 38 de 38.
+  - **O compute do projeto segue com o Heitor.**
 
 
 ### 2026-11-16 — A 16ª simulação (Lótus, uma unidade; Jasmim, duas, com o Copilot) e os defeitos dela
