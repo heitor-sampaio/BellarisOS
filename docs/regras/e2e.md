@@ -360,6 +360,22 @@ da nuvem e NENHUM dado dela (LGPD: nem as redes reais, nem as `[sim]`).
     ficam SKIPPED quando o commit não os toca).
   - Fica de fora o que a suíte não alcança: os provedores de fora (WhatsApp,
     Meta, Asaas, OpenAI) são falsos nela.
+  - O que o `conferir` NÃO compara, e foi acertado à mão na 1ª completa local
+    (16/11):
+    - **a configuração do Auth** (`infra/banco-de-teste/supabase/config.toml`):
+      o TOTP (MFA) é LIGADO, como na nuvem — a plataforma exige o segundo fator,
+      e com ele desligado 19 specs do sistema e do suporte caíam. Mudou uma
+      opção do Auth na nuvem? Muda aqui também;
+    - **as linhas de sistema** que uma migration insere e o dump só de esquema
+      não leva: estão na semente (`supabase/seed.sql`), e o `conferir` conta a
+      do `support_signals`. Migration nova que insere linha de sistema entra
+      nas duas;
+    - **o gateway local recusa endereço longo** ("URI too long" passando de uns
+      8 kB), e o da nuvem aceita: um `.in()` de 300 uuids passa lá e cai aqui.
+      Lote de 150, como a limpeza (`LOTE` em `e2e/apoio/limpeza.ts`).
+  - O banco local é mais RÁPIDO que a nuvem: corrida que lá não aparece aparece
+    aqui (a 1ª completa achou a confirmação "Documentos assinados" desmontada
+    pela revalidação). É defeito do produto, não do ambiente.
 - Refazer a base (quando a nuvem ganhar SQL fora das migrations):
   `node scripts/banco-local.mjs base`, com a URI do Session pooler em
   `apps/web/.env.banco-cloud` (fora do git; a nuvem tem restrição de rede: o IP

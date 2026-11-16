@@ -66,9 +66,11 @@ test.afterAll(async () => {
   const t = criado.outra.tenantId
   olhar('desligar as conversas', await b.from('conversations').update({ lead_id: null }).eq('tenant_id', t))
   // Em lotes até esvaziar: um select só pararia em 1000 — o mesmo teto que
-  // este arquivo existe para provar que o inbox não tem mais.
-  for (let volta = 0; volta < 20; volta++) {
-    const { data: ls } = await b.from('leads').select('id').eq('tenant_id', t).limit(300)
+  // este arquivo existe para provar que o inbox não tem mais. Lotes de 150 ids:
+  // com 300 o endereço do `in` passa de 11 kB, e o gateway do banco de testes
+  // local recusa ("URI too long") — o da nuvem aceita.
+  for (let volta = 0; volta < 40; volta++) {
+    const { data: ls } = await b.from('leads').select('id').eq('tenant_id', t).limit(150)
     const lote = ((ls ?? []) as { id: string }[]).map(l => l.id)
     if (lote.length === 0) break
     olhar('histórico', await b.from('lead_events').delete().in('lead_id', lote))

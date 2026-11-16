@@ -12,5 +12,7 @@ union all select 'restricao '||n.nspname||'.'||c.relname||'.'||k.conname||' '||m
 union all select 'tipo '||n.nspname||'.'||t.typname||' '||md5(coalesce((select string_agg(enumlabel, ',' order by enumsortorder) from pg_enum e where e.enumtypid=t.oid),'')) from pg_type t join pg_namespace n on n.oid=t.typnamespace where n.nspname in ('public','private') and t.typtype in ('e','d')
 union all select 'realtime '||schemaname||'.'||tablename||' x' from pg_publication_tables where pubname='supabase_realtime'
 union all select 'bucket '||id||' '||md5(public::text||coalesce(file_size_limit::text,'')||coalesce(array_to_string(allowed_mime_types,','),'')) from storage.buckets
+-- As linhas de sistema que as migrations inserem e o dump só de esquema não leva (a semente local as põe).
+union all select 'linha public.support_signals '||count(*)::text from public.support_signals
 union all select 'extensao '||extname||' x' from pg_extension where extname not in ('pg_graphql','pg_stat_statements','supabase_vault','pgsodium','pg_net','pgjwt','plpgsql')
 order by 1;

@@ -149,6 +149,11 @@ test('A36, A37 e A38: a 1440 px as ações da linha cabem, o "A pagar" fica na l
     expect(caixaDoRemarcar.x + caixaDoRemarcar.width, 'o "Remarcar vencimento" dentro do cartão').toBeLessThanOrEqual(caixaDaTabela.x + caixaDaTabela.width + 1)
 
     await p.goto('/admin/financeiro?period=month')
+    // O Resumo chega por streaming: a caixa só se lê com o cartão na tela (o
+    // boundingBox devolve null sem esperar, e contra o banco local o goto volta
+    // antes dos cartões).
+    await expect(p.locator('[data-kpi="a-pagar"]')).toBeVisible()
+    await expect(p.locator('[data-kpi="a-receber"]')).toBeVisible()
     const aPagar = (await p.locator('[data-kpi="a-pagar"]').boundingBox())!
     const aReceber = (await p.locator('[data-kpi="a-receber"]').boundingBox())!
     expect(Math.abs(aPagar.y - aReceber.y), 'na mesma linha').toBeLessThan(2)
@@ -172,6 +177,11 @@ test('A42 e A43: quem tem o Financeiro em Ver lê "Ver a lista"; as contas a pag
 
     // A43: o "A pagar" diz todo o em aberto e leva à lista dele.
     await p.goto('/admin/financeiro?period=month')
+    // O Resumo chega por streaming: a caixa só se lê com o cartão na tela (o
+    // boundingBox devolve null sem esperar, e contra o banco local o goto volta
+    // antes dos cartões).
+    await expect(p.locator('[data-kpi="a-pagar"]')).toBeVisible()
+    await expect(p.locator('[data-kpi="a-receber"]')).toBeVisible()
     const aPagar = p.locator('[data-kpi="a-pagar"] [data-em-aberto]')
     await expect(aPagar).toContainText(/R\$\s1\.300,00/)
     await aPagar.getByRole('link', { name: 'Ver a lista' }).click()

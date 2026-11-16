@@ -105,6 +105,11 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
   // A46 da 7ª simulação: assinado no PAPEL, o aparelho nunca saiu da mão da equipe.
   const [noPapel, setNoPapel] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // Os abertos que foram JUNTO no aparelho, guardados na entrega: assinados,
+  // a página revalida e o servidor manda `juntos` vazio (não há mais aberto)
+  // — sem guardar, a tela trocava de ramo, desmontava a confirmação
+  // "Documentos assinados" e mostrava o termo com o quadro de assinar de novo.
+  const [entregues, setEntregues] = useState<JuntosNaAssinatura['documentos'] | null>(null)
   const [enviando, iniciar] = useTransition()
 
   const arvore = useMemo<DocumentoResolvido | null>(() => (doc.conteudo ? lerConteudo(doc.conteudo) : null), [doc.conteudo])
@@ -202,11 +207,11 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
 
   // ── DC3: o aparelho entregue com todos os abertos do momento ──────────────
   const comJuntos = canal === 'CLINICA' && !!juntos?.documentos.length
-  if (modo === 'cliente' && comJuntos) {
+  if (modo === 'cliente' && canal === 'CLINICA' && entregues?.length) {
     return (
       <TelaCheiaDaCliente>
         <AssinarJuntos
-          documentos={[doc, ...juntos!.documentos]}
+          documentos={[doc, ...entregues]}
           assinante={assinante}
           cabecalho={`${assinante}: leia os documentos e assine uma vez no fim.`}
           final="Devolva o aparelho à equipe."
@@ -368,7 +373,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
                 </span>
               </label>
               <button type="button" className="btn-primary" disabled={!conferido || !hash}
-                onClick={() => { setModo('cliente'); window.scrollTo({ top: 0 }) }}
+                onClick={() => { setEntregues(juntos?.documentos ?? null); setModo('cliente'); window.scrollTo({ top: 0 }) }}
                 style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <Tablet size={15} /> Entregar ao cliente
               </button>

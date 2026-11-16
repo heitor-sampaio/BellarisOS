@@ -231,17 +231,25 @@ test('oportunidade com responsável e valor; trocar o responsável grava DE → 
   })
 })
 
-test('documentos: a situação de cada termo — e sem o módulo, nem a ferramenta', async ({ browser }) => {
+test('documentos: a situação de cada termo — de quem vê a cliente, e sem Clientes, nem a ferramenta', async ({ browser }) => {
   await comSessao(browser, rede.dono.estado, async p => {
     await p.goto('/admin/documentos')
     const { saida } = await chamar(p, 'documentos', { situacao: 'a_enviar' })
     expect(saida?.documentos).toEqual([expect.objectContaining({ titulo: `${PREFIXO} Termo copnov ${marca}`, situacao: 'A enviar' })])
     expect(JSON.stringify(saida)).toContain('Novidade Sem Tag')
   })
-  const semDocumentos = await rede.membro('doc', [{ modulo: 'clients', nivel: 'VIEW' }])
-  await comSessao(browser, semDocumentos.estado, async p => {
+  // O módulo Documentos é o dos MODELOS (o Heitor, 2026-11-16): os documentos
+  // da cliente são de quem vê a cliente — Clientes em Ver basta.
+  const comClientes = await rede.membro('doc', [{ modulo: 'clients', nivel: 'VIEW' }])
+  await comSessao(browser, comClientes.estado, async p => {
     await p.goto('/admin/clients')
     const { oferecidas } = await chamar(p, 'buscar', { termo: 'copnov' })
+    expect(oferecidas).toContain('documentos')
+  })
+  const semClientes = await rede.membro('doc2', [{ modulo: 'agenda', nivel: 'VIEW' }])
+  await comSessao(browser, semClientes.estado, async p => {
+    await p.goto('/admin/agenda')
+    const { oferecidas } = await chamar(p, 'agendamentos', {})
     expect(oferecidas).not.toContain('documentos')
   })
 })

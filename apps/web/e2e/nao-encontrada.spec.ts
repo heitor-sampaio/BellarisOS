@@ -33,12 +33,14 @@ test('no portal da rede: dentro do layout, com a barra lateral e a volta ao dash
  * provar aqui é a reserva no documento desenhado (as <meta> do layout), que é
  * de onde `configDoSupabaseNoNavegador` lê (tests/supabase-config-do-navegador).
  */
+// O endereço é o do ambiente: https na nuvem, http://127.0.0.1 no banco de
+// testes local (scripts/banco-local.mjs).
 test('no 404 de cada portal, a config do Supabase está no documento mesmo sem o script', async ({ page }) => {
   const unidade = (await unidadesAtivas())[0]
   for (const url of ['/admin/equipe-que-nao-existe', ...(unidade ? [`/${unidade.slug}/cashier`] : [])]) {
     await page.goto(url)
     await expect(page.getByRole('heading', { name: TITULO })).toBeVisible()
-    await expect(page.locator('meta[name="bellaris-supabase-url"]'), url).toHaveAttribute('content', /^https:\/\//)
+    await expect(page.locator('meta[name="bellaris-supabase-url"]'), url).toHaveAttribute('content', /^https?:\/\/./)
     await expect(page.locator('meta[name="bellaris-supabase-key"]'), url).toHaveAttribute('content', /.+/)
   }
 })
