@@ -223,6 +223,9 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     `dispensaDocumentos`). Ligar o modelo ao procedimento é `procedures`. E os
     modelos são da REDE: quem não tem “A rede inteira” não os cria nem muda
     (H7, 2026-11-01; `recusaDaConfigDaRede`, `plataforma.md`).
+    Nenhum modelo de cargo nasce com ele (o Heitor, 2026-11-16, sobre o
+    Gerente: "Pode deixar sem"): de saída, só a Admin da rede mexe nos
+    modelos; a rede dá a quem quiser.
   - **Ver os documentos da cliente é de quem vê a cliente** (`clients: VIEW`,
     `veOsDocumentos` em `lib/documentos/acesso.ts`): a aba Documentos da
     ficha, o painel `/documentos` (e a entrada do menu), a trilha, o Copilot.
