@@ -1836,6 +1836,10 @@ O relatório ficou em `apps/web/.sim/relatorio.md`, e a 17ª foi arquivada em `.
     - o A29 em parte: marcar quem atende dentro da janela de desativar pediria uma action nova que repete as regras da Equipe;
     - o A25, que é só para observar.
   - **Para o Heitor confirmar:** quem tem unidades continua sem ver "Abriu o prontuário" na Auditoria (a decisão de 27/10). Para abrir, basta tirar o filtro em `lerAuditoria`.
+- **A completa local sobre o 39b18134:**
+  - **Placar:** isolados com 1581 passando e 15 falhando; compartilhados com 764 passando e 1 falhando.
+  - **O banco:** o Postgres reiniciou à força duas vezes durante a suíte, às 06:27 e às 07:23 UTC.
+  - **Rodados de novo, os 16 specs passam (75 testes), menos um:** o `portal-cliente-documento-enviado` procurava no app o nome técnico da foto. O A10 da 18ª passou a chamá-la "Uma foto do seu atendimento", e o spec mudou com a regra.
 
 
 ### 2026-11-16 — A 17ª simulação (Magnólia, uma unidade; Camélia, duas, com o Copilot) e os defeitos dela

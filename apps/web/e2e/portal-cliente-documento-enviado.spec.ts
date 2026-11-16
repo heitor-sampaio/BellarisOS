@@ -90,7 +90,10 @@ test.describe.serial('o documento chega ao app só quando a rede envia', () => {
 
     await como(browser, cliente!.estado, async p => {
       await abrirDocumentosDoPortal(p)
-      await expect(p.getByText(NOME_DA_FOTO)).toBeVisible()
+      // A10 da 18ª: no app, a foto clínica se chama "Uma foto do seu
+      // atendimento", não o nome técnico que a equipe deu ao anexar.
+      await expect(p.getByText(/^Uma foto do seu atendimento/)).toBeVisible()
+      await expect(p.getByText(NOME_DA_FOTO)).toHaveCount(0)
     })
   })
 
