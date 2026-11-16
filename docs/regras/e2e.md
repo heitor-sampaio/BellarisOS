@@ -346,6 +346,20 @@ da nuvem e NENHUM dado dela (LGPD: nem as redes reais, nem as `[sim]`).
   já está no processo) e recusa rodar se a URL não for local. Ele usa a porta
   3010 (`E2E_BASE_URL`): um `next dev` aberto na 3000 contra a nuvem seria
   reaproveitado (`reuseExistingServer`) e a suíte falaria com os dois bancos.
+- **"Passou aqui, funciona lá"** (o Heitor, 16/11: "Eu só quero garantia que se a
+  local passar aqui e fizer o commit, o sistema em produção vai estar com tudo
+  funcionando também"). Toda entrega, além da suíte local:
+  - **antes do commit**, `node scripts/banco-local.mjs conferir`: a estrutura do
+    banco local (que nasce dos ARQUIVOS) contra a da produção (que nasce do que
+    foi aplicado), objeto por objeto (`infra/banco-de-teste/estrutura.sql`:
+    funções com corpo e GRANTs, políticas, colunas, tabelas, gatilhos, índices,
+    restrições, tipos, Realtime, buckets). Diferença = o arquivo e a produção
+    divergiram: acertar antes do commit (em 16/11 ele pegou a semente dos cargos
+    aplicada com um texto diferente do arquivo);
+  - **depois do push**, o deploy no Railway de cada serviço em SUCCESS (os crons
+    ficam SKIPPED quando o commit não os toca).
+  - Fica de fora o que a suíte não alcança: os provedores de fora (WhatsApp,
+    Meta, Asaas, OpenAI) são falsos nela.
 - Refazer a base (quando a nuvem ganhar SQL fora das migrations):
   `node scripts/banco-local.mjs base`, com a URI do Session pooler em
   `apps/web/.env.banco-cloud` (fora do git; a nuvem tem restrição de rede: o IP

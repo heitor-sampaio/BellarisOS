@@ -21,6 +21,7 @@
  *
  * Uso (de apps/web, com o Docker aberto):
  *   node scripts/banco-local.mjs preparar   # sobe, refaz do zero, cria a rede de teste
+ *   node scripts/banco-local.mjs conferir   # a estrutura daqui é a da produção? (antes do commit)
  *   node scripts/banco-local.mjs env        # só regrava apps/web/.env.banco-local
  *   node scripts/banco-local.mjs parar
  * Depois, qualquer comando contra ele: `node scripts/com-banco-local.mjs <comando>`.
@@ -97,6 +98,44 @@ function tirarBase() {
   console.log('[banco-local] base refeita; confira se não há migration aplicada na nuvem DEPOIS do dump fora da lista')
 }
 
+/**
+ * O banco local é igual ao da PRODUÇÃO? A garantia de "passou aqui, funciona
+ * lá" depende disto: a suíte prova o código contra o banco local, e o local
+ * nasce dos ARQUIVOS de migration — a produção, do que foi aplicado nela.
+ * Compara objeto por objeto (funções com o corpo e as permissões, políticas,
+ * colunas, tabelas, gatilhos, índices, restrições, tipos, Realtime, buckets)
+ * e sai com erro dizendo o que difere. Só leitura nos dois. Pede
+ * `apps/web/.env.banco-cloud` e o IP liberado na restrição de rede da nuvem.
+ */
+function conferir() {
+  const arq = path.join(WEB, '.env.banco-cloud')
+  const url = fs.existsSync(arq) && fs.readFileSync(arq, 'utf8').match(/^SUPABASE_DB_URL=(.+)$/m)?.[1].trim().replace(/^"|"$/g, '')
+  if (!url) throw new Error('Falta SUPABASE_DB_URL em apps/web/.env.banco-cloud.')
+  const sql = fs.readFileSync(path.join(INFRA, 'estrutura.sql'), 'utf8')
+  const ler = (alvo) => {
+    const r = spawnSync('docker', ['exec', '-i', '-e', `U=${alvo}`, '-e', 'PGSSLMODE=' + (alvo.includes('127.0.0.1') || alvo === 'local' ? 'disable' : 'require'),
+      'supabase_db_banco-de-teste', 'sh', '-c', alvo === 'local' ? 'psql -U postgres -At -v ON_ERROR_STOP=1' : 'psql "$U" -At -v ON_ERROR_STOP=1'],
+      { env, input: sql, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+    if (r.status !== 0) throw new Error(`não consegui ler o banco ${alvo === 'local' ? 'local' : 'da nuvem'}: ${(r.stderr ?? '').replace(/postgres(ql)?:\/\/\S+/g, '<url>').trim()}`)
+    return new Map(r.stdout.split(/\r?\n/).filter(Boolean).map(l => { const i = l.lastIndexOf(' '); return [l.slice(0, i), l.slice(i + 1)] }))
+  }
+  const local = ler('local')
+  const nuvem = ler(url)
+  const so = (a, b) => [...a.keys()].filter(k => !b.has(k))
+  const diferentes = [...local.keys()].filter(k => nuvem.has(k) && nuvem.get(k) !== local.get(k))
+  const soLocal = so(local, nuvem)
+  const soNuvem = so(nuvem, local)
+  console.log(`[banco-local] ${local.size} objetos aqui, ${nuvem.size} na produção`)
+  if (!diferentes.length && !soLocal.length && !soNuvem.length) {
+    console.log('[banco-local] a estrutura do banco local é IGUAL à da produção')
+    return
+  }
+  for (const k of diferentes) console.log(`  diferente: ${k}`)
+  for (const k of soLocal) console.log(`  só no local (o arquivo não foi aplicado na produção?): ${k}`)
+  for (const k of soNuvem) console.log(`  só na produção (aplicado sem arquivo?): ${k}`)
+  throw new Error(`${diferentes.length + soLocal.length + soNuvem.length} diferença(s) entre o banco local e o da produção`)
+}
+
 const comando = process.argv[2]
 try {
   if (comando === 'preparar') {
@@ -111,10 +150,12 @@ try {
     gravarEnv()
   } else if (comando === 'base') {
     tirarBase()
+  } else if (comando === 'conferir') {
+    conferir()
   } else if (comando === 'parar') {
     supabase(['stop'])
   } else {
-    console.log('Uso: node scripts/banco-local.mjs preparar | env | base | parar')
+    console.log('Uso: node scripts/banco-local.mjs preparar | conferir | env | base | parar')
     process.exit(1)
   }
 } catch (e) {
