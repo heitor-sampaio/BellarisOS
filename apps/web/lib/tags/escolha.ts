@@ -35,3 +35,24 @@ export function validarNomeDeTag(bruto: string): { nome: string } | { error: str
   if (nome.length > 60) return { error: 'A tag tem no máximo 60 caracteres.' }
   return { nome }
 }
+
+/**
+ * As tags que a gravação guarda (D7 da 18ª simulação): só as do vocabulário,
+ * com o nome dele, mais as que o registro já tinha (a arquivada, a de antes do
+ * vocabulário — tirá-las seria mexer no que a pessoa não tocou). A tag que
+ * não existe não se grava: o gatilho `trg_registrar_tags` a poria no
+ * vocabulário, e criar tag é de Configurações → Tags, de quem tem “A rede
+ * inteira” (H7). O card da oportunidade tinha uma entrada livre que criava.
+ */
+export function tagsDoVocabulario(pedidas: readonly string[], vocabulario: readonly string[], jaTinha: readonly string[]): string[] {
+  const saida: string[] = []
+  for (const bruta of pedidas) {
+    const t = bruta.trim()
+    if (!t || temTag(saida, t)) continue
+    const doVocabulario = vocabulario.find(v => chave(v) === chave(t))
+    const antiga = jaTinha.find(v => chave(v) === chave(t))
+    const nome = doVocabulario ?? antiga
+    if (nome) saida.push(nome)
+  }
+  return saida
+}

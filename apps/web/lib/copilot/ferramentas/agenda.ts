@@ -5,7 +5,7 @@ import { computeAvailableSlots } from '@/lib/appointments/core'
 import { ler } from '@/lib/db'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
-  DATA, UUID, STATUS_DO_AGENDAMENTO, fusoDe, fusosPorUnidade, hojeNoFuso, horaAgoraNoFuso, idsDasUnidades, janelaDoDia, nomesPorId,
+  DATA, UUID, STATUS_DO_AGENDAMENTO, fusoDe, fusosPorUnidade, hojeNoFuso, horaAgoraNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, ondeProcurou,
   quandoLegivel,
   resolverProcedimento, resolverProfissional, resolverUnidade, rota,
 } from '@/lib/copilot/ferramentas/comum'
@@ -23,7 +23,7 @@ export const agendamentos: FerramentaDeLeitura<{
   nome: 'agendamentos',
   tipo: 'leitura',
   modulo: 'agenda', nivel: 'VIEW',
-  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (id). Sem datas, é hoje.',
+  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (id). Sem datas, é hoje. Sem unidade, procura em todas as unidades da pessoa; "procurouEm" diz quais — ao não encontrar, diga onde procurou.',
   parametros: z.object({
     de: DATA.optional().describe('Primeiro dia (AAAA-MM-DD). Padrão: hoje.'),
     ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de".'),
@@ -33,10 +33,12 @@ export const agendamentos: FerramentaDeLeitura<{
     cliente: UUID.optional().describe('Id do cliente (use buscar antes).'),
   }),
   async executar(c, args) {
-    const u = await resolverUnidade(c, args.unidade)
+    // Sem unidade no pedido, em TODAS as da pessoa (D4 da 18ª), e diz onde procurou.
+    const u = await resolverUnidade(c, args.unidade, { paraLer: true })
     if ('erro' in u) return { dados: { erro: u.erro } }
     const unidades = await idsDasUnidades(c, u.unidade)
     if (!unidades.length) return { dados: { agendamentos: [] } }
+    const procurouEm = await ondeProcurou(c, unidades)
     // O dia é o da unidade (F62b): o de Manaus vai de 04:00 a 03:59 UTC.
     const fuso = await fusoDe(c, u.unidade?.id ?? (unidades.length === 1 ? unidades[0] : null))
 
@@ -90,7 +92,7 @@ export const agendamentos: FerramentaDeLeitura<{
       href: rota(c, `/agenda/${l.id}`),
     }))
     return {
-      dados: { periodo: de === ate ? de : `${de} a ${ate}`, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
+      dados: { periodo: de === ate ? de : `${de} a ${ate}`, procurouEm, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
       cartao: lista.length ? {
         tipo: 'links', titulo: `Agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : `${de} a ${ate}`}`,
         itens: lista.slice(0, 12).map(a => ({ texto: `${a.quando.split(' às ')[1] ?? a.quando} · ${a.cliente}`, detalhe: `${a.procedimento} · ${a.profissional} · ${a.status}`, href: a.href })),

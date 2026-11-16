@@ -13,7 +13,8 @@ import { rotaCliente } from '@/lib/rotas'
 import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
 import {
   SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
-  estornoAnteriorEmTexto, valorNaLista, type ComandaDoPdv, type SituacaoDoPdv,
+  estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
+  type ComandaDoPdv, type SituacaoDoPdv,
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
@@ -37,8 +38,10 @@ export interface ComandaEscolhida {
   quemEstorna?:       string[] | null
   /** A1 da 16ª: as parcelas em aberto da venda desta comanda, com o "Receber esta parcela". */
   parcelasDaComanda?: ParcelaEmAberto[]
-  /** A2 da 17ª: a quem estorna (`podeEstornar`), os pagamentos da comanda paga, cada um com o "Estornar". */
+  /** A2 da 17ª: os pagamentos da comanda paga; a quem estorna (`podeEstornar`), cada um com o "Estornar". */
   pagamentos?:        LancamentoDaComanda[] | null
+  /** A1 da 18ª: o "Estornar" de cada pagamento (`podeEstornar`). */
+  podeEstornar?:      boolean
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -249,6 +252,14 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
   const totalPago = c.origem === 'ATENDIMENTO' && c.paga && !c.estornada && c.recebido != null
   // A2 da 17ª: a comanda reaberta diz o pagamento estornado de antes.
   const estornoAnterior = aReceber ? estornoAnteriorEmTexto(c, hora) : null
+  // D2 da 18ª: a reaberta cita também o produto estornado.
+  const produtoEstornado = aReceber && c.origem === 'ATENDIMENTO' ? produtosEstornadosEmTexto(e.itens, hora) : null
+  // A1 da 18ª: o atendimento e os produtos recebidos juntos são dois lançamentos — a tela diz.
+  const pagoJunto = e.pagamentos ? pagoJuntoEmTexto(e.pagamentos) : null
+  // A1 da 18ª: o estorno é por lançamento — com produto, o atendimento ou o produto.
+  const quemEstornaOQue = c.origem === 'ATENDIMENTO' && c.produtos > 0
+    ? 'Estornar o atendimento ou o produto desta comanda é de quem tem o Financeiro em Gerenciar'
+    : 'Estornar esta comanda é de quem tem o Financeiro em Gerenciar'
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--hairline)' }}>
@@ -334,10 +345,16 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
               {e.parcelasDaComanda && e.parcelasDaComanda.length > 0 && (
                 <ParcelasEmAberto parcelas={e.parcelasDaComanda} slug={slugDaUnidade} titulo="Parcelas desta venda" compacta />
               )}
-              {/* A2 da 17ª (princípio 7): quem estorna estorna aqui, com a janela e o motivo de sempre. */}
-              {e.pagamentos && e.pagamentos.length > 0 && (
+              {/* A2 da 17ª (princípio 7): quem estorna estorna aqui, com a janela e o motivo de sempre.
+                  A1 da 18ª: cada linha diz o que é, e o recebido junto se diz. */}
+              {e.pagamentos && e.pagamentos.length > 0 && (e.podeEstornar || e.pagamentos.length > 1) && (
                 <div data-pagamentos-da-comanda style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <p className="field-label">{e.pagamentos.length === 1 ? 'Pagamento desta comanda' : 'Pagamentos desta comanda'}</p>
+                  {pagoJunto && (
+                    <p data-pago-junto style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                      {pagoJunto}. Cada parte se estorna sozinha.
+                    </p>
+                  )}
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-field)', background: 'var(--surface)' }}>
                     {e.pagamentos.map((l, i) => (
                       <li key={l.id} data-pagamento-da-comanda={l.id} style={{
@@ -345,13 +362,15 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
                         borderTop: i ? '1px solid var(--hairline)' : undefined,
                       }}>
                         <span title={l.descricao} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                          <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>{rotuloDaForma(l.metodo, l.vezes)} · {brl(l.valor)}</b> · {l.descricao}
+                          <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>{rotuloDoPagamentoDaComanda(l) ?? l.descricao}</b> · {rotuloDaForma(l.metodo, l.vezes)} · {brl(l.valor)}
                         </span>
-                        <AcoesDoLancamentoDaFicha slug={slugDaUnidade} podeEstornar podeReceber={false} aoEstornar={aoEstornar}
-                          lancamento={{
-                            id: l.id, descricao: l.descricao, valor: l.valor, pago: true, metodo: l.metodo,
-                            vendaDeProduto: l.vendaDeProduto, vendaDeCredito: l.vendaDeCredito, doAtendimento: l.doAtendimento,
-                          }} />
+                        {e.podeEstornar && (
+                          <AcoesDoLancamentoDaFicha slug={slugDaUnidade} podeEstornar podeReceber={false} aoEstornar={aoEstornar}
+                            lancamento={{
+                              id: l.id, descricao: l.descricao, valor: l.valor, pago: true, metodo: l.metodo,
+                              vendaDeProduto: l.vendaDeProduto, vendaDeCredito: l.vendaDeCredito, doAtendimento: l.doAtendimento,
+                            }} />
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -360,7 +379,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
               {/* A2 da 15ª: a quem não estorna, de quem é o estorno — a frase da ficha. */}
               {e.quemEstorna && (
                 <p data-quem-estorna style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px' }}>
-                  Estornar esta comanda é de quem tem o Financeiro em Gerenciar
+                  {quemEstornaOQue}
                   {e.quemEstorna.length > 0 ? `: ${e.quemEstorna.join(', ')} (na ficha da cliente, aba Financeiro).` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
                 </p>
               )}
@@ -372,6 +391,14 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
               borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)',
             }}>
               {estornoAnterior}. Ao receber de novo, o desconto se escolhe de novo.
+            </p>
+          )}
+          {produtoEstornado && (
+            <p data-produto-estornado style={{
+              color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)',
+            }}>
+              {produtoEstornado}. Fica fora do que falta receber.
             </p>
           )}
           {c.estornada || c.canceladaEm || c.paga ? null : aReceber && c.planoId ? (

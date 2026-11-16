@@ -214,7 +214,7 @@ export async function SessaoDeAtendimento({
     // Sessão de pacote: já paga na venda do pacote, não se cobra de novo
     // (2026-09-27). O servidor recusa em `confirmPayment`; aqui é o botão.
     // O pacote trazido de fora (F35) não teve venda: a tela diz isso (A15 da 10ª).
-    ler(admin.from('package_sessions').select('id, client_packages(de_fora)').eq('appointment_id', id).maybeSingle(),
+    ler(admin.from('package_sessions').select('id, session_number, client_packages(de_fora, total_sessions, service_packages(name))').eq('appointment_id', id).maybeSingle(),
       'conferir se é sessão de pacote'),
     // Procedimento pré-pago: também pago na venda.
     ler(admin.from('procedure_sale_units').select('id').eq('appointment_id', id).neq('status', 'CANCELADA').maybeSingle(),
@@ -329,6 +329,9 @@ export async function SessaoDeAtendimento({
   const fatorDe = (p: { consumption_unit: string | null; units_per_package: number | string | null } | null | undefined) =>
     p?.consumption_unit && Number(p.units_per_package) > 0 ? Number(p.units_per_package) : 1
   const fatores: Record<string, number> = Object.fromEntries(((branchProductsRaw ?? []) as RawBranchProduct[]).map(p => [p.id, fatorDe(p)]))
+  // A9 da 18ª: a embalagem de cada produto, para a linha do insumo dizer "1 ml · 1 seringa".
+  const embalagens = Object.fromEntries(((branchProductsRaw ?? []) as RawBranchProduct[])
+    .map(p => [p.id, { unit: p.unit, consumption_unit: p.consumption_unit, units_per_package: p.units_per_package }]))
   const baixaFeita = apptRaw.status === 'COMPLETED' || apptRaw.status === 'CANCELLED'
   const lotesDosInsumos: LotesDosInsumos = baixaFeita
     ? await (async () => {
@@ -344,7 +347,7 @@ export async function SessaoDeAtendimento({
           const q = Math.round(Number(l.quantity) * fatorDe(l.stock_movements.products) * 1000) / 1000
           ;(feita[l.stock_movements.product_id] ??= []).push({ id: l.product_batches.id, numero: l.product_batches.batch_number, validade: l.product_batches.expires_at, quantidade: q })
         }
-        return { feita, prever: {}, fatores }
+        return { feita, prever: {}, fatores, embalagens }
       })()
     : await (async () => {
         type Lote = { id: string; product_id: string; batch_number: string | null; expires_at: string | null; received_at: string | null; quantity: number | string }
@@ -358,7 +361,7 @@ export async function SessaoDeAtendimento({
         for (const l of lotes) {
           (prever[l.product_id] ??= []).push({ id: l.id, numero: l.batch_number, validade: l.expires_at, recebidoEm: l.received_at, quantidade: Number(l.quantity) })
         }
-        return { feita: null, prever, fatores }
+        return { feita: null, prever, fatores, embalagens }
       })()
 
   const professionals: SessionProfessional[] = ((professionalsRaw ?? []) as { id: string; name: string }[]).map(p => ({
@@ -657,6 +660,11 @@ export async function SessaoDeAtendimento({
         podeInjetaveis={temRecurso(ctx, 'injetaveis')}
         isPackageSession={!!sessaoDePacote}
         pacoteDeFora={!!(sessaoDePacote as { client_packages?: { de_fora?: boolean | null } | null } | null)?.client_packages?.de_fora}
+        // A7 da 18ª: a faixa "Sessão 1 de 6 do pacote …, já paga".
+        sessaoDoPacote={sessaoDePacote ? (() => {
+          const sp = sessaoDePacote as unknown as { session_number: number; client_packages: { de_fora: boolean | null; total_sessions: number | null; service_packages: { name: string } | null } | null }
+          return { numero: sp.session_number, total: sp.client_packages?.total_sessions ?? null, nome: sp.client_packages?.service_packages?.name ?? null, deFora: !!sp.client_packages?.de_fora }
+        })() : null}
         isPrePago={!!unidadePrePaga}
         podeReceber={podeReceber(ctx)}
         // A35 da 12ª: quem recebe e não estorna lê, no pagamento confirmado, a quem pedir.

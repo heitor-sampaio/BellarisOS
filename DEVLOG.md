@@ -1774,6 +1774,70 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — A 18ª simulação (Hortênsia, uma unidade; Gardênia, três, com o Copilot) e os defeitos dela
+
+Dois times de agentes usaram a produção ao mesmo tempo em 16/11, das 01:06 às 02:30 de Brasília, sobre o dc6b0863.
+- **"[sim] Estúdio Hortênsia":** uma unidade, no teste grátis.
+- **"[sim] Rede Gardênia":** três unidades, num plano com o Copilot.
+
+O relatório ficou em `apps/web/.sim/relatorio.md`, e a 17ª foi arquivada em `.sim/arquivo-2026-11-16-1/`.
+
+- **O dinheiro bate nos dois times**, centavo a centavo:
+  - Hortênsia: R$ 2.100 de receita e R$ 1.135,53 de lucro;
+  - Gardênia: R$ 1.250 de receita e R$ 817 de resultado.
+- **Os consertos da 17ª se seguraram:**
+  - o "(você)" no "Quem vendeu" fora da principal;
+  - o "a conferir · mudou depois";
+  - o Estornar dentro da comanda;
+  - a categoria "Material de consumo";
+  - os cartões do Copilot;
+  - a principal na Equipe.
+- **Passou pela primeira vez:**
+  - a sessão agendada PELO pacote;
+  - o contrato do pacote assinado no celular;
+  - o repasse confirmado na desativação.
+- **7 defeitos e 33 atritos:**
+  - **D1:** a comanda não recebe em duas formas. Nunca existiu, e vai para o Heitor.
+  - **D2:** o produto estornado continuava "já pago" na comanda.
+  - **D3:** o "Fechar de novo" recusava o Pix negativo que ele mesmo mostrava.
+  - **D4:** o Copilot lia agendamentos só na unidade da tela.
+  - **D5:** o extrato da comissão escrevia a base de hoje em todas as linhas.
+  - **D6:** o "ainda hoje" contava os concluídos.
+  - **D7:** a tag nova nascia pelo card da oportunidade.
+- **Para o Heitor:**
+  - **A comanda recebe em mais de uma forma** ("+ Outra forma", com o valor de cada uma)? O relatório recomenda fazer: é o caso comum do balcão, e as regras de lançamento, estorno, taxa e pontos já cobrem a conta. É funcionalidade nova no caixa, por isso não entrou.
+  - As 8 tags da rede nova, de novo.
+- **Corrigidos no mesmo commit** (D2 a D7 e 31 dos 33 atritos):
+  - **D2:** o produto estornado sai do "pago" e diz "estornado · voltou ao estoque". Migration `20261118300001`.
+  - **D3:** a forma que não é dinheiro se confere também negativa.
+  - **D5:** cada lançamento do extrato diz a base do pagamento dele. Migration `20261118300002`, `private.comissao_base_do_pagamento`.
+  - **D6:** o "ainda hoje" sem os concluídos e os em atendimento.
+  - **D4:** sem unidade no pedido, o Copilot LÊ em todas as unidades da pessoa e diz onde procurou; GRAVA na unidade da tela.
+  - **D7:** a oportunidade escolhe tag pelo `TagPicker`, e o servidor só grava tag do vocabulário (`tagsDoVocabulario`).
+  - **PDV e fechamento (A1 a A6):** o "Pago junto"; a linha mudada vem em branco no "Fechar de novo"; os estornos do dia em linha própria; a forma estornada continua na tabela; o motivo ao lado do Vender; o aviso ANTES de vender de que o contrato do pacote pede dados que faltam.
+  - **Atendimento e app (A7 a A13, A15 e A16):**
+    - a sessão do pacote se diz paga;
+    - colher a assinatura ao lado do "Falta assinar";
+    - a embalagem na linha do insumo;
+    - "Uma foto do seu atendimento" e o "Enviar à cliente" já no anexar;
+    - o documento assinado abre no app;
+    - a ficha sem o erro repetido;
+    - a hora marcada e a da conclusão no "Confirmar e avaliar";
+    - o aviso do telefone com dígitos a mais.
+  - **CRM e Auditoria (A17, A18 e A30 a A33):**
+    - o motivo da perda no card e o aviso dos funis no quadro;
+    - os campos sem nome cru;
+    - "Cancelou o agendamento";
+    - quem tem unidades vê o que ela mesma gravou sem unidade, e o acesso ao prontuário grava a unidade do endereço (migration `20261118500001`);
+    - o CSV diz de qual comissão.
+  - **Cadastros (A20 a A24, A26 a A28):** a comissão em blocos com o resumo; "X entrou na equipe"; a ordem de "Outros documentos"; o "Tornar ativo" no aviso do contrato novo; o domingo do /setup; o mapa sem pino dito. A cidade agora vai ao geocode também com CEP, e esse era um defeito real. Também: o que falta no cargo junto do Salvar e o "(principal)" na Equipe.
+  - **Ficaram de fora:**
+    - D1 e as tags, com o Heitor;
+    - o A29 em parte: marcar quem atende dentro da janela de desativar pediria uma action nova que repete as regras da Equipe;
+    - o A25, que é só para observar.
+  - **Para o Heitor confirmar:** quem tem unidades continua sem ver "Abriu o prontuário" na Auditoria (a decisão de 27/10). Para abrir, basta tirar o filtro em `lerAuditoria`.
+
+
 ### 2026-11-16 — A 17ª simulação (Magnólia, uma unidade; Camélia, duas, com o Copilot) e os defeitos dela
 
 Dois times de agentes usaram a produção ao mesmo tempo em 15/11, das 20:24 às 21:35 de Brasília, sobre o 6986542a.

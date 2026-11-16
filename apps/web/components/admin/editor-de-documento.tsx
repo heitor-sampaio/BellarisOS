@@ -127,7 +127,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
   /** URLs temporárias das imagens dos modelos (o editor mostra, não guarda). */
   imagens:        Record<string, string>
   /** A8: `nasceuInativo` — o contrato de plano novo ficou inativo; a lista avisa. */
-  onPronto:       (r?: { nasceuInativo?: boolean; nome?: string }) => void
+  onPronto:       (r?: { nasceuInativo?: boolean; nome?: string; id?: string }) => void
   onVoltar:       () => void
 }) {
   const [tipo, setTipo]           = useState<TipoDeModelo>(existente?.tipo ?? tipoInicial)
@@ -161,7 +161,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
       const config = {
         id: existente?.id ?? null, nome, tipo, exigencia,
       }
-      let r: { error?: string; nasceuInativo?: boolean }
+      let r: { error?: string; nasceuInativo?: boolean; id?: string }
       if (origem === 'EDITOR') {
         // Cópia em JSON puro: o ProseMirror cria os `attrs` sem protótipo, e o
         // React mandaria esses objetos à action como referência temporária
@@ -175,7 +175,8 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
         r = await salvarModeloDeArquivo(fd)
       }
       if (r.error) { setErro(r.error); return }
-      onPronto({ nasceuInativo: r.nasceuInativo, nome })
+      // A23 da 18ª: o id do salvo, para a lista oferecer "Tornar ativo" ali mesmo.
+      onPronto({ nasceuInativo: r.nasceuInativo, nome, id: r.id })
     })
   }
 

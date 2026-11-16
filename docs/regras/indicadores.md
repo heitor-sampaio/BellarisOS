@@ -912,7 +912,9 @@ a função de `lib/metrics` devolve nulo, como o ticket e a conversão. Prova:
   marcados para mais tarde): o recorte "até agora" continua, e a etapa
   Agendamentos do dashboard da unidade leva "2 ainda hoje"
   (`aindaHojeNaAgenda`, `lib/metrics/agenda-do-dia.ts`: os de hoje depois de
-  agora, sem os cancelados e as faltas; `[data-nota-da-etapa]`).
+  agora, sem os cancelados e as faltas — e sem os concluídos e os em
+  atendimento, D6 da 18ª: o concluído adiantado contava como "ainda hoje";
+  `[data-nota-da-etapa]`).
 - O gráfico de evolução do dashboard da rede sai de `pontosDaEvolucao`, como o
   dos Relatórios. **Cada ponto diz o que é** (A44 da 6ª simulação,
   2026-11-04): `rotulo` — "03h" na série por hora (o "Hoje"), a DATA ("04/11",

@@ -4,11 +4,9 @@ import { z } from 'zod'
 import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { documentosDoAgendamento, rotuloDoQueFalta } from '@/lib/documentos/leitura'
-import { valoresDoDocumento, type DadosDoDocumento } from '@/lib/documentos/valores'
-import { variavelObrigatoria } from '@/lib/documentos/variaveis'
-import { ehMenorDeIdade } from '@/lib/clients/menor'
+import { documentosDoAgendamento } from '@/lib/documentos/leitura'
 import { oQueFalta } from '@/lib/documentos/o-que-falta'
+import { faltandoDoCadastro, COLUNAS_DA_CLIENTE_NOS_DOCUMENTOS } from '@/lib/documentos/falta-no-cadastro'
 
 /**
  * Os termos e contratos de um agendamento, para a JANELA da agenda (A34 da 6ª
@@ -107,7 +105,7 @@ export async function faltaNoCadastroAoAgendar(clientId: string, procedureId: st
         .eq('id', procedureId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar os modelos do procedimento') as
         Promise<{ consent_template_id: string | null; contract_template_id: string | null; outros_documentos: string[] | null } | null>,
       ler(admin.from('clients')
-        .select('name, document, documento_tipo, documento_numero, birth_date, phone, email, zip_code, address, address_number, address_complement, neighborhood, city, state, gender, responsavel_nome, responsavel_cpf, responsavel_parentesco, responsavel_telefone')
+        .select(COLUNAS_DA_CLIENTE_NOS_DOCUMENTOS)
         .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cadastro da cliente'),
     ])
     // Os "Outros documentos" (DC1b) também nascem ao agendar o avulso.
@@ -121,17 +119,12 @@ export async function faltaNoCadastroAoAgendar(clientId: string, procedureId: st
         .in('template_id', ids).eq('tenant_id', ctx.tenantId!), 'buscar as versões dos modelos') as
         Promise<{ template_id: string; version: number; variables: string[] | null }[] | null>,
     ])
-    const valores = valoresDoDocumento({
-      agora: new Date(), cliente: cli as DadosDoDocumento['cliente'],
-      rede: { name: null, document: null, phone: null, email: null }, unidade: null, procedimento: null, agendamento: null, pagamento: null,
-    } as DadosDoDocumento)
-    const menor = ehMenorDeIdade((cli as { birth_date: string | null }).birth_date)
     const termos: FaltaNoCadastroDoTermo[] = []
     for (const m of modelos ?? []) {
       const versao = (versoes ?? []).find(v => v.template_id === m.id && v.version === m.current_version)
-      const faltam = (versao?.variables ?? [])
-        .filter(v => /^(cliente|responsavel)\./.test(v) && variavelObrigatoria(v, { menor }) && !valores[v])
-      if (faltam.length) termos.push({ titulo: m.name, bloqueia: m.enforcement === 'BLOQUEIA', faltando: oQueFalta(faltam.map(rotuloDoQueFalta)) })
+      // A régua da montagem, a mesma do PDV antes de vender o pacote (A6 da 18ª).
+      const faltando = faltandoDoCadastro(versao?.variables ?? [], cli as Record<string, unknown>)
+      if (faltando.length) termos.push({ titulo: m.name, bloqueia: m.enforcement === 'BLOQUEIA', faltando })
     }
     const bloqueiam = (modelos ?? []).filter(m => m.enforcement === 'BLOQUEIA').map(m => m.name)
     return termos.length || bloqueiam.length ? { termos, podeCompletar: can(ctx, 'clients', 'MANAGE'), bloqueiam } : null

@@ -2,11 +2,11 @@
 
 import { useCallback, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, X } from 'lucide-react'
+import { Ban, Banknote, Percent, Plus, Trash2, X } from 'lucide-react'
 import { parseDinheiro } from '@estetica-os/utils'
-import { SegSelect } from '@/components/shared/seg-select'
 import { salvarRegrasDoProfissional } from '@/actions/comissoes'
 import { rotuloDaRegra, type RegraDeComissao, type TipoDeRegra } from '@/lib/comissoes/config'
+import { resumoDaComissaoDoMembro } from '@/lib/equipe/textos-do-cadastro'
 
 /**
  * A comissão de um membro da equipe: o PADRÃO (percentual, valor fixo ou
@@ -23,10 +23,10 @@ type Tipo = TipoDeRegra | 'NENHUMA'
 interface Linha { procedure_id: string; tipo: TipoDeRegra; valor: string }
 
 const TIPOS = [
-  { key: 'PERCENTAGE',   label: 'Percentual' },
-  { key: 'FIXED_AMOUNT', label: 'Valor fixo' },
-  { key: 'NENHUMA',      label: 'Sem comissão' },
-]
+  { key: 'PERCENTAGE',   label: 'Percentual',   icone: Percent },
+  { key: 'FIXED_AMOUNT', label: 'Valor fixo',   icone: Banknote },
+  { key: 'NENHUMA',      label: 'Sem comissão', icone: Ban },
+] as const
 
 export const paraTexto = (n: number) => String(n).replace('.', ',')
 /** "1.250,50", "1.400" e "12.5" valem — a regra de todo campo de dinheiro (`parseDinheiro`, D3). */
@@ -161,8 +161,24 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p className="overline">Comissão padrão</p>
-        <SegSelect ariaLabel="Tipo da comissão padrão" value={tipo} onSelect={k => setTipo(k as Tipo)} options={TIPOS} />
+        <p className="overline" id="tipo-da-comissao-padrao">Comissão padrão</p>
+        {/* A20 da 18ª (princípio 7): o tipo em blocos lado a lado, como as
+            formas de pagamento — no celular o segmentado virava um botão
+            suspenso, parecido com o campo da comissão de venda logo abaixo. */}
+        <div role="radiogroup" aria-labelledby="tipo-da-comissao-padrao" className="formas-de-pagamento">
+          {TIPOS.map(t => {
+            const Icone = t.icone
+            const marcado = tipo === t.key
+            return (
+              <button key={t.key} type="button" role="radio" aria-checked={marcado} data-tipo-da-comissao={t.key}
+                className={marcado ? 'forma-de-pagamento is-marcada' : 'forma-de-pagamento'}
+                onClick={() => setTipo(t.key)}>
+                <Icone size={18} aria-hidden />
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
         {tipo !== 'NENHUMA' && (
           <CampoDeValor tipo={tipo} valor={valor} onChange={setValor} rotulo="Valor da comissão padrão" />
         )}
@@ -244,6 +260,14 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct
         )}
       </div>
 
+      {/* A20 da 18ª (princípio 3): o que vai valer, dito antes de salvar. */}
+      <p data-resumo-da-comissao role="status" style={{
+        fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)',
+        background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
+      }}>
+        {resumoDaComissaoDoMembro({ tipo, valor, venda })}
+        {linhas.length > 0 && ` ${linhas.length === 1 ? '1 exceção' : `${linhas.length} exceções`} por procedimento.`}
+      </p>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-secondary" onClick={onFim}>Cancelar</button>

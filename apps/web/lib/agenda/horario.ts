@@ -335,3 +335,19 @@ export function ocupacaoEmPct(
   if (!capacidade) return null
   return Math.min(Math.round((minutosAgendados / capacidade) * 100), 100)
 }
+
+/**
+ * O domingo está fechado no horário do formulário (o JSON do campo oculto do
+ * `EditorDeHorario`; nulo = o padrão, que fecha o domingo)? É o que decide o
+ * aviso "O domingo vem fechado" do /setup (A24 da 18ª simulação; princípio 3):
+ * com "Aberta 24 horas" ligado ele seguia lá, com o domingo já aberto.
+ */
+export function domingoFechadoNoHorario(json: string | null): boolean {
+  if (!json) return true
+  try {
+    const h = JSON.parse(json) as { dias?: Record<string, unknown[] | undefined> }
+    return !(h?.dias?.['0']?.length)
+  } catch {
+    return true
+  }
+}

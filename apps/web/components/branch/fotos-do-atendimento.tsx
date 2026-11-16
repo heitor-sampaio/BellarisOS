@@ -120,6 +120,8 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
               })),
             }}
             titulo="Nova foto clínica"
+            // A10 da 18ª: "Enviar à cliente" já aqui, para quem pode enviar.
+            ofereceEnviar={podeMexer && portalNoPlano}
             rotuloDoEnvio="Anexar foto"
             aceita=".jpg,.jpeg,.png,.webp"
           />

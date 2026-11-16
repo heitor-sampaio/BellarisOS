@@ -8,7 +8,7 @@ import { gradeDoCheckout } from '@/lib/checkout/grade-de-horarios'
 import { ocupanteDoHorario } from '@/lib/agenda/horario-livre'
 import type { SalaParaAgendar } from '@/lib/appointments/salas'
 import { creditosParaAgendar } from '@/actions/creditos'
-import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
+import { formatBRL, maskPhone, maskTelefoneDigitando, telefoneDoCadastro, temDigitosDeMais } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { X, Calendar, Search, UserPlus, Loader2, AlertTriangle, CheckCircle2, Ban, FileSignature } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -110,6 +110,8 @@ export function AppointmentModal({
   const [novoContato, setNovoContato] = useState(false)
   const [novoNome,    setNovoNome]    = useState('')
   const [novoTelefone, setNovoTelefone] = useState('')
+  // A16 da 18ª: o dígito a mais é cortado pela máscara — a tela avisa.
+  const [digitosAMais, setDigitosAMais] = useState(false)
 
   // -- Unidade ----------------------------------------------------------------
   // No portal da unidade ela já veio por prop; na rede é escolhida aqui, e cada
@@ -530,9 +532,14 @@ export function AppointmentModal({
                       placeholder="Telefone com DDD"
                       title="De outro país, comece com + e o código (ex.: +351 912 345 678)"
                       value={novoTelefone}
-                      onChange={e => setNovoTelefone(maskTelefoneDigitando(e.target.value))}
+                      onChange={e => { setDigitosAMais(temDigitosDeMais(e.target.value)); setNovoTelefone(maskTelefoneDigitando(e.target.value)) }}
                     />
                   </div>
+                  {digitosAMais && (
+                    <span data-telefone-com-digitos-a-mais role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                      Número com dígitos a mais: confira. Ficou {novoTelefone}.
+                    </span>
+                  )}
                   {/* "Indicada por" (decisão do Heitor, 2026-11-10): a ficha de quem indicou a cliente nova. */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Indicada por (opcional)</span>
@@ -543,7 +550,7 @@ export function AppointmentModal({
                       A ficha completa (CPF, e-mail) pode ser preenchida depois.
                     </span>
                     <button type="button"
-                      onClick={() => { setNovoContato(false); setNovoNome(''); setNovoTelefone('') }}
+                      onClick={() => { setNovoContato(false); setNovoNome(''); setNovoTelefone(''); setDigitosAMais(false) }}
                       style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand)', fontWeight: 700, fontSize: 'var(--text-xs-sz)', whiteSpace: 'nowrap' }}>
                       Buscar cliente cadastrado
                     </button>

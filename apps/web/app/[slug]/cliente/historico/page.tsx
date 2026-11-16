@@ -97,7 +97,7 @@ type PagamentoLido = {
   client_packages: { cancelado_em: string | null } | null
   appointments: { procedures: { name: string } | null } | null
 }
-type DocumentoLido = { id: string; name: string; category: string; file_path: string; created_at: string }
+type DocumentoLido = { id: string; name: string; category: string; file_path: string; created_at: string; momento: string | null }
 const CANAL_NO_PORTAL: Record<string, string> = { CLINICA: 'presencialmente', PAPEL: 'no papel', PORTAL: 'pelo portal', LINK: 'por link' }
 
 export default async function HistoricoPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -140,7 +140,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     // com a equipe até alguém enviar pela ficha (`enviado_em`). A data é a
     // do envio.
     ler(admin.from('client_documents')
-      .select('id, name, category, file_path, created_at:enviado_em')
+      .select('id, name, category, file_path, momento, created_at:enviado_em')
       .eq('client_id', ctx.clientId!)
       .is('apagado_em', null)
       .not('enviado_em', 'is', null)
@@ -231,6 +231,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     id:         r.id,
     name:       r.name,
     category:   r.category,
+    momento:    r.momento ?? null,
     file_url:   docUrlMap[r.file_path] ?? '',
     created_at: r.created_at,
   }))

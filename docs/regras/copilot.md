@@ -102,6 +102,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   com o motivo ("fora do seu alcance. As suas: …") — até o CP1 a ferramenta
   ficava calada na da página. O prompt diz todas as unidades dela. Prova:
   `e2e/copilot-cp1-ferramentas.spec.ts`.
+  **A LEITURA, sem unidade no pedido, é em todas as unidades da pessoa** (D4
+  da 18ª: a pessoa de Derby e Casa Forte, na tela de Derby, não achava o
+  agendamento de Casa Forte): `agendamentos`, `lancamentos` e `estoque`
+  passam `paraLer` ao `resolverUnidade`, `idsDasUnidades` dá as ativas que
+  ela alcança (`ctx.unidades`) e a resposta diz onde procurou (`procurouEm`).
+  Gravar (o agendar e as outras) continua na unidade da tela. Prova:
+  `tests/copilot-defeitos-da-18.test.ts`.
 - **O PDV** (CP1): vender (pacote, pré-pago, produto, crédito interno) e
   receber a comanda são do PDV — o Copilot não vende nem recebe comanda, e o
   prompt manda indicar o PDV. O `marcar_pago` é a baixa do Financeiro

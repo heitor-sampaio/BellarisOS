@@ -63,7 +63,8 @@ describe('A8: a foto enviada é "Foto" no app e entra no histórico do atendimen
 describe('A9: o "Confirmar e avaliar" diz a hora da conclusão', () => {
   it('a página lê a conclusão e o formulário mostra ela', () => {
     expect(ler('app/[slug]/cliente/atendimentos/[id]/confirmar/page.tsx')).toMatch(/concluidoEm=\{/)
-    expect(ler('components/client-portal/confirm-appointment-form.tsx')).toMatch(/new Date\(concluidoEm \?\? scheduledAt\)/)
+    // A15 da 18ª: a hora da conclusão continua, agora com a marcada ao lado quando diferem (textoDoQuandoNoConfirmar).
+    expect(ler('components/client-portal/confirm-appointment-form.tsx')).toMatch(/textoDoQuandoNoConfirmar\(\{ agendadoEm: scheduledAt, concluidoEm/)
   })
 })
 

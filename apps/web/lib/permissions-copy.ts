@@ -276,3 +276,18 @@ export function copilotNoResumo(nivel: PermissionLevel | undefined): string | nu
  */
 export const SEM_MINHAS_COMISSOES_NO_CADASTRO =
   'Com este cargo, a pessoa não verá as próprias comissões: falta o Financeiro em “Ver”, só os próprios. Para ver, ajuste o cargo em Configurações → Cargos.'
+
+/**
+ * O que falta escolher para salvar o cargo, dito junto do "Salvar acessos"
+ * (A27 da 18ª simulação; princípio 3): a tela rolava até o módulo, e o retorno
+ * era só o laranja pequeno "Escolha o que este cargo enxerga aqui." nele.
+ * `modulos`: os rótulos dos módulos ligados sem o alcance escolhido.
+ */
+export function textoDoQueFaltaNoCargo(modulos: string[], faltaRelatorio: boolean): string {
+  const lista = modulos.length <= 1 ? modulos.join('') : `${modulos.slice(0, -1).join(', ')} e ${modulos[modulos.length - 1]}`
+  const partes = [
+    modulos.length ? `o que o cargo enxerga em ${lista}` : null,
+    faltaRelatorio ? 'ao menos um relatório em Relatórios (ou deixe Relatórios em "Sem acesso")' : null,
+  ].filter(Boolean)
+  return `Falta escolher ${partes.join(', e ')}.`
+}

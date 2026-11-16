@@ -25,6 +25,7 @@ import { fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 import { podeEstornar } from '@/lib/financeiro/so-os-meus'
 import { lancamentosDaComanda } from '@/lib/pdv/lancamentos-da-comanda'
+import { faltaParaOContratoDoPacote } from '@/lib/documentos/falta-no-cadastro'
 
 /**
  * O PDV, o corpo dos dois portais (PDV1, a revisão do Heitor de 2026-11-13:
@@ -100,10 +101,12 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       // A2 da 15ª (princípios 3 e 7): a comanda paga diz a quem não estorna de quem é o estorno.
       quemEstorna: comanda.paga && !comanda.estornada && !podeEstornar(ctx)
         ? await quemDesfazNoCaixa(ctx.tenantId!, unidadeId) : null,
-      // A2 da 17ª (princípio 7; o bloco PDV: o estorno "dentro da comanda"): a quem estorna, os
-      // pagamentos da comanda com o "Estornar" de sempre (a action confere tudo de novo).
-      pagamentos: comanda.paga && !comanda.estornada && podeEstornar(ctx)
+      // A2 da 17ª (princípio 7; o bloco PDV: o estorno "dentro da comanda"): os pagamentos da
+      // comanda paga; a quem estorna, cada um com o "Estornar" de sempre (a action confere tudo
+      // de novo). A1 da 18ª: a quem não estorna também — é dali que sai o "Pago junto".
+      pagamentos: comanda.paga && !comanda.estornada
         ? await lancamentosDaComanda(admin, ctx.tenantId!, unidadeId, comanda.id) : null,
+      podeEstornar: podeEstornar(ctx),
       // A1 da 16ª (princípio 7): a comanda do crediário recebe as parcelas dela ali mesmo.
       parcelasDaComanda: comanda.paga && !comanda.estornada && comanda.emAberto > 0 && podeReceber(ctx)
         ? await parcelasEmAbertoDaCliente({
@@ -133,7 +136,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     // A arquivada não compra (princípio 3: a tela diz por quê, não volta calada à busca).
     else if (!cliente.is_active) novaVenda = { dados: null, aviso: `${cliente.name} está arquivada. Para vender, reative a cliente na ficha.` }
     else {
-      const [pacotes, procedimentos, produtos, equipe, aReceber, emAberto, fidelidade] = await Promise.all([
+      const [pacotes, procedimentos, produtos, equipe, aReceber, emAberto, fidelidade, contrato] = await Promise.all([
         pacotesAVenda(ctx.tenantId!, unidadeId), procedimentosAVenda(ctx.tenantId!, unidadeId), produtosAVenda(ctx.tenantId!, unidadeId),
         equipeDaVenda(ctx.tenantId!, unidadeId, ctx.internalUserId, veComissaoDeTodos(ctx)),
         getAtendimentosAReceber({ tenantId: ctx.tenantId!, clienteId: cliente.id }),
@@ -141,8 +144,14 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
         parcelasEmAbertoDaCliente({ branchId: unidadeId, clienteId: cliente.id, fuso }),
         // FD2a: os pontos e os vouchers de desconto dela, para usar na venda à vista.
         fidelidadeParaAVenda(ctx.tenantId!, cliente.id),
+        // A6 da 18ª: o que o contrato de pacote pede do cadastro dela e falta — antes de vender.
+        faltaParaOContratoDoPacote(ctx.tenantId!, cliente.id),
       ])
-      novaVenda = { dados: { cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens, podeAgendar: can(ctx, 'agenda', 'MANAGE'), emAberto, fidelidade } }
+      novaVenda = { dados: {
+        cliente: { id: cliente.id, name: cliente.name, phone: cliente.phone }, pacotes, procedimentos, produtos, equipe, aReceber: aReceber.itens,
+        podeAgendar: can(ctx, 'agenda', 'MANAGE'), emAberto, fidelidade,
+        contratoDoPacote: pacotes.length && contrato ? { ...contrato, podeCompletar: can(ctx, 'clients', 'MANAGE') } : null,
+      } }
     }
   }
 

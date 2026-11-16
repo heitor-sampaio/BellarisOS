@@ -37,7 +37,14 @@ export async function unidadesDaRede(c: ContextoDaFerramenta): Promise<Unidade[]
  * motivo — não vira a dela calado (princípio 3, CP1).
  */
 export async function resolverUnidade(
-  c: ContextoDaFerramenta, pedido?: string | null, opcoes: { exigir?: boolean } = {},
+  c: ContextoDaFerramenta, pedido?: string | null,
+  /**
+   * `paraLer`: a LEITURA sem unidade no pedido é em todas as unidades da
+   * pessoa (D4 da 18ª: a Júlia, de Derby e Casa Forte, na tela de Derby, não
+   * achava o agendamento de Casa Forte) — devolve null, e `idsDasUnidades`
+   * dá as dela. Sem ele (o agendar e as outras gravações), fica a da tela.
+   */
+  opcoes: { exigir?: boolean; paraLer?: boolean } = {},
 ): Promise<{ unidade: Unidade | null } | { erro: string }> {
   const todas = await unidadesDaRede(c)
   if (pedido) {
@@ -52,6 +59,7 @@ export async function resolverUnidade(
     return { unidade: achada }
   }
   if (c.ctx.branchId) {
+    if (opcoes.paraLer && todas.filter(u => alcancaUnidade(c.ctx, u.id)).length > 1) return { unidade: null }
     const propria = todas.find(u => u.id === c.ctx.branchId)
     return propria ? { unidade: propria } : { erro: 'A sua unidade não está ativa.' }
   }
@@ -60,11 +68,26 @@ export async function resolverUnidade(
   return { unidade: null }
 }
 
-/** Os ids das unidades que a consulta alcança (a escolhida, ou todas as da pessoa). */
+/**
+ * Os ids das unidades que a consulta alcança: a escolhida, ou todas as da
+ * pessoa — as ativas que ela alcança (`ctx.unidades`; a rede inteira, todas).
+ */
 export async function idsDasUnidades(c: ContextoDaFerramenta, unidade: Unidade | null): Promise<string[]> {
   if (unidade) return [unidade.id]
-  if (c.ctx.branchId) return [c.ctx.branchId]
-  return (await unidadesDaRede(c)).map(u => u.id)
+  const todas = await unidadesDaRede(c)
+  if (c.ctx.branchId) {
+    const minhas = todas.filter(u => alcancaUnidade(c.ctx, u.id)).map(u => u.id)
+    return minhas.length ? minhas : [c.ctx.branchId]
+  }
+  return todas.map(u => u.id)
+}
+
+/** Onde a leitura procurou, em texto: "Derby, Casa Forte" (D4 da 18ª — o "não encontrei" diz onde). */
+export async function ondeProcurou(c: ContextoDaFerramenta, ids: readonly string[]): Promise<string> {
+  const todas = await unidadesDaRede(c)
+  const nomes = ids.map(id => todas.find(u => u.id === id)?.name).filter((n): n is string => !!n)
+  if (!c.ctx.branchId && nomes.length === todas.length && nomes.length > 1) return `todas as unidades (${nomes.join(', ')})`
+  return nomes.join(', ')
 }
 
 /**

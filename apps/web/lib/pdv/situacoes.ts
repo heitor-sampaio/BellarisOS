@@ -186,3 +186,72 @@ export function detalheDaComanda(c: ComandaDoPdv, hora: (iso: string | null) => 
   return [oQue, c.agendadoPara ? hora(c.agendadoPara) : null, c.paga ? formasDaComandaEmTexto(c) : c.profissional, aberto, jaPago]
     .filter(Boolean).join(' · ')
 }
+
+/** O que a linha de um produto da comanda precisa (D2 da 18ª). */
+export interface ProdutoNaComanda {
+  nome:            string
+  quantidade:      number
+  vendido:         boolean
+  /** A venda do produto foi estornada (quando); nulo: não foi. */
+  estornadoEm:     string | null
+  /** No estorno, o produto voltou ao estoque; nulo sem estorno. */
+  voltouAoEstoque: boolean | null
+}
+
+/**
+ * A linha do produto na comanda (D2 da 18ª, princípio 3): o produto estornado
+ * dizia "saiu do estoque da unidade" e, na comanda reaberta, "já pago" — o
+ * dinheiro e o produto já tinham voltado. Agora diz o estorno e se voltou.
+ */
+export function situacaoDoItemDaComanda(i: ProdutoNaComanda, aReceber: boolean): string {
+  if (i.estornadoEm) return `Produto · estornado · ${i.voltouAoEstoque ? 'voltou ao estoque' : 'não voltou ao estoque'}`
+  if (i.vendido) return aReceber ? 'Produto · já pago, fora do que falta receber' : 'Produto · saiu do estoque da unidade'
+  return 'Produto · sai do estoque da unidade ao receber'
+}
+
+/**
+ * A comanda reaberta cita o produto estornado (D2 da 18ª), não só o estorno
+ * do atendimento: "Produto estornado às 01:59 — Protetor solar FPS 60 × 2,
+ * voltou ao estoque". Nenhum estornado: nulo.
+ */
+export function produtosEstornadosEmTexto(itens: readonly ProdutoNaComanda[], hora: (iso: string | null) => string): string | null {
+  const estornados = itens.filter(i => i.estornadoEm)
+  if (!estornados.length) return null
+  const um = (i: ProdutoNaComanda) => `${i.nome} × ${i.quantidade}, ${i.voltouAoEstoque ? 'voltou ao estoque' : 'não voltou ao estoque'}`
+  if (estornados.length === 1) return `Produto estornado às ${hora(estornados[0]!.estornadoEm)} — ${um(estornados[0]!)}`
+  return `Produtos estornados — ${estornados.map(i => `${um(i)} (às ${hora(i.estornadoEm)})`).join('; ')}`
+}
+
+/** Um pagamento da comanda, como a tela o mostra (A1 da 18ª). */
+export interface PagamentoDaComandaNaTela {
+  valor: number; metodo: string | null; vezes: number | null
+  doAtendimento: boolean; vendaDeProduto: boolean; vendaDeCredito: boolean
+}
+
+/** O que o pagamento é, para a linha dele (A1 da 18ª): "Atendimento", "Produto"; nulo = a descrição dele. */
+export function rotuloDoPagamentoDaComanda(l: PagamentoDaComandaNaTela): string | null {
+  if (l.doAtendimento) return 'Atendimento'
+  if (l.vendaDeProduto) return 'Produto'
+  if (l.vendaDeCredito) return 'Crédito interno'
+  return null
+}
+
+/**
+ * A1 da 18ª (princípio 3): um recebimento só da comanda (o atendimento e os
+ * produtos na mesma forma) são dois lançamentos — cada um com o seu
+ * "Estornar" —, e a tela mostrava dois "Crédito 3x" sem dizer por quê. Diz:
+ * "Pago junto: atendimento R$ 1.411,56 + produtos R$ 184,44 (Crédito 3x)".
+ * Em formas diferentes (o produto pago antes no débito) não é "junto": nulo.
+ */
+export function pagoJuntoEmTexto(pagamentos: readonly PagamentoDaComandaNaTela[]): string | null {
+  if (pagamentos.length < 2) return null
+  const chave = (l: PagamentoDaComandaNaTela) => `${l.metodo ?? ''}:${l.metodo === 'CREDIT_CARD' ? (l.vezes ?? 1) : 1}`
+  if (new Set(pagamentos.map(chave)).size !== 1) return null
+  const soma = (f: (l: PagamentoDaComandaNaTela) => boolean) =>
+    pagamentos.filter(f).reduce((t, l) => t + Math.round(l.valor * 100), 0) / 100
+  const atendimento = soma(l => l.doAtendimento)
+  const produtos = soma(l => !l.doAtendimento && l.vendaDeProduto)
+  if (!(atendimento > 0) || !(produtos > 0)) return null
+  const forma = pagamentos[0]!.metodo ? ` (${rotuloDaForma(pagamentos[0]!.metodo, pagamentos[0]!.vezes)})` : ''
+  return `Pago junto: atendimento ${brl(atendimento)} + produtos ${brl(produtos)}${forma}`
+}

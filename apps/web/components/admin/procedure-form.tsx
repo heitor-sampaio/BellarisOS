@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useEffect, useEffectEvent } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
+import { outrosDocumentosEmOrdem, rotuloDoOutroDocumento } from '@/lib/documentos/outros-do-procedimento'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
 import { parseDinheiro, formatDinheiroCampo, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { custoDoInsumoNoCampo, lerCustoDoInsumo } from '@/lib/estoque/custo-do-insumo'
@@ -252,8 +253,9 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
   // lista — o que já está marcado nela fica, para não sumir em silêncio.
   const [termoEscolhido, setTermoEscolhido] = useState(existing?.consent_template_id ?? '')
   const [contratoEscolhido, setContratoEscolhido] = useState(existing?.contract_template_id ?? '')
-  const outrosVisiveis = (modelos?.outros ?? []).filter(o => (o.ativo || outrosMarcados.includes(o.id))
-    && ((o.id !== termoEscolhido && o.id !== contratoEscolhido) || outrosMarcados.includes(o.id)))
+  // A22 da 18ª: os documentos primeiro; o termo e o contrato no fim, com "(termo)".
+  const outrosVisiveis = outrosDocumentosEmOrdem((modelos?.outros ?? []).filter(o => (o.ativo || outrosMarcados.includes(o.id))
+    && ((o.id !== termoEscolhido && o.id !== contratoEscolhido) || outrosMarcados.includes(o.id))))
   function alternarOutro(id: string) {
     setOutrosMarcados(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
   }
@@ -522,7 +524,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                       <button key={o.id} type="button" className={on ? 'chip-filtro is-ativo' : 'chip-filtro'}
                         aria-pressed={on} onClick={() => alternarOutro(o.id)}
                         title={o.exigencia === 'BLOQUEIA' ? 'Bloqueia o início sem assinatura' : 'Só avisa se faltar'}>
-                        {o.nome}{o.tipo === 'DOCUMENTO' ? '' : ` · ${o.tipo === 'TERMO' ? 'termo' : 'contrato'}`}{o.ativo ? '' : ' (inativo)'}
+                        {rotuloDoOutroDocumento(o)}
                       </button>
                     )
                   })}

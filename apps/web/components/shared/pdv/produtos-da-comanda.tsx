@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, X } from 'lucide-react'
 import { acrescentarProdutoNaComanda, tirarProdutoDaComanda } from '@/actions/pdv'
 import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
+import { situacaoDoItemDaComanda } from '@/lib/pdv/situacoes'
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -18,7 +19,8 @@ const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
  *
  * `produtos` nulo: a comanda já não recebe produto (paga, cancelada).
  * `aReceber`: a comanda ainda a receber — o produto já vendido nela (a comanda
- * reaberta pelo estorno só do atendimento, D1 da 16ª) diz "já pago".
+ * reaberta pelo estorno só do atendimento, D1 da 16ª) diz "já pago"; o
+ * estornado diz "estornado · voltou ao estoque" e o valor sai riscado (D2 da 18ª).
  */
 export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber = false }: {
   comandaId: string
@@ -58,16 +60,14 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
   return (
     <>
       {itens.map(i => (
-        <div key={i.id} data-item-da-comanda style={{
+        <div key={i.id} data-item-da-comanda data-estornado={i.estornadoEm ? 'true' : undefined} style={{
           display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 40px 110px',
           gap: 10, alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--hairline)',
         }}>
           <div style={{ minWidth: 0 }}>
             <p style={{ fontWeight: 700, color: 'var(--text)' }}>{i.nome}</p>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>
-              {i.vendido
-                ? aReceber ? 'Produto · já pago, fora do que falta receber' : 'Produto · saiu do estoque da unidade'
-                : 'Produto · sai do estoque da unidade ao receber'}
+              {situacaoDoItemDaComanda(i, aReceber)}
             </p>
             {produtos && !i.vendido && (
               <button type="button" className="btn-ghost" aria-label={`Tirar ${i.nome}`}
@@ -78,7 +78,10 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
             )}
           </div>
           <span style={{ color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{i.quantidade}</span>
-          <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl(i.preco * i.quantidade)}</span>
+          <span style={{
+            textAlign: 'right', fontWeight: 800, color: i.estornadoEm ? 'var(--text-muted)' : 'var(--text)',
+            textDecoration: i.estornadoEm ? 'line-through' : undefined,
+          }}>{brl(i.preco * i.quantidade)}</span>
         </div>
       ))}
 

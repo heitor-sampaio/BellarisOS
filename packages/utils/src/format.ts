@@ -81,6 +81,19 @@ export const maskPhoneDigitando = (valor: string) => {
 }
 
 /**
+ * O número brasileiro digitado tem dígitos a mais do que a máscara guarda (A16
+ * da 18ª simulação; princípio 3): `maskPhoneDigitando` corta em 11 sem dizer
+ * — "55819980000021" (14 dígitos) virava "(55) 81998-0000". O de outro país
+ * ("+") não tem esse teto. A tela avisa; não corta nem recusa por isso.
+ */
+export const temDigitosDeMais = (valor: string) => {
+  if (valor.trimStart().startsWith('+')) return false
+  const todos = valor.replace(/\D/g, '')
+  const d = (todos.length === 12 || todos.length === 13) && todos.startsWith('55') ? todos.slice(2) : todos
+  return d.length > 11
+}
+
+/**
  * O telefone do CADASTRO da cliente enquanto se digita: o brasileiro com a
  * máscara de `maskPhoneDigitando`; o que começa com "+" (outro país, decisão
  * do Heitor de 2026-10-29) fica como se escreve — só dígitos, espaço, hífen e

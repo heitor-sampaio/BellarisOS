@@ -925,6 +925,8 @@ de uma unidade"):**
 - **A tela diz a principal** (A20 da 17ª): com mais de uma unidade marcada,
   "Principal: X — o login abre nela." (`principalDasMarcadas`, a mesma escolha
   de `unidadesQueGrava`: a de antes, se segue marcada). Prova: `tests/atritos-da-17-cadastros.test.ts`.
+  A linha da Equipe também: "Derby (principal) e Casa Forte"
+  (`unidadesDaLinhaDaEquipe`, A28 da 18ª); com uma só, só o nome.
 - **Os textos da Equipe dizem o que vale para ESTA pessoa** (A17, A18, A21 da
   17ª; princípio 3): salvar o cargo confirma ("Cargo “X” salvo."), e "O que
   essa pessoa vai ver" diz o Copilot pelo nível (`copilotNoResumo`); cadastrar
@@ -1122,6 +1124,26 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     páginas antes de agrupar, para a gravação não se partir.
   - O filtro "Abriu o prontuário" sai da lista de quem tem unidades
     (`operacoesDoFiltro`): a abertura é da rede, e ela nunca a alcança.
+  - **A 18ª simulação** (A30–A33, `tests/auditoria-atritos-da-18.test.ts`,
+    `e2e/auditoria-atritos-da-18.spec.ts`):
+    - toda coluna de users, commissions, commission_payouts e appointments
+      tem nome no `CAMPO` ("percentual da comissão de venda", não
+      "comissao venda pct") — a trava lê `CAMPO_DA_AUDITORIA`; coluna nova
+      nessas tabelas entra na lista do teste e no `CAMPO`;
+    - o cancelamento é o fato: "Cancelou o agendamento de Sônia Prado
+      (motivo: …)" — o motivo se lê agora do agendamento, como os nomes
+      (a auditoria não guarda texto livre);
+    - a comissão diz de qual é: "Marcou como paga a comissão do atendimento
+      de X (procedimento)" / "da venda a X" — no CSV, as linhas do pagamento
+      eram iguais;
+    - **quem tem unidades vê também o que ELA gravou sem unidade** (a
+      oportunidade, o contato: são da rede) — `filtroDoAlcanceDaAuditoria`;
+      a linha sem unidade dos outros segue da rede;
+    - **o acesso ao prontuário leva a unidade do endereço** em que foi aberto
+      (`prontuario_acessos.branch_id`, `unidadeDoAcessoAoProntuario`,
+      migration `20261118500001`; no /admin, nula): entra no filtro pela
+      unidade de quem é da rede. Quem tem unidades continua sem a abertura
+      (a leitura tira `abriu` dela).
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

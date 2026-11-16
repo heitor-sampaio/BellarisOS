@@ -41,3 +41,37 @@ export function textoDoParaAvaliar(p: { agendadoEm: string; concluidoEm: string 
 export function textoDoHorarioNoHistorico(horaMarcada: string, concluido: string | null): string {
   return concluido ? `marcado para ${horaMarcada} · ${concluido}` : horaMarcada
 }
+
+/**
+ * O nome do arquivo que a rede ENVIOU, no app (A10 da 18ª simulação; princípio
+ * 3): a foto do atendimento chegava com o nome técnico da equipe ("Foto
+ * clínica (depois) — 16/11/2026"). No app, ela é "Uma foto do seu
+ * atendimento", com o momento quando ele foi gravado; o resto fica como a
+ * equipe escreveu.
+ */
+const MOMENTO_NO_APP: Record<string, string> = { ANTES: 'antes', DURANTE: 'durante', DEPOIS: 'depois' }
+export function tituloDoArquivoNoApp(d: { name: string; category: string; momento?: string | null }): string {
+  if (d.category !== 'foto_clinica') return d.name
+  const momento = d.momento ? MOMENTO_NO_APP[d.momento] : undefined
+  return momento ? `Uma foto do seu atendimento (${momento})` : 'Uma foto do seu atendimento'
+}
+
+/**
+ * Quando foi, no "Confirmar e avaliar" (A15 da 18ª): a sessão marcada às 03:00
+ * e concluída às 01:41 dizia só "Concluído em 16 de novembro às 01:41", e a
+ * cliente não reconhecia o horário que marcou. Com a hora real diferente da
+ * marcada, as duas; na mesma hora (ou sem a real), uma só.
+ */
+export function textoDoQuandoNoConfirmar(p: { agendadoEm: string; concluidoEm: string | null; fuso?: string }): string {
+  const fuso = p.fuso ?? BUSINESS_TZ
+  const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso, day: 'numeric', month: 'long' })
+  const hora = (iso: string) => diaEHora(iso, fuso).hora
+  const marcado = { dia: dia(p.agendadoEm), hora: hora(p.agendadoEm) }
+  if (!p.concluidoEm) return `${marcado.dia} às ${marcado.hora}`
+  const feito = { dia: dia(p.concluidoEm), hora: hora(p.concluidoEm) }
+  const concluido = `concluído em ${feito.dia} às ${feito.hora}`
+  if (feito.dia === marcado.dia && feito.hora === marcado.hora) return `C${concluido.slice(1)}`
+  return feito.dia === marcado.dia
+    ? `Marcado para ${marcado.hora} · ${concluido}`
+    : `Marcado para ${marcado.dia} às ${marcado.hora} · ${concluido}`
+}

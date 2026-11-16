@@ -4,14 +4,14 @@ import { useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
-import { avisoDosDocumentosDaVenda } from '@/lib/documentos/aviso-da-venda'
+import { avisoDosDocumentosDaVenda, avisoDoContratoAntesDeVender } from '@/lib/documentos/aviso-da-venda'
 import { formatBRL } from '@estetica-os/utils'
 import { venderPacote, type DocumentoDaVenda } from '@/actions/pacotes'
 import Link from 'next/link'
-import { rotaNoPortal } from '@/lib/rotas'
+import { rotaNoPortal, rotaCliente } from '@/lib/rotas'
 import { schedulePackageSession } from '@/actions/appointments'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
-import { CamposDoPagamento, estadoDoPagamento, montarPagamento, useRecusaDoPagamento } from '@/components/shared/campos-do-pagamento'
+import { CamposDoPagamento, estadoDoPagamento, montarPagamento, useRecusaDoPagamento, recusaForaDoCampo, MotivoDoBotao } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
@@ -38,9 +38,19 @@ export interface PacoteAVenda {
   comissaoVenda?: RegraDeVenda | null
 }
 
+/** A6 da 18ª: o contrato de pacote ativo e o que ele pede do cadastro da cliente que falta. */
+export interface ContratoQuePedeCadastro {
+  titulo:   string
+  faltando: string[]
+  /** Quem edita Clientes completa ali mesmo ("Completar o cadastro"). */
+  podeCompletar: boolean
+}
+
 /** O formulário da venda do pacote — dentro do "Vender" (`components/shared/vender.tsx`). */
-export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe = [], podeAgendar = false, fidelidade = null }: {
+export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe = [], podeAgendar = false, fidelidade = null, contratoQuePedeCadastro = null }: {
   clienteId: string; branchId: string; pacotes: PacoteAVenda[]; onFim: () => void
+  /** A6 da 18ª: avisa ANTES de vender o que o contrato pede do cadastro e falta. */
+  contratoQuePedeCadastro?: ContratoQuePedeCadastro | null
   /** Depois de vender, oferece "Agendar a 1ª sessão agora" (A47 da 7ª; agenda: MANAGE), como o pré-pago. */
   podeAgendar?: boolean
   /** A equipe da unidade: a responsável sai de quem atende (com-04). */
@@ -147,6 +157,23 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
           {pacotes.map(p => <option key={p.id} value={p.id}>{p.name} — {formatBRL(p.price)}</option>)}
         </select>
       </label>
+      {/* A6 da 18ª (princípios 3 e 7): o contrato pede o endereço — o balcão sabe ANTES de vender. */}
+      {contratoQuePedeCadastro && (
+        <div data-contrato-pede-cadastro role="note" style={{
+          display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', borderRadius: 'var(--radius-field-token)',
+          background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+        }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)' }}>
+            {avisoDoContratoAntesDeVender(contratoQuePedeCadastro)}
+          </p>
+          {contratoQuePedeCadastro.podeCompletar && (
+            <Link href={`${rotaCliente(pathname, pathname.split('/')[1] ?? '', clienteId)}?aba=dados`}
+              style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
+              Completar o cadastro
+            </Link>
+          )}
+        </div>
+      )}
       <p style={texto} data-resumo-do-pacote>
         {pacote.composicao} ({pacote.totalSessions} sessões) · {formatBRL(pacote.price)}
         {pacote.validityDays ? ` · válido por ${pacote.validityDays} dias` : ''}
@@ -186,7 +213,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
           aoConfirmar={() => vender(pergunta.sem === 'RESPONSAVEL' ? { semResponsavel: true } : { semVendedor: true })}
           aoVoltar={() => setPergunta(null)} />
       ) : (
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <MotivoDoBotao motivo={pendente || erro ? null : recusaForaDoCampo(estado, fid.aPagar, recusaDoPagamento(estado, fid.aPagar))} />
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
         <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar)}>{pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}</button>
       </div>

@@ -344,3 +344,15 @@ export function validateFormSchema(schema: AnamnesisFormSchema): string | null {
   }
   return null
 }
+
+/**
+ * O aviso acima do botão quando faltam obrigatórias (A12 da 18ª simulação;
+ * princípio 3): cada campo vazio já diz `Preencha "…".` junto dele, e o aviso
+ * de baixo repetia a mesma frase. Ele resume: quantos faltam e onde estão; com
+ * mais de um, os nomes, para a ficha longa. Nulo sem nada faltando.
+ */
+export function resumoDasObrigatoriasVazias(rotulos: string[]): string | null {
+  if (!rotulos.length) return null
+  if (rotulos.length === 1) return 'Falta 1 campo obrigatório, marcado acima.'
+  return `Faltam ${rotulos.length} campos obrigatórios, marcados acima: ${rotulos.map(r => `"${r}"`).join(', ')}.`
+}

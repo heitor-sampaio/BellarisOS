@@ -2,6 +2,7 @@
 
 import { moverEtapaCore } from '@/lib/crm/oportunidade'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsDoVocabulario } from '@/lib/tags/escolha'
 import { getTenantContext, assertPermission, podeReceber, assertRecurso, temRecurso, can } from '@/lib/auth'
 import { redeTemWhatsapp } from '@/lib/automacoes/canal-da-rede'
 import { idsDaPaginaDoInbox } from '@/lib/inbox/pagina'
@@ -1186,7 +1187,15 @@ export async function atualizarContato(
   // E-mail e rede social também são só da pessoa (2026-10-13): a oportunidade
   // tem a cópia dela, que é o card e se edita lá.
   const daPessoa: Record<string, unknown> = {}
-  if (dados.tags !== undefined) daPessoa.tags = dados.tags
+  // D7 da 18ª: só as do vocabulário (e as que a pessoa já tinha) — criar tag é de Configurações → Tags (H7).
+  if (dados.tags !== undefined && contatoId) {
+    const [vocabulario, atual] = await Promise.all([
+      tagsAtivasDaRede(ctx.tenantId!),
+      ler(admin.from('contacts').select('tags').eq('id', contatoId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+        'ler as tags do contato') as Promise<{ tags: string[] | null } | null>,
+    ])
+    daPessoa.tags = tagsDoVocabulario(dados.tags, vocabulario, atual?.tags ?? [])
+  }
   if (typeof dados.email === 'string') daPessoa.email = dados.email.trim().toLowerCase().slice(0, 200) || null
   if (typeof dados.social === 'string') daPessoa.social_media = dados.social.trim().slice(0, 200) || null
   if (Object.keys(daPessoa).length && contatoId) {

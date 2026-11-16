@@ -83,7 +83,7 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   const abrangencia = ctx.branchId === null
     ? 'Ela é da rede inteira (alcança todas as unidades).'
     : varias
-      ? `Ela alcança só as unidades ${extras.unidades!.map(u => `"${u}"`).join(', ')} e está agora na "${extras.unidade ?? extras.unidades![0]}" (sem a pessoa dizer outra, é dessa que se fala; para gravar em outra das dela, passe a unidade).`
+      ? `Ela alcança só as unidades ${extras.unidades!.map(u => `"${u}"`).join(', ')} e está agora na "${extras.unidade ?? extras.unidades![0]}" (para gravar, sem a pessoa dizer outra, é na "${extras.unidade ?? extras.unidades![0]}"; para gravar em outra das dela, passe a unidade). As consultas sem unidade (agendamentos, lançamentos, estoque) procuram em todas as unidades dela e dizem quais em "procurouEm": ao não encontrar, diga onde procurou.`
       : `Ela só alcança a unidade "${extras.unidade ?? 'dela'}".`
   const pagina = contextoDaPagina(extras.pagina)
   const telas = telasDaPessoa(ctx, extras.slugDoPortal)

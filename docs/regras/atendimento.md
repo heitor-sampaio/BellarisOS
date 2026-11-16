@@ -1782,6 +1782,11 @@ const procedures = await ler(
   (A8 da 17ª simulação): `FOTO_ENVIADA` "Foto enviada à cliente por <nome>" e
   `FOTO_TIRADA_DO_APP`; no app, a foto se diz "Foto" no Histórico.
   Prova: `tests/atritos-da-17-cadastros.test.ts`.
+  **"Enviar à cliente" já no anexar** (A10 da 18ª simulação): com o portal no
+  plano, a caixa do anexo manda a foto ao app no mesmo passo (o mesmo
+  `enviarDocumentoACliente`, depois de gravar). O aviso diz "Foto nova" —
+  "<unidade> enviou uma foto do seu atendimento." — e, no app, a foto do
+  atendimento se diz "Uma foto do seu atendimento" (`tituloDoArquivoNoApp`).
   **O cartão vazio diz onde a foto fica** (A26 da 9ª simulação, revisto no
   PR1a do bloco Prontuário, 2026-11-14): "Nenhuma foto neste atendimento. Ela
   fica no prontuário da cliente, no registro deste atendimento." (de
@@ -2098,6 +2103,12 @@ const procedures = await ler(
   e "Planejamentos" sozinho dizia também os de injetáveis. O título da lista e
   o "voltar" do plano aberto dizem "Tratamentos"; a rota segue
   `/planejamentos`. Prova: `e2e/atendimento-atritos-da-8.spec.ts` ("A30").
+- **A sessão de pacote se diz paga** (A7 da 18ª simulação; princípio 3): a
+  tela do atendimento abre com "Sessão 2 de 6 do pacote X, já paga." ("…,
+  trazido de fora: já paga antes do sistema." no de fora;
+  `textoDaSessaoDoPacote`). Ali o plano é opcional: "Propor um plano novo
+  (opcional)", e o "Aceitar plano" é o secundário. A linha do insumo diz a
+  quantidade com a embalagem do produto (`linhaDoInsumo`, A9).
 - **"Aceitar plano" usa o que está na tela** (A29 da 12ª simulação, 2026-11-11;
   princípio 3): com a observação digitada e não salva, a Bianca lia "Preencha
   as observações antes de enviar." O "Aceitar plano" e o "Cliente vai pensar"

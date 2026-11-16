@@ -111,7 +111,7 @@ export function categoryLabel(cat: string): string {
 export function UploadForm({
   clientId, branchId, slug, podeAnexarClinico, podeAnexarComum, onClose,
   categoriaFixa, appointmentId, nomePadrao, rotuloDoEnvio = 'Anexar documento', titulo = 'Novo documento', aceita, momentos,
-  exemploDoNome = 'Ex: Comprovante de endereço — jun 2026',
+  exemploDoNome = 'Ex: Comprovante de endereço — jun 2026', ofereceEnviar = false,
 }: {
   clientId: string; branchId: string; slug: string; podeAnexarClinico: boolean; podeAnexarComum: boolean; onClose: () => void
   /** A categoria já decidida (a foto clínica do atendimento): sem o seletor. */
@@ -130,6 +130,8 @@ export function UploadForm({
   momentos?:      { opcoes: { key: string; label: string; nome: string }[]; inicial: string }
   /** O exemplo do campo do nome (o do anexo comum ou o do clínico). */
   exemploDoNome?: string
+  /** A10 da 18ª: o "Enviar à cliente" já no envio (a foto do atendimento, com o portal no plano). */
+  ofereceEnviar?: boolean
 }) {
   const formRef     = useRef<HTMLFormElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
@@ -231,6 +233,13 @@ export function UploadForm({
           {aceita ? 'Imagem (JPG, PNG, WebP) — máximo 20 MB' : 'PDF, Word, Excel, imagens — máximo 20 MB'}
         </p>
       </div>
+
+      {ofereceEnviar && (
+        <label data-enviar-ao-anexar style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text)', cursor: 'pointer' }}>
+          <input type="checkbox" name="enviar_a_cliente" />
+          Enviar à cliente (a foto vai ao app dela)
+        </label>
+      )}
 
       {state?.error && (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>

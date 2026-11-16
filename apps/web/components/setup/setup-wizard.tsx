@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { PROXIMOS_PASSOS } from '@/lib/setup/proximos-passos'
-import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
+import { normalizarHorario, domingoFechadoNoHorario, type Horario } from '@/lib/agenda/horario'
 import { Check, Loader2, AlertTriangle } from 'lucide-react'
 import { updateTenantProfile, completeOnboarding } from '@/actions/setup'
 import { createBranch } from '@/actions/branches'
@@ -558,15 +558,16 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           O padrão é segunda a sábado, das 8h às 20h. Ajuste o que for diferente — dá para mudar depois em Configurações.
         </span>
-        {/* A2 da 7ª simulação: a clínica 24h não achava o domingo fechado no meio da lista. */}
-        <p data-domingo-fechado role="note" style={{
+        {/* A2 da 7ª simulação: a clínica 24h não achava o domingo fechado no meio da lista.
+            A24 da 18ª: o aviso só fica enquanto o domingo está fechado ("Aberta 24 horas" o abre). */}
+        {domingoFechadoNoHorario(horarioMexido ?? (horarioSalvo.valor ? JSON.stringify(horarioSalvo.valor) : null)) && <p data-domingo-fechado role="note" style={{
           display: 'flex', gap: 8, alignItems: 'flex-start', padding: '8px 12px', borderRadius: 'var(--radius-field-token)',
           background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
           fontSize: 'var(--text-xs-sz)', color: 'var(--text)', lineHeight: 1.45,
         }}>
           <AlertTriangle size={13} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} aria-hidden />
           <span>O domingo vem fechado. Se a unidade abre aos domingos (ou 24 horas), marque o domingo na lista abaixo e ajuste o horário de cada dia.</span>
-        </p>
+        </p>}
         <div onChange={lerHorarioDepois} onClick={lerHorarioDepois}>
           <EditorDeHorario key={horarioSalvo.chave} nome="horario" valor={horarioSalvo.valor} />
         </div>

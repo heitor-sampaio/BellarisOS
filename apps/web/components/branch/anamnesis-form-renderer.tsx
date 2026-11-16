@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Save, Upload, X, ImageIcon, CheckCircle2, Syringe, ExternalLink } from 'lucide-react'
 import {
-  flattenFields, isInjectableMap, emptyInjectableMap, planejamentoDoValor, obrigatoriasVazias, campoVisivel,
+  flattenFields, isInjectableMap, emptyInjectableMap, planejamentoDoValor, obrigatoriasVazias, campoVisivel, resumoDasObrigatoriasVazias,
   type AnamnesisField, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { salvarFichaDoProcedimento, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
@@ -151,9 +151,8 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
     if (!primeira) return {}
     const marcados: Record<string, string> = {}
     for (const f of vazias) marcados[f.id] = `Preencha "${f.label}".`
-    const msg = vazias.length === 1
-      ? `Preencha "${primeira.label}".`
-      : `Preencha os ${vazias.length} campos obrigatórios: ${vazias.map(f => `"${f.label}"`).join(', ')}.`
+    // A12 da 18ª: o campo já diz `Preencha "…".`; o aviso de baixo resume, sem repetir.
+    const msg = resumoDasObrigatoriasVazias(vazias.map(f => f.label))!
     setError(msg); setInvalidos(marcados)
     if (o.rolar !== false) setAlvo(a => ({ id: primeira.id, vez: (a?.vez ?? 0) + 1 }))
     return { error: msg, faltam: vazias.map(f => f.label) }

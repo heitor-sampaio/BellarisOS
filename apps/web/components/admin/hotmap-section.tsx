@@ -3,7 +3,7 @@
 import { useState, useEffect, useEffectEvent } from 'react'
 import dynamic from 'next/dynamic'
 import type { BranchPoint, HeatPoint } from './hotmap-types'
-import { GRADIENT_CLIENTS, GRADIENT_LTV, ondeGeocodificarAUnidade } from './hotmap-types'
+import { GRADIENT_CLIENTS, GRADIENT_LTV, ondeGeocodificarAUnidade, cidadesParaBuscar, avisosDoMapa } from './hotmap-types'
 
 const HotmapClient = dynamic(
   () => import('./hotmap-client').then(m => m.HotmapClient),
@@ -63,6 +63,8 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
   const [heatPoints,    setHeatPoints]    = useState<HeatPoint[]>([])
   const [heatLtvPoints, setHeatLtvPoints] = useState<HeatPoint[]>([])
   const [carregando, setLoading] = useState(true)
+  // A26 da 18ª: a unidade sem pino (ou no centro da cidade), dita junto do mapa.
+  const [avisos, setAvisos] = useState<string[]>([])
   // Sem cidade nem CEP não há o que buscar: nem chega a carregar.
   const nadaParaBuscar = !rawBranches.some(b => ondeGeocodificarAUnidade(b)) && Object.keys(rawCepCounts).length === 0
   const loading = !nadaParaBuscar && carregando
@@ -72,7 +74,8 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
   const geocodificar = useEffectEvent(() => {
     // A unidade pelo CEP dela, quando tem (D15); senão, pela cidade.
     const onde   = new Map(rawBranches.map(b => [b.id, ondeGeocodificarAUnidade(b)]))
-    const cities = [...new Set([...onde.values()].flatMap(o => o && 'cidade' in o ? [o.cidade] : []))]
+    // A26 da 18ª: a cidade vai junto também para quem tem CEP — o CEP que não se acha cai nela.
+    const cities = cidadesParaBuscar(rawBranches)
     const ceps   = [...new Set([...Object.keys(rawCepCounts), ...[...onde.values()].flatMap(o => o && 'cep' in o ? [o.cep] : [])])]
 
     if (cities.length === 0 && ceps.length === 0) return
@@ -112,6 +115,7 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
           })
           .filter((p): p is HeatPoint => p !== null)
 
+        setAvisos(avisosDoMapa(rawBranches, { ceps: cepCoords, cidades: cityCoords }))
         setBranches(bpts)
         setHeatPoints(hpts)
         setHeatLtvPoints(lpts)
@@ -188,6 +192,15 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
           </div>
         </div>
       </div>
+
+      {!loading && avisos.length > 0 && (
+        <div data-unidades-sem-pino role="note" style={{
+          padding: '8px 16px', borderBottom: '1px solid var(--border)', background: 'var(--warning-soft)',
+          display: 'flex', flexDirection: 'column', gap: 2, fontSize: 'var(--text-xs-sz)', color: 'var(--text)',
+        }}>
+          {avisos.map(a => <span key={a}>{a}</span>)}
+        </div>
+      )}
 
       {/* Map */}
       {loading ? (

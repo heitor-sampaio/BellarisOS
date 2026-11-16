@@ -1,3 +1,5 @@
+import { parseDinheiro } from '@estetica-os/utils'
+
 /**
  * A conferência do Fechamento do dia, uma linha por forma de pagamento (CX4
  * do plano de adaptação — a revisão do Heitor, 2026-11-13): o que o sistema
@@ -17,6 +19,12 @@
  * - "Sem forma" (os pontos, a despesa sem meio) não se confere: não é dinheiro
  *   de gaveta nem de extrato. Nem a forma só com saída (A8 da 16ª): não há
  *   entrada a conferir.
+ * - O saldo de uma forma pode ser NEGATIVO (D3 da 18ª: o Pix com R$ 300 de
+ *   entrada e R$ 510 de saída): o conferido dela também pode — é o saldo do
+ *   extrato. Só o dinheiro contado na gaveta não é negativo.
+ * - A forma estornada no mesmo dia (A4 da 18ª: o débito de R$ 350 estornado e
+ *   recebido de novo no Pix) fica com a linha dela, com zero: a tela diz o
+ *   estornado ali, em vez de a forma sumir da tabela.
  *
  * Puro (sem banco): o servidor monta as linhas, a tela só as desenha.
  */
@@ -73,8 +81,10 @@ export function linhasDaConferencia(args: {
   formas:           LinhaRegistrada[]
   esperadoDinheiro: number
   ultimo:           FechamentoGravado | null
+  /** A4 da 18ª: o estornado HOJE de um pagamento de hoje, por forma (`estornadoNoMesmoDiaPorForma`). */
+  estornadoHoje?:   Record<string, number>
 }): LinhaDaConferencia[] {
-  const { formas, esperadoDinheiro, ultimo } = args
+  const { formas, esperadoDinheiro, ultimo, estornadoHoje = {} } = args
   const dinheiro = formas.find(f => f.forma === 'CASH')
   // O esperado daquele fechamento; o gravado antes da coluna no retrato é o contado − a diferença.
   const dinheiroNoFechamento = ultimo
@@ -112,6 +122,18 @@ export function linhasDaConferencia(args: {
     linhas.push({
       forma: f.forma, entradas: f.entradas, saidas: f.saidas, registrado: f.saldo, conferivel, conferido,
       ...comparado(f.forma, f.saldo, conferido),
+    })
+  }
+  // A4 da 18ª (princípio 3): a forma cujo pagamento de hoje foi estornado hoje
+  // não tem movimento (um anula o outro), mas não some da tabela. Sem entrada,
+  // não pede conferência (A8 da 16ª) — a não ser que já tenha sido conferida.
+  for (const [forma, valor] of Object.entries(estornadoHoje)) {
+    if (vistas.has(forma) || !formaConferivel(forma) || !(valor > 0)) continue
+    vistas.add(forma)
+    const conferido = conferidoDe(forma)
+    linhas.push({
+      forma, entradas: 0, saidas: 0, registrado: 0, conferivel: conferido != null, conferido,
+      ...comparado(forma, 0, conferido),
     })
   }
   // Conferida no último fechamento e sem movimento agora (o pagamento foi
@@ -158,9 +180,35 @@ export function textoDoMovimentoDepois(m: { entrou: number; saiu: number }, fech
 }
 
 /**
+ * O texto do campo do conferido, lido (D3 da 18ª): vazio é "não conferido"
+ * (nulo); "−210,00" (o menos que a tela escreve) e "-210,00" são negativos; o
+ * que não se lê é NaN, e a tela recusa.
+ */
+export function lerConferidoDoCampo(texto: string): number | null {
+  const t = texto.trim().replace(/^[−–]/, '-')
+  if (t === '') return null
+  return parseDinheiro(t)
+}
+
+/**
+ * Os campos do "Fechar de novo" (A2 da 18ª; princípios 3 e 4): vêm com o que
+ * foi conferido no último fechamento — menos a linha que mudou depois dele,
+ * que vem EM BRANCO: o conferido de antes é de um registrado que já não vale,
+ * e quem só clicasse fecharia com um número que a tela diz estar velho.
+ */
+export function valoresParaFecharDeNovo(linhas: readonly LinhaDaConferencia[]): Record<string, string> {
+  const valores: Record<string, string> = {}
+  for (const l of linhas) {
+    if (l.conferivel && l.conferido != null && !l.mudouDepois) valores[l.forma] = l.conferido.toFixed(2).replace('.', ',')
+  }
+  return valores
+}
+
+/**
  * O conferido que chega à action: forma → valor (nulo ou ausente = não
- * conferido). Recusa forma que o dia não tem (ou que não se confere) e valor
- * negativo; devolve só as conferidas, arredondadas ao centavo.
+ * conferido). Recusa forma que o dia não tem (ou que não se confere); o valor
+ * pode ser negativo (D3 da 18ª: o saldo da forma pode ser); devolve só as
+ * conferidas, arredondadas ao centavo.
  */
 export function conferidoValido(
   entrada: unknown, formasDoDia: string[],
@@ -172,8 +220,8 @@ export function conferidoValido(
   for (const [forma, valor] of Object.entries(entrada as Record<string, unknown>)) {
     if (!formaConferivel(forma) || !doDia.has(forma)) return { error: 'Forma de pagamento que este dia não tem.' }
     if (valor == null) continue
-    if (typeof valor !== 'number' || !Number.isFinite(valor) || valor < 0 || valor > 10_000_000) {
-      return { error: 'Informe o valor conferido (R$ 0,00 ou mais) ou deixe em branco.' }
+    if (typeof valor !== 'number' || !Number.isFinite(valor) || Math.abs(valor) > 10_000_000) {
+      return { error: 'Informe o valor conferido ou deixe em branco.' }
     }
     conferido[forma] = centavos(valor) / 100
   }

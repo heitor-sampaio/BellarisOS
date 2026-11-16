@@ -260,7 +260,40 @@ comanda (PDV-P1).
     `20261116600001`): a tela diz "Já pago (os produtos)" e "Falta receber",
     o item diz "já pago, fora do que falta receber", e o "Receber" é só o
     que falta. Paga, o valor volta a ser o da comanda inteira.
-  - Prova: `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`.
+  - **O produto ESTORNADO sai do "pago"** (D2 da 18ª, princípio 3): a venda
+    de produto estornada (`product_sales.estornada_em`) não entra em
+    `ja_pago` nem no vendido da comanda (`pdv_comandas`, migration
+    `20261118300001`); o item diz "estornado · voltou ao estoque" (ou "não
+    voltou ao estoque", pelo `produto_voltou`; `situacaoDoItemDaComanda`),
+    e a comanda reaberta diz "Produto estornado às HH:MM — Nome × 1, voltou
+    ao estoque. Fica fora do que falta receber." (`[data-produto-estornado]`,
+    `produtosEstornadosEmTexto`).
+  - **Pago junto** (A1 da 18ª): a comanda paga mostra os pagamentos a quem
+    a abre quando há mais de um (o atendimento e o produto), cada um com o
+    que pagou ("Atendimento · Pix · R$ 250,00", `rotuloDoPagamentoDaComanda`),
+    e, na mesma forma, "Pago junto: atendimento R$ X + produtos R$ Y (Pix).
+    Cada parte se estorna sozinha." (`[data-pago-junto]`,
+    `pagoJuntoEmTexto`). O "Estornar" de cada um só a quem estorna
+    (`podeEstornar`); a quem não, "Estornar o atendimento ou o produto
+    desta comanda é de quem tem o Financeiro em Gerenciar".
+  - Prova: `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`,
+    `tests/pdv-caixa-da-18.test.ts`.
+- **O motivo ao lado do botão desligado** (A5 da 18ª, princípios 3 e 7): o
+  "Vender" (e o seguir do pacote) desligado pela regra do pagamento diz o
+  porquê ao lado (`MotivoDoBotao`, `[data-motivo-do-botao]`) — "Escolha a
+  forma da entrada", por exemplo, no crediário. A recusa que já aparece junto
+  do campo não se repete (`recusaForaDoCampo`). Prova:
+  `tests/pdv-caixa-da-18.test.ts`.
+- **O contrato do pacote avisa ANTES de vender** (A6 da 18ª, princípio 3):
+  escolhida a cliente na "Nova venda", se o contrato de pacote ATIVO da rede
+  (DC1) pede do cadastro o que a ficha não tem, o pacote diz "O contrato
+  deste pacote (X) pede Endereço (rua, número e bairro), que falta no
+  cadastro…", com "Completar o cadastro" a quem tem Clientes em Gerenciar
+  (`faltaParaOContratoDoPacote`, `lib/documentos/falta-no-cadastro.ts` — a
+  mesma régua do "Agendar", `faltandoDoCadastro`;
+  `[data-contrato-pede-cadastro]`). Só avisa: a venda segue (princípio 2).
+  Os termos dos procedimentos do pacote não entram aqui (nascem ao agendar,
+  e o "Agendar" já avisa).
 - **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
   valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`
   e `confirmPayment` somam `valorDosItensDoAtendimento`); na "Nova venda"
@@ -1207,6 +1240,21 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     (`linhasDaConferencia`: `mudouDepois`, `registradoNoFechamento`; o
     dinheiro compara o `esperado_dinheiro` do fechamento, as outras formas o
     saldo do retrato). Prova: `e2e/pdv-fechar-o-dia.spec.ts`.
+    18ª simulação (princípios 3 e 4; `tests/pdv-caixa-da-18.test.ts`):
+    - o conferido de uma forma que não é dinheiro pode ser NEGATIVO (o Pix
+      que saiu mais do que entrou: "−210,00" ou "-210,00",
+      `lerConferidoDoCampo`); a tela diz "confira com o sinal de menos"
+      (`[data-conferido-negativo]`) e o servidor aceita
+      (`conferidoValido`) — nunca um "Sobrou" contra um número recusado (D3);
+    - "Fechar de novo" traz em branco a linha que mudou depois do fechamento
+      (`valoresParaFecharDeNovo`): o conferido de antes não vale para o
+      registrado de agora (A2);
+    - "Estornos do dia: R$ X" numa linha própria do resumo
+      (`[data-estornos-no-resumo]`), não colado ao "por quem recebeu" (A3);
+    - a forma estornada no mesmo dia (entrada e estorno se anulam) continua
+      na tabela, com zero, para conferir (`linhasDaConferencia` recebe
+      `estornadoHoje`, de `estornadoNoMesmoDiaPorForma`) — sumir a linha
+      escondia o que aconteceu (A4).
   - É o dinheiro da UNIDADE inteira (D6 da simulação de 2026-10-27): vê
     quem recebe (`cashier`) ou o financeiro com escopo de TODOS
     (`podeVerFechamento` em `lib/auth.ts`, `veFechamento` em `lib/menu.ts`

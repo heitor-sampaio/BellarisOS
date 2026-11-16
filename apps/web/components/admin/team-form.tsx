@@ -7,6 +7,7 @@ import { createTeamMember } from '@/actions/team'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { toast } from 'sonner'
+import { confirmacaoDoCadastro } from '@/lib/equipe/textos-do-cadastro'
 
 interface Branch { id: string; name: string }
 /** C62 (F70): o porquê do cargo desligado (o mesmo texto da recusa da action, `lib/equipe/cargo-acima.ts`). */
@@ -59,6 +60,8 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
   // As unidades (EQ1a): a rede inteira, ou as marcadas. Uma unidade só: já vem marcada (F8).
   const [unidades, setUnidades] = useState<ValorDasUnidades>(branches.length === 1 ? [branches[0]!.id] : [])
   const [roleId, setRoleId] = useState('')
+  // A21 da 18ª: o nome, para o "deu certo" dizer quem entrou.
+  const [nome, setNome] = useState('')
   const ehAdmin = !!cargoDeAdminId && roleId === cargoDeAdminId
   // O "Atende" de UMA caixa (EQ1c): vale nas unidades dela.
   const unidadesDela = ehAdmin || unidades === 'rede' ? branches.map(b => b.id) : unidades
@@ -71,11 +74,13 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
   const sucesso = !!(state && 'success' in state && state.success)
   // A3 da 8ª: quem atende e entrou sem comissão fica sabendo onde se define.
   const avisoDoCadastro = state && 'aviso' in state ? state.aviso : null
+  // A21 da 18ª (princípio 3): criar o membro confirma sempre — antes, o toast
+  // só saía com o aviso da comissão, e o formulário fechava calado.
   useEffect(() => {
     if (!sucesso) return
-    if (avisoDoCadastro) toast(avisoDoCadastro)
+    toast.success(confirmacaoDoCadastro(nome), avisoDoCadastro ? { description: avisoDoCadastro } : undefined)
     onFechar()
-  }, [sucesso, avisoDoCadastro, onFechar])
+  }, [sucesso, avisoDoCadastro, onFechar, nome])
 
   return (
     <>
@@ -102,7 +107,7 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
               <div className="form-2col">
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <label className="overline" htmlFor="tm-name">Nome completo</label>
-                  <input id="tm-name" name="name" type="text" required className="field" placeholder="Ex: Ana Souza" />
+                  <input id="tm-name" name="name" type="text" required className="field" placeholder="Ex: Ana Souza" value={nome} onChange={e => setNome(e.target.value)} />
                 </div>
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>

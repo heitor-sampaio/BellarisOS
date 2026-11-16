@@ -166,6 +166,17 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   liberação diz "base cheia: R$ 1.100,00 · 3%"; o acerto, "R$ 110,00
   (R$ 1.100,00, na proporção do que ficou (10%))". A conta não mudou. Prova:
   `e2e/comissoes-defeitos-da-11.spec.ts`.
+  **Cada lançamento com a base DO PAGAMENTO DELE** (D5 da 18ª simulação,
+  2026-11-16; princípio 3): o avulso pago com R$ 88,44 de desconto (+R$
+  423,47), estornado (−R$ 423,47) e recebido de novo cheio (+R$ 450,00) dizia
+  "base cheia R$ 1.500,00" nas três linhas — a base era a da linha de HOJE.
+  No atendimento avulso, o lançamento ligado a um pagamento
+  (`commissions.transaction_id`: a liberação e o estorno dele) diz a base
+  daquele pagamento — o desconto, a taxa e os insumos, a régua de
+  `comissao_conta_detalhe` com ele como o pago
+  (`private.comissao_base_do_pagamento`, em `comissoes_extrato_com_regra`;
+  migration `20261118300002`). O resto segue a conta da linha. A conta da
+  comissão não mudou. Prova: `tests/pdv-caixa-da-18.test.ts`.
   **Taxas da maquininha** — desde a F67 (C75), POR MAQUININHA: a tabela
   `maquininhas` (débito e crédito 1–12x em `taxas`, sem teto desde a F16-3,
   e a comissão sobre o líquido nunca fica negativa; cada bandeira pode ter
@@ -626,6 +637,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ```
 ❌ Gravar em commissions fora de comissao_acertar_linha, ou calcular valor de comissão no TypeScript (a conta é comissao_alvo)
 ❌ Mostrar o preço da linha (commission_lines.preco) como "base", ou refazer a base no TypeScript — é a de comissao_conta_detalhe (comissoes_extrato_com_base — D3 da 10ª); mudou a conta, muda nela (comissao_conta lê dela)
+❌ Dizer no lançamento de um pagamento a base de outro (o pagamento de hoje): é a do pagamento dele (private.comissao_base_do_pagamento — D5 da 18ª)
 ❌ Escrever no lançamento antigo a base de HOJE (o fator do cancelamento que veio depois dele): é a da hora do lançamento (private.comissao_fator_em — D7 da 11ª)
 ❌ Liberar comissão sobre o que a cliente ainda deve à rede (crediário, avulso sem pagamento) — só com o pagamento integral; o cartão em N vezes JÁ é pago
 ❌ Criar linha de comissão em outro modo que não INTEGRAL (o gatilho trg_comissao_linha_integral garante), ou reescrever o modo de uma linha antiga

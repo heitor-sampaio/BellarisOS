@@ -67,6 +67,10 @@ export interface NomesDaAuditoria {
   clientesDosPontos?: Record<string, string>
   /** O fechamento do dia que veio depois de outro do mesmo dia e unidade (o "Fechar de novo"). */
   fechamentosDeNovo?: Record<string, boolean>
+  /** A31 da 18ª: o motivo do cancelamento (o id do agendamento → o motivo), lido agora — a auditoria não guarda texto livre. */
+  motivosDoCancelamento?: Record<string, string>
+  /** A33 da 18ª: de qual é a comissão (o id → "do atendimento de X (procedimento)" ou "da venda a X"), lido agora. */
+  comissoes?: Record<string, string>
 }
 
 export interface LancamentoDaAuditoria {
@@ -105,9 +109,10 @@ export interface FiltrosDaAuditoria {
 
 /**
  * As ações do filtro "O que foi feito" que a pessoa ALCANÇA (A28 da 15ª
- * simulação): a abertura do prontuário é da rede (a linha não tem unidade), e
- * quem tem unidades nunca a lê — o filtro sai da lista dela em vez de ficar
- * sempre vazio.
+ * simulação): a abertura do prontuário é de quem tem a rede (o registro de
+ * quem abriu, 2026-10-27; desde a A32 da 18ª a linha leva a unidade do
+ * endereço, e a leitura a tira de quem tem unidades) — o filtro sai da lista
+ * dela em vez de ficar sempre vazio.
  */
 export function operacoesDoFiltro(minhas: readonly string[] | null): readonly { key: OperacaoDaAuditoria; label: string }[] {
   return minhas === null ? OPERACOES : OPERACOES.filter(o => o.key !== 'abriu')

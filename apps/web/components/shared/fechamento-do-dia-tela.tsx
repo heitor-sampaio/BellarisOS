@@ -9,7 +9,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { useFuso } from '@/components/shared/fuso'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
-import { textoDoMovimentoDepois, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
+import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { parseDinheiro } from '@estetica-os/utils'
 
@@ -23,9 +23,9 @@ const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 const horaNo = (fuso: string) => (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso })
 const diaCurtoNo = (fuso: string) => (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: fuso })
 /** O dia do calendário (é a data, não um instante). */
+/** O valor no campo, com o sinal ("−210,00"). */
+const noCampoComSinal = (v: number) => `${v < 0 ? '−' : ''}${Math.abs(v).toFixed(2).replace('.', ',')}`
 const diaLongo = (dia: string) => new Date(`${dia}T12:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
-/** O texto do valor no campo ("100,00"). */
-const noCampo = (v: number) => v.toFixed(2).replace('.', ',')
 
 /** "Faltou R$ 5,00" / "Sobrou…" / "Bateu" — a diferença vem do servidor (conferido − registrado). */
 function Diferenca({ valor }: { valor: number }) {
@@ -107,10 +107,9 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   const semDinheiro = resumo.esperadoDinheiro === 0 && !resumo.formas.some(f => f.forma === 'CASH')
 
   function fecharDeNovo() {
-    // Os campos já vêm com o que foi conferido no último fechamento.
-    const antes: Record<string, string> = {}
-    for (const l of linhas) if (l.conferivel && l.conferido != null) antes[l.forma] = noCampo(l.conferido)
-    setValores(antes); setObs(ultimo?.observacao ?? ''); setErro(null); setReabrindo(true)
+    // Os campos já vêm com o que foi conferido no último fechamento — a linha
+    // que mudou depois dele, em branco (A2 da 18ª).
+    setValores(valoresParaFecharDeNovo(linhas)); setObs(ultimo?.observacao ?? ''); setErro(null); setReabrindo(true)
   }
 
   function fechar(e: React.FormEvent) {
@@ -123,10 +122,10 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
     const conferidos: Record<string, number | null> = {}
     for (const l of linhas) {
       if (!l.conferivel || l.forma === 'CASH') continue
-      const t = (valores[l.forma] ?? '').trim()
-      if (t === '') { conferidos[l.forma] = null; continue }
-      const v = parseDinheiro(t)
-      if (!Number.isFinite(v) || v < 0) { setErro(`Confira o valor de ${rotuloDaFormaDoFechamento(l.forma)} (ou deixe em branco).`); return }
+      // D3 da 18ª: o saldo da forma pode ser negativo, e o conferido também.
+      const v = lerConferidoDoCampo(valores[l.forma] ?? '')
+      if (v === null) { conferidos[l.forma] = null; continue }
+      if (!Number.isFinite(v)) { setErro(`Confira o valor de ${rotuloDaFormaDoFechamento(l.forma)} (ou deixe em branco).`); return }
       conferidos[l.forma] = v
     }
     setErro(null)
@@ -255,6 +254,10 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                             aria-label={dinheiro ? (semDinheiro ? 'Dinheiro contado (R$, opcional)' : 'Dinheiro contado (R$)') : `Conferido em ${rotulo}`}
                             placeholder={dinheiro ? '0,00' : 'Não conferido'} style={{ width: 130, textAlign: 'right' }} />
                           {dinheiro && semDinheiro && <span style={{ ...DETALHE, color: 'var(--text-faint)' }}>Sem espécie hoje: em branco é R$ 0,00.</span>}
+                          {/* D3 da 18ª (princípio 3): o registrado negativo se confere com o sinal de menos. */}
+                          {!dinheiro && l.registrado < 0 && (
+                            <span data-conferido-negativo style={DETALHE}>Saiu mais do que entrou: confira com o sinal de menos ({noCampoComSinal(l.registrado)}).</span>
+                          )}
                         </>
                       ) : ultimo ? (
                         <>
@@ -363,8 +366,12 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
           <summary style={{ cursor: 'pointer', fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
             Detalhes do dia
             <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
-              {' '}· por quem recebeu{estornos && estornos.itens.length > 0 ? ` e estornos (${brl(estornos.total)})` : ''}
+              {' '}· {porQuemRecebeu.length > 0 ? 'por quem recebeu' : ''}{porQuemRecebeu.length > 0 && estornos && estornos.itens.length > 0 ? ' e ' : ''}{estornos && estornos.itens.length > 0 ? 'os estornos' : ''}
             </span>
+            {/* A3 da 18ª (princípio 3): a soma é dos estornos, numa linha própria — não parece o recebido. */}
+            {estornos && estornos.itens.length > 0 && (
+              <span data-estornos-no-resumo style={{ ...DETALHE, marginTop: 2 }}>Estornos do dia: {brl(estornos.total)}</span>
+            )}
           </summary>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
             {/* A40 da 11ª: com duas pessoas no balcão, cada uma precisa saber o que entrega. */}

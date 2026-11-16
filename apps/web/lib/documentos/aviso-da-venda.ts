@@ -29,3 +29,12 @@ export function avisoDosDocumentosDaVenda(docs: DocumentoDoAviso[], quemVe: stri
       : ' Para colher a assinatura, fale com quem administra a rede.'
   return `${base}${doCadastro}${onde}`
 }
+
+/**
+ * A6 da 18ª (princípios 3 e 7): o aviso ANTES de vender o pacote — o contrato
+ * dele pede do cadastro o que falta (o balcão só descobria depois de vender).
+ * Só avisa (princípio 2): a venda segue.
+ */
+export function avisoDoContratoAntesDeVender(c: { titulo: string; faltando: string[] }): string {
+  return `O contrato deste pacote (${c.titulo}) pede ${emLista(c.faltando)}, que falta no cadastro. Completado o cadastro antes de vender, ele já sai pronto para assinar.`
+}

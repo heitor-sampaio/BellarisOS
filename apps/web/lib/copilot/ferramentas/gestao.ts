@@ -9,7 +9,7 @@ import { medidaNoPlural } from '@/lib/estoque/medidas'
 import { saldoNaPrateleira } from '@/lib/estoque/saldo-em-texto'
 import { formatarQuantidade, minimoEhDoCadastro } from '@/lib/estoque/situacao'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, UUID, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { DATA, UUID, dinheiro, fusoDe, fusosPorUnidade, hojeNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, ondeProcurou, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 
 /**
  * As leituras de FINANCEIRO, ESTOQUE e OPORTUNIDADES.
@@ -37,9 +37,11 @@ export const lancamentos: FerramentaDeLeitura<{
     cliente: UUID.optional(),
   }),
   async executar(c, args) {
-    const u = await resolverUnidade(c, args.unidade)
+    // Sem unidade no pedido, em todas as da pessoa (D4 da 18ª).
+    const u = await resolverUnidade(c, args.unidade, { paraLer: true })
     if ('erro' in u) return { dados: { erro: u.erro } }
     const unidades = await idsDasUnidades(c, u.unidade)
+    const procurouEm = await ondeProcurou(c, unidades)
     if (!unidades.length) return { dados: { lancamentos: [] } }
     const situacao = args.situacao ?? 'em_aberto'
     const campoDaData = situacao === 'pagos' ? 'paid_at' : 'due_date'
@@ -78,7 +80,7 @@ export const lancamentos: FerramentaDeLeitura<{
     ])
     return {
       dados: {
-        situacao, quantidade: linhas.length,
+        situacao, procurouEm, quantidade: linhas.length,
         lancamentos: linhas.map(l => ({
           id: l.id, tipo: l.type === 'INCOME' ? 'receita' : 'despesa',
           descricao: l.description ?? l.category, categoria: l.category, valor: dinheiro(l.amount),
@@ -135,9 +137,11 @@ export const estoque: FerramentaDeLeitura<{
     unidade: z.string().max(80).optional(),
   }),
   async executar(c, args) {
-    const u = await resolverUnidade(c, args.unidade)
+    // Sem unidade no pedido, em todas as da pessoa (D4 da 18ª).
+    const u = await resolverUnidade(c, args.unidade, { paraLer: true })
     if ('erro' in u) return { dados: { erro: u.erro } }
     const unidades = await idsDasUnidades(c, u.unidade)
+    const procurouEm = await ondeProcurou(c, unidades)
     if (!unidades.length) return { dados: { itens: [] } }
     const filtro = args.filtro ?? (args.produto ? 'produto' : 'abaixo_do_minimo')
     const nomesDasUnidades = await nomesPorId(c, 'branches', unidades)
@@ -157,7 +161,7 @@ export const estoque: FerramentaDeLeitura<{
       const fusosDosLotes = await fusosPorUnidade(c, lotes.map(l => l.branch_id))
       return {
         dados: {
-          filtro, ateODia,
+          filtro, procurouEm, ateODia,
           lotes: lotes.map(l => ({
             produto: l.products.name, lote: l.batch_number, vence: l.expires_at.slice(0, 10),
             jaVenceu: loteVencido(l.expires_at, new Date(), fusosDosLotes.get(l.branch_id) ?? fusoDoLote),
@@ -180,7 +184,7 @@ export const estoque: FerramentaDeLeitura<{
       const extra = new Map(extras.map(e => [`${e.product_id}:${e.branch_id}`, e]))
       return {
         dados: {
-          filtro,
+          filtro, procurouEm,
           itens: criticos.map(l => {
             const e = extra.get(`${l.product_id}:${l.branch_id}`)
             const medidas = e?.products ?? { unit: l.unit, consumption_unit: null, units_per_package: null }
@@ -209,7 +213,7 @@ export const estoque: FerramentaDeLeitura<{
     }[] | null) ?? []
     return {
       dados: {
-        filtro,
+        filtro, procurouEm,
         itens: linhas.map(l => ({
           produto: l.products.name, produtoId: l.products.id, unidade: nomesDasUnidades.get(l.branch_id) ?? null,
           saldo: saldoDaPrateleira(l, l.products), minimo: l.min_stock != null ? Number(l.min_stock) : null,

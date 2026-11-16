@@ -29,6 +29,7 @@ import { PickerCompacto, posicaoDoPainel, type PosicaoDoPainel } from '@/compone
 import { createPortal } from 'react-dom'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFuso } from '@/components/shared/fuso'
+import { perdaNoCard } from '@/lib/crm/perda-no-card'
 
 // --- Filtros e ordenação -----------------------------------------
 const SEM_DONO = '__sem_dono__'
@@ -413,6 +414,8 @@ export interface Lead {
   /** Perdido: o motivo (2026-10-21). */
   motivo_perda_id?:   string | null
   crm_motivos_perda?: { nome: string } | null
+  /** A17 da 18ª: a observação da perda (o card a mostra no title). */
+  motivo_perda_obs?:  string | null
   /** A18 da 7ª: o próximo agendamento da cliente ligada (ISO), para "Agendado 06/11 10:30". */
   proximo_agendamento?: string | null
   /** A18: a compra da cliente depois de a oportunidade nascer ("Pacote X"): o card SUGERE o Ganho. */
@@ -1001,6 +1004,17 @@ function LeadCard({
               <BellRing size={11} /> {r.texto}{lead.retornar_obs ? ` · ${lead.retornar_obs}` : ''}
             </p>
           )
+        })()}
+        {/* A17 da 18ª: na coluna de perda, o card diz por que se perdeu. */}
+        {(() => {
+          const perda = perdaNoCard(lead, allStages)
+          return perda ? (
+            <p data-motivo-da-perda title={perda.obs ?? undefined} style={{
+              marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
+            }}>
+              <XCircle size={11} /> {perda.texto}
+            </p>
+          ) : null
         })()}
         {lead.proximo_agendamento && (
           <p data-agendado-em style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--info)' }}>

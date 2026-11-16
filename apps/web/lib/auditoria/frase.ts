@@ -147,7 +147,22 @@ const CAMPO: Record<string, string> = {
   // A26 da 17ª: "paid by", "payout id" saíam crus em "Editou a comissão".
   paid_by: 'quem pagou', payout_id: 'pagamento', estornado_at: 'estorno', estornado_por: 'quem estornou',
   estorno_transaction_id: 'estorno', released_at: 'liberação', motivo: 'motivo', kind: 'tipo',
+  // A30 da 18ª: "comissao venda pct" saía cru. A trava (tests/auditoria-atritos-da-18.test.ts):
+  // toda coluna de users, commissions, commission_payouts e appointments tem nome aqui.
+  comissao_venda_pct: 'percentual da comissão de venda', auth_id: 'login', horario: 'horário de trabalho',
+  registro_conselho: 'registro no conselho', rule_value: 'regra da comissão', period_ref: 'período',
+  line_id: 'item vendido', inicio: 'início', fim: 'fim', total: 'total', source: 'origem',
+  client_notes: 'observação da cliente', treatment_plan_id: 'plano de tratamento', procedure_rating: 'nota do procedimento',
+  created_by_id: 'quem agendou', sem_preferencia: 'sem preferência de profissional',
+  motivo_perda_obs: 'observação da perda', retornar_em: 'retorno', retornar_obs: 'o que fazer no retorno',
+  contato_id: 'contato', value: 'valor', cliente_desde: 'cliente desde', ultima_visita_antes: 'última visita antes do sistema',
+  points: 'pontos', min_stock: 'estoque mínimo', unit: 'medida', sku: 'código', barcode: 'código de barras',
+  parcela_numero: 'parcela', parcela_total: 'total de parcelas', descricao: 'descrição', tipo: 'tipo', dia: 'dia',
+  diferenca: 'diferença', preco: 'preço', observacao: 'observação', visible_on_client_app: 'agendável pelo app',
 }
+
+/** O nome de cada campo na Auditoria (a trava de A30 da 18ª lê daqui). */
+export const CAMPO_DA_AUDITORIA: Readonly<Record<string, string>> = CAMPO
 
 /**
  * Colunas que o sistema deriva de outras (A26 da 17ª: "quando aconteceu" é a
@@ -304,6 +319,21 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   }
   const fato = fraseDoRegistroDa17(r, nomes, cliente)
   if (fato) return fato
+  // A31 da 18ª: o cancelamento é o fato ("Editou o agendamento (motivo do cancelamento, …)" não dizia).
+  if (r.tabela === 'appointments' && r.operacao === 'editou' && texto(r.depois.status) === 'CANCELLED'
+    && texto(r.antes.status) !== 'CANCELLED') {
+    const motivo = r.registro_id ? texto(nomes.motivosDoCancelamento?.[r.registro_id]) : null
+    return `Cancelou o agendamento${cliente ? ` de ${cliente}` : ''}${motivo ? ` (motivo: ${motivo})` : ''}`
+  }
+  // A33 da 18ª: a comissão diz de qual é (o atendimento, a venda) — no CSV, as linhas do pagamento eram iguais.
+  if (r.tabela === 'commissions' && r.registro_id && nomes.comissoes?.[r.registro_id]) {
+    const qual = nomes.comissoes[r.registro_id]!
+    if (r.operacao === 'editou' && texto(r.depois.status) === 'PAID' && texto(r.antes.status) !== 'PAID') {
+      return `Marcou como paga a comissão ${qual}`
+    }
+    const campos = r.operacao === 'editou' ? camposMudados(r.colunas) : ''
+    return `${VERBO[r.operacao] ?? 'Mudou'} a comissão ${qual}${campos ? ` (${campos})` : ''}`
+  }
   // A36 da 16ª: a resposta da ficha de saúde é o fato. Pela cliente (o link, o app) ela "respondeu"; pela equipe, "preencheu".
   if (r.tabela === 'pre_atendimentos' && r.operacao === 'editou' && r.colunas.includes('respondido_em')) {
     if (r.ator_tipo === 'sistema' || r.ator_tipo === 'cliente') return 'Respondeu a ficha de saúde'

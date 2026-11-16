@@ -80,6 +80,8 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
     : null
   const linhas = linhasDaConferencia({
     formas: resumo.formas, esperadoDinheiro: resumo.esperadoDinheiro,
+    // A4 da 18ª: a forma estornada no mesmo dia continua na tabela, com zero.
+    estornadoHoje: estornos.mesmoDiaPorForma,
     ultimo: ultimo ? {
       contado:   Number(ultimo.contado_dinheiro),
       diferenca: Number(ultimo.diferenca),

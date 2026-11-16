@@ -34,6 +34,9 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   pacote NÃO entram: são da venda. O banco confere (gatilho
   `trg_procedimento_modelos_do_tipo`: mesma rede, o tipo, sem repetido —
   "Outros documentos: …"), e a action também (`idsDoFormularioDaRede`).
+  Na tela, os Documentos vêm primeiro; o termo e o contrato no fim, com o
+  tipo entre parênteses — "Nome (termo)", "(contrato, inativo)" (A22 da 18ª
+  simulação, `lib/documentos/outros-do-procedimento.ts`).
   ⚠️ É uma COLUNA de array, não uma tabela de ligação: uma tabela com chave
   estrangeira para `procedures` e `document_templates` viraria junção para
   o PostgREST (o PGRST201 de 04/11 — `atendimento.md`). No plano, o cliente
@@ -117,6 +120,9 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   foi salvo inativo: a rede já tem um ativo, e só um vale por vez. Para
   usar este, clique em “Tornar ativo”…" (o mesmo para o contrato de pacote) (`nasceuInativo` do salvar,
   `[data-contrato-inativo]`). Prova: `e2e/documentos-modelos.spec.ts`.
+  O aviso nomeia o ativo e traz o "Tornar ativo" do novo ali mesmo — "Usar
+  este no lugar de “A”?" (A23 da 18ª: quem só salvava seguia vendendo com o
+  de antes; `[data-tornar-ativo-o-novo]`).
 - **O documento da cliente sem CPF** (cli-09, revisão do Heitor de
   2026-11-02: "contrato sem documento da cliente vale menos"): `cliente.cpf`,
   sem CPF, é o passaporte (ou o RNE) com o tipo — "Passaporte CB1234567" —, e
@@ -460,7 +466,9 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   (`assinarNoPortal`, `actions/documentos-portal.ts` — só documento DELE). A
   equipe manda por "Pedir no portal" (`pedirAssinaturaNoPortal`): push com
   texto GENÉRICO — o título pode dizer o procedimento, e o push aparece na tela
-  de bloqueio. Cliente sem conta no portal: recusado — e **a tela nem oferece**
+  de bloqueio. No Histórico do app, cada assinado abre o documento
+  (`/[slug]/cliente/documentos/<id>`, que só abre o DELA — A11 da 18ª).
+  Cliente sem conta no portal: recusado — e **a tela nem oferece**
   (A26 da 7ª simulação, 2026-11-05: o botão aparecia e só no clique dizia que
   ela não tem o app): sem login, "Pedir no portal" some dos Documentos (a ficha e
   o atendimento, `temAcessoAoApp`) e a tela diz antes "Sem acesso ao app:

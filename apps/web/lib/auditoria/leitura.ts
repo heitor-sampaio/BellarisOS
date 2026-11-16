@@ -42,6 +42,18 @@ export interface PaginaDaAuditoria {
   antes?:    string | null
 }
 
+/**
+ * O recorte de quem tem unidades (A32 da 18ª simulação): as linhas das
+ * unidades dela, e as sem unidade que ELA gravou (a oportunidade e o contato
+ * que ela criou, que são da rede) — a Gabriela não via a oportunidade que
+ * ela mesma criou e marcou perdida. A linha sem unidade dos outros segue da rede.
+ */
+export function filtroDoAlcanceDaAuditoria(minhas: readonly string[], eu: string | null): string {
+  const dasUnidades = `branch_id.in.(${minhas.join(',')})`
+  return eu && UUID_OU_ID.test(eu) ? `${dasUnidades},and(branch_id.is.null,ator_user_id.eq.${eu})` : dasUnidades
+}
+const UUID_OU_ID = /^[0-9a-zA-Z-]+$/
+
 export async function lerAuditoria(
   ctx: TenantContext, filtros: FiltrosDaAuditoria, opcoes: { porPagina?: number; porGravacao?: boolean } = {},
 ): Promise<PaginaDaAuditoria> {
@@ -75,7 +87,12 @@ export async function lerAuditoria(
       .eq('tenant_id', ctx.tenantId!)
       .gte('criado_em', periodo.from.toISOString())
       .lte('criado_em', periodo.fullTo.toISOString())
-    if (minhas !== null) q = q.in('branch_id', minhas)
+    if (minhas !== null) {
+      // A32 da 18ª: as linhas das unidades dela E o que ela mesma gravou sem
+      // unidade (a oportunidade e o contato são da rede). A abertura do
+      // prontuário segue de fora: o registro de quem abriu é de quem tem a rede.
+      q = q.or(filtroDoAlcanceDaAuditoria(minhas, ctx.internalUserId ?? null)).neq('operacao', 'abriu')
+    }
     if (unidade && !semUnidade) q = q.eq('branch_id', unidade)
     if (filtros.pessoa && UUID.test(filtros.pessoa)) q = q.eq('ator_user_id', filtros.pessoa)
     // A37 da 16ª: "Só o que foi pelo Copilot" — a marca que a gravação do Copilot deixa (`via`).
@@ -253,11 +270,15 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
   const pagamentos = ids('commission_payouts')
   const pontos = ids('loyalty_transactions')
   const fechamentos = ids('fechamentos_do_dia')
+  // A31 da 18ª: o motivo do cancelamento; A33: de qual é a comissão.
+  const cancelados = [...new Set(registros.filter(r => r.tabela === 'appointments' && r.operacao === 'editou'
+    && r.depois?.status === 'CANCELLED' && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!))]
+  const comissoes = ids('commissions')
   const etapas = [...new Set(registros.filter(r => r.tabela === 'leads').flatMap(r => [r.antes, r.depois])
     .flatMap(x => [x?.crm_stage_id, x?.stage_id]).filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
   const nada = Promise.resolve([] as Record<string, unknown>[])
 
-  const [ld, ct, et, it, po, lt, fe] = await Promise.all([
+  const [ld, ct, et, it, po, lt, fe, ca, co] = await Promise.all([
     leads.length ? ler(admin.from('leads').select('id, name, contato_id').eq('tenant_id', tenant).in('id', leads), 'ler as oportunidades da auditoria') : nada,
     contatos.length ? ler(admin.from('contacts').select('id, name').eq('tenant_id', tenant).in('id', contatos), 'ler os contatos da auditoria') : nada,
     etapas.length ? ler(admin.from('crm_stages').select('id, name').eq('tenant_id', tenant).in('id', etapas), 'ler as etapas da auditoria') : nada,
@@ -265,6 +286,8 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
     pagamentos.length ? ler(admin.from('commission_payouts').select('id, professional_id').eq('tenant_id', tenant).in('id', pagamentos), 'ler os pagamentos de comissão da auditoria') : nada,
     pontos.length ? ler(admin.from('loyalty_transactions').select('id, loyalty_account_id').in('id', pontos), 'ler os lançamentos de pontos da auditoria') : nada,
     fechamentos.length ? ler(admin.from('fechamentos_do_dia').select('id, branch_id, dia, fechado_em').eq('tenant_id', tenant).in('id', fechamentos), 'ler os fechamentos da auditoria') : nada,
+    cancelados.length ? ler(admin.from('appointments').select('id, cancellation_reason, branches!inner(tenant_id)').eq('branches.tenant_id', tenant).in('id', cancelados), 'ler os motivos do cancelamento') : nada,
+    comissoes.length ? ler(admin.from('commissions').select('id, appointment_id, transaction_id, branches!inner(tenant_id)').eq('branches.tenant_id', tenant).in('id', comissoes), 'ler as comissões da auditoria') : nada,
   ]) as Record<string, unknown>[][]
   const str = (v: unknown) => (typeof v === 'string' ? v : null)
 
@@ -284,6 +307,25 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
   const cl = clientesDasContas.length
     ? (await ler(admin.from('clients').select('id, name').eq('tenant_id', tenant).in('id', clientesDasContas), 'ler as clientes dos pontos') ?? []) as Record<string, unknown>[]
     : []
+
+  // A33 da 18ª: a comissão pelo atendimento (a cliente e o procedimento) ou pela venda (a cliente do lançamento).
+  const agDasComissoes = [...new Set((co ?? []).map(x => str(x.appointment_id)).filter((v): v is string => !!v))]
+  const lcDasComissoes = [...new Set((co ?? []).filter(x => !x.appointment_id).map(x => str(x.transaction_id)).filter((v): v is string => !!v))]
+  const [agc, lcc] = await Promise.all([
+    agDasComissoes.length ? ler(admin.from('appointments').select('id, clients(name), procedures(name), branches!inner(tenant_id)')
+      .eq('branches.tenant_id', tenant).in('id', agDasComissoes), 'ler os atendimentos das comissões') : nada,
+    lcDasComissoes.length ? ler(admin.from('financial_transactions').select('id, clients(name), branches!inner(tenant_id)')
+      .eq('branches.tenant_id', tenant).in('id', lcDasComissoes), 'ler as vendas das comissões') : nada,
+  ]) as Record<string, unknown>[][]
+  const nomeDe = (x: unknown) => str((x as { name?: unknown } | null)?.name)
+  const atendimentoDa = new Map((agc ?? []).map(a => {
+    const cli = nomeDe(a.clients); const proc = nomeDe(a.procedures)
+    return [a.id as string, cli ? `do atendimento de ${cli}${proc ? ` (${proc})` : ''}` : proc ? `do atendimento (${proc})` : 'de um atendimento'] as const
+  }))
+  const vendaDa = new Map((lcc ?? []).map(l => [l.id as string, nomeDe(l.clients) ? `da venda a ${nomeDe(l.clients)}` : 'de uma venda'] as const))
+  const comissoesLidas = Object.fromEntries((co ?? []).map(x => [x.id as string,
+    (str(x.appointment_id) && atendimentoDa.get(str(x.appointment_id)!)) || (str(x.transaction_id) && vendaDa.get(str(x.transaction_id)!)) || '',
+  ]).filter(([, n]) => n))
 
   const nome = (xs: Record<string, unknown>[] | null | undefined) => new Map((xs ?? []).map(x => [x.id as string, str(x.name) ?? '']))
   const nomeDoContato = new Map([...nome(ct), ...nome(ct2)])
@@ -313,6 +355,9 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
     pagamentosDeComissao: Object.fromEntries((po ?? []).map(x => [x.id as string, nomeDoMembro.get(str(x.professional_id) ?? '') ?? '']).filter(([, n]) => n)),
     clientesDosPontos: Object.fromEntries((lt ?? []).map(l => [l.id as string, nomeDaCliente.get(clienteDaConta.get(str(l.loyalty_account_id) ?? '') ?? '') ?? '']).filter(([, n]) => n)),
     fechamentosDeNovo,
+    // O motivo é texto livre de quem cancelou: curto na frase.
+    motivosDoCancelamento: Object.fromEntries((ca ?? []).map(a => [a.id as string, (str(a.cancellation_reason)?.trim() ?? '').slice(0, 120)]).filter(([, m]) => m)),
+    comissoes: comissoesLidas,
   }
 }
 

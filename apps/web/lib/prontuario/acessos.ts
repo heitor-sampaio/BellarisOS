@@ -1,7 +1,9 @@
 import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { can } from '@/lib/auth'
+import { can, caminhoDaRequisicao } from '@/lib/auth'
+import { getCachedTodasAsUnidades } from '@/lib/cached-queries'
+import { unidadeDoAcessoAoProntuario } from '@/lib/prontuario/unidade-do-acesso'
 import { ler, contar, tentar } from '@/lib/db'
 
 /**
@@ -30,10 +32,13 @@ export async function registrarAcessoAoProntuario(
   ctx: TenantContext, clienteId: string, ponto: PontoDoProntuario, referencia?: string | null,
 ): Promise<void> {
   if (!ctx.tenantId || !clienteId) return
+  // A unidade do endereço em que foi aberto (A32 da 18ª): a Auditoria a mostra e filtra por ela.
+  const unidade = unidadeDoAcessoAoProntuario(ctx, await caminhoDaRequisicao(),
+    await getCachedTodasAsUnidades(ctx.tenantId))
   await tentar(createAdminClient().rpc('prontuario_registrar_acesso', {
     p_tenant: ctx.tenantId, p_cliente: clienteId, p_usuario: ctx.internalUserId ?? null,
     // O nome do ctx: leva a marca "via suporte" (CLAUDE.md §14).
-    p_nome: ctx.userName, p_ponto: ponto, p_referencia: referencia ?? null,
+    p_nome: ctx.userName, p_ponto: ponto, p_referencia: referencia ?? null, p_unidade: unidade,
   }), 'registrar o acesso ao prontuário')
 }
 

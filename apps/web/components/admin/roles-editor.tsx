@@ -14,7 +14,7 @@ import {
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
-  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo, copilotNoResumo,
+  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -464,7 +464,7 @@ function PermissionMatrix({
   }))
   const [dismissed, setDismissed] = useState(false)
   // A2 da 12ª: o que falta escolher, dito ao tentar salvar (não um padrão escondido).
-  const [faltas, setFaltas] = useState<string[]>([])
+  const [falta, setFalta] = useState<string | null>(null)
   // A14 da 15ª: o módulo que falta escolher, destacado — o aviso do pé não basta.
   const [destaque, setDestaque] = useState<AppModule | null>(null)
 
@@ -499,32 +499,31 @@ function PermissionMatrix({
   function setLevel(module: AppModule, v: PermissionLevel) {
     setLevels(prev => ({ ...prev, [module]: v }))
     setDismissed(true)
-    setFaltas([])
+    setFalta(null)
     setDestaque(null)
   }
   function setScope(module: AppModule, v: PermissionScope) {
     setScopes(prev => ({ ...prev, [module]: v }))
     setDismissed(true)
-    setFaltas([])
+    setFalta(null)
     setDestaque(null)
   }
   function toggleReportTab(t: ReportTab) {
     setReportTabs(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
     setDismissed(true)
-    setFaltas([])
+    setFalta(null)
     setDestaque(null)
   }
 
   // O que o cargo ligou e ainda não escolheu: o alcance de cada módulo
   // escopável, e as abas do Relatórios em "Ver" (A2 da 12ª, princípio 3).
-  function oQueFalta(): string[] {
-    const falta: string[] = ALL_MODULES
+  // A27 da 18ª: o texto diz o módulo ("Falta escolher o que o cargo enxerga em Prontuário.").
+  function oQueFalta(): string | null {
+    const modulos = ALL_MODULES
       .filter(m => !foraDoPlano.includes(m) && isScoped(m) && levels[m] !== 'NONE' && !scopes[m])
-      .map(m => `o que enxerga em ${MODULE_LABELS[m]}`)
-    if (!foraDoPlano.includes('reports') && levels.reports !== 'NONE' && reportTabs.length === 0) {
-      falta.push('ao menos um relatório em Relatórios (ou deixe Relatórios em "Sem acesso")')
-    }
-    return falta
+      .map(m => MODULE_LABELS[m])
+    const relatorio = !foraDoPlano.includes('reports') && levels.reports !== 'NONE' && reportTabs.length === 0
+    return modulos.length || relatorio ? textoDoQueFaltaNoCargo(modulos, relatorio) : null
   }
 
   const nothingGranted = ALL_MODULES.every(m => levels[m] === 'NONE')
@@ -536,9 +535,11 @@ function PermissionMatrix({
       className="card"
       onSubmit={e => {
         const falta = oQueFalta()
-        setFaltas(falta)
-        if (falta.length > 0) {
+        setFalta(falta)
+        if (falta) {
           e.preventDefault()
+          // A27 da 18ª: a tela rola até o módulo; o aviso vai junto, à vista.
+          toast.warning(falta)
           // A14 da 15ª (princípio 7): a tela vai até o primeiro módulo sem escolha, na ordem da tela.
           const primeiro = MODULE_GROUPS.flatMap(g => g.modules).find(m =>
             !foraDoPlano.includes(m) && ((isScoped(m) && levels[m] !== 'NONE' && !scopes[m])
@@ -627,16 +628,6 @@ function PermissionMatrix({
 
       <MenuPreview levels={levels} scopes={scopes} reportTabs={reportTabs} />
 
-      {faltas.length > 0 && (
-        <div data-falta-escolher role="alert" style={{
-          color: 'var(--warning)', background: 'var(--warning-soft)',
-          borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
-          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', marginTop: 16,
-        }}>
-          <Fala>{`Antes de salvar, escolha ${faltas.join('; ')}.`}</Fala>
-        </div>
-      )}
-
       {state?.error && (
         <p style={{
           color: 'var(--warning)', background: 'var(--warning-soft)',
@@ -648,8 +639,18 @@ function PermissionMatrix({
       )}
 
       <div style={{
-        display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 20,
+        display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 20, flexWrap: 'wrap',
       }}>
+        {/* A27 da 18ª (princípio 3): o que falta escolher, junto do botão. */}
+        {falta && (
+          <span data-falta-escolher role="alert" style={{
+            color: 'var(--warning)', background: 'var(--warning-soft)',
+            borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
+            fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', flex: '1 1 260px',
+          }}>
+            <Fala>{falta}</Fala>
+          </span>
+        )}
         {showSuccess && (
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--success)',

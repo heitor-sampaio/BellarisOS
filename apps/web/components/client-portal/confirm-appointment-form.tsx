@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Star, CheckCircle2, CalendarDays, User } from 'lucide-react'
 import { confirmAndRateAppointment } from '@/actions/appointments'
 import { useFuso } from '@/components/shared/fuso'
+import { textoDoQuandoNoConfirmar } from '@/lib/clientes/textos-do-app'
 
 interface Props {
   appointmentId:    string
@@ -51,7 +52,8 @@ function StarRating({ value, onChange, label, dica }: {
                 lineHeight: 0, color: active ? 'var(--brand)' : 'var(--text-faint)',
               }}
             >
-              <Star size={30} strokeWidth={2} fill={active ? 'var(--brand)' : 'none'} />
+              {/* A13 da 18ª: o desenho não se anuncia — o nome é o do botão ("Atendimento: 4 de 5 estrelas"). */}
+              <Star size={30} strokeWidth={2} fill={active ? 'var(--brand)' : 'none'} aria-hidden="true" />
             </button>
           )
         })}
@@ -72,8 +74,6 @@ export function ConfirmAppointmentForm({
   const [feedback, setFeedback] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const dt = new Date(concluidoEm ?? scheduledAt)
 
   async function handleConfirm() {
     setSubmitting(true)
@@ -109,7 +109,8 @@ export function ConfirmAppointmentForm({
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             <CalendarDays size={12} />
-            {concluidoEm ? 'Concluído em ' : ''}{dt.toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: 'long' })} às {dt.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })}
+            {/* A15 da 18ª: a hora marcada ao lado da real, quando diferem. */}
+            {textoDoQuandoNoConfirmar({ agendadoEm: scheduledAt, concluidoEm: concluidoEm ?? null, fuso })}
           </span>
         </div>
       </div>

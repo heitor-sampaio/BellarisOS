@@ -56,6 +56,22 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
 
   function abrir() { setErro(null); setAberta(true); void carregar() }
 
+  // A29 da 18ª: marcar quem atende pela Equipe (em outra aba) e voltar à janela
+  // sem perder o que já foi escolhido: só a lista de quem atende é lida de novo.
+  const [atualizando, setAtualizando] = useState(false)
+  async function atualizarALista() {
+    setAtualizando(true); setErroCarga(null)
+    try {
+      const r = await pendenciasParaDesativar(membroId)
+      if ('error' in r) setErroCarga(r.error)
+      else setDados(r)
+    } catch {
+      setErroCarga('Não consegui conferir o que fica com esta pessoa.')
+    } finally {
+      setAtualizando(false)
+    }
+  }
+
   function repassarTodosAg(pessoa: string) {
     setTodosAg(pessoa)
     if (!dados) return
@@ -162,6 +178,7 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
                     <div>
                       {dados.agendamentos.map(a => (
                         <LinhaDoAgendamento key={a.id} a={a} nome={nome} valor={paraAg[a.id] ?? ''} aviso={avisoAg[a.id]} estilo={linha}
+                          equipe={redirectPath} onAtualizar={atualizarALista} atualizando={atualizando}
                           onEscolher={v => { setParaAg(x => ({ ...x, [a.id]: v })); setAvisoAg(x => ({ ...x, [a.id]: '' })) }} />
                       ))}
                     </div>
@@ -237,11 +254,13 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
 }
 
 /** Uma linha do repasse (o Desativar, e o "Atende" desmarcado — D3 da 9ª). */
-export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, deNovo = 'abra o Desativar de novo' }: {
+export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, deNovo = 'abra o Desativar de novo', equipe, onAtualizar, atualizando }: {
   a: AgendamentoParaRepassar; nome: string; valor: string; aviso?: string
   estilo: React.CSSProperties; onEscolher: (v: string) => void
   /** Como voltar a esta janela depois de marcar a unidade em outra pessoa. */
   deNovo?: string
+  /** A29 da 18ª: a Equipe abre em outra aba, e a janela relê a lista sem fechar. */
+  equipe?: string; onAtualizar?: () => void; atualizando?: boolean
 }) {
   const fuso = useFuso()
   return (
@@ -265,7 +284,18 @@ export function LinhaDoAgendamento({ a, nome, valor, aviso, estilo, onEscolher, 
           {a.emOutraUnidade.length
             ? <>Ninguém livre que atenda nesta unidade. Atende{a.emOutraUnidade.length > 1 ? 'm' : ''} em outra unidade:{' '}
                 {a.emOutraUnidade.map(p => `${p.nome} (${p.unidades.join(', ')})`).join('; ')}. Para repassar a essa pessoa, marque
-                “{a.unidade}” no “Atende clientes em” da ficha dela na Equipe, e {deNovo} — ou cancele aqui.</>
+                “{a.unidade}” no “Atende clientes em” da ficha dela na{' '}
+                {equipe && onAtualizar
+                  ? <>
+                      <a data-abrir-equipe href={equipe} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-semibold)' }}>Equipe (abre em outra aba)</a>
+                      , e volte aqui:{' '}
+                      <button type="button" className="btn-ghost" disabled={atualizando} onClick={onAtualizar}
+                        style={{ padding: '2px 6px', fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-semibold)' }}>
+                        {atualizando ? 'Atualizando…' : 'Atualizar a lista'}
+                      </button>
+                      {' '}— ou cancele aqui.
+                    </>
+                  : <>Equipe, e {deNovo} — ou cancele aqui.</>}</>
             : 'Ninguém livre que atenda nesta unidade: remarque pela agenda, ou cancele aqui.'}
         </span>
       )}

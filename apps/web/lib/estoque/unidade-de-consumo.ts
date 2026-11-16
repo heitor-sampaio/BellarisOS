@@ -51,3 +51,15 @@ export function parteDaEmbalagem(p: UnidadesDoProduto, quantidade: number | null
   }
   return `${(parte * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% ${naFrase}`
 }
+
+/**
+ * A linha embaixo do nome do insumo no atendimento (A9 da 18ª simulação;
+ * princípio 3): repetia só a unidade ("ml"), sem número. Agora a quantidade e,
+ * no produto com unidade de consumo, a parte da embalagem: "1 ml · 1 seringa",
+ * "0,5 ml · 1/2 da seringa". Sem embalagem, "2 un".
+ */
+export function linhaDoInsumo(quantidade: number, unidade: string, produto?: UnidadesDoProduto | null): string {
+  const qtd = quantidadeComMedida(quantidade, unidade, 4)
+  const parte = produto ? parteDaEmbalagem(produto, quantidade) : null
+  return parte ? `${qtd} · ${parte}` : qtd
+}

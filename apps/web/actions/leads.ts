@@ -18,6 +18,8 @@ import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentos
 import { pessoaDoNovoLeadValida } from '@/lib/crm/pessoa-para-novo-lead'
 import { propagarDadosDaPessoa, digitosDoTelefone, telefoneParaGravar } from '@/lib/contatos/propagar'
 import { leadAoAlcance } from '@/lib/crm/alcance'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsDoVocabulario } from '@/lib/tags/escolha'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 
 function str(fd: FormData, key: string) {
@@ -96,7 +98,9 @@ export async function createLead(
     const utmMedium   = str(formData, 'utm_medium')
     const utmCampaign = str(formData, 'utm_campaign')
     const procedureIds = parseProcedureIds(formData)
-    const manualTags   = parseStringArray(formData, 'tags')
+    // D7 da 18ª: a oportunidade nova marca só tags do vocabulário da rede.
+    const pedidas      = parseStringArray(formData, 'tags')
+    const manualTags   = pedidas.length ? tagsDoVocabulario(pedidas, await tagsAtivasDaRede(ctx.tenantId!), []) : []
 
     if (!name)                       return { error: 'Nome é obrigatório.' }
     if (!phone && !email && !social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
@@ -248,8 +252,18 @@ export async function updateLead(
     }
 
     // Só atualiza tags se o form as enviou (evita apagar tags de callers que não editam tags)
-    const novasTags = formData.has('tags') ? parseStringArray(formData, 'tags') : null
-    if (novasTags) patch.tags = novasTags
+    // D7 da 18ª: só as do vocabulário da rede (e as que o card já tinha) —
+    // a tag nova seria criada pelo gatilho, e criar tag é de Configurações → Tags (H7).
+    let novasTags = formData.has('tags') ? parseStringArray(formData, 'tags') : null
+    if (novasTags) {
+      const [vocabulario, atual] = await Promise.all([
+        tagsAtivasDaRede(ctx.tenantId!),
+        ler(createAdminClient().from('leads').select('tags').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+          'ler as tags da oportunidade') as Promise<{ tags: string[] | null } | null>,
+      ])
+      novasTags = tagsDoVocabulario(novasTags, vocabulario, atual?.tags ?? [])
+      patch.tags = novasTags
+    }
 
     // A42 da 9ª: o lembrete de retorno (o dia e o que fazer), só quando o form
     // o mandou. Trocar o dia zera o aviso — o novo dia avisa de novo.

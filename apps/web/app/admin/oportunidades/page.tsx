@@ -91,7 +91,7 @@ export default async function AdminOportunidadesPage({
           id, name, phone, email, social_media, source,
           crm_stage_id, notes, client_id, created_at, tags,
           owner_id, users(name, is_active), contato_id,
-          motivo_perda_id, crm_motivos_perda(nome), retornar_em, retornar_obs,
+          motivo_perda_id, motivo_perda_obs, crm_motivos_perda(nome), retornar_em, retornar_obs,
           lead_procedures(procedure_id, procedures(name, price))
         `)
         .eq('tenant_id', ctx.tenantId!)

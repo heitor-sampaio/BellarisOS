@@ -58,10 +58,10 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
 
   // A8 da 6ª simulação: o contrato de plano (ou de pacote) novo nasce inativo
   // quando já há um ativo (D-5) — a lista diz, logo depois de salvar, e como ativar.
-  const [salvoInativo, setSalvoInativo] = useState<{ nome: string; tipo: TipoDeModelo } | null>(null)
+  const [salvoInativo, setSalvoInativo] = useState<{ nome: string; tipo: TipoDeModelo; id: string | null } | null>(null)
 
-  function pronto(r?: { nasceuInativo?: boolean; nome?: string }) {
-    setSalvoInativo(r?.nasceuInativo && vista.modo === 'novo' ? { nome: (r.nome ?? '').trim(), tipo: vista.tipo } : null)
+  function pronto(r?: { nasceuInativo?: boolean; nome?: string; id?: string }) {
+    setSalvoInativo(r?.nasceuInativo && vista.modo === 'novo' ? { nome: (r.nome ?? '').trim(), tipo: vista.tipo, id: r.id ?? null } : null)
     setVista({ modo: 'lista' })
     router.refresh()
   }
@@ -77,8 +77,11 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
     else router.refresh()
   }
 
+  /** O ativo de hoje de um tipo da rede (A23 da 18ª: o aviso do novo inativo diz qual ele substitui). */
+  const atualAtivo = (t: TipoDeModelo) => modelos.find(m => m.tipo === t && m.ativo)?.nome ?? null
+
   /** O contrato de plano e o de pacote são um só ativo: "Tornar ativo" TROCA o atual por este (D-5, PC9a). */
-  async function tornarAtivo(m: ItemDeModelo) {
+  async function tornarAtivo(m: Pick<ItemDeModelo, 'id'>) {
     setErro(null)
     setOcupado(m.id)
     const r = await tornarContratoAtivo(m.id)
@@ -118,8 +121,18 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
           fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', background: 'var(--warning-soft)',
           borderRadius: 'var(--radius-field-token)', padding: '9px 12px', fontWeight: 'var(--weight-semibold)',
         }}>
-          O {ROTULO_DO_TIPO[salvoInativo.tipo].toLowerCase()} “{salvoInativo.nome}” foi salvo inativo: a rede já tem um ativo, e só um vale por vez.
-          Para usar este, clique em “Tornar ativo” na linha dele, em {ROTULO_DO_TIPO[salvoInativo.tipo]}.
+          O {ROTULO_DO_TIPO[salvoInativo.tipo].toLowerCase()} “{salvoInativo.nome}” foi salvo inativo: a rede já tem um ativo{atualAtivo(salvoInativo.tipo) ? ` (“${atualAtivo(salvoInativo.tipo)}”)` : ''}, e só um vale por vez.
+          {salvoInativo.id
+            ? ` Usar este no lugar ${atualAtivo(salvoInativo.tipo) ? `de “${atualAtivo(salvoInativo.tipo)}”` : 'do atual'}?`
+            : ` Para usar este, clique em “Tornar ativo” na linha dele, em ${ROTULO_DO_TIPO[salvoInativo.tipo]}.`}
+          {/* A23 da 18ª (princípio 7): quem só salvava seguia vendendo com o
+              contrato de antes — o "Tornar ativo" vem no próprio aviso. */}
+          {salvoInativo.id && (
+            <button type="button" data-tornar-ativo-o-novo className="btn-secondary" style={{ marginLeft: 8 }}
+              disabled={ocupado === salvoInativo.id} onClick={() => tornarAtivo({ id: salvoInativo.id! })}>
+              {ocupado === salvoInativo.id ? 'Trocando…' : 'Tornar ativo'}
+            </button>
+          )}
         </p>
       )}
 

@@ -11,6 +11,15 @@ export function listaDeUnidades(nomes: string[]): string {
 }
 
 /**
+ * As unidades na linha da Equipe (A28 da 18ª simulação): a principal — a do
+ * login, a que o "pin" do cadastro escolhe — com "(principal)"; sozinha, só o
+ * nome. "Derby (principal) e Casa Forte".
+ */
+export function unidadesDaLinhaDaEquipe(principal: string, outras: string[]): string {
+  return outras.length ? listaDeUnidades([`${principal} (principal)`, ...outras]) : principal
+}
+
+/**
  * A lista que veio do checklist (`_atendeEm=1` + `atendeEm`, ids separados por
  * vírgula), ou null quando o formulário é o de antes (só `providesServices`).
  */

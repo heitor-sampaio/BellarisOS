@@ -15,8 +15,8 @@ import { rotaCliente, rotaDaComanda } from '@/lib/rotas'
 import { venderProduto } from '@/actions/produtos'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
-import { FormularioDoPacote, type PacoteAVenda } from '@/components/shared/vender-pacote'
-import { CamposDoPagamento, estadoDoPagamento, montarPagamento, useRecusaDoPagamento } from '@/components/shared/campos-do-pagamento'
+import { FormularioDoPacote, type PacoteAVenda, type ContratoQuePedeCadastro } from '@/components/shared/vender-pacote'
+import { CamposDoPagamento, estadoDoPagamento, montarPagamento, useRecusaDoPagamento, recusaForaDoCampo, MotivoDoBotao } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { CampoQuemVendeu, PerguntaDaVenda } from '@/components/shared/pergunta-da-venda'
@@ -73,7 +73,7 @@ const ABA_DO_CREDITO = { key: 'CREDITO', label: 'Crédito interno' }
  * sem a janela, numa unidade só (a do PDV). Toda venda vira a comanda dela no
  * banco (o gatilho `comanda_da_venda`).
  */
-export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produtos, equipe, podeAgendar = false, aReceber = [], fidelidade = null, onFim }: {
+export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produtos, equipe, podeAgendar = false, aReceber = [], fidelidade = null, contratoDoPacote = null, onFim }: {
   clienteId:     string
   branchId:      string
   pacotes:       PacoteAVenda[]
@@ -84,6 +84,8 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
   aReceber?:     AtendimentoAReceber[]
   /** FD2a: os pontos e os vouchers de desconto da cliente, para a venda à vista. */
   fidelidade?:   FidelidadeDaVenda | null
+  /** A6 da 18ª: o contrato de pacote que pede do cadastro o que falta. */
+  contratoDoPacote?: ContratoQuePedeCadastro | null
   onFim:         () => void
 }) {
   const [aba, setAba] = useState<Aba>(procedimentos.length ? 'PROCEDIMENTO' : pacotes.length ? 'PACOTE' : produtos.length ? 'PRODUTO' : 'CREDITO')
@@ -105,7 +107,7 @@ export function VendaNaTela({ clienteId, branchId, pacotes, procedimentos, produ
         ? <FormularioDoProduto key={aba} clienteId={clienteId} branchId={branchId} produtos={produtos} onFim={onFim} equipe={equipe} fidelidade={fidelidade} />
         : aba === 'PROCEDIMENTO' && procedimentos.length > 0
         ? <FormularioDoProcedimento key={aba} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={onFim} podeAgendar={podeAgendar} aReceber={aReceber} equipe={equipe} fidelidade={fidelidade} />
-        : <FormularioDoPacote key={aba} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={onFim} equipe={equipe} podeAgendar={podeAgendar} fidelidade={fidelidade} />}
+        : <FormularioDoPacote key={aba} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={onFim} equipe={equipe} podeAgendar={podeAgendar} fidelidade={fidelidade} contratoQuePedeCadastro={contratoDoPacote} />}
     </div>
   )
 }
@@ -230,7 +232,8 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
       {pergunta ? (
         <PerguntaDaVenda texto={pergunta} pendente={pendente} aoConfirmar={() => vender(true)} aoVoltar={() => setPergunta(null)} />
       ) : (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <MotivoDoBotao motivo={pendente || erro ? null : recusaForaDoCampo(estado, fid.aPagar, recusaDoPagamento(estado, fid.aPagar))} />
           <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
           <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar) || !quantidadesValidas}>
             {pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}
@@ -335,7 +338,8 @@ function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string
         <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA']} total={reais} semCredito />
       </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <MotivoDoBotao motivo={pendente || erro ? null : recusaForaDoCampo(estado, reais, recusaDoPagamento(estado, reais))} />
         <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
         <button type="button" className="btn-primary" onClick={vender} disabled={pendente || reais <= 0 || bonusIlegivel || !!recusaDoPagamento(estado, reais)}>
           {pendente ? 'Vendendo…' : `Vender por ${formatBRL(reais)}`}
@@ -473,7 +477,8 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       {pergunta ? (
         <PerguntaDaVenda texto={pergunta} pendente={pendente} aoConfirmar={() => vender(true)} aoVoltar={() => setPergunta(null)} />
       ) : (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <MotivoDoBotao motivo={pendente || erro ? null : recusaForaDoCampo(estado, fid.aPagar, recusaDoPagamento(estado, fid.aPagar))} />
           <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
           <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar) || qtd < 1 || qtd > 100}>
             {pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}

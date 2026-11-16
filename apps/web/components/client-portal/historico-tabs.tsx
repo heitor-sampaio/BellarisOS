@@ -7,12 +7,15 @@ import Link from 'next/link'
 import { FileText, Download, CheckCircle2, Clock3, Star, ChevronRight } from 'lucide-react'
 import type { ProcedimentoItem, PagamentoItem, DeAntesDoSistema } from '@/app/[slug]/cliente/historico/page'
 import { useFuso } from '@/components/shared/fuso'
+import { tituloDoArquivoNoApp } from '@/lib/clientes/textos-do-app'
 
 // -- Types ----------------------------------------------------------
 type ClientDoc = {
   id:         string
   name:       string
   category:   string
+  /** O momento da foto do atendimento (A10 da 18ª: "Uma foto do seu atendimento (depois)"). */
+  momento?:   string | null
   file_url:   string
   created_at: string
 }
@@ -272,8 +275,11 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
           )}
 
           {/* Termos de consentimento */}
+          {/* A11 da 18ª (princípio 3): o assinado ABRE — o documento da cliente,
+              com o PDF assinado (o mesmo do /verificar); a página confere que é dela. */}
           {consentimentos.map(c => (
-            <div key={c.id} className="card" style={{ padding: '13px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link key={c.id} href={`/${slug}/cliente/documentos/${c.id}`} data-assinado-no-app className="card"
+              style={{ padding: '13px 18px', display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
               <div style={{
                 width: 36, height: 36, borderRadius: 10, background: 'var(--brand-soft)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -289,8 +295,9 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                   {c.signed_via && ` · ${c.signed_via}`}
                 </p>
               </div>
-              <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0 }} />
-            </div>
+              <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0 }} aria-hidden="true" />
+              <ChevronRight size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} aria-hidden="true" />
+            </Link>
           ))}
 
           {/* Arquivos enviados pela clínica */}
@@ -312,7 +319,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
-                    {d.name}
+                    {tituloDoArquivoNoApp(d)}
                   </p>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                     {DOC_CATEGORY[d.category] ?? 'Documento'} · {new Date(d.created_at).toLocaleDateString('pt-BR', { timeZone: fuso })}

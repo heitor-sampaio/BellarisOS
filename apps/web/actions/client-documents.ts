@@ -54,11 +54,22 @@ export async function uploadClientDocument(
   // da foto clínica; o resto não tem momento.
   const momentoPedido = ((formData.get('momento') as string | null) ?? '').trim().toUpperCase()
   const momento = category === 'foto_clinica' && ['ANTES', 'DURANTE', 'DEPOIS'].includes(momentoPedido) ? momentoPedido : null
+  // A10 da 18ª (princípio 7): o "Enviar à cliente" já no envio da foto — o
+  // mesmo envio do botão da miniatura (enviarDocumentoACliente), logo depois.
+  const enviarACliente = formData.get('enviar_a_cliente') === 'on'
 
   if (!file || file.size === 0) return { error: 'Selecione um arquivo.' }
   if (!name)                    return { error: 'Informe o nome do documento.' }
   if (!clientId || !branchId)   return { error: 'Dados inválidos.' }
   if (file.size > MAX_FILE_SIZE) return { error: 'Arquivo deve ter no máximo 20 MB.' }
+
+  // O que o envio recusaria, recusado ANTES de subir o arquivo: sem isso a
+  // foto ficava anexada e a tela diria só o erro do envio.
+  if (enviarACliente) {
+    const travado = bloqueioDoSuporte(ctx, 'enviar documento ao cliente')
+    if (travado) return { error: travado }
+    if (!temRecurso(ctx, 'portal')) return { error: 'O plano desta rede não tem o portal da cliente: desmarque "Enviar à cliente" para anexar.' }
+  }
 
   const admin = createAdminClient()
 
@@ -117,7 +128,7 @@ export async function uploadClientDocument(
   if (uploadError) return { error: `Falha no upload: ${uploadError.message}` }
 
   // Insert record — guardamos o PATH, não uma URL pública
-  const { error: dbError } = await admin.from('client_documents').insert({
+  const { data: inserido, error: dbError } = await admin.from('client_documents').insert({
     client_id:   clientId,
     branch_id:   unidade,
     name,
@@ -129,7 +140,7 @@ export async function uploadClientDocument(
     uploaded_by: ctx.internalUserId,
     appointment_id: appointmentId,
     momento,
-  })
+  }).select('id').single()
 
   if (dbError) {
     // Desfaz o upload. `tentar`: o erro que importa é o do registro, que vai
@@ -145,6 +156,11 @@ export async function uploadClientDocument(
   if (appointmentId) {
     await logHistory(admin, appointmentId, ctx.internalUserId, ctx.userName || ctx.roleLabel || 'Equipe',
       'FOTO_CLINICA', 'Foto clínica anexada')
+  }
+
+  if (enviarACliente && inserido?.id) {
+    const envio = await enviarDocumentoACliente(inserido.id as string, true)
+    if (envio.error) return { error: `A foto foi anexada, mas não foi ao app: ${envio.error} Use "Enviar à cliente" na foto.` }
   }
 
   // Os dois portais mostram a mesma ficha: só o da unidade era revalidado, e
@@ -200,11 +216,15 @@ export async function enviarDocumentoACliente(
 
     // Aviso GENÉRICO: o push aparece na tela de bloqueio, e o nome do arquivo
     // pode dizer o procedimento ("Foto antes — toxina").
+    // A10 da 18ª: a foto do atendimento diz que é foto (ainda sem o título).
     if (enviar) {
+      const ehFoto = doc.category === 'foto_clinica'
       await notifyClient(admin, doc.client_id as string, {
         type:  'document_shared',
-        title: 'Documento novo',
-        body:  `${unidade.name || 'A equipe'} enviou um documento para você.`,
+        title: ehFoto ? 'Foto nova' : 'Documento novo',
+        body:  ehFoto
+          ? `${unidade.name || 'A equipe'} enviou uma foto do seu atendimento.`
+          : `${unidade.name || 'A equipe'} enviou um documento para você.`,
         data:  { link: `/${unidade.slug}/cliente/historico` },
       })
     }

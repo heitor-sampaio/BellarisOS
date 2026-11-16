@@ -129,6 +129,27 @@ export function useRecusaDoPagamento(): (e: EstadoDoPagamento, total?: number, d
   }
 }
 
+/**
+ * A5 da 18ª (princípio 7): o "Vender" desabilitado não dizia por quê — no
+ * crediário, a "Forma da entrada" só aparece depois de digitar a entrada. O
+ * motivo vai ao lado do botão; a recusa que o campo da entrada já mostra
+ * (ilegível, acima do total) não se repete ali.
+ */
+export function recusaForaDoCampo(e: EstadoDoPagamento, total: number | undefined, recusa: string | null, doQue = 'da venda'): string | null {
+  if (!recusa) return null
+  return recusa === recusaDaEntradaDoEstado(e, total, doQue) ? null : recusa
+}
+
+/** O motivo do botão desabilitado, ao lado dele (A5 da 18ª). */
+export function MotivoDoBotao({ motivo }: { motivo: string | null }) {
+  if (!motivo) return null
+  return (
+    <span data-motivo-do-botao role="status" style={{
+      marginRight: 'auto', alignSelf: 'center', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 'var(--weight-semibold)',
+    }}>{motivo}</span>
+  )
+}
+
 /** O crediário tem entrada (um valor legível acima de zero)? */
 function temEntrada(e: EstadoDoPagamento): boolean {
   const lida = lerEntrada(e.entrada)

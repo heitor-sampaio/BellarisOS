@@ -58,6 +58,8 @@ import { textoDoRegistroTravado } from '@/lib/atendimento/registro-travado'
 import { lotesDaBaixa, textoDosLotesDaBaixa, type LoteParaBaixa, type ParteDaBaixa } from '@/lib/estoque/fefo'
 import { textoDoPlanoDoConcluido } from '@/lib/plano-de-tratamento/textos'
 import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
+import { textoDaSessaoDoPacote } from '@/lib/appointments/sessao-do-pacote'
+import { linhaDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import { useAgora } from '@/lib/use-agora'
 import { atrasoDoInicio } from '@/lib/appointments/inicio-adiantado'
 import { useFuso } from '@/components/shared/fuso'
@@ -128,6 +130,8 @@ export interface LotesDosInsumos {
   prever:  Record<string, LoteParaBaixa[]>
   fatores: Record<string, number>
   feita:   Record<string, ParteDaBaixa[]> | null
+  /** A9 da 18ª: a embalagem de cada produto — a linha diz "1 ml · 1 seringa". */
+  embalagens?: Record<string, UnidadesDoProduto>
 }
 
 export interface AvailableProduct {
@@ -224,6 +228,8 @@ interface Props {
   isPackageSession?:     boolean
   /** O pacote é o trazido de fora (F35): não houve venda — já pago antes do sistema (A15 da 10ª). */
   pacoteDeFora?:         boolean
+  /** A7 da 18ª: qual sessão de qual pacote — a faixa "Sessão 1 de 6 do pacote …, já paga". */
+  sessaoDoPacote?:       { numero: number; total: number | null; nome: string | null; deFora: boolean } | null
   /** Procedimento pré-pago: pago na venda, a recepção não cobra de novo. */
   isPrePago?:            boolean
   /**
@@ -887,7 +893,8 @@ function InsumoCard({ items, available, lotes, checkedIds, onToggle, onChangeQty
               {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: checked ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.3 }}>{item.name}</p>
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{item.unit}</p>
+                {/* A9 da 18ª (princípio 3): a quantidade e a parte da embalagem ("1 ml · 1 seringa"), não a unidade solta. */}
+                <p data-linha-do-insumo style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{linhaDoInsumo(item.quantity, item.unit, lotes?.embalagens?.[item.productId])}</p>
                 {(() => {
                   // A11 da 9ª: o lote (e a validade) de onde sai o insumo — o FEFO do gatilho.
                   if (!lotes || (!lotes.feita && !checked)) return null
@@ -1023,7 +1030,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, isPrePago = false, podeReceber = false, quemEstorna = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1883,8 +1890,46 @@ export function AppointmentSession({
           </div>
         )}
 
+        {/* A7 da 18ª (princípio 3): a sessão do pacote diz, à vista, que já está paga. */}
+        {isPackageSession && sessaoDoPacote && (
+          <div data-sessao-do-pacote role="note" style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-field-token)',
+            background: 'var(--success-bg)', border: '1px solid var(--success-border)', color: 'var(--success)',
+            fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+          }}>
+            <CheckCircle2 size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span>{textoDaSessaoDoPacote(sessaoDoPacote)}</span>
+          </div>
+        )}
+
         {erroAoIniciar && (
-          <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroAoIniciar}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroAoIniciar}</p>
+            {/* A8 da 18ª (princípio 7): o bloqueio "Falta assinar" traz a ação ao
+                lado — colher no aparelho da unidade (DC3), ou os documentos,
+                com o link e o pedido pelo app. */}
+            {erroAoIniciar.startsWith('Falta assinar') && (
+              <div data-acao-da-assinatura style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                {documentos?.podeColher && documentosQueBloqueiam[0] && documentosQueBloqueiam[0].status !== 'INCOMPLETO' && (
+                  <Link className="btn-primary" style={{ textDecoration: 'none' }}
+                    href={rotaNoPortal(pathname, slug, `/documentos/${documentosQueBloqueiam[0].id}/assinar?voltar=${encodeURIComponent(pathname)}`)}>
+                    Colher assinatura neste aparelho
+                  </Link>
+                )}
+                {documentos && documentos.itens.length > 0 && (
+                  <button type="button" className="btn-secondary"
+                    onClick={() => document.getElementById('documentos-do-atendimento')?.scrollIntoView({ block: 'start', behavior: 'smooth' })}>
+                    Ver os documentos
+                  </button>
+                )}
+                {!documentos?.podeColher && (
+                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                    A assinatura é colhida por quem tem os Documentos em Gerenciar: na tela, por link ou pelo app da cliente.
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         )}
         {perguntaDoInicio && (
           <div data-inicio-adiantado role="alert" style={{ padding: '12px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1901,7 +1946,7 @@ export function AppointmentSession({
 
         {/* -- Termos e contratos do atendimento ----------------------------- */}
         {documentos && documentos.itens.length > 0 && (
-          <section aria-label="Documentos do atendimento" className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <section id="documentos-do-atendimento" aria-label="Documentos do atendimento" className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
               <p className="overline">Documentos</p>
               {documentosQueBloqueiam.length > 0 && status !== 'IN_PROGRESS' && status !== 'COMPLETED' && (
@@ -2389,6 +2434,17 @@ export function AppointmentSession({
                           </p>
                         </div>
                       )}
+                      {/* A7 da 18ª (princípio 7): na sessão do pacote, já paga, o
+                          plano é um tratamento NOVO e opcional — o "Aceitar plano"
+                          não vem como a ação grande, que parecia uma proposta. */}
+                      {isPackageSession && status !== 'COMPLETED' && (
+                        <div data-plano-novo-na-sessao-do-pacote style={{ marginBottom: 12 }}>
+                          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Propor um plano novo (opcional)</h3>
+                          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                            Esta sessão já está paga pelo pacote. Monte um plano só se a cliente quiser um tratamento novo; para encerrar, basta o &quot;Finalizar atendimento&quot;.
+                          </p>
+                        </div>
+                      )}
                       {genError && (
                         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginBottom: 12, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>
                           {genError}
@@ -2404,7 +2460,8 @@ export function AppointmentSession({
                             type="button"
                             disabled={generating}
                             onClick={() => gerarPlano(true)}
-                            style={{
+                            className={isPackageSession ? 'btn-secondary' : undefined}
+                            style={isPackageSession ? { width: '100%', justifyContent: 'center', gap: 8 } : {
                               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                               padding: '14px 20px', borderRadius: 'var(--radius-field-token)', fontSize: 'var(--text-base-sz)', fontWeight: 800,
                               background: generating ? 'var(--bg-app)' : 'var(--brand)',

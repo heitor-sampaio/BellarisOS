@@ -109,7 +109,8 @@ test.describe.serial('comissões — configuração e regras', () => {
       // O nome do profissional é o que criarOutraRede monta.
       const dialogo = p.getByRole('dialog', { name: `Comissão de ${PREFIXO} Prof com${marca}` })
       await expect(dialogo).toBeVisible()
-      await dialogo.getByRole('button', { name: 'Percentual', exact: true }).click()
+      // A20 da 18ª: o tipo virou blocos (radio), como as formas de pagamento.
+      await dialogo.getByRole('radio', { name: 'Percentual', exact: true }).click()
       await dialogo.getByLabel('Valor da comissão padrão').fill('30')
       await dialogo.getByLabel('Adicionar exceção').selectOption(rede!.procedureId)
       const excecao = dialogo.locator(`[data-excecao="${rede!.procedureId}"]`)

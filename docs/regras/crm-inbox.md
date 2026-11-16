@@ -367,6 +367,13 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (sugestões), as automações e as campanhas oferecem as ATIVAS
   (`tagsAtivasDaRede`, `useTagsDaRede` no navegador). A ficha mostra também a
   tag que o cliente já tem fora do vocabulário (`opcoesDeTag`).
+- **Nenhuma tela marca tag que não existe** (D7 da 18ª: o card da
+  oportunidade tinha uma entrada livre, e o gatilho punha a tag nova no
+  vocabulário — quem não tem “A rede inteira” criava tag da rede). O card
+  escolhe pelo `TagPicker`, como o inbox; e `createLead`, `updateLead` e
+  `atualizarContato` guardam só o que está no vocabulário (com o nome dele)
+  e o que o registro já tinha (`tagsDoVocabulario`, `lib/tags/escolha.ts`).
+  Criar tag é em Configurações → Tags. Prova: `tests/crm-atritos-da-18.test.ts`.
 - ⚠️ **O vocabulário cresce por GATILHO** (`trg_registrar_tags` em clients,
   contacts e leads): toda tag gravada entra, também as `Unidade: …` (desde o
   Bloco Tags, 2026-11-14 — antes eram puladas). Gravar tag
@@ -1236,6 +1243,14 @@ escolher a etapa) e no modal da oportunidade.
 - Relatórios → Comercial → "Motivos de perda": `metrics_motivos_de_perda`
   (`getMotivosDePerda`), pelo `perdido_em` no período, da rede inteira. O
   quadro filtra por "Motivo da perda".
+- **O card perdido diz o motivo** (A17 da 18ª): na etapa de desfecho
+  perdido, "Perdida: Preço" (a observação no title; sem motivo, "sem motivo
+  informado") — `perdaNoCard`, `lib/crm/perda-no-card.ts`.
+- **O quadro de quem não tem “A rede inteira” diz de quem são os funis** (A18
+  da 18ª): sem o "Configurar funis", a frase "Funis e etapas são da rede
+  toda: quem muda é quem tem “A rede inteira”" (e "Configurações em
+  Gerenciar", sem ela) — `avisoDosFunis`, `lib/configuracao-da-rede.ts`.
+  Prova: `tests/crm-atritos-da-18.test.ts`.
 - Sem escolher o motivo o botão não fica apagado: diz "Escolha o motivo da perda" (A14), e "Outro" vem
   sempre por último na escolha (`motivosComOutroPorUltimo`, A15). O inbox vazio manda ligar o
   WhatsApp com atalho só para quem tem Configurações em Gerenciar; os outros leem "Peça a quem tem as
@@ -1389,6 +1404,7 @@ o contato junto.
 
 ```
 ❌ Pôr tag sozinho (gatilho, origem, unidade, importação de outra coluna) — só a pessoa marca, ou a ação "Adicionar tag" que a rede montou (tests/tags-so-quem-marca trava)
+❌ Entrada livre de tag numa tela (o gatilho põe a tag nova no vocabulário da rede): é o TagPicker, e a action passa por tagsDoVocabulario (D7 da 18ª)
 ❌ Ler uma tag como "a unidade da cliente" — não existe tag de unidade (H16); "a cliente nesta unidade" é a atendida nela
 ❌ Recortar a lista de Clientes por unidade — a cliente é da rede (CL1–CL3)
 ❌ Gerar exportação de LGPD dentro do request — usar after() + o cron de retomada

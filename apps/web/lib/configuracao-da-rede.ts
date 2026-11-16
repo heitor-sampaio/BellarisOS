@@ -28,3 +28,16 @@ export function mexeNaConfigDaRede(ctx: { branchId: string | null }): boolean {
 export function recusaDaConfigDaRede(ctx: { branchId: string | null }): string | null {
   return mexeNaConfigDaRede(ctx) ? null : CONFIG_DA_REDE
 }
+
+/**
+ * A frase do quadro de oportunidades para quem não tem “A rede inteira” (A18
+ * da 18ª simulação): o "Configurar funis" some do quadro dela, e a explicação
+ * só existia em Configurações. Diz a abrangência e, sem Configurações em
+ * Gerenciar, a permissão também. Nulo para quem configura.
+ */
+export function avisoDosFunis(ctx: { branchId: string | null }, temConfiguracoesEmGerenciar: boolean): string | null {
+  if (mexeNaConfigDaRede(ctx)) return null
+  return temConfiguracoesEmGerenciar
+    ? 'Funis e etapas são da rede toda: quem muda é quem tem “A rede inteira”.'
+    : 'Funis e etapas são da rede toda: quem muda é quem tem “A rede inteira” e Configurações em Gerenciar.'
+}

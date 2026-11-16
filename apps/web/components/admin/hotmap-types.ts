@@ -104,3 +104,37 @@ export function marcadoresDasUnidades(branches: BranchPoint[]): MarcadorDaUnidad
   })
   return marcadores
 }
+
+interface UnidadeDoMapa { name: string; cityKey: string; cep?: string | null }
+type Coordenada = { lat: number; lng: number } | null | undefined
+
+/**
+ * As cidades a buscar (A26 da 18ª simulação): a da unidade sem CEP e TAMBÉM a
+ * da unidade com CEP — se o CEP não se acha (52061-000), o pino cai na cidade.
+ * Antes a cidade só ia na busca sem CEP, e a unidade ficava sem pino.
+ */
+export function cidadesParaBuscar(unidades: UnidadeDoMapa[]): string[] {
+  return [...new Set(unidades.map(u => u.cityKey).filter(Boolean))]
+}
+
+/**
+ * O que o mapa diz junto dele (A26; princípio 3): o card da unidade avisava, e
+ * o mapa não dizia nada. A unidade cujo CEP não se achou fica no centro da
+ * cidade, ou sem pino.
+ */
+export function avisosDoMapa(unidades: UnidadeDoMapa[], achados: { ceps: Record<string, Coordenada>; cidades: Record<string, Coordenada> }): string[] {
+  const avisos: string[] = []
+  for (const u of unidades) {
+    const onde = ondeGeocodificarAUnidade(u)
+    const naCidade = !!(u.cityKey && achados.cidades[u.cityKey])
+    if (!onde) { avisos.push(`${u.name} sem localização: cadastre o CEP ou a cidade.`); continue }
+    if ('cep' in onde) {
+      if (achados.ceps[onde.cep]) continue
+      const cep = `${onde.cep.slice(0, 5)}-${onde.cep.slice(5)}`
+      avisos.push(naCidade
+        ? `${u.name} no centro da cidade: o CEP ${cep} não foi achado, confira.`
+        : `${u.name} sem localização: confira o CEP ${cep}.`)
+    } else if (!naCidade) avisos.push(`${u.name} sem localização: confira a cidade e cadastre o CEP.`)
+  }
+  return avisos
+}

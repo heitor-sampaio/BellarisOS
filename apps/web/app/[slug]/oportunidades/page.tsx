@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { motivosDaRede } from '@/lib/crm/motivos-perda'
 import { origensDaRede } from '@/lib/crm/origens'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso, temRecurso } from '@/lib/auth'
-import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { avisoDosFunis, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
@@ -119,7 +119,7 @@ export default async function BranchOportunidadesPage({
           id, name, phone, email, social_media, source,
           crm_stage_id, notes, client_id, created_at, tags,
           owner_id, users(name, is_active), contato_id,
-          motivo_perda_id, crm_motivos_perda(nome), retornar_em, retornar_obs,
+          motivo_perda_id, motivo_perda_obs, crm_motivos_perda(nome), retornar_em, retornar_obs,
           lead_procedures(procedure_id, procedures(name, price))
         `)
         .eq('tenant_id', ctx.tenantId!)
@@ -188,6 +188,12 @@ export default async function BranchOportunidadesPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             <ResumoDoQuadro stats={stats} />
           </p>
+          {/* A18 da 18ª: sem o "Configurar funis", a frase diz de quem são os funis. */}
+          {avisoDosFunis(ctx, can(ctx, 'settings', 'MANAGE')) && (
+            <p data-aviso-dos-funis style={{ color: 'var(--text-faint)', fontSize: 'var(--text-2xs)', marginTop: 4 }}>
+              {avisoDosFunis(ctx, can(ctx, 'settings', 'MANAGE'))}
+            </p>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

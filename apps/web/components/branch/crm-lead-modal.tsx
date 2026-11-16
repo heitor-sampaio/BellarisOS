@@ -5,7 +5,7 @@ import {
   useState, forwardRef, useImperativeHandle, useId,
 } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, UserPlus, CheckCircle2, Check, Plus, MessageSquare, CalendarPlus } from 'lucide-react'
+import { X, UserPlus, CheckCircle2, Check, MessageSquare, CalendarPlus } from 'lucide-react'
 import { ScheduleModal } from '@/components/admin/inbox-lead-panel'
 import type { PessoaParaNovoLead } from '@/lib/crm/pessoa-para-novo-lead'
 import { createLead, updateLead, responsaveisParaOportunidade, fichaDoTelefoneDoLead } from '@/actions/leads'
@@ -19,6 +19,7 @@ import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
 import { LEAD_SOURCES, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
+import { TagPicker } from '@/components/shared/tag-picker'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
 
@@ -180,7 +181,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       listarMotivosDePerda().then(l => { if (vivo) setMotivos(l) }).catch(() => { if (vivo) setMotivos([]) })
       return () => { vivo = false }
     }, [vaiPerder, motivos])
-    const [tagDraft,  setTagDraft]  = useState('')
 
     /**
      * O RESPONSÁVEL. A lista (e se quem abriu pode trocar) vem do servidor ao
@@ -247,7 +247,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setMotivoId(''); setMotivoObs('')
       // O lead novo nasce sem tag: quem marca é a pessoa (Bloco Tags).
       setTags(existing?.tags ?? [])
-      setTagDraft('')
       setErroConversa(null)
       // D1 da 11ª: o lead novo abre JÁ com quem o cria. Da 2ª abertura em
       // diante a lista de antes está em memória e o select aparece na hora —
@@ -344,17 +343,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
     function toggleProc(id: string) {
       setSelectedProcs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-    }
-
-    function addTag(raw: string) {
-      const value = raw.trim()
-      if (!value) return
-      setTags(prev => prev.includes(value) ? prev : [...prev, value])
-      setTagDraft('')
-    }
-
-    function toggleTag(value: string) {
-      setTags(prev => prev.includes(value) ? prev.filter(t => t !== value) : [...prev, value])
     }
 
     function removeTag(value: string) {
@@ -632,63 +620,17 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   TAGS
                 </p>
                 <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
-                  Classifique a oportunidade (origem manual, unidade, campanha…)
+                  As tags da rede, para filtrar. Criar uma nova é em Configurações → Tags.
                 </p>
 
-                {/* Tags selecionadas */}
-                {tags.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                    {tags.map(t => (
-                      <TagBadge key={t} label={t} size="sm" onRemove={() => removeTag(t)} />
-                    ))}
-                  </div>
-                )}
-
-                {/* Entrada de tag livre */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    type="text"
-                    className="field"
-                    style={{ flex: 1 }}
-                    value={tagDraft}
-                    onChange={e => setTagDraft(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') { e.preventDefault(); addTag(tagDraft) }
-                    }}
-                    placeholder="Digite uma tag e Enter"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addTag(tagDraft)}
-                    disabled={!tagDraft.trim()}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '7px 12px', borderRadius: 10,
-                      border: '1.5px solid var(--border)', background: 'var(--bg-app)',
-                      color: 'var(--text-muted)', cursor: tagDraft.trim() ? 'pointer' : 'default',
-                      opacity: tagDraft.trim() ? 1 : 0.5, flexShrink: 0,
-                    }}
-                  >
-                    <Plus size={13} /> Adicionar
-                  </button>
+                {/* D7 da 18ª: escolhe pelo vocabulário da rede, como a ficha e o inbox —
+                    a entrada livre criava tag (o gatilho a põe no vocabulário). */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                  {tags.map(t => (
+                    <TagBadge key={t} label={t} size="sm" onRemove={() => removeTag(t)} />
+                  ))}
+                  <TagPicker selecionadas={tags} disponiveis={suggestedTags} onChange={setTags} />
                 </div>
-
-                {/* Sugestões rápidas */}
-                {suggestedTags.some(s => !tags.includes(s)) && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                    {suggestedTags.filter(s => !tags.includes(s)).map(s => (
-                      <button key={s} type="button" onClick={() => toggleTag(s)} style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        fontSize: 'var(--text-sm-sz)', fontWeight: 600, padding: '5px 10px', borderRadius: 99, cursor: 'pointer',
-                        border: '1.5px dashed var(--border)', background: 'var(--surface)',
-                        color: 'var(--text-muted)', transition: 'all 120ms',
-                      }}>
-                        <Plus size={11} strokeWidth={3} />
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Observações */}

@@ -17,7 +17,7 @@ import { ler } from '@/lib/db'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 import { falaDaTela } from '@/lib/unidades/uma-so'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { listaDeUnidades } from '@/lib/equipe/atende'
+import { listaDeUnidades, unidadesDaLinhaDaEquipe } from '@/lib/equipe/atende'
 
 function Initials({ name }: { name: string }) {
   const letters = iniciaisDoNome(name)
@@ -240,10 +240,10 @@ export default async function AdminTeamPage({
               {members.map((m, i) => {
                 const principal = (m.branches as unknown as { name: string } | null)?.name
                   ?? (m.branch_id ? branchMap[m.branch_id] : null)
-                // As unidades dela (EQ1a): a principal e as outras, "A, B e C".
+                // As unidades dela (EQ1a): a principal e as outras, "A (principal), B e C" (A28 da 18ª).
                 const outras = ((m as { outras_unidades?: string[] | null }).outras_unidades ?? []).map(u => branchMap[u]).filter(Boolean) as string[]
                 const branchName = m.branch_id
-                  ? (listaDeUnidades([principal ?? '—', ...outras]))
+                  ? unidadesDaLinhaDaEquipe(principal ?? '—', outras)
                   : fala('Rede inteira')
                 const label = (m.role_id ? roleLabel[m.role_id] : null) ?? '—'
 

@@ -19,20 +19,26 @@ export interface ItemDaComanda {
   preco:      number
   /** Já vendido com a comanda paga. */
   vendido:    boolean
+  /** D2 da 18ª: a venda do produto foi estornada (quando); nulo: não foi. */
+  estornadoEm:     string | null
+  /** D2 da 18ª: no estorno, o produto voltou ao estoque; nulo sem estorno. */
+  voltouAoEstoque: boolean | null
 }
 
 type Admin = ReturnType<typeof createAdminClient>
 
 export async function itensDaComanda(tenantId: string, comandaId: string, admin: Admin = createAdminClient()): Promise<ItemDaComanda[]> {
   const linhas = await ler(admin.from('comanda_itens')
-    .select('id, product_id, quantidade, product_sale_id, products(name, unit, sale_price)')
+    .select('id, product_id, quantidade, product_sale_id, products(name, unit, sale_price), product_sales(estornada_em, produto_voltou)')
     .eq('tenant_id', tenantId).eq('comanda_id', comandaId)
     .order('acrescentado_em').order('id'), 'carregar os produtos da comanda') ?? []
   return linhas.map(l => {
     const p = l.products as unknown as { name: string; unit: string; sale_price: number | string | null } | null
+    const venda = l.product_sales as unknown as { estornada_em: string | null; produto_voltou: boolean | null } | null
     return {
       id: l.id as string, produtoId: l.product_id as string, nome: p?.name ?? 'Produto', unidade: p?.unit ?? 'un',
       quantidade: Number(l.quantidade), preco: Number(p?.sale_price ?? 0), vendido: !!l.product_sale_id,
+      estornadoEm: venda?.estornada_em ?? null, voltouAoEstoque: venda?.estornada_em ? !!venda.produto_voltou : null,
     }
   })
 }
