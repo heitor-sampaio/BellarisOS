@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantContext, can } from '@/lib/auth'
+import { getTenantContext, podeVerAuditoria } from '@/lib/auth'
 import { lerAuditoria } from '@/lib/auditoria/leitura'
 import { linhasDoCsvDaAuditoria } from '@/lib/auditoria/frase'
 import type { FiltrosDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from '@/lib/auditoria/tipos'
@@ -9,7 +9,8 @@ import type { FiltrosDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from '
  * (`lerAuditoria`), sem a página — lida em páginas de 1000 no banco, até um
  * teto que o arquivo diz quando alcança (princípio 3: nada some calado).
  *
- * Toda rota de /api se defende sozinha (§6): sessão e a Auditoria em Ver.
+ * Toda rota de /api se defende sozinha (§6): sessão e a Admin da rede (a
+ * Auditoria é só dela, 2026-11-16).
  */
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
-  if (ctx.isClient || !ctx.tenantId || !can(ctx, 'audit', 'VIEW')) {
+  if (ctx.isClient || !ctx.tenantId || !podeVerAuditoria(ctx)) {
     return NextResponse.json({ error: 'Sem acesso.' }, { status: 403 })
   }
 

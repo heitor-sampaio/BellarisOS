@@ -420,6 +420,7 @@ Onde o sistema põe tag sozinho hoje:
 | T2 | A origem do anúncio vira tag | **Decidido:** sai |
 | T3 | A origem da Importação vira tag | **Decidido:** sai |
 | T4 | A ação "Tag do cliente" das automações | **Decidido:** "Adicionar tag", com qualquer tag registrada |
+| T5 | A rede nova nascia com 8 tags que ninguém dela criou (VIP, Indicação, Retorno, Alergias, Gestante, Idoso, Plano, Desconto — `private.tags_padrao()`) | **Decidido (16/11):** "Sim" — a rede nova nasce sem tag nenhuma; nas redes que existem, saem as dessas oito que ninguém usa ✅ 16/11 (migration `20261121500001`: 104 tags em 13 redes; nenhuma estava em uso) |
 
 ### Respostas (o Heitor, 13/11)
 
@@ -1304,8 +1305,10 @@ foi contestada):
   conteúdo clínico (só "abriu o prontuário de X").
 - **Guarda**: não se apaga nem se altera, enquanto a rede existir (os 30 dias
   dos eventos são das automações).
-- **Quem vê**: uma linha nova em Cargos, **"Auditoria"** (Ver), que nasce
-  ligada só no Admin da rede; a rede dá a outro cargo se quiser.
+- **Quem vê**: ~~uma linha nova em Cargos, **"Auditoria"** (Ver), que nasce
+  ligada só no Admin da rede; a rede dá a outro cargo se quiser.~~ **Só a
+  Admin da rede** (o Heitor, 16/11: "Auditoria é só admin"): não é linha de
+  Cargos e não se dá a outro cargo.
 
 ### O que faz hoje (levantamento)
 
@@ -2068,7 +2071,7 @@ Heitor de que vale uma completa.
 | CF2 | **"Eventos" vai para as Automações**, como "O que já aconteceu", ao lado das execuções (o mesmo módulo das Automações) ✅ 16/11 (`/admin/automacoes/eventos`; o caminho antigo leva lá) | — |
 | CF3a | **Auditoria no menu** (Gestão, ao lado de Relatórios), só de leitura: quando, quem (com "via suporte"), o quê em português, o link do registro, a unidade; filtros por período, pessoa, tipo, unidade e cliente; CSV. Paginada no banco ✅ 16/11 (`/admin/auditoria` e `/[slug]/auditoria`, `/api/auditoria/csv`) | CF3b |
 | CF3b | **O registro da auditoria**: uma tabela própria, que não se altera nem se apaga (gatilho, como os acessos ao prontuário), gravada pelo servidor; entra toda gravação que muda algo (criar, editar, cancelar, estornar, arquivar, mudar permissão ou configuração), a abertura do prontuário (os acessos de hoje), a entrada no sistema e o que o suporte fez. Nunca o conteúdo clínico. Guardada enquanto a rede existir. O nome de quem agiu sai do ctx ✅ 16/11 (`public.auditoria`, gatilhos por comando em 88 tabelas, `x-bellaris-ator` no cliente de serviço — migration `20261116000001`) | — |
-| CF3c | **A permissão "Auditoria"** (Ver), a 19ª linha da matriz de Cargos (num grupo de `MODULE_GROUPS`), ligada ao nascer só no Admin da rede (que tem tudo); a rede dá a outro cargo se quiser. Na unidade, quem não é da rede vê só as suas unidades ✅ 16/11 (módulo `audit`, Sem acesso ou Ver) | EQ1 |
+| CF3c | **A Auditoria é só da Admin da rede** (o Heitor, 16/11: "Auditoria é só admin"; era "a 19ª linha da matriz de Cargos, ligada ao nascer só no Admin da rede; a rede dá a outro cargo se quiser") ✅ 16/11 (módulo `audit` fora da matriz e de `MODULE_GROUPS` — `MODULOS_SO_DA_ADMIN`; `assertAuditoria`; as linhas `audit` dos cargos saíram, migration `20261121500002`; o "Abriu o prontuário" volta ao filtro em todo portal) | EQ1 |
 | — | Mantém: cada aba como está, a aba Unidade no portal da unidade, a configuração da rede toda só de quem é da rede (H7) | — |
 
 ### Bloco: Portais

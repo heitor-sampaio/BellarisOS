@@ -300,8 +300,10 @@ export async function prepararDocumentosDoCheckout(
     const precos = await precosDoPlano(planId)
     const doDesconto = descontoDoPlano(precos, d.data)
     if ('error' in doDesconto) return { error: doDesconto.error }
-    // A entrada acima do total é recusada, não cortada (ven-02).
-    const recusaDaEntrada = recusaDaEntradaDoPagamento(pagamento, Math.round((precos.subtotal - doDesconto.reais) * 100) / 100, 'do plano')
+    // A entrada acima do total é recusada, não cortada (ven-02). O à vista dividido (D1 da 18ª)
+    // se confere no receber, com os pontos e o voucher: o contrato só o escreve.
+    const recusaDaEntrada = pagamento?.forma === 'AVISTA' && pagamento.outras?.length ? null
+      : recusaDaEntradaDoPagamento(pagamento, Math.round((precos.subtotal - doDesconto.reais) * 100) / 100, 'do plano')
     if (recusaDaEntrada) return { error: recusaDaEntrada }
     // O contrato já assinado para OUTRO pagamento: pergunta antes de substituir
     // (A45 da 5ª simulação). Sem a confirmação explícita, nada muda.

@@ -1035,18 +1035,28 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
   `anon`/`authenticated` (as restritivas `suporte_sem_escrita_*` estão lá
   mesmo assim). A tela e o CSV leem pelo servidor (`lib/auditoria/leitura.ts`),
   paginado no banco (`.range`, 50 na tela, 1000 por vez no CSV com teto dito).
-- **A permissão é "Auditoria"** (`audit`, a 19ª linha da matriz, no grupo de
-  Gestão; Sem acesso ou Ver). Nasce só no Admin da rede (que tem tudo); os
-  modelos não a têm; nenhuma funcionalidade do plano a cobre. Quem tem
-  unidades vê só as linhas DELAS (`unidadesDoContexto`); a linha sem unidade
-  (a tag, o cargo, a ficha da cliente) é da rede — como no `alcancaUnidade`. A
-  unidade pedida na URL não vence a abrangência.
-- **O filtro "Quem" sai das linhas que a pessoa alcança** (D7 da 15ª
-  simulação, 2026-11-15): quem é da rede inteira lê todos os membros; quem tem
-  unidades lê quem AGIU nelas (`auditoria_pessoas_das_unidades`, migration
-  `20261116400002`, só o servidor). Era `users.branch_id in (as dela)`: ficava
-  de fora quem tem "A rede inteira", com as ações dele na tela. Prova:
-  `e2e/auditoria-pessoas-do-filtro.spec.ts`.
+- **A Auditoria é SÓ da Admin da rede** (o Heitor, 2026-11-16: "Auditoria é
+  só admin"). O módulo `audit` segue existindo (o menu, o plano — nenhuma
+  funcionalidade do plano o cobre), mas NÃO se dá a cargo nenhum: saiu da
+  matriz da tela de Cargos e de `MODULE_GROUPS`, só aceita Sem acesso
+  (`MODULE_LEVELS`), e `saveRolePermissions` não o grava
+  (`MODULOS_SO_DA_ADMIN` / `MODULOS_DO_CARGO`, `lib/permissions.ts`). A linha
+  `audit` que um cargo tenha gravada não vale (`resolvePermissions`), e o
+  `buildContext` a zera para quem não é a Admin; as linhas que existiam
+  (27, quatro em Ver) saíram (migration `20261121500002`). A tela (rede e
+  unidade), a leitura (`lerAuditoria`, `pessoasDaAuditoria`) e o CSV passam
+  por `assertAuditoria` / `podeVerAuditoria` (`lib/auth.ts`):
+  `ctx.isNetworkAdmin`, que vem do cargo de SISTEMA no banco — a exceção do
+  CLAUDE.md §11, como `lib/equipe/admin-da-rede.ts`, nunca o rótulo nem
+  `ctx.role`. Prova: `tests/decisoes-de-16-11.test.ts`, `e2e/auditoria.spec.ts`
+  ("CF3c").
+- **A abrangência fica como segunda parede**: a Admin da rede tem "A rede
+  inteira" (o cargo de sistema não se dá com unidades) e lê tudo — também no
+  portal de uma unidade. O recorte por unidade da leitura (`unidadesDoContexto`,
+  `filtroDoAlcanceDaAuditoria`, `auditoria_pessoas_das_unidades`) segue no
+  código: a unidade pedida na URL não vence a abrangência.
+- **O filtro "Quem"** (D7 da 15ª simulação, 2026-11-15): a Admin lê todos os
+  membros, em qualquer portal. Prova: `e2e/auditoria-pessoas-do-filtro.spec.ts`.
 - **A tela lê a GRAVAÇÃO, não a linha** (A27/A28 da 15ª simulação, 2026-11-15;
   princípios 7 e 3). Nada deixa de ser gravado: muda a leitura
   (`gruposDaAuditoria`, `lib/auditoria/frase.ts`).
@@ -1126,8 +1136,10 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     frase da gravação dela na coluna "Gravação" (`linhasDoCsvDaAuditoria`,
     A38 da 16ª: quem procura "Estornou" no arquivo acha); o CSV lê todas as
     páginas antes de agrupar, para a gravação não se partir.
-  - O filtro "Abriu o prontuário" sai da lista de quem tem unidades
-    (`operacoesDoFiltro`): a abertura é da rede, e ela nunca a alcança.
+  - O filtro "Abriu o prontuário" está sempre na lista (`OPERACOES`). Saía
+    da de quem tinha unidades (`operacoesDoFiltro`, e a leitura tirava
+    `abriu` delas); com a Auditoria só da Admin da rede (2026-11-16), o
+    recorte ficou sem razão e saiu.
   - **A 18ª simulação** (A30–A33, `tests/auditoria-atritos-da-18.test.ts`,
     `e2e/auditoria-atritos-da-18.spec.ts`):
     - toda coluna de users, commissions, commission_payouts e appointments
@@ -1140,14 +1152,14 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     - a comissão diz de qual é: "Marcou como paga a comissão do atendimento
       de X (procedimento)" / "da venda a X" — no CSV, as linhas do pagamento
       eram iguais;
-    - **quem tem unidades vê também o que ELA gravou sem unidade** (a
-      oportunidade, o contato: são da rede) — `filtroDoAlcanceDaAuditoria`;
-      a linha sem unidade dos outros segue da rede;
+    - o recorte de quem tem unidades leva também o que ELA gravou sem
+      unidade (a oportunidade, o contato: são da rede) —
+      `filtroDoAlcanceDaAuditoria`; hoje é só a segunda parede (a Auditoria
+      é da Admin da rede, 2026-11-16);
     - **o acesso ao prontuário leva a unidade do endereço** em que foi aberto
       (`prontuario_acessos.branch_id`, `unidadeDoAcessoAoProntuario`,
       migration `20261118500001`; no /admin, nula): entra no filtro pela
-      unidade de quem é da rede. Quem tem unidades continua sem a abertura
-      (a leitura tira `abriu` dela).
+      unidade.
   - **A 19ª simulação** (A32–A36, `tests/auditoria-atritos-da-19.test.ts`):
     - toda coluna de `financial_transactions` também tem nome no `CAMPO`
       ("maquininha", não "maquininha id");
@@ -1183,6 +1195,7 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
 ❌ Tela ou action de funcionalidade que é PARTE de um módulo (pacotes, inbox, campanhas…) sem assertRecurso, ou rotina sem tela sem redeTemRecurso
 ❌ Acrescentar chave ao catálogo de lib/planos/recursos.ts sem migration nova decidindo os planos e retratos que já existem
 ❌ Funcionalidade do plano que cubra o cashier (PDV) ou o audit (Auditoria) — são de todo plano (PL1; tests/planos-pdv-e-auditoria.test.ts trava)
+❌ Dar a Auditoria a um cargo (matriz, action, seed, modelo) ou abrir a tela/leitura/CSV dela por can(ctx, 'audit') sozinho — é só da Admin da rede: assertAuditoria / podeVerAuditoria (2026-11-16)
 ❌ Gravar retrato (tenant_subscriptions.recursos) fora de definirAssinatura/criarRede/aplicarPlanoAtual
 ❌ Gravar tenant_subscriptions.adicionais fora de assinatura_adicional_definir — nem na troca de plano (quem tira o que não cabe é o gatilho trg_retrato_sem_plano)
 ❌ Deixar a rede (p_valor_centavos null) aumentar adicional com preço especial

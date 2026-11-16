@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ALL_MODULES, MODULE_LEVELS, MODULE_LABELS, isScoped, ALL_REPORT_TABS } from '@/lib/permissions'
+import { MODULOS_DO_CARGO, MODULE_LEVELS, MODULE_LABELS, isScoped, ALL_REPORT_TABS } from '@/lib/permissions'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
 import type { PermissionLevel, PermissionScope } from '@estetica-os/types'
@@ -51,7 +51,8 @@ export async function saveRolePermissions(
   // impossível de reconstruir depois: o upsert abaixo substitui as linhas.
   const antes = await lerMatrizDoCargo(ctx.tenantId!, roleId)
 
-  const rows = ALL_MODULES.map(module => {
+  // A Auditoria não vai: é só da Admin da rede (MODULOS_SO_DA_ADMIN, 2026-11-16).
+  const rows = MODULOS_DO_CARGO.map(module => {
     // Cada módulo declara os níveis que distingue: gravar "Ver" num módulo só
     // de MANAGE deixaria o cargo com um acesso que nenhum gate reconhece.
     const raw = (formData.get(`level:${module}`) as string) ?? 'NONE'

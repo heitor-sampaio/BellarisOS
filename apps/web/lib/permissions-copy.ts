@@ -57,9 +57,10 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
   {
     key:     'gestao',
     label:   'Gestão e configuração',
-    hint:    'Números da rede, o que mudou, fichas e quem pode o quê',
-    // A Auditoria (CF3c) fica ao lado de Relatórios, como no menu.
-    modules: ['reports', 'audit', 'team', 'forms', 'roles', 'settings'],
+    hint:    'Números da rede, fichas e quem pode o quê',
+    // A Auditoria não está aqui: é só da Admin da rede (o Heitor, 2026-11-16:
+    // "Auditoria é só admin"), não se dá a cargo nenhum (MODULOS_SO_DA_ADMIN).
+    modules: ['reports', 'team', 'forms', 'roles', 'settings'],
   },
   {
     key:     'copilot',
@@ -157,9 +158,9 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     VIEW:   'Abre as automações e vê o que cada uma fez — sem poder mudar nem ligar.',
     MANAGE: 'Tudo do Ver, mais montar o fluxo, escolher o que ele faz e ligar ou desligar. Automação ligada manda mensagem e mexe no CRM sozinha.',
   },
+  // Só da Admin da rede (MODULOS_SO_DA_ADMIN): fora da matriz de Cargos.
   audit: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Abre a Auditoria: o que cada pessoa criou, editou e apagou, quem abriu o prontuário e quem entrou no sistema — só das unidades que a pessoa alcança. O texto clínico nunca aparece.',
   },
   copilot: {
     NONE:   'O Copilot não aparece para esta pessoa.',

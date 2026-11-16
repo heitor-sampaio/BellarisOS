@@ -171,7 +171,8 @@ vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: const
 
 const UUID_C = '11111111-1111-4111-8111-111111111111'
 const UUID_F = '22222222-2222-4222-8222-222222222222'
-const daRede = { tenantId: 't1', branchId: null, unidades: null, internalUserId: 'u9' } as unknown as TenantContext
+// A Auditoria é só da Admin da rede (2026-11-16): o contexto que lê a tem.
+const daRede = { isNetworkAdmin: true, permissions: { audit: 'MANAGE' }, tenantId: 't1', branchId: null, unidades: null, internalUserId: 'u9' } as unknown as TenantContext
 
 describe('A34 e A33: a leitura busca quem atende e o conferido', () => {
   it('o profissional do agendamento remarcado ou repassado entra nos nomes da equipe', async () => {

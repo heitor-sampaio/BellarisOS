@@ -109,13 +109,3 @@ export interface FiltrosDaAuditoria {
   antes?:   string
 }
 
-/**
- * As ações do filtro "O que foi feito" que a pessoa ALCANÇA (A28 da 15ª
- * simulação): a abertura do prontuário é de quem tem a rede (o registro de
- * quem abriu, 2026-10-27; desde a A32 da 18ª a linha leva a unidade do
- * endereço, e a leitura a tira de quem tem unidades) — o filtro sai da lista
- * dela em vez de ficar sempre vazio.
- */
-export function operacoesDoFiltro(minhas: readonly string[] | null): readonly { key: OperacaoDaAuditoria; label: string }[] {
-  return minhas === null ? OPERACOES : OPERACOES.filter(o => o.key !== 'abriu')
-}

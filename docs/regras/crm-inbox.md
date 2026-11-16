@@ -450,9 +450,17 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
     (`.btn-secondary:disabled`, `.btn-ghost:disabled`, em `globals.css`): o
     "Vender" da arquivada parecia ativo.
   Prova: `e2e/clientes-arquivar.spec.ts` (os testes A19).
-- Rede nova nasce com as oito padrão (`trg_rede_ganha_tags`,
-  `private.tags_padrao()` — espelha `CLIENT_TAGS`).
-- Prova: `e2e/tags-da-rede.spec.ts`, `tests/tags.test.ts`.
+- **A rede nova nasce SEM tag nenhuma** (o Heitor, 2026-11-16: "tiro e deixo
+  o catálogo começar vazio?" — "Sim"). Até aqui nascia com oito (VIP,
+  Indicação, Retorno, Alergias, Gestante, Idoso, Plano, Desconto —
+  `trg_rede_ganha_tags`, `private.tags_padrao()`, `CLIENT_TAGS`): saíram o
+  gatilho, as funções e a lista (migration `20261121500001`). Nas redes que
+  já existiam, saíram do catálogo as dessas oito que ninguém usava (nenhuma
+  pessoa, oportunidade, conversa, fluxo de automação, campanha ou
+  importação com o nome; 104 tags em 13 redes); a que estava em uso ficou —
+  é da rede.
+- Prova: `e2e/tags-da-rede.spec.ts`, `tests/tags.test.ts`,
+  `tests/decisoes-de-16-11.test.ts`.
 - `InternalCredit`: saldo de crédito do cliente (concessão manual, cancelamento de plano pago, estorno de um pagamento feito com crédito); usado como método de pagamento `INTERNAL_CREDIT`, que o desconta (§9.6)
 - **A lista de clientes é cache** (`clients:<rede>`, 120 s; rede e unidade): quem
   cria, edita, importa ou etiqueta cliente a expira com
@@ -1442,7 +1450,8 @@ o contato junto.
 ❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
 ❌ Ler o owner_id vazio sem a marca _responsavelNaTela como "Sem responsável", ou abrir a "Nova oportunidade" com um Responsável diferente do que a tela vai mandar (D1 da 11ª)
-❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
+❌ Oferecer tag de uma lista fixa (a CLIENT_TAGS saiu) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
+❌ Semear tag no catálogo da rede (na rede nova, na migration, no seed): a rede nasce sem tag e cria as dela (2026-11-16)
 ❌ Oferecer a origem da oportunidade da lista fixa (LEAD_SOURCES) onde a rede escolhe — são as origens dela (crm_origens: origensDaRede, useOrigensDaRede); LEAD_SOURCES fica para a atribuição do anúncio e o fallback (A14 da 7ª)
 ❌ Dizer "hoje"/"ontem" de um registro por 24 h corridas (differenceInDays) — é o dia de Brasília (idadeDoLead, dayKeyTZ — D12 da 12ª)
 ❌ Mover o card porque a cliente comprou — o card SUGERE ("Mover para Fechado"), quem move é a pessoa (A18 da 7ª, crm-05)

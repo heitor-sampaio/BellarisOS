@@ -5,7 +5,7 @@ import type { TenantContext } from '@estetica-os/types'
 import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { lerAuditoria, pessoasDaAuditoria } from '@/lib/auditoria/leitura'
 import { gruposDaAuditoria } from '@/lib/auditoria/frase'
-import { operacoesDoFiltro, type FiltrosDaAuditoria } from '@/lib/auditoria/tipos'
+import { OPERACOES, type FiltrosDaAuditoria } from '@/lib/auditoria/tipos'
 import { PeriodSelector, type Period } from '@/components/admin/period-selector'
 
 /**
@@ -85,7 +85,7 @@ export async function TelaDaAuditoria({
         </select>
         <select name="tipo" defaultValue={filtros.tipo ?? ''} className="filtro-select" aria-label="O que foi feito">
           <option value="">Qualquer ação</option>
-          {operacoesDoFiltro(minhas).map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+          {OPERACOES.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
         {unidades.length > 1 && (
           <select name="unidade" defaultValue={pagina.unidade ?? ''} className="filtro-select" aria-label="Unidade">

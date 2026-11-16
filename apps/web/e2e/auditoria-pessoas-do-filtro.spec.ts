@@ -9,7 +9,11 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * "Qualquer pessoa" trazia só Ana, Carol e Henrique — a lista eram os membros
  * com `users.branch_id` nas unidades dela, e quem tem "A rede inteira" (o
  * `branch_id` nulo) ficava de fora. A lista sai das LINHAS que a pessoa
- * alcança: quem agiu nas unidades dela. Numa rede [e2e] própria.
+ * alcança. Numa rede [e2e] própria.
+ *
+ * Desde 2026-11-16 a Auditoria é só da Admin da rede ("Auditoria é só
+ * admin"): quem tem unidades não a abre, e a Admin — que tem a rede inteira —
+ * lê no filtro "Quem" todos os membros, também no portal de uma unidade.
  */
 
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -21,7 +25,6 @@ let unidadeB = ''
 let slugA = ''
 let daRede: MembroDeTeste | null = null
 let daB: MembroDeTeste | null = null
-let daA: MembroDeTeste | null = null
 
 async function como<T>(browser: Browser, estado: string, fn: (p: Page) => Promise<T>) {
   const ctx = await browser.newContext({ storageState: estado, viewport: { width: 1440, height: 900 } })
@@ -55,29 +58,29 @@ test.beforeAll(async () => {
   unidadeB = b!.id
   daRede = await criarMembro(`d7r${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Da rede', permissoes: [] })
   daB = await criarMembro(`d7b${marca}`, { tenant: rede.tenantId, branchId: unidadeB, rotulo: 'Da B', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
-  daA = await criarMembro(`d7a${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Da A', permissoes: [{ modulo: 'audit', nivel: 'VIEW' }] })
   await salaEmNomeDe(rede.branchId, daRede, `${PREFIXO} Sala A ${marca}`)
   await salaEmNomeDe(unidadeB, daB, `${PREFIXO} Sala B ${marca}`)
 })
 
 test.afterAll(async () => {
-  await daA?.limpar(); await daB?.limpar(); await daRede?.limpar()
+  await daB?.limpar(); await daRede?.limpar()
   if (unidadeB) await db().from('rooms').delete().eq('branch_id', unidadeB)
   await rede?.limpar()
 })
 
-test('D7: o filtro "Quem" da Auditoria traz quem agiu nas unidades da pessoa — inclusive quem é da rede', async ({ browser }) => {
+// A regra mudou em 2026-11-16: era "o filtro traz quem agiu nas unidades da
+// pessoa" (quem tinha a unidade A não via quem só agiu na B). Só a Admin lê.
+test('D7: o filtro "Quem" da Auditoria, para a Admin da rede no portal de uma unidade, traz todos — quem é da rede e quem é da outra unidade', async ({ browser }) => {
   const [nomeDaRede, nomeDaB] = [await nomeDe(daRede!), await nomeDe(daB!)]
-  await como(browser, daA!.estado, async p => {
+  await como(browser, daRede!.estado, async p => {
     await p.goto(`/${slugA}/auditoria`)
     await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Sala A' })).toHaveCount(1, { timeout: 30_000 })
     const quem = p.getByLabel('Quem')
-    // A linha da sala A é de quem tem "A rede inteira": a pessoa está no filtro.
     await expect(quem.locator('option', { hasText: nomeDaRede })).toHaveCount(1)
-    // Quem só agiu na B (fora do alcance) não aparece.
-    await expect(quem.locator('option', { hasText: nomeDaB })).toHaveCount(0)
-    // E filtrar por ela traz a linha.
-    await p.goto(`/${slugA}/auditoria?pessoa=${daRede!.userId}`)
-    await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Sala A' })).toHaveCount(1)
+    await expect(quem.locator('option', { hasText: nomeDaB })).toHaveCount(1)
+    // E filtrar por quem é da B traz a linha da B.
+    await p.goto(`/${slugA}/auditoria?pessoa=${daB!.userId}`)
+    await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Sala B' })).toHaveCount(1)
+    await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Sala A' })).toHaveCount(0)
   })
 })

@@ -205,15 +205,15 @@ export function motivoDaAbaFechada(pedida: string, o: {
   abriu: string
 }): string | null {
   const aba = ABAS_DE_CONFIGURACAO.find(a => a.key === pedida)
-  if (!aba) return `A aba “${pedida}” não existe. Abrimos ${o.abriu}.`
+  if (!aba) return `A aba “${pedida}” não existe. Você está na aba ${o.abriu}.`
   if (!o.noPortal.includes(aba.key)) {
     return o.unidadeFixa
-      ? `A aba ${aba.label} é da rede toda: quem muda é quem tem “A rede inteira”. Abrimos ${o.abriu}.`
-      : `A aba ${aba.label} fica nas Configurações da rede. Abrimos ${o.abriu}.`
+      ? `A aba ${aba.label} é da rede toda: quem muda é quem tem “A rede inteira”. Você está na aba ${o.abriu}.`
+      : `A aba ${aba.label} fica nas Configurações da rede. Você está na aba ${o.abriu}.`
   }
-  if (!o.noPlano(aba)) return `A aba ${aba.label} não está no plano da rede. Abrimos ${o.abriu}.`
+  if (!o.noPlano(aba)) return `A aba ${aba.label} não está no plano da rede. Você está na aba ${o.abriu}.`
   if (!abaLiberada(aba, o.gerencia)) {
-    return `A aba ${aba.label} pede ${o.nomeDoModulo(aba.module)} em Gerenciar no cargo, e o seu não tem. Abrimos ${o.abriu}.`
+    return `A aba ${aba.label} pede ${o.nomeDoModulo(aba.module)} em Gerenciar no cargo, e o seu não tem. Você está na aba ${o.abriu}.`
   }
   return null
 }

@@ -23,6 +23,8 @@ const NOIVAS = `${PREFIXO} Noivas ${marca}`
 const COM_TAG = `${PREFIXO} Com tag ${marca}`
 const SEM_TAG = `${PREFIXO} Sem tag ${marca}`
 const INATIVA = `${PREFIXO} Inativa ${marca}`
+// A rede nova nasce sem tag nenhuma (2026-11-16): a tag que ninguém usa ainda é criada aqui, como a rede faria.
+const SEM_USO = `${PREFIXO} Sem uso ${marca}`
 
 test.beforeAll(async () => {
   test.setTimeout(240_000)
@@ -39,6 +41,7 @@ test.beforeAll(async () => {
     { tenant_id: outra.tenantId, branch_id: outra.branchId, name: INATIVA, phone: fone(), tags: [], is_active: false },
   ])
   expect(r.error).toBeNull()
+  expect((await db().from('tags').insert({ tenant_id: outra.tenantId, nome: SEM_USO })).error).toBeNull()
 })
 test.afterAll(async () => {
   if (outra) {
@@ -67,7 +70,7 @@ test('a lista filtra por situação e pelas tags da rede, sem o segmento fixo', 
 
     // Tags: o vocabulário da rede — inclusive a que ninguém usa ainda.
     await p.getByRole('button', { name: 'Tags', exact: true }).click()
-    await expect(p.getByRole('button', { name: 'Gestante', exact: true })).toBeVisible()
+    await expect(p.getByRole('button', { name: SEM_USO, exact: true })).toBeVisible()
     await p.getByRole('button', { name: NOIVAS, exact: true }).click()
     await expect(p.getByText(COM_TAG)).toBeVisible()
     await expect(p.getByText(SEM_TAG)).toHaveCount(0)

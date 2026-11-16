@@ -9,8 +9,9 @@ import { chamarAcao } from './apoio/acao-direta'
  * ficha e o CRM, em Configurações → Tags. Até aqui a ficha oferecia oito tags
  * fixas no código, e a tag que vinha de fora (importação, automação, o card)
  * ficava gravada e invisível na ficha.
- *  - Rede nova nasce com as oito de sempre; tag gravada em qualquer lugar entra
- *    no vocabulário sozinha (gatilho).
+ *  - Rede nova nasce SEM tag nenhuma (o Heitor, 2026-11-16 — eram as oito de
+ *    sempre, VIP, Indicação…); tag gravada em qualquer lugar entra no
+ *    vocabulário sozinha (gatilho).
  *  - Criar, renomear (em clientes, contatos e oportunidades — e juntar, se o
  *    nome novo já existe) e arquivar.
  *  - A ficha oferece o vocabulário, e mostra a tag de fora que a pessoa já tem.
@@ -76,11 +77,13 @@ async function como(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise
 const vocabulario = async () => ((await db().from('tags').select('nome, arquivada_em').eq('tenant_id', outra.tenantId)).data ?? []) as
   { nome: string; arquivada_em: string | null }[]
 
-test('a rede nova nasce com as tags padrão, e a tag gravada em qualquer lugar entra no vocabulário', async () => {
+// A regra mudou em 2026-11-16 (o Heitor: "tiro e deixo o catálogo começar vazio?" — "Sim"):
+// era "a rede nova nasce com as tags padrão".
+test('a rede nova nasce sem tag nenhuma, e a tag gravada em qualquer lugar entra no vocabulário', async () => {
   const nomes = (await vocabulario()).map(t => t.nome)
-  expect(nomes).toEqual(expect.arrayContaining(['VIP', 'Indicação', 'Retorno', 'Alergias', 'Gestante', 'Idoso', 'Plano', 'Desconto', POS]))
-  // "retorno" é a mesma de "Retorno" (sem caixa): não vira outra.
-  expect(nomes.filter(n => n.toLowerCase() === 'retorno')).toHaveLength(1)
+  // Só o que foi gravado no beforeAll (cliente, contato e oportunidade) — nenhuma das oito de antes.
+  expect([...nomes].sort()).toEqual(['Orgânico', POS, 'retorno', 'VIP'].sort())
+  for (const antiga of ['Indicação', 'Alergias', 'Gestante', 'Idoso', 'Plano', 'Desconto']) expect(nomes).not.toContain(antiga)
   // O sistema não põe tag sozinho (Bloco Tags, 2026-11-14): nenhuma "Unidade: …".
   expect(nomes.some(n => n.startsWith('Unidade: '))).toBe(false)
 })
@@ -101,7 +104,7 @@ test('Configurações → Tags: cria, mostra o uso, e a ficha oferece a tag nova
     await p.goto(`/admin/clients/${clienteId}`)
     await p.getByRole('tab', { name: 'Dados', exact: true }).click()
     await expect(p.getByRole('button', { name: POS })).toHaveAttribute('aria-pressed', 'true')
-    await expect(p.getByRole('button', { name: 'Retorno', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(p.getByRole('button', { name: 'retorno', exact: true })).toHaveAttribute('aria-pressed', 'true')
     await p.getByRole('button', { name: `${PREFIXO} Noivas ${marca}` }).click()
     await p.getByRole('button', { name: 'Salvar dados' }).click()
     await expect(p.getByRole('button', { name: 'Salvo' })).toBeVisible()
@@ -136,11 +139,11 @@ test('renomear muda a tag em clientes, contatos e oportunidades', async ({ brows
 test('renomear para um nome que já existe JUNTA as duas (sem repetir na pessoa)', async ({ browser }) => {
   await como(browser, admin, async p => {
     await p.goto('/admin/settings?tab=tags')
-    const linha = p.locator('[data-tag="Retorno"]')
+    const linha = p.locator('[data-tag="retorno"]')
     await linha.getByRole('button', { name: 'Renomear' }).click()
     await linha.getByLabel('Novo nome').fill('vip')
     await linha.getByRole('button', { name: 'Salvar' }).click()
-    await expect(p.locator('[data-tag="Retorno"]')).toHaveCount(0)
+    await expect(p.locator('[data-tag="retorno"]')).toHaveCount(0)
   })
   const { data } = await db().from('clients').select('tags').eq('id', clienteId).single()
   // Fica o nome que já existia ("VIP"), uma vez só.
@@ -159,7 +162,7 @@ test('arquivada sai das opções, mas fica em quem já tem', async ({ browser })
     const outro = await outra.criarCliente(`Sem tags ${marca}`)
     await p.goto(`/admin/clients/${outro}`)
     await p.getByRole('tab', { name: 'Dados', exact: true }).click()
-    await expect(p.getByRole('button', { name: 'Gestante', exact: true })).toBeVisible()
+    await expect(p.getByRole('button', { name: 'VIP', exact: true })).toBeVisible()
     await expect(p.getByRole('button', { name: noivas })).toHaveCount(0)
     await p.goto(`/admin/clients/${clienteId}`)
     await p.getByRole('tab', { name: 'Dados', exact: true }).click()

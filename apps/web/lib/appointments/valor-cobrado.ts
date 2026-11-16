@@ -33,9 +33,12 @@ export async function valoresCobrados(admin: Admin, agendamentos: string[]): Pro
     for (const l of linhas) {
       if (l.notes === 'Estornada' || l.category === 'Estorno') continue
       const centavos = (v: unknown) => Math.round(Number(v ?? 0) * 100)
+      // D1 da 18ª ("+ Outra forma", 2026-11-16): o pagamento em várias formas é
+      // um lançamento por forma — soma-se à anterior, em vez de ficar com a última.
+      const anterior = valores.get(l.appointment_id)
       valores.set(l.appointment_id, {
-        cobrado:  (centavos(l.amount) + centavos(l.loyalty_discount)) / 100,
-        desconto: centavos(l.sale_discount) / 100,
+        cobrado:  (Math.round((anterior?.cobrado ?? 0) * 100) + centavos(l.amount) + centavos(l.loyalty_discount)) / 100,
+        desconto: (Math.round((anterior?.desconto ?? 0) * 100) + centavos(l.sale_discount)) / 100,
       })
     }
   }

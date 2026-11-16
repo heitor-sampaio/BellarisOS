@@ -595,8 +595,10 @@ Prova: `e2e/permissoes-escopo-sem-modulo.spec.ts`.
 
 Os 19 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `documents`,
 `procedures`, `stock`, `financial`, `cashier`, `crm`, `marketing`, `reports`, `team`,
-`forms`, `roles`, `settings`, `automations`, `copilot` e `audit` (a Auditoria, só
-Ver, 2026-11-16 — nasce só no Admin da rede; regra em `docs/regras/plataforma.md`). Módulo novo entra num grupo
+`forms`, `roles`, `settings`, `automations`, `copilot` e `audit` (a Auditoria: SÓ da
+Admin da rede — o Heitor, 2026-11-16: "Auditoria é só admin". Fora da matriz de Cargos, não se dá a cargo
+nenhum: `MODULOS_SO_DA_ADMIN` e `assertAuditoria`; regra em `docs/regras/plataforma.md`). Módulo novo (menos os só
+da Admin da rede) entra num grupo
 de `MODULE_GROUPS` (`lib/permissions-copy.ts`) — fora de grupo ele não aparece na
 tela de Cargos (`tests/permissions.test.ts` trava). Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
 (`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só

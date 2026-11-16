@@ -54,7 +54,9 @@ test.beforeAll(async () => {
   falsa = await subirOpenaiFalsa()
   rede = await redeDoCopilot(`nov${marca}`)
   const t = rede.outra.tenantId
-  // "vip" minúsculo no cliente; o vocabulário da rede nova tem "VIP".
+  // A rede nova nasce sem tag nenhuma (2026-11-16): "VIP" e "Indicação" são
+  // criadas aqui, como a rede faria; "vip" minúsculo no cliente.
+  expect((await db().from('tags').insert([{ tenant_id: t, nome: 'VIP' }, { tenant_id: t, nome: 'Indicação' }])).error).toBeNull()
   clienteVip = await rede.outra.criarCliente('Novidade Vip')
   expect((await db().from('clients').update({ tags: ['vip'] }).eq('id', clienteVip)).error).toBeNull()
   clienteSemTag = await rede.outra.criarCliente('Novidade Sem Tag')

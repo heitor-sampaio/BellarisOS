@@ -88,7 +88,7 @@ test('a unidade que NÃO é dela leva à dela, com o aviso; o portal da rede tam
   await como(browser, pessoa!, async p => {
     await p.goto(`/${un.C.slug}/agenda`)
     await expect(p).toHaveURL(new RegExp(`/(${un.A.slug}|${un.B.slug})/dashboard`))
-    await expect(p.getByText('Você não tem acesso a essa unidade. Abrimos a sua.')).toBeVisible()
+    await expect(p.getByText('Essa unidade não está entre as suas. Você está na sua unidade.')).toBeVisible()
     await p.goto('/admin/dashboard')
     await expect(p, 'duas unidades não é a rede inteira (EQ1b)').toHaveURL(new RegExp(`/(${un.A.slug}|${un.B.slug})/dashboard`))
   })

@@ -1,5 +1,8 @@
 import { z } from 'zod'
 import type { PagamentoDoPlano } from './pagamento'
+import { partesQuePagamAgora, temOutrasFormas } from './pagamento'
+import { formatBRL } from '@estetica-os/utils'
+import { MAXIMO_DE_OUTRAS } from './varias-formas'
 import { dividirEmParcelas, rotuloDaParcela } from './parcelas'
 import { vezesNoCartao } from './pagamento'
 import { recusaDaEntradaAcimaDoTotal } from './entrada'
@@ -52,9 +55,19 @@ const BANDEIRA = z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).op
 const MAQUININHA = z.string().regex(/^[0-9a-f-]{36}$/i, 'Maquininha inválida.').optional()
 const data = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'Data inválida.')
 
+/** D1 da 18ª: uma das outras formas do à vista dividido, com o valor dela. */
+const PARTE = z.object({
+  metodo: z.enum(METODOS), valor: z.number().min(0),
+  vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA, maquininha: MAQUININHA,
+}).refine(p => !p.vezes || p.vezes === 1 || p.metodo === 'CREDIT_CARD', 'Parcelar na maquininha só no cartão de crédito.')
+
 /** O pagamento como chega do navegador: conferido aqui, antes de virar dinheiro. */
 export const EntradaDoPagamento = z.discriminatedUnion('forma', [
-  z.object({ forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA, maquininha: MAQUININHA }),
+  z.object({
+    forma: z.literal('AVISTA'), metodo: z.enum(METODOS), vezes: z.number().int().min(1).max(12).optional(), bandeira: BANDEIRA, maquininha: MAQUININHA,
+    // D1 da 18ª ("+ Outra forma"): o valor da primeira e as outras, cada uma com o seu.
+    valor: z.number().min(0).optional(), outras: z.array(PARTE).max(MAXIMO_DE_OUTRAS).optional(),
+  }),
   z.object({
     // PDV8: o Crediário é a forma; o meio é o da ENTRADA — sem entrada, nenhum
     // (nada se recebe agora: nulo, não um texto vazio).
@@ -83,7 +96,23 @@ const centavos = (v: number) => Math.round(v * 100) / 100
  * `lancamentosDoPagamento` fica só como rede de segurança.
  */
 export function recusaDaEntradaDoPagamento(p: PagamentoDoPlano | null | undefined, total: number, doQue = 'da venda'): string | null {
+  if (temOutrasFormas(p)) return recusaDasPartesDoPagamento(p, total)
   return p?.forma === 'PARCELADO' ? recusaDaEntradaAcimaDoTotal(p.entrada, total, doQue) : null
+}
+
+/**
+ * D1 da 18ª: o à vista dividido — cada forma com valor acima de zero, e a soma
+ * fechando o total (em centavos). O servidor confere antes de montar os
+ * lançamentos; a tela já monta a primeira com o que falta.
+ */
+export function recusaDasPartesDoPagamento(p: PagamentoDoPlano, total: number): string | null {
+  if (!temOutrasFormas(p)) return null
+  if (p.outras.length > MAXIMO_DE_OUTRAS) return `Divida em até ${MAXIMO_DE_OUTRAS + 1} formas.`
+  const partes = partesQuePagamAgora(p)
+  if (partes.some(x => !(Math.round(x.valor * 100) > 0))) return 'Digite o valor de cada forma (acima de zero).'
+  const soma = partes.reduce((s, x) => s + Math.round(x.valor * 100), 0)
+  if (soma !== Math.round(total * 100)) return `As formas somam ${formatBRL(soma / 100)} e não fecham o total de ${formatBRL(total)}. Recarregue a tela.`
+  return null
 }
 
 export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotulo: string): Lancamento[] {
@@ -93,6 +122,17 @@ export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotul
   const maquininha = p.forma !== 'A_RECEBER' && temBandeira(p.metodo) && p.maquininha ? p.maquininha : null
   const comBandeira = { ...(bandeira ? { cartao_bandeira: bandeira } : {}), ...(maquininha ? { maquininha_id: maquininha } : {}) }
   if (p.forma === 'AVISTA') {
+    // D1 da 18ª: dividido, um lançamento PAGO por forma, cada um com as vezes, a bandeira e a maquininha dele.
+    if (temOutrasFormas(p)) {
+      return partesQuePagamAgora(p, valor).map(x => {
+        const b = bandeiraDoPagamento(x.metodo, x.bandeira)
+        const m = temBandeira(x.metodo) && x.maquininha ? x.maquininha : null
+        return {
+          amount: centavos(x.valor), payment_method: x.metodo, is_paid: true, due_date: null, notes: null,
+          ...(x.vezes > 1 ? { cartao_vezes: x.vezes } : {}), ...(b ? { cartao_bandeira: b } : {}), ...(m ? { maquininha_id: m } : {}),
+        }
+      })
+    }
     const vezes = vezesNoCartao(p)
     return [{ amount: valor, payment_method: p.metodo, is_paid: true, due_date: null, notes: null, ...(vezes > 1 ? { cartao_vezes: vezes } : {}), ...comBandeira }]
   }
@@ -125,4 +165,16 @@ export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotul
     }
   }
   return saida
+}
+
+/**
+ * D1 da 18ª: a venda dividida com pontos ou voucher. A tela divide o que a
+ * cliente PAGA (o vendido menos a fidelidade); o banco lança o vendido e a
+ * fidelidade abate o PRIMEIRO lançamento (`venda_com_fidelidade`). Por isso a
+ * primeira forma leva de volta o que a fidelidade desconta. Sem divisão, nada muda.
+ */
+export function comFidelidadeNaPrimeira<P extends PagamentoDoPlano>(p: P, fidelidade: { desconto: number; desconto_voucher: number } | null | undefined): P {
+  if (!fidelidade || !temOutrasFormas(p)) return p
+  const soma = Math.round((Number(p.valor ?? 0) + fidelidade.desconto + fidelidade.desconto_voucher) * 100) / 100
+  return { ...p, valor: soma }
 }

@@ -45,11 +45,12 @@ test.afterAll(async () => {
   await rede?.limpar()
 })
 
+// O texto mudou em 2026-11-16 (o Heitor): "Abrimos a sua" lia-se como "criamos uma unidade".
 test('abrir outra unidade pela URL leva à sua, dizendo por quê', async ({ browser }) => {
   await como(browser, membroDeA!.estado, async p => {
     await p.goto(`/${slugB}/agenda`)
     await expect(p).toHaveURL(new RegExp(`/${slugA}/dashboard`))
-    await expect(p.getByText('Você não tem acesso a essa unidade. Abrimos a sua.')).toBeVisible()
+    await expect(p.getByText('Essa unidade não está entre as suas. Você está na sua unidade.')).toBeVisible()
     // O aviso sai da URL depois de mostrado: recarregar não o repete.
     await expect(p).not.toHaveURL(/aviso=/)
   })
@@ -59,6 +60,6 @@ test('abrir o portal da rede sem ser da rede leva à sua unidade, dizendo por qu
   await como(browser, membroDeA!.estado, async p => {
     await p.goto('/admin/dashboard')
     await expect(p).toHaveURL(new RegExp(`/${slugA}/dashboard`))
-    await expect(p.getByText('O portal da rede é de quem tem “A rede inteira”. Abrimos a sua unidade.')).toBeVisible()
+    await expect(p.getByText('O portal da rede é de quem tem “A rede inteira”. Você está na sua unidade.')).toBeVisible()
   })
 })

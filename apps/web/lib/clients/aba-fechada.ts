@@ -9,7 +9,7 @@
  */
 export function avisoDaAbaFechada(aba: { key: string; label: string }, temModuloProntuario: boolean): string {
   if (aba.key === 'fichas' && temModuloProntuario) {
-    return 'O Prontuário desta ficha não abre para você: suas permissões nele são de "só os próprios", e esta cliente não foi atendida por você. Abrimos a Visão geral.'
+    return 'O Prontuário desta ficha não abre para você: suas permissões nele são de "só os próprios", e esta cliente não foi atendida por você. Você está na Visão geral.'
   }
-  return `Suas permissões não abrem a aba ${aba.label} desta ficha: abrimos a Visão geral.`
+  return `Suas permissões não abrem a aba ${aba.label} desta ficha. Você está na Visão geral.`
 }

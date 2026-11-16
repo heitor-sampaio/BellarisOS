@@ -19,12 +19,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { recusaDoMembroDaVenda, quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
+import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto, comFidelidadeNaPrimeira } from '@/lib/checkout/lancamentos'
 import { fidelidadeDaVenda } from '@/lib/fidelidade/na-venda'
 import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
-import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
-import { vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora } from '@/lib/checkout/pagamento'
+import { recusaDasVezesDaRede, recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
 import { itensParaRateio } from '@/lib/pacotes/leitura'
 import { trazerPacoteCore } from '@/lib/pacotes/trazer'
@@ -177,7 +176,8 @@ async function venderPacoteUmaVez(
     const lido = EntradaDoPagamento.safeParse(pagamento)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(lido.data), maquininhaDoPagamento(lido.data), metodoQuePagaAgora(lido.data))
+    // D1 da 18ª: cada forma paga agora (o à vista dividido confere todas).
+    const recusaDasVezes = await recusaDasVezesDoPagamento(ctx.tenantId!, lido.data)
     if (recusaDasVezes) return { error: recusaDasVezes }
     const d = EntradaDoDesconto.safeParse(desconto)
     if (!d.success) return { error: 'Desconto inválido.' }
@@ -200,7 +200,12 @@ async function venderPacoteUmaVez(
     if (recusa) return { error: recusa }
     const reais = descontoEmReais(preco, d.data)
     const vendido = Math.round((preco - reais) * 100) / 100
-    const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
+    // FD2a: os pontos e o voucher (à vista), conferidos aqui e de novo no banco.
+    const fid = await fidelidadeDaVenda({ tenantId: ctx.tenantId!, clienteId, vendido, escolha: fidelidade, aVista: lido.data.forma === 'AVISTA', admin })
+    if ('error' in fid) return { error: fid.error }
+    // D1 da 18ª: dividida, a primeira forma leva de volta o que a fidelidade desconta.
+    const pagamentoDaVenda = comFidelidadeNaPrimeira(lido.data, fid.dados)
+    const recusaDaEntrada = recusaDaEntradaDoPagamento(pagamentoDaVenda, vendido)
     // C38: o crediário até o limite da rede.
     const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, lido.data)
     if (recusaDasParcelas) return { error: recusaDasParcelas }
@@ -223,13 +228,10 @@ async function venderPacoteUmaVez(
       }
     }
 
-    const lancamentos = comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, `Pacote ${pacote.name as string}`), motivoDoDesconto(d.data, reais))
+    const lancamentos = comMotivoDoDesconto(lancamentosDoPagamento(vendido, pagamentoDaVenda, `Pacote ${pacote.name as string}`), motivoDoDesconto(d.data, reais))
     // Cada sessão com o seu procedimento e a sua parte do preço VENDIDO (rateio
     // pelo preço de tabela): é a base da comissão dela. O banco confere a soma.
     const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId, branchId), vendido)
-    // FD2a: os pontos e o voucher (à vista), conferidos aqui e de novo no banco.
-    const fid = await fidelidadeDaVenda({ tenantId: ctx.tenantId!, clienteId, vendido, escolha: fidelidade, aVista: lido.data.forma === 'AVISTA', admin })
-    if ('error' in fid) return { error: fid.error }
     const args = {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_pacote: pacoteId, p_unidade: branchId,
       p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor,

@@ -13,7 +13,7 @@ import { ROTA_DO_SELETOR } from '@/lib/clientes/entrada'
 import { redeBloqueada } from '@/lib/redes/situacao'
 import {
   resolvePermissions, resolveScopes, resolveReportTabs, hasLevel, escoposDoQueTem,
-  NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS,
+  NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS, MODULOS_SO_DA_ADMIN,
 } from '@/lib/permissions'
 import { semAcesso } from '@/lib/sem-acesso'
 import { abasForaDoPlano, modulosForaDoPlano, type ChaveDeFuncionalidade } from '@estetica-os/nucleo/lib/planos/recursos'
@@ -158,6 +158,11 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     reportTabs = reportTabs.filter(t => !abasFora.includes(t))
     if (reportTabs.length === 0) permissions = { ...permissions, reports: 'NONE' }
   }
+
+  // A Auditoria é só da Admin da rede (2026-11-16): nenhum cargo a dá — a
+  // linha que um cargo tenha gravada já não vale (`resolvePermissions`); esta
+  // é a segunda parede.
+  if (!isNetworkAdmin) permissions = { ...permissions, ...Object.fromEntries(MODULOS_SO_DA_ADMIN.map(m => [m, 'NONE'])) }
 
   // O recorte "só os meus" só de módulo que a pessoa TEM (D6, 2026-10-29): o
   // que ficou NONE acima (plano, Relatórios sem aba) não recorta nada.
@@ -341,6 +346,22 @@ export function assertRecurso(ctx: TenantContext, chave: ChaveDeFuncionalidade):
 /** Versão booleana (para esconder UI / derivar canWrite em pages) */
 export function can(ctx: TenantContext, module: AppModule, required: 'VIEW' | 'MANAGE' = 'VIEW'): boolean {
   return hasLevel(ctx.permissions[module], required)
+}
+
+/**
+ * A Auditoria é SÓ da Admin da rede (o Heitor, 2026-11-16: "Auditoria é só
+ * admin"): não se dá a outro cargo. É a exceção documentada no CLAUDE.md §11
+ * (como `lib/equipe/admin-da-rede.ts`): `ctx.isNetworkAdmin` vem do cargo de
+ * SISTEMA no banco (`tenant_roles.key = 'NETWORK_ADMIN'` com `is_system`),
+ * nunca do rótulo nem da claim `role`. O `can` segue junto: o plano corta.
+ */
+export function podeVerAuditoria(ctx: TenantContext): boolean {
+  return ctx.isNetworkAdmin && can(ctx, 'audit', 'VIEW')
+}
+
+/** A trava da tela e da leitura da Auditoria. */
+export function assertAuditoria(ctx: TenantContext): void {
+  if (!podeVerAuditoria(ctx)) throw semAcesso()
 }
 
 /**

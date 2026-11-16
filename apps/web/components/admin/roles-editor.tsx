@@ -8,7 +8,7 @@ import { createRole, updateRole, deleteRole } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
 import { escopoInicial } from '@/lib/cargos/escopo-inicial'
 import {
-  ALL_MODULES, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
+  ALL_MODULES, MODULOS_DO_CARGO, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
   SCOPE_LABELS, isScoped,
   ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
 } from '@/lib/permissions'
@@ -58,7 +58,8 @@ type Levels = Record<AppModule, PermissionLevel>
 type Scopes = Record<AppModule, PermissionScope | null>
 
 function buildLevels(perms: Partial<Record<AppModule, RoleModulePermission>>): Levels {
-  return Object.fromEntries(ALL_MODULES.map(m => [m, perms[m]?.level ?? 'NONE'])) as Levels
+  // O módulo só da Admin da rede (a Auditoria) não é do cargo: fica em Sem acesso.
+  return Object.fromEntries(ALL_MODULES.map(m => [m, MODULOS_DO_CARGO.includes(m) ? perms[m]?.level ?? 'NONE' : 'NONE'])) as Levels
 }
 
 /** Escopo inicial de cada módulo: `escopoInicial` (lib/cargos) — sem escolha até alguém escolher (A2 da 12ª). */
@@ -280,7 +281,7 @@ function RoleListPanel({
 
 /** Resumo de uma linha: quantas áreas o cargo abre e quantas ficam restritas. */
 function summarize(perms: Partial<Record<AppModule, RoleModulePermission>>): string {
-  const open = ALL_MODULES.filter(m => (perms[m]?.level ?? 'NONE') !== 'NONE')
+  const open = MODULOS_DO_CARGO.filter(m => (perms[m]?.level ?? 'NONE') !== 'NONE')
   if (open.length === 0) return 'Nenhum acesso ainda'
   // A8 da 7ª simulação: em Relatórios o escopo é "só a unidade", não "os
   // próprios registros" (CLAUDE.md §11) — o resumo dizia "2 só os próprios".
@@ -550,7 +551,7 @@ function PermissionMatrix({
       }}
     >
       <input type="hidden" name="roleId" value={role.id} />
-      {ALL_MODULES.map(m => (
+      {MODULOS_DO_CARGO.map(m => (
         <React.Fragment key={m}>
           <input type="hidden" name={`level:${m}`} value={levels[m]} />
           {/* Sem escolha, nada vai: o servidor guarda o que já estava (D6). */}

@@ -29,6 +29,11 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   `estorno_de`). Prova: `e2e/fidelidade-f67.spec.ts`.
   A regra mora numa função só: `fidelidade_pontos_do_pagamento` — e multiplica
   antes de dividir (120 × (100 ÷ 300) perdia um ponto).
+  **O atendimento avulso também é cumulativo** (2026-11-16, migration
+  `20261121000001`): desde que ele se recebe em várias formas e no crediário,
+  são vários lançamentos — cada um dá o alvo do atendimento na proporção do
+  que já foi pago, menos o que já foi dado; o procedimento com pontos fixos
+  não os dá duas vezes.
 - **Os números com fração da configuração** (pontos por R$ 1, valor de 1
   ponto até 4 casas, teto em %) leem como o dinheiro: `parseDecimal`
   (`@estetica-os/utils`, o `parseDinheiro` com N casas). O ambíguo ("0.012")
@@ -107,6 +112,12 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     entre os lançamentos na proporção do valor (`private.parte_dos_itens`), e
     o RESGATE sai em uma linha por lançamento: o estorno de um deles devolve
     só os pontos dele. O voucher de procedimento fica inteiro no atendimento.
+  - **Em várias formas** ("+ Outra forma", D1 da 18ª, 2026-11-16): os pontos
+    e o voucher ficam na PRIMEIRA forma (o `loyalty_discount` dela). Na venda,
+    o lançamento dela é que se reduz, e eles não passam do valor dela ("Os
+    pontos e o voucher passam do valor da primeira forma…"); a base do teto e
+    do voucher é a venda inteira (`private.fidelidade_na_venda` com `p_base`).
+    No atendimento avulso, só no à vista — o crediário e o a receber os tiram.
   - Na "Nova venda", só à vista e só o voucher de DESCONTO (valor ou
     percentual); a conta é `contaDaFidelidade` (`lib/fidelidade/conta-na-venda.ts`:
     desconto comercial → voucher → pontos), refeita no servidor

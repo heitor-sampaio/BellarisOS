@@ -10,7 +10,10 @@ import { after } from 'next/server'
 import { alcancaOTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, alcancaOAgendamento, can, temRecurso, podeReceber } from '@/lib/auth'
 import { avisoDasVencidasNaChegada } from '@/lib/appointments/vencidas-na-chegada'
-import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
+import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
+import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
+import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar, mensagemDoErro } from '@/lib/db'
@@ -43,7 +46,7 @@ import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
-import { valorDosItensDoAtendimento } from '@/lib/pdv/itens-da-comanda'
+import { valorDosItensDoAtendimento, jaCobertoDoAtendimento } from '@/lib/pdv/itens-da-comanda'
 import { insumosPorProduto, montarInsumosDaBaixa } from '@/lib/atendimento/insumos-da-baixa'
 import { corrigirRegistro } from '@/lib/prontuario/corrigir'
 import { anamneseDaEquipeParaGravar } from '@/lib/pre-atendimento/ficha'
@@ -353,7 +356,8 @@ async function completeAppointment(
     .eq('appointment_id', appointmentId)
     // O estornado fica no histórico ao lado do lançamento vivo (D6, 2026-10-28).
     .or('notes.is.null,notes.neq.Estornada')
-    .maybeSingle(), 'conferir se o atendimento já foi lançado')
+    // Pago em várias formas (D1 da 18ª), são vários lançamentos: basta um.
+    .limit(1).maybeSingle(), 'conferir se o atendimento já foi lançado')
 
   // R$ 0 (a avaliação) não tem o que receber: sem conta a receber de zero (D9).
   const semCobranca = !(Number(appt.price) > 0)
@@ -1084,10 +1088,32 @@ export async function confirmPayment(
     // C75: a maquininha do cartão (com uma só, o banco põe a única).
     const maquininhaId  = paymentMethod === 'CREDIT_CARD' || paymentMethod === 'DEBIT_CARD'
       ? (formData.get('maquininha_id') as string | null)?.trim() || null : null
-    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, cartaoVezes, maquininhaId, paymentMethod)
-    if (recusaDasVezes) return { error: recusaDasVezes }
     // r3-f13-01: a bandeira do cartão, opcional (o banco confere a lista).
     const cartaoBandeira = bandeiraDoPagamento(paymentMethod, (formData.get('cartao_bandeira') as string | null)?.trim() || null)
+    // As formas da venda no avulso (o Heitor, 2026-11-16: "Mesma regra de
+    // pagamentos dos outros"; e D1 da 18ª, o "+ Outra forma"): o pagamento chega
+    // como na venda — o à vista numa forma ou em várias, o crediário com entrada
+    // e parcelas, o a receber. Sem ele, a forma única de sempre (os campos soltos).
+    let pagamento: PagamentoDoPlano | null = paymentMethod
+      ? { forma: 'AVISTA', metodo: paymentMethod, vezes: cartaoVezes, ...(cartaoBandeira ? { bandeira: cartaoBandeira } : {}), ...(maquininhaId ? { maquininha: maquininhaId } : {}) }
+      : null
+    const bruto = formData.get('pagamento')
+    if (typeof bruto === 'string' && bruto.trim()) {
+      let json: unknown = null
+      try { json = JSON.parse(bruto) } catch { return { error: 'Pagamento inválido.' } }
+      const lido = EntradaDoPagamento.safeParse(json)
+      if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
+      pagamento = lido.data
+    }
+    // Até quantas vezes a rede parcela no cartão (D-15), em cada forma no cartão; e o crediário da rede (C38).
+    const recusaDasVezes = pagamento ? await recusaDasVezesDoPagamento(ctx.tenantId!, pagamento) : null
+    if (recusaDasVezes) return { error: recusaDasVezes }
+    const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, pagamento)
+    if (recusaDasParcelas) return { error: recusaDasParcelas }
+    // Os pontos e o voucher são do à vista (a mesma regra da venda).
+    if ((pedido > 0 || voucherId) && pagamento && pagamento.forma !== 'AVISTA') {
+      return { error: 'Os pontos e o voucher se usam no pagamento à vista.' }
+    }
     // Desconto comercial da recepção (2026-09-30): R$ ou %, sem teto.
     const valorDoDesconto = Number(formData.get('desconto_valor') ?? 0) || 0
     const pedidoDeDesconto = EntradaDoDesconto.safeParse(
@@ -1115,7 +1141,9 @@ export async function confirmPayment(
     // que sobrou), e os pontos valem sobre o que sobra dos dois.
     // PDV, fase 5b (FD2a): tudo sobre o TOTAL da comanda — o atendimento e os
     // produtos acrescentados nela, que o banco vende junto.
-    const preco = parseFloat(String(appt.price))
+    // A comanda reaberta pelo estorno de UMA das formas cobra só o que falta do atendimento.
+    const preco = Math.round((parseFloat(String(appt.price)) - await jaCobertoDoAtendimento(appointmentId, admin)) * 100) / 100
+    if (!(preco > 0)) return { error: 'Pagamento já registrado para este atendimento.' }
     const total = Math.round((preco + await valorDosItensDoAtendimento(ctx.tenantId!, appointmentId, admin)) * 100) / 100
     let pontos = 0, desconto = 0, descontoVoucher = 0, descontoVenda = 0
     let valorFinal = total
@@ -1148,7 +1176,12 @@ export async function confirmPayment(
         pontos = r.pontos; desconto = r.desconto; valorFinal = r.restante
       }
     }
-    if (valorFinal > 0 && !paymentMethod) return { error: 'Selecione a forma de pagamento.' }
+    if (valorFinal > 0 && !pagamento) return { error: 'Selecione a forma de pagamento.' }
+    // O "+ Outra forma" fecha o total; a entrada do crediário não passa dele.
+    const recusaDaEntrada = recusaDaEntradaDoPagamento(pagamento, valorFinal, 'da comanda')
+    if (recusaDaEntrada) return { error: recusaDaEntrada }
+    // Os lançamentos, pela régua das vendas (o app calcula; o banco grava numa transação).
+    const lancamentos = pagamento ? lancamentosDoPagamento(valorFinal, pagamento, 'Atendimento') : []
 
     // UMA transação no banco: o pagamento (dar baixa no recebível ou lançar),
     // o resgate dos pontos, a comissão (se a rede a quer sobre o valor pago) e a
@@ -1161,7 +1194,8 @@ export async function confirmPayment(
         p_ator:        ctx.internalUserId,
         p_ator_nome:   userName,
         p_dados:       {
-          metodo: valorFinal > 0 ? paymentMethod : null, pontos, desconto, valor_final: valorFinal,
+          metodo: valorFinal > 0 ? pagamento?.metodo ?? null : null, pontos, desconto, valor_final: valorFinal,
+          lancamentos,
           voucher_id: voucherId, desconto_voucher: descontoVoucher, desconto_venda: descontoVenda,
           cartao_vezes: valorFinal > 0 ? cartaoVezes : 1,
           cartao_bandeira: valorFinal > 0 ? cartaoBandeira : null,
@@ -1212,7 +1246,8 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
 
   const cfg = await configDaRede(ctx.tenantId!, admin)
   if (!cfg.enabled) return null
-  const preco = parseFloat(String(appt.price))
+  // O que falta do atendimento (a comanda reaberta pelo estorno de uma das formas).
+  const preco = Math.max(0, Math.round((parseFloat(String(appt.price)) - await jaCobertoDoAtendimento(appointmentId, admin)) * 100) / 100)
   // PDV, fase 5b (FD2a): o voucher de desconto e os pontos valem sobre o total da comanda.
   const total = Math.round((preco + await valorDosItensDoAtendimento(ctx.tenantId!, appointmentId, admin)) * 100) / 100
   const [saldoLido, meus] = await Promise.all([

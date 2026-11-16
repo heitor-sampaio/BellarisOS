@@ -125,8 +125,12 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       parcelasDaComanda: comanda.paga && !comanda.estornada && comanda.emAberto > 0 && podeReceber(ctx)
         ? await parcelasEmAbertoDaCliente({
             branchId: unidadeId, clienteId: comanda.clienteId, fuso,
-            daVenda: (await ler(admin.from('comandas').select(CHAVES_DA_VENDA.join(', '))
-              .eq('id', comanda.id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler a venda da comanda') as VendaDaComanda | null) ?? {},
+            // 2026-11-16: a do atendimento também (o crediário do avulso), com os produtos dela.
+            daVenda: {
+              ...((await ler(admin.from('comandas').select(['appointment_id', ...CHAVES_DA_VENDA].join(', '))
+                .eq('id', comanda.id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler a venda da comanda') as (VendaDaComanda & { appointment_id: string | null }) | null) ?? {}),
+              produtos: itens.map(i => i.vendaId).filter((v): v is string => !!v),
+            },
           })
         : [],
     }

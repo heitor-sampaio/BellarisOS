@@ -38,7 +38,7 @@ describe('A1: quem é da rede chega, pelo portal da unidade, ao que só a rede t
       noPortal: ABAS_DA_UNIDADE, gerencia: gerenciaTudo, noPlano: () => true, unidadeFixa: false,
       nomeDoModulo: m => m, abriu: 'Unidade',
     })
-    expect(motivo).toBe('A aba Comissões e taxas fica nas Configurações da rede. Abrimos Unidade.')
+    expect(motivo).toBe('A aba Comissões e taxas fica nas Configurações da rede. Você está na aba Unidade.') // o texto mudou em 16/11 (o Heitor: "abrimos" lia-se como criação)
   })
 
   it('as abas que só a rede tem, para a lista "Na rede toda" da unidade — com a permissão e o plano de cada uma', () => {

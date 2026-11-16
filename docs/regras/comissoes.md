@@ -15,7 +15,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   pagamento integral da parte do cliente, o repasse do valor das parcelas é de
   responsabilidade da operadora do cartão, o cliente já fez o pagamento
   integral"; migration `20261101000201`). O modo é UM, `INTEGRAL`:
-  - avulso: quando o atendimento está pago;
+  - avulso: quando o atendimento está pago — os lançamentos vivos dele
+    cobrem o preço e nenhum está em aberto. Desde 2026-11-16 o avulso se
+    recebe em várias formas e no crediário (`docs/regras/vendas-financeiro.md`,
+    PDV): pago em duas formas, as duas contam; no crediário, espera a última
+    parcela, como a venda;
   - pacote (a comissão de venda E a de cada sessão já feita), plano, pré-pago e
     venda de produto: quando a venda inteira está paga — o recebido (com os
     pontos, que são forma de pagamento) fecha com o preço vendido;
@@ -177,6 +181,13 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   (`private.comissao_base_do_pagamento`, em `comissoes_extrato_com_regra`;
   migration `20261118300002`). O resto segue a conta da linha. A conta da
   comissão não mudou. Prova: `tests/pdv-caixa-da-18.test.ts`.
+  **O pagamento em várias formas é UM pagamento** (D1 da 18ª, 2026-11-16;
+  migration `20261121000001`): as formas nascem na mesma transação (o mesmo
+  `created_at`) e a base do pagamento soma os descontos e os pontos delas; a
+  taxa é a média das taxas de cada forma, pesada pelo valor
+  (`private.comissao_base_do_pagamento`, e o bloco do AVULSO de
+  `comissao_conta_detalhe`). No modo "sobre o pago" (PAGAMENTO), o avulso
+  vale na proporção do que os lançamentos vivos já cobrem do preço.
   **Taxas da maquininha** — desde a F67 (C75), POR MAQUININHA: a tabela
   `maquininhas` (débito e crédito 1–12x em `taxas`, sem teto desde a F16-3,
   e a comissão sobre o líquido nunca fica negativa; cada bandeira pode ter

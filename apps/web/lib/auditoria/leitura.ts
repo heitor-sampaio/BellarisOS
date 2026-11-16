@@ -1,20 +1,21 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
-import { unidadesDoContexto } from '@/lib/auth'
+import { unidadesDoContexto, assertAuditoria } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { resolvePeriod } from '@/lib/metrics'
 import { OPERACOES, type FiltrosDaAuditoria, type NomesDaAuditoria, type RegistroDaAuditoria } from './tipos'
 import { conferidoDoFechamento, gravacoesDaUnidade } from './frase'
 
 /**
- * A leitura da auditoria (CF3a) — pelo servidor, depois da permissão: a sessão
+ * A leitura da auditoria (CF3a) — pelo servidor, só para a Admin da rede
+ * (`assertAuditoria`; o Heitor, 2026-11-16: "Auditoria é só admin"): a sessão
  * não lê a tabela (`public.auditoria` não tem política nem privilégio para ela).
  *
- * - **A abrangência**: quem é da rede lê tudo; quem tem unidades, só as linhas
- *   DELAS (`unidadesDoContexto`). A linha sem unidade é da rede (a tag, o
- *   cargo, a ficha da cliente): não chega a quem tem unidade fixa — a mesma
- *   regra do `alcancaUnidade`. A unidade pedida na URL não vence a abrangência.
+ * - **A abrangência**: a Admin da rede tem "A rede inteira" (o cargo de sistema
+ *   não se dá com unidades) e lê tudo. O recorte por unidade abaixo fica como
+ *   segunda parede (`unidadesDoContexto`, a regra do `alcancaUnidade`): a
+ *   unidade pedida na URL não vence a abrangência.
  * - **Paginada no banco** (`.range`): a lista cresce sem fim, e o PostgREST
  *   corta em 1000 em silêncio. A tela lê uma página; o CSV, um teto de páginas.
  * - **O período** é o de `resolvePeriod`, até o FIM dele (`fullTo`).
@@ -57,6 +58,7 @@ const UUID_OU_ID = /^[0-9a-zA-Z-]+$/
 export async function lerAuditoria(
   ctx: TenantContext, filtros: FiltrosDaAuditoria, opcoes: { porPagina?: number; porGravacao?: boolean } = {},
 ): Promise<PaginaDaAuditoria> {
+  assertAuditoria(ctx)
   const admin = createAdminClient()
   const porPagina = opcoes.porPagina ?? POR_PAGINA
   const pagina = Math.max(1, Math.floor(Number(filtros.pagina) || 1))
@@ -89,9 +91,8 @@ export async function lerAuditoria(
       .lte('criado_em', periodo.fullTo.toISOString())
     if (minhas !== null) {
       // A32 da 18ª: as linhas das unidades dela E o que ela mesma gravou sem
-      // unidade (a oportunidade e o contato são da rede). A abertura do
-      // prontuário segue de fora: o registro de quem abriu é de quem tem a rede.
-      q = q.or(filtroDoAlcanceDaAuditoria(minhas, ctx.internalUserId ?? null)).neq('operacao', 'abriu')
+      // unidade (a oportunidade e o contato são da rede).
+      q = q.or(filtroDoAlcanceDaAuditoria(minhas, ctx.internalUserId ?? null))
     }
     if (unidade && !semUnidade) q = q.eq('branch_id', unidade)
     if (filtros.pessoa && UUID.test(filtros.pessoa)) q = q.eq('ator_user_id', filtros.pessoa)
@@ -377,6 +378,7 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
  * na tela).
  */
 export async function pessoasDaAuditoria(ctx: TenantContext): Promise<{ id: string; name: string }[]> {
+  assertAuditoria(ctx)
   const minhas = unidadesDoContexto(ctx)
   const admin = createAdminClient()
   if (minhas !== null) {

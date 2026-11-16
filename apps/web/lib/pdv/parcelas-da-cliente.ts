@@ -7,8 +7,10 @@ import { textoDoVencimento } from '@/lib/financeiro/vencimentos'
  * O que a cliente tem em aberto NO CAIXA desta unidade (CX1, o plano de
  * adaptação do PDV — o Heitor, 13/11: "abrir a cliente no PDV mostra as
  * parcelas em aberto dela, e recebe-se ali"): as parcelas do crediário e os
- * "a receber" das vendas. O atendimento a receber não entra — ele é a comanda
- * dele, na lista do PDV.
+ * "a receber" das vendas — e, desde 2026-11-16 ("Mesma regra de pagamentos dos
+ * outros"), os do atendimento avulso fechado no crediário ou a receber. O
+ * atendimento ainda sem forma (o a receber do "Concluir" antigo, sem nota) não
+ * entra — ele é a comanda dele, na lista do PDV.
  *
  * Só a unidade do PDV (princípio 3): o dinheiro entra no caixa da unidade do
  * lançamento, e a tela não recebe aqui o que o Fechamento de outra unidade
@@ -40,19 +42,28 @@ export async function parcelasEmAbertoDaCliente({ branchId, clienteId, fuso, daV
    * crediário diz "R$ 800,00 em aberto" e as recebe ali mesmo, com o mesmo
    * "Receber esta parcela" da Nova venda. Sem chave nenhuma, nada.
    */
-  daVenda?: VendaDaComanda
+  daVenda?: VendaDaComanda & {
+    /** A comanda do atendimento: o crediário e o a receber dele (2026-11-16). */
+    appointment_id?: string | null
+    /** E os dos produtos acrescentados nela, recebidos junto. */
+    produtos?: string[]
+  }
 }): Promise<ParcelaEmAberto[]> {
   let filtroDaVenda: string | null = null
   if (daVenda) {
     const partes = CHAVES_DA_VENDA.filter(k => typeof daVenda[k] === 'string' && UUID.test(daVenda[k]!)).map(k => `${k}.eq.${daVenda[k]}`)
+    if (typeof daVenda.appointment_id === 'string' && UUID.test(daVenda.appointment_id)) partes.push(`appointment_id.eq.${daVenda.appointment_id}`)
+    for (const id of daVenda.produtos ?? []) if (UUID.test(id)) partes.push(`product_sale_id.eq.${id}`)
     if (!partes.length) return []
     filtroDaVenda = partes.join(',')
   }
   let consulta = createAdminClient().from('financial_transactions')
     .select('id, amount, parcela_numero, parcela_total, description, due_date')
     .eq('branch_id', branchId).eq('client_id', clienteId).eq('type', 'INCOME').eq('is_paid', false)
-    .is('appointment_id', null).is('estorno_de', null).gt('amount', 0)
+    .is('estorno_de', null).gt('amount', 0)
     .or('notes.is.null,notes.neq.Estornada')
+    // O a receber sem forma do "Concluir" antigo (sem nota) é a comanda do atendimento, não uma parcela.
+    .or('appointment_id.is.null,notes.not.is.null')
   if (filtroDaVenda) consulta = consulta.or(filtroDaVenda)
   const linhas = await ler(consulta
     .order('due_date', { ascending: true, nullsFirst: false }).order('parcela_numero', { ascending: true, nullsFirst: false }),

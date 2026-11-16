@@ -342,13 +342,51 @@ comanda (PDV-P1).
   `private.fidelidade_na_venda` reduz o lançamento, grava o
   `loyalty_discount`, marca o voucher USADO e lança o RESGATE). A comanda do
   PLANO ainda não usa pontos (fica para o bloco do Plano de tratamento).
-- Ainda por vir (o plano de adaptação, `docs/revisao.md`): o crediário no
-  recebimento do atendimento avulso (`confirmar_pagamento_do_atendimento`
-  grava um lançamento só); os pontos na comanda do plano.
+- **A comanda recebe em mais de uma forma** (D1 da 18ª; o Heitor,
+  2026-11-16: "Ok"): no à vista, o "+ Outra forma" (`OutrasFormas`,
+  `CamposDoPagamento variasFormas`) acrescenta formas, cada uma com o valor
+  dela (até 5 no total, `MAXIMO_DE_OUTRAS`); a de cima fica com o que falta
+  ("Pix: R$ 200,00 (o que falta das outras)"). Vale onde houver "Receber": a
+  comanda do atendimento, a Nova venda (pacote, procedimento, produto) e o
+  plano. **Um lançamento por forma** (`lancamentosDoPagamento`, com as vezes,
+  a bandeira e a maquininha de cada uma), todos na MESMA transação — nascem
+  com o mesmo `created_at`, e é por ele que a comissão e as vendas reconhecem
+  as formas de um pagamento. As formas fecham o total ao centavo, senão a
+  action e o banco recusam ("As formas somam … e não fecham o total"). Os
+  pontos e o voucher abatem na PRIMEIRA forma (`comFidelidadeNaPrimeira`; no
+  banco, `private.fidelidade_na_venda` com a base da venda inteira) e não
+  podem passar do valor dela. O crediário e o a receber não se dividem
+  (princípio 7: a entrada é uma forma só). O crédito interno vendido segue
+  numa forma.
+- **O avulso tem as formas da venda** (o Heitor, 2026-11-16: "Mesma regra de
+  pagamentos dos outros"): a comanda do atendimento oferece à vista (numa
+  forma ou em várias), o Crediário com entrada e parcelas (até o limite da
+  rede, C38) e o A receber, com os mesmos campos da Nova venda
+  (`FormularioDeReceberAtendimento` → `CamposDoPagamento`). `confirmPayment`
+  lê o `pagamento` (o `EntradaDoPagamento` da venda; sem ele, a forma única
+  dos campos de antes), monta os lançamentos e `confirmar_pagamento_do_atendimento`
+  grava tudo numa transação: o atendimento primeiro, depois os produtos da
+  comanda (cada forma se reparte nessa ordem). O "a receber" sem forma do
+  "Concluir" antigo (sem nota) é reaproveitado como a primeira linha; a
+  parcela e o a receber do avulso levam a nota ("Atendimento — a receber"),
+  e é a nota que os separa dele. **A comanda fecha** quando os lançamentos
+  vivos do atendimento (pagos, ou a receber com nota) cobrem o preço; diz
+  "Crediário · R$ … em aberto" como a da venda, e as parcelas se recebem
+  nela e no PDV da cliente (`parcelasEmAbertoDaCliente`, agora também pelo
+  `appointment_id`). Os pontos e o voucher só no à vista ("Os pontos e o
+  voucher se usam no pagamento à vista."). O estorno de UMA das formas reabre
+  a comanda só no que falta (`jaCobertoDoAtendimento`; a tela diz "Já pago"
+  com o que ficou), e `atendimentos_a_receber.price` passa a ser o que FALTA.
+  No crediário e no a receber o botão diz "Fechar a comanda" (nada, ou só a
+  entrada, entra agora).
+- Ainda por vir (o plano de adaptação, `docs/revisao.md`): os pontos na
+  comanda do plano.
 - Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`, `e2e/pdv-nova-venda.spec.ts`,
   `e2e/pdv-comanda-do-plano.spec.ts`, `e2e/pdv-fechar-o-dia.spec.ts`,
   `e2e/pdv-crediario-e-parcela.spec.ts`,
-  `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`.
+  `e2e/pdv-comanda-varios-itens-e-pontos.spec.ts`,
+  `e2e/pdv-varias-formas-e-crediario-avulso.spec.ts`,
+  `tests/pdv-varias-formas-e-crediario-avulso.test.ts`.
 
 ### 9.3.1 Pacotes (2026-09-30)
 

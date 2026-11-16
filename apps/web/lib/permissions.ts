@@ -9,6 +9,17 @@ export type { AppModule, PermissionLevel, PermissionScope, ScopedModule, Resolve
 
 export const ALL_MODULES: readonly AppModule[] = APP_MODULES
 
+/**
+ * Os módulos que são SÓ da Admin da rede (o cargo de sistema, que tem tudo):
+ * não se dão a outro cargo. A Auditoria (o Heitor, 2026-11-16: "Auditoria é
+ * só admin"). Ficam fora da matriz da tela de Cargos e do que a action grava;
+ * a linha que um cargo ainda tenha gravada não vale (`resolvePermissions`).
+ */
+export const MODULOS_SO_DA_ADMIN: readonly AppModule[] = ['audit']
+
+/** Os módulos que um cargo recebe na matriz (Configurações → Cargos). */
+export const MODULOS_DO_CARGO: readonly AppModule[] = APP_MODULES.filter(m => !MODULOS_SO_DA_ADMIN.includes(m))
+
 
 export function isScoped(module: AppModule): module is ScopedModule {
   return (SCOPED_MODULES as readonly string[]).includes(module)
@@ -99,7 +110,8 @@ export const MODULE_LEVELS: Record<AppModule, readonly PermissionLevel[]> = {
   settings:        ['NONE', 'MANAGE'],
   automations:     ['NONE', 'VIEW', 'MANAGE'],
   copilot:         ['NONE', 'VIEW', 'MANAGE'],
-  audit:           ['NONE', 'VIEW'],
+  // Só da Admin da rede (MODULOS_SO_DA_ADMIN): um cargo só a tem em Sem acesso.
+  audit:           ['NONE'],
 }
 
 // ─── Níveis ──────────────────────────────────────────────────────────────────
@@ -134,7 +146,7 @@ export function resolvePermissions(
   if (opts?.allAccess) return { ...ALL_PERMISSIONS }
   const map = new Map(overrides.map(o => [o.module, o.level]))
   return Object.fromEntries(
-    APP_MODULES.map(m => [m, map.get(m) ?? 'NONE'] as const),
+    APP_MODULES.map(m => [m, MODULOS_SO_DA_ADMIN.includes(m) ? 'NONE' : map.get(m) ?? 'NONE'] as const),
   ) as ResolvedPermissions
 }
 

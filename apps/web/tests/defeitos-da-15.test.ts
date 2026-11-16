@@ -159,8 +159,8 @@ describe('Vocabulário da 15ª', () => {
     const prontuario = { key: 'fichas', label: 'Prontuário' }
     expect(avisoDaAbaFechada(prontuario, true)).toMatch(/só os próprios/)
     expect(avisoDaAbaFechada(prontuario, true)).not.toMatch(/cargo/i)
-    expect(avisoDaAbaFechada(prontuario, false)).toBe('Suas permissões não abrem a aba Prontuário desta ficha: abrimos a Visão geral.')
-    expect(avisoDaAbaFechada({ key: 'financeiro', label: 'Financeiro' }, true)).toBe('Suas permissões não abrem a aba Financeiro desta ficha: abrimos a Visão geral.')
+    expect(avisoDaAbaFechada(prontuario, false)).toBe('Suas permissões não abrem a aba Prontuário desta ficha. Você está na Visão geral.')
+    expect(avisoDaAbaFechada({ key: 'financeiro', label: 'Financeiro' }, true)).toBe('Suas permissões não abrem a aba Financeiro desta ficha. Você está na Visão geral.')
     expect(ler('components/branch/client-profile.tsx')).not.toMatch(/Seu cargo não abre a aba/)
   })
 })

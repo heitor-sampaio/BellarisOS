@@ -2,10 +2,6 @@ export { formatBRL, formatDate, formatDateTime, formatTime, formatPercent, maskC
 export { cpfValido, telefoneNacional, telefoneInternacional, telefoneDoCadastro, documentoEstrangeiro, TIPOS_DE_DOCUMENTO, type TipoDeDocumento } from './validacao'
 export { iniciaisDoNome } from './iniciais'
 export {
-  CLIENT_TAGS,
-  type ClientTag,
-} from './client-tags'
-export {
   LEAD_SOURCES,
   LEAD_SOURCE_KEYS,
   sourceStyle,

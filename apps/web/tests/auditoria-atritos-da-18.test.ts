@@ -95,25 +95,29 @@ describe('A33: a linha do pagamento da comissão diz de qual comissão', () => {
   })
 })
 
+// A Auditoria é só da Admin da rede (2026-11-16): o contexto que lê a tem. O
+// recorte por unidade segue como segunda parede (a Admin da rede tem a rede inteira).
+const daAdmin = { isNetworkAdmin: true, permissions: { audit: 'MANAGE' } }
 function ctxDeUnidades(): TenantContext {
-  return { tenantId: 't1', branchId: 'bD', unidades: ['bD', 'bC'], internalUserId: 'u1' } as unknown as TenantContext
+  return { ...daAdmin, tenantId: 't1', branchId: 'bD', unidades: ['bD', 'bC'], internalUserId: 'u1' } as unknown as TenantContext
 }
 
 describe('A32: quem tem unidades vê o que ela mesma gravou sem unidade; o prontuário aberto leva a unidade', () => {
-  it('a leitura de quem tem unidades: as linhas das unidades dela OU as sem unidade gravadas por ela — e nunca a abertura do prontuário', async () => {
+  // A regra mudou em 2026-11-16: a abertura do prontuário não sai mais do recorte (quem lê é a Admin da rede).
+  it('a leitura de quem tem unidades: as linhas das unidades dela OU as sem unidade gravadas por ela', async () => {
     filtros.length = 0
     const { lerAuditoria } = await import('@/lib/auditoria/leitura')
     await lerAuditoria(ctxDeUnidades(), { period: 'month' }, { porGravacao: true })
     const or = filtros.find(f => f.metodo === 'or')
     expect(or?.args[0]).toBe('branch_id.in.(bD,bC),and(branch_id.is.null,ator_user_id.eq.u1)')
     expect(filtros.some(f => f.metodo === 'in' && f.args[0] === 'branch_id')).toBe(false)
-    expect(filtros).toContainEqual({ metodo: 'neq', args: ['operacao', 'abriu'] })
+    expect(filtros.some(f => f.metodo === 'neq' && f.args[1] === 'abriu')).toBe(false)
   })
 
   it('quem é da rede lê tudo, sem o recorte', async () => {
     filtros.length = 0
     const { lerAuditoria } = await import('@/lib/auditoria/leitura')
-    await lerAuditoria({ tenantId: 't1', branchId: null, unidades: null, internalUserId: 'u9' } as unknown as TenantContext, { period: 'month' }, { porGravacao: true })
+    await lerAuditoria({ ...daAdmin, tenantId: 't1', branchId: null, unidades: null, internalUserId: 'u9' } as unknown as TenantContext, { period: 'month' }, { porGravacao: true })
     expect(filtros.some(f => f.metodo === 'or' || f.metodo === 'neq')).toBe(false)
   })
 

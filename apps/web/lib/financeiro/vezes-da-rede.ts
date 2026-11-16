@@ -1,3 +1,4 @@
+import { partesQuePagamAgora, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { recusaDasVezes } from './vezes-do-cartao'
@@ -71,4 +72,16 @@ export async function nomesDasMaquininhas(tenantId: string): Promise<Record<stri
   const lista = await maquininhasDaRede(tenantId)
   if (lista.length < 2) return null
   return Object.fromEntries(lista.map(m => [m.id, m.nome]))
+}
+
+/**
+ * D1 da 18ª: as vezes e a maquininha de CADA forma paga agora (o à vista
+ * dividido confere todas; o resto, a de sempre).
+ */
+export async function recusaDasVezesDoPagamento(tenantId: string, p: PagamentoDoPlano | null | undefined): Promise<string | null> {
+  for (const parte of partesQuePagamAgora(p)) {
+    const recusa = await recusaDasVezesDaRede(tenantId, parte.vezes, parte.maquininha ?? null, parte.metodo)
+    if (recusa) return recusa
+  }
+  return null
 }

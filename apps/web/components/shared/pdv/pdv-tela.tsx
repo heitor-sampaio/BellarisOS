@@ -320,10 +320,11 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
               produtos={aReceber && c.agendamentoId ? e.produtosParaAcrescentar : null} />
           )}
           {/* D1 da 16ª (princípio 3): reaberta pelo estorno só do atendimento, o
-              produto já vendido não entra no que se cobra — a tela diz quanto já foi pago. */}
+              produto já vendido não entra no que se cobra — a tela diz quanto já foi pago.
+              2026-11-16: e reaberta pelo estorno de UMA das formas, as que ficaram também. */}
           {aReceber && c.jaPago > 0 && (
             <div data-ja-pago-da-comanda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12, marginTop: 8, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-              <span>Já pago (os produtos)</span>
+              <span>Já pago</span>
               <span style={{ fontWeight: 700 }}>{brl(c.jaPago)}</span>
             </div>
           )}

@@ -6,7 +6,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 /**
  * F73 — A20 da 14ª simulação (princípio 3). A Bianca é fixa na Savassi e
  * ATENDE também na Pampulha (§11, o "Atende" é por unidade). Abrindo
- * /pampulha/agenda, lia "Você não tem acesso a essa unidade. Abrimos a sua." e
+ * /pampulha/agenda, lia "Você não tem acesso a essa unidade. Abrimos a sua." (hoje
+ * "Essa unidade não está entre as suas. Você está na sua unidade.") e
  * não sabia que os atendimentos dela na Pampulha estão na agenda da Savassi.
  * Para quem atende ali, o aviso diz isso e abre a agenda dela; para quem não
  * atende, segue o de sempre (e2e/abrangencia-aviso-ao-redirecionar.spec.ts).
@@ -52,6 +53,6 @@ test('A20: quem atende na outra unidade é levado à própria agenda, e o aviso 
     await p.goto(`/${slugB}/agenda`)
     await expect(p).toHaveURL(new RegExp(`/${slugA}/agenda`))
     await expect(p.getByText('Os seus atendimentos nessa unidade estão na sua agenda, aqui.', { exact: false })).toBeVisible()
-    await expect(p.getByText('Você não tem acesso a essa unidade. Abrimos a sua.')).toHaveCount(0)
+    await expect(p.getByText('Essa unidade não está entre as suas. Você está na sua unidade.')).toHaveCount(0)
   })
 })

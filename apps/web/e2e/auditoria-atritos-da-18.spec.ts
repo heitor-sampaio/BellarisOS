@@ -5,11 +5,13 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
  * A32 da 18ª simulação (2026-11-16), a Auditoria, numa rede [e2e] própria:
- * - quem tem unidades vê o que ELA MESMA gravou sem unidade (o contato e a
- *   oportunidade são da rede) — e não o que os outros gravaram sem unidade;
  * - o "Abriu o prontuário" leva a unidade em que foi aberto: entra no filtro
- *   por ela para quem é da rede, e continua fora da Auditoria de quem tem
- *   unidades (o registro de quem abriu é de quem tem a rede).
+ *   por ela.
+ * - Era também: "quem tem unidades vê o que ELA MESMA gravou sem unidade, e
+ *   nunca a abertura do prontuário". A regra mudou no mesmo dia (o Heitor:
+ *   "Auditoria é só admin"): quem tem unidades não abre a Auditoria, e a
+ *   Admin da rede lê tudo — o que cada um gravou sem unidade e a abertura,
+ *   também no portal da unidade.
  * A parte pura está em `tests/auditoria-atritos-da-18.test.ts`.
  */
 
@@ -48,7 +50,7 @@ test.beforeAll(async () => {
   expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede.tenantId)).error).toBeNull()
   slugA = (await db().from('branches').select('slug').eq('id', rede.branchId).single<{ slug: string }>()).data!.slug
   daRede = await criarMembro(`a32r${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Da rede', permissoes: [] })
-  daA = await criarMembro(`a32a${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Da A', permissoes: [{ modulo: 'audit', nivel: 'VIEW' }] })
+  daA = await criarMembro(`a32a${marca}`, { tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Da A', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
   await contatoEmNomeDe(daA, `${PREFIXO} Contato dela ${marca}`)
   await contatoEmNomeDe(daRede, `${PREFIXO} Contato da rede ${marca}`)
   const { data: c, error } = await db().from('clients')
@@ -72,13 +74,17 @@ test('A32: o acesso ao prontuário grava a unidade do endereço', async () => {
   expect((data ?? []).map(l => l.branch_id)).toEqual([rede!.branchId])
 })
 
-test('A32: quem tem unidades vê o contato que ELA criou (sem unidade), não o dos outros, e nunca a abertura do prontuário', async ({ browser }) => {
+test('quem tem unidades não abre a Auditoria; a Admin da rede, no portal da unidade, lê o que cada um gravou sem unidade e a abertura do prontuário', async ({ browser }) => {
   await como(browser, daA!.estado, async p => {
+    await p.goto(`/${slugA}/auditoria`)
+    await expect(p.getByText('Você não tem acesso a esta área')).toBeVisible()
+  })
+  await como(browser, daRede!.estado, async p => {
     await p.goto(`/${slugA}/auditoria`)
     const linhas = p.locator('[data-linha-da-auditoria]')
     await expect(linhas.filter({ hasText: 'Contato dela' })).toHaveCount(1, { timeout: 30_000 })
-    await expect(linhas.filter({ hasText: 'Contato da rede' })).toHaveCount(0)
-    await expect(linhas.filter({ hasText: 'Abriu o prontuário' })).toHaveCount(0)
+    await expect(linhas.filter({ hasText: 'Contato da rede' })).toHaveCount(1)
+    await expect(linhas.filter({ hasText: 'Abriu o prontuário' })).toHaveCount(1)
   })
 })
 

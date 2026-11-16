@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { banco, PREFIXO, criarLoginDeTeste } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { chamarAcao } from './apoio/acao-direta'
+import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
 
 /**
  * Bloco Configurações do plano de adaptação (docs/revisao.md, CF3a–CF3c — o
@@ -15,9 +15,12 @@ import { chamarAcao } from './apoio/acao-direta'
  *   ou pelo servidor, com QUEM agiu (o membro; "via suporte"; "o sistema"); a
  *   abertura do prontuário e a entrada no sistema. Não se altera nem se apaga,
  *   a sessão não o lê, e o texto clínico nunca entra.
- * - CF3c: a permissão "Auditoria" (Ver), que nasce só no Admin da rede.
- * - CF3a: a tela (menu, Gestão) e o CSV, paginados, com os filtros; quem tem
- *   as unidades A e B não vê a C.
+ * - CF3c: a Auditoria é SÓ da Admin da rede (o Heitor, 2026-11-16: "Auditoria
+ *   é só admin"): não está na matriz de Cargos, a action não a grava, e a
+ *   linha `audit` num cargo (como a regra antiga deixava dar) não abre nada —
+ *   nem para quem tem "A rede inteira", nem para quem tem unidades.
+ * - CF3a: a tela (menu, Gestão) e o CSV, paginados, com os filtros — e o
+ *   "Abriu o prontuário" também no portal da unidade (a Admin vê tudo).
  */
 
 test.setTimeout(240_000)
@@ -105,9 +108,11 @@ test.beforeAll(async () => {
     if (letra === 'B') unidadeB = data!.id; else unidadeC = data!.id
   }
   dona = await criarMembro(`audd${marca}`, { tenant: rede.tenantId, donoDaRede: true, permissoes: [] })
+  // "A rede inteira", e o cargo com a linha `audit` em Ver gravada direto (como
+  // a regra antiga deixava dar): a linha não vale — a Auditoria é só da Admin.
   semAuditoria = await criarMembro(`auds${marca}`, {
     tenant: rede.tenantId, rotulo: 'Sem auditoria',
-    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'reports', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'settings', nivel: 'MANAGE' }, { modulo: 'reports', nivel: 'VIEW' }, { modulo: 'audit', nivel: 'VIEW' }],
   })
   daUnidade = await criarMembro(`audu${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, outrasUnidades: [unidadeB], rotulo: 'Unidades A e B',
@@ -252,34 +257,6 @@ test.describe('CF3b: o registro', () => {
   })
 })
 
-test.describe('CF3c: a permissão', () => {
-  test('a Auditoria é uma linha da matriz de Cargos, e os modelos nascem sem ela', async ({ browser }) => {
-    // O cargo do próprio teste (daUnidade) é o único com a Auditoria; nenhum modelo nasce com ela.
-    const { data } = await db().from('role_permissions').select('id').eq('tenant_id', rede.tenantId).eq('module', 'audit')
-      .neq('role_id', daUnidade.roleId)
-    expect(data ?? [], 'nenhum modelo nasce com a Auditoria').toEqual([])
-    await como(browser, dona, async p => {
-      await p.goto('/admin/settings?tab=permissions')
-      await expect(p.getByText('Auditoria', { exact: true }).first()).toBeVisible()
-    })
-  })
-
-  test('quem não tem a Auditoria não a vê no menu, não abre a tela, não acha na busca e não baixa o CSV', async ({ browser }) => {
-    await como(browser, semAuditoria, async p => {
-      await p.goto('/admin/dashboard')
-      await expect(p.locator('nav a[href="/admin/auditoria"]')).toHaveCount(0)
-      const campo = p.getByRole('combobox', { name: 'Busca universal' })
-      await campo.click()
-      await campo.fill('auditoria')
-      await expect(p.getByRole('option', { name: /^Auditoria/ })).toHaveCount(0)
-      await p.goto('/admin/auditoria')
-      await expect(p.getByText(SEM_ACESSO)).toBeVisible()
-      const csv = await p.request.get('/api/auditoria/csv', { maxRedirects: 0 })
-      expect(csv.status()).toBe(403)
-    })
-  })
-})
-
 test.describe('CF3a: a tela', () => {
   test('a dona vê no menu (Gestão, ao lado de Relatórios), acha na busca e lê o quê em português, com quem e o link', async ({ browser }) => {
     await como(browser, dona, async p => {
@@ -323,23 +300,31 @@ test.describe('CF3a: a tela', () => {
     })
   })
 
-  test('quem tem as unidades A e B vê A e B, não a C — na tela e no CSV', async ({ browser }) => {
+  // A regra mudou em 2026-11-16 ("Auditoria é só admin"): era "quem tem as
+  // unidades A e B vê A e B, não a C". Quem tem unidades não abre a Auditoria.
+  test('quem tem as unidades A e B (com a linha `audit` no cargo) não abre a Auditoria em portal nenhum, nem o CSV', async ({ browser }) => {
+    await como(browser, daUnidade, async p => {
+      await p.goto(`/${slugA}/dashboard`)
+      await expect(p.locator('nav a[href$="/auditoria"]')).toHaveCount(0)
+      await p.goto(`/${slugA}/auditoria`)
+      await expect(p.getByText(SEM_ACESSO)).toBeVisible()
+      await expect(p.locator('[data-linha-da-auditoria]')).toHaveCount(0)
+      const csv = await p.request.get('/api/auditoria/csv', { maxRedirects: 0 })
+      expect(csv.status()).toBe(403)
+    })
+  })
+
+  test('a Admin da rede, no portal de uma unidade, lê as unidades e tem o filtro "Abriu o prontuário"', async ({ browser }) => {
     await sala(unidadeB, `${PREFIXO} Sala B ${marca}`)
     await sala(rede.branchId, `${PREFIXO} Sala A ${marca}`)
-    await como(browser, daUnidade, async p => {
+    await como(browser, dona, async p => {
       await p.goto(`/${slugA}/auditoria`)
       await expect(p.getByRole('heading', { name: 'Auditoria' })).toBeVisible()
       await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Sala A' })).toHaveCount(1)
       await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Sala B' })).toHaveCount(1)
-      await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Sala do sistema' }), 'a sala da unidade C').toHaveCount(0)
-      // Pedir a C pela URL não abre a C.
-      await p.goto(`/${slugA}/auditoria?unidade=${unidadeC}`)
-      await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Sala do sistema' })).toHaveCount(0)
-      const csv = await p.request.get(`/api/auditoria/csv?unidade=${unidadeC}`)
-      expect(csv.status()).toBe(200)
-      const texto = await csv.text()
-      expect(texto).toContain('Sala B')
-      expect(texto).not.toContain('Sala do sistema')
+      await expect(p.locator('select option[value="abriu"]')).toHaveCount(1)
+      await p.goto(`/${slugA}/auditoria?tipo=abriu`)
+      await expect(p.locator('[data-linha-da-auditoria]').first()).toContainText('Abriu o prontuário')
     })
   })
 
@@ -366,6 +351,53 @@ test.describe('CF3a: a tela', () => {
       await p.locator('[data-auditoria-mais]').click()
       await expect(p).toHaveURL(/antes=\d+/)
       await expect(p.locator('[data-linha-da-auditoria]').first()).toBeVisible()
+    })
+  })
+})
+
+// Por último: o cargo criado e apagado pela action grava 36 linhas e empurraria
+// as da CF3a para a segunda página (50 por página).
+test.describe('CF3c: só a Admin da rede', () => {
+  test('a Auditoria não está na matriz de Cargos, os modelos nascem sem ela e a action não a grava', async ({ browser }) => {
+    // Só os cargos do próprio teste (gravados direto, pela regra antiga) têm a linha; nenhum modelo nasce com ela.
+    const { data } = await db().from('role_permissions').select('id').eq('tenant_id', rede.tenantId).eq('module', 'audit')
+      .not('role_id', 'in', `(${daUnidade.roleId},${semAuditoria.roleId})`)
+    expect(data ?? [], 'nenhum modelo nasce com a Auditoria').toEqual([])
+    const { data: cargo, error } = await db().from('tenant_roles')
+      .insert({ tenant_id: rede.tenantId, key: `AUD_${marca}`.toUpperCase(), label: `${PREFIXO} Cargo aud ${marca}`, is_system: false })
+      .select('id').single<{ id: string }>()
+    expect(error, error?.message).toBeNull()
+    try {
+      await como(browser, dona, async p => {
+        await p.goto('/admin/settings?tab=permissions')
+        await expect(p.locator('[data-modulo="reports"]').first()).toBeVisible()
+        await expect(p.locator('[data-modulo="audit"]')).toHaveCount(0)
+        // A action, chamada direto com a Auditoria em Ver: grava o resto, a Auditoria não.
+        const r = await chamarAcaoComFormulario(p, 'actions/permissions.ts', 'saveRolePermissions',
+          '/admin/settings?tab=permissions', [undefined], { roleId: cargo!.id, 'level:clients': 'VIEW', 'level:audit': 'VIEW' })
+        expect(r.texto, 'chegou à action').not.toContain('Server action not found')
+      })
+      const { data: linhas } = await db().from('role_permissions').select('module, level').eq('role_id', cargo!.id)
+      expect(linhas ?? []).toEqual(expect.arrayContaining([{ module: 'clients', level: 'VIEW' }]))
+      expect((linhas ?? []).filter(l => l.module === 'audit'), 'a Auditoria não se grava em cargo').toEqual([])
+    } finally {
+      await db().from('role_permissions').delete().eq('role_id', cargo!.id)
+      await db().from('tenant_roles').delete().eq('id', cargo!.id)
+    }
+  })
+
+  test('quem não é a Admin da rede (mesmo com a linha `audit` no cargo) não a vê no menu, não abre a tela, não acha na busca e não baixa o CSV', async ({ browser }) => {
+    await como(browser, semAuditoria, async p => {
+      await p.goto('/admin/dashboard')
+      await expect(p.locator('nav a[href="/admin/auditoria"]')).toHaveCount(0)
+      const campo = p.getByRole('combobox', { name: 'Busca universal' })
+      await campo.click()
+      await campo.fill('auditoria')
+      await expect(p.getByRole('option', { name: /^Auditoria/ })).toHaveCount(0)
+      await p.goto('/admin/auditoria')
+      await expect(p.getByText(SEM_ACESSO)).toBeVisible()
+      const csv = await p.request.get('/api/auditoria/csv', { maxRedirects: 0 })
+      expect(csv.status()).toBe(403)
     })
   })
 })

@@ -95,7 +95,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
     const semV = resposta.semVendedor ?? semVendedor
     if (resposta.semVendedor) setSemVendedor(true)
     iniciar(async () => {
-      const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado), descontoDoEstado(desconto), envio.chave(),
+      const r = await venderPacote(clienteId, pacote.id, branchId, montarPagamento(estado, fid.aPagar), descontoDoEstado(desconto), envio.chave(),
         { vendedorId: vendedorId || null, semVendedor: semV,
           responsavelId: pacote.pedeResponsavel ? responsavelId || null : null, semResponsavel: resposta.semResponsavel === true },
         fid.paraEnviar)
@@ -201,7 +201,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={pacote.price} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} variasFormas />
         {fid.bloco}
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>

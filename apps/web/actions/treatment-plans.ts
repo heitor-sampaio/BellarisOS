@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, alcancaOAgendamento, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
-import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { recusaDasVezesDaRede, recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { salaUnicaDoHorario } from '@/lib/appointments/salas'
@@ -18,7 +18,7 @@ import { recusaDosProcedimentosDoPlano } from '@/lib/procedimentos/disponivel-na
 import { planoCasaComBusca } from '@/lib/busca/cliente'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
-import { recusaDaEntradaDoPagamento } from '@/lib/checkout/lancamentos'
+import { recusaDaEntradaDoPagamento, comFidelidadeNaPrimeira } from '@/lib/checkout/lancamentos'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { getFinanceiroDoPlano, type FinanceiroDoPlano } from '@/lib/metrics/plano'
@@ -1654,7 +1654,7 @@ export type SessionScheduleInput = {
 // O pagamento do plano mora em lib/checkout/pagamento.ts: o contrato de plano
 // (lib/documentos) também o lê, e aqui todo export é endpoint público.
 export type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
-import { rotuloDoPagamento, vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { rotuloDoPagamento, vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora, partesQuePagamAgora, temOutrasFormas, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
@@ -1738,7 +1738,8 @@ async function checkoutTreatmentPlanInterno(
   // de um plano de outra rede, tudo isso acontecia lá.
   if (!(await planoDoTenant(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
   // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-  const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento), maquininhaDoPagamento(pagamento), metodoQuePagaAgora(pagamento))
+  // D1 da 18ª: cada forma paga agora (o à vista dividido confere todas).
+  const recusaDasVezes = await recusaDasVezesDoPagamento(ctx.tenantId!, pagamento)
   if (recusaDasVezes) return { error: recusaDasVezes }
   // C38: o crediário até o limite da rede (era `Math.min(…, 48)`, calado).
   const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, pagamento)
@@ -1777,7 +1778,8 @@ async function checkoutTreatmentPlanInterno(
   if ('error' in doDesconto) return { error: doDesconto.error }
   // A entrada acima do total é recusada, não cortada (ven-02): "o plano custa
   // R$ 900 e a Bruna digita entrada de R$ 1.000; grava R$ 900 sem dizer nada".
-  const recusaDaEntrada = recusaDaEntradaDoPagamento(pagamento, Math.round((precos.subtotal - doDesconto.reais) * 100) / 100, 'do plano')
+  // D1 da 18ª: o dividido se confere depois da fidelidade (a primeira forma leva de volta o que ela desconta).
+  const recusaDaEntrada = temOutrasFormas(pagamento) ? null : recusaDaEntradaDoPagamento(pagamento, Math.round((precos.subtotal - doDesconto.reais) * 100) / 100, 'do plano')
   if (recusaDaEntrada) return { error: recusaDaEntrada }
 
   const recusaDosDocumentos = await recusaDosDocumentosDoPlano(ctx.tenantId!, planId, pagamento, doDesconto.reais)
@@ -1799,6 +1801,10 @@ async function checkoutTreatmentPlanInterno(
     escolha: fidelidade, aVista: pagamento.forma === 'AVISTA', admin,
   })
   if ('error' in daFidelidade) return { error: daFidelidade.error }
+  // D1 da 18ª: o plano dividido em mais de uma forma — a soma fecha o total (com a fidelidade na primeira).
+  const pagamentoDoPlano = comFidelidadeNaPrimeira(pagamento, daFidelidade.dados)
+  const recusaDasFormas = recusaDaEntradaDoPagamento(pagamentoDoPlano, total, 'do plano')
+  if (recusaDasFormas) return { error: recusaDasFormas }
 
   // A47 da 6ª simulação: a descrição chega à cliente (o app, o recibo): sem
   // texto interno ("checkout novo paciente"). "Plano de tratamento — parcela 1/2".
@@ -1841,7 +1847,19 @@ async function checkoutTreatmentPlanInterno(
   // O que foi RECEBIDO agora e o que ficou A RECEBER são transações separadas:
   // `revenueCash` conta INCOME pago com eixo em `paid_at`, então uma transação
   // única marcada como não paga faria a entrada sumir do caixa do dia.
-  if (pagamento.forma === 'AVISTA') {
+  if (temOutrasFormas(pagamentoDoPlano)) {
+    // D1 da 18ª: um lançamento PAGO por forma, cada um com as vezes, a bandeira e a maquininha dele.
+    for (const parte of partesQuePagamAgora(pagamentoDoPlano)) {
+      lancar({
+        amount:          Math.round(parte.valor * 100) / 100,
+        payment_method:  parte.metodo,
+        is_paid:         true,
+        ...(parte.vezes > 1 ? { cartao_vezes: parte.vezes } : {}),
+        cartao_bandeira: bandeiraDoPagamento(parte.metodo, parte.bandeira),
+        maquininha_id:   parte.maquininha && (parte.metodo === 'CREDIT_CARD' || parte.metodo === 'DEBIT_CARD') ? parte.maquininha : null,
+      })
+    }
+  } else if (pagamento.forma === 'AVISTA') {
     // No cartão de crédito em N vezes a maquininha paga a clínica: pago na
     // hora, e as vezes ficam no lançamento para a taxa da comissão.
     const vezes = vezesNoCartao(pagamento)

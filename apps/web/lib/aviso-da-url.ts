@@ -5,14 +5,17 @@
  * URL. Só chave conhecida vira texto: a URL é do navegador.
  */
 export const AVISOS_DA_URL = {
-  'outra-unidade':  'Você não tem acesso a essa unidade. Abrimos a sua.',
+  // O Heitor, 2026-11-16: "Abrimos a sua" lia-se como "criamos uma unidade
+  // para você". Nada se cria: a pessoa pediu uma unidade fora do alcance e
+  // está na dela. O aviso diz onde ela está.
+  'outra-unidade':  'Essa unidade não está entre as suas. Você está na sua unidade.',
   // A20 da 14ª (F73): quem ATENDE na outra unidade (§11, o "Atende" é por
   // unidade) não opera nela, mas os atendimentos de lá estão na agenda dela.
   'atende-em-outra-unidade': 'Os seus atendimentos nessa unidade estão na sua agenda, aqui. O resto daquela unidade é da equipe de lá.',
   // A23 da 15ª: a pessoa pediu a rede — o aviso diz de quem ela é, pela abrangência.
-  'portal-da-rede': 'O portal da rede é de quem tem “A rede inteira”. Abrimos a sua unidade.',
+  'portal-da-rede': 'O portal da rede é de quem tem “A rede inteira”. Você está na sua unidade.',
   // C61 (F70): o primeiro acesso da clínica (o /setup) é de quem é da rede.
-  'setup-da-rede':  'A configuração inicial da rede é de quem tem “A rede inteira”. Abrimos a sua unidade.',
+  'setup-da-rede':  'A configuração inicial da rede é de quem tem “A rede inteira”. Você está na sua unidade.',
   // A14 da 13ª (F70): "?unidade=" no portal de uma unidade abria esta, calado.
   'filtro-de-unidade': 'Aqui é o portal desta unidade: para ver outra, troque de unidade no menu ou use o portal da rede.',
 } as const

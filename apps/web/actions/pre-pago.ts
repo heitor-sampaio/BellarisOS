@@ -21,12 +21,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { quemVendeu, type QuemVendeuDaTela } from '@/lib/vendas/equipe-da-venda'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
-import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto } from '@/lib/checkout/lancamentos'
+import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento, comMotivoDoDesconto, comFidelidadeNaPrimeira } from '@/lib/checkout/lancamentos'
 import { fidelidadeDaVenda } from '@/lib/fidelidade/na-venda'
 import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
-import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
-import { vezesNoCartao, maquininhaDoPagamento, metodoQuePagaAgora } from '@/lib/checkout/pagamento'
+import { recusaDasVezesDaRede, recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, ratear, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { createAppointmentCore, notifyAppointmentCreated } from '@/lib/appointments/core'
 import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
@@ -89,7 +88,8 @@ async function venderProcedimentoUmaVez(
     const lido = EntradaDoPagamento.safeParse(pagamento)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
-    const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(lido.data), maquininhaDoPagamento(lido.data), metodoQuePagaAgora(lido.data))
+    // D1 da 18ª: cada forma paga agora (o à vista dividido confere todas).
+    const recusaDasVezes = await recusaDasVezesDoPagamento(ctx.tenantId!, lido.data)
     if (recusaDasVezes) return { error: recusaDasVezes }
     const d = EntradaDoDesconto.safeParse(desconto)
     if (!d.success) return { error: 'Desconto inválido.' }
@@ -119,7 +119,12 @@ async function venderProcedimentoUmaVez(
     if (recusa) return { error: recusa }
     const reais = descontoEmReais(tabela, d.data)
     const vendido = Math.round((tabela - reais) * 100) / 100
-    const recusaDaEntrada = recusaDaEntradaDoPagamento(lido.data, vendido)
+    // FD2a: os pontos e o voucher (à vista), conferidos aqui e de novo no banco.
+    const fid = await fidelidadeDaVenda({ tenantId: ctx.tenantId!, clienteId, vendido, escolha: fidelidade, aVista: lido.data.forma === 'AVISTA', admin })
+    if ('error' in fid) return { error: fid.error }
+    // D1 da 18ª: dividida, a primeira forma leva de volta o que a fidelidade desconta.
+    const pagamentoDaVenda = comFidelidadeNaPrimeira(lido.data, fid.dados)
+    const recusaDaEntrada = recusaDaEntradaDoPagamento(pagamentoDaVenda, vendido)
     // C38: o crediário até o limite da rede.
     const recusaDasParcelas = await recusaDasParcelasDaRede(ctx.tenantId!, lido.data)
     if (recusaDasParcelas) return { error: recusaDasParcelas }
@@ -131,13 +136,10 @@ async function venderProcedimentoUmaVez(
     if ('pergunta' in vendeu) return { confirmarSemVendedor: vendeu.pergunta }
 
     const rotulo = `${qtd}× ${proc.name as string}`
-    // FD2a: os pontos e o voucher (à vista), conferidos aqui e de novo no banco.
-    const fid = await fidelidadeDaVenda({ tenantId: ctx.tenantId!, clienteId, vendido, escolha: fidelidade, aVista: lido.data.forma === 'AVISTA', admin })
-    if ('error' in fid) return { error: fid.error }
     const args = {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_procedimento: procedimentoId, p_unidade: branchId,
       p_ator: ctx.internalUserId ?? null, p_vendedor: vendeu.vendedor, p_quantidade: qtd, p_desconto: reais, p_validade_dias: validade,
-      p_lancamentos: comMotivoDoDesconto(lancamentosDoPagamento(vendido, lido.data, rotulo), motivoDoDesconto(d.data, reais)),
+      p_lancamentos: comMotivoDoDesconto(lancamentosDoPagamento(vendido, pagamentoDaVenda, rotulo), motivoDoDesconto(d.data, reais)),
       // Cada unidade com a sua parte do vendido: a base da comissão dela.
       p_unidades: ratear(Array.from({ length: qtd }, () => 1), vendido).map(preco => ({ preco })),
     }

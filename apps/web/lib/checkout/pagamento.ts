@@ -20,7 +20,16 @@ export type PagamentoDoPlano =
    * então para o cliente é PAGO na hora — "entrada + parcelas" é o crediário da
    * própria clínica, cada parcela a receber. 1 (ou ausente) é o à vista de sempre.
    */
-  | { forma: 'AVISTA';    metodo: string; vezes?: number; bandeira?: string; maquininha?: string }
+  | {
+      forma: 'AVISTA'; metodo: string; vezes?: number; bandeira?: string; maquininha?: string
+      /**
+       * D1 da 18ª ("+ Outra forma", o Heitor, 2026-11-16): com `outras`, o
+       * pagamento se divide — `valor` é o da PRIMEIRA forma (a de cima), e cada
+       * outra traz o seu. A soma fecha o total (o servidor confere). Sem
+       * `outras`, a primeira é o total, como sempre.
+       */
+      valor?: number; outras?: ParteDoPagamento[]
+    }
   /**
    * `metodo`, `vezes` e `bandeira` são da ENTRADA, paga agora (D5 da 6ª
    * simulação: a entrada no crédito também em N vezes na maquininha). As
@@ -36,12 +45,43 @@ export type PagamentoDoPlano =
    */
   | { forma: 'A_RECEBER'; metodo?: string | null; vencimento: string | null }
 
+/** Uma das formas de um pagamento dividido (D1 da 18ª): o meio, o valor e o cartão dela. */
+export interface ParteDoPagamento { metodo: string; valor: number; vezes?: number; bandeira?: string; maquininha?: string }
+
+/**
+ * As partes pagas AGORA, cada uma com o seu valor: o à vista (a primeira e as
+ * outras) ou a entrada do crediário. `total` é o do à vista sem divisão (a
+ * primeira forma é o total). Vazio quando nada se paga agora.
+ */
+export function partesQuePagamAgora(p: PagamentoDoPlano | null | undefined, total?: number): (ParteDoPagamento & { vezes: number })[] {
+  if (!p || p.forma === 'A_RECEBER') return []
+  if (p.forma === 'PARCELADO') {
+    return p.entrada > 0 && p.metodo
+      ? [{ metodo: p.metodo, valor: p.entrada, vezes: vezesNoCartao(p), ...(p.bandeira ? { bandeira: p.bandeira } : {}), ...(p.maquininha ? { maquininha: p.maquininha } : {}) }]
+      : []
+  }
+  const outras = p.outras ?? []
+  const primeira = {
+    metodo: p.metodo, valor: outras.length ? Number(p.valor ?? 0) : Number(total ?? p.valor ?? 0), vezes: vezesNoCartao(p),
+    ...(p.bandeira ? { bandeira: p.bandeira } : {}), ...(p.maquininha ? { maquininha: p.maquininha } : {}),
+  }
+  return [primeira, ...outras.map(o => ({
+    ...o, vezes: o.metodo === 'CREDIT_CARD' ? Math.max(1, Math.min(12, Math.round(Number(o.vezes) || 1))) : 1,
+  }))]
+}
+
+/** O pagamento à vista dividido em mais de uma forma? */
+export const temOutrasFormas = (p: PagamentoDoPlano | null | undefined): p is Extract<PagamentoDoPlano, { forma: 'AVISTA' }> & { outras: ParteDoPagamento[] } =>
+  !!p && p.forma === 'AVISTA' && (p.outras?.length ?? 0) > 0
+
 /**
  * A linha do tempo do atendimento: curta, com a forma pelo nome da tela
  * (`rotuloDaForma` — D18, 2026-10-29: dizia "3x em CREDIT_CARD").
  */
 export function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
   if (!p)                      return 'em aberto, a receber no atendimento'
+  // D1 da 18ª: dividido, cada forma com o valor dela ("Crédito 3x R$ 1.000,00 + Pix R$ 596,00").
+  if (temOutrasFormas(p))      return partesQuePagamAgora(p).map(x => `${rotuloDaForma(x.metodo, x.vezes)} ${formatBRL(x.valor)}`).join(' + ')
   if (p.forma === 'AVISTA')    return vezesNoCartao(p) > 1 ? rotuloDaForma(p.metodo, vezesNoCartao(p)) : `${rotuloDaForma(p.metodo)} à vista`
   if (p.forma === 'A_RECEBER') return 'a receber'
   // D6: as parcelas são com a CLÍNICA; o meio é só o da entrada.
@@ -119,6 +159,7 @@ export function frasesDoPagamento(p: PagamentoDoPlano | null, desconto = 0): str
 
 function fraseSemDesconto(p: PagamentoDoPlano | null): string {
   if (!p) return 'No atendimento'
+  if (temOutrasFormas(p)) return `À vista: ${formasPorExtenso(p)}`
   if (p.forma === 'AVISTA') return vezesNoCartao(p) > 1 ? `No cartão de crédito em ${vezesNoCartao(p)}x` : `À vista, ${metodo(p.metodo)}`
   if (p.forma === 'A_RECEBER') return `A receber${p.vencimento ? ` em ${formatDate(p.vencimento)}` : ''}${p.metodo ? `, ${metodo(p.metodo)}` : ''}`
   // D6: as parcelas são o crediário da clínica; o meio é o da entrada.
@@ -146,6 +187,14 @@ export function valoresDoPagamento(p: PagamentoDoPlano | null, total: number, de
   }
 }
 
+/** "R$ 1.000,00 no cartão de crédito em 3x + R$ 596,00 no Pix" (D1 da 18ª). */
+function formasPorExtenso(p: PagamentoDoPlano): string {
+  return partesQuePagamAgora(p).map(x => {
+    const m = metodo(x.metodo)
+    return `${formatBRL(x.valor)} ${m && x.vezes > 1 ? `${m} em ${x.vezes}x` : m}`
+  }).join(' + ')
+}
+
 function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<string, string | null> {
   const vazio = {
     'pagamento.metodo': null, 'pagamento.entrada': null, 'pagamento.parcelas': null,
@@ -153,6 +202,13 @@ function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<s
   }
   if (!p) {
     return { ...vazio, 'pagamento.forma': `${formatBRL(total)}, a receber no atendimento` }
+  }
+  if (temOutrasFormas(p)) {
+    const meios = partesQuePagamAgora(p).map(x => metodo(x.metodo)).filter((m, i, xs): m is string => !!m && xs.indexOf(m) === i)
+    return {
+      ...vazio, 'pagamento.metodo': meios.length > 1 ? `${meios.slice(0, -1).join(', ')} e ${meios[meios.length - 1]}` : meios[0] ?? null,
+      'pagamento.forma': `${formatBRL(total)} à vista: ${formasPorExtenso(p)}`,
+    }
   }
   if (p.forma === 'AVISTA') {
     const vezes = vezesNoCartao(p)
@@ -220,7 +276,15 @@ function normalizadoSemDesconto(p: PagamentoDoPlano | null): Record<string, stri
   const dia = (iso: string) => iso.slice(0, 10)
   if (!p) return { forma: 'NADA_AGORA' }
   // As vezes só entram quando passam de 1: o retrato do à vista de antes segue igual.
-  if (p.forma === 'AVISTA') return vezesNoCartao(p) > 1 ? { forma: 'AVISTA', metodo: p.metodo, vezes: vezesNoCartao(p) } : { forma: 'AVISTA', metodo: p.metodo }
+  if (p.forma === 'AVISTA') {
+    const base: Record<string, string | number | null> = vezesNoCartao(p) > 1 ? { forma: 'AVISTA', metodo: p.metodo, vezes: vezesNoCartao(p) } : { forma: 'AVISTA', metodo: p.metodo }
+    // D1 da 18ª: as outras formas entram só quando existem (o retrato de antes segue igual), em centavos.
+    if (!temOutrasFormas(p)) return base
+    return {
+      ...base, valor: Math.round(Number(p.valor ?? 0) * 100),
+      outras: JSON.stringify(p.outras.map(o => ({ metodo: o.metodo, valor: Math.round(o.valor * 100), ...(o.metodo === 'CREDIT_CARD' && Number(o.vezes) > 1 ? { vezes: Number(o.vezes) } : {}) }))),
+    }
+  }
   if (p.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: p.metodo ?? null, vencimento: p.vencimento ? dia(p.vencimento) : null }
   return {
     forma: 'PARCELADO', metodo: p.metodo || null, entrada: centavos(p.entrada),
@@ -245,9 +309,15 @@ export function pagamentoDoRetrato(retrato: unknown): PagamentoDoPlano | null {
   const r = (retrato ?? {}) as Record<string, unknown>
   const dia = (d: unknown) => new Date(`${String(d)}T12:00:00-03:00`).toISOString()
   switch (r.forma) {
-    case 'AVISTA':    return Number(r.vezes) > 1
-      ? { forma: 'AVISTA', metodo: String(r.metodo), vezes: Number(r.vezes) }
-      : { forma: 'AVISTA', metodo: String(r.metodo) }
+    case 'AVISTA': {
+      const base: PagamentoDoPlano = Number(r.vezes) > 1
+        ? { forma: 'AVISTA', metodo: String(r.metodo), vezes: Number(r.vezes) }
+        : { forma: 'AVISTA', metodo: String(r.metodo) }
+      // D1 da 18ª: o retrato dividido guarda as outras formas (em centavos).
+      const outras = (() => { try { return typeof r.outras === 'string' ? JSON.parse(r.outras) as { metodo: string; valor: number; vezes?: number }[] : null } catch { return null } })()
+      if (!outras?.length) return base
+      return { ...base, valor: Number(r.valor) / 100, outras: outras.map(o => ({ metodo: o.metodo, valor: o.valor / 100, ...(o.vezes ? { vezes: o.vezes } : {}) })) }
+    }
     case 'A_RECEBER': return { forma: 'A_RECEBER', metodo: (r.metodo as string | null) ?? null, vencimento: r.vencimento ? dia(r.vencimento) : null }
     case 'PARCELADO': return {
       forma: 'PARCELADO', metodo: (r.metodo as string | null) || null, entrada: Number(r.entrada) || 0,

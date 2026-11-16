@@ -156,7 +156,7 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
     if (recusaDoPagamento(estado, fid.aPagar)) return
     iniciar(async () => {
       const r = await venderProduto(clienteId, linhas.map(l => ({ produtoId: l.prod.id, quantidade: l.qtd })), branchId, null,
-        montarPagamento(estado), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor }, fid.paraEnviar)
+        montarPagamento(estado, fid.aPagar), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor }, fid.paraEnviar)
       if (r.confirmarSemVendedor) { setPergunta(r.confirmarSemVendedor); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
@@ -222,7 +222,7 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} variasFormas />
         {fid.bloco}
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>
@@ -391,7 +391,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
     if (recusaDoPagamento(estado, fid.aPagar)) return
     iniciar(async () => {
       const r = await venderProcedimento(clienteId, proc.id, branchId, qtd, validade.trim() ? Number(validade) : null,
-        montarPagamento(estado), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor }, fid.paraEnviar)
+        montarPagamento(estado, fid.aPagar), descontoDoEstado(desconto), envio.chave(), { vendedorId: vendedorId || null, semVendedor }, fid.paraEnviar)
       if (r.confirmarSemVendedor) { setPergunta(r.confirmarSemVendedor); return }
       if (r.error) { setErro(r.error); return }
       envio.renovar()
@@ -467,7 +467,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} comMotivo />
-        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} />
+        <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} variasFormas />
         {fid.bloco}
         {estado.forma === 'A_RECEBER' && (
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>O valor fica a receber no financeiro, com o vencimento, se você informar um.</p>

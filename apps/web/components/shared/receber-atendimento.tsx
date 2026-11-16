@@ -7,17 +7,18 @@ import { abaterDoPacote } from '@/actions/a-receber'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { formatarPontos } from '@/lib/fidelidade/formato'
 import { CampoDoDesconto, LembreteDoMotivo, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
-import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
-import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
-import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
-import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
-import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
-import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
+import { FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
+import {
+  CamposDoPagamento, MotivoDoBotao, estadoDoPagamento, montarPagamento, recusaForaDoCampo, useRecusaDoPagamento,
+  type EstadoDoPagamento,
+} from '@/components/shared/campos-do-pagamento'
 
 /**
  * Receber um atendimento: a forma (com as vezes, a bandeira e a maquininha do
  * cartão), o desconto, o voucher e os pontos — a mesma conta que o servidor
- * refaz em `confirmPayment`. É o "Receber" da comanda do atendimento no PDV
+ * refaz em `confirmPayment`. As formas são as da venda (o Heitor, 2026-11-16:
+ * "Mesma regra de pagamentos dos outros"): à vista numa forma ou em várias
+ * ("+ Outra forma", D1 da 18ª), o crediário com entrada e parcelas, o a receber. É o "Receber" da comanda do atendimento no PDV
  * (PDV1). A janela "Confirmar pagamento" da tela do atendimento saiu (PDV7, a
  * revisão do Heitor de 2026-11-13: "Sai a cobrança da conclusão do atendimento
  * como porta própria (vira a comanda)"): todo caminho leva à comanda.
@@ -102,16 +103,9 @@ export function FormularioDeReceberAtendimento({
   // A37 da 6ª simulação: a forma nasce VAZIA (o Pix era o padrão calado — um
   // clique gravava no Pix). Só o meio combinado no contrato vem escolhido.
   const metodoInicial = (FORMAS_DO_BALCAO as readonly string[]).includes(pagamentoCombinado?.metodo ?? '') ? pagamentoCombinado!.metodo! : ''
-  // Controlado só para saber se é crédito: aí aparecem as vezes na maquininha.
-  const [metodoEscolhido, setMetodoEscolhido] = useState(metodoInicial)
-  const [vezes, setVezes] = useState(1)
-  // r3-f13-01: a bandeira do cartão, opcional (vazia = a regra geral).
-  const [bandeira, setBandeira] = useState('')
-  // C75: "Qual maquininha?" (só com mais de uma na rede).
-  const [maquininha, setMaquininha] = useState('')
-  const faltaAMaquininha = useFaltaAMaquininha(metodoEscolhido, maquininha)
-  // Até quantas vezes a maquininha parcela no crédito (D-15).
-  const opcoesDeVezes = useOpcoesDeVezes(maquininha)
+  const [estado, setEstado] = useState<EstadoDoPagamento>(() => ({ ...estadoDoPagamento(null, 'AVISTA'), metodo: metodoInicial }))
+  // C75: a maquininha de cada cartão entra na recusa (com mais de uma na rede).
+  const recusaDoPagamento = useRecusaDoPagamento()
   const [state, action, pending] = useActionState(confirmPayment, null)
   // Pontos de fidelidade: só aparecem com o programa ligado e saldo positivo
   // (`previaDoPagamento` devolve nulo fora disso). A conta mostrada aqui é a
@@ -145,32 +139,15 @@ export function FormularioDeReceberAtendimento({
   const maximo  = previa && regras ? maximoDePontos(previa.saldo, base, regras) : 0
   const totalZero = resgate.restante === 0 && !resgate.motivo
   const total = resgate.motivo ? base : resgate.restante
+  // Os pontos e o voucher são do à vista (a mesma regra da venda): o crediário e
+  // o a receber os tiram.
+  const aVista = estado.forma === 'AVISTA'
+  const mudarPagamento = (e: EstadoDoPagamento) => {
+    if (e.forma !== 'AVISTA') { setPontos(''); setVoucherId('') }
+    setEstado(e)
+  }
+  const recusa = totalZero ? null : recusaDoPagamento(estado, total, 'da comanda')
   if (feito) return null
-
-  const camposDoCartao = (
-    <>
-      {metodoEscolhido === 'INTERNAL_CREDIT' && clienteId && <SaldoDoCredito clienteId={clienteId} valor={resgate.restante} />}
-      <CampoDaMaquininha metodo={metodoEscolhido} valor={maquininha} aoMudar={v => { setMaquininha(v); setVezes(1) }} name="maquininha_id" />
-      {metodoEscolhido === 'CREDIT_CARD' && (
-        <>
-          {/* A39: o campo das vezes tem rótulo, como os outros. */}
-          <label className="field-label" htmlFor="pagamento-vezes" style={{ marginTop: 6 }}>Vezes no cartão</label>
-          <select id="pagamento-vezes" name="cartao_vezes" className="field" value={vezes} onChange={e => setVezes(Number(e.target.value))}>
-            {/* Acessibilidade (9ª): a opção diz "6x", como em toda tela de cobrança. */}
-            {opcoesDeVezes.map(n => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
-          </select>
-          <DicaDasVezes total={resgate.restante} vezes={vezes} opcoes={opcoesDeVezes} />
-          <AvisoDaTaxa vezes={vezes} bandeira={bandeira} total={resgate.restante} maquininha={maquininha} />
-        </>
-      )}
-      <CampoDaBandeira metodo={metodoEscolhido} valor={bandeira} aoMudar={setBandeira} name="cartao_bandeira" total={resgate.restante} maquininha={maquininha} />
-      {pagamentoCombinado && (
-        <p data-testid="pagamento-combinado" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-          Combinado no contrato: {pagamentoCombinado.rotulo}.
-        </p>
-      )}
-    </>
-  )
 
   return (
     <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -191,7 +168,7 @@ export function FormularioDeReceberAtendimento({
           {!motivoDoDesconto.trim() && <LembreteDoMotivo />}
         </label>
       )}
-      {previa && previa.vouchers.length > 0 && (
+      {aVista && previa && previa.vouchers.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label className="field-label" htmlFor="voucher-do-pagamento">Aplicar voucher</label>
           <select id="voucher-do-pagamento" name="voucher_id" className="filtro-select" value={voucherId}
@@ -203,7 +180,7 @@ export function FormularioDeReceberAtendimento({
           </select>
         </div>
       )}
-      {previa && previa.saldo > 0 && base > 0 && (
+      {aVista && previa && previa.saldo > 0 && base > 0 && (
         <div data-testid="usar-pontos" style={{
           display: 'flex', flexDirection: 'column', gap: 8,
           background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)',
@@ -241,18 +218,27 @@ export function FormularioDeReceberAtendimento({
       {totalZero ? (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>Nada a receber — sem forma de pagamento.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <FormasDePagamento valor={metodoEscolhido} aoMudar={setMetodoEscolhido} name="payment_method" />
-          {camposDoCartao}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* O pagamento vai inteiro, como na venda: o servidor refaz as contas e grava numa transação. */}
+          <input type="hidden" name="pagamento" value={JSON.stringify(montarPagamento(estado, total))} />
+          <CamposDoPagamento estado={estado} aoMudar={mudarPagamento} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']}
+            total={total} doQue="da comanda" clienteId={clienteId} variasFormas />
+          {pagamentoCombinado && (
+            <p data-testid="pagamento-combinado" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+              Combinado no contrato: {pagamentoCombinado.rotulo}.
+            </p>
+          )}
         </div>
       )}
       {state?.error && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, flexWrap: 'wrap' }}>
+        <MotivoDoBotao motivo={pending || state?.error ? null : recusaForaDoCampo(estado, total, recusa, 'da comanda')} />
         {onVoltar && <button type="button" onClick={onVoltar} className="btn-secondary"><X size={13} /> Voltar</button>}
-        <button type="submit" disabled={pending || !!doDesconto.recusa || (!totalZero && !metodoEscolhido) || (!totalZero && !!faltaAMaquininha)} className="btn-primary"
+        <button type="submit" disabled={pending || !!doDesconto.recusa || !!recusa} className="btn-primary"
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center', flex: 1 }}>
           {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-          {pending ? 'Registrando…' : `Receber ${brl(total)}`}
+          {/* No crediário e no a receber, nada (ou só a entrada) entra agora: o botão fecha a comanda. */}
+          {pending ? 'Registrando…' : aVista || totalZero ? `Receber ${brl(total)}` : 'Fechar a comanda'}
         </button>
       </div>
     </form>

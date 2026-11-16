@@ -1,5 +1,7 @@
 ﻿'use client'
 import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
+import { OutrasFormas } from '@/components/shared/outras-formas'
+import { recusaDasOutras, valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 import { useFuso } from '@/components/shared/fuso'
 import { instanteNoFuso, dayKeyTZ, addDaysTZ, BUSINESS_TZ } from '@/lib/datetime'
 
@@ -198,6 +200,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [bandeira,      setBandeira]      = useState('')
   // C75: "Qual maquininha?" (só com mais de uma na rede).
   const [maquininha,    setMaquininha]    = useState('')
+  // D1 da 18ª ("+ Outra forma"): no à vista, as outras formas, cada uma com o valor dela.
+  const [outras,        setOutras]        = useState<EstadoDaParte[]>([])
   // Até quantas vezes a clínica parcela no crédito (D-15).
   const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   // C38: o crediário até o limite da rede (padrão 12).
@@ -334,7 +338,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
   // A37: o que se recebe agora (à vista, entrada + parcelas) pede a forma.
   // PDV8: no crediário a forma é o crediário — o meio é só o da ENTRADA.
-  const semForma = (formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && !paymentMethod
+  const semForma = ((formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0)) && !paymentMethod)
+    || (formaPgto === 'AVISTA' && !!recusaDasOutras(outras, fid.aPagar))
   const faltaAMaquininha = useFaltaAMaquininha(formaPgto === 'AVISTA' || (formaPgto === 'PARCELADO' && entradaNum > 0) ? paymentMethod : null, maquininha)
 
   // -- Documentação: monta os documentos com o pagamento escolhido -----------
@@ -462,9 +467,20 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         vencimento: new Date(`${primeiroVenc}T12:00:00-03:00`).toISOString(),
       }
     }
-    return paymentMethod === 'CREDIT_CARD' && vezesCartao > 1
+    const base: PagamentoDoPlano = paymentMethod === 'CREDIT_CARD' && vezesCartao > 1
       ? { forma: 'AVISTA', metodo: paymentMethod, vezes: vezesCartao, ...comBandeira }
       : { forma: 'AVISTA', metodo: paymentMethod, ...comBandeira }
+    // D1 da 18ª: dividido, a primeira forma fica com o que falta das outras (do plano; o atendimento de hoje vai na primeira).
+    if (!outras.length) return base
+    return {
+      ...base, valor: valorDaPrincipal(fid.aPagar, outras),
+      outras: outras.map(o => ({
+        metodo: o.metodo, valor: valorDaParte(o) ?? 0,
+        ...(o.metodo === 'CREDIT_CARD' && o.vezes > 1 ? { vezes: o.vezes } : {}),
+        ...((o.metodo === 'CREDIT_CARD' || o.metodo === 'DEBIT_CARD') && o.bandeira ? { bandeira: o.bandeira } : {}),
+        ...((o.metodo === 'CREDIT_CARD' || o.metodo === 'DEBIT_CARD') && o.maquininha ? { maquininha: o.maquininha } : {}),
+      })),
+    }
   }
 
   function handleFinish() {
@@ -765,6 +781,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                 else if (f === 'A_RECEBER') { setFormaPgto('A_RECEBER'); setPaymentMethod('') }
                 else { setFormaPgto('AVISTA'); setPaymentMethod(f) }
                 setVezesCartao(1); setBandeira(''); setMaquininha('')
+                // As outras formas são do à vista.
+                if (f === 'CREDIARIO' || f === 'A_RECEBER') setOutras([])
               }} />
           </div>
         )}
@@ -908,6 +926,13 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         {(formaPgto === 'AVISTA' || formaPgto === 'PARCELADO') && (
           <div style={{ marginBottom: 16, maxWidth: 260 }}>
             <CampoDaBandeira metodo={paymentMethod} valor={bandeira} aoMudar={setBandeira} maquininha={maquininha} />
+          </div>
+        )}
+        {/* D1 da 18ª: o "+ Outra forma" do à vista (o plano; o atendimento de hoje vai na primeira). */}
+        {podeCobrar && formaPgto === 'AVISTA' && !!paymentMethod && fid.aPagar > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <OutrasFormas metodoPrincipal={paymentMethod} total={fid.aPagar} outras={outras} aoMudar={setOutras}
+              metodos={FORMAS_DO_BALCAO} clienteId={plan.clientId} />
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>

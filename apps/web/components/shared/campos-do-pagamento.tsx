@@ -14,6 +14,8 @@ import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
 import { limiteDoCrediarioEmTexto } from '@/lib/financeiro/parcelas-do-crediario'
+import { OutrasFormas } from '@/components/shared/outras-formas'
+import { recusaDasOutras, valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 
 /**
  * Os campos de COMO vai ser pago — o vocabulário do fechamento do plano (no
@@ -47,6 +49,11 @@ export interface EstadoDoPagamento {
   bandeira: string
   /** C75: a maquininha do cartão ('' = nenhuma escolhida; com uma só na rede, o banco põe a única). */
   maquininha?: string
+  /**
+   * D1 da 18ª ("+ Outra forma"): no à vista, as outras formas, cada uma com o
+   * valor dela; a primeira (o meio de cima) fica com o que falta.
+   */
+  outras?: EstadoDaParte[]
 }
 
 // O dia de "hoje + N" no relógio da unidade (F62b).
@@ -66,11 +73,27 @@ export function estadoDoPagamento(atual: PagamentoDoPlano | null | undefined, pa
     vezes:    atual?.forma === 'AVISTA' || atual?.forma === 'PARCELADO' ? (atual.vezes ?? 1) : 1,
     bandeira: atual && atual.forma !== 'A_RECEBER' ? (atual.bandeira ?? '') : '',
     maquininha: atual && atual.forma !== 'A_RECEBER' ? (atual.maquininha ?? '') : '',
+    outras: atual?.forma === 'AVISTA' && atual.outras?.length
+      ? atual.outras.map(o => ({ metodo: o.metodo, valor: String(o.valor.toFixed(2)).replace('.', ','), vezes: o.vezes ?? 1, bandeira: o.bandeira ?? '', maquininha: o.maquininha ?? '' }))
+      : [],
   }
 }
 
-/** O estado da tela → o pagamento (nulo = no atendimento). */
-export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
+/** D1 da 18ª: as outras formas do estado → as partes do pagamento (o valor lido, o cartão de cada uma). */
+function partesDoEstado(outras: EstadoDaParte[]) {
+  return outras.map(o => ({
+    metodo: o.metodo, valor: valorDaParte(o) ?? 0,
+    ...(o.metodo === 'CREDIT_CARD' && o.vezes > 1 ? { vezes: o.vezes } : {}),
+    ...(temBandeira(o.metodo) && o.bandeira ? { bandeira: o.bandeira } : {}),
+    ...(temBandeira(o.metodo) && o.maquininha ? { maquininha: o.maquininha } : {}),
+  }))
+}
+
+/**
+ * O estado da tela → o pagamento (nulo = no atendimento). `total` é o que se
+ * paga: com outras formas, a primeira fica com o que falta delas (D1 da 18ª).
+ */
+export function montarPagamento(e: EstadoDoPagamento, total?: number): PagamentoDoPlano | null {
   // Meio-dia de Brasília: '2026-10-10' puro seria meia-noite UTC, dia 9 aqui.
   // Vazio segue vazio: o servidor responde "data inválida" em vez de a tela quebrar.
   const iso = (dia: string) => dia ? new Date(`${dia}T12:00:00-03:00`).toISOString() : ''
@@ -81,9 +104,11 @@ export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
     ...(temBandeira(e.metodo) && e.maquininha ? { maquininha: e.maquininha } : {}),
   }
   if (e.forma === 'AVISTA') {
-    return e.metodo === 'CREDIT_CARD' && e.vezes > 1
+    const base: PagamentoDoPlano = e.metodo === 'CREDIT_CARD' && e.vezes > 1
       ? { forma: 'AVISTA', metodo: e.metodo, vezes: e.vezes, ...bandeira }
       : { forma: 'AVISTA', metodo: e.metodo, ...bandeira }
+    if (!e.outras?.length || total === undefined) return base
+    return { ...base, valor: valorDaPrincipal(total, e.outras), outras: partesDoEstado(e.outras) }
   }
   // PDV8: o a receber não tem meio.
   if (e.forma === 'A_RECEBER') return { forma: 'A_RECEBER', vencimento: e.vencimento ? iso(e.vencimento) : null }
@@ -108,6 +133,11 @@ export function recusaDoPagamento(e: EstadoDoPagamento, total?: number, doQue = 
   // PDV8: não existe pagamento sem forma. O à vista pede o meio; o crediário,
   // o da ENTRADA quando há entrada (sem ela, nada se recebe agora).
   if (e.forma === 'AVISTA' && !e.metodo) return 'Escolha a forma de pagamento.'
+  // D1 da 18ª: cada outra forma com a forma e o valor, e a de cima ainda com o que falta.
+  if (e.forma === 'AVISTA' && e.outras?.length) {
+    const recusa = recusaDasOutras(e.outras, total)
+    if (recusa) return recusa
+  }
   if (e.forma === 'PARCELADO' && !e.metodo && temEntrada(e)) return 'Escolha a forma da entrada.'
   return recusaDaEntradaDoEstado(e, total, doQue)
 }
@@ -125,7 +155,10 @@ export function useRecusaDoPagamento(): (e: EstadoDoPagamento, total?: number, d
     if (recusa) return recusa
     const entrada = lerEntrada(e.entrada)
     const pagaAgora = e.forma === 'AVISTA' || (e.forma === 'PARCELADO' && 'valor' in entrada && entrada.valor > 0)
-    return varias && pagaAgora && temBandeira(e.metodo) && !e.maquininha ? 'Escolha a maquininha do cartão.' : null
+    if (varias && pagaAgora && temBandeira(e.metodo) && !e.maquininha) return 'Escolha a maquininha do cartão.'
+    // D1 da 18ª: cada outra forma no cartão também pede a maquininha.
+    if (varias && e.forma === 'AVISTA' && (e.outras ?? []).some(o => temBandeira(o.metodo) && !o.maquininha)) return 'Escolha a maquininha de cada cartão.'
+    return null
   }
 }
 
@@ -173,8 +206,13 @@ function blocoDoEstado(e: EstadoDoPagamento): string {
   return e.forma
 }
 
-export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da venda', clienteId, semCredito = false, semMaquininha = false }: {
+export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da venda', clienteId, semCredito = false, semMaquininha = false, variasFormas = false }: {
   estado: EstadoDoPagamento
+  /**
+   * D1 da 18ª: o "+ Outra forma" no à vista — a comanda do atendimento, a
+   * Nova venda e o plano no PDV. O contrato (que só vira texto) não o tem.
+   */
+  variasFormas?: boolean
   /**
    * C75: sem o "Qual maquininha?" — o pagamento combinado do contrato só vira
    * texto; a maquininha se escolhe quando o dinheiro entra (no atendimento).
@@ -207,15 +245,20 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
     ...(formas.includes('NADA_AGORA') ? ['NADA_AGORA'] : []),
   ]
   const escolher = (b: string) => {
-    if (b === 'CREDIARIO') return mudar({ forma: 'PARCELADO', metodo: '', vezes: 1, bandeira: '', maquininha: '' })
-    if (b === 'A_RECEBER' || b === 'NADA_AGORA') return mudar({ forma: b, metodo: '', vezes: 1, bandeira: '', maquininha: '' })
+    // As outras formas são do à vista: o crediário e o a receber as tiram.
+    if (b === 'CREDIARIO') return mudar({ forma: 'PARCELADO', metodo: '', vezes: 1, bandeira: '', maquininha: '', outras: [] })
+    if (b === 'A_RECEBER' || b === 'NADA_AGORA') return mudar({ forma: b, metodo: '', vezes: 1, bandeira: '', maquininha: '', outras: [] })
     // Trocar o meio zera as vezes e a bandeira, que eram do outro.
     mudar({ forma: 'AVISTA', metodo: b, ...(b !== estado.metodo ? { vezes: 1, bandeira: '', maquininha: '' } : {}) })
   }
   const comEntrada = forma === 'PARCELADO' && temEntrada(estado)
   const valorDaEntrada = (() => { const l = lerEntrada(estado.entrada); return 'valor' in l ? l.valor : 0 })()
-  // O que se paga AGORA com o meio escolhido: o à vista inteiro, ou a entrada.
-  const pagaAgora = forma === 'AVISTA' ? total : comEntrada ? valorDaEntrada : undefined
+  // O que se paga AGORA com o meio escolhido: o à vista inteiro (dividido, o que
+  // falta das outras formas — D1 da 18ª), ou a entrada.
+  const outras = forma === 'AVISTA' ? estado.outras ?? [] : []
+  const pagaAgora = forma === 'AVISTA'
+    ? (total !== undefined && outras.length ? Math.max(0, valorDaPrincipal(total, outras)) : total)
+    : comEntrada ? valorDaEntrada : undefined
   const comMeio = (forma === 'AVISTA' || comEntrada) && !!estado.metodo
   return (
     <>
@@ -271,6 +314,10 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
           <CampoDaBandeira metodo={estado.metodo} valor={estado.bandeira} aoMudar={v => mudar({ bandeira: v })} maquininha={estado.maquininha}
             total={pagaAgora} />
         </div>
+      )}
+      {variasFormas && forma === 'AVISTA' && !!estado.metodo && total !== undefined && total > 0 && (
+        <OutrasFormas metodoPrincipal={estado.metodo} total={total} outras={outras} aoMudar={o => mudar({ outras: o })}
+          metodos={metodos} clienteId={clienteId} semMaquininha={semMaquininha} />
       )}
       {forma === 'PARCELADO' && (
         <div className="form-2col">

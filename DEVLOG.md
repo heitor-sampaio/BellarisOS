@@ -1774,6 +1774,34 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — A 20ª simulação (Ateliê Dália, uma unidade; Rede Tulipa, duas, com o Copilot): o loop pausa aqui
+
+Os dois times rodaram na produção de 11:01 a ~12:10, sobre os consertos da 19ª (`7c32380d`). O relatório tem 4 defeitos, todos novos e nenhum conserto da 19ª voltou, mais 37 atritos e 22 enganos/regras/artefatos.
+
+- O dinheiro bate nos dois times, centavo a centavo (A: R$ 2.160 de receita e R$ 1.078 de lucro; B: R$ 1.260 e R$ 1.087,74 de resultado).
+- **D1 (MÉDIA)**: o lembrete do agendamento remarcado espera a data ANTIGA (`ESPERA_ATE` pelo dado do fato `agendamento.criado`).
+- **D2 (MÉDIA)**: "os agendamentos da Neusa" no Copilot lê só hoje e não diz o período (`listarAgenda` sem datas = hoje).
+- **D3 (BAIXA)**: o extrato da comissão não liga o estorno à liberação quando ela veio da conclusão (a liberação sem `transaction_id`).
+- **D4 (BAIXA)**: a comanda do plano aceito diz "Atendida, a pagar" (`seloDaComanda`).
+- Os maiores atritos: A9 (quem atende sem o Prontuário não conclui, e a tela diz que "quem conclui é o profissional"), A1 (o "3x" com entrada vira 4 pagamentos), A31 (a ponte de Vendas e caixa não cita o voucher) e A25 (o cartão do Copilot só volta pelo "Continuar").
+- **Para o Heitor:** a exceção do checkout ("quem recebe colhe o contrato do plano", 20/10) vale também para o contrato do pacote vendido no PDV?
+- **O loop pausou aqui**, a pedido do Heitor ("Quando acabar a 20 simulação, pode pausar o loop"). Os defeitos da 20ª esperam ele retomar. O que vem antes: o banco de testes local (Supabase na máquina, só o esquema, sem dado de cliente), para a suíte e as simulações deixarem de usar o banco da produção.
+
+### 2026-11-16 — As decisões do Heitor sobre as pendências: a comanda em várias formas, o crediário no avulso, a rede sem tags, o aviso da URL e a Auditoria só da Admin
+
+O Heitor respondeu às pendências que as simulações deixaram para ele (16/11, ~11:30):
+
+- **"+ Outra forma" (D1 da 18ª) — "Ok".** Todo "Receber" à vista (a comanda do atendimento, a Nova venda de pacote, procedimento e produto, o plano) se divide em até 5 formas, cada uma com o seu valor. Cada forma é um lançamento com a sua taxa, todos na mesma transação, e a soma tem de fechar o total no centavo (o app e o banco recusam). Pontos e voucher vão na primeira forma.
+- **O crediário no avulso — "Mesma regra de pagamentos dos outros".** A comanda do atendimento usa os mesmos campos da Nova venda: à vista (uma ou várias formas), crediário com entrada e parcelas, e a receber. `confirmar_pagamento_do_atendimento` grava os lançamentos que o app monta (sem eles, a forma única de antes). O atendimento coberto por lançamentos vivos está fechado; a comanda reaberta pelo estorno de UMA forma cobra só a parte estornada. Pontos e voucher, só à vista. Migration `20261121000001` (aplicada em duas partes).
+  - **A chave única do atendimento saiu** (`20261121000002`). `financial_transactions_appointment_id_key` (de 28/10: um lançamento vivo por atendimento) recusava a 2ª forma e as parcelas do avulso com 23505: o "Receber" não gravava nada, e o botão sumia no "Recebendo…". Só o E2E mostrou; o Vitest lia o SQL. A trava contra pagar duas vezes é a da função: o agendamento travado e o que falta receber. Ficou um índice comum.
+  - Decidido pelos princípios: a entrada do crediário é uma forma só (princípio 7); a comissão reconhece as formas de um pagamento pela mesma hora de criação e pesa a taxa pelo valor de cada uma; o crediário avulso espera a última parcela (H4); `atendimentos_a_receber.price` passa a ser o que FALTA.
+  - Limites conhecidos: estornar a forma que levava o desconto faz a comanda reaberta perder o desconto; o Purchase da Meta vai com o valor da primeira linha.
+- **As 8 tags da rede nova — "Sim".** A rede nasce sem tag nenhuma (saíram o gatilho `trg_rede_ganha_tags`, `private.tags_padrao()` e o `CLIENT_TAGS` do `packages/utils`). Nas redes que existiam, saíram as tags-padrão que ninguém usava: 104, em 13 redes (nenhuma estava em uso). Migration `20261121500001`.
+- **O aviso "Abrimos a sua" — "me pareceu que dá pra criar uma unidade".** Nada se cria: a pessoa abriu pela URL uma unidade fora do alcance. Os avisos dizem onde ela está ("Essa unidade não está entre as suas. Você está na sua unidade."), e os de aba também ("Você está na aba Unidade.", "Você está na Visão geral.").
+- **"Auditoria é só admin".** O módulo `audit` saiu da matriz de Cargos (`MODULOS_SO_DA_ADMIN`); só a Admin da rede (o cargo de sistema, pela chave) a abre: tela, CSV (403) e a leitura passam por `assertAuditoria`. As 27 linhas `audit` de outros cargos saíram (migration `20261121500002`), e o filtro de 27/10 que escondia "Abriu o prontuário" de quem tem unidades caiu junto. O CLAUDE.md §11 diz a regra.
+- **O alerta de alergia em toda aba — "Ok"**: fica.
+- **Os isolados em 2 workers e o job em 120 min** (commit 67990745, na entrada da 19ª).
+
 ### 2026-11-16 — A 19ª simulação (Begônia, uma unidade pelo celular; Azaleia, duas, com o Copilot) e os defeitos dela
 
 Dois times de agentes usaram a produção ao mesmo tempo em 16/11, das 05:53 às ~07:00 de Brasília, sobre o 39b18134.

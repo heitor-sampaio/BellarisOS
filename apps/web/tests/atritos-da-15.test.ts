@@ -9,7 +9,7 @@ import { seloDaComanda, emAbertoDaComanda, detalheDaComanda, type ComandaDoPdv }
 import { textoDoCreditoNoApp } from '@/lib/creditos/texto-do-pago'
 import { textoDaDicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { fraseDaAuditoria, gruposDaAuditoria } from '@/lib/auditoria/frase'
-import { operacoesDoFiltro, type RegistroDaAuditoria } from '@/lib/auditoria/tipos'
+import { OPERACOES, type RegistroDaAuditoria } from '@/lib/auditoria/tipos'
 
 /**
  * Os atritos da 15ª simulação (2026-11-15) que se provam sem tela: o texto,
@@ -228,9 +228,10 @@ describe('A27/A28: a auditoria agrupa a gravação e lê o fato', () => {
     expect(desconhecida).not.toMatch(/um campo|outros campos/)
   })
 
-  it('o filtro "Abriu o prontuário" sai de quem tem unidades: a abertura é da rede, e ela nunca a alcança', () => {
-    expect(operacoesDoFiltro(null).map(o => o.key)).toContain('abriu')
-    expect(operacoesDoFiltro(['b1']).map(o => o.key)).not.toContain('abriu')
+  // A regra mudou em 2026-11-16 (o Heitor: "Auditoria é só admin"): quem lê é a
+  // Admin da rede, que vê tudo — o filtro "Abriu o prontuário" não sai mais de ninguém.
+  it('o filtro "Abriu o prontuário" está sempre na lista (a Auditoria é só da Admin da rede)', () => {
+    expect(OPERACOES.map(o => o.key)).toContain('abriu')
   })
 })
 
@@ -263,9 +264,10 @@ describe('os BAIXA da 15ª: o texto diz o que vale', () => {
       expect(ler(f)).toContain('quem tem a Equipe em Gerenciar marca o “Atende clientes”')
     }
   })
+  // A regra mudou em 2026-11-16 (o Heitor): "Abrimos a sua unidade" lia-se como criação — o aviso diz onde a pessoa está.
   it('A23: quem pede a rede sem "A rede inteira" lê por quê', async () => {
     const { AVISOS_DA_URL } = await import('@/lib/aviso-da-url')
-    expect(AVISOS_DA_URL['portal-da-rede']).toBe('O portal da rede é de quem tem “A rede inteira”. Abrimos a sua unidade.')
+    expect(AVISOS_DA_URL['portal-da-rede']).toBe('O portal da rede é de quem tem “A rede inteira”. Você está na sua unidade.')
   })
   it('A24: o procedimento numa unidade diz o nome dela; em várias, "3 de 4"', () => {
     const f = ler('app/_shared/catalogo-de-procedimentos.tsx')
