@@ -55,6 +55,33 @@ export interface ComandaDoPdv {
    * do atendimento. Ficam fora de `valor`, que é o que falta receber.
    */
   jaPago:           number
+  /**
+   * D3 da 17ª: cada forma dos lançamentos vivos e pagos da comanda do
+   * atendimento paga (o atendimento e os produtos), com o valor. Vazia nas outras.
+   */
+  formas:           { forma: string; vezes: number; valor: number }[]
+  /** A1 da 17ª: o desconto comercial dado na comanda do atendimento paga. */
+  desconto:         number
+  /** A1 da 17ª: o desconto da fidelidade (o voucher ou os pontos) da comanda do atendimento paga. */
+  fidelidade:       number
+  /** A1 da 17ª: o nome do voucher usado nela, quando foi um voucher. */
+  voucher:          string | null
+  /**
+   * A2 da 17ª: o pagamento do atendimento estornado mais recente, na comanda
+   * reaberta (a receber). Nulo nas outras.
+   */
+  estornoAnterior:  EstornoAnteriorDaComanda | null
+}
+
+export interface EstornoAnteriorDaComanda {
+  /** Quando foi estornado. */
+  quando:     string
+  valor:      number
+  forma:      string | null
+  vezes:      number
+  desconto:   number
+  fidelidade: number
+  voucher:    string | null
 }
 
 type Tom = 'ok' | 'warn' | 'info' | 'perigo'
@@ -93,6 +120,59 @@ export function emAbertoDaComanda(c: ComandaDoPdv, fuso: string): string | null 
 }
 
 /**
+ * A forma da comanda paga (D3 da 17ª, princípio 3): paga em duas formas (o
+ * produto no débito, o atendimento recebido de novo no Pix), ela diz as duas
+ * com o valor de cada — "Pix R$ 220,00 + Débito R$ 120,00". Numa forma só, só
+ * o nome dela ("Crédito 3x").
+ */
+export function formasDaComandaEmTexto(c: ComandaDoPdv): string {
+  if (c.formas.length > 1) return c.formas.map(f => `${rotuloDaForma(f.forma, f.vezes)} ${brl(f.valor)}`).join(' + ')
+  if (c.formas.length === 1) return rotuloDaForma(c.formas[0]!.forma, c.formas[0]!.vezes)
+  return rotuloDaForma(c.forma)
+}
+
+/**
+ * As linhas do que se descontou na comanda paga (A1 da 17ª, princípio 3): o
+ * desconto comercial, e o da fidelidade — o voucher pelo nome, ou os pontos.
+ * A comanda a receber não as tem (o desconto se escolhe ao receber).
+ */
+export function descontosDaComanda(c: ComandaDoPdv): { chave: 'desconto' | 'voucher' | 'pontos'; rotulo: string; valor: number }[] {
+  if (!c.paga) return []
+  const linhas: { chave: 'desconto' | 'voucher' | 'pontos'; rotulo: string; valor: number }[] = []
+  if (c.desconto > 0) linhas.push({ chave: 'desconto', rotulo: 'Desconto', valor: c.desconto })
+  if (c.fidelidade > 0) linhas.push(c.voucher
+    ? { chave: 'voucher', rotulo: `Voucher “${c.voucher}”`, valor: c.fidelidade }
+    : { chave: 'pontos', rotulo: 'Pontos', valor: c.fidelidade })
+  return linhas
+}
+
+/**
+ * O valor da comanda na lista (A1 da 17ª): a do atendimento paga mostra o que
+ * foi PAGO (o Peeling de R$ 280 com R$ 30 de desconto aparecia "R$ 280,00" em
+ * "Pagas hoje"); a aberta, o que falta; a venda e o plano, o valor deles (o
+ * em aberto se diz ao lado).
+ */
+export function valorNaLista(c: ComandaDoPdv): number {
+  return c.origem === 'ATENDIMENTO' && c.paga && c.recebido != null ? c.recebido : c.valor
+}
+
+/**
+ * O estorno anterior da comanda reaberta (A2 da 17ª, princípio 3): "Estornada
+ * às 21:20 — R$ 250,00, Pix, com R$ 30,00 de desconto". O desconto dado antes
+ * não some calado: quem recebe de novo decide o desconto de novo.
+ */
+export function estornoAnteriorEmTexto(c: ComandaDoPdv, hora: (iso: string | null) => string): string | null {
+  const e = c.estornoAnterior
+  if (!e || c.paga) return null
+  const com = [
+    e.desconto > 0 ? `${brl(e.desconto)} de desconto` : null,
+    e.fidelidade > 0 ? (e.voucher ? `o voucher “${e.voucher}” (${brl(e.fidelidade)})` : `${brl(e.fidelidade)} da fidelidade`) : null,
+  ].filter(Boolean)
+  return `Estornada às ${hora(e.quando)} — ${[brl(e.valor), e.forma ? rotuloDaForma(e.forma, e.vezes) : null].filter(Boolean).join(', ')}`
+    + (com.length ? `, com ${com.join(' e ')}` : '')
+}
+
+/**
  * A linha da comanda na lista: o que ela leva (com os produtos da comanda do
  * atendimento, A3), a hora, e a forma — com o que ficou em aberto — ou quem
  * atende.
@@ -103,6 +183,6 @@ export function detalheDaComanda(c: ComandaDoPdv, hora: (iso: string | null) => 
   const aberto = c.paga && c.emAberto > 0 && !c.estornada ? `${brl(c.emAberto)} em aberto` : null
   // D1 da 16ª: a comanda reaberta pelo estorno só do atendimento — o produto segue pago.
   const jaPago = !c.paga && c.jaPago > 0 ? `${brl(c.jaPago)} já pago` : null
-  return [oQue, c.agendadoPara ? hora(c.agendadoPara) : null, c.paga ? rotuloDaForma(c.forma) : c.profissional, aberto, jaPago]
+  return [oQue, c.agendadoPara ? hora(c.agendadoPara) : null, c.paga ? formasDaComandaEmTexto(c) : c.profissional, aberto, jaPago]
     .filter(Boolean).join(' · ')
 }

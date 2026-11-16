@@ -3,6 +3,7 @@
 import React, { useActionState, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react'
 import { Plus, Lock, Trash2, Pencil, Check, X, CheckCircle2, AlertTriangle, Users } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { createRole, updateRole, deleteRole } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
 import { escopoInicial } from '@/lib/cargos/escopo-inicial'
@@ -13,7 +14,7 @@ import {
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
-  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo,
+  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo, copilotNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -490,6 +491,10 @@ function PermissionMatrix({
       setDismissed(false)
     }
   }
+  // A17 da 17ª (princípio 3): o "Acessos salvos." do rodapé passava
+  // despercebido — o aviso de "deu certo" do sistema é o toast (design.md).
+  const avisarSalvo = useEffectEvent(() => { toast.success(`Cargo “${role.label}” salvo.`) })
+  useEffect(() => { if (state?.success) avisarSalvo() }, [state])
 
   function setLevel(module: AppModule, v: PermissionLevel) {
     setLevels(prev => ({ ...prev, [module]: v }))
@@ -932,6 +937,12 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
       )}
       {/* D1 da 12ª: o “Vender” da ficha é de quem recebe — o resumo diz, para
           o comercial não esperar um botão que o cargo não abre (princípio 3). */}
+      {/* A17 da 17ª: o Copilot não é entrada de menu — o resumo diz à parte. */}
+      {copilotNoResumo(levels.copilot) && (
+        <p data-resumo-copilot style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {copilotNoResumo(levels.copilot)}
+        </p>
+      )}
       {quemVendeNoResumo(levels) && (
         <p data-quem-vende style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           {quemVendeNoResumo(levels)}

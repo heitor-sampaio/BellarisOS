@@ -673,6 +673,9 @@
   endereço)." (A29, `textoDoRemarcado`). Os três em
   `lib/clientes/textos-do-app.ts`; prova:
   `tests/textos-do-app-da-cliente-f73.test.ts`.
+  A tela "Confirmar e avaliar" diz a mesma hora real: "Concluído em 12 de
+  novembro às 18:11" (`completed_at`; sem ele, a marcada — A9 da 17ª
+  simulação). Prova: `tests/atritos-da-17-cadastros.test.ts`.
 - **"Não compareceu" só depois do início** do agendamento (a folha esconde, a
   action recusa). **E pergunta antes de gravar** (A25 da 7ª simulação,
   2026-11-05: gravava no clique): "Marcar que X não compareceu às 10:00? Os
@@ -1554,6 +1557,11 @@ const procedures = await ler(
     `e2e/ficha-pre-atendimento-envio-manual.spec.ts`. Erro
     de validação (no link e nas fichas): rola ao primeiro campo obrigatório
     vazio, foca, destaca e escreve a mensagem junto dele.
+    **A janela diz quando a ficha já foi ao app** (A6 da 17ª simulação;
+    princípio 3): com a ficha pendente avisada no app da cliente
+    (`client_notifications` `pre_atendimento`), "Mandada ao app da cliente ao
+    agendar, em 12/11 às 18:11. O link é para mandar de novo, ou a quem não
+    usa o app." (`situacao.noAppEm`). Prova: `tests/atritos-da-17-cadastros.test.ts`.
   - **A ficha não se responde vazia** (D2 da simulação de 2026-10-28,
     decisões do Heitor): a cliente (app e link) não envia sem resposta
     nenhuma nem com pergunta obrigatória em branco — `oQueFaltaNaFicha`
@@ -1770,6 +1778,10 @@ const procedures = await ler(
   `enviarDocumentoACliente`, para quem anexa (`canEditRecords`; a action
   confere `recusaDoAnexo`), com "Só a equipe vê" / "No app da cliente".
   Prova: `e2e/atendimento-foto-clinica.spec.ts`.
+  Enviar e tirar do app também deixam rastro no histórico do atendimento
+  (A8 da 17ª simulação): `FOTO_ENVIADA` "Foto enviada à cliente por <nome>" e
+  `FOTO_TIRADA_DO_APP`; no app, a foto se diz "Foto" no Histórico.
+  Prova: `tests/atritos-da-17-cadastros.test.ts`.
   **O cartão vazio diz onde a foto fica** (A26 da 9ª simulação, revisto no
   PR1a do bloco Prontuário, 2026-11-14): "Nenhuma foto neste atendimento. Ela
   fica no prontuário da cliente, no registro deste atendimento." (de
@@ -2370,6 +2382,10 @@ const procedures = await ler(
     de atendimento) mostra a unidade do PRODUTO, lida na hora
     (`unidadesDosInsumos`); o texto gravado só vale se o produto não existe
     mais. Nada foi reescrito no banco. Prova: `e2e/plano-unidade-de-consumo.spec.ts`.
+  - **O cadastro do procedimento diz quanto da embalagem a dose é** (A7 da
+    17ª simulação): "1 ml (1/100 do frasco)", "2 un (1/2 da seringa)"
+    (`parteDaEmbalagem`, `lib/estoque/unidade-de-consumo.ts`); sem unidade de
+    consumo, nada. Prova: `tests/atritos-da-17-cadastros.test.ts`.
   - Prova: `e2e/estoque-custo-de-consumo.spec.ts` (a entrada, o consumo de
     5 ml a R$ 4,50 no movimento, no giro, no relatório, na margem e na
     comissão com "descontar insumos", o valor em estoque, ajuste e

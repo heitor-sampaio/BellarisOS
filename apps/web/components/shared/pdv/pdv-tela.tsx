@@ -11,12 +11,17 @@ import { FormularioDeReceberAtendimento, type PacoteParaAbater } from '@/compone
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { rotaCliente } from '@/lib/rotas'
 import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
-import { SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, type ComandaDoPdv, type SituacaoDoPdv } from '@/lib/pdv/situacoes'
+import {
+  SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
+  estornoAnteriorEmTexto, valorNaLista, type ComandaDoPdv, type SituacaoDoPdv,
+} from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
 import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
 import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
 import { ParcelasEmAberto } from '@/components/shared/pdv/parcelas-em-aberto'
+import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
+import type { LancamentoDaComanda } from '@/lib/pdv/lancamentos-da-comanda'
 
 export interface ComandaEscolhida {
   comanda:            ComandaDoPdv
@@ -32,6 +37,8 @@ export interface ComandaEscolhida {
   quemEstorna?:       string[] | null
   /** A1 da 16ª: as parcelas em aberto da venda desta comanda, com o "Receber esta parcela". */
   parcelasDaComanda?: ParcelaEmAberto[]
+  /** A2 da 17ª: a quem estorna (`podeEstornar`), os pagamentos da comanda paga, cada um com o "Estornar". */
+  pagamentos?:        LancamentoDaComanda[] | null
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -183,7 +190,8 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
                 <Link key={c.id} href={href({ comanda: c.id })} data-comanda={c.id}
                   className={escolhida?.comanda.id === c.id ? 'pdv-linha is-escolhida' : 'pdv-linha'}>
                   <span style={{ fontWeight: 800, fontSize: 'var(--text-base-sz)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.cliente}</span>
-                  <span style={{ fontWeight: 800, textAlign: 'right' }}>{brl(c.valor)}</span>
+                  {/* A1 da 17ª: a comanda do atendimento paga mostra o que foi pago. */}
+                  <span data-valor-na-lista style={{ fontWeight: 800, textAlign: 'right' }}>{brl(valorNaLista(c))}</span>
                   <span title={detalheDaComanda(c, hora)} style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {detalheDaComanda(c, hora)}
                   </span>
@@ -209,7 +217,15 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
           ) : (
             <ComandaNaTela e={escolhida} hora={hora} slugDaUnidade={slugDaUnidade}
               fichaHref={rotaCliente(pathname, slugDaUnidade, escolhida.comanda.clienteId)}
-              aoReceber={() => { router.push(href({})); router.refresh() }} />
+              aoReceber={() => { router.push(href({})); router.refresh() }}
+              aoEstornar={escolhida.comanda.origem === 'ATENDIMENTO'
+                // A2 da 17ª: o estorno do atendimento reabre a comanda — ela vai às Abertas, aberta.
+                ? () => {
+                    const q = new URLSearchParams({ comanda: escolhida.comanda.id })
+                    if (naRede) q.set('unidade', unidadeId)
+                    router.push(`${basePath}?${q.toString()}`); router.refresh()
+                  }
+                : () => router.refresh()} />
           )}
         </div>
       </div>
@@ -217,16 +233,22 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
   )
 }
 
-function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
+function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstornar }: {
   e: ComandaEscolhida
   hora: (iso: string | null) => string
   slugDaUnidade: string
   fichaHref: string
   aoReceber: () => void
+  aoEstornar: () => void
 }) {
   const c = e.comanda
   const aReceber = !c.paga && !c.canceladaEm
   const emAberto = emAbertoDaComanda(c, useFuso())
+  // A1 da 17ª (princípio 3): a comanda paga diz o desconto e o voucher, e o total é o que foi pago.
+  const descontos = c.origem === 'ATENDIMENTO' ? descontosDaComanda(c) : []
+  const totalPago = c.origem === 'ATENDIMENTO' && c.paga && !c.estornada && c.recebido != null
+  // A2 da 17ª: a comanda reaberta diz o pagamento estornado de antes.
+  const estornoAnterior = aReceber ? estornoAnteriorEmTexto(c, hora) : null
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--hairline)' }}>
@@ -274,9 +296,15 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
               <span style={{ fontWeight: 700 }}>{brl(c.jaPago)}</span>
             </div>
           )}
+          {descontos.map(d => (
+            <div key={d.chave} data-desconto-da-comanda={d.chave} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+              <span>{d.rotulo}</span>
+              <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>−{brl(d.valor)}</span>
+            </div>
+          ))}
           <div data-total-da-comanda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12, marginTop: 8 }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{aReceber && c.jaPago > 0 ? 'Falta receber' : 'Total'}</span>
-            <b style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{brl(c.valor)}</b>
+            <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{aReceber && c.jaPago > 0 ? 'Falta receber' : totalPago && descontos.length ? 'Total pago' : 'Total'}</span>
+            <b style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{brl(totalPago ? c.recebido! : c.valor)}</b>
           </div>
         </div>
         <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -292,7 +320,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
           ) : c.paga ? (
             <>
               <p data-comanda-paga style={{ color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
-                {c.origem === 'VENDA' ? 'Vendida' : c.origem === 'PLANO' ? 'Recebido' : 'Paga'} às {hora(c.pagaEm)} · {rotuloDaForma(c.forma)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
+                {c.origem === 'VENDA' ? 'Vendida' : c.origem === 'PLANO' ? 'Recebido' : 'Paga'} às {hora(c.pagaEm)} · {formasDaComandaEmTexto(c)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
               </p>
               {/* A1/A17 da 15ª (princípio 3): a venda nasce paga, e o que ficou em aberto se diz. */}
               {emAberto && (
@@ -304,7 +332,30 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
                 </p>
               )}
               {e.parcelasDaComanda && e.parcelasDaComanda.length > 0 && (
-                <ParcelasEmAberto parcelas={e.parcelasDaComanda} slug={slugDaUnidade} titulo="Parcelas desta venda" />
+                <ParcelasEmAberto parcelas={e.parcelasDaComanda} slug={slugDaUnidade} titulo="Parcelas desta venda" compacta />
+              )}
+              {/* A2 da 17ª (princípio 7): quem estorna estorna aqui, com a janela e o motivo de sempre. */}
+              {e.pagamentos && e.pagamentos.length > 0 && (
+                <div data-pagamentos-da-comanda style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <p className="field-label">{e.pagamentos.length === 1 ? 'Pagamento desta comanda' : 'Pagamentos desta comanda'}</p>
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-field)', background: 'var(--surface)' }}>
+                    {e.pagamentos.map((l, i) => (
+                      <li key={l.id} data-pagamento-da-comanda={l.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', minWidth: 0,
+                        borderTop: i ? '1px solid var(--hairline)' : undefined,
+                      }}>
+                        <span title={l.descricao} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                          <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>{rotuloDaForma(l.metodo, l.vezes)} · {brl(l.valor)}</b> · {l.descricao}
+                        </span>
+                        <AcoesDoLancamentoDaFicha slug={slugDaUnidade} podeEstornar podeReceber={false} aoEstornar={aoEstornar}
+                          lancamento={{
+                            id: l.id, descricao: l.descricao, valor: l.valor, pago: true, metodo: l.metodo,
+                            vendaDeProduto: l.vendaDeProduto, vendaDeCredito: l.vendaDeCredito, doAtendimento: l.doAtendimento,
+                          }} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
               {/* A2 da 15ª: a quem não estorna, de quem é o estorno — a frase da ficha. */}
               {e.quemEstorna && (
@@ -314,7 +365,16 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber }: {
                 </p>
               )}
             </>
-          ) : aReceber && c.planoId ? (
+          ) : null}
+          {estornoAnterior && (
+            <p data-estorno-anterior style={{
+              color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)',
+            }}>
+              {estornoAnterior}. Ao receber de novo, o desconto se escolhe de novo.
+            </p>
+          )}
+          {c.estornada || c.canceladaEm || c.paga ? null : aReceber && c.planoId ? (
             <ReceberOPlano key={c.id} planoId={c.planoId} slug={slugDaUnidade} aoReceber={aoReceber} />
           ) : aReceber && c.agendamentoId ? (
             <FormularioDeReceberAtendimento key={`${c.id}:${c.valor}`} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}

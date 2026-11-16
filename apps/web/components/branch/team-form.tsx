@@ -6,8 +6,13 @@ import { createTeamMember } from '@/actions/team'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { toast } from 'sonner'
+import { SEM_MINHAS_COMISSOES_NO_CADASTRO } from '@/lib/permissions-copy'
 
-interface Role { id: string; label: string }
+interface Role {
+  id: string; label: string
+  /** A18 da 17ª: o cargo não mostra as próprias comissões (sem o Financeiro), com as comissões no plano. */
+  naoVeAsComissoes?: boolean
+}
 
 interface TeamFormProps {
   branchId: string
@@ -50,6 +55,7 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
   // O "Atende" de UMA caixa (EQ1c): vale nas unidades dela.
   const atendeEstado = useAtendeDoMembro([], unidadesDela)
   const atendeEm = atendeEstado.efetivo
+  const [roleId, setRoleId] = useState('')
   // O sucesso fecha o formulário na própria action, quando a resposta chega.
   const [state, action, pending] = useActionState(
     async (anterior: Parameters<typeof createTeamMember>[0], dados: FormData) => {
@@ -112,7 +118,7 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <label className="overline" htmlFor="tm-role">Cargo</label>
-                <select id="tm-role" name="roleId" required className="field" defaultValue="">
+                <select id="tm-role" name="roleId" required className="field" value={roleId} onChange={e => setRoleId(e.target.value)}>
                   <option value="" disabled>Selecione…</option>
                   {roles.map(r => (
                     <option key={r.id} value={r.id}>{r.label}</option>
@@ -133,6 +139,13 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
               <AtendeDoMembro id="tm-atende" estado={atendeEstado}
                 unidades={unidadesDoAtende ?? [{ id: branchId, name: unidade ?? 'Esta unidade' }]}
                 unidadesDela={unidadesDela} editaveis={editaveisDoAtende} />
+
+              {/* A18 da 17ª: quem atende num cargo sem o Financeiro não verá as próprias comissões. */}
+              {atendeEm.length > 0 && roles.find(r => r.id === roleId)?.naoVeAsComissoes && (
+                <span data-sem-minhas-comissoes style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                  {SEM_MINHAS_COMISSOES_NO_CADASTRO}
+                </span>
+              )}
 
               {/* A3 da 8ª simulação: o cadastro da unidade não pedia a comissão. */}
               {atendeEm.length > 0 && podeComissao && (

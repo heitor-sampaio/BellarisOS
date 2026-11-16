@@ -13,13 +13,18 @@
  *
  * "Contas (energia, água, internet)" (J-50, 2026-10-30) é despesa operacional
  * comum: conta no caixa e no lucro.
+ *
+ * "Material de consumo (limpeza, copa)" (A22 da 17ª simulação, princípio 7)
+ * é o material que a unidade gasta e não entra no estoque: despesa
+ * operacional comum, como "Contas". O Copilot oferece a mesma lista.
  */
 
 export const CATEGORIA_COMPRA_DE_ESTOQUE = 'Compra de estoque'
+export const CATEGORIA_MATERIAL_DE_CONSUMO = 'Material de consumo (limpeza, copa)'
 
 export const CATEGORIAS_DE_RECEITA = ['Atendimento', 'Venda de produto', 'Taxa de agendamento', 'Pacote de sessões', 'Outro'] as const
 export const CATEGORIAS_DE_DESPESA = [
-  'Fornecedores', CATEGORIA_COMPRA_DE_ESTOQUE, 'Aluguel', 'Contas (energia, água, internet)', 'Salários', 'Equipamentos', 'Manutenção', 'Marketing', 'Material de escritório', 'Outro',
+  'Fornecedores', CATEGORIA_COMPRA_DE_ESTOQUE, 'Aluguel', 'Contas (energia, água, internet)', 'Salários', 'Equipamentos', 'Manutenção', 'Marketing', 'Material de escritório', CATEGORIA_MATERIAL_DE_CONSUMO, 'Outro',
 ] as const
 
 /** A categoria é de compra de estoque (fica no caixa, fora do lucro)? O espelho do predicado de `metrics_resultado`. */

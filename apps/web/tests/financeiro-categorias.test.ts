@@ -34,3 +34,17 @@ describe('a categoria "Contas"', () => {
     expect(ehCompraDeEstoque('Contas (energia, água, internet)')).toBe(false)
   })
 })
+
+/**
+ * "Material de consumo (limpeza, copa)" (A22 da 17ª simulação, princípio 7):
+ * o Copilot perguntou a categoria do material de limpeza, e a lista só tinha
+ * "Material de escritório", "Compra de estoque" (fora do resultado) e "Outro".
+ * É despesa operacional comum: conta no caixa e no lucro. A lista é a mesma
+ * da tela e do Copilot.
+ */
+describe('a categoria "Material de consumo"', () => {
+  it('está entre as categorias de despesa e não é compra de estoque', () => {
+    expect(CATEGORIAS_DE_DESPESA).toContain('Material de consumo (limpeza, copa)')
+    expect(ehCompraDeEstoque('Material de consumo (limpeza, copa)')).toBe(false)
+  })
+})

@@ -256,3 +256,23 @@ export function quemVendeNoResumo(niveis: Partial<Record<'procedures' | 'crm' | 
 /** O texto da tela de Pacotes (D1 da 12ª): onde se vende, e quem vende. */
 export const TEXTO_DA_VENDA_DO_PACOTE =
   'A venda é no PDV, em “Nova venda” (escolha Pacote). O PDV aparece a quem tem o PDV no cargo (ou o Financeiro em Gerenciar).'
+
+/**
+ * O Copilot no resumo do cargo (A17 da 17ª simulação; princípio 3): o resumo
+ * lê o menu, e o Copilot não é entrada de menu — é o botão no canto da tela.
+ * Nulo quando o cargo não o tem.
+ */
+export function copilotNoResumo(nivel: PermissionLevel | undefined): string | null {
+  if (!nivel || nivel === 'NONE') return null
+  return nivel === 'MANAGE'
+    ? 'E o Copilot (o botão no canto da tela), para consultar e pedir gravações.'
+    : 'E o Copilot (o botão no canto da tela), para consultar.'
+}
+
+/**
+ * O mesmo aviso no CADASTRO de quem atende (A18 da 17ª simulação; princípio 3):
+ * o cargo escolhido não tem o Financeiro, e a pessoa não verá as próprias
+ * comissões — o resumo do cargo e a comissão na lista da Equipe já diziam.
+ */
+export const SEM_MINHAS_COMISSOES_NO_CADASTRO =
+  'Com este cargo, a pessoa não verá as próprias comissões: falta o Financeiro em “Ver”, só os próprios. Para ver, ajuste o cargo em Configurações → Cargos.'

@@ -262,7 +262,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   }
   // "É a mesma pessoa do lead": as outras oportunidades e as conversas dela.
   if (pessoaDoCrm) {
-    await ligarPessoaDoCrmAoCliente(admin, ctx, pessoaDoCrm, client.id as string, name)
+    await ligarPessoaDoCrmAoCliente(admin, ctx, pessoaDoCrm, client.id as string, name, email)
     revalidatePath('/admin/inbox')
   }
 

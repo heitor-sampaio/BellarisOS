@@ -353,7 +353,7 @@ export function NewAppointmentWizard({ slug, branchId, unidade, unidades = [], p
                 </div>
                 <div>
                   <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>Sem preferência</p>
-                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Mostra os horários de todas as profissionais</p>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Mostra os horários de todos que atendem</p>
                 </div>
               </button>
             )}

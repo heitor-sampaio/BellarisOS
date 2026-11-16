@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
+import { SEM_MINHAS_COMISSOES_NO_CADASTRO } from '@/lib/permissions-copy'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 import { JanelaModal } from '@/components/shared/janela-modal'
@@ -15,6 +16,8 @@ interface Role   {
   id: string; label: string
   /** C62 (F70): o cargo tem mais acesso que o de quem age — aparece desligado. */
   acimaDoMeu?: boolean
+  /** A18 da 17ª: o cargo não mostra as próprias comissões (sem o Financeiro), com as comissões no plano. */
+  naoVeAsComissoes?: boolean
 }
 
 interface AdminTeamFormProps {
@@ -146,6 +149,13 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
 
                 {/* Atende clientes (EQ1c): uma caixa; "Escolher em quais unidades atende" abre a lista. */}
                 <AtendeDoMembro id="tm-atende" estado={atendeEstado} unidades={branches} unidadesDela={unidadesDela} />
+
+                {/* A18 da 17ª: quem atende num cargo sem o Financeiro não verá as próprias comissões. */}
+                {atende && roles.find(r => r.id === roleId)?.naoVeAsComissoes && (
+                  <span data-sem-minhas-comissoes style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                    {SEM_MINHAS_COMISSOES_NO_CADASTRO}
+                  </span>
+                )}
 
                 {atende && podeComissao && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>

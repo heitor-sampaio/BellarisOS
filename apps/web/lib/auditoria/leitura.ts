@@ -5,6 +5,7 @@ import { unidadesDoContexto } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { resolvePeriod } from '@/lib/metrics'
 import { OPERACOES, type FiltrosDaAuditoria, type NomesDaAuditoria, type RegistroDaAuditoria } from './tipos'
+import { gravacoesDaUnidade } from './frase'
 
 /**
  * A leitura da auditoria (CF3a) — pelo servidor, depois da permissão: a sessão
@@ -68,13 +69,14 @@ export async function lerAuditoria(
   }
 
   // Um construtor a cada consulta: os filtros do supabase-js mudam o próprio objeto.
-  const consulta = () => {
+  // `semUnidade`: para completar a gravação filtrada pela unidade (A28 da 17ª).
+  const consulta = (semUnidade = false) => {
     let q = baseDaAuditoria(admin)
       .eq('tenant_id', ctx.tenantId!)
       .gte('criado_em', periodo.from.toISOString())
       .lte('criado_em', periodo.fullTo.toISOString())
     if (minhas !== null) q = q.in('branch_id', minhas)
-    if (unidade) q = q.eq('branch_id', unidade)
+    if (unidade && !semUnidade) q = q.eq('branch_id', unidade)
     if (filtros.pessoa && UUID.test(filtros.pessoa)) q = q.eq('ator_user_id', filtros.pessoa)
     // A37 da 16ª: "Só o que foi pelo Copilot" — a marca que a gravação do Copilot deixa (`via`).
     else if (filtros.pessoa === 'copilot') q = q.eq('via', 'copilot')
@@ -83,7 +85,10 @@ export async function lerAuditoria(
     return q
   }
 
-  if (opcoes.porGravacao) return lerPorGravacao(ctx, vazia, consulta, filtros.antes, porPagina)
+  if (opcoes.porGravacao) {
+    const lida = await lerPorGravacao(ctx, vazia, consulta, filtros.antes, porPagina)
+    return unidade ? { ...lida, ...await soAsGravacoesDaUnidade(ctx, consulta, lida.registros, unidade) } : lida
+  }
 
   const inicio = (pagina - 1) * porPagina
   // Uma a mais diz se há a próxima página, sem contar a tabela inteira.
@@ -92,10 +97,34 @@ export async function lerAuditoria(
 
   return {
     ...vazia,
-    registros,
-    nomes:   await nomesDaAuditoria(ctx, registros),
+    ...(unidade
+      ? await soAsGravacoesDaUnidade(ctx, consulta, registros, unidade)
+      : { registros, nomes: await nomesDaAuditoria(ctx, registros) }),
     temMais: linhas.length > porPagina,
   }
+}
+
+/**
+ * O filtro por unidade é pela unidade da GRAVAÇÃO (A28 da 17ª simulação): a
+ * linha da tela leva a unidade do fato, e o filtro por registro trazia, na
+ * Savassi, a sessão do pacote da Savassi usada na conclusão da Pampulha. As
+ * gravações lidas pela unidade se completam (as linhas da mesma transação, na
+ * abrangência de quem lê) e ficam só as que são da unidade pedida. A página
+ * pode mostrar menos gravações; o cursor segue o da leitura pela unidade.
+ */
+async function soAsGravacoesDaUnidade(
+  ctx: TenantContext, consulta: (semUnidade?: boolean) => Consulta,
+  registros: readonly RegistroDaAuditoria[], unidade: string,
+): Promise<{ registros: RegistroDaAuditoria[]; nomes: NomesDaAuditoria }> {
+  const instantes = [...new Set(registros.map(r => r.criado_em))]
+  const outras = instantes.length
+    ? (await ler(consulta(true).in('criado_em', instantes).order('id', { ascending: false }).limit(5000), 'completar as gravações da unidade') ?? []) as RegistroDaAuditoria[]
+    : []
+  const porId = new Map<number, RegistroDaAuditoria>()
+  for (const r of [...registros, ...outras]) porId.set(r.id, r)
+  const inteiras = [...porId.values()].sort((a, b) => b.id - a.id)
+  const nomes = await nomesDaAuditoria(ctx, inteiras)
+  return { registros: gravacoesDaUnidade(inteiras, nomes, unidade), nomes }
 }
 
 /**
@@ -167,17 +196,18 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
       ? ler(admin.from('service_packages').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', pacotes), 'ler os nomes dos pacotes')
       : Promise.resolve([]),
     lancamentos.length
-      ? ler(admin.from('financial_transactions').select('id, type, amount, payment_method, parcela_numero, parcela_total, branches!inner(tenant_id)')
+      ? ler(admin.from('financial_transactions').select('id, type, amount, payment_method, parcela_numero, parcela_total, appointment_id, branches!inner(tenant_id)')
         .eq('branches.tenant_id', ctx.tenantId!).in('id', lancamentos), 'ler os lançamentos da auditoria')
       : Promise.resolve([]),
   ])
   const lancamentosLidos = Object.fromEntries(((ft ?? []) as {
     id: string; type: string | null; amount: number | string | null; payment_method: string | null
-    parcela_numero: number | null; parcela_total: number | null
+    parcela_numero: number | null; parcela_total: number | null; appointment_id: string | null
   }[]).map(l => [l.id, {
     tipo: l.type, valor: l.amount === null ? null : Number(l.amount), forma: l.payment_method,
-    parcela: l.parcela_numero, de: l.parcela_total,
+    parcela: l.parcela_numero, de: l.parcela_total, agendamento: !!l.appointment_id,
   }]))
+  const extras = await nomesDa17(ctx, registros)
   const [c, m, u, p, cg] = await Promise.all([
     clientes.length
       ? ler(admin.from('clients').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', clientes), 'ler os nomes das clientes')
@@ -202,6 +232,87 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
   return {
     clientes: mapa(c), membros: mapa(m), unidades: mapa(u), produtos: mapa(p), cargos: cargosPorPermissao,
     pacotes: mapa(pk as { id: unknown; name: unknown }[] | null), lancamentos: lancamentosLidos,
+    ...extras,
+  }
+}
+
+/**
+ * A26/A27 da 17ª simulação: o que a gravação não guarda e a frase diz, lido
+ * agora — o nome da oportunidade e do contato (a auditoria grava `{}` neles,
+ * por minimização: o nome se lê como o da cliente), a etapa quando está no
+ * registro, o produto do item da comanda, de quem é a comissão paga, a cliente
+ * dos pontos e o "Fechar de novo". Tudo pela rede da sessão.
+ */
+async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAuditoria[]): Promise<Partial<NomesDaAuditoria>> {
+  const admin = createAdminClient()
+  const tenant = ctx.tenantId!
+  const ids = (tabela: string) => [...new Set(registros.filter(r => r.tabela === tabela && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!))]
+  const leads = ids('leads')
+  const contatos = ids('contacts')
+  const itens = ids('comanda_itens')
+  const pagamentos = ids('commission_payouts')
+  const pontos = ids('loyalty_transactions')
+  const fechamentos = ids('fechamentos_do_dia')
+  const etapas = [...new Set(registros.filter(r => r.tabela === 'leads').flatMap(r => [r.antes, r.depois])
+    .flatMap(x => [x?.crm_stage_id, x?.stage_id]).filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
+  const nada = Promise.resolve([] as Record<string, unknown>[])
+
+  const [ld, ct, et, it, po, lt, fe] = await Promise.all([
+    leads.length ? ler(admin.from('leads').select('id, name, contato_id').eq('tenant_id', tenant).in('id', leads), 'ler as oportunidades da auditoria') : nada,
+    contatos.length ? ler(admin.from('contacts').select('id, name').eq('tenant_id', tenant).in('id', contatos), 'ler os contatos da auditoria') : nada,
+    etapas.length ? ler(admin.from('crm_stages').select('id, name').eq('tenant_id', tenant).in('id', etapas), 'ler as etapas da auditoria') : nada,
+    itens.length ? ler(admin.from('comanda_itens').select('id, product_id').eq('tenant_id', tenant).in('id', itens), 'ler os itens da comanda da auditoria') : nada,
+    pagamentos.length ? ler(admin.from('commission_payouts').select('id, professional_id').eq('tenant_id', tenant).in('id', pagamentos), 'ler os pagamentos de comissão da auditoria') : nada,
+    pontos.length ? ler(admin.from('loyalty_transactions').select('id, loyalty_account_id').in('id', pontos), 'ler os lançamentos de pontos da auditoria') : nada,
+    fechamentos.length ? ler(admin.from('fechamentos_do_dia').select('id, branch_id, dia, fechado_em').eq('tenant_id', tenant).in('id', fechamentos), 'ler os fechamentos da auditoria') : nada,
+  ]) as Record<string, unknown>[][]
+  const str = (v: unknown) => (typeof v === 'string' ? v : null)
+
+  // O nome da oportunidade é o dela; sem ele, o do contato dela.
+  const contatosDosLeads = (ld ?? []).map(l => str(l.contato_id)).filter((v): v is string => !!v && !contatos.includes(v))
+  const contas = [...new Set((lt ?? []).map(l => str(l.loyalty_account_id)).filter((v): v is string => !!v))]
+  const produtos = [...new Set((it ?? []).map(i => str(i.product_id)).filter((v): v is string => !!v))]
+  const profissionais = [...new Set((po ?? []).map(x => str(x.professional_id)).filter((v): v is string => !!v))]
+  const [ct2, contasLidas, pr, us] = await Promise.all([
+    contatosDosLeads.length ? ler(admin.from('contacts').select('id, name').eq('tenant_id', tenant).in('id', contatosDosLeads), 'ler os contatos das oportunidades') : nada,
+    contas.length ? ler(admin.from('loyalty_accounts').select('id, client_id').in('id', contas), 'ler as contas de pontos da auditoria') : nada,
+    produtos.length ? ler(admin.from('products').select('id, name').eq('tenant_id', tenant).in('id', produtos), 'ler os produtos da comanda') : nada,
+    profissionais.length ? ler(admin.from('users').select('id, name').eq('tenant_id', tenant).in('id', profissionais), 'ler quem recebeu a comissão') : nada,
+  ]) as Record<string, unknown>[][]
+  const clientesDasContas = [...new Set((contasLidas ?? []).map(x => str(x.client_id)).filter((v): v is string => !!v))]
+  // A cliente só sai se for desta rede (a conta de pontos não tem rede própria).
+  const cl = clientesDasContas.length
+    ? (await ler(admin.from('clients').select('id, name').eq('tenant_id', tenant).in('id', clientesDasContas), 'ler as clientes dos pontos') ?? []) as Record<string, unknown>[]
+    : []
+
+  const nome = (xs: Record<string, unknown>[] | null | undefined) => new Map((xs ?? []).map(x => [x.id as string, str(x.name) ?? '']))
+  const nomeDoContato = new Map([...nome(ct), ...nome(ct2)])
+  const nomeDoProduto = nome(pr)
+  const nomeDoMembro = nome(us)
+  const nomeDaCliente = nome(cl)
+  const clienteDaConta = new Map((contasLidas ?? []).map(x => [x.id as string, str(x.client_id)]))
+
+  // O "Fechar de novo": outro fechamento do mesmo dia e unidade, antes deste.
+  const fechamentosLidos = (fe ?? []) as { id: string; branch_id: string; dia: string; fechado_em: string }[]
+  const fechamentosDeNovo: Record<string, boolean> = {}
+  if (fechamentosLidos.length) {
+    const doMesmoDia = (await ler(admin.from('fechamentos_do_dia').select('id, branch_id, dia, fechado_em').eq('tenant_id', tenant)
+      .in('branch_id', [...new Set(fechamentosLidos.map(f => f.branch_id))]).in('dia', [...new Set(fechamentosLidos.map(f => f.dia))]),
+    'ler os fechamentos do mesmo dia') ?? []) as { id: string; branch_id: string; dia: string; fechado_em: string }[]
+    for (const f of fechamentosLidos) {
+      fechamentosDeNovo[f.id] = doMesmoDia.some(o => o.id !== f.id && o.branch_id === f.branch_id && o.dia === f.dia && o.fechado_em < f.fechado_em)
+    }
+  }
+
+  return {
+    oportunidades: Object.fromEntries((ld ?? []).map(l => [l.id as string, str(l.name)?.trim() || nomeDoContato.get(str(l.contato_id) ?? '') || ''])
+      .filter(([, n]) => n)),
+    contatos: Object.fromEntries([...nome(ct)].filter(([, n]) => n)),
+    etapas: Object.fromEntries([...nome(et)]),
+    itensDaComanda: Object.fromEntries((it ?? []).map(i => [i.id as string, nomeDoProduto.get(str(i.product_id) ?? '') ?? '']).filter(([, n]) => n)),
+    pagamentosDeComissao: Object.fromEntries((po ?? []).map(x => [x.id as string, nomeDoMembro.get(str(x.professional_id) ?? '') ?? '']).filter(([, n]) => n)),
+    clientesDosPontos: Object.fromEntries((lt ?? []).map(l => [l.id as string, nomeDaCliente.get(clienteDaConta.get(str(l.loyalty_account_id) ?? '') ?? '') ?? '']).filter(([, n]) => n)),
+    fechamentosDeNovo,
   }
 }
 

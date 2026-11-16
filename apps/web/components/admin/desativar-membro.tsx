@@ -26,7 +26,11 @@ const quando = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLoca
   timeZone: fuso, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
 })
 
-export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: string; nome: string; redirectPath: string }) {
+export function DesativarMembro({ membroId, nome, redirectPath, atende = true }: {
+  membroId: string; nome: string; redirectPath: string
+  /** A21 da 17ª: quem não atende nunca esteve na agenda — o texto não diz que sai dela. */
+  atende?: boolean
+}) {
   const router = useRouter()
   const [aberta, setAberta] = useState(false)
   const [dados, setDados] = useState<PendenciasDoMembro | null>(null)
@@ -123,7 +127,7 @@ export function DesativarMembro({ membroId, nome, redirectPath }: { membroId: st
           <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Desativar membro?</h2>
             <p style={texto}>
-              <strong style={{ color: 'var(--text)' }}>{nome}</strong> não entra mais no sistema, e sai da agenda. Dá para reativar depois.
+              <strong style={{ color: 'var(--text)' }}>{nome}</strong> não entra mais no sistema{atende ? ', e sai da agenda' : ''}. Dá para reativar depois.
             </p>
 
             {!dados && !erroCarga && <p style={texto}>Conferindo o que fica com {nome}…</p>}

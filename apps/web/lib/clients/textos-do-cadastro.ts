@@ -113,3 +113,18 @@ export function avisoDosAgendamentosAoArquivar(
     ? `Ela tem 1 agendamento marcado (${quando}), que continua na agenda: arquivar não o cancela. Se ela não vem mais, cancele na agenda.`
     : `Ela tem ${n} agendamentos marcados (o próximo em ${quando}), que continuam na agenda: arquivar não os cancela. Se ela não vem mais, cancele na agenda.`
 }
+
+const semCaixaNemAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+
+/**
+ * O que o "Sim, é a mesma pessoa" faz com o CONTATO do CRM (A15 da 17ª
+ * simulação; princípio 3): ele passa a ter o nome da ficha (A25 da 15ª) e o
+ * e-mail dela, quando ela tem — e a pergunta diz antes. Nulo quando nada muda.
+ */
+export function textoDoSimDaPessoa(p: { contato: string; nome: string; email: string }): string | null {
+  const nome = p.nome.replace(/\s+/g, ' ').trim()
+  const email = p.email.trim()
+  const trocaONome = !!nome && semCaixaNemAcento(nome) !== semCaixaNemAcento(p.contato)
+  if (trocaONome) return `O contato ${p.contato} passa a se chamar ${nome}${email ? `, com o e-mail ${email}` : ''}.`
+  return email ? `O contato ${p.contato} passa a ter o e-mail ${email}.` : null
+}

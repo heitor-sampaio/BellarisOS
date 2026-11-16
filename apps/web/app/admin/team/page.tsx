@@ -107,7 +107,14 @@ export default async function AdminTeamPage({
   // desligado, dizendo por quê — a action também recusa.
   const acimaDoMeu = await cargosAcimaDoMeu(createAdminClient(), ctx, assignableRoles.map(r => r.id), souAdmin)
   const comTrava = assignableRoles.map(r => (acimaDoMeu.has(r.id) ? { ...r, acimaDoMeu: true } : r))
-  const rolesParaDar = souAdmin && cargoDeAdmin ? [cargoDeAdmin, ...comTrava] : comTrava
+  // A18 da 17ª (princípio 3): o cadastro de quem atende diz quando o cargo não
+  // mostra as próprias comissões (o resumo do cargo e a comissão na lista já
+  // diziam). Só com as comissões no plano.
+  const veemComissoes = temRecurso(ctx, 'comissoes')
+    ? (podeComissao ? veemAsComissoes : await cargosQueVeemAsComissoes(ctx.tenantId!))
+    : null
+  const rolesParaDar = (souAdmin && cargoDeAdmin ? [cargoDeAdmin, ...comTrava] : comTrava)
+    .map(r => ({ ...r, naoVeAsComissoes: !!veemComissoes && !veemComissoes.has(r.id) }))
   /** Quem age pode mexer neste membro? A Admin da rede, só outra Admin (ou ela mesma). */
   const podeMexerEm = (m: { id: string; role_id: string | null }) =>
     !cargoDeAdmin || m.role_id !== cargoDeAdmin.id || souAdmin || m.id === ctx.internalUserId
@@ -328,7 +335,7 @@ export default async function AdminTeamPage({
                       {/* Não se oferece desativar a si mesmo: trancaria a pessoa do lado de fora
                           (a action também recusa). A Admin da rede, só outra Admin. */}
                       {canManage && m.id !== ctx.internalUserId && podeMexerEm(m) && (m.is_active ? (
-                        <DesativarMembro membroId={m.id} nome={m.name} redirectPath="/admin/team" />
+                        <DesativarMembro membroId={m.id} nome={m.name} redirectPath="/admin/team" atende={!!m.provides_services} />
                       ) : (
                         <ReativarMembro membroId={m.id} redirectPath="/admin/team" />
                       ))}

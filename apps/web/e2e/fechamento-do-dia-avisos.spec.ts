@@ -99,7 +99,7 @@ test.describe.serial('os avisos do fechamento do dia', () => {
     await lancar([{ type: 'INCOME', description: `Depois ${marca}`, amount: 80, payment_method: 'CASH' }])
     await como(recepcao!, browser, async p => {
       await p.goto(`/${slug}/pdv?fechar=1`)
-      await expect(p.locator('[data-aviso="movimento-depois"]')).toContainText(/Entrou dinheiro depois do fechamento das \d{2}:\d{2}: confira e feche de novo/)
+      await expect(p.locator('[data-aviso="movimento-depois"]')).toContainText(/Houve movimento depois do fechamento das \d{2}:\d{2} \(entrou R\$\s80,00\): confira e feche de novo/)
     })
   })
 

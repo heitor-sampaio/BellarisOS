@@ -15,7 +15,7 @@ import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { trechoDoBloqueio } from '@/lib/agenda/bloqueio'
 import { fichasQueJaExistem, textoDaFichaQueJaExiste, type FichaQueJaExiste } from '@/lib/clients/ja-existe'
 import { escolhasDaFichaQueJaExiste } from '@/lib/copilot/ferramentas/clientes-escrita'
-import { avisoDoAgendarParaACliente } from '@/lib/copilot/ferramentas/aviso-do-agendar'
+import { avisoDaAgendaParaACliente, type FatoDaAgenda } from '@/lib/copilot/ferramentas/aviso-do-agendar'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { telefoneDoCopilot } from '@/lib/copilot/ferramentas/clientes-escrita'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
@@ -150,10 +150,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     const naoRealiza = !realiza(await quemRealizaOProcedimento(c.admin, proc.id), prof.id)
     const avisoDoRealiza = naoRealiza ? `${prof.name} não está em “Quem realiza” deste procedimento. ` : ''
     // A33 da 16ª: o aviso que chega de fato — só pelo app, e só a quem tem acesso.
-    const temAcesso = clientId
-      ? !!(await ler(c.admin.from('clients').select('auth_id').eq('id', clientId).eq('tenant_id', c.ctx.tenantId!).maybeSingle(), 'conferir o acesso da cliente') as { auth_id: string | null } | null)?.auth_id
-      : false
-    const avisoDaCliente = avisoDoAgendarParaACliente({ temAcesso, portalNoPlano: await redeTemRecurso(c.ctx.tenantId!, 'portal') })
+    const avisoDaCliente = await avisoDaClienteNoCartao(c, clientId, 'agendar')
 
     return {
       resumo: {
@@ -210,6 +207,18 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
   },
 }
 
+/**
+ * O aviso que chega DE FATO à cliente, dito no cartão (A33 da 16ª; A23 da 17ª:
+ * remarcar e cancelar prometiam "O cliente recebe o aviso" sempre). O aviso é
+ * só pelo app, e só a quem tem acesso, com o app da cliente no plano.
+ */
+async function avisoDaClienteNoCartao(c: ContextoDaFerramenta, clientId: string | null | undefined, fato: FatoDaAgenda): Promise<string> {
+  const temAcesso = clientId
+    ? !!(await ler(c.admin.from('clients').select('auth_id').eq('id', clientId).eq('tenant_id', c.ctx.tenantId!).maybeSingle(), 'conferir o acesso da cliente') as { auth_id: string | null } | null)?.auth_id
+    : false
+  return avisoDaAgendaParaACliente(fato, { temAcesso, portalNoPlano: await redeTemRecurso(c.ctx.tenantId!, 'portal') })
+}
+
 /** Lê o agendamento ao alcance, com os nomes para o resumo. */
 async function agendamentoParaResumo(c: ContextoDaFerramenta, id: string) {
   const a = await agendamentoAoAlcance(c.admin, c.ctx, id)
@@ -222,6 +231,7 @@ async function agendamentoParaResumo(c: ContextoDaFerramenta, id: string) {
   ])
   return {
     ...a,
+    clientId: extra.client_id,
     cliente: clientes.get(extra.client_id) ?? 'Cliente',
     procedimento: procs.get(extra.procedure_id) ?? 'Atendimento',
     profissional: a.professional_id ? (profs.get(a.professional_id) ?? '—') : '—',
@@ -233,7 +243,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'agenda'),
-  descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (no horário da unidade dele) e, opcionalmente, outro profissional (pelo nome que a pessoa disse: a ferramenta acha entre quem atende, sem precisar buscar antes). O cliente é avisado do novo horário.',
+  descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (no horário da unidade dele) e, opcionalmente, outro profissional (pelo nome que a pessoa disse: a ferramenta acha entre quem atende, sem precisar buscar antes). O cartão diz se a cliente recebe o aviso no app.',
   parametros: z.object({ agendamento: UUID, data: DATA, hora: HORA, profissional: z.string().max(80).optional() }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
@@ -267,7 +277,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
           { rotulo: 'Para', valor: quandoLegivel(inicio, fuso) },
           { rotulo: 'Profissional', valor: nomeDoProfissional },
         ],
-        aviso: 'O cliente recebe o aviso do novo horário.',
+        aviso: await avisoDaClienteNoCartao(c, ag.clientId, 'remarcar'),
       },
       payload: { appointmentId: ag.id, scheduledAt: inicio.toISOString(), professionalId },
     }
@@ -287,7 +297,7 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'agenda'),
-  descricao: 'Cancela um agendamento (id) com o motivo (obrigatório — pergunte se não foi dito). O cliente é avisado.',
+  descricao: 'Cancela um agendamento (id) com o motivo (obrigatório — pergunte se não foi dito). O cartão diz se a cliente recebe o aviso no app.',
   parametros: z.object({ agendamento: UUID, motivo: z.string().min(3).max(300) }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
@@ -302,7 +312,7 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
           { rotulo: 'Quando', valor: quandoLegivel(ag.scheduled_at, await fusoDe(c, ag.branch_id)) },
           { rotulo: 'Motivo', valor: a.motivo },
         ],
-        aviso: 'O cliente recebe o aviso do cancelamento.',
+        aviso: await avisoDaClienteNoCartao(c, ag.clientId, 'cancelar'),
       },
       payload: { appointmentId: ag.id, motivo: a.motivo.trim() },
     }

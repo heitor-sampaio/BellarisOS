@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { filtroDosMembrosDaUnidade } from '@/lib/unidades/do-membro'
 import { notifyUser } from '@/lib/notifications/notify'
 import { registrarEventoLead } from '@/lib/lead-events'
 import type { ContextoDaExecucao } from './contexto'
@@ -54,7 +55,8 @@ export async function notificarEquipe(
     // Unidade: quem é da unidade E quem é da rede (branch_id nulo) — este
     // último opera todas, e deixá-lo de fora faria o aviso sumir justamente
     // para quem cuida da clínica inteira.
-    q = q.or(`branch_id.eq.${aviso.alvoId},branch_id.is.null`)
+    // D1 da 17ª: e quem tem a unidade nas outras dela (EQ1a).
+    q = q.or(filtroDosMembrosDaUnidade(aviso.alvoId))
   }
 
   const { data, error } = await q

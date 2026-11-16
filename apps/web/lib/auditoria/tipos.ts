@@ -50,6 +50,23 @@ export interface NomesDaAuditoria {
    * tipo, do valor e da parcela.
    */
   lancamentos?: Record<string, LancamentoDaAuditoria>
+  /**
+   * A26/A27 da 17ª: o que a gravação não guarda e a frase precisa, lido agora
+   * pelo id do registro. A oportunidade e o contato (a auditoria grava `{}`
+   * neles, por minimização) saem pelo nome, como a cliente.
+   */
+  oportunidades?: Record<string, string>
+  contatos?: Record<string, string>
+  /** O nome da etapa do funil (o id → o nome), quando a etapa está no registro. */
+  etapas?: Record<string, string>
+  /** O produto do item da comanda (o id do item → o produto). */
+  itensDaComanda?: Record<string, string>
+  /** De quem é a comissão paga (o id do pagamento → quem atende). */
+  pagamentosDeComissao?: Record<string, string>
+  /** A cliente do lançamento de pontos (o id do lançamento → a cliente; a tabela não tem `client_id`). */
+  clientesDosPontos?: Record<string, string>
+  /** O fechamento do dia que veio depois de outro do mesmo dia e unidade (o "Fechar de novo"). */
+  fechamentosDeNovo?: Record<string, boolean>
 }
 
 export interface LancamentoDaAuditoria {
@@ -58,6 +75,8 @@ export interface LancamentoDaAuditoria {
   forma:   string | null
   parcela: number | null
   de:      number | null
+  /** É o lançamento de um atendimento (A26 da 17ª: "Estornou o atendimento"). */
+  agendamento?: boolean
 }
 
 /** Uma linha pronta para a tela e para o CSV. */

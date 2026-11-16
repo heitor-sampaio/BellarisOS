@@ -159,9 +159,16 @@ export async function SettingsBranches() {
                       {quantosAtendem(branch.id) === 1 ? '1 pessoa atende aqui' : `${quantosAtendem(branch.id)} pessoas atendem aqui`}
                     </span>
                   ))}
-                  {location && (
+                  {location && branch.city && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                       <MapPin size={12} style={{ flexShrink: 0 }} /> {location}
+                    </span>
+                  )}
+                  {/* A19 da 17ª (princípio 2): o CEP que o ViaCEP não acha grava sem
+                      cidade — não se recusa, mas o card diz o que falta. */}
+                  {!branch.city && (
+                    <span data-unidade-sem-cidade style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+                      <MapPin size={12} style={{ flexShrink: 0 }} /> Sem cidade: complete o endereço.
                     </span>
                   )}
                   {branch.email && (

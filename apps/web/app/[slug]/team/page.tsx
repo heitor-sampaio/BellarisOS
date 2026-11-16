@@ -116,6 +116,11 @@ export default async function TeamPage({
   const [regras, procedimentos, comGeral, quemVende, veemAsComissoes] = podeComissao
     ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, branchId), procedimentosComComissaoGeral(ctx.tenantId!, branchId), cargosQueVendem(ctx.tenantId!), cargosQueVeemAsComissoes(ctx.tenantId!)])
     : [null, [], [], new Set<string>(), new Set<string>()]
+  // A18 da 17ª: o cadastro de quem atende diz quando o cargo não mostra as próprias comissões.
+  const veemComissoes = temRecurso(ctx, 'comissoes')
+    ? (podeComissao ? veemAsComissoes : await cargosQueVeemAsComissoes(ctx.tenantId!))
+    : null
+  const cargosDoCadastro = assignableRoles.map(r => ({ ...r, naoVeAsComissoes: !!veemComissoes && !veemComissoes.has(r.id) }))
 
   return (
     <div>
@@ -152,7 +157,7 @@ export default async function TeamPage({
           )}
         </div>
         {canManage && (
-          <TeamForm branchId={branchId} slug={slug} roles={assignableRoles} unidade={branch?.name ?? null}
+          <TeamForm branchId={branchId} slug={slug} roles={cargosDoCadastro} unidade={branch?.name ?? null}
             unidadesDoAtende={unidadesDoAtende} editaveisDoAtende={editaveisDoAtende} podeComissao={podeComissao}
             unidadesDeQuemCadastra={unidadesDeQuemCadastra} />
         )}
@@ -263,7 +268,7 @@ export default async function TeamPage({
                     {/* Não se oferece desativar a si mesmo: trancaria a pessoa do lado de fora
                           (a action também recusa). */}
                       {canManage && m.id !== ctx.internalUserId && (m.is_active ? (
-                      <DesativarMembro membroId={m.id} nome={m.name} redirectPath={`/${slug}/team`} />
+                      <DesativarMembro membroId={m.id} nome={m.name} redirectPath={`/${slug}/team`} atende={!!m.provides_services} />
                     ) : (
                       <ReativarMembro membroId={m.id} redirectPath={`/${slug}/team`} />
                     ))}

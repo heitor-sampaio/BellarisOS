@@ -25,7 +25,7 @@ export default async function ConfirmAppointmentPage({
   const admin = createAdminClient()
   const appt = await ler(admin
     .from('appointments')
-    .select('id, client_id, status, client_confirmed_at, scheduled_at, procedure_id, procedures(name), professionals:users!professional_id(name), branches!inner(tenant_id)')
+    .select('id, client_id, status, client_confirmed_at, scheduled_at, completed_at, procedure_id, procedures(name), professionals:users!professional_id(name), branches!inner(tenant_id)')
     .eq('id', id)
     .maybeSingle(), 'buscar o agendamento')
 
@@ -74,6 +74,7 @@ export default async function ConfirmAppointmentPage({
         procedureName={procedureName}
         professionalName={professionalName}
         scheduledAt={appt!.scheduled_at as string}
+        concluidoEm={(appt!.completed_at as string | null) ?? null}
         avaliaOAtendimento={avaliaOAtendimento(oQue)}
         procedimentos={pedeOsProcedimentos ? procedimentos : []}
       />

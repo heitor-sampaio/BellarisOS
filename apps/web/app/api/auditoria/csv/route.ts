@@ -48,21 +48,22 @@ export async function GET(req: NextRequest) {
   // nomes, e só então agrupa.
   const linhas: string[] = ['Quando;Quem;O quê;Gravação;Unidade']
   const registros: RegistroDaAuditoria[] = []
-  const nomes: NomesDaAuditoria = { clientes: {}, membros: {}, unidades: {}, produtos: {}, cargos: {}, pacotes: {}, lancamentos: {} }
+  const nomes: NomesDaAuditoria = { clientes: {}, membros: {}, unidades: {} }
+  // Com o filtro de unidade, a gravação se completa (A28 da 17ª): a que cai em
+  // duas páginas vem inteira nas duas — o id não se repete no arquivo.
+  const lidos = new Set<number>()
   let cortou = false
   for (let pagina = 1; ; pagina++) {
     const r = await lerAuditoria(ctx, { ...filtros, pagina: String(pagina) }, { porPagina: POR_PAGINA })
-    registros.push(...r.registros)
-    Object.assign(nomes.clientes, r.nomes.clientes)
-    Object.assign(nomes.membros, r.nomes.membros)
-    Object.assign(nomes.unidades, r.nomes.unidades)
-    Object.assign(nomes.produtos!, r.nomes.produtos ?? {})
-    Object.assign(nomes.cargos!, r.nomes.cargos ?? {})
-    Object.assign(nomes.pacotes!, r.nomes.pacotes ?? {})
-    Object.assign(nomes.lancamentos!, r.nomes.lancamentos ?? {})
+    for (const reg of r.registros) if (!lidos.has(reg.id)) { lidos.add(reg.id); registros.push(reg) }
+    // Todos os nomes de cada página, os que vierem a existir também.
+    for (const [chave, valores] of Object.entries(r.nomes) as [keyof NomesDaAuditoria, Record<string, unknown> | undefined][]) {
+      Object.assign(((nomes as unknown as Record<string, Record<string, unknown>>)[chave] ??= {}), valores ?? {})
+    }
     if (!r.temMais) break
     if (pagina >= PAGINAS_NO_MAXIMO) { cortou = true; break }
   }
+  registros.sort((a, b) => b.id - a.id)
   for (const l of linhasDoCsvDaAuditoria(registros, nomes)) {
     linhas.push([l.quando, l.quem, l.oQue, l.gravacao, l.unidade ?? ''].map(celula).join(';'))
   }

@@ -3,6 +3,10 @@ import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
 import { NO_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
 import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
+// O primeiro import() de uma ferramenta da agenda carrega o Supabase e o núcleo:
+// sozinho leva 1 s, mas sob a suíte inteira em paralelo passava dos 5 s do padrão.
+vi.setConfig({ testTimeout: 30_000 })
+
 /**
  * D2 e D5 da 16ª simulação (2026-11-15), o Copilot.
  *

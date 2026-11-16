@@ -65,6 +65,8 @@ const DOC_CATEGORY: Record<string, string> = {
   anamnese:  'Ficha de saúde',
   contrato:  'Contrato',
   foto:      'Foto',
+  // A8 da 17ª: a foto do atendimento enviada à cliente saía "Documento".
+  foto_clinica: 'Foto',
   laudo:     'Laudo',
   outro:     'Documento',
 }

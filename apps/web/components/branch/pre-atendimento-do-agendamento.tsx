@@ -144,6 +144,14 @@ export function PreAtendimentoDoAgendamento({ appointmentId, slug, podeMandar }:
             ? 'A cliente recebe no app. Sem o app, mande o link: ela confirma o CPF (ou o nascimento) e responde pelo celular.'
             : 'Para quem não tem CPF, complete a data de nascimento para enviar o link. Sem um dos dois, a ficha vai só pelo app — ou é respondida aqui, no atendimento.'}
       </p>
+      {/* A6 da 17ª (princípio 3): "pendente" com "Enviar a ficha" parecia que
+          nada tinha saído — o aviso ao app já foi, ao agendar. */}
+      {situacao.estado === 'PENDENTE' && situacao.noAppEm && !enviado && (
+        <p data-ficha-no-app className="pre-atendimento-agendamento-texto">
+          Mandada ao app da cliente ao agendar, em {formatDate(situacao.noAppEm, fuso)} às {formatTime(situacao.noAppEm, fuso)}.
+          {situacao.podeLink ? ' O link é para mandar de novo, ou a quem não usa o app.' : ''}
+        </p>
+      )}
       {!situacao.podeLink && situacao.podeCompletarNascimento && (
         <div data-completar-nascimento className="pre-atendimento-agendamento-acoes" style={{ alignItems: 'flex-end' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

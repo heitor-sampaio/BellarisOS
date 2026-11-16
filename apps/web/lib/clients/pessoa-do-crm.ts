@@ -85,10 +85,12 @@ export async function pessoaDoCrmDoTelefone(admin: Admin, ctx: TenantContext, di
  * "Sim, é a mesma pessoa": as OUTRAS oportunidades ao alcance e as conversas
  * passam a ser da cliente. A escolhida (`leadId`) segue o caminho da conversão
  * do `addClient` (CONVERTED, o clique do anúncio, a API de Conversões). E o
- * contato passa a ter o nome da ficha (A25 da 15ª).
+ * contato passa a ter o nome da ficha (A25 da 15ª) e o e-mail dela, quando ela
+ * tem (A15 da 17ª: o e-mail do contato ficava o antigo; a pergunta diz antes —
+ * `textoDoSimDaPessoa`).
  */
 export async function ligarPessoaDoCrmAoCliente(
-  admin: Admin, ctx: TenantContext, pessoa: PessoaDoCrm, clientId: string, nomeDaFicha: string,
+  admin: Admin, ctx: TenantContext, pessoa: PessoaDoCrm, clientId: string, nomeDaFicha: string, emailDaFicha?: string | null,
 ): Promise<void> {
   for (const id of pessoa.leadIds) {
     if (id === pessoa.leadId) continue
@@ -103,7 +105,7 @@ export async function ligarPessoaDoCrmAoCliente(
   // A25 da 15ª: a pessoa é a cliente — o contato passa a ter o nome da ficha
   // (seguia "Camila Duarte" da planilha com a ficha "Camila Rocha").
   if (nomeDaFicha.trim()) {
-    await gravar(admin.from('contacts').update({ name: nomeDaFicha.trim() })
+    await gravar(admin.from('contacts').update({ name: nomeDaFicha.trim(), ...(emailDaFicha?.trim() ? { email: emailDaFicha.trim() } : {}) })
       .eq('id', pessoa.contatoId).eq('tenant_id', ctx.tenantId!), 'acertar o nome do contato')
   }
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { Info } from 'lucide-react'
+import { parseDinheiro, formatDinheiroCampo } from '@estetica-os/utils'
 import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
@@ -203,7 +204,10 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={rotulo}>Entrada (opcional)</span>
             <input className="field" inputMode="decimal" placeholder="0,00" value={estado.entrada}
-              onChange={e => mudar({ entrada: e.target.value })} aria-label="Entrada" aria-invalid={!!recusaDaEntrada} />
+              onChange={e => mudar({ entrada: e.target.value })} aria-label="Entrada" aria-invalid={!!recusaDaEntrada}
+              // A5 da 17ª: ao sair do campo, a entrada fica no formato do dinheiro ("100" → "100,00");
+              // o que não se lê fica como foi escrito, com a recusa ao lado.
+              onBlur={e => { const n = parseDinheiro(e.target.value); if (e.target.value.trim() && Number.isFinite(n)) mudar({ entrada: formatDinheiroCampo(n) }) }} />
             {recusaDaEntrada && (
               <span role="alert" data-recusa-da-entrada style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
                 {recusaDaEntrada}

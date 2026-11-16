@@ -103,7 +103,9 @@ export const horariosLivres: FerramentaDeLeitura<{ data: string; profissional: s
   nome: 'horarios_livres',
   tipo: 'leitura',
   modulo: 'agenda', nivel: 'VIEW',
-  descricao: 'Horários livres de UM profissional num dia (de 30 em 30 min, das 8h às 20h), já sem os ocupados. Com o procedimento, considera a duração dele. Use antes de agendar ou remarcar. O profissional vai pelo nome que a pessoa disse: a ferramenta acha entre quem atende na unidade (sem precisar buscar antes) e, sem achar, diz quem atende.',
+  // D4 da 17ª (princípio 3): dizia "das 8h às 20h", e o modelo leu a grade como
+  // a agenda inteira — chamou de "não disponível" um 21:25 que o agendar aceitava.
+  descricao: 'SUGESTÕES de horário de UM profissional num dia: uma grade de 30 em 30 min dentro do horário da unidade e do profissional, já sem os ocupados e os bloqueios. Com o procedimento, considera a duração dele. Use para oferecer opções quando a pessoa não disse a hora. A grade não é a agenda inteira: um horário fora dela (21:25, por exemplo) pode estar livre — quando a pessoa pede um horário, chame agendar ou remarcar com ele, que conferem o conflito e dizem se não dá. O profissional vai pelo nome que a pessoa disse: a ferramenta acha entre quem atende na unidade (sem precisar buscar antes) e, sem achar, diz quem atende.',
   parametros: z.object({
     data: DATA,
     profissional: z.string().min(1).max(80).describe('Nome ou id do profissional.'),

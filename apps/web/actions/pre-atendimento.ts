@@ -136,6 +136,11 @@ export interface SituacaoDoPreAtendimento {
    * mesmo (A12 da 10ª: a cliente do Agendar, só com nome e telefone).
    */
   podeCompletarNascimento?: boolean
+  /**
+   * A6 da 17ª: a ficha pendente já foi ao app da cliente (o aviso "Antes do
+   * seu atendimento", que sai ao agendar): quando. Nulo = nenhum aviso saiu.
+   */
+  noAppEm?: string | null
 }
 
 /**
@@ -164,15 +169,21 @@ export async function situacaoDoPreAtendimento(appointmentId: string): Promise<S
   if (pendente) {
     // O link que já está valendo: gerar outro o cancela, e a tela precisa dizer
     // (2026-10-21; a simulação viu o anterior ser revogado em silêncio).
-    const { data: pre } = await admin.from('pre_atendimentos').select('id').eq('client_id', ap.client_id)
+    const { data: pre } = await admin.from('pre_atendimentos').select('id, created_at').eq('client_id', ap.client_id)
       .eq('tenant_id', ctx.tenantId!).eq('status', 'PENDENTE').maybeSingle()
+    // A6 da 17ª (princípio 3): o aviso que levou ESTA ficha ao app (o de depois
+    // dela nascer). A janela dizia só "pendente" e "Enviar a ficha", e a
+    // recepção não sabia que a cliente já a tinha no app.
+    const noApp = pre ? await ler(admin.from('client_notifications').select('created_at')
+      .eq('client_id', ap.client_id).eq('type', 'pre_atendimento').gte('created_at', pre.created_at as string)
+      .order('created_at', { ascending: true }).limit(1).maybeSingle(), 'buscar o aviso da ficha de saúde') as { created_at: string } | null : null
     const valendo = pre ? await ler(admin.from('pre_atendimento_links').select('expires_at, token_cifrado')
       .eq('pre_atendimento_id', pre.id as string).is('revoked_at', null).is('used_at', null)
       .gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       'buscar o link da ficha') as { expires_at: string; token_cifrado: string | null } | null : null
     return {
       estado: 'PENDENTE', modo: pendente.modo as 'COMPLETO' | 'CONFIRMAR', podeLink, podeCompletarNascimento, pelaConversa, clienteId: ap.client_id as string,
-      linkValidoAte: valendo?.expires_at ?? null, linkDeNovo: !!valendo?.token_cifrado,
+      linkValidoAte: valendo?.expires_at ?? null, linkDeNovo: !!valendo?.token_cifrado, noAppEm: noApp?.created_at ?? null,
     }
   }
   if (deste) return { estado: 'RESPONDIDO', respondidoEm: deste.respondido_em as string | null, podeLink }

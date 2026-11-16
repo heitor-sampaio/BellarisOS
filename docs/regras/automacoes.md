@@ -238,6 +238,10 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   portal, o app e o navegador da cliente, sem conversa (a resposta não chega
   no inbox); o título é o nome da rede. O passo em WhatsApp numa rede sem
   número mostra o aviso com "Mandar como aviso no celular".
+  No aviso no celular o texto não pede resposta (A10 da 17ª simulação: a
+  resposta não chega a lugar nenhum): o modelo e o "Mandar como aviso no
+  celular" tiram o "É só responder esta mensagem" (`semPedirResposta`).
+  Prova: `tests/atritos-da-17-cadastros.test.ts`.
 - **A automação e a cliente SEM conversa aberta** (H1 do levantamento das
   regras, o Heitor, 2026-11-11, opção d, com a a valendo já; princípios 1, 3
   e 6). O "Mandar mensagem" em WhatsApp só fala numa conversa já aberta e

@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import type { AppModule } from '@estetica-os/types'
+import { filtroDosMembrosDaUnidade } from '@/lib/unidades/do-membro'
 
 /**
  * Quem DESFAZ no caixa — estorna, devolve a venda de produto, cancela o pacote
@@ -76,7 +77,8 @@ async function quemTemNoNivel(tenantId: string, branchId: string | null, modulo:
   const membros = await lerTodas((de, ate) => {
     let q = admin.from('users').select('id, name')
       .eq('tenant_id', tenantId).eq('is_active', true).in('role_id', cargos)
-    q = branchId ? q.or(`branch_id.is.null,branch_id.eq.${branchId}`) : q.is('branch_id', null)
+    // D1 da 17ª: a unidade nas outras do membro (EQ1a) também é dele.
+    q = branchId ? q.or(filtroDosMembrosDaUnidade(branchId)) : q.is('branch_id', null)
     return q.order('name').order('id').range(de, ate)
   }, 'carregar quem tem o módulo')
   return (membros ?? []).map(m => (m.name as string | null) ?? '—').filter(n => n !== '—')

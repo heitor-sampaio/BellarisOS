@@ -17,8 +17,11 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   cartão "Agendar atendimento" diz o aviso que chega DE FATO à cliente
   (`avisoDoAgendarParaACliente`, A33): "Ela recebe o aviso “Horário marcado”
   no app", ou "Nada é enviado a ela agora" — sem acesso ao app, ou sem o app
-  da cliente no plano. O cadastro termina em "Ficha de X criada" (A34). O
-  painel vazio oferece "Continuar a conversa anterior: <título>" (A31).
+  da cliente no plano. Os cartões de remarcar e de cancelar dizem o mesmo,
+  com o aviso deles ("Agendamento remarcado", "Agendamento cancelado";
+  `avisoDaAgendaParaACliente`, A23 da 17ª). O cadastro termina em "Ficha de X
+  criada" (A34). O painel vazio oferece, em PRIMEIRO, "Continuar a conversa
+  anterior: <título>" (A31 da 16ª; acima do "Olá" desde o A25 da 17ª).
 - **Nada clínico vai à OpenAI**: nenhuma ferramenta lê prontuário, evolução,
   anamnese, foto clínica ou anotação clínica de plano. O prompt manda dizer que
   isso fica na tela, e o painel avisa para não mandar.
@@ -284,13 +287,29 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   acha entre quem atende e, sem achar, diz quem atende); a `buscar` diz que
   membro só aparece a quem tem a Equipe, e, vazia para quem não a tem, aponta
   `agendar`/`horarios_livres`. A busca não se abriu.
+- **A grade de `horarios_livres` é sugestão** (D4 da 17ª): de 30 em 30 min,
+  dentro do horário da unidade e do profissional — a descrição dizia "das 8h
+  às 20h", e o Copilot chamou de "não disponível" um 21:25 que o `agendar`
+  aceitava. A descrição diz o que ela faz, e o prompt manda chamar
+  `agendar`/`remarcar` com o horário pedido (eles conferem o conflito) e
+  nunca concluir da grade que um horário está ocupado. Prova:
+  `tests/copilot-atritos-da-17.test.ts`.
+- **O prompt diz o nível de cada módulo da pessoa** (A24 da 17ª,
+  `permissoesDaPessoa`): "abra Financeiro → Comissões" ia a quem tem o
+  Financeiro só em Ver, que também não muda nada lá. Para MUDAR algo sem o
+  módulo em Gerenciar, o Copilot não indica a tela: diz que a permissão dela
+  não muda isso e que quem tem o módulo em Gerenciar muda. (Dizer o NOME de
+  quem tem seria uma leitura nova da equipe — não entrou.)
 - **"Compra de estoque" é só a mercadoria que entra no estoque** (D5 da 16ª):
   a descrição do `lancar` diz que ela conta no caixa e fica fora do
   resultado (material de limpeza, de copa ou de consumo não é), e que, sem
   uma categoria que sirva com certeza, o Copilot PERGUNTA (ou usa "Outro" se
   a pessoa disser) — nunca a mais parecida calado. O cartão da despesa nessa
-  categoria avisa "conta no caixa e fica fora do resultado". Nenhuma
-  categoria nova. Prova: `tests/copilot-defeitos-da-16.test.ts`.
+  categoria avisa "conta no caixa e fica fora do resultado". O material de
+  limpeza, de copa ou de consumo tem a sua: "Material de consumo (limpeza,
+  copa)" (A22 da 17ª), na lista única da tela e do Copilot
+  (`lib/financeiro/categorias.ts`). Prova: `tests/copilot-defeitos-da-16.test.ts`,
+  `tests/copilot-atritos-da-17.test.ts`.
 - **O "Feito" do cartão é da DECISÃO, não da tela de trás** (F46, a completa
   de 2026-11-07): o Confirmar gravou em 1,2 s, mas o cartão ficou 15 s em
   "Gravando…" — o `router.refresh()` estava dentro da transição do cartão, e

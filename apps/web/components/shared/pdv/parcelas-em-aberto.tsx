@@ -24,13 +24,46 @@ function tituloDaParcela(p: ParcelaEmAberto): string {
  * (CX1, o desenho aprovado pelo Heitor em 2026-11-13, tela 3): cada parcela
  * com o vencimento e o "Receber esta parcela" — que pede a forma (PDV8).
  */
-export function ParcelasEmAberto({ parcelas, slug, titulo = 'Em aberto com a cliente' }: {
+export function ParcelasEmAberto({ parcelas, slug, titulo = 'Em aberto com a cliente', compacta = false }: {
   parcelas: ParcelaEmAberto[]; slug: string
   /** A1 da 16ª: na comanda do crediário, "Parcelas desta venda". */
   titulo?: string
+  /**
+   * A4 da 17ª (princípio 7): na coluna estreita da comanda, uma linha por
+   * parcela — "2/5 · R$ 200,00 · Vence 15/01/2027" — com o "Receber" ao lado.
+   */
+  compacta?: boolean
 }) {
   const [aberta, setAberta] = useState<ParcelaEmAberto | null>(null)
   if (!parcelas.length) return null
+  if (compacta) return (
+    <div data-em-aberto-da-cliente style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <p className="field-label">{titulo}</p>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-field)', background: 'var(--surface)' }}>
+        {parcelas.map((p, i) => (
+          <li key={p.id} data-parcela-em-aberto={p.id} style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', minWidth: 0,
+            borderTop: i ? '1px solid var(--hairline)' : undefined,
+          }}>
+            {p.vencida && <AlertCircle size={14} aria-label="Vencida" style={{ color: 'var(--warning)', flexShrink: 0 }} />}
+            <span title={[tituloDaParcela(p), p.vencimento].filter(Boolean).join(' · ')} style={{
+              flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)',
+            }}>
+              <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>
+                {p.numero && p.total ? `${p.numero}/${p.total}` : 'A receber'} · {formatBRL(p.valor)}
+              </b>
+              {p.vencimento && <span style={{ color: p.vencida ? 'var(--warning)' : undefined }}> · {p.vencimento}</span>}
+            </span>
+            <button type="button" className="btn-ghost" aria-label="Receber esta parcela" onClick={() => setAberta(p)}
+              style={{ flexShrink: 0, fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--brand)', padding: '4px 8px' }}>
+              Receber
+            </button>
+          </li>
+        ))}
+      </ul>
+      {aberta && <ReceberAParcela parcela={aberta} slug={slug} aoFechar={() => setAberta(null)} />}
+    </div>
+  )
   return (
     <div data-em-aberto-da-cliente style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <p className="field-label">{titulo}</p>

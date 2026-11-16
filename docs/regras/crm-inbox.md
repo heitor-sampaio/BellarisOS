@@ -201,6 +201,10 @@
     logo abaixo do documento e do nascimento (`perguntaJuntoDoDocumento`),
     a do telefone logo abaixo do telefone e do e-mail, e o rodapé diz o
     lugar certo. Prova: `tests/falta-responder-no-cadastro.test.ts`;
+  - **o "Sim" diz o que muda no contato** (A15 da 17ª; princípio 3): "Com o
+    Sim: o contato X passa a se chamar Y, com o e-mail Z." (`textoDoSimDaPessoa`,
+    `lib/clients/textos-do-cadastro.ts`) — e o Sim grava no contato o nome e o
+    e-mail da ficha (`ligarPessoaDoCrmAoCliente`). Prova: `tests/atritos-da-17-cadastros.test.ts`;
   - **o cadastro grava uma vez** (D10): o mesmo envio (a chave da tela) é um
     cadastro só — o mecanismo de `convencoes.md` ("O envio que chega duas
     vezes"). Sem a chave, a trava calada dos 60 s SAIU (r2-cli-01): as
@@ -716,6 +720,10 @@ contatos dela — e vê Configurações só com essa aba.
   "Completar a ficha de Marlene" vem marcada; desmarcada, a linha vira ficha
   nova (`importacoes.nao_completar`; o CPF continua juntando, é a mesma
   pessoa). Prova: `e2e/importacao-previa-cruzamento.spec.ts`.
+  **O botão conta o que entra** (A14 da 17ª; princípio 3): "Importar 10
+  linhas: 9 contatos novos, 1 linha junta com outra" — e "N completam quem já
+  existe" (`textoDoBotaoDeImportar`, `lib/importacao/o-que-entra.ts`). Todas
+  novas, só "Importar N linhas". Prova: `tests/atritos-da-17-cadastros.test.ts`.
 - **O contato entra com o telefone OU o e-mail** (D-10, decisão do Heitor,
   frente de cadastro de 2026-10-29): a linha só com e-mail vira pessoa sem
   telefone (`identifiers` vazio), e a oportunidade dela vai para ESSA pessoa
@@ -1203,6 +1211,12 @@ Configurações em Gerenciar (`recusaDaConfigDaRede`; o botão some do quadro
 da unidade). Prova: `e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts`.
 O funil criado na janela abre selecionado, com as etapas dele (A19 da 16ª:
 `createFunnel` devolve o id). Prova: `e2e/crm-atritos-da-16.spec.ts` ("A19").
+Clicar no nome do funil, na janela, também o seleciona (A12 da 17ª). E
+**tirar a ÚLTIMA etapa de perda do funil avisa, não recusa** (A11 da 17ª;
+princípio 2): excluir a etapa ou mudar o desfecho dela abre "Este funil fica
+sem etapa de perda: o “Marcar como perdido” e os motivos de perda não terão
+para onde levar a oportunidade.", com "Excluir mesmo assim"/"Mudar mesmo
+assim" (`ehAUltimaDePerda`, `lib/crm.ts`). Prova: `tests/atritos-da-17-cadastros.test.ts`.
 
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
 a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um

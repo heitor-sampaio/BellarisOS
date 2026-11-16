@@ -72,3 +72,15 @@ export const OUTCOME_VALUES: StageOutcome[] = ['OPEN', 'WON', 'LOST']
 export function isStageOutcome(v: unknown): v is StageOutcome {
   return typeof v === 'string' && (OUTCOME_VALUES as string[]).includes(v)
 }
+
+/**
+ * A etapa é a ÚLTIMA de perda do funil dela (A11 da 17ª simulação; princípio
+ * 2): apagá-la (ou mudar o resultado dela) não é recusado, mas a tela pergunta
+ * antes — sem etapa de perda, o "Marcar como perdido" e os motivos de perda do
+ * funil não têm para onde ir.
+ */
+export function ehAUltimaDePerda(etapas: readonly CRMStage[], etapaId: string): boolean {
+  const etapa = etapas.find(e => e.id === etapaId)
+  if (!etapa || etapa.outcome !== 'LOST') return false
+  return !etapas.some(e => e.id !== etapaId && e.funnel_id === etapa.funnel_id && e.outcome === 'LOST')
+}

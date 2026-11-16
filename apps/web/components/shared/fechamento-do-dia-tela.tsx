@@ -9,7 +9,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { useFuso } from '@/components/shared/fuso'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
-import type { LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
+import { textoDoMovimentoDepois, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { parseDinheiro } from '@estetica-os/utils'
 
@@ -48,7 +48,7 @@ const DETALHE: React.CSSProperties = { display: 'block', fontSize: 'var(--text-x
  * vem do servidor (lib/metrics e as linhas de `linhasDaConferencia`); aqui só
  * se desenha e se manda o conferido.
  */
-export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, linhas, feitos, podeFechar, comandasAbertas = 0, avisos, atendeAte = null, fundoInformado = null, estornos = null, porQuemRecebeu = [], daRede = null, bandeiras = [] }: {
+export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo, linhas, feitos, podeFechar, comandasAbertas = 0, avisos, movimentoDepois = null, atendeAte = null, fundoInformado = null, estornos = null, porQuemRecebeu = [], daRede = null, bandeiras = [] }: {
   /** O PDV do portal (`/<slug>/pdv` ou `/admin/pdv`). */
   basePath:  string
   dia:       string
@@ -63,6 +63,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
   comandasAbertas?: number
   /** Os números dos avisos (J-49), do banco: aqui, o movimento depois do fechamento. */
   avisos?: AvisosDoFechamento
+  /** A3 da 17ª: o que entrou e o que saiu depois do último fechamento (o dia × o retrato, do servidor). */
+  movimentoDepois?: { entrou: number; saiu: number } | null
   /** Hoje, antes do fim do expediente: até quando a unidade atende (A50). */
   atendeAte?: string | null
   /** Quem informou o fundo de troco do dia, e quando (ven-03). */
@@ -201,7 +203,8 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
 
       <AvisosDoDia comandasAbertas={comandasAbertas}
         linkDasComandas={podeFechar ? `${basePath}?ver=ABERTAS${naRede ? `&unidade=${unidadeId}` : ''}` : null}
-        avisos={avisos} fechadoAs={ultimo ? hora(ultimo.quando) : null} />
+        avisos={avisos} fechadoAs={ultimo ? hora(ultimo.quando) : null}
+        movimentoDepois={movimentoDepois} registradoMudou={linhas.some(l => l.conferivel && l.mudouDepois)} />
 
       {/* CX4: a conferência — uma linha por forma de pagamento. */}
       <form onSubmit={fechar} className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -254,15 +257,25 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                           {dinheiro && semDinheiro && <span style={{ ...DETALHE, color: 'var(--text-faint)' }}>Sem espécie hoje: em branco é R$ 0,00.</span>}
                         </>
                       ) : ultimo ? (
-                        <span data-conferido style={{ fontWeight: 700, color: l.conferido == null ? 'var(--text-muted)' : 'var(--text)' }}>
-                          {l.conferido == null ? 'não conferido' : brl(l.conferido)}
-                        </span>
+                        <>
+                          <span data-conferido style={{ fontWeight: 700, color: l.conferido == null ? 'var(--text-muted)' : 'var(--text)' }}>
+                            {l.conferido == null ? 'não conferido' : brl(l.conferido)}
+                          </span>
+                          {/* D2 da 17ª (princípios 3 e 4): o conferido é do fechamento, quando o registrado era outro. */}
+                          {l.mudouDepois && l.conferido != null && l.registradoNoFechamento != null && (
+                            <span data-conferido-antes style={DETALHE}>
+                              às {hora(ultimo.quando)}, quando o registrado era {brl(l.registradoNoFechamento)}
+                            </span>
+                          )}
+                        </>
                       ) : (
                         <span style={{ color: 'var(--text-faint)' }}>—</span>
                       )}
                     </td>
                     <td data-label="Diferença" data-par style={{ padding: '11px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {!l.conferivel || !ultimo ? <span style={{ color: 'var(--text-faint)' }}>—</span>
+                        : l.mudouDepois && l.conferido != null
+                          ? <span data-diferenca data-a-conferir style={{ color: 'var(--warning)', fontWeight: 700 }}>a conferir<span style={DETALHE}>mudou depois do fechamento</span></span>
                         : l.diferenca == null ? <span data-diferenca style={{ color: 'var(--text-muted)', fontWeight: 600 }}>não conferido</span>
                         : <Diferenca valor={l.diferenca} />}
                     </td>
@@ -488,11 +501,14 @@ function FundoDeTroco({ unidadeId, dia, valor, informado, podeInformar }: {
  * Os avisos do fechamento (CX5, 2026-11-14 — eram seis, ficam dois), com os
  * números do servidor:
  * - há comanda aberta na unidade (o mesmo número do PDV), com o caminho até elas;
- * - entrou dinheiro depois do último fechamento (feche de novo).
+ * - houve movimento depois do último fechamento — entrou ou saiu, e quanto (feche de novo).
  */
-function AvisosDoDia({ comandasAbertas, linkDasComandas, avisos, fechadoAs }: {
+function AvisosDoDia({ comandasAbertas, linkDasComandas, avisos, fechadoAs, movimentoDepois, registradoMudou }: {
   comandasAbertas: number; linkDasComandas: string | null
   avisos?: AvisosDoFechamento; fechadoAs: string | null
+  movimentoDepois: { entrou: number; saiu: number } | null
+  /** D2 da 17ª: alguma linha conferida mudou depois do fechamento (a tabela diz "a conferir"). */
+  registradoMudou: boolean
 }) {
   const lista: { chave: string; texto: string; link?: { href: string; rotulo: string } }[] = []
   if (comandasAbertas > 0) {
@@ -503,8 +519,9 @@ function AvisosDoDia({ comandasAbertas, linkDasComandas, avisos, fechadoAs }: {
       ...(linkDasComandas ? { link: { href: linkDasComandas, rotulo: n === 1 ? 'Ver a comanda' : 'Ver as comandas' } } : {}),
     })
   }
-  if (avisos && avisos.movimentosDepois > 0 && fechadoAs) {
-    lista.push({ chave: 'movimento-depois', texto: `Entrou dinheiro depois do fechamento das ${fechadoAs}: confira e feche de novo.` })
+  // A3 da 17ª (princípio 3): o aviso diz o movimento de fato — entrou, saiu, quanto.
+  if (fechadoAs && ((avisos?.movimentosDepois ?? 0) > 0 || registradoMudou)) {
+    lista.push({ chave: 'movimento-depois', texto: textoDoMovimentoDepois(movimentoDepois ?? { entrou: 0, saiu: 0 }, fechadoAs) })
   }
   if (!lista.length) return null
   return (

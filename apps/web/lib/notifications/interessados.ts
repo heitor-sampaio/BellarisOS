@@ -2,6 +2,7 @@ import 'server-only'
 import { getCachedRede } from '@estetica-os/nucleo/lib/redes/cache'
 import { modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { filtroDosMembrosDaUnidade } from '@/lib/unidades/do-membro'
 import { notifyUser, type NotifyPayload } from '@/lib/notifications/notify'
 import { ler } from '@/lib/db'
 import { isScoped, type AppModule } from '@/lib/permissions'
@@ -97,7 +98,8 @@ async function responsaveisPeloModulo(
     .eq('tenant_id', tenantId)
     .eq('is_active', true)
     .in('role_id', roleIds)
-    .or(`branch_id.eq.${branchId},branch_id.is.null`), 'listar quem é responsável')
+    // D1 da 17ª: a unidade nas outras do membro (EQ1a) também é dele.
+    .or(filtroDosMembrosDaUnidade(branchId)), 'listar quem é responsável')
 
   return (pessoas ?? []).map(p => p.id as string)
 }

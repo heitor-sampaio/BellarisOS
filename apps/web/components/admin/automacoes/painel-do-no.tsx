@@ -14,6 +14,7 @@ import {
   type GrupoDeVariaveis, type CampoVisto,
 } from '@/lib/automacoes/disponiveis'
 import { nomeDoPasso } from '@/lib/automacoes/passos'
+import { semPedirResposta } from '@/lib/automacoes/modelos'
 import { SITUACOES_DO_AGENDAMENTO, ehSituacaoDoAgendamento } from '@/lib/automacoes/resumo'
 import { conferirExpressao, ehCaminhoSimples, NOMES_DE_FUNCAO } from '@/lib/automacoes/expressao'
 import { amostraDoEvento, contarBuscaDeClientes } from '@/actions/automacoes'
@@ -298,7 +299,8 @@ export function PainelDoNo({
                 </p>
                 {!somenteLeitura && (
                   <button type="button" className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}
-                    onClick={() => set({ canal: 'push' })}>
+                    // A10 da 17ª: o aviso no celular não se responde — o pedido de resposta do modelo sai junto.
+                    onClick={() => set({ canal: 'push', texto: semPedirResposta((c.texto as string) ?? '') })}>
                     Mandar como aviso no celular
                   </button>
                 )}

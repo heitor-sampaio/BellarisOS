@@ -5,8 +5,9 @@ import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
 import { parseDinheiro, formatDinheiroCampo, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { custoDoInsumoNoCampo, lerCustoDoInsumo } from '@/lib/estoque/custo-do-insumo'
+import { parteDaEmbalagem as parteDaEmbalagemDoProduto } from '@/lib/estoque/unidade-de-consumo'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { useUmaUnidade } from '@/components/shared/uma-unidade'
 import {
@@ -36,6 +37,16 @@ interface Product {
   cost_price?:       number | null
   consumption_unit?: string | null
   units_per_package?: number | null
+}
+
+/** A16 da 17ª: o caminho que sai do formulário não perde o preenchimento. */
+const ABRE_EM_OUTRA_ABA = 'Abre em outra aba: o que você preencheu aqui continua, e a lista se atualiza quando você volta.'
+
+/** A7 da 17ª: quanto o insumo é da embalagem ("1/100 do frasco"); nulo sem unidade de consumo. */
+function parteDaEmbalagem(prod: Product, quantidade: number | null): string | null {
+  return parteDaEmbalagemDoProduto({
+    unit: prod.unit, consumption_unit: prod.consumption_unit ?? null, units_per_package: prod.units_per_package ?? null,
+  }, quantidade)
 }
 
 interface BranchPricingOverride {
@@ -208,6 +219,17 @@ export function ProcedureForm(props: ProcedureFormProps) {
 
 function ProcedureFormInner({ salas = [], profissionais = [], branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias, comissao }: InnerProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  // A16 da 17ª (princípio 7): criar o termo ou o produto abre em OUTRA aba, e
+  // este formulário fica como está; na volta a esta aba, a página se relê (o
+  // termo e o produto novos entram nas listas sem perder o que foi preenchido).
+  const [foiCriar, setFoiCriar] = useState(false)
+  useEffect(() => {
+    if (!foiCriar) return
+    const aoVoltar = () => { if (document.visibilityState === 'visible') router.refresh() }
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => document.removeEventListener('visibilitychange', aoVoltar)
+  }, [foiCriar, router])
   // A clínica de uma unidade (D-19, F8): "disponível nas unidades" e o preço
   // por unidade só fazem sentido com duas.
   const umaUnidade = useUmaUnidade()
@@ -470,16 +492,16 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
         <SeletorDeModelo
           nome="consent_template_id" rotulo="Termo de consentimento"
           opcoes={modelos?.termos ?? []} inicial={existing?.consent_template_id ?? null}
-          vazio="Nenhum termo cadastrado ainda — crie em Configurações → Documentos."
-          criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')}
+          vazio={`Nenhum termo cadastrado ainda — crie em Configurações → Documentos. ${ABRE_EM_OUTRA_ABA}`}
+          criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')} aoCriar={() => setFoiCriar(true)}
           aoMudar={setTermoEscolhido}
         />
         <SeletorDeModelo
           nome="contract_template_id" rotulo="Contrato"
           opcoes={modelos?.contratos ?? []} inicial={existing?.contract_template_id ?? null}
-          vazio="Nenhum contrato de procedimento cadastrado — crie em Configurações → Documentos."
+          vazio={`Nenhum contrato de procedimento cadastrado — crie em Configurações → Documentos. ${ABRE_EM_OUTRA_ABA}`}
           sempre="só no atendimento avulso (a sessão de pacote e a de plano não pedem)"
-          criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')}
+          criar={rotaNoPortal(pathname, null, '/settings?tab=documentos')} aoCriar={() => setFoiCriar(true)}
           aoMudar={setContratoEscolhido}
         />
         {modelos && (
@@ -568,8 +590,8 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           </p>
           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
             {quemRealiza.length
-              ? 'O app da cliente e o "Sem preferência" oferecem só as marcadas; a agenda avisa quando a escolhida não realiza.'
-              : 'Opcional. Sem ninguém marcado, todas as profissionais que atendem realizam este procedimento.'}
+              ? 'O app da cliente e o "Sem preferência" oferecem só quem está marcado; a agenda avisa quando quem foi escolhido não realiza.'
+              : 'Opcional. Sem ninguém marcado, todos que atendem realizam este procedimento.'}
           </p>
           <div role="group" aria-label="Quem realiza" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {profissionais.map(p => {
@@ -628,10 +650,11 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
         {products.length === 0 && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', padding: '8px 0' }}>
             Nenhum produto cadastrado no estoque ainda.{' '}
-            <Link href={rotaNoPortal(pathname, null, '/estoque')} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
+            <Link href={rotaNoPortal(pathname, null, '/estoque')} target="_blank" onClick={() => setFoiCriar(true)}
+              style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
               Cadastrar produto no Estoque
             </Link>
-            {' '}— o insumo precisa existir lá antes de entrar aqui.
+            {' '}— o insumo precisa existir lá antes de entrar aqui. {ABRE_EM_OUTRA_ABA}
           </p>
         )}
 
@@ -676,6 +699,12 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', minWidth: 24 }}>
                     {(prod?.consumption_unit && prod?.units_per_package) ? prod.consumption_unit : (prod?.unit ?? '')}
                   </span>
+                  {/* A7 da 17ª: "1 U" ao lado de R$ 6,00 não dizia que é 1/100 do frasco. */}
+                  {prod && parteDaEmbalagem(prod, ins.quantity) && (
+                    <span data-parte-da-embalagem style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      ({parteDaEmbalagem(prod, ins.quantity)})
+                    </span>
+                  )}
                 </div>
 
                 {/* Custo unitário */}
@@ -886,10 +915,12 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
  * atendimento — é isso que muda o dia da recepção, e quem liga o modelo
  * precisa ver sem abrir Configurações. Todo documento nasce ao agendar (DC4).
  */
-function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre, criar, aoMudar }: {
+function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre, criar, aoCriar, aoMudar }: {
   nome: string; rotulo: string; opcoes: OpcaoDeModeloDoProcedimento[]; inicial: string | null; vazio: string
   /** A22 da 16ª: sem modelo nenhum, o caminho até a aba Documentos, clicável. */
   criar?: string
+  /** A16 da 17ª: abriu a outra aba — a lista se relê na volta. */
+  aoCriar?: () => void
   /** O que vale para o campo, escolhido ou não (o contrato: só no avulso). */
   sempre?: string
   /** O escolhido, para "Outros documentos" não o oferecer de novo (A36 da 15ª). */
@@ -914,7 +945,7 @@ function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre, criar, 
         {visiveis.map(o => <option key={o.id} value={o.id}>{o.nome}{o.ativo ? '' : ' (inativo)'}</option>)}
       </select>
       {visiveis.length === 0 && criar && (
-        <Link href={criar} target="_blank" data-criar-modelo
+        <Link href={criar} target="_blank" data-criar-modelo onClick={aoCriar}
           style={{ fontSize: 'var(--text-2xs)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
           Abrir Configurações → Documentos
         </Link>

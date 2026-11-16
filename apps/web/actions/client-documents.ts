@@ -179,7 +179,7 @@ export async function enviarDocumentoACliente(
   const admin = createAdminClient()
   const doc = await ler(admin
     .from('client_documents')
-    .select('id, branch_id, category, client_id, enviado_em, branches!inner(tenant_id, slug, name)')
+    .select('id, branch_id, category, client_id, appointment_id, enviado_em, branches!inner(tenant_id, slug, name)')
     .eq('id', documentId)
     .is('apagado_em', null)
     .maybeSingle(), 'buscar o documento')
@@ -207,6 +207,14 @@ export async function enviarDocumentoACliente(
         body:  `${unidade.name || 'A equipe'} enviou um documento para você.`,
         data:  { link: `/${unidade.slug}/cliente/historico` },
       })
+    }
+    // A8 da 17ª: a foto do atendimento enviada (ou tirada do app) entra no
+    // histórico dele, como a anexada. Texto FIXO, sem o título da foto.
+    if (doc.appointment_id && doc.category === 'foto_clinica') {
+      const quem = ctx.userName || ctx.roleLabel || 'Equipe'
+      await logHistory(admin, doc.appointment_id as string, ctx.internalUserId, quem,
+        enviar ? 'FOTO_ENVIADA' : 'FOTO_TIRADA_DO_APP',
+        enviar ? `Foto enviada à cliente por ${quem}` : `Foto tirada do app da cliente por ${quem}`)
     }
   }
 

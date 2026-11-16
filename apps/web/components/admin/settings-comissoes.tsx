@@ -32,11 +32,11 @@ const QUANDO_VALE = [
   'Até lá, ela aparece no extrato como “aguardando o pagamento integral”, fora do a pagar e do fechamento. Se um pagamento for estornado, a comissão volta a aguardar.',
 ] as const
 const BASES = {
-  PRECO:      { label: 'Sobre o preço', explicacao: 'Quando o cliente usa pontos ou voucher como desconto, a comissão continua sobre o preço do atendimento. O desconto é custo da rede.' },
-  VALOR_PAGO: { label: 'Sobre o valor pago', explicacao: 'Quando o cliente usa pontos ou voucher, a comissão cai na mesma proporção. O profissional divide o custo do programa.' },
+  PRECO:      { label: 'Sobre o preço', explicacao: 'Quando a cliente usa pontos ou voucher como desconto, a comissão continua sobre o preço do atendimento. O desconto é custo da rede.' },
+  VALOR_PAGO: { label: 'Sobre o valor pago', explicacao: 'Quando a cliente usa pontos ou voucher, a comissão cai na mesma proporção. Quem atende divide o custo do programa.' },
 } as const
 const PERIODOS = {
-  MENSAL:    { label: 'Mensal', explicacao: 'O financeiro fecha e paga as comissões uma vez por mês.' },
+  MENSAL:    { label: 'Mensal', explicacao: 'Quem tem o Financeiro em Gerenciar fecha e paga as comissões uma vez por mês.' },
   QUINZENAL: { label: 'Quinzenal', explicacao: 'Dois fechamentos por mês: do dia 1 ao 15 e do 16 ao fim do mês.' },
   SEMANAL:   { label: 'Semanal', explicacao: 'Um fechamento por semana, de segunda a domingo.' },
 } as const
@@ -184,9 +184,9 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
         </p>
       </Bloco>
 
-      <Bloco titulo="Quando o cliente usa pontos ou voucher">
+      <Bloco titulo="Quando a cliente usa pontos ou voucher">
         {podeEditar
-          ? <SegSelect ariaLabel="Comissão quando o cliente usa pontos" value={c.base_com_pontos} onSelect={k => mudar('base_com_pontos', k as ConfigDeComissao['base_com_pontos'])}
+          ? <SegSelect ariaLabel="Comissão quando a cliente usa pontos" value={c.base_com_pontos} onSelect={k => mudar('base_com_pontos', k as ConfigDeComissao['base_com_pontos'])}
               options={(['PRECO', 'VALOR_PAGO'] as const).map(k => ({ key: k, label: BASES[k].label }))} />
           : <strong style={{ fontSize: 'var(--text-sm-sz)' }}>{BASES[c.base_com_pontos].label}</strong>}
         <p style={texto}>{BASES[c.base_com_pontos].explicacao}</p>
@@ -710,7 +710,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
       <div>
         <h2 style={titulo}>Taxas da maquininha</h2>
         <p style={{ ...ajuda, marginTop: 2, maxWidth: 600 }}>
-          O percentual que a operadora cobra em cada pagamento. Descontado da base da comissão quando a opção acima está marcada. Dinheiro e crédito do cliente não têm taxa. Campo vazio é 0%.
+          O percentual que a operadora cobra em cada pagamento. Descontado da base da comissão quando a opção acima está marcada. Dinheiro e crédito da cliente não têm taxa. Campo vazio é 0%.
         </p>
       </div>
       <div style={grade}>

@@ -12,6 +12,8 @@ interface Props {
   procedureName:    string
   professionalName: string
   scheduledAt:      string
+  /** A9 da 17ª: a hora REAL da conclusão — a mesma do início do app ("Concluído às 21:00"). */
+  concluidoEm?:     string | null
   /** F17-3: a clínica pede a nota do atendimento (vale para a profissional). */
   avaliaOAtendimento?: boolean
   /** F17-3: os procedimentos feitos no atendimento, um de cada, quando a clínica pede a nota de cada um. */
@@ -59,7 +61,7 @@ function StarRating({ value, onChange, label, dica }: {
 }
 
 export function ConfirmAppointmentForm({
-  appointmentId, slug, procedureName, professionalName, scheduledAt,
+  appointmentId, slug, procedureName, professionalName, scheduledAt, concluidoEm,
   avaliaOAtendimento = true, procedimentos = [],
 }: Props) {
   const fuso = useFuso()
@@ -71,7 +73,7 @@ export function ConfirmAppointmentForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const dt = new Date(scheduledAt)
+  const dt = new Date(concluidoEm ?? scheduledAt)
 
   async function handleConfirm() {
     setSubmitting(true)
@@ -107,7 +109,7 @@ export function ConfirmAppointmentForm({
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             <CalendarDays size={12} />
-            {dt.toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: 'long' })} às {dt.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })}
+            {concluidoEm ? 'Concluído em ' : ''}{dt.toLocaleDateString('pt-BR', { timeZone: fuso, day: '2-digit', month: 'long' })} às {dt.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
       </div>

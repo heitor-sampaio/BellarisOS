@@ -99,7 +99,8 @@ const ROTULO_DA_ACAO: Record<string, string> = {
   CANCELLED: 'Cancelado', NO_SHOW: 'Não compareceu', RESCHEDULED: 'Remarcado',
   REASSIGNED: 'Profissional trocado', EDITED: 'Editado', PAYMENT_CONFIRMED: 'Pagamento recebido',
   CHECKOUT_COMPLETED: 'Plano fechado', PLAN_PROPOSED: 'Plano proposto', FOTO_CLINICA: 'Foto clínica anexada',
-  FOTO_CLINICA_APAGADA: 'Foto clínica apagada', PAYMENT_REVERSED: 'Pagamento estornado',
+  FOTO_CLINICA_APAGADA: 'Foto clínica apagada', FOTO_ENVIADA: 'Foto enviada à cliente',
+  FOTO_TIRADA_DO_APP: 'Foto tirada do app da cliente', PAYMENT_REVERSED: 'Pagamento estornado',
   CREDIT_LINKED: 'Ligado ao que já foi pago',
 }
 export function rotuloDaAcao(action: string, descricao: string | null): string {

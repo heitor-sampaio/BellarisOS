@@ -268,8 +268,20 @@ export function modeloDeAutomacao(chave: string): ModeloDeAutomacao | null {
 export function semWhatsapp(grafo: GrafoDeAutomacao): GrafoDeAutomacao {
   return {
     ...grafo,
-    nos: grafo.nos.map(n => n.tipo === NODES.ACAO_MENSAGEM && (n.config as { canal?: string }).canal === 'whatsapp'
-      ? { ...n, config: { ...n.config, canal: 'push' } }
-      : n),
+    nos: grafo.nos.map(n => {
+      if (n.tipo !== NODES.ACAO_MENSAGEM || (n.config as { canal?: string }).canal !== 'whatsapp') return n
+      const texto = (n.config as { texto?: unknown }).texto
+      return { ...n, config: { ...n.config, canal: 'push', ...(typeof texto === 'string' ? { texto: semPedirResposta(texto) } : {}) } }
+    }),
   }
+}
+
+/**
+ * O texto sem o pedido de resposta (A10 da 17ª simulação; princípio 3): o
+ * aviso no celular não se responde — a resposta não chega a conversa nenhuma
+ * —, e os modelos terminavam em "É só responder esta mensagem". Tira só a
+ * frase dos modelos; o resto do texto, escrito pela rede, fica.
+ */
+export function semPedirResposta(texto: string): string {
+  return texto.replace(/\s*(?:Se precisar remarcar, é|É) só responder esta mensagem\./g, '').trim()
 }

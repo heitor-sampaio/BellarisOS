@@ -22,7 +22,7 @@ import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
  *   janela pergunta a forma (a parcela do crediário nasce sem meio — D6 da 6ª).
  * As actions conferem tudo de novo (rede, unidade ao alcance, permissão).
  */
-export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeReceber }: {
+export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeReceber, aoEstornar }: {
   lancamento: {
     id: string; descricao: string; valor: number; pago: boolean
     estornada?: boolean; estorno?: boolean; saida?: boolean
@@ -32,6 +32,8 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
   slug: string
   podeEstornar: boolean
   podeReceber: boolean
+  /** A2 da 17ª: no PDV, a comanda reaberta pelo estorno vai às Abertas (sem isto, a tela só recarrega). */
+  aoEstornar?: () => void
 }) {
   const router = useRouter()
   const [pendente, iniciar] = useTransition()
@@ -49,7 +51,8 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
       if (r?.error) { toast.error(r.error); return }
       setAEstornar(false)
       toast.success('Lançamento estornado.')
-      router.refresh()
+      if (aoEstornar) aoEstornar()
+      else router.refresh()
     })
   }
   function receber(bandeira: string | null, vezes: number, forma: string | null, maquininha: string | null = null) {
@@ -74,7 +77,7 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
           estornando={pendente} onConfirmar={estornar} onVoltar={() => setAEstornar(false)} />
       )}
       {creditoAEstornar && (
-        <EstornarVendaDeCredito transacaoId={l.id} descricao={l.descricao} onFechar={() => { setCreditoAEstornar(false); router.refresh() }} />
+        <EstornarVendaDeCredito transacaoId={l.id} descricao={l.descricao} onFechar={() => { setCreditoAEstornar(false); if (aoEstornar) aoEstornar(); else router.refresh() }} />
       )}
       {aReceber && (
         <ReceberNoCartao descricao={l.descricao} metodo={l.metodo} valor={l.valor} pending={pendente}

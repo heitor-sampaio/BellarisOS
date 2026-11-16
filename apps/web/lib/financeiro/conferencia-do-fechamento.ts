@@ -10,6 +10,10 @@
  *   saídas, de lib/metrics); o conferido é OPCIONAL — em branco é "não
  *   conferido" (princípio 4: nunca se supõe que bateu). A diferença é contra o
  *   retrato do MESMO fechamento (o `resumo` guardado), em centavos.
+ * - Com movimento depois do fechamento (D2 da 17ª simulação; princípios 3 e
+ *   4), o registrado de agora não é o daquele fechamento: a linha mostra o
+ *   registrado de agora, o conferido de antes com o registrado de então, e a
+ *   diferença fica "a conferir" — nunca "Bateu" contra um número que mudou.
  * - "Sem forma" (os pontos, a despesa sem meio) não se confere: não é dinheiro
  *   de gaveta nem de extrato. Nem a forma só com saída (A8 da 16ª): não há
  *   entrada a conferir.
@@ -32,6 +36,8 @@ export interface LinhaRegistrada { forma: string; entradas: number; saidas: numb
 
 export interface FechamentoGravado {
   contado:   number
+  /** O dinheiro esperado na gaveta naquele fechamento (o retrato do registrado do dinheiro). */
+  esperado?: number
   /** A diferença do dinheiro (coluna gerada do banco). */
   diferenca: number
   /** O conferido das outras formas (forma → valor); nulo = nenhuma conferida. */
@@ -50,8 +56,15 @@ export interface LinhaDaConferencia {
   conferivel: boolean
   /** O conferido no último fechamento; nulo = não conferido (ou não fechado). */
   conferido:  number | null
-  /** conferido − registrado do último fechamento; nulo = não conferido (ou não fechado). */
+  /**
+   * conferido − registrado do último fechamento; nulo = não conferido (ou não
+   * fechado) ou o registrado mudou depois dele (`mudouDepois`).
+   */
   diferenca:  number | null
+  /** D2 da 17ª: o registrado de agora não é o daquele fechamento (houve movimento depois). */
+  mudouDepois: boolean
+  /** D2 da 17ª: o registrado no último fechamento; nulo sem fechamento. */
+  registradoNoFechamento: number | null
 }
 
 const centavos = (v: number) => Math.round(v * 100)
@@ -63,13 +76,27 @@ export function linhasDaConferencia(args: {
 }): LinhaDaConferencia[] {
   const { formas, esperadoDinheiro, ultimo } = args
   const dinheiro = formas.find(f => f.forma === 'CASH')
+  // O esperado daquele fechamento; o gravado antes da coluna no retrato é o contado − a diferença.
+  const dinheiroNoFechamento = ultimo
+    ? (ultimo.esperado ?? (centavos(ultimo.contado) - centavos(ultimo.diferenca)) / 100) : null
+  const dinheiroMudou = dinheiroNoFechamento != null && centavos(dinheiroNoFechamento) !== centavos(esperadoDinheiro)
   const linhas: LinhaDaConferencia[] = [{
     forma: 'CASH', entradas: dinheiro?.entradas ?? 0, saidas: dinheiro?.saidas ?? 0,
     registrado: esperadoDinheiro, conferivel: true,
     conferido: ultimo ? ultimo.contado : null,
-    diferenca: ultimo ? ultimo.diferenca : null,
+    diferenca: ultimo && !dinheiroMudou ? ultimo.diferenca : null,
+    mudouDepois: dinheiroMudou, registradoNoFechamento: dinheiroNoFechamento,
   }]
   const doRetrato = (forma: string) => ultimo?.resumo?.find(l => l.forma === forma)?.saldo ?? 0
+  // A diferença só vale contra o retrato do MESMO fechamento, e só se o registrado não mudou.
+  const comparado = (forma: string, registrado: number, conferido: number | null) => {
+    const noFechamento = ultimo ? doRetrato(forma) : null
+    const mudou = noFechamento != null && centavos(noFechamento) !== centavos(registrado)
+    return {
+      mudouDepois: mudou, registradoNoFechamento: noFechamento,
+      diferenca: conferido == null || mudou ? null : (centavos(conferido) - centavos(noFechamento ?? 0)) / 100,
+    }
+  }
   const conferidoDe = (forma: string) => {
     const v = ultimo?.conferido?.[forma]
     return typeof v === 'number' && Number.isFinite(v) ? v : null
@@ -84,7 +111,7 @@ export function linhasDaConferencia(args: {
     const conferido = conferivel ? conferidoDe(f.forma) : null
     linhas.push({
       forma: f.forma, entradas: f.entradas, saidas: f.saidas, registrado: f.saldo, conferivel, conferido,
-      diferenca: conferido == null ? null : (centavos(conferido) - centavos(doRetrato(f.forma))) / 100,
+      ...comparado(f.forma, f.saldo, conferido),
     })
   }
   // Conferida no último fechamento e sem movimento agora (o pagamento foi
@@ -95,10 +122,39 @@ export function linhasDaConferencia(args: {
     const conferido = conferidoDe(forma)
     linhas.push({
       forma, entradas: 0, saidas: 0, registrado: 0, conferivel: true, conferido,
-      diferenca: conferido == null ? null : (centavos(conferido) - centavos(doRetrato(forma))) / 100,
+      ...comparado(forma, 0, conferido),
     })
   }
   return linhas
+}
+
+/**
+ * O que se moveu depois do último fechamento (A3 da 17ª simulação, princípio
+ * 3): o aviso dizia "Entrou dinheiro" quando só SAIU (a comissão paga no Pix).
+ * É o dia de agora contra o retrato daquele fechamento, somado em centavos:
+ * mais entradas ou menos saídas é o que ENTROU; menos entradas (o estorno de um
+ * pagamento do dia) ou mais saídas, o que SAIU. Os pontos não são dinheiro.
+ */
+export function movimentoDepoisDoFechamento(
+  agora: LinhaRegistrada[], retrato: LinhaRegistrada[] | null,
+): { entrou: number; saiu: number } {
+  const soma = (linhas: LinhaRegistrada[] | null, campo: 'entradas' | 'saidas') =>
+    (linhas ?? []).filter(l => l.forma !== 'TOTAL' && l.forma !== 'PONTOS')
+      .reduce((t, l) => t + centavos(Number(l[campo]) || 0), 0)
+  const entradas = soma(agora, 'entradas') - soma(retrato, 'entradas')
+  const saidas = soma(agora, 'saidas') - soma(retrato, 'saidas')
+  return {
+    entrou: (Math.max(entradas, 0) + Math.max(-saidas, 0)) / 100,
+    saiu:   (Math.max(-entradas, 0) + Math.max(saidas, 0)) / 100,
+  }
+}
+
+const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+/** "Houve movimento depois do fechamento das 21:23 (saiu R$ 80,00): confira e feche de novo." */
+export function textoDoMovimentoDepois(m: { entrou: number; saiu: number }, fechadoAs: string): string {
+  const partes = [m.entrou > 0 ? `entrou ${brl(m.entrou)}` : null, m.saiu > 0 ? `saiu ${brl(m.saiu)}` : null].filter(Boolean)
+  return `Houve movimento depois do fechamento das ${fechadoAs}${partes.length ? ` (${partes.join(' e ')})` : ''}: confira e feche de novo.`
 }
 
 /**

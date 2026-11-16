@@ -27,6 +27,7 @@ const comanda = (c: Partial<ComandaDoPdv> = {}): ComandaDoPdv => ({
   clienteId: 'cl1', cliente: 'Breno', agendamentoId: null, procedimento: 'Pacote 4 lasers', profissional: 'Lia',
   agendadoPara: null, atendimento: null, valor: 2100, paga: true, pagaEm: '2026-11-15T12:00:00Z', recebido: 300,
   forma: 'CREDIARIO', estornada: false, planoId: null, emAberto: 0, parcelasEmAberto: 0, proximaParcela: null, produtos: 0, jaPago: 0,
+  formas: [], desconto: 0, fidelidade: 0, voucher: null, estornoAnterior: null,
   ...c,
 })
 const hora = (iso: string | null) => (iso ? '07:30' : '')

@@ -11,7 +11,7 @@ import { maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadas
 import { ResponsavelLegal, RESPONSAVEL_VAZIO, type CamposDoResponsavel } from '@/components/shared/responsavel-legal'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
-import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro, oQueFaltaResponder, POR_QUE_JA_EXISTE, perguntaJuntoDoDocumento } from '@/lib/clients/textos-do-cadastro'
+import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro, oQueFaltaResponder, POR_QUE_JA_EXISTE, perguntaJuntoDoDocumento, textoDoSimDaPessoa } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 
@@ -84,6 +84,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const [phone, setPhone] = useState(prefill?.phone ? telefoneParaExibir(prefill.phone) : '')
   const [document, setDocument] = useState('')
   const [email, setEmail] = useState(prefill?.email ?? '')
+  // A15 da 17ª: o nome digitado, para o "Sim, é a mesma pessoa" dizer o nome que o contato passa a ter.
+  const [nomeDigitado, setNomeDigitado] = useState(prefill?.name ?? '')
   // O acesso ao app é escolha (2026-10-21): só com o e-mail e um documento.
   const [comAcesso, setComAcesso] = useState(false)
   // O tipo do documento (D-11). Sem CPF, a senha inicial é o número do
@@ -268,7 +270,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           <Field label="Nome completo *">
             <input
               name="name" type="text" required className="field"
-              defaultValue={prefill?.name ?? ''}
+              defaultValue={prefill?.name ?? ''} onChange={e => setNomeDigitado(e.target.value)}
               placeholder="Ana Paula Silva"
             />
           </Field>
@@ -299,7 +301,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         {pergunta && !noDocumento && (
           <div ref={perguntaRef} style={{ gridColumn: '1 / -1' }}>
             <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar}
-              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ email, telefone: phone }} />
+              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ email, telefone: phone, nome: nomeDigitado }} />
           </div>
         )}
 
@@ -336,7 +338,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         {pergunta && noDocumento && (
           <div ref={perguntaRef} style={{ gridColumn: '1 / -1' }}>
             <PerguntaDoTelefone pergunta={pergunta} pending={pending} responder={responder} reativar={reativar}
-              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ email, telefone: phone }} />
+              atualizar={atualizar} cadastrarMesmoAssim={cadastrarMesmoAssim} digitado={{ email, telefone: phone, nome: nomeDigitado }} />
           </div>
         )}
 
@@ -511,8 +513,8 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
   reativar: (id: string) => void
   atualizar: (id: string) => void
   cadastrarMesmoAssim: (id: string) => void
-  /** O e-mail e o telefone digitados agora (A17: como a ficha fica ao unificar). */
-  digitado: { email: string; telefone: string }
+  /** O e-mail e o telefone digitados agora (A17: como a ficha fica ao unificar); o nome, para o "Sim" (A15 da 17ª). */
+  digitado: { email: string; telefone: string; nome: string }
 }) {
   if (pergunta.tipo === 'arquivada') {
     return (
@@ -582,6 +584,12 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
       <span style={explicacao}>
         Sim liga a oportunidade e a conversa à ficha nova (o card passa a &ldquo;Já é cliente&rdquo;). Não cadastra sem ligar.
       </span>
+      {/* A15 da 17ª (princípio 3): o "Sim" troca o nome (e o e-mail) do contato — a pergunta diz antes. */}
+      {textoDoSimDaPessoa({ contato: pergunta.nome, nome: digitado.nome, email: digitado.email.toLowerCase() }) && (
+        <span data-sim-troca-o-contato style={explicacao}>
+          Com o Sim: {textoDoSimDaPessoa({ contato: pergunta.nome, nome: digitado.nome, email: digitado.email.toLowerCase() })}
+        </span>
+      )}
     </div>
   )
 }

@@ -1774,6 +1774,39 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — A 17ª simulação (Magnólia, uma unidade; Camélia, duas, com o Copilot) e os defeitos dela
+
+Dois times de agentes usaram a produção ao mesmo tempo em 15/11, das 20:24 às 21:35 de Brasília, sobre o 6986542a.
+- **"[sim] Espaço Magnólia":** uma unidade, no teste grátis.
+- **"[sim] Rede Camélia":** duas unidades, num plano com o Copilot.
+
+O relatório consolidado ficou em `apps/web/.sim/relatorio.md`, e a 16ª foi arquivada em `.sim/arquivo-2026-11-15-3/`.
+
+- **O dinheiro bate nos dois times**, centavo a centavo (R$ 1.880,00 de receita em cada um, por coincidência). A sequência que nenhuma rodada tinha feito passou inteira:
+  - o voucher na comanda do atendimento;
+  - o estorno só do atendimento numa comanda com produto, e receber de novo só o que faltava;
+  - o estorno do produto de volta ao estoque;
+  - as parcelas do crediário na própria comanda;
+  - o "Fechar de novo";
+  - as comissões fechadas e pagas.
+- **Os defeitos da 16ª não voltaram:** o lembrete com o procedimento e a hora; a comanda reaberta pedindo só o que falta; o Copilot achando quem atende e recusando a comissão, o faturamento e a outra unidade.
+- **4 defeitos e 30 atritos.** Os defeitos:
+  - **D1:** o "Quem vendeu" e a trava da venda liam só a unidade principal do membro, e não as outras unidades dele (`outras_unidades`). Escapou do EQ1a.
+  - **D2:** o "Fechar de novo" dizia "Bateu" misturando o registrado de agora com o conferido do fechamento antigo.
+  - **D3:** a comanda paga em duas formas, depois de um estorno, dizia uma só.
+  - **D4:** a descrição velha dos horários livres do Copilot ("das 8h às 20h") fez o Copilot chamar de ocupado um horário que a agenda aceitava.
+- **Engano do agente, não do sistema:** a ficha de saúde "só da Lívia" (a da Marta foi ao app, mas ninguém a abriu); as comissões que quem atende não vê (o cargo sem o Financeiro); a falta de "reabrir o dia" (o caminho é o "Fechar de novo").
+- **Para o Heitor:** nada novo. As 8 tags da rede nova voltaram com dois papéis (D4 da 16ª, D2 da 15ª).
+- **Corrigidos no mesmo commit** (os 4 defeitos e 28 dos 30 atritos):
+  - **D1:** quem tem várias unidades vende e é escolhido em todas elas. O filtro de membros da unidade (`filtroDosMembrosDaUnidade`) lê a unidade principal e as `outras_unidades` no "Quem vendeu", no "quem estorna", nos interessados dos avisos e no alvo "unidade" das automações.
+  - **D2 e A3:** a linha que mudou depois do fechamento diz "a conferir · mudou depois do fechamento", e o aviso diz quanto entrou e quanto saiu.
+  - **D3, A1, A2, A4 e A5:** a comanda paga diz todas as formas, as linhas de desconto, voucher e pontos, e o "Total pago". O "Estornar" fica dentro dela, para quem pode estornar, e a comanda reaberta cita o estorno anterior. As parcelas aparecem uma por linha, e a entrada do crediário tem a máscara. Migration `20261117610001`.
+  - **D4, A22, A23, A24 e A25:** a grade do Copilot é uma sugestão (o horário pedido se tenta no `agendar`). Entrou a categoria "Material de consumo (limpeza, copa)", que conta no resultado. Os cartões de remarcar e cancelar dizem o aviso de fato. O prompt sabe o nível de cada módulo da pessoa. O "Continuar a conversa" vem primeiro.
+  - **A26 a A28:** a Auditoria diz de quem é a comissão paga, o voucher, os pontos, o item, o "Fechou de novo" e o estorno do atendimento. A oportunidade e o contato aparecem pelo nome lido agora, e o filtro por unidade vale pela unidade da gravação.
+  - **A6 a A21, A29 e A30:** a hora em que a ficha foi ao app; a dose do insumo como parte da embalagem; a foto enviada no histórico; a hora real no "Confirmar e avaliar"; o aviso no celular sem pedir resposta; o aviso ao apagar a última etapa de perda; o botão da importação dizendo o que entra; o "Sim" dizendo o que muda no contato; os links do procedimento em outra aba; "Cargo salvo" e o Copilot no resumo do cargo; o aviso das comissões ao cadastrar quem atende; o card da unidade sem cidade; a unidade principal na Equipe; o desativar sem "sai da agenda"; o vocabulário por permissão e sem cargo no feminino.
+  - **Ficaram de fora:** o A13 (as tags, com o Heitor) e, do A24, o nome de quem pode mudar a comissão, que exigiria uma leitura nova da equipe por permissão.
+
+
 ### 2026-11-16 — A 16ª simulação (Lótus, uma unidade; Jasmim, duas, com o Copilot) e os defeitos dela
 
 Dois times de agentes usaram a produção ao mesmo tempo em 15/11, das 13:35 às 14:40 de Brasília, sobre o f8bd6a34.

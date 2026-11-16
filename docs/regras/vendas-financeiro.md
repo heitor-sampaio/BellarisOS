@@ -91,6 +91,29 @@ comanda (PDV-P1).
   atendimento é iniciado e tem o que cobrar" (A6), e a aba da Nova venda que
   vende o pré-pago se chama "Procedimento pré-pago" (A7: o avulso se cobra na
   comanda do atendimento). Prova: `e2e/pdv-atritos-da-16.spec.ts` ("A1").
+  **A comanda paga diz o que foi pago** (17ª simulação, princípio 3; a
+  conta é do banco, `pdv_comandas`, migration `20261117610001`):
+  - as formas TODAS, cada uma com o valor ("Dinheiro R$ 180,00 + Pix
+    R$ 120,00": o atendimento e o produto vendido nela, D3 —
+    `formasDaComandaEmTexto`);
+  - o desconto, o voucher e os pontos em linhas acima do "Total pago" (A1,
+    `descontosDaComanda`); a lista "Pagas hoje" mostra o recebido da
+    comanda do atendimento, não o preço (`valorNaLista`);
+  - a quem estorna (`podeEstornar`), os pagamentos da comanda, cada um com o
+    "Estornar" da ficha (`AcoesDoLancamentoDaFicha`, a janela de sempre;
+    `lancamentosDaComanda`) — A2;
+  - reaberta pelo estorno, o estorno de antes: "Estornada às 21:20 —
+    R$ 250,00, Pix, com R$ 30,00 de desconto. Ao receber de novo, o desconto
+    se escolhe de novo." (`estorno_anterior`, `estornoAnteriorEmTexto`, A2);
+  - "Parcelas desta venda" uma por linha, com o "Receber" ao lado
+    (`ParcelasEmAberto compacta`, A4).
+  A Entrada do crediário ganha a máscara de dinheiro ao sair do campo
+  ("100" → "100,00", A5). "Quem vendeu" e a trava da venda
+  (`recusaDoMembroDaVenda`) leem as unidades do membro — a principal E as
+  outras (`filtroDosMembrosDaUnidade`, `membroAlcancaAUnidade` em
+  `lib/unidades/do-membro.ts`; D1): quem lê "os membros da unidade" em
+  `users` usa esse filtro, nunca `branch_id.eq` sozinho. Prova:
+  `e2e/pdv-atritos-da-17.spec.ts`, `tests/pdv-caixa-da-17.test.ts`.
 - **A comanda do plano nasce no ACEITE** (PDV4 e PT1a–PT1c; o Heitor: "a
   partir do momento que a cliente aceita o plano, ela precisa daí pagar e
   agendar as sessões"; sobre perguntar a forma no aceite: "pode ser
@@ -1177,7 +1200,13 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     daquele fechamento ("Bateu", "Faltou R$ X", "Sobrou R$ X", "não
     conferido"); "Fechar de novo" reabre com os valores do último. A tela não
     calcula a diferença ao digitar (a conta é a do servidor, ao fechar).
-    Prova: `e2e/pdv-fechar-o-dia.spec.ts`.
+    **O registrado mudou depois do fechamento** (D2 da 17ª, princípios 3 e
+    4): a linha não diz "Bateu" juntando o registrado de agora com o
+    conferido de antes — a diferença diz "a conferir · mudou depois do
+    fechamento", e o conferido diz "às HH:MM, quando o registrado era R$ X"
+    (`linhasDaConferencia`: `mudouDepois`, `registradoNoFechamento`; o
+    dinheiro compara o `esperado_dinheiro` do fechamento, as outras formas o
+    saldo do retrato). Prova: `e2e/pdv-fechar-o-dia.spec.ts`.
   - É o dinheiro da UNIDADE inteira (D6 da simulação de 2026-10-27): vê
     quem recebe (`cashier`) ou o financeiro com escopo de TODOS
     (`podeVerFechamento` em `lib/auth.ts`, `veFechamento` em `lib/menu.ts`
@@ -1193,9 +1222,12 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   - **Os avisos são DOIS** (CX5, 2026-11-14; eram cinco desde a J-49):
     (1) "Há N comanda(s) aberta(s)" — as comandas abertas do PDV da unidade
     (`comandasDoPdv`), com o link para `?ver=ABERTAS` a quem recebe; e (2)
-    "Entrou dinheiro depois do fechamento das HH:MM: confira e feche de novo"
-    — movimento pago depois de `fechado_em` (`metrics_avisos_do_fechamento`,
-    `getAvisosDoFechamento`). Saíram do fechamento: a lista "Concluídos a
+    "Houve movimento depois do fechamento das HH:MM (entrou R$ X e saiu
+    R$ Y): confira e feche de novo" — movimento pago depois de `fechado_em`
+    (`metrics_avisos_do_fechamento`, `getAvisosDoFechamento`). O que entrou e
+    o que saiu é o dia de agora contra o retrato do fechamento
+    (`movimentoDepoisDoFechamento`, `textoDoMovimentoDepois`): o estorno é
+    "saiu", não "entrou dinheiro" (A3 da 17ª). Saíram do fechamento: a lista "Concluídos a
     receber" (o concluído sem pagamento é comanda aberta, CX3), as parcelas
     em aberto, a espécie negativa (a linha do Dinheiro já mostra o registrado
     negativo), o a receber da operadora, a venda sem taxa e as taxas
@@ -1648,8 +1680,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   despesa é o que se pagou — o campo diz "Valor", não "Valor bruto"), e o
   desconto digitado antes de trocar para despesa não entra no valor. A
   categoria "Contas (energia, água, internet)" é despesa operacional comum
-  (caixa e lucro); só a "Compra de estoque" fica fora do lucro
-  (`lib/financeiro/categorias.ts`). Prova: `e2e/financeiro-despesa-sem-desconto.spec.ts`,
+  (caixa e lucro), como a "Material de consumo (limpeza, copa)" (A22 da 17ª
+  simulação: o material de limpeza caía em "Outro"); só a "Compra de estoque"
+  fica fora do lucro (`lib/financeiro/categorias.ts`, a lista única da tela e
+  do Copilot). Prova: `e2e/financeiro-despesa-sem-desconto.spec.ts`,
   `tests/financeiro-categorias.test.ts`.
 - **O dinheiro DIGITADO tem UMA leitura** (`parseDinheiro`,
   `@estetica-os/utils`; D10 de 2026-10-27 e D3 de 2026-10-29): "180" é
@@ -2774,4 +2808,6 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Pôr no topo do Financeiro outro botão além do "Novo lançamento" (o crédito interno é da ficha da cliente — FI7)
 ❌ Ler a lista de lançamentos no Resumo (ele é feito dos números de lib/metrics; a lista é das abas — FI2)
 ❌ Recriar uma política de leitura ou escrita em financial_transactions para a sessão (saiu no FI8; a lista é do servidor)
+❌ Ler "os membros da unidade" em users com branch_id.eq sozinho: as outras unidades ficam de fora — é filtroDosMembrosDaUnidade / membroAlcancaAUnidade (D1 da 17ª)
+❌ Dizer "Bateu" no fechamento com o registrado de agora e o conferido de um fechamento em que ele era outro (D2 da 17ª: "a conferir")
 ```

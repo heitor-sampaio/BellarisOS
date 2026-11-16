@@ -922,6 +922,17 @@ de uma unidade"):**
   `[slug]` aceita qualquer unidade dela; a que não é dela leva à dela com o
   aviso. Quem tem a rede inteira segue no portal da rede.
 - Prova: `e2e/equipe-varias-unidades.spec.ts`, `tests/unidades-do-membro.test.ts`.
+- **A tela diz a principal** (A20 da 17ª): com mais de uma unidade marcada,
+  "Principal: X — o login abre nela." (`principalDasMarcadas`, a mesma escolha
+  de `unidadesQueGrava`: a de antes, se segue marcada). Prova: `tests/atritos-da-17-cadastros.test.ts`.
+- **Os textos da Equipe dizem o que vale para ESTA pessoa** (A17, A18, A21 da
+  17ª; princípio 3): salvar o cargo confirma ("Cargo “X” salvo."), e "O que
+  essa pessoa vai ver" diz o Copilot pelo nível (`copilotNoResumo`); cadastrar
+  quem atende com um cargo que não vê as próprias comissões avisa
+  (`SEM_MINHAS_COMISSOES_NO_CADASTRO`, por `cargosQueVeemAsComissoes`, só com
+  comissões no plano); desativar quem não atende não diz "e sai da agenda".
+  Na aba Unidades, a unidade sem cidade diz "Sem cidade: complete o endereço."
+  (A19). Prova: `tests/atritos-da-17-cadastros.test.ts`.
 
 **O "Atende" é por unidade — e não é abrangência (§11 do CLAUDE.md; decisão 2
 do Heitor sobre a 8ª simulação, 2026-11-06: "Inves de atende também em, o
@@ -1077,6 +1088,31 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     montagem muda a situação, o hash ou os campos que faltam, ou leva um
     pagamento (`montagemMudou`, `lib/documentos/montagem-mudou.ts`) — eram 14
     "Editou o documento (geração…)" de quem só abriu a tela.
+  - **A frase diz o fato também no dinheiro, nos pontos e no comercial**
+    (A26/A27 da 17ª simulação, `tests/auditoria-atritos-da-17.test.ts`):
+    "Pagou a comissão de Dr. Fábio (R$ 497,00, Pix)" (quem recebe, lido do
+    pagamento da comissão); "Recebeu R$ 1.160,00 (Crédito), com o Voucher R$ 40
+    — Lívia" (o voucher usado, pelo nome que a auditoria guarda); "Creditou
+    200 pontos a Lívia" / "Debitou 320 pontos de Lívia" (a cliente lida pela
+    conta de pontos); "Pôs 1 Sérum na comanda"; "Fechou o dia 15/11/2026" e
+    "Fechou de novo o dia …" (outro fechamento do mesmo dia e unidade antes
+    dele); "Estornou o atendimento (R$ 320,00)" (o lançamento estornado tem
+    agendamento). "quem pagou" e "pagamento" no lugar de `paid_by` e
+    `payout_id`; a coluna derivada `aconteceu_em` sai da frase quando outra
+    mudou junto ("Editou o agendamento (horário)").
+  - **A oportunidade e o contato pelo nome lido agora** (A27 da 17ª): a
+    auditoria grava `{}` em `leads` e `contacts` (minimização, e a gravação
+    não muda); a leitura busca o nome, como o da cliente e o do membro —
+    "Criou o contato e a oportunidade Camila Duarte", "Criou o contato Júlia",
+    "Mudou a etapa da oportunidade Camila" e, quando a etapa estiver no
+    registro, "de Novo para Em andamento" (`nomesDa17`, `lib/auditoria/leitura.ts`).
+  - **O filtro por unidade é pela unidade da GRAVAÇÃO** (A28 da 17ª): as
+    gravações lidas pela unidade se completam (as linhas da mesma transação,
+    na abrangência de quem lê) e ficam só aquelas cuja linha leva a unidade
+    pedida (`gravacoesDaUnidade`) — a sessão do pacote da Savassi, usada na
+    conclusão da Pampulha, não aparece na Savassi. A página pode trazer menos
+    gravações; o cursor segue o da leitura pela unidade, e o CSV não repete
+    o id de uma gravação que caiu em duas páginas.
   - O filtro "Quem" tem "Só o que foi pelo Copilot" (`pessoa=copilot` →
     `via = 'copilot'`, A37 da 16ª).
   - A página segue por gravação (`?antes=<id>`): a gravação que começa numa

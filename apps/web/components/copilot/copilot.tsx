@@ -453,13 +453,14 @@ export function Copilot() {
             {carregando && <span className="copilot-pensando"><Loader2 size={13} className="animate-spin" /> Carregando…</span>}
             {!carregando && mensagens.length === 0 && (
               <div className="copilot-vazio">
-                <p>Olá! Peça o que precisar: consultar a agenda, achar um cliente, ver números, cadastrar ou agendar. Toda gravação passa pela sua confirmação.</p>
+                {/* A25 da 17ª (princípio 7): o continuar vem primeiro — abaixo do "Olá", passava despercebido. */}
                 {anterior && (
                   <button type="button" className="copilot-sugestao" data-continuar-conversa
                     onClick={() => { setTitulo(anterior.titulo); void carregarConversa(anterior.id) }}>
                     Continuar a conversa anterior: {anterior.titulo}
                   </button>
                 )}
+                <p>Olá! Peça o que precisar: consultar a agenda, achar um cliente, ver números, cadastrar ou agendar. Toda gravação passa pela sua confirmação.</p>
                 {SUGESTOES.map(s => (
                   <button key={s} type="button" className="copilot-sugestao" onClick={() => { setTexto(s); campoRef.current?.focus() }}>{s}</button>
                 ))}

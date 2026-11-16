@@ -25,6 +25,26 @@ export function unidadesDoMembro(m: { branchId: string | null; outrasUnidades?: 
 }
 
 /**
+ * O membro (a linha de `users`) alcança a unidade? A rede inteira, a principal
+ * ou uma das outras (D1 da 17ª simulação: "Quem vendeu" e a trava da venda
+ * olhavam só a principal).
+ */
+export function membroAlcancaAUnidade(
+  m: { branch_id: string | null; outras_unidades?: string[] | null }, unidade: string,
+): boolean {
+  return (unidadesDoMembro({ branchId: m.branch_id, outrasUnidades: m.outras_unidades }) ?? [unidade]).includes(unidade)
+}
+
+/**
+ * O filtro do PostgREST (`.or(…)` sobre `users`) de quem alcança a unidade: a
+ * rede inteira (`branch_id` nulo), a principal e as outras (D1 da 17ª). Quem
+ * lê "os da unidade" na equipe usa este, nunca `branch_id.eq` sozinho.
+ */
+export function filtroDosMembrosDaUnidade(unidade: string): string {
+  return `branch_id.is.null,branch_id.eq.${unidade},outras_unidades.cs.{${unidade}}`
+}
+
+/**
  * A unidade em que a pessoa ESTÁ: a do endereço, se é uma das dela; senão a
  * principal. Nulo só para a rede inteira (ela está "na rede" em qualquer
  * portal — `ctx.branchId ?? pedido` segue funcionando para ela).
@@ -96,4 +116,17 @@ export function unidadesQueGrava(args: {
     ? [principal, ...lista.filter(u => u !== principal)]
     : [...lista.filter(visivel), ...lista.filter(u => !visivel(u))]
   return { unidades: ordem }
+}
+
+/**
+ * A principal que o cadastro vai gravar (A20 da 17ª simulação; princípio 3): a
+ * de antes, se ficou marcada (como `unidadesQueGrava`); senão a primeira das
+ * marcadas que a tela mostra. É o destino do login
+ * (PO1), e a Equipe não dizia qual era.
+ */
+export function principalDasMarcadas(
+  marcadas: readonly string[], naTela: readonly string[], deAntes?: string | null,
+): string | null {
+  if (deAntes && marcadas.includes(deAntes) && naTela.includes(deAntes)) return deAntes
+  return marcadas.find(u => naTela.includes(u)) ?? null
 }

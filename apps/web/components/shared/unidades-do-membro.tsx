@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { useFala } from '@/components/shared/uma-unidade'
 import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
+import { principalDasMarcadas } from '@/lib/unidades/do-membro'
 
 interface Unidade { id: string; name: string }
 
@@ -22,7 +23,7 @@ export type ValorDasUnidades = 'rede' | string[]
  * ids separados por vírgula): controlado, porque o React 19 limpa o campo solto
  * a cada envio.
  */
-export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'unidades' }: {
+export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'unidades', principalDeAntes = null }: {
   /** As unidades que a tela mostra (as ativas da rede, ou as de quem edita). */
   unidades:  Unidade[]
   /** As que quem edita marca; null = tem a rede inteira (e dá a rede inteira). */
@@ -30,6 +31,8 @@ export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'un
   valor:     ValorDasUnidades
   aoMudar:   (v: ValorDasUnidades) => void
   id?:       string
+  /** A20 da 17ª: na edição, a principal de hoje — fica enquanto estiver marcada. */
+  principalDeAntes?: string | null
 }) {
   const fala = useFala()
   // A escolha de antes volta quando se sai da "rede inteira" e se volta.
@@ -42,6 +45,8 @@ export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'un
     aoMudar(novas)
   }
   const titulo = `${id}-titulo`
+  const principalId = principalDasMarcadas(marcadas, unidades.map(u => u.id), principalDeAntes)
+  const principal = unidades.find(u => u.id === principalId)?.name ?? null
 
   return (
     <div role="group" aria-labelledby={titulo} data-unidades-do-membro
@@ -81,6 +86,12 @@ export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'un
           {unidades.length > 1 && (
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
               A pessoa abre e opera só as unidades marcadas. Com mais de uma, ela troca de unidade pelo topo da tela.
+            </span>
+          )}
+          {/* A20 da 17ª (princípio 3): a principal é o destino do login, e a tela não dizia qual era. */}
+          {marcadas.length > 1 && principal && (
+            <span data-unidade-principal style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+              Principal: <b style={{ color: 'var(--text)' }}>{principal}</b> — o login abre nela.
             </span>
           )}
         </>

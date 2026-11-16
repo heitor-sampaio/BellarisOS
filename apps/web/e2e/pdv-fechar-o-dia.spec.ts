@@ -136,7 +136,12 @@ test('CX5: só dois avisos — a comanda aberta e o dinheiro depois do fechament
     await expect(avisos).toHaveCount(2)
     await expect(p.locator('[data-aviso="comandas-abertas"]')).toContainText('Há 1 comanda aberta')
     await expect(p.locator('[data-aviso="comandas-abertas"] a')).toHaveAttribute('href', /ver=ABERTAS/)
-    await expect(p.locator('[data-aviso="movimento-depois"]')).toContainText(/Entrou dinheiro depois do fechamento das \d{2}:\d{2}: confira e feche de novo/)
+    // A3 da 17ª: o aviso diz o movimento de fato (entrou ou saiu, e quanto).
+    await expect(p.locator('[data-aviso="movimento-depois"]')).toContainText(/Houve movimento depois do fechamento das \d{2}:\d{2} \(entrou R\$\s30,00\): confira e feche de novo/)
+    // D2 da 17ª: o Pix mudou depois do fechamento — "a conferir", com o conferido de então; o Dinheiro não mudou.
+    await expect(p.locator('[data-forma="PIX"] [data-diferenca]')).toContainText('a conferir')
+    await expect(p.locator('[data-forma="PIX"] [data-conferido-antes]')).toContainText(/quando o registrado era R\$\s120,00/)
+    await expect(p.locator('[data-forma="CASH"] [data-diferenca]')).toContainText('Bateu')
     // Saíram da tela: a lista dos concluídos a receber, as taxas, a operadora, o CSV.
     await expect(p.getByText('Concluídos a receber')).toHaveCount(0)
     await expect(p.locator('[data-taxas-do-dia]')).toHaveCount(0)

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  OUTCOME_COPY, OUTCOME_VALUES, COR_DA_ETAPA_NOVA,
+  OUTCOME_COPY, OUTCOME_VALUES, COR_DA_ETAPA_NOVA, ehAUltimaDePerda,
   type CRMFunnel, type CRMStage, type StageOutcome,
 } from '@/lib/crm'
 import {
@@ -39,11 +39,13 @@ interface CRMStageSettingsProps {
 
 // --- Linha de etapa ----------------------------------------------
 function StageRow({
-  stage, slug,
+  stage, slug, ultimaDePerda,
   isDragging, onDragStart, onDragEnd,
 }: {
   stage:       CRMStage
   slug:        string
+  /** A11 da 17ª: a última etapa de perda do funil — apagar ou mudar pergunta antes. */
+  ultimaDePerda: boolean
   isDragging:  boolean
   onDragStart: (e: React.DragEvent, id: string) => void
   onDragEnd:   () => void
@@ -53,6 +55,9 @@ function StageRow({
   const [color, setColor] = useState(stage.color)
   const [outcome, setOutcome] = useState<StageOutcome>(stage.outcome)
   const [deleteErr, setDeleteErr] = useState<string | null>(null)
+  // A11 da 17ª (princípio 2): apagar a última etapa de perda, ou tirá-la de
+  // "Perdido", não é recusado — a linha diz o que acontece e pede o "sim".
+  const [confirmar, setConfirmar] = useState<{ acao: 'excluir' } | { acao: 'resultado'; para: StageOutcome } | null>(null)
   const [, start] = useTransition()
   const router = useRouter()
 
@@ -90,14 +95,18 @@ function StageRow({
     start(() => updateStageColor(stage.id, c, slug))
   }
 
-  async function handleOutcomeChange(next: StageOutcome) {
+  async function handleOutcomeChange(next: StageOutcome, confirmado = false) {
+    if (ultimaDePerda && next !== 'LOST' && !confirmado) { setDeleteErr(null); setConfirmar({ acao: 'resultado', para: next }); return }
+    setConfirmar(null)
     setOutcome(next)
     const res = await updateStageOutcome(stage.id, next, slug)
     if (res?.error) { setDeleteErr(res.error); setOutcome(stage.outcome); return }
     router.refresh()
   }
 
-  async function handleDelete() {
+  async function handleDelete(confirmado = false) {
+    if (ultimaDePerda && !confirmado) { setDeleteErr(null); setConfirmar({ acao: 'excluir' }); return }
+    setConfirmar(null)
     setDeleteErr(null)
     const res = await deleteStage(stage.id, slug)
     if (res?.error) { setDeleteErr(res.error); return }
@@ -188,7 +197,7 @@ function StageRow({
         {/* Botão excluir */}
         <button
           type="button"
-          onClick={handleDelete}
+          onClick={() => handleDelete()}
           title="Excluir etapa"
           style={{
             width: 26, height: 26, borderRadius: 7, flexShrink: 0,
@@ -205,6 +214,23 @@ function StageRow({
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 700, width: '100%', paddingLeft: 44 }}>
           {deleteErr}
         </p>
+      )}
+
+      {confirmar && (
+        <div data-sem-etapa-de-perda role="alert" style={{ width: '100%', paddingLeft: 44, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 700, margin: 0 }}>
+            Este funil fica sem etapa de perda: o “Marcar como perdido” e os motivos de perda não terão para onde levar a oportunidade.
+          </p>
+          <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
+              onClick={() => (confirmar.acao === 'excluir' ? handleDelete(true) : handleOutcomeChange(confirmar.para, true))}>
+              {confirmar.acao === 'excluir' ? 'Excluir mesmo assim' : 'Mudar mesmo assim'}
+            </button>
+            <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }} onClick={() => setConfirmar(null)}>
+              Cancelar
+            </button>
+          </span>
+        </div>
       )}
     </div>
   )
@@ -291,7 +317,10 @@ function FunnelRow({
           onChange={e => setName(e.target.value)}
           onBlur={handleNameBlur}
           onKeyDown={teclaNoNome}
-          onClick={e => e.stopPropagation()}
+          // A12 da 17ª (princípio 7): clicar no nome também seleciona o funil —
+          // a Clara clicava no nome, as etapas ao lado seguiam as do outro funil,
+          // e ela renomeou uma etapa do funil errado.
+          onFocus={onSelect}
           style={{
             width: '100%', border: 'none', outline: 'none', background: 'transparent',
             fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em',
@@ -678,6 +707,7 @@ export function CRMStageSettings({
                 <StageRow
                   stage={stage}
                   slug={slug}
+                  ultimaDePerda={ehAUltimaDePerda(etapasDoFunil, stage.id)}
                   isDragging={draggingStage === stage.id}
                   onDragStart={handleStageDragStart}
                   onDragEnd={limparDnD}

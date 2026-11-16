@@ -222,7 +222,7 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                     // Quem edita vê as dela; a unidade do membro fora do alcance aparece travada.
                     unidades={canChooseScope ? branches : todasAsAtivas.filter(b => (unidadesDeQuemEdita ?? []).includes(b.id) || unidadesDela.includes(b.id))}
                     editaveis={canChooseScope ? null : unidadesDeQuemEdita}
-                    valor={unidades} aoMudar={setUnidades} />
+                    valor={unidades} aoMudar={setUnidades} principalDeAntes={member.branchId} />
                 )}
                 {!cargoFixo && paraAdmin && (
                   <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>

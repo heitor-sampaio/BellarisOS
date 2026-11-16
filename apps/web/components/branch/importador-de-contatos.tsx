@@ -12,6 +12,7 @@ import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, p
 import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
+import { linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar } from '@/lib/importacao/o-que-entra'
 import { useFuso } from '@/components/shared/fuso'
 
 /**
@@ -189,6 +190,12 @@ export function ImportadorDeContatos(p: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a chave resume as linhas
   }, [chaveDoCruzamento])
   const cruzados = cruzamento?.chave === chaveDoCruzamento ? cruzamento.itens : null
+  // A14 da 17ª: o botão diz quantas pessoas novas entram, não só quantas linhas.
+  const juntamNaPlanilha = linhasQueJuntamNaPlanilha(destino, validadas.filter(l => !l.erros.length),
+    new Set((cruzados ?? []).map(i => i.numero)), naoCompletar).length
+  const completamQuemExiste = destino === 'clientes'
+    ? (cruzados ?? []).filter(i => i.como === 'cpf' || !naoCompletar.has(i.numero)).length
+    : (cruzados ?? []).length
 
   function importar() {
     if (!arquivo) return
@@ -462,7 +469,7 @@ export function ImportadorDeContatos(p: Props) {
             <button type="button" className="btn-primary" onClick={importar} disabled={!prontas || isPending}
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {isPending ? <Loader2 size={14} className="animate-spin" /> : <FileUp size={14} />}
-              Importar {plural(prontas, 'linha', 'linhas')}
+              {textoDoBotaoDeImportar({ destino, prontas, juntamNaPlanilha, completam: completamQuemExiste })}
             </button>
           </div>
         </div>

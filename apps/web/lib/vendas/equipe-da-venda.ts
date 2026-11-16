@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import type { MembroDaVenda } from '@/components/shared/vender'
 import { PERGUNTA_SEM_VENDEDOR } from '@/lib/vendas/pergunta-sem-vendedor'
+import { filtroDosMembrosDaUnidade, membroAlcancaAUnidade } from '@/lib/unidades/do-membro'
 
 /**
  * Quem pode aparecer numa venda da unidade: a profissional RESPONSÁVEL do
@@ -32,7 +33,8 @@ export async function equipeDaVenda(
     lerTodas((de, ate) => admin.from('users')
       .select('id, name, role_id, atende_em, comissao_venda_pct')
       .eq('tenant_id', tenantId).eq('is_active', true)
-      .or(`branch_id.is.null,branch_id.eq.${branchId},atende_em.cs.{${branchId}}`)
+      // D1 da 17ª: as unidades do membro são a principal E as outras (EQ1a).
+      .or(`${filtroDosMembrosDaUnidade(branchId)},atende_em.cs.{${branchId}}`)
       .order('name').order('id').range(de, ate), 'carregar a equipe da venda'),
     cargosQueRecebem(tenantId),
     cargosQueVendem(tenantId),
@@ -118,13 +120,15 @@ export async function recusaDoMembroDaVenda(
 ): Promise<string | null> {
   if (!/^[0-9a-f-]{36}$/i.test(membroId)) return `${opcoes.papel}: escolha alguém da equipe.`
   const { data, error } = await createAdminClient().from('users')
-    .select('id, branch_id, is_active, atende_em')
+    .select('id, branch_id, outras_unidades, is_active, atende_em')
     .eq('id', membroId).eq('tenant_id', tenantId).maybeSingle()
   if (error) throw new Error(`Não consegui conferir ${opcoes.papel.toLowerCase()}: ${error.message}`)
   if (!data || data.is_active === false) return `${opcoes.papel}: não é da equipe desta rede.`
   // Quem é de outra unidade e atende AQUI (decisão 2 da 8ª) também entra.
   const atendeAqui = ((data.atende_em as string[] | null) ?? []).includes(branchId)
-  if (data.branch_id && data.branch_id !== branchId && !atendeAqui) return `${opcoes.papel}: é de outra unidade.`
+  // D1 da 17ª: a unidade nas OUTRAS dela (EQ1a) também é dela.
+  const alcanca = membroAlcancaAUnidade(data as { branch_id: string | null; outras_unidades: string[] | null }, branchId)
+  if (!alcanca && !atendeAqui) return `${opcoes.papel}: é de outra unidade.`
   if (opcoes.atende && !atendeAqui) return `${opcoes.papel}: escolha quem atende clientes nesta unidade.`
   return null
 }

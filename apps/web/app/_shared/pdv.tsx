@@ -23,6 +23,8 @@ import { parcelasEmAbertoDaCliente, CHAVES_DA_VENDA, type VendaDaComanda } from 
 import { itensDaComanda } from '@/lib/pdv/itens-da-comanda'
 import { fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
+import { podeEstornar } from '@/lib/financeiro/so-os-meus'
+import { lancamentosDaComanda } from '@/lib/pdv/lancamentos-da-comanda'
 
 /**
  * O PDV, o corpo dos dois portais (PDV1, a revisão do Heitor de 2026-11-13:
@@ -96,8 +98,12 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       pagamentoCombinado: aReceber && comanda.agendamentoId
         ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, comanda.agendamentoId) : null,
       // A2 da 15ª (princípios 3 e 7): a comanda paga diz a quem não estorna de quem é o estorno.
-      quemEstorna: comanda.paga && !comanda.estornada && !can(ctx, 'financial', 'MANAGE')
+      quemEstorna: comanda.paga && !comanda.estornada && !podeEstornar(ctx)
         ? await quemDesfazNoCaixa(ctx.tenantId!, unidadeId) : null,
+      // A2 da 17ª (princípio 7; o bloco PDV: o estorno "dentro da comanda"): a quem estorna, os
+      // pagamentos da comanda com o "Estornar" de sempre (a action confere tudo de novo).
+      pagamentos: comanda.paga && !comanda.estornada && podeEstornar(ctx)
+        ? await lancamentosDaComanda(admin, ctx.tenantId!, unidadeId, comanda.id) : null,
       // A1 da 16ª (princípio 7): a comanda do crediário recebe as parcelas dela ali mesmo.
       parcelasDaComanda: comanda.paga && !comanda.estornada && comanda.emAberto > 0 && podeReceber(ctx)
         ? await parcelasEmAbertoDaCliente({

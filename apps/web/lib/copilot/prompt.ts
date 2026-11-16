@@ -4,6 +4,7 @@ import { paginasDaBusca } from '@/lib/busca/paginas'
 import { ABAS_DE_CONFIGURACAO } from '@/lib/configuracoes/abas'
 import { agoraLegivel } from '@/lib/copilot/ferramentas/datas'
 import { nomeDoFuso } from '@/lib/unidades/fuso'
+import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
 
 /**
  * As instruções do Copilot — quem ele é, o que sabe da pessoa e da tela, e as
@@ -49,6 +50,19 @@ export function telasDaPessoa(ctx: TenantContext, slugDoPortal: string | null): 
   return paginas.map(p => `[${p.titulo}](${p.href})`)
 }
 
+const NIVEL: Record<string, string> = { MANAGE: 'Gerenciar', VIEW: 'Ver' }
+
+/**
+ * O nível de cada módulo da pessoa, como a tela de Cargos o diz (A24 da 17ª
+ * simulação): sem isto, o Copilot mandava "abra Financeiro → Comissões" a quem
+ * tem o Financeiro só em Ver e também não muda nada lá.
+ */
+export function permissoesDaPessoa(ctx: TenantContext): string {
+  const com = ALL_MODULES.filter(m => NIVEL[ctx.permissions[m]]).map(m => `${MODULE_LABELS[m]}: ${NIVEL[ctx.permissions[m]]}`)
+  const sem = ALL_MODULES.filter(m => !NIVEL[ctx.permissions[m]]).map(m => MODULE_LABELS[m])
+  return `${com.length ? com.join('; ') : 'nenhum módulo'}${sem.length ? `. Sem acesso: ${sem.join(', ')}` : ''}.`
+}
+
 export function instrucoesDoCopilot(ctx: TenantContext, extras: {
   rede: string | null
   unidade: string | null
@@ -79,6 +93,7 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     'Você ajuda a equipe a consultar e a operar o sistema conversando: agenda, clientes e as tags deles, procedimentos, financeiro, estoque, oportunidades, documentos, o que a Meta cobra no WhatsApp e indicadores.',
     '',
     `${quem}. ${abrangencia}`,
+    `As permissões dela (módulo: nível): ${permissoesDaPessoa(ctx)}`,
     `Agora: ${agoraLegivel(new Date(), extras.fuso)}.`,
     pagina ?? '',
     '',
@@ -91,6 +106,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- Antes de gravar, resolva as dúvidas: se houver mais de um cliente com o nome, ou faltar horário, profissional ou procedimento, pergunte (ou mostre as opções) em vez de chutar.',
     // D2 da 16ª: a busca só traz membro a quem tem a Equipe; quem atende se acha pela agenda.
     '- O profissional de um atendimento vai pelo nome que a pessoa disse, direto em horarios_livres, agendar ou remarcar: elas acham entre quem atende na unidade e, sem achar, dizem quem atende. Não o procure na busca (ela só traz membros da equipe a quem tem a Equipe).',
+    // D4 da 17ª: a grade de horarios_livres é sugestão; quem diz se o horário está ocupado é o agendar.
+    '- Quando a pessoa pede um horário (dia e hora), chame agendar ou remarcar com o horário pedido: elas conferem o conflito com a agenda e dizem se não dá. A grade de horarios_livres é só sugestão, de 30 em 30 min: um horário fora da grade não está ocupado por isso — nunca diga que está ocupado ou indisponível só porque não aparece nela.',
     `- Datas e horários são no ${nomeDoFuso(extras.fuso)} (o da unidade; numa unidade de outro fuso, as ferramentas já dizem e recebem a hora de lá). "Amanhã", "sexta", "semana que vem" são relativos à data de hoje acima. Ao chamar ferramentas, use datas ISO (AAAA-MM-DD) e horas HH:MM.`,
     '- Valores em reais no formato R$ 1.240,00.',
     // CR1 (a revisão do Heitor, 2026-11-13): a pessoa é o contato, o card é a oportunidade.
@@ -99,6 +116,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- Vender (pacote, pré-pago, produto, crédito interno) e receber uma comanda (o atendimento iniciado, a parcela do crediário) é no PDV: você não vende nem recebe comanda; indique o PDV. Dar baixa num lançamento avulso do financeiro, você faz.',
     '- As tags são filtros que a própria rede cria: você marca e desmarca as que já existem; o sistema nunca põe tag sozinho.',
     '- O que você não faz por ferramenta (importar uma planilha de contatos, criar ou renomear tags, configurar comissões, conectar o WhatsApp, emitir ou colher assinatura de documento — é na tela de Documentos —, fechar um plano de tratamento…), explique em uma frase e indique a tela, com o link da lista abaixo.',
+    // A24 da 17ª: "abra Financeiro → Comissões" a quem só vê o Financeiro.
+    '- Antes de indicar uma tela para MUDAR algo, confira as permissões dela acima: mudar pede o módulo em Gerenciar (as comissões, por exemplo, pedem Financeiro e comissões em Gerenciar). Sem ele, não indique a tela como caminho: diga que a permissão dela não muda isso e que quem tem o módulo em Gerenciar muda.',
     '',
     'As telas que esta pessoa abre (o menu dela, no portal em que está):',
     ...telas.map(t => `- ${t}`),
