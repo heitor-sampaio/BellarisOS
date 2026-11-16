@@ -752,7 +752,8 @@ export function AppointmentModal({
               <Field label="Sala / Cabine" htmlFor="ag-sala">
                 <select id="ag-sala" name="room_id" className="field" disabled={carregandoUnidade}
                   value={salaId} onChange={e => setSalaEscolhida(e.target.value)}>
-                  <option value="">Sem sala definida</option>
+                  {/* A13 da 19ª: enquanto a lista do horário carrega, o vazio não é "sem sala". */}
+                  <option value="">{carregandoSalas && salaEscolhida === null ? 'Conferindo as salas…' : 'Sem sala definida'}</option>
                   {salasOferecidas.map(r => (
                     <option key={r.id} value={r.id}>{r.livre ? r.name : `${r.name} (ocupada)`}</option>
                   ))}

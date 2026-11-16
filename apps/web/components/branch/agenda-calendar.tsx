@@ -351,7 +351,8 @@ export function AgendaCalendar({
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* A14 da 19ª: no celular a linha quebra — sem isso, "Mostrar cancelados" saía cortado. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" onClick={alternarCancelados} aria-pressed={comCancelados}
             className={comCancelados ? 'filtro-toggle is-ativo' : 'filtro-toggle'}>
             {comCancelados ? 'Esconder cancelados' : 'Mostrar cancelados'}

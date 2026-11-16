@@ -191,6 +191,19 @@ export function lerConferidoDoCampo(texto: string): number | null {
 }
 
 /**
+ * A diferença enquanto se digita (A3 da 19ª simulação, 2026-11-16; princípio
+ * 3): no "Fechar de novo", a linha seguia "a conferir · mudou depois do
+ * fechamento" até fechar, porque a diferença vinha só do servidor. É a mesma
+ * conta do fechamento — conferido − registrado, em centavos —, com o que está
+ * no campo. Vazio ou ilegível: nulo (a tela mostra o que mostrava).
+ */
+export function diferencaAoDigitar(texto: string, registrado: number): number | null {
+  const v = lerConferidoDoCampo(texto)
+  if (v == null || !Number.isFinite(v)) return null
+  return (Math.round(v * 100) - Math.round(registrado * 100)) / 100
+}
+
+/**
  * Os campos do "Fechar de novo" (A2 da 18ª; princípios 3 e 4): vêm com o que
  * foi conferido no último fechamento — menos a linha que mudou depois dele,
  * que vem EM BRANCO: o conferido de antes é de um registrado que já não vale,

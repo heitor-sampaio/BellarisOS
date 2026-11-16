@@ -9,7 +9,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 import { textoDaBase } from '@/lib/comissoes/base-efetiva'
-import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda } from '@/lib/comissoes/extrato-texto'
+import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda, vinculosDoExtrato } from '@/lib/comissoes/extrato-texto'
 import { useFuso } from '@/components/shared/fuso'
 
 /**
@@ -331,6 +331,8 @@ function Fechar({ profissional, periodo, rotuloDoPeriodo, emCurso, lancamentos }
 
 function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string }) {
   const fuso = useFuso()
+  // A8 da 19ª: "+500, −500, +500" diz o vínculo — o estorno desfaz qual liberação, e qual é de novo.
+  const vinculos = vinculosDoExtrato(linhas, iso => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso }))
   if (!linhas.length) {
     return <p style={{ padding: '0 16px 14px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Sem lançamentos no período.</p>
   }
@@ -349,6 +351,7 @@ function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string
               {l.origem && !ehDeVenda(l) ? ` · ${origemDe(l)}` : ''}
               {/* D3 da 10ª: a base EFETIVA (a que a conta usou) e o caminho do preço até ela; A17 da 11ª: de onde veio a regra. */}
               {l.preco != null ? ` · ${textoDaBase(base(l), l)} · ${regraDoLancamento(l, nome)}` : ''}
+              {vinculos.has(l.id) && <span data-vinculo-do-estorno>{` · ${vinculos.get(l.id)}`}</span>}
             </p>
           </div>
           {/* A21 da 10ª: com o pagamento parcial, cada lançamento diz se foi pago (e quando) ou se ficou a pagar. */}

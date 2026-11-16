@@ -200,7 +200,9 @@ export async function perguntarAoModelo(entrada: {
     }
   }
 
-  if (incompleta && !chamadas.length) {
+  // D3 da 19ª (princípio 3): o stream que acaba sem o "concluída" (o tempo, a
+  // conexão) também é corte — a resposta parava no meio de um link, calada.
+  if ((incompleta || !concluida) && !chamadas.length) {
     const aviso = '\n\n(A resposta foi cortada. Peça a continuação, se precisar.)'
     texto += aviso
     entrada.aoTexto?.(aviso)

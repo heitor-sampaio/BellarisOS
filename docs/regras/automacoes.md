@@ -293,6 +293,23 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
     sumia no JSON e o 21:00/08:00/3 voltava no motor e na tela reaberta. O
     teto não tem máximo (princípio 2). Prova:
     `e2e/automacoes-defeitos-do-levantamento.spec.ts` ("C54").
+  - **A mensagem retida espera no PRÓPRIO passo, e confere de novo ao sair**
+    (D2 da 19ª simulação, 2026-11-16; princípios 3 e 6). A espera do
+    silêncio guarda o passo da mensagem (`repetir`), não o seguinte: até a
+    19ª o lembrete do último passo terminava `ok` sem nunca sair. Ao sair do
+    silêncio (`reconferirDepoisDoSilencio`, `lib/automacoes/silencio.ts`), o
+    agendamento e a oportunidade são lidos de novo e cada "Se"/"Escolher" do
+    caminho é refeito: se a saída mudou (concluído, cancelado, falta), a
+    mensagem não sai e o passo diz qual condição. E a espera "até antes de
+    uma data" (o "1 dia antes") diz que a mensagem é sobre um momento por vir:
+    se ele passou durante o silêncio, não sai. Prova:
+    `tests/automacoes-silencio-reconfere.test.ts`.
+  - **A janela "Ligar a automação?" diz os limites** (A16 da 19ª; princípios
+    1 e 7): "Entre 21:00 e 08:00 a mensagem espera e sai às 08:00 (silêncio
+    noturno). No máximo 3 por cliente por dia.", com "Ajustar os limites"
+    (abre a gaveta). A rede aberta 24 horas que não quer o silêncio o esvazia;
+    o padrão continua (`limitesAntesDeLigar`, `[data-limites-antes-de-ligar]`;
+    `tests/automacoes-limites-antes-de-ligar.test.ts`).
 - **O suporte não liga automação nem muda os limites** (D18 do levantamento
   das regras, o Heitor, 2026-11-11, opção a; CLAUDE.md §14: a ação que manda
   algo à paciente passa por `bloqueioDoSuporte`). Na sessão de suporte,

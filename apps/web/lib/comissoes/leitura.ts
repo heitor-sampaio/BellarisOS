@@ -290,6 +290,12 @@ export interface LancamentoDoExtrato {
    * execução.
    */
   regraDe: 'ITEM' | 'PESSOA' | 'CLINICA' | null
+  /**
+   * A8 da 19ª: o lançamento financeiro da linha — o estorno da comissão leva o
+   * do pagamento estornado, o mesmo da liberação que ele desfaz. Nulo na linha
+   * AGUARDANDO e no ajuste.
+   */
+  transacaoId?: string | null
 }
 
 export interface Fechamento {
@@ -329,6 +335,7 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     'ler o extrato das comissões',
   )
   const pagoEm = await diasDosFechamentos(r.tenantId, linhas.map(l => (l.payout_id as string | null) ?? null))
+  const transacoes = await transacoesDasLinhas(linhas)
   return linhas.map(l => ({
     id: String(l.id), professionalId: String(l.professional_id), branchId: String(l.branch_id),
     releasedAt: String(l.released_at), kind: l.kind as LancamentoDoExtrato['kind'], motivo: (l.motivo as string | null) ?? null,
@@ -347,7 +354,27 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
     baseFator: l.base_fator == null ? 1 : Number(l.base_fator),
     pagoEm: l.status === 'PAID' && l.payout_id ? pagoEm.get(String(l.payout_id)) ?? null : null,
     regraDe: l.regra_de === 'ITEM' || l.regra_de === 'PESSOA' || l.regra_de === 'CLINICA' ? l.regra_de : null,
+    transacaoId: transacoes.get(String(l.id)) ?? null,
   }))
+}
+
+/**
+ * O lançamento financeiro de cada linha do extrato (A8 da 19ª), em lotes: a
+ * linha do estorno se liga à liberação que desfaz pelo pagamento estornado.
+ * As unidades são as das linhas (já da rede, pelo extrato). Sem estorno no
+ * extrato, não há o que ligar.
+ */
+async function transacoesDasLinhas(linhas: Record<string, unknown>[]): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>()
+  if (!linhas.some(l => l.kind === 'ESTORNO')) return mapa
+  const ids = [...new Set(linhas.filter(l => l.kind !== 'AGUARDANDO').map(l => String(l.id)))]
+  const unidades = [...new Set(linhas.map(l => String(l.branch_id)))]
+  for (let i = 0; i < ids.length; i += 150) {
+    const lote = await ler(createAdminClient().from('commissions').select('id, transaction_id')
+      .in('branch_id', unidades).in('id', ids.slice(i, i + 150)), 'ler os pagamentos das comissões')
+    for (const c of (lote ?? []) as { id: string; transaction_id: string | null }[]) if (c.transaction_id) mapa.set(c.id, c.transaction_id)
+  }
+  return mapa
 }
 
 /** O dia em que cada fechamento foi pago, pelo id (em lotes: a lista de ids vai na URL). */

@@ -22,3 +22,14 @@ export async function fetchCep(rawCep: string): Promise<CepResult | null> {
     return null
   }
 }
+
+/**
+ * A18 da 19ª simulação (princípio 3): o CEP 60150-160 preencheu o bairro
+ * "Centro" para a unidade que a pessoa chama de Aldeota — é o dado da busca de
+ * CEP (um CEP geral cobre mais de um bairro), e ela corrigia à mão sem aviso. O
+ * bairro que veio da busca fica marcado para conferir, até a pessoa mexer.
+ */
+export function avisoDoBairroDoCep(bairro: string | null | undefined): string | null {
+  const b = bairro?.trim()
+  return b ? `O bairro “${b}” veio da busca do CEP: confira.` : null
+}

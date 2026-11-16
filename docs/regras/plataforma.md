@@ -187,7 +187,11 @@ um muro que não depende de cada trava do código.
   `enderecoComNumero`, `lib/unidades/endereco-com-numero.ts`; também no "Nova
   unidade"). O `id="br-phone"` em dobro não se reproduziu: o passo 1 usa
   `net-phone`, e o setup tem um campo só. Prova: `e2e/setup-atritos-da-9.spec.ts`,
-  `tests/endereco-com-numero.test.ts`.
+  `tests/endereco-com-numero.test.ts`. **O bairro que veio do CEP se confere**
+  (A18 da 19ª: o CEP geral pôs "Centro" na unidade da Aldeota): "O bairro
+  “Centro” veio da busca do CEP: confira." embaixo do logradouro
+  (`avisoDoBairroDoCep`, `lib/cep.ts`; `[data-confira-o-bairro]`), até a
+  pessoa mexer no campo. Só avisa.
 - **"Aberta 24 horas, todos os dias"** (A11 da 11ª simulação, 2026-11-10: a
   Renata abriu a Violeta 24 h com 7 pares de hora e o domingo à mão; o
   "Repetir" existia e não foi notado): no editor de horário (o setup, Unidades
@@ -1144,6 +1148,22 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
       migration `20261118500001`; no /admin, nula): entra no filtro pela
       unidade de quem é da rede. Quem tem unidades continua sem a abertura
       (a leitura tira `abriu` dela).
+  - **A 19ª simulação** (A32–A36, `tests/auditoria-atritos-da-19.test.ts`):
+    - toda coluna de `financial_transactions` também tem nome no `CAMPO`
+      ("maquininha", não "maquininha id");
+    - o voucher devolvido diz que voltou: "Devolveu o Voucher R$ 30 (voltou a
+      ativo)", e o estorno "…, e o Voucher R$ 30 voltou a ativo"; o
+      fechamento traz o conferido, lido agora ("Fechou de novo o dia 16/11/2026
+      (conferido: Dinheiro R$ 300,00 e Pix R$ 1.200,00)", `conferidoDoFechamento`);
+    - o horário mudado é "Remarcou o agendamento de X para 17/11/2026 11:00"
+      (", com Fulano", se quem atende mudou junto) e quem atende mudado é
+      "Repassou o agendamento de X a Fulano" — também numa gravação com
+      outros registros;
+    - a geração do documento é "Gerou o documento X"; a do contrato que a
+      MESMA pessoa criou há até 5 min entra na gravação que o criou (a venda
+      do pacote: `comAGeracaoNaVenda`); a ficha é "Criou a ficha de X";
+    - a linha sem unidade diz "Da rede" na coluna Unidade (a entrada no
+      sistema, não).
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

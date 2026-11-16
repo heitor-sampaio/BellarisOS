@@ -274,6 +274,14 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
         </div>
       </Bloco>
 
+      {/* A24 da 19ª (princípio 7): quem procura a comissão da venda do pacote aqui acha o caminho. */}
+      <Bloco titulo="Venda de pacote">
+        <p data-comissao-do-pacote style={texto}>
+          A comissão de venda do pacote fica no próprio pacote: Vendas → Pacotes → o pacote → Comissão. Sem regra no pacote,
+          vale a comissão de venda de quem vendeu (Equipe → Comissão); sem nenhuma das duas, a venda do pacote não gera comissão.
+        </p>
+      </Bloco>
+
       <Bloco titulo="Fechamento das comissões">
         {podeEditar
           ? <SegSelect ariaLabel="Período do fechamento" value={c.periodo} onSelect={k => mudar('periodo', k as ConfigDeComissao['periodo'])}

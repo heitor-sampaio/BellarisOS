@@ -1,6 +1,6 @@
 import { partsInTZ } from '@/lib/datetime'
 import { rotaAtendimento, rotaCliente, rotaNoPortal } from '@/lib/rotas'
-import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
 import type { LinhaDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from './tipos'
 
 /**
@@ -159,6 +159,13 @@ const CAMPO: Record<string, string> = {
   points: 'pontos', min_stock: 'estoque mínimo', unit: 'medida', sku: 'código', barcode: 'código de barras',
   parcela_numero: 'parcela', parcela_total: 'total de parcelas', descricao: 'descrição', tipo: 'tipo', dia: 'dia',
   diferenca: 'diferença', preco: 'preço', observacao: 'observação', visible_on_client_app: 'agendável pelo app',
+  // A32 da 19ª: "maquininha id" saía cru. A trava (tests/auditoria-atritos-da-19.test.ts):
+  // toda coluna de financial_transactions tem nome aqui.
+  cash_register_id: 'caixa', created_by: 'quem criou', client_package_id: 'pacote da cliente', sale_discount: 'desconto da venda',
+  procedure_sale_id: 'venda de procedimento', parcela_grupo: 'grupo de parcelas', cartao_vezes: 'vezes no cartão',
+  desconto_motivo: 'motivo do desconto', cartao_bandeira: 'bandeira do cartão', credito_vendido_id: 'crédito vendido',
+  vencimentos_anteriores: 'vencimentos anteriores', fornecedor: 'fornecedor', nota_fiscal: 'nota fiscal',
+  valor_antes_do_estorno: 'valor antes do estorno', estorno_de: 'lançamento estornado', maquininha_id: 'maquininha',
 }
 
 /** O nome de cada campo na Auditoria (a trava de A30 da 18ª lê daqui). */
@@ -249,6 +256,36 @@ function fraseDoMovimento(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): stri
   }
 }
 
+/** "o Voucher R$ 30": o voucher pelo nome que a auditoria guarda. */
+function oVoucher(nome: string | null): string {
+  if (!nome) return 'o voucher'
+  return /^voucher\b/i.test(nome) ? `o ${nome}` : `o voucher ${nome}`
+}
+
+/** O voucher que voltou a ativo nesta linha (o estorno do pagamento que o usou), ou nulo. */
+function voucherDevolvido(r: RegistroDaAuditoria): string | null {
+  if (r.tabela !== 'loyalty_vouchers' || r.operacao !== 'editou') return null
+  const antes = texto(r.antes.status)
+  if (texto(r.depois.status) !== 'ATIVO' || !antes || antes === 'ATIVO') return null
+  return oVoucher(texto(r.depois.name) ?? texto(r.antes.name))
+}
+
+/**
+ * O conferido do fechamento em texto (A33 da 19ª): "Dinheiro R$ 300,00 e Pix
+ * R$ 1.200,00" — o dinheiro contado e as outras formas conferidas, como a tela.
+ */
+export function conferidoDoFechamento(contadoDinheiro: unknown, conferido: Record<string, unknown> | null | undefined): string {
+  const partes: string[] = []
+  const contado = numero(contadoDinheiro)
+  if (contado !== null) partes.push(`Dinheiro ${brl(contado)}`)
+  for (const [forma, valor] of Object.entries(conferido ?? {})) {
+    const v = numero(valor)
+    if (v === null || (forma === 'CASH' && contado !== null)) continue
+    partes.push(`${rotuloDaFormaDoFechamento(forma)} ${brl(v)}`)
+  }
+  return emLista(partes)
+}
+
 /** "15/11/2026" de "2026-11-15". */
 const diaLegivel = (dia: string) => /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia.split('-').reverse().join('/') : dia
 
@@ -274,7 +311,10 @@ function fraseDoRegistroDa17(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
     const dia = texto(r.depois.dia)
     const diferenca = numero(r.depois.diferenca)
     const deNovo = !!(r.registro_id && nomes.fechamentosDeNovo?.[r.registro_id])
-    return `Fechou ${deNovo ? 'de novo ' : ''}${dia ? `o dia ${diaLegivel(dia)}` : 'o dia'}${diferenca ? ` (diferença de ${brl(diferenca)})` : ''}`
+    // A33 da 19ª: o conferido (lido agora: a auditoria guarda só o dia e a diferença).
+    const conferido = r.registro_id ? texto(nomes.conferidosDoFechamento?.[r.registro_id]) : null
+    const partes = [conferido ? `conferido: ${conferido}` : null, diferenca ? `diferença de ${brl(diferenca)}` : null].filter(Boolean)
+    return `Fechou ${deNovo ? 'de novo ' : ''}${dia ? `o dia ${diaLegivel(dia)}` : 'o dia'}${partes.length ? ` (${partes.join('; ')})` : ''}`
   }
   if (r.tabela === 'leads' && r.operacao === 'editou' && r.colunas.includes('crm_stage_id')) {
     const nome = nomeDoRegistro(r, nomes)
@@ -325,6 +365,26 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     const motivo = r.registro_id ? texto(nomes.motivosDoCancelamento?.[r.registro_id]) : null
     return `Cancelou o agendamento${cliente ? ` de ${cliente}` : ''}${motivo ? ` (motivo: ${motivo})` : ''}`
   }
+  // A34 da 19ª: o remarcar e o repasse são o fato ("Editou o agendamento (confirmação, sala, horário…)" não dizia).
+  if (r.tabela === 'appointments' && r.operacao === 'editou') {
+    const novo = r.colunas.includes('scheduled_at') ? texto(r.depois.scheduled_at) : null
+    const prof = r.colunas.includes('professional_id') ? texto(r.depois.professional_id) : null
+    const quemAtende = prof ? nomes.membros[prof] ?? null : null
+    const de = cliente ? ` de ${cliente}` : ''
+    if (novo) return `Remarcou o agendamento${de} para ${quandoDaAuditoria(novo)}${quemAtende ? `, com ${quemAtende}` : ''}`
+    if (prof) {
+      const resto = camposMudados(r.colunas.filter(c => c !== 'professional_id'))
+      return `Repassou o agendamento${de} a ${quemAtende ?? 'outra pessoa da equipe'}${resto ? ` (e editou: ${resto})` : ''}`
+    }
+  }
+  // A33 da 19ª: o voucher devolvido (o estorno do pagamento que o usou) diz que voltou a ativo.
+  const devolvido = voucherDevolvido(r)
+  if (devolvido) return `Devolveu ${devolvido} (voltou a ativo)${cliente ? ` — ${cliente}` : ''}`
+  // A35 da 19ª: a geração do documento é o fato ("Editou o documento (conteúdo, pagamento combinado, geração…)").
+  if (r.tabela === 'issued_documents' && r.operacao === 'editou' && r.colunas.includes('rendered_at')) {
+    const nome = nomeDoRegistro(r, nomes)
+    return `Gerou o documento${nome ? ` ${nome}` : ''}${cliente ? ` — ${cliente}` : ''}`
+  }
   // A33 da 18ª: a comissão diz de qual é (o atendimento, a venda) — no CSV, as linhas do pagamento eram iguais.
   if (r.tabela === 'commissions' && r.registro_id && nomes.comissoes?.[r.registro_id]) {
     const qual = nomes.comissoes[r.registro_id]!
@@ -345,6 +405,8 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   // A permissão diz o módulo e o cargo: "Criou a permissão de Agenda do cargo X".
   const cargo = r.tabela === 'role_permissions' && r.registro_id ? nomes.cargos?.[r.registro_id] : null
   if (cargo) { coisa = 'a permissão'; nome = `${nome ? `${nome} ` : ''}do cargo ${cargo}` }
+  // A35 da 19ª: "Criou a ficha de X" (era "a ficha da cliente de X").
+  if (r.tabela === 'clients' && cliente) coisa = 'a ficha'
   let frase = `${VERBO[r.operacao] ?? 'Mudou'} ${coisa}${nome ? ` ${nome}` : ''}`
   if (r.tabela === 'clients' && cliente) frase += ` de ${cliente}`
   else if (cliente) frase += ` — ${cliente}`
@@ -411,7 +473,8 @@ export function linhaDaAuditoria(
     quando:     quandoDaAuditoria(r.criado_em, fuso),
     ...quemAgiu(r, nomes),
     oQue:       fraseDaAuditoria(r, nomes),
-    unidade:    r.branch_id ? nomes.unidades[r.branch_id] ?? null : null,
+    // A36 da 19ª: a linha sem unidade (a oportunidade, a tag, o cargo) é da rede — o "—" não dizia por quê.
+    unidade:    r.branch_id ? nomes.unidades[r.branch_id] ?? null : r.operacao === 'entrou' ? null : 'Da rede',
     href:       linkDaAuditoria(r, pathname, slug),
   }
 }
@@ -489,7 +552,38 @@ export function agruparAuditoria(registros: readonly RegistroDaAuditoria[]): Reg
     if (g) g.push(r)
     else grupos.set(chave, [r])
   }
-  return [...grupos.values()]
+  return comAGeracaoNaVenda([...grupos.values()])
+}
+
+/** Até quanto depois da criação a geração do documento ainda é parte da mesma gravação. */
+const JANELA_DA_GERACAO_MS = 5 * 60_000
+const atorDe = (r: RegistroDaAuditoria) => `${r.ator_user_id ?? ''}|${r.ator_nome}|${r.ator_tipo}`
+const soGeracaoDeDocumento = (g: readonly RegistroDaAuditoria[]) =>
+  g.every(l => l.tabela === 'issued_documents' && l.operacao === 'editou' && l.colunas.includes('rendered_at') && !!l.registro_id)
+
+/**
+ * A35 da 19ª simulação: a venda do pacote cria o contrato, e a montagem do
+ * texto grava logo depois, noutra transação — "Editou o documento Contrato de
+ * pacote (conteúdo, pagamento combinado, geração…)" ficava à parte. A geração
+ * do documento que a MESMA pessoa criou há pouco entra na gravação que o
+ * criou. Sem ela na mesma página, fica sozinha ("Gerou o documento X").
+ */
+function comAGeracaoNaVenda(grupos: RegistroDaAuditoria[][]): RegistroDaAuditoria[][] {
+  const levados = new Set<RegistroDaAuditoria[]>()
+  for (const g of grupos) {
+    if (!soGeracaoDeDocumento(g)) continue
+    const quando = Date.parse(g[0]!.criado_em)
+    const dono = grupos.find(h => h !== g && !levados.has(h) && !soGeracaoDeDocumento(h) && h.some(l => {
+      const depois = quando - Date.parse(l.criado_em)
+      return l.tabela === 'issued_documents' && l.operacao === 'criou' && g.some(x => x.registro_id === l.registro_id)
+        && atorDe(l) === atorDe(g[0]!) && depois >= 0 && depois <= JANELA_DA_GERACAO_MS
+    }))
+    if (!dono) continue
+    dono.push(...g)
+    dono.sort((a, b) => b.id - a.id)
+    levados.add(g)
+  }
+  return levados.size ? grupos.filter(g => !levados.has(g)) : grupos
 }
 
 /** "Criou 3 e apagou 1": as operações das linhas, na ordem criou, editou, apagou. */
@@ -526,9 +620,12 @@ function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const alvo = ALVO.find(([t]) => linhas.some(l => l.tabela === t))?.[1] ?? (doAtendimento ? 'o atendimento' : 'um pagamento')
   const voltas = linhas.filter(l => l.tabela === 'stock_movements' && texto(l.depois.type) === 'SALE_RETURN').map(l => doProduto(l, nomes))
   const volta = voltas.length ? `, e ${emLista(voltas)} ${voltas.length === 1 ? 'voltou' : 'voltaram'} ao estoque` : ''
+  // A33 da 19ª: o voucher que o pagamento estornado usou volta a ativo, e a frase diz.
+  const vouchers = linhas.map(voucherDevolvido).filter((v): v is string => !!v)
+  const ativos = vouchers.length ? `${volta ? ' e' : ', e'} ${emLista(vouchers)} ${vouchers.length === 1 ? 'voltou' : 'voltaram'} a ativo` : ''
   const clienteId = linhas.find(l => l.client_id)?.client_id
   const cliente = clienteId ? nomes.clientes[clienteId] ?? null : null
-  return `Estornou ${alvo} (${brl(valor)})${volta}${cliente ? ` — ${cliente}` : ''}`
+  return `Estornou ${alvo} (${brl(valor)})${volta}${ativos}${cliente ? ` — ${cliente}` : ''}`
 }
 
 /** A transferência: a saída de uma unidade e a entrada na outra, na mesma gravação. */
@@ -738,6 +835,10 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   if (transferencia) return transferencia
   const fato = fatoDaGravacao(linhas, nomes)
   if (fato) return fato.frase
+  // A34 da 19ª: o remarcar, o repasse e o cancelamento gravados com outros registros.
+  const doAgendamento = linhas.map(l => (l.tabela === 'appointments' && l.operacao === 'editou' ? fraseDaAuditoria(l, nomes) : null))
+    .find(f => f && /^(Remarcou|Repassou|Cancelou) /.test(f))
+  if (doAgendamento) return doAgendamento
 
   // A27 da 17ª: o contato e a oportunidade criados juntos (o "+ Oportunidade", a importação), pelo nome lido agora.
   const oportunidade = linhas.find(l => l.tabela === 'leads' && l.operacao === 'criou')

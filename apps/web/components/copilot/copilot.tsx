@@ -7,6 +7,7 @@ import {
   Sparkles, X, History, Plus, Paperclip, Mic, Square, SendHorizontal, Trash2, Loader2, FileText, Image as ImageIcon, AudioLines,
 } from 'lucide-react'
 import { abrirConversaDoCopilot, apagarConversaDoCopilot, listarConversasDoCopilot } from '@/actions/copilot'
+import { conversaParaContinuar, rotuloDoContinuar } from '@/lib/copilot/continuar'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { TextoDoCopilot } from '@/components/copilot/texto-do-copilot'
 import { CartaoDoCopilot } from '@/components/copilot/cartao-do-copilot'
@@ -177,7 +178,8 @@ export function Copilot() {
   /**
    * A31 da 16ª (princípio 7): o painel abre numa conversa nova, e a anterior
    * só aparecia pelo ícone de histórico, sem rótulo. A tela vazia oferece
-   * "Continuar a conversa anterior" — a mais recente da pessoa.
+   * "Continuar a conversa anterior" — a mais recente da pessoa; a que tem um
+   * cartão a confirmar vem antes (A28 da 19ª).
    */
   const [anterior, setAnterior] = useState<ConversaNaLista | null>(null)
   const [texto, setTexto] = useState('')
@@ -232,7 +234,7 @@ export function Copilot() {
     if (!vazio) return
     let vale = true
     listarConversasDoCopilot()
-      .then(lista => { if (vale) setAnterior(lista[0] ?? null) })
+      .then(lista => { if (vale) setAnterior(conversaParaContinuar(lista)) })
       .catch(() => { if (vale) setAnterior(null) })
     return () => { vale = false }
   }, [vazio])
@@ -435,7 +437,7 @@ export function Copilot() {
                 <li key={c.id}>
                   <button type="button" className="copilot-conversa" onClick={() => { setVista('chat'); setTitulo(c.titulo); void carregarConversa(c.id) }}>
                     <span>{c.titulo}</span>
-                    <small>{quando(c.atualizadaEm, fuso)}</small>
+                    <small>{quando(c.atualizadaEm, fuso)}{c.cartaoPendente ? ' · cartão a confirmar' : ''}</small>
                   </button>
                   <button type="button" className="copilot-acao-topo" aria-label={`Apagar a conversa ${c.titulo}`} onClick={() => void apagar(c.id)}>
                     <Trash2 size={14} />
@@ -457,7 +459,7 @@ export function Copilot() {
                 {anterior && (
                   <button type="button" className="copilot-sugestao" data-continuar-conversa
                     onClick={() => { setTitulo(anterior.titulo); void carregarConversa(anterior.id) }}>
-                    Continuar a conversa anterior: {anterior.titulo}
+                    {rotuloDoContinuar(anterior)}
                   </button>
                 )}
                 <p>Olá! Peça o que precisar: consultar a agenda, achar um cliente, ver números, cadastrar ou agendar. Toda gravação passa pela sua confirmação.</p>

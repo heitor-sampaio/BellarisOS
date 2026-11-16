@@ -33,13 +33,16 @@ export function linkSeguro(href: string): string | null {
 
 export function trechosDaLinha(linha: string): Trecho[] {
   const trechos: Trecho[] = []
-  const padrao = /\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)/g
+  // O link sem fechamento no fim (a resposta cortada, D3 da 19ª; ou ainda
+  // chegando pelo streaming) fica só o texto, sem o pedaço "](/…".
+  const padrao = /\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|\[([^\]]+)\]\([^)\s]*$/g
   let ultimo = 0
   let m: RegExpExecArray | null
   const texto = (t: string) => { if (t) trechos.push({ tipo: 'texto', texto: t }) }
   while ((m = padrao.exec(linha))) {
     texto(linha.slice(ultimo, m.index))
     if (m[1] !== undefined) trechos.push({ tipo: 'negrito', texto: m[1] })
+    else if (m[4] !== undefined) texto(m[4])
     else {
       const href = linkSeguro(m[3]!)
       if (href) trechos.push({ tipo: 'link', texto: m[2]!, href })

@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import {
@@ -112,6 +112,7 @@ export function UploadForm({
   clientId, branchId, slug, podeAnexarClinico, podeAnexarComum, onClose,
   categoriaFixa, appointmentId, nomePadrao, rotuloDoEnvio = 'Anexar documento', titulo = 'Novo documento', aceita, momentos,
   exemploDoNome = 'Ex: Comprovante de endereço — jun 2026', ofereceEnviar = false,
+  rotuloDoNome = 'Nome do documento *', dicaDoNome,
 }: {
   clientId: string; branchId: string; slug: string; podeAnexarClinico: boolean; podeAnexarComum: boolean; onClose: () => void
   /** A categoria já decidida (a foto clínica do atendimento): sem o seletor. */
@@ -132,8 +133,12 @@ export function UploadForm({
   exemploDoNome?: string
   /** A10 da 18ª: o "Enviar à cliente" já no envio (a foto do atendimento, com o portal no plano). */
   ofereceEnviar?: boolean
+  /** A15 da 19ª: o rótulo do nome (a foto: "Nome no prontuário *") e a dica do que a cliente lê. */
+  rotuloDoNome?:  string
+  dicaDoNome?:    string
 }) {
   const formRef     = useRef<HTMLFormElement>(null)
+  const idDoForm    = useId()
   const [fileName, setFileName] = useState<string | null>(null)
   const [momento, setMomento] = useState(momentos?.inicial ?? '')
   const [nome, setNome] = useState(() => momentos?.opcoes.find(o => o.key === momentos.inicial)?.nome ?? nomePadrao ?? '')
@@ -186,16 +191,24 @@ export function UploadForm({
       )}
 
       <div className={categoriaFixa ? undefined : 'form-2col'}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span className="field-label">Nome do documento *</span>
-          <input
-            type="text" name="name" required
-            value={nome} onChange={e => setNome(e.target.value)}
-            placeholder={exemploDoNome}
-            className="field"
-            style={{ background: 'var(--surface)' }}
-          />
-        </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span className="field-label">{rotuloDoNome}</span>
+            <input
+              type="text" name="name" required
+              value={nome} onChange={e => setNome(e.target.value)}
+              placeholder={exemploDoNome}
+              className="field"
+              style={{ background: 'var(--surface)' }}
+              aria-describedby={dicaDoNome ? `${idDoForm}-dica-do-nome` : undefined}
+            />
+          </label>
+          {dicaDoNome && (
+            <p id={`${idDoForm}-dica-do-nome`} data-dica-do-nome style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
+              {dicaDoNome}
+            </p>
+          )}
+        </div>
         {!categoriaFixa && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span className="field-label">Categoria *</span>

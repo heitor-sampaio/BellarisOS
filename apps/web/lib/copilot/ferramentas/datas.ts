@@ -52,3 +52,14 @@ export function agoraLegivel(agora: Date = new Date(), fuso: string = BUSINESS_T
   const hora = new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' }).format(agora)
   return `${data}, ${hora} (${nomeDoFuso(fuso)}; hoje em ISO: ${hojeNoFuso(fuso, agora)})`
 }
+
+/**
+ * "16/11 a 16/12/2026" — o período de dois dias ISO para o cartão (A29 da
+ * 19ª: o cartão dizia "2026-11-16 a 2026-12-16"). O ano vai uma vez; em anos
+ * diferentes, nos dois lados.
+ */
+export function periodoLegivel(de: string, ate: string): string {
+  const [ad, md, dd] = de.split('-')
+  const [aa, ma, da] = ate.split('-')
+  return ad === aa ? `${dd}/${md} a ${da}/${ma}/${aa}` : `${dd}/${md}/${ad} a ${da}/${ma}/${aa}`
+}

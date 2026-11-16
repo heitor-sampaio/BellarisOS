@@ -100,7 +100,8 @@ describe('A26: as frases dizem o fato', () => {
     const f = fraseDoGrupo([r({ tabela: 'appointments', operacao: 'editou', client_id: 'cP', colunas: ['aconteceu_em', 'scheduled_at'],
       antes: { scheduled_at: '2026-11-15T17:40:00Z' }, depois: { scheduled_at: '2026-11-15T18:00:00Z' } })], nomes)
     expect(f).not.toMatch(/aconteceu/)
-    expect(sp(f)).toBe('Editou o agendamento — Paula Reis (horário)')
+    // A34 da 19ª: o horário mudado é o remarcar (era "Editou o agendamento — Paula Reis (horário)").
+    expect(sp(f)).toBe('Remarcou o agendamento de Paula Reis para 15/11/2026 15:00')
   })
 })
 

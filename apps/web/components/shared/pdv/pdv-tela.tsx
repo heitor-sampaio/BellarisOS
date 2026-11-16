@@ -14,6 +14,7 @@ import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
 import {
   SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
   estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
+  estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto,
   type ComandaDoPdv, type SituacaoDoPdv,
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
@@ -112,7 +113,7 @@ export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoj
  * e o "Receber". Não existe pagamento sem forma (PDV8): o "Receber" espera a
  * forma escolhida.
  */
-export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, recebidoHoje, escolhida, slugDaUnidade, novaVenda, podeVerFechamento = true }: {
+export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, recebidoHoje, escolhida, slugDaUnidade, novaVenda, podeVerFechamento = true, recebidaAgora = null }: {
   basePath:      string
   unidades:      { id: string; name: string }[]
   unidadeId:     string
@@ -126,6 +127,8 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
   novaVenda:     { dados: VendaDoPdv | null; aviso?: string; perguntaAUnidade?: boolean } | null
   /** Vê o Fechamento do dia (`podeVerFechamento`): o "Fechar o dia" do topo. */
   podeVerFechamento?: boolean
+  /** A2 da 19ª: a comanda que acabou de ser recebida (`?recebida=`) — a tela diz o que entrou. */
+  recebidaAgora?: ComandaDoPdv | null
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -152,6 +155,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
     }
     return `${basePath}?${q.toString()}`
   }
+  const textoDaRecebida = recebidaAgora ? recebidaAgoraEmTexto(recebidaAgora) : null
   const visiveis = useMemo(() => {
     const t = busca.trim().toLocaleLowerCase('pt-BR')
     return t ? comandas.filter(c => c.cliente.toLocaleLowerCase('pt-BR').includes(t)) : comandas
@@ -215,12 +219,24 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
           ) : !escolhida ? (
             <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-faint)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <ShoppingBag size={28} aria-hidden />
-              <p style={{ fontSize: 'var(--text-sm-sz)' }}>Escolha uma comanda à esquerda para ver o que está nela e receber, ou comece uma nova venda.</p>
+              {/* A2 da 19ª (princípio 3): recebida, a comanda sai das abertas — a tela diz o que entrou e onde ela está. */}
+              {textoDaRecebida && recebidaAgora && (
+                <p data-recebida-agora role="status" style={{
+                  color: 'var(--success)', background: 'var(--success-soft)', borderRadius: 'var(--radius-field-token)',
+                  padding: '10px 14px', fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.45,
+                }}>
+                  {textoDaRecebida}{' '}
+                  <Link href={href({ ver: 'PAGAS', comanda: recebidaAgora.id })} style={{ color: 'inherit', fontWeight: 'var(--weight-bold)' }}>Ver a comanda</Link>
+                </p>
+              )}
+              {/* A4 da 19ª: no celular a lista fica em cima, não à esquerda. */}
+              <p style={{ fontSize: 'var(--text-sm-sz)' }}>Escolha uma comanda na lista para ver o que está nela e receber, ou comece uma nova venda.</p>
             </div>
           ) : (
             <ComandaNaTela e={escolhida} hora={hora} slugDaUnidade={slugDaUnidade}
               fichaHref={rotaCliente(pathname, slugDaUnidade, escolhida.comanda.clienteId)}
-              aoReceber={() => { router.push(href({})); router.refresh() }}
+              // A2 da 19ª: a recebida vai na URL, e a tela diz o que entrou.
+              aoReceber={() => { router.push(href({ recebida: escolhida.comanda.id })); router.refresh() }}
               aoEstornar={escolhida.comanda.origem === 'ATENDIMENTO'
                 // A2 da 17ª: o estorno do atendimento reabre a comanda — ela vai às Abertas, aberta.
                 ? () => {
@@ -254,6 +270,10 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
   const estornoAnterior = aReceber ? estornoAnteriorEmTexto(c, hora) : null
   // D2 da 18ª: a reaberta cita também o produto estornado.
   const produtoEstornado = aReceber && c.origem === 'ATENDIMENTO' ? produtosEstornadosEmTexto(e.itens, hora) : null
+  // D1 da 19ª: a comanda da venda diz o estorno de antes — a receber de novo, ou recebida de novo.
+  const estornoDaVenda = estornoDaVendaEmTexto(c, hora)
+  // A7 da 19ª: o voucher da comanda paga depois do estorno só do produto.
+  const voucherDoEstornado = c.origem === 'ATENDIMENTO' ? voucherDoProdutoEstornadoEmTexto(c, e.itens) : null
   // A1 da 18ª: o atendimento e os produtos recebidos juntos são dois lançamentos — a tela diz.
   const pagoJunto = e.pagamentos ? pagoJuntoEmTexto(e.pagamentos) : null
   // A1 da 18ª: o estorno é por lançamento — com produto, o atendimento ou o produto.
@@ -362,7 +382,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
                         borderTop: i ? '1px solid var(--hairline)' : undefined,
                       }}>
                         <span title={l.descricao} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                          <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>{rotuloDoPagamentoDaComanda(l) ?? l.descricao}</b> · {rotuloDaForma(l.metodo, l.vezes)} · {brl(l.valor)}
+                          <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>{rotuloDoPagamentoDaComanda(l) ?? l.descricao}</b> · {rotuloDaForma(l.metodo, l.vezes, { bandeira: l.bandeira })} · {brl(l.valor)}
                         </span>
                         {e.podeEstornar && (
                           <AcoesDoLancamentoDaFicha slug={slugDaUnidade} podeEstornar podeReceber={false} aoEstornar={aoEstornar}
@@ -391,6 +411,22 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
               borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)',
             }}>
               {estornoAnterior}. Ao receber de novo, o desconto se escolhe de novo.
+            </p>
+          )}
+          {estornoDaVenda && (
+            <p data-estorno-da-venda style={{
+              color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)',
+            }}>
+              {estornoDaVenda}
+            </p>
+          )}
+          {voucherDoEstornado && (
+            <p data-voucher-do-produto-estornado style={{
+              color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)',
+            }}>
+              {voucherDoEstornado}
             </p>
           )}
           {produtoEstornado && (

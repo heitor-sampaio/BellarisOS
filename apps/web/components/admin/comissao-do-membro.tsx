@@ -6,6 +6,7 @@ import { Ban, Banknote, Percent, Plus, Trash2, X } from 'lucide-react'
 import { parseDinheiro } from '@estetica-os/utils'
 import { salvarRegrasDoProfissional } from '@/actions/comissoes'
 import { rotuloDaRegra, type RegraDeComissao, type TipoDeRegra } from '@/lib/comissoes/config'
+import { chipDaComissao } from '@/lib/comissoes/chip-do-membro'
 import { resumoDaComissaoDoMembro } from '@/lib/equipe/textos-do-cadastro'
 
 /**
@@ -59,9 +60,8 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
       <button type="button" onClick={abrir} title={`Comissão de ${membro.nome}`} aria-label={`Comissão de ${membro.nome}`}
         className={semRegra ? 'chip chip-warning' : 'chip chip-muted'} style={{ cursor: 'pointer' }}
         data-comissao={membro.id}>
-        {padrao ? `Comissão ${rotuloDaRegra(padrao)}` : 'Sem comissão'}
-        {excecoes > 0 && ` · ${excecoes} ${excecoes === 1 ? 'exceção' : 'exceções'}`}
-        {vendaPct != null && vendaPct > 0 && ` · venda ${paraTexto(vendaPct)}%`}
+        {/* A22 da 19ª: o chip diz QUAL comissão falta — a de atendimento (quem atende) ou a de venda. */}
+        {chipDaComissao({ padrao: padrao ? rotuloDaRegra(padrao) : null, excecoes, vendaPct, atende })}
       </button>
 
       <dialog ref={dialogRef} className="modal modal-flex" style={{ maxWidth: 560, textAlign: 'left' }}
@@ -284,7 +284,8 @@ export function CampoDeValor({ tipo, valor, onChange, rotulo }: {
   return (
     <div style={{ position: 'relative' }}>
       {!pct && <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>R$</span>}
-      <input className="field" inputMode="decimal" aria-label={rotulo} placeholder={pct ? '0' : '0,00'} value={valor}
+      {/* A24 da 19ª: o exemplo no lugar do 0 — o campo vazio parecia já preenchido com zero. */}
+      <input className="field" inputMode="decimal" aria-label={rotulo} placeholder={pct ? 'Ex.: 10' : 'Ex.: 50,00'} value={valor}
         onChange={e => onChange(e.target.value)} style={{ paddingLeft: pct ? undefined : 36, paddingRight: pct ? 30 : undefined }} />
       {pct && <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>%</span>}
     </div>

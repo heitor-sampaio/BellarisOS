@@ -12,6 +12,7 @@ import { lancarCore, marcarPagoCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeir
 import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
 import { logHistory } from '@/lib/appointments/avisos'
 import { textoDosPontosDoEstorno } from '@/lib/fidelidade/pontos-do-estorno'
+import { textoDaReaberturaDoPacote } from '@/lib/financeiro/reabertura-do-estorno'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -356,9 +357,10 @@ export async function reaberturaDoEstorno(transactionId: string): Promise<{ text
     if (tx.type !== 'INCOME' || tx.appointment_id || tx.product_sale_id || tx.credito_vendido_id) return { texto: null }
     const valor = formatBRL(Number(tx.amount))
     if (tx.client_package_id) {
-      const cp = await ler(admin.from('client_packages').select('cancelado_em').eq('id', tx.client_package_id).maybeSingle(), 'ler o pacote')
+      const cp = await ler(admin.from('client_packages').select('cancelado_em, total_sessions, used_sessions').eq('id', tx.client_package_id).maybeSingle(), 'ler o pacote')
       if (!cp || cp.cancelado_em) return { texto: null }
-      return { texto: `O dinheiro volta à cliente, e o pacote volta a ter ${valor} a receber. Para desfazer a venda, use “Cancelar pacote” na ficha.` }
+      // A6 da 19ª: as sessões já feitas seguem feitas — a janela diz quantas.
+      return { texto: textoDaReaberturaDoPacote(Number(tx.amount), Number(cp.used_sessions ?? 0), Number(cp.total_sessions ?? 0)) }
     }
     if (tx.treatment_plan_id) {
       const tp = await ler(admin.from('treatment_plans').select('cancelado_em').eq('id', tx.treatment_plan_id).maybeSingle(), 'ler o plano')

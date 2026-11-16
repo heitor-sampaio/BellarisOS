@@ -72,6 +72,13 @@
     2026-11-01; `components/shared/editor-de-horario.tsx`): era "Tirar a
     pausa", que juntava os dois — a profissional de 07–12 e 18–22 ficava
     07–22. Juntar é outro botão, "Sem pausa". Prova: o mesmo spec.
+  - **O editor diz o horário em texto antes de salvar** (A25 da 19ª,
+    princípio 3: o "Repetir o horário de segunda em todos os dias (domingo
+    incluído)" abriu o domingo, e quem repetiu achava que ele seguia fechado):
+    "Fica assim: Seg a dom, 09:00–23:59", com os dias fechados ditos ("Seg a
+    sáb, 09:00–18:00. Domingo fechado") — o mesmo resumo de quem agenda
+    (`resumoDoEditorDeHorario`, `lib/unidades/horario-no-editor.ts`,
+    `[data-resumo-do-horario]`). Prova: `tests/atritos-da-19-cadastros.test.ts`.
   Prova:
   `e2e/agenda-horario-de-funcionamento.spec.ts`, `tests/agenda-horario.test.ts`.
   - **Livre não é fixo** (D8 da simulação de 2026-10-29): a grade desses
@@ -422,8 +429,11 @@
   `checkinCore` (o plano em aberto aparece na tela
   como em todo check-in) e depois o MESMO `startAppointment` (a trava dos
   documentos). Com a agenda "só os meus", só no agendamento dela. Sem o
-  check-in no cargo, a tela diz que quem tem a Agenda em Gerenciar marca a chegada. Prova:
-  `e2e/agenda-chegar-e-iniciar.spec.ts`. **E quem é a profissional DAQUELE
+  check-in no cargo, a tela diz que quem tem a Agenda em Gerenciar marca a chegada
+  — e o NOME de quem marca (A10 da 19ª, princípio 3: a Agenda em Gerenciar de
+  TODOS, porque o "só os meus" marca só a dos próprios; `quemMarcaAChegada`,
+  `textoDeQuemMarcaAChegada`). Prova:
+  `e2e/agenda-chegar-e-iniciar.spec.ts`, `tests/atritos-da-19-atendimento.test.ts`. **E quem é a profissional DAQUELE
   agendamento, qualquer que seja o escopo** (A25 da 6ª simulação,
   2026-11-04): a Admin da rede que atende, com a agenda de todas, chegava ao dela em
   quatro cliques e uma confirmação ("Chegou" → "Iniciar" → "mesmo assim"); a
@@ -1017,7 +1027,8 @@
 - **"Mostrar cancelados"** (2026-10-21, decisão do Heitor): a agenda da
   unidade deixa o cancelado e a falta fora da grade; o botão do cabeçalho
   (`?cancelados=1`, a consulta do servidor) os traz de volta, apagados, riscados
-  e com o motivo (`cancellation_reason`). Não contam em nada (atendimentos,
+  e com o motivo (`cancellation_reason`). No celular a barra do cabeçalho
+  quebra a linha, em vez de cortar o botão (A14 da 19ª). Não contam em nada (atendimentos,
   ocupação, a contagem do profissional) e não se arrastam; no dia, dividem o
   horário com quem o ocupou depois (o ativo à esquerda). A agenda da rede, que
   sempre os mostrou, apaga o bloco e diz o motivo. Prova:
@@ -1198,7 +1209,10 @@
     essa sessão vai sem sala." (`avisoDaSala`, um aviso na tela). No remarcar do
     app, a sala que o agendamento tinha fica se segue livre no horário novo;
     ocupada, vale a única livre, senão sem sala (a cliente não escolhe sala).
-    Prova: `e2e/plano-defeitos-da-12.spec.ts` ("D8"). Prova: `e2e/agenda-salas.spec.ts`,
+    Prova: `e2e/plano-defeitos-da-12.spec.ts` ("D8"). **Enquanto a lista do
+    horário carrega, o seletor diz "Conferindo as salas…"**, não "Sem sala
+    definida" (A13 da 19ª: a pessoa achava que tinha perdido a sala; o
+    Confirmar já esperava). Prova: `e2e/agenda-salas.spec.ts`,
     `tests/agenda-salas.test.ts`.
 - `cancellationReason`: obrigatório ao cancelar para rastreabilidade
 - Ao marcar `COMPLETED`: consumo de estoque + comissão, numa transação — ver §10. Os pontos de fidelidade NÃO nascem aqui: nascem no pagamento (§9.2.2).
@@ -1240,7 +1254,9 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   escolheu o horário novo: ele já nasce Confirmado, sem pedir a confirmação
   de novo. Quando a equipe ou o Copilot remarcam, ninguém ouviu a cliente: o
   horário volta a Agendado (sem `confirmed_at` nem `arrived_at`) e a
-  confirmação é pedida de novo (C8). Prova:
+  confirmação é pedida de novo (C8). **O app diz** (A12 da 19ª): "Agendamento
+  remarcado: … O horário novo fica confirmado." (`textoDoRemarcado`,
+  `lib/clientes/textos-do-app.ts`). Prova:
   `e2e/portal-cliente-remarcar-pelo-nucleo.spec.ts`.
 - **Quem só agenda cria a ficha, mas não mexe na que existe (H4, opção b;
   princípio 3: a mesma ação não muda conforme a porta).** O "+ Agendar" com
@@ -1782,6 +1798,9 @@ const procedures = await ler(
   (A8 da 17ª simulação): `FOTO_ENVIADA` "Foto enviada à cliente por <nome>" e
   `FOTO_TIRADA_DO_APP`; no app, a foto se diz "Foto" no Histórico.
   Prova: `tests/atritos-da-17-cadastros.test.ts`.
+  **O campo do nome da foto é "Nome no prontuário"** (A15 da 19ª): com a dica
+  "Só a equipe lê este nome. No app, a cliente vê “Uma foto do seu
+  atendimento”." (`DICA_DO_NOME_DA_FOTO`, `[data-dica-do-nome]`).
   **"Enviar à cliente" já no anexar** (A10 da 18ª simulação): com o portal no
   plano, a caixa do anexo manda a foto ao app no mesmo passo (o mesmo
   `enviarDocumentoACliente`, depois de gravar). O aviso diz "Foto nova" —
@@ -2298,6 +2317,16 @@ const procedures = await ler(
     confere tudo de novo com o saldo e o lote travados; a action é
     `desfazerEntradaDeEstoque` (Estoque em Gerenciar, a unidade ao alcance).
     Prova: `e2e/estoque-uso-da-10.spec.ts` ("A38").
+  - **O custo fora do comum avisa, e o desfazer se acha** (A19 da 19ª,
+    princípios 2 e 4: R$ 90.000 por frasco passou calado, e a correção por
+    Ajuste virou perda de R$ 180.000): na Entrada, o custo unitário acima de
+    10 vezes o custo do cadastro (sem ele, o preço de venda) AVISA — não
+    recusa — "Confira o custo unitário: se estiver certo, a entrada vale
+    assim." (`avisoDoCustoDaEntrada`, `lib/estoque/custo-da-entrada.ts`,
+    `[data-custo-fora-do-comum]`); sem referência, nada se diz. O lápis do
+    produto diz "Em “Movimentar” → Histórico, use “Desfazer entrada” e lance
+    de novo" (`[data-desfazer-entrada]`). Prova:
+    `tests/atritos-da-19-cadastros.test.ts`.
   - **O ajuste errado também se DESFAZ, e o "Contar em" é um só** (D5 da 11ª
     simulação, 2026-11-10; princípio 3: a Gisele digitou 15 querendo refis com
     a contagem em g, o sistema gravou −14.745 g e "Perdas no período" ficou com
@@ -2397,6 +2426,11 @@ const procedures = await ler(
     17ª simulação): "1 ml (1/100 do frasco)", "2 un (1/2 da seringa)"
     (`parteDaEmbalagem`, `lib/estoque/unidade-de-consumo.ts`); sem unidade de
     consumo, nada. Prova: `tests/atritos-da-17-cadastros.test.ts`.
+  - **A quantidade do insumo nasce em branco e diz o que falta** (A13 da 15ª,
+    princípio 4: o 1 de antes dava a margem errada; A21 da 19ª): a linha vazia
+    diz "quanto sai a cada atendimento (obrigatório)"
+    (`[data-quantidade-em-branco]`) — não volta a nascer com 1. Prova:
+    `tests/atritos-da-19-cadastros.test.ts`.
   - Prova: `e2e/estoque-custo-de-consumo.spec.ts` (a entrada, o consumo de
     5 ml a R$ 4,50 no movimento, no giro, no relatório, na margem e na
     comissão com "descontar insumos", o valor em estoque, ajuste e

@@ -15,6 +15,7 @@ import {
   type LinkDeAssinatura,
 } from '@/actions/documentos'
 import { useFuso } from '@/components/shared/fuso'
+import { textoDeQuemColhe } from '@/lib/equipe/textos-de-quem-pode'
 
 /**
  * Os termos e contratos do cliente — na aba Documentos da ficha, acima dos
@@ -66,7 +67,7 @@ function Situacao({ item }: { item: ItemDeTermo }) {
   }
 }
 
-export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pelaConversa = false, temAcessoAoApp = true, recortado = false }: {
+export function TermosDoCliente({ itens, slug, podeColher, quemColhe = null, compacto = false, pelaConversa = false, temAcessoAoApp = true, recortado = false }: {
   /**
    * A35 da 11ª: a lista veio vazia pelo RECORTE (o prontuário "só os meus" de
    * quem não atende esta cliente) — a tela diz isso, em vez de "Nenhum termo".
@@ -76,6 +77,8 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
   /** Unidade do cliente (a rota vem de `lib/rotas`, pelo portal atual). */
   slug:       string
   podeColher: boolean
+  /** A10 da 19ª: a quem não colhe, os nomes de quem colhe (os Documentos em Gerenciar). */
+  quemColhe?: string[] | null
   compacto?:  boolean
   /** A rede liga o envio do link pela conversa do inbox (Configurações → Documentos). */
   pelaConversa?: boolean
@@ -190,7 +193,7 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Documentos para assinatura">
       {!podeColher && temAberto && (
         <p data-quem-colhe style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
-          A assinatura é colhida por quem tem os Documentos em Gerenciar: na tela, por link ou pelo app da cliente.
+          {textoDeQuemColhe(quemColhe)}
         </p>
       )}
       {podeColher && !temAcessoAoApp && itens.some(i => i.status === 'PENDENTE' || i.status === 'A_GERAR') && (

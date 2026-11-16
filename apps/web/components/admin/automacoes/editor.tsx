@@ -26,7 +26,7 @@ import { novoIdDeNo, novoIdDeLigacao, configPadrao } from '@/lib/automacoes/ids'
 import { encaixarPasso } from '@/lib/automacoes/encaixe'
 import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
 import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor, excluirAutomacao, contarAntesDeLigar } from '@/actions/automacoes'
-import { canaisParaACliente, explicacaoAntesDeLigar, textoAntesDeLigar } from '@/lib/automacoes/antes-de-ligar'
+import { canaisParaACliente, explicacaoAntesDeLigar, textoAntesDeLigar, limitesAntesDeLigar } from '@/lib/automacoes/antes-de-ligar'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 import type { AutomacaoCompleta } from '@/actions/automacoes'
 
@@ -394,6 +394,20 @@ export function EditorDeAutomacao({
             <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-bold)', lineHeight: 1.5 }}>
               {antesDeLigar.erro ?? antesDeLigar.texto ?? 'Contando as clientes…'}
             </p>
+            {/* A16 da 19ª: o silêncio e o teto à vista antes de ligar (a rede 24 horas não os via). */}
+            <div data-limites-antes-de-ligar style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <ShieldCheck size={15} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                {limitesAntesDeLigar(limites)}{' '}
+                <button
+                  type="button" disabled={salvando}
+                  style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontWeight: 'var(--weight-bold)', color: 'var(--brand)', textDecoration: 'underline' }}
+                  onClick={() => { setAntesDeLigar(null); setGaveta('limites'); setSel(null) }}
+                >
+                  Ajustar os limites
+                </button>
+              </p>
+            </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button type="button" className="btn-secondary" onClick={() => setAntesDeLigar(null)} disabled={salvando}>Agora não</button>
               <button type="button" className="btn-primary" onClick={alternarStatus} disabled={salvando}

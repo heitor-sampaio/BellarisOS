@@ -3,7 +3,7 @@
 import React, { useActionState, useEffect, useEffectEvent, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Phone, Mail, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileText, FileDown, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, Star, CalendarPlus, CalendarCheck, DoorOpen, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, FileSignature, FileText, FileDown, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus, darAcessoAoApp } from '@/actions/clients'
 import { avisoDoAcessoCriado, avisoDosAgendamentosAoArquivar } from '@/lib/clients/textos-do-cadastro'
 import { BotaoComConfirmacao } from '@/components/shared/botao-com-confirmacao'
@@ -61,6 +61,7 @@ import { mesDeClienteDesde } from '@/lib/clientes/cliente-desde'
 import { AvisoDoPacoteEmAberto } from '@/components/shared/aviso-do-pacote-em-aberto'
 import { useFuso } from '@/components/shared/fuso'
 import { avisoDaAbaFechada } from '@/lib/clients/aba-fechada'
+import { textoDosDocumentosEsperando } from '@/lib/equipe/textos-de-quem-pode'
 
 // -- Types --------------------------------------------------------------------
 
@@ -343,7 +344,12 @@ interface Props {
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
-  termos?:               { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean; recortado?: boolean; portalNoPlano?: boolean } | null
+  termos?:               { itens: ItemDeTermo[]; podeColher: boolean; quemColhe?: string[] | null; pelaConversa?: boolean; recortado?: boolean; portalNoPlano?: boolean } | null
+  /**
+   * A9 da 19ª: a quem não tem os Documentos, quantos documentos da cliente
+   * esperam a assinatura (sem título) e quem colhe. Nulo: nenhum, ou ela vê os Documentos.
+   */
+  documentosEsperando?:  { quantos: number; quemColhe: string[] | null } | null
   /** A33 da 11ª: o lote que cada atendimento usou (a baixa), por id do atendimento. */
   lotesDosAtendimentos?: Record<string, LoteDoAtendimento[]>
   /** Abre o "Aplicado em" do lote no Estoque (o Estoque e as Clientes). */
@@ -1498,7 +1504,7 @@ export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemUnidade = false, perguntaAUnidade = false, clientHistory, opportunities = [],
-  planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
+  planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null, documentosEsperando = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
@@ -2341,8 +2347,17 @@ export function ClientProfile({
       {tab === 'documentos' && termos && (
         <section aria-label="Documentos para assinatura" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Documentos para assinatura</h3>
-          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso && termos.portalNoPlano !== false} recortado={!!termos.recortado} />
+          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} quemColhe={termos.quemColhe ?? null} pelaConversa={termos.pelaConversa} temAcessoAoApp={!!client.temAcesso && termos.portalNoPlano !== false} recortado={!!termos.recortado} />
         </section>
+      )}
+      {/* A9 da 19ª: quem vende sem os Documentos lia "Nenhum documento anexado" com o contrato pendente. */}
+      {tab === 'documentos' && !termos && documentosEsperando && (
+        <div data-documentos-esperando className="card" role="status" style={{ padding: '14px 18px', marginBottom: 24, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <FileSignature size={16} aria-hidden="true" style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 'var(--leading-snug)' }}>
+            {textoDosDocumentosEsperando(documentosEsperando.quantos, documentosEsperando.quemColhe)}
+          </p>
+        </div>
       )}
       {tab === 'documentos' && (
         <ClientDocumentsTab

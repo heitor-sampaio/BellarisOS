@@ -137,7 +137,7 @@ test('A13: a foto do atendimento se marca antes, durante ou depois', async ({ br
     await p.goto(`/admin/agenda/${id}`)
     const fotos = p.locator('[data-fotos-do-atendimento]')
     await fotos.getByRole('button', { name: 'Anexar foto' }).click()
-    const nome = fotos.getByLabel('Nome do documento *')
+    const nome = fotos.getByLabel('Nome no prontuário *') // A15 da 19ª: o rótulo da foto
     await expect(nome).toHaveValue(/antes/i)
     await fotos.getByRole('group', { name: 'Momento da foto' }).getByRole('button', { name: 'Depois' }).click()
     await expect(nome).toHaveValue(/depois/i)

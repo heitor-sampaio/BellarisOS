@@ -57,7 +57,16 @@ export async function listarConversas(admin: Admin, ctx: TenantContext): Promise
     .eq('tenant_id', ctx.tenantId!).eq('user_id', ctx.internalUserId!)
     .order('atualizada_em', { ascending: false }).limit(30), 'listar as conversas do Copilot') as
     { id: string; titulo: string; atualizada_em: string }[] | null
-  return (linhas ?? []).map(l => ({ id: l.id, titulo: l.titulo, atualizadaEm: l.atualizada_em }))
+  const lista = linhas ?? []
+  // A28 da 19ª: recarregada a página, o "Continuar" levava à conversa mais
+  // nova, e o cartão pendente ficava esquecido noutra. A lista diz qual tem.
+  const pendentes = lista.length
+    ? (await ler(admin.from('copilot_acoes').select('conversa_id')
+      .eq('tenant_id', ctx.tenantId!).eq('status', 'pendente').gt('expira_em', new Date().toISOString())
+      .in('conversa_id', lista.map(l => l.id)), 'ler os cartões pendentes do Copilot') as { conversa_id: string }[] | null) ?? []
+    : []
+  const comCartao = new Set(pendentes.map(p => p.conversa_id))
+  return lista.map(l => ({ id: l.id, titulo: l.titulo, atualizadaEm: l.atualizada_em, cartaoPendente: comCartao.has(l.id) }))
 }
 
 interface LinhaDeMensagem { id: string; papel: PapelNoBanco; conteudo: Record<string, unknown>; criada_em: string }

@@ -18,6 +18,8 @@ export interface LancamentoDaComanda {
   valor:          number
   metodo:         string | null
   vezes:          number | null
+  /** A1 da 19ª: a bandeira do cartão (a taxa depende dela). */
+  bandeira:       string | null
   vendaDeProduto: boolean
   vendaDeCredito: boolean
   doAtendimento:  boolean
@@ -46,16 +48,16 @@ export async function lancamentosDaComanda(
   }
   if (!partes.length) return []
   const linhas = await ler(admin.from('financial_transactions')
-    .select('id, description, amount, payment_method, cartao_vezes, appointment_id, product_sale_id, credito_vendido_id')
+    .select('id, description, amount, payment_method, cartao_vezes, cartao_bandeira, appointment_id, product_sale_id, credito_vendido_id')
     .eq('branch_id', branchId).eq('type', 'INCOME').eq('is_paid', true).is('estorno_de', null)
     .or('notes.is.null,notes.neq.Estornada')
     .or(partes.join(','))
     .order('paid_at', { ascending: true }).order('id'), 'ler os pagamentos da comanda') as {
-      id: string; description: string | null; amount: number | string; payment_method: string | null; cartao_vezes: number | null
+      id: string; description: string | null; amount: number | string; payment_method: string | null; cartao_vezes: number | null; cartao_bandeira: string | null
       appointment_id: string | null; product_sale_id: string | null; credito_vendido_id: string | null
     }[] | null
   return (linhas ?? []).map(l => ({
-    id: l.id, descricao: l.description ?? 'Pagamento', valor: Number(l.amount), metodo: l.payment_method, vezes: l.cartao_vezes,
+    id: l.id, descricao: l.description ?? 'Pagamento', valor: Number(l.amount), metodo: l.payment_method, vezes: l.cartao_vezes, bandeira: l.cartao_bandeira,
     vendaDeProduto: !!l.product_sale_id, vendaDeCredito: !!l.credito_vendido_id, doAtendimento: !!l.appointment_id,
   }))
 }

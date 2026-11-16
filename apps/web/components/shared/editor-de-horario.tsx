@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { HORARIO_PADRAO, type Horario, type Intervalo } from '@/lib/agenda/horario'
+import { resumoDoEditorDeHorario } from '@/lib/unidades/horario-no-editor'
 
 /**
  * O horário de funcionamento (2026-10-21): da unidade (Configurações →
@@ -154,6 +155,14 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
           </div>
         )
       })}
+
+      {/* A25 da 19ª (princípio 3): o horário em texto, à vista antes de salvar — o "Repetir"
+          abre o domingo, e quem repetiu achava que ele seguia fechado. */}
+      {!segue && (
+        <p data-resumo-do-horario aria-live="polite" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 'var(--weight-semibold)' }}>
+          {resumoDoEditorDeHorario(dias)}
+        </p>
+      )}
     </div>
   )
 }

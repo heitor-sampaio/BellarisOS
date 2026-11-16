@@ -3,7 +3,8 @@ import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
-import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
+import { quemDesfazNoCaixa, quemColheOsDocumentos } from '@/lib/equipe/quem-desfaz'
+import { documentosEsperandoAssinatura } from '@/lib/documentos/esperando'
 import { getPagoComCreditoDoCliente } from '@/lib/metrics/fechamento-extra'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
 import { responsavelDaFicha } from '@/lib/clients/menor'
@@ -507,7 +508,10 @@ export default async function ClientProfilePage({
   // O resto do que a ficha mostra, de uma vez (C77): eram leituras uma atrás
   // da outra no meio da montagem da tela.
   const veTermos = can(ctx, 'documents', 'VIEW')
-  const [pedidoLgpd, termosItens, pelaConversa, prePagos, quemDesfaz, pagoComCredito, fidelidade] = await Promise.all([
+  // A9/A10 da 19ª: quem não colhe lê QUEM colhe; quem não tem os Documentos
+  // lê quantos esperam a assinatura (a contagem, sem título).
+  const colheDocs = can(ctx, 'documents', 'MANAGE')
+  const [pedidoLgpd, termosItens, pelaConversa, prePagos, quemDesfaz, pagoComCredito, fidelidade, quemColhe, esperando] = await Promise.all([
     pedidoLgpdDaFicha(ctx, id),
     veTermos && veDocumentos ? documentosDoCliente(ctx.tenantId!, id) : Promise.resolve([]),
     veTermos ? envioPelaConversaLigado(ctx.tenantId!) : Promise.resolve(false),
@@ -515,6 +519,8 @@ export default async function ClientProfilePage({
     podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? quemDesfazNoCaixa(ctx.tenantId!, branch.id as string) : Promise.resolve(null),
     getPagoComCreditoDoCliente(ctx.tenantId!, id),
     fidelidadeDoPerfil(ctx, id),
+    !colheDocs && veDocumentos ? quemColheOsDocumentos(ctx.tenantId!, branch.id as string) : Promise.resolve(null),
+    !veTermos && veDocumentos ? documentosEsperandoAssinatura(ctx.tenantId!, id) : Promise.resolve(0),
   ])
 
   return (
@@ -550,8 +556,9 @@ export default async function ClientProfilePage({
       internalCredits={internalCredits}
       documents={documents}
       termos={veTermos
-        ? { itens: termosItens, recortado: !veDocumentos, podeColher: can(ctx, 'documents', 'MANAGE'), pelaConversa, portalNoPlano: temRecurso(ctx, 'portal') }
+        ? { itens: termosItens, recortado: !veDocumentos, podeColher: colheDocs, quemColhe, pelaConversa, portalNoPlano: temRecurso(ctx, 'portal') }
         : null}
+        documentosEsperando={!veTermos && esperando > 0 ? { quantos: esperando, quemColhe } : null}
       canGrantCredit={canGrantCredit}
       branches={(branchesRaw ?? []) as { id: string; name: string }[]}
       currentBranchId={branch.id}

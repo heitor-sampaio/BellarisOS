@@ -661,6 +661,15 @@ function EditForm({ product, categories, onClose, onSuccess }: {
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <input type="hidden" name="_productId" value={product.id} />
+      {/* A19 da 19ª (princípio 7): o custo de um lote errado não se acerta aqui nem por Ajuste
+          (a diferença vira perda) — desfaz-se a entrada e lança-se de novo. */}
+      <p data-desfazer-entrada style={{
+        fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-field-token)', padding: '8px 12px', lineHeight: 1.5,
+      }}>
+        Lançou uma entrada com a quantidade ou o custo errado? Em “Movimentar” → Histórico, use “Desfazer entrada” e lance de novo.
+        O custo aqui é o do cadastro; o de cada lote é o da entrada.
+      </p>
       <ProductFields
         product={product} categories={categories} onClose={onClose}
         state={error ? { error } : undefined}

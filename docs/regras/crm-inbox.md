@@ -1112,8 +1112,11 @@ em "Ver" pede ao menos um relatório antes de salvar. `escopoInicial`
 `e2e/configuracoes-atritos-da-12.spec.ts` ("A2"). **E o Salvar leva ao que
 falta** (A14 da 15ª simulação, princípio 7: o aviso morava no pé da página): a
 tela rola até o primeiro módulo sem escolha, na ordem da matriz, e o destaca
-(`[data-destacado="1"]`) até a escolha. Prova:
-`e2e/configuracoes-atritos-da-15.spec.ts` ("A14").
+(`[data-destacado="1"]`) até a escolha — com o aviso fixo NO módulo
+(`[data-falta-no-modulo]`, A20 da 19ª: no celular o toast sumia e o aviso do
+Salvar ficava fora da vista). Prova:
+`e2e/configuracoes-atritos-da-15.spec.ts` ("A14"),
+`tests/atritos-da-19-atendimento.test.ts` ("A20").
 
 **O RESPONSÁVEL da oportunidade** (`leads.owner_id`, 2026-10-09). Na tela e no
 histórico é sempre "Responsável", nunca "Dono" (decisão do Heitor: o mesmo
@@ -1224,6 +1227,9 @@ princípio 2): excluir a etapa ou mudar o desfecho dela abre "Este funil fica
 sem etapa de perda: o “Marcar como perdido” e os motivos de perda não terão
 para onde levar a oportunidade.", com "Excluir mesmo assim"/"Mudar mesmo
 assim" (`ehAUltimaDePerda`, `lib/crm.ts`). Prova: `tests/atritos-da-17-cadastros.test.ts`.
+E **toda exclusão de etapa pergunta antes** (A23 da 19ª; princípio 7): "Excluir
+a etapa “X”? Não dá para desfazer.", com "Excluir a etapa"/"Cancelar"
+(`perguntaAoExcluirEtapa`). Prova: `tests/crm-atritos-da-19.test.ts`.
 
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
 a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um
@@ -1251,6 +1257,8 @@ escolher a etapa) e no modal da oportunidade.
   toda: quem muda é quem tem “A rede inteira”" (e "Configurações em
   Gerenciar", sem ela) — `avisoDosFunis`, `lib/configuracao-da-rede.ts`.
   Prova: `tests/crm-atritos-da-18.test.ts`.
+- No modal da oportunidade, o lembrete "Escolha o motivo da perda para salvar." é neutro até o salvar
+  barrar (o `invalid` do campo), e só então vermelho (A31 da 19ª).
 - Sem escolher o motivo o botão não fica apagado: diz "Escolha o motivo da perda" (A14), e "Outro" vem
   sempre por último na escolha (`motivosComOutroPorUltimo`, A15). O inbox vazio manda ligar o
   WhatsApp com atalho só para quem tem Configurações em Gerenciar; os outros leem "Peça a quem tem as

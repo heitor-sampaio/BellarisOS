@@ -34,7 +34,7 @@ import { faltaParaOContratoDoPacote } from '@/lib/documentos/falta-no-cadastro'
  * (`?unidade=`). À esquerda as comandas (`?ver=` Abertas, Pagas hoje,
  * Todas); à direita a escolhida (`?comanda=`), com o "Receber".
  */
-export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, ver, comandaId, nova, clienteId, unidadeEscolhida = true }: {
+export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, ver, comandaId, nova, clienteId, recebidaId, unidadeEscolhida = true }: {
   ctx:        TenantContext
   unidades:   { id: string; name: string }[]
   unidadeId:  string
@@ -46,6 +46,8 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
   /** `?nova=1`: a "Nova venda" aberta; `?cliente=` é a cliente dela (a busca e o inbox chegam assim). */
   nova?:      string
   clienteId?: string
+  /** A2 da 19ª: `?recebida=` — a comanda que acabou de ser recebida (a tela diz o que entrou). */
+  recebidaId?: string
   /**
    * A unidade veio na URL (ou só há uma). Sem ela, a "Nova venda" na rede
    * pergunta "Em qual unidade?" antes — não vende calada na primeira (F33).
@@ -66,6 +68,18 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
   ])
 
   const comanda = comandaId ? lista.find(c => c.id === comandaId) ?? null : null
+  // A2 da 19ª: a recebida saiu das abertas — lê-se entre as pagas de hoje. Só a do atendimento
+  // (a da venda e a do plano seguem na lista ou dizem o recebido nelas). Vale também a comanda
+  // aberta na URL que já não está nas Abertas: o tempo real tira a recebida da lista antes do
+  // "Receber" mudar a URL.
+  const procurada = ehUuid(recebidaId) ? recebidaId
+    : comandaId && !comanda && situacao === 'ABERTAS' && ehUuid(comandaId) ? comandaId : null
+  const recebida = procurada
+    ? (lista.find(c => c.id === procurada)
+        ?? (situacao === 'PAGAS' ? null
+          : (await comandasDoPdv({ tenantId: ctx.tenantId!, branchId: unidadeId, situacao: 'PAGAS', de: janela.from, ate: janela.to }))
+              .find(c => c.id === procurada)) ?? null)
+    : null
   let escolhida: ComandaEscolhida | null = null
   if (comanda) {
     // O "Abater do pacote" (D9 da 10/28) vale para o atendimento concluído,
@@ -171,6 +185,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
           slugDaUnidade={slugDaUnidade}
           novaVenda={novaVenda}
           podeVerFechamento={podeVerFechamento(ctx)}
+          recebidaAgora={recebida && recebida.paga && recebida.origem === 'ATENDIMENTO' ? recebida : null}
         />
       </FusoProvider>
     </>

@@ -41,7 +41,7 @@ import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
 import { prepararDocumentosDoPacote } from '@/lib/documentos/pacote'
 import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
 import { oQueFalta } from '@/lib/documentos/o-que-falta'
-import { quemVeOsDocumentos } from '@/lib/equipe/quem-desfaz'
+import { quemColheOsDocumentos } from '@/lib/equipe/quem-desfaz'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -128,10 +128,13 @@ type ResultadoDaVendaDoPacote = {
    */
   documentos?: DocumentoDaVenda[]
   /**
-   * D1 da 15ª: quem tem os Documentos, para quem vendeu SEM eles (nulo = ela
-   * vê). O aviso diz a quem pedir em vez de "Estão na ficha, em Documentos".
+   * D1 da 15ª, D4 da 19ª: quem COLHE a assinatura (os Documentos em
+   * Gerenciar), para quem vendeu sem colher (nulo = ela colhe). O aviso diz a
+   * quem pedir.
    */
-  quemVeOsDocumentos?: string[] | null
+  quemColheOsDocumentos?: string[] | null
+  /** D4 da 19ª: quem vendeu VÊ os Documentos (sem colher): o aviso diz também que estão na ficha. */
+  veOsDocumentos?: boolean
 }
 
 /** Um documento da venda do pacote, como a tela da venda o mostra (`faltando`: como a pessoa lê, "Endereço"). */
@@ -258,10 +261,12 @@ async function venderPacoteUmaVez(
     } catch (e) {
       console.error('[pacote] documentos da venda:', mensagemDoErro(e))
     }
-    let quemVe: string[] | null = null
-    if (documentos.length && !can(ctx, 'documents', 'VIEW')) {
-      try { quemVe = await quemVeOsDocumentos(ctx.tenantId!, branchId) } catch (e) {
-        console.error('[pacote] quem vê os documentos:', mensagemDoErro(e)); quemVe = []
+    // D4 da 19ª: colher pede os Documentos em Gerenciar — quem só VÊ também
+    // lê quem colhe (a lista era de quem vê, e apontava quem não colhe).
+    let quemColhe: string[] | null = null
+    if (documentos.length && !can(ctx, 'documents', 'MANAGE')) {
+      try { quemColhe = await quemColheOsDocumentos(ctx.tenantId!, branchId) } catch (e) {
+        console.error('[pacote] quem colhe os documentos:', mensagemDoErro(e)); quemColhe = []
       }
     }
 
@@ -269,7 +274,7 @@ async function venderPacoteUmaVez(
     revalidatePath('/[slug]/clients/[id]', 'page')
     revalidatePath('/admin/financeiro')
     revalidatePath('/[slug]/financeiro', 'page')
-    return { clientPackageId, primeiraSessao, documentos, quemVeOsDocumentos: quemVe }
+    return { clientPackageId, primeiraSessao, documentos, quemColheOsDocumentos: quemColhe, veOsDocumentos: can(ctx, 'documents', 'VIEW') }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

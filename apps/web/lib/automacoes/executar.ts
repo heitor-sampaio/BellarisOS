@@ -21,6 +21,7 @@ import {
 } from './acoes-crm'
 import { mandarMensagem } from './acoes-mensagem'
 import { podeFalarCom, limitesDe } from './limites'
+import { retidaPeloSilencio, reconferirDepoisDoSilencio } from './silencio'
 import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
 import { resumoDoNo } from './resumo'
 import { chaveDoPasso } from './passos'
@@ -98,6 +99,9 @@ export interface ResultadoDoNo {
   saida?:      string
   /** Volte a rodar depois desta data, em vez de seguir agora. */
   esperarAte?: Date
+  /** Com `esperarAte`: volte a ESTE passo, não ao seguinte (a mensagem que o
+   *  silêncio reteve ainda não saiu — D2 da 19ª). */
+  repetir?:    boolean
   /** Encerra o fluxo aqui, sem erro. */
   parar?:      boolean
   /** Resumo legível, para o passo a passo. */
@@ -293,7 +297,13 @@ export async function executarRun(
       // próprio node de espera faria o cron re-executá-lo ao retomar — e
       // "esperar 3 dias" viraria esperar 3 dias, para sempre, a cada
       // retomada. O fluxo nunca passaria dali, sem nada explicar.
-      const depois = ligacaoSaindo(automacao.grafo, atual.id, resultado.saida)
+      //
+      // A exceção é o passo que ainda NÃO FEZ o que devia (`repetir`: a
+      // mensagem que o silêncio reteve). Ele volta a si mesmo — até a 19ª
+      // simulação guardava o seguinte, e o lembrete do último passo nunca saía.
+      const depois = resultado.repetir
+        ? atual.id
+        : ligacaoSaindo(automacao.grafo, atual.id, resultado.saida)
       if (!depois) {
         // Esperar e não ter para onde ir é fim de ramo: não há por que
         // guardar um run que vai acordar para não fazer nada.
@@ -444,6 +454,13 @@ async function rodarNo(
 
     case NODES.ACAO_MENSAGEM: {
       const cfg = no.config as ConfigAcaoMensagem
+      // Saindo do silêncio (D2 da 19ª): o agendamento pode ter sido concluído,
+      // cancelado ou ter passado enquanto a mensagem esperava. As condições do
+      // caminho são refeitas com o dado de agora.
+      if (retidaPeloSilencio(contexto, no, automacao.grafo)) {
+        const conferido = await reconferirDepoisDoSilencio(automacao.grafo, no, contexto, evento, run.tenant_id)
+        if (!conferido.seguir) return { parar: true, resumo: { enviada: false, motivo: conferido.motivo } }
+      }
       await hidratarParaCaminhos(contexto, evento, run.tenant_id, [
         ...caminhosDoTexto(cfg.texto ?? ''), 'cliente', 'conversa',
       ])
@@ -463,7 +480,7 @@ async function rodarNo(
         // Silêncio noturno ESPERA; teto recusa. Descartar a mensagem por causa
         // do horário faria o lembrete simplesmente não acontecer.
         return veredito.esperarAte
-          ? { esperarAte: veredito.esperarAte, resumo: { adiado: veredito.motivo } }
+          ? { esperarAte: veredito.esperarAte, repetir: true, resumo: { adiado: veredito.motivo } }
           : { parar: true, resumo: { enviada: false, motivo: veredito.motivo } }
       }
 

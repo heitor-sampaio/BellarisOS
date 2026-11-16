@@ -15,6 +15,10 @@ import { apagarDocumentosEmitidos } from './apoio/limpeza'
  * Decidido pelos princípios (3): o aviso diz o que falta e quem tem os
  * Documentos; salvar o cadastro monta de novo os documentos incompletos da
  * cliente. Numa rede [e2e] própria.
+ *
+ * D4 da 19ª (2026-11-16): a lista era de quem VÊ os Documentos, e apontava
+ * quem não colhe. Quem colhe é quem tem os Documentos em Gerenciar: o membro
+ * que só vê fica de fora.
  */
 
 const marca = Date.now().toString(36)
@@ -24,6 +28,7 @@ const slug = `e2e-un-d1${marca}`
 let rede: OutraRede | null = null
 let vendedora: MembroDeTeste | null = null
 let quemVe: MembroDeTeste | null = null
+let quemColhe: MembroDeTeste | null = null
 let cliente = ''
 let pacote = ''
 let modeloEndereco = ''
@@ -60,10 +65,15 @@ test.beforeAll(async () => {
     tenant: rede.tenantId, branchId: null, rotulo: 'Vende sem documentos',
     permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }],
   })
-  // Só vê os Documentos: é a quem o aviso manda pedir.
+  // Só vê os Documentos: NÃO colhe, e o aviso não manda pedir a ela (D4 da 19ª).
   quemVe = await criarMembro(`d1d${marca}`, {
     tenant: rede.tenantId, branchId: null, rotulo: 'Ve os documentos',
     permissoes: [{ modulo: 'documents', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }],
+  })
+  // Os Documentos em Gerenciar: é a quem o aviso manda pedir.
+  quemColhe = await criarMembro(`d1c${marca}`, {
+    tenant: rede.tenantId, branchId: null, rotulo: 'Colhe os documentos',
+    permissoes: [{ modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
 })
 
@@ -74,6 +84,7 @@ test.afterAll(async () => {
   }
   await vendedora?.limpar()
   await quemVe?.limpar()
+  await quemColhe?.limpar()
   await rede?.limpar()
 })
 
@@ -91,8 +102,11 @@ test.describe.serial('D1: o documento da venda do pacote com "faltam dados"', ()
     // O que falta, como a pessoa lê (e não a chave da variável).
     expect(texto).toContain('Endereço (rua, número e bairro)')
     expect(texto).not.toContain('"cliente.endereco"')
-    // Quem vendeu não vê os Documentos: a resposta traz quem tem.
-    expect(texto).toMatch(new RegExp(`"quemVeOsDocumentos":\\["[^"]*Ve os documentos d1d${marca}"`))
+    // Quem vendeu não colhe: a resposta traz quem colhe (os Documentos em
+    // Gerenciar), e não quem só vê (D4 da 19ª).
+    const quemColheNaResposta = /"quemColheOsDocumentos":\[((?:"(?:[^"\\]|\\.)*",?)*)\]/.exec(texto)?.[1] ?? ''
+    expect(quemColheNaResposta).toContain(`Colhe os documentos d1c${marca}`)
+    expect(quemColheNaResposta).not.toContain(`Ve os documentos d1d${marca}`)
     const { data } = await db().from('issued_documents').select('status').eq('client_package_id', vendido).eq('template_id', modeloEndereco).single()
     expect(data!.status).toBe('INCOMPLETO')
   })

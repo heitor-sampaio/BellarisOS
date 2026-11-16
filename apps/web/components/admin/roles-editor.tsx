@@ -606,6 +606,8 @@ function PermissionMatrix({
                   scope={scopes[module]}
                   last={i === group.modules.length - 1}
                   destacado={destaque === module}
+                  // A20 da 19ª: no celular o toast some e o aviso do Salvar fica fora da vista — ele vai no módulo.
+                  aviso={destaque === module ? falta : null}
                   reportTabs={reportTabs}
                   caixas={caixas}
                   onLevel={v => setLevel(module, v)}
@@ -673,13 +675,15 @@ function PermissionMatrix({
 }
 
 function ModuleRow({
-  module, level, scope, last, destacado, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
+  module, level, scope, last, destacado, aviso, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
 }: {
   module: AppModule
   level: PermissionLevel
   scope: PermissionScope | null
   last: boolean
   destacado?: boolean
+  /** A20 da 19ª: o que falta escolher, no módulo para onde a tela rolou. */
+  aviso?: string | null
   reportTabs: ReportTab[]
   caixas: CaixasDoCargo
   onLevel: (v: PermissionLevel) => void
@@ -800,6 +804,19 @@ function ModuleRow({
           envia; isto decide o que ela vê (2026-09-27). */}
       {module === 'crm' && enabled && (
         <CaixasDoInbox valor={caixas} onChange={onCaixas} />
+      )}
+
+      {/* A20 da 19ª (princípio 3): o aviso fixo, onde a tela rolou — o do
+          Salvar ficava fora da vista no celular, e o toast some em 4 s. */}
+      {aviso && (
+        <p data-falta-no-modulo role="alert" style={{
+          display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 10,
+          color: 'var(--warning)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+          lineHeight: 'var(--leading-snug)',
+        }}>
+          <AlertTriangle size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} />
+          <Fala>{aviso}</Fala>
+        </p>
       )}
     </div>
   )

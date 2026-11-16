@@ -57,9 +57,10 @@ export interface ComandaDoPdv {
   jaPago:           number
   /**
    * D3 da 17ª: cada forma dos lançamentos vivos e pagos da comanda do
-   * atendimento paga (o atendimento e os produtos), com o valor. Vazia nas outras.
+   * atendimento paga (o atendimento e os produtos), com o valor. A1 da 19ª: e
+   * a bandeira do cartão; e as da venda paga à vista (D1 da 19ª). Vazia nas outras.
    */
-  formas:           { forma: string; vezes: number; valor: number }[]
+  formas:           { forma: string; vezes: number; valor: number; bandeira?: string | null }[]
   /** A1 da 17ª: o desconto comercial dado na comanda do atendimento paga. */
   desconto:         number
   /** A1 da 17ª: o desconto da fidelidade (o voucher ou os pontos) da comanda do atendimento paga. */
@@ -68,7 +69,9 @@ export interface ComandaDoPdv {
   voucher:          string | null
   /**
    * A2 da 17ª: o pagamento do atendimento estornado mais recente, na comanda
-   * reaberta (a receber). Nulo nas outras.
+   * reaberta (a receber). D1 da 19ª: na da venda e do plano, o pagamento
+   * estornado que ganhou o lançamento reaberto (a receber ou recebido de novo).
+   * Nulo nas outras.
    */
   estornoAnterior:  EstornoAnteriorDaComanda | null
 }
@@ -126,8 +129,9 @@ export function emAbertoDaComanda(c: ComandaDoPdv, fuso: string): string | null 
  * o nome dela ("Crédito 3x").
  */
 export function formasDaComandaEmTexto(c: ComandaDoPdv): string {
-  if (c.formas.length > 1) return c.formas.map(f => `${rotuloDaForma(f.forma, f.vezes)} ${brl(f.valor)}`).join(' + ')
-  if (c.formas.length === 1) return rotuloDaForma(c.formas[0]!.forma, c.formas[0]!.vezes)
+  // A1 da 19ª: com a bandeira ("Crédito Mastercard 10x") — a taxa depende dela.
+  if (c.formas.length > 1) return c.formas.map(f => `${rotuloDaForma(f.forma, f.vezes, { bandeira: f.bandeira })} ${brl(f.valor)}`).join(' + ')
+  if (c.formas.length === 1) return rotuloDaForma(c.formas[0]!.forma, c.formas[0]!.vezes, { bandeira: c.formas[0]!.bandeira })
   return rotuloDaForma(c.forma)
 }
 
@@ -170,6 +174,36 @@ export function estornoAnteriorEmTexto(c: ComandaDoPdv, hora: (iso: string | nul
   ].filter(Boolean)
   return `Estornada às ${hora(e.quando)} — ${[brl(e.valor), e.forma ? rotuloDaForma(e.forma, e.vezes) : null].filter(Boolean).join(', ')}`
     + (com.length ? `, com ${com.join(' e ')}` : '')
+}
+
+/**
+ * O estorno anterior na comanda da VENDA (D1 da 19ª simulação, 2026-11-16;
+ * princípio 3). A venda estornada de dentro da comanda volta a ter o valor a
+ * receber (`estornar_e_reabrir`), e a comanda segue entre as pagas — dizia
+ * R$ 2.000,00 do pacote de R$ 1.000, somando o estornado e o reaberto. O
+ * valor agora é o vendido uma vez, e a comanda diz o estorno: a receber de
+ * novo, "Estornada às 09:27 — R$ 1.000,00, Débito: o valor voltou a
+ * receber."; recebida, "Recebida de novo depois do estorno das 09:27
+ * (R$ 1.000,00, Débito)." A do atendimento segue a regra da 17ª
+ * (`estornoAnteriorEmTexto`, só a receber).
+ */
+export function estornoDaVendaEmTexto(c: ComandaDoPdv, hora: (iso: string | null) => string): string | null {
+  const e = c.estornoAnterior
+  if (!e || (c.origem !== 'VENDA' && c.origem !== 'PLANO')) return null
+  const oQue = [brl(e.valor), e.forma ? rotuloDaForma(e.forma, e.vezes) : null].filter(Boolean).join(', ')
+  return c.emAberto > 0
+    ? `Estornada às ${hora(e.quando)} — ${oQue}: o valor voltou a receber.`
+    : `Recebida de novo depois do estorno das ${hora(e.quando)} (${oQue}).`
+}
+
+/**
+ * O que acabou de ser recebido (A2 da 19ª simulação; princípio 3): depois de
+ * "Receber", a comanda sai das abertas, e a tela ficava em "Nenhuma comanda
+ * aberta", sem dizer o que entrou. Diz o valor e a forma, e onde ela está.
+ */
+export function recebidaAgoraEmTexto(c: ComandaDoPdv): string | null {
+  if (!c.paga || c.recebido == null) return null
+  return `Recebido ${brl(c.recebido)} (${formasDaComandaEmTexto(c)}). A comanda saiu das abertas e está em “Pagas hoje”.`
 }
 
 /**
@@ -220,6 +254,18 @@ export function produtosEstornadosEmTexto(itens: readonly ProdutoNaComanda[], ho
   const um = (i: ProdutoNaComanda) => `${i.nome} × ${i.quantidade}, ${i.voltouAoEstoque ? 'voltou ao estoque' : 'não voltou ao estoque'}`
   if (estornados.length === 1) return `Produto estornado às ${hora(estornados[0]!.estornadoEm)} — ${um(estornados[0]!)}`
   return `Produtos estornados — ${estornados.map(i => `${um(i)} (às ${hora(i.estornadoEm)})`).join('; ')}`
+}
+
+/**
+ * O voucher da comanda paga depois do estorno só do produto (A7 da 19ª
+ * simulação, 2026-11-16; princípio 3). O voucher se rateia entre o
+ * atendimento e os produtos (`private.parte_dos_itens`); estornado o produto,
+ * a linha dele ficava em "−R$ 28,71" no lugar dos R$ 30,00, sem dizer por quê.
+ * Diz que ele segue usado na parte do atendimento.
+ */
+export function voucherDoProdutoEstornadoEmTexto(c: ComandaDoPdv, itens: readonly ProdutoNaComanda[]): string | null {
+  if (!c.paga || !c.voucher || !(c.fidelidade > 0) || !itens.some(i => i.estornadoEm)) return null
+  return `O voucher “${c.voucher}” segue usado na parte do atendimento (${brl(c.fidelidade)}). A parte dele no produto estornado saiu com o estorno.`
 }
 
 /** Um pagamento da comanda, como a tela o mostra (A1 da 18ª). */

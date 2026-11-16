@@ -1774,6 +1774,39 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — A 19ª simulação (Begônia, uma unidade pelo celular; Azaleia, duas, com o Copilot) e os defeitos dela
+
+Dois times de agentes usaram a produção ao mesmo tempo em 16/11, das 05:53 às ~07:00 de Brasília, sobre o 39b18134.
+- **"[sim] Espaço Begônia":** uma unidade em Goiânia, montada inteira pelo celular, no teste grátis.
+- **"[sim] Rede Azaleia":** duas unidades em Fortaleza, num plano com o Copilot.
+
+O relatório ficou em `apps/web/.sim/relatorio.md`, e a 18ª foi arquivada em `.sim/arquivo-2026-11-16-2/`.
+
+- **O dinheiro bate nos dois times:**
+  - Begônia: R$ 2.640 de receita, R$ 64,16 de taxas e −R$ 414,16 de lucro (o aluguel de teste);
+  - Azaleia: R$ 1.250 de receita, R$ 180,68 de comissões e R$ 1.047,32 de lucro.
+  - A única tela errada é a comanda do pacote estornado e recebido de novo (D1).
+- **Os consertos da 18ª se seguraram.** Nenhum voltou: o produto estornado, o Pix negativo no "Fechar de novo", o Copilot nas unidades da pessoa, a base do extrato, o "ainda hoje" e a tag só em Configurações.
+- **4 defeitos e 36 atritos:**
+  - **D1:** a comanda da venda estornada e recebida de novo somava o valor duas vezes (R$ 2.000 num pacote de R$ 1.000).
+  - **D2:** o lembrete retido pelo silêncio noturno saía sem reconferir o agendamento. Pior que o relatório dizia: a mensagem presa era descartada calada, com a execução "ok".
+  - **D3:** a resposta do Copilot chegava cortada, sem aviso, quando o stream terminava sem `response.completed`.
+  - **D4:** o aviso pós-venda mandava colher a assinatura com quem só VÊ os Documentos.
+- **Para o Heitor:** nada novo. Seguem os pendentes: a comanda em mais de uma forma (D1 da 18ª), as 8 tags da rede nova (A26) e o aviso de unidade em toast (A17).
+- **Corrigidos no mesmo commit** (os 4 defeitos e 33 dos 36 atritos):
+  - **D1:** o lançamento "Estornada" que ganhou o reaberto sai do valor e da forma. A comanda diz o estorno de antes ("Recebida de novo depois do estorno das HH:MM"). Migration `20261119100001`, aplicada: a comanda real foi de R$ 2.000 para R$ 1.000.
+  - **D2:** a mensagem espera no próprio passo. Na saída do silêncio, o caminho refaz o "Se" e o "Escolher" com o agendamento relido, e o lembrete de horário que já passou não sai (`lib/automacoes/silencio.ts`).
+  - **D3:** o mesmo aviso de corte vale para o stream sem `completed`, e o link sem fechamento vira texto.
+  - **D4:** quem colhe é quem tem os Documentos em Gerenciar (`quemColheOsDocumentos`). A ficha, o "Falta assinar", a chegada e o avulso aguardando o PDV dizem o nome de quem pode (A9–A11).
+  - **PDV, fechamento e comissões (A1–A8, A22, A24):** a bandeira na forma; "Recebido R$ X… está em Pagas hoje"; a diferença do "Fechar de novo" acompanha o que se digita; o telefone com máscara; o estorno do pacote diz as sessões feitas; o voucher do produto estornado; o extrato liga o estorno à liberação; o chip diz qual comissão falta; o caminho da comissão de venda do pacote.
+  - **Automações (A16):** o "Ligar a automação?" diz o silêncio e o teto, com "Ajustar os limites". O padrão não mudou.
+  - **Estoque e cadastros (A19, A21, A25):** o custo da entrada 10× acima do cadastro avisa sem recusar; o caminho do "Desfazer entrada"; a quantidade do insumo segue em branco (A13 da 15ª, princípio 4), mas diz o que falta; o editor de horário diz "Fica assim" e os dias fechados.
+  - **Atendimento, app e setup (A12–A15, A18, A20):** o remarcado pelo app diz que fica confirmado; "Conferindo as salas…"; a barra da Agenda quebra no celular; "Nome no prontuário" na foto; o bairro vindo do CEP pede conferência; o aviso fixo no módulo pendente do cargo.
+  - **Copilot (A27–A30):** "os agendamentos da Tereza" procura também entre as clientes e pergunta "Qual?" se achar dos dois lados; o "Continuar" prefere a conversa com cartão a confirmar; o período do cartão em dd/mm; "Confira e confirme no cartão abaixo."
+  - **CRM (A23, A31):** toda exclusão de etapa pergunta antes; o lembrete do motivo da perda fica neutro até o salvar barrar.
+  - **Auditoria (A32–A36):** os campos do lançamento em português; "Devolveu o voucher"; o "Fechou de novo" com o conferido; "Remarcou" e "Repassou" no lugar de "Editou o agendamento"; a geração do contrato dentro da venda; "Da rede" na coluna Unidade.
+  - **Ficaram de fora:** o A4 em parte (a taxa e o líquido no Vender são só de quem vê o financeiro, A19 da 12ª); o A8 em parte (o botão do Copilot sobre o "Fechar e pagar"); o A17 e o A26, já com o Heitor.
+
 ### 2026-11-16 — A 18ª simulação (Hortênsia, uma unidade; Gardênia, três, com o Copilot) e os defeitos dela
 
 Dois times de agentes usaram a produção ao mesmo tempo em 16/11, das 01:06 às 02:30 de Brasília, sobre o dc6b0863.

@@ -13,7 +13,7 @@ import { FechamentoDoDia } from '@/app/_shared/fechamento-do-dia'
  */
 export default async function PdvDaUnidadePage({ params, searchParams }: {
   params:       Promise<{ slug: string }>
-  searchParams: Promise<{ ver?: string; comanda?: string; nova?: string; cliente?: string; fechar?: string; dia?: string }>
+  searchParams: Promise<{ ver?: string; comanda?: string; nova?: string; cliente?: string; recebida?: string; fechar?: string; dia?: string }>
 }) {
   const { slug } = await params
   const ctx = await getTenantContext()
@@ -32,6 +32,6 @@ export default async function PdvDaUnidadePage({ params, searchParams }: {
   return (
     <Pdv ctx={ctx} unidades={unidades}
       unidadeId={unidade.id as string} slugDaUnidade={slug} basePath={`/${slug}/pdv`}
-      ver={sp.ver} comandaId={sp.comanda} nova={sp.nova} clienteId={sp.cliente} />
+      ver={sp.ver} comandaId={sp.comanda} nova={sp.nova} clienteId={sp.cliente} recebidaId={sp.recebida} />
   )
 }

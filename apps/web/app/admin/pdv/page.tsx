@@ -15,7 +15,7 @@ import { fusoComum, fusoValido } from '@/lib/unidades/fuso'
  * Financeiro de todos em Ver também vê, sem fechar (D6).
  */
 export default async function PdvDaRedePage({ searchParams }: {
-  searchParams: Promise<{ ver?: string; comanda?: string; nova?: string; cliente?: string; unidade?: string; fechar?: string; dia?: string }>
+  searchParams: Promise<{ ver?: string; comanda?: string; nova?: string; cliente?: string; recebida?: string; unidade?: string; fechar?: string; dia?: string }>
 }) {
   const ctx = await getTenantContext()
   const sp = await searchParams
@@ -36,7 +36,7 @@ export default async function PdvDaRedePage({ searchParams }: {
       {!atual.ativa && <div style={{ marginBottom: 12 }}><SeloUnidadeDesativada /></div>}
       <Pdv ctx={ctx} unidades={unidades.map(u => ({ id: u.id, name: nomeNaTela(u) }))}
         unidadeId={atual.id} slugDaUnidade={atual.slug} basePath="/admin/pdv"
-        ver={sp.ver} comandaId={sp.comanda} nova={sp.nova} clienteId={sp.cliente}
+        ver={sp.ver} comandaId={sp.comanda} nova={sp.nova} clienteId={sp.cliente} recebidaId={sp.recebida}
         unidadeEscolhida={unidades.length === 1 || unidades.some(u => u.id === sp.unidade || u.slug === sp.unidade)} />
     </>
   )

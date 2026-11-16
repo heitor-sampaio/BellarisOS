@@ -1,5 +1,6 @@
 'use client'
 
+import { textoDeQuemColhe, textoDeQuemMarcaAChegada, textoDeQuemRecebe } from '@/lib/equipe/textos-de-quem-pode'
 import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
@@ -239,6 +240,10 @@ interface Props {
   podeReceber?:          boolean
   /** A35 da 12ª: quem recebe e não estorna — a quem pedir o estorno (os nomes de quemDesfazNoCaixa). */
   quemEstorna?:          string[] | null
+  /** A11 da 19ª: quem não recebe lê, no avulso aguardando o PDV, quem recebe (quemRecebeNoPdv). Nulo: não se aplica. */
+  quemRecebe?:           string[] | null
+  /** A10 da 19ª: quem não marca a chegada lê quem marca (quemMarcaAChegada). Nulo: não se aplica. */
+  quemMarcaAChegada?:    string[] | null
   /** A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos) vê o "Estornar" ao lado do Recibo — a janela do Financeiro. */
   podeEstornar?:         boolean
   /**
@@ -247,7 +252,7 @@ interface Props {
    */
   planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number; aVencer: number; proximoVencimento: string | null } | null
   /** Termos e contratos deste atendimento. Nulo = cargo sem o módulo `documents`. */
-  documentos?:           { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean; temAcessoAoApp?: boolean } | null
+  documentos?:           { itens: ItemDeTermo[]; podeColher: boolean; quemColhe?: string[] | null; pelaConversa?: boolean; temAcessoAoApp?: boolean } | null
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -1030,7 +1035,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1735,7 +1740,7 @@ export function AppointmentSession({
             {/* Sem o check-in no cargo, a tela diz quem marca a chegada. */}
             {status === 'SCHEDULED' && !canCheckin && canManage && (
               <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Quem tem a Agenda em Gerenciar marca a chegada; depois você inicia.
+                {textoDeQuemMarcaAChegada(quemMarcaAChegada)}
               </span>
             )}
             {/* Concluir grava a evolução no prontuário: sem o módulo, a tela diz quem conclui. */}
@@ -1924,7 +1929,7 @@ export function AppointmentSession({
                 )}
                 {!documentos?.podeColher && (
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                    A assinatura é colhida por quem tem os Documentos em Gerenciar: na tela, por link ou pelo app da cliente.
+                    {textoDeQuemColhe(documentos?.quemColhe)}
                   </span>
                 )}
               </div>
@@ -1955,7 +1960,7 @@ export function AppointmentSession({
                 </span>
               )}
             </div>
-            <TermosDoCliente itens={documentos.itens} slug={slug} podeColher={documentos.podeColher} pelaConversa={documentos.pelaConversa} temAcessoAoApp={documentos.temAcessoAoApp} compacto />
+            <TermosDoCliente itens={documentos.itens} slug={slug} podeColher={documentos.podeColher} quemColhe={documentos.quemColhe} pelaConversa={documentos.pelaConversa} temAcessoAoApp={documentos.temAcessoAoApp} compacto />
           </section>
         )}
 
@@ -2158,6 +2163,12 @@ export function AppointmentSession({
                     <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
                       ⏳ Aguardando o pagamento no PDV
                     </p>
+                    {/* A11 da 19ª: quem não recebe lê quem recebe. */}
+                    {quemRecebe && (
+                      <p data-quem-recebe style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                        {textoDeQuemRecebe(quemRecebe)}
+                      </p>
+                    )}
                   </>
                 )}
 

@@ -5,7 +5,7 @@ import { unidadesDoContexto } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { resolvePeriod } from '@/lib/metrics'
 import { OPERACOES, type FiltrosDaAuditoria, type NomesDaAuditoria, type RegistroDaAuditoria } from './tipos'
-import { gravacoesDaUnidade } from './frase'
+import { conferidoDoFechamento, gravacoesDaUnidade } from './frase'
 
 /**
  * A leitura da auditoria (CF3a) — pelo servidor, depois da permissão: a sessão
@@ -187,12 +187,16 @@ async function lerPorGravacao(
 async function nomesDaAuditoria(ctx: TenantContext, registros: readonly RegistroDaAuditoria[]): Promise<NomesDaAuditoria> {
   const admin = createAdminClient()
   const clientes = [...new Set(registros.map(r => r.client_id).filter((v): v is string => !!v))]
-  const membros = [...new Set(registros.filter(r => r.tabela === 'users' && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!))]
   // O produto do movimento e o cargo da permissão (A27/A28 da 15ª): a frase diz o nome, não "um produto".
   const doRegistro = (r: RegistroDaAuditoria, chave: string) => {
     const v = r.depois?.[chave] ?? r.antes?.[chave]
     return typeof v === 'string' && UUID.test(v) ? v : null
   }
+  // A34 da 19ª: quem passou a atender o agendamento remarcado ou repassado ("Repassou … a Dr. Caio").
+  const membros = [...new Set([
+    ...registros.filter(r => r.tabela === 'users' && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!),
+    ...registros.filter(r => r.tabela === 'appointments').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
+  ])]
   const produtos = [...new Set(registros.filter(r => r.tabela === 'stock_movements').map(r => doRegistro(r, 'product_id')).filter((v): v is string => !!v))]
   const permissoes = registros.filter(r => r.tabela === 'role_permissions' && r.registro_id && UUID.test(r.registro_id))
   const cargosDaPermissao = new Map<string, string>()
@@ -285,7 +289,7 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
     itens.length ? ler(admin.from('comanda_itens').select('id, product_id').eq('tenant_id', tenant).in('id', itens), 'ler os itens da comanda da auditoria') : nada,
     pagamentos.length ? ler(admin.from('commission_payouts').select('id, professional_id').eq('tenant_id', tenant).in('id', pagamentos), 'ler os pagamentos de comissão da auditoria') : nada,
     pontos.length ? ler(admin.from('loyalty_transactions').select('id, loyalty_account_id').in('id', pontos), 'ler os lançamentos de pontos da auditoria') : nada,
-    fechamentos.length ? ler(admin.from('fechamentos_do_dia').select('id, branch_id, dia, fechado_em').eq('tenant_id', tenant).in('id', fechamentos), 'ler os fechamentos da auditoria') : nada,
+    fechamentos.length ? ler(admin.from('fechamentos_do_dia').select('id, branch_id, dia, fechado_em, contado_dinheiro, conferido').eq('tenant_id', tenant).in('id', fechamentos), 'ler os fechamentos da auditoria') : nada,
     cancelados.length ? ler(admin.from('appointments').select('id, cancellation_reason, branches!inner(tenant_id)').eq('branches.tenant_id', tenant).in('id', cancelados), 'ler os motivos do cancelamento') : nada,
     comissoes.length ? ler(admin.from('commissions').select('id, appointment_id, transaction_id, branches!inner(tenant_id)').eq('branches.tenant_id', tenant).in('id', comissoes), 'ler as comissões da auditoria') : nada,
   ]) as Record<string, unknown>[][]
@@ -335,7 +339,10 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
   const clienteDaConta = new Map((contasLidas ?? []).map(x => [x.id as string, str(x.client_id)]))
 
   // O "Fechar de novo": outro fechamento do mesmo dia e unidade, antes deste.
-  const fechamentosLidos = (fe ?? []) as { id: string; branch_id: string; dia: string; fechado_em: string }[]
+  const fechamentosLidos = (fe ?? []) as { id: string; branch_id: string; dia: string; fechado_em: string; contado_dinheiro?: unknown; conferido?: Record<string, unknown> | null }[]
+  // A33 da 19ª: o conferido de cada fechamento ("Fechou de novo o dia … (conferido: …)").
+  const conferidosDoFechamento = Object.fromEntries(fechamentosLidos
+    .map(f => [f.id, conferidoDoFechamento(f.contado_dinheiro ?? null, f.conferido ?? null)] as const).filter(([, t]) => t))
   const fechamentosDeNovo: Record<string, boolean> = {}
   if (fechamentosLidos.length) {
     const doMesmoDia = (await ler(admin.from('fechamentos_do_dia').select('id, branch_id, dia, fechado_em').eq('tenant_id', tenant)
@@ -355,6 +362,7 @@ async function nomesDa17(ctx: TenantContext, registros: readonly RegistroDaAudit
     pagamentosDeComissao: Object.fromEntries((po ?? []).map(x => [x.id as string, nomeDoMembro.get(str(x.professional_id) ?? '') ?? '']).filter(([, n]) => n)),
     clientesDosPontos: Object.fromEntries((lt ?? []).map(l => [l.id as string, nomeDaCliente.get(clienteDaConta.get(str(l.loyalty_account_id) ?? '') ?? '') ?? '']).filter(([, n]) => n)),
     fechamentosDeNovo,
+    conferidosDoFechamento,
     // O motivo é texto livre de quem cancelou: curto na frase.
     motivosDoCancelamento: Object.fromEntries((ca ?? []).map(a => [a.id as string, (str(a.cancellation_reason)?.trim() ?? '').slice(0, 120)]).filter(([, m]) => m)),
     comissoes: comissoesLidas,

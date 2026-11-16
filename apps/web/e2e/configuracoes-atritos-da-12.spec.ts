@@ -141,7 +141,7 @@ test('A4 (revista): a linha da Equipe não tem o atalho "É de propósito"', asy
   await como(browser, dona, async p => {
     await p.goto('/admin/team')
     const chip = p.locator(`[data-comissao="${dona.userId}"]`)
-    await expect(chip).toHaveText('Sem comissão')
+    await expect(chip).toHaveText('Sem comissão de atendimento') // A22 da 19ª: o chip diz qual comissão falta
     await expect(p.locator(`[data-de-proposito-atalho="${dona.userId}"]`)).toHaveCount(0)
     await expect(p.locator('tr').filter({ has: chip }).getByText('É de propósito')).toHaveCount(0)
   })

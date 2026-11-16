@@ -4,18 +4,19 @@ import { textoDoRemarcado, textoDoParaAvaliar, textoDoHorarioNoHistorico } from 
 /**
  * F73 — textos do app da cliente (A29, A30, A31 da 14ª simulação; princípio 3).
  */
+// A12 da 19ª: o remarcado pelo app diz também que o horário novo fica confirmado (H3).
 describe('A29: o remarcado diz a unidade nova', () => {
   it('na mesma unidade, como antes', () => {
     expect(textoDoRemarcado({ quemAtende: 'Bianca', dia: 'terça-feira, 17/11', hora: '15:00', unidadeNova: null }))
-      .toBe('Agendamento remarcado: com Bianca, terça-feira, 17/11 às 15:00.')
+      .toBe('Agendamento remarcado: com Bianca, terça-feira, 17/11 às 15:00. O horário novo fica confirmado.')
   })
   it('em outra unidade, diz qual e que é outro endereço', () => {
     expect(textoDoRemarcado({ quemAtende: 'Bianca', dia: 'terça-feira, 17/11', hora: '15:00', unidadeNova: 'Manacá Pampulha' }))
-      .toBe('Agendamento remarcado: com Bianca, terça-feira, 17/11 às 15:00, na Manacá Pampulha (outro endereço).')
+      .toBe('Agendamento remarcado: com Bianca, terça-feira, 17/11 às 15:00, na Manacá Pampulha (outro endereço). O horário novo fica confirmado.')
   })
   it('sem quem atende', () => {
     expect(textoDoRemarcado({ quemAtende: null, dia: 'terça-feira, 17/11', hora: '15:00', unidadeNova: null }))
-      .toBe('Agendamento remarcado, terça-feira, 17/11 às 15:00.')
+      .toBe('Agendamento remarcado, terça-feira, 17/11 às 15:00. O horário novo fica confirmado.')
   })
 })
 

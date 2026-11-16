@@ -695,12 +695,18 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                   <input
                     type="number" min={0.001} step={0.001} className="field"
                     style={{ width: 80 }}
-                    value={ins.quantity ?? ''} required aria-label="Quantidade do insumo"
+                    value={ins.quantity ?? ''} required aria-label="Quantidade do insumo" placeholder="Qtd."
                     onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, quantity: e.target.value === '' ? null : parseFloat(e.target.value) || 0 } : x))}
                   />
                   <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', minWidth: 24 }}>
                     {(prod?.consumption_unit && prod?.units_per_package) ? prod.consumption_unit : (prod?.unit ?? '')}
                   </span>
+                  {/* A21 da 19ª (A13 da 15ª, princípio 4): a quantidade nasce em branco — e diz o que falta. */}
+                  {ins.quantity == null && (
+                    <span data-quantidade-em-branco style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', whiteSpace: 'nowrap' }}>
+                      quanto sai a cada atendimento (obrigatório)
+                    </span>
+                  )}
                   {/* A7 da 17ª: "1 U" ao lado de R$ 6,00 não dizia que é 1/100 do frasco. */}
                   {prod && parteDaEmbalagem(prod, ins.quantity) && (
                     <span data-parte-da-embalagem style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>

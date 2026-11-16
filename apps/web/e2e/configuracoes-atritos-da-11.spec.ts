@@ -70,7 +70,7 @@ test('A14 (revista): não há "sem comissão, de propósito" — quem atende sem
     await expect(aviso).not.toContainText('propósito')
     await p.goto('/admin/team')
     const chip = p.locator(`[data-comissao="${dona.userId}"]`)
-    await expect(chip).toHaveText('Sem comissão')
+    await expect(chip).toHaveText('Sem comissão de atendimento') // A22 da 19ª: o chip diz qual comissão falta
     await expect(chip).toHaveClass(/chip-warning/)
     await chip.click()
     const janela = p.getByRole('dialog', { name: /Comissão de/ })

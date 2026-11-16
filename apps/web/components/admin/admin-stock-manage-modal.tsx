@@ -23,6 +23,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 import { parseDecimal } from '@estetica-os/utils'
 import { useFuso } from '@/components/shared/fuso'
+import { avisoDoCustoDaEntrada } from '@/lib/estoque/custo-da-entrada'
 import { CampoDaLista, type ItemDaLista } from '@/components/admin/campo-da-lista'
 
 type BranchStock = {
@@ -46,6 +47,9 @@ type ProductInfo = {
   unitsPerPackage?: number | null
   /** O mínimo do cadastro do produto: vale na unidade que ainda não tem linha (D11 da 12ª). */
   minimoDoCadastro?: number | null
+  /** A19 da 19ª: o custo e o preço de venda do cadastro — a referência do aviso de custo fora do comum. */
+  costPrice?: number | null
+  salePrice?: number | null
 }
 
 /** `ativa: false` = a unidade desativada (F72): dela sai (transferir, ajustar, perda), para ela não entra. */
@@ -162,6 +166,9 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
   // A51 da 11ª: a validade que já passou avisa (princípio 2 — não recusa).
   const [validade, setValidade] = useState('')
   const validadeVencida = !!validade && loteVencido(validade, new Date(), fuso)
+  // A19 da 19ª (princípio 2): o custo fora do comum avisa — não recusa.
+  const [custo, setCusto] = useState('')
+  const custoForaDoComum = avisoDoCustoDaEntrada(custo.trim() === '' ? null : Number(custo), { custo: product.costPrice, venda: product.salePrice })
   // A54 da 11ª: a nota com vários produtos — a próxima entrada traz a nota e o
   // fornecedor da anterior (na mesma aba, por 2 horas), e diz que dá para apagar.
   const [notaAnterior] = useState(() => lerNotaDaEntradaAnterior())
@@ -222,10 +229,15 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
               fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
             }}>R$</span>
             <input id="entrada-custo" name="unit_cost" type="number" step="0.01" min="0" className="field"
-              placeholder="0,00" style={{ paddingLeft: 28 }} />
+              placeholder="0,00" style={{ paddingLeft: 28 }} value={custo} onChange={e => setCusto(e.target.value)} />
           </div>
         </FieldWrap>
       </div>
+      {custoForaDoComum && (
+        <p data-custo-fora-do-comum role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.45 }}>
+          {custoForaDoComum}
+        </p>
+      )}
 
       <div className="form-2col">
         <FieldWrap>

@@ -125,7 +125,8 @@ describe('D1: o aviso dos documentos da venda do pacote', () => {
     expect(avisoDosDocumentosDaVenda([contrato], null)).toContain('Estão na ficha, em Documentos.')
     const semDocs = avisoDosDocumentosDaVenda([contrato], ['Marina Íris'])
     expect(semDocs).not.toContain('Estão na ficha, em Documentos.')
-    expect(semDocs).toContain('quem tem os Documentos: Marina Íris')
+    // D4 da 19ª: quem COLHE é quem tem os Documentos em Gerenciar.
+    expect(semDocs).toContain('quem tem os Documentos em Gerenciar: Marina Íris')
   })
   it('o documento pronto não fala de cadastro', () => {
     const pronto = { ...contrato, status: 'PENDENTE', faltando: [] }

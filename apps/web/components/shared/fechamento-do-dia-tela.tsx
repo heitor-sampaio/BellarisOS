@@ -9,7 +9,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { useFuso } from '@/components/shared/fuso'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
-import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
+import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaAoDigitar, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { parseDinheiro } from '@estetica-os/utils'
 
@@ -276,7 +276,11 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                       )}
                     </td>
                     <td data-label="Diferença" data-par style={{ padding: '11px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {!l.conferivel || !ultimo ? <span style={{ color: 'var(--text-faint)' }}>—</span>
+                      {!l.conferivel ? <span style={{ color: 'var(--text-faint)' }}>—</span>
+                        // A3 da 19ª: conferindo, a diferença acompanha o que se digita (a mesma conta do fechamento).
+                        : conferindo && diferencaAoDigitar(valores[l.forma] ?? '', l.registrado) != null
+                          ? <Diferenca valor={diferencaAoDigitar(valores[l.forma] ?? '', l.registrado)!} />
+                        : !ultimo ? <span style={{ color: 'var(--text-faint)' }}>—</span>
                         : l.mudouDepois && l.conferido != null
                           ? <span data-diferenca data-a-conferir style={{ color: 'var(--warning)', fontWeight: 700 }}>a conferir<span style={DETALHE}>mudou depois do fechamento</span></span>
                         : l.diferenca == null ? <span data-diferenca style={{ color: 'var(--text-muted)', fontWeight: 600 }}>não conferido</span>

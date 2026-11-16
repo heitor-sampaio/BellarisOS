@@ -71,6 +71,8 @@ export interface NomesDaAuditoria {
   motivosDoCancelamento?: Record<string, string>
   /** A33 da 18ª: de qual é a comissão (o id → "do atendimento de X (procedimento)" ou "da venda a X"), lido agora. */
   comissoes?: Record<string, string>
+  /** A33 da 19ª: o conferido do fechamento (o id → "Dinheiro R$ 300,00 e Pix R$ 1.200,00"), lido agora. */
+  conferidosDoFechamento?: Record<string, string>
 }
 
 export interface LancamentoDaAuditoria {

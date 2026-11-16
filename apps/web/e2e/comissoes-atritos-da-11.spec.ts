@@ -97,7 +97,8 @@ test('A17: a dona dá "Comissão de venda (%)" à Tatiane, que não atende — v
     await expect(campo).toHaveValue('')
     await campo.fill('3')
     await janela.getByRole('button', { name: 'Salvar' }).click()
-    await expect(chip).toContainText('venda 3%', { timeout: 15_000 })
+    // A22 da 19ª: quem não atende, o chip é o da venda ("Venda 3%").
+    await expect(chip).toHaveText('Venda 3%', { timeout: 15_000 })
   })
   await expect.poll(async () => n((await db().from('users').select('comissao_venda_pct').eq('id', tatiane.userId).single<{ comissao_venda_pct: number | null }>()).data?.comissao_venda_pct)).toBe(3)
 })

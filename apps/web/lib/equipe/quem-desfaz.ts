@@ -48,26 +48,44 @@ export async function quemMudaNaRede(tenantId: string, modulos: readonly AppModu
 }
 
 /**
- * Quem VÊ os Documentos (D1 da 15ª simulação): quem vendeu o pacote sem o
- * módulo lia "Estão na ficha, em Documentos" e não achava nada lá. O aviso diz
- * quem tem — os Documentos em Ver ou Gerenciar, ao alcance da unidade; a Admin
- * da rede entra sempre.
+ * Quem COLHE a assinatura dos documentos (D4 da 19ª simulação; era "quem VÊ",
+ * do D1 da 15ª): quem vendeu o pacote sem o módulo lia "fale com quem tem os
+ * Documentos" e a lista trazia quem só os VÊ — e colher pede os Documentos em
+ * Gerenciar (`docs/regras/documentos.md`). É essa lista, ao alcance da
+ * unidade; a Admin da rede entra sempre. Serve ao aviso da venda, à ficha e ao
+ * "Falta assinar" do atendimento (A9/A10 da 19ª).
  */
-export async function quemVeOsDocumentos(tenantId: string, branchId: string | null): Promise<string[]> {
-  return quemTemNoNivel(tenantId, branchId, 'documents', ['VIEW', 'MANAGE'])
+export async function quemColheOsDocumentos(tenantId: string, branchId: string | null): Promise<string[]> {
+  return quemTemEmGerenciar(tenantId, branchId, 'documents')
+}
+
+/**
+ * Quem MARCA A CHEGADA de um atendimento que não é dele (A10 da 19ª; D20): a
+ * Agenda em Gerenciar de TODOS — com "só os meus", a pessoa marca só a dos
+ * próprios, e não a de quem pede. A Admin da rede entra sempre.
+ */
+export async function quemMarcaAChegada(tenantId: string, branchId: string | null): Promise<string[]> {
+  return quemTemNoNivel(tenantId, branchId, 'agenda', ['MANAGE'], { soDeTodos: true })
 }
 
 function quemTemEmGerenciar(tenantId: string, branchId: string | null, modulo: AppModule | readonly AppModule[]): Promise<string[]> {
   return quemTemNoNivel(tenantId, branchId, modulo, ['MANAGE'])
 }
 
-async function quemTemNoNivel(tenantId: string, branchId: string | null, modulo: AppModule | readonly AppModule[], niveis: readonly ('VIEW' | 'MANAGE')[]): Promise<string[]> {
+async function quemTemNoNivel(
+  tenantId: string, branchId: string | null, modulo: AppModule | readonly AppModule[], niveis: readonly ('VIEW' | 'MANAGE')[],
+  opcoes: { soDeTodos?: boolean } = {},
+): Promise<string[]> {
   const admin = createAdminClient()
   const modulos = typeof modulo === 'string' ? [modulo] : [...modulo]
   const [perms, admins] = await Promise.all([
-    lerTodas((de, ate) => admin.from('role_permissions').select('role_id')
-      .eq('tenant_id', tenantId).in('module', modulos).in('level', [...niveis])
-      .order('role_id').order('module').range(de, ate), 'carregar os cargos com o módulo'),
+    lerTodas((de, ate) => {
+      let q = admin.from('role_permissions').select('role_id')
+        .eq('tenant_id', tenantId).in('module', modulos).in('level', [...niveis])
+      // O escopo "todos" (sem escolha gravada também vale todos — resolveScopes).
+      if (opcoes.soDeTodos) q = q.or('scope.is.null,scope.eq.ALL')
+      return q.order('role_id').order('module').range(de, ate)
+    }, 'carregar os cargos com o módulo'),
     lerTodas((de, ate) => admin.from('tenant_roles').select('id')
       .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true)
       .order('id').range(de, ate), 'carregar o cargo de Admin da rede'),

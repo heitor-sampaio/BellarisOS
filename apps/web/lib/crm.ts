@@ -84,3 +84,14 @@ export function ehAUltimaDePerda(etapas: readonly CRMStage[], etapaId: string): 
   if (!etapa || etapa.outcome !== 'LOST') return false
   return !etapas.some(e => e.id !== etapaId && e.funnel_id === etapa.funnel_id && e.outcome === 'LOST')
 }
+
+/**
+ * A pergunta antes de excluir a etapa (A23 da 19ª simulação; princípio 7):
+ * toda exclusão confirma — o A11 da 17ª perguntava só na última de perda, e
+ * um clique na lixeira apagava a etapa. A última de perda diz o que o funil perde.
+ */
+export function perguntaAoExcluirEtapa(nome: string, ultimaDePerda: boolean): string {
+  return ultimaDePerda
+    ? 'Este funil fica sem etapa de perda: o “Marcar como perdido” e os motivos de perda não terão para onde levar a oportunidade.'
+    : `Excluir a etapa “${nome}”? Não dá para desfazer.`
+}

@@ -7,8 +7,9 @@ import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
   DATA, UUID, STATUS_DO_AGENDAMENTO, fusoDe, fusosPorUnidade, hojeNoFuso, horaAgoraNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, ondeProcurou,
   quandoLegivel,
-  resolverProcedimento, resolverProfissional, resolverUnidade, rota,
+  resolverCliente, resolverProcedimento, resolverProfissional, resolverUnidade, rota,
 } from '@/lib/copilot/ferramentas/comum'
+import { periodoLegivel } from '@/lib/copilot/ferramentas/datas'
 
 /**
  * As leituras da AGENDA. Escopo "só os meus" (ownerFilter) vale aqui como na
@@ -23,14 +24,14 @@ export const agendamentos: FerramentaDeLeitura<{
   nome: 'agendamentos',
   tipo: 'leitura',
   modulo: 'agenda', nivel: 'VIEW',
-  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (id). Sem datas, é hoje. Sem unidade, procura em todas as unidades da pessoa; "procurouEm" diz quais — ao não encontrar, diga onde procurou.',
+  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (nome, telefone ou id). "Os agendamentos da Fulana" pode ser de uma cliente ou quem atende: passe o nome em um dos dois — a ferramenta procura nos dois e, se o nome for dos dois, pergunta qual. Sem datas, é hoje. Sem unidade, procura em todas as unidades da pessoa; "procurouEm" diz quais — ao não encontrar, diga onde procurou.',
   parametros: z.object({
     de: DATA.optional().describe('Primeiro dia (AAAA-MM-DD). Padrão: hoje.'),
     ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de".'),
     profissional: z.string().max(80).optional(),
     unidade: z.string().max(80).optional(),
     status: z.array(z.enum(STATUS)).max(7).optional().describe('SCHEDULED, CONFIRMED, ARRIVED (chegou), IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW. Padrão: todos menos cancelados.'),
-    cliente: UUID.optional().describe('Id do cliente (use buscar antes).'),
+    cliente: z.string().min(1).max(120).optional().describe('Nome, telefone ou id do cliente.'),
   }),
   async executar(c, args) {
     // Sem unidade no pedido, em TODAS as da pessoa (D4 da 18ª), e diz onde procurou.
@@ -48,12 +49,36 @@ export const agendamentos: FerramentaDeLeitura<{
     const dias = (janelaDoDia(ate, fuso).fim.getTime() - janelaDoDia(de, fuso).inicio.getTime()) / 86_400_000
     if (dias > 31.5) return { dados: { erro: 'Período de no máximo 31 dias.' } }
 
+    let clienteId: string | null = null
+    if (args.cliente) {
+      if (UUID.safeParse(args.cliente).success) clienteId = args.cliente
+      else {
+        const cl = await resolverCliente(c, args.cliente)
+        if ('erro' in cl) return { dados: { erro: cl.erro } }
+        clienteId = cl.id
+      }
+    }
+    // A27 da 19ª (princípio 3): "os agendamentos da Tereza" foi lido como uma
+    // profissional Tereza, e a Tereza era cliente. Sem a cliente no pedido, o
+    // nome dado como profissional se procura também entre as clientes: de um
+    // só lado, vale ele (e a resposta diz como entendeu); dos dois, pergunta.
+    let entendido: string | undefined
     let profissionalId = ownerFilter(c.ctx, 'agenda')
     if (args.profissional) {
       const p = await resolverProfissional(c, args.profissional, u.unidade?.id)
-      if ('erro' in p) return { dados: { erro: p.erro } }
-      if (profissionalId && p.id !== profissionalId) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
-      profissionalId = p.id
+      const cl = !args.cliente && !UUID.safeParse(args.profissional).success ? await resolverCliente(c, args.profissional) : null
+      const cliente = cl && !('erro' in cl) ? cl : null
+      if (!('erro' in p) && cliente) {
+        return { dados: { erro: `"${args.profissional}" pode ser quem atende (${p.name}) ou a cliente ${cliente.name}. Qual?` } }
+      }
+      if ('erro' in p) {
+        if (!cliente) return { dados: { erro: cl && 'erro' in cl && cl.erro.startsWith('Mais de um') ? cl.erro : p.erro } }
+        clienteId = cliente.id
+        entendido = `Ninguém que atende se chama "${args.profissional}": estes são os agendamentos da cliente ${cliente.name}.`
+      } else {
+        if (profissionalId && p.id !== profissionalId) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
+        profissionalId = p.id
+      }
     }
 
     let q = c.admin.from('appointments')
@@ -63,7 +88,7 @@ export const agendamentos: FerramentaDeLeitura<{
       .lte('scheduled_at', janelaDoDia(ate, fuso).fim.toISOString())
       .order('scheduled_at').limit(80)
     if (profissionalId) q = q.eq('professional_id', profissionalId)
-    if (args.cliente) q = q.eq('client_id', args.cliente)
+    if (clienteId) q = q.eq('client_id', clienteId)
     q = args.status?.length ? q.in('status', args.status) : q.neq('status', 'CANCELLED')
 
     const linhas = (await ler(q, 'ler os agendamentos') as {
@@ -92,9 +117,10 @@ export const agendamentos: FerramentaDeLeitura<{
       href: rota(c, `/agenda/${l.id}`),
     }))
     return {
-      dados: { periodo: de === ate ? de : `${de} a ${ate}`, procurouEm, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
+      dados: { periodo: de === ate ? de : `${de} a ${ate}`, ...(entendido ? { entendido } : {}), procurouEm, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
       cartao: lista.length ? {
-        tipo: 'links', titulo: `Agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : `${de} a ${ate}`}`,
+        // A29 da 19ª: o período em dd/mm, como o dia (era "2026-11-16 a 2026-12-16").
+        tipo: 'links', titulo: `Agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : periodoLegivel(de, ate)}`,
         itens: lista.slice(0, 12).map(a => ({ texto: `${a.quando.split(' às ')[1] ?? a.quando} · ${a.cliente}`, detalhe: `${a.procedimento} · ${a.profissional} · ${a.status}`, href: a.href })),
       } : undefined,
     }

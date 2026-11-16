@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Search, X } from 'lucide-react'
-import { iniciaisDoNome } from '@estetica-os/utils'
+import { iniciaisDoNome, maskPhone } from '@estetica-os/utils'
 import { buscarClientesParaVender } from '@/actions/pdv'
 import { VendaNaTela, type ProcedimentoAVenda, type ProdutoAVenda, type MembroDaVenda } from '@/components/shared/vender'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
@@ -84,7 +84,7 @@ export function NovaVenda({ unidadeId, slugDaUnidade, venda, aviso, unidades, hr
               }}>{iniciaisDoNome(venda.cliente.name)}</div>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontWeight: 800, color: 'var(--text)' }}>{venda.cliente.name}</p>
-                {venda.cliente.phone && <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)' }}>{venda.cliente.phone}</p>}
+                {venda.cliente.phone && <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)' }}>{maskPhone(venda.cliente.phone)}</p>}
               </div>
               <span style={{ flex: 1 }} />
               <Link href={hrefDaCliente(null)} style={{ color: 'var(--brand)', fontWeight: 700, fontSize: 'var(--text-xs-sz)', textDecoration: 'none' }}>
@@ -141,7 +141,7 @@ function EscolherACliente({ hrefDaCliente }: { hrefDaCliente: (clienteId: string
             <Link key={c.id} href={hrefDaCliente(c.id)} role="button" className="pdv-linha"
               style={{ gridTemplateColumns: 'minmax(0, 1fr) auto', borderBottom: '1px solid var(--hairline)' }}>
               <span style={{ fontWeight: 700 }}>{c.name}</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)' }}>{c.phone}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)' }}>{maskPhone(c.phone)}</span>
             </Link>
           ))}
         </div>

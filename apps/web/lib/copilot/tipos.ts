@@ -39,7 +39,11 @@ export interface MensagemNaTela {
   criadaEm: string
 }
 
-export interface ConversaNaLista { id: string; titulo: string; atualizadaEm: string }
+export interface ConversaNaLista {
+  id: string; titulo: string; atualizadaEm: string
+  /** Tem um cartão esperando o Confirmar, ainda no prazo (A28 da 19ª). */
+  cartaoPendente?: boolean
+}
 
 /** Os eventos do stream de `POST /api/copilot` (uma linha `data:` cada). */
 export type EventoDoCopilot =

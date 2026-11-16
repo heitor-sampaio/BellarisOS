@@ -1,5 +1,5 @@
 import { NODES } from '@estetica-os/types'
-import type { GrafoDeAutomacao } from '@estetica-os/types'
+import type { GrafoDeAutomacao, LimitesDaAutomacao } from '@estetica-os/types'
 
 /**
  * "Ligar a automação?" — o que a tela diz ANTES de ligar um fluxo que chega à
@@ -74,4 +74,20 @@ export function explicacaoAntesDeLigar(canais: CanalParaACliente[]): string {
     frases.push(`Por ${nomes}, a mensagem só chega a quem já tem conversa ali com a rede.`)
   }
   return frases.join(' ')
+}
+
+/**
+ * Os limites do fluxo, ditos ANTES de ligar (A16 da 19ª simulação; princípios
+ * 1 e 7): o silêncio noturno padrão (21:00–08:00) segurou o lembrete de uma
+ * rede aberta 24 horas, e quem ligou o modelo nunca abriu a gaveta "Limites".
+ * O padrão fica (é da rede ajustar — D16); a janela diz o que vale.
+ */
+export function limitesAntesDeLigar(l: LimitesDaAutomacao): string {
+  const silencio = l.silencioDe && l.silencioAte
+    ? `Entre ${l.silencioDe} e ${l.silencioAte} a mensagem espera e sai às ${l.silencioAte} (silêncio noturno).`
+    : 'Sem silêncio: a mensagem sai a qualquer hora.'
+  const teto = l.tetoPorClienteDia
+    ? `No máximo ${l.tetoPorClienteDia} por cliente por dia.`
+    : 'Sem teto por cliente.'
+  return `${silencio} ${teto}`
 }

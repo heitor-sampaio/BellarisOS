@@ -294,6 +294,40 @@ comanda (PDV-P1).
   `[data-contrato-pede-cadastro]`). Só avisa: a venda segue (princípio 2).
   Os termos dos procedimentos do pacote não entram aqui (nascem ao agendar,
   e o "Agendar" já avisa).
+- **A venda estornada e recebida de novo** (19ª simulação, princípio 3;
+  `pdv_comandas`, migration `20261119100001`):
+  - **Vale o vendido UMA vez** (D1): o estorno da venda viva reabre o valor
+    num lançamento novo (`estornar_e_reabrir`), e a comanda somava o
+    estornado e o reaberto (o pacote de R$ 1.000 dizia R$ 2.000,00). O
+    estornado que ganhou o reaberto — o mesmo `created_at` do estorno, a
+    mesma venda e parcela — fica fora do valor e da forma; o estornado sem
+    reaberto (a venda cancelada) segue no valor, e a comanda diz "Estornada".
+  - **A comanda da venda e do plano diz o estorno** (`estorno_anterior`,
+    `estornoDaVendaEmTexto`, `[data-estorno-da-venda]`): a receber de novo,
+    "Estornada às 09:27 — R$ 1.000,00, Débito: o valor voltou a receber.";
+    recebida de novo, "Recebida de novo depois do estorno das 09:27
+    (R$ 1.000,00, Débito)." A do atendimento segue a regra da 17ª (só a
+    receber, e paga de novo o estorno sai).
+  - **A forma com a bandeira** (A1): as `formas` levam a bandeira ("Crédito
+    Mastercard 10x"), e a venda paga à vista também as tem (a forma de
+    agora, não a do estornado; no crediário e no a receber, a da venda). Os
+    pagamentos da comanda também (`lancamentosDaComanda`).
+  - **Depois de "Receber", a tela diz o que entrou** (A2): "Recebido
+    R$ 2.060,00 (Crédito Mastercard 10x). A comanda saiu das abertas e está
+    em “Pagas hoje”." com "Ver a comanda" (`?recebida=`,
+    `recebidaAgoraEmTexto`, `[data-recebida-agora]`; a comanda da URL que já
+    saiu das Abertas também, porque o tempo real a tira antes).
+  - O PDV sem comanda escolhida diz "Escolha uma comanda na lista" (A4: no
+    celular a lista fica em cima); o telefone da cliente na Nova venda vai
+    com a máscara (A5).
+  - **O voucher depois do estorno só do produto** (A7): a comanda paga diz
+    "O voucher “X” segue usado na parte do atendimento (R$ 28,71). A parte
+    dele no produto estornado saiu com o estorno."
+    (`voucherDoProdutoEstornadoEmTexto`, `[data-voucher-do-produto-estornado]`).
+  - **O estorno do pacote diz as sessões feitas** (A6): a janela antes de
+    estornar diz "1 das 5 sessões já foi feita, e o pacote segue com as 4 que
+    restam." (`textoDaReaberturaDoPacote`, `lib/financeiro/reabertura-do-estorno.ts`).
+  - Prova: `e2e/pdv-atritos-da-19.spec.ts`, `tests/atritos-da-19-caixa.test.ts`.
 - **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
   valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`
   e `confirmPayment` somam `valorDosItensDoAtendimento`); na "Nova venda"
@@ -1231,8 +1265,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     tela a diz. Depois de fechar, cada linha
     mostra o último conferido e a diferença contra o registrado do RETRATO
     daquele fechamento ("Bateu", "Faltou R$ X", "Sobrou R$ X", "não
-    conferido"); "Fechar de novo" reabre com os valores do último. A tela não
-    calcula a diferença ao digitar (a conta é a do servidor, ao fechar).
+    conferido"); "Fechar de novo" reabre com os valores do último. Enquanto
+    se confere, a diferença acompanha o que se digita — a MESMA conta do
+    fechamento, conferido − registrado em centavos (`diferencaAoDigitar`;
+    A3 da 19ª: a linha seguia "a conferir" até fechar); o que vale é o que o
+    servidor grava ao fechar.
     **O registrado mudou depois do fechamento** (D2 da 17ª, princípios 3 e
     4): a linha não diz "Bateu" juntando o registrado de agora com o
     conferido de antes — a diferença diz "a conferir · mudou depois do
@@ -2613,7 +2650,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   rede). **E a tela do atendimento pago também** (A35 da 12ª simulação,
   2026-11-11: a Heloísa procurou ali): embaixo do "Pagamento confirmado",
   "Estornar este pagamento é de quem tem o Financeiro em Gerenciar: …"
-  (`[data-quem-estorna]`).
+  (`[data-quem-estorna]`). **E o avulso concluído aguardando o PDV diz quem
+  recebe** (A11 da 19ª), a quem não recebe: "Quem recebe é quem tem o PDV ou o
+  Financeiro em Gerenciar: …" (`[data-quem-recebe]`, `quemRecebeNoPdv`).
 - **Estornar e receber na própria ficha** (A32 e A35 da 12ª; princípio 3: a
   Helena, no celular, só achava o estorno em Financeiro → Lançamentos, uma
   página de 20 mil px; a parcela do crediário na ficha não tinha ação): na aba
@@ -2858,4 +2897,5 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
 ❌ Recriar uma política de leitura ou escrita em financial_transactions para a sessão (saiu no FI8; a lista é do servidor)
 ❌ Ler "os membros da unidade" em users com branch_id.eq sozinho: as outras unidades ficam de fora — é filtroDosMembrosDaUnidade / membroAlcancaAUnidade (D1 da 17ª)
 ❌ Dizer "Bateu" no fechamento com o registrado de agora e o conferido de um fechamento em que ele era outro (D2 da 17ª: "a conferir")
+❌ Somar no valor da comanda da venda o lançamento "Estornada" que ganhou o reaberto (estornar_e_reabrir): o reaberto é ele de novo (D1 da 19ª)
 ```

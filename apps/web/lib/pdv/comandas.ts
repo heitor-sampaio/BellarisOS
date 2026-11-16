@@ -19,7 +19,7 @@ interface Linha {
   treatment_plan_id: string | null
   em_aberto: number | string | null; parcelas_em_aberto: number | null; proxima_parcela: string | null; produtos: number | null
   ja_pago: number | string | null
-  formas: { forma: string; vezes: number | null; valor: number | string }[] | null
+  formas: { forma: string; vezes: number | null; valor: number | string; bandeira?: string | null }[] | null
   desconto: number | string | null; fidelidade: number | string | null; voucher: string | null
   estorno_anterior: {
     quando: string; valor: number | string; forma: string | null; vezes: number | null
@@ -49,7 +49,8 @@ export async function comandasDoPdv(args: {
     emAberto: Number(l.em_aberto ?? 0), parcelasEmAberto: l.parcelas_em_aberto ?? 0, proximaParcela: l.proxima_parcela, produtos: l.produtos ?? 0,
     jaPago: Number(l.ja_pago ?? 0),
     // D3, A1 e A2 da 17ª: as formas, os descontos e o estorno anterior (do banco).
-    formas: (l.formas ?? []).map(f => ({ forma: f.forma, vezes: Number(f.vezes ?? 1), valor: Number(f.valor) })),
+    // A1 da 19ª: e a bandeira do cartão.
+    formas: (l.formas ?? []).map(f => ({ forma: f.forma, vezes: Number(f.vezes ?? 1), valor: Number(f.valor), bandeira: f.bandeira ?? null })),
     desconto: Number(l.desconto ?? 0), fidelidade: Number(l.fidelidade ?? 0), voucher: l.voucher ?? null,
     estornoAnterior: l.estorno_anterior ? {
       quando: l.estorno_anterior.quando, valor: Number(l.estorno_anterior.valor), forma: l.estorno_anterior.forma,

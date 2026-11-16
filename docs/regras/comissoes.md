@@ -384,7 +384,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   lado da de execução (`[data-comissao-de-venda-da-pessoa]`), VAZIO por padrão
   (`users.comissao_venda_pct`, só o servidor grava — `salvarRegrasDoProfissional`,
   `vendaPct`; o chip diz "· venda 3%" e aparece também para quem vende sem
-  atender). Vale para PACOTE, PLANO, PRÉ-PAGO e PRODUTO, sobre o vendido, para
+  atender — aí, "Venda 3%", A22 da 19ª). Vale para PACOTE, PLANO, PRÉ-PAGO e PRODUTO, sobre o vendido, para
   quem está em "Quem vendeu":
   - **a regra do item vence a da pessoa**, como na execução: o "De venda" do
     pacote, a comissão do produto (no "Por produto") — **também quando é 0%**
@@ -456,6 +456,25 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   comissão nas duas unidades. O formulário de novo membro da UNIDADE também
   pede a comissão padrão (A3 da 8ª simulação). Vale para o Admin da rede que atende
   (D2, 2026-10-29): o chip aparece quando ele marca "Atende clientes".
+  **O chip diz QUAL comissão** (A22 da 19ª simulação, princípio 3; era "Sem
+  comissão" em toda linha, e a Patrícia deu 25% de atendimento a quem só
+  vende): quem atende sem padrão, "Sem comissão de atendimento"; quem não
+  atende, "Venda 3%" ou "Sem comissão de venda"; com padrão, como antes
+  ("Comissão 25% · 2 exceções · venda 3%") — `chipDaComissao`
+  (`lib/comissoes/chip-do-membro.ts`). O campo do valor da regra mostra um
+  exemplo ("Ex.: 10", "Ex.: 50,00"), não um 0 que parecia já preenchido (A24).
+- **A comissão da venda do pacote se acha em Comissões e taxas** (A24 da 19ª,
+  princípio 7): o bloco "Venda de pacote" diz que ela fica no próprio pacote
+  (Vendas → Pacotes → o pacote → Comissão), e sem ela vale a de quem vendeu
+  (Equipe → Comissão) — `[data-comissao-do-pacote]`. Só o caminho: a regra é a
+  de sempre (acima).
+- **O extrato liga o estorno à liberação** (A8 da 19ª, princípio 3: "+500,
+  −500, +500" sem dizer o vínculo): a linha do estorno diz "desfaz a liberação
+  das 06:42" — a do MESMO pagamento (`commissions.transaction_id`, lido em
+  `extratoDasComissoes` só quando há estorno no extrato) — e a liberação
+  seguinte do mesmo atendimento, "de novo, depois do estorno das 06:45"
+  (`vinculosDoExtrato`, `[data-vinculo-do-estorno]`). Prova:
+  `tests/atritos-da-19-caixa.test.ts`.
 - **A sessão não lê comissão nenhuma; a tela escuta um SINAL** (F63, C1 do
   levantamento das regras). `commissions` ia pelo Realtime, legível por toda
   a unidade: quem o cargo deixa ver "só as minhas" recebia no websocket cada

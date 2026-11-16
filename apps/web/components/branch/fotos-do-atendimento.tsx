@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, Plus, FileImage, Send, Smartphone, EyeOff, Loader2, X, Trash2 } from 'lucide-react'
 import { UploadForm } from '@/components/branch/client-documents-tab'
+import { DICA_DO_NOME_DA_FOTO } from '@/lib/clientes/textos-do-app'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { enviarDocumentoACliente, deleteClientDocument } from '@/actions/client-documents'
 import { useFuso } from '@/components/shared/fuso'
@@ -120,6 +121,9 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
               })),
             }}
             titulo="Nova foto clínica"
+            // A15 da 19ª: o nome é o do prontuário; a cliente lê "Uma foto do seu atendimento".
+            rotuloDoNome="Nome no prontuário *"
+            dicaDoNome={DICA_DO_NOME_DA_FOTO}
             // A10 da 18ª: "Enviar à cliente" já aqui, para quem pode enviar.
             ofereceEnviar={podeMexer && portalNoPlano}
             rotuloDoEnvio="Anexar foto"

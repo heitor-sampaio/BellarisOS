@@ -4,15 +4,17 @@ export interface DocumentoDoAviso { titulo: string; status: string; faltando: st
 
 /**
  * O aviso dos documentos que a venda do pacote deixou para a cliente assinar
- * (PC2; D1 da 15ª simulação).
+ * (PC2; D1 da 15ª simulação; D4 da 19ª).
  *
  * Até a 15ª ele era fixo: "1 depende de completar o cadastro. Estão na ficha,
  * em Documentos." — não dizia O QUE faltava, e quem vendeu sem os Documentos
  * abria a aba e não achava nada. Agora diz o que falta no cadastro (`faltando`
- * já vem como a pessoa lê, por `oQueFalta`) e, a quem não vê os Documentos,
- * quem tem (`quemVe`; nulo = a própria pessoa vê).
+ * já vem como a pessoa lê, por `oQueFalta`) e, a quem não COLHE a assinatura,
+ * quem colhe (`quemColhe`: os Documentos em Gerenciar — D4 da 19ª, a lista
+ * trazia quem só vê; nulo = a própria pessoa colhe). Quem só VÊ os Documentos
+ * (`veNaFicha`) lê também onde eles estão.
  */
-export function avisoDosDocumentosDaVenda(docs: DocumentoDoAviso[], quemVe: string[] | null): string {
+export function avisoDosDocumentosDaVenda(docs: DocumentoDoAviso[], quemColhe: string[] | null, opcoes: { veNaFicha?: boolean } = {}): string {
   const incompletos = docs.filter(d => d.status === 'INCOMPLETO')
   const base = docs.length === 1
     ? `Ficou 1 documento para a cliente assinar: ${docs[0]!.titulo}.`
@@ -22,11 +24,12 @@ export function avisoDosDocumentosDaVenda(docs: DocumentoDoAviso[], quemVe: stri
     : falta.length
       ? ` Falta no cadastro: ${falta.join(', ')}. Completado o cadastro, ${incompletos.length === 1 ? 'ele fica pronto' : 'eles ficam prontos'} para assinar.`
       : ` ${incompletos.length === 1 ? '1 depende' : `${incompletos.length} dependem`} de completar o cadastro.`
-  const onde = quemVe === null
-    ? ' Estão na ficha, em Documentos.'
-    : quemVe.length
-      ? ` Para colher a assinatura, fale com quem tem os Documentos: ${emLista(quemVe)}.`
+  const naFicha = quemColhe === null || opcoes.veNaFicha ? ' Estão na ficha, em Documentos.' : ''
+  const quem = quemColhe === null ? ''
+    : quemColhe.length
+      ? ` Para colher a assinatura, fale com quem tem os Documentos em Gerenciar: ${emLista(quemColhe)}.`
       : ' Para colher a assinatura, fale com quem administra a rede.'
+  const onde = `${naFicha}${quem}`
   return `${base}${doCadastro}${onde}`
 }
 

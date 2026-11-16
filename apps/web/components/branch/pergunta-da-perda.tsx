@@ -64,16 +64,20 @@ export function MotivoDaPerdaCampos({ motivos, motivoId, obs, onMotivo, onObs, n
   lembrete?: boolean
 }) {
   const rotulo = { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' } as const
+  // A31 da 19ª (princípio 3): o lembrete é neutro até o salvar barrar (o campo
+  // é `required`: o navegador avisa o `invalid`); vermelho antes parecia erro.
+  const [tentou, setTentou] = useState(false)
   return (
     <>
       <label style={rotulo}>
         Motivo
-        <select className="field" required name={nomes?.motivo} value={motivoId} onChange={e => onMotivo(e.target.value)}>
+        <select className="field" required name={nomes?.motivo} value={motivoId} onChange={e => onMotivo(e.target.value)}
+          onInvalid={() => setTentou(true)}>
           <option value="">Escolha o motivo…</option>
           {motivos.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
         </select>
         {lembrete && !motivoId && (
-          <span role="status" style={{ fontWeight: 600, color: 'var(--danger)' }}>Escolha o motivo da perda para salvar.</span>
+          <span role={tentou ? 'alert' : 'status'} style={{ fontWeight: 600, color: tentou ? 'var(--danger)' : 'var(--text-muted)' }}>Escolha o motivo da perda para salvar.</span>
         )}
       </label>
       <label style={rotulo}>

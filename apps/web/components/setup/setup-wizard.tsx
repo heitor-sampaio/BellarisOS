@@ -7,7 +7,7 @@ import { normalizarHorario, domingoFechadoNoHorario, type Horario } from '@/lib/
 import { Check, Loader2, AlertTriangle } from 'lucide-react'
 import { updateTenantProfile, completeOnboarding } from '@/actions/setup'
 import { createBranch } from '@/actions/branches'
-import { fetchCep } from '@/lib/cep'
+import { fetchCep, avisoDoBairroDoCep } from '@/lib/cep'
 import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
 import { maskCNPJDigitando, maskCPFouCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
@@ -258,6 +258,8 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
   const [uf,         setUf]         = useState('')
   const [cepLoading, setCepLoading] = useState(false)
   const [cepError,   setCepError]   = useState<string | null>(null)
+  // A18 da 19ª: o bairro que a busca do CEP pôs, até a pessoa mexer no logradouro.
+  const [bairroDoCep, setBairroDoCep] = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
   // O CNPJ apagado pergunta antes de criar (cfg-01): "sem CNPJ" ou o da clínica.
   const [perguntaCnpj, setPerguntaCnpj] = useState<{ cnpjDaRede: string | null } | null>(null)
@@ -313,6 +315,7 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
     setCepLoading(false)
     if (!result) { setCepError('CEP não encontrado.'); return }
     if (result.address) setAddress(result.address)
+    setBairroDoCep(result.address ? result.neighborhood : null)
     setCity(result.city)
     setUf(result.uf)
   }
@@ -513,9 +516,15 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
             type="text"
             className="field"
             value={address}
-            onChange={e => setAddress(e.target.value)}
+            onChange={e => { setAddress(e.target.value); setBairroDoCep(null) }}
             placeholder="Rua das Flores — Bairro"
+            aria-describedby={avisoDoBairroDoCep(bairroDoCep) ? 'br-address-confira' : undefined}
           />
+          {avisoDoBairroDoCep(bairroDoCep) && (
+            <p id="br-address-confira" data-confira-o-bairro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {avisoDoBairroDoCep(bairroDoCep)}
+            </p>
+          )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {/* A7 da 9ª: o CEP preenche só o logradouro, e não havia onde pôr o número. */}

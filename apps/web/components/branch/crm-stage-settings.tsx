@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  OUTCOME_COPY, OUTCOME_VALUES, COR_DA_ETAPA_NOVA, ehAUltimaDePerda,
+  OUTCOME_COPY, OUTCOME_VALUES, COR_DA_ETAPA_NOVA, ehAUltimaDePerda, perguntaAoExcluirEtapa,
   type CRMFunnel, type CRMStage, type StageOutcome,
 } from '@/lib/crm'
 import {
@@ -105,7 +105,8 @@ function StageRow({
   }
 
   async function handleDelete(confirmado = false) {
-    if (ultimaDePerda && !confirmado) { setDeleteErr(null); setConfirmar({ acao: 'excluir' }); return }
+    // A23 da 19ª (princípio 7): toda exclusão pergunta antes, não só a da última de perda.
+    if (!confirmado) { setDeleteErr(null); setConfirmar({ acao: 'excluir' }); return }
     setConfirmar(null)
     setDeleteErr(null)
     const res = await deleteStage(stage.id, slug)
@@ -219,12 +220,13 @@ function StageRow({
       {confirmar && (
         <div data-sem-etapa-de-perda role="alert" style={{ width: '100%', paddingLeft: 44, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 700, margin: 0 }}>
-            Este funil fica sem etapa de perda: o “Marcar como perdido” e os motivos de perda não terão para onde levar a oportunidade.
+            {/* A11 da 17ª: "Este funil fica sem etapa de perda" na última de perda; A23 da 19ª: a pergunta nas outras. */}
+            {perguntaAoExcluirEtapa(stage.name, confirmar.acao === 'resultado' || ultimaDePerda)}
           </p>
           <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
               onClick={() => (confirmar.acao === 'excluir' ? handleDelete(true) : handleOutcomeChange(confirmar.para, true))}>
-              {confirmar.acao === 'excluir' ? 'Excluir mesmo assim' : 'Mudar mesmo assim'}
+              {confirmar.acao === 'excluir' ? (ultimaDePerda ? 'Excluir mesmo assim' : 'Excluir a etapa') : 'Mudar mesmo assim'}
             </button>
             <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }} onClick={() => setConfirmar(null)}>
               Cancelar

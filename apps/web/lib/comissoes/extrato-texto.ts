@@ -100,3 +100,38 @@ export function csvDoExtrato(linhas: LancamentoDoExtrato[], nomes: Map<string, s
   // BOM + ponto e vírgula: é o que o Excel em pt-BR abre certo.
   return '﻿' + tabela.map(l => l.map(campo).join(';')).join('\r\n')
 }
+
+/**
+ * O vínculo das linhas do estorno no extrato (A8 da 19ª simulação,
+ * 2026-11-16; princípio 3). O pagamento estornado e recebido de novo deixa
+ * três linhas — "+500, −500, +500" —, e nada dizia que a do meio desfaz a
+ * primeira. O estorno se liga à liberação do MESMO pagamento (`transacaoId`;
+ * sem ele, a do mesmo atendimento e valor), e a liberação seguinte do mesmo
+ * atendimento é "de novo". `hora` escreve a hora no fuso da unidade.
+ */
+export function vinculosDoExtrato(linhas: readonly LancamentoDoExtrato[], hora: (iso: string) => string): Map<string, string> {
+  const vinculos = new Map<string, string>()
+  const quando = (l: LancamentoDoExtrato) => new Date(l.releasedAt).getTime()
+  const estornos = linhas.filter(l => l.kind === 'ESTORNO')
+  if (!estornos.length) return vinculos
+  const liberacoes = linhas.filter(l => l.kind === 'LIBERACAO')
+  const desfeitas = new Set<string>()
+  for (const e of estornos) {
+    const alvo = liberacoes
+      .filter(l => quando(l) <= quando(e) && !desfeitas.has(l.id) && (e.transacaoId
+        ? l.transacaoId === e.transacaoId
+        : !!e.appointmentId && l.appointmentId === e.appointmentId && Math.abs(l.amount + e.amount) < 0.005))
+      .sort((a, b) => quando(b) - quando(a))[0]
+    if (!alvo) continue
+    desfeitas.add(alvo.id)
+    vinculos.set(e.id, `desfaz a liberação das ${hora(alvo.releasedAt)}`)
+  }
+  for (const l of liberacoes) {
+    if (desfeitas.has(l.id) || !l.appointmentId) continue
+    const antes = estornos
+      .filter(e => e.appointmentId === l.appointmentId && vinculos.has(e.id) && quando(e) <= quando(l))
+      .sort((a, b) => quando(b) - quando(a))[0]
+    if (antes) vinculos.set(l.id, `de novo, depois do estorno das ${hora(antes.releasedAt)}`)
+  }
+  return vinculos
+}

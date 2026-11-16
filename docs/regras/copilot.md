@@ -13,7 +13,9 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
 
 - **Toda gravação passa por um cartão** com Confirmar/Cancelar. Consulta é livre.
   **O cartão é a confirmação** (A32 da 16ª): o prompt não pede "responda
-  Confirmar" antes nem repete no texto os dados que o cartão mostra. O
+  Confirmar" antes nem repete no texto os dados que o cartão mostra; depois
+  do cartão, a frase é dada: "Confira e confirme no cartão abaixo." (A30 da
+  19ª: "uma frase curta" virou "confirme o cartão no sistema"). O
   cartão "Agendar atendimento" diz o aviso que chega DE FATO à cliente
   (`avisoDoAgendarParaACliente`, A33): "Ela recebe o aviso “Horário marcado”
   no app", ou "Nada é enviado a ela agora" — sem acesso ao app, ou sem o app
@@ -21,7 +23,12 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   com o aviso deles ("Agendamento remarcado", "Agendamento cancelado";
   `avisoDaAgendaParaACliente`, A23 da 17ª). O cadastro termina em "Ficha de X
   criada" (A34). O painel vazio oferece, em PRIMEIRO, "Continuar a conversa
-  anterior: <título>" (A31 da 16ª; acima do "Olá" desde o A25 da 17ª).
+  anterior: <título>" (A31 da 16ª; acima do "Olá" desde o A25 da 17ª) — e,
+  havendo uma conversa com cartão esperando o Confirmar (no prazo), ela vem
+  no lugar da mais recente: "Continuar a conversa com um cartão a confirmar:
+  <título>" (A28 da 19ª: recarregada a página, o "Continuar" levava à mais
+  nova e o pedido era feito de novo; `listarConversas` marca
+  `cartaoPendente`, `lib/copilot/continuar.ts`).
 - **Nada clínico vai à OpenAI**: nenhuma ferramenta lê prontuário, evolução,
   anamnese, foto clínica ou anotação clínica de plano. O prompt manda dizer que
   isso fica na tela, e o painel avisa para não mandar.
@@ -121,7 +128,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   (`lib/copilot/documentos.ts`, um leitor de zip sem biblioteca); doc/xls
   antigos, não.
 - **Texto do modelo** vira blocos React (`lib/copilot/texto.ts`), nunca HTML;
-  link só para TELA interna (não `/api`, `/auth`…), sem prefetch.
+  link só para TELA interna (não `/api`, `/auth`…), sem prefetch. O link sem
+  fechamento no fim (`[x](/y`, a resposta cortada ou ainda chegando) fica só
+  o texto, sem o pedaço `](/…` (D3 da 19ª).
+- **A resposta cortada diz que foi cortada** (D3 da 19ª; princípio 3): além
+  do `response.incomplete`, o stream que acaba sem `response.completed` (o
+  tempo, a conexão) acrescenta "(A resposta foi cortada. Peça a continuação,
+  se precisar.)" (`perguntarAoModelo`). Prova: `tests/copilot-defeitos-da-19.test.ts`.
 - **Dados**: `copilot_conversas`, `copilot_mensagens`, `copilot_acoes`,
   `copilot_uso_mensal` — RLS sem política (só o servidor). Retenção
   (`/api/cron/copilot-retencao`): a conversa parada há 90 dias, e a mensagem
@@ -286,6 +299,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   dada, procura entre quem a tem marcada no "Atende"
   (`filtroDeQuemAtendeNaUnidade`) — era "da unidade ou da rede". A Talita
   marcada no Batel é achada lá; quem é da rede e não está marcada, não.
+- **"Os agendamentos da Fulana" procura nos dois lados** (A27 da 19ª): a
+  Tereza era cliente, e `agendamentos` a procurou como profissional. O nome
+  dado como profissional, sem cliente no pedido, se procura também entre as
+  clientes (`resolverCliente`): de um lado só, vale ele, e a resposta diz como
+  entendeu (`entendido`); dos dois, a ferramenta pergunta qual. O filtro
+  `cliente` aceita nome, telefone ou id. O cartão diz o período em dd/mm
+  ("Agenda · 16/11 a 16/12/2026", `periodoLegivel` — A29 da 19ª).
 - **Quem atende se acha pelo NOME, não pela busca** (D2 da 16ª simulação): a
   `buscar` traz o que a tela de cada tipo mostra, e o membro só a quem tem a
   Equipe — quem agenda sem a Equipe ouvia "nada encontrado" e desistia. O

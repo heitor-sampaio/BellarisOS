@@ -103,7 +103,7 @@ test.describe.serial('comissões — configuração e regras', () => {
     await comSessao(browser, gestor!, async p => {
       await p.goto('/admin/team')
       const chip = p.locator(`[data-comissao="${rede!.professionalId}"]`)
-      await expect(chip).toHaveText('Sem comissão')
+      await expect(chip).toHaveText('Sem comissão de atendimento') // A22 da 19ª: o chip diz qual comissão falta
       await chip.click()
 
       // O nome do profissional é o que criarOutraRede monta.

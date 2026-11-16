@@ -219,6 +219,21 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     (`data-quem-colhe`), na ficha e no atendimento. Decisão desta frente: só o
     texto, sem botão de "pedir a quem colhe" (não há para onde mandar o pedido
     além do aviso que a tela já dá). Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
+    **E diz o NOME de quem colhe** (A10 da 19ª, princípio 3): "…em Gerenciar
+    (Patrícia Begônia): na tela, …" — `quemColheOsDocumentos`
+    (`lib/equipe/quem-desfaz.ts`: os Documentos em Gerenciar, ativos, ao alcance
+    da unidade, e a Admin da rede) e `textoDeQuemColhe`
+    (`lib/equipe/textos-de-quem-pode.ts`), na ficha, nos Documentos do
+    atendimento e no "Falta assinar" do iniciar.
+  - **Quem não tem os Documentos sabe que há documento esperando** (A9 da
+    19ª): a aba Documentos da ficha dizia "Nenhum documento anexado" com o
+    contrato do pacote pendente. Sem o módulo, ela diz a CONTAGEM — "1 documento
+    esperando a assinatura da cliente. Quem colhe é quem tem os Documentos em
+    Gerenciar (…)." (`[data-documentos-esperando]`,
+    `documentosEsperandoAssinatura`, `lib/documentos/esperando.ts`: A_GERAR,
+    INCOMPLETO e PENDENTE) —, sem título nem conteúdo, e com o recorte do
+    prontuário "só os meus" (`clienteNoEscopo`). Prova:
+    `tests/atritos-da-19-atendimento.test.ts`.
   - **Exceção do checkout** (decisão do Heitor, 2026-10-20): quem RECEBE
     (`podeReceber`) colhe a assinatura do documento de um plano que está no
     checkout (`treatment_plan_id` de plano PROPOSED) — abrir, assinar na tela,
@@ -571,6 +586,12 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   de "Estão na ficha, em Documentos" — e sem o "Colher a assinatura agora"
   (`avisoDosDocumentosDaVenda`, `lib/documentos/aviso-da-venda.ts`). Prova:
   `e2e/documentos-venda-do-pacote-faltam-dados.spec.ts`.
+  **Quem colhe é quem tem os Documentos em GERENCIAR** (D4 da 19ª, princípio
+  3: a lista era de quem VÊ, e o aviso mandava colher com quem não tem o
+  botão): a quem vendeu sem colher, "Para colher a assinatura, fale com quem
+  tem os Documentos em Gerenciar: …" (`quemColheOsDocumentos`); quem só VÊ lê
+  também "Estão na ficha, em Documentos." (`veOsDocumentos` da venda). O
+  "Colher a assinatura agora" fica só para quem colhe.
   - Os rótulos da trilha são UM só (`lib/documentos/situacao.ts`), na tela e
     na página de evidências do PDF.
   - Canal de envio novo grava o seu evento em `issued_document_events` e
