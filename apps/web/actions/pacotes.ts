@@ -12,7 +12,8 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { z } from 'zod'
 import { alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
-import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso } from '@/lib/auth'
+import { veOsDocumentos } from '@/lib/documentos/acesso'
 import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -40,7 +41,6 @@ import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
 import { prepararDocumentosDoPacote } from '@/lib/documentos/pacote'
 import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
 import { oQueFalta } from '@/lib/documentos/o-que-falta'
-import { quemColheOsDocumentos } from '@/lib/equipe/quem-desfaz'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -127,12 +127,10 @@ type ResultadoDaVendaDoPacote = {
    */
   documentos?: DocumentoDaVenda[]
   /**
-   * D1 da 15ª, D4 da 19ª: quem COLHE a assinatura (os Documentos em
-   * Gerenciar), para quem vendeu sem colher (nulo = ela colhe). O aviso diz a
-   * quem pedir.
+   * Quem vendeu vê a ficha da cliente (Clientes): o aviso diz que os
+   * documentos estão lá. Colher é dela de qualquer jeito (o Heitor,
+   * 2026-11-16: colher não pede o módulo Documentos).
    */
-  quemColheOsDocumentos?: string[] | null
-  /** D4 da 19ª: quem vendeu VÊ os Documentos (sem colher): o aviso diz também que estão na ficha. */
   veOsDocumentos?: boolean
 }
 
@@ -263,20 +261,11 @@ async function venderPacoteUmaVez(
     } catch (e) {
       console.error('[pacote] documentos da venda:', mensagemDoErro(e))
     }
-    // D4 da 19ª: colher pede os Documentos em Gerenciar — quem só VÊ também
-    // lê quem colhe (a lista era de quem vê, e apontava quem não colhe).
-    let quemColhe: string[] | null = null
-    if (documentos.length && !can(ctx, 'documents', 'MANAGE')) {
-      try { quemColhe = await quemColheOsDocumentos(ctx.tenantId!, branchId) } catch (e) {
-        console.error('[pacote] quem colhe os documentos:', mensagemDoErro(e)); quemColhe = []
-      }
-    }
-
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')
     revalidatePath('/admin/financeiro')
     revalidatePath('/[slug]/financeiro', 'page')
-    return { clientPackageId, primeiraSessao, documentos, quemColheOsDocumentos: quemColhe, veOsDocumentos: can(ctx, 'documents', 'VIEW') }
+    return { clientPackageId, primeiraSessao, documentos, veOsDocumentos: veOsDocumentos(ctx) }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

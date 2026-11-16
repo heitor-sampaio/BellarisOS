@@ -22,8 +22,9 @@ export const ABAS_DE_CONFIGURACAO = [
   { key: 'permissions',   label: 'Cargos',       module: 'roles'    },
   // Personalizar fichas é do PLANO da rede (2026-10-07).
   { key: 'fichas',        label: 'Fichas',       module: 'forms',     recurso: 'fichas' },
-  // Termos e contratos: autoria de rede, como as fichas (módulo 'forms').
-  { key: 'documentos',    label: 'Documentos',   module: 'forms',     recurso: 'documentos' },
+  // Os modelos de documento (termos e contratos): o módulo deles, `documents`
+  // (o Heitor, 2026-11-16: a permissão de Documentos é a dos modelos).
+  { key: 'documentos',    label: 'Documentos',   module: 'documents', recurso: 'documentos' },
   { key: 'integrations',  label: 'Integrações',  module: 'settings' },
   { key: 'fidelidade',    label: 'Fidelidade',   module: 'settings',  recurso: 'fidelidade' },
   // Como a comissão acontece e as taxas da maquininha: é dinheiro, 'financial'.
@@ -84,7 +85,7 @@ export function abaLiberada(aba: object, gerencia: (m: AppModule) => boolean): b
 }
 
 /** Os módulos que abrem alguma aba (a página de Configurações confere isto). */
-export const MODULOS_DAS_ABAS: AppModule[] = ['settings', 'roles', 'forms', 'financial', 'clients', 'crm', 'medical_records']
+export const MODULOS_DAS_ABAS: AppModule[] = ['settings', 'roles', 'forms', 'documents', 'financial', 'clients', 'crm', 'medical_records']
 
 /**
  * A aba é de uma funcionalidade do PLANO (lib/planos/recursos.ts)? Fora dele,

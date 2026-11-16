@@ -1,4 +1,5 @@
-import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertRecurso } from '@/lib/auth'
+import { assertVeOsDocumentos } from '@/lib/documentos/acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
 import { ler } from '@/lib/db'
@@ -36,7 +37,7 @@ export async function DocumentosEmitidos({
 }) {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'documentos')
-  assertPermission(ctx, 'documents', 'VIEW')
+  assertVeOsDocumentos(ctx)
   const admin = createAdminClient()
 
   // F72: as unidades de LEITURA (a desativada com o que ficou ou movimento no período, com o selo).

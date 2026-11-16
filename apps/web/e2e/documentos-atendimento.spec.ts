@@ -277,19 +277,22 @@ test.describe.serial('documentos: emissão pelo atendimento e assinatura na unid
     expect(await documentos({ appointment_id: ag5 }), 'o plano tem os documentos dele (fase 3)').toEqual([])
   })
 
-  test('quem só VÊ documentos lê, mas não colhe nem dispensa — nem chamando a action direto', async ({ browser }) => {
+  // Até 2026-11-16 era "quem só VÊ os Documentos lê, mas não colhe". Desde
+  // então (o Heitor: colher não pede permissão de documento), quem vê a
+  // cliente colhe; dispensar segue de quem tem os Modelos de documento.
+  test('quem vê a cliente, sem permissão de documento, colhe mas não dispensa — nem chamando a action direto', async ({ browser }) => {
     const ag = await agendar(rede!, cliente)
     const [doc] = await documentos({ appointment_id: ag, template_id: termo })
     const leitor = await criarMembro(`dal${marca}`, {
-      tenant: rede!.tenantId, rotulo: 'Só lê documentos',
-      permissoes: [{ modulo: 'documents', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }],
+      tenant: rede!.tenantId, rotulo: 'Só vê clientes',
+      permissoes: [{ modulo: 'clients', nivel: 'VIEW' }],
     })
     const ctx = await browser.newContext({ storageState: leitor.estado })
     try {
       const page = await ctx.newPage()
       await page.goto(`/admin/documentos/${doc!.id}/assinar`)
       await expect(page.getByRole('heading', { name: TITULO_TERMO })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Entregar ao cliente' })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Entregar ao cliente' })).toBeVisible()
       const r = await chamarAcao(page, 'actions/documentos.ts', 'dispensarDocumento', `/admin/documentos/${doc!.id}/assinar`,
         [doc!.id, 'tentando dispensar sem poder'])
       expect(r.texto).not.toContain('"error":""')

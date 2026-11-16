@@ -16,9 +16,9 @@ import { apagarDocumentosEmitidos } from './apoio/limpeza'
  * Documentos; salvar o cadastro monta de novo os documentos incompletos da
  * cliente. Numa rede [e2e] própria.
  *
- * D4 da 19ª (2026-11-16): a lista era de quem VÊ os Documentos, e apontava
- * quem não colhe. Quem colhe é quem tem os Documentos em Gerenciar: o membro
- * que só vê fica de fora.
+ * 2026-11-16 (o Heitor): colher a assinatura não pede permissão de
+ * documento — o módulo Documentos é o dos MODELOS. Quem vendeu colhe: o aviso
+ * não manda mais falar com ninguém (era a lista "quem colhe" do D4 da 19ª).
  */
 
 const marca = Date.now().toString(36)
@@ -27,8 +27,6 @@ const slug = `e2e-un-d1${marca}`
 
 let rede: OutraRede | null = null
 let vendedora: MembroDeTeste | null = null
-let quemVe: MembroDeTeste | null = null
-let quemColhe: MembroDeTeste | null = null
 let cliente = ''
 let pacote = ''
 let modeloEndereco = ''
@@ -60,20 +58,10 @@ test.beforeAll(async () => {
   cliente = await rede.criarCliente('Breno d1')
   expect((await db().from('clients').update({ document: '52998224725' }).eq('id', cliente)).error).toBeNull()
 
-  // Vende (o PDV e a ficha), sem os Documentos.
+  // Vende (o PDV e a ficha), sem permissão nenhuma de documento.
   vendedora = await criarMembro(`d1v${marca}`, {
     tenant: rede.tenantId, branchId: null, rotulo: 'Vende sem documentos',
     permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'agenda', nivel: 'MANAGE' }],
-  })
-  // Só vê os Documentos: NÃO colhe, e o aviso não manda pedir a ela (D4 da 19ª).
-  quemVe = await criarMembro(`d1d${marca}`, {
-    tenant: rede.tenantId, branchId: null, rotulo: 'Ve os documentos',
-    permissoes: [{ modulo: 'documents', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }],
-  })
-  // Os Documentos em Gerenciar: é a quem o aviso manda pedir.
-  quemColhe = await criarMembro(`d1c${marca}`, {
-    tenant: rede.tenantId, branchId: null, rotulo: 'Colhe os documentos',
-    permissoes: [{ modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
 })
 
@@ -83,15 +71,13 @@ test.afterAll(async () => {
     expect(await apagarDocumentosEmitidos((data ?? []).map(d => d.id as string))).toEqual([])
   }
   await vendedora?.limpar()
-  await quemVe?.limpar()
-  await quemColhe?.limpar()
   await rede?.limpar()
 })
 
 test.describe.serial('D1: o documento da venda do pacote com "faltam dados"', () => {
   let vendido = ''
 
-  test('a venda diz o que falta no cadastro e quem tem os Documentos', async ({ browser }) => {
+  test('a venda diz o que falta no cadastro, e quem vendeu é quem colhe', async ({ browser }) => {
     const texto = await como(browser, vendedora!.estado, async p => {
       const r = await chamarAcao(p, 'actions/pacotes.ts', 'venderPacote', `/${slug}/pdv`,
         [cliente, pacote, rede!.branchId, { forma: 'AVISTA', metodo: 'PIX' }, null, null, null])
@@ -102,11 +88,10 @@ test.describe.serial('D1: o documento da venda do pacote com "faltam dados"', ()
     // O que falta, como a pessoa lê (e não a chave da variável).
     expect(texto).toContain('Endereço (rua, número e bairro)')
     expect(texto).not.toContain('"cliente.endereco"')
-    // Quem vendeu não colhe: a resposta traz quem colhe (os Documentos em
-    // Gerenciar), e não quem só vê (D4 da 19ª).
-    const quemColheNaResposta = /"quemColheOsDocumentos":\[((?:"(?:[^"\\]|\\.)*",?)*)\]/.exec(texto)?.[1] ?? ''
-    expect(quemColheNaResposta).toContain(`Colhe os documentos d1c${marca}`)
-    expect(quemColheNaResposta).not.toContain(`Ve os documentos d1d${marca}`)
+    // Quem vendeu colhe (2026-11-16): a resposta não aponta outra pessoa, e
+    // ela vê os documentos na ficha (Clientes).
+    expect(texto).not.toContain('quemColheOsDocumentos')
+    expect(texto).toContain('"veOsDocumentos":true')
     const { data } = await db().from('issued_documents').select('status').eq('client_package_id', vendido).eq('template_id', modeloEndereco).single()
     expect(data!.status).toBe('INCOMPLETO')
   })

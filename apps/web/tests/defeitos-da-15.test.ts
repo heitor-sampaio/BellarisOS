@@ -119,18 +119,17 @@ describe('D1: o aviso dos documentos da venda do pacote', () => {
   const contrato = { id: 'x', titulo: 'Contrato do pacote', status: 'INCOMPLETO', faltando: ['Endereço do cliente', 'Cidade'] }
 
   it('diz o que falta no cadastro', () => {
-    expect(avisoDosDocumentosDaVenda([contrato], null)).toContain('Falta no cadastro: Endereço do cliente, Cidade.')
+    expect(avisoDosDocumentosDaVenda([contrato])).toContain('Falta no cadastro: Endereço do cliente, Cidade.')
   })
-  it('a quem vê os Documentos, diz onde estão; a quem não vê, diz quem tem', () => {
-    expect(avisoDosDocumentosDaVenda([contrato], null)).toContain('Estão na ficha, em Documentos.')
-    const semDocs = avisoDosDocumentosDaVenda([contrato], ['Marina Íris'])
-    expect(semDocs).not.toContain('Estão na ficha, em Documentos.')
-    // D4 da 19ª: quem COLHE é quem tem os Documentos em Gerenciar.
-    expect(semDocs).toContain('quem tem os Documentos em Gerenciar: Marina Íris')
+  it('a quem vê a ficha, diz onde estão; ninguém manda falar com outra pessoa (2026-11-16: quem vendeu colhe)', () => {
+    expect(avisoDosDocumentosDaVenda([contrato])).toContain('Estão na ficha, em Documentos.')
+    const semFicha = avisoDosDocumentosDaVenda([contrato], { veNaFicha: false })
+    expect(semFicha).not.toContain('Estão na ficha, em Documentos.')
+    expect(semFicha).not.toContain('fale com')
   })
   it('o documento pronto não fala de cadastro', () => {
     const pronto = { ...contrato, status: 'PENDENTE', faltando: [] }
-    expect(avisoDosDocumentosDaVenda([pronto], null)).toBe('Ficou 1 documento para a cliente assinar: Contrato do pacote. Estão na ficha, em Documentos.')
+    expect(avisoDosDocumentosDaVenda([pronto])).toBe('Ficou 1 documento para a cliente assinar: Contrato do pacote. Estão na ficha, em Documentos.')
   })
   it('a venda usa o aviso novo', () => {
     expect(ler('components/shared/vender-pacote.tsx')).toContain('avisoDosDocumentosDaVenda(')

@@ -35,7 +35,7 @@ test.beforeAll(async () => {
   alheia = await criarOutraRede(`dma${marca}`)
   gestor = await criarMembro(`dmg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestor documentos',
-    permissoes: [{ modulo: 'forms', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'documents', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' }],
   })
   // O termo da OUTRA rede, direto pela função — alvo dos testes de fronteira.
   const { data, error } = await db().rpc('documento_modelo_salvar', {

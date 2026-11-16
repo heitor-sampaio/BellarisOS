@@ -680,7 +680,8 @@ um muro que não depende de cada trava do código.
   `rede.atualizarVisibilidadeDoInbox`), os dados da rede e o setup
   (`rede.atualizarDadosDaRede`, `setup`; a aba Geral fica só para ler), as
   fichas (`fichas`) e a ficha de saúde, os modelos de documento
-  (`modelos-de-documento`), as integrações e as caixas de WhatsApp
+  (`modelos-de-documento`; desde 2026-11-16 do módulo `documents`, os
+  "Modelos de documento" — `docs/regras/documentos.md`), as integrações e as caixas de WhatsApp
   (`integrations`, `uazapi-connection`, o OAuth da Meta em `/api/oauth/meta`;
   o inbox vazio manda pedir a quem administra), as ações em lote
   (`acoes-em-lote`), as automações, as campanhas e os templates (que já eram

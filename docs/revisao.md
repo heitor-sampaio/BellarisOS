@@ -51,7 +51,7 @@ superfícies em volta. A ordem é do Heitor.
 | Clientes (ficha, tags, LGPD) | `clients` | ✅ |
 | Fidelidade | `loyalty` | ✅ |
 | Prontuário | `medical_records` | ✅ |
-| Documentos (termos e contratos) | `documents` | ✅ |
+| Documentos (termos e contratos) | `documents` | ✅ — 2026-11-16: o módulo virou "Modelos de documento" (criar, editar, desativar os modelos e dispensar); ver e colher a assinatura é de quem está com a cliente, sem permissão de documento (`docs/regras/documentos.md`) |
 | CRM (inbox, oportunidades, funis) | `crm` | ✅ |
 | Procedimentos | `procedures` | ✅ |
 | Pacotes | `procedures` (pacotes) | ✅ |
@@ -63,7 +63,7 @@ superfícies em volta. A ordem é do Heitor.
 | Estoque | `stock` | ✅ (o que devia fazer; a correção vem depois) |
 | Relatórios e indicadores | `reports` | ✅ |
 | Equipe | `team` | ✅ |
-| Fichas (formulários, pré-atendimento) | `forms` | ✅ |
+| Fichas (formulários, pré-atendimento) | `forms` | ✅ — 2026-11-16: "Modelos de ficha", só as fichas (os modelos de documento saíram para `documents`) |
 | Cargos e permissões | `roles` | ✅ |
 | Configurações (rede e unidade) | `settings` | ✅ |
 | Copilot | `copilot` | ✅ (acompanha as mudanças — o último bloco) |

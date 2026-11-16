@@ -101,20 +101,31 @@ test.describe.serial('documentos: PDF assinado e verificação pública', () => 
     expect((eventos ?? []).map(e => e.kind)).toContain('PDF_GERADO')
   })
 
-  test('a rota do PDF: quem vê documentos baixa; quem não tem o módulo, não', async ({ browser }) => {
+  // Até 2026-11-16 era "quem vê os Documentos baixa". Desde então (o Heitor:
+  // o módulo Documentos é o dos modelos) baixa quem está com a cliente, sem
+  // permissão de documento; quem não chega a ela (só o CRM), não.
+  test('a rota do PDF: quem vê a cliente baixa, sem permissão de documento; quem não chega a ela, não', async ({ browser }) => {
     await como(browser, async page => {
       const r = await page.request.get(`/api/documentos/${doc!.id}/pdf`, { maxRedirects: 0 })
       expect(r.status()).toBe(307)
       expect(r.headers()['location']).toContain('documentos-assinados')
     })
-    const semModulo = await criarMembro(`dvs${marca}`, { tenant: rede!.tenantId, rotulo: 'Sem documentos', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
-    const ctx = await browser.newContext({ storageState: semModulo.estado })
+    const soClientes = await criarMembro(`dvs${marca}`, { tenant: rede!.tenantId, rotulo: 'Sem documentos', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
+    const soCrm = await criarMembro(`dvc${marca}`, { tenant: rede!.tenantId, rotulo: 'Só o CRM', permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }] })
     try {
-      const r = await ctx.request.get(`/api/documentos/${doc!.id}/pdf`, { maxRedirects: 0 })
-      expect(r.status()).toBe(403)
+      const ctx = await browser.newContext({ storageState: soClientes.estado })
+      try {
+        const r = await ctx.request.get(`/api/documentos/${doc!.id}/pdf`, { maxRedirects: 0 })
+        expect(r.status(), 'Clientes em Ver, sem permissão de documento: baixa').toBe(307)
+      } finally { await ctx.close() }
+      const ctx2 = await browser.newContext({ storageState: soCrm.estado })
+      try {
+        const r = await ctx2.request.get(`/api/documentos/${doc!.id}/pdf`, { maxRedirects: 0 })
+        expect(r.status(), 'só o CRM: não baixa').toBe(403)
+      } finally { await ctx2.close() }
     } finally {
-      await ctx.close()
-      await semModulo.limpar()
+      await soClientes.limpar()
+      await soCrm.limpar()
     }
   })
 

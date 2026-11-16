@@ -48,18 +48,6 @@ export async function quemMudaNaRede(tenantId: string, modulos: readonly AppModu
 }
 
 /**
- * Quem COLHE a assinatura dos documentos (D4 da 19ª simulação; era "quem VÊ",
- * do D1 da 15ª): quem vendeu o pacote sem o módulo lia "fale com quem tem os
- * Documentos" e a lista trazia quem só os VÊ — e colher pede os Documentos em
- * Gerenciar (`docs/regras/documentos.md`). É essa lista, ao alcance da
- * unidade; a Admin da rede entra sempre. Serve ao aviso da venda, à ficha e ao
- * "Falta assinar" do atendimento (A9/A10 da 19ª).
- */
-export async function quemColheOsDocumentos(tenantId: string, branchId: string | null): Promise<string[]> {
-  return quemTemEmGerenciar(tenantId, branchId, 'documents')
-}
-
-/**
  * Quem MARCA A CHEGADA de um atendimento que não é dele (A10 da 19ª; D20): a
  * Agenda em Gerenciar de TODOS — com "só os meus", a pessoa marca só a dos
  * próprios, e não a de quem pede. A Admin da rede entra sempre.

@@ -25,7 +25,7 @@ let dona: MembroDeTeste | null = null
 let slug = ''
 test.describe.configure({ timeout: 180_000 })
 
-const TUDO_EM_GERENCIAR: Permissao[] = (['clients', 'crm', 'settings', 'roles', 'forms', 'automations', 'marketing', 'procedures', 'financial', 'agenda'] as const)
+const TUDO_EM_GERENCIAR: Permissao[] = (['clients', 'crm', 'settings', 'roles', 'forms', 'documents', 'automations', 'marketing', 'procedures', 'financial', 'agenda'] as const)
   .map(modulo => ({ modulo, nivel: 'MANAGE' as const, escopo: 'ALL' as const }))
 
 async function como(browser: Browser, quem: MembroDeTeste, fn: (p: Page) => Promise<void>) {

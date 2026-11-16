@@ -5,9 +5,12 @@
  * contrato do procedimento, o contrato de plano, o contrato de pacote e o
  * documento (DC1, Bloco Documentos, 2026-11-14).
  *
- * Autoria de rede, como as fichas: pede `forms: MANAGE`. Colher a assinatura
- * do cliente é outro módulo (`documents`), e ligar o modelo ao procedimento é
- * do cadastro do procedimento (`procedures: MANAGE`).
+ * Autoria de rede: pede os Modelos de documento em Gerenciar (`documents`; o
+ * Heitor, 2026-11-16: "A permissão de gerenciar documentos serve para alguém
+ * poder criar/editar/excluir os modelos de documentos"). Colher a assinatura
+ * da cliente não pede permissão de documento (`actions/documentos.ts`), e
+ * ligar o modelo ao procedimento é do cadastro do procedimento
+ * (`procedures: MANAGE`).
  *
  * Gravar passa por `documento_modelo_salvar`: o modelo e a versão numa
  * transação só, e a versão nova só nasce quando o CONTEÚDO mudou. O app valida
@@ -121,7 +124,7 @@ async function salvar(
 export async function salvarModeloDoEditor(input: Configuracao & { documento: unknown }): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'forms', 'MANAGE')
+    assertPermission(ctx, 'documents', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
     const daRede = recusaDaConfigDaRede(ctx)
     if (daRede) return { error: daRede }
@@ -162,7 +165,7 @@ export async function salvarModeloDoEditor(input: Configuracao & { documento: un
 export async function salvarModeloDeArquivo(formData: FormData): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'forms', 'MANAGE')
+    assertPermission(ctx, 'documents', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
     const daRede = recusaDaConfigDaRede(ctx)
     if (daRede) return { error: daRede }
@@ -232,7 +235,7 @@ export async function salvarModeloDeArquivo(formData: FormData): Promise<Resulta
 export async function definirModeloAtivo(id: string, ativo: boolean): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'forms', 'MANAGE')
+    assertPermission(ctx, 'documents', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
     const daRede = recusaDaConfigDaRede(ctx)
     if (daRede) return { error: daRede }
@@ -269,7 +272,7 @@ export async function definirModeloAtivo(id: string, ativo: boolean): Promise<Re
 export async function tornarContratoAtivo(id: string): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'forms', 'MANAGE')
+    assertPermission(ctx, 'documents', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
     const daRede = recusaDaConfigDaRede(ctx)
     if (daRede) return { error: daRede }
@@ -303,7 +306,7 @@ export async function enviarImagemDoModelo(formData: FormData): Promise<{
 }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'forms', 'MANAGE')
+    assertPermission(ctx, 'documents', 'MANAGE')
     // O modelo de documento é da clínica toda (H7): quem tem unidade fixa não muda.
     const daRede = recusaDaConfigDaRede(ctx)
     if (daRede) return { error: daRede }
@@ -345,7 +348,7 @@ export async function enviarImagemDoModelo(formData: FormData): Promise<{
 export async function definirEnvioDoLinkPelaConversa(ligado: boolean): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'forms', 'MANAGE')
+    assertPermission(ctx, 'documents', 'MANAGE')
     if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'Esta escolha vale para a rede inteira: quem muda é quem administra a rede.') }
     if (typeof ligado !== 'boolean') return { error: 'Escolha inválida.' }
     const admin = createAdminClient()
@@ -369,7 +372,7 @@ export async function definirEnvioDoLinkPelaConversa(ligado: boolean): Promise<R
 export async function linkDoArquivoDoModelo(versaoId: string): Promise<{ url?: string; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'forms', 'MANAGE')
+    assertPermission(ctx, 'documents', 'MANAGE')
     const admin = createAdminClient()
     const versao = await ler(admin
       .from('document_template_versions')

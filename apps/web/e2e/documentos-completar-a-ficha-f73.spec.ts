@@ -29,7 +29,7 @@ test.beforeAll(async () => {
   rede = await criarOutraRede(marca)
   recepcao = await criarMembro(`r${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção da rede',
-    permissoes: [{ modulo: 'documents', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'MANAGE' }],
+    permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }],
   })
   const { data: m, error } = await db().rpc('documento_modelo_salvar', {
     p_tenant: rede.tenantId, p_modelo: null, p_nome: `${PREFIXO} Modelo ${marca}`, p_tipo: 'TERMO', p_origem: 'EDITOR',

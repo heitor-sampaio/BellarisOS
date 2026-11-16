@@ -42,7 +42,7 @@ test.beforeAll(async () => {
   dona = await criarMembro(`pr11d${marca}`, { tenant: rede.tenantId, donoDaRede: true, rotulo: 'Dona', permissoes: [] })
   sofia = await criarMembro(`pr11s${marca}`, {
     tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Biomedica',
-    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'VIEW', escopo: 'OWN' }, { modulo: 'documents', nivel: 'VIEW' }],
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'medical_records', nivel: 'VIEW', escopo: 'OWN' }],
   })
 
   // A toxina com um lote, e a Helena atendida pela profissional da rede (não a Sofia).

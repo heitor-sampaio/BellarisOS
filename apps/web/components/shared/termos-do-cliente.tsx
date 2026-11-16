@@ -15,7 +15,6 @@ import {
   type LinkDeAssinatura,
 } from '@/actions/documentos'
 import { useFuso } from '@/components/shared/fuso'
-import { textoDeQuemColhe } from '@/lib/equipe/textos-de-quem-pode'
 
 /**
  * Os termos e contratos do cliente — na aba Documentos da ficha, acima dos
@@ -67,7 +66,7 @@ function Situacao({ item }: { item: ItemDeTermo }) {
   }
 }
 
-export function TermosDoCliente({ itens, slug, podeColher, quemColhe = null, compacto = false, pelaConversa = false, temAcessoAoApp = true, recortado = false }: {
+export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto = false, pelaConversa = false, temAcessoAoApp = true, recortado = false }: {
   /**
    * A35 da 11ª: a lista veio vazia pelo RECORTE (o prontuário "só os meus" de
    * quem não atende esta cliente) — a tela diz isso, em vez de "Nenhum termo".
@@ -76,9 +75,13 @@ export function TermosDoCliente({ itens, slug, podeColher, quemColhe = null, com
   itens:      ItemDeTermo[]
   /** Unidade do cliente (a rota vem de `lib/rotas`, pelo portal atual). */
   slug:       string
-  podeColher: boolean
-  /** A10 da 19ª: a quem não colhe, os nomes de quem colhe (os Documentos em Gerenciar). */
-  quemColhe?: string[] | null
+  /**
+   * Dispensar é de quem responde pelos modelos (os Modelos de documento em
+   * Gerenciar). Colher é de quem está na tela — sem permissão de documento
+   * (o Heitor, 2026-11-16: "É só uma questão de disponibilizar para o cliente
+   * assinar e isso não representa risco").
+   */
+  podeDispensar?: boolean
   compacto?:  boolean
   /** A rede liga o envio do link pela conversa do inbox (Configurações → Documentos). */
   pelaConversa?: boolean
@@ -184,19 +187,9 @@ export function TermosDoCliente({ itens, slug, podeColher, quemColhe = null, com
     )
   }
 
-  // Quem não colhe a assinatura (Termos só em Ver — o médico da simulação, D8
-  // de 2026-11-01) via o termo que bloqueia sem saída nenhuma: a tela diz quem
-  // colhe. É a recepção, na clínica, por link ou pelo app da cliente.
-  const temAberto = itens.some(i => i.status === 'PENDENTE' || i.status === 'A_GERAR' || i.status === 'INCOMPLETO')
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Documentos para assinatura">
-      {!podeColher && temAberto && (
-        <p data-quem-colhe style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
-          {textoDeQuemColhe(quemColhe)}
-        </p>
-      )}
-      {podeColher && !temAcessoAoApp && itens.some(i => i.status === 'PENDENTE' || i.status === 'A_GERAR') && (
+      {!temAcessoAoApp && itens.some(i => i.status === 'PENDENTE' || i.status === 'A_GERAR') && (
         <p data-sem-portal style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
           Sem acesso ao app: colha na tela, por link ou no papel.
         </p>
@@ -224,12 +217,12 @@ export function TermosDoCliente({ itens, slug, podeColher, quemColhe = null, com
               </div>
               <Situacao item={item} />
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {aberto && podeColher && item.status !== 'INCOMPLETO' && (
+                {aberto && item.status !== 'INCOMPLETO' && (
                   <Link href={rotaDoDocumento(item.id)} className="btn-primary" style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>
                     Colher assinatura
                   </Link>
                 )}
-                {item.status === 'INCOMPLETO' && podeColher && (
+                {item.status === 'INCOMPLETO' && (
                   <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => gerarDeNovo(item.id)}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>
                     Gerar de novo
@@ -242,25 +235,25 @@ export function TermosDoCliente({ itens, slug, podeColher, quemColhe = null, com
                   // O PDF final: documento + página de evidências (rota que confere a sessão).
                   <a href={`/api/documentos/${item.id}/pdf`} target="_blank" rel="noopener" className="btn-ghost" style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>PDF</a>
                 )}
-                {aberto && podeColher && item.status !== 'INCOMPLETO' && temAcessoAoApp && (
+                {aberto && item.status !== 'INCOMPLETO' && temAcessoAoApp && (
                   <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => pedirNoPortal(item.id)}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>
                     Pedir no portal
                   </button>
                 )}
-                {item.status === 'PENDENTE' && podeColher && (
+                {item.status === 'PENDENTE' && (
                   <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => enviarLink(item.id)}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                     <Link2 size={13} /> {item.linkAte || link?.id === item.id ? 'Novo link' : 'Enviar link'}
                   </button>
                 )}
-                {item.status === 'PENDENTE' && podeColher && pelaConversa && (
+                {item.status === 'PENDENTE' && pelaConversa && (
                   <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => enviarPelaConversa(item.id)}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                     <MessageCircle size={13} /> Enviar pela conversa
                   </button>
                 )}
-                {aberto && podeColher && dispensando !== item.id && (
+                {aberto && podeDispensar && dispensando !== item.id && (
                   <button type="button" className="btn-ghost" onClick={() => { setDispensando(item.id); setMotivo('') }}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>
                     Dispensar
@@ -308,12 +301,10 @@ export function TermosDoCliente({ itens, slug, podeColher, quemColhe = null, com
             {item.linkAte && link?.id !== item.id && item.status === 'PENDENTE' && (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span>Link de assinatura enviado · vale até {formatDate(item.linkAte, fuso)} às {formatTime(item.linkAte, fuso)}</span>
-                {podeColher && (
-                  <button type="button" className="btn-ghost" disabled={ocupado} onClick={() => revogarLink(item.id)}
-                    style={{ padding: '2px 8px', fontSize: 'var(--text-xs-sz)' }}>
-                    Revogar link
-                  </button>
-                )}
+                <button type="button" className="btn-ghost" disabled={ocupado} onClick={() => revogarLink(item.id)}
+                  style={{ padding: '2px 8px', fontSize: 'var(--text-xs-sz)' }}>
+                  Revogar link
+                </button>
               </p>
             )}
             {item.status === 'INCOMPLETO' && item.faltando.some(f => !f.startsWith('Pagamento ·')) && (
@@ -325,7 +316,7 @@ export function TermosDoCliente({ itens, slug, podeColher, quemColhe = null, com
               <p style={{ fontSize: 'var(--text-xs-sz)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
                 color: item.pagamento ? 'var(--text-muted)' : 'var(--warning)', fontWeight: item.pagamento ? 'var(--weight-regular)' : 'var(--weight-semibold)' }}>
                 <span>{item.pagamento ? `Pagamento: ${item.pagamento.rotulo}` : 'Falta definir o pagamento do contrato.'}</span>
-                {aberto && podeColher && pagando !== item.id && (
+                {aberto && pagando !== item.id && (
                   <button type="button" className={item.pagamento ? 'btn-ghost' : 'btn-secondary'} onClick={() => setPagando(item.id)}
                     style={{ padding: '4px 10px', fontSize: 'var(--text-xs-sz)' }}>
                     {item.pagamento ? 'Trocar pagamento' : 'Definir pagamento'}

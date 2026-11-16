@@ -207,39 +207,48 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
 - **Versão é retrato**: `documento_modelo_salvar` grava modelo + versão numa
   transação, e só abre versão nova quando o CONTEÚDO muda. Versão não se
   altera (gatilho); modelo não se apaga (desativa).
-- **Modelos são `forms: MANAGE`** (Configurações → Documentos); colher a
-  assinatura é o módulo `documents`; ligar ao procedimento é `procedures`. E
-  os modelos são da REDE: quem não tem “A rede inteira” não os cria nem muda (H7,
-  2026-11-01; `recusaDaConfigDaRede`, `plataforma.md`).
-  - **Quem não colhe lê quem colhe** (D8 da 5ª simulação, 2026-11-01): com os
-    Documentos em Ver, o termo que bloqueia aparecia "Para assinar ·
-    bloqueia" sem ação nenhuma. `TermosDoCliente` diz, havendo documento em
-    aberto, "A assinatura é colhida por quem tem os Documentos em
-    Gerenciar: na tela, por link ou pelo app da cliente."
-    (`data-quem-colhe`), na ficha e no atendimento. Decisão desta frente: só o
-    texto, sem botão de "pedir a quem colhe" (não há para onde mandar o pedido
-    além do aviso que a tela já dá). Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
-    **E diz o NOME de quem colhe** (A10 da 19ª, princípio 3): "…em Gerenciar
-    (Patrícia Begônia): na tela, …" — `quemColheOsDocumentos`
-    (`lib/equipe/quem-desfaz.ts`: os Documentos em Gerenciar, ativos, ao alcance
-    da unidade, e a Admin da rede) e `textoDeQuemColhe`
-    (`lib/equipe/textos-de-quem-pode.ts`), na ficha, nos Documentos do
-    atendimento e no "Falta assinar" do iniciar.
-  - **Quem não tem os Documentos sabe que há documento esperando** (A9 da
-    19ª): a aba Documentos da ficha dizia "Nenhum documento anexado" com o
-    contrato do pacote pendente. Sem o módulo, ela diz a CONTAGEM — "1 documento
-    esperando a assinatura da cliente. Quem colhe é quem tem os Documentos em
-    Gerenciar (…)." (`[data-documentos-esperando]`,
-    `documentosEsperandoAssinatura`, `lib/documentos/esperando.ts`: A_GERAR,
-    INCOMPLETO e PENDENTE) —, sem título nem conteúdo, e com o recorte do
-    prontuário "só os meus" (`clienteNoEscopo`). Prova:
-    `tests/atritos-da-19-atendimento.test.ts`.
-  - **Exceção do checkout** (decisão do Heitor, 2026-10-20): quem RECEBE
-    (`podeReceber`) colhe a assinatura do documento de um plano que está no
-    checkout (`treatment_plan_id` de plano PROPOSED) — abrir, assinar na tela,
-    no papel e montar de novo (`assertPodeColher`, `actions/documentos.ts`).
-    Quem recebia no PDV, na simulação de um dia de operação, travava ali. Fora do checkout,
-    continua o módulo Documentos. Prova: `e2e/checkout-de-plano.spec.ts`.
+- **O módulo `documents` é o dos MODELOS; colher não pede permissão de
+  documento** (o Heitor, 2026-11-16: "A permissão de gerenciar documentos
+  serve para alguém poder criar/editar/excluir os modelos de documentos. É uma
+  proteção para que os documentos não sejam modificados por quem não deve. Um
+  procedimento/plano/pacote que tenha documentos que precisam de assinatura,
+  os documentos precisam ser assinados. É só uma questão de disponibilizar
+  para o cliente assinar e isso não representa risco.").
+  - **`documents` aceita só NONE/MANAGE** ("Modelos de documento" na tela de
+    Cargos, no grupo Gestão ao lado dos "Modelos de ficha" — `forms`, que
+    ficou só com as fichas). MANAGE cria, edita e desativa os modelos
+    (Configurações → Documentos, `actions/modelos-de-documento.ts`, a aba é do
+    módulo `documents`) e DISPENSA um documento obrigatório da cliente, com
+    motivo (`dispensarDocumento`; a tela só mostra "Dispensar" a quem pode —
+    `dispensaDocumentos`). Ligar o modelo ao procedimento é `procedures`. E os
+    modelos são da REDE: quem não tem “A rede inteira” não os cria nem muda
+    (H7, 2026-11-01; `recusaDaConfigDaRede`, `plataforma.md`).
+  - **Ver os documentos da cliente é de quem vê a cliente** (`clients: VIEW`,
+    `veOsDocumentos` em `lib/documentos/acesso.ts`): a aba Documentos da
+    ficha, o painel `/documentos` (e a entrada do menu), a trilha, o Copilot.
+  - **Colher é de quem está com a cliente na tela** (`colheOsDocumentos`):
+    Clientes, Agenda ou Prontuário em Ver, ou quem recebe (`podeReceber`) — a
+    ficha, o atendimento, a janela do agendamento e o PDV. Na tela, no papel,
+    pelo link, pela conversa, pelo app, montar de novo, revogar o link e
+    definir o pagamento do contrato. A tela `/documentos/[id]/assinar` e o PDF
+    (`/api/documentos/[id]/pdf`) usam a mesma regra. A trava de cada
+    documento continua sendo chegar a ele (`documentoAoAlcance`: a rede, a
+    unidade ao alcance e o prontuário "só os meus"), com os Documentos no
+    PLANO da rede (`temRecurso('documentos')`) e, no que manda algo à
+    cliente, `bloqueioDoSuporte`.
+  - Saíram com a decisão: a exceção do checkout de 2026-10-20 (quem recebe
+    colhia só o documento do plano em checkout — `assertPodeColher`; virou a
+    regra), o "A assinatura é colhida por quem tem os Documentos em
+    Gerenciar (…)" (D8 da 5ª, A10 da 19ª: `textoDeQuemColhe`,
+    `quemColheOsDocumentos`, `[data-quem-colhe]`) e a contagem "N documentos
+    esperando" a quem não tinha os Documentos (A9 da 19ª:
+    `lib/documentos/esperando.ts`, `[data-documentos-esperando]`) — quem vê a
+    ficha vê e colhe os documentos.
+  - Migration `20261121600001_documentos_e_o_modelo`: o nível de `documents`
+    de cada cargo virou o de quem já mexia nos modelos (MANAGE se o cargo tem
+    `forms` em Gerenciar; senão NONE), e os cargos modelo da rede nova nascem
+    sem ele. Provas: `tests/documentos-assinar-sem-permissao.test.ts`,
+    `e2e/documentos-assinar-sem-permissao.spec.ts`.
 - O banco recusa modelo de outra rede no procedimento (chave composta com
   `tenant_id`) e o tipo errado no campo (gatilho
   `trg_procedimento_modelos_do_tipo`).
@@ -280,8 +289,8 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   depois. Prova: `e2e/documentos-tipos-e-nascimento.spec.ts` ("PC2").
   **A janela do agendamento leva a colher** (A23 da 9ª): o termo que falta
   assinar tem "Colher assinatura" (`[data-colher-assinatura]`, a tela
-  `/documentos/[id]/assinar` com a volta à agenda) para quem tem os Documentos em
-  Gerenciar; quem só vê, só a situação. Prova: o mesmo spec ("A23").
+  `/documentos/[id]/assinar` com a volta à agenda) para quem abre a janela —
+  colher não pede permissão de documento (2026-11-16). Prova: o mesmo spec ("A23").
 - **O texto concorda com o sexo da ficha** (A50 da 6ª simulação,
   2026-11-04: o termo dizia "fui informada(o)" ao Bruno, com o sexo
   cadastrado). Ao montar, o par "a(o)"/"o(a)" no fim de uma palavra — ou
@@ -409,8 +418,8 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `contratoSemDocumentoDaCliente`). O checkout segue. Prova: o mesmo spec ("A35").
 - **O contrato do PROCEDIMENTO também cita o pagamento** (decisão do Heitor,
   2026-09-30): `pagamento.*` vale em CONTRATO e CONTRATO_PLANO. No avulso o
-  pagamento só é recebido depois do atendimento, então quem tem os Documentos em
-  Gerenciar o DEFINE antes da assinatura (`definirPagamentoDoContrato`, ficha e painel da sessão;
+  pagamento só é recebido depois do atendimento, então quem colhe a assinatura
+  o DEFINE antes dela (`definirPagamentoDoContrato`, ficha e painel da sessão;
   o mesmo `PagamentoDoPlano` do checkout, guardado em `payment_snapshot`).
   - Sem retrato, o pagamento está "não combinado" — diferente de "no
     atendimento" (`{ forma: 'NADA_AGORA' }`): as variáveis ficam vazias e a
@@ -469,7 +478,7 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   status, rede, unidade, as INICIAIS do assinante e os dois SHA-256 — nunca CPF,
   nome completo, IP nem conteúdo. "Conferir um arquivo" calcula o hash no
   navegador. O PDF da equipe sai por `/api/documentos/[id]/pdf` (sessão +
-  `documents: VIEW` + rede + unidade).
+  quem colhe — `colheOsDocumentos` — + rede + unidade; 2026-11-16).
 - **O link de conferência impresso no PDF é o endereço PÚBLICO do app da rede**
   (D11 da 13ª simulação, F69): `urlDeVerificacao` usa `urlDoAppDaRede()` —
   `CLINICA_URL`, lido em tempo de execução. O `NEXT_PUBLIC_APP_URL` é gravado
@@ -548,7 +557,8 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     `tests/saudacao-da-cliente.test.ts`.
   - **Pela conversa do inbox é escolha da REDE**, desligada de nascença
     (`tenants.documentos_link_pela_conversa`, Configurações → Documentos;
-    muda só quem tem `forms: MANAGE` e abrangência de rede). Ligada, a ficha
+    muda só quem tem os Modelos de documento — `documents: MANAGE` — e
+    abrangência de rede). Ligada, a ficha
     ganha "Enviar pela conversa" (`enviarLinkPelaConversa`): gera um link
     NOVO e o manda por `enviarNaConversa` na conversa de WhatsApp aberta em
     que o cliente falou por último (`conversaDoCliente`: `client_id`, senão o
@@ -567,7 +577,7 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   trilha. "Enviado" = há `LINK_GERADO`, `NOTIFICADO_PORTAL` ou
   `LINK_ENVIADO_CONVERSA`; a coluna mostra o envio mais recente, o link
   valendo (ou vencido) e se o cliente abriu (`IDENTIDADE_OK`).
-  - É só LEITURA (`documents: VIEW`); quem não tem “A rede inteira” vê as dela. A
+  - É só LEITURA, de quem vê a cliente (`clients: VIEW`, desde 2026-11-16); quem não tem “A rede inteira” vê as dela. A
     janela do documento mostra a trilha (`trilhaDoDocumento`, sem o CPF de
     quem assinou), o PDF e "Abrir na ficha" — as ações ficam na ficha.
   - O A_GERAR da página é montado ao listar (`renderizarPendentes`), como na
@@ -580,18 +590,12 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   contagens que leem o status mentiam. Falhar aí não desfaz o cadastro.
 - **O aviso da venda do pacote diz o que falta e onde estão** (D1 da 15ª):
   "Falta no cadastro: Endereço (rua, número e bairro)." (`oQueFalta`,
-  `lib/documentos/o-que-falta.ts`, o mesmo da janela da agenda) e, a quem
-  vendeu SEM os Documentos, "Para colher a assinatura, fale com quem tem os
-  Documentos: …" (`quemVeOsDocumentos`, `lib/equipe/quem-desfaz.ts`) no lugar
-  de "Estão na ficha, em Documentos" — e sem o "Colher a assinatura agora"
-  (`avisoDosDocumentosDaVenda`, `lib/documentos/aviso-da-venda.ts`). Prova:
-  `e2e/documentos-venda-do-pacote-faltam-dados.spec.ts`.
-  **Quem colhe é quem tem os Documentos em GERENCIAR** (D4 da 19ª, princípio
-  3: a lista era de quem VÊ, e o aviso mandava colher com quem não tem o
-  botão): a quem vendeu sem colher, "Para colher a assinatura, fale com quem
-  tem os Documentos em Gerenciar: …" (`quemColheOsDocumentos`); quem só VÊ lê
-  também "Estão na ficha, em Documentos." (`veOsDocumentos` da venda). O
-  "Colher a assinatura agora" fica só para quem colhe.
+  `lib/documentos/o-que-falta.ts`, o mesmo da janela da agenda) e, a quem vê
+  a ficha, "Estão na ficha, em Documentos." (`avisoDosDocumentosDaVenda`,
+  `lib/documentos/aviso-da-venda.ts`). Quem vendeu COLHE (2026-11-16: colher
+  não pede permissão de documento): "Colher a assinatura agora" aparece a
+  quem vendeu, e o aviso não manda mais "falar com quem tem os Documentos"
+  (era o D4 da 19ª). Prova: `e2e/documentos-venda-do-pacote-faltam-dados.spec.ts`.
   - Os rótulos da trilha são UM só (`lib/documentos/situacao.ts`), na tela e
     na página de evidências do PDF.
   - Canal de envio novo grava o seu evento em `issued_document_events` e
@@ -618,8 +622,7 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     PDF (`/api/documentos/[id]/pdf`) respondem como se o documento não
     existisse.
   - Sem o prontuário no cargo (NONE), o escopo não vale (CLAUDE.md §11): quem
-    tem só os Documentos vê todos. O checkout do plano (quem recebe) segue como
-    estava. Prova: `e2e/documentos-so-os-meus.spec.ts`.
+    não tem o prontuário vê todos. Prova: `e2e/documentos-so-os-meus.spec.ts`.
 - **Os atritos dos termos da 11ª simulação** (2026-11-10; princípio 3):
   - **O termo tem a profissional** (A5: o termo de injetável saía com
     "Profissional responsável: ____"): `profissional.nome` ("Profissional que
@@ -637,12 +640,11 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     diferente fica como foi escrito (`semONumeroDigitado`).
   - **O link de assinatura onde a assinatura é pedida** (A8: só a ficha tinha
     "Enviar link"; sair do checkout para pegá-lo reabria o checkout do início):
-    a janela da agenda (`DocumentosDaJanela`, quem tem os Documentos em Gerenciar,
+    a janela da agenda (`DocumentosDaJanela`, quem colhe — `colheOsDocumentos`,
     o documento PENDENTE) e o passo Documentação do checkout têm "Enviar link de
     assinatura" (`EnviarLinkDeAssinatura`, o mesmo `gerarLinkDeAssinatura` da
-    ficha: uso único, 7 dias, gerar outro revoga). No checkout, quem RECEBE
-    gera o link do documento do plano — a exceção de 2026-10-20 (`assertPodeColher`):
-    o link é um jeito de colher.
+    ficha: uso único, 7 dias, gerar outro revoga). O link é um jeito de colher:
+    quem recebe o gera (desde 2026-11-16 é a regra, não uma exceção).
   - **A janela diz o que falta no cadastro** (A9: "Faltam dados do cadastro ·
     bloqueia o início", e a Vera salvou o nascimento quando faltava o CPF):
     "Faltam dados: CPF · bloqueia o início", com "Completar o cadastro" (a aba
@@ -739,4 +741,5 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
 ❌ Abrir no editor (ou gravar) o JSON do modelo sem normalizarListasDoEditor: a edição mostraria o que o documento não diz (A16 da 12ª)
 ❌ Montar o link de /verificar com NEXT_PUBLIC_APP_URL (é o do build) — é urlDoAppDaRede() (D11)
 ❌ Registrar "notificado no portal" (ou dizer "enviado") quando o plano não tem o portal: o aviso não sai (C57a)
+❌ Pedir o módulo documents para VER ou COLHER (é dos modelos e do dispensar — o Heitor, 2026-11-16); ver é veOsDocumentos, colher é colheOsDocumentos (lib/documentos/acesso.ts), e a trava do documento é documentoAoAlcance
 ```

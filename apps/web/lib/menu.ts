@@ -73,7 +73,7 @@ const rotuloDoFinanceiro = (_p: ResolvedPermissions, s?: Partial<ResolvedScopes>
  * o rótulo é só o que a pessoa alcança.
  */
 const rotuloDeConfiguracoes = (comFinanceiro: boolean) => (p: ResolvedPermissions) =>
-  has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || (comFinanceiro && p.financial === 'MANAGE')
+  has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || has(p, 'documents') || (comFinanceiro && p.financial === 'MANAGE')
     ? 'Configurações'
     : 'Tags e importações'
 
@@ -100,7 +100,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'agenda',       group: 'atendimento',  label: 'Agenda',        href: '/admin/agenda',         visible: p => has(p, 'agenda') },
   { key: 'clients',      group: 'atendimento',  label: 'Clientes',      href: '/admin/clients',        visible: p => has(p, 'clients') },
   // Todo termo e contrato emitido, com a situação (a enviar, enviado, assinado…).
-  { key: 'documentos', recurso: 'documentos', group: 'atendimento', label: 'Documentos', href: '/admin/documentos', visible: p => has(p, 'documents') },
+  { key: 'documentos', recurso: 'documentos', group: 'atendimento', label: 'Documentos', href: '/admin/documentos', visible: p => has(p, 'clients') },
   // Onde os planos de tratamento vivem — os que estão sendo montados, os que
   // esperam aceite e os aceitos. A entrada "Checkout" saiu daqui: a fila era uma
   // tarefa sem dono, esperando uma decisão do cliente. O dinheiro passou a ser
@@ -148,7 +148,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   {
     key: 'settings', group: 'gestao', label: rotuloDeConfiguracoes(true), href: '/admin/settings',
     // Importações abre também com clientes ou CRM em Gerenciar (a aba delas).
-    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || p.financial === 'MANAGE'
+    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || has(p, 'documents') || p.financial === 'MANAGE'
       || p.clients === 'MANAGE' || p.crm === 'MANAGE',
   },
 ]
@@ -158,7 +158,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'agenda',        group: 'atendimento', label: 'Agenda',        href: '/agenda',        visible: p => has(p, 'agenda') },
   { key: 'clients',       group: 'atendimento', label: 'Clientes',      href: '/clients',       visible: p => has(p, 'clients') },
-  { key: 'documentos', recurso: 'documentos', group: 'atendimento', label: 'Documentos', href: '/documentos', visible: p => has(p, 'documents') },
+  { key: 'documentos', recurso: 'documentos', group: 'atendimento', label: 'Documentos', href: '/documentos', visible: p => has(p, 'clients') },
   { key: 'planejamentos', recurso: 'planos_de_tratamento', group: 'planejamento', label: 'Tratamentos', href: '/planejamentos', visible: p => has(p, 'medical_records') || recebe(p) },
   { key: 'injetaveis', recurso: 'injetaveis',    group: 'planejamento', label: 'Injetáveis',  href: '/injetaveis',    visible: p => has(p, 'medical_records') },
 
@@ -185,7 +185,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   // `settings`, `roles` ou `forms` em MANAGE não valiam nada numa gerente.
   {
     key: 'settings', group: 'gestao', label: rotuloDeConfiguracoes(false), href: '/settings',
-    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms')
+    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || has(p, 'documents')
       || p.clients === 'MANAGE' || p.crm === 'MANAGE',
   },
 ]
@@ -209,7 +209,7 @@ export const SO_NO_MENU_DA_REDE: readonly MenuEntry[] =
  * usar: a tela esconde"). A tela continua de pé pela URL, com a frase.
  */
 export function soLeriaAsConfiguracoes(p: ResolvedPermissions, daRede: boolean): boolean {
-  return !daRede && !(has(p, 'settings') || has(p, 'roles') || has(p, 'forms'))
+  return !daRede && !(has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || has(p, 'documents'))
 }
 
 /**

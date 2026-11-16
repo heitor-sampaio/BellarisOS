@@ -33,7 +33,9 @@ export const documentos: FerramentaDeLeitura<{
 }> = {
   nome: 'documentos',
   tipo: 'leitura',
-  modulo: 'documents', nivel: 'VIEW',
+  // Os documentos da cliente são de quem vê a cliente (o Heitor, 2026-11-16:
+  // o módulo Documentos é o dos MODELOS).
+  modulo: 'clients', nivel: 'VIEW',
   recurso: 'documentos',
   descricao: 'Os termos, contratos e documentos emitidos no período (padrão: o mês) e a situação de cada um: faltam_dados (o cadastro não tem o que o texto pede), a_enviar, enviado (por link, portal ou WhatsApp), assinado, dispensado, cancelado. Filtros: situacao, tipo (termo, contrato, contrato_de_plano, contrato_de_pacote, documento), busca (cliente ou título), unidade. Traz o resumo por situação e até 30 documentos.',
   parametros: z.object({

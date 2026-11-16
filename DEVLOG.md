@@ -1774,6 +1774,19 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-16 — Documentos: a permissão é dos MODELOS; assinar não pede permissão
+
+O Heitor respondeu ao "Para o Heitor" da 20ª (a exceção do checkout vale para o contrato do pacote?) com uma regra: "A permissão de gerenciar documentos serve para alguém poder criar/editar/excluir os modelos de documentos. É uma proteção para que os documentos não sejam modificados por quem não deve. Um procedimento/plano/pacote que tenha documentos que precisam de assinatura, os documentos precisam ser assinados. É só uma questão de disponibilizar para o cliente assinar e isso não representa risco."
+
+- **`documents` = "Modelos de documento"** (NONE/MANAGE, no grupo Gestão): cria, edita e desativa os modelos (a aba Configurações → Documentos) e dispensa um documento obrigatório, com motivo. `forms` virou "Modelos de ficha".
+- **Colher a assinatura** (tela, papel, link, conversa, app, montar de novo, o pagamento do contrato) é de quem está com a cliente na tela: Clientes, Agenda ou Prontuário em Ver, ou quem recebe (o PDV). A trava continua sendo chegar ao documento (`documentoAoAlcance`), e tudo isso depende do recurso do plano. A exceção do checkout virou a regra, e saíram os avisos "fale com quem tem os Documentos". O código está em `lib/documentos/acesso.ts`.
+- **Ver os documentos da cliente** (a aba, o painel, o PDF, a trilha, o Copilot) é de quem tem Clientes em Ver.
+- Decidido pelos princípios:
+  - Colher aceita também a Agenda, o Prontuário e o PDV, porque são as telas que levam à assinatura.
+  - Dispensar fica com os Modelos, porque é o "excluir" da frase.
+  - Não existe action de emitir avulso.
+- Migration `20261121600001`: o `documents` de cada cargo passou a ser o do `forms` (nenhum cargo tinha `forms` em Gerenciar). Foram 45 linhas para NONE. Hoje só a Admin da rede edita os modelos e dispensa, e a semente dos modelos de cargo nasce sem `documents`.
+
 ### 2026-11-16 — O banco de testes local: um Supabase no Docker com a estrutura da nuvem e nenhum dado
 
 O Heitor: "vamos subir um banco separado pra testes usando supabase self hosted… local aqui na maquina" (o motivo é o custo: ele não quer subir plano). A suíte e as simulações usavam o banco da produção, e a instância Small reiniciava sob a carga.

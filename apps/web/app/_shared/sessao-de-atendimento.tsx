@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
-import { quemDesfazNoCaixa, quemColheOsDocumentos, quemMarcaAChegada, quemRecebeNoPdv } from '@/lib/equipe/quem-desfaz'
+import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNoPdv } from '@/lib/equipe/quem-desfaz'
+import { colheOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
 import { documentosDoAgendamento } from '@/lib/documentos/leitura'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
@@ -676,14 +677,15 @@ export async function SessaoDeAtendimento({
         // A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos — a régua da ficha) estorna daqui, pela mesma janela.
         podeEstornar={podeEstornar(ctx)}
         planoEmAberto={planoEmAberto}
-        documentos={can(ctx, 'documents', 'VIEW')
+        // Quem está no atendimento vê e colhe os documentos dele (o Heitor,
+        // 2026-11-16: colher não pede o módulo Documentos, que é o dos
+        // MODELOS) — com os Documentos no plano da rede.
+        documentos={colheOsDocumentos(ctx)
           // Os documentos seguem o prontuário "só os meus" (2026-10-29): de
           // cliente que ela não atende, nenhum.
           ? { itens: cli?.id && await clienteNoEscopo(admin, ctx, 'medical_records', cli.id as string)
                 ? await documentosDoAgendamento(ctx.tenantId!, appointment.id) : [],
-              podeColher: can(ctx, 'documents', 'MANAGE'),
-              // A10 da 19ª: quem só vê lê QUEM colhe (os Documentos em Gerenciar).
-              quemColhe: can(ctx, 'documents', 'MANAGE') ? null : await quemColheOsDocumentos(ctx.tenantId!, branchId),
+              podeDispensar: dispensaDocumentos(ctx),
             pelaConversa: await envioPelaConversaLigado(ctx.tenantId!),
             // "Pedir no portal" só para quem tem o app (A26 da 7ª simulação) —
             // e com o portal no plano da clínica (C57a, F69).

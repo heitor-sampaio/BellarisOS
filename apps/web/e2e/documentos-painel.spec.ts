@@ -34,10 +34,12 @@ const titulo = (r: string) => `${PREFIXO} ${r} ${marca}`
 test.beforeAll(async () => {
   test.setTimeout(240_000)
   rede = await criarOutraRede(`dp${marca}`)
-  const ver = [{ modulo: 'documents' as const, nivel: 'VIEW' as const }]
+  // Desde 2026-11-16 o painel é de quem vê a cliente (Clientes), não de uma
+  // permissão de documento (o módulo Documentos virou o dos modelos).
+  const ver = [{ modulo: 'clients' as const, nivel: 'VIEW' as const }]
   daRede = await criarMembro(`dpr${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção da rede', permissoes: ver })
   daUnidade = await criarMembro(`dpu${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção da unidade', permissoes: ver, branchId: rede.branchId })
-  semModulo = await criarMembro(`dps${marca}`, { tenant: rede.tenantId, rotulo: 'Sem documentos', permissoes: [{ modulo: 'clients', nivel: 'VIEW' }] })
+  semModulo = await criarMembro(`dps${marca}`, { tenant: rede.tenantId, rotulo: 'Sem clientes', permissoes: [{ modulo: 'agenda', nivel: 'VIEW', escopo: 'ALL' }] })
   const un = await db().from('branches').insert({ tenant_id: rede.tenantId, name: `${PREFIXO} Norte ${marca}`, slug: `e2e-dp-norte-${marca}` })
     .select('id').single<{ id: string }>()
   expect(un.error).toBeNull()
@@ -171,7 +173,7 @@ test('abrir um documento mostra a trilha: emitido, link, identidade e assinatura
   })
 })
 
-test('quem é da unidade vê só a dela; sem o módulo, a tela é fechada', async ({ browser }) => {
+test('quem é da unidade vê só a dela; sem Clientes, a tela é fechada', async ({ browser }) => {
   await como(browser, daUnidade, async p => {
     await p.goto(`/e2e-un-dp${marca}/documentos`)
     await expect(p.locator('[data-documento]')).toHaveCount(7)

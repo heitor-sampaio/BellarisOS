@@ -1,6 +1,6 @@
 'use client'
 
-import { textoDeQuemColhe, textoDeQuemMarcaAChegada, textoDeQuemRecebe } from '@/lib/equipe/textos-de-quem-pode'
+import { textoDeQuemMarcaAChegada, textoDeQuemRecebe } from '@/lib/equipe/textos-de-quem-pode'
 import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
@@ -251,8 +251,8 @@ interface Props {
    * plano ou quando não sobrou nada a receber.
    */
   planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number; aVencer: number; proximoVencimento: string | null } | null
-  /** Termos e contratos deste atendimento. Nulo = cargo sem o módulo `documents`. */
-  documentos?:           { itens: ItemDeTermo[]; podeColher: boolean; quemColhe?: string[] | null; pelaConversa?: boolean; temAcessoAoApp?: boolean } | null
+  /** Termos e contratos deste atendimento. Nulo = sem os Documentos no plano da rede. */
+  documentos?:           { itens: ItemDeTermo[]; podeDispensar: boolean; pelaConversa?: boolean; temAcessoAoApp?: boolean } | null
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -1915,7 +1915,7 @@ export function AppointmentSession({
                 com o link e o pedido pelo app. */}
             {erroAoIniciar.startsWith('Falta assinar') && (
               <div data-acao-da-assinatura style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                {documentos?.podeColher && documentosQueBloqueiam[0] && documentosQueBloqueiam[0].status !== 'INCOMPLETO' && (
+                {documentos && documentosQueBloqueiam[0] && documentosQueBloqueiam[0].status !== 'INCOMPLETO' && (
                   <Link className="btn-primary" style={{ textDecoration: 'none' }}
                     href={rotaNoPortal(pathname, slug, `/documentos/${documentosQueBloqueiam[0].id}/assinar?voltar=${encodeURIComponent(pathname)}`)}>
                     Colher assinatura neste aparelho
@@ -1926,11 +1926,6 @@ export function AppointmentSession({
                     onClick={() => document.getElementById('documentos-do-atendimento')?.scrollIntoView({ block: 'start', behavior: 'smooth' })}>
                     Ver os documentos
                   </button>
-                )}
-                {!documentos?.podeColher && (
-                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                    {textoDeQuemColhe(documentos?.quemColhe)}
-                  </span>
                 )}
               </div>
             )}
@@ -1960,7 +1955,7 @@ export function AppointmentSession({
                 </span>
               )}
             </div>
-            <TermosDoCliente itens={documentos.itens} slug={slug} podeColher={documentos.podeColher} quemColhe={documentos.quemColhe} pelaConversa={documentos.pelaConversa} temAcessoAoApp={documentos.temAcessoAoApp} compacto />
+            <TermosDoCliente itens={documentos.itens} slug={slug} podeDispensar={documentos.podeDispensar} pelaConversa={documentos.pelaConversa} temAcessoAoApp={documentos.temAcessoAoApp} compacto />
           </section>
         )}
 

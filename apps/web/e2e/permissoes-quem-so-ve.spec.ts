@@ -73,7 +73,7 @@ test.beforeAll(async () => {
   medico = await criarMembro(`pqvm${marca}`, {
     tenant: t, rotulo: 'Médico',
     permissoes: [
-      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' }, { modulo: 'documents', nivel: 'VIEW' },
+      { modulo: 'agenda', nivel: 'MANAGE', escopo: 'OWN' },
       { modulo: 'medical_records', nivel: 'MANAGE', escopo: 'ALL' }, { modulo: 'clients', nivel: 'VIEW' },
     ],
   })
@@ -189,13 +189,16 @@ test('D7: quem tem o Financeiro em Ver não vê "Novo lançamento", e a recusa f
   })
 })
 
-test('D8: o médico que não colhe assinatura lê quem colhe o termo que bloqueia', async ({ browser }) => {
+// D8 (2026-11-01) era "o médico que não colhe lê quem colhe". Desde 2026-11-16
+// (o Heitor: colher a assinatura não pede permissão de documento), o médico
+// sem permissão de documento colhe o termo que bloqueia ali mesmo.
+test('D8: o médico sem permissão de documento colhe o termo que bloqueia', async ({ browser }) => {
   const id = await agendamento({ procedure_id: procComTermo })
   await como(browser, medico!, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
     await expect(p.getByText('Para assinar · bloqueia').first()).toBeVisible()
-    await expect(p.getByRole('link', { name: 'Colher assinatura' })).toHaveCount(0)
-    await expect(p.locator('[data-quem-colhe]')).toContainText('quem tem os Documentos em Gerenciar')
+    await expect(p.getByRole('link', { name: 'Colher assinatura' }).first()).toBeVisible()
+    await expect(p.locator('[data-quem-colhe]')).toHaveCount(0)
   })
 })
 

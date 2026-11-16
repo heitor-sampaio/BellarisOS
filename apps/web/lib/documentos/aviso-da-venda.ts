@@ -4,17 +4,15 @@ export interface DocumentoDoAviso { titulo: string; status: string; faltando: st
 
 /**
  * O aviso dos documentos que a venda do pacote deixou para a cliente assinar
- * (PC2; D1 da 15ª simulação; D4 da 19ª).
+ * (PC2; D1 da 15ª simulação).
  *
  * Até a 15ª ele era fixo: "1 depende de completar o cadastro. Estão na ficha,
- * em Documentos." — não dizia O QUE faltava, e quem vendeu sem os Documentos
- * abria a aba e não achava nada. Agora diz o que falta no cadastro (`faltando`
- * já vem como a pessoa lê, por `oQueFalta`) e, a quem não COLHE a assinatura,
- * quem colhe (`quemColhe`: os Documentos em Gerenciar — D4 da 19ª, a lista
- * trazia quem só vê; nulo = a própria pessoa colhe). Quem só VÊ os Documentos
- * (`veNaFicha`) lê também onde eles estão.
+ * em Documentos." — não dizia O QUE faltava. Agora diz o que falta no cadastro
+ * (`faltando` já vem como a pessoa lê, por `oQueFalta`). Quem vendeu colhe a
+ * assinatura — colher não pede o módulo Documentos, que é o dos modelos (o
+ * Heitor, 2026-11-16) —, e lê onde eles estão quando vê a ficha (`veNaFicha`).
  */
-export function avisoDosDocumentosDaVenda(docs: DocumentoDoAviso[], quemColhe: string[] | null, opcoes: { veNaFicha?: boolean } = {}): string {
+export function avisoDosDocumentosDaVenda(docs: DocumentoDoAviso[], opcoes: { veNaFicha?: boolean } = {}): string {
   const incompletos = docs.filter(d => d.status === 'INCOMPLETO')
   const base = docs.length === 1
     ? `Ficou 1 documento para a cliente assinar: ${docs[0]!.titulo}.`
@@ -24,13 +22,8 @@ export function avisoDosDocumentosDaVenda(docs: DocumentoDoAviso[], quemColhe: s
     : falta.length
       ? ` Falta no cadastro: ${falta.join(', ')}. Completado o cadastro, ${incompletos.length === 1 ? 'ele fica pronto' : 'eles ficam prontos'} para assinar.`
       : ` ${incompletos.length === 1 ? '1 depende' : `${incompletos.length} dependem`} de completar o cadastro.`
-  const naFicha = quemColhe === null || opcoes.veNaFicha ? ' Estão na ficha, em Documentos.' : ''
-  const quem = quemColhe === null ? ''
-    : quemColhe.length
-      ? ` Para colher a assinatura, fale com quem tem os Documentos em Gerenciar: ${emLista(quemColhe)}.`
-      : ' Para colher a assinatura, fale com quem administra a rede.'
-  const onde = `${naFicha}${quem}`
-  return `${base}${doCadastro}${onde}`
+  const naFicha = opcoes.veNaFicha === false ? '' : ' Estão na ficha, em Documentos.'
+  return `${base}${doCadastro}${naFicha}`
 }
 
 /**

@@ -33,49 +33,28 @@ const opsDe = (tabela: string, op: string) => pedidos.filter(p => p.tabela === t
 
 const UNIDADE = '11111111-1111-4111-8111-111111111111'
 
-// ─── D4: quem COLHE é quem tem os Documentos em Gerenciar ───────────────────
-describe('D4: o aviso pós-venda aponta quem colhe, não quem só vê', () => {
-  it('a lista de quem colhe lê os Documentos em Gerenciar, e só', async () => {
-    const { quemColheOsDocumentos } = await import('@/lib/equipe/quem-desfaz')
-    responder = p => ({ data: p.tabela === 'role_permissions' ? [{ role_id: 'cargo' }] : [], error: null })
-    await quemColheOsDocumentos('rede', UNIDADE)
-    const ins = opsDe('role_permissions', 'in')
-    expect(ins).toContainEqual(['module', ['documents']])
-    expect(ins).toContainEqual(['level', ['MANAGE']])
-  })
-  it('o texto diz a permissão de colher', async () => {
+// ─── D4: o aviso pós-venda ─────────────────────────────────────────────────
+// A regra mudou em 2026-11-16 (o Heitor: o módulo Documentos é o dos MODELOS;
+// colher a assinatura não pede permissão de documento). Quem vendeu colhe, e
+// nenhum aviso manda falar com outra pessoa — `tests/documentos-assinar-sem-permissao.test.ts`.
+describe('D4: o aviso pós-venda não aponta outra pessoa para colher', () => {
+  it('o texto diz só onde estão os documentos', async () => {
     const { avisoDosDocumentosDaVenda } = await import('@/lib/documentos/aviso-da-venda')
     const contrato = { id: 'x', titulo: 'Contrato do pacote', status: 'PENDENTE', faltando: [] }
-    const semDocs = avisoDosDocumentosDaVenda([contrato], ['Patrícia Begônia'])
-    expect(semDocs).toContain('Para colher a assinatura, fale com quem tem os Documentos em Gerenciar: Patrícia Begônia.')
-    expect(semDocs).not.toContain('Estão na ficha')
-    // Quem VÊ os Documentos e não colhe: estão na ficha, e quem colhe é outra pessoa.
-    const soVe = avisoDosDocumentosDaVenda([contrato], ['Patrícia Begônia'], { veNaFicha: true })
-    expect(soVe).toContain('Estão na ficha, em Documentos.')
-    expect(soVe).toContain('quem tem os Documentos em Gerenciar: Patrícia Begônia.')
-    // Quem colhe: como antes.
-    expect(avisoDosDocumentosDaVenda([contrato], null)).toBe('Ficou 1 documento para a cliente assinar: Contrato do pacote. Estão na ficha, em Documentos.')
+    expect(avisoDosDocumentosDaVenda([contrato])).toBe('Ficou 1 documento para a cliente assinar: Contrato do pacote. Estão na ficha, em Documentos.')
+    // Quem vendeu sem ver a ficha: sem o "estão na ficha".
+    expect(avisoDosDocumentosDaVenda([contrato], { veNaFicha: false })).toBe('Ficou 1 documento para a cliente assinar: Contrato do pacote.')
   })
-  it('a venda do pacote pergunta pelo Gerenciar, não pelo Ver', () => {
+  it('a venda do pacote não pergunta quem colhe', () => {
     const f = ler('actions/pacotes.ts')
-    expect(f).toContain('quemColheOsDocumentos(')
-    expect(f).not.toContain('quemVeOsDocumentos(')
-    expect(f).toMatch(/!can\(ctx, 'documents', 'MANAGE'\)/)
-    expect(ler('components/shared/vender-pacote.tsx')).toContain('quemColheOsDocumentos')
+    expect(f).not.toContain('quemColheOsDocumentos')
+    expect(f).not.toContain("'documents'")
+    expect(ler('components/shared/vender-pacote.tsx')).not.toContain('quemColheOsDocumentos')
   })
 })
 
 // ─── A10: o "Falta assinar" e a chegada dizem o nome de quem pode ───────────
 describe('A10: quem atende sem o módulo lê quem pode, pelo nome', () => {
-  it('quem colhe a assinatura', async () => {
-    const { textoDeQuemColhe } = await import('@/lib/equipe/textos-de-quem-pode')
-    expect(textoDeQuemColhe(['Patrícia Begônia']))
-      .toBe('A assinatura é colhida por quem tem os Documentos em Gerenciar (Patrícia Begônia): na tela, por link ou pelo app da cliente.')
-    expect(textoDeQuemColhe(['Patrícia Begônia', 'Renan Dias']))
-      .toBe('A assinatura é colhida por quem tem os Documentos em Gerenciar (Patrícia Begônia e Renan Dias): na tela, por link ou pelo app da cliente.')
-    expect(textoDeQuemColhe(null))
-      .toBe('A assinatura é colhida por quem tem os Documentos em Gerenciar: na tela, por link ou pelo app da cliente.')
-  })
   it('quem marca a chegada', async () => {
     const { textoDeQuemMarcaAChegada } = await import('@/lib/equipe/textos-de-quem-pode')
     expect(textoDeQuemMarcaAChegada(['Renan Dias', 'Patrícia Begônia']))
@@ -94,46 +73,22 @@ describe('A10: quem atende sem o módulo lê quem pode, pelo nome', () => {
   it('a tela do atendimento recebe e mostra os nomes', () => {
     const pagina = ler('app/_shared/sessao-de-atendimento.tsx')
     expect(pagina).toContain('quemMarcaAChegada(')
-    expect(pagina).toContain('quemColheOsDocumentos(')
     const tela = ler('components/branch/appointment-session.tsx')
     expect(tela).toContain('textoDeQuemMarcaAChegada(')
-    expect(tela).toContain('textoDeQuemColhe(')
     expect(tela).not.toContain('Quem tem a Agenda em Gerenciar marca a chegada; depois você inicia.')
-    expect(ler('components/shared/termos-do-cliente.tsx')).toContain('textoDeQuemColhe(')
-  })
-  it('a ficha passa quem colhe aos Documentos', () => {
-    for (const f of ['app/[slug]/clients/[id]/page.tsx', 'app/admin/clients/[id]/page.tsx']) {
-      expect(ler(f), f).toContain('quemColheOsDocumentos(')
-    }
-    expect(ler('components/branch/client-profile.tsx')).toMatch(/quemColhe=\{termos\.quemColhe/)
   })
 })
 
-// ─── A9: quem não tem os Documentos sabe que há documento esperando ─────────
-describe('A9: a ficha diz o documento esperando a quem não tem os Documentos', () => {
-  it('o texto', async () => {
-    const { textoDosDocumentosEsperando } = await import('@/lib/equipe/textos-de-quem-pode')
-    expect(textoDosDocumentosEsperando(1, ['Patrícia Begônia']))
-      .toBe('1 documento esperando a assinatura da cliente. Quem colhe é quem tem os Documentos em Gerenciar (Patrícia Begônia).')
-    expect(textoDosDocumentosEsperando(2, []))
-      .toBe('2 documentos esperando a assinatura da cliente. Quem colhe é quem tem os Documentos em Gerenciar.')
-  })
-  it('a contagem lê os abertos da cliente, na rede', async () => {
-    const { documentosEsperandoAssinatura } = await import('@/lib/documentos/esperando')
-    responder = p => ({ data: p.tabela === 'issued_documents' ? [{ id: 'a' }, { id: 'b' }] : [], error: null })
-    expect(await documentosEsperandoAssinatura('rede', 'cliente')).toBe(2)
-    const eqs = opsDe('issued_documents', 'eq')
-    expect(eqs).toContainEqual(['tenant_id', 'rede'])
-    expect(eqs).toContainEqual(['client_id', 'cliente'])
-    expect(opsDe('issued_documents', 'in')).toContainEqual(['status', ['A_GERAR', 'INCOMPLETO', 'PENDENTE']])
-  })
-  it('as duas fichas contam e a aba mostra', () => {
+// ─── A9: saiu em 2026-11-16 ─────────────────────────────────────────────────
+// A ficha contava os documentos esperando a quem não tinha os Documentos. Com a
+// decisão do Heitor de 2026-11-16, quem vê a ficha vê (e colhe) os documentos:
+// a contagem à parte não tem mais para quem aparecer.
+describe('A9: a contagem à parte saiu', () => {
+  it('a ficha não tem mais o aviso de documentos esperando', () => {
     for (const f of ['app/[slug]/clients/[id]/page.tsx', 'app/admin/clients/[id]/page.tsx']) {
-      expect(ler(f), f).toContain('documentosEsperandoAssinatura(')
+      expect(ler(f), f).not.toContain('documentosEsperandoAssinatura(')
     }
-    const tela = ler('components/branch/client-profile.tsx')
-    expect(tela).toContain('data-documentos-esperando')
-    expect(tela).toContain('textoDosDocumentosEsperando(')
+    expect(ler('components/branch/client-profile.tsx')).not.toContain('data-documentos-esperando')
   })
 })
 

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext } from '@/lib/auth'
+import { assertVeOsDocumentos } from '@/lib/documentos/acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { DocumentosEmitidos, type ParamsDosDocumentos } from '@/app/_shared/documentos-emitidos'
@@ -14,7 +15,8 @@ export default async function BranchDocumentosPage({
   const { slug } = await params
   const ctx = await getTenantContext()
   // A página confere por si (§6): o layout de [slug] deixa o cliente final passar.
-  assertPermission(ctx, 'documents', 'VIEW')
+  // Vê os documentos quem vê a cliente (o Heitor, 2026-11-16).
+  assertVeOsDocumentos(ctx)
   const unidade = await ler(createAdminClient().from('branches').select('id, name, slug')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade') as { id: string; name: string; slug: string } | null
   if (!unidade) notFound()

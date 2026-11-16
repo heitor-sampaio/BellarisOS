@@ -1,0 +1,53 @@
+import { can, podeReceber, temRecurso } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
+import type { TenantContext } from '@estetica-os/types'
+
+/**
+ * Quem vê e quem colhe os documentos da cliente — a decisão do Heitor de
+ * 2026-11-16: "A permissão de gerenciar documentos serve para alguém poder
+ * criar/editar/excluir os modelos de documentos. É uma proteção para que os
+ * documentos não sejam modificados por quem não deve. Um
+ * procedimento/plano/pacote que tenha documentos que precisam de assinatura,
+ * os documentos precisam ser assinados. É só uma questão de disponibilizar
+ * para o cliente assinar e isso não representa risco."
+ *
+ * O módulo `documents` virou o dos MODELOS. Ver e colher não pedem permissão
+ * de documento: a trava de cada documento continua sendo chegar a ele
+ * (`documentoAoAlcance`: a rede, a unidade ao alcance e, com o prontuário "só
+ * os meus", a cliente que ela atende). Os documentos são funcionalidade do
+ * PLANO da rede (`documentos`): fora dele, nada disto abre.
+ */
+
+/** Vê os documentos da cliente (a aba da ficha, o painel, a trilha): quem vê a cliente. */
+export function veOsDocumentos(ctx: TenantContext): boolean {
+  return !ctx.isClient && temRecurso(ctx, 'documentos') && can(ctx, 'clients', 'VIEW')
+}
+
+/**
+ * Colhe a assinatura: quem está com a cliente na tela — a ficha (Clientes), o
+ * atendimento e a janela do agendamento (Agenda, Prontuário), a venda e o
+ * recebimento (o PDV, ou o Financeiro em Gerenciar). Na tela, no papel, pelo
+ * link, pela conversa, pelo app, montar de novo, revogar o link, o pagamento
+ * do contrato.
+ */
+export function colheOsDocumentos(ctx: TenantContext): boolean {
+  if (ctx.isClient || !temRecurso(ctx, 'documentos')) return false
+  return can(ctx, 'clients', 'VIEW') || can(ctx, 'agenda', 'VIEW') || can(ctx, 'medical_records', 'VIEW') || podeReceber(ctx)
+}
+
+export function assertColheOsDocumentos(ctx: TenantContext): void {
+  if (!colheOsDocumentos(ctx)) throw semAcesso()
+}
+
+/**
+ * Dispensar um documento obrigatório (com motivo) é de quem responde pelos
+ * modelos — é o "excluir" da frase do Heitor, o único jeito de uma assinatura
+ * exigida deixar de ser colhida.
+ */
+export function dispensaDocumentos(ctx: TenantContext): boolean {
+  return !ctx.isClient && temRecurso(ctx, 'documentos') && can(ctx, 'documents', 'MANAGE')
+}
+
+export function assertVeOsDocumentos(ctx: TenantContext): void {
+  if (!veOsDocumentos(ctx)) throw semAcesso()
+}

@@ -65,9 +65,9 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const [vendida, setVendida] = useState<{ id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null>(null)
   // PC2: os documentos que a venda deixou para assinar — a venda não espera.
   const [docsDaVenda, setDocsDaVenda] = useState<DocumentoDaVenda[]>([])
-  // D1 da 15ª, D4 da 19ª: quem COLHE a assinatura, para quem vendeu sem colher
-  // (nulo = ela colhe); `veNaFicha`, se ela vê os Documentos.
-  const [quemColhe, setQuemColhe] = useState<{ quem: string[] | null; veNaFicha: boolean }>({ quem: null, veNaFicha: true })
+  // D1 da 15ª: quem vendeu colhe a assinatura (2026-11-16: sem o módulo
+  // Documentos); `veNaFicha`, se ela vê a ficha da cliente.
+  const [veNaFicha, setVeNaFicha] = useState(true)
   const [pacoteId, setPacoteId] = useState(pacotes[0]!.id)
   const [estado, setEstado] = useState(() => estadoDoPagamento(null, 'AVISTA', fuso))
   // C75: com mais de uma maquininha, o cartão não segue sem "Qual maquininha?".
@@ -105,10 +105,10 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       envio.renovar()
       router.refresh()
       const docs = r.documentos ?? []
-      const colhe = { quem: r.quemColheOsDocumentos ?? null, veNaFicha: !!r.veOsDocumentos }
-      if (podeAgendar && r.primeiraSessao) { setDocsDaVenda(docs); setQuemColhe(colhe); setVendida(r.primeiraSessao); return }
+      const naFicha = !!r.veOsDocumentos
+      if (podeAgendar && r.primeiraSessao) { setDocsDaVenda(docs); setVeNaFicha(naFicha); setVendida(r.primeiraSessao); return }
       toast.success(avisoDaVenda(pacote.name, fid.aPagar, estado.forma),
-        docs.length ? { description: avisoDosDocumentosDaVenda(docs, colhe.quem, { veNaFicha: colhe.veNaFicha }) } : undefined)
+        docs.length ? { description: avisoDosDocumentosDaVenda(docs, { veNaFicha: naFicha }) } : undefined)
       onFim()
     })
   }
@@ -120,8 +120,8 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       </p>
       {docsDaVenda.length > 0 && (
         <div data-documentos-da-venda style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{avisoDosDocumentosDaVenda(docsDaVenda, quemColhe.quem, { veNaFicha: quemColhe.veNaFicha })}</p>
-          {quemColhe.quem === null && docsDaVenda.some(d => d.status === 'PENDENTE') && (
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{avisoDosDocumentosDaVenda(docsDaVenda, { veNaFicha })}</p>
+          {docsDaVenda.some(d => d.status === 'PENDENTE') && (
             <Link href={rotaNoPortal(pathname, pathname.split('/')[1], `/documentos/${docsDaVenda.find(d => d.status === 'PENDENTE')!.id}/assinar`)}
               style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
               Colher a assinatura agora

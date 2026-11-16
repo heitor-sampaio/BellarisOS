@@ -68,8 +68,8 @@ test.beforeAll(async () => {
     permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'documents', nivel: 'MANAGE' }],
   })
   soVe = await criarMembro(`di9v${marca}`, {
-    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Só vê termos',
-    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }, { modulo: 'documents', nivel: 'VIEW' }],
+    tenant: rede.tenantId, branchId: rede.branchId, rotulo: 'Sem permissão de documento',
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
   })
 })
 
@@ -99,7 +99,9 @@ test.describe.serial('o termo do início', () => {
     expect((await db().from('appointments').select('status').eq('id', agendamento).single()).data?.status).toBe('CONFIRMED')
   })
 
-  test('A23: na janela do agendamento, o termo que bloqueia leva a colher a assinatura (a quem tem os Termos)', async ({ browser }) => {
+  // A23 levava a colher só quem tinha os Documentos; desde 2026-11-16 (o
+  // Heitor: colher não pede permissão de documento) leva quem abre a janela.
+  test('A23: na janela do agendamento, o termo que bloqueia leva a colher a assinatura (sem permissão de documento)', async ({ browser }) => {
     const [doc] = await documentos()
     expect(doc, 'o termo do D7').toBeTruthy()
     await como(browser, recepcao!, async p => {
@@ -116,7 +118,7 @@ test.describe.serial('o termo do início', () => {
       const janela = p.getByRole('dialog', { name: 'Agendamento' })
       const item = janela.locator('[data-documentos-do-agendamento] li', { hasText: TITULO })
       await expect(item).toContainText('bloqueia o início')
-      await expect(item.getByRole('link', { name: 'Colher assinatura' })).toHaveCount(0)
+      await expect(item.getByRole('link', { name: 'Colher assinatura' })).toHaveAttribute('href', new RegExp(`^/${slug}/documentos/${doc!.id}/assinar\\?voltar=`))
     })
   })
 })

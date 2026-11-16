@@ -369,11 +369,12 @@ test.describe.serial('checkout de plano', () => {
     })
   })
 
-  test('quem tem o PDV sem o módulo Documentos colhe a assinatura do checkout (2026-10-20)', async ({ browser }) => {
+  test('quem tem o PDV sem permissão de documento colhe a assinatura do checkout — e as outras também (2026-11-16)', async ({ browser }) => {
     // Na simulação de um dia de clínica, o caixa (Recebimentos, sem Termos)
-    // travou em "Colher assinatura" com um "Forbidden" cru. Decisão do Heitor:
-    // quem recebe colhe a assinatura DAQUELE checkout; o resto dos documentos
-    // continua com o módulo de Termos.
+    // travou em "Colher assinatura" com um "Forbidden" cru. Decisão do Heitor
+    // (2026-10-20): quem recebe colhe a assinatura DAQUELE checkout. Desde
+    // 2026-11-16 a exceção virou a regra: colher não pede permissão de
+    // documento (o módulo Documentos é o dos modelos).
     test.setTimeout(150_000)
     const { planId } = await plano('caixa')
     const caixa = await criarMembro(`chkc${marca}`, {
@@ -412,8 +413,8 @@ test.describe.serial('checkout de plano', () => {
       const docs = await docsDoPlano(planId)
       expect(docs.map(d => d.status), 'os três assinados pelo caixa').toEqual(['ASSINADO', 'ASSINADO', 'ASSINADO'])
 
-      // Fora do checkout, o caixa continua sem os documentos: um documento de
-      // atendimento (não de plano em checkout) não abre.
+      // Fora do checkout o caixa também colhe (2026-11-16): um documento que
+      // não é de plano em checkout abre para assinar.
       // Um termo da rede que não é de plano em checkout (o primeiro termo do
       // plano, desligado do plano).
       const [umDoPlano] = docs.filter(d => d.kind === 'TERMO')
@@ -425,7 +426,8 @@ test.describe.serial('checkout de plano', () => {
         try {
           const p = await ctx2.newPage()
           const r = await chamarAcao(p, 'actions/documentos.ts', 'documentoParaAssinar', `/${slug}/pdv`, [avulso.id])
-          expect(r.texto).toContain('Você não tem acesso a esta ação.')
+          expect(r.texto).not.toContain('Você não tem acesso a esta ação.')
+          expect(r.texto).toContain(avulso.id)
         } finally { await ctx2.close() }
       }
     } finally {

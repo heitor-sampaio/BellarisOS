@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantContext, can, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade } from '@/lib/auth'
+import { colheOsDocumentos } from '@/lib/documentos/acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getCachedFichasDoLogin } from '@/lib/cached-queries'
@@ -10,7 +11,9 @@ import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 /**
  * O PDF assinado de um documento, por link temporário.
  *
- * Toda rota de /api se defende sozinha (§6): sessão, o módulo `documents`, a
+ * Toda rota de /api se defende sozinha (§6): sessão, quem chega aos documentos
+ * da cliente (`colheOsDocumentos` — o PDF sai da ficha, do atendimento e da
+ * tela de assinar; não pede o módulo Documentos, que é o dos modelos), a
  * rede e a unidade ao alcance — ou, para o cliente final, ser o documento DELE.
  * Se o PDF ainda não foi gerado (o `after()` falhou e
  * o cron não passou), é gerado agora.
@@ -26,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   } catch {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
-  if (!ctx.isClient && !can(ctx, 'documents', 'VIEW')) return NextResponse.json({ error: 'Sem acesso.' }, { status: 403 })
+  if (!ctx.isClient && !colheOsDocumentos(ctx)) return NextResponse.json({ error: 'Sem acesso.' }, { status: 403 })
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: 'Documento não encontrado.' }, { status: 404 })
 
   // A equipe, pela rede e pela unidade que alcança; o cliente, só o DELE — de

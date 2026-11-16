@@ -7,6 +7,7 @@ import { ler } from '@/lib/db'
 import { documentosDoAgendamento } from '@/lib/documentos/leitura'
 import { oQueFalta } from '@/lib/documentos/o-que-falta'
 import { faltandoDoCadastro, COLUNAS_DA_CLIENTE_NOS_DOCUMENTOS } from '@/lib/documentos/falta-no-cadastro'
+import { colheOsDocumentos } from '@/lib/documentos/acesso'
 
 /**
  * Os termos e contratos de um agendamento, para a JANELA da agenda (A34 da 6ª
@@ -18,7 +19,7 @@ import { faltandoDoCadastro, COLUNAS_DA_CLIENTE_NOS_DOCUMENTOS } from '@/lib/doc
 export interface DocumentoDaJanela {
   id: string; titulo: string; situacao: string; bloqueia: boolean; assinado: boolean
   /**
-   * Quem tem os Termos em Gerenciar colhe daqui (A23 da 9ª simulação: o termo
+   * Quem está na janela colhe daqui (A23 da 9ª simulação: o termo
    * que bloqueia não tinha caminho na janela — era Clientes → Documentos →
    * Colher assinatura). Só no que falta assinar, com o documento pronto.
    */
@@ -52,7 +53,9 @@ export async function documentosDaJanela(appointmentId: string): Promise<Documen
   const dono = ownerFilter(ctx, 'agenda')
   if (dono && ap.professional_id !== dono) return []
   const docs = await documentosDoAgendamento(ctx.tenantId!, ap.id)
-  const colhe = can(ctx, 'documents', 'MANAGE')
+  // Colhe quem está na janela (o Heitor, 2026-11-16: colher não pede o módulo
+  // Documentos, que é o dos modelos) — com os Documentos no plano da rede.
+  const colhe = colheOsDocumentos(ctx)
   const completa = can(ctx, 'clients', 'MANAGE')
   return docs.map(d => {
     const faltando = d.status === 'INCOMPLETO' ? oQueFalta(d.faltando) : []

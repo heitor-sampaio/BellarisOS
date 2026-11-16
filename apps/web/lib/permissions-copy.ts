@@ -30,7 +30,7 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
     key:     'atendimento',
     label:   'Atendimento',
     hint:    'O dia a dia com o cliente na unidade',
-    modules: ['agenda', 'clients', 'loyalty', 'medical_records', 'documents'],
+    modules: ['agenda', 'clients', 'loyalty', 'medical_records'],
   },
   {
     key:     'vendas',
@@ -60,7 +60,9 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
     hint:    'Números da rede, fichas e quem pode o quê',
     // A Auditoria não está aqui: é só da Admin da rede (o Heitor, 2026-11-16:
     // "Auditoria é só admin"), não se dá a cargo nenhum (MODULOS_SO_DA_ADMIN).
-    modules: ['reports', 'team', 'forms', 'roles', 'settings'],
+    // Os modelos de documento ao lado dos de ficha (o Heitor, 2026-11-16: a
+    // permissão de Documentos é a dos MODELOS; colher a assinatura não pede).
+    modules: ['reports', 'team', 'forms', 'documents', 'roles', 'settings'],
   },
   {
     key:     'copilot',
@@ -82,7 +84,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   clients: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Abre a lista de clientes e a ficha completa: histórico, compras, pagamentos e documentos.',
+    VIEW:   'Abre a lista de clientes e a ficha completa: histórico, compras, pagamentos e os documentos que a cliente assina, e colhe a assinatura deles.',
     MANAGE: 'Tudo do Ver, mais cadastrar cliente novo, editar dados, anexar documentos e inativar cliente.',
   },
   loyalty: {
@@ -95,10 +97,12 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     VIEW:   'Lê, no Prontuário, a ficha de saúde, a evolução, as fotos do atendimento e os anexos clínicos (exames, laudos, receitas).',
     MANAGE: 'Tudo do Ver, mais preencher a ficha de saúde e a evolução, tirar as fotos do atendimento, anexar exames e laudos, acrescentar anotação ao atendimento concluído e liberar a parte clínica em pedidos de LGPD. Montar o plano de tratamento não pede o Prontuário: é de quem atende.',
   },
+  // O Heitor, 2026-11-16: "A permissão de gerenciar documentos serve para
+  // alguém poder criar/editar/excluir os modelos de documentos." Ver os
+  // documentos da cliente é de quem vê a cliente; colher é de quem está na tela.
   documents: {
-    NONE:   SEM_ACESSO,
-    VIEW:   'Vê os documentos da cliente (termos, contratos e os outros), assinados e pendentes, e baixa o documento assinado.',
-    MANAGE: 'Tudo do Ver, mais colher a assinatura (na tela, no papel, pelo app ou pelo link — todos de uma vez), emitir documento avulso e dispensar um documento, com motivo.',
+    NONE:   'Não mexe nos modelos de documento. Vê os documentos da cliente e colhe a assinatura do mesmo jeito (isso vem de Clientes, da Agenda e do PDV).',
+    MANAGE: 'Cria, edita e desativa os modelos de documento (termos, contratos e os outros que a cliente assina, em Configurações → Documentos) e dispensa um documento obrigatório da cliente, com motivo. Colher a assinatura não pede esta permissão: é de quem está com a cliente — na ficha, no atendimento ou no PDV.',
   },
   procedures: {
     NONE:   SEM_ACESSO,
@@ -142,7 +146,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   forms: {
     NONE:   SEM_ACESSO,
-    MANAGE: 'Monta as fichas de atendimento (as que quem atende preenche), a ficha de saúde e os modelos de documento que a cliente assina. Preencher a ficha é Prontuário; colher a assinatura é Documentos.',
+    MANAGE: 'Monta as fichas de atendimento (as que quem atende preenche) e a ficha de saúde. Preencher a ficha é Prontuário.',
   },
   roles: {
     NONE:   SEM_ACESSO,
@@ -200,7 +204,7 @@ export const NETWORK_ONLY: readonly AppModule[] = ['marketing', 'automations', '
  */
 export function notaDeAbrangencia(modulo: AppModule): string {
   if (modulo === 'settings') {
-    return 'Quem não tem “A rede inteira” mexe só na aba Unidade (os dados, o horário e as salas das unidades dela): as integrações, os funis, as fichas, os documentos e o resto são da rede toda e ficam com quem tem “A rede inteira”.'
+    return 'Quem não tem “A rede inteira” mexe só na aba Unidade (os dados, o horário e as salas das unidades dela): as integrações, os funis, as fichas, os modelos de documento e o resto são da rede toda e ficam com quem tem “A rede inteira”.'
   }
   return NETWORK_ONLY_NOTE
 }

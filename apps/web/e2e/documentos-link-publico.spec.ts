@@ -292,11 +292,14 @@ test.describe.serial('documentos: link público de assinatura', () => {
     expect(outroIp.status(), 'controle: de outro IP abre').toBe(200)
   })
 
-  test('quem só VÊ documentos não gera nem revoga link', async ({ browser }) => {
+  // Era "quem só VÊ os Documentos". Desde 2026-11-16 colher (o link incluso)
+  // é de quem está com a cliente, sem permissão de documento; quem não chega a
+  // ela por tela nenhuma (só o CRM) segue sem gerar nem revogar.
+  test('quem não está com a cliente (só o CRM) não gera nem revoga link', async ({ browser }) => {
     const d = await agendar(clienteCpf, 7)
     const leitor = await criarMembro(`dll${marca}`, {
-      tenant: rede!.tenantId, rotulo: 'Só vê documentos',
-      permissoes: [{ modulo: 'documents', nivel: 'VIEW' }, { modulo: 'clients', nivel: 'VIEW' }],
+      tenant: rede!.tenantId, rotulo: 'Só o CRM',
+      permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'ALL' }],
     })
     try {
       await como(browser, leitor.estado, async page => {

@@ -10,7 +10,10 @@ describe('Configurações no resumo do cargo', () => {
     expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, com('financial'))).toBe('Configurações (só Comissões e taxas)')
   })
   it('com mais de um módulo, lista as abas', () => {
-    expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, com('financial', 'forms'))).toBe('Configurações (só Fichas, Documentos e Comissões e taxas)')
+    expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, com('financial', 'forms', 'documents'))).toBe('Configurações (só Fichas, Documentos e Comissões e taxas)')
+  })
+  it('as Fichas e os Documentos são dois módulos (2026-11-16: os modelos de documento são o módulo Documentos)', () => {
+    expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, com('financial', 'forms'))).toBe('Configurações (só Fichas e Comissões e taxas)')
   })
   it('com Configurações em Gerenciar, é a tela inteira', () => {
     expect(rotuloDasAbasAlcancadas(ABAS_DA_REDE, com('settings', 'financial'))).toBeNull()

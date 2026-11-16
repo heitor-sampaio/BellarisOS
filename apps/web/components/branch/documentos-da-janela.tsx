@@ -37,7 +37,7 @@ export function DocumentosDaJanela({ appointmentId, slug }: { appointmentId: str
             <span style={{ flexShrink: 0, fontWeight: 700, color: d.assinado ? 'var(--success)' : d.bloqueia ? 'var(--warning)' : 'var(--text-muted)' }}>
               {d.situacao}{!d.assinado && d.bloqueia ? ' · bloqueia o início' : ''}
             </span>
-            {/* A23 da 9ª: colher a assinatura daqui, a quem tem os Termos em Gerenciar. */}
+            {/* A23 da 9ª: colher a assinatura daqui, a quem está na janela (2026-11-16: sem o módulo Documentos). */}
             {d.podeColher && (
               <Link href={rotaNoPortal(pathname, slug, `/documentos/${d.id}/assinar?voltar=${encodeURIComponent(pathname)}`)} data-colher-assinatura
                 style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>

@@ -8,8 +8,13 @@
  * evidência numa transação. Aqui ficam os dois canais da equipe; o portal e o
  * link têm portas próprias (fases 5 e 6), porque quem chama é outro.
  *
- * Todo export é endpoint público: cada um confere o módulo (`documents`), a
- * rede do documento e o alcance da unidade antes de tocar nele.
+ * Todo export é endpoint público: cada um confere a rede do documento, o
+ * alcance da unidade e a cliente no escopo (`documentoAoAlcance`) antes de
+ * tocar nele. Colher NÃO pede o módulo Documentos (o Heitor, 2026-11-16: ele é
+ * o dos MODELOS; "É só uma questão de disponibilizar para o cliente assinar e
+ * isso não representa risco"): colhe quem está com a cliente na tela
+ * (`colheOsDocumentos`, lib/documentos/acesso.ts). Dispensar é de quem
+ * responde pelos modelos.
  */
 
 import { revalidatePath } from 'next/cache'
@@ -21,6 +26,7 @@ import { enviarNaConversa } from '@/lib/inbox/enviar'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertPermission, alcancaUnidade, can, podeReceber, temRecurso } from '@/lib/auth'
+import { assertColheOsDocumentos, veOsDocumentos } from '@/lib/documentos/acesso'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -67,23 +73,6 @@ async function documentoAoAlcance(ctx: TenantContext, id: string): Promise<Docum
   return doc as unknown as DocumentoAssinavel
 }
 
-/**
- * Quem COLHE a assinatura: o módulo de Termos — ou quem RECEBE, no documento
- * de um plano aceito, no receber do PDV (decisão do Heitor, 2026-10-20). O caixa da
- * simulação de um dia de clínica travou em "Colher assinatura": fechar a venda
- * exigia um módulo que ele não tinha. Fora do checkout, os documentos
- * continuam do módulo de Termos.
- */
-async function assertPodeColher(ctx: TenantContext, doc: DocumentoAssinavel): Promise<void> {
-  if (can(ctx, 'documents', 'MANAGE')) return
-  if (podeReceber(ctx) && doc.treatment_plan_id) {
-    const plano = await ler(createAdminClient().from('treatment_plans').select('status')
-      .eq('id', doc.treatment_plan_id).maybeSingle(), 'buscar o plano do documento') as { status: string } | null
-    if (plano?.status === 'ACCEPTED') return  // no RECEBER do plano (PDV, PT1b)
-  }
-  throw semAcesso()
-}
-
 // ─── Na clínica, na tela ─────────────────────────────────────────────────────
 
 export async function assinarNaTela(input: {
@@ -95,11 +84,11 @@ export async function assinarNaTela(input: {
 }): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertColheOsDocumentos(ctx)
     const travado = bloqueioDoSuporte(ctx, 'colher assinatura')
     if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, input.id)
     if (!doc) return { error: 'Documento não encontrado.' }
-    await assertPodeColher(ctx, doc)
     if (!input.identidadeConferida) return { error: 'Confira o documento de identidade do cliente antes de entregar o aparelho.' }
     if (typeof input.assinatura !== 'string' || !input.assinatura.startsWith('data:image/png;base64,')) {
       return { error: 'Faça a assinatura antes de confirmar.' }
@@ -137,7 +126,7 @@ export async function assinarNaTela(input: {
 /**
  * DC3 (leva 2): o aparelho entregue na clínica, com TODOS os abertos do
  * momento — a cliente lê cada um e assina uma vez. Cada id passa pelo mesmo
- * portão de `assinarNaTela` (rede, unidade, escopo, quem colhe), e o banco
+ * portão de `assinarNaTela` (rede, unidade, escopo), e o banco
  * confere que são de uma cliente só.
  */
 export async function assinarJuntosNaTela(input: {
@@ -147,6 +136,7 @@ export async function assinarJuntosNaTela(input: {
 }): Promise<{ error?: string; documentos?: { id: string; codigo: string | null }[] }> {
   try {
     const ctx = await getTenantContext()
+    assertColheOsDocumentos(ctx)
     const travado = bloqueioDoSuporte(ctx, 'colher assinatura')
     if (travado) return { error: travado }
     const itens = itensDaAssinatura(input?.itens)
@@ -155,7 +145,6 @@ export async function assinarJuntosNaTela(input: {
     for (const i of itens) {
       const doc = await documentoAoAlcance(ctx, i.id)
       if (!doc) return { error: 'Documento não encontrado.' }
-      await assertPodeColher(ctx, doc)
       docs.push(doc)
     }
     if (!input.identidadeConferida) return { error: 'Confira o documento de identidade do cliente antes de entregar o aparelho.' }
@@ -189,11 +178,11 @@ function tipoDaDigitalizacao(bytes: Buffer): { ext: string; mime: string } | nul
 export async function marcarAssinadoEmPapel(formData: FormData): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertColheOsDocumentos(ctx)
     const travado = bloqueioDoSuporte(ctx, 'registrar assinatura em papel')
     if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, formData.get('id') as string)
     if (!doc) return { error: 'Documento não encontrado.' }
-    await assertPodeColher(ctx, doc)
 
     const admin = createAdminClient()
     let scan: { path: string; sha: string } | null = null
@@ -328,7 +317,7 @@ export async function prepararDocumentosDoCheckout(
  * O pagamento combinado de um contrato do PROCEDIMENTO (atendimento avulso),
  * antes de o cliente assinar — decisão do Heitor, 2026-09-30. No plano o
  * pagamento vem do checkout; no avulso ele só é recebido depois do
- * atendimento, então a recepção o define aqui para o contrato poder citá-lo.
+ * atendimento, então quem colhe o define aqui para o contrato poder citá-lo.
  * Sem isso, o contrato que usa `pagamento.*` fica INCOMPLETO.
  *
  * `null` = "no atendimento" (a receber depois, sem prazo). Trocar é possível
@@ -341,7 +330,7 @@ export async function definirPagamentoDoContrato(
 ): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'MANAGE')
+    assertColheOsDocumentos(ctx)
     if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
     // Até quantas vezes a clínica parcela no crédito (D-15): o servidor recusa acima.
     const recusaDasVezes = await recusaDasVezesDaRede(ctx.tenantId!, vezesNoCartao(pagamento), maquininhaDoPagamento(pagamento))
@@ -379,9 +368,9 @@ export async function definirPagamentoDoContrato(
 export async function documentoParaAssinar(id: string): Promise<{ doc?: DocumentoNaTela; error?: string }> {
   try {
     const ctx = await getTenantContext()
+    assertColheOsDocumentos(ctx)
     const alvo = await documentoAoAlcance(ctx, id)
     if (!alvo) return { error: 'Documento não encontrado.' }
-    await assertPodeColher(ctx, alvo)
     const d = await documentoParaExibir(ctx.tenantId!, alvo.id, { montarDeNovo: true })
     if (!d) return { error: 'Documento não encontrado.' }
     return {
@@ -406,7 +395,7 @@ export async function documentoParaAssinar(id: string): Promise<{ doc?: Document
 export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'MANAGE')
+    assertColheOsDocumentos(ctx)
     const travado = bloqueioDoSuporte(ctx, 'pedir assinatura ao cliente')
     if (travado) return { error: travado }
     // C57a (F69): sem o portal no plano, o aviso não sai (`notifyClient` pula
@@ -530,16 +519,14 @@ async function criarLink(ctx: TenantContext, doc: DocumentoAssinavel): Promise<{
 export async function gerarLinkDeAssinatura(id: string): Promise<{ error?: string; link?: LinkDeAssinatura }> {
   try {
     const ctx = await getTenantContext()
-    // Quem colhe: os Termos em Gerenciar — ou quem RECEBE, no documento do plano
-    // no checkout (A8 da 11ª: o link também sai do passo Documentação, e o
-    // caixa sem o módulo de Termos já colhia ali — a exceção de 2026-10-20).
-    if (!can(ctx, 'documents', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
+    // O link é um jeito de colher: de quem está com a cliente na tela (a ficha,
+    // o atendimento, a janela, o passo Documentação do checkout — A8 da 11ª).
+    assertColheOsDocumentos(ctx)
     // Gerar revoga o link que o cliente já tem nas mãos.
     const travado = bloqueioDoSuporte(ctx, 'gerar link de assinatura')
     if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
-    await assertPodeColher(ctx, doc)
     return await criarLink(ctx, doc)
   } catch (e) {
     return { error: mensagemDoErro(e) }
@@ -557,15 +544,15 @@ export async function gerarLinkDeAssinatura(id: string): Promise<{ error?: strin
  *   e é ali que a janela de 24h dele está aberta. A janela é conferida por
  *   `enviarNaConversa`, o mesmo caminho do inbox e das automações.
  * - Quem manda não precisa de `crm`: não lê nada da conversa, só recebe
- *   "enviado" ou o motivo. É a rede, ao ligar a opção, que autoriza a equipe
- *   de `documents: MANAGE` a mandar ESTA mensagem por ali.
+ *   "enviado" ou o motivo. É a rede, ao ligar a opção, que autoriza quem colhe
+ *   a assinatura a mandar ESTA mensagem por ali.
  * - Falhou (janela fechada, caixa desconectada): o link já nasceu, e volta
  *   junto com o motivo — a tela oferece copiar e o WhatsApp do aparelho.
  */
 export async function enviarLinkPelaConversa(id: string): Promise<{ error?: string; link?: LinkDeAssinatura; enviado?: true }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'MANAGE')
+    assertColheOsDocumentos(ctx)
     const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
     if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, id)
@@ -607,7 +594,7 @@ export async function enviarLinkPelaConversa(id: string): Promise<{ error?: stri
 export async function revogarLinkDeAssinatura(id: string): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'MANAGE')
+    assertColheOsDocumentos(ctx)
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
     const admin = createAdminClient()
@@ -626,7 +613,9 @@ export async function revogarLinkDeAssinatura(id: string): Promise<Resultado> {
 
 /**
  * Dispensar cumpre a exigência sem assinatura, com motivo registrado. É a saída
- * para um modelo mal configurado não travar a agenda da clínica.
+ * para um modelo mal configurado não travar a agenda da rede — e é de quem
+ * responde pelos modelos (os Modelos de documento em Gerenciar; o Heitor,
+ * 2026-11-16: o "excluir" da permissão): quem só colhe não tira a exigência.
  */
 export async function dispensarDocumento(id: string, motivo: string): Promise<Resultado> {
   try {
@@ -652,9 +641,9 @@ export async function dispensarDocumento(id: string, motivo: string): Promise<Re
 export async function montarDocumentoDeNovo(id: string): Promise<Resultado & { faltando?: number }> {
   try {
     const ctx = await getTenantContext()
+    assertColheOsDocumentos(ctx)
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
-    await assertPodeColher(ctx, doc)
     const novo = await garantirRenderizado(ctx.tenantId!, doc.id, { forcar: true })
     return { faltando: novo?.status === 'INCOMPLETO' ? 1 : 0 }
   } catch (e) {
@@ -674,13 +663,13 @@ export interface TrilhaDoDocumento {
 /**
  * Cada passo do documento, do mais antigo ao mais novo: emitido, montado,
  * link gerado ou revogado, pedido no portal, identidade conferida, assinado,
- * PDF. Só leitura (`documents: VIEW`), da rede e da unidade ao alcance. O CPF
+ * PDF. Só leitura, de quem vê a cliente (`veOsDocumentos`), da rede e da unidade ao alcance. O CPF
  * de quem assinou não sai daqui.
  */
 export async function trilhaDoDocumento(id: string): Promise<{ trilha?: TrilhaDoDocumento; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'documents', 'VIEW')
+    if (!veOsDocumentos(ctx)) throw semAcesso()
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
     const admin = createAdminClient()
