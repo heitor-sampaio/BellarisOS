@@ -1807,6 +1807,7 @@ O relatório ficou em `apps/web/.sim/relatorio.md`, e a 18ª foi arquivada em `.
   - **Auditoria (A32–A36):** os campos do lançamento em português; "Devolveu o voucher"; o "Fechou de novo" com o conferido; "Remarcou" e "Repassou" no lugar de "Editou o agendamento"; a geração do contrato dentro da venda; "Da rede" na coluna Unidade.
   - **Ficaram de fora:** o A4 em parte (a taxa e o líquido no Vender são só de quem vê o financeiro, A19 da 12ª); o A8 em parte (o botão do Copilot sobre o "Fechar e pagar"); o A17 e o A26, já com o Heitor.
 - **A completa local sobre o 7c32380d** (16/11, 08:20–10:50): 1594 + 767 passaram, 6 falharam e 16 não rodaram. Nenhuma falha é do produto: o Postgres reiniciou às 12:03 e às 12:32 UTC (`database system was interrupted`), e as 6 passaram em dev (35/35 nos 6 specs). Uma delas foi o 520 do Cloudflare em "criar a unidade da outra rede".
+- **Os isolados em 2 workers** (decisão do Heitor, 16/11: "Testa baixar os isolados pra 2 em paralelo"). As duas quedas desta completa e as de antes foram na metade dos isolados (3 em paralelo); a dos compartilhados, um por vez, não cai. `E2E_WORKERS` passa a 2 no padrão do `playwright.build.config.ts` e no `e2e.yml`, e o job do GitHub vai de 75 para 120 min (o Heitor deu o escopo `workflow` ao token). A próxima completa diz se basta; se não, é subir a instância (Supabase → Compute).
 
 ### 2026-11-16 — A 18ª simulação (Hortênsia, uma unidade; Gardênia, três, com o Copilot) e os defeitos dela
 

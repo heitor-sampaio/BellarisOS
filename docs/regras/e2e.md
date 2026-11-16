@@ -11,7 +11,8 @@ Os comandos e o "Qual E2E rodar" (só o que é novo em cada etapa; a completa,
 só quando o Heitor pede) continuam no §15 do `CLAUDE.md`.
 
 - **A completa roda em duas metades** (`e2e/grupos.ts`, 2026-09-30): os
-  ISOLADOS em paralelo (3 workers) e os COMPARTILHADOS, um por vez — no CI
+  ISOLADOS em paralelo (2 workers; eram 3 até 2026-11-16, quando o Postgres da
+  instância Small reiniciava sob o pico) e os COMPARTILHADOS, um por vez — no CI
   as duas JUNTAS, contra um servidor só (`E2E_SERVIDOR_PRONTO`); no
   `test:e2e:completa` local, em sequência (a máquina não aguenta quatro
   navegadores e o servidor). Isolado é o spec que cria a própria rede

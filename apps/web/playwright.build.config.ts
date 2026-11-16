@@ -61,7 +61,8 @@ process.env.INTERNO_SECRET ??= 'e2e-segredo-interno-entre-os-apps-0123456789'
 
 /**
  * `E2E_GRUPO` escolhe a metade da suíte (`e2e/grupos.ts`): `isolados` roda em
- * paralelo (`E2E_WORKERS`, 3 por padrão — um arquivo por worker, os testes de
+ * paralelo (`E2E_WORKERS`, 2 por padrão (eram 3 até 2026-11-16: o Postgres da instância
+ * Small reiniciava sob o pico) — um arquivo por worker, os testes de
  * cada arquivo em ordem), `compartilhados` um por vez. Sem grupo, a suíte
  * inteira um por vez, como antes. `scripts/e2e-completa.mjs` roda os dois em
  * sequência.
@@ -73,7 +74,7 @@ export default defineConfig({
   ...base,
   // 300 s nas duas metades: juntas, abrir a sessão dos membros pode esperar o
   // limite do Auth (e2e/apoio/sessao.ts), e a espera come o tempo do beforeAll.
-  ...(grupo === 'isolados' ? { testMatch: isolados, workers: Number(process.env.E2E_WORKERS ?? 3), timeout: 300_000 } : {}),
+  ...(grupo === 'isolados' ? { testMatch: isolados, workers: Number(process.env.E2E_WORKERS ?? 2), timeout: 300_000 } : {}),
   ...(grupo === 'compartilhados' ? { testIgnore: isolados, workers: 1, timeout: 300_000 } : {}),
   // Cada metade na sua pasta: o Playwright limpa a pasta ao começar, e a
   // segunda metade apagaria as evidências das falhas da primeira.
