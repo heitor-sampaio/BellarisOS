@@ -1797,7 +1797,7 @@ O Heitor: "vamos subir um banco separado pra testes usando supabase self hosted�
 - `apps/web/scripts/banco-local.mjs preparar` aplica por cima da base as migrations novas, refaz o banco e cria a rede de teste. `com-banco-local.mjs <comando>` roda qualquer coisa contra ele, na porta 3010. Regras em `docs/regras/e2e.md`.
 - **`banco-local.mjs conferir`** (421d2f90): a estrutura do banco local contra a da produção, objeto por objeto (funções com corpo e GRANTs, políticas, colunas, tabelas, gatilhos, índices, restrições, tipos, Realtime, buckets). É a garantia que o Heitor pediu ("se a local passar aqui e fizer o commit, o sistema em produção vai estar com tudo funcionando também"): a suíte prova o código contra o local, e o conferir prova que o local é a produção. Na primeira rodada pegou `private.cargos_modelo_semear` aplicada na nuvem com um texto diferente do arquivo (reaplicada igual); depois, 4618 objetos iguais. A rotina de entrega passou a ser: suíte local → `conferir` → commit e push → deploy do Railway em SUCCESS.
 - Contra ele passaram `autenticacao`, `pdv-varias-formas-e-crediario-avulso`, `rls-isolamento`, `credenciais-fora-da-sessao`, `rls-sessao-so-le` e `api-sem-credencial` (40 testes).
-- Falta: a completa inteira contra ele e o GitHub Actions com `supabase start` no job. A base fora do git pede uma decisão de onde guardá-la para o CI.
+- Falta: a completa inteira contra ele. O GitHub Actions fica como está (o Heitor, 16/11: "Não precisa, deixa assim"): a completa é a local.
 
 ### 2026-11-16 — A 20ª simulação (Ateliê Dália, uma unidade; Rede Tulipa, duas, com o Copilot): o loop pausa aqui
 
