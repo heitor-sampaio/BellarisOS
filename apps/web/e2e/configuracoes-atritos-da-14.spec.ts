@@ -167,6 +167,8 @@ test('A7: o Desativar fala neutro, e o "Repassar todos" diz que preenche as linh
     await expect(fica).toContainText(`continua no nome de ${await nome(caio)}`)
     await expect(fica).toContainText('a pessoa desativada sai da lista')
     await expect(fica).not.toContainText('desativada: ela')
+    // O "como usar" do "todos para" mora na dica (2026-11-16).
+    await janela.getByRole('button', { name: 'Como funciona o repassar todos os agendamentos' }).hover()
     await expect(janela.locator('[data-repassar-todos-explica]')).toContainText('Preenche todas as linhas')
     await janela.getByRole('button', { name: 'Voltar' }).click()
   })

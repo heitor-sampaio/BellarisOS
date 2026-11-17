@@ -11,6 +11,7 @@ import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/li
 import { textoDaBase } from '@/lib/comissoes/base-efetiva'
 import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda, vinculosDoExtrato } from '@/lib/comissoes/extrato-texto'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Financeiro → Comissões (os dois portais). Por profissional e unidade: o que
@@ -97,18 +98,40 @@ export function FinanceiroComissoes(p: PropsDaTela) {
     </div>
   )
 
+  // A regra da comissão (e, com mais de uma unidade, o fechamento por unidade)
+  // mora na dica do título (2026-11-16 — eram dois parágrafos fixos embaixo dos totais).
+  const porUnidade = (p.unidades?.length ?? 0) > 1 || new Set(p.resumo.map(r => r.branchId)).size > 1
+  const dicaDoTitulo = (
+    <Dica rotulo="Sobre as comissões" largura={340}>
+      <span data-regra-da-comissao style={{ display: 'block' }}>
+        A comissão fica a pagar quando a cliente paga tudo o que a gerou: o atendimento pago, ou a venda inteira do pacote, do plano ou do produto.
+        Cartão de crédito em várias vezes conta como pago. O que a cliente ainda deve à rede fica “aguardando o pagamento integral”
+        {p.totais.aguardando > 0 ? ` (${formatBRL(p.totais.aguardando)} no total)` : ''}, fora do a pagar.
+      </span>
+      {/* A27 da 14ª: o fechamento é por profissional E unidade — quem atende em
+          duas tem dois fechamentos, e a tela não dizia. */}
+      {porUnidade && (
+        <span data-fechamento-por-unidade style={{ display: 'block', marginTop: 6 }}>
+          O fechamento é por unidade: quem atende em mais de uma tem um fechamento em cada, e cada um vira uma despesa paga no financeiro daquela unidade.
+        </span>
+      )}
+    </Dica>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         {p.dentroDasAbas ? (
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
-            {p.titulo}
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span>{p.titulo}</span>
+            {dicaDoTitulo}
           </h2>
         ) : (
           <div>
             <Link href={p.voltarPara} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>← Financeiro</Link>
-            <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', marginTop: 4 }}>
-              {p.titulo}
+            <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>{p.titulo}</span>
+              {dicaDoTitulo}
             </h1>
           </div>
         )}
@@ -134,18 +157,6 @@ export function FinanceiroComissoes(p: PropsDaTela) {
         {kpi('Lançado no período', p.totais.liberado)}
         {kpi('Pago no período', p.totais.pago)}
       </div>
-      <p data-regra-da-comissao style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        A comissão fica a pagar quando a cliente paga tudo o que a gerou: o atendimento pago, ou a venda inteira do pacote, do plano ou do produto.
-        Cartão de crédito em várias vezes conta como pago. O que a cliente ainda deve à rede fica “aguardando o pagamento integral”
-        {p.totais.aguardando > 0 ? ` (${formatBRL(p.totais.aguardando)} no total)` : ''}, fora do a pagar.
-      </p>
-      {/* A27 da 14ª: o fechamento é por profissional E unidade — quem atende em
-          duas tem dois fechamentos, e a tela não dizia. */}
-      {((p.unidades?.length ?? 0) > 1 || new Set(p.resumo.map(r => r.branchId)).size > 1) && (
-        <p data-fechamento-por-unidade style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          O fechamento é por unidade: quem atende em mais de uma tem um fechamento em cada, e cada um vira uma despesa paga no financeiro daquela unidade.
-        </p>
-      )}
 
       {p.resumo.length === 0 ? (
         <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>

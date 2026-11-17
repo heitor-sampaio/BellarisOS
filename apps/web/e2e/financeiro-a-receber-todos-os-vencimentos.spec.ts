@@ -67,13 +67,13 @@ test('o banco: todo o em aberto, de qualquer vencimento (R$ 450), por unidade e 
     .toEqual(expect.arrayContaining([[null, 450], [rede!.branchId, 450]]))
 })
 
-test('o financeiro da unidade e o da rede: o mês (R$ 100) e "Em aberto, todos os vencimentos: R$ 450,00"', async ({ browser }) => {
+test('o financeiro da unidade e o da rede: o mês (R$ 100) e "Em aberto: R$ 450,00"', async ({ browser }) => {
   await como(browser, dona!, async p => {
     for (const tela of [`/${slug}/financeiro?period=month`, '/admin/financeiro?period=month']) {
       await p.goto(tela)
       const cartao = p.locator('[data-kpi="a-receber"]')
       await expect(cartao, tela).toContainText(/R\$\s*100,00/)
-      await expect(cartao, tela).toContainText(/Em aberto, todos os vencimentos:\s*R\$\s*450,00/)
+      await expect(cartao, tela).toContainText(/Em aberto:\s*R\$\s*450,00/)
     }
   })
 })
@@ -94,9 +94,9 @@ test('"Reforça", item 4: o Financeiro mostra o atendimento concluído sem pagam
       const cartao = p.locator('[data-kpi="a-receber"]')
       // Separado e nomeado: não entra no número do cartão nem no em aberto dos lançamentos.
       await expect(cartao, tela).toContainText(/R\$\s*100,00/)
-      await expect(cartao, tela).toContainText(/Em aberto, todos os vencimentos:\s*R\$\s*450,00/)
+      await expect(cartao, tela).toContainText(/Em aberto:\s*R\$\s*450,00/)
       await expect(cartao.locator('[data-concluidos-sem-pagamento]'), tela)
-        .toContainText(/Atendimentos concluídos sem pagamento:\s*R\$\s*650,00/)
+        .toContainText(/Concluídos sem pagamento:\s*R\$\s*650,00/)
     }
     // O Fechamento do dia não cita mais o a receber nem as parcelas em aberto
     // (CX5, 2026-11-14): o concluído sem pagamento é comanda aberta no PDV, e
@@ -120,6 +120,6 @@ test('ind-11: a unidade DESATIVADA com conta a receber entra no em aberto da red
 
   await como(browser, dona!, async p => {
     await p.goto('/admin/financeiro?period=month')
-    await expect(p.locator('[data-kpi="a-receber"]')).toContainText(/Em aberto, todos os vencimentos:\s*R\$\s*650,00/)
+    await expect(p.locator('[data-kpi="a-receber"]')).toContainText(/Em aberto:\s*R\$\s*650,00/)
   })
 })

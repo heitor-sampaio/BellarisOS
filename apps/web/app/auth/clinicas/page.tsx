@@ -5,6 +5,7 @@ import AuthLayout from '@/app/(auth)/layout'
 import { SeletorDeRede } from '@/components/client-portal/seletor-de-rede'
 import { BotaoSairDoPortal } from '@/components/client-portal/botao-sair'
 import { fichasQueAbrem } from '@/lib/clientes/disponibilidade'
+import { Dica } from '@/components/shared/dica'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,15 +32,16 @@ export default async function SeletorDeRedePage() {
         background: 'var(--surface)', border: '1px solid var(--border)',
         borderRadius: 'var(--radius-card-token)', padding: 24,
       }}>
-        <h1 style={{
-          fontSize: 'var(--text-name)', fontWeight: 'var(--weight-extrabold)',
-          letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', margin: 0,
-        }}>
-          Onde você quer entrar?
-        </h1>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '6px 0 18px' }}>
-          Sua conta está em mais de uma rede. Dá para trocar depois, pelo nome no topo.
-        </p>
+        {/* O "por que" desta tela mora na dica do título (2026-11-16). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', marginBottom: 18 }}>
+          <h1 style={{
+            fontSize: 'var(--text-name)', fontWeight: 'var(--weight-extrabold)',
+            letterSpacing: 'var(--tracking-tight)', color: 'var(--text)', margin: 0,
+          }}>
+            Onde você quer entrar?
+          </h1>
+          <Dica rotulo="Por que escolher">Sua conta está em mais de uma rede. Dá para trocar depois, pelo nome no topo.</Dica>
+        </div>
         <SeletorDeRede redes={fichas.map(f => ({
           clientId: f.clientId, unidade: f.unidade, rede: f.rede, disponivel: abertas.has(f.clientId),
         }))} />

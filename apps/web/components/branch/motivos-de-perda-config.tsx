@@ -4,6 +4,7 @@ import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { criarMotivoDePerda, alternarMotivoDePerda } from '@/actions/crm-motivos'
+import { Dica } from '@/components/shared/dica'
 
 export interface MotivoConfiguravel { id: string; nome: string; ativo: boolean }
 
@@ -43,11 +44,12 @@ export function MotivosDePerdaConfig({ motivos }: { motivos: MotivoConfiguravel[
 
   return (
     <section style={{ borderTop: '1px solid var(--hairline)', padding: '18px 24px 26px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <h3 style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>Motivos de perda</h3>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+        {/* A explicação mora na dica (2026-11-16). */}
+        <Dica rotulo="Sobre os motivos de perda">
           Levar a oportunidade a uma etapa de perdido pergunta um destes. Desativar tira da lista sem apagar o histórico.
-        </p>
+        </Dica>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

@@ -17,6 +17,7 @@ import {
 import {
   createFunnel, renameFunnel, setDefaultFunnel, setFunnelArchived, deleteFunnel, reorderFunnels,
 } from '@/actions/crm-funnels'
+import { Dica } from '@/components/shared/dica'
 import { MotivosDePerdaConfig, type MotivoConfiguravel } from './motivos-de-perda-config'
 import { OrigensDoLeadConfig, type OrigemConfiguravel } from './origens-do-lead-config'
 
@@ -590,12 +591,13 @@ export function CRMStageSettings({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div>
-            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-              Configurar funis
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>Configurar funis</span>
+              {/* A legenda de uso mora na dica (2026-11-16). */}
+              <Dica rotulo="Como configurar os funis">
+                Arraste para reordenar · clique no círculo para mudar a cor · o resultado da etapa alimenta a conversão
+              </Dica>
             </h2>
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-              Arraste para reordenar · clique no círculo para mudar a cor · o resultado da etapa alimenta a conversão
-            </p>
           </div>
           <button type="button" onClick={close} style={{
             width: 32, height: 32, borderRadius: 10,
@@ -613,7 +615,12 @@ export function CRMStageSettings({
 
           {/* -- Mestre: funis -- */}
           <div style={{ width: 290, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p className="overline" style={{ marginBottom: 2 }}>FUNIS</p>
+            <p className="overline" style={{ marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>FUNIS</span>
+              <Dica rotulo="Sobre criar um funil">
+                O formulário abaixo cria um funil novo, com quatro etapas que você renomeia ou remove. Os funis que já existem, o padrão inclusive, ficam como estão.
+              </Dica>
+            </p>
 
             {visiveis.map((f, idx) => (
               <div
@@ -681,9 +688,6 @@ export function CRMStageSettings({
                 {funnelState.error}
               </p>
             )}
-            <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', lineHeight: 1.45 }}>
-              Este formulário cria um funil novo, com quatro etapas que você renomeia ou remove. Os funis que já existem, o padrão inclusive, ficam como estão.
-            </p>
           </div>
 
           {/* -- Detalhe: etapas do funil selecionado -- */}

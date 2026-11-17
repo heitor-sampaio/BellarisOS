@@ -115,6 +115,8 @@ test('A50: "Insumos e produtos vendidos" diz o que soma, e a tela diz que perda 
     await p.goto('/admin/reports?tab=financeiro')
     await p.getByRole('button', { name: /O que entra em Insumos e produtos/ }).click()
     await expect(p.getByText(/insumo usado nos atendimentos/)).toBeVisible()
+    // O que fica fora do lucro mora na dica do título do DRE (2026-11-16).
+    await p.getByRole('button', { name: 'O que fica fora do lucro' }).hover()
     await expect(p.locator('[data-fora-do-lucro]')).toContainText('A perda e o ajuste de estoque ficam fora do lucro')
   })
 })

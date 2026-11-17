@@ -6,6 +6,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { useFala } from '@/components/shared/uma-unidade'
 import { AtendeNasUnidades } from '@/components/shared/atende-nas-unidades'
 import { principalDasMarcadas } from '@/lib/unidades/do-membro'
+import { Dica } from '@/components/shared/dica'
 
 interface Unidade { id: string; name: string }
 
@@ -54,7 +55,17 @@ export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'un
       <input type="hidden" name="scope" value={valor === 'rede' ? 'network' : 'branch'} />
       <input type="hidden" name="_unidades" value="1" />
       <input type="hidden" name="unidades" value={marcadas.join(',')} />
-      <span id={titulo} className="overline">Unidades</span>
+      {/* O "o que vale" de cada escolha mora na dica (2026-11-16). */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+        <span id={titulo} className="overline">Unidades</span>
+        {(valor === 'rede' || unidades.length > 1) && (
+          <Dica rotulo="Sobre o acesso às unidades">
+            {valor === 'rede'
+              ? fala('Acesso a todas as unidades, inclusive as que a rede abrir depois.')
+              : 'A pessoa abre e opera só as unidades marcadas. Com mais de uma, ela troca de unidade pelo topo da tela.'}
+          </Dica>
+        )}
+      </span>
       {editaveis === null && (
         <SegSelect
           options={[
@@ -66,11 +77,7 @@ export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'un
           ariaLabel="Unidades do membro"
         />
       )}
-      {valor === 'rede' ? (
-        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-          {fala('Acesso a todas as unidades, inclusive as que a rede abrir depois.')}
-        </span>
-      ) : (
+      {valor !== 'rede' && (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
             {unidades.map(u => (
@@ -83,11 +90,6 @@ export function UnidadesDoMembro({ unidades, editaveis, valor, aoMudar, id = 'un
               </label>
             ))}
           </div>
-          {unidades.length > 1 && (
-            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-              A pessoa abre e opera só as unidades marcadas. Com mais de uma, ela troca de unidade pelo topo da tela.
-            </span>
-          )}
           {/* A20 da 17ª (princípio 3): a principal é o destino do login, e a tela não dizia qual era. */}
           {marcadas.length > 1 && principal && (
             <span data-unidade-principal style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>

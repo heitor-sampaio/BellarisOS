@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { MessageCircle, Sparkles, X } from 'lucide-react'
 import { contratarAdicional } from '@/actions/assinatura'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { Dica } from '@/components/shared/dica'
 import { reaisDe } from '@/lib/redes/valor'
 import type { ChaveDeAdicional } from '@estetica-os/nucleo/lib/planos/recursos'
 
@@ -58,8 +59,11 @@ export function AdicionaisDaRede({ adicionais, totalCentavos, cobranca, semContr
 
   return (
     <section className="card adicionais-da-rede" aria-label="Adicionais">
-      <p className="overline">Adicionais</p>
-      <p className="adicionais-da-rede-ajuda">Contrate além do plano. O valor entra na mensalidade.</p>
+      {/* O "como funciona" mora na dica do título (2026-11-16 — era uma linha fixa). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <p className="overline">Adicionais</p>
+        <Dica rotulo="Sobre os adicionais">Contrate além do plano. O valor entra na mensalidade.</Dica>
+      </div>
       <ul className="adicionais-da-rede-lista">
         {visiveis.map(a => (
           <li key={a.chave}>

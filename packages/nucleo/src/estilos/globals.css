@@ -2969,3 +2969,17 @@ body:has(.copilot-botao:not([data-subir="sim"])) main {
   .seletor-de-unidade { max-width: 150px; }
   .seletor-de-unidade-rotulo { display: none; }
 }
+
+/* O nome da dica (components/dica.tsx, 2026-11-17): o conteúdo gerado entra no
+   nome acessível do botão (o leitor de tela lê; o getByRole acha), mas não no
+   getByLabel do campo vizinho nem no texto do rótulo em que a dica mora. Fica
+   fora da vista, sem ocupar espaço (o [data-dica] em volta é position: relative). */
+.dica-nome::after {
+  content: attr(data-rotulo);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

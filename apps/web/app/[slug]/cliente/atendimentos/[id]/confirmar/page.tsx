@@ -8,6 +8,7 @@ import { ConfirmAppointmentForm } from '@/components/client-portal/confirm-appoi
 import { ler } from '@/lib/db'
 import { oQueARedeAvalia, procedimentosDoAtendimento } from '@/lib/avaliacao/leitura'
 import { avaliaOAtendimento, avaliaOsProcedimentos } from '@/lib/avaliacao/notas'
+import { Dica } from '@/components/shared/dica'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,12 +62,15 @@ export default async function ConfirmAppointmentPage({
         <ChevronLeft size={16} /> Voltar
       </Link>
 
-      <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 6 }}>
-        Confirmar atendimento
-      </h1>
-      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 20 }}>
-        Confirme que este atendimento foi realizado. {textoDoPedido}
-      </p>
+      {/* A apresentação mora na dica (docs/regras/design.md, "A explicação mora na dica"). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, color: 'var(--text-muted)' }}>
+        <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+          Confirmar atendimento
+        </h1>
+        <Dica rotulo="Sobre a confirmação">
+          Confirme que este atendimento foi realizado. {textoDoPedido}
+        </Dica>
+      </div>
 
       <ConfirmAppointmentForm
         appointmentId={appt!.id as string}

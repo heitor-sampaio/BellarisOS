@@ -8,6 +8,7 @@ import { marcacaoParaEditor } from '@/lib/documentos/editor/da-marcacao'
 import { normalizarListasDoEditor, type DocumentoDoEditor, type NoPM } from '@/lib/documentos/editor/converter'
 import { ROTULO_DO_TIPO, TIPOS_DE_MODELO, validarDocumentoDoEditor, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { salvarModeloDoEditor, salvarModeloDeArquivo, linkDoArquivoDoModelo } from '@/actions/modelos-de-documento'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O editor de um modelo de documento: termo, contrato do procedimento,
@@ -272,16 +273,19 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, image
               onChange={e => setArquivo(e.target.files?.[0] ?? null)} />
           </label>
           {existente?.arquivo && arquivo && (
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-              Trocar o arquivo abre a versão {existente.versao + 1}. Quem já assinou continua com a versão que assinou.
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>Trocar o arquivo abre a versão {existente.versao + 1}.</span>
+              {/* O "por que" mora na dica (2026-11-16). */}
+              <Dica rotulo="Sobre a versão nova">Quem já assinou continua com a versão que assinou.</Dica>
             </p>
           )}
         </div>
       )}
 
       {!criando && origem === 'EDITOR' && (alterado || !existente.documento) && (
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          Salvar abre a versão {existente.versao + 1}. Quem já assinou continua com a versão que assinou.
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Salvar abre a versão {existente.versao + 1}.</span>
+          <Dica rotulo="Sobre a versão nova">Quem já assinou continua com a versão que assinou.</Dica>
         </p>
       )}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
@@ -310,12 +314,15 @@ const DICA_DO_TIPO: Record<TipoDeModelo, string> = {
   DOCUMENTO:      'Qualquer outro documento para a cliente assinar (autorização de imagem, orientações…). Liga-se ao procedimento em "Outros documentos".',
 }
 
+/** O campo do modelo. A `dica` (o que a escolha faz) mora no "i" ao lado do rótulo (2026-11-16 — era um parágrafo embaixo). */
 function Campo({ rotulo, dica, children }: { rotulo: string; dica?: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>{rotulo}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+        <span>{rotulo}</span>
+        {dica && <Dica rotulo={`Sobre: ${rotulo}`}>{dica}</Dica>}
+      </span>
       {children}
-      {dica && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{dica}</p>}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
 import { SettingsEventos } from '@/components/admin/settings-eventos'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { VistasDasAutomacoes } from '@/components/admin/automacoes/vistas'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * "O que já aconteceu" (CF2, docs/revisao.md — o Heitor, 2026-11-13:
@@ -22,17 +23,18 @@ export default async function EventosDasAutomacoesPage() {
   return (
     <div>
       <VistasDasAutomacoes ativa="eventos" />
-      <div style={{ marginBottom: 24 }}>
+      {/* A apresentação mora na dica (2026-11-16). */}
+      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 6 }}>
         <h1 style={{
           fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
           letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
         }}>
           O que já aconteceu
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4, maxWidth: 640, lineHeight: 1.5 }}>
+        <Dica rotulo="Sobre o que já aconteceu">
           Os fatos que o sistema registrou — agendou, pagou, faltou — e quantas vezes cada um aconteceu.
           É deles que as automações partem.
-        </p>
+        </Dica>
       </div>
       {/* A corrente cresce enquanto a tela está aberta — quem veio conferir se
           um gatilho dispara quer ver o fato chegando, não recarregar. */}

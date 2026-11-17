@@ -9,6 +9,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { anteciparParcelaDaOperadora, desfazerRecebimentoDaParcelaDaOperadora } from '@/actions/financial'
 import type { ParcelaDaOperadora, SituacaoDaParcela } from '@/lib/metrics/operadora'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * As parcelas do cartão em N vezes que a OPERADORA deposita, mês a mês (F2c da
@@ -114,17 +115,18 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
 
   return (
     <div data-recebiveis-da-operadora id={ANCORA_DAS_PARCELAS} style={{ scrollMarginTop: 'calc(var(--topbar-h) + 16px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <CreditCard size={15} style={{ color: 'var(--brand)' }} />
-        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-          Cartão de crédito: a receber da operadora
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Cartão de crédito: a receber da operadora</span>
+          {/* O "o que esta lista mostra" mora na dica (2026-11-16 — era um parágrafo fixo). */}
+          <Dica rotulo="Sobre o a receber da operadora" largura={320}>
+            A cliente já pagou tudo na maquininha e a receita entrou no dia da venda. Aqui está todo o em aberto que a
+            operadora ainda deposita, por mês de depósito, e o que venceu no período: cada parcela a cada N dias da venda
+            (o prazo da operadora, em Configurações → Comissões e taxas). Cada parcela vira recebida sozinha na data.
+          </Dica>
         </p>
       </div>
-      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 12 }}>
-        A cliente já pagou tudo na maquininha e a receita entrou no dia da venda. Aqui está todo o em aberto que a
-        operadora ainda deposita, por mês de depósito, e o que venceu no período: cada parcela a cada N dias da venda
-        (o prazo da operadora, em Configurações → Comissões e taxas). Cada parcela vira recebida sozinha na data.
-      </p>
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-wrap">
           <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -226,14 +228,17 @@ export function ParcelasDaOperadora({ parcelas, podeMarcar, slug, unidades }: {
       {aMarcar && (
         <JanelaModal rotulo="Marcar a parcela como recebida" largura={440} travado={marcando} onFechar={() => setAMarcar(null)}>
           <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Marcar a parcela como recebida?</h2>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>Marcar a parcela como recebida?</span>
+              {/* O "quando usar" mora na dica (2026-11-16): marcar se desfaz. */}
+              <Dica rotulo="Quando marcar a parcela recebida">
+                Use quando a operadora antecipou o depósito. Na data, a parcela vira recebida sozinha. Não muda a
+                receita: a venda já entrou inteira no dia dela.
+              </Dica>
+            </h2>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
               <strong style={{ color: 'var(--text)' }}>{aMarcar.descricao}</strong> · parcela {aMarcar.numero}/{aMarcar.total} ·{' '}
               {formatBRL(aMarcar.valor)} · vence em {dia(aMarcar.vencimentoDia)}
-            </p>
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-              Use quando a operadora antecipou o depósito. Na data, a parcela vira recebida sozinha. Não muda a
-              receita: a venda já entrou inteira no dia dela.
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" className="btn-secondary" disabled={marcando} onClick={() => setAMarcar(null)}>Voltar</button>

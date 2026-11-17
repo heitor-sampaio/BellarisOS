@@ -121,7 +121,7 @@ test('na ficha: "Trazer pacote de fora" — 4 de 6 restantes, 2 usadas antes do 
     await expect(janela.locator('[data-conta-do-pacote-de-fora]')).toContainText('Ficam 4 de 6 sessões para agendar')
     await expect(janela.locator('[data-conta-do-pacote-de-fora]')).toContainText('R$ 200,00 por sessão')
     await expect(janela.locator('[data-conta-do-pacote-de-fora]')).toContainText('não entra no caixa')
-    await janela.getByRole('button', { name: 'Trazer pacote' }).click()
+    await janela.getByRole('button', { name: 'Trazer pacote', exact: true }).click()
     await expect(janela).toBeHidden({ timeout: 15_000 })
 
     const cartao = p.locator('[data-pacote-de-fora]')

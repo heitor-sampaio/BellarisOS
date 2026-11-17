@@ -17,6 +17,7 @@ import { DocumentosDaJanela } from './documentos-da-janela'
 import { MudarDeUnidade, TrocarProfissional, UsarOQueJaFoiPago } from './janela-do-agendamento-acoes'
 import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import { naParede, daParede } from '@/lib/datetime'
 
 interface AppointmentEvent {
@@ -382,14 +383,20 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               </button>
             )}
             {/* A5 da 10ª: três botões quase iguais, dois em rosé. Um só em
-                destaque (o próximo passo) e, com mais de um, o que cada um faz. */}
+                destaque (o próximo passo) e, com mais de um, o que cada um faz —
+                na dica desde 2026-11-16 ("A explicação mora na dica"). */}
             {[mostraConfirmar, mostraChegou, mostraChegarEIniciar].filter(Boolean).length > 1 && (
-              <p data-o-que-cada-um-faz style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                {[
-                  mostraConfirmar && 'Confirmar: a cliente confirmou que vem.',
-                  mostraChegou && 'Chegou: ela está na espera.',
-                  mostraChegarEIniciar && 'Marcar chegada e iniciar: ela chegou e o atendimento começa agora.',
-                ].filter(Boolean).join(' ')}
+              <p style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                <span>O que cada botão faz</span>
+                <Dica rotulo="O que cada botão faz">
+                  <span data-o-que-cada-um-faz>
+                    {[
+                      mostraConfirmar && 'Confirmar: a cliente confirmou que vem.',
+                      mostraChegou && 'Chegou: ela está na espera.',
+                      mostraChegarEIniciar && 'Marcar chegada e iniciar: ela chegou e o atendimento começa agora.',
+                    ].filter(Boolean).join(' ')}
+                  </span>
+                </Dica>
               </p>
             )}
             {mostraIniciar && (
@@ -493,7 +500,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                 Gerenciar, a profissional no DELA (agenda-06, 2026-11-02). A
                 janela mostra só o que a action deixa fazer. */}
             {podeCancelar && (
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {jaComecou && (
                 <button disabled={loading} onClick={() => { setConfirmandoFalta(true); setShowCancelReason(false) }} className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
                   <AlertCircle size={14} /> Não compareceu
@@ -502,14 +509,18 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               <button disabled={loading} onClick={() => { setShowCancelReason(true); setConfirmandoFalta(false) }} className="btn-ghost" style={{ flex: 1, justifyContent: 'center', color: 'var(--warning)' }}>
                 <Ban size={14} /> Cancelar
               </button>
+              {/* A27 da 12ª (princípio 3): a regra fica — a falta é de quem não veio
+                  NA HORA —, e a janela diz quando ela aparece: na dica, ao lado do
+                  "Cancelar" (2026-11-16). O rótulo não diz "Não compareceu": seria
+                  o nome de um botão que ainda não existe. */}
+              {!jaComecou && (
+                <Dica rotulo="Sobre a falta">
+                  <span data-falta-depois-do-horario>
+                    “Não compareceu” aparece a partir do horário marcado ({dateStr}, {timeStr}): antes dele, a cliente ainda pode vir. Para desmarcar agora, é “Cancelar”, com o motivo.
+                  </span>
+                </Dica>
+              )}
             </div>
-            )}
-            {/* A27 da 12ª (princípio 3): a regra fica — a falta é de quem não veio
-                NA HORA —, e a janela diz quando ela aparece. */}
-            {podeCancelar && !jaComecou && (
-              <p data-falta-depois-do-horario style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                “Não compareceu” aparece a partir do horário marcado ({dateStr}, {timeStr}): antes dele, a cliente ainda pode vir. Para desmarcar agora, é “Cancelar”, com o motivo.
-              </p>
             )}
 
             {confirmandoFalta && podeCancelar && jaComecou && (

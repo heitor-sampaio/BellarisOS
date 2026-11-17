@@ -13,6 +13,7 @@ import { uploadClientDocument, deleteClientDocument, enviarDocumentoACliente } f
 import { ehAnexoClinico, type AtendimentoDoAnexo } from '@/lib/clientes/anexos'
 import { rotaAtendimento } from '@/lib/rotas'
 import { SegSelect } from '@/components/shared/seg-select'
+import { Dica } from '@/components/shared/dica'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -282,7 +283,11 @@ export function AvisoDosAnexosClinicosFora({ quantos }: { quantos: number }) {
   return (
     <p data-anexos-clinicos-fora style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, padding: '12px 20px' }}>
       {quantos === 1 ? 'Há 1 anexo clínico desta cliente' : `Há ${quantos} anexos clínicos desta cliente`} (fotos, exames, laudos)
-      que a sua permissão não abre: o prontuário é de quem tem o Prontuário — e, no “só os meus”, das clientes que você atende.
+      que a sua permissão não abre.{' '}
+      {/* O "de quem é" mora na dica (2026-11-16); à vista, quantos ficam de fora. */}
+      <Dica rotulo="Por que os anexos clínicos não abrem">
+        O prontuário é de quem tem o Prontuário — e, no “só os meus”, das clientes que você atende.
+      </Dica>
     </p>
   )
 }
@@ -514,16 +519,16 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
             }}>
               <FileText size={22} style={{ color: 'var(--brand)' }} />
             </div>
-            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
-              Nenhum documento anexado
+            {/* PR1b: o exame, o laudo, a receita e a foto moram no Prontuário — e isso mora na dica (2026-11-16). */}
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>Nenhum documento anexado</span>
+              <Dica rotulo="Onde ficam os anexos clínicos">
+                Exames, laudos, receitas, fotos e termos anexados ficam na aba Prontuário, em Anexos clínicos.
+              </Dica>
             </p>
             {/* Só quem pode anexar ganha o convite (A23, 2026-11-01): sem o
                 cadastro nem o prontuário em Gerenciar, o botão abria um
                 formulário que a action recusava. */}
-            {/* PR1b: o exame, o laudo, a receita e a foto moram no Prontuário. */}
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', maxWidth: 320 }}>
-              Exames, laudos, receitas, fotos e termos anexados ficam na aba Prontuário, em Anexos clínicos.
-            </p>
             {podeAnexarComum && (<>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', maxWidth: 280 }}>
                 Adicione o RG, um comprovante ou outro arquivo da cliente.

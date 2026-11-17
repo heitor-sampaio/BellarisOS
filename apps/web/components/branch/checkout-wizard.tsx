@@ -44,6 +44,7 @@ import { maskPhone } from '@estetica-os/utils'
 import { documentoNaTela } from '@/lib/clients/documento-na-tela'
 import { useFidelidadeNaVenda } from '@/components/shared/pontos-na-venda'
 import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
+import { Dica } from '@/components/shared/dica'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -730,13 +731,15 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
       {plan.atendimentoDeHoje && (
         <div data-testid="atendimento-de-hoje" className="card" style={{ padding: '14px 20px', marginBottom: 20 }}>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
-            Atendimento de hoje — {plan.atendimentoDeHoje.procedimento} · {fmtBRL(plan.atendimentoDeHoje.preco)}
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Atendimento de hoje — {plan.atendimentoDeHoje.procedimento} · {fmtBRL(plan.atendimentoDeHoje.preco)}</span>
+            {/* O "por que está aqui" mora na dica (2026-11-16); o estado fica à vista. */}
+            <Dica rotulo="Sobre o atendimento de hoje">O plano acima é das PRÓXIMAS sessões.</Dica>
           </p>
           {/* A38 da 6ª simulação: aqui só o fato — se ele entra no checkout, quem
               diz é o passo do pagamento, pela forma escolhida (uma frase só). */}
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-            Ainda não foi recebido. O plano acima é das PRÓXIMAS sessões.
+            Ainda não foi recebido.
           </p>
         </div>
       )}
@@ -1021,9 +1024,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             Documentos para assinar
           </p>
           {(docs ?? []).length === 0 && (
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-              Nenhum documento configurado para este plano. O contrato de plano e os termos dos procedimentos
-              se montam em Configurações → Documentos.
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>Nenhum documento configurado para este plano.</span>
+              {/* O "onde se monta" mora na dica (2026-11-16); o vazio fica à vista. */}
+              <Dica rotulo="Onde se montam os documentos do plano">
+                O contrato de plano e os termos dos procedimentos se montam em Configurações → Documentos.
+              </Dica>
             </p>
           )}
           {(docs ?? []).map(d => {

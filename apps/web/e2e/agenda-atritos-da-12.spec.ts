@@ -99,6 +99,8 @@ test('A27: antes do horário, a janela diz quando o "Não compareceu" aparece', 
     await (await cartaoNaGradeDoDia(p, ag)).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
     await expect(janela.getByRole('button', { name: 'Não compareceu' })).toHaveCount(0)
+    // O "quando aparece" mora na dica ao lado do "Cancelar" (2026-11-16).
+    await janela.getByRole('button', { name: 'Sobre a falta' }).hover()
     await expect(janela.locator('[data-falta-depois-do-horario]')).toContainText('15:00')
   })
 })

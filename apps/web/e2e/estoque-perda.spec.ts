@@ -164,6 +164,8 @@ test.describe.serial('a saída por perda', () => {
       // com perdas para análise: o consumo (zero aqui) + as perdas.
       const kpi = (r: string) => p.getByText(r, { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"card")][1]')
       await expect(kpi('Perdas no período')).toContainText('925,00')
+      // A regra mora na dica do cartão (2026-11-16).
+      await kpi('Perdas no período').locator('[data-dica-botao]').hover()
       await expect(kpi('Perdas no período')).toContainText('não entra no lucro')
       await expect(kpi('Consumo com perdas')).toContainText('925,00')
     })

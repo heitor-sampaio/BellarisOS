@@ -102,10 +102,11 @@ test('A50 e A51: o "Sem preferência" do remarcar diz o que significa, e o remar
 
   await como(browser, async p => {
     await p.goto(`/${slug}/cliente/agendamentos/${id}`)
-    await p.getByRole('button', { name: 'Remarcar' }).click()
+    await p.getByRole('button', { name: 'Remarcar', exact: true }).click()
     const grupo = p.getByRole('group', { name: 'Com quem?' })
     await expect(grupo.getByRole('button', { name: 'Sem preferência' })).toHaveAttribute('aria-pressed', 'true')
-    // A50: a escolha diz o que é — hoje é com ela, e no horário novo pode mudar.
+    // A50: a escolha diz o que é — hoje é com ela, e no horário novo pode mudar (na dica, 2026-11-16).
+    await p.getByRole('button', { name: 'Sobre a escolha da profissional' }).hover()
     await expect(p.locator('[data-o-que-e-sem-preferencia]')).toContainText(`hoje o agendamento é com ${comQuem}`)
     await expect(p.locator('[data-o-que-e-sem-preferencia]')).toContainText('pode ser outra profissional')
     await expect(grupo.getByRole('button', { name: `Só com ${comQuem}` })).toBeVisible()
@@ -155,6 +156,8 @@ test('A55 e A56: o plano diz o nome e o desconto; o concluído diz que é para a
     await expect(avaliar).toContainText('Como foram os seus atendimentos')
     await expect(avaliar).not.toContainText('Aguardando sua confirmação')
     await expect(avaliar).toContainText(/Concluído em \d{2}\/\d{2}/)
+    // O "é opcional" mora na dica do título da seção (2026-11-16).
+    await avaliar.getByRole('button', { name: 'Sobre a avaliação' }).hover()
     await expect(avaliar).toContainText('opcional')
 
     await p.goto(`/${slug}/cliente/financeiro`)

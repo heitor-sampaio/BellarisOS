@@ -11,6 +11,7 @@ import { formatarPontos, rotuloDoLancamento, faltamPontos, jaPodeTrocar } from '
 import { TrocarRecompensa } from '@/components/client-portal/trocar-recompensa'
 import { quemTrocaPontos } from '@/lib/equipe/quem-desfaz'
 import { textoDoIndiqueUmaAmiga, COMO_INDICAR } from '@/lib/fidelidade/indicacao'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Portal do cliente → Meus pontos: saldo e extrato.
@@ -61,15 +62,16 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div>
-        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.025em', marginBottom: 4 }}>
+      {/* A apresentação mora na dica (docs/regras/design.md, "A explicação mora na dica"). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+        <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.025em' }}>
           Meus pontos
         </h1>
-        <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
+        <Dica rotulo="Sobre os pontos">
           {cfg.client_redeem
             ? 'Você ganha pontos a cada pagamento. Troque por uma recompensa aqui mesmo, ou use como desconto ao pagar.'
             : 'Você ganha pontos a cada pagamento. Para usar ou trocar por uma recompensa, fale com a equipe.'}
-        </p>
+        </Dica>
       </div>
 
       <div style={{
@@ -117,7 +119,17 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
 
       {recompensas.length > 0 && (
         <section className="card" style={{ padding: '14px 18px' }} aria-label="Recompensas">
-          <p className="overline" style={{ marginBottom: 8 }}>Troque seus pontos</p>
+          <p className="overline" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Troque seus pontos</span>
+            {/* Sem a troca pelo app, a quem pedir mora na dica; o "Você já pode trocar: peça à equipe." fica na linha. */}
+            {!cfg.client_redeem && (
+              <Dica rotulo="Quem faz a troca">
+                <span data-quem-troca>
+                  A troca é feita pela equipe{quemTroca.length > 0 ? `, com quem cuida da fidelidade: ${quemTroca.join(', ')}` : ''}.
+                </span>
+              </Dica>
+            )}
+          </p>
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {recompensas.map(r => (
               <li key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -143,11 +155,6 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
               </li>
             ))}
           </ul>
-          {!cfg.client_redeem && (
-            <p data-quem-troca style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 8 }}>
-              A troca é feita pela equipe{quemTroca.length > 0 ? `, com quem cuida da fidelidade: ${quemTroca.join(', ')}` : ''}.
-            </p>
-          )}
         </section>
       )}
 

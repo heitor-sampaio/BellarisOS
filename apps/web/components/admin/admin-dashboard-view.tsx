@@ -332,10 +332,16 @@ function RatingBadge({ value, max = 5 }: { value: number; max?: number }) {
 // --- KPI Card ----------------------------------------------------------------
 
 function KpiCard({
-  label, value, format = 'brl', sub, delta, icon, brand = false, anterior = 'mês anterior', semBase = false, dica,
+  label, value, format = 'brl', sub, delta, icon, brand = false, anterior = 'mês anterior', semBase = false, dica, sobre,
 }: {
   /** O que o número conta e qual data usa (J-56). */
   dica?:   DefinicaoDoNumero
+  /**
+   * O "como se calcula" do cartão (a base, a conta): mora na dica ao lado do
+   * rótulo, junto da definição — não embaixo do número (o Heitor, 2026-11-16;
+   * docs/regras/design.md, "A explicação mora na dica").
+   */
+  sobre?:  ReactNode
   /** Não há período anterior com o que comparar: o cartão diz, em vez de calar. */
   semBase?: boolean
   /** Com o que o delta compara ("ontem", "mês anterior"); nulo esconde o delta. */
@@ -344,6 +350,7 @@ function KpiCard({
   /** Nulo = sem base para o número: "—" (C48 da F68). */
   value:   number | null
   format?: 'brl' | 'int'
+  /** Um DADO embaixo do número ("1.234 no total"); a explicação vai em `sobre`. */
   sub?:    string
   delta?:  { pct: number; up: boolean } | null
   icon:    ReactNode
@@ -361,7 +368,15 @@ function KpiCard({
           fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
           color: brand ? 'rgba(255,255,255,.72)' : 'var(--text-muted)',
           display: 'inline-flex', alignItems: 'center', gap: 4,
-        }}>{label}{dica && <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>}</span>
+        }}>
+          <span>{label}</span>
+          {(dica != null || sobre != null) && (
+            <Dica rotulo={dica?.rotulo ?? `Sobre: ${label}`}>
+              {dica?.texto}
+              {dica && sobre != null ? <span style={{ display: 'block', marginTop: 6 }}>{sobre}</span> : sobre}
+            </Dica>
+          )}
+        </span>
         <div style={{
           width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: brand ? 'rgba(255,255,255,.18)' : 'var(--brand-soft)',
@@ -549,7 +564,7 @@ export function AdminDashboardView({
           dica={DEFINICOES.despesa}
           value={totalCost}
           format="brl"
-          sub="o caixa; o custo do gráfico soma os insumos"
+          sobre={<span data-base-das-despesas>É o caixa; o custo do gráfico soma também os insumos.</span>}
           icon={<TrendingDown size={16} color="var(--brand)" />}
         />}
         {can('agenda') && <KpiCard
@@ -557,7 +572,7 @@ export function AdminDashboardView({
           dica={DEFINICOES.atendimentos}
           value={totalAppointments}
           format="int"
-          sub={`concluídos ${rotulo.noPeriodo}`}
+          sobre={`Os concluídos ${rotulo.noPeriodo}.`}
           delta={deltaAppointments}
           semBase={prevAppointments === 0}
           anterior={rotulo.anterior}
@@ -578,7 +593,7 @@ export function AdminDashboardView({
           dica={DEFINICOES.ticket}
           value={ticketMedio}
           format="brl"
-          sub={`pago pelas clientes ÷ ${clientesQuePagaram} ${clientesQuePagaram === 1 ? 'cliente que pagou' : 'clientes que pagaram'}`}
+          sobre={<span data-conta-do-ticket>{`Pago pelas clientes ÷ ${clientesQuePagaram} ${clientesQuePagaram === 1 ? 'cliente que pagou' : 'clientes que pagaram'}.`}</span>}
           icon={<Zap size={16} color="var(--brand)" />}
         />}
       </div>
@@ -606,15 +621,19 @@ export function AdminDashboardView({
               com a agenda "só os meus", fica de fora (a evolução segue). */}
           {!agendaPropria && !umaUnidade && (<>
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de unidades</span>
+            {/* A26 da 14ª: a mesma cliente conta em cada unidade em que foi
+                atendida — a coluna somava mais que o cartão "Novos clientes", e a
+                tela não dizia por quê (princípio 3). Diz na dica do título (2026-11-16). */}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de unidades</span>
+              <Dica rotulo="Como os novos de cada unidade são contados">
+                <span data-recorte-do-ranking>
+                  Novos: as clientes novas atendidas na unidade (com agendamento nela). Quem foi atendida em duas unidades conta em cada uma, por isso a soma pode passar do cartão “Novos clientes”.
+                </span>
+              </Dica>
+            </span>
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{monthLabel}</span>
           </div>
-          {/* A26 da 14ª: a mesma cliente conta em cada unidade em que foi
-              atendida — a coluna somava mais que o cartão "Novos clientes", e a
-              tela não dizia por quê (princípio 3). */}
-          <p data-recorte-do-ranking style={{ padding: '8px 20px', borderBottom: '1px solid var(--border)', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            Novos: as clientes novas atendidas na unidade (com agendamento nela). Quem foi atendida em duas unidades conta em cada uma, por isso a soma pode passar do cartão “Novos clientes”.
-          </p>
 
           <div className="table-wrap">
           {/* `cards-mobile`: sete colunas nao cabem em 390px, e a tabela
@@ -953,11 +972,12 @@ export function AdminDashboardView({
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Taxa de aproveitamento
-              <Dica rotulo={DEFINICOES.aproveitamento.rotulo}>{DEFINICOES.aproveitamento.texto}</Dica>
-            </span>
-            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginLeft: 10 }}>
-              horários passados concluídos ÷ total marcado
+              <span>Taxa de aproveitamento</span>
+              <Dica rotulo={DEFINICOES.aproveitamento.rotulo}>
+                {DEFINICOES.aproveitamento.texto}
+                {/* Era a legenda ao lado do título (2026-11-16: a explicação mora na dica). */}
+                <span data-conta-do-aproveitamento style={{ display: 'block', marginTop: 6 }}>Horários passados concluídos ÷ total marcado.</span>
+              </Dica>
             </span>
           </div>
           <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{monthLabel}</span>
@@ -1582,10 +1602,11 @@ export function AdminDashboardView({
       <SectionHeader title="Marketing" />
       {marketing.connected ? (
         <div className="kpi-grid-auto" style={{ gap: 16 }}>
-          <KpiCard label="Investimento (Meta)" value={marketing.spend} format="brl" sub="no período" icon={<TrendingUp size={16} color="var(--brand)" />} />
-          <KpiCard label="Alcance" value={marketing.reach} format="int" sub="pessoas alcançadas no período, cada uma uma vez" icon={<Users size={16} color="var(--brand)" />} />
+          {/* O "como se lê" de cada cartão mora na dica (2026-11-16); o "N no total" é dado e fica. */}
+          <KpiCard label="Investimento (Meta)" value={marketing.spend} format="brl" sobre="O investido no período." icon={<TrendingUp size={16} color="var(--brand)" />} />
+          <KpiCard label="Alcance" value={marketing.reach} format="int" sobre="Pessoas alcançadas no período, cada uma uma vez." icon={<Users size={16} color="var(--brand)" />} />
           <KpiCard label="Campanhas ativas" value={marketing.activeCampaigns} format="int" sub={`${marketing.totalCampaigns} no total`} icon={<Zap size={16} color="var(--brand)" />} />
-          <KpiCard label="Notificações ativas" value={marketing.notifActive} format="int" sub="campanhas rodando" icon={<Calendar size={16} color="var(--brand)" />} />
+          <KpiCard label="Notificações ativas" value={marketing.notifActive} format="int" sobre="As campanhas de notificação rodando." icon={<Calendar size={16} color="var(--brand)" />} />
         </div>
       ) : (
         <div className="card" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>

@@ -4,6 +4,7 @@ import { useId } from 'react'
 import { ShieldAlert } from 'lucide-react'
 import { maskCPF, maskTelefoneDigitando, idadeEm } from '@estetica-os/utils'
 import { PARENTESCOS } from '@/lib/clients/menor'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O responsável legal da menor de idade, no cadastro e na aba Dados da ficha
@@ -41,13 +42,19 @@ export function ResponsavelLegal({ nascimento, valor, aoMudar, comNomes = false 
         <h3 id={`${id}-titulo`} style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
           Responsável legal
         </h3>
+        {/* Com o responsável preenchido, o "o que ele faz" mora na dica (2026-11-16); fora do
+            título, para não mudar o nome da seção (aria-labelledby). */}
+        {valor.nome.trim() && (
+          <Dica rotulo="Sobre o responsável legal">O responsável assina o termo pela menor, e o termo pode citá-lo.</Dica>
+        )}
         <span className="chip chip-brand">Menor · {idade} anos</span>
       </div>
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: valor.nome.trim() ? 'var(--text-muted)' : 'var(--warning)', fontWeight: valor.nome.trim() ? 'var(--weight-regular)' : 'var(--weight-semibold)', lineHeight: 1.5 }}>
-        {valor.nome.trim()
-          ? 'O responsável assina o termo pela menor, e o termo pode citá-lo.'
-          : 'Menor de idade: cadastre o responsável legal — é ele quem assina o termo. Dá para salvar sem ele.'}
-      </p>
+      {/* Sem ele, o aviso que pede ação fica à vista. */}
+      {!valor.nome.trim() && (
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', lineHeight: 1.5 }}>
+          Menor de idade: cadastre o responsável legal — é ele quem assina o termo. Dá para salvar sem ele.
+        </p>
+      )}
       <div className="form-2col">
         <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <span className="field-label">Nome do responsável</span>

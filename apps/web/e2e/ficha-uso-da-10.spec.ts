@@ -96,6 +96,8 @@ test('A27: a página do plano fechado tem "Cancelar plano", e quem não pode lê
   })
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/planejamentos/${planId}`)
+    // A quem pedir mora na dica do rodapé do resumo (2026-11-16).
+    await p.getByRole('button', { name: 'Quem cancela o plano' }).hover()
     await expect(p.locator('[data-quem-cancela-o-plano]')).toContainText('Financeiro em Gerenciar')
     await expect(p.locator('[data-cancelar-plano]')).toHaveCount(0)
   })
@@ -104,6 +106,8 @@ test('A27: a página do plano fechado tem "Cancelar plano", e quem não pode lê
 test('A29: o Investido total diz que o crédito comprado conta na compra', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/clients/${elisa}`)
+    // A nota mora na dica do "Investido total" (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre o investido total' }).hover()
     await expect(p.locator('[data-pago-com-credito]').first()).toContainText('crédito interno comprado')
   })
 })
@@ -131,7 +135,10 @@ test('A35: o Reativar diz que quem tem horário marcado sai da conta, e o link d
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/dashboard`)
     const quadro = p.locator('[data-reativar-clientes]')
+    // O recorte do quadro mora na dica do título (2026-11-16).
+    await quadro.locator('[data-dica-botao]').hover()
     await expect(quadro).toContainText('quem tem horário marcado não entra')
+    await p.mouse.move(0, 0)
     await expect(quadro.getByRole('link', { name: /Ver mais \d+ \(\d+ no total\)/ })).toBeVisible()
   })
 })

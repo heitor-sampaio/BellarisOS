@@ -218,11 +218,15 @@ test('a escolha fica na linha do CRM, na aba Cargos, e é gravada ao salvar', as
     await page.waitForLoadState('networkidle')
     await page.getByText(`${PREFIXO} Cargo Cx ${marca}`).first().click()
 
+    // O que a escolha faz mora na dica ao lado de "WhatsApp no inbox" (2026-11-16).
+    const dica = page.getByRole('button', { name: 'Sobre o WhatsApp no inbox' })
     const explicacao = page.getByTestId('explicacao-caixas')
+    await dica.hover()
     await expect(explicacao, 'padrão: nenhum cargo muda de visão sem alguém pedir')
       .toContainText('todos os números')
 
     await page.getByRole('button', { name: 'Só as da pessoa' }).click()
+    await dica.hover()
     await expect(explicacao).toContainText('Sem número ligado')
     await page.getByRole('button', { name: 'Salvar acessos' }).click()
     await expect(page.getByText('Acessos salvos.')).toBeVisible()

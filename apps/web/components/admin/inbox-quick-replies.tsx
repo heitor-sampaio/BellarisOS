@@ -7,6 +7,7 @@ import {
 } from '@/actions/quick-replies'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * As respostas rápidas da pessoa (cada uma tem as suas — H8, C72).
@@ -90,6 +91,14 @@ export function InboxQuickReplies({
             <p style={{ margin: 0, fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
               Minhas respostas rápidas
             </p>
+            {/* O "como usar" mora na dica (2026-11-16 — era um parágrafo embaixo da busca). */}
+            {!onEscolher && !editando && (
+              <Dica rotulo="Como usar as respostas rápidas">
+                <span data-como-usar-respostas>
+                  Só você vê as suas. Numa conversa, use o ⚡ ao lado do campo de mensagem ou digite / para inserir uma.
+                </span>
+              </Dica>
+            )}
           </div>
           <button type="button" onClick={onClose} className="btn-ghost" style={{ height: 30, padding: '0 8px' }}>
             <X size={15} />
@@ -156,12 +165,6 @@ export function InboxQuickReplies({
                 </button>
               )}
             </div>
-
-            {!onEscolher && (
-              <p data-como-usar-respostas style={{ margin: 0, padding: '10px 18px 0', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                Só você vê as suas. Numa conversa, use o ⚡ ao lado do campo de mensagem ou digite / para inserir uma.
-              </p>
-            )}
 
             <div style={{ padding: 12, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {erro && <Erro texto={erro} />}

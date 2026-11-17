@@ -12,6 +12,7 @@ import { previaDoCancelamentoDoPacote, cancelarPacote } from '@/actions/pacotes'
 import { previaDoCancelamentoDoPlano, cancelarPlano } from '@/actions/treatment-plans'
 import type { EscolhaDosAgendamentos, PreviaDoCancelamento } from '@/lib/pacotes/cancelamento'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { Dica } from '@/components/shared/dica'
 import {
   EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, type EscolhaDaDevolucaoEstado,
 } from '@/components/shared/escolha-da-devolucao'
@@ -134,15 +135,19 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
               borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)',
             }}>
               <div style={linha}>
-                <span>{previa.restantes} de {previa.sessoes} sessões restantes</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span>{previa.restantes} de {previa.sessoes} sessões restantes</span>
+                  {/* O "como se calcula" mora na dica (2026-11-16); o usado, que é dado, fica à vista. */}
+                  <Dica rotulo="Como se calcula o valor das restantes">
+                    {doPlano
+                      ? <>O valor das restantes é o preço de cada sessão no plano ({formatBRL(previa.preco)} no total, com o desconto); a feita vale o dela, sem multa.</>
+                      : <>O valor das restantes é a parte de cada uma no preço do pacote ({formatBRL(previa.preco)}, com o desconto).</>}
+                  </Dica>
+                </span>
                 <span style={valor}>{formatBRL(previa.valorRestante)}</span>
               </div>
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                {doPlano
-                  ? <>O valor das restantes é o preço de cada sessão no plano ({formatBRL(previa.preco)} no total, com o desconto); a feita vale o dela, sem multa.</>
-                  : <>O valor das restantes é a parte de cada uma no preço do pacote ({formatBRL(previa.preco)}, com o desconto).</>}
-                {/* A34 da 12ª: "sem multa.Usado" — as duas frases colavam. */}
-                {' '}Usado: {formatBRL(previa.usado)}.
+                Usado: {formatBRL(previa.usado)}.
               </p>
               <div style={linha}><span>Pago</span><span style={valor}>{formatBRL(previa.pago)}</span></div>
               {previa.aReceber > 0 && (
@@ -150,7 +155,13 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
               )}
               {previa.cai > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={linha}><span>Parcelas a receber que caem</span><span style={valor}>{formatBRL(previa.cai)}</span></div>
+                  <div style={linha}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span>Parcelas a receber que caem</span>
+                      <Dica rotulo="Por que as parcelas caem">O a receber que passa do usado cai antes de devolver qualquer coisa.</Dica>
+                    </span>
+                    <span style={valor}>{formatBRL(previa.cai)}</span>
+                  </div>
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {previa.parcelas.map(p => (
                       <li key={p.id} style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
@@ -159,9 +170,6 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
                       </li>
                     ))}
                   </ul>
-                  <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                    O a receber que passa do usado cai antes de devolver qualquer coisa.
-                  </p>
                 </div>
               )}
               <div data-a-devolver style={{ ...linha, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>

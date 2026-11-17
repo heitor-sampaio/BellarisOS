@@ -8,6 +8,7 @@ import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resg
 import { formatarPontos } from '@/lib/fidelidade/formato'
 import { CampoDoDesconto, LembreteDoMotivo, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
+import { Dica } from '@/components/shared/dica'
 import {
   CamposDoPagamento, MotivoDoBotao, estadoDoPagamento, montarPagamento, recusaForaDoCampo, useRecusaDoPagamento,
   type EstadoDoPagamento,
@@ -56,7 +57,13 @@ function AbaterDoPacote({ appointmentId, pacotes, onFeito }: {
           borderRadius: 'var(--radius-row)', padding: '12px 14px',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{p.pacote}</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>{p.pacote}</span>
+              {/* O "o que abater faz" mora na dica (2026-11-16 — era uma linha fixa embaixo). */}
+              <Dica rotulo="Sobre abater do pacote">
+                Abater usa uma sessão do pacote e não cobra nada. Para cobrar avulso, siga abaixo.
+              </Dica>
+            </p>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               {p.restantes} {p.restantes === 1 ? 'sessão sobrando' : 'sessões sobrando'} deste procedimento · a sessão vale {brl(p.preco)} no pacote
             </p>
@@ -69,9 +76,6 @@ function AbaterDoPacote({ appointmentId, pacotes, onFeito }: {
         </div>
       ))}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
-      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-        Abater usa uma sessão do pacote e não cobra nada. Para cobrar avulso, siga abaixo.
-      </p>
     </div>
   )
 }
@@ -187,7 +191,15 @@ export function FormularioDeReceberAtendimento({
           borderRadius: 'var(--radius-row)', padding: '12px 14px',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-            <span className="field-label" style={{ margin: 0 }}>Usar pontos</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span className="field-label" style={{ margin: 0 }}>Usar pontos</span>
+              {/* O "quanto vale o ponto" mora na dica (2026-11-16 — era uma linha fixa). */}
+              <Dica rotulo="Quanto vale o ponto">
+                Cada ponto vale {brl(previa.valorDoPonto)}.
+                {previa.minimo > 0 && ` Mínimo de ${previa.minimo} pontos.`}
+                {previa.tetoPct < 100 && ` Pontos pagam até ${String(previa.tetoPct).replace('.', ',')}% do valor.`}
+              </Dica>
+            </span>
             <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               Saldo: <strong style={{ color: 'var(--text)' }}>{formatarPontos(previa.saldo)}</strong>
             </span>
@@ -206,13 +218,7 @@ export function FormularioDeReceberAtendimento({
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)' }}>
               {formatarPontos(resgate.pontos)} = <strong style={{ color: 'var(--brand)' }}>−{brl(resgate.desconto)}</strong>
             </p>
-          ) : (
-            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-              Cada ponto vale {brl(previa.valorDoPonto)}.
-              {previa.minimo > 0 && ` Mínimo de ${previa.minimo} pontos.`}
-              {previa.tetoPct < 100 && ` Pontos pagam até ${String(previa.tetoPct).replace('.', ',')}% do valor.`}
-            </p>
-          )}
+          ) : null}
         </div>
       )}
       {totalZero ? (

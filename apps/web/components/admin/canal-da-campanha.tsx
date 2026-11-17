@@ -1,4 +1,5 @@
 import { Smartphone } from 'lucide-react'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O canal da campanha, dito com todas as letras (D-3, decisão do Heitor em
@@ -17,10 +18,14 @@ export function CanalDaCampanha() {
       fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.5,
     }}>
       <Smartphone size={16} style={{ flexShrink: 0, marginTop: 2, color: 'var(--info)' }} />
-      <span>
-        <strong>Aviso no celular.</strong> A campanha chega como notificação no celular de quem tem o
-        app (ou os avisos do navegador ligados) e fica no sino do portal da cliente.
-        Ela não vai pelo WhatsApp.
+      {/* O canal fica à vista (sem ler, a rede montava a campanha achando que
+          ia pelo WhatsApp); o "como chega" mora na dica (2026-11-16). */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <span><strong>Aviso no celular.</strong> A campanha não vai pelo WhatsApp.</span>
+        <Dica rotulo="Como a campanha chega">
+          A campanha chega como notificação no celular de quem tem o app (ou os avisos do navegador
+          ligados) e fica no sino do portal da cliente.
+        </Dica>
       </span>
     </div>
   )

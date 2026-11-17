@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Tags, Award, Truck, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { Dica } from '@/components/shared/dica'
 import { criarItemDoEstoque, renomearItemDoEstoque, excluirItemDoEstoque, type ListaDoEstoque } from '@/actions/stock'
 
 type Item = { id: string; nome: string }
@@ -63,9 +64,10 @@ export function CadastroDoEstoque({ lista, itens }: { lista: ListaDoEstoque; ite
       {aberta && (
         <JanelaModal rotulo={t.titulo} largura={440} travado={gravando} onFechar={fechar}>
           <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
+            {/* A ajuda mora na dica, ao lado do título (2026-11-16). */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>{t.titulo}</h2>
-              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{t.ajuda}</p>
+              <Dica rotulo="Para que serve esta lista">{t.ajuda}</Dica>
             </div>
 
             <form style={{ display: 'flex', flexDirection: 'column', gap: 6 }}

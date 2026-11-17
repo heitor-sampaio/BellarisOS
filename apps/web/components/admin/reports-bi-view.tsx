@@ -175,10 +175,18 @@ function AnimatedNum({ value, format = 'brl' }: {
 
 // -- KPI card ------------------------------------------------------------------
 function KpiCard({
-  label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%', hero = false, detalhe, dica,
+  label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%', hero = false, detalhe, dica, sobre, rotuloDoSobre,
 }: {
   /** O que o número conta e qual data usa (J-55/J-56). */
   dica?: DefinicaoDoNumero
+  /**
+   * O "como se lê" do cartão (a base, o que fica fora): mora na dica ao lado do
+   * rótulo, junto da definição, nunca embaixo do número (o Heitor, 2026-11-16 —
+   * docs/regras/design.md, "A explicação mora na dica").
+   */
+  sobre?: ReactNode
+  /** O nome da dica quando só há o `sobre` (sem a definição). */
+  rotuloDoSobre?: string
   label: string
   /** Nulo = não há o número (ticket sem atendimento cobrado, margem sem receita): "—". */
   value: number | null
@@ -197,10 +205,11 @@ function KpiCard({
    * iguais não têm hierarquia nenhuma: o olho não sabe onde pousar.
    */
   hero?: boolean
-  /** Uma linha embaixo do número, no lugar da variação ("12 vendas"). */
+  /** Um DADO embaixo do número, no lugar da variação ("12 vendas"); a explicação vai em `sobre`. */
   detalhe?: string
 }) {
   const hasDelta = delta != null
+  const temDica = dica != null || sobre != null
   return (
     <div className="card" style={{
       padding: '16px 20px', flex: '1 1 160px',
@@ -216,8 +225,13 @@ function KpiCard({
         textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px',
         display: 'flex', alignItems: 'center', gap: 4,
       }}>
-        {label}
-        {dica && <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>}
+        <span>{label}</span>
+        {temDica && (
+          <Dica rotulo={dica?.rotulo ?? rotuloDoSobre ?? `Sobre: ${label}`}>
+            {dica?.texto}
+            {dica && sobre != null ? <span style={{ display: 'block', marginTop: 6 }}>{sobre}</span> : sobre}
+          </Dica>
+        )}
       </p>
       <p style={{
         fontSize: 'var(--text-name)', fontWeight: 800,
@@ -258,11 +272,15 @@ function KpiCard({
 
 // -- Section card --------------------------------------------------------------
 function SCard({
-  title, children, style, dica,
+  title, children, style, dica, sobre, rotuloDoSobre,
 }: {
   title: string
   /** O que o gráfico conta (J-57). */
   dica?: DefinicaoDoNumero
+  /** A explicação do quadro (o que fica fora, a legenda): na dica do título (2026-11-16). */
+  sobre?: ReactNode
+  /** O nome da dica quando só há o `sobre`. */
+  rotuloDoSobre?: string
   children: ReactNode
   style?: CSSProperties
 }) {
@@ -275,7 +293,12 @@ function SCard({
       }}>
         <span style={{ color: 'var(--brand)', fontSize: 'var(--text-2xs)' }}>✦</span>
         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{title}</span>
-        {dica && <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>}
+        {(dica != null || sobre != null) && (
+          <Dica rotulo={dica?.rotulo ?? rotuloDoSobre ?? `Sobre: ${title}`}>
+            {dica?.texto}
+            {dica && sobre != null ? <span style={{ display: 'block', marginTop: 6 }}>{sobre}</span> : sobre}
+          </Dica>
+        )}
       </div>
       <div style={{ padding: '16px 18px' }}>{children}</div>
     </div>
@@ -371,7 +394,7 @@ function TabOverview(p: ReportsBiProps) {
         {!p.soOsMeus && <>
           {/* A24 da 10ª: o cartão é o caixa; o gráfico e o lucro usam o "Custo do lucro". */}
           <KpiCard label="Despesas pagas (caixa)" value={expenses} format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta dica={DEFINICOES.despesa}
-            detalhe="Com a compra de estoque e o pagamento das comissões; o lucro e o gráfico usam o Custo do lucro" />
+            sobre={<span data-base-das-despesas>Com a compra de estoque e o pagamento das comissões; o lucro e o gráfico usam o Custo do lucro.</span>} />
           <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />
         </>}
         <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta dica={DEFINICOES.atendimentos} />
@@ -479,32 +502,36 @@ function TabFinanceiro(p: ReportsBiProps) {
         {/* O consumo entra no lucro (2026-10-29). Movimentação de estoque
             nunca gera despesa (D13 revisto, 2026-10-28): a compra paga entra no
             financeiro por um lançamento ("Compra de estoque"), que fica no caixa. */}
+        {/* O "Desconta do lucro" que vinha embaixo do número já é a definição da dica (2026-11-16). */}
         <KpiCard label="Insumos e produtos vendidos" value={stockCOGS} format="brl" accent="var(--danger)"
-          detalhe="Desconta do lucro" dica={DEFINICOES.insumosEProdutos} />
+          dica={DEFINICOES.insumosEProdutos} />
         {/* A despesa, o lucro e a margem não se atribuem a ela ("só os meus"). */}
         {!p.soOsMeus && <>
           {/* A31 da 9ª: a base é o caixa (o que se pagou), outra conta que a despesa operacional do DRE. */}
           <KpiCard label="Despesas pagas (caixa)"  value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta
-            detalhe="O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o DRE abaixo usa só a despesa operacional" />
+            dica={DEFINICOES.despesa}
+            sobre={<span data-base-das-despesas>Com a compra de estoque e o pagamento das comissões — o DRE abaixo usa só a despesa operacional.</span>} />
           <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}   showDelta />
           <KpiCard label="Margem"          value={margin}    format="pct" accent={margin == null ? undefined : margin >= 20 ? 'var(--success)' : margin >= 0 ? 'var(--warning)' : 'var(--danger)'} delta={marginDeltaPp} showDelta deltaUnit="p.p." />
         </>}
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         {!p.soOsMeus && (
-          <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }}>
+          // A50 da 7ª simulação: a perda de R$ 380 fora do lucro parecia erro (é a regra F7) — a
+          // tela diz, na dica do título (2026-11-16: a explicação mora na dica).
+          <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }} rotuloDoSobre="O que fica fora do lucro" sobre={
+            <span data-fora-do-lucro>
+              {/* D8 da 10ª: "já foi pago na compra" era falso — a compra também fica fora do lucro. */}
+              A perda e o ajuste de estoque ficam fora do lucro: são métrica e não entram no resultado, nem quando a
+              compra é paga (a compra de estoque fica no caixa). Estão em Relatórios → Estoque (“Perdas no período”).
+            </span>
+          }>
             {/* As despesas operacionais (sem a compra de estoque e sem o fechamento das comissões, que ficam no
                 caixa), os insumos, as taxas da maquininha e as comissões lançadas: todos descontam do lucro. */}
             <DreWaterfall receita={revenue} despesas={resultado.despesaOperacional} insumos={resultado.insumoConsumido}
               taxas={resultado.taxasDaMaquininha} comissoes={resultado.comissoes} lucro={profit} />
-            {/* A50 da 7ª simulação: a perda de R$ 380 fora do lucro parecia erro (é a regra F7). */}
-            <p data-fora-do-lucro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 14 }}>
-              {/* D8 da 10ª: "já foi pago na compra" era falso — a compra também fica fora do lucro. */}
-              A perda e o ajuste de estoque ficam fora do lucro: são métrica e não entram no resultado, nem quando a
-              compra é paga (a compra de estoque fica no caixa). Estão em Relatórios → Estoque (“Perdas no período”).
-            </p>
             {/* A31 da 10ª: o que fica fora do resultado chega a quem não abre o Estoque (a contadora), e o DRE se exporta. */}
-            <div data-fora-do-resultado style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
+            <div data-fora-do-resultado style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 14 }}>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
                 Fora do resultado no período: compras no estoque (as entradas, ao custo) <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.comprasNoEstoque?.total ?? 0)}</strong>
                 {p.perdas ? <> · perdas <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.perdas.total.custo)}</strong></> : null}.
@@ -612,23 +639,30 @@ function TabVendas(p: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KpiCard label="Total vendido" value={resumo.geral.total} hero detalhe={vendasNoPlural(resumo.geral.quantidade)} />
+        {/* A30 da 10ª: dois "totais" sem ponte — o caixa e o vendido. A diferença é a regra
+            (princípio 5: o caixa no dia em que o dinheiro entrou), e a tela a diz — na dica do
+            cartão (2026-11-16: a explicação mora na dica). */}
+        <KpiCard label="Total vendido" value={resumo.geral.total} hero detalhe={vendasNoPlural(resumo.geral.quantidade)}
+          rotuloDoSobre="Como o Total vendido se liga ao caixa" sobre={
+            <span data-ponte-vendas-caixa>
+              O Total vendido é a venda, no dia em que foi feita; o caixa do período é o dinheiro, no dia em que entrou:{' '}
+              <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito
+              interno vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
+              cliente usar); o pacote e o plano entram aqui
+              inteiros, no dia da venda, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo.
+            </span>
+          } />
         {TIPOS_DE_VENDA.map(t => (
           <KpiCard key={t} label={PLURAL_DO_TIPO[t]} value={resumo.porTipo[t].total}
             detalhe={vendasNoPlural(resumo.porTipo[t].quantidade)} />
         ))}
       </div>
-      {/* A30 da 10ª: dois "totais" sem ponte — o caixa e o vendido. A diferença é a regra
-          (princípio 5: o caixa no dia em que o dinheiro entrou), e a tela a diz. */}
-      <p data-ponte-vendas-caixa style={{ margin: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        O Total vendido é a venda, no dia em que foi feita; o caixa do período é o dinheiro, no dia em que entrou:{' '}
-        <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito
-        interno vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
-        cliente usar); o pacote e o plano entram aqui
-        inteiros, no dia da venda, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo.
-      </p>
 
-      <SCard title="Vendas do período">
+      <SCard title="Vendas do período" rotuloDoSobre="Quem aparece em Profissional" sobre={
+        <span data-legenda-das-vendas>
+          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele); o crédito interno não tem. A sessão de pacote, de plano ou pré-paga não aparece de novo — já foi vendida. A venda de antes do PDV não tem comanda (—).
+        </span>
+      }>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
           <SegSelect
             ariaLabel="Tipo de venda"
@@ -705,9 +739,6 @@ function TabVendas(p: ReportsBiProps) {
             </div>
           )}
         </div>
-        <p style={{ margin: '8px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-          Profissional: quem atendeu; no pacote, no pré-pago, no produto e no plano, quem vendeu (o plano sem “Quem vendeu”, a dona dele); o crédito interno não tem. A sessão de pacote, de plano ou pré-paga não aparece de novo — já foi vendida. A venda de antes do PDV não tem comanda (—).
-        </p>
       </SCard>
     </div>
   )
@@ -760,11 +791,10 @@ function TabAgenda(p: ReportsBiProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-        Inclui os agendamentos até o fim do período, com os futuros e os cancelados.
-      </p>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KpiCard label="Total Agendamentos" value={total}     format="int" />
+        {/* A38: a aba conta até o fim do período — dito na dica do total (2026-11-16). */}
+        <KpiCard label="Total Agendamentos" value={total}     format="int" rotuloDoSobre="Quais agendamentos entram"
+          sobre="Inclui os agendamentos até o fim do período, com os futuros e os cancelados." />
         <KpiCard label="Realizados"         value={completed} format="int" delta={pctDelta(completed, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Cancelados"         value={cancelled} format="int" accent="var(--warning)" />
         <KpiCard label="Não Compareceu"     value={noShow}    format="int" accent="var(--danger)" />
@@ -1221,16 +1251,17 @@ function TabEstoque(p: ReportsBiProps) {
             da 10ª: nem quando a compra é paga), e o custo com perdas é para análise. */}
         {p.perdas && <>
           <KpiCard label="Perdas no período" value={p.perdas.total.custo} format="brl" accent="var(--danger)"
-            detalhe="Métrica: não entra no lucro, nem quando a compra é paga" />
+            rotuloDoSobre="Por que a perda fica fora do lucro" sobre="Métrica: não entra no lucro, nem quando a compra é paga" />
           <KpiCard label="Consumo com perdas" value={consumoComPerdas({ consumo: consumoValue, perdas: p.perdas.total.custo })} format="brl"
-            detalhe="Insumo consumido + perdas, ao custo do lote" />
+            rotuloDoSobre="O que o Consumo com perdas soma" sobre="Insumo consumido + perdas, ao custo do lote" />
         </>}
         {!p.soOsMeus && <>
           <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro == null ? undefined : giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
           <KpiCard label="Itens Críticos" value={criticos} format="int" accent="var(--warning)" />
           {/* D19 da 8ª: produtos (não pares unidade × produto) — a conta do Estoque e do dashboard. */}
           <KpiCard label="Produtos zerados" value={zerados} format="int" accent="var(--danger)"
-            detalhe={e.porUnidade.length > 1 ? 'sem saldo em nenhuma unidade do recorte' : 'sem saldo na unidade'} />
+            rotuloDoSobre="O que conta como produto zerado"
+            sobre={e.porUnidade.length > 1 ? 'Os produtos sem saldo em nenhuma unidade do recorte.' : 'Os produtos sem saldo na unidade.'} />
         </>}
       </div>
       <div className="rg-2" style={{ gap: 16 }}>

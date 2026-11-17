@@ -6,6 +6,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { toggleBranchStatus, moverEquipeDaUnidade } from '@/actions/branches'
 import { resumoDoQueFica, type OQueFicaNaUnidade } from '@/lib/unidades/o-que-fica'
 import { CaminhosDoQueFicou } from '@/components/admin/o-que-ficou'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Desativar uma unidade (C67/C61 do levantamento das regras, F70; H6 = a;
@@ -75,10 +76,15 @@ export function DesativarUnidade({
               e ela some do app das clientes. Dá para reativar depois.
             </p>
 
-            {resumo && <p style={{ ...texto, color: 'var(--text)', fontWeight: 600 }}>{resumo}</p>}
+            {/* O que fica é a consequência: à vista. O "como fica depois" mora na dica (2026-11-16). */}
             {resumo && (
-              <p style={texto}>
-                O que ficou nela continua nos totais e nas telas da rede, com o selo “Unidade desativada”, até ser resolvido.
+              <p style={{ ...texto, color: 'var(--text)', fontWeight: 600 }}>
+                {resumo}{' '}
+                <span style={{ color: 'var(--text-muted)' }}>
+                  <Dica rotulo="O que acontece com o que ficou">
+                    O que ficou nela continua nos totais e nas telas da rede, com o selo “Unidade desativada”, até ser resolvido.
+                  </Dica>
+                </span>
               </p>
             )}
 

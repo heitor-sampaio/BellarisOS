@@ -115,7 +115,10 @@ test('C35: o Financeiro em "só os meus" não estorna pela action', async ({ bro
 })
 
 test('C36: quem só recebe não cancela a unidade pré-paga', async ({ browser }) => {
-  const r = await como(browser, caixa!, p => chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', '/admin/clients',
+  // Posta na FICHA, que é quem usa a action (os procedimentos pagos): na lista
+  // de clientes ela só existia se outra spec já tivesse compilado a ficha.
+  const cliente = await rede!.criarCliente('Cliente C36')
+  const r = await como(browser, caixa!, p => chamarAcao(p, 'actions/pre-pago.ts', 'cancelarUnidadePrePaga', `/admin/clients/${cliente}`,
     [crypto.randomUUID(), { motivo: 'teste', destino: 'ESTORNO' }]))
   expect(r.texto).toContain('Você não tem acesso a esta ação.')
 })
@@ -133,6 +136,7 @@ test('C33: o check-in do plano é do PDV — quem tem o Financeiro em Gerenciar 
   // E a lista do Financeiro da rede não mostra a baixa a quem não tem Recebimentos.
   await como(browser, financeiro!, async p => {
     await p.goto('/admin/financeiro?aba=a-receber#movimentacoes')
+    await p.getByRole('button', { name: 'Sobre as contas a receber' }).hover()
     await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Receber é de quem tem o PDV no cargo.')
     await expect(p.getByRole('button', { name: /Pagar|Receber/ }).filter({ hasText: /^(Pagar|Receber)$/ })).toHaveCount(0)
   })
@@ -149,8 +153,12 @@ test('D8 da 13ª: com a unidade filtrada, o "Débito no período" é o da unidad
   })
   await como(browser, dona!, async p => {
     await p.goto('/admin/financeiro?period=month')
+    // O débito do período mora na dica do cartão da operadora (2026-11-16).
+    await p.locator('[data-kpi="a-receber-operadora"] [data-dica-botao]').hover()
     await expect(p.locator('[data-debito-no-periodo]').first()).toContainText('R$ 150,00')
     await p.goto(`/admin/financeiro?period=month&unidade=${b!.id}`)
+    await p.locator('[data-kpi="a-receber-operadora"] [data-dica-botao]').hover()
+    await expect(p.locator('[data-debito-no-periodo]').first()).toBeVisible()
     await expect(p.locator('[data-debito-no-periodo]').first()).not.toContainText('R$ 150,00')
   })
 })

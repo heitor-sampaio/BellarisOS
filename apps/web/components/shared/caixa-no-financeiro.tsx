@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { AlertTriangle, Download, Info } from 'lucide-react'
+import { AlertTriangle, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import type { TaxasDoPeriodo } from '@/lib/metrics'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
@@ -10,6 +10,7 @@ import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { csvDoFechamentoDoDia } from '@/actions/fechamento'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -41,9 +42,10 @@ export function AvisosDasTaxas({ dados }: { dados: TaxasDoPeriodo | null | undef
         </p>
       )}
       {taxas > 0 && (
-        <p data-taxas-estimadas style={{ display: 'flex', gap: 8, alignItems: 'center', margin: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          <Info size={13} aria-hidden style={{ flexShrink: 0 }} />
-          Taxas da maquininha no período (estimadas): {brl(taxas)} — só para conferência; não saem do saldo.
+        <p data-taxas-estimadas style={{ display: 'inline-flex', gap: 6, alignItems: 'center', margin: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          <span>Taxas da maquininha no período (estimadas): {brl(taxas)}</span>
+          {/* O "para que serve" mora na dica (2026-11-16). */}
+          <Dica rotulo="Sobre as taxas estimadas">Só para conferência: não saem do saldo.</Dica>
         </p>
       )}
     </div>
@@ -96,9 +98,12 @@ export function CsvDoFechamentoDoDia({ unidades, unidadeInicial }: {
         <JanelaModal rotulo="CSV do fechamento do dia" largura={420} travado={pendente} onFechar={() => setAberta(false)}>
           <form onSubmit={baixar} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>CSV do fechamento do dia</p>
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
-                As formas de pagamento, o total, o dinheiro esperado, os estornos e quem recebeu — a planilha da contabilidade.
+              <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span>CSV do fechamento do dia</span>
+                {/* O "o que vem na planilha" mora na dica (2026-11-16). */}
+                <Dica rotulo="Sobre o CSV do fechamento">
+                  As formas de pagamento, o total, o dinheiro esperado, os estornos e quem recebeu — a planilha da contabilidade.
+                </Dica>
               </p>
             </div>
             <label className="field-label" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

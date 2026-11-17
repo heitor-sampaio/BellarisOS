@@ -208,6 +208,57 @@ Princípios inegociáveis:
     no grupo das Configurações e na Equipe, e, com a segunda unidade, "A
     rede" de volta (o controle). `tests/vocabulario-de-uma-unidade.test.ts`.
 
+### A explicação mora na dica (2026-11-16)
+
+O Heitor, sobre o Resumo do Financeiro: "pode tirar esse monte de aviso e
+explicação, se quiser manter bota em um tooltipzinho que só aparece se passar o
+mouse em cima. Aproveita e faz esse ajuste pra todo sistema. Não dá pra ficar
+poluindo tela com um monte de explicaçãozinha."
+
+- **À vista fica**: o dado (número, nome, data), o estado ("Vencida", "Em
+  aberto: R$ …"), o caminho para agir (botão, "Ver a lista"), o vazio de uma
+  linha ("Nenhum lançamento no período"), o erro, o aviso CONDICIONAL que pede
+  uma ação ou trava a tela (a venda sem taxa, a assinatura que falta), e a
+  consequência no modal de confirmação do que não se desfaz ("O estorno não
+  volta atrás").
+- **Vai para a dica** (`components/shared/dica.tsx`, o "i" ao lado do rótulo):
+  o "como se calcula", o "por que", o "o que esta lista mostra", a legenda de
+  uso, o "isto é de quem tem tal permissão" e o parágrafo de apresentação
+  embaixo de um título. Simplificar não é tirar: o texto continua, só sai da
+  frente.
+- A dica abre ao passar o mouse, no toque (celular) e no teclado (foco + Enter
+  ou espaço; Esc fecha). O conteúdo só entra no documento com ela aberta:
+  fechada, não muda o texto do rótulo (o leitor de tela, o `getByText` exato).
+  O rótulo vai num `<span>` próprio, com a dica ao lado — e FORA do `<label>`
+  que envolve um campo (dentro, ela vira o controle do rótulo e o
+  `getByLabel` perde o campo): `htmlFor`/`id`.
+- Mora no núcleo (`packages/nucleo/src/components/dica.tsx`; o app da rede
+  reexporta em `components/shared/dica.tsx`, e o sistema e o suporte importam
+  de `@estetica-os/nucleo/components/dica`). O gatilho é um `span
+  role="button"`, não um `<button>`: dentro de um `<fieldset disabled>` (a tela
+  só de leitura) o `<button>` desliga e a dica não abria
+  (`tests/dica-abre-em-tela-so-de-leitura.test.ts`).
+- Link não vai dentro da dica (ela fecha ao sair do "i", e o mouse não chega
+  ao link): explicação que leva o único caminho para agir fica à vista.
+- O `rotulo` da dica é o nome acessível do botão e diz do que ela fala ("Sobre
+  as contas a receber", "Como se lê o fluxo de caixa", "Sobre: Fuso horário").
+  Ele NÃO é `aria-label` (2026-11-17): vem do `::after` de `.dica-nome`
+  (`globals.css` do núcleo). O conteúdo gerado entra no nome acessível (o
+  leitor de tela lê, o `getByRole('button', { name })` acha), mas não casa com
+  o `getByLabel` do campo vizinho — com o `aria-label`, "Sobre: Fuso horário"
+  fazia o `getByLabel('Fuso horário')` achar o seletor E a dica — nem entra no
+  texto do rótulo em que a dica mora. Por isso o nome pode citar o campo.
+- Num título (`<h1>`–`<h3>`), a dica vai AO LADO do elemento do título, não
+  dentro: dentro, o nome do título vira "Tratamentos Quem monta o plano" e o
+  `getByRole('heading', { name, exact: true })` o perde.
+- O nome da dica ainda casa por pedaço com o `getByRole('button', { name })`
+  sem `exact`: dica "Sobre trazer pacote de fora" num modal com o botão
+  "Trazer pacote" — o spec do botão usa `exact: true`.
+- **Spec que lê texto que mora na dica abre a dica antes** (`hover()` no
+  `[data-dica-botao]` ou no botão pelo nome); sem isso o `not.toContainText`
+  passa à toa. Prova: `e2e/financeiro-dicas.spec.ts` e os
+  `e2e/dicas-*.spec.ts` de cada área.
+
 ### Formulários (2026-10-21)
 
 - **O rótulo é LIGADO ao campo**: envolvendo-o (`<label>texto + campo</label>`) ou

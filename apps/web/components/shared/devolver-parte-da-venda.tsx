@@ -10,6 +10,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { vendaParaDevolver, previaDaDevolucao, devolverParteDaVenda } from '@/actions/devolucao-de-produto'
 import type { PreviaDaDevolucao, VendaParaDevolver } from '@/lib/produtos/devolucao'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { Dica } from '@/components/shared/dica'
 import {
   EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, type EscolhaDaDevolucaoEstado,
 } from '@/components/shared/escolha-da-devolucao'
@@ -101,7 +102,11 @@ export function DevolverParteDaVenda({ transacaoId, onFechar }: { transacaoId: s
   return (
     <JanelaModal rotulo="Devolver parte da venda" largura={500} travado={devolvendo} onFechar={onFechar} fechaNoFundo={false}>
       <div data-devolver-parte style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Devolver parte da venda</h2>
+        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Devolver parte da venda</span>
+          {/* O "como se usa" mora na dica (2026-11-16); a consequência, embaixo, fica à vista. */}
+          <Dica rotulo="Como devolver parte da venda">Diga quantas de cada produto voltam: o resto continua vendido.</Dica>
+        </h2>
 
         {!venda && !erro ? (
           <p style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
@@ -110,7 +115,7 @@ export function DevolverParteDaVenda({ transacaoId, onFechar }: { transacaoId: s
         ) : venda && (
           <>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-              <strong style={{ color: 'var(--text)' }}>{venda.descricao}</strong>. Diga quantas de cada produto voltam: o resto continua vendido.
+              <strong style={{ color: 'var(--text)' }}>{venda.descricao}</strong>
             </p>
             <div role="group" aria-label="O que voltou" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {venda.itens.map(i => {
@@ -168,7 +173,13 @@ export function DevolverParteDaVenda({ transacaoId, onFechar }: { transacaoId: s
                   )}
                   {previa.cai > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={linha}><span>Parcelas a receber que caem</span><span style={valor}>{formatBRL(previa.cai)}</span></div>
+                      <div style={linha}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span>Parcelas a receber que caem</span>
+                          <Dica rotulo="Por que as parcelas caem">O a receber que passa do que a venda vale cai antes de devolver qualquer coisa.</Dica>
+                        </span>
+                        <span style={valor}>{formatBRL(previa.cai)}</span>
+                      </div>
                       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {previa.parcelas.map(p => (
                           <li key={p.id} style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
@@ -177,9 +188,6 @@ export function DevolverParteDaVenda({ transacaoId, onFechar }: { transacaoId: s
                           </li>
                         ))}
                       </ul>
-                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                        O a receber que passa do que a venda vale cai antes de devolver qualquer coisa.
-                      </p>
                     </div>
                   )}
                   <div data-a-devolver style={{ ...linha, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>

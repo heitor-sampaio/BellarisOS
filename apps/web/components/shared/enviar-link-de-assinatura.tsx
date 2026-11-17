@@ -5,6 +5,7 @@ import { Copy, Link2, MessageCircle } from 'lucide-react'
 import { formatDate, formatTime } from '@estetica-os/utils'
 import { gerarLinkDeAssinatura } from '@/actions/documentos'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 type Link = NonNullable<Awaited<ReturnType<typeof gerarLinkDeAssinatura>>['link']>
 
@@ -57,9 +58,14 @@ export function EnviarLinkDeAssinatura({ documentoId, jaEnviadoAte, compacto = f
       {erro && <span role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)' }}>{erro}</span>}
       {link && (
         <div data-link-de-assinatura style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, borderRadius: 'var(--radius-field)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
+          {/* A validade e o "só aparece agora" (aviso que pede ação) ficam à vista; o que a cliente
+              confirma ao abrir mora na dica (2026-11-16). */}
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
-            Link de uso único, vale até {formatDate(link.expiraEm, fuso)} às {formatTime(link.expiraEm, fuso)}. A cliente confirma {link.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
-            Ele só aparece agora: se perder, gere outro.
+            Link de uso único, vale até {formatDate(link.expiraEm, fuso)} às {formatTime(link.expiraEm, fuso)}.
+            Ele só aparece agora: se perder, gere outro.{' '}
+            <Dica rotulo="O que a cliente confirma no link">
+              A cliente confirma {link.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
+            </Dica>
           </p>
           <input className="field" readOnly value={link.url} aria-label="Link de assinatura" onFocus={e => e.currentTarget.select()} style={{ fontSize: 'var(--text-xs-sz)' }} />
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

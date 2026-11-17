@@ -142,6 +142,8 @@ test('por produto: a dona escolhe em Configurações → Comissões, registra a 
     // O sérum: 10% do vendido, no cadastro.
     let modal = await abrirOCadastro(p, 'Sérum')
     let comissao = modal.locator('[data-comissao-do-produto]')
+    // O "vazio vale a regra geral" mora na dica do rótulo (2026-11-16).
+    await comissao.getByRole('button', { name: 'Como comissiona a venda deste produto' }).hover()
     await expect(comissao).toContainText('regra geral (5%)')
     await comissao.getByLabel('Valor da comissão').fill('10')
     await modal.getByRole('button', { name: 'Salvar', exact: true }).click()

@@ -102,9 +102,13 @@ test('A34 e A37: o plano é opcional na tela e diz que o desconto é dado no che
   const { id } = await emCurso('Drenagem avulsa')
   await como(browser, profissional!, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
+    // O subtítulo das queixas mora na dica do título (2026-11-16).
+    await p.locator('[data-campo="dores"]').getByRole('button', { name: 'Sobre as queixas e dores' }).hover()
+    await expect(p.locator('[data-campo="dores"]')).toContainText('só para gerar um plano')
+    // O "opcional" e o "desconto no checkout" moram na dica do "Tratamento" (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre o plano do tratamento' }).hover()
     await expect(p.locator('[data-plano-opcional]')).toContainText('Opcional')
     await expect(p.locator('[data-plano-opcional]')).toContainText('Finalizar atendimento')
-    await expect(p.locator('[data-campo="dores"]')).toContainText('só para gerar um plano')
     await expect(p.locator('[data-desconto-no-checkout]')).toContainText('O desconto é dado no checkout')
   })
 })

@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Trash2, Check, Syringe, Plus, Minus, Maximize2 } from 'lucide-react'
 import { InjectableOutline, MAP_VIEWBOX, viewDe, partesDaView } from '@/components/shared/injectable-outline'
 import { formatarDose } from '@/lib/injetaveis/dose'
+import { Dica } from '@/components/shared/dica'
 import {
   INJECTABLE_UNITS, emptyInjectableMap, injectableTotals, newId,
   normalizeInjectableView, pointsOfView,
@@ -396,6 +397,24 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
               </BotaoZoom>
             )}
           </div>
+          {/* A legenda de uso mora na dica (2026-11-16 — era a frase embaixo da ilustração).
+              A27 da 11ª: ela fala de TOQUE também (no celular não há mouse a rolar). */}
+          {canEdit && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-faint)' }}>
+              <Dica rotulo="Como usar o mapa">
+                <span data-dica-do-mapa style={{ display: 'block' }}>
+                  {zoom > ZOOM_MIN
+                    ? 'Toque (ou clique) para marcar. Arraste o fundo para deslocar; aproxime com + e −.'
+                    : 'Toque (ou clique) para marcar. Aproxime com + e − (ou a roda do mouse).'}
+                </span>
+                {map.points.length > 0 && !confirmaAqui && (
+                  <span data-aplicacao-no-atendimento style={{ display: 'block', marginTop: 6 }}>
+                    A aplicação se registra no atendimento: abra o atendimento da cliente e use “Registrar aplicação” no Planejamento.
+                  </span>
+                )}
+              </Dica>
+            </span>
+          )}
           </div>
 
           <svg
@@ -484,14 +503,12 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
             })}
           </svg>
 
-          {/* A27 da 11ª: a dica fala de TOQUE também (no celular não há mouse a rolar). */}
-          <p data-dica-do-mapa style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 6 }}>
-            {canEdit
-              ? zoom > ZOOM_MIN
-                ? 'Toque (ou clique) para marcar. Arraste o fundo para deslocar; aproxime com + e −.'
-                : 'Toque (ou clique) para marcar. Aproxime com + e − (ou a roda do mouse).'
-              : `${daVista.length} ${daVista.length === 1 ? 'ponto marcado' : 'pontos marcados'} · toque para identificar`}
-          </p>
+          {/* Só para ler: quantos pontos (o dado) e o "toque para identificar". */}
+          {!canEdit && (
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 6 }}>
+              {`${daVista.length} ${daVista.length === 1 ? 'ponto marcado' : 'pontos marcados'} · toque para identificar`}
+            </p>
+          )}
         </div>
 
         {/* -- Lista e edição ----------------------------------------- */}
@@ -553,11 +570,6 @@ export function InjectableMapField({ value, products, canEdit, onChange, confirm
             </div>
           )}
 
-          {canEdit && map.points.length > 0 && !confirmaAqui && (
-            <p data-aplicacao-no-atendimento style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-              A aplicação se registra no atendimento: abra o atendimento da cliente e use “Registrar aplicação” no Planejamento.
-            </p>
-          )}
           {canEdit && map.points.length > 0 && confirmaAqui && (
             confirmed ? (
               <p style={{

@@ -10,6 +10,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFala } from '@/components/shared/uma-unidade'
 import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { RepasseDoAtende, repasseDasEscolhas } from '@/components/admin/repasse-do-atende'
+import { Dica } from '@/components/shared/dica'
 
 interface Branch { id: string; name: string; /** O horário de funcionamento (J-9: de onde parte o do membro). */ horario?: unknown }
 /** C62 (F70): o porquê do cargo desligado (o mesmo texto da recusa da action, `lib/equipe/cargo-acima.ts`). */
@@ -181,7 +182,26 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
 
               <div className="form-2col">
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label className="overline" htmlFor={`tme-role-${member.id}`}>Cargo</label>
+                  {/* O porquê do cargo travado, do cargo desligado (C62), o "vale no próximo
+                      carregamento" e o acesso da Admin da rede moram na dica (2026-11-16). */}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                    <label className="overline" htmlFor={`tme-role-${member.id}`}>Cargo</label>
+                    <Dica rotulo="Sobre a escolha do acesso">
+                      {cargoFixo ? (
+                        <span style={{ display: 'block' }}>Você não muda o próprio cargo de {cargoFixo.label}: {fala('outra Admin da rede muda.')}</span>
+                      ) : (
+                        <>
+                          {roles.some(r => r.acimaDoMeu && r.id !== member.roleId) && (
+                            <span style={{ display: 'block', marginBottom: 6 }}>{DICA_DO_CARGO_ACIMA_TEXTO}</span>
+                          )}
+                          {paraAdmin && (
+                            <span style={{ display: 'block', marginBottom: 6 }}>{fala('A Admin da rede tem acesso total, em todas as unidades.')}</span>
+                          )}
+                          <span style={{ display: 'block' }}>A troca de cargo vale no próximo carregamento — não é preciso sair e entrar.</span>
+                        </>
+                      )}
+                    </Dica>
+                  </span>
                   {cargoFixo ? (
                     <>
                       {/* O select desabilitado não vai no formulário: o cargo segue no oculto. */}
@@ -189,9 +209,6 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                       <select id={`tme-role-${member.id}`} className="field" value={cargoFixo.id} disabled>
                         <option value={cargoFixo.id}>{cargoFixo.label}</option>
                       </select>
-                      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                        Você não muda o próprio cargo de {cargoFixo.label}: {fala('outra Admin da rede muda.')}
-                      </span>
                     </>
                   ) : (
                     <>
@@ -207,12 +224,6 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                           </option>
                         ))}
                       </select>
-                      {roles.some(r => r.acimaDoMeu && r.id !== member.roleId) && (
-                        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{DICA_DO_CARGO_ACIMA_TEXTO}</span>
-                      )}
-                      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                        A troca de cargo vale no próximo carregamento — não é preciso sair e entrar.
-                      </span>
                     </>
                   )}
                 </div>
@@ -223,11 +234,6 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                     unidades={canChooseScope ? branches : todasAsAtivas.filter(b => (unidadesDeQuemEdita ?? []).includes(b.id) || unidadesDela.includes(b.id))}
                     editaveis={canChooseScope ? null : unidadesDeQuemEdita}
                     valor={unidades} aoMudar={setUnidades} principalDeAntes={member.branchId} />
-                )}
-                {!cargoFixo && paraAdmin && (
-                  <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    {fala('A Admin da rede tem acesso total, em todas as unidades.')}
-                  </span>
                 )}
 
                 {/* O "Atende" de UMA caixa (EQ1c): marcada, atende em todas as unidades dela. */}

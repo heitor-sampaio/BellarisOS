@@ -150,6 +150,8 @@ test('D5, D6, A23: na ficha, quem só vê não edita os Dados, não agenda, não
     await expect(p.getByRole('main').getByRole('tab', { name: 'Planejamento', exact: true })).toHaveCount(0)
 
     await p.goto(`/admin/clients/${cliente}?aba=dados`)
+    // O "por que" mora na dica (2026-11-16).
+    await p.getByRole('button', { name: 'Por que o cadastro não se edita' }).hover()
     await expect(p.locator('[data-cadastro-so-leitura]'), 'D5: a aba diz que é só leitura').toContainText('Seu cargo só consulta')
     await expect(p.getByRole('button', { name: 'Salvar dados' })).toHaveCount(0)
     await expect(p.getByLabel('Número do documento')).toBeDisabled()
@@ -240,6 +242,8 @@ test('A43: "Acessos ao prontuário" diz a regra de verdade a quem o vê', async 
     const secao = p.getByRole('region', { name: 'Acessos ao prontuário' })
     await expect(secao).toBeVisible()
     await expect(secao).not.toContainText('Só a administração da rede')
+    // A regra mora na dica do título (2026-11-16).
+    await secao.getByRole('button', { name: 'Sobre os acessos ao prontuário' }).hover()
     await expect(secao).toContainText('Prontuário em Gerenciar')
   })
 })

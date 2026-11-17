@@ -21,6 +21,7 @@ import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/co
 import { OPCOES_DE_CAIXAS, type CaixasDoCargo } from '@/lib/inbox/visibilidade'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Fala } from '@/components/shared/uma-unidade'
+import { Dica } from '@/components/shared/dica'
 import type {
   AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ResolvedScopes, ReportTab,
 } from '@estetica-os/types'
@@ -566,13 +567,15 @@ function PermissionMatrix({
       ))}
       <input type="hidden" name="inbox_caixas" value={caixas} />
 
-      <div style={{ marginBottom: 20 }}>
+      {/* O "como se lê" da matriz mora na dica (2026-11-16 — era um parágrafo
+          fixo); fora do <h3>, para o nome do título continuar só o título. */}
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 6 }}>
         <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
           O que <span style={{ color: 'var(--brand)' }}><Fala>{role.label}</Fala></span> acessa
         </h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
-          Cada área tem um nível. A frase abaixo do nível diz o que ele libera de verdade.
-        </p>
+        <Dica rotulo="Como se lê a matriz de acessos">
+          Cada área tem um nível. O “i” ao lado de cada área diz o que o nível escolhido libera de verdade.
+        </Dica>
       </div>
 
       {nothingGranted && (
@@ -591,11 +594,10 @@ function PermissionMatrix({
         {/* O que o plano da rede não inclui não aparece: daria acesso a nada. */}
         {MODULE_GROUPS.map(g => ({ ...g, modules: g.modules.filter(m => !foraDoPlano.includes(m)) })).filter(g => g.modules.length > 0).map(group => (
           <section key={group.key}>
-            <div style={{ marginBottom: 8 }}>
+            {/* O que o grupo reúne mora na dica ao lado do nome (2026-11-16). */}
+            <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               <h4 className="overline"><Fala>{group.label}</Fala></h4>
-              <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
-                <Fala>{group.hint}</Fala>
-              </p>
+              <Dica rotulo={`Sobre: ${group.label}`}><Fala>{group.hint}</Fala></Dica>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -726,23 +728,27 @@ function ModuleRow({
                 · <Fala>{MODULE_HINTS[module]}</Fala>
               </span>
             )}
+            {/* O que o nível libera e de quem é o módulo moram na dica ao lado
+                do nome (2026-11-16 — eram duas linhas fixas embaixo dele).
+                Campanhas e Automações dizem sempre que são da rede (D-2,
+                2026-10-29); os outros de rede, só quando ligados. */}
+            {(LEVEL_COPY[module][level] || soNaRede || (networkOnly && enabled)) && (
+              <span style={{ marginLeft: 6, fontWeight: 'var(--weight-medium)' }}>
+                <Dica rotulo={`Sobre: ${MODULE_LABELS[module]}`}>
+                  {LEVEL_COPY[module][level] && (
+                    <span data-frase-do-nivel style={{ display: 'block' }}>
+                      <Fala>{LEVEL_COPY[module][level] ?? ''}</Fala>
+                    </span>
+                  )}
+                  {(soNaRede || (networkOnly && enabled)) && (
+                    <span data-nota-de-abrangencia style={{ display: 'block', marginTop: 6, fontStyle: 'italic' }}>
+                      <Fala>{soNaRede ?? notaDeAbrangencia(module)}</Fala>
+                    </span>
+                  )}
+                </Dica>
+              </span>
+            )}
           </div>
-          <div style={{
-            fontSize: 'var(--text-2xs)', color: enabled ? 'var(--text-soft)' : 'var(--text-faint)',
-            marginTop: 3, lineHeight: 'var(--leading-snug)', maxWidth: 460,
-          }}>
-            <Fala>{LEVEL_COPY[module][level] ?? ''}</Fala>
-          </div>
-          {/* Campanhas e Automações dizem sempre que são da rede (D-2,
-              2026-10-29); os outros de rede, só quando ligados. */}
-          {(soNaRede || (networkOnly && enabled)) && (
-            <div style={{
-              fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 4,
-              fontStyle: 'italic',
-            }}>
-              <Fala>{soNaRede ?? notaDeAbrangencia(module)}</Fala>
-            </div>
-          )}
           {sensitive && enabled && (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5,
@@ -769,6 +775,12 @@ function ModuleRow({
             display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap',
           }}>
             <span className="overline">Enxerga</span>
+            {/* A consequência do "só os meus" mora na dica (2026-11-16 — era uma linha fixa). */}
+            {scope === 'OWN' && SCOPE_NOTE[module as ScopedModule] && (
+              <Dica rotulo={`Sobre o alcance em ${MODULE_LABELS[module]}`}>
+                <Fala>{SCOPE_NOTE[module as ScopedModule]!}</Fala>
+              </Dica>
+            )}
             <SegmentedScope
               module={module as ScopedModule}
               value={scope}
@@ -782,14 +794,6 @@ function ModuleRow({
               marginTop: 5, textAlign: 'right', lineHeight: 'var(--leading-snug)',
             }}>
               Escolha o que este cargo enxerga aqui.
-            </p>
-          )}
-          {enabled && scope === 'OWN' && SCOPE_NOTE[module as ScopedModule] && (
-            <p style={{
-              fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 5,
-              textAlign: 'right', lineHeight: 'var(--leading-snug)',
-            }}>
-              <Fala>{SCOPE_NOTE[module as ScopedModule]!}</Fala>
             </p>
           )}
         </div>
@@ -836,6 +840,12 @@ function CaixasDoInbox({
         display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap',
       }}>
         <span className="overline">WhatsApp no inbox</span>
+        {/* O que a escolha faz mora na dica (2026-11-16 — era uma linha fixa). */}
+        <Dica rotulo="Sobre o WhatsApp no inbox">
+          <span data-testid="explicacao-caixas">
+            <Fala>{atual.explicacao}</Fala>
+          </span>
+        </Dica>
         <SegSelect
           options={OPCOES_DE_CAIXAS.map(o => ({ key: o.key, label: o.label }))}
           value={valor}
@@ -843,15 +853,6 @@ function CaixasDoInbox({
           ariaLabel="Quais números de WhatsApp o cargo vê no inbox"
         />
       </div>
-      <p
-        data-testid="explicacao-caixas"
-        style={{
-          fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 5,
-          textAlign: 'right', lineHeight: 'var(--leading-snug)',
-        }}
-      >
-        <Fala>{atual.explicacao}</Fala>
-      </p>
     </div>
   )
 }

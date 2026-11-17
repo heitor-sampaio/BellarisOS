@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
 import { fecharODia, informarFundoDeTroco } from '@/actions/fechamento'
 import { SegSelect } from '@/components/shared/seg-select'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
 import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaAoDigitar, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
@@ -381,10 +382,13 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
             {/* A40 da 11ª: com duas pessoas no balcão, cada uma precisa saber o que entrega. */}
             {porQuemRecebeu.length > 0 && (
               <div data-por-quem-recebeu style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Por quem recebeu</p>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  As entradas do dia de cada pessoa, por forma — quem registrou o recebimento (na venda, quem vendeu; na baixa de uma parcela, quem deu a baixa).
-                  As saídas e os estornos ficam no total da unidade, acima.
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span>Por quem recebeu</span>
+                  {/* O "o que este quadro mostra" mora na dica (2026-11-16). */}
+                  <Dica rotulo="Sobre o por quem recebeu">
+                    As entradas do dia de cada pessoa, por forma — quem registrou o recebimento (na venda, quem vendeu; na baixa de uma parcela, quem deu a baixa).
+                    As saídas e os estornos ficam no total da unidade, acima.
+                  </Dica>
                 </p>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
                   {porQuemRecebeu.map(p => (
@@ -413,14 +417,20 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                 só o que voltou às clientes — o estorno de despesa voltou ao caixa. */}
             {estornos && estornos.itens.length > 0 && (
               <div data-estornos-do-dia style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
-                  Estornos do dia · {brl(estornos.total)}
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span>Estornos do dia · {brl(estornos.total)}</span>
+                  {/* O "como o estorno conta no dia" mora na dica (2026-11-16). */}
+                  <Dica rotulo="Sobre os estornos do dia" largura={320}>
+                    O que voltou às clientes neste dia. O estorno de um pagamento de outro dia é saída deste dia, na forma dele — o pagamento continua no dia em que entrou.
+                    O de um pagamento deste mesmo dia já está fora das entradas: um anula o outro.
+                  </Dica>
                 </p>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  O que voltou às clientes neste dia. O estorno de um pagamento de outro dia é saída deste dia, na forma dele — o pagamento continua no dia em que entrou.
-                  O de um pagamento deste mesmo dia já está fora das entradas: um anula o outro.
-                  {(estornos.deOutrosDias ?? 0) > 0 && <> Nas saídas acima: {brl(estornos.deOutrosDias ?? 0)} de pagamentos de outros dias.</>}
-                </p>
+                {/* O número fica à vista: é dado, não explicação. */}
+                {(estornos.deOutrosDias ?? 0) > 0 && (
+                  <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                    Nas saídas acima: {brl(estornos.deOutrosDias ?? 0)} de pagamentos de outros dias.
+                  </p>
+                )}
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {estornos.itens.map(e => (
                     <li key={e.id} data-estorno-do-dia data-de-outro-dia={e.mesmoDia ? undefined : 'true'} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'var(--text-sm-sz)' }}>
@@ -459,6 +469,7 @@ function FundoDeTroco({ unidadeId, dia, valor, informado, podeInformar }: {
   const [texto, setTexto] = useState(valor ? String(valor).replace('.', ',') : '')
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, start] = useTransition()
+  const idDoCampo = useId()
   const hora = horaNo(useFuso())
   const tem = valor != null && valor > 0
 
@@ -493,12 +504,15 @@ function FundoDeTroco({ unidadeId, dia, valor, informado, podeInformar }: {
       )}
       {editando && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <label className="field-label" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            Fundo de troco (R$)
-            <input className="field" inputMode="decimal" value={texto} onChange={e => setTexto(e.target.value)} placeholder="0,00" style={{ width: 130 }}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {/* O "o que é" mora na dica, ao lado do rótulo (2026-11-16). */}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <label className="field-label" htmlFor={idDoCampo}>Fundo de troco (R$)</label>
+              <Dica rotulo="Sobre o fundo de troco">O dinheiro que já estava na gaveta no começo do dia.</Dica>
+            </span>
+            <input id={idDoCampo} className="field" inputMode="decimal" value={texto} onChange={e => setTexto(e.target.value)} placeholder="0,00" style={{ width: 130 }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); salvar() } }} />
-            <span style={{ fontWeight: 500, color: 'var(--text-faint)' }}>O dinheiro que já estava na gaveta no começo do dia.</span>
-          </label>
+          </div>
           <button type="button" className="btn-secondary" disabled={pendente} onClick={salvar}>{pendente ? 'Salvando…' : 'Salvar fundo'}</button>
           <button type="button" className="btn-ghost" disabled={pendente} onClick={() => { setEditando(false); setErro(null) }}>Cancelar</button>
         </div>

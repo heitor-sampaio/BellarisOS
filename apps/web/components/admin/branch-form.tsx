@@ -11,6 +11,10 @@ import { maskPhoneDigitando, maskCEPDigitando, maskCPFouCNPJDigitando } from '@e
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { useFala } from '@/components/shared/uma-unidade'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { Dica } from '@/components/shared/dica'
+
+/** O rótulo do campo com a dica ao lado (a explicação mora na dica, 2026-11-16). */
+const rotuloComDica = { display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' } as const
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -131,9 +135,7 @@ export function BranchForm({ cnpjDaRede = null }: { cnpjDaRede?: string | null }
                 <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
                   Nova unidade
                 </h2>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                  O endereço da unidade é o caminho do portal dela (/nome-da-unidade).
-                </p>
+                {/* O subtítulo ("o endereço é o caminho do portal") foi para a dica do campo Endereço (2026-11-16). */}
               </div>
               <button className="btn-ghost" onClick={handleClose} style={{ padding: 6 }}>
                 <X size={16} />
@@ -168,32 +170,39 @@ export function BranchForm({ cnpjDaRede = null }: { cnpjDaRede?: string | null }
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline" htmlFor="br-slug">
-                      Endereço da unidade
-                      <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 4, textTransform: 'none' }}>
-                        — app.bellarisos.com/<strong>{slug || 'nome-da-unidade'}</strong>
-                      </span>
-                    </label>
+                    <span style={rotuloComDica}>
+                      <label className="overline" htmlFor="br-slug">
+                        Endereço da unidade
+                        <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 4, textTransform: 'none' }}>
+                          — app.bellarisos.com/<strong>{slug || 'nome-da-unidade'}</strong>
+                        </span>
+                      </label>
+                      <Dica rotulo="Sobre o endereço do portal">
+                        <span style={{ display: 'block' }}>O endereço da unidade é o caminho do portal dela (/nome-da-unidade).</span>
+                        <span style={{ display: 'block', marginTop: 6 }}>
+                          O endereço é único no sistema inteiro: se já estiver em uso, o sistema completa com o nome da sua rede.
+                        </span>
+                      </Dica>
+                    </span>
                     <input
                       id="br-slug" name="slug" type="text" className="field"
                       placeholder="nome-da-unidade"
                       value={slug}
                       onChange={e => { setSlugTouched(true); setSlug(e.target.value) }}
                     />
-                    <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      O endereço é único no sistema inteiro: se já estiver em uso, o sistema completa com o nome da sua rede.
-                    </span>
                   </div>
 
                   <div className="form-2col">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                      <label className="overline" htmlFor="br-phone">Telefone</label>
+                      <span style={rotuloComDica}>
+                        <label className="overline" htmlFor="br-phone">Telefone</label>
+                        {/* A3 da 9ª: a regra J-66 (sem telefone na unidade, vale o da rede). */}
+                        <Dica rotulo="O que o app mostra sem número">
+                          <span data-telefone-vazio-no-app>Em branco, o app da cliente mostra o telefone da rede (o de Configurações → Geral).</span>
+                        </Dica>
+                      </span>
                       <input id="br-phone" name="phone" type="tel" className="field" placeholder="(00) 00000-0000"
                         value={telefone} onChange={e => setTelefone(maskPhoneDigitando(e.target.value))} />
-                      {/* A3 da 9ª: a regra J-66 (sem telefone na unidade, vale o da clínica). */}
-                      <span data-telefone-vazio-no-app style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                        Em branco, o app da cliente mostra o telefone da rede (o de Configurações → Geral).
-                      </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <label className="overline" htmlFor="br-email">E-mail</label>
@@ -330,9 +339,11 @@ export function BranchForm({ cnpjDaRede = null }: { cnpjDaRede?: string | null }
 
               {/* -- Horário de funcionamento (J-4): o mesmo editor do detalhe da unidade. -- */}
               <section>
-                <p className="overline" style={{ marginBottom: 6 }}>Horário de funcionamento</p>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 10 }}>
-                  Os horários livres da agenda e do app da cliente seguem este horário. O padrão é segunda a sábado, das 8h às 20h.
+                <p className="overline" style={{ marginBottom: 10, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span>Horário de funcionamento</span>
+                  <Dica rotulo="Sobre o horário de funcionamento">
+                    Os horários livres da agenda e do app da cliente seguem este horário. O padrão é segunda a sábado, das 8h às 20h.
+                  </Dica>
                 </p>
                 <EditorDeHorario nome="horario" valor={null} />
               </section>

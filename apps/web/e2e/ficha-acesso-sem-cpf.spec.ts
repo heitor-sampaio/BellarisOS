@@ -78,7 +78,10 @@ test('com passaporte e e-mail, o cadastro cria o acesso: a senha inicial é o pa
     await preencher(p, { nome: nome('Sophie'), telefone: telefone('0101'), tipo: 'Passaporte', numero: PASSAPORTE, email: EMAIL })
     const caixa = p.getByRole('checkbox', { name: 'Criar o acesso ao app' })
     await expect(caixa).toBeEnabled()
+    // O "como fica o login" mora na dica ao lado do "Criar o acesso ao app" (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre o acesso ao app' }).hover()
     await expect(p.getByText(/senha inicial = o número do passaporte/)).toBeVisible()
+    await p.mouse.move(0, 0)
     await caixa.check()
     await p.getByRole('button', { name: 'Cadastrar cliente' }).click()
     await expect(p.getByText(`a senha inicial é o número do passaporte, ${PASSAPORTE} (em maiúsculas)`)).toBeVisible()
@@ -112,7 +115,10 @@ test('na aba Dados, a ficha com RNE e e-mail ganha "Dar acesso ao app", com a se
   expect((await db().from('clients').update({ document: null, documento_tipo: 'RNE', documento_numero: rne, email }).eq('id', cliente)).error).toBeNull()
   await como(browser, recepcaoA, async p => {
     await p.goto(`/admin/clients/${cliente}?aba=dados`)
+    // O "como fica o login" mora na dica (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre o acesso ao app' }).hover()
     await expect(p.getByText('O login é o e-mail, e a senha inicial, o número do RNE.')).toBeVisible()
+    await p.mouse.move(0, 0)
     await p.getByRole('button', { name: 'Dar acesso ao app' }).click()
     await expect(p.getByText(`a senha inicial é o número do RNE, ${rne} (em maiúsculas)`)).toBeVisible()
   })

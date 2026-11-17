@@ -3,6 +3,7 @@ import { getPlatformContext } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { ROTULO_DO_REGISTRO, type TipoDeRegistroDaPlataforma } from '@estetica-os/nucleo/lib/plataforma/auditoria'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { ler } from '@estetica-os/nucleo/lib/db'
+import { Dica } from '@estetica-os/nucleo/components/dica'
 
 /** Tudo o que a plataforma fez, do mais recente — só admin. */
 const quando = (iso: string) =>
@@ -21,8 +22,11 @@ export default async function AuditoriaPage() {
     <div className="suporte-pilha-larga">
       <div className="suporte-cabecalho">
         <div>
-          <h1 className="suporte-titulo">Auditoria da plataforma</h1>
-          <p className="suporte-sub">Os 200 registros mais recentes. Nada daqui se altera.</p>
+          {/* A apresentação mora na dica (2026-11-16); fora do h1, o título não muda de nome. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h1 className="suporte-titulo">Auditoria da plataforma</h1>
+            <Dica rotulo="Sobre a auditoria">Os 200 registros mais recentes. Nada daqui se altera.</Dica>
+          </div>
         </div>
       </div>
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

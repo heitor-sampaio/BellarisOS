@@ -5,6 +5,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Sparkles, X } from 'lucide-react'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O Copilot que o PLANO não inclui, explicado (A51 da 6ª simulação): no teste
@@ -45,10 +46,14 @@ export function CopilotForaDoPlano({ emTeste, assinaturaHref }: { emTeste: boole
       </header>
       <div className="copilot-corpo">
         <div className="copilot-vazio" data-copilot-fora-do-plano>
-          <p><strong>{emTeste ? 'O Copilot não está no seu plano de teste.' : 'O Copilot não faz parte do plano da rede.'}</strong></p>
+          {/* O estado e o caminho ficam à vista; o "por que" do teste, na dica (2026-11-16). */}
+          <p style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <strong>{emTeste ? 'O Copilot não está no seu plano de teste.' : 'O Copilot não faz parte do plano da rede.'}</strong>
+            {emTeste && <Dica rotulo="Por que fica fora do teste">O teste grátis libera tudo, menos o Copilot: ele custa por uso.</Dica>}
+          </p>
           <p>
             {emTeste
-              ? 'O teste grátis libera tudo, menos o Copilot: ele custa por uso. Ele entra com um plano que o inclua, ou como adicional.'
+              ? 'Ele entra com um plano que o inclua, ou como adicional.'
               : 'Ele entra com um plano que o inclua, ou como adicional, se o plano oferecer.'}
           </p>
           <p>

@@ -19,6 +19,7 @@ import {
 import { buscarClientesParaPlano } from '@/actions/treatment-plans'
 import { rotaCliente } from '@/lib/rotas'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Um planejamento de injetáveis aberto.
@@ -236,7 +237,9 @@ export function MapaInjetavel({
           background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
         }}>
           Planejamento avulso. Dá para desenhar e salvar; registrar a aplicação
-          exige um cliente, porque a aplicação vira prontuário.
+          exige um cliente.{' '}
+          {/* O "por que" mora na dica (2026-11-16); o aviso que trava fica. */}
+          <Dica rotulo="Por que a aplicação exige um cliente">Porque a aplicação vira prontuário.</Dica>
         </p>
       )}
 
@@ -262,14 +265,6 @@ export function MapaInjetavel({
         </div>
       )}
 
-      {/* A28 da 11ª: quatro botões sem dizer a diferença — a linha diz. */}
-      {podeEditar && appointmentId && plano.clientId && (
-        <p data-o-que-cada-botao-faz style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-          <strong>Salvar planejamento</strong> guarda os pontos e as doses previstas (o plano, para esta e as próximas sessões).{' '}
-          <strong>Confirmar aplicação</strong> copia a dose prevista de cada ponto para a aplicada, na tela, para você ajustar.{' '}
-          <strong>Registrar aplicação</strong> grava neste atendimento o que foi aplicado — uma vez; depois, “Atualizar a aplicação registrada” troca a gravada.
-        </p>
-      )}
       {podeEditar && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" onClick={salvar} disabled={salvando} className="btn-ghost"
@@ -285,6 +280,16 @@ export function MapaInjetavel({
               style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
               <Syringe size={14} /> {registrada ? 'Atualizar a aplicação registrada' : 'Registrar aplicação'}
             </button>
+          )}
+          {/* A28 da 11ª: quatro botões sem dizer a diferença — a dica diz (2026-11-16 — era uma linha fixa acima dos botões). */}
+          {appointmentId && plano.clientId && (
+            <Dica rotulo="O que cada botão faz" largura={320}>
+              <span data-o-que-cada-botao-faz style={{ display: 'block' }}>
+                <strong>Salvar planejamento</strong> guarda os pontos e as doses previstas (o plano, para esta e as próximas sessões).{' '}
+                <strong>Confirmar aplicação</strong> copia a dose prevista de cada ponto para a aplicada, na tela, para você ajustar.{' '}
+                <strong>Registrar aplicação</strong> grava neste atendimento o que foi aplicado — uma vez; depois, “Atualizar a aplicação registrada” troca a gravada.
+              </span>
+            </Dica>
           )}
           {registrada && !msg && (
             <span data-aplicacao-registrada style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
@@ -306,13 +311,17 @@ export function MapaInjetavel({
       {/* Histórico — do CLIENTE, não deste planejamento: quem abre um mapa novo
           precisa ver o que já foi aplicado antes. */}
       <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 12 }}>
-        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-          Aplicações do cliente ({plano.aplicacoes.length})
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>Aplicações do cliente ({plano.aplicacoes.length})</span>
+          {/* O "o que esta lista mostra" mora na dica (2026-11-16 — era a 2ª frase do vazio). */}
+          {plano.clientId && (
+            <Dica rotulo="Sobre as aplicações do cliente">O que for registrado num atendimento fica guardado aqui, como foi.</Dica>
+          )}
         </p>
         {plano.aplicacoes.length === 0 ? (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
             {plano.clientId
-              ? 'Nenhuma aplicação registrada ainda. O que for registrado num atendimento fica guardado aqui, como foi.'
+              ? 'Nenhuma aplicação registrada ainda.'
               : 'Sem cliente ligado, não há histórico para mostrar.'}
           </p>
         ) : (

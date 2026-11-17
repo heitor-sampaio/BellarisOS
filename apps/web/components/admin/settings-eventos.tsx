@@ -9,6 +9,7 @@ import {
   type EventoNaLista, type LinhaDoCatalogo,
 } from '@/actions/eventos'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import { rotuloDoEvento } from '@estetica-os/types'
 
 /**
@@ -130,15 +131,16 @@ export function SettingsEventos({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div>
+      {/* O que é a corrente mora na dica (2026-11-16 — era um parágrafo fixo); fora do <h2>. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
           Eventos do sistema
         </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
+        <Dica rotulo="Sobre os eventos do sistema">
           <Fala>Tudo que acontece na rede</Fala> vira um fato aqui, e é daqui que as automações
           vão puxar os gatilhos. A corrente guarda <strong>30 dias</strong>
           {desdeQuando ? ` — o registro mais antigo é de ${dia(desdeQuando, fuso)}.` : '.'}
-        </p>
+        </Dica>
       </div>
 
       {falha && (

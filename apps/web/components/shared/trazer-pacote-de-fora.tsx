@@ -9,6 +9,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { trazerPacoteDeFora } from '@/actions/pacotes'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { contaDoPacoteDeFora } from '@/lib/pacotes/de-fora'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * "Trazer pacote de fora" (decisão 1 do Heitor sobre a 8ª simulação,
@@ -86,10 +87,13 @@ function JanelaTrazerPacote({ clientId, procedimentos, unidades, unidadeAtual, o
     <JanelaModal rotulo="Trazer pacote de fora" onFechar={onFechar} fechaNoFundo={false} travado={pendente} largura={520}>
       <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ flex: 1 }}>
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Trazer pacote de fora</h2>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.5 }}>
-            O saldo de um pacote que a cliente já tinha antes do sistema. Não é uma venda.
-          </p>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span>Trazer pacote de fora</span>
+            {/* O subtítulo mora na dica (2026-11-16); a conta, embaixo, fica à vista. */}
+            <Dica rotulo="Sobre trazer pacote de fora">
+              O saldo de um pacote que a cliente já tinha antes do sistema. Não é uma venda.
+            </Dica>
+          </h2>
         </div>
         <button type="button" onClick={onFechar} aria-label="Fechar" disabled={pendente} className="btn-ghost" style={{ padding: 6 }}>
           <X size={15} />

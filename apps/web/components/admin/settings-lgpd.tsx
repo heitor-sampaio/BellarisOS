@@ -5,6 +5,7 @@ import { reviewMedicalData, type LgpdAdminRow } from '@/actions/lgpd'
 import { ShieldCheck, Check, X, AlertTriangle } from 'lucide-react'
 import { prazoDeResposta, DIAS_DO_PRAZO_DA_LGPD } from '@/lib/lgpd/prazo'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 interface Props {
   requests: LgpdAdminRow[]
@@ -108,15 +109,16 @@ export function SettingsLgpd({ requests, canReviewMedical }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
+      {/* O "como funciona" mora na dica (2026-11-16 — era um parágrafo fixo). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
           Solicitações de dados (LGPD)
         </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
+        <Dica rotulo="Sobre as solicitações de dados">
           Quando um cliente pede uma cópia dos próprios dados, o pacote com cadastro, agenda,
           financeiro e fidelidade é gerado automaticamente. A parte do prontuário só entra
           se alguém com acesso a prontuário liberar aqui.
-        </p>
+        </Dica>
       </div>
 
       {awaiting.length > 0 && (
@@ -187,8 +189,9 @@ export function SettingsLgpd({ requests, canReviewMedical }: Props) {
               {r.medical_status === 'pending' && (
                 canReviewMedical
                   ? <ReviewButtons requestId={r.id} />
-                  : <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', maxWidth: 220, textAlign: 'right' }}>
-                      Só quem tem acesso a prontuário pode liberar esta parte.
+                  // De quem é a liberação: na dica (2026-11-16); o chip "Prontuário a liberar" já diz o estado.
+                  : <span data-quem-libera style={{ color: 'var(--text-muted)' }}>
+                      <Dica rotulo="Quem libera o prontuário">Só quem tem acesso a prontuário pode liberar esta parte.</Dica>
                     </span>
               )}
             </div>

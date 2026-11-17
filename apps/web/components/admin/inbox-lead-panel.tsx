@@ -1,5 +1,6 @@
 'use client'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import { instanteNoFuso } from '@/lib/datetime'
 
 import { PerguntaDaPerda } from '@/components/branch/pergunta-da-perda'
@@ -531,9 +532,11 @@ export function InboxLeadPanel({
         </div>
 
         {card.abertas.length === 0 && (
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.5, margin: 0 }}>
-            Nenhuma oportunidade aberta. Nem toda conversa é um negócio — crie uma
-            quando houver interesse de verdade.
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.5, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Nenhuma oportunidade aberta.</span>
+            <Dica rotulo="Quando criar uma oportunidade">
+              Nem toda conversa é um negócio — crie uma quando houver interesse de verdade.
+            </Dica>
           </p>
         )}
 
@@ -1273,14 +1276,16 @@ export function ScheduleModal({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={labelStyle}>Quem será atendido</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={labelStyle}>Quem será atendido</span>
+                <Dica rotulo="Sobre o cadastro de quem será atendido">
+                  O cliente é criado com estes dados. CPF e e-mail ficam para quando houver ficha completa.
+                </Dica>
+              </span>
               <input className="field" value={nome} onChange={e => setNome(e.target.value)}
                 placeholder="Nome" style={{ fontSize: 'var(--text-base-sz)' }} />
               <input className="field" value={telefone} onChange={e => setTelefone(e.target.value)}
                 placeholder="Telefone com DDD" style={{ fontSize: 'var(--text-base-sz)' }} />
-              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                O cliente é criado com estes dados. CPF e e-mail ficam para quando houver ficha completa.
-              </span>
             </div>
           )}
 

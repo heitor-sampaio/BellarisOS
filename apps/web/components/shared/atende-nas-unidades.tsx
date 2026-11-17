@@ -1,5 +1,7 @@
 'use client'
 
+import { Dica } from '@/components/shared/dica'
+
 interface Unidade { id: string; name: string }
 
 /**
@@ -55,10 +57,13 @@ export function AtendeNasUnidades({ unidades, marcadas, aoMudar, editaveis = nul
     <div role="group" aria-labelledby={titulo} data-atende-nas-unidades
       style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
       {campos}
-      <span id={titulo} className="field-label">Atende clientes em</span>
-      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-        Nas unidades marcadas ela aparece na agenda como profissional e gera comissão. O acesso não muda: numa
-        unidade que não é a dela, ela vê só os próprios atendimentos.
+      {/* O "o que vale" mora na dica ao lado do rótulo (2026-11-16). */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+        <span id={titulo} className="field-label">Atende clientes em</span>
+        <Dica rotulo="Sobre onde a pessoa atende">
+          Nas unidades marcadas ela aparece na agenda como profissional e gera comissão. O acesso não muda: numa
+          unidade que não é a dela, ela vê só os próprios atendimentos.
+        </Dica>
       </span>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
         {unidades.map(u => (

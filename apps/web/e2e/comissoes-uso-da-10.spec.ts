@@ -78,6 +78,8 @@ test('A32: o "Fechar e pagar" no mês em curso diz que paga até agora, e o fech
 test('A33: o "Meu faturamento" diz que a sessão de pacote ou de plano que ela atende fica fora, e onde ela aparece', async ({ browser }) => {
   await como(browser, daniela!, async p => {
     await p.goto(`/${slug}/dashboard`)
+    // O que fica fora mora na dica do "Meu faturamento" (2026-11-16).
+    await p.getByRole('button', { name: 'O que o "Meu faturamento" conta' }).first().hover()
     const nota = p.locator('[data-fora-do-meu-faturamento]')
     await expect(nota).toContainText('sessão de pacote')
     await expect(nota).toContainText('comissões')

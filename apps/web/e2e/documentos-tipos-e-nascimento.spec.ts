@@ -152,6 +152,8 @@ test.describe.serial('documentos: os cinco tipos e "nasce ao agendar"', () => {
       const janela = p.locator('dialog[open]')
       await janela.getByLabel('Termo de consentimento').selectOption({ label: NOME.termo })
       await janela.getByRole('combobox', { name: 'Contrato', exact: true }).selectOption({ label: NOME.contrato })
+      // O "só no avulso" do contrato mora na dica do rótulo (2026-11-16).
+      await janela.getByRole('button', { name: 'Sobre: Contrato' }).hover()
       await expect(janela.getByText(/Só no atendimento avulso/)).toBeVisible()
       const outros = janela.getByRole('group', { name: 'Outros documentos' })
       // Os contratos de plano e de pacote não se ligam a procedimento.

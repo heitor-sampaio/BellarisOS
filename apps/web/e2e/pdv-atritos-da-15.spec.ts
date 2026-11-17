@@ -97,7 +97,8 @@ test('A1/A17/A2/A4: a comanda do crediário diz o que está em aberto e quem est
     await linha.click()
     const comanda = p.locator('[data-comanda-aberta]')
     await expect(comanda.locator('[data-comanda-em-aberto]')).toContainText(new RegExp(`R\\$\\s600,00 em aberto \\(3 parcelas, a 1ª em ${dia}\\)`))
-    // A2: quem estorna, com o nome — ela (só o PDV) não estorna.
+    // A2: quem estorna, com o nome — ela (só o PDV) não estorna. Mora na dica (2026-11-16).
+    await comanda.getByRole('button', { name: 'Quem estorna esta comanda' }).hover()
     const quem = comanda.locator('[data-quem-estorna]')
     await expect(quem).toContainText('é de quem tem o Financeiro em Gerenciar')
     await expect(quem).toContainText(nomeDoFinanceiro)
@@ -107,6 +108,8 @@ test('A1/A17/A2/A4: a comanda do crediário diz o que está em aberto e quem est
     await p.goto(`/${slug}/pdv?ver=PAGAS`)
     await p.locator('[data-lista-de-comandas] .pdv-linha', { hasText: `Crediario ${marca}` }).click()
     await expect(p.locator('[data-comanda-aberta] [data-comanda-em-aberto]')).toBeVisible()
+    // A frase mora na dica: sem ela, não há nem o botão da dica.
+    await expect(p.locator('[data-comanda-aberta]').getByRole('button', { name: 'Quem estorna esta comanda' })).toHaveCount(0)
     await expect(p.locator('[data-comanda-aberta] [data-quem-estorna]')).toHaveCount(0)
   })
 })

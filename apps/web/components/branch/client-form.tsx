@@ -11,6 +11,7 @@ import { maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadas
 import { ResponsavelLegal, RESPONSAVEL_VAZIO, type CamposDoResponsavel } from '@/components/shared/responsavel-legal'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
+import { Dica } from '@/components/shared/dica'
 import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro, oQueFaltaResponder, POR_QUE_JA_EXISTE, perguntaJuntoDoDocumento, textoDoSimDaPessoa } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -420,9 +421,12 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         <span>
           <b style={{ color: 'var(--text)' }}>Criar o acesso ao app</b>
           {podeAcesso ? (
-            <> — login = e-mail e senha inicial = {nomeDoDoc}{tipoDoc !== 'CPF' ? ' (em maiúsculas, como está aqui)' : ''}. Se ela já
+            // O "como fica o login" mora na dica (2026-11-16 — era a frase ao lado do rótulo).
+            <>{' '}<Dica rotulo="Sobre o acesso ao app">
+              Login = e-mail e senha inicial = {nomeDoDoc}{tipoDoc !== 'CPF' ? ' (em maiúsculas, como está aqui)' : ''}. Se ela já
               usa o app em outra rede, com o mesmo e-mail e documento, esta ficha entra na conta dela, e a senha
-              continua a que ela já usa.</>
+              continua a que ela já usa.
+            </Dica></>
           ) : (
             <> — precisa do e-mail e de um documento (CPF, passaporte ou RNE). Sem eles, a cliente é cadastrada sem o
               app, e o acesso pode ser dado depois, na aba Dados da ficha.</>
@@ -523,16 +527,17 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
           O telefone {pergunta.exibir} é da ficha arquivada de <b style={destaque}>{pergunta.nome}</b>. Se é ela, reative a
           ficha em vez de cadastrar de novo.
         </span>
-        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
           <button type="button" className="btn-secondary" disabled={pending} onClick={() => reativar(pergunta.id)}>
             Reativar a ficha de {pergunta.nome}
           </button>
           <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_arquivada', `nova:${pergunta.telefone}`)}>
             É outra pessoa
           </button>
-        </span>
-        <span style={explicacao}>
-          Reativar traz a ficha de volta como estava, com o histórico; o que foi digitado aqui não é gravado.
+          {/* O que reativar faz mora na dica (2026-11-16 — era a frase embaixo dos botões). */}
+          <Dica rotulo="Sobre reativar a ficha">
+            Reativar traz a ficha de volta como estava, com o histórico; o que foi digitado aqui não é gravado.
+          </Dica>
         </span>
       </div>
     )
@@ -546,7 +551,7 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
           Já existe a ficha de <b style={destaque}>{pergunta.nome}</b> {POR_QUE[pergunta.motivo]}.
           {pergunta.podeCadastrarMesmoAssim ? ' Se é outra pessoa (mãe e filha dividem o telefone), cadastre mesmo assim.' : ' O CPF é único na rede.'}
         </span>
-        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
           {pergunta.podeCadastrarMesmoAssim && (
             <button type="button" className="btn-secondary" disabled={pending} onClick={() => cadastrarMesmoAssim(pergunta.id)}>
               Cadastrar mesmo assim
@@ -555,9 +560,10 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
           <button type="button" className="btn-secondary" disabled={pending} onClick={() => atualizar(pergunta.id)}>
             Unificar com a ficha de {pergunta.nome}
           </button>
-        </span>
-        <span style={explicacao}>
-          Unificar grava na ficha dela só o que foi preenchido aqui, sem apagar o que ela já tem (as observações se somam, as tags se juntam); o nome continua o da ficha. Depois, abre a ficha.
+          {/* O que unificar faz mora na dica (2026-11-16); à vista, como a ficha fica. */}
+          <Dica rotulo="Sobre unificar">
+            Unificar grava na ficha dela só o que foi preenchido aqui, sem apagar o que ela já tem (as observações se somam, as tags se juntam); o nome continua o da ficha. Depois, abre a ficha.
+          </Dica>
         </span>
         <ComoFicaAoUnificar nome={pergunta.nome} naFicha={pergunta.naFicha} digitado={digitado} />
       </div>
@@ -573,16 +579,17 @@ function PerguntaDoTelefone({ pergunta, pending, responder, reativar, atualizar,
             ? <>Este telefone é de um contato do CRM. É a mesma pessoa do contato <b style={destaque}>{pergunta.nome}</b>?</>
             : <>Este telefone é de uma conversa do inbox. É a mesma pessoa do contato <b style={destaque}>{pergunta.nome}</b>?</>}
       </span>
-      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
         <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_pessoaDoCrm', `mesma:${pergunta.contatoId}`)}>
           Sim, é a mesma pessoa
         </button>
         <button type="button" className="btn-secondary" disabled={pending} onClick={() => responder('_pessoaDoCrm', `outra:${pergunta.contatoId}`)}>
           Não, é outra pessoa
         </button>
-      </span>
-      <span style={explicacao}>
-        Sim liga a oportunidade e a conversa à ficha nova (o card passa a &ldquo;Já é cliente&rdquo;). Não cadastra sem ligar.
+        {/* O que cada resposta faz mora na dica (2026-11-16 — era a frase embaixo dos botões). */}
+        <Dica rotulo="Sobre o Sim e o Não">
+          Sim liga a oportunidade e a conversa à ficha nova (o card passa a &ldquo;Já é cliente&rdquo;). Não cadastra sem ligar.
+        </Dica>
       </span>
       {/* A15 da 17ª (princípio 3): o "Sim" troca o nome (e o e-mail) do contato — a pergunta diz antes. */}
       {textoDoSimDaPessoa({ contato: pergunta.nome, nome: digitado.nome, email: digitado.email.toLowerCase() }) && (

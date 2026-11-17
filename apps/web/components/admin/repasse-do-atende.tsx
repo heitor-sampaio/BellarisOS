@@ -2,6 +2,7 @@
 
 import type { PendenciasDoMembro } from '@/lib/equipe/repasse'
 import { CANCELAR, LinhaDoAgendamento } from '@/components/admin/desativar-membro'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Desmarcar uma unidade no "Atende" com agendamentos em aberto ali (D3 da 9ª
@@ -36,10 +37,13 @@ export function RepasseDoAtende({ dados, escolhas, aoEscolher }: {
     }}>
       <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>
         {dados.nome} tem {n} {n === 1 ? 'agendamento' : 'agendamentos'} em aberto em {dados.unidades}. Sem atender lá, quem
-        fica com {n === 1 ? 'ele' : 'eles'}?
-      </p>
-      <p style={texto}>
-        O que ficar com {dados.nome} continua na agenda de {dados.unidades}, na coluna dessa pessoa, até alguém remarcar ou trocar quem atende.
+        fica com {n === 1 ? 'ele' : 'eles'}?{' '}
+        {/* O "como fica" do que não se repassa mora na dica (2026-11-16). */}
+        <span style={{ color: 'var(--text-muted)' }}>
+          <Dica rotulo="O que acontece com o que ficar sem repasse">
+            O que ficar com {dados.nome} continua na agenda de {dados.unidades}, na coluna dessa pessoa, até alguém remarcar ou trocar quem atende.
+          </Dica>
+        </span>
       </p>
       {!dados.podeRepassarAgendamentos ? (
         <p style={texto}>Seu cargo não repassa agendamentos (pede a Agenda em Gerenciar, de todos): eles ficam com {dados.nome}.</p>

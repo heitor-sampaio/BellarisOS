@@ -10,6 +10,7 @@ import type { PacoteAVenda } from '@/components/shared/vender-pacote'
 import type { AtendimentoAReceber } from '@/lib/metrics/a-receber'
 import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
 import { ParcelasEmAberto } from '@/components/shared/pdv/parcelas-em-aberto'
+import { Dica } from '@/components/shared/dica'
 import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 import type { ContratoQuePedeCadastro } from '@/components/shared/vender-pacote'
 
@@ -64,7 +65,11 @@ export function NovaVenda({ unidadeId, slugDaUnidade, venda, aviso, unidades, hr
       <div style={{ padding: '18px 22px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {unidades ? (
           <div data-unidade-da-venda style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <p className="field-label">Em qual unidade é a venda?</p>
+            <p style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span className="field-label">Em qual unidade é a venda?</span>
+              {/* 2026-11-16: era uma linha fixa embaixo da lista. */}
+              <Dica rotulo="Sobre a unidade da venda">O catálogo, o estoque e o caixa são os da unidade escolhida.</Dica>
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--border)', borderRadius: 'var(--radius-field)', overflow: 'hidden' }}>
               {unidades.map(u => (
                 <Link key={u.id} href={u.href} role="button" className="pdv-linha"
@@ -73,7 +78,6 @@ export function NovaVenda({ unidadeId, slugDaUnidade, venda, aviso, unidades, hr
                 </Link>
               ))}
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)' }}>O catálogo, o estoque e o caixa são os da unidade escolhida.</p>
           </div>
         ) : venda ? (
           <>

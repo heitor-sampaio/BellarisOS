@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { AlertTriangle, ChevronRight } from 'lucide-react'
 import { partsInTZ } from '@/lib/datetime'
+import { Dica } from '@/components/shared/dica'
 import type { AbertoDeAntes, GrupoDeAbertos } from '@/lib/metrics/abertos-de-antes'
 
 /**
@@ -27,19 +28,25 @@ export function AbertosDeAntes({ base, abertos, semChegada, mostrarUnidade = fal
       {abertos.total > 0 && (
         <Grupo base={base} mostrarUnidade={mostrarUnidade} grupo={abertos} chave="abertos"
           titulo={abertos.total === 1 ? 'atendimento de dias anteriores ainda aberto' : 'atendimentos de dias anteriores ainda abertos'}
-          explicacao="A cliente chegou (ou o atendimento começou) e nada foi fechado. Abra para concluir ou registrar o que houve." />
+          acao="Abra para concluir ou registrar o que houve."
+          porque="A cliente chegou (ou o atendimento começou) e nada foi fechado." />
       )}
       {semChegada.total > 0 && (
         <Grupo base={base} mostrarUnidade={mostrarUnidade} grupo={semChegada} chave="sem-chegada"
           titulo={semChegada.total === 1 ? 'agendamento de dias anteriores passou sem chegada' : 'agendamentos de dias anteriores passaram sem chegada'}
-          explicacao="Ninguém marcou a chegada: marcar falta ou concluir? A falta não registrada distorce a agenda e os números." />
+          acao="Abra cada um: marcar falta ou concluir?"
+          porque="Ninguém marcou a chegada. A falta não registrada distorce a agenda e os números." />
       )}
     </section>
   )
 }
 
-function Grupo({ base, mostrarUnidade, grupo, chave, titulo, explicacao }: {
-  base: string; mostrarUnidade: boolean; grupo: GrupoDeAbertos; chave: 'abertos' | 'sem-chegada'; titulo: string; explicacao: string
+function Grupo({ base, mostrarUnidade, grupo, chave, titulo, acao, porque }: {
+  base: string; mostrarUnidade: boolean; grupo: GrupoDeAbertos; chave: 'abertos' | 'sem-chegada'; titulo: string
+  /** O pedido de ação: fica à vista (o aviso trava o dia). */
+  acao: string
+  /** O porquê: mora na dica do título (2026-11-16, "A explicação mora na dica"). */
+  porque: string
 }) {
   const quando = (iso: string) => {
     const p = partsInTZ(new Date(iso))
@@ -52,9 +59,10 @@ function Grupo({ base, mostrarUnidade, grupo, chave, titulo, explicacao }: {
     <div data-grupo={chave} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <p style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--warning)' }}>
         <AlertTriangle size={15} aria-hidden style={{ flexShrink: 0 }} />
-        {grupo.total} {titulo}
+        <span>{grupo.total} {titulo}</span>
+        <Dica rotulo={chave === 'abertos' ? 'Sobre os atendimentos abertos' : 'Sobre os agendamentos sem chegada'}>{porque}</Dica>
       </p>
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)' }}>{explicacao}</p>
+      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)' }}>{acao}</p>
       <ul style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {grupo.itens.map(a => (
           <li key={a.id}>

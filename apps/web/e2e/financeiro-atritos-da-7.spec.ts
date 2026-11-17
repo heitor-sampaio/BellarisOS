@@ -174,6 +174,8 @@ test('A46: a tela de Pacotes manda à "Nova venda" do PDV, o nome do botão', as
   // Só se vende pelo PDV (PDV7, 2026-11-13): o texto aponta a "Nova venda".
   await como(browser, caixa!, async p => {
     await p.goto(`/${slug}/pacotes`)
+    // O texto mora na dica do título (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre os pacotes' }).hover()
     await expect(p.getByText(/A venda é no PDV/)).toContainText('“Nova venda”')
     await expect(p.getByText(/Vender pacote/)).toHaveCount(0)
   })

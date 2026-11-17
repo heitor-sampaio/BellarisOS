@@ -55,9 +55,12 @@ test('o financeiro da unidade: zero no mês, pelo vencimento, e o próximo', asy
     await p.goto(`/${slug}/financeiro?period=month`)
     const aPagar = p.locator('[data-kpi="a-pagar"]')
     await expect(aPagar).toContainText('R$ 0,00')
+    // O "pelo vencimento" mora na dica do cartão (2026-11-16).
+    await aPagar.locator('[data-dica-botao]').hover()
     await expect(aPagar).toContainText(/pelo vencimento/i)
     await expect(aPagar).toContainText(`R$ 300,00 em ${ROTULO}`)
     const aReceber = p.locator('[data-kpi="a-receber"]')
+    await aReceber.locator('[data-dica-botao]').hover()
     await expect(aReceber).toContainText(/pelo vencimento/i)
     await expect(aReceber).toContainText(`R$ 150,00 em ${ROTULO}`)
   })
@@ -68,6 +71,8 @@ test('o financeiro da rede: o mesmo', async ({ browser }) => {
     await p.goto('/admin/financeiro?period=month')
     const aPagar = p.locator('[data-kpi="a-pagar"]')
     await expect(aPagar).toContainText('R$ 0,00')
+    // O "pelo vencimento" mora na dica do cartão (2026-11-16).
+    await aPagar.locator('[data-dica-botao]').hover()
     await expect(aPagar).toContainText(/pelo vencimento/i)
     await expect(aPagar).toContainText(`R$ 300,00 em ${ROTULO}`)
     await expect(p.locator('[data-kpi="a-receber"]')).toContainText(`R$ 150,00 em ${ROTULO}`)

@@ -4,6 +4,7 @@ import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { criarOrigemDoLead, alternarOrigemDoLead } from '@/actions/crm-origens'
+import { Dica } from '@/components/shared/dica'
 
 export interface OrigemConfiguravel { id: string; nome: string; ativo: boolean }
 
@@ -44,11 +45,12 @@ export function OrigensDoLeadConfig({ origens }: { origens: OrigemConfiguravel[]
 
   return (
     <section data-origens-do-lead style={{ borderTop: '1px solid var(--hairline)', padding: '18px 24px 26px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <h3 style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>Origens das oportunidades</h3>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+        {/* A explicação mora na dica (2026-11-16). */}
+        <Dica rotulo="Sobre as origens das oportunidades">
           De onde a oportunidade veio — o que o card, a importação e o Copilot oferecem. Desativar tira da lista sem apagar a origem de quem já tem. A oportunidade do anúncio continua com a origem do anúncio (Meta Ads, Google Ads).
-        </p>
+        </Dica>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

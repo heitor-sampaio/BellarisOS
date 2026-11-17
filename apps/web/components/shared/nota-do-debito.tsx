@@ -9,7 +9,7 @@ import { formatBRL } from '@estetica-os/utils'
  */
 export function NotaDoDebito({ debito }: { debito: number }) {
   return (
-    <span data-debito-no-periodo style={{ display: 'block', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.4, marginTop: 4 }}>
+    <span data-debito-no-periodo style={{ display: 'block', marginTop: 4 }}>
       {debito > 0
         ? <>Débito no período: {formatBRL(debito)} — conta como recebido no dia da venda (o débito e o Pix não passam por aqui).</>
         : <>O débito e o Pix contam como recebidos no dia da venda: não passam por aqui.</>}

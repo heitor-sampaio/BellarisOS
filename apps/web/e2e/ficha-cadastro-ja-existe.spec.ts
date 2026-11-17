@@ -94,8 +94,11 @@ test('o mesmo telefone: "Já existe a ficha de X", nada se grava; "Unificar com 
     const aviso = p.getByRole('alert').filter({ hasText: 'Já existe a ficha de' })
     await expect(aviso).toContainText(`Já existe a ficha de ${valdir} com este telefone.`)
     await expect(aviso.getByRole('button', { name: 'Cadastrar mesmo assim' })).toBeVisible()
+    // O que unificar faz mora na dica ao lado do botão (2026-11-16).
+    await aviso.getByRole('button', { name: 'Sobre unificar' }).hover()
     await expect(aviso, 'o texto diz o que unificar faz, e que o nome fica').toContainText('Unificar grava na ficha dela')
     await expect(aviso).toContainText('o nome continua o da ficha')
+    await p.mouse.move(0, 0)
     expect(await fichasDe(valdir), 'nada se grava antes da resposta').toHaveLength(1)
     await p.locator('input[name="email"]').fill(`je${marca}@bellaris.invalid`)
     await p.locator('textarea[name="notes"]').fill('Alérgica a látex')

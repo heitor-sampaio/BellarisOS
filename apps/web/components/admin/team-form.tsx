@@ -8,8 +8,11 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { toast } from 'sonner'
 import { confirmacaoDoCadastro } from '@/lib/equipe/textos-do-cadastro'
+import { Dica } from '@/components/shared/dica'
 
 interface Branch { id: string; name: string }
+/** O rótulo do campo com a dica ao lado (a explicação mora na dica, 2026-11-16). */
+const rotuloComDica = { display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' } as const
 /** C62 (F70): o porquê do cargo desligado (o mesmo texto da recusa da action, `lib/equipe/cargo-acima.ts`). */
 const DICA_DO_CARGO_ACIMA_TEXTO = 'Só quem tem esses módulos pode dar este cargo.'
 
@@ -116,13 +119,25 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                 </div>
                 {/* A13 da 12ª (princípio 1): o CRM/COREN, opcional. */}
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label className="overline" htmlFor="tm-registro">Registro no conselho (opcional)</label>
+                  <span style={rotuloComDica}>
+                    <label className="overline" htmlFor="tm-registro">Registro no conselho (opcional)</label>
+                    <Dica rotulo="Sobre o registro no conselho">Sai nos documentos pela variável do registro de quem atende.</Dica>
+                  </span>
                   <input id="tm-registro" name="registro_conselho" type="text" maxLength={60} className="field" placeholder="Ex.: CRM-SC 12345, COREN-SC 123456" />
-                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Sai nos documentos pela variável do registro de quem atende.</span>
                 </div>
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label className="overline" htmlFor="tm-role">Cargo</label>
+                  <span style={rotuloComDica}>
+                    <label className="overline" htmlFor="tm-role">Cargo</label>
+                    {/* O porquê do cargo desligado (C62) e o da abrangência que some com a
+                        Admin da rede (eq-01): explicação, mora na dica (2026-11-16). */}
+                    {(ehAdmin || roles.some(r => r.acimaDoMeu)) && (
+                      <Dica rotulo="Sobre a escolha do acesso">
+                        {ehAdmin && <span data-dica-admin-da-rede style={{ display: 'block' }}>A Admin tem acesso à rede toda, em todas as unidades, e pode dar e alterar o cargo de Admin.</span>}
+                        {roles.some(r => r.acimaDoMeu) && <span style={{ display: 'block', marginTop: ehAdmin ? 6 : 0 }}>{DICA_DO_CARGO_ACIMA_TEXTO}</span>}
+                      </Dica>
+                    )}
+                  </span>
                   <select id="tm-role" name="roleId" required className="field" value={roleId} onChange={e => setRoleId(e.target.value)}>
                     <option value="" disabled>Selecione…</option>
                     {roles.map(r => (
@@ -131,9 +146,6 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                       </option>
                     ))}
                   </select>
-                  {roles.some(r => r.acimaDoMeu) && (
-                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{DICA_DO_CARGO_ACIMA_TEXTO}</span>
-                  )}
                   {roles.length === 0 && (
                     <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                       Crie um cargo em Configurações → Cargos antes de adicionar membros.
@@ -141,12 +153,7 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                   )}
                 </div>
 
-                {/* Abrangência — a Admin é sempre da clínica toda. */}
-                {ehAdmin && (
-                  <span style={{ gridColumn: '1 / -1', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    A Admin tem acesso à rede toda, em todas as unidades, e pode dar e alterar o cargo de Admin.
-                  </span>
-                )}
+                {/* Abrangência — a Admin é sempre da rede toda (o porquê, na dica do Cargo). */}
                 {!ehAdmin && (
                   <UnidadesDoMembro id="tm-unidades" unidades={branches} editaveis={isNetworkAdmin ? null : branches.map(b => b.id)}
                     valor={unidades} aoMudar={setUnidades} />
@@ -164,11 +171,13 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
 
                 {atende && podeComissao && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label className="overline" htmlFor="tm-comissao">Comissão padrão (%)</label>
-                    <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" placeholder="Ex: 30" />
-                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                      Percentual sobre cada atendimento dela. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
+                    <span style={rotuloComDica}>
+                      <label className="overline" htmlFor="tm-comissao">Comissão padrão (%)</label>
+                      <Dica rotulo="Sobre a comissão padrão">
+                        Percentual sobre cada atendimento dela. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
+                      </Dica>
                     </span>
+                    <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" placeholder="Ex: 30" />
                   </div>
                 )}
 

@@ -97,8 +97,11 @@ test('A31: o Financeiro diz qual "resultado" é o do período e qual é o caixa 
     await expect(p.locator('[data-total-da-lista]')).toContainText('caixa da lista')
     // FI2: o resultado do período mora no Resumo.
     await p.goto(`/${slug}/financeiro`)
+    // A conta do resultado mora na dica do cartão (2026-11-16).
+    await p.locator('[data-kpi="resultado"], [data-kpi="lucro"]').first().locator('[data-dica-botao]').hover()
     await expect(p.locator('[data-base-do-resultado]').first()).toContainText('pelo que foi pago')
     await p.goto('/admin/financeiro')
+    await p.locator('[data-kpi="resultado"], [data-kpi="lucro"]').first().locator('[data-dica-botao]').hover()
     await expect(p.locator('[data-base-do-resultado]').first()).toContainText('pelo que foi pago')
     await p.goto('/admin/reports?tab=financeiro')
     await expect(p.getByText('Despesas pagas (caixa)')).toBeVisible()
@@ -108,12 +111,16 @@ test('A31: o Financeiro diz qual "resultado" é o do período e qual é o caixa 
 test('A38: quem tem a Fidelidade em Ver lê a quem pedir a troca; o app diz o mesmo', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/admin/clients/${marina}`)
+    // Na ficha, a quem pedir a troca mora na dica do "Fidelidade" (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre a fidelidade da cliente' }).hover()
     const nota = p.locator('[data-quem-troca]')
     await expect(nota).toContainText('é de quem tem a Fidelidade em Gerenciar')
     await expect(nota).toContainText(nomeDaDona)
   })
   await como(browser, rosana!, async p => {
     await p.goto(`/${slug}/cliente/fidelidade`)
+    // No app, a quem pedir a troca mora na dica do "Troque seus pontos" (2026-11-16).
+    await p.getByRole('button', { name: 'Quem faz a troca' }).hover()
     await expect(p.locator('[data-quem-troca]')).toContainText(nomeDaDona)
   })
 })
@@ -121,6 +128,8 @@ test('A38: quem tem a Fidelidade em Ver lê a quem pedir a troca; o app diz o me
 test('A39: o "Preço médio por atend." da ficha diz a conta na tela', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto(`/admin/clients/${marina}`)
+    // A conta mora na dica do rótulo (2026-11-16).
+    await p.getByRole('button', { name: 'O que o preço médio por atendimento conta' }).hover()
     await expect(p.locator('[data-preco-medio-explica]')).toContainText(/R\$\s2\.400,00 ÷ 2 atendimentos cobrados/)
   })
 })
@@ -147,6 +156,8 @@ test('A40: a devolução de uma venda que não pontuou não fala em tirar pontos
 test('A41: o crédito CONCEDIDO não diz que o dinheiro entrou quando ele nasceu', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto(`/admin/clients/${rosana!.clientId}`)
+    // A nota mora na dica do "Investido total" (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre o investido total' }).hover()
     const nota = p.locator('[data-pago-com-credito]').first()
     await expect(nota).toContainText('pagos com crédito interno')
     await expect(nota).not.toContainText('o dinheiro entrou quando o crédito nasceu')

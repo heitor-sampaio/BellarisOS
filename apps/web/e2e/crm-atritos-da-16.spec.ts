@@ -116,7 +116,10 @@ test('A17: com o filtro, a barra diz quantas mostra, e que o topo é do funil in
     await p.locator('[data-painel-picker]').getByRole('button', { name: 'Noiva' }).click()
     const total = await db().from('leads').select('id', { count: 'exact', head: true }).eq('tenant_id', rede.tenantId).in('crm_stage_id', Object.values(vendas))
     await expect(p.locator('[data-filtro-do-quadro]')).toContainText(`Mostrando 1 de ${total.count} oportunidades`)
-    await expect(p.locator('[data-filtro-do-quadro]')).toContainText('os números do topo são do funil inteiro')
+    // O "por que" mora na dica (2026-11-16): fecha o seletor e passa o mouse no "i".
+    await p.keyboard.press('Escape')
+    await p.locator('[data-filtro-do-quadro]').getByRole('button', { name: 'Sobre os números do topo' }).hover()
+    await expect(p.locator('[data-filtro-do-quadro]')).toContainText('Os números do topo são do funil inteiro')
   })
 })
 

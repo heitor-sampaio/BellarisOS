@@ -15,6 +15,7 @@ import {
 import { criarFicha, atualizarFicha } from '@/actions/fichas'
 import { comAsPerguntasDoModelo } from '@/lib/pre-atendimento/modelo-de-injetaveis'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { Dica } from '@/components/shared/dica'
 
 export interface ExistingForm {
   id:   string
@@ -261,7 +262,10 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
               <Plus size={13} /> {m.rotulo}
             </button>
           ))}
-          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Entram no fim da ficha, para revisar; só valem depois de salvar.</span>
+          {/* O "como entra" mora na dica (2026-11-16 — era uma linha fixa). */}
+          <span style={{ color: 'var(--text-muted)' }}>
+            <Dica rotulo="Sobre as perguntas prontas">Entram no fim da ficha, para revisar; só valem depois de salvar.</Dica>
+          </span>
         </div>
       )}
 
@@ -275,7 +279,14 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         {/* Paleta (desktop) */}
         <aside className="anamnesis-palette" style={{ flex: '0 0 200px', minWidth: 180 }}>
-          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Blocos</p>
+          {/* A legenda de uso mora na dica (2026-11-16 — era um parágrafo fixo embaixo da paleta). */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--text-faint)' }}>
+            <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Blocos</p>
+            <Dica rotulo="Como montar a ficha">
+              Solte um bloco <strong>sobre uma linha</strong> para adicionar uma coluna (máx. {MAX_COLS}).
+              Solte <strong>entre as linhas</strong> para criar uma nova linha.
+            </Dica>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {tipos.map(t => {
               const Icon = TYPE_ICON[t.value]
@@ -294,10 +305,6 @@ export function ConstrutorDeFicha({ existing, onDone, onSaved, createAction, upd
               )
             })}
           </div>
-          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 10, lineHeight: 1.5 }}>
-            Solte um bloco <strong>sobre uma linha</strong> para adicionar uma coluna (máx. {MAX_COLS}).
-            Solte <strong>entre as linhas</strong> para criar uma nova linha.
-          </p>
         </aside>
 
         {/* Canvas */}
@@ -493,10 +500,14 @@ function FieldCard({ field: f, dragging, insertHighlight, canMergeUp, canSplit, 
   )
 }
 
-function ModalField({ label, children }: { label: string; children: React.ReactNode }) {
+/** O campo do modal. A `dica` (o que o campo faz) mora no "i" ao lado do rótulo (2026-11-16). */
+function ModalField({ label, dica, children }: { label: string; dica?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>{label}</label>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+        <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>{label}</label>
+        {dica && <Dica rotulo={`Sobre: ${label}`}>{dica}</Dica>}
+      </span>
       {children}
     </div>
   )
@@ -540,14 +551,10 @@ function FieldSettingsModal({ field: f, tipos, outros, onChangeType, onPatch, on
           </ModalField>
 
           {OPTION_TYPES.includes(f.type) && (
-            <ModalField label={textoDasOpcoes(f.type).titulo}>
+            // A4 da 7ª simulação: no planejador, as opções são os produtos do mapa — o "quais são" na dica (2026-11-16).
+            <ModalField label={textoDasOpcoes(f.type).titulo}
+              dica={textoDasOpcoes(f.type).ajuda ? <span data-ajuda-das-opcoes>{textoDasOpcoes(f.type).ajuda}</span> : undefined}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {/* A4 da 7ª simulação: no planejador, as opções são os produtos do mapa. */}
-                {textoDasOpcoes(f.type).ajuda && (
-                  <p data-ajuda-das-opcoes style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
-                    {textoDasOpcoes(f.type).ajuda}
-                  </p>
-                )}
                 {(f.options ?? []).map((opt, oi) => (
                   <div key={oi} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <input className="field" style={{ flex: 1 }} value={opt} onChange={e => onSetOption(oi, e.target.value)} placeholder={textoDasOpcoes(f.type).exemplo(oi + 1)} />
@@ -578,7 +585,7 @@ function FieldSettingsModal({ field: f, tipos, outros, onChangeType, onPatch, on
 
           {/* O campo que depende de outra resposta (atend-15: o "Quais alergias?" só no "Sim"). */}
           {!isSection && outros.length > 0 && (
-            <ModalField label="Mostrar só quando (opcional)">
+            <ModalField label="Mostrar só quando (opcional)" dica="Escondido, o campo não é pedido, mesmo obrigatório.">
               <div style={{ display: 'flex', gap: 6 }}>
                 <select className="field" style={{ flex: 1, minWidth: 0 }} aria-label="Campo de que depende"
                   value={f.mostrarSe?.campo ?? ''}
@@ -597,11 +604,6 @@ function FieldSettingsModal({ field: f, tipos, outros, onChangeType, onPatch, on
                   </select>
                 )}
               </div>
-              {f.mostrarSe && (
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                  Escondido, o campo não é pedido, mesmo obrigatório.
-                </p>
-              )}
             </ModalField>
           )}
         </div>

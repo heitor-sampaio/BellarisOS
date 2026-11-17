@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Tags, Plus, Loader2, AlertCircle, CheckCircle2, X } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { Dica } from '@/components/shared/dica'
 import {
   listarCategoriasDeProcedimento, criarCategoriaDeProcedimento, renomearCategoriaDeProcedimento,
   arquivarCategoriaDeProcedimento, type CategoriaDeProcedimento,
@@ -72,12 +73,13 @@ function Janela({ onFechar }: { onFechar: (mudou: boolean) => void }) {
     <JanelaModal onFechar={() => onFechar(mudou)} rotulo="Categorias de procedimento" largura={520} travado={isPending}>
       <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div>
+          {/* A explicação mora na dica do título (2026-11-16). */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', margin: 0 }}>Categorias de procedimento</h2>
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+            <Dica rotulo="Para que servem as categorias">
               Organizam o catálogo e os relatórios. Renomear troca em todos os procedimentos; arquivar tira
               das opções do cadastro, mas quem já está nela continua.
-            </p>
+            </Dica>
           </div>
           <button type="button" className="btn-ghost" aria-label="Fechar" onClick={() => onFechar(mudou)} disabled={isPending}>
             <X size={15} />

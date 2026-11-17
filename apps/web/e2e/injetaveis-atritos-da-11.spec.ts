@@ -55,9 +55,14 @@ test('A27: no celular, marcar pontos não rola a folha, a dica fala de toque e o
     const zoom = await p.getByRole('button', { name: 'Aproximar' }).boundingBox()
     expect(masculino && zoom && !sobrepoe(masculino, zoom), 'o zoom cobre o "Masculino"').toBe(true)
 
-    // A dica fala de toque, não de mouse.
+    // A dica fala de toque, não de mouse. A legenda mora no "i" ao lado do zoom (2026-11-16):
+    // abre no toque e fecha com Esc, para não cobrir a ilustração nos toques abaixo.
+    const comoUsar = p.getByRole('button', { name: 'Como usar o mapa' })
+    await comoUsar.tap()
     await expect(p.locator('[data-dica-do-mapa]')).toContainText('Toque')
     await expect(p.locator('[data-dica-do-mapa]')).not.toContainText('Role o mouse')
+    await comoUsar.press('Escape')
+    await expect(p.locator('[data-dica-do-mapa]')).toHaveCount(0)
 
     // Dois toques seguidos: a ilustração fica onde estava, e os dois marcam.
     await svg.scrollIntoViewIfNeeded()
@@ -144,6 +149,8 @@ test('A28: na folha do atendimento, a tela diz o que cada botão do mapa faz', a
       await p.getByRole('main').getByRole('button', { name: 'Mapa de injetáveis' }).click()
       const janela = p.getByRole('dialog')
       await janela.getByText(`Toxina A28 ${marca}`).click()
+      // A diferença dos botões mora na dica ao lado deles (2026-11-16).
+      await janela.getByRole('button', { name: 'O que cada botão faz' }).hover()
       const linha = janela.locator('[data-o-que-cada-botao-faz]')
       await expect(linha).toContainText('Salvar planejamento guarda os pontos')
       await expect(linha).toContainText('Registrar aplicação grava neste atendimento')

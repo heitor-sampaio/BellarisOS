@@ -15,6 +15,7 @@ import { maximoDeVezes, opcoesDeVezes, TETO_DE_VEZES, PRAZO_PADRAO_DA_OPERADORA,
 import { rotuloDaBase, type ConfigDeComissao, type MetodoComTaxa, type ComissaoDoProduto } from '@/lib/comissoes/config'
 import { parseDecimal, NUMERO_INVALIDO, formatBRL } from '@estetica-os/utils'
 import { Fala } from '@/components/shared/uma-unidade'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Configurações → Comissões: como a comissão acontece na rede, as taxas (o Pix
@@ -66,10 +67,13 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Simplificação da F67 (princípio 7): primeiro o que a clínica mais procura — o percentual de cada um. */}
       <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Comissão de cada profissional">
-        <h2 style={titulo}>Comissão de cada profissional</h2>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          O percentual (ou valor fixo) de cada profissional e as exceções por procedimento se definem na Equipe, no botão de comissão de cada membro.
-        </p>
+        <h2 style={tituloComDica}>
+          <span>Comissão de cada profissional</span>
+          {/* A explicação mora na dica (2026-11-16 — era um parágrafo fixo). */}
+          <Dica rotulo="Onde se define a comissão de cada um">
+            O percentual (ou valor fixo) de cada profissional e as exceções por procedimento se definem na Equipe, no botão de comissão de cada membro.
+          </Dica>
+        </h2>
         {semRegra.length > 0 ? (
           <div data-sem-regra style={{ padding: 12, borderRadius: 'var(--radius-field-token)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)' }}>
             <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>
@@ -96,13 +100,58 @@ export function SettingsComissoes({ inicial, maquininhas, taxaDoPix = 0, semRegr
 }
 
 const titulo = { fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' } as const
+/** O título com a dica ao lado (a explicação mora na dica — docs/regras/design.md). */
+const tituloComDica = { ...titulo, display: 'inline-flex', alignItems: 'center', gap: 6 } as const
+/** O rótulo de um campo com a dica ao lado. */
+const linhaComDica = { display: 'inline-flex', alignItems: 'center', gap: 6 } as const
 
-function Bloco({ titulo: t, children }: { titulo: string; children: React.ReactNode }) {
+/**
+ * Um bloco do "Como a comissão acontece". O "como funciona" de cada um mora na
+ * dica ao lado do título (2026-11-16 — eram parágrafos fixos embaixo).
+ */
+function Bloco({ titulo: t, sobre, children }: {
+  titulo: string
+  /** A explicação do bloco, na dica ao lado do título. */
+  sobre?: { rotulo: string; texto: React.ReactNode }
+  children: React.ReactNode
+}) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
-      <p className="overline">{t}</p>
+      {sobre ? (
+        <p className="overline" style={linhaComDica}>
+          <span>{t}</span>
+          <Dica rotulo={sobre.rotulo} largura={340}>{sobre.texto}</Dica>
+        </p>
+      ) : <p className="overline">{t}</p>}
       {children}
     </div>
+  )
+}
+
+/** Na dica, o que cada opção faz ("Mensal: …"), para escolher sabendo. */
+function OpcoesExplicadas({ opcoes }: { opcoes: Record<string, { label: string; explicacao: string }> }) {
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {Object.entries(opcoes).map(([k, o]) => (
+        <span key={k}><strong style={{ color: 'var(--text)' }}>{o.label}:</strong> {o.explicacao}</span>
+      ))}
+    </span>
+  )
+}
+
+/** O rótulo pequeno de um campo e, ao lado, a dica com o que era o texto de ajuda embaixo dele. */
+function RotuloComDica({ texto, sobre, estilo, children }: {
+  texto: string
+  /** O nome acessível da dica. */
+  sobre: string
+  estilo: React.CSSProperties
+  children: React.ReactNode
+}) {
+  return (
+    <span style={linhaComDica}>
+      <span style={estilo}>{texto}</span>
+      <Dica rotulo={sobre}>{children}</Dica>
+    </span>
   )
 }
 
@@ -146,26 +195,30 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
   return (
     <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }} aria-label="Como a comissão acontece">
       <div>
-        <h2 style={titulo}>Como a comissão acontece</h2>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-          <Fala>Vale para a rede inteira</Fala>, a partir dos próximos atendimentos concluídos: o que já foi concluído segue a regra de quando foi.
-        </p>
+        <h2 style={tituloComDica}>
+          <span>Como a comissão acontece</span>
+          {/* O subtítulo (e o "quem muda") mora na dica (2026-11-16). */}
+          <Dica rotulo="Sobre a regra da comissão">
+            <Fala>Vale para a rede inteira</Fala>, a partir dos próximos atendimentos concluídos: o que já foi concluído segue a regra de quando foi.
+            {!podeEditar && <> <Fala>Quem muda é quem administra a rede.</Fala></>}
+          </Dica>
+        </h2>
       </div>
 
-      <Bloco titulo="Quando a comissão vale">
+      {/* Simplificação da F67 (princípio 7): a regra à vista; o detalhe, na dica. */}
+      <Bloco titulo="Quando a comissão vale" sobre={{
+        rotulo: 'Como funciona (pacote, plano, cartão, crediário, estorno)',
+        texto: <span data-como-funciona style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {QUANDO_VALE.map(t => <span key={t}>{t}</span>)}
+        </span>,
+      }}>
         <strong style={{ fontSize: 'var(--text-sm-sz)' }}>Quando a cliente paga tudo o que a gerou</strong>
-        {/* Simplificação da F67 (princípio 7): a regra à vista; o detalhe, a um toque. */}
-        <details data-como-funciona>
-          <summary style={{ cursor: 'pointer', fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>
-            Como funciona (pacote, plano, cartão, crediário, estorno)
-          </summary>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-            {QUANDO_VALE.map(t => <p key={t} style={texto}>{t}</p>)}
-          </div>
-        </details>
       </Bloco>
 
-      <Bloco titulo="O que sai da base da comissão">
+      <Bloco titulo="O que sai da base da comissão" sobre={{
+        rotulo: 'Sobre a base da comissão',
+        texto: 'Vale para a comissão em percentual; a de valor fixo não muda com taxa nem insumos.',
+      }}>
         {([
           ['desconta_insumos', 'Custo dos insumos usados no atendimento'],
           ['desconta_taxa', 'Taxa da maquininha do pagamento (tabela abaixo)'],
@@ -180,19 +233,28 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
           {c.desconta_insumos || c.desconta_taxa || c.base_com_pontos === 'VALOR_PAGO'
             ? `A comissão é calculada sobre a ${rotuloDaBase(c)}.`
             : `Nada é descontado: a comissão é sobre a ${rotuloDaBase(c)}.`}
-          {' '}Vale para a comissão em percentual; a de valor fixo não muda com taxa nem insumos.
         </p>
       </Bloco>
 
-      <Bloco titulo="Quando a cliente usa pontos ou voucher">
+      {/* O que cada opção faz mora na dica — as duas, para escolher sabendo. */}
+      <Bloco titulo="Quando a cliente usa pontos ou voucher" sobre={{
+        rotulo: 'Sobre a comissão com pontos ou voucher',
+        texto: <OpcoesExplicadas opcoes={BASES} />,
+      }}>
         {podeEditar
           ? <SegSelect ariaLabel="Comissão quando a cliente usa pontos" value={c.base_com_pontos} onSelect={k => mudar('base_com_pontos', k as ConfigDeComissao['base_com_pontos'])}
               options={(['PRECO', 'VALOR_PAGO'] as const).map(k => ({ key: k, label: BASES[k].label }))} />
           : <strong style={{ fontSize: 'var(--text-sm-sz)' }}>{BASES[c.base_com_pontos].label}</strong>}
-        <p style={texto}>{BASES[c.base_com_pontos].explicacao}</p>
       </Bloco>
 
-      <Bloco titulo="Venda de produto">
+      <Bloco titulo="Venda de produto" sobre={{
+        rotulo: 'Como comissiona a venda de produto',
+        texto: c.produto_modo === 'POR_PRODUTO'
+          ? 'Cada produto comissiona pela sua regra, sobre a parte dele no valor vendido (com o desconto rateado) — no kit, item a item. O produto sem regra própria usa a regra de venda de quem vendeu (Equipe); sem ela, a regra geral; sem nenhuma, não gera comissão.'
+          : pctProduto.trim()
+            ? 'Quem vendeu ganha a regra de venda dela (Equipe); sem ela, esse percentual do valor vendido (com o desconto), uma comissão sobre o total — também no kit.'
+            : 'Vazio: vale a regra de venda de quem vendeu; sem ela, a venda de produto não gera comissão.',
+      }}>
         {/* r2-ven-10 (o Heitor: "deixar a clínica decidir, flexibilidade"). */}
         <div role="group" aria-label="Comissão da venda de produto" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {podeEditar
@@ -208,13 +270,6 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
               aria-label="Comissão na venda de produto (%)"
               onChange={e => { setPctProduto(e.target.value); setSalvo(false) }} />
           </label>
-          <p style={texto}>
-            {c.produto_modo === 'POR_PRODUTO'
-              ? 'Cada produto comissiona pela sua regra, sobre a parte dele no valor vendido (com o desconto rateado) — no kit, item a item. O produto sem regra própria usa a regra de venda de quem vendeu (Equipe); sem ela, a regra geral; sem nenhuma, não gera comissão.'
-              : pctProduto.trim()
-                ? 'Quem vendeu ganha a regra de venda dela (Equipe); sem ela, esse percentual do valor vendido (com o desconto), uma comissão sobre o total — também no kit.'
-                : 'Vazio: vale a regra de venda de quem vendeu; sem ela, a venda de produto não gera comissão.'}
-          </p>
           {/* A regra de CADA produto se registra no cadastro dele (o Heitor,
               03/11: "em cada produto se possa registrar uma comissão
               diferente"). Aqui, só o resumo do que o cadastro gravou — um
@@ -254,7 +309,15 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
         </div>
       </Bloco>
 
-      <Bloco titulo="Venda de plano">
+      <Bloco titulo="Venda de plano" sobre={{
+        rotulo: 'Como comissiona a venda de plano',
+        texto: <>
+          {pctPlano.trim()
+            ? 'Quem vendeu o plano (o “Quem vendeu” do checkout) ganha a regra de venda dela (Equipe); sem ela, esse percentual do valor do plano, com o desconto.'
+            : 'Vazio: vale a regra de venda de quem vendeu; sem ela, a venda do plano não gera comissão.'}
+          {' '}Se o plano for cancelado, ela volta. A comissão de quem atende cada sessão segue a regra do profissional.
+        </>,
+      }}>
         {/* Decisão 4 do Heitor (7ª simulação): o plano é personalizado para a
             cliente; quem o vende (o "Quem vendeu" do checkout) ganha este
             percentual. Vazio por padrão (princípio 6). */}
@@ -265,32 +328,29 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
               aria-label="Comissão na venda de plano (%)"
               onChange={e => { setPctPlano(e.target.value); setSalvo(false) }} />
           </label>
-          <p style={texto}>
-            {pctPlano.trim()
-              ? 'Quem vendeu o plano (o “Quem vendeu” do checkout) ganha a regra de venda dela (Equipe); sem ela, esse percentual do valor do plano, com o desconto.'
-              : 'Vazio: vale a regra de venda de quem vendeu; sem ela, a venda do plano não gera comissão.'}
-            {' '}Se o plano for cancelado, ela volta. A comissão de quem atende cada sessão segue a regra do profissional.
-          </p>
         </div>
       </Bloco>
 
-      {/* A24 da 19ª (princípio 7): quem procura a comissão da venda do pacote aqui acha o caminho. */}
-      <Bloco titulo="Venda de pacote">
+      {/* A24 da 19ª (princípio 7): quem procura a comissão da venda do pacote aqui acha o caminho (à vista); o resto, na dica. */}
+      <Bloco titulo="Venda de pacote" sobre={{
+        rotulo: 'Como comissiona a venda de pacote',
+        texto: 'Sem regra no pacote, vale a comissão de venda de quem vendeu (Equipe → Comissão); sem nenhuma das duas, a venda do pacote não gera comissão.',
+      }}>
         <p data-comissao-do-pacote style={texto}>
-          A comissão de venda do pacote fica no próprio pacote: Vendas → Pacotes → o pacote → Comissão. Sem regra no pacote,
-          vale a comissão de venda de quem vendeu (Equipe → Comissão); sem nenhuma das duas, a venda do pacote não gera comissão.
+          A comissão de venda do pacote fica no próprio pacote: Vendas → Pacotes → o pacote → Comissão.
         </p>
       </Bloco>
 
-      <Bloco titulo="Fechamento das comissões">
+      <Bloco titulo="Fechamento das comissões" sobre={{
+        rotulo: 'Sobre o fechamento das comissões',
+        texto: <OpcoesExplicadas opcoes={PERIODOS} />,
+      }}>
         {podeEditar
           ? <SegSelect ariaLabel="Período do fechamento" value={c.periodo} onSelect={k => mudar('periodo', k as ConfigDeComissao['periodo'])}
               options={(['MENSAL', 'QUINZENAL', 'SEMANAL'] as const).map(k => ({ key: k, label: PERIODOS[k].label }))} />
           : <strong style={{ fontSize: 'var(--text-sm-sz)' }}>{PERIODOS[c.periodo].label}</strong>}
-        <p style={texto}>{PERIODOS[c.periodo].explicacao}</p>
       </Bloco>
 
-      {!podeEditar && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}><Fala>Quem muda é quem administra a rede.</Fala></p>}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {podeEditar && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -326,16 +386,17 @@ function CrediarioDaRede({ gravado, podeEditar }: { gravado: number; podeEditar:
   return (
     <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }} aria-label="Crediário">
       <h2 style={titulo}>Crediário</h2>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
-        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Dividir o crediário em até</span>
+      {/* O texto de ajuda do campo mora na dica, ao lado do rótulo (2026-11-16). */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <RotuloComDica texto="Dividir o crediário em até" sobre="Sobre o limite de parcelas"
+          estilo={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>
+          É o “Parcelas do saldo” do “entrada + parcelas” — no Vender, no checkout e no check-in do plano. Acima disso o sistema não deixa passar. A despesa parcelada não muda.
+        </RotuloComDica>
         <select className="field" aria-label="Dividir o crediário em até" disabled={!podeEditar} value={n}
           onChange={e => { setN(e.target.value); setSalvo(false) }}>
           {opcoesDeParcelas(TETO_DO_CREDIARIO).map(v => <option key={v} value={String(v)}>{v === 1 ? '1 parcela' : `${v} parcelas`}{v === CREDIARIO_PADRAO ? ' (padrão)' : ''}</option>)}
         </select>
-        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          É o “Parcelas do saldo” do “entrada + parcelas” — no Vender, no checkout e no check-in do plano. Acima disso o sistema não deixa passar. A despesa parcelada não muda.
-        </span>
-      </label>
+      </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {podeEditar && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -716,10 +777,14 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
   return (
     <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }} aria-label="Taxas da maquininha">
       <div>
-        <h2 style={titulo}>Taxas da maquininha</h2>
-        <p style={{ ...ajuda, marginTop: 2, maxWidth: 600 }}>
-          O percentual que a operadora cobra em cada pagamento. Descontado da base da comissão quando a opção acima está marcada. Dinheiro e crédito da cliente não têm taxa. Campo vazio é 0%.
-        </p>
+        <h2 style={tituloComDica}>
+          <span>Taxas da maquininha</span>
+          {/* A explicação mora na dica (2026-11-16 — era um parágrafo fixo). */}
+          <Dica rotulo="Como as taxas entram na conta" largura={320}>
+            O percentual que a operadora cobra em cada pagamento. Descontado da base da comissão quando a opção acima está marcada. Dinheiro e crédito da cliente não têm taxa.
+            {' '}Campo vazio é 0%: a venda sai sem desconto da operadora — nunca com a taxa de outra quantidade.
+          </Dica>
+        </h2>
       </div>
       <div style={grade}>
         {campo('PIX', 1, 'Pix')}
@@ -736,48 +801,48 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
           <SegSelect ariaLabel="Maquininha" value={atual.chave} onSelect={abrir}
             options={ativasNaTela.map(m => ({ key: m.chave, label: m.nome.trim() || 'Nova maquininha' }))} />
         )}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
-          <span style={rotuloPequeno}>Nome da maquininha</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+          {variasMaquininhas
+            ? <span style={rotuloPequeno}>Nome da maquininha</span>
+            : <RotuloComDica texto="Nome da maquininha" sobre="Sobre mais de uma maquininha" estilo={rotuloPequeno}>
+                A rede que passa o cartão em mais de uma maquininha cadastra cada uma: aí a venda no cartão pergunta “Qual maquininha?”.
+              </RotuloComDica>}
           <input className="field" aria-label="Nome da maquininha" disabled={!podeEditar} maxLength={60}
             placeholder="Ex.: Stone" value={atual.nome} autoFocus={!atual.id}
             onChange={e => { const v = e.target.value; mudarAtual(() => ({ nome: v })) }} />
-          {!variasMaquininhas && (
-            <span style={ajuda}>A rede que passa o cartão em mais de uma maquininha cadastra cada uma: aí a venda no cartão pergunta “Qual maquininha?”.</span>
-          )}
-        </label>
+        </div>
       </div>
 
       {atual.cobraPorBandeira && (
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
-          <span style={rotuloPequeno}>Bandeira</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+          <RotuloComDica texto="Bandeira" sobre="Sobre a taxa por bandeira" estilo={rotuloPequeno}>
+            {bandeira
+              ? 'O prazo e as taxas desta bandeira nesta maquininha. Campo vazio usa a taxa da maquininha daquelas vezes (o número mostrado nele), não a de outra quantidade. Sem nenhuma das duas, a venda sai sem desconto da operadora (0%).'
+              : 'Vale para o cartão sem bandeira informada e para a bandeira sem taxa própria.'}
+          </RotuloComDica>
           <select className="filtro-select" aria-label="Bandeira" value={bandeira}
             onChange={e => setBandeira(e.target.value as '' | Bandeira)}>
             <option value="">Todas — a taxa desta maquininha</option>
             {BANDEIRAS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
-          <span style={ajuda}>
-            {bandeira
-              ? 'O prazo e as taxas desta bandeira nesta maquininha. Campo vazio usa a taxa da maquininha (mostrada no campo).'
-              : 'Vale para o cartão sem bandeira informada e para a bandeira sem taxa própria.'}
-            {comRegraPropria.length > 0 && <> Com taxa própria: {comRegraPropria.join(', ')}.</>}
-          </span>
-        </label>
+          {/* Quem tem regra própria é dado: fica à vista. */}
+          {comRegraPropria.length > 0 && <span style={ajuda}>Com taxa própria: {comRegraPropria.join(', ')}.</span>}
+        </div>
       )}
       <div style={grade}>
         {campo('DEBIT_CARD', 1, 'Débito')}
         {campo('CREDIT_CARD', 1, 'Crédito à vista')}
       </div>
-      {!bandeira && <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
-        <span style={rotuloPequeno}>Parcelar no crédito até</span>
+      {!bandeira && <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <RotuloComDica texto="Parcelar no crédito até" sobre="Sobre o parcelar no crédito" estilo={rotuloPequeno}>
+          É o “Vezes no cartão” do recebimento, do checkout do plano e das vendas{variasMaquininhas ? ', nesta maquininha' : ''}. Acima disso o sistema não deixa passar — e as linhas do crédito abaixo vão só até aqui.
+        </RotuloComDica>
         <select className="field" aria-label="Parcelar no crédito até" disabled={!podeEditar} value={maxVezes}
           onChange={e => { const v = e.target.value; mudarAtual(() => ({ maxVezes: v })) }}>
           <option value="">Automático — até {automatico === 1 ? 'à vista' : `${automatico}x`} (a maior parcela com taxa)</option>
           {opcoesDeVezes(TETO_DE_VEZES).map(n => <option key={n} value={String(n)}>{n === 1 ? 'Só à vista' : `Até ${n}x`}</option>)}
         </select>
-        <span style={ajuda}>
-          É o “Vezes no cartão” do recebimento, do checkout do plano e das vendas{variasMaquininhas ? ', nesta maquininha' : ''}. Acima disso o sistema não deixa passar — e as linhas do crédito abaixo vão só até aqui.
-        </span>
-      </label>}
+      </div>}
       {bandeira && maxVezes !== '' && (
         <p style={ajuda}>
           As linhas do crédito vão até {ateQuantasVezes === 1 ? 'à vista' : `${ateQuantasVezes}x`}, o “Parcelar no crédito até” desta maquininha.
@@ -807,16 +872,17 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
           display: 'flex', flexDirection: 'column', gap: 8, padding: 12,
           borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)',
         }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={rotuloPequeno}>Tabela da operadora</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <RotuloComDica texto="Tabela da operadora" sobre="Como colar as taxas" estilo={rotuloPequeno}>
+              Cole a tabela como a operadora manda (ou de uma planilha): uma linha por vez, “6x 6,50%”. Só os números também servem — aí vão em ordem, de 1x em diante.
+              {' '}Cada vez fica com a taxa da tabela{bandeira ? ' nesta bandeira' : ''}; a que a tabela não traz fica como está. O débito e o Pix têm campo próprio.
+            </RotuloComDica>
             <textarea className="field" rows={6} autoFocus aria-label="Tabela da operadora" value={tabelaColada}
               placeholder={'1x 2,99%\n2x 4,09%\n3x 4,79%\n…'}
               onChange={e => setTabelaColada(e.target.value)} style={{ fontFamily: 'inherit', resize: 'vertical' }} />
-          </label>
-          <p style={ajuda}>
-            Cole a tabela como a operadora manda (ou de uma planilha): uma linha por vez, “6x 6,50%”. Só os números também servem — aí vão em ordem, de 1x em diante.
-            {' '}Cada vez fica com a taxa da tabela{bandeira ? ' nesta bandeira' : ''}; a que a tabela não traz fica como está. O débito e o Pix têm campo próprio. Confira e use “Salvar taxas” para gravar.
-          </p>
+          </div>
+          {/* Fica à vista: sem o "Salvar taxas", o preenchido não grava. */}
+          <p style={ajuda}>Confira e use “Salvar taxas” para gravar.</p>
           {lida && (
             <div data-tabela-colada role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {lidaNaTela.length > 0 && (
@@ -848,20 +914,21 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
           borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)',
         }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 160 }}>
-              <span style={rotuloPequeno}>Taxa por parcela (%)</span>
-              <input className="field" inputMode="decimal" placeholder="Ex.: 1,15" autoFocus value={taxaPorParcela}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 160 }}>
+              <RotuloComDica texto="Taxa por parcela (%)" sobre="Como funciona a taxa por parcela" estilo={rotuloPequeno}>
+                {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x (à vista, inclusive) a {ateQuantasVezes}x fica com a taxa × as vezes (1,15% → 1x 1,15%, 2x 2,30%, 3x 3,45%…).
+                {' '}O débito não muda.
+                {' '}Serve só quando a operadora cobra a MESMA taxa por parcela — a maioria cobra uma tabela própria, mais cara a cada vez.
+              </RotuloComDica>
+              <input className="field" inputMode="decimal" placeholder="Ex.: 1,15" autoFocus value={taxaPorParcela} aria-label="Taxa por parcela (%)"
                 onChange={e => { setTaxaPorParcela(e.target.value); setErroPorParcela(null) }}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); preencherPelaTaxaPorParcela() } }} />
-            </label>
+            </div>
             <button type="button" className="btn-primary" onClick={preencherPelaTaxaPorParcela}>Preencher</button>
             <button type="button" className="btn-secondary" onClick={() => { setPorParcelaAberto(false); setErroPorParcela(null) }}>Cancelar</button>
           </div>
-          <p style={ajuda}>
-            {bandeira ? 'Nesta bandeira, o' : 'O'} crédito de 1x (à vista, inclusive) a {ateQuantasVezes}x fica com a taxa × as vezes (1,15% → 1x 1,15%, 2x 2,30%, 3x 3,45%…).
-            {' '}O débito não muda. Confira e use “Salvar taxas” para gravar.
-            {' '}Serve só quando a operadora cobra a MESMA taxa por parcela — a maioria cobra uma tabela própria, mais cara a cada vez.
-          </p>
+          {/* Fica à vista: sem o "Salvar taxas", o preenchido não grava. */}
+          <p style={ajuda}>Confira e use “Salvar taxas” para gravar.</p>
           {faixaDigitada && (
             <div data-faixa-da-operadora role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span>
@@ -902,13 +969,13 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
         {parcelasNaTela.map(n => campo('CREDIT_CARD', n, `${n}x`))}
       </div>
       </>)}
-      <p style={ajuda}>
-        {bandeira
-          ? 'Campo vazio usa a taxa da maquininha daquelas vezes (o número mostrado nele), não a de outra quantidade. Sem nenhuma das duas, a venda sai sem desconto da operadora (0%).'
-          : 'Campo vazio é 0%: a venda sai sem desconto da operadora — nunca com a taxa de outra quantidade.'}
-      </p>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
-        <span style={rotuloPequeno}>Prazo da operadora (dias)</span>
+      {/* O "campo vazio vale quanto" mora na dica do título (ou na da bandeira). */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <RotuloComDica texto="Prazo da operadora (dias)" sobre="Sobre o prazo da operadora" estilo={rotuloPequeno}>
+          No crédito (à vista ou em várias vezes), a operadora deposita cada parcela a cada {recusaDoPrazoDaOperadora(Number(prazoMostrado)) ? 'N' : prazoMostrado} dias
+          corridos contados da venda: em 3x, nos dias {[1, 2, 3].map(k => k * (Number(prazoMostrado) || 0)).join(', ')}. Vale para as próximas
+          vendas; de 1 a {PRAZO_MAXIMO_DA_OPERADORA} dias.
+        </RotuloComDica>
         {bandeira ? (
           <input className="field" inputMode="numeric" aria-label="Prazo da operadora (dias)" disabled={!podeEditar}
             placeholder={`${prazo} (da maquininha)`} value={daBandeira.prazo} style={{ maxWidth: 160 }}
@@ -918,23 +985,24 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
             style={{ maxWidth: 120 }}
             onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 3); mudarAtual(() => ({ prazo: v })) }} />
         )}
-        <span style={ajuda}>
-          No crédito (à vista ou em várias vezes), a operadora deposita cada parcela a cada {recusaDoPrazoDaOperadora(Number(prazoMostrado)) ? 'N' : prazoMostrado} dias
-          corridos contados da venda: em 3x, nos dias {[1, 2, 3].map(k => k * (Number(prazoMostrado) || 0)).join(', ')}. Vale para as próximas
-          vendas; de 1 a {PRAZO_MAXIMO_DA_OPERADORA} dias.
+      </div>
+      {/* C75: guardada até a clínica precisar (princípio 7) — fechada de saída. A dica fica fora do <label>. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+            <input type="checkbox" disabled={!podeEditar} checked={atual.cobraPorBandeira}
+              onChange={e => { const v = e.target.checked; mudarAtual(() => ({ cobraPorBandeira: v })); setBandeira('') }} />
+            <span>Esta maquininha cobra diferente em alguma bandeira?</span>
+          </label>
+          <Dica rotulo="Quando marcar a taxa por bandeira">
+            Marque se a operadora tem taxa ou prazo diferente para Elo, Amex… Desmarcada, toda bandeira paga a taxa acima.
+          </Dica>
         </span>
-      </label>
-      {/* C75: guardada até a clínica precisar (princípio 7) — fechada de saída. */}
-      <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-        <input type="checkbox" disabled={!podeEditar} checked={atual.cobraPorBandeira}
-          onChange={e => { const v = e.target.checked; mudarAtual(() => ({ cobraPorBandeira: v })); setBandeira('') }} />
-        <span>
-          Esta maquininha cobra diferente em alguma bandeira?
-          <span style={{ display: 'block', ...ajuda }}>
-            Marque se a operadora tem taxa ou prazo diferente para Elo, Amex… Desmarcada, toda bandeira paga a taxa acima{comRegraPropria.length > 0 && !atual.cobraPorBandeira ? ` (as de ${comRegraPropria.join(', ')} ficam guardadas, sem valer)` : ''}.
-          </span>
-        </span>
-      </label>
+        {/* As guardadas sem valer são dado: ficam à vista. */}
+        {comRegraPropria.length > 0 && !atual.cobraPorBandeira && (
+          <span style={{ ...ajuda, paddingLeft: 24 }}>As de {comRegraPropria.join(', ')} ficam guardadas, sem valer.</span>
+        )}
+      </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
       {avisoTaxaMenor.length > 0 && (
         <p data-aviso-taxa-menor role="status" style={{
@@ -963,7 +1031,10 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
       )}
       {arquivadasNaTela.length > 0 && (
         <div data-maquininhas-arquivadas style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', ...ajuda }}>
-          Arquivadas (as vendas feitas nelas continuam com as taxas delas):
+          <span style={linhaComDica}>
+            <span>Arquivadas:</span>
+            <Dica rotulo="Sobre as maquininhas arquivadas">As vendas feitas nelas continuam com as taxas delas.</Dica>
+          </span>
           {arquivadasNaTela.map(m => (
             <span key={m.chave} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
               <span style={{ color: 'var(--text)' }}>{m.nome}</span>

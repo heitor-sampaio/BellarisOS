@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
 import { iniciaisDoNome } from '@estetica-os/utils'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Os dois quadros de clientes do dashboard — "Clientes no mês/período" e
@@ -50,12 +51,21 @@ export function ClientesDoPeriodo({ titulo, subtitulo, etapas }: {
   const max = Math.max(1, ...etapas.map(f => f.count))
   return (
     <div className="card" data-clientes-do-periodo>
-      <div style={{ marginBottom: 4 }}>
+      {/* O recorte do quadro (quais clientes, até quando) mora na dica do título —
+          era o subtítulo e a nota do rodapé (2026-11-16: a explicação mora na dica). */}
+      <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 6 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
           {titulo}
         </h2>
+        <Dica rotulo="O que o quadro conta">
+          <span data-recorte-do-quadro style={{ display: 'block' }}>{subtitulo}.</span>
+          {/* A49 da 8ª: o "Cancelados/faltas" daqui (2) e o dos Relatórios (6)
+              diferiam sem dizer por quê — a regra de indicadores.md fica. */}
+          <span data-recorte-dos-cancelados style={{ display: 'block', marginTop: 6 }}>
+            Contados até agora, os cancelados e as faltas também. Relatórios → Agenda conta o período inteiro, com os que ainda vão acontecer.
+          </span>
+        </Dica>
       </div>
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>{subtitulo}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {etapas.map(f => {
@@ -83,11 +93,6 @@ export function ClientesDoPeriodo({ titulo, subtitulo, etapas }: {
           )
         })}
       </div>
-      {/* A49 da 8ª: o "Cancelados/faltas" daqui (2) e o dos Relatórios (6)
-          diferiam sem dizer por quê — a regra de indicadores.md fica. */}
-      <p data-recorte-dos-cancelados style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 12, lineHeight: 1.45 }}>
-        Contados até agora, os cancelados e as faltas também. Relatórios → Agenda conta o período inteiro, com os que ainda vão acontecer.
-      </p>
     </div>
   )
 }
@@ -146,16 +151,19 @@ export function ReativarClientes({ clientes, total, hrefAgendar, hrefVerTodas, c
 }) {
   return (
     <div className="card" data-reativar-clientes style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: 4 }}>
+      <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 6 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
           Reativar clientes
           <span style={{ color: 'var(--brand)', fontWeight: 700 }}>✦</span>
         </h2>
+        {/* A35 da 10ª: o quadro não dizia que quem tem horário marcado sai da conta —
+            diz na dica do título (2026-11-16: a explicação mora na dica). */}
+        <Dica rotulo="Quem entra no Reativar clientes">
+          <span data-recorte-do-reativar>
+            {deQuem ? `Clientes ${deQuem} sem visita` : 'Sem visita'} há mais de 90 dias — quem tem horário marcado não entra.
+          </span>
+        </Dica>
       </div>
-      {/* A35 da 10ª: o quadro não dizia que quem tem horário marcado sai da conta. */}
-      <p data-recorte-do-reativar style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>
-        {deQuem ? `Clientes ${deQuem} sem visita` : 'Sem visita'} há mais de 90 dias — quem tem horário marcado não entra
-      </p>
 
       {clientes.length === 0 ? (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', paddingTop: 8, flex: 1 }}>

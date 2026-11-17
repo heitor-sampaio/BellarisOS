@@ -46,6 +46,8 @@ test('A26: o ranking de unidades diz que a cliente conta em cada unidade em que 
   await como(browser, async p => {
     await p.goto('/admin/dashboard')
     await expect(p.getByText('Ranking de unidades')).toBeVisible({ timeout: 30_000 })
+    // O recorte mora na dica do título (2026-11-16).
+    await p.getByRole('button', { name: 'Como os novos de cada unidade são contados' }).hover()
     await expect(p.locator('[data-recorte-do-ranking]')).toContainText('atendida em duas unidades conta em cada uma')
   })
 })
@@ -54,6 +56,8 @@ test('A27: as Comissões dizem que o fechamento é por unidade', async ({ browse
   test.setTimeout(120_000)
   await como(browser, async p => {
     await p.goto('/admin/financeiro/comissoes')
+    // A regra mora na dica do título (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre as comissões' }).hover({ timeout: 30_000 })
     await expect(p.locator('[data-fechamento-por-unidade]')).toContainText('O fechamento é por unidade', { timeout: 30_000 })
   })
 })

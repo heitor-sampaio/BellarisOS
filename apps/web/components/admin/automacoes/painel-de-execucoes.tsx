@@ -13,6 +13,7 @@ import {
 import { ROTULOS } from '@/lib/automacoes/validar'
 import type { TipoDeNo } from '@estetica-os/types'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O histórico de execuções — e o ensaio.
@@ -117,19 +118,20 @@ export function PainelDeExecucoes({
       </div>
 
       {podeEditar && (
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--hairline)' }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
             type="button" onClick={ensaiar} disabled={carregando}
             className="btn-secondary"
-            style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+            style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
           >
             <FlaskConical size={14} /> Ensaiar com o último fato
           </button>
-          <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 7, lineHeight: 1.5 }}>
+          {/* O que o ensaio faz mora na dica (2026-11-16). */}
+          <Dica rotulo="Sobre o ensaio">
             Percorre o fluxo com um evento que <strong>realmente aconteceu</strong> e
             mostra o caminho — sem mandar mensagem, mover etapa nem gravar nada.
             Funciona com a automação desligada.
-          </p>
+          </Dica>
         </div>
       )}
 

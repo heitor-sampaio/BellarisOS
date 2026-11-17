@@ -18,6 +18,7 @@ import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 import { falaDaTela } from '@/lib/unidades/uma-so'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { listaDeUnidades, unidadesDaLinhaDaEquipe } from '@/lib/equipe/atende'
+import { Dica } from '@/components/shared/dica'
 
 function Initials({ name }: { name: string }) {
   const letters = iniciaisDoNome(name)
@@ -149,21 +150,24 @@ export default async function AdminTeamPage({
         gap: 12, flexWrap: 'wrap', marginBottom: 24,
       }}>
         <div>
-          <h1 style={{
-            fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
-            letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
-          }}>
-            Equipe
-          </h1>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+            <h1 style={{
+              fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
+              letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
+            }}>
+              Equipe
+            </h1>
+            {/* A11 da 12ª (princípio 3): quem só vê a equipe lê por que não há lápis nem
+                "Novo membro" — na dica do título (2026-11-16). */}
+            {!canManage && (
+              <Dica rotulo="Sobre a equipe">
+                <span data-equipe-so-leitura>Você vê a equipe. Cadastrar e editar é de quem tem a Equipe em Gerenciar no cargo.</span>
+              </Dica>
+            )}
+          </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {fala(contagemDeMembros(members.length, hasFilters ? 'encontrados' : 'em toda a rede'))}
           </p>
-          {/* A11 da 12ª (princípio 3): quem só vê a equipe lê por que não há lápis nem "Novo membro". */}
-          {!canManage && (
-            <p data-equipe-so-leitura style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2, maxWidth: 560 }}>
-              Você vê a equipe. Cadastrar e editar é de quem tem a Equipe em Gerenciar no cargo.
-            </p>
-          )}
         </div>
         {canManage && (
           <AdminTeamForm branches={branches ?? []} roles={rolesParaDar} isNetworkAdmin={ctx.branchId === null} podeComissao={podeComissao}

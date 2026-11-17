@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { X, Barcode, RotateCcw, Loader2, Link2, Search } from 'lucide-react'
 import { findProductByBarcode, saveBarcodeToProduct, searchProducts } from '@/actions/stock'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O LEITOR de código de barras (C16 do levantamento das regras, 2026-11-12):
@@ -146,12 +147,14 @@ export function BarcodeEntryModal({ onClose, onAchou }: Props) {
         {/* -- Passo 1: leitura -- */}
         {step === 'scan' && (
           <>
-            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', lineHeight: 1.55 }}>
-              Aponte a leitora para o código de barras do produto ou digite o código manualmente.
-            </p>
-
             <FieldWrap>
-              <Label>Código de barras</Label>
+              {/* A legenda de uso mora na dica (2026-11-16). */}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                <Label>Código de barras</Label>
+                <Dica rotulo="Como ler o código">
+                  Aponte a leitora para o código de barras do produto ou digite o código manualmente.
+                </Dica>
+              </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   ref={barcodeRef}

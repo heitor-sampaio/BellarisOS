@@ -9,6 +9,7 @@ import { autorizarSuporte, revogarAutorizacaoDeSuporte } from '@/actions/suporte
 import { ROTULO_DA_SITUACAO } from '@/lib/suporte/chamados-regras'
 import type { ChamadoResumo, ChamadoCompleto } from '@/lib/suporte/chamados'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O botão "Ajuda" da topbar: abre chamado com o suporte do BellarisOS e
@@ -58,13 +59,23 @@ export function Ajuda({ internalUserId }: { internalUserId: string | null }) {
   )
 }
 
-function Cabecalho({ titulo, sub, onVoltar, onFechar }: { titulo: string; sub?: string; onVoltar?: () => void; onFechar?: () => void }) {
+/**
+ * `sub` é dado à vista (quem abriu, quando); `dica` é a apresentação da tela,
+ * que mora no "i" ao lado do título (docs/regras/design.md, "A explicação mora
+ * na dica", 2026-11-16).
+ */
+function Cabecalho({ titulo, sub, dica, onVoltar, onFechar }: {
+  titulo: string; sub?: string; dica?: [rotulo: string, texto: string]; onVoltar?: () => void; onFechar?: () => void
+}) {
   return (
     <div className="ajuda-cabecalho">
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', minWidth: 0 }}>
         {onVoltar && <button type="button" className="btn-ghost" onClick={onVoltar} aria-label="Voltar" style={{ padding: 6 }}><ArrowLeft size={16} /></button>}
         <div style={{ minWidth: 0 }}>
-          <h2 className="ajuda-titulo">{titulo}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+            <h2 className="ajuda-titulo">{titulo}</h2>
+            {dica && <Dica rotulo={dica[0]}>{dica[1]}</Dica>}
+          </div>
           {sub && <p className="ajuda-sub">{sub}</p>}
         </div>
       </div>
@@ -90,7 +101,7 @@ function Lista({ onAbrir, onNovo, onFechar, onPodeClinico }: {
   }, [onPodeClinico])
   return (
     <>
-      <Cabecalho titulo="Ajuda" sub="Fale com o suporte do BellarisOS. A resposta chega no sino." onFechar={onFechar} />
+      <Cabecalho titulo="Ajuda" dica={['Sobre a Ajuda', 'Fale com o suporte do BellarisOS. A resposta chega no sino.']} onFechar={onFechar} />
       <div className="ajuda-acoes" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <p className="overline">{dados?.daRede ? 'Chamados da rede' : 'Seus chamados'}</p>
         <button type="button" className="btn-primary" onClick={onNovo}><Plus size={14} /> Novo chamado</button>
@@ -150,7 +161,7 @@ function Novo({ podeClinico, onVoltar, onCriado }: { podeClinico: boolean; onVol
 
   return (
     <>
-      <Cabecalho titulo="Novo chamado" sub="Conte o que aconteceu. A tela em que você está vai junto." onVoltar={onVoltar} />
+      <Cabecalho titulo="Novo chamado" dica={['Sobre o chamado', 'Conte o que aconteceu. A tela em que você está vai junto.']} onVoltar={onVoltar} />
       <form action={enviar} className="ajuda-form">
         <label className="ajuda-rotulo">Assunto
           <input className="field" name="assunto" required minLength={3} maxLength={120} placeholder="Ex.: não consigo concluir o atendimento" />

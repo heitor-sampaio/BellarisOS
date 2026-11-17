@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import type { MembroDaVenda } from '@/components/shared/vender'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * "Quem vendeu" (com-06, revisão de 2026-11-02 — o Heitor: "às vezes quem vai
@@ -24,8 +25,18 @@ export function CampoQuemVendeu({ equipe, valor, aoMudar, comissao = null }: {
   comissao?: string | null
 }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span className="overline">Quem vendeu</span>
+    // Um <div>, não <label>: o botão da dica dentro do rótulo o roubaria do seletor
+    // (o seletor tem o próprio aria-label).
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span className="overline">Quem vendeu</span>
+        {/* O "e vazio?" mora na dica (2026-11-16 — era uma linha fixa); a venda pergunta antes de seguir vazia. */}
+        {!valor && (
+          <Dica rotulo="Sobre deixar sem ninguém">
+            <span data-quem-vendeu-vazio>Vazio: ninguém vendeu — sem comissão de venda.</span>
+          </Dica>
+        )}
+      </span>
       <select className="field" aria-label="Quem vendeu" value={valor} onChange={e => aoMudar(e.target.value)}>
         {/* A46 da 11ª: o texto longo saía cortado no celular — a explicação vai embaixo. */}
         <option value="">Escolha quem vendeu</option>
@@ -39,17 +50,12 @@ export function CampoQuemVendeu({ equipe, valor, aoMudar, comissao = null }: {
           ) : null
         })}
       </select>
-      {!valor && (
-        <span data-quem-vendeu-vazio style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-          Vazio: ninguém vendeu — sem comissão de venda.
-        </span>
-      )}
       {valor && comissao && (
         <span data-comissao-da-venda style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
           {comissao}
         </span>
       )}
-    </label>
+    </div>
   )
 }
 

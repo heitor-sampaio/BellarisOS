@@ -19,7 +19,8 @@ import { resultadoDoPeriodo, variacaoPercentual, type EstoqueNoResultado } from 
 import { totaisDasComissoes } from '@/lib/metrics/comissoes'
 import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
 import type { EmAberto } from '@/lib/metrics/queries'
-import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
+import { NotaDoVencimento, DicaDoVencimento } from '@/components/shared/nota-do-vencimento'
+import { Dica } from '@/components/shared/dica'
 import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcelas-da-operadora'
 import { AvisosDasTaxas, CsvDoFechamentoDoDia } from '@/components/shared/caixa-no-financeiro'
 import type { TaxasDoPeriodo } from '@/lib/metrics/queries'
@@ -153,10 +154,12 @@ const PERIOD_OPTIONS = [
 // --- KPI Card -----------------------------------------------------
 
 function KpiCardFull({
-  label, curr, prev, icon, iconBg, valueColor, invertDelta = false, format = fmtBRL, highlight = false, chave, nota,
+  label, curr, prev, icon, iconBg, valueColor, invertDelta = false, format = fmtBRL, highlight = false, chave, nota, dica,
 }: {
   /** `data-kpi`, para o teste achar o cartão. */
   chave?:        string
+  /** A explicação do número: no "i" ao lado do rótulo, não na tela (2026-11-16). */
+  dica?:         React.ReactNode
   /** Uma linha a mais embaixo (o "pelo vencimento" e o próximo, no A receber/A pagar). */
   nota?:         React.ReactNode
   label:         string
@@ -194,8 +197,8 @@ function KpiCardFull({
       border: hl ? 'none' : undefined,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          {label}
+        <p style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-overline)', fontWeight: 700, color: labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          <span>{label}</span>{dica && <Dica rotulo={`Sobre ${label.toLowerCase()}`}>{dica}</Dica>}
         </p>
         <div style={{
           width: 26, height: 26, borderRadius: 7, flexShrink: 0,
@@ -608,6 +611,7 @@ export function FinancialHub({
       nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
         vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
+      dica={<DicaDoVencimento valor={pendingIncome} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} />}
       label="A receber da cliente"
       curr={pendingIncome} prev={prevPendingIncome}
       icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
@@ -621,10 +625,13 @@ export function FinancialHub({
     <KpiCardFull
       chave="a-receber-operadora"
       nota={<>
-        <NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto}
-          bruto={{ periodo: aReceberDaOperadora.aReceberBruto, emAberto: aReceberDaOperadora.emAbertoBruto }} />
+        <NotaDoVencimento valor={aReceberDaOperadora.aReceber} proximo={aReceberDaOperadora.proximo} emAbertoTotal={aReceberDaOperadora.emAberto} />
         {/* D3: o cartão leva à lista das parcelas (no A receber). */}
         <LinkDasParcelas temParcelas={parcelasDaOperadora.length > 0} href={naAba ? undefined : daAba('a-receber')} />
+      </>}
+      dica={<>
+        <DicaDoVencimento valor={aReceberDaOperadora.aReceber} emAbertoTotal={aReceberDaOperadora.emAberto}
+          bruto={{ periodo: aReceberDaOperadora.aReceberBruto, emAberto: aReceberDaOperadora.emAbertoBruto }} />
         {/* A38 da 11ª: o débito conta como recebido no dia. */}
         <NotaDoDebito debito={composicao.formas.find(f => f.chave === 'DEBIT_CARD')?.valor ?? 0} />
       </>}
@@ -640,6 +647,7 @@ export function FinancialHub({
       chave="a-pagar"
       nota={<NotaDoVencimento valor={pendingExpense} proximo={emAberto.proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
         hrefDaBaixa={naAba ? undefined : daAba('a-pagar')} />}
+      dica={<DicaDoVencimento valor={pendingExpense} emAbertoTotal={aPagarEmAberto} />}
       label="A Pagar"
       curr={pendingExpense} prev={prevPendingExpense}
       icon={<Clock size={13} style={{ color: 'var(--warning)' }} />}
@@ -664,7 +672,6 @@ export function FinancialHub({
       ordemInicial={ordemInicial}
     />
   )
-  const faixa: React.CSSProperties = { fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', margin: 0 }
   const tituloDeSecao: React.CSSProperties = { fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }
 
   return (
@@ -727,8 +734,8 @@ export function FinancialHub({
             chave="lucro"
             label="Lucro Líquido"
             curr={saldo} prev={prevSaldo}
-            // D8 da 8ª: a conta do resultado, para ele se explicar na tela.
-            nota={<ContaDoResultado receita={income} resultado={resultado} despesasDoCaixa={expense} aPagar={pendingExpense} />}
+            // D8 da 8ª: a conta do resultado — na dica (2026-11-16).
+            dica={<ContaDoResultado receita={income} resultado={resultado} despesasDoCaixa={expense} aPagar={pendingExpense} />}
             icon={<Wallet size={13} style={{ color: 'var(--on-brand)' }} />}
             iconBg="rgba(255,255,255,0.18)"
             highlight
@@ -746,7 +753,7 @@ export function FinancialHub({
           <KpiCardFull
             chave="despesas"
             label="Despesas pagas (caixa)"
-            nota={<span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o Lucro Líquido usa a despesa operacional (veja a conta nele).</span>}
+            dica="O que saiu do caixa no período, com a compra de estoque e o pagamento das comissões. O Lucro Líquido usa a despesa operacional (a conta está na dica dele)."
             curr={expense} prev={prevExpense}
             icon={<TrendingDown size={13} style={{ color: 'var(--danger)' }} />}
             iconBg="var(--danger-soft)"
@@ -854,7 +861,18 @@ export function FinancialHub({
         </div>
         <div id="lancamentos" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <p style={tituloDeSecao}>Das clientes</p>
+            {/* O que a lista mostra e quem recebe: na dica do título (2026-11-16 — era uma faixa azul fixa). */}
+            <p style={{ ...tituloDeSecao, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>Das clientes</span>
+              <Dica rotulo="Sobre as contas a receber">
+                <span data-so-o-em-aberto>
+                  {soAsVencidas
+                    ? 'Só as vencidas: as contas a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
+                    : 'Todas as contas a receber em aberto, de qualquer vencimento: as atrasadas primeiro, e as parcelas do crediário também.'}{' '}
+                  {fraseDoReceber}
+                </span>
+              </Dica>
+            </p>
             <SegSelect
               ariaLabel="Quais a receber"
               value={soAsVencidas ? 'vencidas' : 'todas'}
@@ -862,12 +880,6 @@ export function FinancialHub({
               options={[{ key: 'todas', label: 'Todas' }, { key: 'vencidas', label: 'Só as vencidas' }]}
             />
           </div>
-          <p data-so-o-em-aberto style={faixa}>
-            {soAsVencidas
-              ? 'Só as vencidas: as contas a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
-              : 'Todas as contas a receber em aberto, de qualquer vencimento: as atrasadas primeiro, e as parcelas do crediário também.'}{' '}
-            {fraseDoReceber}
-          </p>
           {tabela('asc')}
         </div>
         {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
@@ -880,9 +892,14 @@ export function FinancialHub({
           {cartaoAPagar(true)}
         </div>
         <div id="lancamentos" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p data-so-o-em-aberto style={faixa}>
-            Todas as contas a pagar em aberto, de qualquer vencimento — a que vence primeiro no topo.{' '}
-            {fraseDaBaixa}
+          <p style={{ ...tituloDeSecao, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span>Contas a pagar</span>
+            <Dica rotulo="Sobre as contas a pagar">
+              <span data-so-o-em-aberto>
+                Todas as contas a pagar em aberto, de qualquer vencimento — a que vence primeiro no topo.{' '}
+                {fraseDaBaixa}
+              </span>
+            </Dica>
           </p>
           {tabela('asc')}
         </div>

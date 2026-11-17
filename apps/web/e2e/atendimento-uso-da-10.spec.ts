@@ -101,7 +101,9 @@ test('A5: no agendamento DELA, um botão de chegada em destaque — e o que cada
     const primarios = janela.locator('button.btn-primary').filter({ hasText: /Confirmar agendamento|Chegou|Marcar chegada e iniciar/ })
     await expect(primarios, 'um botão de chegada em destaque, não dois').toHaveCount(1)
     await expect(primarios).toHaveText(/Marcar chegada e iniciar/)
-    // E a janela diz a diferença entre os outros dois.
+    // E a janela diz a diferença entre os outros dois — na dica (2026-11-16).
+    await expect(janela.getByText(/Confirmar: a cliente confirmou que vem/)).toBeHidden()
+    await janela.getByRole('button', { name: 'O que cada botão faz' }).hover()
     await expect(janela.getByText(/Confirmar: a cliente confirmou que vem/)).toBeVisible()
   })
 })

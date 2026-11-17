@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { ehPortalDaRede } from '@/lib/rotas'
 import { History, Loader2 } from 'lucide-react'
 import { historicoDaCaixaUazapi, trazerHistoricoUazapi } from '@/actions/uazapi-connection'
+import { Dica } from '@/components/shared/dica'
 
 type Estado = Awaited<ReturnType<typeof historicoDaCaixaUazapi>>
 
@@ -56,6 +57,11 @@ export function HistoricoDaCaixa({ numeroId }: { numeroId: string }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <History size={14} color="var(--text-muted)" />
         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>Histórico de conversas</span>
+        {/* O que o WhatsApp manda mora na dica (2026-11-16 — era um parágrafo fixo). */}
+        <Dica rotulo="O que vem no histórico">
+          Ao conectar, o WhatsApp manda um recorte recente das conversas (ele decide quanto).
+          O que é mais antigo fica só no celular. Grupos não entram.
+        </Dica>
       </div>
 
       <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
@@ -65,11 +71,12 @@ export function HistoricoDaCaixa({ numeroId }: { numeroId: string }) {
         {estado?.status === 'concluida' && `Histórico trazido: ${contagem(estado, true)}.`}
         {estado?.status === 'falhou' && `Não deu para trazer o histórico: ${estado.erro ?? 'erro desconhecido'}`}
       </p>
-      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
-        Ao conectar, o WhatsApp manda um recorte recente das conversas (ele decide quanto).
-        O que é mais antigo fica só no celular. Grupos não entram.
-        {naRede && <> O andamento também fica em <Link href="/admin/settings?tab=lotes" style={{ color: 'var(--brand)', fontWeight: 700 }}>Ações em lote</Link>.</>}
-      </p>
+      {/* O atalho é caminho para agir: fica à vista (um link não se clica dentro da dica). */}
+      {naRede && (
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
+          O andamento também fica em <Link href="/admin/settings?tab=lotes" style={{ color: 'var(--brand)', fontWeight: 700 }}>Ações em lote</Link>.
+        </p>
+      )}
       {erro && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 700, margin: 0 }}>{erro}</p>}
 
       {!aberto && (

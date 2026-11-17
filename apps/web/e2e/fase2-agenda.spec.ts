@@ -119,7 +119,7 @@ test('agenda pela rede: marcar com nome e telefone, confirmar, remarcar e cancel
   // -- Remarcar --------------------------------------------------------------
   await page.goto(`/admin/agenda?date=${dia}`)
   await page.locator(`[title*="${PREFIXO}"]`).first().click()
-  await page.getByRole('button', { name: 'Remarcar' }).click()
+  await page.getByRole('button', { name: 'Remarcar', exact: true }).click()
   await page.locator('input[type="datetime-local"]').fill(remarcado)
   await page.getByRole('button', { name: 'Confirmar novo horário' }).click()
 

@@ -7,6 +7,7 @@ import { aplicacoesDoLote, lotesEsgotados, type LoteEsgotado } from '@/actions/s
 import type { AplicacaoDoLote } from '@/lib/estoque/aplicacoes-do-lote'
 import { validadeNaTela } from '@/lib/estoque/validade'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * "Lotes esgotados" (D15 da 9ª simulação, 2026-11-07): a linha aberta do
@@ -112,7 +113,14 @@ export function BotaoAplicadoEm({ loteId, rotulo, abrirAoMontar = false, semBota
             <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div>
-                  <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Aplicado em</h2>
+                  {/* Como se lê a lista mora na dica do título (2026-11-16). */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                    <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Aplicado em</h2>
+                    <Dica rotulo="Como se lê esta lista">
+                      A quantidade é a que saiu deste lote, e “Quando” é a hora da aplicação (a conclusão do atendimento), não a marcada.
+                      A baixa segue o lote que vence primeiro (FEFO): é por ela que cada aplicação fica ligada ao lote.
+                    </Dica>
+                  </div>
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{rotulo}</p>
                 </div>
                 <button type="button" className="btn-ghost" onClick={() => setAberto(false)} aria-label="Fechar" style={{ padding: '4px 6px' }}><X size={16} /></button>
@@ -146,10 +154,6 @@ export function BotaoAplicadoEm({ loteId, rotulo, abrirAoMontar = false, semBota
                   </table>
                 </div>
               )}
-              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                A quantidade é a que saiu deste lote, e “Quando” é a hora da aplicação (a conclusão do atendimento), não a marcada.
-                A baixa segue o lote que vence primeiro (FEFO): é por ela que cada aplicação fica ligada ao lote.
-              </p>
             </div>
           </JanelaModal>
         </span>

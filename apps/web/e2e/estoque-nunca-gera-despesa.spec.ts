@@ -106,7 +106,9 @@ test.describe('movimentação de estoque nunca gera despesa', () => {
       await modal.locator('input[name="quantity"]').first().fill('2')
       await modal.locator('input[name="unit_cost"]').fill('300')
       // A37 da 10ª: a Entrada DIZ que não gera despesa — e não oferece lançar uma.
+      // O "não gera despesa" mora na dica do custo (2026-11-16).
       await expect(modal.getByRole('checkbox', { name: /despesa/i })).toHaveCount(0)
+      await modal.getByRole('button', { name: 'Sobre o custo da entrada' }).hover()
       await expect(modal.getByText(/despesa/i)).toHaveText(/Não gera despesa/)
       await modal.getByRole('button', { name: 'Registrar entrada' }).click()
       await expect(modal).toBeHidden()
@@ -122,7 +124,9 @@ test.describe('movimentação de estoque nunca gera despesa', () => {
       await modal.locator('input[name="quantity"]').first().fill('1')
       await modal.locator('input[name="unit_cost"]').fill('900')
       // A37 da 10ª: a Entrada DIZ que não gera despesa — e não oferece lançar uma.
+      // O "não gera despesa" mora na dica do custo (2026-11-16).
       await expect(modal.getByRole('checkbox', { name: /despesa/i })).toHaveCount(0)
+      await modal.getByRole('button', { name: 'Sobre o custo da entrada' }).hover()
       await expect(modal.getByText(/despesa/i)).toHaveText(/Não gera despesa/)
       await modal.getByRole('button', { name: 'Registrar entrada' }).click()
       await expect(modal).toBeHidden()

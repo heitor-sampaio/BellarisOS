@@ -97,7 +97,7 @@ test('o "Sem preferência" remarca com quem estiver livre, não preso à escolhi
 
   await como(browser, async p => {
     await p.goto(`/${slug}/cliente/agendamentos/${id}`)
-    await p.getByRole('button', { name: 'Remarcar' }).click()
+    await p.getByRole('button', { name: 'Remarcar', exact: true }).click()
     const quem = p.getByRole('group', { name: 'Com quem?' })
     await expect(quem.getByRole('button', { name: 'Sem preferência' })).toHaveAttribute('aria-pressed', 'true')
     await p.getByLabel('Novo dia').fill(dia(3))

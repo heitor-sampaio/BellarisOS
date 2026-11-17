@@ -490,6 +490,8 @@ export const ISOLADOS = [
   'campanha-imediata-ou-agendada.spec.ts',
   'automacoes-modelos-da-campanha.spec.ts',
   'relatorio-vendas-comandas.spec.ts',
+  // A explicação na dica do portal da cliente (2026-11-16): a cliente da própria rede.
+  'dicas-portal-da-cliente.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

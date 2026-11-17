@@ -9,6 +9,7 @@ import type {
 } from '@estetica-os/types'
 import { ROTULOS } from '@/lib/automacoes/validar'
 import { RelogioDaRede } from '@/components/shared/fuso'
+import { Dica as DicaDoTexto } from '@/components/shared/dica'
 import {
   variaveisDisponiveis, eventoDoGatilhoDe, rotulosUnicos, CAMPOS_DE_PROCEDIMENTO,
   type GrupoDeVariaveis, type CampoVisto,
@@ -599,11 +600,14 @@ export function PainelDoNo({
 
         {NODES_SEM_EDITOR.includes(no.tipo as TipoDeNo) && (
           <div className="card-sm" style={{ background: 'var(--bg-app)' }}>
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              Este node já existe no fluxo, mas ainda não roda — ele chega numa
-              próxima entrega. Enquanto isso, uma automação que passe por ele
-              para com o motivo registrado, em vez de seguir fingindo que a ação
-              aconteceu.
+            {/* O estado fica à vista; o "e enquanto isso" mora na dica (2026-11-16). */}
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>Este node já existe no fluxo, mas ainda não roda.</span>
+              <DicaDoTexto rotulo="O que acontece com este passo">
+                Ele chega numa próxima entrega. Enquanto isso, uma automação que passe por ele
+                para com o motivo registrado, em vez de seguir fingindo que a ação
+                aconteceu.
+              </DicaDoTexto>
             </p>
           </div>
         )}

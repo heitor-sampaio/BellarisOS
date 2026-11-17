@@ -7,6 +7,7 @@ import { AnamnesisFormRenderer, type AnamnesisAnswers } from '@/components/branc
 import { RespostasDaAnamnese } from '@/components/branch/anamnese-geral'
 import { responderPreAtendimento, confirmarQueNadaMudou } from '@/actions/pre-atendimento-cliente'
 import type { FichaDePreAtendimento, RespostaDaAnamnese } from '@/lib/anamnese-geral'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O pré-atendimento no app da cliente (2026-10-20). COMPLETO: a ficha inteira
@@ -48,11 +49,14 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
   if (!atualizando) {
     return (
       <div className="card pre-atendimento-cliente">
-        <p className="pre-atendimento-cliente-titulo">{modo === 'CONFERIR' ? 'Confira as respostas que a equipe preencheu' : 'Algo mudou na sua saúde?'}</p>
-        <p className="pre-atendimento-cliente-texto">
-          {modo === 'CONFERIR'
-            ? 'A equipe preencheu a sua ficha com você. Se está tudo certo, é só confirmar; se faltou ou mudou algo, corrija.'
-            : 'Estas são as suas respostas da última vez. Se nada mudou, é só confirmar.'}
+        {/* A apresentação mora na dica (docs/regras/design.md); os botões dizem o que fazer. */}
+        <p className="pre-atendimento-cliente-titulo" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{modo === 'CONFERIR' ? 'Confira as respostas que a equipe preencheu' : 'Algo mudou na sua saúde?'}</span>
+          <Dica rotulo="Sobre estas respostas">
+            {modo === 'CONFERIR'
+              ? 'A equipe preencheu a sua ficha com você. Se está tudo certo, é só confirmar; se faltou ou mudou algo, corrija.'
+              : 'Estas são as suas respostas da última vez. Se nada mudou, é só confirmar.'}
+          </Dica>
         </p>
         <RespostasDaAnamnese rows={ficha.rows} respostas={respostasAnteriores} />
         {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>{erro}</p>}
@@ -76,9 +80,11 @@ export function PreAtendimentoDaCliente({ modo, ficha, respostasAnteriores, volt
 
   return (
     <div className="card pre-atendimento-cliente">
-      <p className="pre-atendimento-cliente-titulo">Antes do seu atendimento</p>
-      <p className="pre-atendimento-cliente-texto">
-        Algumas perguntas sobre a sua saúde. Elas ajudam a equipe a cuidar de você com segurança.
+      <p className="pre-atendimento-cliente-titulo" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>Antes do seu atendimento</span>
+        <Dica rotulo="Sobre a ficha de saúde">
+          Algumas perguntas sobre a sua saúde. Elas ajudam a equipe a cuidar de você com segurança.
+        </Dica>
       </p>
       <AnamnesisFormRenderer
         appointmentId="" slug=""

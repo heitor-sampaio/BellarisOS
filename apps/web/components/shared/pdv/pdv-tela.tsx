@@ -7,6 +7,7 @@ import { ArrowLeft, Lock, Plus, Search, ShoppingBag } from 'lucide-react'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { SegSelect } from '@/components/shared/seg-select'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import { FormularioDeReceberAtendimento, type PacoteParaAbater } from '@/components/shared/receber-atendimento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { rotaCliente } from '@/lib/rotas'
@@ -353,6 +354,19 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
             <>
               <p data-comanda-paga style={{ color: 'var(--text)', fontSize: 'var(--text-sm-sz)' }}>
                 {c.origem === 'VENDA' ? 'Vendida' : c.origem === 'PLANO' ? 'Recebido' : 'Paga'} às {hora(c.pagaEm)} · {formasDaComandaEmTexto(c)} · <b>{brl(c.recebido ?? 0)}</b> recebidos
+                {/* A2 da 15ª: a quem não estorna, de quem é o estorno — a frase da ficha.
+                    Mora na dica (2026-11-16 — era uma caixa fixa embaixo dos pagamentos). */}
+                {e.quemEstorna && (
+                  <>
+                    {' '}
+                    <Dica rotulo="Quem estorna esta comanda">
+                      <span data-quem-estorna>
+                        {quemEstornaOQue}
+                        {e.quemEstorna.length > 0 ? `: ${e.quemEstorna.join(', ')} (na ficha da cliente, aba Financeiro).` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+                      </span>
+                    </Dica>
+                  </>
+                )}
               </p>
               {/* A1/A17 da 15ª (princípio 3): a venda nasce paga, e o que ficou em aberto se diz. */}
               {emAberto && (
@@ -396,13 +410,6 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
                     ))}
                   </ul>
                 </div>
-              )}
-              {/* A2 da 15ª: a quem não estorna, de quem é o estorno — a frase da ficha. */}
-              {e.quemEstorna && (
-                <p data-quem-estorna style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px' }}>
-                  {quemEstornaOQue}
-                  {e.quemEstorna.length > 0 ? `: ${e.quemEstorna.join(', ')} (na ficha da cliente, aba Financeiro).` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
-                </p>
               )}
             </>
           ) : null}

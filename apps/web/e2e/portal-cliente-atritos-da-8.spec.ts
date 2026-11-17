@@ -122,6 +122,8 @@ test('A53: o Início diz a unidade (e o endereço dela) do próximo agendamento'
 test('A54: "Aguardando sua confirmação" diz que é opcional, e o histórico diz a nota em texto', async ({ browser }) => {
   await como(browser, cliente!, async p => {
     await p.goto(`/${slug}/cliente/home`)
+    // O "é opcional" mora na dica do título da seção (2026-11-16).
+    await p.locator('[data-aguardando-confirmacao]').getByRole('button', { name: 'Sobre a avaliação' }).hover()
     await expect(p.locator('[data-aguardando-confirmacao]')).toContainText('opcional')
     await p.goto(`/${slug}/cliente/historico`)
     const avaliado = p.locator('[data-avaliacao-dada]').first()

@@ -13,6 +13,7 @@ import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
 import { TABELA_DA_META, ROTULO_DA_CATEGORIA, type CobrancaDoNumero } from '@/lib/whatsapp/cobranca'
 import { formatBRL, maskPhone } from '@estetica-os/utils'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * As caixas de WhatsApp da rede, uma por linha.
@@ -125,7 +126,13 @@ function CobrancaDoMes({ cobranca }: { cobranca: CobrancaDoNumero | null }) {
         background: 'var(--surface)', border: '1px solid var(--border)',
         fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
       }}>
-        <span className="overline" style={{ color: 'var(--text-faint)' }}>Cobrado pela Meta este mês</span>
+        {/* De onde vem o valor mora na dica (2026-11-16); o número fica à vista. */}
+        <span className="overline" style={{ color: 'var(--text-faint)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Cobrado pela Meta este mês</span>
+          <Dica rotulo="De onde vem este valor">
+            Valores estimados pela tabela da Meta; a fatura sai na conta do WhatsApp da rede.
+          </Dica>
+        </span>
         <span style={{ color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
           {cobradas.length === 0 && respostasCobradas === 0
             ? 'Nada cobrado ainda.'
@@ -139,7 +146,6 @@ function CobrancaDoMes({ cobranca }: { cobranca: CobrancaDoNumero | null }) {
         </span>
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>
           Respostas digitadas: {respostas.toLocaleString('pt-BR')} de {gratis.toLocaleString('pt-BR')} grátis no mês.
-          Valores estimados pela tabela da Meta; a fatura sai na conta do WhatsApp da rede.
         </span>
       </div>
     </div>

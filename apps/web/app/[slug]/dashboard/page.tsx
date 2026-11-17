@@ -467,9 +467,14 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         {canFinancial && (
         <div className={dinheiroDela ? 'card' : undefined} style={dinheiroDela ? undefined : { background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: 'var(--surface)' }}>
           <p className={dinheiroDela ? 'overline' : undefined} style={{ ...(dinheiroDela ? {} : { fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }), display: 'flex', alignItems: 'center', gap: 4 }}>
-            {dinheiroDela ? 'Meu faturamento do mês' : 'Faturamento do mês'}
+            <span>{dinheiroDela ? 'Meu faturamento do mês' : 'Faturamento do mês'}</span>
+            {/* A33 da 10ª: o que fica fora do "Meu faturamento" — era um parágrafo embaixo
+                do número; mora na dica do rótulo (2026-11-16: a explicação mora na dica). */}
             {dinheiroDela
-              ? <Dica rotulo={DEFINICOES.meuFaturamento.rotulo}>{DEFINICOES.meuFaturamento.texto}</Dica>
+              ? <Dica rotulo={DEFINICOES.meuFaturamento.rotulo}>
+                  {DEFINICOES.meuFaturamento.texto}
+                  <span data-fora-do-meu-faturamento style={{ display: 'block', marginTop: 6 }}>{DEFINICOES.foraDoMeuFaturamento.texto}</span>
+                </Dica>
               : <Dica rotulo={DEFINICOES.receita.rotulo}>{DEFINICOES.receita.texto}</Dica>}
           </p>
           <p style={dinheiroDela
@@ -480,11 +485,6 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           {dinheiroDela && unidadesDoDinheiro.length > 1 && (
             <p data-nas-unidades style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
               Nas {unidadesDoDinheiro.length} unidades em que você atende
-            </p>
-          )}
-          {dinheiroDela && (
-            <p data-fora-do-meu-faturamento style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.45 }}>
-              {DEFINICOES.foraDoMeuFaturamento.texto}
             </p>
           )}
           {revDelta && (
@@ -545,13 +545,18 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         {/* Ticket médio */}
         {canFinancial && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <p className="overline">Ticket médio</p>
+          <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span>Ticket médio</span>
+            {/* A conta acompanha o número, na dica (2026-11-16): o ticket divide pelas clientes que PAGARAM. */}
+            <Dica rotulo={DEFINICOES.ticket.rotulo}>
+              {DEFINICOES.ticket.texto}
+              <span data-conta-do-ticket style={{ display: 'block', marginTop: 6 }}>
+                Pago pelas clientes ÷ {clientesQuePagaram} {clientesQuePagaram === 1 ? 'cliente que pagou' : 'clientes que pagaram'}.
+              </span>
+            </Dica>
+          </p>
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
             {avgTicket > 0 ? formatBRL(avgTicket) : '—'}
-          </p>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
-            {/* O rótulo acompanha a conta: o ticket divide pelas clientes que PAGARAM. */}
-            pago pelas clientes ÷ {clientesQuePagaram} {clientesQuePagaram === 1 ? 'cliente que pagou' : 'clientes que pagaram'}
           </p>
         </div>
         )}
@@ -567,10 +572,18 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
             <div>
-              <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{dinheiroDela ? 'Meu faturamento' : 'Faturamento'}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{dinheiroDela ? 'Meu faturamento' : 'Faturamento'}</h2>
+                {/* r2-ven-15 × r2-ind-01: o "Meu faturamento" é de VENDA; o ranking por profissional, de
+                    execução — dito na dica do título (2026-11-16: a explicação mora na dica). */}
+                {dinheiroDela && (
+                  <Dica rotulo="O que o gráfico do Meu faturamento soma">
+                    <span data-o-que-o-grafico-soma>O que você vendeu (pacotes, pré-pagos e produtos) e os seus atendimentos pagos.</span>
+                  </Dica>
+                )}
+              </div>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                {/* r2-ven-15 × r2-ind-01: o "Meu faturamento" é de VENDA; o ranking por profissional, de execução. */}
-                {dinheiroDela ? 'Últimos 6 meses · o que você vendeu (pacotes, pré-pagos e produtos) e os seus atendimentos pagos' : 'Últimos 6 meses'}
+                Últimos 6 meses
               </p>
             </div>
             {semestre && semestre.valor !== 0 && (

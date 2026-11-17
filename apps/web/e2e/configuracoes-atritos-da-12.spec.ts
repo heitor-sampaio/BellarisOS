@@ -154,8 +154,12 @@ test('A5: o "De venda" do pacote diz que vence a comissão de venda de cada pess
     await card.getByRole('button', { name: 'Novo pacote' }).click()
     const comissao = card.getByRole('group', { name: 'Comissão do pacote' })
     const ajuda = comissao.locator('[data-ajuda-da-venda]')
+    // A regra mora na dica do "De venda" (2026-11-16).
+    const dica = comissao.getByRole('button', { name: 'Sobre a comissão de venda do pacote' })
+    await dica.hover()
     await expect(ajuda, 'sem regra no pacote, vale a da pessoa').toContainText('vale a comissão de venda de quem vendeu')
     await comissao.getByRole('group', { name: 'Comissão de venda' }).getByRole('button', { name: 'Percentual' }).click()
+    await dica.hover()
     await expect(ajuda).toContainText('no lugar da comissão de venda de cada pessoa')
   })
 })
@@ -167,6 +171,8 @@ test('A6/A24: o prêmio da indicação diz que o número é sugestão e o que co
     await bloco.getByRole('button', { name: 'Pontos' }).click()
     await expect(bloco.getByLabel('Pontos para quem indicou')).toHaveValue('300')
     await expect(bloco.locator('[data-sugestao-de-pontos]')).toContainText('sugestão')
+    // O que conta para o prêmio mora na dica (2026-11-16).
+    await bloco.getByRole('button', { name: 'Como funciona o prêmio por indicação' }).hover()
     await expect(bloco).toContainText('quando a indicada pagar o primeiro atendimento ou a primeira compra')
     await expect(bloco).toContainText('pacote')
     await expect(bloco).toContainText('crédito interno')
@@ -204,6 +210,8 @@ test('A11: quem tem só uma unidade, com Configurações em Gerenciar, lê por q
       await expect(p.locator('[data-aba-fora-do-acesso]'), 'a aba dela abre sem aviso').toHaveCount(0)
 
       await p.goto(`/${slug}/team`)
+      // O "só vê" mora na dica do título (2026-11-16).
+      await p.getByRole('button', { name: 'Sobre a equipe da unidade' }).hover()
       await expect(p.locator('[data-equipe-so-leitura]')).toContainText('Equipe em Gerenciar')
 
       await p.goto('/admin/settings')
@@ -227,6 +235,8 @@ test('A12: quem não monta o plano lê onde se libera — o "Atende" da Equipe (
       await p.goto(`/${b!.slug}/clients/${cliente}?aba=planejamento`)
       // PT2 (2026-11-14): quem monta é quem ATENDE na unidade — o texto leva
       // ao "Atende" da Equipe, não mais ao Prontuário em Cargos.
+      // O "quem monta" mora na dica do vazio (2026-11-16).
+      await p.getByRole('button', { name: 'Quem monta o plano' }).hover()
       const texto = p.getByText(/Quem monta o plano é quem atende nesta unidade/)
       await expect(texto).toContainText('Equipe → "Atende"')
     })

@@ -103,6 +103,8 @@ test('A46: o "Quem vendeu" vazio cabe no celular — a explicação fica embaixo
   await como(browser, recepcao, async p => {
     const dlg = await abrirVendaNoPdv(p, `/${slug}`, cliente)
     await expect(dlg.getByLabel('Quem vendeu').locator('option[value=""]')).toHaveText('Escolha quem vendeu')
+    // A explicação mora na dica ao lado de "Quem vendeu" (2026-11-16); no celular, abre no toque.
+    await dlg.getByRole('button', { name: 'Sobre deixar sem ninguém' }).first().click()
     await expect(dlg.locator('[data-quem-vendeu-vazio]')).toContainText('sem comissão de venda')
   }, { width: 412, height: 860 })
 })

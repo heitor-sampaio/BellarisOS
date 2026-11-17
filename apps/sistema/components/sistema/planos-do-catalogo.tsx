@@ -7,6 +7,7 @@ import { salvarPlano } from '@/actions/sistema'
 import { centavosDe, campoDeReais, reaisDe } from '@estetica-os/nucleo/lib/redes/valor'
 import { resumirRecursos, TUDO_LIBERADO, ADICIONAIS, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { RecursosDoPlanoCampos } from '@/components/sistema/recursos-do-plano'
+import { Dica } from '@estetica-os/nucleo/components/dica'
 
 interface Plano { id: string; nome: string; descricao: string | null; valorCentavos: number; ativo: boolean; ordem: number; redes: number; recursos: RecursosDoPlano }
 
@@ -79,9 +80,16 @@ export function PlanosDoCatalogo({ planos }: { planos: Plano[] }) {
           </label>
           <label className="ajuda-check"><input type="checkbox" name="ativo" defaultChecked={editando ? editando.ativo : true} /> <span>À venda</span></label>
         </div>
-        <h3 className="overline">O que o plano inclui</h3>
+        {/* O "a quem vale a mudança" mora na dica do título (2026-11-16); fora do
+            h3, o título não muda de nome. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <h3 className="overline">O que o plano inclui</h3>
+          <Dica rotulo="A quem vale a mudança do plano">
+            Mudar o valor ou o que o plano inclui não muda as redes que já o assinam — vale para as próximas. Para levar a mudança a
+            uma rede, use &ldquo;Aplicar a versão atual do plano&rdquo; na tela dela.
+          </Dica>
+        </div>
         <RecursosDoPlanoCampos valor={recursos} mudar={setRecursos} />
-        <p className="suporte-texto-fraco">Mudar o valor ou o que o plano inclui não muda as redes que já o assinam — vale para as próximas. Para levar a mudança a uma rede, use &ldquo;Aplicar a versão atual do plano&rdquo; na tela dela.</p>
         <div className="sistema-acoes">
           <button type="submit" className="btn-primary" disabled={pendente}>{pendente ? 'Salvando…' : editando ? 'Salvar plano' : 'Criar plano'}</button>
           {editando && <button type="button" className="btn-ghost" onClick={() => abrir(null)}>Cancelar</button>}

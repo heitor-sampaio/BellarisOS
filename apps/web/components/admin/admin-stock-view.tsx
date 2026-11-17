@@ -14,6 +14,7 @@ import { rotuloDoUso } from '@/lib/estoque/uso'
 import { SegSelect } from '@/components/shared/seg-select'
 import { BotaoAplicadoEm, LotesEsgotados } from '@/components/admin/aplicacoes-do-lote'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import {
   situacaoDoEstoque, saldoParaMostrar, minimoParaMostrar, emEmbalagens, estoqueBaixo, minimoEhDoCadastro, rotuloDoMinimo,
   formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO,
@@ -461,9 +462,11 @@ export function AdminStockView({ products, branches, productCategories = [], mar
           // A2 da 6ª simulação: a clínica nova lia "ajuste os filtros" sem filtro nenhum.
           <div data-estoque-vazio style={{ textAlign: 'center', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <PackageX size={36} style={{ color: 'var(--text-faint)', marginBottom: 8 }} />
-            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>Nenhum produto cadastrado</p>
-            <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', maxWidth: 360 }}>
-              Cadastre os insumos antes dos procedimentos que os usam — e os produtos que a rede vende.
+            <p style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>
+              <span>Nenhum produto cadastrado</span>
+              <Dica rotulo="Por onde começar">
+                Cadastre os insumos antes dos procedimentos que os usam — e os produtos que a rede vende.
+              </Dica>
             </p>
             {podeEditarProduto && (
               <div style={{ marginTop: 10 }}>

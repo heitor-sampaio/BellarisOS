@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Check, Loader2 } from 'lucide-react'
 import { aceitarPlanoPelaCliente } from '@/actions/plano-da-cliente'
 import { erroParaTela } from '@/lib/erro-na-tela'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O "Aceitar o plano" do app (PT1b, a revisão do Heitor de 2026-11-13): só
@@ -32,12 +33,16 @@ export function AceitarPlano({ slug, planId }: { slug: string; planId: string })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <button type="button" className="btn-primary" onClick={aceitar} disabled={aceitando} style={{ justifyContent: 'center' }}>
-        {aceitando ? <><Loader2 size={14} className="animate-spin" aria-hidden="true" /> Aceitando…</> : <><Check size={14} aria-hidden="true" /> Aceitar o plano</>}
-      </button>
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-        Aceitar é dizer que você quer fazer este tratamento. O pagamento é combinado depois, na unidade.
-      </p>
+      {/* O que é aceitar mora na dica, ao lado do botão (docs/regras/design.md). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
+        <button type="button" className="btn-primary" onClick={aceitar} disabled={aceitando} style={{ justifyContent: 'center', flex: 1 }}>
+          {aceitando ? <><Loader2 size={14} className="animate-spin" aria-hidden="true" /> Aceitando…</> : <><Check size={14} aria-hidden="true" /> Aceitar o plano</>}
+        </button>
+        {/* O rótulo não repete "Aceitar o plano": o botão é achado pelo nome. */}
+        <Dica rotulo="Sobre o aceite">
+          Aceitar é dizer que você quer fazer este tratamento. O pagamento é combinado depois, na unidade.
+        </Dica>
+      </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
     </div>
   )

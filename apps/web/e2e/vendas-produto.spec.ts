@@ -147,6 +147,8 @@ test.describe.serial('a venda de produto', () => {
     await como(browser, async p => {
       const dlg = await abrirVendaDeProduto(p)
       // A48 da 5ª simulação: a venda não dizia nada sobre pontos — e não pontuava.
+      // Mora na dica do "Pagamento" (2026-11-16).
+      await dlg.getByRole('button', { name: 'Sobre os pontos desta venda' }).hover()
       await expect(dlg.locator('[data-pontos-do-produto]')).toContainText('não gera pontos')
       const opcoes = await dlg.getByLabel('Produto', { exact: true }).locator('option').allTextContents()
       expect(opcoes.some(o => o.includes(nomeSerum)), 'a revenda está à venda').toBe(true)
@@ -222,6 +224,7 @@ test.describe.serial('a venda de produto', () => {
     expect(cfg?.pontua_venda_de_produto).toBe(true)
     await como(browser, async p => {
       const dlg = await abrirVendaDeProduto(p)
+      await dlg.getByRole('button', { name: 'Sobre os pontos desta venda' }).hover()
       await expect(dlg.locator('[data-pontos-do-produto]')).toContainText('gera pontos de fidelidade quando for paga')
       await dlg.getByLabel('Produto', { exact: true }).selectOption(serum)
       await dlg.getByLabel('Quantidade').fill('1')

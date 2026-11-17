@@ -15,7 +15,7 @@ const diaCurto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
  * Os números vêm de `getEmAberto` e `getAReceberEmAberto` (lib/metrics); aqui
  * só se escreve.
  */
-export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas, bruto, podeDarBaixa = true, despesa = false }: {
+export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas, podeDarBaixa = true, despesa = false }: {
   valor: number
   proximo: ProximoVencimento | null
   /** Todo o em aberto, de qualquer vencimento (só no "A receber"). */
@@ -35,11 +35,6 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
   /** Onde se vê só as vencidas (`?aberto=vencidas`). */
   hrefDasVencidas?: string
   /**
-   * A30 da 9ª: o "A receber da operadora" conta o LÍQUIDO (o que ela deposita);
-   * o bruto vai ao lado, do período e de todo o em aberto.
-   */
-  bruto?: { periodo: number; emAberto: number }
-  /**
    * A42 da 12ª: quem só VÊ o financeiro (a contadora) não tem o "Pagar" na
    * linha — o link diz "Ver a lista", não "Ver e dar baixa".
    */
@@ -47,10 +42,11 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
   /** A43 da 12ª: o "A pagar" (a despesa em aberto): "Ver e pagar". */
   despesa?: boolean
 }) {
+  // A explicação ("pelo vencimento, no período", o líquido e o bruto) mora na
+  // dica do cartão — `DicaDoVencimento` (o Heitor, 2026-11-16: sem parágrafo
+  // de explicação na tela). Aqui fica o que se lê e o que se faz.
   return (
     <span>
-      {bruto ? 'Líquido (o que a operadora deposita), pelo vencimento, no período' : 'Pelo vencimento, no período'}
-      {bruto && bruto.periodo > valor ? <> — {formatBRL(bruto.periodo)} bruto</> : null}.
       {vencidas && vencidas.quantidade > 0 && (
         <span data-vencidas style={{ display: 'block', marginTop: 2, color: 'var(--danger)', fontWeight: 600 }}>
           Vencidas: <strong>{formatBRL(vencidas.valor)}</strong>
@@ -61,11 +57,10 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
           )}
         </span>
       )}
-      {valor === 0 && proximo && <> Próximo: <strong>{formatBRL(proximo.valor)} em {diaCurto(proximo.dia)}</strong>.</>}
+      {valor === 0 && proximo && <span style={{ display: 'block' }}>Próximo: <strong>{formatBRL(proximo.valor)} em {diaCurto(proximo.dia)}</strong></span>}
       {emAbertoTotal !== undefined && (
         <span data-em-aberto style={{ display: 'block', marginTop: 2 }}>
-          Em aberto, todos os vencimentos: <strong>{formatBRL(emAbertoTotal)}{bruto ? ' líquido' : ''}</strong>
-          {bruto && <> ({formatBRL(bruto.emAberto)} bruto)</>}
+          Em aberto: <strong>{formatBRL(emAbertoTotal)}</strong>
           {hrefDaBaixa && emAbertoTotal > 0 && (
             <> · <a href={hrefDaBaixa} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>{podeDarBaixa ? (despesa ? 'Ver e pagar' : 'Ver e dar baixa') : 'Ver a lista'}</a></>
           )}
@@ -73,8 +68,39 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
       )}
       {concluidosSemPagamento && concluidosSemPagamento.n > 0 && (
         <span data-concluidos-sem-pagamento style={{ display: 'block', marginTop: 2 }}>
-          Atendimentos concluídos sem pagamento: <strong>{formatBRL(concluidosSemPagamento.valor)}</strong>
+          Concluídos sem pagamento: <strong>{formatBRL(concluidosSemPagamento.valor)}</strong>
           {' '}({concluidosSemPagamento.n} {concluidosSemPagamento.n === 1 ? 'atendimento' : 'atendimentos'})
+        </span>
+      )}
+    </span>
+  )
+}
+
+/**
+ * A explicação do "A receber" / "A pagar" — na dica do cartão. O período vale
+ * pelo VENCIMENTO; o "Em aberto" soma todos os vencimentos (D-14); na
+ * operadora, o líquido (o que ela deposita) e o bruto (A30 da 9ª).
+ */
+export function DicaDoVencimento({ valor, bruto, emAbertoTotal, concluidos = false }: {
+  valor: number
+  bruto?: { periodo: number; emAberto: number }
+  emAbertoTotal?: number
+  /** O "A receber da cliente": diz o que é o "Concluídos sem pagamento". */
+  concluidos?: boolean
+}) {
+  return (
+    <span data-dica-do-vencimento>
+      {bruto
+        ? <>O valor é o líquido (o que a operadora deposita), pelo vencimento, no período{bruto.periodo > valor ? <> — {formatBRL(bruto.periodo)} bruto</> : null}.</>
+        : <>O valor é o que vence no período (pelo vencimento).</>}
+      {emAbertoTotal !== undefined && (
+        <span style={{ display: 'block', marginTop: 4 }}>
+          “Em aberto” soma todos os vencimentos, de qualquer mês{bruto ? <> ({formatBRL(bruto.emAberto)} bruto)</> : null}.
+        </span>
+      )}
+      {concluidos && (
+        <span style={{ display: 'block', marginTop: 4 }}>
+          “Concluídos sem pagamento” são atendimentos feitos e não recebidos: não são lançamento em aberto e não se somam a ele.
         </span>
       )}
     </span>

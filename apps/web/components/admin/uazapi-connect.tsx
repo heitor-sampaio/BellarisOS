@@ -14,6 +14,7 @@ import {
   type EstadoConexaoUazapi,
 } from '@/actions/uazapi-connection'
 import { erroParaTela } from '@/lib/erro-na-tela'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Conectar o WhatsApp sem sair do BellarisOS.
@@ -207,10 +208,8 @@ export function UazapiConnect({ numeroId, nomeDoNumero }: {
     const perto = estado.teto > 0 && estado.usadas >= estado.teto - 5
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55, margin: 0 }}>
-          Conecte o WhatsApp da rede escaneando um QR code, como no WhatsApp Web.
-          Não é preciso contratar nada à parte — a conexão já faz parte do plano.
-        </p>
+        {/* A apresentação mora na dica do botão (2026-11-16); o aviso do número
+            dedicado fica à vista — conectar aqui derruba as outras sessões. */}
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', lineHeight: 1.55, margin: 0 }}>
           Use um número dedicado ao atendimento. O WhatsApp permite um aparelho por
           número, e conectar aqui desconecta outras sessões do WhatsApp Web.
@@ -223,11 +222,17 @@ export function UazapiConnect({ numeroId, nomeDoNumero }: {
         )}
         {erro && <Aviso tom="erro">{erro}</Aviso>}
 
-        <button type="button" onClick={criar}
-          disabled={isPending} className="btn-primary"
-          style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7 }}>
-          <QrCode size={15} /> {isPending ? 'Criando…' : 'Conectar WhatsApp'}
-        </button>
+        <span style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button type="button" onClick={criar}
+            disabled={isPending} className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <QrCode size={15} /> {isPending ? 'Criando…' : 'Conectar WhatsApp'}
+          </button>
+          <Dica rotulo="Sobre a conexão por QR code">
+            Conecte o WhatsApp da rede escaneando um QR code, como no WhatsApp Web.
+            Não é preciso contratar nada à parte — a conexão já faz parte do plano.
+          </Dica>
+        </span>
       </div>
     )
   }

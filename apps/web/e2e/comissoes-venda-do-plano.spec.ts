@@ -128,7 +128,9 @@ test('Configurações → Comissões: "Venda de plano" nasce vazia, e a rede põ
     const como_ = p.getByLabel('Como a comissão acontece')
     const campo = como_.getByLabel('Comissão na venda de plano (%)')
     await expect(campo, 'vazio por padrão (princípio 6)').toHaveValue('')
-    await expect(como_.locator('[data-comissao-do-plano]')).toContainText('Vazio: vale a regra de venda de quem vendeu; sem ela, a venda do plano não gera comissão.')
+    // O "como comissiona" mora na dica do bloco (2026-11-16).
+    await como_.getByRole('button', { name: 'Como comissiona a venda de plano' }).hover()
+    await expect(como_.getByRole('tooltip')).toContainText('Vazio: vale a regra de venda de quem vendeu; sem ela, a venda do plano não gera comissão.')
     await campo.fill('5')
     await como_.getByRole('button', { name: 'Salvar' }).click()
     await expect(como_.getByRole('status')).toHaveText('Salvo.')

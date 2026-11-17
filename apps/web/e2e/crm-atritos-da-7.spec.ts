@@ -160,6 +160,8 @@ test('A16/A17: sem oportunidade a origem do CSV não vira tag (a coluna não se 
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
     const previa = p.locator('[data-previa]')
     await expect(previa.locator('[data-origens-da-planilha]')).toHaveCount(0)
+    // A explicação da prévia mora na dica (2026-11-16): aberta, para o "não diz" valer.
+    await previa.getByRole('button', { name: 'Como entra quem já está cadastrado' }).hover()
     await expect(previa).not.toContainText('tag da pessoa')
     await expect(previa).toContainText(`o e-mail desta linha (joana-${marca}@exemplo.com) não entra`)
   })

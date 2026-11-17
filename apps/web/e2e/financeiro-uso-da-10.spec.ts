@@ -88,6 +88,8 @@ test('A24: os cartões dizem a base — "Despesas pagas (caixa)" e o que fica fo
     await p.goto(`/${slug}/financeiro`)
     const despesas = p.locator('[data-kpi="despesas"]')
     await expect(despesas).toContainText('Despesas pagas (caixa)')
+    // A base das despesas mora na dica do cartão (2026-11-16).
+    await despesas.locator('[data-dica-botao]').hover()
     await expect(despesas).toContainText('compra de estoque')
     await p.goto('/admin/financeiro')
     await expect(p.locator('[data-kpi="despesas"]')).toContainText('Despesas pagas (caixa)')
@@ -162,6 +164,8 @@ test('A31: o DRE e o Fechamento do dia se exportam, com a compra e a perda do es
 test('A30: as Vendas dizem a ponte com o caixa', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto('/admin/reports?tab=vendas')
+    // A ponte mora na dica do "Total vendido" (2026-11-16).
+    await p.getByRole('button', { name: 'Como o Total vendido se liga ao caixa' }).hover()
     const ponte = p.locator('[data-ponte-vendas-caixa]')
     await expect(ponte).toContainText('caixa')
     await expect(ponte).toContainText('R$ 1.000,00')

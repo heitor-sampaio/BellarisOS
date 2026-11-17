@@ -83,6 +83,8 @@ test('D19: Relatórios, dashboard e Estoque da rede dizem o mesmo número de pro
     await p.goto('/admin/reports?tab=estoque&period=month')
     const rel = p.locator('.card', { hasText: 'Produtos zerados' }).first()
     await expect(rel).toContainText('1', { timeout: 20_000 })
+    // O que conta como zerado mora na dica do cartão (2026-11-16).
+    await rel.locator('[data-dica-botao]').hover()
     await expect(rel).toContainText('sem saldo em nenhuma unidade')
   })
 })

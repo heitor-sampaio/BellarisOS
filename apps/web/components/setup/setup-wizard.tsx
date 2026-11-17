@@ -12,6 +12,7 @@ import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
 import { maskCNPJDigitando, maskCPFouCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
+import { Dica } from '@/components/shared/dica'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -127,19 +128,17 @@ function StepNetwork({
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ marginBottom: 4 }}>
+      {/* A apresentação do passo mora na dica do título (2026-11-16). */}
+      <div style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
         <h2 style={{
           fontSize: 'var(--text-title)',
           fontWeight: 'var(--weight-extrabold)',
           letterSpacing: 'var(--tracking-tight)',
           color: 'var(--text)',
-          marginBottom: 4,
         }}>
           Dados da sua rede
         </h2>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Essas informações identificam a sua rede no sistema.
-        </p>
+        <Dica rotulo="Sobre os dados da rede">Essas informações identificam a sua rede no sistema.</Dica>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -363,19 +362,16 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ marginBottom: 4 }}>
+      <div style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
         <h2 style={{
           fontSize: 'var(--text-title)',
           fontWeight: 'var(--weight-extrabold)',
           letterSpacing: 'var(--tracking-tight)',
           color: 'var(--text)',
-          marginBottom: 4,
         }}>
           Primeira unidade
         </h2>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Cadastre a primeira unidade da sua rede. Você poderá adicionar mais depois.
-        </p>
+        <Dica rotulo="Sobre a primeira unidade">Cadastre a primeira unidade da sua rede. Você poderá adicionar mais depois.</Dica>
       </div>
 
       {/* Identificação */}
@@ -393,12 +389,17 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <label className="overline" htmlFor="br-slug">
-          Endereço da unidade
-          <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 4, textTransform: 'none' }}>
-            — /{slug || 'nome-da-unidade'}
-          </span>
-        </label>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+          <label className="overline" htmlFor="br-slug">
+            Endereço da unidade
+            <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 4, textTransform: 'none' }}>
+              — /{slug || 'nome-da-unidade'}
+            </span>
+          </label>
+          <Dica rotulo="Sobre o endereço do portal">
+            O endereço é único no sistema inteiro: se já estiver em uso, o sistema completa com o nome da sua rede.
+          </Dica>
+        </span>
         <input
           id="br-slug"
           type="text"
@@ -407,13 +408,13 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           value={slug}
           onChange={e => { setSlugTouched(true); setSlug(e.target.value) }}
         />
-        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          O endereço é único no sistema inteiro: se já estiver em uso, o sistema completa com o nome da sua rede.
-        </span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <label className="overline" htmlFor="br-doc">CNPJ da unidade</label>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+          <label className="overline" htmlFor="br-doc">CNPJ da unidade</label>
+          <Dica rotulo="Sobre o CNPJ da unidade">O mesmo da rede, já preenchido. Troque se a unidade tiver CNPJ próprio.</Dica>
+        </span>
         <input
           id="br-doc"
           type="text"
@@ -423,9 +424,6 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
           value={document}
           onChange={e => setDocument(maskCPFouCNPJDigitando(e.target.value))}
         />
-        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          O mesmo da rede, já preenchido. Troque se a unidade tiver CNPJ próprio.
-        </span>
         {perguntaCnpj && !document.trim() && (
           <div role="alertdialog" aria-label="Unidade sem CNPJ" style={{
             display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6, padding: '12px 14px',
@@ -454,7 +452,13 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
 
       <div className="form-2col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label className="overline" htmlFor="br-phone">Telefone</label>
+          {/* A3 da 9ª: a regra J-66 (sem telefone na unidade, vale o da rede) que a tela não dizia — na dica do rótulo (2026-11-16). */}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+            <label className="overline" htmlFor="br-phone">Telefone</label>
+            <Dica rotulo="O que o app mostra sem número">
+              <span data-telefone-vazio-no-app>Em branco, o app da cliente mostra o telefone da rede (o do passo anterior).</span>
+            </Dica>
+          </span>
           <input
             id="br-phone"
             type="text"
@@ -463,10 +467,6 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
             value={phone}
             onChange={e => setPhone(maskPhoneDigitando(e.target.value))}
           />
-          {/* A3 da 9ª: a regra J-66 (sem telefone na unidade, vale o da clínica) que a tela não dizia. */}
-          <span data-telefone-vazio-no-app style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            Em branco, o app da cliente mostra o telefone da rede (o do passo anterior).
-          </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <label className="overline" htmlFor="br-email">E-mail</label>
@@ -563,10 +563,12 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
       <CampoDoFuso id="br-fuso" modo="segue" uf={uf} cidade={city} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p className="overline">Horário de funcionamento</p>
-        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          O padrão é segunda a sábado, das 8h às 20h. Ajuste o que for diferente — dá para mudar depois em Configurações.
-        </span>
+        <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>Horário de funcionamento</span>
+          <Dica rotulo="Sobre o horário de funcionamento">
+            O padrão é segunda a sábado, das 8h às 20h. Ajuste o que for diferente — dá para mudar depois em Configurações.
+          </Dica>
+        </p>
         {/* A2 da 7ª simulação: a clínica 24h não achava o domingo fechado no meio da lista.
             A24 da 18ª: o aviso só fica enquanto o domingo está fechado ("Aberta 24 horas" o abre). */}
         {domingoFechadoNoHorario(horarioMexido ?? (horarioSalvo.valor ? JSON.stringify(horarioSalvo.valor) : null)) && <p data-domingo-fechado role="note" style={{

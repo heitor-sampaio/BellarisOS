@@ -9,6 +9,7 @@ import { ROTULO_DO_TIPO, descricaoDoVoucher, situacaoDoVoucher, type TipoDeRecom
 import type { Recompensa, VoucherDoCliente } from '@/lib/fidelidade/leitura'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Recompensas e vouchers na ficha do cliente.
@@ -147,7 +148,19 @@ export function VouchersDoCliente({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Ticket size={15} style={{ color: 'var(--brand)', flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{descricaoDoVoucher(v)}</p>
+                    <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>{descricaoDoVoucher(v)}</span>
+                      {/* Onde se usa o voucher mora na dica (2026-11-16 — era uma frase embaixo da linha). */}
+                      {situacao === 'ATIVO' && v.type !== 'PRODUTO' && (
+                        <Dica rotulo="Onde se usa o voucher">
+                          <span data-voucher-no-pdv>
+                            {v.type === 'PROCEDIMENTO'
+                              ? 'Usa-se no PDV, ao receber a comanda do atendimento deste procedimento.'
+                              : 'Usa-se no PDV, ao receber: na comanda do atendimento ou numa venda à vista.'}
+                          </span>
+                        </Dica>
+                      )}
+                    </p>
                     <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                       {situacao === 'ATIVO' || situacao === 'VENCIDO'
                         ? `Válido até ${new Date(v.expires_at).toLocaleDateString('pt-BR', { timeZone: fuso })}`
@@ -158,13 +171,6 @@ export function VouchersDoCliente({
                   </div>
                   <span className={CHIP_DA_SITUACAO[situacao]}>{ROTULO_DA_SITUACAO[situacao]}</span>
                 </div>
-                {situacao === 'ATIVO' && v.type !== 'PRODUTO' && (
-                  <p data-voucher-no-pdv style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    {v.type === 'PROCEDIMENTO'
-                      ? 'Usa-se no PDV, ao receber a comanda do atendimento deste procedimento.'
-                      : 'Usa-se no PDV, ao receber: na comanda do atendimento ou numa venda à vista.'}
-                  </p>
-                )}
                 {podeGerenciar && situacao === 'ATIVO' && cancelando !== v.id && (
                   <div style={{ display: 'flex', gap: 8 }}>
                     {v.type === 'PRODUTO' && (

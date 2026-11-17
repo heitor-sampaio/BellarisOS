@@ -138,6 +138,8 @@ test('A38: o "A receber da operadora" diz o débito do período, que conta como 
   })).error).toBeNull()
   await como(browser, dona, async p => {
     await p.goto(`/${slug}/financeiro`)
+    // O débito do período mora na dica do cartão (2026-11-16).
+    await p.locator('[data-kpi="a-receber-operadora"] [data-dica-botao]').hover()
     const nota = p.locator('[data-kpi="a-receber-operadora"] [data-debito-no-periodo]')
     await expect(nota).toContainText(/débito/i)
     await expect(nota).toContainText(/R\$\s540,00/)

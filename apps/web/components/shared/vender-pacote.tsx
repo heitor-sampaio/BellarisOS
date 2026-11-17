@@ -20,6 +20,7 @@ import type { MembroDaVenda } from '@/components/shared/vender'
 import { useFuso } from '@/components/shared/fuso'
 import { useFidelidadeNaVenda } from '@/components/shared/pontos-na-venda'
 import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Vender um pacote (decisão do Heitor, 2026-09-30): o pacote do catálogo, e
@@ -186,17 +187,22 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
           return quem ? textoDaComissaoDaVenda({ tipo: 'PACOTE', pessoa: { nome: quem.nome, pct: quem.comissaoVendaPct }, itens: [{ regra: pacote.comissaoVenda ?? null }] }) : null
         })()} />
       {pacote.pedeResponsavel && (
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span className="overline">Profissional responsável</span>
+        // Um <div>, não <label>: o botão da dica dentro do rótulo o roubaria do seletor
+        // (o seletor tem o próprio aria-label).
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span className="overline">Profissional responsável</span>
+            {/* 2026-11-16: era uma linha fixa embaixo do seletor. */}
+            <Dica rotulo="Sobre o profissional responsável">
+              Recebe a comissão de quem atende sobre o valor do pacote, quando ele estiver pago por inteiro.
+            </Dica>
+          </span>
           <select className="field" aria-label="Profissional responsável" value={responsavelId}
             onChange={e => { setResponsavelId(e.target.value); setPergunta(null) }}>
             <option value="">Ninguém</option>
             {quemAtende.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </select>
-          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            Recebe a comissão de quem atende sobre o valor do pacote, quando ele estiver pago por inteiro.
-          </span>
-        </label>
+        </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>

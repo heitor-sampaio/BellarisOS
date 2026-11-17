@@ -62,6 +62,8 @@ test('quem tem só a unidade B, com Clientes em Gerenciar, edita os dados e as a
   const novoNome = `${PREFIXO} Marlene Souza ${marca}`
   await como(browser, recepcaoDeB!.estado, async p => {
     await p.goto(`/${slugB}/clients/${clienteDeA}?aba=dados`)
+    // O "só leitura" e a dica com o motivo nem aparecem (o texto mora na dica desde 2026-11-16).
+    await expect(p.getByRole('button', { name: 'Por que o cadastro não se edita' })).toHaveCount(0)
     await expect(p.locator('[data-cadastro-so-leitura]')).toHaveCount(0)
 
     // O "Nome *" da aba Dados (o primeiro campo de texto do cartão; o da topbar é a busca).

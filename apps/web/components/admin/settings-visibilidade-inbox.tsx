@@ -8,6 +8,7 @@ import {
   OPCOES_DE_VISIBILIDADE, type VisibilidadeDoInbox,
 } from '@/lib/inbox/visibilidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Configurações → Cargos: com "só os próprios leads", o inbox segue a pessoa
@@ -67,13 +68,17 @@ export function SettingsVisibilidadeInbox({
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
       aria-labelledby="titulo-visibilidade-inbox">
       <div>
-        <h3 id="titulo-visibilidade-inbox"
-          style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
-          Inbox de quem vê só as próprias oportunidades
+        {/* O "para quem vale" mora na dica (2026-11-16 — era o subtítulo). O id
+            fica no texto, para o nome da seção não levar o da dica. */}
+        <h3 style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)',
+        }}>
+          <span id="titulo-visibilidade-inbox">Inbox de quem vê só as próprias oportunidades</span>
+          <Dica rotulo="Para quem vale esta escolha">
+            Vale para cargos com o escopo &ldquo;só os meus&rdquo; no CRM. Quem vê tudo não muda.
+          </Dica>
         </h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
-          Vale para cargos com o escopo &ldquo;só os meus&rdquo; no CRM. Quem vê tudo não muda.
-        </p>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

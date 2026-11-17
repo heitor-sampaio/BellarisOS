@@ -182,7 +182,10 @@ test('DC1c/PC9b + DC4: a página do plano lista os documentos puxados com "Exclu
     await p.goto(`/${slug}/planejamentos/${planId}`)
     const bloco = p.locator('[data-documentos-do-plano]')
     await expect(bloco).toBeVisible()
+    // Quando o contrato nasce mora na dica da linha dele (2026-11-16).
+    await bloco.getByRole('button', { name: 'Quando nasce o contrato do plano' }).hover()
     await expect(bloco.locator('[data-contrato-do-plano]')).toContainText('PDV')
+    await p.mouse.move(0, 0)
     for (const nome of [NOME.termo, NOME.imagem, NOME.fora]) await expect(bloco.locator('[data-puxado]', { hasText: nome })).toHaveCount(1)
     await expect(bloco.locator('[data-puxado]', { hasText: NOME.contrato }), 'o contrato do procedimento não vem ao plano').toHaveCount(0)
     await bloco.locator('[data-puxado]', { hasText: NOME.fora }).getByRole('button', { name: 'Excluir' }).click()

@@ -18,6 +18,7 @@ import { opcoesDeModeloParaProcedimento } from '@/lib/documentos/modelos'
 import { BuscaNaUrl } from '@/components/shared/busca-na-url'
 import { contemSemAcento } from '@/lib/texto'
 import { falaDaTela } from '@/lib/unidades/uma-so'
+import { Dica } from '@/components/shared/dica'
 
 function formatBRL(v: string | number) {
   return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -198,19 +199,23 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-            Procedimentos
-          </h1>
+          {/* A35 da 8ª: quem só vê lê por quê (o catálogo é de quem o gerencia) — na dica do título (2026-11-16). */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
+            <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
+              Procedimentos
+            </h1>
+            {!canEdit && (
+              <Dica rotulo="Por que só consulta">
+                <span data-catalogo-so-consulta>
+                  Seu cargo só consulta o catálogo: cria e muda quem tem Procedimentos em Gerenciar.
+                </span>
+              </Dica>
+            )}
+          </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {totalActive} {totalActive === 1 ? 'ativo' : 'ativos'} · {totalInactive} {totalInactive === 1 ? 'inativo' : 'inativos'} · {fala('catálogo da rede')}
           </p>
         </div>
-        {/* A35 da 8ª: quem só vê lê por quê (o catálogo é de quem o gerencia). */}
-        {!canEdit && (
-          <p data-catalogo-so-consulta style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', maxWidth: 360, textAlign: 'right' }}>
-            Seu cargo só consulta o catálogo: cria e muda quem tem Procedimentos em Gerenciar.
-          </p>
-        )}
         {canEdit && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* As categorias: a mesma trava de criar procedimento (PR1). */}

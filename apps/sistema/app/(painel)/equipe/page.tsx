@@ -2,6 +2,7 @@ import { getPlatformContext, type PapelDaPlataforma } from '@estetica-os/nucleo/
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { ler } from '@estetica-os/nucleo/lib/db'
 import { EquipeDaPlataforma, AdicionarPessoa, type PessoaDaPlataforma } from '@/components/suporte/equipe-da-plataforma'
+import { Dica } from '@estetica-os/nucleo/components/dica'
 
 /**
  * Quem atende pela plataforma. Só admin: cadastrar, reenviar o convite,
@@ -26,8 +27,11 @@ export default async function EquipePage({ searchParams }: { searchParams: Promi
     <div className="suporte-pilha-larga">
       <div className="suporte-cabecalho">
         <div>
-          <h1 className="suporte-titulo">Equipe da plataforma</h1>
-          <p className="suporte-sub">Quem atende as redes. Cada pessoa define a senha pelo convite que chega por e-mail.</p>
+          {/* A apresentação mora na dica (2026-11-16); fora do h1, o título não muda de nome. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h1 className="suporte-titulo">Equipe da plataforma</h1>
+            <Dica rotulo="Sobre a equipe da plataforma">Quem atende as redes. Cada pessoa define a senha pelo convite que chega por e-mail.</Dica>
+          </div>
         </div>
         {/* Na linha do título, à direita. O Gerente vê travado. */}
         <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>

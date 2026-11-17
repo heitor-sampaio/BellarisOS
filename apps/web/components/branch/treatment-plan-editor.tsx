@@ -6,6 +6,7 @@ import { saveTreatmentPlan, proposeTreatmentPlan, pacotesParaODicaDoPlano } from
 import { pacoteEquivalente, type PacoteParaComparar } from '@/lib/checkout/pacote-equivalente'
 import type { PlanSessionInput } from '@/actions/treatment-plans'
 import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
+import { Dica } from '@/components/shared/dica'
 import type { RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
 
 export interface TreatmentPlanEditorRef {
@@ -690,17 +691,28 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
+          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Tratamento</span>
+            {/* O "é opcional" e o "o desconto é do checkout" moram na dica (2026-11-16 — eram frases fixas).
+                A34 da 7ª simulação: a profissional não tinha onde pôr os 10% pedidos,
+                e a tela não dizia que o desconto é do checkout (a regra fica). */}
+            <Dica rotulo="Sobre o plano do tratamento">
+              {opcional && (
+                <span data-plano-opcional style={{ display: 'block', marginBottom: 6 }}>
+                  Opcional: monte só se for propor um plano à cliente. Sem plano, basta o “Finalizar atendimento”.
+                </span>
+              )}
+              <span data-desconto-no-checkout style={{ display: 'block' }}>
+                O desconto é dado no checkout do plano (no PDV, ou no “Fechar agora”): aqui vão os preços de tabela.
+              </span>
+            </Dica>
+          </h3>
           {/* Na simulação de 2026-10-20 a profissional montou aqui a sessão que
-              estava FAZENDO (com o insumo) — e virou um plano de outra sessão. */}
+              estava FAZENDO (com o insumo) — e virou um plano de outra sessão. Fica
+              à vista (2026-11-16): sem ler, ela erra de novo. */}
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
             As PRÓXIMAS sessões, para a cliente fechar. O que foi feito hoje vai na conclusão do atendimento.
           </p>
-          {opcional && (
-            <p data-plano-opcional style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-              Opcional: monte só se for propor um plano à cliente. Sem plano, basta o “Finalizar atendimento”.
-            </p>
-          )}
         </div>
         {grandTotal > 0 && (
           <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
@@ -757,12 +769,6 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
             </button>
           </>
         )}
-
-        {/* A34 da 7ª simulação: a profissional não tinha onde pôr os 10% pedidos,
-            e a tela não dizia que o desconto é do checkout (a regra fica). */}
-        <p data-desconto-no-checkout style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          O desconto é dado no checkout do plano (no PDV, ou no “Fechar agora”): aqui vão os preços de tabela.
-        </p>
 
         {/* As sessões batem com um pacote da rede: o plano segue por
             procedimento, e a dica diz onde a economia entra (A28). */}

@@ -106,6 +106,8 @@ test('A35: para quem tem o prontuário "só os meus", a ficha diz que os termos 
     await p.goto(`/${slug}/clients/${cliente}?aba=fichas`)
     await expect(p.locator('[data-anexos-clinicos-fora]')).toContainText('Há 2 anexos clínicos desta cliente')
     await p.goto(`/${slug}/clients/${cliente}?aba=documentos`)
+    // O "por que" mora na dica (2026-11-16).
+    await p.locator('[data-termos-recortados]').getByRole('button', { name: 'Por que os documentos não aparecem' }).hover()
     await expect(p.locator('[data-termos-recortados]')).toContainText('“só os meus”')
   })
 })

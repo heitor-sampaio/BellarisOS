@@ -20,6 +20,7 @@ import type { Lead } from './crm-board'
 import { LEAD_SOURCES, maskPhone as telefoneParaExibir, maskTelefoneDigitando, telefoneDoCadastro } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagPicker } from '@/components/shared/tag-picker'
+import { Dica } from '@/components/shared/dica'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { useOrigensDaRede } from '@/components/shared/use-origens-da-rede'
 
@@ -616,11 +617,9 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
               {/* Tags */}
               <div>
-                <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 4 }}>
-                  TAGS
-                </p>
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
-                  As tags da rede, para filtrar. Criar uma nova é em Configurações → Tags.
+                <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>TAGS</span>
+                  <Dica rotulo="Sobre as tags">As tags da rede, para filtrar. Criar uma nova é em Configurações → Tags.</Dica>
                 </p>
 
                 {/* D7 da 18ª: escolhe pelo vocabulário da rede, como a ficha e o inbox —
@@ -645,8 +644,11 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               {/* A42 da 9ª: o lembrete de retorno. No dia, quem tem o lead é
                   avisado no sino — o card não anda sozinho (princípio 6). */}
               <div data-lembrete-de-retorno style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                  LEMBRETE DE RETORNO
+                <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>LEMBRETE DE RETORNO</span>
+                  <Dica rotulo="Sobre o lembrete de retorno">
+                    No dia, quem é o responsável pela oportunidade recebe o lembrete no sino. O card não muda de etapa sozinho.
+                  </Dica>
                 </p>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '0 0 170px' }}>
@@ -659,9 +661,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                       defaultValue={existing?.retornar_obs ?? ''} placeholder="Ex.: ligar para falar do orçamento" />
                   </label>
                 </div>
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                  No dia, quem é o responsável pela oportunidade recebe o lembrete no sino. O card não muda de etapa sozinho.
-                </p>
               </div>
 
               {/* Histórico — só na edição: card que ainda não existe não tem

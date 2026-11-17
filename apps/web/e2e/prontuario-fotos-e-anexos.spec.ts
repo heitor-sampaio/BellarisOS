@@ -186,7 +186,10 @@ test.describe.serial('PR1: as fotos e os anexos clínicos moram no Prontuário',
     await como(dona!, browser, async p => {
       await p.goto(`/${slug}/agenda/${semFoto}`)
       const fotos = p.locator('[data-fotos-do-atendimento]')
-      await expect(fotos.getByText('Nenhuma foto neste atendimento. Ela fica no prontuário da cliente, no registro deste atendimento.')).toBeVisible()
+      await expect(fotos.getByText('Nenhuma foto neste atendimento.')).toBeVisible()
+      // O "onde a foto fica" mora na dica do título (2026-11-16).
+      await fotos.getByRole('button', { name: 'Onde a foto fica' }).hover()
+      await expect(fotos.locator('[data-onde-a-foto-fica]')).toHaveText('A foto fica no prontuário da cliente, no registro deste atendimento.')
       await fotos.getByRole('button', { name: 'Anexar foto' }).click()
       await fotos.getByRole('group', { name: 'Momento da foto' }).getByText('Durante', { exact: true }).click()
       await fotos.locator('input[name="file"]').setInputFiles({ name: 'durante.png', mimeType: 'image/png', buffer: PNG })

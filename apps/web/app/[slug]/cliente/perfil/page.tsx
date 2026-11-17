@@ -4,6 +4,7 @@ import { formatDia } from '@estetica-os/utils'
 import { BotaoSairDoPortal } from '@/components/client-portal/botao-sair'
 import { EditProfileForm } from '@/components/client-portal/edit-profile-form'
 import { DataRequestCard } from '@/components/client-portal/data-request-card'
+import { Dica } from '@/components/shared/dica'
 import { getMyDataRequests } from '@/actions/lgpd'
 import { ler } from '@/lib/db'
 import { iniciaisDoNome } from '@estetica-os/utils'
@@ -90,8 +91,13 @@ export default async function ClientProfilePage() {
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
           marginBottom:  12,
+          display:       'flex',
+          alignItems:    'center',
+          gap:           6,
         }}>
-          Dados pessoais
+          <span>Dados pessoais</span>
+          {/* Quem altera estes dados mora na dica (docs/regras/design.md). */}
+          <Dica rotulo="Como alterar estes dados">Para alterar esses dados, fale com a equipe.</Dica>
         </p>
         <div className="card" style={{ padding: '4px 22px' }}>
           <StaticRow label="CPF"              value={maskCpf(client.document)} />
@@ -105,9 +111,6 @@ export default async function ClientProfilePage() {
             <StaticRow label="Sexo" value={genderMap[client.gender] ?? client.gender} />
           )}
         </div>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 8, paddingLeft: 4 }}>
-          Para alterar esses dados, fale com a equipe.
-        </p>
       </section>
 
       {/* -- Contato + endereço (editável) ------------------------- */}

@@ -102,6 +102,9 @@ test('RL2: a aba do funil se chama "Oportunidades", no relatório e no cargo', a
     await expect(aba).not.toHaveAttribute('title', SEM_LEAD)
     await expect(relatorios.getByRole('button', { name: 'Funil comercial' })).toHaveCount(0)
     const crm = p.locator('[data-modulo="crm"]')
+    // A frase do nível mora na dica ao lado do nome (2026-11-16): aberta, entra na conferência.
+    await crm.locator('[data-dica-botao]').first().hover()
+    await expect(crm.locator('[data-frase-do-nivel]')).toBeVisible()
     expect(await crm.innerText(), 'a linha do CRM não diz "lead"').not.toMatch(SEM_LEAD)
   })
 })

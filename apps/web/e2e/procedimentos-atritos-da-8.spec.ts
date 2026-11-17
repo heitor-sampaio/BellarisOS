@@ -62,6 +62,8 @@ test('A35 (revista no PR1): no portal da unidade, quem tem Procedimentos em Gere
 test('A35: na rede, quem só vê Procedimentos lê que o cargo só consulta — sem "Novo procedimento"', async ({ browser }) => {
   await como(browser, consulta!, async p => {
     await p.goto('/admin/procedures')
+    // O "por quê" mora na dica do título (2026-11-16).
+    await p.getByRole('button', { name: 'Por que só consulta' }).hover()
     await expect(p.locator('[data-catalogo-so-consulta]')).toContainText('Seu cargo só consulta o catálogo')
     await expect(p.getByRole('button', { name: 'Novo procedimento' })).toHaveCount(0)
   })

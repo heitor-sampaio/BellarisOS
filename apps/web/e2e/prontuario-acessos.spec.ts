@@ -172,6 +172,8 @@ test('A35: quem tem o prontuário "só os meus", sem unidade fixa, vê a lista �
       await p.goto(`/admin/clients/${cliente}?aba=fichas`)
       const secao = p.getByRole('region', { name: 'Acessos ao prontuário' })
       await expect(secao).toBeVisible()
+      // A regra mora na dica do título (2026-11-16).
+      await secao.getByRole('button', { name: 'Sobre os acessos ao prontuário' }).hover()
       await expect(secao).toContainText('também com o escopo “só os meus”')
     })
   } finally {

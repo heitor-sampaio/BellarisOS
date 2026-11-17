@@ -39,6 +39,8 @@ test('A4: Geral e Unidades dizem o endereço do app da cliente, e o da rede sai 
     await p.goto('/admin/settings?tab=general')
     const geral = p.locator('[data-app-da-cliente]')
     await expect(geral).toContainText(`/${slug}/cliente`)
+    // O "como a cliente entra" mora na dica do App da cliente (2026-11-16).
+    await geral.getByRole('button', { name: 'Sobre o app da cliente' }).hover()
     await expect(geral).toContainText('É o endereço que se dá à cliente')
     await expect(p.getByText(`/${slugDaRede}`, { exact: true })).toHaveCount(0)
 

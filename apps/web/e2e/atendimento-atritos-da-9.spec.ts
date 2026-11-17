@@ -115,9 +115,12 @@ test('A26: sem foto, o cartão diz onde a foto clínica fica (no prontuário, no
   const { id } = await atendimento('Foto')
   await como(browser, profissional!, async p => {
     await p.goto(`/${slug}/agenda/${id}`)
-    const vazio = p.getByText(/Nenhuma foto neste atendimento/)
-    await expect(vazio).toContainText('fica no prontuário da cliente, no registro deste atendimento')
-    await expect(vazio).not.toContainText('Documentos → Foto clínica')
+    const fotos = p.locator('[data-fotos-do-atendimento]')
+    await expect(fotos.getByText(/Nenhuma foto neste atendimento/)).toBeVisible()
+    // O "onde a foto fica" mora na dica do título (2026-11-16).
+    await fotos.getByRole('button', { name: 'Onde a foto fica' }).hover()
+    await expect(fotos.locator('[data-onde-a-foto-fica]')).toContainText('fica no prontuário da cliente, no registro deste atendimento')
+    await expect(fotos).not.toContainText('Documentos → Foto clínica')
   })
 })
 

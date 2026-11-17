@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { comissaoNoCadastroDoProduto } from '@/actions/comissoes'
 import type { ComissaoNoCadastroDoProduto, TipoDeRegra } from '@/lib/comissoes/config'
 import { parseDecimal, parseDinheiro, NUMERO_INVALIDO, DINHEIRO_INVALIDO } from '@estetica-os/utils'
+import { Dica } from '@/components/shared/dica'
 
 const pct = (n: number) => `${String(n).replace('.', ',')}%`
 const textoDoValor = (tipo: TipoDeRegra | null, valor: number | null) => valor == null ? ''
@@ -70,7 +71,16 @@ export function ComissaoDoProduto({ productId }: { productId: string | null }) {
 
   return (
     <div data-comissao-do-produto style={caixa}>
-      <span style={rotulo}>Comissão na venda deste produto</span>
+      {/* O "como comissiona" mora na dica ao lado do rótulo (2026-11-16 — era uma linha embaixo do campo). */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span style={rotulo}>Comissão na venda deste produto</span>
+        <Dica rotulo="Como comissiona a venda deste produto">
+          {texto
+            ? (tipo === 'FIXED_AMOUNT' ? 'Quem vendeu ganha esse valor por unidade vendida.' : 'Quem vendeu ganha esse percentual da parte do produto no vendido (com o desconto).')
+            : `Vazio: vale ${geral}.`}
+          {' '}Vale para as próximas vendas.
+        </Dica>
+      </span>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <select className="field" aria-label="Tipo da comissão" value={tipo} style={{ width: 'auto' }}
           onChange={e => setTipo(e.target.value as TipoDeRegra)}>
@@ -82,16 +92,11 @@ export function ComissaoDoProduto({ productId }: { productId: string | null }) {
           onChange={e => setValor(e.target.value)} />
       </div>
       <input type="hidden" name="comissao" value={campo} />
-      {invalido
-        ? <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 600 }}>
-            {tipo === 'FIXED_AMOUNT' ? DINHEIRO_INVALIDO : NUMERO_INVALIDO}
-          </span>
-        : <span style={dica}>
-            {texto
-              ? (tipo === 'FIXED_AMOUNT' ? 'Quem vendeu ganha esse valor por unidade vendida.' : 'Quem vendeu ganha esse percentual da parte do produto no vendido (com o desconto).')
-              : `Vazio: vale ${geral}.`}
-            {' '}Vale para as próximas vendas.
-          </span>}
+      {invalido && (
+        <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 600 }}>
+          {tipo === 'FIXED_AMOUNT' ? DINHEIRO_INVALIDO : NUMERO_INVALIDO}
+        </span>
+      )}
     </div>
   )
 }

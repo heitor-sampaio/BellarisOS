@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Dica } from '@/components/shared/dica'
 
 /** A moldura das páginas públicas de verificação — sem sessão, sem menu. */
 /** `marca` nula: o logo não leva a lugar nenhum (a página do link de assinatura). */
@@ -26,18 +27,19 @@ export function MolduraDaVerificacao({ children, marca = '/verificar' }: { child
 export function FormularioDoCodigo({ inicial, erro }: { inicial?: string; erro?: string | null }) {
   return (
     <form action="/verificar" method="get" className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <label htmlFor="codigo" style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
-        Código de verificação
-      </label>
+      {/* Onde achar o código mora na dica do rótulo (2026-11-16). */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+        <label htmlFor="codigo" style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+          Código de verificação
+        </label>
+        <Dica rotulo="Onde está o código">O código está no rodapé de cada página do documento assinado.</Dica>
+      </span>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <input id="codigo" name="codigo" className="field" defaultValue={inicial} placeholder="XXXX-XXXX-XXXX"
           autoComplete="off" spellCheck={false} maxLength={20} style={{ flex: 1, minWidth: 200, textTransform: 'uppercase' }} />
         <button type="submit" className="btn-primary">Verificar</button>
       </div>
       {erro && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-        O código está no rodapé de cada página do documento assinado.
-      </p>
     </form>
   )
 }

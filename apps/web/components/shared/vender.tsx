@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useId, useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { avisoDaVenda } from '@/lib/vendas/aviso-da-venda'
@@ -24,6 +24,7 @@ import { textoDaComissaoDaVenda, type RegraDeVenda } from '@/lib/comissoes/comis
 import { useFuso } from '@/components/shared/fuso'
 import { useFidelidadeNaVenda } from '@/components/shared/pontos-na-venda'
 import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Vender (decisão do Heitor, 2026-09-30; desde 2026-11-13, só pelo PDV — PDV7):
@@ -211,16 +212,21 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
       </p>
       <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }}
         comissao={comissaoDosProdutos(equipe.find(m => m.id === vendedorId), linhas.map(l => l.prod))} />
-      {/* A48 da 5ª simulação: a venda de produto nasce sem pontuar, e a tela não dizia. */}
-      {pontuacao && (
-        <p data-pontos-do-produto style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          {pontuacao === 'PONTUA'
-            ? 'A venda gera pontos de fidelidade quando for paga.'
-            : 'A venda de produto não gera pontos de fidelidade (Configurações → Fidelidade).'}
-        </p>
-      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
-        <p className="overline">Pagamento</p>
+        <p className="overline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Pagamento</span>
+          {/* A48 da 5ª simulação: a venda de produto nasce sem pontuar, e a tela não dizia.
+              Mora na dica do "Pagamento" (2026-11-16 — era uma linha fixa). */}
+          {pontuacao && (
+            <Dica rotulo="Sobre os pontos desta venda">
+              <span data-pontos-do-produto>
+                {pontuacao === 'PONTUA'
+                  ? 'A venda gera pontos de fidelidade quando for paga.'
+                  : 'A venda de produto não gera pontos de fidelidade (Configurações → Fidelidade).'}
+              </span>
+            </Dica>
+          )}
+        </p>
         <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={tabela} comMotivo />
         <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA', 'PARCELADO', 'A_RECEBER']} total={fid.aPagar} clienteId={clienteId} variasFormas />
         {fid.bloco}
@@ -264,6 +270,7 @@ function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string
   const [pendente, iniciar] = useTransition()
   // A55 da 11ª: a cliente sem acesso ao app não vê o saldo pelo celular.
   const [semAcessoAoApp, setSemAcessoAoApp] = useState(false)
+  const idDoValor = useId()
   const envio = useEnvioUnico()
   const lido = parseDinheiro(valor)
   const reais = Number.isFinite(lido) && lido > 0 ? Math.round(lido * 100) / 100 : 0
@@ -294,14 +301,25 @@ function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 220 }}>
-        <span className="field-label">Valor do crédito</span>
-        <input className="field" inputMode="decimal" placeholder="0,00" value={valor} aria-invalid={ilegivel}
+      {/* A dica fica FORA do <label> (um botão dentro dele roubaria o rótulo do campo). */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 220 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <label htmlFor={idDoValor} className="field-label">Valor do crédito</label>
+          {/* A regra (princípio 3): onde o dinheiro conta e o que acontece no uso.
+              Mora na dica, ao lado do rótulo (2026-11-16 — era um parágrafo fixo). */}
+          <Dica rotulo="Sobre o crédito interno">
+            <span data-regra-do-credito>
+              Entra no caixa hoje, na forma escolhida, e fica de saldo para a cliente usar em qualquer atendimento ou produto.
+              Usar depois não conta como receita de novo. Sem comissão de venda.
+            </span>
+          </Dica>
+        </span>
+        <input id={idDoValor} className="field" inputMode="decimal" placeholder="0,00" value={valor} aria-invalid={ilegivel}
           onChange={e => setValor(e.target.value)} />
         {ilegivel && (
           <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{DINHEIRO_INVALIDO}</span>
         )}
-      </label>
+      </div>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 220 }}>
         <span className="field-label">Bônus (opcional)</span>
         <input className="field" inputMode="decimal" placeholder="0,00" value={bonus} aria-invalid={bonusIlegivel}
@@ -328,11 +346,6 @@ function FormularioDoCredito({ clienteId, branchId, onFim }: { clienteId: string
           </Link> na aba Dados da ficha.
         </p>
       )}
-      {/* A regra na tela (princípio 3): onde o dinheiro conta e o que acontece no uso. */}
-      <p data-regra-do-credito style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.45 }}>
-        Entra no caixa hoje, na forma escolhida, e fica de saldo para a cliente usar em qualquer atendimento ou produto.
-        Usar depois não conta como receita de novo. Sem comissão de venda.
-      </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>
         <CamposDoPagamento estado={estado} aoMudar={setEstado} formas={['AVISTA']} total={reais} semCredito />

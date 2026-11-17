@@ -53,6 +53,8 @@ test('a matriz de Cargos não oferece o Copilot à rede que não o tem', async (
   await como(browser, dona!, async p => {
     await p.goto('/admin/settings?tab=permissions')
     await expect(p.getByText(/Agendamentos, check-in e atendimentos/).first(), 'a matriz carregou').toBeVisible()
+    // O "A secretária virtual…" do grupo mora na dica (2026-11-16): a linha é o que se confere.
+    await expect(p.locator('[data-modulo="copilot"]'), 'sem a linha do Copilot').toHaveCount(0)
     await expect(p.getByText(/A secretária virtual/), 'sem a linha do Copilot').toHaveCount(0)
   })
 })
@@ -67,11 +69,17 @@ test('a matriz de Cargos avisa que Marketing e Automações valem só para quem 
   await como(browser, dona!, async p => {
     await p.goto('/admin/settings?tab=permissions')
     await expect(p.getByText(/Agendamentos, check-in e atendimentos/).first(), 'a matriz carregou').toBeVisible()
+    // A nota mora na dica ao lado do nome do módulo (2026-11-16).
     for (const modulo of ['marketing', 'automations']) {
-      await expect(p.locator(`[data-modulo="${modulo}"]`).first(), modulo).toContainText(aviso)
+      const linha = p.locator(`[data-modulo="${modulo}"]`).first()
+      await linha.locator('[data-dica-botao]').first().hover()
+      await expect(linha, modulo).toContainText(aviso)
     }
-    // Controle: um módulo da unidade não leva o aviso.
-    await expect(p.locator('[data-modulo="agenda"]').first()).not.toContainText(/só para quem tem “A rede inteira”/)
+    // Controle: um módulo da unidade não leva o aviso (com a dica aberta).
+    const agenda = p.locator('[data-modulo="agenda"]').first()
+    await agenda.locator('[data-dica-botao]').first().hover()
+    await expect(agenda.locator('[data-frase-do-nivel]')).toBeVisible()
+    await expect(agenda).not.toContainText(/só para quem tem “A rede inteira”/)
   })
 })
 
@@ -79,6 +87,9 @@ test('o topo das Configurações diz o que a pessoa vê, não "cargos e integra�
   await como(browser, sdr!, async p => {
     await p.goto(`/${slug}/settings`)
     await expect(p.getByRole('heading', { name: 'Configurações' })).toBeVisible()
+    // O subtítulo mora na dica do título (2026-11-16): aberta, antes de conferir.
+    await p.getByRole('button', { name: 'Sobre as Configurações' }).hover()
+    await expect(p.locator('[data-subtitulo-da-tela]')).toBeVisible()
     await expect(p.getByText(/Cargos, modelos de ficha e integrações/)).toHaveCount(0)
     // No topo da tela (o subtítulo do título): desde o J-16 o item do menu também
     // se chama "Tags e importações", e o texto solto acha os dois.

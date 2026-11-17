@@ -127,9 +127,13 @@ test('A35: quem tem o PDV sem o Financeiro recebe a parcela na ficha e, no atend
     await p.locator(`[data-lancamento="${parcelaDaCarla}"]`).getByRole('button', { name: 'Receber' }).click()
     await expect(p.getByRole('dialog', { name: 'Receber' })).toBeVisible()
     await p.getByRole('dialog', { name: 'Receber' }).getByRole('button', { name: 'Cancelar' }).click()
+    // A quem pedir mora na dica do título "Transações" (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre as transações' }).hover()
     await expect(p.locator('[data-quem-desfaz]')).toBeVisible()
 
     await p.goto(`/${slug}/agenda/${atendimento}`)
+    // Quem estorna mora na dica ao lado do Recibo (2026-11-16).
+    await p.getByRole('button', { name: 'Quem estorna este pagamento' }).hover()
     await expect(p.locator('[data-quem-estorna]')).toContainText('Financeiro em Gerenciar')
   })
 })
@@ -172,6 +176,8 @@ test('A42 e A43: quem tem o Financeiro em Ver lê "Ver a lista"; as contas a pag
     await expect(aReceber.getByRole('link', { name: 'Ver a lista' })).toBeVisible()
     await expect(aReceber).not.toContainText('dar baixa')
     await p.goto('/admin/financeiro?aba=a-receber')
+    // O que a lista mostra e quem recebe moram na dica do título (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre as contas a receber' }).hover()
     await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Receber é de quem tem o PDV')
     await expect(p.locator('[data-so-o-em-aberto]')).not.toContainText('use “Pagar” na linha')
 

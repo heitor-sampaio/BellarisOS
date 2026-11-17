@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/auth'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { NotificationCampaignForm } from '@/components/admin/notification-campaign-form'
+import { Dica } from '@/components/shared/dica'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,15 +27,16 @@ export default async function NovaCampanhaPage() {
           <ChevronLeft size={14} />
           Voltar
         </Link>
-        <h1 style={{
-          fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
-          letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
-        }}>
-          Nova campanha
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          Configure o tipo, conteúdo e o público da sua campanha.
-        </p>
+        {/* A apresentação mora na dica (2026-11-16). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <h1 style={{
+            fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
+            letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
+          }}>
+            Nova campanha
+          </h1>
+          <Dica rotulo="Sobre a nova campanha">Configure o tipo, conteúdo e o público da sua campanha.</Dica>
+        </div>
       </div>
 
       <NotificationCampaignForm

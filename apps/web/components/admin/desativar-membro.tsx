@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserMinus } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { deactivateTeamMember, pendenciasParaDesativar } from '@/actions/team'
 import type { PendenciasDoMembro, AgendamentoParaRepassar } from '@/lib/equipe/repasse'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * "Desativar membro?" com o REPASSE (H6, decisão do Heitor, 2026-11-01):
@@ -42,6 +43,7 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
   const [todosOp, setTodosOp] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [fazendo, iniciar] = useTransition()
+  const idDoTodos = useId()
 
   async function carregar() {
     setDados(null); setErroCarga(null); setParaAg({}); setAvisoAg({}); setParaOp({}); setTodosAg(''); setTodosOp('')
@@ -163,18 +165,23 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
                   <p style={texto}>Seu cargo não repassa agendamentos: eles ficam com {nome} até alguém com a Agenda em Gerenciar trocar quem atende.</p>
                 ) : (
                   <>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, ...texto }}>
-                      Repassar todos os agendamentos para
-                      <select className="filtro-select" value={todosAg} onChange={e => repassarTodosAg(e.target.value)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, ...texto }}>
+                      {/* A7 da 14ª: o "todos para" é um atalho que preenche as linhas, não um
+                          segundo repasse — o "como usar" mora na dica (2026-11-16). */}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <label htmlFor={`${idDoTodos}-ag`}>Repassar todos os agendamentos para</label>
+                        <Dica rotulo="Como funciona o repassar todos os agendamentos">
+                          <span data-repassar-todos-explica>
+                            Preenche todas as linhas abaixo de uma vez; depois, cada linha muda só aquele agendamento. Nada é gravado antes do “Desativar”.
+                          </span>
+                        </Dica>
+                      </span>
+                      <select id={`${idDoTodos}-ag`} className="filtro-select" value={todosAg} onChange={e => repassarTodosAg(e.target.value)}>
                         <option value="">Escolher um a um</option>
                         {dados.quemAtende.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                         <option value={CANCELAR}>Cancelar todos</option>
                       </select>
-                    </label>
-                    {/* A7 da 14ª: o "todos para" é um atalho que preenche as linhas, não um segundo repasse. */}
-                    <p data-repassar-todos-explica style={{ marginTop: -4, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      Preenche todas as linhas abaixo de uma vez; depois, cada linha muda só aquele agendamento. Nada é gravado antes do “Desativar”.
-                    </p>
+                    </div>
                     <div>
                       {dados.agendamentos.map(a => (
                         <LinhaDoAgendamento key={a.id} a={a} nome={nome} valor={paraAg[a.id] ?? ''} aviso={avisoAg[a.id]} estilo={linha}
@@ -194,17 +201,19 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
                   <p style={texto}>Seu cargo não troca o responsável: elas ficam com {nome} até alguém com o CRM em Gerenciar trocar.</p>
                 ) : (
                   <>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, ...texto }}>
-                      Repassar todas as oportunidades para
-                      <select className="filtro-select" value={todosOp} onChange={e => repassarTodasOp(e.target.value)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, ...texto }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <label htmlFor={`${idDoTodos}-op`}>Repassar todas as oportunidades para</label>
+                        <Dica rotulo="Como funciona o repassar todas as oportunidades">
+                          Preenche todas as linhas abaixo de uma vez; depois, cada linha muda só aquela oportunidade.
+                        </Dica>
+                      </span>
+                      <select id={`${idDoTodos}-op`} className="filtro-select" value={todosOp} onChange={e => repassarTodasOp(e.target.value)}>
                         <option value="">Escolher uma a uma</option>
                         <option value={SEM_RESPONSAVEL}>Sem responsável</option>
                         {dados.quemTemCrm.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                       </select>
-                    </label>
-                    <p style={{ marginTop: -4, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                      Preenche todas as linhas abaixo de uma vez; depois, cada linha muda só aquela oportunidade.
-                    </p>
+                    </div>
                     <div>
                       {dados.oportunidades.map(o => (
                         <div key={o.id} data-oportunidade={o.id} style={linha}>

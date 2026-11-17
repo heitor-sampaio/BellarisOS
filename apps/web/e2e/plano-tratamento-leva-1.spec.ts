@@ -105,6 +105,8 @@ test('PT2: monta quem ATENDE — o "Novo plano" e a gravação não pedem o Pron
     await p.goto(`/${slug}/planejamentos`)
     await expect(p.getByRole('heading', { name: 'Tratamentos' })).toBeVisible()
     await expect(p.getByRole('button', { name: 'Novo plano' })).toHaveCount(0)
+    // Quem monta mora na dica do título (2026-11-16).
+    await p.getByRole('button', { name: 'Quem monta o plano' }).hover()
     await expect(p.locator('[data-quem-monta]')).toContainText(/atende/i)
     const nome = `${PREFIXO} não monta ${marca}`
     await chamarAcao(p, 'actions/treatment-plans.ts', 'criarPlanoDoCliente', `/${slug}/planejamentos`,
@@ -160,7 +162,10 @@ test('PT1a: a página do plano mostra os quatro passos, e cada um leva aonde se 
     await expect(passos.locator('[data-passo="documentos"]')).toContainText('Documentos')
     await expect(passos.locator('[data-passo="pagamento"]')).toContainText('Contrato e pagamento')
     await expect(passos.locator('[data-passo="sessoes"]')).toContainText('Sessões')
+    // O "como funciona" do passo mora na dica do título (2026-11-16).
+    await passos.locator('[data-passo="sessoes"]').getByRole('button', { name: 'Sobre o passo Sessões' }).hover()
     await expect(passos.locator('[data-passo="sessoes"]')).toContainText('depois do aceite')
+    await p.mouse.move(0, 0)
     // O aceite é ali mesmo.
     await passos.locator('[data-passo="aceite"]').getByRole('button', { name: 'Aceitar plano' }).click()
     await expect(passos.locator('[data-passo="aceite"]')).toContainText('Aceito')

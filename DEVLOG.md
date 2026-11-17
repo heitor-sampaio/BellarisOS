@@ -1774,6 +1774,41 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-17 — A explicação vai para a dica, no sistema inteiro
+
+O Heitor, sobre o Resumo do Financeiro: "pode tirar esse monte de aviso e explicação, se quiser manter bota em um tooltipzinho que só aparece se passar o mouse em cima. Aproveita e faz esse ajuste pra todo sistema. Não dá pra ficar poluindo tela com um monte de explicaçãozinha."
+
+- **A regra** está em `docs/regras/design.md`, na seção "A explicação mora na dica".
+  - Fica à vista: o dado, o estado, a ação e o link, o vazio de uma linha, o erro, o aviso condicional que pede ação ou trava, a consequência no modal de confirmação irreversível, o texto legal e o consentimento da assinatura.
+  - Vai para a dica (o "i" ao lado do rótulo): o "como se calcula", o "por que" e o "de onde vem". Simplificar não é tirar: o texto continua, só sai do caminho.
+- **A dica mora no núcleo** (`packages/nucleo/src/components/dica.tsx`): o app da rede reexporta, e o sistema e o suporte usam a mesma.
+  - Abre ao passar o mouse e no toque. No teclado, Enter ou espaço abrem e Esc fecha.
+  - O gatilho é um `span role="button"`: dentro do `<fieldset disabled>` da tela só de leitura, o `<button>` ficava desligado e a dica não abria. A trava é `tests/dica-abre-em-tela-so-de-leitura.test.ts`.
+  - A dica nunca entra num `<label>` que envolve um campo. Num título, ela vai ao lado do elemento do título, não dentro.
+  - **O nome não é `aria-label`** (17/11): vem do `::after` de `.dica-nome` (o `globals.css` do núcleo). Com o `aria-label`, "Sobre: Fuso horário" fazia o `getByLabel('Fuso horário')` achar o seletor e a dica; foram umas 50 falhas na completa. O conteúdo gerado entra no nome acessível (o leitor de tela lê, o `getByRole` acha), mas não no `getByLabel` nem no texto do rótulo. O botão vizinho de nome contido no da dica ("Trazer pacote", "Remarcar", "Devolver") se acha com `exact: true`.
+- **A varredura** passou por cerca de 190 componentes, nos três apps e no portal da cliente.
+  - No Financeiro: o Resumo (a conta do resultado, das despesas, do a receber e da operadora), as faixas das listas a receber e a pagar, o fluxo de caixa, a nota do vencimento e a do débito.
+  - Também foram agenda e atendimento, clientes e documentos, CRM e automações, configurações (comissões, integrações, documentos, cargos), equipe e unidades, estoque e procedimentos, PDV e vendas, relatórios e dashboard, o portal da cliente e a plataforma.
+- **Os testes**:
+  - Novos: `financeiro-dicas` e os onze `dicas-*`, na área `dicas` de `e2e-afetados`. O `dicas-portal-da-cliente` é isolado.
+  - Os specs que liam o texto movido agora passam o mouse em `[data-dica-botao]` antes de ler.
+  - O C36 da `financeiro-f67` posta na ficha (`/admin/clients/<id>`), que é onde a action existe.
+- **A completa contra o banco local** deu 1500 + 818 passando e 50 falhas.
+  - As 50 eram as colisões de nome e specs lendo texto movido; nenhuma era defeito do produto.
+  - A `automacoes-mobile` oscila no enquadramento do quadro, como já tinha acontecido na completa anterior.
+  - Corrigidas, as 50 passaram de novo contra o build, e os 56 testes de dica também. O `conferir` deu 4619 objetos iguais.
+  - ⚠️ O `next build` reaproveitou o `globals.css` velho do cache do Turbopack. Mexeu no `globals.css` do núcleo, apague `.next/cache/turbopack` antes do build.
+- **Fica sem cobertura**: o `rede-de-uma-unidade` lê só o texto à vista e não varre mais o que está dentro das dicas. O vocabulário segue travado pelo `tests/vocabulario-no-texto.test.ts`, que lê o código.
+- **Para o Heitor** (ficou à vista, ou foi para a dica, por julgamento):
+  - **Portal**: "Quem faz a troca" e o "É opcional" (A54) foram para a dica; "Como indicar" ficou à vista.
+  - **Agenda**: ficaram à vista "Quem conclui é o profissional", o avulso, a consequência das anotações e uma frase curta do rascunho.
+  - **Equipe**: o "O que ficar com X" do repasse do Atende foi para a dica; o equivalente no Desativar ficou à vista.
+  - **CRM**: as explicações com link ficaram à vista, porque link não entra na dica. A ajuda dos campos do painel do nó fica para uma passada à parte.
+  - **Configurações**: a nota de abrangência das campanhas e automações e o "Atenção" do Google Ads foram para a dica. A explicação das opções foi para a dica nas comissões e na fidelidade, mas não no inbox.
+  - **Clientes**: "As PRÓXIMAS sessões" ficou à vista; o preço médio (A39) e o "quem monta" (A18) foram para a dica.
+  - **PDV**: ficaram à vista as consequências do A receber e do Nada agora, o lembrete do motivo, os pontos e o voucher, as notas do estorno e as consequências do reembolso.
+  - **Plataforma**: o "Trocar de plano tira a condição" foi para a dica do modal.
+
 ### 2026-11-16 — Documentos: a permissão é dos MODELOS; assinar não pede permissão
 
 O Heitor respondeu ao "Para o Heitor" da 20ª (a exceção do checkout vale para o contrato do pacote?) com uma regra: "A permissão de gerenciar documentos serve para alguém poder criar/editar/excluir os modelos de documentos. É uma proteção para que os documentos não sejam modificados por quem não deve. Um procedimento/plano/pacote que tenha documentos que precisam de assinatura, os documentos precisam ser assinados. É só uma questão de disponibilizar para o cliente assinar e isso não representa risco."

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { SegSelect } from '@/components/shared/seg-select'
+import { Dica } from '@/components/shared/dica'
 import { Fala } from '@/components/shared/uma-unidade'
 import { salvarComissaoDoProcedimento } from '@/actions/comissoes'
 import { CampoDeValor, paraNumero, paraTexto } from '@/components/admin/comissao-do-membro'
@@ -113,13 +114,16 @@ export function EditorDeComissao({ estado, onChange, profissionais, inicialComVa
   return (
     <div role="group" aria-label="Comissão do procedimento" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <SegSelect ariaLabel="Como a comissão deste procedimento é definida" value={estado.modo}
-          onSelect={k => mudar({ modo: k as Modo })} options={MODOS} />
-        <p style={ajuda}>
-          {estado.modo === 'GERAL'
-            ? 'Todo profissional recebe o mesmo por este procedimento — vale no lugar do padrão e das exceções de cada um.'
-            : 'Um valor para quem precisa; quem fica no "Padrão" recebe a comissão padrão dele (Equipe).'}
-        </p>
+        {/* O que cada modo faz mora na dica, ao lado da escolha (2026-11-16). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', color: 'var(--text-muted)' }}>
+          <SegSelect ariaLabel="Como a comissão deste procedimento é definida" value={estado.modo}
+            onSelect={k => mudar({ modo: k as Modo })} options={MODOS} />
+          <Dica rotulo="Sobre a comissão do procedimento">
+            {estado.modo === 'GERAL'
+              ? 'Todo profissional recebe o mesmo por este procedimento — vale no lugar do padrão e das exceções de cada um.'
+              : 'Um valor para quem precisa; quem fica no "Padrão" recebe a comissão padrão dele (Equipe).'}
+          </Dica>
+        </div>
       </div>
 
       {estado.modo === 'GERAL' ? (

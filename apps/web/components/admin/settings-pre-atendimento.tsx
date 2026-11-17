@@ -8,6 +8,7 @@ import { salvarFichaDePreAtendimento, definirEnvioDoPreAtendimento } from '@/act
 import { TIPOS_FORA_DO_PRE_ATENDIMENTO } from '@/lib/anamnese-geral'
 import { PERGUNTAS_DE_INJETAVEIS } from '@/lib/pre-atendimento/modelo-de-injetaveis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Configurações → Fichas → a ficha de pré-atendimento (2026-10-20): UMA por
@@ -64,11 +65,14 @@ export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePerson
       <div className="pre-atendimento-config-cabeca">
         <span className="pre-atendimento-config-icone" aria-hidden="true"><ClipboardCheck size={18} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 id={`${idEnvio}-titulo`} className="pre-atendimento-config-titulo">Ficha de saúde</h3>
-          <p className="pre-atendimento-config-texto">
-            As perguntas sobre a cliente — alergias, medicamentos, condições de saúde —, iguais para qualquer
-            atendimento. Ela responde antes de chegar, pelo app ou por um link, e a equipe confere na sessão.
-          </p>
+          {/* O que é a ficha mora na dica (2026-11-16 — era um parágrafo fixo); fora do <h3>. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h3 id={`${idEnvio}-titulo`} className="pre-atendimento-config-titulo">Ficha de saúde</h3>
+            <Dica rotulo="Sobre a ficha de saúde">
+              As perguntas sobre a cliente — alergias, medicamentos, condições de saúde —, iguais para qualquer
+              atendimento. Ela responde antes de chegar, pelo app ou por um link, e a equipe confere na sessão.
+            </Dica>
+          </div>
           <p className="pre-atendimento-config-texto" style={{ marginTop: 4 }}>
             {perguntas === 1 ? '1 pergunta' : `${perguntas} perguntas`}
           </p>
@@ -86,12 +90,15 @@ export function SettingsPreAtendimento({ ficha, envio, validadeMeses, podePerson
           <span>Mandar a ficha quando a cliente for agendada</span>
         </label>
         <div className="pre-atendimento-config-validade">
-          <label htmlFor={idValidade} className="field-label">Validade das respostas (meses)</label>
+          {/* O que a validade faz mora na dica ao lado do rótulo (2026-11-16 — era uma linha embaixo do campo). */}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+            <label htmlFor={idValidade} className="field-label">Validade das respostas (meses)</label>
+            <Dica rotulo="Sobre a validade das respostas">
+              Dentro da validade, a cliente só confirma se algo mudou; depois dela, responde a ficha inteira.
+            </Dica>
+          </span>
           <input id={idValidade} className="field" type="number" inputMode="numeric" min={1} max={36}
             value={meses} onChange={e => setMeses(e.target.value)} />
-          <span className="pre-atendimento-config-dica">
-            Dentro da validade, a cliente só confirma se algo mudou; depois dela, responde a ficha inteira.
-          </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <button type="button" className="btn-primary" disabled={salvando} onClick={salvarEnvio}>

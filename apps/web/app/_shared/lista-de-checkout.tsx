@@ -6,6 +6,7 @@ import { ptBR } from 'date-fns/locale'
 import { ClipboardList, ChevronRight, User } from 'lucide-react'
 import { lerTodas } from '@/lib/db'
 import { falaDaTela } from '@/lib/unidades/uma-so'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Os planos de tratamento PROPOSTOS — "a cliente vai pensar" (PDV4, fase 3:
@@ -88,8 +89,12 @@ export async function ListaDeCheckout({
     <div>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-          Planos propostos
+        <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>Planos propostos</span>
+          {/* O "o que esta lista mostra" mora na dica (2026-11-16 — era o parágrafo do vazio). */}
+          <Dica rotulo="Sobre os planos propostos">
+            Quando a cliente quiser pensar antes de aceitar um plano de tratamento, ele aparece aqui.
+          </Dica>
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
           {branchName ?? fala('Rede')} · {plans.length} {plans.length === 1 ? 'plano' : 'planos'} — a cliente vai pensar
@@ -105,9 +110,6 @@ export async function ListaDeCheckout({
             <ClipboardList size={24} style={{ color: 'var(--text-faint)' }} />
           </div>
           <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum plano proposto</p>
-          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', textAlign: 'center' }}>
-            Quando a cliente quiser pensar antes de aceitar um plano de tratamento, ele aparece aqui.
-          </p>
           <Link href={`${base}/agenda`} style={{ fontSize: 'var(--text-base-sz)', color: 'var(--brand)', fontWeight: 700, textDecoration: 'none', marginTop: 4 }}>
             ← Voltar para agenda
           </Link>

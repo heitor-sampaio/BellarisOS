@@ -5,6 +5,7 @@ import { configDoAsaas } from '@/lib/asaas/cliente'
 import { ConfiguracoesDaPlataforma } from '@/components/sistema/configuracoes-da-plataforma'
 import { faltaPreencher } from '@estetica-os/nucleo/lib/privacidade/controlador'
 import { urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
+import { Dica } from '@estetica-os/nucleo/components/dica'
 
 /**
  * As regras do negócio (dias de teste, carência), a verificação em duas etapas
@@ -30,9 +31,11 @@ export default async function ConfiguracoesDoSistemaPage() {
   return (
     <div className="suporte-pilha-larga">
       <div className="suporte-cabecalho">
-        <div>
+        {/* A apresentação mora na dica (2026-11-16 — era um parágrafo fixo). A
+            dica fica FORA do h1: o nome do título continua "Configurações". */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <h1 className="suporte-titulo">Configurações</h1>
-          <p className="suporte-sub">As regras da assinatura, o acesso da equipe e a integração com o Asaas.</p>
+          <Dica rotulo="Sobre as configurações">As regras da assinatura, o acesso da equipe e a integração com o Asaas.</Dica>
         </div>
       </div>
       <section className="card suporte-secao">
@@ -42,17 +45,19 @@ export default async function ConfiguracoesDoSistemaPage() {
         </fieldset>
       </section>
       <section className="card suporte-secao">
-        <h2 className="overline">Integração com o Asaas</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <h2 className="overline">Integração com o Asaas</h2>
+          <Dica rotulo="Como ligar o webhook do Asaas" largura={340}>
+            No painel do Asaas, o webhook vai para <code>{urlDoHost('sistema')}/api/webhooks/asaas</code>, com envio sequencial,
+            os eventos de cobrança e de assinatura, e o mesmo token de <code>ASAAS_WEBHOOK_TOKEN</code>.
+          </Dica>
+        </div>
         <ul className="suporte-lista">
           <li>Ambiente: <strong>{asaas.ambiente === 'producao' ? 'Produção' : 'Sandbox (teste)'}</strong></li>
           <li>Chave de API (<code>ASAAS_API_KEY</code>): <span className={asaas.temChave ? 'suporte-ok' : 'suporte-alerta'}>{asaas.temChave ? 'configurada' : 'faltando'}</span></li>
           <li>Token do webhook (<code>ASAAS_WEBHOOK_TOKEN</code>, 32+ caracteres): <span className={asaas.temTokenDoWebhook ? 'suporte-ok' : 'suporte-alerta'}>{asaas.temTokenDoWebhook ? 'configurado' : 'faltando'}</span></li>
           <li>Último webhook recebido: {u ? <>{quando(u.recebido_em)} <span className="suporte-texto-fraco">· {u.evento}</span></> : 'nunca'}</li>
         </ul>
-        <p className="suporte-texto-fraco">
-          No painel do Asaas, o webhook vai para <code>{urlDoHost('sistema')}/api/webhooks/asaas</code>, com envio sequencial,
-          os eventos de cobrança e de assinatura, e o mesmo token de <code>ASAAS_WEBHOOK_TOKEN</code>.
-        </p>
       </section>
       <section className="card suporte-secao">
         <h2 className="overline">Política de privacidade</h2>
@@ -61,9 +66,13 @@ export default async function ConfiguracoesDoSistemaPage() {
           : (
             <>
               <p><span className="suporte-alerta">Documento ainda incompleto.</span> Falta preencher: {faltaNaPolitica.join(', ')}.</p>
-              <p className="suporte-texto-fraco">
-                A página pública omite o que falta. Sem o canal do encarregado, o titular não tem a quem recorrer —
-                e é isso que a LGPD exige publicado. Preencha em <code>packages/nucleo/src/lib/privacidade/controlador.ts</code>.
+              {/* O aviso pede ação: o "onde preencher" fica à vista; o "por que", na dica. */}
+              <p className="suporte-texto-fraco" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span>Preencha em <code>packages/nucleo/src/lib/privacidade/controlador.ts</code>.</span>
+                <Dica rotulo="Por que preencher a política">
+                  A página pública omite o que falta. Sem o canal do encarregado, o titular não tem a quem recorrer —
+                  e é isso que a LGPD exige publicado.
+                </Dica>
               </p>
             </>
           )}

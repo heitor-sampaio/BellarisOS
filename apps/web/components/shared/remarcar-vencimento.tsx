@@ -7,6 +7,7 @@ import { CalendarClock } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { remarcarVencimento } from '@/actions/financial'
+import { Dica } from '@/components/shared/dica'
 
 /** Uma remarcação do vencimento, como o lançamento guarda (A37 da 9ª). */
 export interface RemarcacaoDoVencimento { de: string | null; para: string; por_nome?: string | null; em: string; motivo?: string | null }
@@ -64,7 +65,11 @@ export function RemarcarVencimento({ lancamento }: { lancamento: { id: string; d
       {aberta && (
         <JanelaModal rotulo="Remarcar vencimento" largura={400} travado={gravando} onFechar={() => setAberta(false)}>
           <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Remarcar vencimento</h2>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>Remarcar vencimento</span>
+              {/* 2026-11-16: era uma linha fixa embaixo dos campos. */}
+              <Dica rotulo="Sobre remarcar o vencimento">O vencimento de antes fica no histórico do lançamento.</Dica>
+            </h2>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
               <strong style={{ color: 'var(--text)' }}>{lancamento.descricao}</strong> · {formatBRL(lancamento.valor)}
               {lancamento.vencimento ? ` · vencia ${new Date(lancamento.vencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}
@@ -78,9 +83,6 @@ export function RemarcarVencimento({ lancamento }: { lancamento: { id: string; d
               <input className="field" maxLength={300} value={motivo} onChange={e => setMotivo(e.target.value)} disabled={gravando}
                 placeholder="Ex.: combinado com a cliente" />
             </label>
-            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-              O vencimento de antes fica no histórico do lançamento.
-            </p>
             {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)' }}>{erro}</p>}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" className="btn-secondary" disabled={gravando} onClick={() => setAberta(false)}>Voltar</button>

@@ -15,6 +15,7 @@ import {
   type LinkDeAssinatura,
 } from '@/actions/documentos'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Os termos e contratos do cliente — na aba Documentos da ficha, acima dos
@@ -178,10 +179,14 @@ export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto =
   if (!itens.length) {
     return compacto ? null : (
       <div className="card" style={{ padding: '16px 18px' }}>
+        {/* O estado fica à vista; o "por que" e o "de onde nascem" moram na dica (2026-11-16). */}
         <p data-termos-recortados={recortado || undefined} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          {recortado
-            ? 'Os documentos desta cliente não aparecem para você: com o prontuário “só os meus”, você vê os das clientes que atende.'
-            : 'Nenhum termo ou contrato para este cliente. Eles nascem do procedimento agendado, conforme o modelo ligado a ele.'}
+          {recortado ? 'Os documentos desta cliente não aparecem para você.' : 'Nenhum termo ou contrato para este cliente.'}{' '}
+          <Dica rotulo={recortado ? 'Por que os documentos não aparecem' : 'De onde nascem os documentos'}>
+            {recortado
+              ? 'Com o prontuário “só os meus”, você vê os das clientes que atende.'
+              : 'Eles nascem do procedimento agendado, conforme o modelo ligado a ele.'}
+          </Dica>
         </p>
       </div>
     )
@@ -264,9 +269,14 @@ export function TermosDoCliente({ itens, slug, podeDispensar = false, compacto =
 
             {link?.id === item.id && (
               <div data-link-de-assinatura style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
+                {/* A validade e o "só aparece agora" (aviso que pede ação) ficam à vista; o que o cliente
+                    confirma ao abrir mora na dica (2026-11-16). */}
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  Link de uso único, vale até {formatDate(link.dados.expiraEm, fuso)} às {formatTime(link.dados.expiraEm, fuso)}. O cliente confirma {link.dados.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
-                  Ele só aparece agora: se perder, gere outro.
+                  Link de uso único, vale até {formatDate(link.dados.expiraEm, fuso)} às {formatTime(link.dados.expiraEm, fuso)}.
+                  Ele só aparece agora: se perder, gere outro.{' '}
+                  <Dica rotulo="O que o cliente confirma no link">
+                    O cliente confirma {link.dados.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
+                  </Dica>
                 </p>
                 {/* DC3: o link leva todos os abertos do momento; o de "faltam dados" fica fora, e a tela diz o que falta. */}
                 <div data-vai-no-link style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)' }}>

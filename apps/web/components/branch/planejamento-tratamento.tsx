@@ -20,6 +20,7 @@ import { CancelarPlano } from '@/components/shared/cancelar-pacote'
 import { useFuso } from '@/components/shared/fuso'
 import { PassosDoPlano } from '@/components/branch/passos-do-plano'
 import { DocumentosDoPlano } from '@/components/branch/documentos-do-plano'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -312,12 +313,15 @@ export function PlanejamentoTratamento({
           <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ClipboardList size={20} style={{ color: 'var(--text-faint)' }} />
           </div>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum plano ainda</p>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', maxWidth: 320 }}>
-            {podeEditar
-              ? 'O plano de tratamento é do cliente: pode ser montado agora, revisado depois e fechado quando ele decidir.'
-              // A18 (revisto no PT2): sem o "Atende" não há botão — a tela diz quem monta.
-              : <>{TEXTO_QUEM_MONTA} Quando houver um, ele aparece aqui.</>}
+          {/* A apresentação e o "quem monta" moram na dica (2026-11-16 — eram o parágrafo do vazio).
+              A18 (revisto no PT2): sem o "Atende" não há botão — a dica diz quem monta. */}
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span>Nenhum plano ainda</span>
+            <Dica rotulo={podeEditar ? 'Sobre o plano de tratamento' : 'Quem monta o plano'}>
+              {podeEditar
+                ? 'O plano de tratamento é do cliente: pode ser montado agora, revisado depois e fechado quando ele decidir.'
+                : <>{TEXTO_QUEM_MONTA} Quando houver um, ele aparece aqui.</>}
+            </Dica>
           </p>
         </div>
       ) : (
@@ -406,9 +410,10 @@ export function PlanejamentoTratamento({
         {salvando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
         Aceitar plano
       </button>
-      <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+      {/* O que o aceite faz mora na dica (2026-11-16 — era a frase ao lado do botão). */}
+      <Dica rotulo="Sobre aceitar o plano">
         A cliente quer fazer? Aceite: a comanda do plano vai ao PDV, onde ela assina o contrato e paga.
-      </span>
+      </Dica>
       {erroDoBotao && <ErroDoBotao texto={erroDoBotao} />}
     </div>
   ) : null
@@ -428,6 +433,12 @@ export function PlanejamentoTratamento({
         <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
           {st.label}
         </span>
+        {/* Quando o plano nasce mora na dica (2026-11-16 — era um parágrafo embaixo do editor). */}
+        {editavel && ehNovo && (
+          <Dica rotulo="Quando o plano é criado">
+            O plano é criado ao salvar. Depois de salvo, ele pode ser aceito ou ficar para a cliente pensar.
+          </Dica>
+        )}
       </div>
 
       {erro && (
@@ -509,12 +520,6 @@ export function PlanejamentoTratamento({
         <DocumentosDoPlano key={`docs-${aberto.id}`} planId={aberto.id} procedimentosPorSessao={procsNaTela}
           editavel={editavel} aceito={fechado}
           onExcluidosDoNovo={l => { excluidosDoNovo.current = l }} />
-      )}
-
-      {editavel && ehNovo && (
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          O plano é criado ao salvar. Depois de salvo, ele pode ser aceito ou ficar para a cliente pensar.
-        </p>
       )}
 
       {/* Na ficha (e na avaliação), o aceite fica embaixo do editor; na página
@@ -672,18 +677,22 @@ function ResumoDoPlano({ planId, slug, onCancelado, semFaltaReceber = false }: {
             Receber no PDV
           </Link>
         )}
+        {/* A quem pedir o cancelamento mora na dica (2026-11-16 — era uma frase fixa embaixo). */}
+        {cancelamento.cancelavel && !cancelamento.podeCancelar && quemRecebe && (
+          <Dica rotulo="Quem cancela o plano">
+            <span data-quem-cancela-o-plano>
+              Cancelar o plano é de quem tem o Financeiro em Gerenciar
+              {quemRecebe.length > 0 ? `: ${quemRecebe.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+            </span>
+          </Dica>
+        )}
       </p>
 
-      {cancelamento.cancelavel && (cancelamento.podeCancelar ? (
+      {cancelamento.cancelavel && cancelamento.podeCancelar && (
         <button type="button" className="btn-secondary" data-cancelar-plano onClick={() => setCancelando(true)} style={{ alignSelf: 'flex-start' }}>
           Cancelar plano
         </button>
-      ) : quemRecebe && (
-        <p data-quem-cancela-o-plano style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          Cancelar o plano é de quem tem o Financeiro em Gerenciar
-          {quemRecebe.length > 0 ? `: ${quemRecebe.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
-        </p>
-      ))}
+      )}
       {cancelando && <CancelarPlano planId={planId} onFechar={() => setCancelando(false)} onCancelado={onCancelado} />}
     </div>
   )

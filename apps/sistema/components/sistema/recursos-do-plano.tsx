@@ -6,6 +6,7 @@ import {
   type ChaveDeFuncionalidade, type ChaveDeAdicional, type RecursosDoPlano,
 } from '@estetica-os/nucleo/lib/planos/recursos'
 import { centavosDe, campoDeReais } from '@estetica-os/nucleo/lib/redes/valor'
+import { Dica } from '@estetica-os/nucleo/components/dica'
 
 /**
  * O que o plano inclui (2026-10-06): uma caixa por funcionalidade do catálogo,
@@ -104,11 +105,14 @@ export function RecursosDoPlanoCampos({ valor, mudar: mudarCru }: { valor: Recur
       </fieldset>
 
       <fieldset className="plano-grupo">
-        <legend className="overline">Copilot</legend>
-        <p className="suporte-texto-fraco">
-          A cota mensal da rede, em milhões de tokens (a OpenAI cobra por token). Vazio, sem limite.
-          Um pedido comum gasta de 3 a 10 mil tokens — 1 milhão dá umas 150 conversas.
-        </p>
+        {/* A explicação do grupo mora na dica, ao lado do título (2026-11-16). */}
+        <legend className="overline" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span>Copilot</span>
+          <Dica rotulo="Sobre a cota do Copilot">
+            A cota mensal da rede, em milhões de tokens (a OpenAI cobra por token). Vazio, sem limite.
+            Um pedido comum gasta de 3 a 10 mil tokens — 1 milhão dá umas 150 conversas.
+          </Dica>
+        </legend>
         <label className="plano-adicional-preco">
           <input className="field" inputMode="decimal" placeholder="sem limite" value={cota}
             aria-label="Cota mensal do Copilot (milhões de tokens)"
@@ -122,8 +126,12 @@ export function RecursosDoPlanoCampos({ valor, mudar: mudarCru }: { valor: Recur
       </fieldset>
 
       <fieldset className="plano-grupo">
-        <legend className="overline">Adicionais à venda</legend>
-        <p className="suporte-texto-fraco">A rede contrata além do plano, e o valor soma na mensalidade. Quem já contratou mantém o preço da época.</p>
+        <legend className="overline" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span>Adicionais à venda</span>
+          <Dica rotulo="Sobre os adicionais à venda">
+            A rede contrata além do plano, e o valor soma na mensalidade. Quem já contratou mantém o preço da época.
+          </Dica>
+        </legend>
         {ADICIONAIS.map(a => {
           const cabe = adicionalCabeNoPlano(valor, a.chave)
           const oferecido = !!valor.adicionais?.[a.chave]

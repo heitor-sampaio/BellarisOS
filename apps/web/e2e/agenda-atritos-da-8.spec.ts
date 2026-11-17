@@ -194,7 +194,7 @@ test('A21: o choque diz "não vai ser agendado" e oferece o próximo livre; o Re
     await p.goto(`/${slug}/agenda?date=${DIA1}`)
     await (await cartaoNaGradeDoDia(p, outro)).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
-    await janela.getByRole('button', { name: 'Remarcar' }).click()
+    await janela.getByRole('button', { name: 'Remarcar', exact: true }).click()
     await janela.locator('input[type="datetime-local"]').fill(`${DIA1}T10:15`)
     await expect(janela.locator('[data-aviso-do-remarcar]')).toContainText('Não vai ser remarcado')
     await janela.getByRole('button', { name: 'Confirmar novo horário' }).click()

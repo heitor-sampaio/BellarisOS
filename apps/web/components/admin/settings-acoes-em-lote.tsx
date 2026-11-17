@@ -5,6 +5,7 @@ import { History, Loader2, RotateCcw, FileUp, Download } from 'lucide-react'
 import { listarAcoesEmLote, repetirAcaoEmLote } from '@/actions/acoes-em-lote'
 import type { AcaoEmLote, EstadoDaAcao } from '@/lib/lotes/acoes'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Configurações → Ações em lote (2026-10-13): o que roda em segundo plano e
@@ -55,10 +56,14 @@ export function SettingsAcoesEmLote({ iniciais }: { iniciais: AcaoEmLote[] }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
-      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-        O que o sistema faz em segundo plano e demora — trazer o histórico de conversas ao
-        conectar um número do WhatsApp Web, importar uma planilha de contatos. Pode sair desta
-        tela: a ação continua.
+      {/* A apresentação da aba mora na dica (2026-11-16 — era um parágrafo fixo). */}
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span>O que roda em segundo plano</span>
+        <Dica rotulo="Sobre as ações em lote">
+          O que o sistema faz em segundo plano e demora — trazer o histórico de conversas ao
+          conectar um número do WhatsApp Web, importar uma planilha de contatos. Pode sair desta
+          tela: a ação continua.
+        </Dica>
       </p>
 
       {acoes.length === 0 && (

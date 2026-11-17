@@ -14,6 +14,7 @@ import { BranchEditForm } from '@/components/admin/branch-edit-form'
 import { SalasDaUnidade, type SalaDaUnidade } from '@/components/admin/salas-da-unidade'
 import { CONFIG_DA_REDE, mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { Lock } from 'lucide-react'
+import { Dica } from '@/components/shared/dica'
 import { MODULE_LABELS } from '@/lib/permissions'
 import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
 import { SettingsPreAtendimento } from '@/components/admin/settings-pre-atendimento'
@@ -366,16 +367,18 @@ export async function Configuracoes({
 
   return (
     <div>
-      <div style={{ marginBottom: 28 }}>
+      {/* O subtítulo (o que a pessoa vê aqui) mora na dica do título (2026-11-16);
+          fora do <h1>, para o nome do título continuar só "Configurações". */}
+      <div style={{ marginBottom: 28, display: 'flex', alignItems: 'center', gap: 6 }}>
         <h1 style={{
           fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
           letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
         }}>
           Configurações
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          {subtituloDaTela}
-        </p>
+        <Dica rotulo="Sobre as Configurações">
+          <span data-subtitulo-da-tela>{subtituloDaTela}</span>
+        </Dica>
       </div>
 
       {aviso && !umaUnidade && (
@@ -474,13 +477,14 @@ export async function Configuracoes({
 
       {conteudo === 'permissions' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
+          {/* A apresentação da aba mora na dica (2026-11-16 — era um parágrafo fixo). */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
               Cargos e acessos
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
+            <Dica rotulo="Sobre os cargos">
               Crie um cargo com qualquer nome e defina, por módulo, o nível de acesso. O cargo <strong>{fala('Admin da rede')}</strong> tem acesso total e não pode ser editado.
-            </p>
+            </Dica>
           </div>
           {/* O atalho do editor aponta para `/admin/team`: quem decide se ele
               aparece é o portal, não a abrangência de quem está olhando. */}

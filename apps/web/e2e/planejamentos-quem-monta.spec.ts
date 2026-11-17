@@ -51,6 +51,8 @@ test('A18: quem tem a Agenda sem o Prontuário vê na aba Planejamento quem mont
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/clients/${cliente}?aba=planejamento`)
     await expect(p.getByText('Nenhum plano ainda')).toBeVisible()
+    // Quem monta mora na dica do vazio (2026-11-16).
+    await p.getByRole('button', { name: 'Quem monta o plano' }).hover()
     await expect(p.getByText(/Quem monta o plano é quem atende nesta unidade/)).toBeVisible()
     await expect(p.getByRole('button', { name: 'Novo plano' })).toHaveCount(0)
   })
@@ -70,6 +72,8 @@ test('A18: /planejamentos/novo leva à lista, com o "Novo plano" aberto para que
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/planejamentos/novo`)
     await expect(p.getByRole('heading', { name: 'Tratamentos' })).toBeVisible()
+    // Quem monta mora na dica do título (2026-11-16).
+    await p.getByRole('button', { name: 'Quem monta o plano' }).hover()
     await expect(p.getByText(/Quem monta o plano é quem atende nesta unidade/)).toBeVisible()
   })
 })

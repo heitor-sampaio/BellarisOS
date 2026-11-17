@@ -5,6 +5,7 @@ import { useActionState, useState, useTransition } from 'react'
 import { requestDataExport, getExportDownloadUrls, type LgpdRequestRow } from '@/actions/lgpd'
 import { ShieldCheck, Download, FileText, FileJson, Loader2 } from 'lucide-react'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 interface Props {
   requests: LgpdRequestRow[]
@@ -102,18 +103,18 @@ export function DataRequestCard({ requests }: Props) {
   return (
     <div className="card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, color: 'var(--text-muted)' }}>
         <ShieldCheck size={17} style={{ color: 'var(--brand)' }} />
-        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
+        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, color: 'var(--text)' }}>
           Meus dados pessoais
         </h2>
+        {/* A apresentação mora na dica (docs/regras/design.md, "A explicação mora na dica"). */}
+        <Dica rotulo="Sobre a cópia dos seus dados">
+          Você pode pedir uma cópia de tudo o que guardamos sobre você — cadastro,
+          agendamentos, atendimentos, pagamentos e pontos. Preparamos o arquivo e
+          avisamos aqui quando estiver pronto.
+        </Dica>
       </div>
-
-      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-        Você pode pedir uma cópia de tudo o que guardamos sobre você — cadastro,
-        agendamentos, atendimentos, pagamentos e pontos. Preparamos o arquivo e
-        avisamos aqui quando estiver pronto.
-      </p>
 
       {openRequest ? (
         <div style={{
@@ -137,23 +138,26 @@ export function DataRequestCard({ requests }: Props) {
         </div>
       ) : prontuarioEmAnalise ? null : (
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label style={{
-            display: 'flex', alignItems: 'flex-start', gap: 9,
-            fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.5, cursor: 'pointer',
-          }}>
-            <input
-              type="checkbox"
-              name="include_medical"
-              style={{ marginTop: 2, accentColor: 'var(--brand)', width: 15, height: 15 }}
-            />
-            <span>
-              Incluir também meu prontuário (ficha de saúde, evolução dos atendimentos e
-              termos assinados).
-              <span style={{ color: 'var(--text-muted)' }}>
-                {' '}Esta parte passa por liberação da equipe antes de ser enviada.
+          {/* O porquê da espera mora na dica, ao lado — fora do <label>, que não leva botão dentro. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, color: 'var(--text-muted)' }}>
+            <label style={{
+              display: 'flex', alignItems: 'flex-start', gap: 9,
+              fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.5, cursor: 'pointer',
+            }}>
+              <input
+                type="checkbox"
+                name="include_medical"
+                style={{ marginTop: 2, accentColor: 'var(--brand)', width: 15, height: 15 }}
+              />
+              <span>
+                Incluir também meu prontuário (ficha de saúde, evolução dos atendimentos e
+                termos assinados).
               </span>
-            </span>
-          </label>
+            </label>
+            <Dica rotulo="Sobre o prontuário no pedido">
+              Esta parte passa por liberação da equipe antes de ser enviada.
+            </Dica>
+          </div>
 
           <button
             type="submit"

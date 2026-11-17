@@ -7,6 +7,10 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { UnidadesDoMembro, AtendeDoMembro, useAtendeDoMembro, type ValorDasUnidades } from '@/components/shared/unidades-do-membro'
 import { toast } from 'sonner'
 import { SEM_MINHAS_COMISSOES_NO_CADASTRO } from '@/lib/permissions-copy'
+import { Dica } from '@/components/shared/dica'
+
+/** O rótulo do campo com a dica ao lado (a explicação mora na dica, 2026-11-16). */
+const rotuloComDica = { display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' } as const
 
 interface Role {
   id: string; label: string
@@ -111,9 +115,11 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
 
               {/* A13 da 12ª (princípio 1): o CRM/COREN, opcional. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <label className="overline" htmlFor="tm-registro">Registro no conselho (opcional)</label>
+                <span style={rotuloComDica}>
+                  <label className="overline" htmlFor="tm-registro">Registro no conselho (opcional)</label>
+                  <Dica rotulo="Sobre o registro no conselho">Sai nos documentos pela variável do registro de quem atende.</Dica>
+                </span>
                 <input id="tm-registro" name="registro_conselho" type="text" maxLength={60} className="field" placeholder="Ex.: CRM-SC 12345, COREN-SC 123456" />
-                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Sai nos documentos pela variável do registro de quem atende.</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -150,11 +156,13 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
               {/* A3 da 8ª simulação: o cadastro da unidade não pedia a comissão. */}
               {atendeEm.length > 0 && podeComissao && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label className="overline" htmlFor="tm-comissao">Comissão padrão (%)</label>
-                  <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" placeholder="Ex: 30" />
-                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                    Percentual sobre cada atendimento dela. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
+                  <span style={rotuloComDica}>
+                    <label className="overline" htmlFor="tm-comissao">Comissão padrão (%)</label>
+                    <Dica rotulo="Sobre a comissão padrão">
+                      Percentual sobre cada atendimento dela. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
+                    </Dica>
                   </span>
+                  <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" placeholder="Ex: 30" />
                 </div>
               )}
 

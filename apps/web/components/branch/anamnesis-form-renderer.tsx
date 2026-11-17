@@ -12,6 +12,7 @@ import { salvarFichaDoProcedimento, uploadAnamnesisPhoto, signAnamnesisPhotos } 
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import { PlanejamentoInjetaveis } from '@/components/branch/planejamento-injetaveis'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 // O planejador de injetáveis é o primeiro campo com valor estruturado — até
 // aqui tudo era escalar.
@@ -397,7 +398,11 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
   if (!plan && isInjectableMap(value) && value.points.length > 0 && injetaveis?.clientId) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p style={dicaStyle}>Mapa registrado antes de o planejador abrir os planejamentos da cliente. Fica como está, só para ler.</p>
+        {/* O "por que só se lê" mora na dica (2026-11-16); à vista, o estado. */}
+        <p style={{ ...dicaStyle, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Só para ler</span>
+          <Dica rotulo="Sobre este mapa">Mapa registrado antes de o planejador abrir os planejamentos da cliente. Fica como está, só para ler.</Dica>
+        </p>
         <InjectableMapField value={value} products={f.options ?? []} canEdit={false} onChange={() => {}} />
       </div>
     )
@@ -414,11 +419,18 @@ function CampoDoPlanejador({ field: f, value, appointmentId, slug, injetaveis, o
   }
   return (
     <div data-planejador-da-ficha style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <p style={dicaStyle}>
-        {plan
-          ? 'A ficha guarda este planejamento como ele estiver salvo ao salvar a ficha ou finalizar o atendimento.'
-          : 'Abra um planejamento da cliente ou crie um novo: ele fica ligado a esta ficha.'}
-      </p>
+      {/* Com o planejamento aberto, o "quando a ficha o guarda" mora na dica (2026-11-16);
+          sem ele, fica à vista o que fazer agora. */}
+      {plan ? (
+        <p style={{ ...dicaStyle, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Ligado a esta ficha</span>
+          <Dica rotulo="Quando a ficha guarda o planejamento">
+            A ficha guarda este planejamento como ele estiver salvo ao salvar a ficha ou finalizar o atendimento.
+          </Dica>
+        </p>
+      ) : (
+        <p style={dicaStyle}>Abra um planejamento da cliente ou crie um novo: ele fica ligado a esta ficha.</p>
+      )}
       <PlanejamentoInjetaveis
         clientId={injetaveis.clientId}
         branchId={injetaveis.branchId}

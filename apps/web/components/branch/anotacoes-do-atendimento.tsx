@@ -8,6 +8,7 @@ import { acrescentarAnotacao } from '@/actions/prontuario'
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from '@/components/branch/anamnesis-form-renderer'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 const overline: React.CSSProperties = {
   fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -48,7 +49,13 @@ export function AnotacoesDoAtendimento({ appointmentId, anotacoes, podeAnotar }:
   return (
     <div data-anotacoes-do-atendimento style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <p style={{ ...overline, flex: 1 }}>Anotações depois do atendimento</p>
+        <p style={{ ...overline, flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>Anotações depois do atendimento</span>
+          {/* O "o que entra aqui" mora na dica (2026-11-16, "A explicação mora na dica"). */}
+          <Dica rotulo="Sobre as anotações">
+            O que acontecer depois (um retorno, uma ligação da cliente) entra aqui, com a data e quem escreveu. A anotação não se edita nem se apaga.
+          </Dica>
+        </p>
         {podeAnotar && !escrevendo && (
           <button type="button" onClick={() => setEscrevendo(true)} className="btn-secondary" style={{ gap: 6, fontSize: 'var(--text-sm-sz)' }}>
             <MessageSquarePlus size={13} aria-hidden="true" /> Acrescentar anotação
@@ -58,7 +65,7 @@ export function AnotacoesDoAtendimento({ appointmentId, anotacoes, podeAnotar }:
 
       {anotacoes.length === 0 && !escrevendo && (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-          O que acontecer depois (um retorno, uma ligação da cliente) entra aqui, com a data e quem escreveu. A anotação não se edita nem se apaga.
+          Nenhuma anotação.
         </p>
       )}
 

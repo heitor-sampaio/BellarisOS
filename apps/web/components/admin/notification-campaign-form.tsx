@@ -18,6 +18,7 @@ import { GATILHOS_QUE_VIRARAM_MODELO } from '@/lib/notifications/tipo-da-campanh
 import { campoDaCampanha } from '@/lib/notifications/hora-da-campanha'
 import { nomeDoFuso } from '@/lib/unidades/fuso'
 import { useFuso, RelogioDaRede } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import type { CampaignType, AudienceRules, CreateCampaignInput, NotificationCampaign } from '@/actions/notification-campaigns'
 
 // -- Types --------------------------------------------------------------
@@ -250,7 +251,7 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
 
               {todoAno && (
                 <div>
-                  <SectionLabel>Todo ano em</SectionLabel>
+                  <SectionLabel dica={{ rotulo: 'Sobre a data de todo ano', texto: 'Sai no dia, a partir das 09:00, e fica ativa para o ano que vem.' }}>Todo ano em</SectionLabel>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <input
                       type="number"
@@ -268,9 +269,6 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
                         .map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                     </select>
                   </div>
-                  <p style={{ marginTop: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                    Sai no dia, a partir das 09:00, e fica ativa para o ano que vem.
-                  </p>
                 </div>
               )}
             </div>
@@ -310,11 +308,8 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
           </div>
 
           <div>
-            {/* A37 da 15ª: a dica fora do overline — em caixa alta, a variável virava {{FIRST_NAME}}. */}
-            <SectionLabel style={{ marginBottom: 2 }}>Título</SectionLabel>
-            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 8 }}>
-              Para pôr o primeiro nome da cliente, escreva {'{{first_name}}'}.
-            </p>
+            {/* A37 da 15ª: a dica fora da caixa alta — em maiúsculas, a variável virava {{FIRST_NAME}}. */}
+            <SectionLabel dica={{ rotulo: 'Como pôr o nome da cliente', texto: <>Para pôr o primeiro nome da cliente, escreva {'{{first_name}}'}.</> }}>Título</SectionLabel>
             <input
               className="field"
               placeholder="ex: Feliz aniversário, {{first_name}}! 🎂"
@@ -373,13 +368,14 @@ export function NotificationCampaignForm({ procedures, existing, podeVerAutomaco
       {step === 3 && (
         <div className="card" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <h2 className="card-title" style={{ marginBottom: 0 }}>Segmentação de público</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <h2 className="card-title" style={{ marginBottom: 0 }}>Segmentação de público</h2>
+              <Dica rotulo="Sobre os filtros do público">
+                Todos os filtros são opcionais. Deixe em branco para atingir todos os clientes ativos.
+              </Dica>
+            </div>
             <AudiencePreview rules={audienceRules} />
           </div>
-
-          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginTop: -8 }}>
-            Todos os filtros são opcionais. Deixe em branco para atingir todos os clientes ativos.
-          </p>
 
           {/* MK2 do Bloco Tags (2026-11-14): sem filtro de unidade — a cliente é
               da rede, e as tags cobrem o recorte que a rede quiser. */}
@@ -598,13 +594,23 @@ function StepIndicator({ current, total, labels }: { current: number; total: num
   )
 }
 
-function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+/**
+ * O rótulo da seção; a explicação dele, quando há, mora na dica ao lado
+ * (2026-11-16 — era um parágrafo embaixo do campo). O painel da dica volta
+ * à caixa normal: a variável {{first_name}} não vira {{FIRST_NAME}} (A37 da 15ª).
+ */
+function SectionLabel({ children, style, dica }: {
+  children: React.ReactNode; style?: React.CSSProperties
+  dica?: { rotulo: string; texto: React.ReactNode }
+}) {
   return (
     <p style={{
       fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
-      textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8, ...style,
+      textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8,
+      ...(dica ? { display: 'flex', alignItems: 'center', gap: 6 } : {}), ...style,
     }}>
-      {children}
+      {dica ? <span>{children}</span> : children}
+      {dica && <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>}
     </p>
   )
 }

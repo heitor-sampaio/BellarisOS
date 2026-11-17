@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ArrowLeft, CalendarX } from 'lucide-react'
 import { rotaAgenda } from '@/lib/rotas'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O atendimento de OUTRA profissional aberto pela URL, com a agenda "só os
@@ -29,17 +30,23 @@ export function AtendimentoDeOutraProfissional({ slug, profissional }: {
         </div>
         <h1 style={{
           fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)',
-          color: 'var(--text)', marginBottom: 6,
+          color: 'var(--text)', marginBottom: profissional ? 6 : 20,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}>
-          Este atendimento é de outra profissional
+          <span>Este atendimento é de outra profissional</span>
+          {/* O porquê mora na dica (2026-11-16, "A explicação mora na dica"). */}
+          <Dica rotulo="Por que não abre">
+            Com a sua agenda em “só os meus”, você abre só os seus atendimentos.
+          </Dica>
         </h1>
-        <p style={{
-          fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
-          lineHeight: 'var(--leading-snug)', marginBottom: 20,
-        }}>
-          {profissional ? <>Ele está na agenda de <strong style={{ color: 'var(--text)' }}>{profissional}</strong>. </> : null}
-          Com a sua agenda em “só os meus”, você abre só os seus atendimentos.
-        </p>
+        {profissional && (
+          <p style={{
+            fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
+            lineHeight: 'var(--leading-snug)', marginBottom: 20,
+          }}>
+            Ele está na agenda de <strong style={{ color: 'var(--text)' }}>{profissional}</strong>.
+          </p>
+        )}
         <Link href={rotaAgenda(pathname, slug)} className="btn-primary" style={{ display: 'inline-flex' }}>
           <ArrowLeft size={14} aria-hidden="true" /> Voltar à agenda
         </Link>

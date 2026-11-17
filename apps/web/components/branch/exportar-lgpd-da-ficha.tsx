@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react'
 import { Download, FileDown, RefreshCw, X } from 'lucide-react'
 import { formatDateTime } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { Dica } from '@/components/shared/dica'
 import {
   exportacaoDaFicha, exportarDadosPelaEquipe, baixarExportacaoPelaEquipe, type ExportacaoDaFicha,
 } from '@/actions/lgpd'
@@ -64,15 +65,17 @@ export function ExportarLgpdDaFicha({ clientId, podeIncluirProntuario, onFechar 
       <div data-exportar-lgpd>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <FileDown size={16} style={{ color: 'var(--brand)' }} aria-hidden="true" />
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Exportar dados (LGPD)</h2>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Exportar dados (LGPD)</span>
+            {/* O que o pacote leva mora na dica (2026-11-16 — era o parágrafo de abertura). */}
+            <Dica rotulo="Sobre o pacote da LGPD">
+              O pacote com os dados pessoais da cliente — cadastro, agenda, financeiro, planos, fidelidade, termos e
+              comunicações —, em PDF e JSON. Fica disponível por 30 dias, e o pedido fica registrado em seu nome.
+            </Dica>
+          </h2>
           <button type="button" onClick={onFechar} className="btn-ghost" style={{ padding: '4px 6px' }} aria-label="Fechar"><X size={15} /></button>
         </div>
         <div style={{ padding: '18px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-            O pacote com os dados pessoais da cliente — cadastro, agenda, financeiro, planos, fidelidade, termos e
-            comunicações —, em PDF e JSON. Fica disponível por 30 dias, e o pedido fica registrado em seu nome.
-          </p>
-
           {!carregou && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando…</p>}
 
           {pacote && (

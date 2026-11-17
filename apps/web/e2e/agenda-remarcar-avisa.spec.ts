@@ -60,7 +60,7 @@ test('o remarcar avisa da cliente arquivada e do horário fora do expediente, e 
     await p.goto(`/${slug}/agenda?date=${DIA}`)
     await p.locator(`[data-agendamento="${ag!.id}"]`).first().click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
-    await janela.getByRole('button', { name: 'Remarcar' }).click()
+    await janela.getByRole('button', { name: 'Remarcar', exact: true }).click()
     const avisos = janela.locator('[data-aviso-do-remarcar]')
     await expect(avisos).toContainText('arquivada')
 

@@ -22,6 +22,7 @@ import { MODOS_OFICIAIS, modoDaConfig, type ModoOficial } from '@/lib/whatsapp/m
 import { navegarInteira } from '@/lib/navegacao-inteira'
 import { ConectarWhatsAppPelaMeta } from '@/components/admin/conectar-whatsapp-meta'
 import { AVISO_DE_COBRANCA } from '@/lib/whatsapp/cobranca'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Origem do site, resolvida só depois de montar.
@@ -46,9 +47,13 @@ function Field({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-        {label}
-      </label>
+      {/* O `hint` mora na dica ao lado do rótulo (2026-11-16 — era uma linha embaixo do campo). */}
+      <span style={linhaComDica}>
+        <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+          {label}
+        </label>
+        {hint && <Dica rotulo={`Sobre o campo ${label}`}>{hint}</Dica>}
+      </span>
       <input
         name={name}
         type={type}
@@ -59,10 +64,12 @@ function Field({
         className="field"
         style={{ fontSize: 'var(--text-base-sz)' }}
       />
-      {hint && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{hint}</p>}
     </div>
   )
 }
+
+/** O rótulo (ou título) com a dica ao lado — a explicação mora na dica (docs/regras/design.md). */
+const linhaComDica = { display: 'inline-flex', alignItems: 'center', gap: 6 } as const
 
 function ConnectionStatus({ ok, detail }: { ok: boolean; detail?: string }) {
   return (
@@ -249,15 +256,17 @@ function EscolhaDoModoOficial({ modo, onEscolher }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
+        {/* A apresentação mora na dica; o "atenção" de cada modo continua à vista, abaixo. */}
         <p style={{
+          ...linhaComDica,
           fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
-          letterSpacing: '0.04em', marginBottom: 4,
+          letterSpacing: '0.04em', marginBottom: 10,
         }}>
-          COMO CONECTAR O NÚMERO
-        </p>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 10 }}>
-          Os dois usam a API oficial da Meta. O que muda é o que acontece com o
-          aplicativo que está no celular hoje.
+          <span>COMO CONECTAR O NÚMERO</span>
+          <Dica rotulo="Sobre os dois modos da API oficial">
+            Os dois usam a API oficial da Meta. O que muda é o que acontece com o
+            aplicativo que está no celular hoje.
+          </Dica>
         </p>
         <SegSelect
           options={Object.values(MODOS_OFICIAIS).map(m => ({ key: m.chave, label: m.rotulo }))}
@@ -356,13 +365,13 @@ function CaixaDoCadastro({ numero, configId, appId }: { numero: NumeroNaTela; co
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
-          <CheckCircle2 size={14} color="var(--success)" /> Conectado pela Meta
+          <CheckCircle2 size={14} color="var(--success)" /> <span>Conectado pela Meta</span>
+          <Dica rotulo="Como trocar de número ou de conta">
+            Para trocar de número ou de conta, conecte de novo pela Meta.
+          </Dica>
         </p>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           {MODOS_OFICIAIS[modo].rotulo} · {numero.label}
-        </p>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Para trocar de número ou de conta, conecte de novo pela Meta.
         </p>
       </div>
 
@@ -456,10 +465,12 @@ function OfficialForm({ numero, configIdDoCadastro, appIdDaMeta, nomeDoNumero }:
       {/* O caminho normal: o cadastro da Meta numa janela, sem colar token. */}
       {configIdDoCadastro && !numero && (
         <div className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Conectar pela Meta</p>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-normal)' }}>
-            Abre uma janela da Meta: você entra com o Facebook da rede, escolhe a conta do
-            WhatsApp e o número, e volta com tudo pronto — sem copiar token nenhum.
+          <p style={{ ...linhaComDica, fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
+            <span>Conectar pela Meta</span>
+            <Dica rotulo="Sobre a janela da Meta">
+              Abre uma janela da Meta: você entra com o Facebook da rede, escolhe a conta do
+              WhatsApp e o número, e volta com tudo pronto — sem copiar token nenhum.
+            </Dica>
           </p>
           <ConectarWhatsAppPelaMeta configId={configIdDoCadastro} appId={appIdDaMeta} modo={modo} nomeDoNumero={nomeDoNumero} />
         </div>
@@ -552,15 +563,18 @@ function OfficialForm({ numero, configIdDoCadastro, appIdDaMeta, nomeDoNumero }:
       </div>
 
       <div style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <p>URL do webhook para configurar no painel Meta:</p>
+        {/* A URL e os campos são o que a pessoa copia agora (à vista); o porquê, na dica. */}
+        <p style={linhaComDica}>
+          <span>URL do webhook para configurar no painel Meta:</span>
+          <Dica rotulo="Sobre o webhook da Meta">
+            Ao salvar com o número ligado, o BellarisOS inscreve a conta (WABA) nos webhooks do seu app com o token
+            informado. A URL e o Verify Token acima ficam no painel do seu app na Meta.
+          </Dica>
+        </p>
         <code style={{ background: 'var(--bg-app)', padding: '4px 8px', borderRadius: 4, fontSize: 'var(--text-2xs)' }}>
           {origem}/api/webhooks/whatsapp
         </code>
         <p style={{ marginTop: 4 }}>Campos obrigatórios: <strong>messages</strong>, <strong>message_status_updates</strong></p>
-        <p style={{ marginTop: 4 }}>
-          Ao salvar com o número ligado, o BellarisOS inscreve a conta (WABA) nos webhooks do seu app com o token
-          informado. A URL e o Verify Token acima ficam no painel do seu app na Meta.
-        </p>
       </div>
       </CredencialManual>
     </div>
@@ -916,14 +930,8 @@ function MetaAdsConnect({
         </div>
       )}
 
-      <div style={{
-        padding: '10px 14px', borderRadius: 8,
-        background: '#1877F208', border: '1px solid #1877F220',
-        fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.6,
-      }}>
-        Conecte sua conta do Facebook para importar automaticamente suas contas de anúncios e pixels. Nenhuma configuração manual necessária.
-      </div>
-
+      {/* O que o botão faz mora na dica ao lado dele (2026-11-16 — eram duas linhas fixas). */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}>
       <button
         type="button"
         onClick={handleConnect}
@@ -940,10 +948,11 @@ function MetaAdsConnect({
         </svg>
         Continuar com Facebook
       </button>
-
-      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-        Você será redirecionado para o Facebook para autorizar o acesso às suas contas de anúncios.
-      </p>
+      <Dica rotulo="Sobre a conexão com o Facebook">
+        Conecte sua conta do Facebook para importar automaticamente suas contas de anúncios e pixels. Nenhuma configuração manual necessária.
+        {' '}Você será redirecionado para o Facebook para autorizar o acesso às suas contas de anúncios.
+      </Dica>
+      </span>
     </div>
   )
 }
@@ -986,14 +995,8 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{
-        padding: '10px 14px', borderRadius: 8,
-        background: '#34A85308', border: '1px solid #34A85330',
-        fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.6,
-      }}>
-        <strong>Atenção:</strong> A Google Ads API requer um Developer Token com aprovação manual da Google (processo pode levar dias).
-        Além disso, é necessário configurar um projeto OAuth2 no Google Cloud Console.
-      </div>
+      {/* O "atenção" fixo (o token aprovado à mão, o projeto OAuth2) foi para a dica
+          dos campos a que ele se refere (2026-11-16). */}
       <Field
         label="Customer ID"
         name="customerId"
@@ -1009,7 +1012,7 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
         onChange={setDeveloperToken}
         type="password"
         placeholder="Seu Developer Token"
-        hint="Solicitado em Google Ads API → Centro de API → Developer token"
+        hint="Solicitado em Google Ads API → Centro de API → Developer token. A Google Ads API requer um Developer Token com aprovação manual da Google (processo pode levar dias)."
       />
       <Field
         label="Client ID (OAuth2)"
@@ -1017,7 +1020,7 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
         value={clientId}
         onChange={setClientId}
         placeholder="xxxxxxxxxx.apps.googleusercontent.com"
-        hint="Criado no Google Cloud Console → Credenciais → ID do cliente OAuth2"
+        hint="Criado no Google Cloud Console → Credenciais → ID do cliente OAuth2. É necessário configurar um projeto OAuth2 no Google Cloud Console."
       />
       <Field
         label="Client Secret (OAuth2)"
@@ -1145,15 +1148,18 @@ function MetaMessagingConnect({
   if (!hasToken) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-          Conecte a página do Facebook da rede para receber e responder Messenger e
-          Instagram Direct dentro do Inbox. O Instagram precisa ser uma conta profissional
-          ligada a essa página.
-        </p>
         {erroOAuth && <ErroBox texto={erroOAuth} />}
-        <button type="button" onClick={handleConnect} className="btn-primary" style={{ alignSelf: 'flex-start' }}>
-          Conectar com o Facebook
-        </button>
+        {/* O que o botão faz mora na dica ao lado dele (2026-11-16 — era um parágrafo fixo). */}
+        <span style={{ ...linhaComDica, gap: 8, alignSelf: 'flex-start' }}>
+          <button type="button" onClick={handleConnect} className="btn-primary">
+            Conectar com o Facebook
+          </button>
+          <Dica rotulo="Sobre o Instagram e o Messenger no Inbox">
+            Conecte a página do Facebook da rede para receber e responder Messenger e
+            Instagram Direct dentro do Inbox. O Instagram precisa ser uma conta profissional
+            ligada a essa página.
+          </Dica>
+        </span>
       </div>
     )
   }
@@ -1239,12 +1245,12 @@ function MetaMessagingConnect({
           <strong>{activePage?.pageName}</strong>
           {activePage?.igUsername ? ` · @${activePage.igUsername}` : ' · só Messenger'}
         </span>
+        {/* A regra das 24 horas mora na dica (2026-11-16); o Inbox avisa quando bloqueia. */}
+        <Dica rotulo="Sobre o prazo de resposta">
+          Nestes canais só é possível responder até 24 horas depois da última mensagem do
+          contato — regra da Meta. Passado esse prazo o Inbox bloqueia o envio.
+        </Dica>
       </div>
-
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
-        Nestes canais só é possível responder até 24 horas depois da última mensagem do
-        contato — regra da Meta. Passado esse prazo o Inbox bloqueia o envio.
-      </p>
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" onClick={() => setTrocando(true)} className="btn-ghost">
@@ -1482,15 +1488,17 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
             2026-10-09). Sem nome, vale o da conta — nunca o id técnico. */}
         {adicionando && (
           <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label htmlFor="whatsapp-nome-novo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-              Nome do número
-            </label>
+            <span style={linhaComDica}>
+              <label htmlFor="whatsapp-nome-novo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                Nome do número
+              </label>
+              <Dica rotulo="Onde esse nome aparece">
+                É como ele aparece no inbox, nos templates e nas configurações. Dá para mudar depois.
+              </Dica>
+            </span>
             <input id="whatsapp-nome-novo" className="field" value={nomeNovo} maxLength={60}
               onChange={e => setNomeNovo(e.target.value)}
               placeholder="Ex.: Principal, Comercial, Dra. Ana" />
-            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0 }}>
-              É como ele aparece no inbox, nos templates e nas configurações. Dá para mudar depois.
-            </p>
           </div>
         )}
 

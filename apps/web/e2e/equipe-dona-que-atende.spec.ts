@@ -127,6 +127,8 @@ test('a Equipe da unidade lista quem é da rede e atende ali, sem deixar a unida
     await expect(p.getByText(`${PREFIXO} Socia das${marca}`)).toHaveCount(0)
     // A12 da 6ª simulação: a lista recortada diz o recorte (a Carol via 3 de 7, sem saber por quê).
     const { data: unidade } = await db().from('branches').select('name').eq('id', rede!.branchId).single<{ name: string }>()
+    // O recorte mora na dica do título (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre a equipe da unidade' }).hover()
     await expect(p.locator('[data-recorte-da-equipe]')).toContainText(`Equipe da unidade ${unidade!.name}`)
     await expect(p.locator('[data-recorte-da-equipe]')).toContainText('atende aqui')
     // A13: "Adicionar membro" diz em que unidade a pessoa entra.
@@ -320,6 +322,8 @@ test('eq-01: a Admin cadastra a sócia já como Admin, sem unidade fixa; o gesto
       await janela.locator('#tm-role').selectOption({ value: dona!.roleId })
       // A Admin é da clínica toda: a abrangência não se pergunta.
       await expect(janela.locator('#tm-branch')).toHaveCount(0)
+      // O porquê mora na dica do Cargo (2026-11-16).
+      await janela.getByRole('button', { name: 'Sobre a escolha do acesso' }).hover()
       await expect(janela.getByText(/Admin tem acesso à rede toda/)).toBeVisible()
       await janela.locator('#tm-password').fill('Senha-forte-123')
       await janela.getByRole('button', { name: 'Criar membro' }).click()

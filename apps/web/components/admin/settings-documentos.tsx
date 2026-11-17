@@ -8,6 +8,7 @@ import { definirModeloAtivo, definirEnvioDoLinkPelaConversa, tornarContratoAtivo
 import { SegSelect } from '@/components/shared/seg-select'
 import { CONTRATOS_DA_REDE, ROTULO_DO_TIPO, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { Fala } from '@/components/shared/uma-unidade'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Configurações → Documentos: os modelos de documento da rede.
@@ -109,10 +110,14 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', maxWidth: 640 }}>
-        Monte aqui os termos, contratos e documentos que o cliente assina — escrevendo no sistema, com
-        os dados do cliente preenchidos na hora, ou enviando um PDF pronto. A assinatura é eletrônica e
-        fica registrada com data, hora e um código de verificação.
+      {/* A apresentação da aba mora na dica (2026-11-16 — era um parágrafo fixo). */}
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span>Os termos, contratos e documentos que o cliente assina</span>
+        <Dica rotulo="Sobre os modelos de documento">
+          Monte aqui os termos, contratos e documentos que o cliente assina — escrevendo no sistema, com
+          os dados do cliente preenchidos na hora, ou enviando um PDF pronto. A assinatura é eletrônica e
+          fica registrada com data, hora e um código de verificação.
+        </Dica>
       </p>
 
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
@@ -143,8 +148,12 @@ export function SettingsDocumentos({ modelos, imagens, envio }: {
           <section key={g.tipo} aria-label={g.titulo} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ minWidth: 0 }}>
-                <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>{g.titulo}</h2>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2, maxWidth: 560 }}>{g.dica}</p>
+                {/* O "onde se liga e quando nasce" mora na dica (2026-11-16); fora do
+                    <h2>, para o nome do título continuar só o título. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>{g.titulo}</h2>
+                  <Dica rotulo={`Sobre: ${g.titulo}`}>{g.dica}</Dica>
+                </div>
               </div>
               <button type="button" className="btn-secondary" onClick={() => setVista({ modo: 'novo', tipo: g.tipo })}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -242,11 +251,20 @@ function EnvioDoLink({ pelaConversa, podeMudar }: { pelaConversa: boolean; podeM
 
   return (
     <section aria-label="Envio do link de assinatura" className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div>
+      {/* O "como funciona" de cada escolha mora na dica (2026-11-16 — eram dois parágrafos fixos). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Envio do link de assinatura</h2>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2, maxWidth: 560 }}>
-          <Fala>Vale para a rede inteira</Fala>, para os documentos e para a ficha de saúde. O link vale 7 dias, e o cliente confirma o CPF (ou a data de nascimento) antes de ver o documento ou as perguntas.
-        </p>
+        <Dica rotulo="Sobre o envio do link" largura={340}>
+          <span style={{ display: 'block' }}>
+            <Fala>Vale para a rede inteira</Fala>, para os documentos e para a ficha de saúde. O link vale 7 dias, e o cliente confirma o CPF (ou a data de nascimento) antes de ver o documento ou as perguntas.
+          </span>
+          <span data-envio-explicado style={{ display: 'block', marginTop: 6 }}>
+            {valor
+              ? '"Enviar pela conversa" (na ficha do cliente) ou "Mandar pela conversa" (no agendamento, para a ficha de saúde) manda o link pelo WhatsApp da rede, na conversa em que o cliente falou por último — pelo número que ele conhece, com o nome de quem enviou. Na API oficial, fora da janela de 24h (o cliente não escreveu no último dia) a mensagem não sai: a equipe copia o link ou abre no WhatsApp do aparelho.'
+              : 'A equipe copia o link ou abre no WhatsApp do próprio aparelho. Nada sai pelo WhatsApp da rede.'}
+          </span>
+          {!podeMudar && <span style={{ display: 'block', marginTop: 6 }}><Fala>Quem muda é quem administra a rede.</Fala></span>}
+        </Dica>
       </div>
       {podeMudar ? (
         <SegSelect
@@ -258,12 +276,6 @@ function EnvioDoLink({ pelaConversa, podeMudar }: { pelaConversa: boolean; podeM
       ) : (
         <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{valor ? 'Também pela conversa' : 'Só pelo aparelho'}</strong>
       )}
-      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5, maxWidth: 640 }}>
-        {valor
-          ? '"Enviar pela conversa" (na ficha do cliente) ou "Mandar pela conversa" (no agendamento, para a ficha de saúde) manda o link pelo WhatsApp da rede, na conversa em que o cliente falou por último — pelo número que ele conhece, com o nome de quem enviou. Na API oficial, fora da janela de 24h (o cliente não escreveu no último dia) a mensagem não sai: a equipe copia o link ou abre no WhatsApp do aparelho.'
-          : 'A equipe copia o link ou abre no WhatsApp do próprio aparelho. Nada sai pelo WhatsApp da rede.'}
-      </p>
-      {!podeMudar && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}><Fala>Quem muda é quem administra a rede.</Fala></p>}
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
     </section>
   )

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Pencil, Power, PowerOff, DoorOpen } from 'lucide-react'
 import { criarSala, renomearSala, mudarSituacaoDaSala } from '@/actions/salas'
+import { Dica } from '@/components/shared/dica'
 
 export interface SalaDaUnidade { id: string; name: string; is_active: boolean }
 
@@ -46,11 +47,12 @@ export function SalasDaUnidade({ branchId, salas }: { branchId: string; salas: S
   return (
     <section id="salas" data-salas-da-unidade className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14, marginTop: 24, scrollMarginTop: 'calc(var(--topbar-h) + 16px)' }}>
       {/* id="salas": a busca "salas" chega aqui (A3 da 5ª simulação). */}
-      <div>
-        <h2 className="overline" style={{ marginBottom: 4 }}>Salas</h2>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+      {/* O "como funciona" mora na dica ao lado do título (2026-11-16). */}
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+        <h2 className="overline">Salas</h2>
+        <Dica rotulo="Como funcionam as salas">
           A sala se escolhe ao agendar, e uma sala não recebe dois atendimentos ao mesmo tempo. No cadastro do procedimento dá para dizer em quais salas ele é feito.
-        </p>
+        </Dica>
       </div>
 
       {ordenadas.length === 0 ? (

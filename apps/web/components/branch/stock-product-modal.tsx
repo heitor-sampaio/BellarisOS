@@ -17,6 +17,7 @@ import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoDaLista, type ItemDaLista } from '@/components/admin/campo-da-lista'
 import { loteVencido, validadeNaTela } from '@/lib/estoque/validade'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 export interface StockProductModalHandle { open: () => void }
 
@@ -230,8 +231,11 @@ function ProductFields({
 
       {/* Conversão de embalagem (opcional) */}
       <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
-        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
-          Conteúdo da embalagem <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: 'var(--text-faint)' }}>— opcional</span>
+        <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+          <span>Conteúdo da embalagem <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: 'var(--text-faint)' }}>— opcional</span></span>
+          <Dica rotulo="Sobre o conteúdo da embalagem">
+            Ex: 1 frasco com <strong>100 ml</strong> → custo por ml = preço ÷ 100
+          </Dica>
         </p>
         <div className="form-2col">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -252,9 +256,6 @@ function ProductFields({
             </select>
           </div>
         </div>
-        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 8 }}>
-          Ex: 1 frasco com <strong>100 ml</strong> → custo por ml = preço ÷ 100
-        </p>
       </div>
 
       {/* Onde o produto está disponível (E2): Insumo — aparece no atendimento e no
@@ -267,8 +268,20 @@ function ProductFields({
         transition: 'background 200ms',
       }}>
         <div role="group" aria-labelledby={id('onde')} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span id={id('onde')} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-            Onde o produto está disponível
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+            <span id={id('onde')} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              Onde o produto está disponível
+            </span>
+            {/* O que cada escolha faz mora na dica (2026-11-16); sem nenhuma, o aviso fica à vista. */}
+            {uso && (
+              <Dica rotulo="Sobre onde o produto aparece">
+                {uso === 'INSUMO'
+                  ? 'Usado nos atendimentos: aparece como insumo do procedimento e da sessão.'
+                  : uso === 'REVENDA'
+                  ? 'Vendido à cliente: aparece na venda do PDV, e não como insumo.'
+                  : 'Usado nos atendimentos e vendido à cliente.'}
+              </Dica>
+            )}
           </span>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', cursor: 'pointer' }}>
@@ -280,15 +293,11 @@ function ProductFields({
               Venda direta
             </label>
           </div>
-          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-            {uso === 'INSUMO'
-              ? 'Usado nos atendimentos: aparece como insumo do procedimento e da sessão.'
-              : uso === 'REVENDA'
-              ? 'Vendido à cliente: aparece na venda do PDV, e não como insumo.'
-              : uso === 'AMBOS'
-              ? 'Usado nos atendimentos e vendido à cliente.'
-              : 'Marque ao menos um: sem nenhum, o produto não aparece em lugar nenhum.'}
-          </span>
+          {!uso && (
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+              Marque ao menos um: sem nenhum, o produto não aparece em lugar nenhum.
+            </span>
+          )}
         </div>
         <input type="hidden" name="uso" value={uso ?? ''} />
 
@@ -380,7 +389,19 @@ function ProductFields({
               <div className="form-2col">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                    <Label htmlFor={id('custo')}>Custo por embalagem</Label>
+                    {/* Sem "lançar como despesa": movimentação de estoque nunca gera
+                        despesa (D13 revisto, decisão do Heitor, 2026-10-28). O custo
+                        é base de insumo, custo e margem — e o estoque inicial DIZ isso,
+                        como a Entrada (D5 do levantamento, C16), na dica do custo (2026-11-16). */}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                      <Label htmlFor={id('custo')}>Custo por embalagem</Label>
+                      <Dica rotulo="Sobre o custo da entrada">
+                        <span data-entrada-sem-despesa>
+                          Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a rede pagou entra no
+                          Financeiro por um lançamento (Novo lançamento, categoria “Compra de estoque”).
+                        </span>
+                      </Dica>
+                    </span>
                     {costPerUnit !== null && (
                       <span style={{ fontSize: 'var(--text-overline)', color: 'var(--brand)', fontWeight: 700 }}>
                         = R$ {costPerUnit.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} / {consumptionUnit}
@@ -399,15 +420,6 @@ function ProductFields({
                   </div>
                 </div>
               </div>
-
-              {/* Sem "lançar como despesa": movimentação de estoque nunca gera
-                  despesa (D13 revisto, decisão do Heitor, 2026-10-28). O custo
-                  é base de insumo, custo e margem — e o estoque inicial DIZ isso,
-                  como a Entrada (D5 do levantamento, C16). */}
-              <p data-entrada-sem-despesa style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a rede pagou entra no
-                Financeiro por um lançamento (Novo lançamento, categoria “Compra de estoque”).
-              </p>
 
               {/* Lote + Validade */}
               <div className="form-2col">
@@ -533,7 +545,16 @@ function EstoqueInicialPorUnidade({ branches, unidadeAtual, id }: {
         return (
           <div key={linha.chave} data-linha-do-estoque-inicial style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: '2 1 0', minWidth: 0 }}>
-              {i === 0 && <Label htmlFor={id(`unidade-${linha.chave}`)}>Unidade que recebe o estoque *</Label>}
+              {i === 0 && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                  <Label htmlFor={id(`unidade-${linha.chave}`)}>Unidade que recebe o estoque *</Label>
+                  {linhas.length > 1 && (
+                    <Dica rotulo="Sobre a divisão entre unidades">
+                      Cada unidade recebe a quantidade da linha dela, com o mesmo custo, lote, validade, marca, fornecedor e nota.
+                    </Dica>
+                  )}
+                </span>
+              )}
               <select id={id(`unidade-${linha.chave}`)} name="_branchId" required className="field"
                 aria-label={i === 0 ? undefined : 'Unidade que recebe o estoque'}
                 value={linha.unidade}
@@ -566,11 +587,6 @@ function EstoqueInicialPorUnidade({ branches, unidadeAtual, id }: {
         <button type="button" className="btn-secondary" onClick={dividir} style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}>
           <Plus size={13} /> Dividir com outra unidade
         </button>
-      )}
-      {linhas.length > 1 && (
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          Cada unidade recebe a quantidade da linha dela, com o mesmo custo, lote, validade, marca, fornecedor e nota.
-        </p>
       )}
     </div>
   )
@@ -661,15 +677,7 @@ function EditForm({ product, categories, onClose, onSuccess }: {
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <input type="hidden" name="_productId" value={product.id} />
-      {/* A19 da 19ª (princípio 7): o custo de um lote errado não se acerta aqui nem por Ajuste
-          (a diferença vira perda) — desfaz-se a entrada e lança-se de novo. */}
-      <p data-desfazer-entrada style={{
-        fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-field-token)', padding: '8px 12px', lineHeight: 1.5,
-      }}>
-        Lançou uma entrada com a quantidade ou o custo errado? Em “Movimentar” → Histórico, use “Desfazer entrada” e lance de novo.
-        O custo aqui é o do cadastro; o de cada lote é o da entrada.
-      </p>
+      {/* O "como corrigir uma entrada errada" mora na dica do título (A19 da 19ª). */}
       <ProductFields
         product={product} categories={categories} onClose={onClose}
         state={error ? { error } : undefined}
@@ -718,9 +726,24 @@ export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
             <div>
-              <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-                {isEdit ? 'Editar produto' : 'Novo produto'}
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
+                  {isEdit ? 'Editar produto' : 'Novo produto'}
+                </h2>
+                {/* A19 da 19ª (princípio 7): o custo de um lote errado não se acerta aqui nem por Ajuste
+                    (a diferença vira perda) — desfaz-se a entrada e lança-se de novo. Na dica do
+                    título (2026-11-16). */}
+                {isEdit && (
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+                    <Dica rotulo="Como corrigir uma entrada errada">
+                      <span data-desfazer-entrada>
+                        Lançou uma entrada com a quantidade ou o custo errado? Em “Movimentar” → Histórico, use “Desfazer entrada” e lance de novo.
+                        O custo aqui é o do cadastro; o de cada lote é o da entrada.
+                      </span>
+                    </Dica>
+                  </span>
+                )}
+              </div>
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                 {isEdit ? product.name : <Fala>Adicionar ao catálogo da rede</Fala>}
               </p>

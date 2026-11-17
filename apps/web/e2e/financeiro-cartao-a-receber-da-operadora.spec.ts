@@ -245,9 +245,13 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
       await expect(p.locator('[data-kpi="a-receber"]')).toContainText('A receber da cliente')
       const kpi = p.locator('[data-kpi="a-receber-operadora"]')
       await expect(kpi).toContainText('A receber da operadora')
+      // O bruto mora na dica do cartão (2026-11-16): abre antes de ler.
+      await kpi.locator('[data-dica-botao]').hover()
       await expect(kpi).toContainText('R$ 1.100,00')
 
       const lista = p.locator('[data-recebiveis-da-operadora]')
+      // O "o que esta lista mostra" mora na dica do título (2026-11-16).
+      await lista.getByRole('button', { name: 'Sobre o a receber da operadora' }).hover()
       await expect(lista).toContainText('A cliente já pagou')
       const linhas = lista.locator('[data-parcela-da-operadora]')
       await expect(linhas).toHaveCount(3)
@@ -261,6 +265,7 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
       const dlg = p.getByRole('dialog', { name: 'Marcar a parcela como recebida' })
       await dlg.getByRole('button', { name: 'Marcar recebida' }).click()
       await expect(primeira).toContainText('Antecipada')
+      await kpi.locator('[data-dica-botao]').hover()
       await expect(kpi).toContainText('R$ 733,34')
 
       // Foi engano: "Desfazer" pede confirmação e a parcela volta a receber
@@ -274,16 +279,20 @@ test.describe.serial('cartão em N vezes: a receber da operadora, mês a mês', 
       await primeira.getByRole('button', { name: 'Desfazer' }).click()
       await p.getByRole('dialog', { name: 'Desfazer o recebimento da parcela' }).getByRole('button', { name: 'Desfazer' }).click()
       await expect(primeira).toContainText('A receber')
+      // O bruto mora na dica do cartão (2026-11-16): abre antes de ler.
+      await kpi.locator('[data-dica-botao]').hover()
       await expect(kpi).toContainText('R$ 1.100,00')
 
       // E marca de novo (o resto do spec segue com ela antecipada).
       await primeira.getByRole('button', { name: 'Marcar recebida' }).click()
       await p.getByRole('dialog', { name: 'Marcar a parcela como recebida' }).getByRole('button', { name: 'Marcar recebida' }).click()
       await expect(primeira).toContainText('Antecipada')
+      await kpi.locator('[data-dica-botao]').hover()
       await expect(kpi).toContainText('R$ 733,34')
 
       // O financeiro da unidade mostra o mesmo.
       await p.goto(`/${slug}/financeiro?aba=a-receber&period=custom&from=${hoje}&to=${ate}`)
+      await p.locator('[data-kpi="a-receber-operadora"] [data-dica-botao]').hover()
       await expect(p.locator('[data-kpi="a-receber-operadora"]')).toContainText('R$ 733,34')
       await expect(p.locator('[data-recebiveis-da-operadora] [data-parcela-da-operadora]')).toHaveCount(3)
     })

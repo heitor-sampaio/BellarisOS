@@ -474,6 +474,8 @@ test.describe.serial('o cartão por bandeira', () => {
       await vezes.selectOption('3')
       await expect(dialogo.locator('[data-valor-da-parcela]')).toContainText('3× R$ 400,00')
       // A diferença para o "Parcelado" (a despesa em parcelas mensais): é um pagamento só.
+      // O texto mora na dica ao lado de "Vezes no cartão" (2026-11-16).
+      await dialogo.getByRole('button', { name: 'Sobre o crédito em vezes' }).hover()
       await expect(dialogo.locator('[data-credito-em-vezes]')).toContainText('Um pagamento só')
       await expect(dialogo.locator('[data-credito-em-vezes]')).toContainText('a operadora deposita em 3 parcelas')
       await dialogo.getByLabel('Bandeira').selectOption({ label: 'Elo' })
@@ -651,6 +653,7 @@ test.describe.serial('o cartão por bandeira', () => {
       await expect(vezes.locator('option'), 'até o limite da clínica (3x)').toHaveText(['À vista', '2x', '3x'])
       await vezes.selectOption('3')
       await expect(janela.locator('[data-valor-da-parcela]')).toContainText('3× R$ 400,00')
+      await janela.getByRole('button', { name: 'Sobre o crédito em vezes' }).hover()
       await expect(janela.locator('[data-credito-em-vezes]')).toContainText('a operadora deposita em 3 parcelas')
       await janela.getByRole('button', { name: 'Confirmar recebimento' }).click()
       await expect.poll(async () => (await db().from('financial_transactions').select('is_paid, cartao_vezes').eq('id', noCredito).single()).data,

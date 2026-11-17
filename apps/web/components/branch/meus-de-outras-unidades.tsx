@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChevronRight, MapPin } from 'lucide-react'
 import { partsInTZ, startOfDayTZ } from '@/lib/datetime'
+import { Dica } from '@/components/shared/dica'
 
 interface EventoDeFora {
   id: string; start: string; status?: string; clientName: string; procedureName: string; unidade?: string | null
@@ -26,11 +27,12 @@ export function MeusAtendimentosEmOutrasUnidades({ slug, eventos }: { slug: stri
   if (!proximos.length) return null
   return (
     <section data-meus-de-outras-unidades className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
-        Seus atendimentos em outras unidades
-      </p>
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-        Você atende também nestas unidades: aqui ficam só os seus atendimentos de lá.
+      <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span>Seus atendimentos em outras unidades</span>
+        {/* O "o que esta lista mostra" mora na dica (2026-11-16). */}
+        <Dica rotulo="Sobre os atendimentos em outras unidades">
+          Você atende também nestas unidades: aqui ficam só os seus atendimentos de lá.
+        </Dica>
       </p>
       <ul style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {proximos.map(e => {

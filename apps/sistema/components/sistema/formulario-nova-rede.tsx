@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { criarRede } from '@/actions/sistema'
 import { centavosDe, campoDeReais, reaisDe } from '@estetica-os/nucleo/lib/redes/valor'
 import { SegSelect } from '@estetica-os/nucleo/components/shared/seg-select'
+import { Dica } from '@estetica-os/nucleo/components/dica'
 
 const hoje = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
 
@@ -75,12 +76,25 @@ export function FormularioNovaRede({ planos, diasDeTeste }: {
             {planos.map(p => <option key={p.id} value={p.id}>{p.nome} · {reaisDe(p.valorCentavos)}</option>)}
           </select>
         </label>
-        <label className="suporte-campo"><span className="field-label">Valor mensal (R$)</span>
-          <input className="field" value={valor} onChange={e => setValor(e.target.value)} inputMode="decimal"
-            placeholder="o do plano" aria-describedby="valor-nota" />
-          <span id="valor-nota" className="suporte-texto-fraco">Mude só para um preço especial desta rede.</span>
-        </label>
-        <div className="suporte-campo"><span className="field-label">Como começa</span>
+        {/* A nota do campo mora na dica, ao lado do rótulo (2026-11-16). O rótulo
+            é ligado pelo htmlFor: dentro de um <label>, o botão da dica viraria o
+            campo do rótulo. */}
+        <div className="suporte-campo">
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <label htmlFor="nova-rede-valor" className="field-label">Valor mensal (R$)</label>
+            <Dica rotulo="Sobre o valor mensal">Mude só para um preço especial desta rede.</Dica>
+          </span>
+          <input id="nova-rede-valor" className="field" value={valor} onChange={e => setValor(e.target.value)} inputMode="decimal"
+            placeholder="o do plano" />
+        </div>
+        <div className="suporte-campo">
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span className="field-label">Como começa</span>
+            <Dica rotulo="Sobre como a rede começa">
+              Já cobrando: a rede começa em dia, e a cobrança mensal liga no Asaas com o primeiro vencimento (se o Asaas
+              estiver configurado; senão, ligue no detalhe dela).
+            </Dica>
+          </span>
           <SegSelect options={[{ key: 'teste', label: 'Em teste' }, { key: 'cobrando', label: 'Já cobrando' }]}
             value={inicio} onSelect={k => setInicio(k as 'teste' | 'cobrando')} ariaLabel="Como começa" />
         </div>
@@ -95,9 +109,6 @@ export function FormularioNovaRede({ planos, diasDeTeste }: {
           </label>
         )}
       </div>
-      {inicio === 'cobrando' && (
-        <p className="suporte-texto-fraco">A rede começa em dia, e a cobrança mensal liga no Asaas com este primeiro vencimento (se o Asaas estiver configurado; senão, ligue no detalhe dela).</p>
-      )}
       {erro && <p className="suporte-erro" role="alert">{erro}</p>}
       <div className="sistema-acoes">
         <button type="submit" className="btn-primary" disabled={pendente}>{pendente ? 'Criando…' : 'Criar rede'}</button>

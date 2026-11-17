@@ -81,11 +81,14 @@ test('A8: na unidade, Geral não manda à aba Assinatura — diz que é de quem 
   await como(browser, daUnidade, async p => {
     await p.goto(`/e2e-un-txt${marca}/settings?tab=general`)
     // A rede de teste tem uma unidade: a clínica não fala "rede" (F8).
+    // O "quem cuida da assinatura" mora na dica do Plano (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre: Plano' }).hover()
     await expect(p.getByText(/A assinatura fica com quem administra a rede/)).toBeVisible()
     await expect(p.getByText(/aba Assinatura/)).toHaveCount(0)
   })
   await como(browser, gerente, async p => {
     await p.goto('/admin/settings?tab=general')
+    await p.getByRole('button', { name: 'Sobre: Plano' }).hover()
     await expect(p.getByText(/Veja faturas e pagamento na aba Assinatura/)).toBeVisible()
   })
 })
@@ -94,6 +97,8 @@ test('A9: o texto do funil diz que o formulário cria um funil NOVO e que os exi
   await como(browser, gerente, async p => {
     await p.goto('/admin/oportunidades')
     await p.getByTitle('Configurar funis').click()
+    // O texto mora na dica dos FUNIS (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre criar um funil' }).hover()
     await expect(p.getByText(/ficam como estão/)).toBeVisible()
   })
 })

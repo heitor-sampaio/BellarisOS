@@ -9,6 +9,7 @@ import {
   ativarCobrancaNoAsaas, sincronizarComOAsaas, aplicarPlanoAtual,
 } from '@/actions/sistema'
 import { JanelaModal } from '@estetica-os/nucleo/components/shared/janela-modal'
+import { Dica } from '@estetica-os/nucleo/components/dica'
 import { resumirRecursos, type OfertaDosAdicionais, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { totalDosAdicionais, type AdicionaisContratados } from '@estetica-os/nucleo/lib/planos/adicionais'
 import { descreverCondicao, ITENS_DA_ASSINATURA, type Condicoes } from '@estetica-os/nucleo/lib/planos/condicoes'
@@ -50,14 +51,24 @@ const hojeMais = (dias: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 
 const vencimentoSugerido = (fimDoTeste: string | null) =>
   fimDoTeste && Date.parse(fimDoTeste) > Date.now() ? fimDoTeste.slice(0, 10) : hojeMais(3)
 
-/** Um bloco: título, ações à direita e o resumo. É uma região com nome (o título). */
-function Bloco({ titulo, acoes, largo, perigo, children }: {
-  titulo: string; acoes?: ReactNode; largo?: boolean; perigo?: boolean; children: ReactNode
+/**
+ * Um bloco: título, ações à direita e o resumo. É uma região com nome (o título).
+ * `sobre` é a explicação do bloco, na dica ao lado do título (2026-11-16 — era
+ * um parágrafo fixo); fora do h2, o nome do título não muda.
+ */
+function Bloco({ titulo, acoes, largo, perigo, sobre, children }: {
+  titulo: string; acoes?: ReactNode; largo?: boolean; perigo?: boolean
+  sobre?: { rotulo: string; texto: ReactNode }; children: ReactNode
 }) {
   return (
     <section className={`card rede-bloco${largo ? ' rede-bloco-largo' : ''}${perigo ? ' sistema-perigo' : ''}`} aria-label={titulo}>
       <div className="rede-bloco-topo">
-        <h2 className="overline">{titulo}</h2>
+        {sobre
+          ? <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <h2 className="overline">{titulo}</h2>
+              <Dica rotulo={sobre.rotulo}>{sobre.texto}</Dica>
+            </div>
+          : <h2 className="overline">{titulo}</h2>}
         {acoes && <div className="rede-bloco-acoes">{acoes}</div>}
       </div>
       {children}
@@ -65,15 +76,24 @@ function Bloco({ titulo, acoes, largo, perigo, children }: {
   )
 }
 
-/** O modal de um bloco: o título (nome acessível) e o formulário. */
-function Janela({ titulo, onFechar, travado, children, largura = 520 }: {
-  titulo: string; onFechar: () => void; travado?: boolean; children: ReactNode; largura?: number
+/**
+ * O modal de um bloco: o título (nome acessível) e o formulário. `sobre` é a
+ * explicação do modal, na dica ao lado do título (2026-11-16).
+ */
+function Janela({ titulo, onFechar, travado, sobre, children, largura = 520 }: {
+  titulo: string; onFechar: () => void; travado?: boolean
+  sobre?: { rotulo: string; texto: ReactNode }; children: ReactNode; largura?: number
 }) {
   return (
     <JanelaModal onFechar={onFechar} rotulo={titulo} largura={largura} travado={travado} fechaNoFundo={false}>
       <div className="sistema-janela">
         <div className="sistema-janela-topo">
-          <h2>{titulo}</h2>
+          {sobre
+            ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                <h2 style={{ flex: 'none' }}>{titulo}</h2>
+                <Dica rotulo={sobre.rotulo}>{sobre.texto}</Dica>
+              </div>
+            : <h2>{titulo}</h2>}
           <button type="button" className="btn-ghost" onClick={onFechar} disabled={travado} aria-label="Fechar"><X size={15} /></button>
         </div>
         {children}
@@ -131,7 +151,10 @@ export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, f
   return (
     <div className="rede-blocos">
       {/* ── Assinatura ───────────────────────────────────────────── */}
-      <Bloco titulo="Assinatura" largo acoes={<>
+      <Bloco titulo="Assinatura" largo sobre={temPlano ? {
+        rotulo: 'Sobre a versão do plano',
+        texto: <>A rede guarda o plano como era quando o recebeu; mudou o plano no catálogo, use &ldquo;Aplicar a versão atual do plano&rdquo;.</>,
+      } : undefined} acoes={<>
         {temPlano && (
           <button type="button" className="btn-ghost" disabled={pendente}
             onClick={() => rodar(() => aplicarPlanoAtual(tenantId), 'Plano aplicado à rede.', false)}>
@@ -155,7 +178,6 @@ export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, f
         </div>
         <p className="suporte-texto-fraco">O que pode usar: {resumirRecursos(assinatura?.recursos ?? null)}</p>
         {copilot && <p className="suporte-texto-fraco">Copilot este mês: {copilot}</p>}
-        {temPlano && <p className="suporte-texto-fraco">A rede guarda o plano como era quando o recebeu; mudou o plano no catálogo, use &ldquo;Aplicar a versão atual do plano&rdquo;.</p>}
       </Bloco>
 
       {/* ── Adicionais ───────────────────────────────────────────── */}
@@ -261,7 +283,10 @@ export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, f
 
       {/* ── Os modais ────────────────────────────────────────────── */}
       {aberta === 'plano' && (
-        <Janela titulo="Plano e valor" onFechar={fechar} travado={pendente}>
+        <Janela titulo="Plano e valor" onFechar={fechar} travado={pendente} sobre={{
+          rotulo: 'Sobre o plano e o valor',
+          texto: 'O valor pode ser especial (diferente do plano). Trocar de plano traz o que ele inclui e tira a condição do plano antigo.',
+        }}>
           <label className="suporte-campo"><span className="field-label">Plano</span>
             <select className="filtro-select" value={planoId} onChange={e => {
               setPlanoId(e.target.value)
@@ -277,7 +302,6 @@ export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, f
           <label className="suporte-campo"><span className="field-label">Valor mensal desta rede (R$)</span>
             <input className="field" value={valor} onChange={e => setValor(e.target.value)} inputMode="decimal" placeholder="0,00" />
           </label>
-          <p className="suporte-texto-fraco">O valor pode ser especial (diferente do plano). Trocar de plano traz o que ele inclui e tira a condição do plano antigo.</p>
           <div className="sistema-janela-acoes">
             <button type="button" className="btn-ghost" onClick={fechar} disabled={pendente}>Cancelar</button>
             <button type="button" className="btn-primary" disabled={pendente} onClick={salvarPlano}>{pendente ? 'Salvando…' : 'Salvar plano e valor'}</button>

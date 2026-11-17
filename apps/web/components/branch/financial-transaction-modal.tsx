@@ -9,6 +9,7 @@ import { CATEGORIAS_DE_RECEITA, CATEGORIAS_DE_DESPESA } from '@/lib/financeiro/c
 import { CampoDaBandeira, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
+import { Dica } from '@/components/shared/dica'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 
 interface Props {
@@ -369,18 +370,23 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                 pendente diz as vezes na baixa. */}
             {creditoPago && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <Label htmlFor="lanc-vezes">Vezes no cartão</Label>
+                {/* O "um pagamento só" mora na dica, ao lado do rótulo (2026-11-16). */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Label htmlFor="lanc-vezes">Vezes no cartão</Label>
+                  {vezesNoCartao > 1 && (
+                    <Dica rotulo="Sobre o crédito em vezes">
+                      <span data-credito-em-vezes>
+                        Um pagamento só: a cliente pagou tudo agora, e a operadora deposita em {vezesNoCartao} parcelas
+                        (no “A receber da operadora”). Não é o crediário da cliente.
+                      </span>
+                    </Dica>
+                  )}
+                </div>
                 <select id="lanc-vezes" name="cartao_vezes" className="field"
                   value={String(vezesNoCartao)} onChange={e => setVezesNoCartao(Number(e.target.value))}>
                   {opcoesDeVezes.map(n => <option key={n} value={String(n)}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
                 </select>
                 <DicaDasVezes total={finalAmount} vezes={vezesNoCartao} opcoes={opcoesDeVezes} />
-                {vezesNoCartao > 1 && (
-                  <span data-credito-em-vezes style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                    Um pagamento só: a cliente pagou tudo agora, e a operadora deposita em {vezesNoCartao} parcelas
-                    (no “A receber da operadora”). Não é o crediário da cliente.
-                  </span>
-                )}
                 <AvisoDaTaxa vezes={vezesNoCartao} bandeira={bandeira} total={finalAmount} maquininha={maquininha} />
               </div>
             )}

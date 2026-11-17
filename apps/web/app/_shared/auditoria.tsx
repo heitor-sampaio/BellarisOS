@@ -7,6 +7,7 @@ import { lerAuditoria, pessoasDaAuditoria } from '@/lib/auditoria/leitura'
 import { gruposDaAuditoria } from '@/lib/auditoria/frase'
 import { OPERACOES, type FiltrosDaAuditoria } from '@/lib/auditoria/tipos'
 import { PeriodSelector, type Period } from '@/components/admin/period-selector'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * A tela da Auditoria (CF3a, docs/revisao.md — o Heitor, 2026-11-13: "queria
@@ -54,15 +55,16 @@ export async function TelaDaAuditoria({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', marginBottom: 20 }}>
-        <div>
+        {/* A apresentação mora na dica do título (2026-11-16). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
             Auditoria
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4, maxWidth: 640, lineHeight: 1.5 }}>
+          <Dica rotulo="Sobre a auditoria" largura={320}>
             O que mudou no sistema, quem mudou e quando — e quem abriu o prontuário de quem.
             O texto clínico nunca aparece aqui.
             {minhas !== null && ' Você vê o que aconteceu nas suas unidades.'}
-          </p>
+          </Dica>
         </div>
         <a href={`/api/auditoria/csv${params({})}`} className="btn-ghost" data-auditoria-csv
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 'var(--altura-controle)' }}>

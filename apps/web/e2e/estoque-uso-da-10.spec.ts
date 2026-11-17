@@ -134,6 +134,8 @@ test('A37: a Entrada diz que não gera despesa e guarda o fornecedor e a nota', 
   const antes = await saldo(gel)
   await como(browser, dona!, async p => {
     const modal = await abrirGerenciar(p, nomeGel)
+    // O "não gera despesa" mora na dica do custo (2026-11-16).
+    await modal.getByRole('button', { name: 'Sobre o custo da entrada' }).hover()
     await expect(modal.locator('[data-entrada-sem-despesa]')).toContainText('Não gera despesa')
     await modal.getByLabel('Quantidade').fill('3')
     await modal.getByLabel('Custo unitário').fill('20')

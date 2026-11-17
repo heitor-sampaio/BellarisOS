@@ -10,6 +10,7 @@ import type { FidelidadeDoPerfil, LinhaDoExtrato } from '@/lib/fidelidade/leitur
 import { VouchersDoCliente } from '@/components/branch/vouchers-do-cliente'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Fidelidade na ficha do cliente: saldo, extrato e ajuste manual.
@@ -81,7 +82,20 @@ export function FidelidadeDoCliente({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Star size={16} style={{ color: 'var(--brand)', flexShrink: 0 }} />
           <div>
-            <p className="overline">Fidelidade</p>
+            <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>Fidelidade</span>
+              {/* Quando os pontos entram e a quem pedir a troca moram na dica (2026-11-16 — eram frases fixas).
+                  A38 da 9ª: quem só vê lê a quem pedir a troca e o ajuste (a regra de cargo fica). */}
+              <Dica rotulo="Sobre a fidelidade da cliente">
+                <span style={{ display: 'block' }}>Os pontos entram quando um pagamento do cliente é recebido.</span>
+                {fidelidade.quemTroca && (
+                  <span data-quem-troca style={{ display: 'block', marginTop: 6 }}>
+                    Trocar pontos por recompensa e ajustar pontos é de quem tem a Fidelidade em Gerenciar
+                    {fidelidade.quemTroca.length > 0 ? `: ${fidelidade.quemTroca.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+                  </span>
+                )}
+              </Dica>
+            </p>
             <p data-testid="saldo-de-pontos" style={{
               fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: '-0.02em',
               color: saldo < 0 ? 'var(--danger)' : 'var(--text)',
@@ -117,14 +131,6 @@ export function FidelidadeDoCliente({
         />
       )}
 
-      {/* A38 da 9ª: quem só vê lê a quem pedir a troca e o ajuste (a regra de cargo fica). */}
-      {fidelidade.quemTroca && (
-        <p data-quem-troca style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px' }}>
-          Trocar pontos por recompensa e ajustar pontos é de quem tem a Fidelidade em Gerenciar
-          {fidelidade.quemTroca.length > 0 ? `: ${fidelidade.quemTroca.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
-        </p>
-      )}
-
       <VouchersDoCliente
         clientId={clientId}
         saldo={saldo}
@@ -139,7 +145,7 @@ export function FidelidadeDoCliente({
       <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 10 }}>
         {linhas.length === 0 ? (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-            Nenhum ponto ainda. Os pontos entram quando um pagamento do cliente é recebido.
+            Nenhum ponto ainda.
           </p>
         ) : (
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column' }} aria-label="Extrato de pontos">

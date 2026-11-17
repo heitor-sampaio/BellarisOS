@@ -9,6 +9,7 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 import { previaDoCancelamentoDaUnidade, cancelarUnidadePrePaga } from '@/actions/pre-pago'
 import type { PreviaDoCancelamentoDaUnidade } from '@/lib/pre-pago/cancelamento'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { Dica } from '@/components/shared/dica'
 import {
   EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, type EscolhaDaDevolucaoEstado,
 } from '@/components/shared/escolha-da-devolucao'
@@ -105,7 +106,14 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
               )}
               {previa.cai > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={linha}><span>Parcelas a receber que caem</span><span style={valor}>{formatBRL(previa.cai)}</span></div>
+                  <div style={linha}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span>Parcelas a receber que caem</span>
+                      {/* O "por que" mora na dica (2026-11-16 — era uma linha fixa embaixo das parcelas). */}
+                      <Dica rotulo="Por que as parcelas caem">O a receber que passa do que a venda vale cai antes de devolver qualquer coisa.</Dica>
+                    </span>
+                    <span style={valor}>{formatBRL(previa.cai)}</span>
+                  </div>
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {previa.parcelas.map(p => (
                       <li key={p.id} style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
@@ -114,9 +122,6 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
                       </li>
                     ))}
                   </ul>
-                  <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                    O a receber que passa do que a venda vale cai antes de devolver qualquer coisa.
-                  </p>
                 </div>
               )}
               {previa.devolvidoAntes > 0 && (

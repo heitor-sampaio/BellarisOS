@@ -89,6 +89,8 @@ test('decisão 1: quem tem o PDV em Gerenciar vende R$ 300 de crédito interno n
     const dlg = await abrirVendaNoPdv(p, `/${slug}`, rosana)
     await dlg.getByRole('button', { name: 'Crédito interno', exact: true }).click()
     // A tela diz a regra (princípio 3): entra no caixa hoje, o uso não conta de novo.
+    // Mora na dica ao lado de "Valor do crédito" (2026-11-16).
+    await dlg.getByRole('button', { name: 'Sobre o crédito interno' }).hover()
     await expect(dlg.locator('[data-regra-do-credito]')).toContainText('Entra no caixa hoje')
     await expect(dlg.locator('[data-regra-do-credito]')).toContainText('não conta como receita de novo')
     await dlg.getByLabel('Valor do crédito').fill('300')

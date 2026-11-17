@@ -9,6 +9,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { bloquearHorario, desfazerBloqueio } from '@/actions/agenda-bloqueios'
 import { trechoDoBloqueio, recusaDoBloqueio, type BloqueioDaAgenda } from '@/lib/agenda/bloqueio'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import { naParede, daParede, fusoLocal } from '@/lib/datetime'
 
 /**
@@ -115,14 +116,17 @@ function JanelaDeBloquear({ branchId, profissionais, salas, soEu, dia, onFechar 
     <JanelaModal onFechar={onFechar} rotulo="Bloquear horário" largura={460} travado={gravando}>
       <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Bloquear horário</h2>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span>Bloquear horário</span>
+            {/* O "o que o bloqueio faz" mora na dica (2026-11-16, "A explicação mora na dica"). */}
+            <Dica rotulo="O que o bloqueio faz">
+              {soEu
+                ? `O horário de ${soEu.name} fica bloqueado: o app da cliente e o Copilot não o oferecem. Quem agendar nele pela agenda é avisado.`
+                : 'O app da cliente e o Copilot não oferecem o horário bloqueado. Quem agendar nele pela agenda é avisado, e o encaixe continua permitido.'}
+            </Dica>
+          </h2>
           <button type="button" className="btn-ghost" onClick={onFechar} aria-label="Fechar" style={{ padding: '4px 6px' }}><X size={16} /></button>
         </div>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          {soEu
-            ? `O horário de ${soEu.name} fica bloqueado: o app da cliente e o Copilot não o oferecem. Quem agendar nele pela agenda é avisado.`
-            : 'O app da cliente e o Copilot não oferecem o horário bloqueado. Quem agendar nele pela agenda é avisado, e o encaixe continua permitido.'}
-        </p>
         {!soEu && salas.length > 0 && (
           <div role="group" aria-label="Bloquear para">
             <SegSelect ariaLabel="Bloquear para" value={para} onSelect={k => setPara(k as 'PROFISSIONAL' | 'SALA')}
@@ -309,7 +313,12 @@ export function JanelaDoBloqueio({ bloqueio, titulo, podeDesfazer, onFechar }: {
     <JanelaModal onFechar={onFechar} rotulo="Horário bloqueado" largura={420} travado={desfazendo}>
       <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Horário bloqueado</h2>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span>Horário bloqueado</span>
+            <Dica rotulo="O que o bloqueio faz">
+              O app da cliente e o Copilot não oferecem este horário. Pela agenda, o encaixe é permitido, com aviso.
+            </Dica>
+          </h2>
           <button type="button" className="btn-ghost" onClick={onFechar} aria-label="Fechar" style={{ padding: '4px 6px' }}><X size={16} /></button>
         </div>
         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{titulo}</p>
@@ -317,9 +326,6 @@ export function JanelaDoBloqueio({ bloqueio, titulo, podeDesfazer, onFechar }: {
           {trechoDoBloqueio(bloqueio, fusoLocal()).replace(/^d/, 'D')} · Motivo: {bloqueio.motivo}
         </p>
         {bloqueio.criadoPorNome && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Bloqueado por {bloqueio.criadoPorNome}.</p>}
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          O app da cliente e o Copilot não oferecem este horário. Pela agenda, o encaixe é permitido, com aviso.
-        </p>
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
         {podeDesfazer && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>

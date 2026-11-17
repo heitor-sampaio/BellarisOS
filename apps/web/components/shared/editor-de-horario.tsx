@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { HORARIO_PADRAO, type Horario, type Intervalo } from '@/lib/agenda/horario'
 import { resumoDoEditorDeHorario } from '@/lib/unidades/horario-no-editor'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O horário de funcionamento (2026-10-21): da unidade (Configurações →
@@ -91,8 +92,10 @@ export function EditorDeHorario({ nome, valor, seguir, base }: {
             Aberta 24 horas, todos os dias
           </button>
           {todosInteiros && (
-            <span data-desfazer-24-horas style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', alignSelf: 'center' }}>
-              Ligado. Toque de novo para voltar ao horário de antes.
+            <span data-desfazer-24-horas style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>Ligado.</span>
+              {/* A legenda de uso mora na dica (2026-11-16). */}
+              <Dica rotulo="Como desfazer as 24 horas">Toque de novo para voltar ao horário de antes.</Dica>
             </span>
           )}
         </div>

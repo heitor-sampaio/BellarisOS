@@ -850,8 +850,12 @@ function DadosTab({ client, slug, podeEditar }: {
       {/* Quem só vê lê o cadastro: os campos ficam travados pelo fieldset, e
           não há "Salvar" nem "Dar acesso ao app" — era um 500 mudo (D5). */}
       {!podeEditar && (
-        <p data-cadastro-so-leitura style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>
-          Seu cargo só consulta o cadastro: editar pede Clientes em Gerenciar.
+        // O "por que" mora na dica (2026-11-16); à vista, o estado.
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Só leitura</span>
+          <Dica rotulo="Por que o cadastro não se edita">
+            <span data-cadastro-so-leitura>Seu cargo só consulta o cadastro: editar pede Clientes em Gerenciar.</span>
+          </Dica>
         </p>
       )}
       <fieldset disabled={!podeEditar} style={{ display: 'contents' }}>
@@ -1118,7 +1122,11 @@ function AcessoAoApp({ temAcesso, email, clientId, documento }: {
         {feito
           ? <><strong style={{ color: 'var(--text)' }}>{feito.titulo}.</strong> {feito.descricao}</>
           : pronto
-            ? `Esta cliente ainda não tem acesso ao app. O login é o e-mail, e a senha inicial, ${senha}.`
+            // O "como fica o login" mora na dica (2026-11-16); à vista, o estado e o botão.
+            ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span>Esta cliente ainda não tem acesso ao app.</span>
+                <Dica rotulo="Sobre o acesso ao app">O login é o e-mail, e a senha inicial, {senha}.</Dica>
+              </span>
             : 'Esta cliente ainda não tem acesso ao app. Para dar, salve o e-mail e um documento dela (CPF, passaporte ou RNE).'}
       </p>
       {!feito && (
@@ -1282,8 +1290,16 @@ function FinanceiroTab({
           ...(creditoTotal == null ? [] : [{ chave: 'credito', label: 'CRÉDITO INTERNO',  value: fmtBRL(creditoTotal),   accent: creditoTotal > 0 }]),
         ].map(k => (
           <div key={k.label} data-total={k.chave} className="card" style={{ padding: '14px 18px' }}>
-            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
               {k.label}
+              {/* O que fica fora do "Total pago" mora na dica (2026-11-16 — era um parágrafo fixo). */}
+              {k.chave === 'pago' && pagoComCredito > 0 && (
+                <Dica rotulo="Sobre o total pago">
+                  <span data-pago-com-credito>
+                    {fmtBRL(pagoComCredito)} foram pagos com crédito interno e não entram no “Total pago”: {textoDaOrigemDoCredito(internalCredits)}.
+                  </span>
+                </Dica>
+              )}
             </p>
             <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: k.accent ? 'var(--brand)' : 'var(--text)' }}>
               {k.value}
@@ -1292,28 +1308,25 @@ function FinanceiroTab({
         ))}
       </div>
 
-      {soOsProprios && (
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          Só os lançamentos dos atendimentos que você fez com esta cliente.
-        </p>
-      )}
-      {pagoComCredito > 0 && (
-        <p data-pago-com-credito style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          {fmtBRL(pagoComCredito)} foram pagos com crédito interno e não entram no “Total pago”: {textoDaOrigemDoCredito(internalCredits)}.
-        </p>
-      )}
-      {/* A33 da 8ª: a recepção (Recebimentos em Gerenciar) não vê Estornar, Devolver nem Cancelar pacote — a regra de cargo fica, e a tela diz a quem pedir. */}
-      {quemDesfaz && (
-        <p data-quem-desfaz style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px' }}>
-          Estornar um pagamento, devolver uma venda de produto ou cancelar um pacote é de quem tem o Financeiro em Gerenciar
-          {quemDesfaz.length > 0 ? `: ${quemDesfaz.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
-        </p>
-      )}
-
       {/* Transações */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Transações</h3>
+          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Transações</span>
+            {/* O que a lista mostra e a quem pedir o estorno moram na dica (2026-11-16 — eram parágrafos fixos).
+                A33 da 8ª: quem não tem o Financeiro em Gerenciar não vê Estornar, Devolver nem Cancelar pacote — a dica diz a quem pedir. */}
+            {(soOsProprios || quemDesfaz) && (
+              <Dica rotulo="Sobre as transações">
+                {soOsProprios && <span style={{ display: 'block' }}>Só os lançamentos dos atendimentos que você fez com esta cliente.</span>}
+                {quemDesfaz && (
+                  <span data-quem-desfaz style={{ display: 'block', marginTop: soOsProprios ? 6 : 0 }}>
+                    Estornar um pagamento, devolver uma venda de produto ou cancelar um pacote é de quem tem o Financeiro em Gerenciar
+                    {quemDesfaz.length > 0 ? `: ${quemDesfaz.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+                  </span>
+                )}
+              </Dica>
+            )}
+          </h3>
           {transactions.length > 0 && (
             <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'var(--brand-soft)', color: 'var(--brand)' }}>
               {transactions.length}
@@ -1746,7 +1759,9 @@ export function ClientProfile({
                     position: 'absolute', right: 0, top: '100%', marginTop: 6, zIndex: 41,
                     minWidth: 230, padding: 6, boxShadow: 'var(--shadow-popover)',
                   }}>
-                    {/* Arquivar pede confirmação (J-23): era um clique só. */}
+                    {/* Arquivar pede confirmação (J-23): era um clique só. O que arquivar/reativar
+                        faz mora na dica ao lado (2026-11-16 — era um parágrafo fixo no fim do menu). */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, paddingRight: 6 }}>
                     {client.isActive ? (
                       <BotaoComConfirmacao
                         acao={() => toggleClientStatus(client.id, false, slug)}
@@ -1787,6 +1802,14 @@ export function ClientProfile({
                         <CheckCircle2 size={14} /> Reativar cliente
                       </button>
                     )}
+                      <span style={{ color: 'var(--text-faint)' }}>
+                        <Dica rotulo={client.isActive ? 'Sobre arquivar a cliente' : 'Sobre reativar a cliente'} largura={230}>
+                          {client.isActive
+                            ? 'Some das listas e deixa de contar como cliente nova. O histórico e o prontuário ficam.'
+                            : 'Volta a aparecer nas listas, e dá para agendar e vender de novo.'}
+                        </Dica>
+                      </span>
+                    </div>
                     {/* A LGPD também pela equipe (A21): a cliente que pede no balcão ou não tem o app. */}
                     <button type="button" onClick={() => { setMenuAberto(false); setExportandoLgpd(true) }}
                       style={{
@@ -1797,11 +1820,6 @@ export function ClientProfile({
                       }}>
                       <FileDown size={14} /> Exportar dados (LGPD)
                     </button>
-                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '2px 12px 8px', lineHeight: 1.45 }}>
-                      {client.isActive
-                        ? 'Some das listas e deixa de contar como cliente nova. O histórico e o prontuário ficam.'
-                        : 'Volta a aparecer nas listas, e dá para agendar e vender de novo.'}
-                    </p>
                     {erroStatus && (
                       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600, padding: '0 12px 8px' }}>{erroStatus}</p>
                     )}
@@ -1822,7 +1840,7 @@ export function ClientProfile({
       <div className="kpi-grid" style={{ gap: 8 }}>
         {[
           { label: 'SESSÕES',          value: String(stats.totalSessions) },
-          { label: 'INVESTIDO TOTAL — LTV',  value: fmtBRL(stats.totalInvested),
+          { label: 'INVESTIDO TOTAL — LTV',  value: fmtBRL(stats.totalInvested), sobre: 'Sobre o investido total',
             // A43 da 8ª: "R$ 0" ao lado do preço médio de R$ 450, sem dizer que ela pagou com crédito.
             // A41 da 9ª: de onde veio o crédito — o concedido nunca teve dinheiro.
             nota: [
@@ -1840,16 +1858,22 @@ export function ClientProfile({
               ? `${fmtBRL(stats.receitaServico ?? 0)} ÷ ${stats.atendimentosCobrados} ${stats.atendimentosCobrados === 1 ? 'atendimento cobrado' : 'atendimentos cobrados'} (o preço de cada um, pago ou não) — não é o investido ÷ as sessões.`
               : undefined },
           ...(fidelidade ? [{ label: 'PONTOS', value: fidelidade.saldo.toLocaleString('pt-BR') }] : []),
-        ].map((k: { label: string; value: string; dica?: { rotulo: string; texto: string }; nota?: string; explica?: string }) => (
+        ].map((k: { label: string; value: string; dica?: { rotulo: string; texto: string }; sobre?: string; nota?: string; explica?: string }) => (
           <div key={k.label} className="card" style={{ padding: '14px 18px' }}>
-            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
-              {k.label}{k.dica && <Dica rotulo={k.dica.rotulo}>{k.dica.texto}</Dica>}
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {k.label}
+              {/* A nota e a conta moram na dica (2026-11-16 — eram parágrafos fixos embaixo do número). */}
+              {(k.dica || k.nota || k.explica) && (
+                <Dica rotulo={k.dica?.rotulo ?? k.sobre ?? `Sobre ${k.label.toLowerCase()}`}>
+                  {k.dica && <span style={{ display: 'block' }}>{k.dica.texto}</span>}
+                  {k.explica && <span data-preco-medio-explica style={{ display: 'block', marginTop: k.dica ? 6 : 0 }}>{k.explica}</span>}
+                  {k.nota && <span data-pago-com-credito style={{ display: 'block', marginTop: k.dica || k.explica ? 6 : 0 }}>{k.nota}</span>}
+                </Dica>
+              )}
             </p>
             <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
               {k.value}
             </p>
-            {k.nota && <p data-pago-com-credito style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>{k.nota}</p>}
-            {k.explica && <p data-preco-medio-explica style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>{k.explica}</p>}
           </div>
         ))}
       </div>

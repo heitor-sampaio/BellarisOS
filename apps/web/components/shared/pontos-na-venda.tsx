@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { formatarPontos } from '@/lib/fidelidade/formato'
+import { Dica } from '@/components/shared/dica'
 import { descontoDoVoucher } from '@/lib/fidelidade/voucher'
 import { SEM_FIDELIDADE, contaDaFidelidade, type ContaDaFidelidade, type EscolhaDaFidelidade, type FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 
@@ -32,7 +33,17 @@ export function PontosNaVenda({ fidelidade, vendido, escolha, conta, aVista, aoM
       borderRadius: 'var(--radius-row)', padding: '12px 14px',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-        <span className="field-label" style={{ margin: 0 }}>Fidelidade</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span className="field-label" style={{ margin: 0 }}>Fidelidade</span>
+          {/* O "quanto vale o ponto" mora na dica (2026-11-16 — era uma linha fixa). */}
+          {aVista && fidelidade.saldo > 0 && (
+            <Dica rotulo="Quanto vale o ponto">
+              Cada ponto vale {brl(fidelidade.valorDoPonto)}.
+              {fidelidade.minimo > 0 && ` Mínimo de ${fidelidade.minimo} pontos.`}
+              {fidelidade.tetoPct < 100 && ` Pontos pagam até ${String(fidelidade.tetoPct).replace('.', ',')}% do valor.`}
+            </Dica>
+          )}
+        </span>
         <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           Saldo: <strong style={{ color: 'var(--text)' }}>{formatarPontos(fidelidade.saldo)}</strong>
         </span>
@@ -70,13 +81,7 @@ export function PontosNaVenda({ fidelidade, vendido, escolha, conta, aVista, aoM
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)' }}>
                   {formatarPontos(conta.pontos)} = <strong style={{ color: 'var(--brand)' }}>−{brl(conta.desconto)}</strong>
                 </p>
-              ) : (
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                  Cada ponto vale {brl(fidelidade.valorDoPonto)}.
-                  {fidelidade.minimo > 0 && ` Mínimo de ${fidelidade.minimo} pontos.`}
-                  {fidelidade.tetoPct < 100 && ` Pontos pagam até ${String(fidelidade.tetoPct).replace('.', ',')}% do valor.`}
-                </p>
-              )}
+              ) : null}
             </>
           )}
         </>

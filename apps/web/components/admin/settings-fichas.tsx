@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, ClipboardList, FileText } from 'lucide-react'
 import { ConstrutorDeFicha, type ExistingForm } from '@/components/admin/construtor-de-ficha'
 import { criarFicha, atualizarFicha, apagarFicha, definirFichaAtiva } from '@/actions/fichas'
 import type { AnamnesisRow } from '@/lib/anamnesis'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Configurações → Fichas → "Fichas de atendimento" (FC1 do Bloco Fichas, o
@@ -83,14 +84,15 @@ export function SettingsFichas({ forms, semInjetaveis = false }: Props) {
   return (
     <section data-fichas-de-atendimento aria-labelledby="titulo-fichas-de-atendimento" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 560 }}>
+        {/* O "onde se liga e quem preenche" mora na dica (2026-11-16 — era um parágrafo fixo); fora do <h3>. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: 560 }}>
           <h3 id="titulo-fichas-de-atendimento" style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
             Fichas de atendimento
           </h3>
-          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
+          <Dica rotulo="Sobre as fichas de atendimento">
             Monte a ficha de atendimento e escolha uma em cada procedimento, no campo “Ficha de atendimento”. Quem
             atende a preenche durante o atendimento — se o procedimento for uma avaliação, os campos são os da avaliação.
-          </p>
+          </Dica>
         </div>
         <button type="button" className="btn-primary" onClick={() => setView({ mode: 'new' })}>
           <Plus size={15} /> Nova ficha de atendimento

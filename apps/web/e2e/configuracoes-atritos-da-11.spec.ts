@@ -52,6 +52,8 @@ test('A13: o insumo do procedimento diz que o custo é o último custo, e que a 
   await como(browser, dona, async p => {
     await p.goto('/admin/procedures')
     await p.locator('tr', { hasText: `Proc cfg11${marca}` }).getByRole('button', { name: 'Editar' }).click()
+    // A explicação mora na dica do título "Insumos utilizados" (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre o custo dos insumos' }).hover()
     await expect(p.locator('[data-custo-do-insumo-e-o-ultimo]')).toContainText('último custo de compra')
     await expect(p.locator('[data-custo-do-insumo-e-o-ultimo]')).toContainText('custo do lote')
   })

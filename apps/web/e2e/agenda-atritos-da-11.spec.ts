@@ -90,7 +90,7 @@ test('A24: remarcar para um horário que já passou avisa — e deixa', async ({
     await p.goto(`/${slug}/agenda?date=${DIA}`)
     await p.locator(`[data-agendamento="${ag}"]`).first().click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
-    await janela.getByRole('button', { name: 'Remarcar' }).click()
+    await janela.getByRole('button', { name: 'Remarcar', exact: true }).click()
     await janela.locator('input[type="datetime-local"]').fill(`${ONTEM}T10:00`)
     await expect(janela.locator('[data-aviso-do-remarcar]')).toContainText('já passou')
     await expect(janela.getByRole('button', { name: 'Confirmar novo horário' })).toBeEnabled()

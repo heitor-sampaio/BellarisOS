@@ -8,6 +8,7 @@ import { DICA_DO_NOME_DA_FOTO } from '@/lib/clientes/textos-do-app'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { enviarDocumentoACliente, deleteClientDocument } from '@/actions/client-documents'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 export interface FotoDoAtendimento {
   id:        string
@@ -95,7 +96,15 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
           ? <p style={{ flex: 1, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Fotos do atendimento</p>
           : <>
               <Camera size={15} style={{ color: 'var(--brand)' }} />
-              <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Fotos do atendimento</h3>
+              <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>Fotos do atendimento</span>
+                {/* PR1a (a revisão de 2026-11-13): a foto mora no PRONTUÁRIO, no
+                    registro deste atendimento — não mais em Documentos. Na dica
+                    desde 2026-11-16 ("A explicação mora na dica"). */}
+                <Dica rotulo="Onde a foto fica">
+                  <span data-onde-a-foto-fica>A foto fica no prontuário da cliente, no registro deste atendimento.</span>
+                </Dica>
+              </h3>
             </>}
         {podeAnexar && !anexando && (
           <button type="button" onClick={() => setAnexando(true)} className="btn-secondary" style={{ gap: 6, fontSize: 'var(--text-sm-sz)' }}>
@@ -133,9 +142,7 @@ export function FotosDoAtendimento({ fotos, clientId, branchId, slug, appointmen
 
         {visiveis.length === 0 && !anexando && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-            {/* PR1a (a revisão de 2026-11-13): a foto mora no PRONTUÁRIO, no
-                registro deste atendimento — não mais em Documentos. */}
-            Nenhuma foto neste atendimento. Ela fica no prontuário da cliente, no registro deste atendimento.
+            Nenhuma foto neste atendimento.
           </p>
         )}
 

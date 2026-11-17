@@ -207,8 +207,11 @@ test.describe('Ticket médio = média de quanto cada CLIENTE gasta (pago ÷ clie
       await p.goto('/admin/dashboard?period=month')
       const ticket = cartao(p, 'Ticket médio')
       await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(300)
-      await expect(ticket).toContainText('pago pelas clientes ÷ 2 clientes que pagaram')
+      // A conta mora na dica do cartão (2026-11-16).
+      await ticket.locator('[data-dica-botao]').hover()
+      await expect(ticket).toContainText('Pago pelas clientes ÷ 2 clientes que pagaram')
       await expect(ticket).not.toContainText('atendimentos cobrados')
+      await p.mouse.move(0, 0)
       // A rede deste teste tem UMA unidade: desde o D-19 (2026-10-30) o dashboard
       // não mostra o "Ranking de unidades" — a mesma conta na unidade é a do
       // dashboard dela, no teste seguinte.
@@ -229,6 +232,8 @@ test.describe('Ticket médio = média de quanto cada CLIENTE gasta (pago ÷ clie
       await p.goto(`/${slug}/dashboard`)
       const ticket = cartao(p, 'Ticket médio')
       await expect.poll(async () => brl(await ticket.innerText()), { timeout: 10_000 }).toBe(300)
+      // A conta mora na dica do cartão (2026-11-16).
+      await ticket.locator('[data-dica-botao]').hover()
       await expect(ticket).toContainText('2 clientes que pagaram')
       await expect(ticket).not.toContainText('cobrado')
     })

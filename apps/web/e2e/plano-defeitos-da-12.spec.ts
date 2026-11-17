@@ -103,8 +103,11 @@ test('D5 e D4: cancelar relê o plano na hora, e o cancelado é só leitura, com
     await p.locator('[data-cancelar-plano]').click()
     const dlg = p.getByRole('dialog', { name: 'Cancelar plano' })
     await expect(dlg.locator('[data-conta-do-cancelamento]')).toBeVisible()
-    // A34 da 12ª: "sem multa.Usado" — a frase colava na outra.
-    await expect(dlg.locator('[data-conta-do-cancelamento]')).toContainText('sem multa. Usado:')
+    // A34 da 12ª: "sem multa.Usado" — a frase colava na outra. Desde 2026-11-16 o
+    // "como se calcula" mora na dica, e o usado fica à vista numa linha própria.
+    await expect(dlg.locator('[data-conta-do-cancelamento]')).toContainText('Usado:')
+    await dlg.getByRole('button', { name: 'Como se calcula o valor das restantes' }).hover()
+    await expect(dlg.locator('[data-conta-do-cancelamento]')).toContainText('a feita vale o dela, sem multa.')
     await dlg.getByLabel('Motivo do cancelamento *').fill('Mudou de cidade')
     await dlg.getByRole('radio', { name: /Crédito interno/ }).check()
     await dlg.getByRole('button', { name: 'Cancelar plano' }).click()

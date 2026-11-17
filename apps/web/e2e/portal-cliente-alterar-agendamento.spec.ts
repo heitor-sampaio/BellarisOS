@@ -70,7 +70,7 @@ test.describe.serial('o agendamento no portal', () => {
       await expect(p).toHaveURL(new RegExp(`/cliente/agendamentos/${id}`))
 
       await expect(async () => {
-        await p.getByRole('button', { name: 'Remarcar' }).click({ timeout: 1000 })
+        await p.getByRole('button', { name: 'Remarcar', exact: true }).click({ timeout: 1000 })
         await expect(p.getByLabel('Novo dia')).toBeVisible({ timeout: 1000 })
       }).toPass()
       await p.getByLabel('Novo dia').fill(dia(4))
@@ -178,7 +178,10 @@ test.describe('atritos da remarcação (frente 8)', () => {
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/home`)
       await expect(p.getByText('Nenhum agendamento próximo.')).toHaveCount(0)
-      await expect(p.locator('[data-passou-da-hora]')).toContainText('a equipe registra quando o atendimento terminar')
+      await expect(p.locator('[data-passou-da-hora]')).toContainText('Hoje, já no horário')
+      // O porquê mora na dica (2026-11-16).
+      await p.locator('[data-passou-da-hora] [data-dica-botao]').hover()
+      await expect(p.locator('[data-passou-da-hora]')).toContainText('A equipe registra quando o atendimento terminar')
     })
     // Concluído, sai dos próximos.
     expect((await db().from('appointments').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', id)).error).toBeNull()
@@ -193,7 +196,7 @@ test.describe('atritos da remarcação (frente 8)', () => {
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
       await expect(async () => {
-        await p.getByRole('button', { name: 'Remarcar' }).click({ timeout: 1000 })
+        await p.getByRole('button', { name: 'Remarcar', exact: true }).click({ timeout: 1000 })
         await expect(p.getByLabel('Novo dia')).toBeVisible({ timeout: 1000 })
       }).toPass()
       await p.getByRole('button', { name: 'Amanhã' }).click()
@@ -211,7 +214,7 @@ test.describe('atritos da remarcação (frente 8)', () => {
     await como(browser, cliente!, async p => {
       await p.goto(`/${slug}/cliente/agendamentos/${id}`)
       await expect(async () => {
-        await p.getByRole('button', { name: 'Remarcar' }).click({ timeout: 1000 })
+        await p.getByRole('button', { name: 'Remarcar', exact: true }).click({ timeout: 1000 })
         await expect(p.getByLabel('Novo dia')).toBeVisible({ timeout: 1000 })
       }).toPass()
       await p.getByLabel('Novo dia').fill(dia(10))

@@ -10,6 +10,7 @@ import { useFala } from '@/components/shared/uma-unidade'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { TEXTO_QUEM_MONTA, SITUACOES_COMERCIAIS, rotuloDaSituacaoComercial, corDaSituacaoComercial, type SituacaoComercial } from '@/lib/plano-de-tratamento/situacao'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Tela de planejamentos: lista, busca e criação.
@@ -123,24 +124,28 @@ export function PlanejamentosClient({
     <div className="tela-de-lista" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-            {/* A30 da 8ª: o mesmo nome do menu ("Tratamentos") — o grupo "Planejamento" tem Tratamentos e Injetáveis. */}
-            Tratamentos
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
+              {/* A30 da 8ª: o mesmo nome do menu ("Tratamentos") — o grupo "Planejamento" tem Tratamentos e Injetáveis. */}
+              Tratamentos
+            </h1>
+            {/* A18: sem o "Novo plano", a dica diz quem monta (2026-11-16 — era a frase no lugar do botão).
+                Fora do <h1>: dentro, o nome do título viraria "Tratamentos Quem monta o plano". */}
+            {!podeEditar && (
+              <Dica rotulo="Quem monta o plano">
+                <span data-quem-monta>{TEXTO_QUEM_MONTA}</span>
+              </Dica>
+            )}
+          </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {branchName ?? fala('Rede')} · {planos.length} plano{planos.length !== 1 ? 's' : ''}
           </p>
         </div>
-        {podeEditar ? (
+        {podeEditar && (
           <button type="button" onClick={() => setNovoAberto(true)} className="btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <Plus size={15} /> Novo plano
           </button>
-        ) : (
-          // A18: sem o "Novo plano", a tela diz quem monta.
-          <p data-quem-monta style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', maxWidth: 360 }}>
-            {TEXTO_QUEM_MONTA}
-          </p>
         )}
       </div>
 
@@ -176,11 +181,12 @@ export function PlanejamentosClient({
           <div style={{ width: 52, height: 52, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ClipboardList size={22} style={{ color: 'var(--text-faint)' }} />
           </div>
-          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
-            {busca || situacao ? 'Nada encontrado com esse filtro' : 'Nenhum plano ainda'}
-          </p>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', maxWidth: 380 }}>
-            O plano pode ser montado antes de a pessoa virar cliente — basta dar um nome e ligar a um cadastro depois.
+          {/* O "como funciona" mora na dica (2026-11-16 — era o parágrafo do vazio). */}
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span>{busca || situacao ? 'Nada encontrado com esse filtro' : 'Nenhum plano ainda'}</span>
+            <Dica rotulo="Sobre os planos de tratamento">
+              O plano pode ser montado antes de a pessoa virar cliente — basta dar um nome e ligar a um cadastro depois.
+            </Dica>
           </p>
         </div>
       ) : (
@@ -223,12 +229,15 @@ export function PlanejamentosClient({
       {novoAberto && (
         <JanelaModal onFechar={() => setNovoAberto(false)} rotulo="Novo plano" largura={460}>
           <div style={{ padding: '22px 24px' }}>
-            <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Novo plano</h3>
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
-              {podeBuscarCliente
-                ? 'Dê um nome para reencontrar o plano depois. A cliente pode ser escolhida agora ou ligada depois, na tela do plano.'
-                : 'Dê um nome para reencontrar o plano depois. A cliente é ligada na tela do plano.'}
-            </p>
+            <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>Novo plano</span>
+              {/* O subtítulo do modal mora na dica (2026-11-16). */}
+              <Dica rotulo="Sobre o nome e a cliente do plano">
+                {podeBuscarCliente
+                  ? 'Dê um nome para reencontrar o plano depois. A cliente pode ser escolhida agora ou ligada depois, na tela do plano.'
+                  : 'Dê um nome para reencontrar o plano depois. A cliente é ligada na tela do plano.'}
+              </Dica>
+            </h3>
             <label className="field-label" htmlFor="novo-plano-nome">Nome do plano *</label>
             <input
               id="novo-plano-nome"

@@ -7,6 +7,7 @@ import { MarketingCampaignsTable } from '@/components/admin/marketing-campaigns-
 import { MarketingAttribution } from '@/components/admin/marketing-attribution'
 import type { Campaign, DatePreset } from '@/lib/ads/types'
 import { SegSelect } from '@/components/shared/seg-select'
+import { Dica } from '@/components/shared/dica'
 import { startOfDayTZ, addDaysTZ } from '@/lib/datetime'
 import { ler, contar } from '@/lib/db'
 
@@ -154,16 +155,17 @@ export default async function AdminMarketingPage({
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
-        <div>
+        {/* A apresentação mora na dica (2026-11-16). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <h1 style={{
             fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
             letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
           }}>
             Anúncios
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
+          <Dica rotulo="Sobre os anúncios">
             O resultado dos anúncios no Meta Ads e no Google Ads. O aviso às clientes fica em Notificações.
-          </p>
+          </Dica>
         </div>
 
         {/* Period selector */}
@@ -254,15 +256,15 @@ export default async function AdminMarketingPage({
 
       {activeView === 'attribution' && (
         <div className="card">
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
             <h2 style={{
               fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)',
             }}>
               Atribuição de oportunidades
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 4 }}>
+            <Dica rotulo="Sobre a atribuição de oportunidades">
               Oportunidades captadas com dados de origem de campanha (UTM / click ID)
-            </p>
+            </Dica>
           </div>
           <MarketingAttribution leads={leads} />
         </div>

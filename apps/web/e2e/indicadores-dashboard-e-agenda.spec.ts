@@ -60,6 +60,8 @@ test('A38: a aba Agenda do mês conta os futuros e os cancelados até o fim do p
     await p.goto('/admin/reports?tab=agenda&period=month')
     const cartao = p.getByText('Total Agendamentos', { exact: true }).locator('xpath=ancestor::div[contains(@class,"card")][1]')
     await expect.poll(async () => (await cartao.innerText()).replace(/\D/g, ''), { timeout: 10_000 }).toBe('2')
+    // O aviso do recorte mora na dica do total (2026-11-16).
+    await p.getByRole('button', { name: 'Quais agendamentos entram' }).hover()
     await expect(p.getByText(/inclui os agendamentos até o fim do período/i)).toBeVisible()
   } finally { await ctx.close() }
 })

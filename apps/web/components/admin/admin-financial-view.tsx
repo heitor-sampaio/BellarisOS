@@ -22,7 +22,8 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { toast } from 'sonner'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import type { ProximoVencimento } from '@/lib/metrics/queries'
-import { NotaDoVencimento } from '@/components/shared/nota-do-vencimento'
+import { NotaDoVencimento, DicaDoVencimento } from '@/components/shared/nota-do-vencimento'
+import { Dica } from '@/components/shared/dica'
 import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcelas-da-operadora'
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
@@ -222,10 +223,12 @@ function pctDelta(curr: number, prev: number) {
 // --- KPI Card ----------------------------------------------------------------
 
 function KpiCard({
-  label, value, delta, icon, brand = false, chave, nota,
+  label, value, delta, icon, brand = false, chave, nota, dica,
 }: {
   /** `data-kpi`, para o teste achar o cartão. */
   chave?: string
+  /** A explicação do número: no "i" ao lado do rótulo, não na tela (2026-11-16). */
+  dica?:  React.ReactNode
   /** Uma linha a mais embaixo (o "pelo vencimento" e o próximo). */
   nota?:  React.ReactNode
   label:  string
@@ -243,9 +246,10 @@ function KpiCard({
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
           fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
           color: brand ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)',
-        }}>{label}</span>
+        }}><span>{label}</span>{dica && <Dica rotulo={`Sobre ${label.toLowerCase()}`}>{dica}</Dica>}</span>
         <div style={{
           width: 32, height: 32, borderRadius: 8,
           background: brand ? 'rgba(255,255,255,0.18)' : 'var(--brand-soft)',
@@ -561,7 +565,6 @@ export function AdminFinancialView({
   // A2 da 16ª: a frase cita o botão que a linha mostra — "Receber" na conta a receber, "Pagar" na conta a pagar.
   const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem o PDV no cargo.'
   const fraseDoReceber = canPay ? 'Para receber, use “Receber” na linha.' : 'Receber é de quem tem o PDV no cargo.'
-  const faixa: React.CSSProperties = { fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--info-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 14px', margin: 0 }
 
   // A receber e a pagar (2026-10-21): a unidade mostrava, a rede não.
   const cartaoAReceber = (naAba: boolean) => (
@@ -572,6 +575,7 @@ export function AdminFinancialView({
       nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
         vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
+      dica={<DicaDoVencimento valor={aReceber} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} />}
       icon={<Clock size={16} color="var(--brand)" />}
     />
   )
@@ -583,10 +587,13 @@ export function AdminFinancialView({
       label="A receber da operadora"
       value={fmtBRL(operadora.aReceber)}
       nota={<>
-        <NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto}
-          bruto={{ periodo: operadora.aReceberBruto, emAberto: operadora.emAbertoBruto }} />
+        <NotaDoVencimento valor={operadora.aReceber} proximo={operadora.proximo} emAbertoTotal={operadora.emAberto} />
         {/* D3: o cartão leva à lista das parcelas (no A receber). */}
         <LinkDasParcelas temParcelas={parcelasVisiveis.length > 0} href={naAba ? undefined : daAba('a-receber')} />
+      </>}
+      dica={<>
+        <DicaDoVencimento valor={operadora.aReceber} emAbertoTotal={operadora.emAberto}
+          bruto={{ periodo: operadora.aReceberBruto, emAberto: operadora.emAbertoBruto }} />
         {/* A38 da 11ª: o débito conta como recebido no dia. */}
         <NotaDoDebito debito={statDaUnidade ? debitoPorUnidade[statDaUnidade.id] ?? 0 : debitoNoPeriodo} />
       </>}
@@ -600,16 +607,34 @@ export function AdminFinancialView({
       value={fmtBRL(aPagar)}
       nota={<NotaDoVencimento valor={aPagar} proximo={proximoAPagar} emAbertoTotal={aPagarEmAberto} despesa podeDarBaixa={canPay}
         hrefDaBaixa={naAba ? undefined : daAba('a-pagar')} />}
+      dica={<DicaDoVencimento valor={aPagar} emAbertoTotal={aPagarEmAberto} />}
       icon={<Clock size={16} color="var(--brand)" />}
     />
   )
 
   /** A lista dos lançamentos (A receber, A pagar e Movimentações): a mesma tabela, com o título de cada aba. */
-  const tabela = (titulo: string) => (
+  // O que a lista mostra e quem dá baixa: na dica do título (2026-11-16 — era
+  // uma faixa azul fixa em cima da tabela).
+  const sobreAReceber = (
+    <span data-so-o-em-aberto>
+      {soAsVencidas
+        ? 'Só as vencidas: as contas a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
+        : 'Todas as contas a receber em aberto, de qualquer vencimento: as atrasadas primeiro, e as parcelas do crediário também.'}{' '}
+      {fraseDoReceber}
+    </span>
+  )
+  const sobreAPagar = (
+    <span data-so-o-em-aberto>
+      Todas as contas a pagar em aberto, de qualquer vencimento — a que vence primeiro no topo.{' '}
+      {fraseDaBaixa}
+    </span>
+  )
+  const tabela = (titulo: string, sobre?: { rotulo: string; texto: React.ReactNode }) => (
     <div id="movimentacoes" className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
           {titulo}
+          {sobre && <span style={{ marginLeft: 6 }}><Dica rotulo={sobre.rotulo}>{sobre.texto}</Dica></span>}
           <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>
             {visibleTxs.length} registro{visibleTxs.length !== 1 ? 's' : ''}
           </span>
@@ -763,7 +788,7 @@ export function AdminFinancialView({
           <KpiCard
             chave="despesas"
             label={statDaUnidade ? 'Despesas pagas da unidade (caixa)' : 'Despesas pagas (caixa)'}
-            nota={<span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>O que saiu do caixa, com a compra de estoque e o pagamento das comissões — o Resultado líquido usa a despesa operacional (veja a conta nele).</span>}
+            dica="O que saiu do caixa no período, com a compra de estoque e o pagamento das comissões. O Resultado líquido usa a despesa operacional (a conta está na dica dele)."
             value={fmtBRL(expenses)}
             delta={deltaExpenses}
             icon={<TrendingDown size={16} color="var(--brand)" />}
@@ -772,7 +797,7 @@ export function AdminFinancialView({
             chave="resultado"
             label="Resultado líquido"
             value={fmtBRL(result)}
-            nota={<ContaDoResultado receita={revenue} resultado={conta} despesasDoCaixa={expenses} aPagar={aPagar} />}
+            dica={<ContaDoResultado receita={revenue} resultado={conta} despesasDoCaixa={expenses} aPagar={aPagar} />}
             icon={<Wallet size={16} color="var(--brand)" />}
           />
           <KpiCard
@@ -903,13 +928,7 @@ export function AdminFinancialView({
             options={[{ key: 'todas', label: 'Todas' }, { key: 'vencidas', label: 'Só as vencidas' }]}
           />
         </div>
-        <p data-so-o-em-aberto style={faixa}>
-          {soAsVencidas
-            ? 'Só as vencidas: as contas a receber em aberto com o vencimento antes de hoje, de qualquer mês.'
-            : 'Todas as contas a receber em aberto, de qualquer vencimento: as atrasadas primeiro, e as parcelas do crediário também.'}{' '}
-          {fraseDoReceber}
-        </p>
-        {tabela('Das clientes')}
+        {tabela('Das clientes', { rotulo: 'Sobre as contas a receber', texto: sobreAReceber })}
         {/* F2c: as parcelas que a operadora deposita, mês a mês. */}
         <ParcelasDaOperadora parcelas={parcelasVisiveis} podeMarcar={canWrite}
           unidades={umaUnidade ? undefined : Object.fromEntries(branches.map(b => [b.id, b.name]))} />
@@ -920,11 +939,7 @@ export function AdminFinancialView({
         <div className="rg-3" style={{ gap: 14, alignItems: 'start' }} data-aba-do-financeiro="a-pagar">
           {cartaoAPagar(true)}
         </div>
-        <p data-so-o-em-aberto style={faixa}>
-          Todas as contas a pagar em aberto, de qualquer vencimento — a que vence primeiro no topo.{' '}
-          {fraseDaBaixa}
-        </p>
-        {tabela('Contas a pagar')}
+        {tabela('Contas a pagar', { rotulo: 'Sobre as contas a pagar', texto: sobreAPagar })}
       </>}
 
       {/* -- Movimentações (FI5): o extrato do período, os CSVs e os avisos das taxas (CX6). */}

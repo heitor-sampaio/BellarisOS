@@ -127,14 +127,17 @@ test('o financeiro da unidade e o da rede: "Lucro Líquido" e "Resultado líquid
   })
 })
 
-test('D8 da 8ª: o resultado se explica na tela — a conta embaixo do "Lucro Líquido" e do "Resultado líquido" fecha', async ({ browser }) => {
+test('D8 da 8ª: o resultado se explica — a conta na dica do "Lucro Líquido" e do "Resultado líquido" fecha', async ({ browser }) => {
   // "Receita R$ 89 · Despesas R$ 0 · Comissões R$ 0 · Resultado líquido R$ 9":
   // o insumo e as taxas entravam no resultado, e nenhum cartão os mostrava.
   const conta = /Receita R\$\s*2\.100,00\s*− despesas operacionais R\$\s*200,00\s*− insumos e produtos R\$\s*0,00\s*− taxas da maquininha R\$\s*38,00\s*− comissões lançadas R\$\s*100,00\s*= R\$\s*1\.762,00/
   await como(browser, dona!, async p => {
     await p.goto(`/${slug}/financeiro`)
+    // A conta mora na dica do cartão (2026-11-16): abre ao passar o mouse.
+    await card(p, 'Lucro Líquido').locator('[data-dica-botao]').hover()
     await expect(card(p, 'Lucro Líquido').locator('[data-conta-do-resultado]')).toHaveText(conta, { timeout: 15_000 })
     await p.goto('/admin/financeiro?period=month')
+    await card(p, 'Resultado líquido').locator('[data-dica-botao]').hover()
     const daRede = card(p, 'Resultado líquido').locator('[data-conta-do-resultado]')
     await expect(daRede).toHaveText(conta, { timeout: 15_000 })
     // As despesas do cartão são o caixa (R$ 300): a conta diz por que só R$ 200 entram.

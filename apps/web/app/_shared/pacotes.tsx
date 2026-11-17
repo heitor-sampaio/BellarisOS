@@ -8,6 +8,7 @@ import { podeMudarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { TEXTO_DA_VENDA_DO_PACOTE } from '@/lib/permissions-copy'
 import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import type { DocumentosDoCatalogo } from '@/components/admin/pacotes-catalogo'
+import { Dica } from '@/components/shared/dica'
 
 interface LinhaDoProcedimento {
   id: string; name: string; price: number | null
@@ -52,13 +53,14 @@ export async function PacotesDaRede({ ctx, unidadeId, busca }: { ctx: TenantCont
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
+      {/* A apresentação mora na dica do título (2026-11-16). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
         <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
           Pacotes
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
+        <Dica rotulo="Sobre os pacotes">
           Um conjunto de procedimentos, iguais ou não, vendido por um preço só. {TEXTO_DA_VENDA_DO_PACOTE}
-        </p>
+        </Dica>
       </div>
       <PacotesCatalogo
         pacotes={pacotes}

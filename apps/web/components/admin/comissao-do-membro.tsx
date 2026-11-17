@@ -8,6 +8,10 @@ import { salvarRegrasDoProfissional } from '@/actions/comissoes'
 import { rotuloDaRegra, type RegraDeComissao, type TipoDeRegra } from '@/lib/comissoes/config'
 import { chipDaComissao } from '@/lib/comissoes/chip-do-membro'
 import { resumoDaComissaoDoMembro } from '@/lib/equipe/textos-do-cadastro'
+import { Dica } from '@/components/shared/dica'
+
+/** O título do bloco com a dica ao lado (a explicação mora na dica — docs/regras/design.md). */
+const linhaComDica = { display: 'inline-flex', alignItems: 'center', gap: 6 } as const
 
 /**
  * A comissão de um membro da equipe: o PADRÃO (percentual, valor fixo ou
@@ -161,7 +165,17 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p className="overline" id="tipo-da-comissao-padrao">Comissão padrão</p>
+        {/* A explicação de cada tipo mora na dica (2026-11-16 — era um parágrafo embaixo). */}
+        <p className="overline" style={linhaComDica}>
+          <span id="tipo-da-comissao-padrao">Comissão padrão</span>
+          <Dica rotulo="Sobre a comissão padrão">
+            {tipo === 'NENHUMA'
+              ? 'Sem padrão, só os procedimentos com exceção abaixo geram comissão.'
+              : tipo === 'PERCENTAGE'
+                ? 'Sobre o valor de cada procedimento executado, conforme Configurações → Comissões e taxas.'
+                : 'Um valor fixo por procedimento executado.'}
+          </Dica>
+        </p>
         {/* A20 da 18ª (princípio 7): o tipo em blocos lado a lado, como as
             formas de pagamento — no celular o segmentado virava um botão
             suspenso, parecido com o campo da comissão de venda logo abaixo. */}
@@ -182,18 +196,17 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct
         {tipo !== 'NENHUMA' && (
           <CampoDeValor tipo={tipo} valor={valor} onChange={setValor} rotulo="Valor da comissão padrão" />
         )}
-        <p style={ajuda}>
-          {tipo === 'NENHUMA'
-            ? 'Sem padrão, só os procedimentos com exceção abaixo geram comissão.'
-            : tipo === 'PERCENTAGE'
-              ? 'Sobre o valor de cada procedimento executado, conforme Configurações → Comissões e taxas.'
-              : 'Um valor fixo por procedimento executado.'}
-        </p>
       </div>
 
       {/* A17 da 11ª (princípio 1): a comissão de VENDA da pessoa, ao lado da de execução — vazia por padrão. */}
       <div data-comissao-de-venda-da-pessoa style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>
-        <p className="overline">Comissão de venda</p>
+        <p className="overline" style={linhaComDica}>
+          <span>Comissão de venda</span>
+          <Dica rotulo="Sobre a comissão de venda" largura={320}>
+            Sobre o vendido, quando ela está em “Quem vendeu”: pacote, plano, pré-pago e produto. A comissão de venda do próprio pacote
+            ou produto vence esta; sem as duas, vale a da rede (Configurações → Comissões e taxas). O crédito interno vendido não tem comissão de venda.
+          </Dica>
+        </p>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 200 }}>
           <span className="field-label">Comissão de venda (%)</span>
           <div style={{ position: 'relative' }}>
@@ -202,14 +215,15 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct
             <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>%</span>
           </div>
         </label>
-        <p style={ajuda}>
-          Sobre o vendido, quando ela está em “Quem vendeu”: pacote, plano, pré-pago e produto. A comissão de venda do próprio pacote
-          ou produto vence esta; sem as duas, vale a da rede (Configurações → Comissões e taxas). O crédito interno vendido não tem comissão de venda.
-        </p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>
-        <p className="overline">Exceções por procedimento</p>
+        <p className="overline" style={linhaComDica}>
+          <span>Exceções por procedimento</span>
+          <Dica rotulo="Sobre as exceções por procedimento">
+            Procedimento com comissão geral (a mesma para todos) não aceita exceção: vale para todas e vence a regra desta pessoa. Muda em Procedimentos.
+          </Dica>
+        </p>
         {linhas.length === 0 && <p style={ajuda}>Nenhuma. Todo procedimento usa a comissão padrão.</p>}
         {linhas.map((l, i) => (
           <div key={l.procedure_id} data-excecao={l.procedure_id}
@@ -235,15 +249,14 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct
           </div>
         ))}
         {/* A11 da 10ª: QUAIS procedimentos têm a geral — ela vence a regra desta profissional. */}
-        {comGeral.length > 0 ? (
+        {/* A lista é dado (fica à vista); o porquê, na dica do título. */}
+        {comGeral.length > 0 && (
           <div data-gerais-que-vencem style={{ ...ajuda, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span>Com comissão geral — vale para todas e vence a regra acima; muda em Procedimentos:</span>
+            <span>Com comissão geral (vence a regra acima):</span>
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {comGeral.map(g => <li key={g.id}><strong style={{ color: 'var(--text)' }}>{g.name}</strong>: {rotuloDaRegra(g.regra)}</li>)}
             </ul>
           </div>
-        ) : (
-          <p style={ajuda}>Procedimento com comissão geral (a mesma para todos) não aceita exceção: muda em Procedimentos.</p>
         )}
         {livres.length > 0 && (
           <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

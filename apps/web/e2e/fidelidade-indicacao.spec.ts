@@ -97,6 +97,8 @@ test('o prêmio por indicação nasce desligado, e a dona liga em Configuraçõe
     await expect(bloco).toContainText('Prêmio por indicação')
     await bloco.getByRole('button', { name: 'Pontos' }).click()
     await bloco.getByLabel('Pontos para quem indicou').fill('300')
+    // Como o prêmio funciona mora na dica (2026-11-16).
+    await bloco.getByRole('button', { name: 'Como funciona o prêmio por indicação' }).hover()
     await expect(bloco).toContainText('quando a indicada pagar o primeiro atendimento ou a primeira compra')
     await p.getByRole('button', { name: 'Salvar', exact: true }).click()
     await expect(p.getByText('Salvo')).toBeVisible()

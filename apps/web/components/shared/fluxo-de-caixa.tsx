@@ -7,6 +7,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { numericAxisWidth, rotuloDoEixo } from '@/lib/chart-utils'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 import { SegSelect } from '@/components/shared/seg-select'
+import { Dica as DicaDoTexto } from '@/components/shared/dica'
 
 /**
  * O fluxo de caixa dos PRÓXIMOS meses (r2-fin-04; o Heitor, 2026-11-03: "crie
@@ -79,7 +80,14 @@ export function FluxoDeCaixa({ meses: todos }: { meses: MesDoFluxo[] }) {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <TrendingUp size={15} style={{ color: 'var(--brand)' }} aria-hidden />
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Fluxo de caixa — próximos {meses.length} meses</h2>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Fluxo de caixa — próximos {meses.length} meses</span>
+            {/* O "como se lê" mora na dica (2026-11-16 — era um parágrafo fixo). */}
+            <DicaDoTexto rotulo="Como se lê o fluxo de caixa">
+              O que entra (o a receber da cliente e o que a operadora do cartão deposita) e o que sai (as despesas a pagar),
+              pelo vencimento. O que já venceu e está em aberto conta no mês atual.
+            </DicaDoTexto>
+          </h2>
           <SegSelect
             options={PERIODOS.map(n => ({ key: String(n), label: `${n} meses` }))}
             value={String(quantos)}
@@ -87,10 +95,6 @@ export function FluxoDeCaixa({ meses: todos }: { meses: MesDoFluxo[] }) {
             ariaLabel="Quantos meses do fluxo de caixa"
           />
         </div>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-          O que entra (o a receber da cliente e o que a operadora do cartão deposita) e o que sai (as despesas a pagar),
-          pelo vencimento. O que já venceu e está em aberto conta no mês atual.
-        </p>
       </div>
 
       {vazio ? (

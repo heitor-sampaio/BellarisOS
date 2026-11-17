@@ -16,6 +16,7 @@ import {
   type TemplateButton, type TemplateCategoria, type TemplateStatus,
 } from '@/lib/templates/core'
 import { categoriaDoTemplate, precoDaCategoria, formatarPreco } from '@/lib/whatsapp/cobranca'
+import { Dica } from '@/components/shared/dica'
 
 const IDIOMAS = [
   { code: 'pt_BR', label: 'Português (Brasil)' },
@@ -114,18 +115,26 @@ function Previa({ form }: { form: TemplateInput }) {
 
 // --- Editor ------------------------------------------------------------------
 
+/**
+ * Um campo do template. `dica` é a explicação do campo, no "i" ao lado do
+ * rótulo (2026-11-16 — era a linha cinza embaixo); `hint` fica à vista e é só
+ * para o estado do que se digitou ("Vai ser salvo como …").
+ */
 function Campo({
-  label, value, onChange, placeholder, max, hint, multiline, disabled,
+  label, value, onChange, placeholder, max, hint, dica, multiline, disabled,
 }: {
   label: string; value: string; onChange: (v: string) => void
-  placeholder?: string; max?: number; hint?: string
+  placeholder?: string; max?: number; hint?: string; dica?: string
   multiline?: boolean; disabled?: boolean
 }) {
   const Tag = multiline ? 'textarea' : 'input'
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <label className="overline" style={{ color: 'var(--text-muted)' }}>{label}</label>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <label className="overline" style={{ color: 'var(--text-muted)' }}>{label}</label>
+          {dica && <Dica rotulo={`Sobre o campo ${label.replace(/ \(opcional\)$/, '')}`}>{dica}</Dica>}
+        </span>
         {max && (
           <span style={{
             fontSize: 'var(--text-overline)',
@@ -331,9 +340,14 @@ export function TemplatesManager({
           </div>
 
           {lista.length === 0 ? (
-            <p style={{ padding: 20, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ padding: 20, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}>
               {initial.length === 0
-                ? 'Nenhum template ainda. Eles servem para retomar conversa que passou de 24 horas — lembrete de consulta, retorno, resposta a quem sumiu.'
+                ? <>
+                    <span>Nenhum template ainda.</span>
+                    <Dica rotulo="Para que servem os templates">
+                      Eles servem para retomar conversa que passou de 24 horas — lembrete de consulta, retorno, resposta a quem sumiu.
+                    </Dica>
+                  </>
                 : 'Nenhum template neste número.'}
             </p>
           ) : lista.map(t => {
@@ -449,15 +463,26 @@ export function TemplatesManager({
                   onChange={v => set('name', v)}
                   placeholder="lembrete_consulta"
                   disabled={!editavel || jaSubmetido}
-                  hint={jaSubmetido
+                  hint={!jaSubmetido && form.name && normalizarNome(form.name) !== form.name
+                    ? `Vai ser salvo como "${normalizarNome(form.name)}"`
+                    : undefined}
+                  dica={jaSubmetido
                     ? 'Não dá para mudar: a Meta identifica o template por este nome.'
-                    : form.name && normalizarNome(form.name) !== form.name
-                      ? `Vai ser salvo como "${normalizarNome(form.name)}"`
-                      : 'Só minúsculas, números e underscore.'}
+                    : 'Só minúsculas, números e underscore.'}
                 />
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label className="overline" style={{ color: 'var(--text-muted)' }}>Categoria</label>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <label className="overline" style={{ color: 'var(--text-muted)' }}>Categoria</label>
+                    {/* O que cada categoria é mora na dica (2026-11-16). */}
+                    <Dica rotulo="Sobre as categorias">
+                      {CATEGORIAS.map((c, i) => (
+                        <span key={c.value} style={{ display: 'block', marginTop: i ? 6 : 0 }}>
+                          <strong>{c.label}:</strong> {c.hint}
+                        </span>
+                      ))}
+                    </Dica>
+                  </span>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {CATEGORIAS.map(c => {
                       const ativo = form.category === c.value
@@ -481,17 +506,20 @@ export function TemplatesManager({
                       )
                     })}
                   </div>
-                  <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
-                    {CATEGORIAS.find(c => c.value === form.category)?.hint}
-                  </p>
-                  {/* O preço da categoria, da tabela única (lib/whatsapp/cobranca).
-                      Utilidade com cara de promoção a Meta reclassifica — e cobra
-                      como marketing, quase dez vezes mais (2026-10-15). */}
+                  {/* O preço da categoria, da tabela única (lib/whatsapp/cobranca),
+                      fica à vista: é o custo de cada envio. Utilidade com cara de
+                      promoção a Meta reclassifica — e cobra como marketing, quase
+                      dez vezes mais (2026-10-15): isso mora na dica (2026-11-16). */}
                   <p data-preco-da-categoria style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
                     A Meta cobra cerca de{' '}
                     <strong>{formatarPreco(precoDaCategoria(categoriaDoTemplate(form.category)))}</strong>{' '}
                     por mensagem entregue, na conta do WhatsApp da rede.
-                    {form.category === 'UTILITY' && ' Texto com cara de promoção é reclassificado pela Meta como marketing — e cobrado como tal.'}
+                    {form.category === 'UTILITY' && <>
+                      {' '}
+                      <Dica rotulo="Sobre a reclassificação pela Meta">
+                        Texto com cara de promoção é reclassificado pela Meta como marketing — e cobrado como tal.
+                      </Dica>
+                    </>}
                   </p>
                 </div>
 
@@ -515,7 +543,7 @@ export function TemplatesManager({
                   placeholder="Sua consulta está chegando"
                   max={LIMITES.cabecalho}
                   disabled={!editavel}
-                  hint="Uma linha em negrito no topo. Aceita no máximo uma variável."
+                  dica="Uma linha em negrito no topo. Aceita no máximo uma variável."
                 />
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -543,7 +571,7 @@ export function TemplatesManager({
                   placeholder="Responda SAIR para não receber mais"
                   max={LIMITES.rodape}
                   disabled={!editavel}
-                  hint="Linha pequena e cinza no fim. Não aceita variáveis."
+                  dica="Linha pequena e cinza no fim. Não aceita variáveis."
                 />
 
                 {/* Botões */}
@@ -609,14 +637,14 @@ export function TemplatesManager({
 
                 {variaveis.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <label className="overline" style={{ color: 'var(--text-muted)' }}>
                         Exemplos das variáveis
                       </label>
-                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: '3px 0 0', lineHeight: 1.5 }}>
+                      <Dica rotulo="Para que servem os exemplos">
                         A Meta precisa ver a mensagem preenchida para revisar. Isto não é o
                         valor que o cliente recebe — esse é digitado na hora de enviar.
-                      </p>
+                      </Dica>
                     </div>
                     {variaveis.map(v => (
                       <div key={v} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>

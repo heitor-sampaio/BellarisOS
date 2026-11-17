@@ -5,6 +5,7 @@ import { FileText, RotateCcw, ScrollText, Trash2 } from 'lucide-react'
 import { getDocumentosDoPlano, salvarDocumentosExcluidosDoPlano, type DocumentosDoPlanoNaTela } from '@/actions/treatment-plans'
 import { documentosPuxadosDoPlano } from '@/lib/plano-de-tratamento/documentos'
 import { erroParaTela } from '@/lib/erro-na-tela'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Os documentos do plano (DC1c/PC9b e DC4, a revisão do Heitor de
@@ -68,23 +69,32 @@ export function DocumentosDoPlano({ planId, procedimentosPorSessao, editavel, ac
   return (
     <section data-documentos-do-plano aria-label="Documentos do plano" className="card"
       style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p className="overline">Documentos</p>
-      <p style={ajuda}>
-        {aceito
-          ? 'Os termos e os outros documentos nasceram no aceite; a cliente assina quando quiser (no app, pelo link ou na unidade).'
-          : 'Os termos e os outros documentos nascem quando o plano é aceito; a cliente assina quando quiser.'}
+      {/* Quando os documentos nascem mora na dica (2026-11-16 — era o parágrafo de abertura). */}
+      <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>Documentos</span>
+        <Dica rotulo="Sobre os documentos do plano">
+          {aceito
+            ? 'Os termos e os outros documentos nasceram no aceite; a cliente assina quando quiser (no app, pelo link ou na unidade).'
+            : 'Os termos e os outros documentos nascem quando o plano é aceito; a cliente assina quando quiser.'}
+        </Dica>
       </p>
       <div data-contrato-do-plano style={linha}>
         <ScrollText size={15} color="var(--brand)" aria-hidden style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', overflowWrap: 'anywhere' }}>
-            {dados.contrato ?? 'Nenhum contrato de plano ativo'}
+          <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', overflowWrap: 'anywhere', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{dados.contrato ?? 'Nenhum contrato de plano ativo'}</span>
+            {/* Com contrato, o "quando nasce" mora na dica; sem ele, o caminho para criar fica à vista. */}
+            {dados.contrato && (
+              <Dica rotulo="Quando nasce o contrato do plano">
+                Contrato de plano da rede: nasce no PDV, com a forma de pagamento escolhida.
+              </Dica>
+            )}
           </p>
-          <p style={ajuda}>
-            {dados.contrato
-              ? 'Contrato de plano da rede: nasce no PDV, com a forma de pagamento escolhida.'
-              : 'Crie um em Documentos, com o tipo “Contrato de plano”. Ele nasce no PDV, com o pagamento.'}
-          </p>
+          {!dados.contrato && (
+            <p style={ajuda}>
+              Crie um em Documentos, com o tipo “Contrato de plano”. Ele nasce no PDV, com o pagamento.
+            </p>
+          )}
         </div>
       </div>
       {puxados.length === 0 && <p style={ajuda}>Os procedimentos deste plano não têm termo nem outros documentos.</p>}

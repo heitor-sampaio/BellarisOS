@@ -10,6 +10,7 @@ import { criarAutomacao, criarAutomacaoDeModelo, type AutomacaoNaLista } from '@
 import { MODELOS_DE_AUTOMACAO } from '@/lib/automacoes/modelos'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { RelogioDaRede } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import { NODES } from '@estetica-os/types'
 
 /**
@@ -58,16 +59,18 @@ export function ListaDeAutomacoes({
         gap: 14, flexWrap: 'wrap', marginBottom: 24,
       }}>
         <div>
-          <h1 style={{
-            fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
-            letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
-          }}>
-            Automações
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            Fluxos que reagem sozinhos ao que acontece na rede.
-          </p>
-          {/* A9 da 14ª: a mesma frase do outro lado, nas campanhas. */}
+          {/* A apresentação mora na dica (2026-11-16). */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h1 style={{
+              fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
+              letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
+            }}>
+              Automações
+            </h1>
+            <Dica rotulo="Sobre as automações">Fluxos que reagem sozinhos ao que acontece na rede.</Dica>
+          </div>
+          {/* A9 da 14ª: a mesma frase do outro lado, nas campanhas. Fica à vista:
+              leva o link para as campanhas (o caminho para agir). */}
           <p data-campanha-ou-automacao style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 8, lineHeight: 1.5, maxWidth: 640 }}>
             Automação reage a um fato de cada cliente (agendou, faltou, pagou) ou ao relógio;
             para mandar um aviso a um público de uma vez, use as{' '}
@@ -110,17 +113,18 @@ export function ListaDeAutomacoes({
         <JanelaModal onFechar={() => setVendoModelos(false)} rotulo="Modelos de automação" largura={560} travado={criando}>
           <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', margin: 0 }}>
                   Modelos de automação
                 </h2>
-                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                {/* A explicação mora na dica (2026-11-16). A28 da 16ª: o envio da
+                    ficha de saúde não é automação — mora nas Fichas. */}
+                <Dica rotulo="Sobre os modelos">
                   O modelo cria a automação desligada, com o fluxo montado. Revise e ligue quando estiver do seu jeito.
-                </p>
-                {/* A28 da 16ª: o envio da ficha de saúde não é automação — mora nas Fichas. */}
-                <p data-ficha-de-saude-mora-nas-fichas style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
-                  Mandar a ficha de saúde quando a cliente for agendada é em Configurações → Fichas.
-                </p>
+                  <span data-ficha-de-saude-mora-nas-fichas style={{ display: 'block', marginTop: 6 }}>
+                    Mandar a ficha de saúde quando a cliente for agendada é em Configurações → Fichas.
+                  </span>
+                </Dica>
               </div>
               <button type="button" className="btn-ghost" aria-label="Fechar" onClick={() => setVendoModelos(false)} disabled={criando}>
                 <X size={15} />
@@ -173,15 +177,12 @@ export function ListaDeAutomacoes({
       {automacoes.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '44px 24px' }}>
           <Workflow size={28} color="var(--text-faint)" style={{ marginBottom: 12 }} />
-          <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
-            Nenhuma automação ainda
-          </p>
-          <p style={{
-            fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)',
-            marginTop: 6, maxWidth: 420, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6,
-          }}>
-            Uma automação começa num fato — cliente cadastrado, conversa iniciada,
-            pagamento recebido — e faz o que você montar a partir dali.
+          <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <span>Nenhuma automação ainda</span>
+            <Dica rotulo="Como uma automação funciona">
+              Uma automação começa num fato — cliente cadastrado, conversa iniciada,
+              pagamento recebido — e faz o que você montar a partir dali.
+            </Dica>
           </p>
           {/* Simples primeiro (princípio 7, F69): a lista vazia oferece os dois
               caminhos ali mesmo — o modelo pronto, que é o caso comum, e o

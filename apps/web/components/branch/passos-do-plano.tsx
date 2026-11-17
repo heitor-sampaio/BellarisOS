@@ -10,6 +10,7 @@ import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { rotaCliente, rotaNoPortal } from '@/lib/rotas'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Os passos do plano (PT1a, Bloco Plano de tratamento — a revisão do Heitor de
@@ -37,11 +38,13 @@ function Chip({ texto, tom }: { texto: string; tom: 'feito' | 'falta' | 'neutro'
   )
 }
 
-function Passo({ chave, numero, titulo, estado, atual, feito, children }: {
+function Passo({ chave, numero, titulo, estado, atual, feito, sobre, children }: {
   chave: string; numero: number; titulo: string; estado: ReactNode
   /** O passo da vez: o número preenchido (hierarquia por preenchimento). */
   atual: boolean
   feito: boolean
+  /** O "como funciona" do passo: mora na dica ao lado do título (2026-11-16 — era a frase do passo). */
+  sobre?: ReactNode
   children?: ReactNode
 }) {
   return (
@@ -57,7 +60,10 @@ function Passo({ chave, numero, titulo, estado, atual, feito, children }: {
       </span>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>{titulo}</h3>
+          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{titulo}</span>
+            {sobre && <Dica rotulo={`Sobre o passo ${titulo}`}><span data-sobre-o-passo>{sobre}</span></Dica>}
+          </h3>
           {estado}
         </div>
         {children}
@@ -162,14 +168,14 @@ export function PassosDoPlano({
 
   return (
     <section data-passos-do-plano className="card" style={{ padding: '6px 20px' }} aria-label="Passos do plano">
-      <Passo chave="aceite" numero={1} titulo="Aceite" estado={estadoDoAceite} atual={atual === 'aceite'} feito={aceito}>
-        {!aceito && !cancelado && (acoesDoAceite ?? texto('Quem aceita é quem monta o plano (quem atende na unidade) ou quem recebe no caixa.'))}
+      <Passo chave="aceite" numero={1} titulo="Aceite" estado={estadoDoAceite} atual={atual === 'aceite'} feito={aceito}
+        sobre={!aceito && !cancelado && !acoesDoAceite ? 'Quem aceita é quem monta o plano (quem atende na unidade) ou quem recebe no caixa.' : undefined}>
+        {!aceito && !cancelado && acoesDoAceite}
       </Passo>
 
-      <Passo chave="documentos" numero={2} titulo="Documentos" estado={estadoDosDocs} atual={atual === 'documentos'} feito={docsFeitos}>
-        {!aceito
-          ? texto('Os termos e documentos do plano ficam prontos no aceite, para a cliente assinar pelo link ou no aparelho.')
-          : docs.total > 0 && (
+      <Passo chave="documentos" numero={2} titulo="Documentos" estado={estadoDosDocs} atual={atual === 'documentos'} feito={docsFeitos}
+        sobre={!aceito ? 'Os termos e documentos do plano ficam prontos no aceite, para a cliente assinar pelo link ou no aparelho.' : undefined}>
+        {aceito && docs.total > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {texto(docs.abertos
                 ? `${docs.abertos} ${plural(docs.abertos, 'documento falta', 'documentos faltam')} assinar${docs.faltamDados ? ` (${docs.faltamDados} com dados do cadastro faltando)` : ''}: pelo link ou no aparelho, na ficha da cliente.`
@@ -183,10 +189,13 @@ export function PassosDoPlano({
           )}
       </Passo>
 
-      <Passo chave="pagamento" numero={3} titulo="Contrato e pagamento" estado={estadoDoPagamento} atual={atual === 'pagamento'} feito={pago}>
-        {!aceito ? texto('No aceite, a comanda do plano vai ao PDV: lá se escolhe a forma, a cliente assina o contrato e paga.') : (
+      <Passo chave="pagamento" numero={3} titulo="Contrato e pagamento" estado={estadoDoPagamento} atual={atual === 'pagamento'} feito={pago}
+        sobre={!aceito ? 'No aceite, a comanda do plano vai ao PDV: lá se escolhe a forma, a cliente assina o contrato e paga.'
+          : passos.contrato === 'NO_PDV' ? contrato : undefined}>
+        {aceito && (
           <>
-            {contrato && texto(contrato)}
+            {/* O estado do contrato fica à vista; o "sai no PDV" (que não é estado) foi para a dica. */}
+            {contrato && passos.contrato !== 'NO_PDV' && texto(contrato)}
             {!pago && !cancelado && (
               <div data-plano-falta-receber style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)' }}>
                 <p style={{ flex: 1, minWidth: 220, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
@@ -203,8 +212,10 @@ export function PassosDoPlano({
 
       <Passo chave="sessoes" numero={4} titulo="Sessões" atual={atual === 'sessoes'} feito={sessoesFeitas}
         estado={<Chip tom={sessoesFeitas ? 'feito' : 'neutro'}
-          texto={`${contagem.agendadas} de ${contagem.total} ${plural(contagem.total, 'agendada', 'agendadas')} · ${contagem.feitas} ${plural(contagem.feitas, 'realizada', 'realizadas')}`} />}>
-        {!aceito ? texto('As sessões se agendam depois do aceite — a qualquer momento, uma a uma ou todas de uma vez. A sessão não cobra nada: o plano se paga no PDV.') : (
+          texto={`${contagem.agendadas} de ${contagem.total} ${plural(contagem.total, 'agendada', 'agendadas')} · ${contagem.feitas} ${plural(contagem.feitas, 'realizada', 'realizadas')}`} />}
+        sobre={!aceito ? 'As sessões se agendam depois do aceite — a qualquer momento, uma a uma ou todas de uma vez. A sessão não cobra nada: o plano se paga no PDV.'
+          : passos.status === 'ACCEPTED' && !passos.podeAgendar && livres.length > 0 ? 'Agendar as sessões é de quem tem a Agenda em Gerenciar.' : undefined}>
+        {aceito && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {passos.sessoes.map(s => {
               const feita = s.apptStatus === 'COMPLETED'
@@ -246,7 +257,6 @@ export function PassosDoPlano({
                 <CalendarPlus size={14} /> Agendar todas
               </button>
             )}
-            {passos.status === 'ACCEPTED' && !passos.podeAgendar && livres.length > 0 && texto('Agendar as sessões é de quem tem a Agenda em Gerenciar.')}
           </div>
         )}
       </Passo>

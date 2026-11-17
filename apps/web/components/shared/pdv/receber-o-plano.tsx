@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { Loader2 } from 'lucide-react'
 import { getCheckoutPlan } from '@/actions/treatment-plans'
 import { JanelaModal } from '@/components/shared/janela-modal'
+import { Dica } from '@/components/shared/dica'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 
 // O assistente do plano é grande: só carrega quando alguém vai receber um.
@@ -23,8 +24,10 @@ export function ReceberOPlano({ planoId, slug, aoReceber }: { planoId: string; s
   const [abrindo, abrir] = useTransition()
   return (
     <>
-      <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-        O plano foi aceito. Escolha a forma, colha a assinatura do contrato e receba.
+      {/* O estado fica à vista; o caminho mora na dica (2026-11-16) — o assistente o percorre. */}
+      <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span>O plano foi aceito.</span>
+        <Dica rotulo="Como se recebe o plano">Escolha a forma, colha a assinatura do contrato e receba.</Dica>
       </p>
       {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>{erro}</p>}
       <button type="button" className="btn-primary" disabled={abrindo}

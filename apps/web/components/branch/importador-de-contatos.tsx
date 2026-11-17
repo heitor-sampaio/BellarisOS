@@ -14,6 +14,7 @@ import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type A
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
 import { linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar } from '@/lib/importacao/o-que-entra'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Importar contatos de um CSV (2026-10-13): arquivo → colunas → prévia →
@@ -239,11 +240,13 @@ export function ImportadorDeContatos(p: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 820 }}>
       <div>
-        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-          Importar contatos
+        {/* A apresentação e as explicações dos passos moram nas dicas (2026-11-16). */}
+        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Importar contatos</span>
+          <Dica rotulo="Sobre a importação de contatos">De uma planilha em CSV, como clientes ou como contatos do CRM.</Dica>
         </h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
-          De uma planilha em CSV, como clientes ou como contatos do CRM. Passo {passo} de 4 · {['Arquivo', 'Colunas', 'Prévia', 'Importação'][passo - 1]}
+          Passo {passo} de 4 · {['Arquivo', 'Colunas', 'Prévia', 'Importação'][passo - 1]}
         </p>
       </div>
 
@@ -251,12 +254,14 @@ export function ImportadorDeContatos(p: Props) {
       {passo === 1 && (
         <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label htmlFor="importar-arquivo" style={rotuloCampo}>Arquivo CSV</label>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <label htmlFor="importar-arquivo" style={rotuloCampo}>Arquivo CSV</label>
+              <Dica rotulo="Sobre o formato da planilha">
+                A primeira linha é o cabeçalho. Até 5 MB e 10 mil linhas. No Excel: Arquivo → Salvar como → CSV.
+              </Dica>
+            </span>
             <input id="importar-arquivo" ref={campoDoArquivo} type="file" accept=".csv,text/csv" className="field"
               onChange={e => void lerArquivo(e.target.files?.[0])} />
-            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0 }}>
-              A primeira linha é o cabeçalho. Até 5 MB e 10 mil linhas. No Excel: Arquivo → Salvar como → CSV.
-            </p>
             {arquivo && (
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0 }}>
                 <strong>{arquivo.nome}</strong> · {plural(arquivo.linhas.length, 'linha', 'linhas')}, {plural(arquivo.cabecalho.length, 'coluna', 'colunas')}
@@ -266,7 +271,17 @@ export function ImportadorDeContatos(p: Props) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={rotuloCampo}>Importar</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={rotuloCampo}>Importar</span>
+              {/* O que cada destino faz (era o parágrafo embaixo da escolha). */}
+              <Dica rotulo="Clientes ou contatos do CRM">
+                {destinosPossiveis.map((d, i) => (
+                  <span key={d} data-explica-destino={d} style={{ display: 'block', marginTop: i ? 6 : 0 }}>
+                    <strong>{DESTINOS[d].rotulo}:</strong> {DESTINOS[d].explica}
+                  </span>
+                ))}
+              </Dica>
+            </span>
             {destinosPossiveis.length > 1 ? (
               <SegSelect
                 options={destinosPossiveis.map(d => ({ key: d, label: DESTINOS[d].rotulo }))}
@@ -275,7 +290,6 @@ export function ImportadorDeContatos(p: Props) {
             ) : (
               <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700 }}>{DESTINOS[destino].rotulo}</span>
             )}
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{DESTINOS[destino].explica}</p>
           </div>
 
           {destino === 'clientes' && (
@@ -286,16 +300,18 @@ export function ImportadorDeContatos(p: Props) {
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 360 }}>
-                <label htmlFor="importar-unidade" style={rotuloCampo}>Unidade</label>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <label htmlFor="importar-unidade" style={rotuloCampo}>Unidade</label>
+                  {p.unidades.length > 1 && (
+                    <Dica rotulo="Sobre a unidade da importação">
+                      Se a planilha tiver uma coluna de unidade, cada linha vai para a dela; esta vale para as linhas sem.
+                    </Dica>
+                  )}
+                </span>
                 <select id="importar-unidade" className="field" value={branchId} onChange={e => setBranchId(e.target.value)}>
                   <option value="" disabled>Escolha a unidade</option>
                   {p.unidades.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
                 </select>
-                {p.unidades.length > 1 && (
-                  <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0 }}>
-                    Se a planilha tiver uma coluna de unidade, cada linha vai para a dela; esta vale para as linhas sem.
-                  </p>
-                )}
               </div>
             )
           )}
@@ -304,10 +320,18 @@ export function ImportadorDeContatos(p: Props) {
               pode trazer os campos do card (origem, valor, etapa…). */}
           {p.podeOportunidade && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>
-                <input type="checkbox" checked={comOportunidade} onChange={e => setComOportunidade(e.target.checked)} />
-                Criar oportunidade no funil
-              </label>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={comOportunidade} onChange={e => setComOportunidade(e.target.checked)} />
+                  Criar oportunidade no funil
+                </label>
+                {/* O que a planilha traz por linha (era o parágrafo embaixo da etapa). */}
+                <Dica rotulo="Sobre a oportunidade da importação">
+                  A planilha também pode trazer, por linha, a origem, o valor, a etapa (deste funil), {p.responsaveis ? 'o responsável, ' : ''}o
+                  procedimento de interesse e a campanha — a etapa{p.responsaveis ? ' e o responsável' : ''} daqui valem para as linhas sem.
+                  Quem já tem oportunidade aberta neste funil não ganha outra.
+                </Dica>
+              </span>
               {comOportunidade && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -325,11 +349,6 @@ export function ImportadorDeContatos(p: Props) {
                       </select>
                     </div>
                   )}
-                  <p style={{ gridColumn: '1 / -1', fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
-                    A planilha também pode trazer, por linha, a origem, o valor, a etapa (deste funil), {p.responsaveis ? 'o responsável, ' : ''}o
-                    procedimento de interesse e a campanha — a etapa{p.responsaveis ? ' e o responsável' : ''} daqui valem para as linhas sem.
-                    Quem já tem oportunidade aberta neste funil não ganha outra.
-                  </p>
                 </div>
               )}
             </div>
@@ -396,6 +415,14 @@ export function ImportadorDeContatos(p: Props) {
             <Aviso tom={prontas ? 'ok' : 'erro'}>
               {plural(prontas, 'linha pronta', 'linhas prontas')} para importar
               {comErro > 0 && <> · {plural(comErro, 'recusada', 'recusadas')} ({comErro === 1 ? 'fica' : 'ficam'} de fora e {comErro === 1 ? 'vai' : 'vão'} para o relatório)</>}
+              {' '}
+              {/* Como entra quem já existe (era o parágrafo no fim da prévia, 2026-11-16). */}
+              <Dica rotulo="Como entra quem já está cadastrado">
+                Quem já está cadastrado ({destino === 'clientes' ? 'pelo CPF ou, sem CPF, pelo telefone' : 'pelo telefone ou, sem ele, pelo e-mail'}) só tem o que está em
+                branco completado — nada do que a rede já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags se juntam, e o nome e o e-mail que ficam são os da primeira linha.'} A importação não dispara as
+                automações de cadastro (boas-vindas, nova oportunidade); as de rotina — aniversário, quem não volta há
+                tempo — passam a contar com quem entrou.
+              </Dica>
             </Aviso>
             {/* A7 da 10ª: uma amostra do que entra — era só "20 linhas prontas". */}
             {prontas > 0 && (
@@ -443,12 +470,6 @@ export function ImportadorDeContatos(p: Props) {
               brutas={mapa.indexOf('op_origem') >= 0 ? arquivo.linhas.map(l => (l[mapa.indexOf('op_origem')] ?? '').trim()) : null} />
             <OQueJunta destino={destino} validadas={validadas} cruzados={cruzados} naoCompletar={naoCompletar}
               alternar={n => setNaoCompletar(s => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t })} />
-            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
-              Quem já está cadastrado ({destino === 'clientes' ? 'pelo CPF ou, sem CPF, pelo telefone' : 'pelo telefone ou, sem ele, pelo e-mail'}) só tem o que está em
-              branco completado — nada do que a rede já tem é trocado.{destino === 'contatos' && ' O mesmo telefone em duas linhas é a mesma pessoa: as tags se juntam, e o nome e o e-mail que ficam são os da primeira linha.'} A importação não dispara as
-              automações de cadastro (boas-vindas, nova oportunidade); as de rotina — aniversário, quem não volta há
-              tempo — passam a contar com quem entrou.
-            </p>
           </div>
 
           {comOportunidade && (
@@ -783,13 +804,15 @@ function OrigensDaPlanilha({ validadas, brutas }: { validadas: LinhaValidada[]; 
   const lista = [...pares.entries()]
   return (
     <div data-origens-da-planilha style={caixaDaPrevia}>
-      <span style={forte}>A origem de cada linha é a origem da oportunidade:</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span style={forte}>A origem de cada linha é a origem da oportunidade:</span>
+        <Dica rotulo="Como a origem da planilha entra">
+          A que não é uma das origens da rede (Oportunidades → Configurar funis) nem um apelido conhecido vira “Outro”.
+        </Dica>
+      </span>
       <span>
         {lista.slice(0, 12).map(([de, para]) => (de === para ? para : `${de} → ${para}`)).join(' · ')}
         {lista.length > 12 ? ' …' : ''}
-      </span>
-      <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-        A que não é uma das origens da rede (Oportunidades → Configurar funis) nem um apelido conhecido vira “Outro”.
       </span>
     </div>
   )

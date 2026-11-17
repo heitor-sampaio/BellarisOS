@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useId, useState, useTransition } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigFidelidade } from '@/actions/fidelidade'
@@ -8,15 +8,20 @@ import { erroParaTela } from '@/lib/erro-na-tela'
 import { parseDecimal, NUMERO_INVALIDO } from '@estetica-os/utils'
 import type { ConfigFidelidade, ModoDeGanho, PremioDeIndicacao } from '@/lib/fidelidade/config'
 import { Fala } from '@/components/shared/uma-unidade'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Configurações → Fidelidade: a rede liga o programa e escolhe as regras.
  *
  * O programa é da REDE e nasce desligado (decisão do Heitor, 2026-09-28).
  * Desligado, nada de pontos aparece em lugar nenhum — nem para a equipe, nem
- * para o cliente. O texto de cada escolha fica à vista: o que importa é a
- * consequência, não o rótulo.
+ * para o cliente. O que cada escolha faz mora na dica ao lado do título do
+ * bloco (2026-11-16, o Heitor: "Não dá pra ficar poluindo tela com um monte de
+ * explicaçãozinha" — docs/regras/design.md, "A explicação mora na dica").
  */
+
+/** O título (ou rótulo) com a dica ao lado. */
+const linhaComDica = { display: 'inline-flex', alignItems: 'center', gap: 6 } as const
 
 const MODOS: { key: ModoDeGanho; label: string; explicacao: string }[] = [
   {
@@ -117,13 +122,13 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
       aria-labelledby="titulo-fidelidade">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h2 id="titulo-fidelidade"
-            style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
-            Programa de fidelidade
+          {/* O id fica no texto: o nome da seção não leva o da dica. */}
+          <h2 style={{ ...linhaComDica, fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
+            <span id="titulo-fidelidade">Programa de fidelidade</span>
+            <Dica rotulo="Sobre o programa de fidelidade">
+              O cliente acumula pontos a cada pagamento. Desligado, nada de pontos aparece — nem para a equipe, nem para o cliente.
+            </Dica>
           </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3, maxWidth: 520 }}>
-            O cliente acumula pontos a cada pagamento. Desligado, nada de pontos aparece — nem para a equipe, nem para o cliente.
-          </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
           <button
@@ -146,7 +151,18 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
         </div>
       </div>
 
-      <Bloco titulo="Como o cliente ganha pontos">
+      {/* Os dois modos explicados na dica, para escolher sabendo. */}
+      <Bloco titulo="Como o cliente ganha pontos" sobre={{
+        rotulo: 'Sobre os modos de ganhar pontos',
+        texto: <span style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {MODOS.map(m => (
+            <span key={m.key}>
+              <strong style={{ color: 'var(--text)' }}>{m.label}:</strong> {m.explicacao}
+              {m.key === 'POR_PROCEDIMENTO' && ' Os pontos de cada procedimento são definidos no cadastro dele, em Procedimentos.'}
+            </span>
+          ))}
+        </span>,
+      }}>
         {podeEditar ? (
           <SegSelect
             options={MODOS.map(m => ({ key: m.key, label: m.label }))}
@@ -157,47 +173,38 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
         ) : (
           <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{modoAtual.label}</strong>
         )}
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          {modoAtual.explicacao}
-        </p>
 
         {modo === 'POR_REAL' && (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 5, maxWidth: 260 }}>
-            <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-              Pontos por R$ 1 pago
-            </span>
-            <input
-              name="points_per_real" className="field" inputMode="decimal"
-              value={taxa} onChange={e => setTaxa(e.target.value)} disabled={!podeEditar}
-            />
-            <AvisoDoNumero valor={taxa} casas={CASAS.taxa} />
-            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-              Ex.: 1 = um atendimento de R$ 250 dá 250 pontos. Frações de ponto são descartadas.
-            </span>
-          </label>
-        )}
-        {modo === 'POR_PROCEDIMENTO' && (
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            Os pontos de cada procedimento são definidos no cadastro dele, em Procedimentos.
-          </p>
+          <div style={{ maxWidth: 260 }}>
+            <CampoNumero rotulo="Pontos por R$ 1 pago" nome="points_per_real" valor={taxa} onChange={setTaxa}
+              desabilitado={!podeEditar} casas={CASAS.taxa}
+              sobre="Exemplo: quanto rende cada real"
+              dica="Ex.: 1 = um atendimento de R$ 250 dá 250 pontos. Frações de ponto são descartadas." />
+          </div>
         )}
       </Bloco>
 
-      <Bloco titulo="Usar pontos como desconto">
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          No PDV, ao receber, o cliente pode abater pontos do valor — numa comanda de atendimento (com os produtos dela) ou numa venda à vista. O que ele pagar em pontos não entra como receita — só o que pagar em dinheiro.
-        </p>
+      <Bloco titulo="Usar pontos como desconto" sobre={{
+        rotulo: 'Como o desconto em pontos funciona',
+        texto: 'No PDV, ao receber, o cliente pode abater pontos do valor — numa comanda de atendimento (com os produtos dela) ou numa venda à vista. O que ele pagar em pontos não entra como receita — só o que pagar em dinheiro.',
+      }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <CampoNumero rotulo="Valor de 1 ponto (R$)" nome="redeem_points_value" valor={valorDoPonto} onChange={setValorDoPonto}
+            sobre="Exemplo: quanto vale o ponto"
             dica={`Ex.: 0,01 = 100 pontos valem R$ 1.`} desabilitado={!podeEditar} casas={CASAS.valorDoPonto} />
           <CampoNumero rotulo="Mínimo para usar (pontos)" nome="redeem_min_points" valor={minimo} onChange={setMinimo}
-            dica="0 = qualquer quantidade." desabilitado={!podeEditar} />
+            sobre="Sobre o mínimo" dica="0 = qualquer quantidade." desabilitado={!podeEditar} />
           <CampoNumero rotulo="Pontos pagam até (%)" nome="redeem_max_pct" valor={teto} onChange={setTeto}
-            dica="100 = pode pagar tudo com pontos." desabilitado={!podeEditar} casas={CASAS.teto} />
+            sobre="Sobre o limite do desconto" dica="100 = pode pagar tudo com pontos." desabilitado={!podeEditar} casas={CASAS.teto} />
         </div>
       </Bloco>
 
-      <Bloco titulo="Validade dos pontos">
+      <Bloco titulo="Validade dos pontos" sobre={{
+        rotulo: 'Como a validade funciona',
+        texto: vencem
+          ? 'Cada ponto vence N meses depois de entrar; os mais antigos são usados primeiro. Mudar a regra vale para os pontos novos — os que já existem mantêm o vencimento de quando entraram.'
+          : 'Os pontos ficam com o cliente até ele usar.',
+      }}>
         {podeEditar ? (
           <SegSelect
             options={[{ key: 'nunca', label: 'Não vencem' }, { key: 'meses', label: 'Vencem' }]}
@@ -211,17 +218,12 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
         {vencem && (
           <div style={{ maxWidth: 260 }}>
             <CampoNumero rotulo="Vencem após (meses)" nome="expiry_months" valor={meses} onChange={setMeses}
-              desabilitado={!podeEditar} dica="Contados de quando cada ponto entrou." />
+              desabilitado={!podeEditar} sobre="Sobre a contagem dos meses" dica="Contados de quando cada ponto entrou." />
           </div>
         )}
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          {vencem
-            ? 'Cada ponto vence N meses depois de entrar; os mais antigos são usados primeiro. Mudar a regra vale para os pontos novos — os que já existem mantêm o vencimento de quando entraram.'
-            : 'Os pontos ficam com o cliente até ele usar.'}
-        </p>
         {vencem && (
           <Opcional
-            titulo="Aviso antes de vencer" testId="opcional-aviso"
+            titulo="Aviso antes de vencer" testId="opcional-aviso" sobre="O que o aviso faz"
             opcoes={[{ key: 'nao', label: 'Não avisa' }, { key: 'sim', label: 'Avisa por push' }]}
             ligado={avisar} onChange={setAvisar} podeEditar={podeEditar}
             explicacao={avisar
@@ -229,17 +231,17 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
               : 'O cliente só vê o que vai vencer quando abrir os pontos no portal.'}
           >
             <CampoNumero rotulo="Dias antes" nome="expiry_notice_days" valor={diasAviso} onChange={setDiasAviso}
-              desabilitado={!podeEditar} dica="De 1 a 90 dias." />
+              desabilitado={!podeEditar} sobre="Sobre o prazo do aviso" dica="De 1 a 90 dias." />
           </Opcional>
         )}
       </Bloco>
 
-      <Bloco titulo="Bônus">
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          Pontos que o cliente ganha sem pagar nada, uma vez por ocasião. Valem e vencem como os outros.
-        </p>
+      <Bloco titulo="Bônus" sobre={{
+        rotulo: 'Sobre os bônus',
+        texto: 'Pontos que o cliente ganha sem pagar nada, uma vez por ocasião. Valem e vencem como os outros.',
+      }}>
         <Opcional
-          titulo="No aniversário" testId="opcional-aniversario"
+          titulo="No aniversário" testId="opcional-aniversario" sobre="Como o bônus de aniversário funciona"
           opcoes={[{ key: 'nao', label: 'Sem bônus' }, { key: 'sim', label: 'Dá pontos' }]}
           ligado={aniversario} onChange={setAniversario} podeEditar={podeEditar}
           explicacao={aniversario
@@ -250,7 +252,7 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
             desabilitado={!podeEditar} />
         </Opcional>
         <Opcional
-          titulo="No primeiro acesso ao portal ou ao app" testId="opcional-primeiro-acesso"
+          titulo="No primeiro acesso ao portal ou ao app" testId="opcional-primeiro-acesso" sobre="Como o bônus de primeiro acesso funciona"
           opcoes={[{ key: 'nao', label: 'Sem bônus' }, { key: 'sim', label: 'Dá pontos' }]}
           ligado={primeiroAcesso} onChange={setPrimeiroAcesso} podeEditar={podeEditar}
           explicacao={primeiroAcesso
@@ -266,7 +268,15 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
           "1 - sim"). Nasce desligado (princípio 6); sem dinheiro, sem prêmio (princípio 5). */}
       <Bloco titulo="Indicação">
         <div data-testid="opcional-indicacao" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>Prêmio por indicação</span>
+          {/* Como o prêmio funciona mora na dica (2026-11-16 — era um parágrafo embaixo). */}
+          <span style={{ ...linhaComDica, fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+            <span>Prêmio por indicação</span>
+            <Dica rotulo="Como funciona o prêmio por indicação" largura={340}>
+              {indicacao === 'DESLIGADO'
+                ? 'A ficha guarda quem indicou (“Indicada por”), mas ninguém ganha nada pela indicação.'
+                : `Quem indicou ganha ${indicacao === 'PONTOS' ? 'os pontos' : 'um voucher da recompensa, sem gastar pontos,'} quando a indicada pagar o primeiro atendimento ou a primeira compra (a venda de pacote, pré-pago, produto ou crédito interno também conta) — uma vez por indicada. Se esse pagamento for estornado por inteiro, o prêmio sai junto; o estorno de uma parte não tira o prêmio. Quem já tinha pago antes da indicação não conta. No app, a cliente vê “Indique uma amiga” com o prêmio; a ficha da amiga continua sendo feita pela equipe.`}
+            </Dica>
+          </span>
           {podeEditar ? (
             <SegSelect
               options={PREMIOS.map(o => ({ key: o.key, label: o.label }))}
@@ -307,17 +317,17 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
               )}
             </label>
           )}
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-            {indicacao === 'DESLIGADO'
-              ? 'A ficha guarda quem indicou (“Indicada por”), mas ninguém ganha nada pela indicação.'
-              : `Quem indicou ganha ${indicacao === 'PONTOS' ? 'os pontos' : 'um voucher da recompensa, sem gastar pontos,'} quando a indicada pagar o primeiro atendimento ou a primeira compra (a venda de pacote, pré-pago, produto ou crédito interno também conta) — uma vez por indicada. Se esse pagamento for estornado por inteiro, o prêmio sai junto; o estorno de uma parte não tira o prêmio. Quem já tinha pago antes da indicação não conta. No app, a cliente vê “Indique uma amiga” com o prêmio; a ficha da amiga continua sendo feita pela equipe.`}
-          </p>
         </div>
       </Bloco>
 
       {/* A venda de produto (D4, decisão do Heitor: "os pontos são
           configuráveis pela clínica"). Nasce desligado, como todo opcional. */}
-      <Bloco titulo="Venda de produto">
+      <Bloco titulo="Venda de produto" sobre={{
+        rotulo: 'Quais vendas pontuam',
+        texto: pontuaProduto
+          ? 'A venda de produto dá pontos pelo valor pago, na mesma conta de pontos por R$ 1 — também quando os procedimentos pontuam por procedimento.'
+          : 'A venda de produto não dá pontos. Os atendimentos, os pacotes, os pré-pagos, os planos e o crédito interno vendido pontuam.',
+      }}>
         {podeEditar ? (
           <SegSelect
             options={[{ key: 'nao', label: 'Não pontua' }, { key: 'sim', label: 'Pontua' }]}
@@ -328,14 +338,14 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
         ) : (
           <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{pontuaProduto ? 'Pontua' : 'Não pontua'}</strong>
         )}
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          {pontuaProduto
-            ? 'A venda de produto dá pontos pelo valor pago, na mesma conta de pontos por R$ 1 — também quando os procedimentos pontuam por procedimento.'
-            : 'A venda de produto não dá pontos. Os atendimentos, os pacotes, os pré-pagos, os planos e o crédito interno vendido pontuam.'}
-        </p>
       </Bloco>
 
-      <Bloco titulo="Quem troca pontos por recompensa">
+      <Bloco titulo="Quem troca pontos por recompensa" sobre={{
+        rotulo: 'Como a troca funciona',
+        texto: trocaNoPortal
+          ? 'Além da ficha do cliente, ele troca os pontos pelo portal ou pelo app. O voucher aparece na hora para ele e na ficha para a equipe; o de desconto se usa no PDV, ao receber.'
+          : 'A troca é feita pela ficha do cliente; o voucher de desconto se usa no PDV, ao receber. No portal, o cliente só vê o catálogo.',
+      }}>
         {podeEditar ? (
           <SegSelect
             options={[{ key: 'equipe', label: 'Só a equipe' }, { key: 'cliente', label: 'Também o cliente' }]}
@@ -346,11 +356,6 @@ export function FidelidadeConfig({ inicial, podeEditar, recompensas = [] }: {
         ) : (
           <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{trocaNoPortal ? 'Também o cliente' : 'Só a equipe'}</strong>
         )}
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          {trocaNoPortal
-            ? 'Além da ficha do cliente, ele troca os pontos pelo portal ou pelo app. O voucher aparece na hora para ele e na ficha para a equipe; o de desconto se usa no PDV, ao receber.'
-            : 'A troca é feita pela ficha do cliente; o voucher de desconto se usa no PDV, ao receber. No portal, o cliente só vê o catálogo.'}
-        </p>
       </Bloco>
 
       <Bloco titulo="Comissão quando o cliente usa pontos">
@@ -410,26 +415,38 @@ function AvisoDoNumero({ valor, casas }: { valor: string; casas: number }) {
   )
 }
 
-function CampoNumero({ rotulo, nome, valor, onChange, dica, desabilitado, casas }: {
+/**
+ * Um campo numérico. O `dica` (o exemplo, a faixa) mora na dica ao lado do
+ * rótulo (2026-11-16 — era uma linha embaixo do campo). O rótulo é LIGADO ao
+ * campo pelo `htmlFor`: com a dica dentro de um <label> que envolve, o rótulo
+ * ligaria o botão da dica, não o campo. O `sobre` é o nome da dica — sem o
+ * texto do rótulo, para o getByLabel do campo não achar dois.
+ */
+function CampoNumero({ rotulo, nome, valor, onChange, dica, sobre, desabilitado, casas }: {
   rotulo: string; nome: string; valor: string; onChange: (v: string) => void; dica?: string; desabilitado?: boolean
+  /** O nome acessível da dica. */
+  sobre?: string
   /** Campo com fração: lê como o dinheiro e avisa o ambíguo. */
   casas?: number
 }) {
+  const id = useId()
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-        {rotulo}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <span style={linhaComDica}>
+        <label htmlFor={id} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+          {rotulo}
+        </label>
+        {dica && <Dica rotulo={sobre ?? 'Como preencher'}>{dica}</Dica>}
       </span>
-      <input name={nome} className="field" inputMode="decimal" value={valor}
+      <input id={id} name={nome} className="field" inputMode="decimal" value={valor}
         onChange={e => onChange(e.target.value)} disabled={desabilitado} />
       {casas != null && <AvisoDoNumero valor={valor} casas={casas} />}
-      {dica && <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{dica}</span>}
-    </label>
+    </div>
   )
 }
 
-/** Um opcional: liga/desliga, o número quando ligado e o que acontece. */
-function Opcional({ titulo, testId, opcoes, ligado, onChange, podeEditar, explicacao, children }: {
+/** Um opcional: liga/desliga, o número quando ligado e, na dica ao lado do título, o que acontece. */
+function Opcional({ titulo, testId, opcoes, ligado, onChange, podeEditar, explicacao, sobre, children }: {
   titulo: string
   testId?: string
   opcoes: [{ key: string; label: string }, { key: string; label: string }]
@@ -437,11 +454,16 @@ function Opcional({ titulo, testId, opcoes, ligado, onChange, podeEditar, explic
   onChange: (v: boolean) => void
   podeEditar: boolean
   explicacao?: string
+  /** O nome acessível da dica (sem o título, que é o nome do seletor). */
+  sobre: string
   children: React.ReactNode
 }) {
   return (
     <div data-testid={testId} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{titulo}</span>
+      <span style={{ ...linhaComDica, fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+        <span>{titulo}</span>
+        {explicacao && <Dica rotulo={sobre}>{explicacao}</Dica>}
+      </span>
       {podeEditar ? (
         <SegSelect options={opcoes} value={ligado ? opcoes[1].key : opcoes[0].key}
           onSelect={k => onChange(k === opcoes[1].key)} ariaLabel={titulo} />
@@ -449,17 +471,24 @@ function Opcional({ titulo, testId, opcoes, ligado, onChange, podeEditar, explic
         <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{ligado ? opcoes[1].label : opcoes[0].label}</strong>
       )}
       {ligado && <div style={{ maxWidth: 260 }}>{children}</div>}
-      {explicacao && (
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>{explicacao}</p>
-      )}
     </div>
   )
 }
 
-function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+/** Um bloco da tela; o que ele faz mora na dica ao lado do título. */
+function Bloco({ titulo, sobre, children }: {
+  titulo: string
+  sobre?: { rotulo: string; texto: React.ReactNode }
+  children: React.ReactNode
+}) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
-      <p className="overline">{titulo}</p>
+      {sobre ? (
+        <p className="overline" style={linhaComDica}>
+          <span>{titulo}</span>
+          <Dica rotulo={sobre.rotulo} largura={340}>{sobre.texto}</Dica>
+        </p>
+      ) : <p className="overline">{titulo}</p>}
       {children}
     </div>
   )

@@ -2,6 +2,7 @@
 
 import { X, ShieldCheck } from 'lucide-react'
 import type { LimitesDaAutomacao } from '@estetica-os/types'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Os limites de bom comportamento da automação.
@@ -46,7 +47,15 @@ export function PainelDeLimites({
           fontWeight: 'var(--weight-extrabold)', fontSize: 'var(--text-sm-sz)',
           display: 'flex', alignItems: 'center', gap: 7,
         }}>
-          <ShieldCheck size={15} /> Limites
+          <ShieldCheck size={15} />
+          <span>Limites</span>
+          {/* As explicações moram nas dicas (2026-11-16); o estado ("Sem
+              silêncio", "Sem teto") fica à vista. O rótulo da dica não diz
+              "Limites": o botão da barra se acha por esse nome. */}
+          <Dica rotulo="Para o que isto vale">
+            Valem só para o que <strong>fala com o cliente</strong>. Avisar a
+            equipe e anotar na oportunidade não acordam ninguém.
+          </Dica>
         </span>
         <button type="button" onClick={onFechar} className="btn-ghost" aria-label="Fechar" style={{ padding: 4 }}>
           <X size={15} />
@@ -54,14 +63,14 @@ export function PainelDeLimites({
       </div>
 
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.55 }}>
-          Valem só para o que <strong>fala com o cliente</strong>. Avisar a
-          equipe e anotar na oportunidade não acordam ninguém.
-        </p>
-
         <div role="group" aria-labelledby="limites-silencio">
-          <p id="limites-silencio" className="field-label" style={{ marginBottom: 5 }}>
-            Não mandar mensagem entre
+          <p className="field-label" style={{ marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span id="limites-silencio">Não mandar mensagem entre</span>
+            <Dica rotulo="Como o silêncio funciona">
+              {semSilencio
+                ? <>Para voltar a esperar a manhã, preencha os dois horários.</>
+                : <>A mensagem não é descartada: ela <strong>espera</strong> o horário. Deixe os campos vazios para mandar a qualquer hora.</>}
+            </Dica>
           </p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input
@@ -76,17 +85,24 @@ export function PainelDeLimites({
               onChange={e => onChange({ ...limites, silencioAte: e.target.value || null })}
             />
           </div>
-          <p data-limite-silencio style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
-            {semSilencio
-              ? <><strong>Sem silêncio: a mensagem sai a qualquer hora.</strong> Para voltar a esperar a manhã, preencha os dois horários.</>
-              : <>A mensagem não é descartada: ela <strong>espera</strong> o horário. Deixe os campos vazios para mandar a qualquer hora.</>}
-          </p>
+          {semSilencio && (
+            <p data-limite-silencio style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
+              <strong>Sem silêncio: a mensagem sai a qualquer hora.</strong>
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="field-label" htmlFor="limites-teto" style={{ display: 'block', marginBottom: 5 }}>
-            No máximo, por cliente por dia
-          </label>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+            <label className="field-label" htmlFor="limites-teto">
+              No máximo, por cliente por dia
+            </label>
+            <Dica rotulo="Como o teto funciona">
+              Conta as execuções desta automação com a mesma cliente. Passou do
+              teto, o fluxo para — esperar até amanhã acumularia a fila e
+              mandaria tudo de uma vez. Deixe vazio para não ter teto.
+            </Dica>
+          </span>
           <input
             id="limites-teto" type="number" min={1} className="field"
             value={limites.tetoPorClienteDia ?? ''}
@@ -96,13 +112,11 @@ export function PainelDeLimites({
               tetoPorClienteDia: e.target.value ? Number(e.target.value) : null,
             })}
           />
-          <p data-limite-teto style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
-            {semTeto
-              ? <><strong>Sem teto:</strong> a automação fala com a mesma cliente quantas vezes o fluxo mandar.</>
-              : <>Conta as execuções desta automação com a mesma cliente. Passou do
-                teto, o fluxo para — esperar até amanhã acumularia a fila e
-                mandaria tudo de uma vez. Deixe vazio para não ter teto.</>}
-          </p>
+          {semTeto && (
+            <p data-limite-teto style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
+              <strong>Sem teto:</strong> a automação fala com a mesma cliente quantas vezes o fluxo mandar.
+            </p>
+          )}
         </div>
       </div>
     </aside>

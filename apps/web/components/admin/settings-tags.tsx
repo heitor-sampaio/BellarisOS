@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { Plus, Search, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { criarTag, renomearTag, arquivarTag, listarTagsComUso, type TagDaRede } from '@/actions/tags'
 import { Fala } from '@/components/shared/uma-unidade'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Configurações → Tags (2026-10-13): o vocabulário da rede, um só para a ficha
@@ -78,12 +79,16 @@ export function SettingsTags({ iniciais }: { iniciais: TagDaRede[] }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
-      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-        <Fala>As tags da rede</Fala>, as mesmas na ficha do cliente e no CRM. A tag nova que a equipe grava
-        no card da oportunidade ou na importação, ou que a ação “Adicionar tag” de uma automação da rede
-        grava, também passa a aparecer aqui. O sistema não põe tag em ninguém sozinho. Renomear troca a
-        tag em todos os clientes, contatos e oportunidades; arquivar tira das opções, mas quem já tem
-        continua com ela.
+      {/* O "como funciona" mora na dica (2026-11-16 — era um parágrafo fixo). */}
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span><Fala>As tags da rede</Fala></span>
+        <Dica rotulo="Sobre as tags" largura={340}>
+          <Fala>As tags da rede</Fala>, as mesmas na ficha do cliente e no CRM. A tag nova que a equipe grava
+          no card da oportunidade ou na importação, ou que a ação “Adicionar tag” de uma automação da rede
+          grava, também passa a aparecer aqui. O sistema não põe tag em ninguém sozinho. Renomear troca a
+          tag em todos os clientes, contatos e oportunidades; arquivar tira das opções, mas quem já tem
+          continua com ela.
+        </Dica>
       </p>
 
       <div className="card" style={{ padding: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

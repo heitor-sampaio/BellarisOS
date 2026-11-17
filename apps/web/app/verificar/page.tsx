@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { normalizarCodigo } from '@/lib/documentos/codigo'
 import { MolduraDaVerificacao, FormularioDoCodigo } from './moldura'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Verificar um documento assinado — PÚBLICA (declarada em
@@ -24,12 +25,15 @@ export default async function Verificar({ searchParams }: { searchParams: Promis
   }
   return (
     <MolduraDaVerificacao>
-      <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
-        Verificar documento assinado
-      </h1>
-      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
-        Confira se um termo ou contrato assinado eletronicamente é autêntico e se não foi alterado.
-      </p>
+      {/* A apresentação mora na dica do título (2026-11-16). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
+        <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
+          Verificar documento assinado
+        </h1>
+        <Dica rotulo="O que esta página confere">
+          Confira se um termo ou contrato assinado eletronicamente é autêntico e se não foi alterado.
+        </Dica>
+      </div>
       <FormularioDoCodigo inicial={codigo} erro={codigo ? 'Este código não é válido. Confira as 12 letras e números.' : null} />
     </MolduraDaVerificacao>
   )

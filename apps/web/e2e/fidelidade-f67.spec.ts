@@ -59,6 +59,8 @@ test('A6: a aba Fidelidade diz que o crédito interno vendido pontua', async ({ 
   try {
     const p = await ctx.newPage()
     await p.goto('/admin/settings?tab=fidelidade')
+    // O que pontua mora na dica do bloco "Venda de produto" (2026-11-16).
+    await p.getByRole('button', { name: 'Quais vendas pontuam' }).hover()
     await expect(p.getByText('A venda de produto não dá pontos.', { exact: false }))
       .toContainText('o crédito interno vendido')
   } finally { await ctx.close() }

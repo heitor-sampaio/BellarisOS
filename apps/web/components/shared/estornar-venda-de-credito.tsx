@@ -11,6 +11,7 @@ import type { PreviaDoEstornoDoCredito } from '@/lib/creditos/venda-de-credito'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { textoDoJaUsado } from '@/lib/creditos/bonus'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
+import { Dica } from '@/components/shared/dica'
 import {
   EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, type EscolhaDaDevolucaoEstado,
 } from '@/components/shared/escolha-da-devolucao'
@@ -87,7 +88,13 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
         )}
         {previa && temBonus && previa.opcoesDoBonus && (
           <div data-como-sai-o-bonus role="radiogroup" aria-label="Como o bônus sai" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span className="field-label">Esta venda teve {formatBRL(previa.bonus)} de bônus. Como o bônus sai?</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span className="field-label">Esta venda teve {formatBRL(previa.bonus)} de bônus. Como o bônus sai?</span>
+              {/* O "por que" mora na dica (2026-11-16 — era uma linha fixa embaixo das opções). */}
+              <Dica rotulo="Por que o bônus sai">
+                O bônus sai junto do estorno (ele não teve dinheiro). Nunca volta mais do que a cliente pagou.
+              </Dica>
+            </span>
             {(['INTEIRO', 'PROPORCIONAL'] as const).map(op => {
               const o = previa.opcoesDoBonus![op]
               return (
@@ -100,9 +107,6 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
                 </label>
               )
             })}
-            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-              O bônus sai junto do estorno (ele não teve dinheiro). Nunca volta mais do que a cliente pagou.
-            </p>
           </div>
         )}
         {previa && contaPronta && (
@@ -116,12 +120,16 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
               <div style={linha}><span>Já usado</span><span data-ja-usado style={{ ...valor, whiteSpace: 'normal', textAlign: 'right' }}>{textoDoJaUsado(previa)}</span></div>
               {temBonus && <div style={linha}><span>Bônus que sai</span><span style={valor}>{formatBRL(previa.bonusSai)}</span></div>}
               <div style={{ ...linha, borderTop: '1px solid var(--hairline)', paddingTop: 6 }}>
-                <span style={{ color: 'var(--text)', fontWeight: 700 }}>Volta à cliente</span><span style={valor}>{formatBRL(previa.volta)}</span>
+                <span style={{ color: 'var(--text)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span>Volta à cliente</span>
+                  {/* O "como se calcula" mora na dica (2026-11-16); o que não se desfaz fica no topo da janela. */}
+                  <Dica rotulo="Como se calcula o que volta">
+                    O que volta é o saldo de crédito dela hoje ({formatBRL(previa.saldo)}), até o que ela pagou
+                    {previa.metodo ? ` (${rotuloDaForma(previa.metodo, previa.vezes)})` : ''}. O crédito que volta sai do saldo dela.
+                  </Dica>
+                </span>
+                <span style={valor}>{formatBRL(previa.volta)}</span>
               </div>
-              <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                O que volta é o saldo de crédito dela hoje ({formatBRL(previa.saldo)}), até o que ela pagou
-                {previa.metodo ? ` (${rotuloDaForma(previa.metodo, previa.vezes)})` : ''}. O crédito que volta sai do saldo dela.
-              </p>
             </div>
             {previa.volta <= 0 ? (
               <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>

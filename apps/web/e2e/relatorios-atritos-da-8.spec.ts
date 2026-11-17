@@ -93,6 +93,8 @@ test('A11 da 13ª (F67): o Top 5 da Visão geral diz o pago com crédito interno
 test('A49: o "Cancelados/faltas" do dashboard diz o recorte', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto('/admin/dashboard')
+    // O recorte mora na dica do título do quadro (2026-11-16).
+    await p.locator('[data-clientes-do-periodo] [data-dica-botao]').first().hover()
     await expect(p.locator('[data-recorte-dos-cancelados]')).toContainText('até agora')
   })
 })

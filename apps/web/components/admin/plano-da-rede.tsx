@@ -1,6 +1,7 @@
 import { Check, Minus } from 'lucide-react'
 import { FUNCIONALIDADES, LIMITES, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { oQueSemPlanoLibera } from '@/lib/redes/texto-do-plano'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O que o plano da rede inclui, do lado da CLÍNICA (Configurações →
@@ -21,7 +22,15 @@ export function PlanoDaRede({ recursos, uso, extras = { whatsapp: 0, copilot: fa
   const grupos = [...new Set(FUNCIONALIDADES.map(f => f.grupo))]
   return (
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p className="overline">O que o seu plano inclui</p>
+      {/* O "como ampliar" mora na dica do título (2026-11-16 — era uma linha fixa no pé). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <p className="overline">O que o seu plano inclui</p>
+        {recursos !== null && (
+          <Dica rotulo="Como ampliar o plano">
+            Para incluir uma funcionalidade ou ampliar um limite, fale com o BellarisOS pela Ajuda.
+          </Dica>
+        )}
+      </div>
       {recursos === null ? (
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{oQueSemPlanoLibera(planStatus)}</p>
       ) : (
@@ -62,9 +71,6 @@ export function PlanoDaRede({ recursos, uso, extras = { whatsapp: 0, copilot: fa
               </div>
             ))}
           </div>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            Para incluir uma funcionalidade ou ampliar um limite, fale com o BellarisOS pela Ajuda.
-          </p>
         </>
       )}
     </section>

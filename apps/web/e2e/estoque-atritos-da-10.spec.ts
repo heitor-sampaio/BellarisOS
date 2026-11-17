@@ -108,6 +108,8 @@ test('D5: o ajuste NEGATIVO sai pelo FEFO, ao custo do lote, e entra em "Perdas 
   await como(browser, dona!, async p => {
     const modal = await abrirAjuste(p)
     await modal.getByLabel('Novo estoque').fill('15')
+    // A diferença a menos se explica na dica da Variação (2026-11-16).
+    await modal.getByRole('button', { name: 'Sobre a diferença a menos' }).hover()
     await expect(modal.locator('[data-ajuste-negativo]')).toContainText('Perdas no período')
     await expect(modal.getByLabel('Em qual lote entra a diferença')).toHaveCount(0)
     await modal.getByLabel('Motivo').fill('Inventário: 2 sumiram')

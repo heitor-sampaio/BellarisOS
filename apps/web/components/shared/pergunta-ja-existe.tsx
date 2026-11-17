@@ -1,6 +1,7 @@
 'use client'
 
 import { AlertTriangle } from 'lucide-react'
+import { Dica } from '@/components/shared/dica'
 import { textoDaFichaQueJaExiste, rotuloDoAtualizar, rotuloDoUsar, type FichaQueJaExiste } from '@/lib/clients/ja-existe-texto'
 
 /**
@@ -43,7 +44,7 @@ export function PerguntaJaExiste({ ficha, pending, aoCadastrarMesmoAssim, aoAtua
           {!ficha.podeCadastrarMesmoAssim && ' O CPF é único na rede.'}
         </span>
       </span>
-      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
         {ficha.podeCadastrarMesmoAssim && (
           <button type="button" className="btn-secondary" disabled={pending} onClick={() => aoCadastrarMesmoAssim(ficha.id)}>
             Cadastrar mesmo assim
@@ -59,9 +60,8 @@ export function PerguntaJaExiste({ ficha, pending, aoCadastrarMesmoAssim, aoAtua
             {rotuloDoUsar(ficha)}
           </button>
         )}
-      </span>
-      <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)' }}>
-        {nota}
+        {/* O que cada resposta faz mora na dica ao lado dos botões (2026-11-16 — era a frase embaixo). */}
+        <Dica rotulo="Sobre estas opções">{nota}</Dica>
       </span>
     </div>
   )

@@ -29,6 +29,7 @@ import { PickerCompacto, posicaoDoPainel, type PosicaoDoPainel } from '@/compone
 import { createPortal } from 'react-dom'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 import { perdaNoCard } from '@/lib/crm/perda-no-card'
 
 // --- Filtros e ordenação -----------------------------------------
@@ -704,7 +705,12 @@ function LeadCard({
         <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <div>
-              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Mover para outro funil</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>Mover para outro funil</span>
+                <Dica rotulo="Como a oportunidade muda de funil">
+                  A oportunidade entra na primeira etapa do funil escolhido e sai deste quadro.
+                </Dica>
+              </p>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{lead.name}</p>
             </div>
             <button
@@ -720,10 +726,6 @@ function LeadCard({
               <X size={13} />
             </button>
           </div>
-
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            A oportunidade entra na primeira etapa do funil escolhido e sai deste quadro.
-          </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {outrosFunis.map(f => {
@@ -1346,8 +1348,10 @@ export function CRMBoard({
       />
       {/* A17 da 16ª (princípio 3): com filtro, o quadro diz quantas mostra — e que o resumo do topo é do funil inteiro. */}
       {visibleLeads.length !== leads.length && (
-        <p data-filtro-do-quadro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '0 0 10px' }}>
-          Mostrando {visibleLeads.length} de {leads.length} {leads.length === 1 ? 'oportunidade' : 'oportunidades'}: os números do topo são do funil inteiro.
+        <p data-filtro-do-quadro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>Mostrando {visibleLeads.length} de {leads.length} {leads.length === 1 ? 'oportunidade' : 'oportunidades'}</span>
+          {/* O "por que" mora na dica (2026-11-16). */}
+          <Dica rotulo="Sobre os números do topo">Os números do topo são do funil inteiro.</Dica>
         </p>
       )}
       {/* A34 da 15ª (princípio 7): o contato sem oportunidade (o da Importação)

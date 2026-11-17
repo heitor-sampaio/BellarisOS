@@ -48,6 +48,8 @@ test('D4: o resultado diz a regra (o que foi pago) e o que fica a pagar fora del
   await como(browser, dona!, async p => {
     for (const tela of [`/${slug}/financeiro`, '/admin/financeiro']) {
       await p.goto(tela)
+      // A conta do resultado mora na dica do cartão (2026-11-16).
+      await p.locator('[data-kpi="resultado"], [data-kpi="lucro"]').first().locator('[data-dica-botao]').hover()
       const base = p.locator('[data-base-do-resultado]').first()
       await expect(base).toContainText('a receita e a despesa pelo que foi pago')
       await expect(base).toContainText('o insumo quando é usado')
@@ -61,11 +63,14 @@ test('D4: o resultado diz a regra (o que foi pago) e o que fica a pagar fora del
 test('D8: a perda diz a regra de verdade — é métrica e não entra no lucro, nem quando a compra é paga', async ({ browser }) => {
   await como(browser, dona!, async p => {
     await p.goto('/admin/reports?tab=financeiro')
+    // As duas regras moram nas dicas (2026-11-16): a do DRE e a do cartão das perdas.
+    await p.getByRole('button', { name: 'O que fica fora do lucro' }).hover()
     const fora = p.locator('[data-fora-do-lucro]')
     await expect(fora).toContainText('A perda e o ajuste de estoque ficam fora do lucro')
     await expect(fora).toContainText('nem quando a compra é paga')
     await expect(fora).not.toContainText('já foi pago na compra')
     await p.goto('/admin/reports?tab=estoque')
+    await p.getByRole('button', { name: 'Por que a perda fica fora do lucro' }).hover()
     await expect(p.getByText('Métrica: não entra no lucro, nem quando a compra é paga')).toBeVisible()
     await expect(p.getByText('Não sai do lucro: já foi paga na compra')).toHaveCount(0)
   })

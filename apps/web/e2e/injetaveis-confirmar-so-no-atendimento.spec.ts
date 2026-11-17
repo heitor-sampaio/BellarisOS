@@ -63,6 +63,8 @@ test('fora do atendimento, o mapa não oferece "Confirmar aplicação": diz que 
     await p.goto(`/${slug}/injetaveis/${mapa}`)
     await expect(p.getByText('Aplicações do cliente (0)')).toBeVisible()
     await expect(p.getByRole('button', { name: 'Confirmar aplicação' }), 'nada de "confirmar" que não grava').toHaveCount(0)
+    // Onde a aplicação se registra mora na dica "Como usar o mapa" (2026-11-16).
+    await p.getByRole('button', { name: 'Como usar o mapa' }).hover()
     await expect(p.getByText(/A aplicação se registra no atendimento/)).toBeVisible()
     await expect(p.getByText('Aplicação confirmada', { exact: false })).toHaveCount(0)
   })

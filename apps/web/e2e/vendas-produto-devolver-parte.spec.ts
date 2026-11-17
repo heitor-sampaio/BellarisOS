@@ -98,7 +98,7 @@ test('A34: devolver 1 de 2 séruns pagos no Pix — o estoque volta 1, o Pix fic
     await parte.getByRole('radio', { name: /^Estorno/ }).first().check()
     await parte.getByRole('radio', { name: /Estorno parcial/ }).check()
     await parte.getByLabel('Motivo da devolução *').fill('A cliente devolveu um sérum lacrado')
-    await parte.getByRole('button', { name: 'Devolver' }).click()
+    await parte.getByRole('button', { name: 'Devolver', exact: true }).click()
     await expect(parte).toBeHidden({ timeout: 20_000 })
   })
 
@@ -147,7 +147,7 @@ test('A34 + A41: no cartão, o pagamento volta inteiro e o que fica é lançado 
     await expect(parte.getByLabel('Forma do pagamento do usado')).toHaveValue('CREDIT_CARD')
     await expect(parte.getByLabel('Vezes no cartão')).toHaveValue('3')
     await parte.getByLabel('Motivo da devolução *').fill('Um veio aberto')
-    await parte.getByRole('button', { name: 'Devolver' }).click()
+    await parte.getByRole('button', { name: 'Devolver', exact: true }).click()
     await expect(parte).toBeHidden({ timeout: 20_000 })
   })
   const { data: txs } = await db().from('financial_transactions').select('amount, notes, payment_method, cartao_vezes, category, is_paid')

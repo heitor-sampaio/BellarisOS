@@ -7,6 +7,7 @@ import { formatBRL, parseDinheiro } from '@estetica-os/utils'
 import { salvarPacote } from '@/actions/pacotes'
 import { contemSemAcento } from '@/lib/texto'
 import { SegSelect } from '@/components/shared/seg-select'
+import { Dica } from '@/components/shared/dica'
 import { CampoDeValor, paraTexto } from '@/components/admin/comissao-do-membro'
 import {
   COMISSAO_DO_PACOTE_PADRAO, rotuloDaComissaoDoPacote,
@@ -311,8 +312,10 @@ function DocumentosDoPacote({ documentos, procedimentosDoPacote, excluidos, muda
   return (
     <div role="group" aria-label="Documentos do pacote"
       style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 12, borderTop: '1px solid var(--hairline)' }}>
-      <p className="overline">Documentos</p>
-      <p style={ajuda}>Nascem na venda do pacote, para a cliente assinar de uma vez.</p>
+      <p className="overline" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>Documentos</span>
+        <Dica rotulo="Sobre os documentos do pacote">Nascem na venda do pacote, para a cliente assinar de uma vez.</Dica>
+      </p>
       <div data-contrato-do-pacote style={linha}>
         <FileText size={15} color="var(--brand)" aria-hidden style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -401,14 +404,29 @@ function comissaoDoRascunho(c: ComissaoDoRascunho): { entrada: ComissaoDoPacote 
  * as próximas vendas — o pacote vendido guarda o retrato.
  */
 function CamposDaComissao({ c, mudar }: { c: ComissaoDoRascunho; mudar: (parte: Partial<ComissaoDoRascunho>) => void }) {
-  const ajuda = { fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 } as const
   const titulo = { fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)', margin: 0 } as const
   return (
     <div role="group" aria-label="Comissão do pacote"
       style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12, borderTop: '1px solid var(--hairline)' }}>
       <p className="overline">Comissão</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p style={titulo}>De venda — para quem vendeu</p>
+        {/* A5 da 12ª (princípio 3): a regra do pacote VENCE a comissão de venda da
+            pessoa (Equipe) — e, sem ela, vale a da pessoa (comissoes.md). Na dica
+            do título (2026-11-16). */}
+        <p style={{ ...titulo, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>De venda — para quem vendeu</span>
+          <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+            <Dica rotulo="Sobre a comissão de venda do pacote">
+              <span data-ajuda-da-venda>
+                {c.venda === 'NENHUMA'
+                  ? 'Sem regra no pacote, vale a comissão de venda de quem vendeu (Equipe → Comissão); sem ela, ninguém recebe pela venda.'
+                  : c.venda === 'PERCENTAGE'
+                    ? 'Sobre o valor vendido (com o desconto), liberada à medida que o pacote é pago; o estorno devolve. Vale no lugar da comissão de venda de cada pessoa (Equipe → Comissão).'
+                    : 'Liberada à medida que o pacote é pago; o estorno devolve. Vale no lugar da comissão de venda de cada pessoa (Equipe → Comissão).'}
+              </span>
+            </Dica>
+          </span>
+        </p>
         <div role="group" aria-label="Comissão de venda">
           <SegSelect ariaLabel="Comissão de venda" value={c.venda} options={VENDAS}
             onSelect={k => mudar({ venda: k as VendaDoRascunho })} />
@@ -416,18 +434,20 @@ function CamposDaComissao({ c, mudar }: { c: ComissaoDoRascunho; mudar: (parte: 
         {c.venda !== 'NENHUMA' && (
           <CampoDeValor tipo={c.venda} valor={c.vendaValor} onChange={v => mudar({ vendaValor: v })} rotulo="Valor da comissão de venda" />
         )}
-        {/* A5 da 12ª (princípio 3): a regra do pacote VENCE a comissão de venda da
-            pessoa (Equipe) — e, sem ela, vale a da pessoa (comissoes.md). */}
-        <p style={ajuda} data-ajuda-da-venda>
-          {c.venda === 'NENHUMA'
-            ? 'Sem regra no pacote, vale a comissão de venda de quem vendeu (Equipe → Comissão); sem ela, ninguém recebe pela venda.'
-            : c.venda === 'PERCENTAGE'
-              ? 'Sobre o valor vendido (com o desconto), liberada à medida que o pacote é pago; o estorno devolve. Vale no lugar da comissão de venda de cada pessoa (Equipe → Comissão).'
-              : 'Liberada à medida que o pacote é pago; o estorno devolve. Vale no lugar da comissão de venda de cada pessoa (Equipe → Comissão).'}
-        </p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p style={titulo}>De execução — para quem atende (por sessão ou sobre o pacote)</p>
+        <p style={{ ...titulo, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>De execução — para quem atende (por sessão ou sobre o pacote)</span>
+          <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+            <Dica rotulo="Sobre a comissão de execução do pacote">
+              {c.execucao === 'REGRA' ? 'Cada sessão paga a comissão de quem atende, pela regra dele (Equipe ou Procedimentos).'
+                : c.execucao === 'PERCENTAGE' ? 'Sobre a parte da sessão no preço do pacote.'
+                : c.execucao === 'FIXED_AMOUNT' ? 'O mesmo valor a cada sessão atendida.'
+                : c.execucao === 'PACOTE' ? 'Uma comissão só, sobre o valor vendido do pacote, para a profissional responsável escolhida na venda — quando o pacote estiver pago por inteiro (no cartão em várias vezes, na hora). As sessões não geram comissão.'
+                : 'As sessões deste pacote não geram comissão para quem atende.'}
+            </Dica>
+          </span>
+        </p>
         <div role="group" aria-label="Comissão de execução">
           <SegSelect ariaLabel="Comissão de execução" value={c.execucao} options={EXECUCOES}
             onSelect={k => mudar({ execucao: k as ExecucaoDoPacote })} />
@@ -445,13 +465,6 @@ function CamposDaComissao({ c, mudar }: { c: ComissaoDoRascunho; mudar: (parte: 
             <CampoDeValor tipo={c.pacoteTipo} valor={c.execucaoValor} onChange={v => mudar({ execucaoValor: v })} rotulo="Valor da comissão sobre o pacote" />
           </>
         )}
-        <p style={ajuda}>
-          {c.execucao === 'REGRA' ? 'Cada sessão paga a comissão de quem atende, pela regra dele (Equipe ou Procedimentos).'
-            : c.execucao === 'PERCENTAGE' ? 'Sobre a parte da sessão no preço do pacote.'
-            : c.execucao === 'FIXED_AMOUNT' ? 'O mesmo valor a cada sessão atendida.'
-            : c.execucao === 'PACOTE' ? 'Uma comissão só, sobre o valor vendido do pacote, para a profissional responsável escolhida na venda — quando o pacote estiver pago por inteiro (no cartão em várias vezes, na hora). As sessões não geram comissão.'
-            : 'As sessões deste pacote não geram comissão para quem atende.'}
-        </p>
       </div>
     </div>
   )

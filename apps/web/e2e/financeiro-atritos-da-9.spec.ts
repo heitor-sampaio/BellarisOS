@@ -95,8 +95,11 @@ test('A30: o "A receber da operadora" e o fluxo de caixa dizem o LÍQUIDO, com o
     await como(browser, dona!, async p => {
       await p.goto(rota)
       const cartao = p.locator('[data-kpi="a-receber-operadora"]')
-      await expect(cartao.locator('[data-em-aberto]')).toContainText(/R\$\s950,00 líquido/)
-      await expect(cartao.locator('[data-em-aberto]')).toContainText(/R\$\s1\.000,00 bruto/)
+      await expect(cartao.locator('[data-em-aberto]')).toContainText(/R\$\s950,00/)
+      // O "líquido" e o bruto moram na dica do cartão (2026-11-16).
+      await cartao.locator('[data-dica-botao]').hover()
+      await expect(cartao.locator('[data-dica-do-vencimento]')).toContainText('líquido')
+      await expect(cartao.locator('[data-dica-do-vencimento]')).toContainText(/R\$\s1\.000,00 bruto/)
       const mes = p.locator(`[data-mes="${primeira}"] [data-da-operadora]`)
       await expect(mes).toContainText(/R\$\s475,00/)
       await expect(mes).toContainText(/R\$\s500,00 bruto/)

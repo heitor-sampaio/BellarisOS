@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { FileSearch } from 'lucide-react'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * "Este arquivo é o documento assinado?" — o SHA-256 é calculado AQUI, no
@@ -22,11 +23,14 @@ export function ConferirArquivo({ pdfAssinado, conteudo }: { pdfAssinado: string
 
   return (
     <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Como a conferência funciona mora na dica do título (2026-11-16). */}
       <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)', display: 'flex', gap: 8, alignItems: 'center' }}>
-        <FileSearch size={16} color="var(--brand)" /> Conferir um arquivo
-      </p>
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-        Escolha o PDF que você recebeu. A conferência acontece no seu aparelho — o arquivo não é enviado.
+        <FileSearch size={16} color="var(--brand)" /> <span>Conferir um arquivo</span>
+        <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+          <Dica rotulo="Como funciona a conferência">
+            Escolha o PDF que você recebeu. A conferência acontece no seu aparelho — o arquivo não é enviado.
+          </Dica>
+        </span>
       </p>
       <label className="btn-secondary" style={{ alignSelf: 'flex-start', cursor: 'pointer' }}>
         Escolher arquivo

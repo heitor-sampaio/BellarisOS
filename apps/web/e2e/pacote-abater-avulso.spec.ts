@@ -143,7 +143,7 @@ test('o "Receber" oferece "Abater do pacote": o atendimento vira sessão do paco
     const oferta = janela.locator('[data-abater-do-pacote]')
     await expect(oferta).toContainText(`10 drenagens ${marca}`)
     await expect(oferta).toContainText('10 sessões')
-    await oferta.getByRole('button', { name: 'Abater do pacote' }).click()
+    await oferta.getByRole('button', { name: 'Abater do pacote', exact: true }).click()
     await expect.poll(async () => (await comanda())?.cancelada_motivo, { message: 'abatido', timeout: 20_000 }).toBe('Sessão do pacote')
     await p.goto(`/${slug}/agenda/${ap}`)
     await expect(p.getByText(/Sessão de pacote/).first()).toBeVisible({ timeout: 20_000 })

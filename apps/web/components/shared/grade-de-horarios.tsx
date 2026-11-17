@@ -5,6 +5,7 @@ import { Check } from 'lucide-react'
 import type { Horario } from '@/lib/agenda/horario'
 import { gradeDoCheckout, aPartirDeAgora } from '@/lib/checkout/grade-de-horarios'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * A grade de horários de quem agenda pelo checkout do plano e pelas sessões
@@ -49,7 +50,15 @@ export function GradeDeHorarios({
   return (
     <div data-grade-de-horarios style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Horários</p>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Horários</span>
+          {/* A legenda de uso mora na dica (2026-11-16, "A explicação mora na dica"). */}
+          {!carregando && temEncaixe && (
+            <Dica rotulo="Como se lê a grade de horários">
+              Contorno rosé: o horário de {quem}. Tracejado: encaixe, fora do horário dela.
+            </Dica>
+          )}
+        </p>
         {carregando && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>carregando…</p>}
       </div>
 
@@ -90,12 +99,6 @@ export function GradeDeHorarios({
             )
           })}
         </div>
-      )}
-
-      {!carregando && temEncaixe && (
-        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-          Contorno rosé: o horário de {quem}. Tracejado: encaixe, fora do horário dela.
-        </p>
       )}
 
       {!semOutroHorario && (<>

@@ -3,6 +3,7 @@ import { formatarNoFuso } from '@/lib/formatar-no-fuso'
 import { useFuso } from '@/components/shared/fuso'
 import { ShieldCheck } from 'lucide-react'
 import { iniciaisDoNome } from '@estetica-os/utils'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Quem abriu o prontuário desta cliente (2026-10-27): a lista que o admin da
@@ -17,19 +18,24 @@ export function AcessosAoProntuario({ itens, total }: { itens: AcessoNaFicha[]; 
     <section className="card" aria-label="Acessos ao prontuário" style={{ padding: '18px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <ShieldCheck size={14} style={{ color: 'var(--brand)' }} />
-        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
-          Acessos ao prontuário
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>Acessos ao prontuário</span>
+          {/* A regra é `podeVerAcessosAoProntuario`: sem unidade fixa e com o
+              prontuário em Gerenciar — o texto dizia "só a administração da
+              rede", e o médico da rede via a lista (A43, 2026-11-01). O escopo
+              não muda a regra: com "só os meus" também (A35 da 6ª simulação).
+              O "o que esta lista mostra" mora na dica (2026-11-16). */}
+          <Dica rotulo="Sobre os acessos ao prontuário">
+            Quem viu os dados de saúde desta cliente, e por onde. Esta lista aparece para quem tem o Prontuário em Gerenciar, sem unidade fixa — também com o escopo “só os meus”.
+          </Dica>
         </h3>
         <span className="chip chip-brand" style={{ marginLeft: 'auto' }}>{total}</span>
       </div>
-      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 10 }}>
-        {/* A regra é `podeVerAcessosAoProntuario`: sem unidade fixa e com o
-            prontuário em Gerenciar — o texto dizia "só a administração da
-            rede", e o médico da rede via a lista (A43, 2026-11-01). O escopo
-            não muda a regra: com "só os meus" também (A35 da 6ª simulação). */}
-        Quem viu os dados de saúde desta cliente, e por onde. Esta lista aparece para quem tem o Prontuário em Gerenciar, sem unidade fixa — também com o escopo “só os meus”.
-        {total > itens.length && ` Mostrando os ${itens.length} mais recentes.`}
-      </p>
+      {total > itens.length && (
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 10 }}>
+          Mostrando os {itens.length} mais recentes.
+        </p>
+      )}
       {itens.length === 0 ? (
         <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', padding: '6px 0' }}>Ninguém abriu ainda.</p>
       ) : (

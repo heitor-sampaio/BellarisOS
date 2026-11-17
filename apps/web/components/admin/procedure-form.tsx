@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
 import { useUmaUnidade } from '@/components/shared/uma-unidade'
+import { Dica } from '@/components/shared/dica'
 import {
   EditorDeComissao, entradaDaComissao, estadoInicialDaComissao, type DadosDaComissao,
 } from '@/components/admin/comissao-do-procedimento'
@@ -129,16 +130,61 @@ interface ProcedureFormProps {
  * "Formulários"): solto, "Duração" e "Preço" não chegavam ao leitor de tela
  * nem ao clique. A dica fica fora, para não entrar no nome do campo.
  */
-function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+function Field({ label, children, hint, nota }: {
+  label: string; children: React.ReactNode
+  /** A explicação do campo: vai para a dica, ao lado do rótulo (docs/regras/design.md, "A explicação mora na dica"). */
+  hint?: string
+  /** O estado do campo, à vista embaixo dele (o modelo escolhido trava ou só avisa). */
+  nota?: string
+}) {
+  const rotulo = (
+    <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+      {label}
+    </span>
+  )
+  const estado = nota && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{nota}</p>
+  if (!hint) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {rotulo}
+          {children}
+        </label>
+        {estado}
+      </div>
+    )
+  }
+  // A dica fica FORA do <label> (o nome dela não entra no nome do campo), e
+  // ao lado do rótulo: o label vira `contents`, e o rótulo, a dica e o campo
+  // se arrumam na grade de fora.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-          {label}
-        </span>
-        {children}
+    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', alignItems: 'center', columnGap: 6, rowGap: 5 }}>
+      <label style={{ display: 'contents' }}>
+        <span style={{ gridColumn: 1, gridRow: 1 }}>{rotulo}</span>
+        <div style={{ gridColumn: '1 / -1', gridRow: 2, display: 'flex', flexDirection: 'column', gap: 5 }}>{children}</div>
       </label>
-      {hint && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{hint}</p>}
+      <span style={{ gridColumn: 2, gridRow: 1, justifySelf: 'start', color: 'var(--text-muted)' }}>
+        <Dica rotulo={`Sobre: ${label.replace(/\s*\*$/, '')}`}>{hint}</Dica>
+      </span>
+      {estado && <div style={{ gridColumn: '1 / -1', gridRow: 3 }}>{estado}</div>}
+    </div>
+  )
+}
+
+/** O título de uma seção do formulário, com a explicação na dica ao lado. */
+function TituloDaSecao({ children, dica, id, semMargem = false }: {
+  children: React.ReactNode
+  /** [o nome da dica, a explicação]. */
+  dica?: [string, React.ReactNode]
+  id?: string
+  semMargem?: boolean
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', marginBottom: semMargem ? 0 : 10 }}>
+      <p id={id} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+        {children}
+      </p>
+      {dica && <Dica rotulo={dica[0]}>{dica[1]}</Dica>}
     </div>
   )
 }
@@ -458,19 +504,19 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
 
         {/* Um rótulo só, LIGADO à caixa (J-10, 2026-10-30). O nome é o do
             Heitor (PR2, 2026-11-13): "Permitir auto agendamento". A explicação
-            vai pelo aria-describedby. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingTop: 18 }}>
+            mora na dica, ao lado, fora do rótulo (2026-11-16). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 18 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <input type="checkbox" name="visible_on_client_app" aria-describedby="proc-visivel-no-app-dica"
+            <input type="checkbox" name="visible_on_client_app"
               defaultChecked={existing?.visible_on_client_app ?? false}
               style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
             <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
               Permitir auto agendamento
             </span>
           </label>
-          <p id="proc-visivel-no-app-dica" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-            A cliente vê o procedimento no app e agenda sozinha, sem passar pela equipe.
-          </p>
+          <span style={{ color: 'var(--text-muted)' }}>
+            <Dica rotulo="Sobre o auto agendamento">A cliente vê o procedimento no app e agenda sozinha, sem passar pela equipe.</Dica>
+          </span>
         </div>
 
         {/* UMA ficha. Eram duas — "de anamnese" e "de atendimento" —, com os
@@ -508,8 +554,15 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
         />
         {modelos && (
           <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span id="outros-documentos-rotulo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-              Outros documentos
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+              <span id="outros-documentos-rotulo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                Outros documentos
+              </span>
+              {outrosVisiveis.length > 0 && (
+                <Dica rotulo="Sobre os outros documentos">
+                  Opcional, quantos quiser. Os marcados nascem junto com o termo e o contrato quando o atendimento avulso é agendado.
+                </Dica>
+              )}
             </span>
             {outrosVisiveis.length === 0 ? (
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
@@ -529,9 +582,6 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                     )
                   })}
                 </div>
-                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                  Opcional, quantos quiser. Os marcados nascem junto com o termo e o contrato quando o atendimento avulso é agendado.
-                </p>
               </>
             )}
           </div>
@@ -560,12 +610,9 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
 
       {/* -- Disponibilidade por unidade (só com duas ou mais) -- */}
       {!umaUnidade && <div>
-        <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 8 }}>
+        <TituloDaSecao dica={['Sobre as unidades do procedimento', 'Sem seleção = disponível em todas as unidades.']}>
           DISPONÍVEL NAS UNIDADES
-        </p>
-        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
-          Sem seleção = disponível em todas as unidades
-        </p>
+        </TituloDaSecao>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
           {branches.map(b => {
             const on = selectedBranches.includes(b.id)
@@ -587,14 +634,11 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
       {/* -- Quem realiza (por-01) -- */}
       {profissionais.length > 0 && (
         <div>
-          <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 8 }}>
+          <TituloDaSecao dica={['Sobre quem realiza', quemRealiza.length
+            ? 'O app da cliente e o "Sem preferência" oferecem só quem está marcado; a agenda avisa quando quem foi escolhido não realiza.'
+            : 'Opcional. Sem ninguém marcado, todos que atendem realizam este procedimento.']}>
             QUEM REALIZA
-          </p>
-          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
-            {quemRealiza.length
-              ? 'O app da cliente e o "Sem preferência" oferecem só quem está marcado; a agenda avisa quando quem foi escolhido não realiza.'
-              : 'Opcional. Sem ninguém marcado, todos que atendem realizam este procedimento.'}
-          </p>
+          </TituloDaSecao>
           <div role="group" aria-label="Quem realiza" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {profissionais.map(p => {
               const on = quemRealiza.includes(p.id)
@@ -612,12 +656,9 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
       {/* -- Salas em que é feito (D5) -- */}
       {salas.length > 0 && (
         <div>
-          <p id="salas-do-procedimento" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 8 }}>
+          <TituloDaSecao id="salas-do-procedimento" dica={['Sobre as salas do procedimento', 'Opcional. Sem sala marcada numa unidade, qualquer sala dela serve; com sala marcada, o agendar oferece só as marcadas.']}>
             SALAS EM QUE É FEITO
-          </p>
-          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
-            Opcional. Sem sala marcada numa unidade, qualquer sala dela serve; com sala marcada, o agendar oferece só as marcadas.
-          </p>
+          </TituloDaSecao>
           <div role="group" aria-label="Salas em que é feito" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {salas.map(s => {
               const on = salasMarcadas.includes(s.id)
@@ -635,9 +676,16 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
       {/* -- Insumos -- */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+          {/* A13 da 11ª (princípio 3): R$ 7,95/U era o último custo, e o lote que
+              sai primeiro custa R$ 7,80 — a dica diz de onde vem o número. */}
+          <TituloDaSecao semMargem dica={insumos.length > 0 ? ['Sobre o custo dos insumos', (
+            <span key="custo" data-custo-do-insumo-e-o-ultimo>
+              O custo de cada insumo é o último custo de compra, por unidade de consumo: é ele que a margem do catálogo usa.
+              No atendimento, a baixa sai ao custo do lote que é usado (o que vence primeiro), que pode ser diferente.
+            </span>
+          )] : undefined}>
             INSUMOS UTILIZADOS
-          </p>
+          </TituloDaSecao>
           {products.length > 0 && (
             <button type="button" onClick={addInsumo} style={{
               display: 'flex', alignItems: 'center', gap: 4,
@@ -734,14 +782,6 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
             )
           })}
         </div>
-        {/* A13 da 11ª (princípio 3): R$ 7,95/U era o último custo, e o lote que
-            sai primeiro custa R$ 7,80 — a tela diz de onde vem o número. */}
-        {insumos.length > 0 && (
-          <p data-custo-do-insumo-e-o-ultimo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
-            O custo de cada insumo é o último custo de compra, por unidade de consumo: é ele que a margem do catálogo usa.
-            No atendimento, a baixa sai ao custo do lote que é usado (o que vence primeiro), que pode ser diferente.
-          </p>
-        )}
       </div>
 
       {/* -- Calculadora de custos -- */}
@@ -847,13 +887,13 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           {/* Conteúdo do acordeão */}
           {branchPricingOpen && (
             <div style={{ borderTop: '1px solid var(--border)' }}>
-              <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '8px 14px 6px' }}>
-                Deixe em branco para usar os valores base do procedimento.
-              </p>
-              {/* Header da tabela */}
-              <div className="form-2col" style={{ background: 'var(--bg-app)', borderTop: '1px solid var(--hairline)', borderBottom: '1px solid var(--border)', padding: '6px 12px' }}>
+              {/* Header da tabela; o "deixe em branco" mora na dica do Preço (2026-11-16). */}
+              <div className="form-2col" style={{ background: 'var(--bg-app)', borderBottom: '1px solid var(--border)', padding: '6px 12px' }}>
                 {['Unidade', 'Preço'].map(h => (
-                  <span key={h} style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</span>
+                  <span key={h} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    <span>{h}</span>
+                    {h === 'Preço' && <Dica rotulo="Sobre os preços por unidade">Deixe em branco para usar os valores base do procedimento.</Dica>}
+                  </span>
                 ))}
               </div>
               {branches.map((b, i) => {
@@ -939,15 +979,18 @@ function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio, sempre, criar, 
   // vínculo em silêncio ao salvar.
   const visiveis = opcoes.filter(o => o.ativo || o.id === inicial)
   const escolhido = visiveis.find(o => o.id === valor)
-  const dica = escolhido
+  // À vista, o ESTADO do escolhido (trava ou só avisa, inativo) e o vazio com
+  // o caminho para criar; o "só no avulso" do contrato é explicação: vai para a
+  // dica do rótulo (2026-11-16).
+  const nota = escolhido
     ? [
-        sempre ?? null,
         escolhido.exigencia === 'BLOQUEIA' ? 'bloqueia o início sem assinatura' : 'só avisa se faltar',
         escolhido.ativo ? null : 'modelo inativo — não nasce em atendimento novo',
       ].filter(Boolean).join(' · ')
-    : visiveis.length ? ['Opcional', sempre].filter(Boolean).join(' · ') + '.' : vazio
+    : visiveis.length ? 'Opcional.' : vazio
   return (
-    <Field label={rotulo} hint={dica.charAt(0).toUpperCase() + dica.slice(1)}>
+    <Field label={rotulo} nota={nota.charAt(0).toUpperCase() + nota.slice(1)}
+      hint={sempre ? sempre.charAt(0).toUpperCase() + sempre.slice(1) + '.' : undefined}>
       <select name={nome} className="field" value={valor} onChange={e => { setValor(e.target.value); aoMudar?.(e.target.value) }}>
         <option value="">Nenhum</option>
         {visiveis.map(o => <option key={o.id} value={o.id}>{o.nome}{o.ativo ? '' : ' (inativo)'}</option>)}

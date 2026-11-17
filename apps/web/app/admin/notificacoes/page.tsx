@@ -3,6 +3,7 @@ import { getTenantContext, assertPermission, assertRecurso, can, temRecurso } fr
 import { listCampaigns } from '@/actions/notification-campaigns'
 import { NotificationCampaignsList } from '@/components/admin/notification-campaigns-list'
 import { CanalDaCampanha } from '@/components/admin/canal-da-campanha'
+import { Dica } from '@/components/shared/dica'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,15 +19,17 @@ export default async function AdminNotificacoesPage() {
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{
-          fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
-          letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
-        }}>
-          Notificações
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          Campanhas de aviso no celular para as clientes
-        </p>
+        {/* A apresentação mora na dica (2026-11-16). O parágrafo abaixo fica à
+            vista: leva o link para as Automações (o caminho para agir). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <h1 style={{
+            fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
+            letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
+          }}>
+            Notificações
+          </h1>
+          <Dica rotulo="Sobre as notificações">Campanhas de aviso no celular para as clientes</Dica>
+        </div>
         {/* A9 da 14ª: a campanha parecia repetir as Automações, e nada dizia a
             diferença. Desde o MK1 (2026-11-14) o gatilho de cada cliente
             (aniversário, lembrete, pós-visita…) é um modelo nas Automações. */}

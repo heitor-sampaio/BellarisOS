@@ -85,7 +85,7 @@ test('A56: o "Sem preferência" do remarcar diz quem atende antes de confirmar �
 
   await como(browser, async p => {
     await p.goto(`/${slug}/cliente/agendamentos/${id}`)
-    await p.getByRole('button', { name: 'Remarcar' }).click()
+    await p.getByRole('button', { name: 'Remarcar', exact: true }).click()
     await expect(p.getByRole('group', { name: 'Com quem?' }).getByRole('button', { name: 'Sem preferência' })).toHaveAttribute('aria-pressed', 'true')
     await p.getByLabel('Novo dia').fill(dia(3))
     await p.getByRole('button', { name: '11:00', exact: true }).click()
@@ -109,7 +109,7 @@ test('A57 e A58: o remarcar para menos de 24 h avisa, como o agendar; e o prazo 
     // A58: "até quarta-feira, 12/11 às 14:00" (era "até qua, 12/11…").
     await expect(p.getByText(/cancela ou remarca até ((segunda|terça|quarta|quinta|sexta)-feira|sábado|domingo), \d{2}\/\d{2} às \d{2}:\d{2}/)).toBeVisible()
     // A57: o primeiro horário livre de amanhã (o dia de Brasília).
-    await p.getByRole('button', { name: 'Remarcar' }).click()
+    await p.getByRole('button', { name: 'Remarcar', exact: true }).click()
     const amanha = diaBR(new Date(Date.now() + 86_400_000))
     await p.getByLabel('Novo dia').fill(amanha)
     const primeiro = p.getByRole('button', { name: /^\d{2}:\d{2}$/ }).first()

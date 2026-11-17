@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useId, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Gift, Loader2, Pencil, Plus } from 'lucide-react'
@@ -11,6 +11,7 @@ import { erroParaTela } from '@/lib/erro-na-tela'
 import { explicacaoDoCatalogo, formatarPontos } from '@/lib/fidelidade/formato'
 import { ROTULO_DO_TIPO, TIPOS_DE_RECOMPENSA, descricaoDoVoucher, type TipoDeRecompensa } from '@/lib/fidelidade/voucher'
 import type { Recompensa } from '@/lib/fidelidade/leitura'
+import { Dica } from '@/components/shared/dica'
 
 type Catalogo = Awaited<ReturnType<typeof catalogoDeRecompensas>>
 
@@ -42,12 +43,15 @@ export function FidelidadeCatalogo({ inicial, podeEditar, trocaPeloPortal = fals
       style={{ display: 'flex', flexDirection: 'column', gap: 14 }} aria-labelledby="titulo-catalogo">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h2 id="titulo-catalogo" style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
-            Catálogo de recompensas
+          {/* A apresentação mora na dica (2026-11-16 — era o subtítulo); o id fica
+              no texto, para o nome da seção não levar o da dica. */}
+          <h2 style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)',
+          }}>
+            <span id="titulo-catalogo">Catálogo de recompensas</span>
+            <Dica rotulo="Sobre o catálogo de recompensas">{explicacaoDoCatalogo(trocaPeloPortal)}</Dica>
           </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3, maxWidth: 520 }}>
-            {explicacaoDoCatalogo(trocaPeloPortal)}
-          </p>
         </div>
         {podeEditar && editando === null && (
           <button type="button" className="btn-primary" onClick={() => setEditando('nova')}>
@@ -123,6 +127,7 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, valorDoPo
   const [erro,      setErro]      = useState<string | null>(null)
   const [salvando,  iniciar]      = useTransition()
   const pathname = usePathname()
+  const idDoProduto = useId()
   // O valor dos pontos em reais (A5): o custo × o valor do ponto, em centavos inteiros.
   const pontosDoCusto = Math.trunc(Number(custo) || 0)
   const valorEmReais = valorDoPonto != null && valorDoPonto > 0 && pontosDoCusto > 0
@@ -182,19 +187,26 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, valorDoPo
           </label>
         )}
         {tipo === 'PRODUTO' && (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {rotulo('Produto')}
-            <select name="produto" className="filtro-select" value={prod} onChange={e => setProd(e.target.value)}>
+          // O que acontece com o estoque mora na dica ao lado do rótulo (2026-11-16).
+          // O rótulo liga o seletor pelo htmlFor: dentro de um <label> que envolve,
+          // ele ligaria o botão da dica.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <label htmlFor={idDoProduto} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Produto</label>
+              <Dica rotulo="O que acontece com o estoque">
+                <span data-brinde-sem-estoque>
+                  {prod
+                    ? 'Na entrega, uma embalagem sai do estoque da unidade.'
+                    : 'Sem produto, a recompensa é o que o nome diz: na entrega, o voucher é marcado como usado e o estoque não muda.'}
+                </span>
+              </Dica>
+            </span>
+            <select id={idDoProduto} name="produto" className="filtro-select" value={prod} onChange={e => setProd(e.target.value)}>
               {/* A7 da 12ª: o brinde ou serviço fora do estoque ("Máscara de LED cortesia"). */}
               <option value="">Nenhum — brinde ou serviço fora do estoque</option>
               {produtos.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <span data-brinde-sem-estoque style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-              {prod
-                ? 'Na entrega, uma embalagem sai do estoque da unidade.'
-                : 'Sem produto, a recompensa é o que o nome diz: na entrega, o voucher é marcado como usado e o estoque não muda.'}
-            </span>
-          </label>
+          </div>
         )}
         {(tipo === 'DESCONTO_VALOR' || tipo === 'DESCONTO_PERCENTUAL') && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

@@ -9,6 +9,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { instanteNoFuso } from '@/lib/datetime'
 import { textoDoRemarcado } from '@/lib/clientes/textos-do-app'
 import { cancelarPelaCliente, remarcarPelaCliente, horariosParaRemarcar, quemAtendeNoRemarcar } from '@/actions/portal-agendamentos'
+import { Dica } from '@/components/shared/dica'
 
 /** O dia no relógio da unidade (F62). */
 const diaNoFuso = (ms: number, fuso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: fuso }).format(new Date(ms))
@@ -200,23 +201,28 @@ export function AlterarAgendamento({ appointmentId, scheduledAt, prazoHoras, wha
             </p>
           )}
           {ofereceComQuem && (
-            <div role="group" aria-label="Com quem?" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button type="button" aria-pressed={!semPreferencia} className={!semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
-                onClick={() => { setSemPreferencia(false); if (dia) escolherDia(dia, false) }}>
-                {profissional ? `Só com ${profissional}` : 'A mesma profissional'}
-              </button>
-              <button type="button" aria-pressed={semPreferencia} className={semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
-                onClick={() => { setSemPreferencia(true); if (dia) escolherDia(dia, true) }}>
-                Sem preferência
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', color: 'var(--text-muted)' }}>
+              <div role="group" aria-label="Com quem?" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button type="button" aria-pressed={!semPreferencia} className={!semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                  onClick={() => { setSemPreferencia(false); if (dia) escolherDia(dia, false) }}>
+                  {profissional ? `Só com ${profissional}` : 'A mesma profissional'}
+                </button>
+                <button type="button" aria-pressed={semPreferencia} className={semPreferencia ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                  onClick={() => { setSemPreferencia(true); if (dia) escolherDia(dia, true) }}>
+                  Sem preferência
+                </button>
+              </div>
+              {/* A50 da 12ª: "Sem preferência" marcado ao lado de "Com Helena" não dizia se a
+                  profissional podia mudar. O que significa mora na dica (2026-11-16); com quem
+                  fica o horário novo aparece à vista antes de confirmar (A56 da 11ª). Fora do
+                  grupo: o nome dela não pode conter "Sem preferência". */}
+              <Dica rotulo="Sobre a escolha da profissional">
+                <span data-o-que-e-sem-preferencia>
+                  Sem preferência: {profissional ? `hoje o agendamento é com ${profissional}; no` : 'no'} horário novo, fica com quem estiver livre — pode ser outra profissional.
+                  {profissional ? ` Para ficar com ${profissional}, escolha “Só com ${profissional}”.` : ''}
+                </span>
+              </Dica>
             </div>
-          )}
-          {/* A50 da 12ª: "Sem preferência" marcado ao lado de "Com Helena" não dizia se a profissional podia mudar. */}
-          {ofereceComQuem && semPreferencia && (
-            <p data-o-que-e-sem-preferencia style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-              Sem preferência: {profissional ? `hoje o agendamento é com ${profissional}; no` : 'no'} horário novo, fica com quem estiver livre — pode ser outra profissional.
-              {profissional ? ` Para ficar com ${profissional}, escolha “Só com ${profissional}”.` : ''}
-            </p>
           )}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
             Novo dia

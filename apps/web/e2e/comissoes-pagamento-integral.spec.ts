@@ -210,6 +210,8 @@ test.describe.serial('comissão só com o pagamento integral', () => {
     await comSessao(browser, gestor!, async p => {
       await p.goto('/admin/settings?tab=comissoes')
       const como = p.locator('[aria-label="Como a comissão acontece"]')
+      // O "como funciona" mora na dica do bloco (2026-11-16).
+      await como.getByRole('button', { name: 'Como funciona (pacote, plano, cartão, crediário, estorno)' }).hover()
       await expect(como).toContainText('quando a cliente paga tudo o que a gerou')
       await expect(como).toContainText('Cartão de crédito em várias vezes conta como pago')
       await expect(como.getByRole('button', { name: 'No atendimento' })).toHaveCount(0)

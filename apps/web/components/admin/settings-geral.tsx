@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { cloneElement, useActionState, useEffect, useId, useState } from 'react'
+import { Dica } from '@/components/shared/dica'
 import { Check, Loader2 } from 'lucide-react'
 import { maskCPFouCNPJDigitando, maskTelefoneDigitando } from '@estetica-os/utils'
 import { atualizarDadosDaRede, type DadosDaRede } from '@/actions/rede'
@@ -61,13 +62,14 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
 
   return (
     <form action={enviar} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <div>
+      {/* As explicações da aba moram na dica (2026-11-16 — eram parágrafos fixos). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
           {fala('Dados da rede')}
         </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
+        <Dica rotulo="Sobre estes dados">
           Aparecem nos documentos e nas mensagens que a rede manda.
-        </p>
+        </Dica>
       </div>
 
       {/* Quem não edita (a gerente de unidade fixa, quem só vê) lê o texto, não um campo
@@ -139,20 +141,24 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
         {/* A4 da 6ª simulação: era o identificador da rede ("/{rede.slug}"), que
             não abre tela nenhuma, e a dona não sabia qual endereço dar à cliente. */}
         <div data-app-da-cliente style={{ minWidth: 150, maxWidth: '100%' }}>
-          <p className="overline" style={{ marginBottom: 2 }}>App da cliente</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <p className="overline">App da cliente</p>
+            <Dica rotulo="Sobre o app da cliente">
+              É o endereço que se dá à cliente: ela entra com o e-mail (a senha inicial é o CPF ou, sem ele, o passaporte ou o RNE), e o acesso se cria na ficha dela.
+              {appDaCliente.length > 1 ? ' Qualquer unidade abre a mesma ficha.' : ''}
+            </Dica>
+          </div>
           {appDaCliente.map(a => (
             <p key={a.url} style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflowWrap: 'anywhere' }}>
               {appDaCliente.length > 1 && <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{a.unidade}: </span>}
               {a.url}
             </p>
           ))}
-          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2, maxWidth: 320 }}>
-            É o endereço que se dá à cliente: ela entra com o e-mail (a senha inicial é o CPF ou, sem ele, o passaporte ou o RNE), e o acesso se cria na ficha dela.
-            {appDaCliente.length > 1 ? ' Qualquer unidade abre a mesma ficha.' : ''}
-          </p>
         </div>
+        {/* A situação é estado: fica à vista; o "onde se vê / quem cuida" vai para a dica. */}
         <SoLeitura rotulo="Plano" valor={nomeDoPlanoNaTela(rede.planName, rede.planStatus)}
-          porque={`${rotuloDaSituacao(rede.planStatus)}. ${naRede ? 'Veja faturas e pagamento na aba Assinatura.' : fala('A assinatura fica com quem administra a rede.')}`} />
+          estado={`${rotuloDaSituacao(rede.planStatus)}.`}
+          porque={naRede ? 'Veja faturas e pagamento na aba Assinatura.' : fala('A assinatura fica com quem administra a rede.')} />
         <SoLeitura rotulo={fala('Rede criada em')}
           valor={new Date(rede.criadaEm).toLocaleDateString('pt-BR', { timeZone: fuso })} />
       </div>
@@ -186,36 +192,46 @@ export function SettingsGeral({ rede, podeEditar, naRede = true, appDaCliente = 
   )
 }
 
+/**
+ * O campo com o rótulo ligado (htmlFor/id). A `dica` (o que o campo faz) mora no
+ * "i" ao lado do rótulo (2026-11-16 — era uma linha embaixo do campo), FORA do
+ * <label>: dentro dele, o botão da dica seria o primeiro controle e levaria o rótulo.
+ */
 function Campo({ rotulo, dica, obrigatorio, children }: {
   rotulo: string
   dica?: string
   obrigatorio?: boolean
-  children: React.ReactNode
+  children: React.ReactElement<{ id?: string }>
 }) {
+  const id = useId()
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <span style={{
-        fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)',
-        color: 'var(--text-muted)', letterSpacing: '0.04em',
-      }}>
-        {rotulo}{obrigatorio && <span style={{ color: 'var(--brand)' }}> *</span>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <label htmlFor={id} style={{
+          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)',
+          color: 'var(--text-muted)', letterSpacing: '0.04em',
+        }}>
+          {rotulo}{obrigatorio && <span style={{ color: 'var(--brand)' }}> *</span>}
+        </label>
+        {dica && <Dica rotulo={`Sobre: ${rotulo}`}>{dica}</Dica>}
       </span>
-      {children}
-      {dica && (
-        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{dica}</span>
-      )}
-    </label>
+      {cloneElement(children, { id })}
+    </div>
   )
 }
 
-function SoLeitura({ rotulo, valor, porque }: { rotulo: string; valor: string; porque?: string }) {
+/** O dado só para ler. `estado` (a situação) fica à vista; o `porque` mora na dica ao lado do rótulo (2026-11-16). */
+function SoLeitura({ rotulo, valor, estado, porque }: { rotulo: string; valor: string; estado?: string; porque?: string }) {
   return (
     <div style={{ minWidth: 150 }}>
-      <p className="overline" style={{ marginBottom: 2 }}>{rotulo}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+        <p className="overline">{rotulo}</p>
+        {porque && <Dica rotulo={`Sobre: ${rotulo}`}>{porque}</Dica>}
+      </div>
       <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{valor}</p>
-      {porque && (
+      {estado && (
         <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2, maxWidth: 260 }}>
-          {porque}
+          {estado}
         </p>
       )}
     </div>

@@ -98,6 +98,8 @@ test('o cadastro do pacote: a comissão de quem atende "Valor do pacote", em %',
     await card.getByLabel('Preço do pacote').fill('900')
     const comissao = card.getByRole('group', { name: 'Comissão do pacote' })
     await comissao.getByRole('group', { name: 'Comissão de execução' }).getByRole('button', { name: 'Valor do pacote' }).click()
+    // O que cada escolha faz mora na dica do "De execução" (2026-11-16).
+    await comissao.getByRole('button', { name: 'Sobre a comissão de execução do pacote' }).hover()
     await expect(comissao.getByText(/profissional responsável/)).toBeVisible()
     await comissao.getByRole('group', { name: 'Comissão sobre o pacote' }).getByRole('button', { name: 'Percentual' }).click()
     await comissao.getByLabel('Valor da comissão sobre o pacote').fill('10')

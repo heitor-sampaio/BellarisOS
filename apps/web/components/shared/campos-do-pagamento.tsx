@@ -1,6 +1,6 @@
 'use client'
 
-import { Info } from 'lucide-react'
+import { Dica } from '@/components/shared/dica'
 import { parseDinheiro, formatDinheiroCampo } from '@estetica-os/utils'
 import { lerEntrada, erroDaEntrada, recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
@@ -331,28 +331,33 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
               {limiteDoCrediarioEmTexto(opcoesDeParcelas.length)}
             </span>
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={rotulo}>1º vencimento</span>
+          {/* O "e a forma?" mora na dica, ao lado do rótulo (2026-11-16 — era uma linha fixa).
+              Um <div>, não <label>: o botão da dica dentro do rótulo o roubaria do campo
+              (o campo tem o próprio aria-label). */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={rotulo}>1º vencimento</span>
+              <Dica rotulo="A forma de cada parcela">
+                <span data-forma-ao-receber>Cada parcela, quando a cliente vier pagar, pede a forma dela.</span>
+              </Dica>
+            </span>
             <input className="field" type="date" required value={estado.data} onChange={e => mudar({ data: e.target.value })} aria-label="Vencimento" />
-          </label>
+          </div>
         </div>
       )}
       {forma === 'A_RECEBER' && (
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 260 }}>
-          <span style={rotulo}>Vencimento (opcional)</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 260 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={rotulo}>Vencimento (opcional)</span>
+            <Dica rotulo="A forma do a receber">
+              <span data-forma-ao-receber>Nada entra agora: a forma se escolhe quando a cliente pagar.</span>
+            </Dica>
+          </span>
           <input className="field" type="date" value={estado.vencimento} onChange={e => mudar({ vencimento: e.target.value })} aria-label="Vencimento" />
-        </label>
+        </div>
       )}
       {forma === 'PARCELADO' && total !== undefined && !recusaDaEntrada && (
         <ResumoDasParcelas total={total} entrada={valorDaEntrada} parcelas={estado.parcelas} />
-      )}
-      {(forma === 'PARCELADO' || forma === 'A_RECEBER') && (
-        <p data-forma-ao-receber style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-          <Info size={13} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
-          {forma === 'PARCELADO'
-            ? 'Cada parcela, quando a cliente vier pagar, pede a forma dela.'
-            : 'Nada entra agora: a forma se escolhe quando a cliente pagar.'}
-        </p>
       )}
     </>
   )

@@ -130,6 +130,10 @@ const AREAS = [
   { nome: 'plataforma (sistema e suporte)',
     chaves: ['apps/sistema/', 'apps/suporte/', 'nucleo/src/lib/plataforma/', 'nucleo/src/lib/suporte/', 'nucleo/src/lib/redes/', '/auth/suporte-', 'api/interno/'],
     specs: /^(plataforma-hosts|plataforma-gerente|plataforma-primeiro-admin|plataforma-recuperar-senha|planos-recursos|planos-adicionais|planos-comparativo|suporte-|sistema-|chamados|assinaturas-asaas|api-sem)/ },
+  // A explicação na dica (2026-11-16): o componente e os specs de cada área.
+  { nome: 'dicas',
+    chaves: ['components/shared/dica', 'nucleo/src/components/dica'],
+    specs: /^(dicas-|financeiro-dicas)/ },
   { nome: 'visual',
     chaves: ['globals.css', 'components/ui/', 'seg-select', 'seletor'],
     specs: /^(seletores|render-limpo|smoke)/ },

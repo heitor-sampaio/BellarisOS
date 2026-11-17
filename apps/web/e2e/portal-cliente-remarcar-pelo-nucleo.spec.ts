@@ -146,7 +146,7 @@ test('A15: com mais de uma unidade, o remarcar do app pergunta "Em qual unidade?
   await como(browser, cliente!, async p => {
     id = await agendarPeloApp(p, rede!.professionalId, em(dia(5), '10:00'))
     await p.goto(`/${slug}/cliente/agendamentos/${id}`)
-    await p.getByRole('button', { name: 'Remarcar' }).click()
+    await p.getByRole('button', { name: 'Remarcar', exact: true }).click()
     const onde = p.getByLabel('Em qual unidade?')
     await expect(onde).toBeVisible()
     await onde.selectOption({ label: `${PREFIXO} Batel ${marca}` })

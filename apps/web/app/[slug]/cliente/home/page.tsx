@@ -26,6 +26,7 @@ import { validoAteDaProposta } from '@/lib/plano-de-tratamento/validade'
 import { textoDoIndiqueUmaAmiga } from '@/lib/fidelidade/indicacao'
 import { nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 import { textoDoParaAvaliar } from '@/lib/clientes/textos-do-app'
+import { Dica } from '@/components/shared/dica'
 
 // -- Helpers --------------------------------------------------------
 /** No relógio da unidade (F62). */
@@ -334,11 +335,11 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
         <section data-aguardando-confirmacao>
           {/* A56 da 12ª: "Aguardando sua confirmação" se lia como confirmar presença — é o atendimento
               já feito, para a cliente confirmar que foi feito e, se quiser, avaliar. */}
-          <SectionHeader label="Como foram os seus atendimentos?" />
-          {/* A54 da 8ª: parecia uma pendência — é opcional. */}
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '-4px 0 10px' }}>
-            É opcional: confirmar que o atendimento foi feito e avaliar ajuda a equipe a melhorar.
-          </p>
+          {/* A54 da 8ª: parecia uma pendência — é opcional (o porquê mora na dica, 2026-11-16). */}
+          <SectionHeader label="Como foram os seus atendimentos?" dica={{
+            rotulo: 'Sobre a avaliação',
+            texto: 'É opcional: confirmar que o atendimento foi feito e avaliar ajuda a equipe a melhorar.',
+          }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pendingConfirm.map(a => (
               <Link
@@ -408,8 +409,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 {nextAppt.branches?.is_active === false && <AvisoUnidadeDesativada nome={nextAppt.branches.name} aberto />}
                 {/* A51: o de hoje que passou da hora segue aqui até a clínica concluir. */}
                 {jaPassouDaHora(nextAppt.scheduled_at) && (
-                  <p data-passou-da-hora style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
-                    Hoje, já no horário: a equipe registra quando o atendimento terminar.
+                  // O estado fica à vista; o porquê de ainda estar aqui, na dica (2026-11-16).
+                  <p data-passou-da-hora style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>Hoje, já no horário</span>
+                    <Dica rotulo="Por que ainda aparece aqui">A equipe registra quando o atendimento terminar.</Dica>
                   </p>
                 )}
               </div>
@@ -726,7 +729,7 @@ function jaPassou(d: Date): boolean {
   return d.getTime() < Date.now()
 }
 
-function SectionHeader({ label }: { label: string }) {
+function SectionHeader({ label, dica }: { label: string; dica?: { rotulo: string; texto: React.ReactNode } }) {
   return (
     <p style={{
       fontSize: 'var(--text-2xs)',
@@ -735,8 +738,13 @@ function SectionHeader({ label }: { label: string }) {
       letterSpacing: '0.08em',
       textTransform: 'uppercase',
       marginBottom:  10,
+      display:       'flex',
+      alignItems:    'center',
+      gap:           6,
     }}>
-      {label}
+      <span>{label}</span>
+      {/* A explicação da seção mora na dica (docs/regras/design.md). */}
+      {dica && <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>}
     </p>
   )
 }

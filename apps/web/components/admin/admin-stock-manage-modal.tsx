@@ -25,6 +25,7 @@ import { parseDecimal } from '@estetica-os/utils'
 import { useFuso } from '@/components/shared/fuso'
 import { avisoDoCustoDaEntrada } from '@/lib/estoque/custo-da-entrada'
 import { CampoDaLista, type ItemDaLista } from '@/components/admin/campo-da-lista'
+import { Dica } from '@/components/shared/dica'
 
 type BranchStock = {
   branchId:     string
@@ -205,13 +206,6 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
           label="Unidade de destino" required defaultValue={unidadeSugerida(soAtivas(allBranches), sugerida)} />
       )}
 
-      {/* A37 da 10ª: a Entrada diz a regra, como a Perda (D13 revisto, decisão do
-          Heitor, 2026-10-28: movimentação de estoque nunca gera despesa). */}
-      <p data-entrada-sem-despesa style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a rede pagou entra no
-        Financeiro por um lançamento (Novo lançamento, categoria “Compra de estoque”).
-      </p>
-
       <div className="form-2col">
         <FieldWrap>
           <Label htmlFor="entrada-quantidade">Quantidade *</Label>
@@ -222,7 +216,18 @@ function EntradaForm({ product, allBranches, defaultBranchId, sugerida, marcas =
           </div>
         </FieldWrap>
         <FieldWrap>
-          <Label htmlFor="entrada-custo">Custo unitário</Label>
+          {/* A37 da 10ª: a Entrada diz a regra, como a Perda (D13 revisto, decisão do
+              Heitor, 2026-10-28: movimentação de estoque nunca gera despesa) — na
+              dica do custo (2026-11-16). */}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+            <Label htmlFor="entrada-custo">Custo unitário</Label>
+            <Dica rotulo="Sobre o custo da entrada">
+              <span data-entrada-sem-despesa>
+                Não gera despesa: o custo é a base do insumo, do valor em estoque e da margem. A compra que a rede pagou entra no
+                Financeiro por um lançamento (Novo lançamento, categoria “Compra de estoque”).
+              </span>
+            </Dica>
+          </span>
           <div style={{ position: 'relative' }}>
             <span style={{
               position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
@@ -487,8 +492,10 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
         <AlertTriangle size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
         {/* A49 da 11ª: era "Operação crítica… inconsistência" — assustava numa contagem de rotina. */}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', lineHeight: 1.5 }}>
-          <strong>Contagem do inventário.</strong> Digite o que há na prateleira agora: o saldo passa a ser a contagem.
-          A diferença a mais entra num lote; a menos vai para Perdas (Inventário). Errou? Desfaça no Histórico.
+          <strong>Contagem do inventário.</strong> Digite o que há na prateleira agora: o saldo passa a ser a contagem.{' '}
+          <Dica rotulo="Para onde vai a diferença">
+            A diferença a mais entra num lote; a menos vai para Perdas (Inventário). Errou? Desfaça no Histórico.
+          </Dica>
         </p>
       </div>
 
@@ -520,8 +527,17 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
           </div>
           {delta !== null && !isNaN(delta) && (
             <div>
-              <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 2 }}>
-                VARIAÇÃO
+              <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 2 }}>
+                <span>VARIAÇÃO</span>
+                {/* A diferença a menos: de onde sai e onde entra, na dica (2026-11-16). */}
+                {delta < 0 && (
+                  <Dica rotulo="Sobre a diferença a menos">
+                    <span data-ajuste-negativo>
+                      A diferença sai {loteDoAjuste ? 'do lote escolhido (o que faltar nele, do que vence primeiro)' : 'do lote que vence primeiro'} e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.
+                      Entrada, ajuste ou perda lançados errados se desfazem no Histórico (“Desfazer entrada”, “Desfazer ajuste”, “Desfazer perda”).
+                    </span>
+                  </Dica>
+                )}
               </p>
               <p style={{
                 fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em',
@@ -623,10 +639,6 @@ function AjusteForm({ product, allBranches, defaultBranchId, sugerida, onClose, 
               </select>
             </FieldWrap>
           )}
-          <p data-ajuste-negativo style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            A diferença sai {loteDoAjuste ? 'do lote escolhido (o que faltar nele, do que vence primeiro)' : 'do lote que vence primeiro'} e entra em Relatórios → Estoque, “Perdas no período”, como Inventário, ao custo do lote. Não gera despesa.
-            Entrada, ajuste ou perda lançados errados se desfazem no Histórico (“Desfazer entrada”, “Desfazer ajuste”, “Desfazer perda”).
-          </p>
         </>
       )}
 
@@ -719,9 +731,6 @@ function PerdaForm({ product, allBranches, defaultBranchId, sugerida, onClose, o
   const rotulo: React.CSSProperties = { fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        O que saiu do estoque sem ser usado num atendimento. Não gera despesa: o custo entra no relatório de perdas.
-      </p>
       {defaultBranchId ? (
         <input type="hidden" name="branchId" value={defaultBranchId} />
       ) : (
@@ -762,7 +771,13 @@ function PerdaForm({ product, allBranches, defaultBranchId, sugerida, onClose, o
           {equivale && <span data-equivale style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{equivale}</span>}
         </FieldWrap>
         <FieldWrap>
-          <label htmlFor="perda-motivo" style={rotulo}>Motivo</label>
+          {/* O que é perda mora na dica do Motivo (2026-11-16). */}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+            <label htmlFor="perda-motivo" style={rotulo}>Motivo</label>
+            <Dica rotulo="Sobre esta baixa">
+              O que saiu do estoque sem ser usado num atendimento. Não gera despesa: o custo entra no relatório de perdas.
+            </Dica>
+          </span>
           <select id="perda-motivo" name="motivo" required className="field" defaultValue="">
             <option value="" disabled>Selecione…</option>
             {MOTIVOS_DA_PERDA.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
@@ -830,9 +845,12 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        Configure o estoque mínimo desejável de <strong style={{ color: 'var(--text)' }}>{product.name}</strong> em
-        cada unidade. No mínimo ou abaixo deste valor, o produto é sinalizado como alerta.
+      {/* A explicação do mínimo mora na dica (2026-11-16). */}
+      <p style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        <span>Mínimo de <strong style={{ color: 'var(--text)' }}>{product.name}</strong> em cada unidade</span>
+        <Dica rotulo="Sobre o alerta de mínimo">
+          Configure o estoque mínimo desejável de {product.name} em cada unidade. No mínimo ou abaixo deste valor, o produto é sinalizado como alerta.
+        </Dica>
       </p>
 
       {visibleBranches.map(b => {
@@ -864,8 +882,9 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
               )}
               {/* A15 da 14ª: a linha diz "(do cadastro)"; aqui, o mesmo, dito por extenso. */}
               {bs && minimoEhDoCadastro(Number(bs.minStock), product.minimoDoCadastro) && (
-                <p data-minimo-igual-ao-cadastro style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
-                  O mesmo do cadastro do produto. Mudar aqui vale só nesta unidade.
+                <p data-minimo-igual-ao-cadastro style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
+                  <span>O mesmo do cadastro do produto.</span>
+                  <Dica rotulo={`Sobre o mínimo em ${b.name}`}>Mudar aqui vale só nesta unidade.</Dica>
                 </p>
               )}
             </div>

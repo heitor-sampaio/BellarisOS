@@ -10,7 +10,7 @@ import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
   XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard, ClipboardList, FileText,
-  AlertCircle, Info, StickyNote, Syringe, HandCoins,
+  AlertCircle, StickyNote, Syringe, HandCoins,
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatarNoFuso } from '@/lib/formatar-no-fuso'
@@ -51,6 +51,7 @@ import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes, useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
+import { Dica } from '@/components/shared/dica'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 import { recusaDaEntradaAcimaDoTotal } from '@/lib/checkout/entrada'
 import { parcelasEmTexto } from '@/lib/checkout/resumo-do-pagamento'
@@ -511,8 +512,11 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
           {/* E a ficha do procedimento, também na mesma conclusão (D1, 2026-10-29). */}
           {ficha && <input type="hidden" name="ficha" value={JSON.stringify(ficha)} />}
           <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
-            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 600 }}>O procedimento foi realizado com sucesso?</p>
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 3 }}>Confirme para liberar o cliente. Adicione observações se necessário.</p>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>O procedimento foi realizado com sucesso?</span>
+              {/* O subtítulo mora na dica (2026-11-16, "A explicação mora na dica"). */}
+              <Dica rotulo="Sobre a conclusão">Confirme para liberar o cliente. Adicione observações se necessário.</Dica>
+            </p>
           </div>
           {/* A29 da 8ª simulação: o que já foi escrito NA TELA não se repete aqui
               como campo — a janela mostra o que vai ao prontuário (para mudar, é
@@ -1009,8 +1013,14 @@ function DorasCard({ value, onChange, readonly, erro }: {
     <div className="card" data-campo="dores" data-invalido={erro ? 'true' : undefined}
       style={{ padding: 0, overflow: 'hidden', ...(erro ? { borderLeft: '3px solid var(--danger)' } : {}) }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-        <h3 id="titulo-dores" style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Queixas e dores</h3>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Queixas e necessidades relatadas na consulta — pedidas só para gerar um plano; sem plano, são opcionais.</p>
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* O id fica no texto: o campo se rotula só pelo título, sem a dica. */}
+          <span id="titulo-dores">Queixas e dores</span>
+          {/* O subtítulo mora na dica (2026-11-16, "A explicação mora na dica"). */}
+          <Dica rotulo="Sobre as queixas e dores">
+            Queixas e necessidades relatadas na consulta — pedidas só para gerar um plano; sem plano, são opcionais.
+          </Dica>
+        </h3>
       </div>
       <div style={{ padding: '18px 20px' }}>
         {erro && <p role="alert" style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600, marginBottom: 6 }}>{erro}</p>}
@@ -1847,9 +1857,13 @@ export function AppointmentSession({
             de finalizar (o rascunho é da aba — decisão do Heitor, A31 de 27/10).
             A tela diz isso, em vez de a profissional descobrir ao trocar de aparelho. */}
         {status === 'IN_PROGRESS' && podeRascunhar && (
-          <p data-aviso-do-rascunho role="note" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-            <Info size={14} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--info)' }} />
-            A ficha de saúde, a evolução e a ficha digitadas ficam guardadas só nesta aba até o “Finalizar atendimento”: recarregar mantém; fechar a aba ou abrir em outro aparelho, não.
+          <p data-aviso-do-rascunho role="note" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+            {/* 2026-11-16 ("A explicação mora na dica"): o risco (perder o
+                digitado) fica à vista, curto; o detalhe, na dica. */}
+            <span>Guardado só nesta aba até o “Finalizar atendimento”.</span>
+            <Dica rotulo="Sobre o que se digita aqui">
+              A ficha de saúde, a evolução e a ficha digitadas ficam guardadas só nesta aba até o “Finalizar atendimento”: recarregar mantém; fechar a aba ou abrir em outro aparelho, não.
+            </Dica>
           </p>
         )}
 
@@ -2119,10 +2133,15 @@ export function AppointmentSession({
                         lancamento={{ id: paymentTransaction.id, descricao: 'Atendimento concluído', valor: paymentTransaction.amount, pago: true, metodo: paymentTransaction.paymentMethod, doAtendimento: true }} />
                     )}
                     {/* A35 da 12ª: a recepção não estorna, e a página não dizia a quem pedir (a ficha dizia). */}
+                    {/* Na dica desde 2026-11-16 ("isto é de quem tem tal permissão"). */}
                     {quemEstorna && (
-                      <span data-quem-estorna style={{ display: 'block', width: '100%', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                        Estornar este pagamento é de quem tem o Financeiro em Gerenciar
-                        {quemEstorna.length > 0 ? `: ${quemEstorna.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)' }}>
+                        <Dica rotulo="Quem estorna este pagamento">
+                          <span data-quem-estorna>
+                            Estornar este pagamento é de quem tem o Financeiro em Gerenciar
+                            {quemEstorna.length > 0 ? `: ${quemEstorna.join(', ')}.` : ' (ninguém na equipe tem hoje: veja em Configurações → Cargos).'}
+                          </span>
+                        </Dica>
                       </span>
                     )}
                   </div>
@@ -2274,9 +2293,9 @@ export function AppointmentSession({
                   {(podeReceber || montaPlanoNaUnidade) && existingPlan?.status === 'PROPOSED' && (
                     <div data-plano-proposto className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                       <div>
-                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>A cliente vai pensar</p>
-                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                          Quando ela quiser fazer, aceite o plano: a comanda dele vai ao PDV.
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>A cliente vai pensar</span>
+                          <Dica rotulo="Sobre o plano proposto">Quando ela quiser fazer, aceite o plano: a comanda dele vai ao PDV.</Dica>
                         </p>
                       </div>
                       <button type="button" className="btn-primary" disabled={generating} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}
@@ -2445,10 +2464,12 @@ export function AppointmentSession({
                           não vem como a ação grande, que parecia uma proposta. */}
                       {isPackageSession && status !== 'COMPLETED' && (
                         <div data-plano-novo-na-sessao-do-pacote style={{ marginBottom: 12 }}>
-                          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Propor um plano novo (opcional)</h3>
-                          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-                            Esta sessão já está paga pelo pacote. Monte um plano só se a cliente quiser um tratamento novo; para encerrar, basta o &quot;Finalizar atendimento&quot;.
-                          </p>
+                          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>Propor um plano novo (opcional)</span>
+                            <Dica rotulo="Sobre o plano na sessão do pacote">
+                              Esta sessão já está paga pelo pacote. Monte um plano só se a cliente quiser um tratamento novo; para encerrar, basta o &quot;Finalizar atendimento&quot;.
+                            </Dica>
+                          </h3>
                         </div>
                       )}
                       {genError && (
@@ -2507,9 +2528,12 @@ export function AppointmentSession({
                           Sem plano a propor? Para encerrar este atendimento, basta o &quot;Finalizar atendimento&quot;, <OndeEstaOFinalizar />.
                         </p>
                       )}
-                      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 10 }}>
-                        {status === 'COMPLETED' ? 'Salva o plano.' : 'Salva a avaliação e o plano.'}
-                        {' '}“Aceitar plano” manda a comanda ao PDV, onde a cliente assina o contrato e paga; “a cliente vai pensar” deixa o plano proposto, para aceitar depois.
+                      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                        <span>{status === 'COMPLETED' ? 'Salva o plano.' : 'Salva a avaliação e o plano.'}</span>
+                        {/* A legenda dos botões mora na dica (2026-11-16). */}
+                        <Dica rotulo="O que cada botão do plano faz">
+                          “Aceitar plano” manda a comanda ao PDV, onde a cliente assina o contrato e paga; “a cliente vai pensar” deixa o plano proposto, para aceitar depois.
+                        </Dica>
                       </p>
                     </div>
                   )}

@@ -10,6 +10,7 @@ import { interpolar } from '@/lib/documentos/arvore'
 import { VARIAVEIS_DE_DOCUMENTO, variaveisDoTipo, ehOpcional, rotuloNoMenu, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { extensoesDoDocumento } from './extensoes'
 import { BarraDoEditor, type Parte } from './barra'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O editor rico de termos e contratos: corpo, cabeçalho e rodapé, cada um um
@@ -102,11 +103,21 @@ export default function EditorRico({ inicial, tipo, imagens, onChange }: {
   return (
     <div className="editor-rico-caixa">
       <div className="editor-rico-topo">
-        <SegSelect
-          ariaLabel="Parte do documento"
-          options={[{ key: 'corpo', label: 'Corpo' }, { key: 'cabecalho', label: 'Cabeçalho' }, { key: 'rodape', label: 'Rodapé' }]}
-          value={parte} onSelect={k => { setParte(k as Parte); setPrevia(null) }}
-        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <SegSelect
+            ariaLabel="Parte do documento"
+            options={[{ key: 'corpo', label: 'Corpo' }, { key: 'cabecalho', label: 'Cabeçalho' }, { key: 'rodape', label: 'Rodapé' }]}
+            value={parte} onSelect={k => { setParte(k as Parte); setPrevia(null) }}
+          />
+          {/* Onde o cabeçalho e o rodapé saem no PDF: na dica (2026-11-16 — era um parágrafo fixo). */}
+          {!previa && parte !== 'corpo' && (
+            <Dica rotulo={parte === 'cabecalho' ? 'Sobre o cabeçalho' : 'Sobre o rodapé'}>
+              {parte === 'cabecalho'
+                ? 'O cabeçalho se repete no topo de toda página do PDF — bom para o logo e o nome da rede.'
+                : 'O rodapé se repete no pé de toda página do PDF, acima do selo da assinatura.'}
+            </Dica>
+          )}
+        </span>
         <button type="button" className="filtro-toggle" aria-pressed={!!previa}
           onClick={() => setPrevia(p => (p ? null : { ...atual.current }))}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -115,13 +126,6 @@ export default function EditorRico({ inicial, tipo, imagens, onChange }: {
       </div>
 
       {!previa && ativo && <BarraDoEditor editor={ativo} parte={parte} grupos={grupos} aoEnviarImagem={aoEnviarImagem} />}
-      {!previa && parte !== 'corpo' && (
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          {parte === 'cabecalho'
-            ? 'O cabeçalho se repete no topo de toda página do PDF — bom para o logo e o nome da rede.'
-            : 'O rodapé se repete no pé de toda página do PDF, acima do selo da assinatura.'}
-        </p>
-      )}
 
       <div className="editor-rico-folha-caixa" hidden={!!previa}>
         {(['corpo', 'cabecalho', 'rodape'] as const).map(p => (

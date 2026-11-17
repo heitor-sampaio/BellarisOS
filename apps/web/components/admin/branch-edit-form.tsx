@@ -9,6 +9,7 @@ import { maskPhoneDigitando, maskCEPDigitando } from '@estetica-os/utils'
 import { fetchCep } from '@/lib/cep'
 import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
 import { separarNumero } from '@/lib/unidades/endereco-com-numero'
+import { Dica } from '@/components/shared/dica'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -198,9 +199,12 @@ export function BranchEditForm({ branch }: Props) {
       </section>
 
       <section className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <p className="overline" style={{ marginBottom: 4 }}>Horário de funcionamento</p>
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Os horários livres da agenda e do app da cliente, e a ocupação, seguem este horário.
+        {/* O "para que serve" mora na dica ao lado do título (2026-11-16). */}
+        <p className="overline" style={{ marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Horário de funcionamento</span>
+          <Dica rotulo="Sobre o horário de funcionamento">
+            Os horários livres da agenda e do app da cliente, e a ocupação, seguem este horário.
+          </Dica>
         </p>
         <EditorDeHorario nome="horario" valor={normalizarHorario(branch.horario)} />
       </section>

@@ -18,6 +18,7 @@ import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 import { falaDaTela } from '@/lib/unidades/uma-so'
 import { getCachedNetworkBranches } from '@/lib/cached-queries'
 import { listaDeUnidades } from '@/lib/equipe/atende'
+import { Dica } from '@/components/shared/dica'
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(' ')
@@ -128,25 +129,29 @@ export default async function TeamPage({
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
-          <h1 style={{
-            fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
-            letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
-          }}>
-            Equipe
-          </h1>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+            <h1 style={{
+              fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
+              letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
+            }}>
+              Equipe
+            </h1>
+            {/* O recorte (A12 da 6ª: 3 de 7 sem saber o recorte) e o "só vê" (A11 da 12ª:
+                por que não há lápis nem "Novo membro") moram na dica (2026-11-16). */}
+            <Dica rotulo="Sobre a equipe da unidade">
+              <span data-recorte-da-equipe style={{ display: 'block' }}>
+                {fala(`Equipe da unidade ${branch?.name ?? ''}: quem é dela e quem é de fora e atende aqui. Quem é da rede e não atende fica na Equipe da rede.`)}
+              </span>
+              {!canManage && (
+                <span data-equipe-so-leitura style={{ display: 'block', marginTop: 6 }}>
+                  Você vê a equipe. Cadastrar e editar é de quem tem a Equipe em Gerenciar no cargo.
+                </span>
+              )}
+            </Dica>
+          </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {contagemDeMembros(total, termo ? 'encontrados' : 'cadastrados')}
           </p>
-          {/* A12 da 6ª simulação: a gerente via 3 de 7 sem saber o recorte. */}
-          <p data-recorte-da-equipe style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2, maxWidth: 560 }}>
-            {fala(`Equipe da unidade ${branch?.name ?? ''}: quem é dela e quem é de fora e atende aqui. Quem é da rede e não atende fica na Equipe da rede.`)}
-          </p>
-          {/* A11 da 12ª (princípio 3): quem só vê a equipe lê por que não há lápis nem "Novo membro". */}
-          {!canManage && (
-            <p data-equipe-so-leitura style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2, maxWidth: 560 }}>
-              Você vê a equipe. Cadastrar e editar é de quem tem a Equipe em Gerenciar no cargo.
-            </p>
-          )}
           {ninguemAtendeAqui && (
             <p data-ninguem-atende role="status" style={{
               marginTop: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)', maxWidth: 560,

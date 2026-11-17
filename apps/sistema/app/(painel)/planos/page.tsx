@@ -5,6 +5,7 @@ import { PlanosDoCatalogo } from '@/components/sistema/planos-do-catalogo'
 import { lerRecursos, TUDO_LIBERADO } from '@estetica-os/nucleo/lib/planos/recursos'
 import { comparativoDosPlanos } from '@/lib/planos/comparativo'
 import { ComparativoDePlanos } from '@/components/sistema/comparativo-de-planos'
+import { Dica } from '@estetica-os/nucleo/components/dica'
 
 /**
  * O catálogo de planos que o BellarisOS vende. A rede guarda o RETRATO do
@@ -28,8 +29,11 @@ export default async function PlanosPage() {
     <div className="suporte-pilha-larga">
       <div className="suporte-cabecalho">
         <div>
-          <h1 className="suporte-titulo">Planos</h1>
-          <p className="suporte-sub">O que o BellarisOS vende: o valor, as funcionalidades e os limites de cada plano. Cada rede guarda o que combinou; mudar aqui vale para as próximas.</p>
+          {/* A apresentação mora na dica (2026-11-16); fora do h1, o título não muda de nome. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h1 className="suporte-titulo">Planos</h1>
+            <Dica rotulo="Sobre os planos">O que o BellarisOS vende: o valor, as funcionalidades e os limites de cada plano. Cada rede guarda o que combinou; mudar aqui vale para as próximas.</Dica>
+          </div>
         </div>
       </div>
       <ComparativoDePlanos comparativo={comparativo} />

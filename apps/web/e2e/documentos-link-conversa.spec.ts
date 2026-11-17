@@ -172,6 +172,8 @@ test.describe.serial('documentos: link pela conversa do inbox', () => {
       await page.goto('/admin/settings?tab=documentos')
       const secao = page.getByRole('region', { name: 'Envio do link de assinatura' })
       await secao.getByRole('button', { name: 'Também pela conversa' }).click()
+      // O "como funciona" da escolha mora na dica (2026-11-16).
+      await secao.getByRole('button', { name: 'Sobre o envio do link' }).hover()
       await expect(secao.getByText(/manda o link pelo WhatsApp da rede/)).toBeVisible()
       await expect.poll(async () => (await db().from('tenants').select('documentos_link_pela_conversa').eq('id', rede!.tenantId).single()).data?.documentos_link_pela_conversa).toBe(true)
 

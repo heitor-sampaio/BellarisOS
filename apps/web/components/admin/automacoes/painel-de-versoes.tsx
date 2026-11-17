@@ -8,6 +8,7 @@ import {
 } from '@/actions/automacoes'
 import type { GrafoDeAutomacao, LimitesDaAutomacao } from '@estetica-os/types'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O histórico do grafo.
@@ -73,7 +74,14 @@ export function PainelDeVersoes({
           fontWeight: 'var(--weight-extrabold)', fontSize: 'var(--text-sm-sz)',
           display: 'flex', alignItems: 'center', gap: 7,
         }}>
-          <GitBranch size={15} /> Versões
+          <GitBranch size={15} />
+          <span>Versões</span>
+          {/* O "como funciona" mora na dica (2026-11-16 — era o parágrafo no pé). */}
+          <Dica rotulo="Como voltar a um fluxo de antes">
+            Voltar para uma versão <strong>carrega</strong> o fluxo dela na tela —
+            nada muda até você salvar. O histórico guarda os últimos 30
+            salvamentos.
+          </Dica>
         </span>
         <div style={{ display: 'flex', gap: 4 }}>
           <button
@@ -90,9 +98,11 @@ export function PainelDeVersoes({
 
       <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
         {versoes.length === 0 && !carregando && (
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', padding: 8, lineHeight: 1.6 }}>
-            Nenhuma versão guardada ainda. Cada salvamento daqui em diante deixa
-            um retrato do fluxo aqui.
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', padding: 8, lineHeight: 1.6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Nenhuma versão guardada ainda.</span>
+            <Dica rotulo="Quando uma versão é guardada">
+              Cada salvamento daqui em diante deixa um retrato do fluxo aqui.
+            </Dica>
           </p>
         )}
 
@@ -133,12 +143,6 @@ export function PainelDeVersoes({
             )}
           </div>
         ))}
-
-        <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', padding: '4px 8px', lineHeight: 1.6 }}>
-          Voltar para uma versão <strong>carrega</strong> o fluxo dela na tela —
-          nada muda até você salvar. O histórico guarda os últimos 30
-          salvamentos.
-        </p>
       </div>
     </aside>
   )

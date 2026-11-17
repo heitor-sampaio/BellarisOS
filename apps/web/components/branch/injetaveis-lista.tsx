@@ -3,10 +3,11 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, Syringe, Plus, X, Loader2, UserPlus } from 'lucide-react'
+import { Search, Syringe, Plus, X, Loader2 } from 'lucide-react'
 import { criarPlanejamentoInjetavel, type MapaNaLista } from '@/actions/injectable-map'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * A coluna da esquerda de Injetáveis: busca, "novo" e a lista de planejamentos.
@@ -56,12 +57,12 @@ export function InjetaveisLista({
         <h1 style={{
           fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
           letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
+          display: 'flex', alignItems: 'center', gap: 6,
         }}>
-          Injetáveis
+          <span>Injetáveis</span>
+          {/* O subtítulo de apresentação mora na dica (2026-11-16). */}
+          <Dica rotulo="Sobre os injetáveis">Planejamento com nome, com ou sem cliente.</Dica>
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-2xs)', marginTop: 2 }}>
-          Planejamento com nome, com ou sem cliente.
-        </p>
       </div>
 
       {podeEditar && (
@@ -203,8 +204,15 @@ function NovoPlanejamento({
 
         <div style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {/* O rótulo LIGADO ao campo (J-38; design.md, Formulários). */}
-            <label className="field-label" htmlFor="novo-planejamento-nome">Nome *</label>
+            {/* O rótulo LIGADO ao campo (J-38; design.md, Formulários). O "e o cliente?"
+                mora na dica ao lado dele (2026-11-16 — era um parágrafo embaixo do campo). */}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <label className="field-label" htmlFor="novo-planejamento-nome">Nome *</label>
+              <Dica rotulo="Sobre o cliente do planejamento">
+                O cliente entra depois, pelo cabeçalho do planejamento — dá para
+                desenhar antes de ele existir no cadastro.
+              </Dica>
+            </span>
             <input
               id="novo-planejamento-nome"
               type="text" autoFocus className="field" value={nome}
@@ -213,15 +221,6 @@ function NovoPlanejamento({
               placeholder="Ex.: Toxina — terço superior"
             />
           </div>
-
-          <p style={{
-            display: 'flex', alignItems: 'flex-start', gap: 7,
-            fontSize: 'var(--text-2xs)', color: 'var(--text-muted)',
-          }}>
-            <UserPlus size={13} style={{ flexShrink: 0, marginTop: 1 }} />
-            O cliente entra depois, pelo cabeçalho do planejamento — dá para
-            desenhar antes de ele existir no cadastro.
-          </p>
 
           {erro && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>

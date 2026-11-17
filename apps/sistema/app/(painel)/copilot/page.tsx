@@ -7,6 +7,7 @@ import {
 import { cotacaoDoDolar, dolares, ratearCusto, reaisEstimados } from '@estetica-os/nucleo/lib/planos/custo-do-copilot'
 import { custoRealDaOpenai, custoRealDoProjeto } from '@estetica-os/nucleo/lib/planos/custo-real-da-openai'
 import { FiltroNaUrl } from '@/components/sistema/filtro-na-url'
+import { Dica } from '@estetica-os/nucleo/components/dica'
 
 /**
  * O USO DO COPILOT de todas as redes (pedido do Heitor, 2026-10-08): no mês
@@ -73,7 +74,18 @@ export default async function UsoDoCopilotPage({ searchParams }: {
     <div className="suporte-pilha-larga">
       <div className="suporte-cabecalho">
         <div>
-          <h1 className="suporte-titulo">Uso do Copilot</h1>
+          {/* O "como se calcula o custo" mora na dica (2026-11-16 — era o
+              parágrafo do pé da página). Fora do h1: o título não muda de nome. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h1 className="suporte-titulo">Uso do Copilot</h1>
+            <Dica rotulo="Como se calcula o custo do Copilot" largura={340}>
+              Custo estimado pelo preço público de cada modelo da OpenAI (entrada e saída), somado a cada chamada.
+              {realPorMes
+                ? ' O real vem da OpenAI (atualizado a cada hora, por dia em UTC) e é rateado entre as redes na proporção do estimado de cada uma — o histórico real conta toda a conta da OpenAI, as redes de teste também.'
+                : ' Com a chave de administração da OpenAI (OPENAI_ADMIN_KEY no serviço Sistema), aparece também o custo real da fatura, rateado por rede.'}
+              {' '}Meses antes de 08/10/2026 não têm custo estimado registrado.
+            </Dica>
+          </div>
           <p className="suporte-sub">{nomeDoMes(mes)} · {usaram.length} {usaram.length === 1 ? 'rede usou' : 'redes usaram'}</p>
         </div>
         <div className="suporte-filtros">
@@ -92,9 +104,12 @@ export default async function UsoDoCopilotPage({ searchParams }: {
         {realDoMes !== null ? (
           <>
             <div className="card-brand sistema-kpi" data-custo-real>
-              <p className="overline">Custo real no mês (OpenAI)</p>
+              <p className="overline" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span>Custo real no mês (OpenAI)</span>
+                <Dica rotulo="Sobre o custo real">Em reais, pela cotação do dólar, sem impostos nem IOF.</Dica>
+              </p>
               <p className="sistema-kpi-valor">{dolares(realDoMes)}</p>
-              <p className="sistema-kpi-nota">≈ {reaisEstimados(realDoMes, cotacao)} (dólar a {reaisEstimados(1, cotacao)}), sem impostos nem IOF</p>
+              <p className="sistema-kpi-nota">≈ {reaisEstimados(realDoMes, cotacao)} (dólar a {reaisEstimados(1, cotacao)})</p>
             </div>
             <div className="card sistema-kpi">
               <p className="overline">Custo estimado no mês</p>
@@ -193,13 +208,6 @@ export default async function UsoDoCopilotPage({ searchParams }: {
           (o id proj_… do projeto do BellarisOS) para contar só o dele.
         </p>
       )}
-      <p className="suporte-texto-fraco">
-        Custo estimado pelo preço público de cada modelo da OpenAI (entrada e saída), somado a cada chamada.
-        {realPorMes
-          ? ' O real vem da OpenAI (atualizado a cada hora, por dia em UTC) e é rateado entre as redes na proporção do estimado de cada uma — o histórico real conta toda a conta da OpenAI, as redes de teste também.'
-          : ' Com a chave de administração da OpenAI (OPENAI_ADMIN_KEY no serviço Sistema), aparece também o custo real da fatura, rateado por rede.'}
-        {' '}Meses antes de 08/10/2026 não têm custo estimado registrado.
-      </p>
     </div>
   )
 }

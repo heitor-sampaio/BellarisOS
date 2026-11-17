@@ -9,6 +9,7 @@ import {
 import { HORAS_DE_AUTORIZACAO, HORAS_PADRAO, ROTULO_DAS_HORAS, type HorasDeAutorizacao } from '@/lib/suporte/regras'
 import type { DadosDaAbaSuporte } from '@/lib/suporte/painel-da-rede'
 import { useFuso } from '@/components/shared/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * Configurações → Suporte: a clínica decide se (e por quanto tempo) o suporte
@@ -60,11 +61,12 @@ export function SettingsSuporte({ dados, podeClinico, souAdmin, meuId }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ShieldCheck size={16} style={{ color: 'var(--brand)' }} />
           <h3 className="suporte-subtitulo" style={{ margin: 0 }}>Autorizar o suporte do BellarisOS</h3>
+          {/* O "como funciona" mora na dica (2026-11-16 — era um parágrafo fixo). */}
+          <Dica rotulo="Sobre a autorização do suporte">
+            Sem autorização, o suporte não entra na conta de ninguém. Com ela, entra por até 60 minutos de cada vez, tudo
+            fica registrado aqui, e o prontuário fica de fora — a não ser que você o inclua.
+          </Dica>
         </div>
-        <p className="suporte-sub">
-          Sem autorização, o suporte não entra na conta de ninguém. Com ela, entra por até 60 minutos de cada vez, tudo
-          fica registrado aqui, e o prontuário fica de fora — a não ser que você o inclua.
-        </p>
         <form
           className="suporte-form-linha"
           onSubmit={e => {

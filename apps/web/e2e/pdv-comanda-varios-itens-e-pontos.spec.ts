@@ -385,6 +385,8 @@ test('FD2a na ficha: o voucher de desconto diz que se usa no PDV; FD2c: a Fideli
       await p.goto(`/admin/clients/${cliente}`)
       // A linha do voucher diz o que ele vale (o nome da recompensa fica no extrato).
       const vale = p.getByTestId('voucher').filter({ hasText: 'R$ 10,00 de desconto' })
+      // Onde se usa mora na dica da linha (2026-11-16).
+      await vale.getByRole('button', { name: 'Onde se usa o voucher' }).hover()
       await expect(vale.locator('[data-voucher-no-pdv]')).toContainText('no PDV')
 
       await p.goto('/admin/settings?tab=fidelidade')

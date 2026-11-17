@@ -76,6 +76,8 @@ test.afterAll(async () => {
 test('A33: quem tem o PDV sem o Financeiro lê na ficha a quem pedir o estorno, a devolução e o cancelamento do pacote', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/clients/${cliente}?aba=financeiro`)
+    // A quem pedir mora na dica do título "Transações" (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre as transações' }).hover()
     const nota = p.locator('[data-quem-desfaz]')
     await expect(nota).toContainText('é de quem tem o Financeiro em Gerenciar')
     await expect(nota).toContainText(nomeDaDona)
@@ -85,6 +87,8 @@ test('A33: quem tem o PDV sem o Financeiro lê na ficha a quem pedir o estorno, 
 test('A43: a ficha diz que ela pagou com crédito interno (fora do investido e do "Total pago")', async ({ browser }) => {
   await como(browser, recepcao!, async p => {
     await p.goto(`/${slug}/clients/${cliente}`)
+    // A nota mora na dica do "Investido total" (2026-11-16).
+    await p.getByRole('button', { name: 'Sobre o investido total' }).hover()
     await expect(p.locator('[data-pago-com-credito]').first()).toContainText(/R\$\s180,00 pagos com crédito interno/)
   })
 })

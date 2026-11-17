@@ -255,8 +255,11 @@ test.describe.serial('o custo do insumo, na unidade de consumo', () => {
       await p.goto('/admin/reports?period=month&tab=financeiro')
       await expect(p.getByText('Insumos e produtos vendidos', { exact: true })).toBeVisible()
       await expect(p.getByText(/Custo de Insumos/)).toHaveCount(0)
-      // O estoque não gera despesa (D13 revisto); o consumo desconta do lucro.
-      await expect(p.getByText('Desconta do lucro', { exact: true })).toBeVisible()
+      // O estoque não gera despesa (D13 revisto); o consumo desconta do lucro —
+      // dito na dica do cartão (2026-11-16: a explicação mora na dica).
+      await p.getByRole('button', { name: 'O que entra em Insumos e produtos vendidos' }).hover()
+      await expect(p.getByRole('tooltip')).toContainText('Desconta do lucro')
+      await p.mouse.move(0, 0)
       const dre = p.locator('div.card').filter({ hasText: 'DRE Simplificado' }).first()
       await expect(dre).toContainText(/Insumos e produtos vendidos\s*R\$\s*4,50/)
     } finally { await ctx.close() }

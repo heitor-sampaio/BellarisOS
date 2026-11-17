@@ -21,6 +21,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { textoDoProximoLivre } from '@/lib/agenda/proximo-livre'
 import { unicaOpcao } from '@/lib/uma-opcao'
 import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
+import { Dica } from '@/components/shared/dica'
 
 /** "“A”", "“A” e “B”", "“A”, “B” e “C”". */
 const emListaDeNomes = (nomes: readonly string[]) => {
@@ -64,12 +65,29 @@ interface AppointmentModalProps {
 }
 
 /** O rótulo é LIGADO ao campo (`htmlFor`, design.md): sem isso, nem o leitor de tela nem o clique o acham. */
-function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
+/**
+ * O campo com o rótulo. A explicação do campo, quando há, mora na dica ao lado
+ * do rótulo (2026-11-16, "A explicação mora na dica"), fora do `<label>`: o
+ * clique nela não vai ao campo.
+ */
+function Field({ label, htmlFor, dica, children }: {
+  label: string; htmlFor?: string
+  dica?: { rotulo: string; texto: React.ReactNode } | null
+  children: React.ReactNode
+}) {
+  const rotulo = (
+    <label htmlFor={htmlFor} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+      {label}
+    </label>
+  )
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label htmlFor={htmlFor} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-        {label}
-      </label>
+      {dica ? (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+          {rotulo}
+          <Dica rotulo={dica.rotulo}>{dica.texto}</Dica>
+        </div>
+      ) : rotulo}
       {children}
     </div>
   )
@@ -516,7 +534,8 @@ export function AppointmentModal({
           )}
 
           {/* Quem será atendido */}
-          <Field label="Cliente *">
+          <Field label="Cliente *"
+            dica={novoContato && !selectedClient ? { rotulo: 'Sobre a cliente nova', texto: 'A ficha completa (CPF, e-mail) pode ser preenchida depois.' } : null}>
             <div style={{ position: 'relative' }}>
               {novoContato && !selectedClient ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -545,10 +564,7 @@ export function AppointmentModal({
                     <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>Indicada por (opcional)</span>
                     <CampoIndicadaPor />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-                      A ficha completa (CPF, e-mail) pode ser preenchida depois.
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                     <button type="button"
                       onClick={() => { setNovoContato(false); setNovoNome(''); setNovoTelefone(''); setDigitosAMais(false) }}
                       style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand)', fontWeight: 700, fontSize: 'var(--text-xs-sz)', whiteSpace: 'nowrap' }}>
@@ -652,7 +668,8 @@ export function AppointmentModal({
               rede define preço, duração e ficha, e o atendimento herda de lá
               que é uma avaliação. */}
           {creditosDoCliente.length > 0 && (
-            <Field label="Já pago">
+            <Field label="Já pago"
+              dica={credito ? { rotulo: 'Sobre o que já foi pago', texto: <span data-credito-escolhido>O procedimento e o preço vêm do que já foi pago; o PDV não cobra de novo.</span> } : null}>
               <select className="field" aria-label="Usar o que já foi pago" value={credito ? chaveDoCredito(credito) : ''}
                 onChange={e => setCreditoSel(e.target.value)}>
                 <option value="">Não usar — cobrar no atendimento</option>
@@ -665,13 +682,12 @@ export function AppointmentModal({
               {credito && creditoAutomatico && (
                 <p data-credito-pre-escolhido role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>
                   <CheckCircle2 size={13} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
-                  Já pago: {credito.origem}{credito.numero && credito.total ? ` (sessão ${credito.numero} de ${credito.total})` : ''} — escolhido porque o procedimento é o mesmo. Para cobrar à parte, escolha “Não usar”.
+                  <span>
+                    Já pago: {credito.origem}{credito.numero && credito.total ? ` (sessão ${credito.numero} de ${credito.total})` : ''}. Para cobrar à parte, escolha “Não usar”.
+                  </span>
+                  {/* O porquê mora na dica (2026-11-16); o que fazer fica à vista. */}
+                  <Dica rotulo="Por que já veio escolhido">Escolhido porque o procedimento é o mesmo.</Dica>
                 </p>
-              )}
-              {credito && (
-                <span data-credito-escolhido style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                  O procedimento e o preço vêm do que já foi pago; o PDV não cobra de novo.
-                </span>
               )}
             </Field>
           )}

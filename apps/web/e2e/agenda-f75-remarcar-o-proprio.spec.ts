@@ -54,7 +54,7 @@ test('D20: com "só os meus" e Gerenciar, a janela mostra o "Remarcar" do própr
     await p.goto(`/admin/agenda?date=${DIA}`)
     await p.locator(`[data-agendamento="${ag!.id}"]`).first().click({ timeout: 30_000 })
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
-    await janela.getByRole('button', { name: 'Remarcar' }).click({ timeout: 15_000 })
+    await janela.getByRole('button', { name: 'Remarcar', exact: true }).click({ timeout: 15_000 })
     await janela.locator('input[type="datetime-local"]').fill(`${DIA}T11:00`)
     await janela.getByRole('button', { name: 'Confirmar novo horário' }).click()
   })

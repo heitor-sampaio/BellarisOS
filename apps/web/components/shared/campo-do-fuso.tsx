@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { FUSOS, FUSO_PADRAO, fusoPeloEstado, fusoValido, nomeDoFuso } from '@/lib/unidades/fuso'
+import { Dica } from '@/components/shared/dica'
 
 /**
  * O "Fuso horário" da unidade (F62, o Heitor, 2026-11-11: "Não, deixa a
@@ -32,13 +33,16 @@ export function CampoDoFuso({ id, nome = 'fuso', valorInicial, uf, cidade, modo 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label className="overline" htmlFor={id}>Fuso horário</label>
+      {/* O que segue o fuso mora na dica ao lado do rótulo (2026-11-16 — era uma linha embaixo do campo). */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <label className="overline" htmlFor={id}>Fuso horário</label>
+        <Dica rotulo="Sobre o fuso horário">
+          A agenda, o app da cliente, o “hoje”, o Fechamento do dia, os indicadores e os envios da unidade seguem este fuso.
+        </Dica>
+      </span>
       <select id={id} name={nome} className="field" value={valor} onChange={e => setEscolhido(e.target.value)}>
         {FUSOS.map(f => <option key={f.valor} value={f.valor}>{f.rotulo}</option>)}
       </select>
-      <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-        A agenda, o app da cliente, o “hoje”, o Fechamento do dia, os indicadores e os envios da unidade seguem este fuso.
-      </span>
       {nota && (
         <span data-fuso-sugerido style={{
           display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
