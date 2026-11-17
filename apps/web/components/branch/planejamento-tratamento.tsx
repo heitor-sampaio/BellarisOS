@@ -368,7 +368,7 @@ export function PlanejamentoTratamento({
       {podeEditar && planoNaTela && (
         <div data-plano-na-tela style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-            O plano desta avaliação se monta no cartão “Tratamento” da tela do atendimento.
+            O plano desta avaliação se monta no cartão “Tratamento” da tela do atendimento. Comece em “Nova sessão” e escolha o procedimento.
           </p>
           {onIrAoTratamento && (
             <button type="button" onClick={onIrAoTratamento} className="btn-secondary"

@@ -9,7 +9,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 import { textoDaBase } from '@/lib/comissoes/base-efetiva'
-import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda, vinculosDoExtrato } from '@/lib/comissoes/extrato-texto'
+import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda, vinculosDoExtrato, situacaoDoLancamento } from '@/lib/comissoes/extrato-texto'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 
@@ -80,7 +80,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
     const unidade = new Map(p.resumo.map(r => [r.branchId, r.branchName]))
     // D3 da 10ª, A17 e A44 da 11ª: o CSV mora em lib/comissoes/extrato-texto (a base efetiva,
     // a regra com a origem e o que não sai da base vazio).
-    const csv = csvDoExtrato(p.extrato, nome, unidade, fuso)
+    const csv = csvDoExtrato(p.extrato, nome, unidade, fuso, p.fechamentos)
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')
     a.href = url
@@ -366,7 +366,9 @@ function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string
             </p>
           </div>
           {/* A21 da 10ª: com o pagamento parcial, cada lançamento diz se foi pago (e quando) ou se ficou a pagar. */}
-          <span className={CHIP[l.status]}>{l.status === 'AGUARDANDO' ? 'Aguardando' : l.status === 'PAID' && l.pagoEm ? `Paga em ${data(l.pagoEm, fuso)}` : SITUACAO[l.status]}</span>
+          <span className={CHIP[l.status]}>{l.status === 'AGUARDANDO' ? 'Aguardando'
+            // A17 da 22ª: o estorno não é pago — desconta do pagamento.
+            : l.status === 'PAID' && l.pagoEm ? `${l.kind === 'ESTORNO' ? 'Descontada' : 'Paga'} em ${data(l.pagoEm, fuso)}` : situacaoDoLancamento(l)}</span>
           {l.kind === 'AGUARDANDO' ? (
             <span style={{ minWidth: 90, textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
               previsto {formatBRL(l.previsto ?? 0)}

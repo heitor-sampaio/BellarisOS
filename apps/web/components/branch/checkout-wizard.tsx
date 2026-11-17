@@ -934,7 +934,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           </div>
         )}
         {/* D1 da 18ª: o "+ Outra forma" do à vista (o plano; o atendimento de hoje vai na primeira). */}
-        {podeCobrar && formaPgto === 'AVISTA' && !!paymentMethod && fid.aPagar > 0 && (
+        {podeCobrar && formaPgto === 'AVISTA' && fid.aPagar > 0 && (
           <div style={{ marginBottom: 16 }}>
             <OutrasFormas metodoPrincipal={paymentMethod} total={fid.aPagar} outras={outras} aoMudar={setOutras}
               metodos={FORMAS_DO_BALCAO} clienteId={plan.clientId} />

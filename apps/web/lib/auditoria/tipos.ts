@@ -50,9 +50,10 @@ export interface NomesDaAuditoria {
   /** O nome do pacote vendido (`client_packages.package_id` → o pacote), lido agora (D7 da 16ª). */
   pacotes?:  Record<string, string>
   /**
-   * O lançamento EDITADO na gravação, lido agora (D7 da 16ª): a baixa grava só
-   * as colunas que mudaram, e "Recebeu a parcela 1/4 (R$ 200,00)" precisa do
-   * tipo, do valor e da parcela.
+   * O lançamento da gravação, lido agora (D7 da 16ª): a baixa grava só as
+   * colunas que mudaram, e "Recebeu a parcela 1/4 (R$ 200,00)" precisa do
+   * tipo, do valor e da parcela. A38 da 22ª: também o CRIADO (a auditoria não
+   * guarda as vezes nem a parcela), para "Crédito 8x" e o crediário da venda.
    */
   lancamentos?: Record<string, LancamentoDaAuditoria>
   /**
@@ -109,6 +110,8 @@ export interface LancamentoDaAuditoria {
   de:      number | null
   /** É o lançamento de um atendimento (A26 da 17ª: "Estornou o atendimento"). */
   agendamento?: boolean
+  /** A38 da 22ª: as vezes no cartão de crédito ("Crédito 8x"); nulo fora dele. */
+  vezes?: number | null
 }
 
 /** Uma linha pronta para a tela e para o CSV. */

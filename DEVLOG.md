@@ -1774,6 +1774,41 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-17 — Os defeitos e atritos da 22ª simulação, corrigidos
+
+A 22ª rodou sobre `ee8452cb` com o "[sim] Espaço Girassol" (uma unidade, três pessoas) e a "[sim] Rede Alecrim" (duas unidades, com o Copilot). O dinheiro bateu centavo a centavo nos dois times, e os 5 defeitos e 22 atritos consertados na 21ª apareceram funcionando. Ela achou 2 defeitos (médios, novos) e 42 atritos; nada foi ao Heitor. Corrigidos os 2 defeitos e 36 atritos; 5 ficaram de fora como recurso novo e 1 não acontece no código atual.
+
+- **D1, quem conclui**: `quemConcluiOAtendimento` pede, no mesmo cargo, o Prontuário em Gerenciar de todos E a Agenda de todos (`quemTemNoNivel` com `eTambem`). Quem tinha o Prontuário de todos e a Agenda só a própria entrava na lista e não abria o atendimento. Vale no aviso do atendimento, na janela da agenda (os dois portais) e no editor do plano.
+- **D2, o Copilot**: os agendamentos de quem atende, sem datas, vão de hoje a 30 dias, como os da cliente; `emAberto` traz só agendado, confirmado, chegou e em atendimento.
+- **Cargos e equipe**: a linha do PDV diz "Aberto pelo Financeiro em Gerenciar" (A1); o resumo diz de onde vem Tratamentos (A2); "Ir até lá" rola até o escopo pendente (A3); a comissão aparece no Novo membro, desligada até marcar "Atende" (A4); a coluna de ações da Equipe quebra a linha (A5); o Reativar diz o que volta e que o repassado fica (A6).
+- **PDV, caixa e financeiro**:
+  - A7: "+ Outra forma" à vista ao abrir o Receber, sem esperar a primeira forma.
+  - A8: a aba "Pagas hoje" virou **"Fechadas hoje"** (a venda no crediário fecha sem estar paga, PDV8).
+  - A9: "A receber da cliente · vence no período".
+  - A10, A36, A37: os textos do custo do produto vendido a receber, da receita líquida do voucher e do giro do estoque.
+  - A11: a comanda estornada inteira mantém o "Pago com".
+  - A12: no "Fechar de novo", a Diferença em branco diz "não conferido", não o "Bateu" velho.
+  - A13: "−" e "+" no produto da comanda (`comanda_tirar_um_item`).
+  - A14: a linha do pagamento quebra em vez de cortar.
+  - A15: as Abertas avisam "N comandas abertas em <unidade>" a quem alcança mais de uma.
+  - A16: "Maquininha ou forma" no CSV do fechamento.
+  - A17: o estorno descontado num pagamento diz "Descontada em …"; o CSV do extrato ganha "Pagamentos das comissões".
+  - A31: a venda avulsa de procedimento se chama "Massagem relaxante — 1 sessão".
+  - A38: a Auditoria diz o crediário (entrada e parcelas) e as vezes do cartão.
+- **Atendimento, agenda e plano**: as dores dizem "obrigatório para gerar o plano" (A18); o Planejamento e o Tratamento vazio dizem o primeiro passo, "Nova sessão" (A19); "Montar um plano" e "Propor um plano (opcional)" antes de iniciar (A21); a Minha agenda diz "suas unidades" nas contagens e a unidade na ocupação (A22); "de outra pessoa que atende" (A23); "Horários livres · N" no agendar pelo CRM (A24, em parte: o "Conferindo o horário…" é de propósito, D9 da 8ª); o bloqueio na semana quebra a linha (A26).
+- **Montar a rede, CRM e Copilot**: o espaço antes dos dois-pontos (A27); o CEP não encontrado pede cidade e UF ali, no /setup, na Nova unidade e na edição (A28); a linha juntada da importação diz em quem entrou e o que ficou de fora (A30); "Por que perdeu?" diz de qual oportunidade (A34); o Copilot tira todo caminho cru, com ou sem id (A32), e não repete a lista do cartão (A33, `cartaoNaTela`).
+- **App da cliente**: o "Plano aceito!" diz o mesmo que o cartão do contrato (A39); a foto enviada tem miniatura em Documentos (A40, em parte: o aviso aberto sai do sino como todos); "Confirmar e enviar a avaliação" quando há nota (A41).
+- **De fora**:
+  - recurso novo: o total e o desconto do plano (A20), o endereço no cadastro rápido (A29), mover os cartões de uma etapa em lote (A35, que dispararia as automações de cada um) e trocar quem atende no remarcar pelo app (A42);
+  - não acontece no código atual: a transferência sem a origem (A25).
+- **Migration** (aplicada na produção e no banco local): `20261122600001_pdv_atritos_da_22` (as formas da comanda estornada, a descrição do pré-pago e `comanda_tirar_um_item`).
+- **A completa contra o banco local**: 
+  - isolados 1608 passando e 2 falhas, as duas da regra nova: o `equipe-comissao-ao-criar` (a comissão agora à vista e desligada antes do "Atende", A4) e o `importacao-contatos` (a linha juntada é aviso, A30) — specs atualizados;
+  - compartilhados 823 passando e 3 falhas: o `pdv-atritos-da-17` (o valor do pagamento ao lado, A14 — spec atualizado), e `agendamento-da-rede` e `automacoes-escolhas`, que oscilam no estado dos funis da rede compartilhada.
+  - De novo, no mesmo build: os 21 testes dos cinco arquivos passaram. O `conferir` deu 4622 objetos iguais.
+- Vitest: 3226 testes. Testes novos: `atendimento-atritos-da-22`, `cargos-equipe-atritos-da-22`, `atritos-da-22-caixa`, `copilot-achados-da-22` e `atritos-da-22-montar-crm-app`.
+- **Pendente**: o menu mostra Tratamentos a quem tem o Prontuário ou recebe (decisão da `menu.test.ts`), mas `/planejamentos` pede a Agenda em Ver — o cargo que só recebe, sem a Agenda, vê a entrada e esbarra no sem acesso. A 23ª põe um caixa sem a Agenda para ver.
+
 ### 2026-11-17 — Os defeitos e atritos da 21ª simulação, corrigidos
 
 A 21ª rodou sobre `d8b9c63b` com o "[sim] Studio Violeta" (uma unidade) e a "[sim] Rede Lavanda" (duas unidades, com o Copilot). O dinheiro bateu centavo a centavo nas telas. Ela achou 5 defeitos e 35 atritos. Os 5 defeitos e 34 atritos foram corrigidos; o A11 o Heitor decidiu ("opcao 2").

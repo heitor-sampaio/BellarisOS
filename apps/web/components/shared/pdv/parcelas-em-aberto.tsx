@@ -153,9 +153,8 @@ function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaE
             <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
           </div>
         )}
-        {forma && (
-          <OutrasFormas metodoPrincipal={forma} total={parcela.valor} outras={outras} aoMudar={setOutras} metodos={FORMAS_DA_BAIXA} />
-        )}
+        {/* A7 da 22ª (princípio 7): o "+ Outra forma" aparece com a janela, sem esperar a primeira forma. */}
+        <OutrasFormas metodoPrincipal={forma} total={parcela.valor} outras={outras} aoMudar={setOutras} metodos={FORMAS_DA_BAIXA} />
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={aoFechar} disabled={pendente}>Cancelar</button>

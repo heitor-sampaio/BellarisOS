@@ -142,7 +142,8 @@ test('PT2: "Montar plano desta avaliação" na avaliação concluída — por qu
   await responderAnamneseDoAgendamento(ag!.id, rede!.tenantId)
   await como(atende!, browser, async p => {
     await p.goto(`/${slug}/agenda/${ag!.id}`)
-    await expect(p.locator('[data-montar-plano-da-avaliacao]')).toContainText('Montar plano desta avaliação')
+    // A21 da 22ª: o título não diz "desta avaliação" (o concluído pode ser uma drenagem).
+    await expect(p.locator('[data-montar-plano-da-avaliacao]')).toContainText('Montar um plano')
     await chamarAcao(p, 'actions/treatment-plans.ts', 'generateEvaluationPlan', `/${slug}/agenda/${ag!.id}`,
       [ag!.id, '', null, sessoes(rede!.procedureId), '', '', '', slug, null, {}])
   })

@@ -33,7 +33,8 @@ export function AtendimentoDeOutraProfissional({ slug, profissional }: {
           color: 'var(--text)', marginBottom: profissional ? 6 : 20,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}>
-          <span>Este atendimento é de outra profissional</span>
+          {/* A23 da 22ª: sem o feminino fixo (quem atende pode ser o Dr. Otávio). */}
+          <span>Este atendimento é de outra pessoa que atende</span>
           {/* O porquê mora na dica (2026-11-16, "A explicação mora na dica"). */}
           <Dica rotulo="Por que não abre">
             Com a sua agenda em “só os meus”, você abre só os seus atendimentos.

@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { minutosDesenhados, ladoALado, liberouOHorario } from '@/lib/agenda/desenho'
+import { rotulosDaMinhaAgenda } from '@/lib/agenda/minha-agenda'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -225,6 +226,11 @@ export function ProfessionalAgendaView({
     [events, prevStart, prevEnd],
   )
   const weekDelta = weekCount - prevWeekCount
+  // A22 da 22ª: com algum dela em outra unidade nesta semana, os cartões dizem de onde é cada número.
+  const rotulos = rotulosDaMinhaAgenda({
+    deOutraUnidade: events.some(e => { const d = parseISO(e.start); return !!e.unidade && d >= weekStart && d <= weekEnd }),
+    unidade: branchName,
+  })
 
   function selectDay(d: Date) { setSelected(d); setWeekBase(d); setMonthBase(d); setView('dia') }
 
@@ -407,7 +413,7 @@ export function ProfessionalAgendaView({
 
         {/* Hoje */}
         <div className="card" style={{ padding: '18px 20px' }}>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 8 }}>Hoje</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 8 }}>{rotulos.hoje}</p>
           <p style={{ fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)', lineHeight: 1, marginBottom: 5 }}>
             {todayEvents.length}
           </p>
@@ -419,7 +425,7 @@ export function ProfessionalAgendaView({
 
         {/* Esta semana */}
         <div className="card" style={{ padding: '18px 20px' }}>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 8 }}>Esta semana</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 8 }}>{rotulos.semana}</p>
           <p style={{ fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)', lineHeight: 1, marginBottom: 5 }}>
             {weekCount}
           </p>
@@ -431,7 +437,7 @@ export function ProfessionalAgendaView({
 
         {/* Ocupação hoje */}
         <div className="card" style={{ padding: '18px 20px' }}>
-          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 8 }}>Ocupação hoje</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 8 }}>{rotulos.ocupacao}</p>
           <p style={{ fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)', lineHeight: 1, marginBottom: 10 }}>
             {occupancyPct === null ? '—' : `${occupancyPct}%`}
           </p>

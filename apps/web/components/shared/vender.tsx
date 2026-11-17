@@ -418,7 +418,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
   if (vendida) return (
     <div data-agendar-agora style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-        Venda registrada. Agendar a primeira unidade agora? As outras ficam na ficha, para agendar depois.
+        Venda registrada. Agendar a 1ª sessão agora? As outras ficam na ficha, para agendar depois.
       </p>
       <SessionScheduler
         branches={[{ id: branchId, name: '' }]}
@@ -475,7 +475,7 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, p
       <CampoQuemVendeu equipe={equipe} valor={vendedorId} aoMudar={id => { setVendedorId(id); setPergunta(null) }}
         comissao={comissaoDoPrePago(equipe.find(m => m.id === vendedorId))} />
       <p data-resumo-do-procedimento style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
-        {qtd} × {formatBRL(proc.price)} = {formatBRL(tabela)} · as unidades ficam na ficha para agendar
+        {qtd} × {formatBRL(proc.price)} = {formatBRL(tabela)} · as sessões ficam na ficha para agendar
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <p className="overline">Pagamento</p>

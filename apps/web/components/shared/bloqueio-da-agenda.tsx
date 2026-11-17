@@ -276,13 +276,14 @@ export function EtiquetaDoBloqueio({ bloqueio, texto, titulo, podeDesfazer }: {
         data-profissional={bloqueio.professionalId ?? undefined} data-sala={bloqueio.roomId ?? undefined}
         title={texto} onClick={e => { e.stopPropagation(); setAberto(true) }}
         style={{
-          display: 'flex', alignItems: 'center', gap: 4, width: '100%', marginBottom: 4, padding: '3px 6px',
+          // A26 da 22ª: a etiqueta quebra a linha — cortada, dizia "Bloqueado das 12…".
+          display: 'flex', alignItems: 'flex-start', gap: 4, width: '100%', marginBottom: 4, padding: '3px 6px',
           borderRadius: 'var(--radius-chip-token)', border: '1px dashed var(--warning-border)', background: 'var(--warning-soft)',
           fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-bold)', color: 'var(--warning)', cursor: 'pointer', textAlign: 'left',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          lineHeight: 'var(--leading-snug)',
         }}>
-        <Ban size={11} aria-hidden="true" style={{ flexShrink: 0 }} />
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{texto}</span>
+        <Ban size={11} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} />
+        <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{texto}</span>
       </button>
       {aberto && (
         <span style={{ display: 'contents' }} onClick={e => e.stopPropagation()}>

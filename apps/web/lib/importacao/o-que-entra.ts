@@ -1,4 +1,27 @@
 import { camposDoDestino, sugerirMapeamento, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
+import { nomeDiferente } from '@/lib/importacao/normalizar'
+
+/**
+ * A linha que JUNTOU com quem já existe (A30 da 22ª simulação; princípio 3):
+ * o resultado dizia só "1 sem mudança", e a prévia tinha dito "completa o que
+ * está em branco". A linha diz em quem entrou e o que dela ficou de fora —
+ * só o vazio se completa (D-10), e o nome e o e-mail de quem já existe ficam.
+ * Nada de fora, nada a dizer.
+ */
+export function avisoDaLinhaJuntada(j: {
+  como: 'telefone' | 'email' | 'cpf'
+  existente: { nome: string | null; email: string | null }
+  linha: { nome: string | null; email: string | null }
+}): string | null {
+  const quem = j.existente.nome?.trim() || 'quem já existia'
+  const fora: string[] = []
+  if (j.existente.nome?.trim() && nomeDiferente(j.linha.nome, j.existente.nome)) fora.push(`o nome “${j.linha.nome!.trim()}”`)
+  const email = j.linha.email?.trim()
+  if (email && j.existente.email?.trim() && email.toLowerCase() !== j.existente.email.trim().toLowerCase()) fora.push(`o e-mail ${email}`)
+  if (!fora.length) return null
+  const pelo = j.como === 'email' ? 'o mesmo e-mail' : j.como === 'cpf' ? 'o mesmo CPF' : 'o mesmo telefone'
+  return `Entrou em ${quem} (${pelo}). ${fora.length === 1 ? 'Ficou de fora' : 'Ficaram de fora'}: ${fora.join(' e ')} — ${quem} já tem.`
+}
 
 /**
  * O que a importação faz com as linhas prontas, contado ANTES de importar

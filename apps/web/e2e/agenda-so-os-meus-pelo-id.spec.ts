@@ -13,7 +13,7 @@ import { haMinutosHoje } from './apoio/datas'
  * o escopo vale também para o id, não só para a lista.
  *
  * Decisão: com a agenda OWN, a tela do atendimento de outro profissional diz
- * "Este atendimento é de outra profissional", com o nome dela e o caminho de
+ * "Este atendimento é de outra pessoa que atende" (A23 da 22ª), com o nome e o caminho de
  * volta, e nada do atendimento (r2-atd-04, revisão do Heitor de 2026-11-03: o
  * 404 parecia defeito; de 01/11 até ali era "Página não encontrada", e antes
  * "Seu cargo não libera esta tela" — A38: o cargo libera; o que não é dela é
@@ -109,7 +109,8 @@ test('"só os meus": a tela do atendimento de outra profissional diz de quem é,
     // r2-atd-04 (revisão do Heitor, 2026-11-03): o 404 parecia defeito. A tela
     // diz de quem é o atendimento e o caminho de volta — e continua barrando.
     const aviso = p.locator('[data-atendimento-de-outra]')
-    await expect(aviso.getByRole('heading', { name: 'Este atendimento é de outra profissional' }), 'a de outra').toBeVisible()
+    // A23 da 22ª: sem o feminino fixo.
+    await expect(aviso.getByRole('heading', { name: 'Este atendimento é de outra pessoa que atende' }), 'a de outra').toBeVisible()
     await expect(aviso, 'o nome de quem atende').toContainText(nomeDaOutra)
     await expect(aviso.getByRole('link', { name: 'Voltar à agenda' })).toHaveAttribute('href', `/${slug}/agenda`)
     await expect(p.getByRole('heading', { name: NAO_ENCONTRADA }), 'não é mais o 404').toHaveCount(0)

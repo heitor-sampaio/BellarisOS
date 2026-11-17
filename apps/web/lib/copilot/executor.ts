@@ -69,6 +69,20 @@ export interface ResultadoDaChamada {
   cartao?: Cartao
 }
 
+/**
+ * A33 da 22ª (princípio 7): a lista saía duas vezes — no texto e no cartão de
+ * links logo abaixo. Com um cartão de vários itens, o modelo fica sabendo que
+ * a lista já está na tela.
+ */
+function comAvisoDoCartao(dados: unknown, cartao: Cartao | undefined): unknown {
+  if (cartao?.tipo !== 'links' || cartao.itens.length < 2) return dados
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) return dados
+  return {
+    ...dados,
+    cartaoNaTela: `A tela já mostra um cartão${cartao.titulo ? ` "${cartao.titulo}"` : ''} com ${cartao.itens.length} itens e os links: não repita a lista no texto — diga o total, o período e o que pede atenção.`,
+  }
+}
+
 export async function executarChamada(
   c: ContextoDaFerramenta & { conversaId: string },
   chamada: { nome: string; argumentos: string },
@@ -90,7 +104,7 @@ export async function executarChamada(
   try {
     if (ferramenta.tipo === 'leitura') {
       const r = await ferramenta.executar(c, args.data)
-      return { paraOModelo: r.dados, cartao: r.cartao }
+      return { paraOModelo: comAvisoDoCartao(r.dados, r.cartao), cartao: r.cartao }
     }
 
     const preparo = await ferramenta.preparar(c, args.data)

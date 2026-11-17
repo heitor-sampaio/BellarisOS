@@ -87,7 +87,8 @@ describe('A21: a unidade sem UF avisa (não recusa) [2]', () => {
   })
   it('a Nova unidade, a edição e o /setup mostram', () => {
     for (const f of ['components/admin/branch-form.tsx', 'components/admin/branch-edit-form.tsx', 'components/setup/setup-wizard.tsx']) {
-      expect(ler(f), f).toContain('avisoDaUfQueFalta(')
+      // A28 da 22ª: o aviso da UF chega pelo do endereço (que também pede a cidade que o CEP não trouxe).
+      expect(ler(f), f).toContain('avisoDoEnderecoQueFalta(')
     }
   })
 })

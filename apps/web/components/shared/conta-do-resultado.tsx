@@ -31,7 +31,7 @@ export function ContaDoResultado({ receita, resultado, despesasDoCaixa, aPagar =
           dizia "competência", e a despesa entra quando é PAGA, como a receita
           (indicadores.md, "Receita e despesa simétricas"); o a pagar fica fora, e a tela diz quanto. */}
       <span data-base-do-resultado style={{ display: 'block', marginTop: 2 }}>
-        É o resultado do período: a receita e a despesa pelo que foi pago; o insumo quando é usado; a comissão quando é lançada. O total da lista de lançamentos é o caixa.
+        É o resultado do período: a receita e a despesa pelo que foi pago; o insumo quando é usado; o custo do produto quando ele é vendido, mesmo a receber; a comissão quando é lançada. O total da lista de lançamentos é o caixa.
       </span>
       {aPagar > 0 && (
         <span data-a-pagar-fora-do-resultado style={{ display: 'block', marginTop: 2 }}>

@@ -154,7 +154,8 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
               )}
 
               {/* A3 da 8ª simulação: o cadastro da unidade não pedia a comissão. */}
-              {atendeEm.length > 0 && podeComissao && (
+              {/* A4 da 22ª (princípio 7): à vista, desligado até marcar onde atende. */}
+              {podeComissao && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <span style={rotuloComDica}>
                     <label className="overline" htmlFor="tm-comissao">Comissão padrão (%)</label>
@@ -162,7 +163,8 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
                       Percentual sobre cada atendimento da pessoa. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
                     </Dica>
                   </span>
-                  <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" placeholder="Ex: 30" />
+                  <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" disabled={atendeEm.length === 0}
+                    placeholder={atendeEm.length > 0 ? 'Ex: 30' : 'Marque “Atende clientes” para definir'} />
                 </div>
               )}
 

@@ -8,7 +8,9 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 export type SituacaoDoPdv = 'ABERTAS' | 'PAGAS' | 'TODAS'
 export const SITUACOES_DO_PDV: readonly { key: SituacaoDoPdv; label: string }[] = [
   { key: 'ABERTAS', label: 'Abertas' },
-  { key: 'PAGAS',   label: 'Pagas hoje' },
+  // A8 da 22ª (princípio 3): a venda no crediário "nasce paga" (PDV8) sem nada
+  // recebido — a comanda está FECHADA (a forma escolhida), não paga.
+  { key: 'PAGAS',   label: 'Fechadas hoje' },
   { key: 'TODAS',   label: 'Todas' },
 ]
 export const situacaoDoPdv = (pedida: string | null | undefined): SituacaoDoPdv =>
@@ -191,7 +193,7 @@ export function descontosDaComanda(c: ComandaDoPdv): { chave: 'desconto' | 'vouc
 /**
  * O valor da comanda na lista (A1 da 17ª): a do atendimento paga mostra o que
  * foi PAGO (o Peeling de R$ 280 com R$ 30 de desconto aparecia "R$ 280,00" em
- * "Pagas hoje"); a aberta, o que falta; a venda e o plano, o valor deles (o
+ * "Fechadas hoje"); a aberta, o que falta; a venda e o plano, o valor deles (o
  * em aberto se diz ao lado).
  */
 export function valorNaLista(c: ComandaDoPdv): number {
@@ -241,7 +243,7 @@ export function estornoDaVendaEmTexto(c: ComandaDoPdv, hora: (iso: string | null
  */
 export function recebidaAgoraEmTexto(c: ComandaDoPdv): string | null {
   if (!c.paga || c.recebido == null) return null
-  return `Recebido ${brl(c.recebido)} (${formasDaComandaEmTexto(c)}). A comanda saiu das abertas e está em “Pagas hoje”.`
+  return `Recebido ${brl(c.recebido)} (${formasDaComandaEmTexto(c)}). A comanda saiu das abertas e está em “Fechadas hoje”.`
 }
 
 /**
@@ -344,7 +346,7 @@ export function pagoJuntoEmTexto(pagamentos: readonly PagamentoDaComandaNaTela[]
 
 /**
  * A2 da 21ª simulação (princípio 3): a venda no crediário "nasce paga" (PDV8)
- * e vai a "Pagas hoje" com o selo "A receber" — e o topo dizia "0 comandas
+ * e vai a "Fechadas hoje" com o selo "A receber" — e o topo dizia "0 comandas
  * abertas". O topo cita as comandas de hoje que ainda têm valor a receber.
  */
 export function contarComValorEmAberto(comandas: readonly ComandaDoPdv[]): number {
@@ -362,4 +364,20 @@ export function textoDasComValorEmAberto(n: number): string | null {
  */
 export function rotuloDoDiaNoPdv(unidade: string | null | undefined): string {
   return unidade?.trim() ? `Hoje em ${unidade.trim()}` : 'Hoje'
+}
+
+/** As comandas abertas de uma OUTRA unidade, no PDV da rede (A15 da 22ª). */
+export interface AbertasNaOutraUnidade { id: string; nome: string; abertas: number }
+
+/**
+ * A15 da 22ª simulação (princípio 3): o PDV da rede abre numa unidade, e
+ * "Nenhuma comanda aberta" escondia a comanda aberta na outra. Diz quantas há
+ * em cada outra unidade ("1 comanda aberta em Alecrim Renascença"); a tela
+ * leva a ela. Sem nenhuma, a lista fica vazia.
+ */
+export function abertasNasOutrasEmTexto(outras: readonly AbertasNaOutraUnidade[]): { id: string; texto: string }[] {
+  return outras.filter(o => o.abertas > 0).map(o => ({
+    id: o.id,
+    texto: `${o.abertas} ${o.abertas === 1 ? 'comanda aberta' : 'comandas abertas'} em ${o.nome}`,
+  }))
 }

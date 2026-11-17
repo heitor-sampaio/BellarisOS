@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserCheck } from 'lucide-react'
 import { reactivateTeamMember } from '@/actions/team'
+import { toast } from 'sonner'
+import { textoDoReativado } from '@/lib/equipe/textos-do-cadastro'
 
 /**
  * O "Reativar membro" da linha da Equipe. Era um `<form>` de servidor que
@@ -11,7 +13,13 @@ import { reactivateTeamMember } from '@/actions/team'
  * desbloqueou, o modo suporte): o clique não fazia nada, e ninguém dizia
  * por quê (C7/C9 da F63). Aqui o motivo aparece ao lado do botão.
  */
-export function ReativarMembro({ membroId, redirectPath }: { membroId: string; redirectPath: string }) {
+export function ReativarMembro({ membroId, nome, atende, redirectPath }: {
+  membroId: string
+  /** A6 da 22ª: o "deu certo" diz quem voltou e o que volta. */
+  nome: string
+  atende: boolean
+  redirectPath: string
+}) {
   const router = useRouter()
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
@@ -22,6 +30,7 @@ export function ReativarMembro({ membroId, redirectPath }: { membroId: string; r
       try {
         const r = await reactivateTeamMember(membroId, redirectPath)
         if (r?.error) { setErro(r.error); return }
+        toast.success(textoDoReativado(nome, atende))
         router.refresh()
       } catch {
         setErro('Não deu certo. Tente de novo.')

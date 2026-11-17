@@ -735,8 +735,9 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
         {/* Sessões */}
         {sessions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '24px 16px', borderRadius: 'var(--radius-field-token)', border: '2px dashed var(--hairline)' }}>
-            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', marginBottom: 10 }}>Nenhuma sessão criada ainda.</p>
-            <button type="button" onClick={addSession} className="btn-primary" style={{ fontSize: 'var(--text-sm-sz)', justifyContent: 'center' }}>
+            {/* A19 da 22ª (princípio 7): o vazio diz o primeiro passo — o "Planejamento" levava aqui, e não havia plano. */}
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', marginBottom: 10 }}>Nenhuma sessão ainda: comece em “Nova sessão” e escolha o procedimento.</p>
+            <button type="button" data-nova-sessao onClick={addSession} className="btn-primary" style={{ fontSize: 'var(--text-sm-sz)', justifyContent: 'center' }}>
               <Plus size={13} /> Nova sessão
             </button>
           </div>

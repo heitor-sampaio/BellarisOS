@@ -81,7 +81,7 @@ describe('A1: a comanda paga diz a bandeira', () => {
 describe('A2: o recebido aparece depois de receber', () => {
   it('"Recebido R$ 2.060,00 (Crédito Mastercard 10x)…"', () => {
     expect(sp(recebidaAgoraEmTexto(comanda({ recebido: 2060, formas: [{ forma: 'CREDIT_CARD', vezes: 10, valor: 2060, bandeira: 'MASTERCARD' }] }))))
-      .toBe('Recebido R$ 2.060,00 (Crédito Mastercard 10x). A comanda saiu das abertas e está em “Pagas hoje”.')
+      .toBe('Recebido R$ 2.060,00 (Crédito Mastercard 10x). A comanda saiu das abertas e está em “Fechadas hoje”.')
   })
   it('só da comanda paga', () => {
     expect(recebidaAgoraEmTexto(comanda({ paga: false }))).toBeNull()
@@ -107,7 +107,9 @@ describe('A3: diferencaAoDigitar', () => {
     expect(diferencaAoDigitar('abc', 10)).toBeNull()
   })
   it('a tela usa enquanto confere', () => {
-    expect(ler('components/shared/fechamento-do-dia-tela.tsx')).toMatch(/diferencaAoDigitar\(/)
+    // A12 da 22ª: a tela desenha por diferencaNaTela, que faz a conta do que se digita por diferencaAoDigitar.
+    expect(ler('components/shared/fechamento-do-dia-tela.tsx')).toMatch(/diferencaNaTela\(/)
+    expect(ler('lib/financeiro/conferencia-do-fechamento.ts')).toMatch(/diferencaAoDigitar\(args\.texto/)
   })
 })
 

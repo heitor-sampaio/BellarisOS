@@ -12,6 +12,7 @@ import { ehMenorDeIdade, avisoDoMenor, responsavelDaFicha } from '@/lib/clients/
 import { trazerPacoteCore, jaTemOPacoteDeFora } from '@/lib/pacotes/trazer'
 import { mensagemDoErro } from '@/lib/db'
 import { referenciasDaRede } from './referencias'
+import { avisoDaLinhaJuntada } from './o-que-entra'
 
 /**
  * Grava uma importação de contatos em segundo plano (2026-10-13).
@@ -257,7 +258,9 @@ async function gravarLinha(
     clientId = r.clientId
     avisos.push(...r.avisos)
   } else {
-    resultado = await gravarContato(admin, p.tenant_id, ctx, dados)
+    const r = await gravarContato(admin, p.tenant_id, ctx, dados)
+    resultado = r.resultado
+    if (r.aviso) avisos.push(r.aviso)
   }
 
   if (!p.oportunidade) return { resultado, oportunidade: false, avisos }
@@ -350,6 +353,7 @@ async function gravarCliente(
     existente = await ler(admin.from('clients').select('*')
       .eq('tenant_id', p.tenant_id).eq('document', dados.document as string).maybeSingle(), 'buscar o cliente pelo CPF')
   }
+  const peloCpf = !!existente
   if (!existente && !naoCompletarPeloTelefone) {
     const { data: id, error } = await admin.rpc('cliente_por_telefone', {
       p_tenant: p.tenant_id, p_digitos: digitos as string, p_sem_cpf: true,
@@ -382,6 +386,13 @@ async function gravarCliente(
   const branchId = (dados.unidade as string | undefined) ?? p.branch_id
   if (existente) {
     clientId = existente.id as string
+    // A30 da 22ª: em quem a linha entrou, e o que dela ficou de fora.
+    const juntada = avisoDaLinhaJuntada({
+      como: peloCpf ? 'cpf' : 'telefone',
+      existente: { nome: (existente.name as string | null) ?? null, email: (existente.email as string | null) ?? null },
+      linha: { nome: (dados.name as string | undefined) ?? null, email: (dados.email as string | undefined) ?? null },
+    })
+    if (juntada) avisos.push(juntada)
     const patch = soOVazio(existente, dados, campos)
     if (!Object.keys(patch).length) resultado = 'sem_mudanca'
     else {
@@ -452,7 +463,7 @@ async function gravarCliente(
  * 2026-10-29). A origem NÃO vira tag (T3 do Bloco Tags, 2026-11-14): ela é do
  * card da oportunidade.
  */
-async function gravarContato(admin: Admin, tenantId: string, ctx: TenantContext, linha: DadosDaLinha): Promise<Resultado> {
+async function gravarContato(admin: Admin, tenantId: string, ctx: TenantContext, linha: DadosDaLinha): Promise<{ resultado: Resultado; aviso?: string }> {
   const fone = linha.phone as string | undefined
   const dados: DadosDaLinha = linha
   const pessoa = await pessoaDaLinha(admin, tenantId, dados)
@@ -461,7 +472,13 @@ async function gravarContato(admin: Admin, tenantId: string, ctx: TenantContext,
     // Sem nome = vazio, ou só o número (o que a conversa põe quando o WhatsApp não manda nome).
     const semNome = !atual || /^[\d\s+().-]+$/.test(atual)
     const patch = soOVazio({ ...pessoa, name: semNome ? null : atual }, dados, ['name', 'email', 'social_media', 'tags'])
-    if (!Object.keys(patch).length) return 'sem_mudanca'
+    // A30 da 22ª: a linha juntada diz em quem entrou e o que dela ficou de fora.
+    const aviso = avisoDaLinhaJuntada({
+      como: fone ? 'telefone' : 'email',
+      existente: { nome: semNome ? null : atual, email: pessoa.email },
+      linha: { nome: (dados.name as string | undefined) ?? null, email: (dados.email as string | undefined) ?? null },
+    }) ?? undefined
+    if (!Object.keys(patch).length) return { resultado: 'sem_mudanca', aviso }
     // O nome é da PESSOA, e as cópias acompanham (conversas, oportunidades) —
     // a mesma porta da edição pela tela.
     const { name, ...resto } = patch
@@ -470,14 +487,14 @@ async function gravarContato(admin: Admin, tenantId: string, ctx: TenantContext,
       await gravar(admin.from('contacts').update({ ...resto, updated_at: agora() })
         .eq('id', pessoa.id).eq('tenant_id', tenantId), 'completar o contato')
     }
-    return 'completada'
+    return { resultado: 'completada', aviso }
   }
   await gravar(admin.from('contacts').insert({
     tenant_id: tenantId, name: (dados.name as string | undefined) ?? null, phone: fone ?? null,
     email: (dados.email as string | undefined) ?? null, social_media: (dados.social_media as string | undefined) ?? null,
     identifiers: fone ? [fone] : [], tags: (dados.tags as string[] | undefined) ?? [],
   }), 'criar o contato')
-  return 'nova'
+  return { resultado: 'nova' }
 }
 
 /** Importar de novo não duplica a oportunidade: a pessoa já tem uma aberta no mesmo funil? */

@@ -124,7 +124,7 @@ test('PDV8: o Crediário é uma forma — sem entrada nada a escolher, com entra
 
     // A comanda da venda diz "Crediário" — não "Sem forma de pagamento".
     await expect(p.getByRole('region', { name: 'Vender' })).toHaveCount(0)
-    await p.getByRole('link', { name: 'Pagas hoje' }).click()
+    await p.getByRole('link', { name: 'Fechadas hoje' }).click()
     const linha = p.locator('[data-lista-de-comandas] .pdv-linha', { hasText: `Crediario ${marca}` })
     await expect(linha).toContainText('Crediário')
     await expect(linha).not.toContainText('Sem forma')

@@ -14,7 +14,7 @@ import { nomeDaSessao, nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plan
 import { propostaVencida, validoAteDaProposta } from '@/lib/plano-de-tratamento/validade'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
 import { redeTemContratoDePlano } from '@/lib/documentos/plano'
-import { avisoDoContratoDoPlanoNoApp } from '@/lib/clientes/textos-do-app'
+import { avisoDoContratoDoPlanoNoApp, textoDoPlanoAceitoNoApp } from '@/lib/clientes/textos-do-app'
 import { AceitarPlano } from '@/components/client-portal/aceitar-plano'
 
 type Sessao = {
@@ -124,7 +124,8 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
           <div>
             <p style={{ fontWeight: 'var(--weight-extrabold)' }}>Plano aceito!</p>
             <p style={{ fontSize: 'var(--text-sm-sz)', marginTop: 2 }}>
-              A equipe já foi avisada. O pagamento é combinado na unidade, e os documentos você assina por aqui quando quiser.
+              {/* A39 da 22ª: o mesmo que o cartão do contrato, logo abaixo. */}
+              {textoDoPlanoAceitoNoApp({ contratoNoPagamento: !!avisoDoContrato, temDocumentos: documentos.length > 0 })}
             </p>
           </div>
         </div>

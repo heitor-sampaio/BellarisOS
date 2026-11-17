@@ -4,7 +4,7 @@ import { startTransition, useActionState, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { Plus, X, Loader2, AlertTriangle } from 'lucide-react'
 import { createBranch, type RespostaDeCriarUnidade } from '@/actions/branches'
-import { fetchCep, avisoDaUfQueFalta } from '@/lib/cep'
+import { fetchCep, avisoDoEnderecoQueFalta, CEP_NAO_ENCONTRADO } from '@/lib/cep'
 import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { maskPhoneDigitando, maskCEPDigitando, maskCPFouCNPJDigitando } from '@estetica-os/utils'
@@ -111,7 +111,7 @@ export function BranchForm({ cnpjDaRede = null }: { cnpjDaRede?: string | null }
     const result = await fetchCep(valor)
     setCepLoading(false)
     if (!result) {
-      setCepError('CEP não encontrado.')
+      setCepError(CEP_NAO_ENCONTRADO)
       return
     }
     if (result.address) setAddress(result.address)
@@ -332,10 +332,10 @@ export function BranchForm({ cnpjDaRede = null }: { cnpjDaRede?: string | null }
                       </select>
                     </div>
                   </div>
-                  {/* A21 da 20ª (princípio 2): sem a UF a unidade salva, e a tela avisa. */}
-                  {avisoDaUfQueFalta({ cidade: city, uf }) && (
+                  {/* A21 da 20ª (princípio 2): sem a UF a unidade salva, e a tela avisa. A28 da 22ª: e o CEP sem cidade pede a cidade e a UF. */}
+                  {avisoDoEnderecoQueFalta({ cep: zipCode, cidade: city, uf }) && (
                     <p data-uf-que-falta role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', margin: 0 }}>
-                      {avisoDaUfQueFalta({ cidade: city, uf })}
+                      {avisoDoEnderecoQueFalta({ cep: zipCode, cidade: city, uf })}
                     </p>
                   )}
                   {/* F62: o fuso acompanha o estado do CEP até a pessoa escolher. */}

@@ -317,7 +317,8 @@ export default async function AdminTeamPage({
                     </td>
 
                     <td data-label="" style={{ padding: '14px 20px', textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      {/* A5 da 22ª: a 1440 px a coluna cortava ("Cargo e uni…"): as ações quebram a linha. */}
+                      <div data-acoes-do-membro style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
                       {regras && (m.provides_services || regras.has(m.id) || (!!m.role_id && quemVende.has(m.role_id as string)) || (m as { comissao_venda_pct?: number | null }).comissao_venda_pct != null) && podeMexerEm(m) && (
                         <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                           procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
@@ -351,7 +352,7 @@ export default async function AdminTeamPage({
                       {canManage && m.id !== ctx.internalUserId && podeMexerEm(m) && (m.is_active ? (
                         <DesativarMembro membroId={m.id} nome={m.name} redirectPath="/admin/team" atende={!!m.provides_services} />
                       ) : (
-                        <ReativarMembro membroId={m.id} redirectPath="/admin/team" />
+                        <ReativarMembro membroId={m.id} nome={m.name} atende={!!m.provides_services} redirectPath="/admin/team" />
                       ))}
                       </div>
                     </td>

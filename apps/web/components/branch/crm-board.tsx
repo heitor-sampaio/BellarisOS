@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { idadeDoLead } from '@/lib/crm/idade-do-lead'
 import { updateLeadStage } from '@/actions/leads'
 import { ClientForm } from './client-form'
-import type { CRMFunnel, CRMStage } from '@/lib/crm'
+import { rotuloDaOportunidade, type CRMFunnel, type CRMStage } from '@/lib/crm'
 import { rotaCliente } from '@/lib/rotas'
 import { dayKeyTZ } from '@/lib/datetime'
 import { textoDoRetorno } from '@/lib/crm/retorno'
@@ -1339,10 +1339,21 @@ export function CRMBoard({
     setPerdaPendente(null)
   }
 
+  // A34 da 22ª: a janela da perda diz de qual oportunidade.
+  const rotuloDaPerda = (id: string) => {
+    const l = leads.find(x => x.id === id)
+    if (!l) return null
+    return rotuloDaOportunidade({
+      nome: l.name,
+      procedimentos: l.lead_procedures.map(lp => lp.procedures?.name ?? '').filter(Boolean),
+      funil: funnels.length > 1 ? funnels.find(f => f.id === funnelId)?.name ?? null : null,
+    })
+  }
+
   return (
     <div className="crm-board-root" style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}>
       {perdaPendente && (
-        <PerguntaDaPerda motivos={motivos} enviando={perdendo} erro={erroDaPerda}
+        <PerguntaDaPerda motivos={motivos} oportunidade={rotuloDaPerda(perdaPendente.id)} enviando={perdendo} erro={erroDaPerda}
           onConfirmar={confirmarPerda} onVoltar={() => setPerdaPendente(null)} />
       )}
       <FiltersBar

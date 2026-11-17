@@ -1,5 +1,5 @@
 import { formatBRL } from '@estetica-os/utils'
-import type { LancamentoDoExtrato } from '@/lib/comissoes/leitura'
+import type { LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 import { rotuloDaBase } from '@/lib/comissoes/config'
 
 /**
@@ -69,6 +69,16 @@ export const rotuloDaBaseDoLancamento = (l: LancamentoDoExtrato) =>
 
 const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno', AGUARDANDO: 'Aguardando' }
 const SITUACAO: Record<LancamentoDoExtrato['status'], string> = { OPEN: 'A pagar', PAID: 'Paga', AGUARDANDO: 'Aguardando o pagamento integral' }
+/**
+ * A situação de uma linha do extrato (A17 da 22ª simulação, princípio 3): o
+ * estorno da comissão não é pago — ele DESCONTA do pagamento. Saía "Paga" no
+ * CSV, como a liberação que ele desfaz.
+ */
+export function situacaoDoLancamento(l: Pick<LancamentoDoExtrato, 'kind' | 'status'>): string {
+  if (l.kind === 'ESTORNO' && l.status === 'PAID') return 'Descontada no pagamento'
+  if (l.kind === 'ESTORNO' && l.status === 'OPEN') return 'A descontar'
+  return SITUACAO[l.status]
+}
 const dia = (iso: string | null, fuso = 'America/Sao_Paulo') => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso }) : '—'
 const reais = (v: number | null) => v == null ? '' : v.toFixed(2).replace('.', ',')
 const campo = (v: string) => /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
@@ -79,7 +89,11 @@ const campo = (v: string) => /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` :
  * quem lia achava que não houve custo — o que a configuração não desconta fica
  * VAZIO; a regra diz de onde veio (A17).
  */
-export function csvDoExtrato(linhas: LancamentoDoExtrato[], nomes: Map<string, string>, unidades: Map<string, string>, fuso?: string): string {
+export function csvDoExtrato(
+  linhas: LancamentoDoExtrato[], nomes: Map<string, string>, unidades: Map<string, string>, fuso?: string,
+  /** A17 da 22ª: os pagamentos das comissões (os fechamentos), com o estornado — o extrato só dizia a situação final. */
+  fechamentos: readonly Fechamento[] = [],
+): string {
   // A8 da 21ª (princípio 3): a ligação do estorno com a liberação que ele desfaz
   // (a da tela, `vinculosDoExtrato`) e as linhas na ordem do tempo, com a hora —
   // "desfaz a liberação das 13:45" só se acha com a hora de cada linha.
@@ -99,11 +113,23 @@ export function csvDoExtrato(linhas: LancamentoDoExtrato[], nomes: Map<string, s
       l.preco == null || l.baseFator >= 1 ? '' : `${String(Math.round(l.baseFator * 10000) / 100).replace('.', ',')}%`,
       reais(l.base ?? l.preco), l.preco == null ? '' : rotuloDaBaseDoLancamento(l), regraDoLancamento(l, nomes.get(l.professionalId) ?? null),
       TIPO[l.kind], l.motivo ?? '', vinculos.get(l.id) ?? '',
-      l.amount.toFixed(2).replace('.', ','), l.previsto == null ? '' : l.previsto.toFixed(2).replace('.', ','), SITUACAO[l.status],
+      l.amount.toFixed(2).replace('.', ','), l.previsto == null ? '' : l.previsto.toFixed(2).replace('.', ','), situacaoDoLancamento(l),
       // A21 da 10ª: com o pagamento parcial, o dia em que CADA lançamento foi pago.
       l.pagoEm ? dia(l.pagoEm, fuso) : '',
     ]),
   ]
+  // A17 da 22ª (princípio 3): o pagamento estornado e pago de novo aparece — cada
+  // fechamento com quando foi pago e, estornado, quando e por quê.
+  const quandoFoi = (iso: string) => `${dia(iso, fuso)} ${hora(iso)}`
+  if (fechamentos.length) tabela.push(
+    [],
+    ['Pagamentos das comissões'],
+    ['Profissional', 'Unidade', 'Pago em', 'Valor', 'Situação'],
+    ...[...fechamentos].sort((a, b) => new Date(a.paidAt).getTime() - new Date(b.paidAt).getTime()).map(f => [
+      f.professionalName, f.branchName, quandoFoi(f.paidAt), reais(f.total),
+      f.estornadoAt ? `Estornado em ${quandoFoi(f.estornadoAt)}${f.estornoMotivo ? ` — ${f.estornoMotivo}` : ''}` : 'Pago',
+    ]),
+  )
   // BOM + ponto e vírgula: é o que o Excel em pt-BR abre certo.
   return '﻿' + tabela.map(l => l.map(campo).join(';')).join('\r\n')
 }

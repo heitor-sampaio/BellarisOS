@@ -75,7 +75,7 @@ test('PDV2/PDV5: a "Nova venda" escolhe a cliente, vende e a venda vira uma coma
 
     // Vendida, a comanda dela está nas pagas de hoje.
     await expect(p.getByRole('region', { name: 'Vender' })).toHaveCount(0)
-    await p.getByRole('link', { name: 'Pagas hoje' }).click()
+    await p.getByRole('link', { name: 'Fechadas hoje' }).click()
     const linha = p.locator('[data-lista-de-comandas] .pdv-linha', { hasText: `Compra ${marca}` })
     await expect(linha).toContainText('400,00')
     await expect(linha).toContainText('Paga')

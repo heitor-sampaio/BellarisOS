@@ -69,3 +69,10 @@ export function linkDaAba(base: string, aba: AbaDoFinanceiro, manter: Record<str
   const s = q.toString()
   return `${base}${s ? `?${s}` : ''}`
 }
+
+/**
+ * O rótulo do cartão "A receber da cliente" (A9 da 22ª simulação; princípio
+ * 3): o número grande é o que VENCE no período, e "R$ 0,00" ao lado de "Em
+ * aberto: R$ 296,66" parecia contradição. O rótulo diz qual é o número.
+ */
+export const ROTULO_DO_A_RECEBER_DA_CLIENTE = 'A receber da cliente · vence no período'

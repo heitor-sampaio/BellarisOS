@@ -56,7 +56,9 @@ async function criar(browser: import('@playwright/test').Browser, quem: MembroDe
     await expect(modal.locator('[data-unidades-do-membro] input[type="checkbox"]').first()).toBeChecked()
     await modal.locator('#tm-password').fill('Senha-e2e-123')
     const campo = modal.getByLabel(/Comissão padrão/)
-    await expect(campo, 'sem "atende", não pergunta').toHaveCount(0)
+    // A4 da 22ª: a comissão fica à vista, desligada até marcar "Atende clientes".
+    if (comissao !== null) await expect(campo, 'sem "atende", à vista e desligada').toBeDisabled()
+    else await expect(campo, 'quem não gere o financeiro não vê a comissão').toHaveCount(0)
     await modal.getByLabel(/Atende clientes/).check()
     if (comissao !== null) {
       await campo.fill(comissao)

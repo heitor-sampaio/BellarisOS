@@ -44,3 +44,13 @@ export function confirmacaoDoCadastro(nome: string): string {
 export function avisoDeQuemEntrouSemComissao(nome: string): string {
   return `${nome} entrou sem comissão: os atendimentos de ${nome} não geram comissão até alguém definir, no chip “Sem comissão” da linha.`
 }
+
+/**
+ * O "deu certo" do Reativar (A6 da 22ª simulação; princípio 3): ele não dizia o
+ * que volta e o que não volta. Volta o login e o "Atende" como estava; o que
+ * foi repassado ao desativar (agendamentos e oportunidades) fica com quem
+ * recebeu.
+ */
+export function textoDoReativado(nome: string, atende: boolean): string {
+  return `${nome} voltou: entra no sistema ${atende ? 'e atende ' : ''}como antes. O que foi repassado ao desativar continua com quem recebeu.`
+}

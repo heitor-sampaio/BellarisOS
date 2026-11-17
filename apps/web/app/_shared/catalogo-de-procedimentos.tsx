@@ -232,8 +232,8 @@ export async function CatalogoDeProcedimentos({ termo }: { termo: string }) {
             {semInsumo.length === 1 ? '1 procedimento ativo sem insumo ligado' : `${semInsumo.length} procedimentos ativos sem insumo ligado`}
           </strong>
           {/* A23 da 21ª: quais são — a Avaliação e a Massagem entravam na conta sem nome. */}
-          {' '}({nomesDosSemInsumo(semInsumo.map(p => p.name))})
-          : a baixa automática do estoque não acontece {semInsumo.length === 1 ? 'nele' : 'neles'}.
+          {/* A27 da 22ª: na mesma linha — a quebra do JSX punha um espaço antes dos dois-pontos. */}
+          {' '}({nomesDosSemInsumo(semInsumo.map(p => p.name))}): a baixa automática do estoque não acontece {semInsumo.length === 1 ? 'nele' : 'neles'}.
           {canEdit ? ' Ligue os insumos em “Editar” → Insumos utilizados.' : ''}{' '}
           <Dica rotulo="O que não usa insumo">O que não usa insumo (a avaliação, a massagem) pode ficar assim: o aviso é só um lembrete.</Dica>
         </p>

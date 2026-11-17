@@ -191,7 +191,13 @@ um muro que não depende de cada trava do código.
   (A18 da 19ª: o CEP geral pôs "Centro" na unidade da Aldeota): "O bairro
   “Centro” veio da busca do CEP: confira." embaixo do logradouro
   (`avisoDoBairroDoCep`, `lib/cep.ts`; `[data-confira-o-bairro]`), até a
-  pessoa mexer no campo. Só avisa.
+  pessoa mexer no campo. Só avisa. **O CEP que não traz a cidade a pede ali**
+  (A28 da 22ª: o "CEP não encontrado" deixava seguir sem cidade nem UF, e o
+  app da cliente mostrou "100, 65075-000"): "CEP não encontrado: escreva a
+  cidade e a UF abaixo." (`CEP_NAO_ENCONTRADO`) e, com o CEP e sem a cidade,
+  "Escreva a cidade e a UF: o CEP não as trouxe." à vista
+  (`avisoDoEnderecoQueFalta`, que também diz a UF que falta) — no `/setup`,
+  na Nova unidade e na edição. Avisa, não recusa (princípio 2).
 - **"Aberta 24 horas, todos os dias"** (A11 da 11ª simulação, 2026-11-10: a
   Renata abriu a Violeta 24 h com 7 pares de hora e o domingo à mão; o
   "Repetir" existia e não foi notado): no editor de horário (o setup, Unidades
@@ -943,6 +949,16 @@ de uma unidade"):**
   a coluna Unidade guarda 200 px e vai até duas linhas, com a lista inteira no
   `title` (A26 da 21ª: quebrava em seis), e o membro inativo tem o botão
   "Reativar" com o texto à vista (era só o ícone). Prova: `tests/telas-atritos-da-21.test.ts`.
+  **E a 22ª** (`tests/cargos-equipe-atritos-da-22.test.ts`): as ações da linha
+  quebram em vez de cortar a 1440 px (A5); o Reativar confirma o que volta e o
+  que não volta — "X voltou: entra no sistema e atende como antes. O que foi
+  repassado ao desativar continua com quem recebeu." (A6, `textoDoReativado`);
+  a "Comissão padrão (%)" do Novo membro fica à vista, desligada até o
+  "Atende clientes" (A4). Na matriz de Cargos, o PDV em "Sem acesso" com o
+  Financeiro em Gerenciar diz "Aberto pelo Financeiro em Gerenciar" (A1, PDV1,
+  `pdvAbertoPeloFinanceiro`); o resumo tem a dica "De onde vem Tratamentos"
+  (A2, `tratamentosNoResumo`); e o aviso do que falta escolher, junto do
+  Salvar, tem o "Ir até lá", que rola até a primeira linha pendente (A3).
 - **Os textos da Equipe dizem o que vale para ESTA pessoa** (A17, A18, A21 da
   17ª; princípio 3): salvar o cargo confirma ("Cargo “X” salvo."), e "O que
   essa pessoa vai ver" diz o Copilot pelo nível (`copilotNoResumo`); cadastrar
@@ -1232,6 +1248,11 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
       de … para …" — o número colado no nome confundia;
     - no detalhe da gravação, o registro clínico sem unidade também leva a
       unidade dela (era "Da rede" no detalhe com a linha em "Pajuçara").
+  - **A 22ª simulação** (A38, `tests/atritos-da-22-caixa.test.ts`): a venda
+    diz o crediário ("Vendeu o pacote X (R$ 650,00), no crediário: entrada
+    de R$ 150,00 (Pix) e 3 parcelas (R$ 500,00)") e o recebimento as vezes
+    ("Crédito 8x"); a parcela e as vezes vêm do lançamento lido agora
+    (`nomes.lancamentos`, também do criado). Venda paga à vista: sem acréscimo.
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

@@ -76,7 +76,7 @@ test('A28: o CSV do Fechamento traz a taxa e o líquido de cada maquininha a que
   const texto = await csvDe(dona!, browser)
   const linhas = texto.split('\r\n')
   expect(linhas).toContain('Taxa e líquido por maquininha (estimados)')
-  expect(linhas).toContain('Maquininha;Bruto;Taxa;Líquido')
+  expect(linhas).toContain('Maquininha ou forma;Bruto;Taxa;Líquido')
   expect(linhas).toContain('Maquininha;100,00;2,00;98,00')
   expect(linhas).toContain('Stone;200,00;6,00;194,00')
   expect(linhas).toContain('Pix;50,00;0,50;49,50')

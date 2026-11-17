@@ -282,3 +282,28 @@ export function rotuloDoBotaoDeFechar({ reabrindo, pendente }: { reabrindo: bool
   if (pendente) return 'Fechando…'
   return reabrindo ? 'Fechar de novo' : 'Fechar o dia'
 }
+
+/** O que a coluna Diferença da conferência mostra (A12 da 22ª). */
+export type DiferencaNaTela = { tipo: 'valor'; valor: number } | { tipo: 'a-conferir' } | { tipo: 'nao-conferido' } | { tipo: 'nada' }
+
+/**
+ * A coluna Diferença de uma linha (A12 da 22ª simulação; princípio 3): no
+ * "Fechar de novo", o campo em branco seguia mostrando o "Bateu" do
+ * fechamento de ANTES. Conferindo, a diferença é só a do que se digita — em
+ * branco, o dinheiro fica "—" (é obrigatório, falta digitar) e as outras
+ * formas, "não conferido" (é o que o branco grava). Fora da conferência, a do
+ * último fechamento (com o "a conferir" quando o dia mudou depois).
+ */
+export function diferencaNaTela(l: LinhaDaConferencia, args: { conferindo: boolean; texto: string; fechado: boolean }): DiferencaNaTela {
+  if (!l.conferivel) return { tipo: 'nada' }
+  if (args.conferindo) {
+    const digitada = diferencaAoDigitar(args.texto, l.registrado)
+    if (digitada != null) return { tipo: 'valor', valor: digitada }
+    // O primeiro fechamento do dia: em branco, nada ainda. O "Fechar de novo": o branco grava "não conferido".
+    return !args.fechado || l.forma === 'CASH' ? { tipo: 'nada' } : { tipo: 'nao-conferido' }
+  }
+  if (!args.fechado) return { tipo: 'nada' }
+  if (l.mudouDepois && l.conferido != null) return { tipo: 'a-conferir' }
+  if (l.diferenca == null) return { tipo: 'nao-conferido' }
+  return { tipo: 'valor', valor: l.diferenca }
+}

@@ -169,7 +169,9 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                   </span>
                 )}
 
-                {atende && podeComissao && (
+                {/* A4 da 22ª (princípio 7): o campo fica à vista, desligado até "Atende clientes" —
+                    aparecendo só depois, passava (o Dr. Otávio nasceu sem comissão). */}
+                {podeComissao && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <span style={rotuloComDica}>
                       <label className="overline" htmlFor="tm-comissao">Comissão padrão (%)</label>
@@ -177,7 +179,8 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                         Percentual sobre cada atendimento da pessoa. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
                       </Dica>
                     </span>
-                    <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" placeholder="Ex: 30" />
+                    <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" disabled={!atende}
+                      placeholder={atende ? 'Ex: 30' : 'Marque “Atende clientes” para definir'} />
                   </div>
                 )}
 

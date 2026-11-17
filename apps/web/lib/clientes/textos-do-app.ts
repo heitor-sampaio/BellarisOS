@@ -113,3 +113,32 @@ export function avisoDoContratoDoPlanoNoApp(p: {
   if (p.status !== 'ACCEPTED' || p.recebido || !p.redeTemContrato || p.tipos.includes('CONTRATO_PLANO')) return null
   return 'O contrato do plano se assina no pagamento, na unidade.'
 }
+
+/**
+ * O "Plano aceito!" diz o mesmo que o cartão do contrato (A39 da 22ª;
+ * princípio 3): dizia "os documentos você assina por aqui quando quiser", e o
+ * cartão logo abaixo, "O contrato do plano se assina no pagamento, na unidade".
+ * Sem documento nenhum no app, não promete assinatura por aqui.
+ */
+export function textoDoPlanoAceitoNoApp(p: { contratoNoPagamento: boolean; temDocumentos: boolean }): string {
+  const base = 'A equipe já foi avisada. O pagamento é combinado na unidade'
+  if (p.contratoNoPagamento) return `${base}, e o contrato do plano se assina lá, no pagamento.`
+  return p.temDocumentos ? `${base}, e os documentos você assina por aqui quando quiser.` : `${base}.`
+}
+
+/**
+ * A miniatura da foto em Documentos (A40 da 22ª; princípio 3): a foto que a
+ * equipe enviou aparecia com o ícone de documento. Só a foto, com o endereço.
+ */
+export function miniaturaNoApp(d: { category: string; file_url: string }): string | null {
+  return (d.category === 'foto' || d.category === 'foto_clinica') && d.file_url ? d.file_url : null
+}
+
+/**
+ * O botão do "Confirmar e avaliar" (A41 da 22ª; princípio 3): com nota ou
+ * comentário, ele diz que envia a avaliação — era sempre "Confirmar que
+ * realizei o atendimento", e a avaliação preenchida parecia ficar para trás.
+ */
+export function textoDoBotaoDeConfirmar(p: { avaliou: boolean }): string {
+  return p.avaliou ? 'Confirmar e enviar a avaliação' : 'Confirmar que realizei o atendimento'
+}

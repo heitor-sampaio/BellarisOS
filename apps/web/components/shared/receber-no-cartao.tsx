@@ -108,9 +108,8 @@ export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, adia
             <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
           </div>
         )}
-        {forma && (
-          <OutrasFormas metodoPrincipal={forma} total={valor} outras={outras} aoMudar={setOutras} metodos={FORMAS_DE_PAGAMENTO} />
-        )}
+        {/* A7 da 22ª (princípio 7): o "+ Outra forma" aparece com a janela, sem esperar a primeira forma. */}
+        <OutrasFormas metodoPrincipal={forma} total={valor} outras={outras} aoMudar={setOutras} metodos={FORMAS_DE_PAGAMENTO} />
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={aoFechar} disabled={pending}>Cancelar</button>
           <button type="button" className="btn-primary"

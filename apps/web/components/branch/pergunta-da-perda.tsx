@@ -12,9 +12,11 @@ export interface OpcaoDeMotivo { id: string; nome: string }
  * funis); a observação é opcional. O quadro e o painel do inbox abrem esta
  * janela antes de mover.
  */
-export function PerguntaDaPerda({ motivos: dados, enviando, erro, onConfirmar, onVoltar }: {
+export function PerguntaDaPerda({ motivos: dados, oportunidade, enviando, erro, onConfirmar, onVoltar }: {
   /** Sem a lista, ela é buscada ao abrir (o painel do inbox). */
   motivos?:    OpcaoDeMotivo[]
+  /** De qual oportunidade (A34 da 22ª): `rotuloDaOportunidade`. */
+  oportunidade?: string | null
   enviando:    boolean
   erro:        string | null
   onConfirmar: (perda: { motivoId: string; obs: string | null }) => void
@@ -35,7 +37,12 @@ export function PerguntaDaPerda({ motivos: dados, enviando, erro, onConfirmar, o
   return (
     <JanelaModal rotulo="Por que perdeu?" largura={420} travado={enviando} onFechar={onVoltar}>
       <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Por que perdeu?</h2>
+        <div>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Por que perdeu?</h2>
+          {oportunidade && (
+            <p data-oportunidade-da-perda style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2, overflowWrap: 'anywhere' }}>{oportunidade}</p>
+          )}
+        </div>
         <MotivoDaPerdaCampos motivos={motivos} motivoId={motivoId} obs={obs} onMotivo={v => { setMotivoId(v); setFaltou(false) }} onObs={setObs} />
         {faltou && !motivoId && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>Escolha o motivo da perda para marcar como perdido.</p>}
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}

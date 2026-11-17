@@ -15,7 +15,7 @@ comanda (PDV-P1).
 - **A tela**: `/[slug]/pdv` e `/admin/pdv` (uma unidade por vez,
   `?unidade=`), corpo em `app/_shared/pdv.tsx`. No menu, em Comercial, para quem
   RECEBE (`podeReceber`: o caixa ou o Financeiro em Gerenciar). À esquerda as
-  comandas (Abertas / Pagas hoje / Todas, busca pela cliente); à direita a
+  comandas (Abertas / Fechadas hoje / Todas, busca pela cliente); à direita a
   comanda escolhida, com o "Receber" em blocos de forma de pagamento
   (`FormasDePagamento`). No topo, o que entrou hoje (`getFechamentoDoDia`) e
   quantas estão abertas.
@@ -73,7 +73,7 @@ comanda (PDV-P1).
   vale em todo caminho que vende (tela, action, Copilot). As parcelas
   seguintes não fazem outra. O pacote trazido de fora não é venda: não tem
   comanda. A venda nasce paga (vendida com a forma escolhida): aparece em
-  "Pagas hoje" pela hora da venda; a estornada inteira diz "Estornada".
+  "Fechadas hoje" pela hora da venda; a estornada inteira diz "Estornada".
   **O que ficou em aberto se diz** (A1/A17 da 15ª simulação, princípio 3):
   a venda no crediário ou no a receber nasce paga, mas a linha e a comanda
   dizem "Crediário · R$ 1.800,00 em aberto (3 parcelas, a 1ª em 15/12)", e o
@@ -97,7 +97,7 @@ comanda (PDV-P1).
     R$ 120,00": o atendimento e o produto vendido nela, D3 —
     `formasDaComandaEmTexto`);
   - o desconto, o voucher e os pontos em linhas acima do "Total pago" (A1,
-    `descontosDaComanda`); a lista "Pagas hoje" mostra o recebido da
+    `descontosDaComanda`); a lista "Fechadas hoje" mostra o recebido da
     comanda do atendimento, não o preço (`valorNaLista`);
   - a quem estorna (`podeEstornar`), os pagamentos da comanda, cada um com o
     "Estornar" da ficha (`AcoesDoLancamentoDaFicha`, a janela de sempre;
@@ -314,7 +314,7 @@ comanda (PDV-P1).
     pagamentos da comanda também (`lancamentosDaComanda`).
   - **Depois de "Receber", a tela diz o que entrou** (A2): "Recebido
     R$ 2.060,00 (Crédito Mastercard 10x). A comanda saiu das abertas e está
-    em “Pagas hoje”." com "Ver a comanda" (`?recebida=`,
+    em “Fechadas hoje”." com "Ver a comanda" (`?recebida=`,
     `recebidaAgoraEmTexto`, `[data-recebida-agora]`; a comanda da URL que já
     saiu das Abertas também, porque o tempo real a tira antes).
   - O PDV sem comanda escolhida diz "Escolha uma comanda na lista" (A4: no
@@ -365,6 +365,29 @@ comanda (PDV-P1).
   - O CSV das movimentações tem a coluna "Pago com pontos/voucher"
     (`loyalty_discount`), depois do Desconto (A6): não é desconto.
   - Prova: `tests/atritos-da-21-caixa.test.ts`.
+- **O PDV e o caixa da 22ª simulação** (2026-11-17; princípios 3 e 7):
+  - A aba é "Fechadas hoje" (A8): a comanda no crediário fecha sem ter sido
+    paga, e "Pagas" mentia. O texto do "Receber" acompanha.
+  - O "+ Outra forma" aparece já com o diálogo aberto, antes de escolher a
+    forma (A7), na comanda, na parcela e no "Receber" da ficha.
+  - O produto pendente da comanda tem "−" e "+" (A13): `comanda_tirar_um_item`
+    tira UMA unidade (a linha some na última), com as travas do
+    `comanda_tirar_item`; o "+" é o `comanda_acrescentar_item` (estoque).
+  - Quem alcança mais de uma unidade vê, nas Abertas, "N comandas abertas em
+    <unidade>" com o link (A15, `abertasNasOutrasEmTexto`).
+  - A comanda da venda estornada INTEIRA mantém o "Pago com" (A11: o `vp` de
+    `pdv_comandas` lê os lançamentos 'Estornada' quando `v_estornada`).
+  - A linha do pagamento quebra em vez de cortar com "…" (A14).
+  - O lançamento da venda de pré-pago diz "Massagem relaxante — 1 sessão"
+    (A31, `procedimento_vender` e `_com_equipe`).
+  - O "Fechar de novo" do fechamento não mostra "Não conferido" no que ainda
+    se vai conferir (A12, `diferencaNaTela`).
+  - O CSV da contadora diz "Maquininha ou forma" (A16): o dinheiro e o Pix
+    não têm maquininha.
+  - O cartão do Financeiro é "A receber da cliente · vence no período" (A9,
+    `ROTULO_DO_A_RECEBER_DA_CLIENTE`): o número é o que vence no período.
+  - Prova: `tests/atritos-da-22-caixa.test.ts`; migration
+    `20261122600001_pdv_atritos_da_22`.
 - **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
   valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`
   e `confirmPayment` somam `valorDosItensDoAtendimento`); na "Nova venda"

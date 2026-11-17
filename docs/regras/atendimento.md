@@ -236,6 +236,7 @@
     agenda da unidade, o da profissional na célula dela e o da sala numa linha
     "Salas bloqueadas"; na da rede, no dia, com o rótulo de quem é; na "Minha
     agenda", o dia da faixa da semana diz "Bloqueado" (`[data-bloqueado-no-dia]`).
+    A etiqueta quebra a linha, não corta (A26 da 22ª: "Bloqueado das 12…").
   - **A semana tem os 7 dias** (D3 da 8ª simulação, 2026-11-06; decidido
     pelo princípio 3): a da unidade ia de segunda a sábado — numa unidade que
     abre aos domingos, o agendamento de domingo só aparecia no Mês e no Dia, e
@@ -282,7 +283,9 @@
     a evolução, o histórico, a ficha de saúde e o anexo. A agenda do Batel, os
     clientes e o caixa de lá seguem fora (o layout de `[slug]` a leva à dela).
     A "Minha agenda" dela traz os dela de fora como cartões ("Na unidade
-    Batel", `[data-outra-unidade]`), e a agenda inteira da unidade, a lista
+    Batel", `[data-outra-unidade]`) — e aí os cartões do topo dizem de onde é
+    cada número: "Hoje · suas unidades", "Esta semana · suas unidades" e
+    "Ocupação hoje · <a unidade>" (A22 da 22ª, `rotulosDaMinhaAgenda`) —, e a agenda inteira da unidade, a lista
     "Seus atendimentos em outras unidades" (`[data-meus-de-outras-unidades]`);
     os dois abrem a tela do atendimento pelo portal dela
     (`/[slug]/agenda/[id]` resolve a unidade do agendamento). **Quem é da
@@ -457,7 +460,13 @@
   cinza pequeno só era lido depois de iniciar): fundo de aviso, cadeado e
   "Você não conclui este atendimento." antes da frase, ACIMA do "Marcar
   chegada e iniciar" (na janela, no topo das ações; na tela, antes do botão).
-  A regra não muda: concluir pede o Prontuário em Gerenciar. E
+  A regra não muda: concluir pede o Prontuário em Gerenciar. **Os nomes são
+  de quem ALCANÇA o atendimento** (D1 da 22ª; princípio 3): o Prontuário em
+  Gerenciar de todos E a Agenda de todos, em Ver ou Gerenciar
+  (`quemConcluiOAtendimento`, `eTambem`) — a Dra. Lívia, com a Agenda "só os
+  meus", entrava na lista e não abria o atendimento da Nádia. Vale também na
+  janela da agenda dos dois portais (a mesma função). Prova:
+  `tests/atendimento-atritos-da-22.test.ts`. E
   o concluído A RECEBER não diz "Este agendamento já foi encerrado." embaixo
   do "Receber no PDV" (A14; era o "Receber pagamento" — desde o PDV7 a
   janela leva à comanda do atendimento no PDV, `rotaDaComanda`). Prova:
@@ -466,7 +475,8 @@
   2026-10-28, decisão do Heitor): com `agenda` OWN, a tela do atendimento
   (`app/_shared/sessao-de-atendimento.tsx`, os dois portais) de um
   agendamento de OUTRO profissional diz "Este atendimento é de outra
-  profissional", com o nome dela e "Voltar à agenda", e nada do atendimento
+  pessoa que atende" (A23 da 22ª: era "de outra profissional", no feminino
+  fixo), com o nome e "Voltar à agenda", e nada do atendimento
   (`AtendimentoDeOutraProfissional`; r2-atd-04, revisão do Heitor de
   2026-11-03: o 404 "Página não encontrada" da A38 parecia defeito — e antes
   dele era `semAcesso()`, "Seu cargo não libera esta tela", e o cargo libera;
@@ -725,7 +735,9 @@
   atendimento e avaliação por procedimento também"). A cliente avalia no app,
   ao confirmar o atendimento concluído ("Confirmar e avaliar", no Histórico →
   `/[slug]/cliente/atendimentos/[id]/confirmar`), com estrelas opcionais e o
-  comentário. **O que ela avalia é da rede** (Configurações → Geral, "O que
+  comentário. Com nota ou comentário, o botão diz "Confirmar e enviar a
+  avaliação"; sem, "Confirmar que realizei o atendimento"
+  (`textoDoBotaoDeConfirmar`, A41 da 22ª). **O que ela avalia é da rede** (Configurações → Geral, "O que
   a cliente avalia", `tenants.avaliacao_o_que`): "O atendimento e cada
   procedimento" (`OS_DOIS`, o padrão), "Só o atendimento" ou "Só cada
   procedimento"; quem não tem “A rede inteira” não muda (`recusaDaConfigDaRede`).
@@ -1267,7 +1279,9 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   `e2e/portal-cliente-remarcar-pelo-nucleo.spec.ts`.
 - **Quem só agenda cria a ficha, mas não mexe na que existe (H4, opção b;
   princípio 3: a mesma ação não muda conforme a porta).** O "+ Agendar" com
-  nome e telefone, e o agendar pelo CRM, criam a ficha rápida sem pedir
+  nome e telefone, e o agendar pelo CRM (cujos horários se chamam "Horários
+  livres · N", com a dica de que os ocupados e os bloqueados ficam de fora —
+  A24 da 22ª), criam a ficha rápida sem pedir
   Clientes em Gerenciar — criar a cliente nova faz parte do agendar.
   "Unificar com a ficha de X" e "Reativar a ficha de X" pedem Clientes em
   Gerenciar, na tela e na action (`garantirClienteRapido` recusa o
@@ -1821,7 +1835,9 @@ const procedures = await ler(
   "<unidade> enviou uma foto do seu atendimento." — e, no app, a foto do
   atendimento se diz "Uma foto do seu atendimento" (`tituloDoArquivoNoApp`).
   O aviso (a foto e o documento) abre o Histórico na aba Documentos, onde
-  eles estão (`linkDoDocumentoNoApp`, `?aba=documentos`; A13 da 21ª).
+  eles estão (`linkDoDocumentoNoApp`, `?aba=documentos`; A13 da 21ª). Lá, a
+  foto aparece pela miniatura, não pelo ícone de documento (`miniaturaNoApp`,
+  `[data-miniatura-da-foto]`; A40 da 22ª).
   Prova: `tests/app-da-cliente-atritos-da-21.test.ts`.
   **O cartão vazio diz onde a foto fica** (A26 da 9ª simulação, revisto no
   PR1a do bloco Prontuário, 2026-11-14): "Nenhuma foto neste atendimento. Ela
@@ -2060,8 +2076,12 @@ const procedures = await ler(
     não pede a observação a quem não pode escrevê-la.
   - **Monta-se na avaliação ou DEPOIS** ("a dra pode realizar a avaliação e
     depois com calma montar o plano"): o "Novo plano" na ficha (Planejamento →
-    Tratamentos) e no menu Tratamentos; e "Montar plano desta avaliação" na
-    avaliação CONCLUÍDA (o plano nasce ligado a ela). Na avaliação ABERTA,
+    Tratamentos) e no menu Tratamentos; e "Montar um plano" no atendimento
+    CONCLUÍDO (o plano nasce ligado a ele; A21 da 22ª: dizia "desta
+    avaliação" também numa drenagem). **Antes de iniciar, o plano é opcional**
+    (A21): no agendado, confirmado ou chegou, o cartão diz "Propor um plano
+    (opcional)" e o "Aceitar plano" não é a ação grande (`planoAntesDeIniciar`).
+    **As dores dizem no campo** "obrigatório para gerar o plano" (A18). Na avaliação ABERTA,
     gerar o plano grava também o registro do atendimento (as dores, a ficha, a
     ficha de saúde, a evolução) — ali segue o Prontuário em Gerenciar, como o
     "Finalizar".
@@ -2170,7 +2190,10 @@ const procedures = await ler(
   os planos da cliente mas não oferece "Novo plano" — diz que o plano desta
   avaliação se monta no cartão “Tratamento” da tela do atendimento, com o
   "Ir ao Tratamento", que fecha a janela e leva ao cartão (A14 da 21ª: "em
-  Tratamento" não dizia onde). Eram dois "Nova sessão" no mesmo gesto,
+  Tratamento" não dizia onde). **E o primeiro passo** (A19 da 22ª; princípio
+  7: o caminho parecia circular): a janela e o Tratamento vazio dizem
+  "comece em “Nova sessão” e escolha o procedimento", e o "Ir ao Tratamento"
+  põe o foco no "Nova sessão". Eram dois "Nova sessão" no mesmo gesto,
   e o plano feito no Planejamento ficava fora do plano gerado na avaliação
   (então o "Enviar para a recepção"; hoje os dois botões do plano, "Aceitar
   plano" e "Gerar plano · a cliente vai pensar").
@@ -3261,7 +3284,7 @@ O resto do fluxo:
   a cliente vai pensar") pede o Prontuário em Gerenciar** (D9 da 5ª simulação,
   2026-11-01): grava a avaliação no prontuário (`generateEvaluationPlan`). Na
   avaliação CONCLUÍDA, só o plano nasce: monta quem atende na unidade (PT2,
-  "Montar plano desta avaliação"). Com ele só em Ver, o
+  "Montar um plano"). Com ele só em Ver, o
   cartão some inteiro, com a dica do J-35 — que mandava a um "Finalizar
   atendimento" que não existe para ela (o alto da tela já diz quem conclui).
   Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
@@ -3407,7 +3430,7 @@ O resto do fluxo:
 ❌ Dizer "respondida" (selo, "algo mudou?", janela de 30 dias) sem anamneseRespondida / respostas não vazias — a ficha gravada vazia não é respondida
 ❌ Aceitar a ficha da CLIENTE (app ou link) sem oQueFaltaNaFicha no servidor
 ❌ Gravar o token do link da ficha em texto (o que confere quem abre é o SHA-256; para mostrar de novo, só CIFRADO pelo cofre, com a chave fora do banco — A22 da 9ª), ou contar tentativas fora de pre_atendimento_link_abrir
-❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista) — na tela, "Este atendimento é de outra profissional" (AtendimentoDeOutraProfissional), nem 404 nem semAcesso() (o cargo libera; o atendimento é que não é dela)
+❌ Action ou tela que recebe o id de um agendamento sem deOutroProfissional (a agenda "só os meus" vale pelo id, não só na lista) — na tela, "Este atendimento é de outra pessoa que atende" (AtendimentoDeOutraProfissional), nem 404 nem semAcesso() (o cargo libera; o atendimento é que não é dela)
 ❌ Botão que grava o prontuário (gerar o plano na avaliação aberta, "Editar registro") para quem não tem o Prontuário em Gerenciar (canEditRecords)
 ❌ Decidir quem monta o plano pelo Prontuário ou por nome de cargo — é montaPlano (quem atende na unidade do plano; a Admin da rede tem tudo — PT2)
 ❌ Gravar ou apagar a anotação clínica do plano (professional_notes) sem anotaNoPlano — quem monta sem o Prontuário não a escreve nem a zera

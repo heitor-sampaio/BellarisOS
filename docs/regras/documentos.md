@@ -114,7 +114,10 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     rede com um contrato de plano ativo, o bloco Documentos diz "O contrato
     do plano se assina no pagamento, na unidade." no lugar de "Nenhum
     documento neste plano" (`avisoDoContratoDoPlanoNoApp`,
-    `[data-contrato-no-pagamento]`).
+    `[data-contrato-no-pagamento]`). E o "Plano aceito!" diz o mesmo (A39
+    da 22ª): "…e o contrato do plano se assina lá, no pagamento." — sem
+    documento nenhum no app, não promete assinatura por aqui
+    (`textoDoPlanoAceitoNoApp`).
   - Prova: `e2e/plano-tratamento-leva-2.spec.ts`.
 - **O contrato de plano ativo se TROCA, não se desativa antes** (D-5, decisão
   do Heitor, 2026-10-29: "Fica o fluxo de trocar; sai o de criar outro e

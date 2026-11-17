@@ -634,6 +634,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     3): as linhas pela hora em que foram lançadas, com a coluna "Hora", e a
     coluna "Ligação" com o mesmo texto da tela ("desfaz a liberação das
     13:45", `vinculosDoExtrato`). Prova: `tests/atritos-da-21-caixa.test.ts`.
+    **O estorno já descontado diz isso** (A17 da 22ª): a linha negativa paga
+    num fechamento é "Descontada em dd/mm/aaaa" na tela e "Descontada no
+    pagamento" no CSV ("A descontar" enquanto aberta), não "Paga"; e o CSV
+    termina com "Pagamentos das comissões" (cada fechamento, o dia e a hora,
+    o valor e se foi estornado). Prova: `tests/atritos-da-22-caixa.test.ts`.
   - Fechamento não se reabre: estorno depois dele vira lançamento negativo
     no próximo. Saldo negativo não fecha.
   - **Estornar um fechamento** (`estornarFechamento` →

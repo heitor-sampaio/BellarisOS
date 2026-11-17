@@ -151,6 +151,34 @@ export async function acrescentarProdutoNaComanda(
   }
 }
 
+/**
+ * Tira UMA unidade do produto acrescentado (A13 da 22ª simulação, princípio
+ * 7): a quantidade era fixa, só com "Tirar". Com uma só, tira a linha. O "+"
+ * é o `acrescentarProdutoNaComanda` com 1 (o banco soma na mesma linha e
+ * confere o estoque). Antes de receber; o vendido volta pelo estorno da venda.
+ */
+export async function tirarUmProdutoDaComanda(itemId: string, slug: string): Promise<{ ok: true } | { error: string }> {
+  try {
+    const ctx = await getTenantContext()
+    if (!podeReceber(ctx)) return { error: 'Sem permissão para receber.' }
+    if (typeof itemId !== 'string' || !ID.test(itemId)) return { error: 'Item não encontrado.' }
+    const admin = createAdminClient()
+    const { data: item, error: e1 } = await admin.from('comanda_itens').select('id, comanda_id')
+      .eq('id', itemId).eq('tenant_id', ctx.tenantId!).maybeSingle()
+    if (e1) throw new Error(`Não consegui buscar o item: ${e1.message}`)
+    if (!item || !await comandaAoAlcance(admin, ctx, item.comanda_id as string)) return { error: 'Item não encontrado.' }
+    const { error } = await admin.rpc('comanda_tirar_um_item', { p_tenant: ctx.tenantId!, p_item: itemId })
+    if (error) {
+      if (error.code === 'P0001' || error.code === 'P0002') return { error: error.message }
+      throw new Error(`Não consegui mudar a quantidade: ${error.message}`)
+    }
+    revalidarOPdv(slug)
+    return { ok: true }
+  } catch (e) {
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
+
 /** Tira da comanda o produto acrescentado, antes de receber (o vendido volta pelo estorno da venda). */
 export async function tirarProdutoDaComanda(itemId: string, slug: string): Promise<{ ok: true } | { error: string }> {
   try {

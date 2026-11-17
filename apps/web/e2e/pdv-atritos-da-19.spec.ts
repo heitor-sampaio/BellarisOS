@@ -106,7 +106,7 @@ test('D1/A1: a venda estornada e recebida de novo vale o vendido uma vez, diz o 
   })
 })
 
-test('A2: depois de "Receber", a tela diz o recebido e que a comanda está em "Pagas hoje"', async ({ browser }) => {
+test('A2: depois de "Receber", a tela diz o recebido e que a comanda está em "Fechadas hoje"', async ({ browser }) => {
   const cliente = await rede!.criarCliente('Recebida agora')
   const { data, error } = await db().from('appointments').insert({
     branch_id: rede!.branchId, client_id: cliente, procedure_id: rede!.procedureId, professional_id: rede!.professionalId,
@@ -122,6 +122,6 @@ test('A2: depois de "Receber", a tela diz o recebido e que a comanda está em "P
     await detalhe.getByRole('button', { name: /Receber R\$\s?180,00/ }).click()
     await expect(p.locator(`[data-lista-de-comandas] [data-comanda="${comanda}"]`)).toHaveCount(0)
     await expect(p.locator('[data-recebida-agora]'))
-      .toContainText(/Recebido R\$\s180,00 \(Pix\)\. A comanda saiu das abertas e está em “Pagas hoje”\./)
+      .toContainText(/Recebido R\$\s180,00 \(Pix\)\. A comanda saiu das abertas e está em “Fechadas hoje”\./)
   })
 })

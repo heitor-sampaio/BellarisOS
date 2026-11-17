@@ -148,7 +148,7 @@ test('A1/A2: a comanda paga com desconto mostra o desconto e o total pago, e se 
 
     // A2: o Estornar mora na comanda paga, com a janela e o motivo de sempre.
     const pagamentos = p.locator('[data-pagamentos-da-comanda]')
-    await expect(pagamentos).toContainText(/Pix · R\$\s250,00/)
+    await expect(pagamentos).toContainText(/Pix\s*R\$\s250,00/)  // A14 da 22ª: o valor fica ao lado, fora do texto que quebra
     await pagamentos.locator('[data-estornar]').click()
     const janela = p.getByRole('dialog')
     await janela.getByLabel('Motivo do estorno').fill('Cobrou o desconto errado')

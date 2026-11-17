@@ -120,7 +120,7 @@ test('PDV1/CX1: o PDV mostra a comanda aberta e a recebe, com a forma obrigatór
 
     // Recebida, sai das abertas e aparece nas pagas de hoje.
     await expect(p.locator(`[data-lista-de-comandas] [data-comanda="${comanda.id}"]`)).toHaveCount(0)
-    await p.getByRole('link', { name: 'Pagas hoje' }).click()
+    await p.getByRole('link', { name: 'Fechadas hoje' }).click()
     await expect(p.locator(`[data-lista-de-comandas] [data-comanda="${comanda.id}"]`)).toContainText('Paga')
   })
 

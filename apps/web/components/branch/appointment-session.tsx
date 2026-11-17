@@ -220,7 +220,7 @@ interface Props {
   /**
    * Quem age MONTA o plano nesta unidade (PT2, 2026-11-14): quem atende nela
    * (o "Atende" da Equipe, `montaPlano` — não é permissão). É o que abre o
-   * "Montar plano desta avaliação" na avaliação concluída e o aceite do
+   * "Montar um plano" no atendimento concluído e o aceite do
    * proposto; na avaliação aberta, gerar o plano grava o prontuário e segue
    * pedindo o Prontuário em Gerenciar (`canEditRecords`).
    */
@@ -1028,6 +1028,12 @@ function DorasCard({ value, onChange, readonly, erro }: {
           <Dica rotulo="Sobre as queixas e dores">
             Queixas e necessidades relatadas na consulta — pedidas só para gerar um plano; sem plano, são opcionais.
           </Dica>
+          {/* A18 da 22ª (princípio 3): o campo diz antes, não só ao gerar o plano. */}
+          {!readonly && (
+            <span data-obrigatorio-para-o-plano style={{ fontSize: 'var(--text-2xs)', fontWeight: 600, color: 'var(--text-muted)' }}>
+              · obrigatório para gerar o plano
+            </span>
+          )}
         </h3>
       </div>
       <div style={{ padding: '18px 20px' }}>
@@ -1077,7 +1083,10 @@ export function AppointmentSession({
   // A16 da 20ª (princípio 7): o avulso concluído esperando o pagamento — a ação dele é
   // receber no PDV; o "Aceitar plano" (opcional) não vem como a ação grande.
   const aguardaOPagamento = appointment.status === 'COMPLETED' && !paymentTransaction && !isPartOfPlan && !isPackageSession && !isPrePago && !semCobranca
-  const planoSecundario = isPackageSession || aguardaOPagamento
+  // A21 da 22ª (princípio 3): antes de iniciar, o plano é opcional — o "Aceitar
+  // plano" grande, numa Drenagem avulsa agendada, parecia o passo seguinte.
+  const planoAntesDeIniciar = !isPackageSession && ['SCHEDULED', 'CONFIRMED', 'ARRIVED'].includes(appointment.status)
+  const planoSecundario = isPackageSession || aguardaOPagamento || planoAntesDeIniciar
   const [starting,      setStarting]      = useState(false)
   const [erroAoIniciar, setErroAoIniciar] = useState<string | null>(null)
   const [checkingIn,    setCheckingIn]    = useState(false)
@@ -1644,7 +1653,11 @@ export function AppointmentSession({
               // A14 da 21ª: fecha a janela e leva ao cartão "Tratamento" da tela.
               onIrAoTratamento={() => {
                 setPlanejamentoAberto(false)
-                requestAnimationFrame(() => document.querySelector('[data-editor-do-tratamento]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+                requestAnimationFrame(() => {
+                  document.querySelector('[data-editor-do-tratamento]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  // A19 da 22ª: o primeiro passo ("Nova sessão") já com o foco.
+                  document.querySelector<HTMLElement>('[data-editor-do-tratamento] [data-nova-sessao]')?.focus({ preventScroll: true })
+                })
               }}
             />
           </div>
@@ -2483,7 +2496,8 @@ export function AppointmentSession({
                     <div className="card" style={{ padding: '20px 24px' }}>
                       {status === 'COMPLETED' && (
                         <div data-montar-plano-da-avaliacao style={{ marginBottom: 12 }}>
-                          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Montar plano desta avaliação</h3>
+                          {/* A21 da 22ª: o concluído pode ser uma drenagem — o título não diz "desta avaliação". */}
+                          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Montar um plano</h3>
                           <p data-plano-da-avaliacao-concluida style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                             {textoDoPlanoDoConcluido()}
                           </p>
@@ -2498,6 +2512,16 @@ export function AppointmentSession({
                             <span>Propor um plano novo (opcional)</span>
                             <Dica rotulo="Sobre o plano na sessão do pacote">
                               Esta sessão já está paga pelo pacote. Monte um plano só se a cliente quiser um tratamento novo; para encerrar, basta o &quot;Finalizar atendimento&quot;.
+                            </Dica>
+                          </h3>
+                        </div>
+                      )}
+                      {planoAntesDeIniciar && (
+                        <div data-plano-antes-de-iniciar style={{ marginBottom: 12 }}>
+                          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>Propor um plano (opcional)</span>
+                            <Dica rotulo="Sobre o plano antes de iniciar">
+                              Monte um plano só se a cliente quiser um tratamento. Para atender, inicie o atendimento; o plano também pode ser montado durante ou depois dele.
                             </Dica>
                           </h3>
                         </div>

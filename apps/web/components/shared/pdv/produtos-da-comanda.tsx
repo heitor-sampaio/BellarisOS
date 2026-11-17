@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X } from 'lucide-react'
-import { acrescentarProdutoNaComanda, tirarProdutoDaComanda } from '@/actions/pdv'
+import { Minus, Plus, X } from 'lucide-react'
+import { acrescentarProdutoNaComanda, tirarProdutoDaComanda, tirarUmProdutoDaComanda } from '@/actions/pdv'
 import type { ItemDaComanda } from '@/lib/pdv/itens-da-comanda'
 import { situacaoDoItemDaComanda } from '@/lib/pdv/situacoes'
 
@@ -13,7 +13,7 @@ const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
  * Os produtos da comanda do atendimento (PDV, fase 5b — o desenho aprovado:
  * "na saída ela levou um sérum, que se acrescenta na mesma comanda" e "sai do
  * estoque da unidade"). Cada um numa linha, com a quantidade e o valor; antes
- * de receber, "Tirar". "Acrescentar produto" abre a escolha: os produtos de
+ * de receber, "−"/"+" na quantidade (A13 da 22ª) e "Tirar". "Acrescentar produto" abre a escolha: os produtos de
  * Venda direta, com o que há no estoque da unidade. O estoque sai quando a
  * comanda é paga, junto do atendimento.
  *
@@ -50,6 +50,24 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
       router.refresh()
     })
   }
+  // A13 da 22ª (princípio 7): a quantidade se muda na linha — o "+" acrescenta
+  // um (o banco soma e confere o estoque), o "−" tira um (com um só, a linha).
+  const maisUm = (produto: string) => {
+    setErro(null)
+    comecar(async () => {
+      const r = await acrescentarProdutoNaComanda(comandaId, produto, 1, slug)
+      if ('error' in r) { setErro(r.error); return }
+      router.refresh()
+    })
+  }
+  const menosUm = (itemId: string) => {
+    setErro(null)
+    comecar(async () => {
+      const r = await tirarUmProdutoDaComanda(itemId, slug)
+      if ('error' in r) { setErro(r.error); return }
+      router.refresh()
+    })
+  }
   const tirar = (itemId: string) => {
     setErro(null)
     comecar(async () => {
@@ -63,7 +81,7 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
     <>
       {itens.map(i => (
         <div key={i.id} data-item-da-comanda data-estornado={i.estornadoEm ? 'true' : undefined} style={{
-          display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 40px 110px',
+          display: 'grid', gridTemplateColumns: produtos && !i.vendido ? 'minmax(0, 1fr) auto 110px' : 'minmax(0, 1fr) 40px 110px',
           gap: 10, alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--hairline)',
         }}>
           <div style={{ minWidth: 0 }}>
@@ -79,7 +97,21 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
               </button>
             )}
           </div>
-          <span style={{ color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{i.quantidade}</span>
+          {produtos && !i.vendido ? (
+            <span data-quantidade-do-item style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <button type="button" className="btn-ghost" data-menos-um aria-label={`Um ${i.nome} a menos`} title="Um a menos"
+                disabled={pendente} onClick={() => menosUm(i.id)} style={{ padding: '2px 6px' }}>
+                <Minus size={12} aria-hidden />
+              </button>
+              <span style={{ minWidth: 20, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{i.quantidade}</span>
+              <button type="button" className="btn-ghost" data-mais-um aria-label={`Um ${i.nome} a mais`} title="Um a mais"
+                disabled={pendente} onClick={() => maisUm(i.produtoId)} style={{ padding: '2px 6px' }}>
+                <Plus size={12} aria-hidden />
+              </button>
+            </span>
+          ) : (
+            <span style={{ color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{i.quantidade}</span>
+          )}
           <span style={{
             textAlign: 'right', fontWeight: 800, color: i.estornadoEm ? 'var(--text-muted)' : 'var(--text)',
             textDecoration: i.estornadoEm ? 'line-through' : undefined,

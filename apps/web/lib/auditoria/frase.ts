@@ -741,7 +741,7 @@ const paiDaGravacao = (linhas: readonly RegistroDaAuditoria[]) =>
 // mexeu (o agendamento, o lançamento recebido, a venda): ele dá a frase, a
 // unidade e o link da linha. Nada muda no que se grava; muda o que se lê.
 
-interface Recebimento { linha: RegistroDaAuditoria; tipo: string | null; valor: number; forma: string | null; categoria: string | null }
+interface Recebimento { linha: RegistroDaAuditoria; tipo: string | null; valor: number; forma: string | null; categoria: string | null; vezes?: number | null }
 
 /**
  * Os lançamentos que ficaram PAGOS nesta gravação: criados já pagos, ou
@@ -773,13 +773,42 @@ function recebimentosDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: N
     recebidos.push({
       linha: emOrdem[emOrdem.length - 1]!, tipo: texto(estado.type) ?? lido?.tipo ?? null, valor,
       forma: texto(estado.payment_method) ?? lido?.forma ?? null, categoria,
+      // A38 da 22ª: as vezes do crédito ("Crédito 8x") — a auditoria não as guarda; vêm do lançamento lido.
+      vezes: numero(estado.cartao_vezes) ?? lido?.vezes ?? null,
     })
   }
   return recebidos
 }
 
 /** "(Pix)", "(Pix e Débito)": as formas dos recebimentos, sem repetir. */
-const formasDe = (rs: readonly Recebimento[]) => emLista([...new Set(rs.map(x => x.forma).filter((f): f is string => !!f).map(f => rotuloDaForma(f)))])
+const formasDe = (rs: readonly Recebimento[]) => emLista([...new Set(rs.filter(x => !!x.forma).map(x => rotuloDaForma(x.forma, x.vezes)))])
+
+/**
+ * Como a venda foi paga, na gravação dela (A38 da 22ª simulação; princípio
+ * 3): "Vendeu o pacote X (R$ 650,00)" não dizia o crediário, a entrada nem as
+ * parcelas. Os lançamentos CRIADOS na gravação: os pagos (a entrada, o à
+ * vista) e os em aberto (as parcelas do crediário, o a receber). A parcela vem
+ * do lançamento lido (`nomes.lancamentos`): a auditoria não a guarda.
+ */
+function pagamentoDaVenda(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, pagos: readonly Recebimento[]): string {
+  const abertos = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'criou'
+    && (texto(l.depois.type) ?? (l.registro_id ? nomes.lancamentos?.[l.registro_id]?.tipo : null)) === 'INCOME'
+    && !l.depois.paid_at && texto(l.depois.category) !== 'Estorno')
+    .map(l => ({ valor: numero(l.depois.amount) ?? (l.registro_id ? nomes.lancamentos?.[l.registro_id]?.valor : null) ?? 0,
+                 parcela: l.registro_id ? nomes.lancamentos?.[l.registro_id]?.parcela ?? null : null }))
+    .filter(x => x.valor > 0)
+  const pago = pagos.reduce((t, x) => t + x.valor, 0)
+  const formas = formasDe(pagos)
+  const pagoEmTexto = `${brl(pago)}${formas ? ` (${formas})` : ''}`
+  if (!abertos.length) return '' // paga à vista: a frase do preço já basta
+  const emAberto = brl(abertos.reduce((t, x) => t + x.valor, 0))
+  const parcelas = abertos.filter(x => x.parcela != null).length
+  if (parcelas > 0) {
+    const asParcelas = `${parcelas} ${parcelas === 1 ? 'parcela' : 'parcelas'} (${emAberto})`
+    return pagos.length ? `, no crediário: entrada de ${pagoEmTexto} e ${asParcelas}` : `, no crediário: ${asParcelas}`
+  }
+  return pagos.length ? `, recebeu ${pagoEmTexto} e ficou ${emAberto} a receber` : `, a receber (${emAberto})`
+}
 
 /** " — Rita Moura": a cliente da gravação, se for uma só. */
 function clienteDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, preferida?: RegistroDaAuditoria): string {
@@ -821,7 +850,7 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
     const preco = numero(pacote.depois.price)
     return {
       principal: pacote,
-      frase: `Vendeu ${nome ? `o pacote ${nome}` : 'um pacote'}${preco !== null ? ` (${brl(preco)})` : ''}${clienteDaGravacao(linhas, nomes, pacote)}`,
+      frase: `Vendeu ${nome ? `o pacote ${nome}` : 'um pacote'}${preco !== null ? ` (${brl(preco)})` : ''}${pagamentoDaVenda(linhas, nomes, entradas)}${clienteDaGravacao(linhas, nomes, pacote)}`,
     }
   }
   const prePago = criada('procedure_sales')
@@ -831,7 +860,7 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
     const sessoes = q !== null ? ` de ${q.toLocaleString('pt-BR')} ${q === 1 ? 'sessão' : 'sessões'}` : ''
     return {
       principal: prePago,
-      frase: `Vendeu o pré-pago${sessoes}${preco !== null ? ` (${brl(preco)})` : ''}${clienteDaGravacao(linhas, nomes, prePago)}`,
+      frase: `Vendeu o pré-pago${sessoes}${preco !== null ? ` (${brl(preco)})` : ''}${pagamentoDaVenda(linhas, nomes, entradas)}${clienteDaGravacao(linhas, nomes, prePago)}`,
     }
   }
   const credito = criada('creditos_vendidos')
@@ -839,7 +868,7 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
     const valor = numero(credito.depois.valor)
     return {
       principal: credito,
-      frase: `Vendeu crédito interno${valor !== null ? ` (${brl(valor)})` : ''}${clienteDaGravacao(linhas, nomes, credito)}`,
+      frase: `Vendeu crédito interno${valor !== null ? ` (${brl(valor)})` : ''}${pagamentoDaVenda(linhas, nomes, entradas)}${clienteDaGravacao(linhas, nomes, credito)}`,
     }
   }
 

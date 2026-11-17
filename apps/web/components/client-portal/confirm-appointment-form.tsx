@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Star, CheckCircle2, CalendarDays, User } from 'lucide-react'
 import { confirmAndRateAppointment } from '@/actions/appointments'
 import { useFuso } from '@/components/shared/fuso'
-import { textoDoQuandoNoConfirmar } from '@/lib/clientes/textos-do-app'
+import { textoDoQuandoNoConfirmar, textoDoBotaoDeConfirmar } from '@/lib/clientes/textos-do-app'
 
 interface Props {
   appointmentId:    string
@@ -156,7 +156,10 @@ export function ConfirmAppointmentForm({
         style={{ justifyContent: 'center', padding: '13px 16px', fontSize: 'var(--text-base-sz)', opacity: submitting ? 0.6 : 1 }}
       >
         <CheckCircle2 size={17} />
-        {submitting ? 'Confirmando…' : 'Confirmar que realizei o atendimento'}
+        {/* A41 da 22ª: com nota ou comentário, o botão diz que a avaliação vai junto. */}
+        {submitting ? 'Confirmando…' : textoDoBotaoDeConfirmar({
+          avaliou: notaDoAtendimento > 0 || Object.values(notas).some(n => n > 0) || !!feedback.trim(),
+        })}
       </button>
     </div>
   )

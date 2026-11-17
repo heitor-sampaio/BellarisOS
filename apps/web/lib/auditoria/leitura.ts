@@ -214,23 +214,32 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
   const cargos = [...new Set(cargosDaPermissao.values())]
   // D7 da 16ª: o pacote vendido e o lançamento baixado ("Recebeu a parcela 1/4 (R$ 200,00)").
   const pacotes = [...new Set(registros.filter(r => r.tabela === 'client_packages').map(r => doRegistro(r, 'package_id')).filter((v): v is string => !!v))]
-  const lancamentos = [...new Set(registros.filter(r => r.tabela === 'financial_transactions' && r.operacao === 'editou'
+  // A38 da 22ª: o lançamento CRIADO também (as vezes do crédito e as parcelas do crediário).
+  const lancamentos = [...new Set(registros.filter(r => r.tabela === 'financial_transactions' && (r.operacao === 'editou' || r.operacao === 'criou')
     && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!))]
+  const lerLancamentos = async () => {
+    // Em lotes: o CSV pode trazer muitos, e a lista de ids vai na URL.
+    const lidos: Record<string, unknown>[] = []
+    for (let i = 0; i < lancamentos.length; i += 150) {
+      const lote = await ler(admin.from('financial_transactions')
+        .select('id, type, amount, payment_method, parcela_numero, parcela_total, appointment_id, cartao_vezes, branches!inner(tenant_id)')
+        .eq('branches.tenant_id', ctx.tenantId!).in('id', lancamentos.slice(i, i + 150)), 'ler os lançamentos da auditoria')
+      lidos.push(...((lote ?? []) as Record<string, unknown>[]))
+    }
+    return lidos
+  }
   const [pk, ft] = await Promise.all([
     pacotes.length
       ? ler(admin.from('service_packages').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', pacotes), 'ler os nomes dos pacotes')
       : Promise.resolve([]),
-    lancamentos.length
-      ? ler(admin.from('financial_transactions').select('id, type, amount, payment_method, parcela_numero, parcela_total, appointment_id, branches!inner(tenant_id)')
-        .eq('branches.tenant_id', ctx.tenantId!).in('id', lancamentos), 'ler os lançamentos da auditoria')
-      : Promise.resolve([]),
+    lancamentos.length ? lerLancamentos() : Promise.resolve([]),
   ])
   const lancamentosLidos = Object.fromEntries(((ft ?? []) as {
     id: string; type: string | null; amount: number | string | null; payment_method: string | null
-    parcela_numero: number | null; parcela_total: number | null; appointment_id: string | null
+    parcela_numero: number | null; parcela_total: number | null; appointment_id: string | null; cartao_vezes: number | null
   }[]).map(l => [l.id, {
     tipo: l.type, valor: l.amount === null ? null : Number(l.amount), forma: l.payment_method,
-    parcela: l.parcela_numero, de: l.parcela_total, agendamento: !!l.appointment_id,
+    parcela: l.parcela_numero, de: l.parcela_total, agendamento: !!l.appointment_id, vezes: l.cartao_vezes,
   }]))
   const [extras, da20] = await Promise.all([nomesDa17(ctx, registros), nomesDa20(ctx, registros)])
   const [c, m, u, p, cg] = await Promise.all([

@@ -144,7 +144,8 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
     ...(f.taxasPorMaquininha?.length ? [
       [],
       ['Taxa e líquido por maquininha (estimados)'],
-      ['Maquininha', 'Bruto', 'Taxa', 'Líquido'],
+      // A16 da 22ª (princípio 3): a linha do Pix (taxa por forma, A28 da 14ª) ficava sob "Maquininha".
+      ['Maquininha ou forma', 'Bruto', 'Taxa', 'Líquido'],
       ...f.taxasPorMaquininha.map(t => [t.maquininha, reais(t.bruto), reais(t.taxa), reais(t.liquido)]),
     ] : []),
     [],

@@ -20,6 +20,7 @@ import { csvDoDre } from '@/lib/financeiro/csv-da-contadora'
 import { baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { rotuloDoMotivo } from '@/lib/estoque/perda'
 import { medidaNoPlural } from '@/lib/estoque/medidas'
+import { DETALHE_DO_GIRO } from '@/lib/estoque/situacao'
 import {
   TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda, comandaDaVenda,
 } from '@/lib/metrics/vendas-comum'
@@ -1247,7 +1248,8 @@ function TabEstoque(p: ReportsBiProps) {
         {/* "Só os meus": o saldo do estoque não se atribui a ela — só o insumo
             dos atendimentos dela (o consumo e os mais consumidos). */}
         {!p.soOsMeus && <KpiCard label="Valor em Estoque" value={totalStockValue} format="brl" />}
-        <KpiCard label="Consumo no Período" value={consumoValue} format="brl" accent="var(--warning)" />
+        {/* A37 da 22ª (princípio 3): o mesmo detalhe da tela de Estoque — o produto vendido fica fora. */}
+        <KpiCard label="Consumo no Período" value={consumoValue} format="brl" accent="var(--warning)" detalhe={DETALHE_DO_GIRO} />
         {/* est-04/est-05: a perda é MÉTRICA (não entra no lucro nem no caixa — D8
             da 10ª: nem quando a compra é paga), e o custo com perdas é para análise. */}
         {p.perdas && <>

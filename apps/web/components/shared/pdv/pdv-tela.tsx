@@ -16,7 +16,7 @@ import {
   SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
   estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
   estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto, vendaEstornadaEmTexto, rotuloDoDiaNoPdv, textoDasComValorEmAberto,
-  type ComandaDoPdv, type SituacaoDoPdv,
+  abertasNasOutrasEmTexto, type AbertasNaOutraUnidade, type ComandaDoPdv, type SituacaoDoPdv,
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
@@ -124,13 +124,15 @@ export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoj
  * e o "Receber". Não existe pagamento sem forma (PDV8): o "Receber" espera a
  * forma escolhida.
  */
-export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, comValorEmAberto = 0, recebidoHoje, escolhida, slugDaUnidade, novaVenda, podeVerFechamento = true, recebidaAgora = null }: {
+export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, abertasNasOutras = [], comValorEmAberto = 0, recebidoHoje, escolhida, slugDaUnidade, novaVenda, podeVerFechamento = true, recebidaAgora = null }: {
   basePath:      string
   unidades:      { id: string; name: string }[]
   unidadeId:     string
   situacao:      SituacaoDoPdv
   comandas:      ComandaDoPdv[]
   abertas:       number
+  /** A15 da 22ª: no PDV da rede, as comandas abertas de cada OUTRA unidade. */
+  abertasNasOutras?: AbertasNaOutraUnidade[]
   /** A2 da 21ª: as de hoje pagas com valor a receber (o topo as cita). */
   comValorEmAberto?: number
   recebidoHoje:  number
@@ -199,11 +201,19 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
                 onChange={e => setBusca(e.target.value)} style={{ paddingLeft: 30, width: '100%' }} />
             </label>
           </div>
+          {/* A15 da 22ª: a comanda aberta numa outra unidade não some atrás do "Nenhuma comanda aberta". */}
+          {situacao === 'ABERTAS' && abertasNasOutrasEmTexto(abertasNasOutras).length > 0 && (
+            <p data-abertas-nas-outras style={{ padding: '0 14px 10px', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px' }}>
+              {abertasNasOutrasEmTexto(abertasNasOutras).map(o => (
+                <Link key={o.id} href={hrefNaUnidade(o.id)} style={{ color: 'var(--brand)', fontWeight: 700 }}>{o.texto}</Link>
+              ))}
+            </p>
+          )}
           {visiveis.length === 0 ? (
             <p style={{ padding: '24px 16px 28px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>
               {busca.trim() ? `Nenhuma comanda de “${busca.trim()}”.`
                 : situacao === 'ABERTAS' ? 'Nenhuma comanda aberta. Ela nasce quando um atendimento é iniciado e tem o que cobrar.'
-                : situacao === 'PAGAS' ? 'Nenhuma comanda paga hoje.' : 'Nenhuma comanda hoje.'}
+                : situacao === 'PAGAS' ? 'Nenhuma comanda fechada hoje.' : 'Nenhuma comanda hoje.'}
             </p>
           ) : (
             <div style={{ paddingBottom: 8 }}>
@@ -413,9 +423,11 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
                         display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', minWidth: 0,
                         borderTop: i ? '1px solid var(--hairline)' : undefined,
                       }}>
-                        <span title={l.descricao} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                          <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>{rotuloDoPagamentoDaComanda(l) ?? l.descricao}</b> · {rotuloDaForma(l.metodo, l.vezes, { bandeira: l.bandeira })} · {brl(l.valor)}
+                        {/* A14 da 22ª (design): o texto quebra em vez de cortar, e o valor fica inteiro ao lado. */}
+                        <span title={l.descricao} style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                          <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>{rotuloDoPagamentoDaComanda(l) ?? l.descricao}</b> · {rotuloDaForma(l.metodo, l.vezes, { bandeira: l.bandeira })}
                         </span>
+                        <span data-valor-do-pagamento style={{ whiteSpace: 'nowrap', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{brl(l.valor)}</span>
                         {e.podeEstornar && (
                           <AcoesDoLancamentoDaFicha slug={slugDaUnidade} podeEstornar podeReceber={false} aoEstornar={aoEstornar}
                             lancamento={{

@@ -34,7 +34,7 @@ import { faltaParaOContratoDoPacote } from '@/lib/documentos/falta-no-cadastro'
  * O PDV, o corpo dos dois portais (PDV1, a revisão do Heitor de 2026-11-13:
  * "vamos fazer um PDV… o pagamento acontece por dentro desse PDV, seja do que
  * for"). Uma unidade de cada vez: a da página, ou a escolhida na rede
- * (`?unidade=`). À esquerda as comandas (`?ver=` Abertas, Pagas hoje,
+ * (`?unidade=`). À esquerda as comandas (`?ver=` Abertas, Fechadas hoje,
  * Todas); à direita a escolhida (`?comanda=`), com o "Receber".
  */
 export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, ver, comandaId, nova, clienteId, recebidaId, unidadeEscolhida = true }: {
@@ -72,6 +72,14 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     // "Hoje: R$ X recebidos" é o total de entradas do Fechamento do dia (lib/metrics).
     getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to, dia }),
   ])
+  // A15 da 22ª (princípio 3): no PDV da rede, as comandas abertas das OUTRAS unidades — a
+  // aberta não depende do dia (a janela só recorta as pagas e as canceladas).
+  const abertasNasOutras = unidades.length > 1
+    ? await Promise.all(unidades.filter(u => u.id !== unidadeId).map(async u => ({
+        id: u.id, nome: u.name,
+        abertas: (await comandasDoPdv({ tenantId: ctx.tenantId!, branchId: u.id, situacao: 'ABERTAS', de: janela.from, ate: janela.to })).length,
+      })))
+    : []
 
   const comanda = comandaId ? lista.find(c => c.id === comandaId) ?? null : null
   // A2 da 19ª: a recebida saiu das abertas — lê-se entre as pagas de hoje. Só a do atendimento
@@ -192,6 +200,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
           situacao={situacao}
           comandas={lista}
           abertas={(abertas ?? lista).length}
+          abertasNasOutras={abertasNasOutras}
           comValorEmAberto={contarComValorEmAberto(pagasHoje ?? lista)}
           recebidoHoje={resumo.total.entradas}
           escolhida={escolhida}

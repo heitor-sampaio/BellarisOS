@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { FileText, Download, CheckCircle2, Clock3, Star, ChevronRight } from 'lucide-react'
 import type { ProcedimentoItem, PagamentoItem, DeAntesDoSistema } from '@/app/[slug]/cliente/historico/page'
 import { useFuso } from '@/components/shared/fuso'
-import { tituloDoArquivoNoApp } from '@/lib/clientes/textos-do-app'
+import { tituloDoArquivoNoApp, miniaturaNoApp } from '@/lib/clientes/textos-do-app'
 
 // -- Types ----------------------------------------------------------
 type ClientDoc = {
@@ -303,7 +303,10 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
           ))}
 
           {/* Arquivos enviados pela clínica */}
-          {documentos.map(d => (
+          {documentos.map(d => {
+            // A40 da 22ª: a foto aparece pela miniatura, não pelo ícone de documento.
+            const miniatura = miniaturaNoApp(d)
+            return (
             <a
               key={d.id}
               href={d.file_url}
@@ -313,11 +316,14 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
             >
               <div className="card" style={{ padding: '13px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: 10, background: 'var(--bg-app)',
-                  border: '1px solid var(--border)',
+                  width: 36, height: 36, borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)',
+                  border: '1px solid var(--border)', overflow: 'hidden',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
-                  <FileText size={16} color="var(--text-muted)" />
+                  {miniatura
+                    // eslint-disable-next-line @next/next/no-img-element -- o endereço assinado do Storage, que vence; o next/image o guardaria
+                    ? <img data-miniatura-da-foto src={miniatura} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <FileText size={16} color="var(--text-muted)" />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
@@ -330,7 +336,8 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
                 <Download size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />
               </div>
             </a>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

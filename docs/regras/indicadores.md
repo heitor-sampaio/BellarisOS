@@ -251,6 +251,12 @@
     `metrics_series_do_resultado`; com "só os meus", a venda de quem vendeu), e
     o DRE diz "− Insumos e produtos vendidos". A perda (D-7) NÃO entra (não
     gerou receita — decisão para o Heitor). Prova: `e2e/vendas-produto.spec.ts`.
+    **A tela diz isso** (A10/A36/A37 da 22ª; só o texto, a regra não mudou):
+    a conta do resultado diz "o custo do produto quando ele é vendido, mesmo
+    a receber"; a Receita dos atendimentos diz que é líquida do voucher e dos
+    pontos (por isso pode valer menos que o Total vendido das Vendas); o
+    Consumo no Período dos Relatórios tem a dica do giro. Prova:
+    `tests/atritos-da-22-caixa.test.ts`.
     **A venda ESTORNADA não entra** (H2, 2026-11-01; `product_sales.estornada_em`):
     nem o custo no lucro (`metrics_resultado`, `metrics_series_do_resultado`),
     nem a venda em Relatórios → Vendas. Se o produto não voltou, o custo dela

@@ -79,7 +79,8 @@ async function avaliar(estado: string, browser: Browser, ap: string, notasDadas:
     for (const [grupo, nota] of Object.entries(notasDadas)) {
       await p.getByRole('group', { name: grupo, exact: true }).getByRole('button', { name: `${grupo}: ${nota} de 5 estrelas` }).click()
     }
-    await p.getByRole('button', { name: 'Confirmar que realizei o atendimento' }).click()
+    // A41 da 22ª: com nota, o botão diz que a avaliação vai junto.
+    await p.getByRole('button', { name: Object.keys(notasDadas).length ? 'Confirmar e enviar a avaliação' : 'Confirmar que realizei o atendimento' }).click()
     await expect(p).toHaveURL(/\/cliente\/historico/)
   })
 }

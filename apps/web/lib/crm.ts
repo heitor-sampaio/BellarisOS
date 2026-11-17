@@ -85,6 +85,14 @@ export function ehAUltimaDePerda(etapas: readonly CRMStage[], etapaId: string): 
   return !etapas.some(e => e.id !== etapaId && e.funnel_id === etapa.funnel_id && e.outcome === 'LOST')
 }
 
+/**
+ * Qual oportunidade, numa linha (A34 da 22ª simulação; princípio 3: o "Por que
+ * perdeu?" não dizia de qual): o nome, os procedimentos de interesse e o funil.
+ */
+export function rotuloDaOportunidade(o: { nome: string; procedimentos: readonly string[]; funil?: string | null }): string {
+  return [o.nome, o.procedimentos.filter(Boolean).join(', '), o.funil ?? ''].filter(Boolean).join(' · ')
+}
+
 /** "1 oportunidade", "2 oportunidades" — sem o "(s)" (A32 da 21ª). */
 export function oportunidadesPorExtenso(n: number): string {
   return `${n} ${n === 1 ? 'oportunidade' : 'oportunidades'}`

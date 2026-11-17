@@ -159,7 +159,9 @@ test('importar como clientes: completa o vazio de quem existe, cria o novo e rel
     await expect(andamento).toContainText('Concluída', { timeout: 60_000 })
     await expect(andamento).toContainText('2 novos')
     await expect(andamento).toContainText('1 completado')
-    await expect(andamento).toContainText('1 com aviso')
+    // A30 da 22ª: a linha juntada também é aviso — diz em quem entrou e o que ficou de fora.
+    await expect(andamento).toContainText('2 com aviso')
+    await expect(andamento).toContainText('Entrou em [e2e] Ana Original')
     await expect(andamento).toContainText('1 recusada')
     // A lista de clientes mostra quem entrou (o cache expira ao terminar).
     await p.goto('/admin/clients')

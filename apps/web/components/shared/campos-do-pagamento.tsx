@@ -315,7 +315,8 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
             total={pagaAgora} />
         </div>
       )}
-      {variasFormas && forma === 'AVISTA' && !!estado.metodo && total !== undefined && total > 0 && (
+      {/* A7 da 22ª (princípio 7): no à vista, o "+ Outra forma" aparece antes de escolher a primeira forma. */}
+      {variasFormas && forma === 'AVISTA' && total !== undefined && total > 0 && (
         <OutrasFormas metodoPrincipal={estado.metodo} total={total} outras={outras} aoMudar={o => mudar({ outras: o })}
           metodos={metodos} clienteId={clienteId} semMaquininha={semMaquininha} />
       )}

@@ -74,11 +74,13 @@ export const DEFINICOES = {
   receitaDosAtendimentos: {
     rotulo: 'O que a receita dos atendimentos conta',
     texto: 'O valor dos atendimentos FEITOS, para quem atendeu, no dia em que o atendimento foi FEITO (no fuso da unidade): '
-      + 'o que a cliente pagou pelo avulso (com o desconto e sem estornos; pago depois, entra no dia do atendimento) e, na '
+      + 'o que a cliente pagou pelo avulso (com o desconto e sem estornos; líquido do voucher e dos pontos, que se rateiam com os '
+      + 'produtos da comanda; pago depois, entra no dia do atendimento) e, na '
       + 'sessão de pacote, de pré-pago ou de plano, a parte dela no que foi vendido (na de plano, cada procedimento da sessão '
       + 'conta no seu). É a conta da EXECUÇÃO; o caixa e o "Meu faturamento" contam no dia do pagamento (o pacote e o '
       + 'pré-pago inteiros para quem vendeu). O concluído ainda não pago não entra; o produto também não (está '
-      + 'no faturamento e nas Vendas).',
+      + 'no faturamento e nas Vendas). Por isso o mesmo atendimento pode valer menos aqui do que no Total vendido das Vendas: '
+      + 'lá o voucher e os pontos contam como pagamento.',
   },
   /** A ficha da cliente (A56): o preço médio dos atendimentos, ao lado do investido total. */
   precoMedioPorAtendimento: {
@@ -107,7 +109,7 @@ export const DEFINICOES = {
   insumosEProdutos: {
     rotulo: 'O que entra em Insumos e produtos vendidos',
     texto: 'O insumo usado nos atendimentos do período (ao custo de consumo: o preço da embalagem ÷ o que ela rende) '
-      + 'mais o custo dos produtos vendidos (o dos lotes que saíram). Desconta do lucro. A perda e o ajuste de '
+      + 'mais o custo dos produtos vendidos (o dos lotes que saíram), no dia da venda, mesmo a receber. Desconta do lucro. A perda e o ajuste de '
       + 'estoque ficam fora: são métrica, não entram no lucro nem quando a compra é paga — eles aparecem em Relatórios → Estoque.',
   },
 } satisfies Record<string, DefinicaoDoNumero>

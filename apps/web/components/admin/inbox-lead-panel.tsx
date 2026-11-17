@@ -50,6 +50,7 @@ import { formatBRL, maskPhone } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { unidadeInicial } from '@/lib/unidades/unidade-inicial'
 import { sugestaoDoAgendar, TEXTO_DA_SUGESTAO, type SugestaoDoAgendar } from '@/lib/crm/sugestao-do-agendar'
+import { rotuloDaOportunidade } from '@/lib/crm'
 
 export interface PanelBranch { id: string; name: string; slug: string }
 
@@ -561,6 +562,15 @@ export function InboxLeadPanel({
 
         {perguntaPerda && (
           <PerguntaDaPerda enviando={perdendo} erro={erroDaPerda} onVoltar={() => setPerguntaPerda(null)}
+            oportunidade={(() => {
+              // A34 da 22ª: de qual oportunidade (a pessoa pode ter mais de uma aberta).
+              const o = card.abertas.find(x => x.id === perguntaPerda.leadId)
+              return o ? rotuloDaOportunidade({
+                nome: o.name,
+                procedimentos: o.procedure_ids.map(id => card.procedimentos.find(p => p.id === id)?.name ?? '').filter(Boolean),
+                funil: card.funnels.length > 1 ? o.funnel_name : null,
+              }) : null
+            })()}
             onConfirmar={async perda => {
               setPerdendo(true); setErroDaPerda(null)
               const { leadId, etapa } = perguntaPerda
@@ -1379,7 +1389,15 @@ export function ScheduleModal({
 
           {/* Horários */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={labelStyle}>Horário</span>
+            {/* A24 da 22ª (princípio 3): os chips iguais pareciam a grade inteira — são só os livres. */}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={labelStyle}>{!loadingSlots && slots.length > 0 ? `Horários livres · ${slots.length}` : 'Horário'}</span>
+              {!loadingSlots && slots.length > 0 && (
+                <Dica rotulo="Sobre os horários livres">
+                  Só aparecem os horários em que quem atende está livre para a duração do procedimento; os ocupados e os bloqueados ficam de fora.
+                </Dica>
+              )}
+            </span>
             {loadingSlots ? (
               <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando horários…</span>
             ) : slots.length === 0 ? (

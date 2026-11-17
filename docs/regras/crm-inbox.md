@@ -828,6 +828,14 @@ contatos dela — e vê Configurações só com essa aba.
   conversa começar". **A lista de Clientes tem o atalho "Importar planilha"**
   (A21 da 21ª), para quem importa clientes: Clientes em Gerenciar e “A rede
   inteira”. Prova: `tests/importacao-atritos-da-21.test.ts`.
+- **A linha que juntou com quem já existe diz em quem entrou e o que ficou
+  de fora** (A30 da 22ª simulação; princípio 3: o resultado dizia só "1 sem
+  mudança"). Com o nome ou o e-mail diferentes dos de quem já existe (só o
+  vazio se completa — D-10), a linha entra com aviso: "Entrou em Helena
+  Prado (o mesmo telefone). Ficaram de fora: o nome “Júlia Menezes” e o
+  e-mail julia@… — Helena Prado já tem." (`avisoDaLinhaJuntada`,
+  `lib/importacao/o-que-entra.ts`; no contato e na ficha). Nada de fora,
+  nada a dizer. Prova: `tests/atritos-da-22-montar-crm-app.test.ts`.
 - **A migração: as colunas "Cliente desde", "Última visita", "Pacote de antes"
   e o responsável legal** (decisão 1 (c) do Heitor sobre a 8ª simulação,
   2026-11-06: "concordo"; A5, A7, A8; migration `20261106003502`):
@@ -1301,6 +1309,10 @@ escolher a etapa) e no modal da oportunidade.
   Configurações em Gerenciar para conectar o WhatsApp" (A16).
 - Rede nova nasce com Preço, Sem retorno, Fechou com a concorrência, Sem
   horário que sirva, Desistiu, Outro (gatilho `trg_motivos_perda_na_rede_nova`).
+- **A janela diz de qual oportunidade** (A34 da 22ª): embaixo do "Por que
+  perdeu?", o nome, os procedimentos e, com mais de um funil, o funil
+  (`rotuloDaOportunidade`, `lib/crm.ts`; `[data-oportunidade-da-perda]`), no
+  quadro e no painel do inbox.
 Prova: `e2e/crm-motivo-da-perda.spec.ts`.
 
 **As origens da oportunidade são da REDE** (A14 da 7ª simulação, 2026-11-05;

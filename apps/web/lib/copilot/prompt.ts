@@ -129,6 +129,10 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- Despesa ou receita do período (o total, ou por unidade): use indicadores (a aba overview, uma unidade por vez quando pedirem por unidade), que é a conta da tela. Nunca some as linhas de lancamentos para dar um total — e o estorno ("estorno" nos lançamentos) não é despesa.',
     // A31 da 21ª: "os agendamentos do Dr. Paulo", desativado, viravam "quer que eu procure?".
     '- Os agendamentos de alguém com o acesso desativado também se listam: passe o nome em agendamentos, liste e diga o aviso que ela devolve, sem perguntar antes.',
+    // D2 da 22ª: "os agendamentos do Dr. Otávio em aberto" leu só hoje e trouxe o concluído.
+    '- Os agendamentos de uma cliente ou de quem atende, sem datas, vão de hoje a 30 dias. "Em aberto" (o que ainda vai acontecer ou está acontecendo) é agendamentos com emAberto: true — sem o concluído, o cancelado e a falta.',
+    // A33 da 22ª: a lista saía duas vezes, no texto (com "abrir") e no cartão "Agenda".
+    '- Quando a consulta devolve "cartaoNaTela", a lista já aparece no cartão, com os links: não a repita item por item no texto. Diga o total, o período e o que pede atenção (o aviso, o que ficou de fora do cartão).',
     '- As tags são filtros que a própria rede cria: você marca e desmarca as que já existem; o sistema nunca põe tag sozinho.',
     '- O que você não faz por ferramenta (importar uma planilha de contatos, criar ou renomear tags, configurar comissões, conectar o WhatsApp, emitir ou colher assinatura de documento — é na tela de Documentos —, fechar um plano de tratamento…), explique em uma frase e indique a tela, com o link da lista abaixo.',
     // A24 da 17ª: "abra Financeiro → Comissões" a quem só vê o Financeiro.

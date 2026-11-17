@@ -133,9 +133,15 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
 - **Texto do modelo** vira blocos React (`lib/copilot/texto.ts`), nunca HTML;
   link só para TELA interna (não `/api`, `/auth`…), sem prefetch. O link sem
   fechamento no fim (`[x](/y`, a resposta cortada ou ainda chegando) fica só
-  o texto, sem o pedaço `](/…` (D3 da 19ª). O caminho SOLTO com um id
-  ("(/unidade/agenda/<uuid>)", inteiro ou cortado com "…") sai do texto
-  (`semCaminhoCru`, A27 da 21ª): o link vai com o nome, ou não vai.
+  o texto, sem o pedaço `](/…` (D3 da 19ª). O caminho SOLTO
+  ("(/unidade/agenda/<uuid>)", inteiro ou cortado com "…"; e, desde o A32 da
+  22ª, também sem id: "dar baixa: /unidade/pdv") sai do texto
+  (`semCaminhoCru`, A27 da 21ª), com os dois-pontos que só o apresentavam: o
+  link vai com o nome, ou não vai. "19/11", "1/5" e "e/ou" ficam.
+- **A lista do cartão não se repete no texto** (A33 da 22ª; princípio 7): a
+  consulta que devolve um cartão de links com dois itens ou mais leva ao
+  modelo `cartaoNaTela` (`executor.ts`), e o prompt manda dizer o total, o
+  período e o que pede atenção, sem a lista item por item.
 - **A resposta cortada diz que foi cortada** (D3 da 19ª; princípio 3): além
   do `response.incomplete`, o stream que acaba sem `response.completed` (o
   tempo, a conexão) acrescenta "(A resposta foi cortada. Peça a continuação,
@@ -318,6 +324,12 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   hoje a 30 dias à frente; sem a cliente, só hoje. O `periodo` volta legível
   ("hoje, 16/11", "de 16/11 a 16/12/2026"), e a descrição e o prompt mandam
   dizê-lo na resposta. Prova: `tests/copilot-atritos-da-20.test.ts`.
+  **O mesmo com quem atende** (D2 da 22ª: "os agendamentos do Dr. Otávio em
+  aberto" leu só hoje): com a cliente OU quem atende (ativo ou desativado),
+  sem datas, de hoje a 30 dias; sem nenhum dos dois, só hoje. **"Em aberto"**
+  é `emAberto: true` — agendado, confirmado, chegou e em atendimento, sem o
+  concluído, o cancelado e a falta (o padrão segue "todos menos cancelados").
+  Prova: `tests/copilot-achados-da-22.test.ts`.
 - **O período sem data é o atual, sem perguntar** (A26 da 20ª; princípio 7:
   "Resumo da semana" pedia "Confirmo: a semana atual?"): o prompt e a
   descrição de `indicadores` dizem que "a semana" é `week` e "o mês" é
@@ -442,6 +454,6 @@ dele, sem rolagem que os tirasse. Prova: `e2e/configuracoes-atritos-da-10.spec.t
 ❌ Ferramenta que troca a unidade pedida pela da página calada (resolverUnidade recusa a de fora com o motivo)
 ❌ Falar de cargo como se fosse fixo no prompt ou nas mensagens ("o seu cargo…"): é a permissão
 ❌ Somar as linhas de lancamentos para dar despesa ou receita do período (é indicadores; o estorno não é despesa — D1 da 21ª)
-❌ Caminho de tela solto no texto, com id (o link vai com o nome — A27 da 21ª)
+❌ Caminho de tela solto no texto, com ou sem id (o link vai com o nome — A27 da 21ª, A32 da 22ª)
 ❌ Cortar a chave da escolha do cartão abaixo do tamanho dela ("mesma:<uuid>" tem 42; o corte em 40 fazia o "Sim, é X" nunca valer — CP1)
 ```

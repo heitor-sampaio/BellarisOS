@@ -242,7 +242,8 @@ export default async function TeamPage({
 
                   {/* Ações */}
                   <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                    {/* A5 da 22ª: as ações quebram a linha em vez de cortar. */}
+                    <div data-acoes-do-membro style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
                     {regras && (m.provides_services || regras.has(m.id) || (!!m.role_id && quemVende.has(m.role_id as string)) || (m as { comissao_venda_pct?: number | null }).comissao_venda_pct != null) && (
                       <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
                         procedimentos={procedimentos} comGeral={comGeral} atende={!!m.provides_services}
@@ -276,7 +277,7 @@ export default async function TeamPage({
                       {canManage && m.id !== ctx.internalUserId && (m.is_active ? (
                       <DesativarMembro membroId={m.id} nome={m.name} redirectPath={`/${slug}/team`} atende={!!m.provides_services} />
                     ) : (
-                      <ReativarMembro membroId={m.id} redirectPath={`/${slug}/team`} />
+                      <ReativarMembro membroId={m.id} nome={m.name} atende={!!m.provides_services} redirectPath={`/${slug}/team`} />
                     ))}
                     </div>
                   </td>

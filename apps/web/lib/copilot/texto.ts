@@ -37,9 +37,19 @@ export function linkSeguro(href: string): string | null {
  * Não diz nada a quem lê — o link vai com o nome, ou no cartão —, e sai.
  */
 const ID_NO_CAMINHO = String.raw`\/[\w-]+(?:\/[\w-]+)*\/[0-9a-f]{8}(?:-[0-9a-f]{1,12}){0,4}(?:…|\.\.\.)?`
-const CAMINHO_CRU = new RegExp(String.raw`\s*\(\s*${ID_NO_CAMINHO}\s*\)|\s?(?<![\w\]])${ID_NO_CAMINHO}`, 'gi')
+/**
+ * E o caminho solto SEM id (A32 da 22ª: "Abra o PDV para dar baixa:
+ * /alecrim-renascenca/pdv"): dois trechos ou mais, começando por letra, com a
+ * consulta (`?unidade=…`) junto. "19/11", "1/5" e "e/ou" não são caminho: o
+ * trecho começa por letra, e antes da barra não vem letra nem número.
+ */
+const SEM_ID = String.raw`\/[a-z][\w-]*(?:\/[\w-]+)+(?:\?[^\s).,;!?]+(?:[.,;!?][^\s).,;!?]+)*)?`
+const CAMINHO = `(?:${ID_NO_CAMINHO}|${SEM_ID})`
+const CAMINHO_CRU = new RegExp(String.raw`\s*\(\s*${CAMINHO}\s*\)|\s?(?<![\w\]])${CAMINHO}`, 'gi')
+/** Os dois-pontos que só apresentavam o caminho, no fim da frase: "dar baixa: /x/pdv." vira "dar baixa." */
+const DOIS_PONTOS_DO_CAMINHO = new RegExp(String.raw`\s*:\s*(?<![\w\]])${CAMINHO}(?=\s*(?:[.!?;]|$))`, 'gi')
 export function semCaminhoCru(t: string): string {
-  return t.replace(CAMINHO_CRU, '')
+  return t.replace(DOIS_PONTOS_DO_CAMINHO, '').replace(CAMINHO_CRU, '')
 }
 
 export function trechosDaLinha(linha: string): Trecho[] {

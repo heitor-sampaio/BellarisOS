@@ -18,6 +18,7 @@ import {
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
   NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
+  pdvAbertoPeloFinanceiro, tratamentosNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -552,6 +553,18 @@ function PermissionMatrix({
   // já antes do clique — o laranja pequeno da linha passava, e o botão ativo
   // parecia salvar.
   const faltaAgora = oQueFalta()
+
+  // A14 da 15ª (princípio 7): a tela vai até o primeiro módulo sem escolha, na
+  // ordem da tela, e o destaca. A3 da 22ª: também pelo aviso junto do Salvar —
+  // num cargo longo ele ficava no rodapé, e nada levava à linha.
+  function irAoQueFalta() {
+    setFalta(oQueFalta())
+    const primeiro = MODULE_GROUPS.flatMap(g => g.modules).find(m =>
+      !foraDoPlano.includes(m) && ((isScoped(m) && levels[m] !== 'NONE' && !scopes[m])
+        || (m === 'reports' && levels.reports !== 'NONE' && reportTabs.length === 0))) ?? null
+    setDestaque(primeiro)
+    if (primeiro) document.querySelector(`[data-modulo="${primeiro}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }
   const avisoDoQueFalta = falta ?? faltaAgora
   const nothingGranted = ALL_MODULES.every(m => levels[m] === 'NONE')
   const showSuccess    = !!state?.success && !dismissed
@@ -561,19 +574,12 @@ function PermissionMatrix({
       action={action}
       className="card"
       onSubmit={e => {
-        const falta = oQueFalta()
-        setFalta(falta)
-        if (falta) {
+        if (oQueFalta()) {
           e.preventDefault()
           // A27 da 18ª: a tela rola até o módulo; o aviso vai junto, à vista.
-          toast.warning(falta)
-          // A14 da 15ª (princípio 7): a tela vai até o primeiro módulo sem escolha, na ordem da tela.
-          const primeiro = MODULE_GROUPS.flatMap(g => g.modules).find(m =>
-            !foraDoPlano.includes(m) && ((isScoped(m) && levels[m] !== 'NONE' && !scopes[m])
-              || (m === 'reports' && levels.reports !== 'NONE' && reportTabs.length === 0))) ?? null
-          setDestaque(primeiro)
-          if (primeiro) document.querySelector(`[data-modulo="${primeiro}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-        }
+          toast.warning(oQueFalta()!)
+          irAoQueFalta()
+        } else setFalta(null)
       }}
     >
       <input type="hidden" name="roleId" value={role.id} />
@@ -636,6 +642,8 @@ function PermissionMatrix({
                   destacado={destaque === module}
                   // A20 da 19ª: no celular o toast some e o aviso do Salvar fica fora da vista — ele vai no módulo.
                   aviso={destaque === module ? falta : null}
+                  // A1 da 22ª: o PDV em "Sem acesso" que o Financeiro em Gerenciar abre.
+                  nota={module === 'cashier' ? pdvAbertoPeloFinanceiro(levels) : null}
                   reportTabs={reportTabs}
                   caixas={caixas}
                   onLevel={v => setLevel(module, v)}
@@ -672,13 +680,21 @@ function PermissionMatrix({
         display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 20, flexWrap: 'wrap',
       }}>
         {/* A27 da 18ª (princípio 3): o que falta escolher, junto do botão. */}
+        {/* A3 da 22ª: o aviso leva à primeira linha que falta. */}
         {avisoDoQueFalta && (
           <span data-falta-escolher role={falta ? 'alert' : undefined} style={{
+            display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
             color: 'var(--warning)', background: 'var(--warning-soft)',
             borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
             fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', flex: '1 1 260px',
           }}>
             <Fala>{avisoDoQueFalta}</Fala>
+            <button type="button" data-ir-ao-que-falta onClick={irAoQueFalta} className="btn-ghost" style={{
+              padding: '2px 8px', color: 'var(--warning)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)',
+              textDecoration: 'underline',
+            }}>
+              Ir até lá
+            </button>
           </span>
         )}
         {showSuccess && (
@@ -703,7 +719,7 @@ function PermissionMatrix({
 }
 
 function ModuleRow({
-  module, level, scope, last, destacado, aviso, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
+  module, level, scope, last, destacado, aviso, nota, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
 }: {
   module: AppModule
   level: PermissionLevel
@@ -712,6 +728,8 @@ function ModuleRow({
   destacado?: boolean
   /** A20 da 19ª: o que falta escolher, no módulo para onde a tela rolou. */
   aviso?: string | null
+  /** A1 da 22ª: o que o nível escolhido não diz (o PDV aberto pelo Financeiro). */
+  nota?: string | null
   reportTabs: ReportTab[]
   caixas: CaixasDoCargo
   onLevel: (v: PermissionLevel) => void
@@ -774,6 +792,13 @@ function ModuleRow({
               </span>
             )}
           </div>
+          {nota && (
+            <div data-pdv-pelo-financeiro style={{
+              marginTop: 5, fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-muted)',
+            }}>
+              <Fala>{nota}</Fala>
+            </div>
+          )}
           {sensitive && enabled && (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5,
@@ -953,6 +978,8 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
   const network = menuLabelsFor(ADMIN_MENU, permissions, escopos).map(comAbas(ABAS_DA_REDE))
   const branch  = menuLabelsFor(BRANCH_MENU, permissions, escopos).map(comAbas(ABAS_DA_UNIDADE))
   const sobreDocumentos = [...network, ...branch].includes('Documentos') ? documentosNoResumo(levels) : null
+  // A2 da 22ª: de onde vem Tratamentos, como Documentos.
+  const sobreTratamentos = [...network, ...branch].includes('Tratamentos') ? tratamentosNoResumo(levels) : null
 
   return (
     <div style={{
@@ -964,6 +991,7 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span className="overline">O que essa pessoa vai ver</span>
         {sobreDocumentos && <Dica rotulo="De onde vem Documentos">{sobreDocumentos}</Dica>}
+        {sobreTratamentos && <Dica rotulo="De onde vem Tratamentos">{sobreTratamentos}</Dica>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
         <PreviewLine title="Na unidade" items={branch} marca="data-resumo-na-unidade" />

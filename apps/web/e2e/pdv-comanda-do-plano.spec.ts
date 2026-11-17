@@ -95,7 +95,7 @@ test('PDV4/PT1c: o PDV recebe o plano aceito — a forma, o contrato, e só ent�
     // Sem agendamento aqui: as sessões se agendam depois, pelo plano.
     await janela.getByRole('button', { name: 'Receber o plano' }).click()
     await expect(janela).toHaveCount(0)
-    await p.getByRole('link', { name: 'Pagas hoje' }).click()
+    await p.getByRole('link', { name: 'Fechadas hoje' }).click()
     await expect(p.locator('[data-lista-de-comandas] .pdv-linha', { hasText: `Cliente Receber` })).toContainText('Paga')
   })
   const { data: fts } = await db().from('financial_transactions').select('amount, is_paid, payment_method').eq('treatment_plan_id', planId)

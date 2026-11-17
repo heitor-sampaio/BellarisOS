@@ -36,7 +36,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { AvisosDasTaxas, CsvDoFechamentoDoDia } from '@/components/shared/caixa-no-financeiro'
 import type { TaxasDoPeriodo } from '@/lib/metrics/queries'
 import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
-import { linkDaAba, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
+import { linkDaAba, ROTULO_DO_A_RECEBER_DA_CLIENTE, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
 
 // --- Types -------------------------------------------------------------------
 
@@ -571,7 +571,7 @@ export function AdminFinancialView({
   const cartaoAReceber = (naAba: boolean) => (
     <KpiCard
       chave="a-receber"
-      label="A receber da cliente"
+      label={ROTULO_DO_A_RECEBER_DA_CLIENTE}
       value={fmtBRL(aReceber)}
       nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}

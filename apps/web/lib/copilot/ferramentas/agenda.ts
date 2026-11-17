@@ -17,20 +17,23 @@ import { periodoLegivel } from '@/lib/copilot/ferramentas/datas'
  */
 
 const STATUS = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'] as const
+/** "Em aberto": o que ainda vai acontecer ou está acontecendo (D2 da 22ª). */
+const EM_ABERTO = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'] as const
 
 export const agendamentos: FerramentaDeLeitura<{
-  de?: string; ate?: string; profissional?: string; unidade?: string; status?: (typeof STATUS)[number][]; cliente?: string
+  de?: string; ate?: string; profissional?: string; unidade?: string; status?: (typeof STATUS)[number][]; emAberto?: boolean; cliente?: string
 }> = {
   nome: 'agendamentos',
   tipo: 'leitura',
   modulo: 'agenda', nivel: 'VIEW',
-  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (nome, telefone ou id). "Os agendamentos da Fulana" pode ser de uma cliente ou quem atende: passe o nome em um dos dois — a ferramenta procura nos dois e, se o nome for dos dois, pergunta qual. Sem datas: com a cliente, de hoje em diante (30 dias); sem a cliente, só hoje. Na resposta, diga o período lido ("periodo") — "Encontrei 1" sem o período parece o total. Sem unidade, procura em todas as unidades da pessoa; "procurouEm" diz quais — ao não encontrar, diga onde procurou.',
+  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (nome, telefone ou id). "Os agendamentos da Fulana" pode ser de uma cliente ou quem atende: passe o nome em um dos dois — a ferramenta procura nos dois e, se o nome for dos dois, pergunta qual. Sem datas: com a cliente ou quem atende, de hoje em diante (30 dias); sem nenhum dos dois, só hoje. "Em aberto" (o que ainda vai acontecer ou está acontecendo) é emAberto: true — sem o concluído, o cancelado e a falta. Na resposta, diga o período lido ("periodo") — "Encontrei 1" sem o período parece o total. Sem unidade, procura em todas as unidades da pessoa; "procurouEm" diz quais — ao não encontrar, diga onde procurou.',
   parametros: z.object({
     de: DATA.optional().describe('Primeiro dia (AAAA-MM-DD). Padrão: hoje.'),
-    ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de"; com a cliente e sem datas, 30 dias depois de hoje.'),
+    ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de"; com a cliente ou quem atende e sem datas, 30 dias depois de hoje.'),
     profissional: z.string().max(80).optional(),
     unidade: z.string().max(80).optional(),
     status: z.array(z.enum(STATUS)).max(7).optional().describe('SCHEDULED, CONFIRMED, ARRIVED (chegou), IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW. Padrão: todos menos cancelados.'),
+    emAberto: z.boolean().optional().describe('true para "em aberto": agendado, confirmado, chegou e em atendimento (sem o concluído, o cancelado e a falta). Vence "status".'),
     cliente: z.string().min(1).max(120).optional().describe('Nome, telefone ou id do cliente.'),
   }),
   async executar(c, args) {
@@ -65,6 +68,8 @@ export const agendamentos: FerramentaDeLeitura<{
     // só lado, vale ele (e a resposta diz como entendeu); dos dois, pergunta.
     let entendido: string | undefined
     let profissionalId = ownerFilter(c.ctx, 'agenda')
+    // D2 da 22ª: o nome dado é de quem atende (ativo ou desativado).
+    let deQuemAtende = false
     if (args.profissional) {
       const p = await resolverProfissional(c, args.profissional, u.unidade?.id)
       const cl = !args.cliente && !UUID.safeParse(args.profissional).success ? await resolverCliente(c, args.profissional) : null
@@ -79,6 +84,7 @@ export const agendamentos: FerramentaDeLeitura<{
       if (desativado) {
         if (profissionalId && desativado.id !== profissionalId) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
         profissionalId = desativado.id
+        deQuemAtende = true
       } else if ('erro' in p) {
         if (!cliente) return { dados: { erro: cl && 'erro' in cl && cl.erro.startsWith('Mais de um') ? cl.erro : p.erro } }
         clienteId = cliente.id
@@ -86,13 +92,15 @@ export const agendamentos: FerramentaDeLeitura<{
       } else {
         if (profissionalId && p.id !== profissionalId) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
         profissionalId = p.id
+        deQuemAtende = true
       }
     }
 
     // D2 da 20ª (princípio 3): "os agendamentos da Neusa", sem datas, leu só
     // hoje e deixou de fora a Toxina de amanhã. Com a cliente, sem datas, é de
-    // hoje em diante (30 dias); e a resposta diz o período lido.
-    if (clienteId && !args.de && !args.ate) ate = maisDias(de, 30)
+    // hoje em diante (30 dias); e a resposta diz o período lido. D2 da 22ª: o
+    // mesmo com quem atende ("os agendamentos do Dr. Otávio em aberto" leu só hoje).
+    if ((clienteId || deQuemAtende) && !args.de && !args.ate) ate = maisDias(de, 30)
     const periodo = de === ate ? `${de === hoje ? 'hoje, ' : ''}${diaLegivel(de)}` : `de ${periodoLegivel(de, ate)}`
 
     let q = c.admin.from('appointments')
@@ -103,7 +111,9 @@ export const agendamentos: FerramentaDeLeitura<{
       .order('scheduled_at').limit(80)
     if (profissionalId) q = q.eq('professional_id', profissionalId)
     if (clienteId) q = q.eq('client_id', clienteId)
-    q = args.status?.length ? q.in('status', args.status) : q.neq('status', 'CANCELLED')
+    // D2 da 22ª: "em aberto" trazia o concluído (o padrão é "todos menos cancelados").
+    q = args.emAberto ? q.in('status', [...EM_ABERTO])
+      : args.status?.length ? q.in('status', args.status) : q.neq('status', 'CANCELLED')
 
     const linhas = (await ler(q, 'ler os agendamentos') as {
       id: string; scheduled_at: string; duration_min: number; status: string

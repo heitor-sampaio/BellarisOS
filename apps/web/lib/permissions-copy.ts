@@ -121,7 +121,8 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     MANAGE: 'Tudo do Ver, mais lançar receita e despesa, estornar e conceder crédito ao cliente.',
   },
   cashier: {
-    NONE:   SEM_ACESSO,
+    // A1 da 22ª: o Financeiro em Gerenciar também abre o PDV (PDV1, `podeReceber`).
+    NONE:   'Não aparece para esta pessoa — a menos que o cargo tenha o Financeiro em Gerenciar, que também abre o PDV: vende, recebe e faz o Fechamento do dia.',
     // A15 da 11ª: o PDV abre o "Fechamento do dia" no menu — a linha diz.
     MANAGE: 'Abre o PDV: faz a venda nova (procedimento, pacote, produto e crédito), recebe a comanda do atendimento e do plano de tratamento e as parcelas que a cliente veio pagar, e faz o Fechamento do dia (o que entrou, por forma de pagamento). Não lança despesa, não estorna e não vê o financeiro da unidade — isso é Financeiro.',
   },
@@ -306,4 +307,27 @@ export function textoDoQueFaltaNoCargo(modulos: string[], faltaRelatorio: boolea
 export function documentosNoResumo(niveis: Partial<Record<'clients' | 'documents', string>>): string | null {
   if (!niveis.clients || niveis.clients === 'NONE') return null
   return 'Documentos vem de Clientes em “Ver”: ver e colher os documentos da cliente. Criar e editar os modelos é de quem tem Modelos de documento.'
+}
+
+/**
+ * A1 da 22ª simulação (princípio 3): a linha do PDV na matriz mostrava "Sem
+ * acesso" num cargo que abre o PDV, a Nova venda e o Fechamento — porque tem
+ * o Financeiro em Gerenciar (PDV1, `podeReceber`). A linha diz, à vista.
+ * Nulo quando o PDV está ligado ou o Financeiro não está em Gerenciar.
+ */
+export function pdvAbertoPeloFinanceiro(niveis: Partial<Record<'cashier' | 'financial', string>>): string | null {
+  if ((niveis.cashier ?? 'NONE') !== 'NONE' || niveis.financial !== 'MANAGE') return null
+  return 'Aberto pelo Financeiro em Gerenciar'
+}
+
+/**
+ * De onde vem a entrada Tratamentos do resumo do cargo (A2 da 22ª; princípio
+ * 3, como Documentos na A24 da 21ª): o menu a mostra a quem tem o Prontuário
+ * ou recebe (o PDV ou o Financeiro em Gerenciar — `lib/menu.ts`).
+ */
+export function tratamentosNoResumo(niveis: Partial<Record<'medical_records' | 'cashier' | 'financial', string>>): string | null {
+  const prontuario = (niveis.medical_records ?? 'NONE') !== 'NONE'
+  const recebe = niveis.cashier === 'MANAGE' || niveis.financial === 'MANAGE'
+  if (!prontuario && !recebe) return null
+  return 'Tratamentos vem do Prontuário ou de quem recebe (o PDV ou o Financeiro em Gerenciar): os planos de tratamento das clientes, para acompanhar e receber.'
 }

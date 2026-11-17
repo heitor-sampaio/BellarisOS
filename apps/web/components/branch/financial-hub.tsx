@@ -29,7 +29,7 @@ import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { AReceberVencido } from '@/lib/metrics/vencidas'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
 import { AbasDoFinanceiro } from '@/components/shared/abas-do-financeiro'
-import { linkDaAba, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
+import { linkDaAba, ROTULO_DO_A_RECEBER_DA_CLIENTE, type AbaDoFinanceiro } from '@/lib/financeiro/abas'
 
 // --- Types --------------------------------------------------------
 
@@ -612,7 +612,7 @@ export function FinancialHub({
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
         vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
       dica={<DicaDoVencimento valor={pendingIncome} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} />}
-      label="A receber da cliente"
+      label={ROTULO_DO_A_RECEBER_DA_CLIENTE}
       curr={pendingIncome} prev={prevPendingIncome}
       icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
       iconBg="var(--success-bg)"
