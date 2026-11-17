@@ -342,8 +342,12 @@ export function AgendaCalendar({
             <span style={{ fontWeight: 700, color: 'var(--text)' }}>{totalCount}</span> {atendimentosPorExtenso(totalCount)}
             {' · '}
             <span style={{ fontWeight: 700, color: occupancy >= 80 ? 'var(--brand)' : 'var(--text)' }}>{occupancy}%</span> de ocupação
-            {/* A53 da 9ª: a conta da ocupação, à vista. */}
-            {baseDaOcupacaoDaTela && <> <span data-base-da-ocupacao>({baseDaOcupacaoDaTela})</span> <Dica rotulo={DEFINICOES.ocupacao.rotulo}>{DEFINICOES.ocupacao.texto}</Dica></>}
+            {/* A53 da 9ª: a conta da ocupação. A15 da 21ª: na linha, com os
+                descontos, ela quebrava em parênteses aninhados — vai para a dica. */}
+            {baseDaOcupacaoDaTela && <> <Dica rotulo={DEFINICOES.ocupacao.rotulo}>
+              <span data-base-da-ocupacao style={{ display: 'block', marginBottom: 6, fontWeight: 700 }}>{baseDaOcupacaoDaTela}.</span>
+              {DEFINICOES.ocupacao.texto}
+            </Dica></>}
             {waitingCount > 0 && (
               <>
                 {' · '}

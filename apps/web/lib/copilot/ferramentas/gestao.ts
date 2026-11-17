@@ -28,7 +28,7 @@ export const lancamentos: FerramentaDeLeitura<{
   modulo: 'financial', nivel: 'VIEW',
   // "Só as próprias comissões" não é financeiro da clínica: a tela também não mostra.
   pode: ctx => !isOwnScope(ctx, 'financial'),
-  descricao: 'Lançamentos financeiros (contas a receber e a pagar): em aberto (padrão), vencidos, pagos ou todos; receita ou despesa; por período (vencimento, ou pagamento quando "pagos"), unidade ou cliente (id). Até 50. Para TOTAIS do período use a ferramenta indicadores.',
+  descricao: 'Lançamentos financeiros (contas a receber e a pagar): em aberto (padrão), vencidos, pagos ou todos; receita ou despesa; por período (vencimento, ou pagamento quando "pagos"), unidade ou cliente (id). Até 50. Para TOTAIS do período (a despesa, a receita, por unidade) use a ferramenta indicadores — nunca some estas linhas. O estorno (tipo "estorno") é o contra-lançamento de um pagamento desfeito: não é despesa nem receita, e fica de fora quando o pedido é só despesa ou só receita.',
   parametros: z.object({
     tipo: z.enum(['receita', 'despesa']).optional(),
     situacao: z.enum(['em_aberto', 'vencidos', 'pagos', 'todos']).optional(),
@@ -60,7 +60,10 @@ export const lancamentos: FerramentaDeLeitura<{
       .or('is_paid.eq.true,amount.neq.0')
       .order(campoDaData, { ascending: situacao !== 'pagos', nullsFirst: false })
       .limit(50)
-    if (args.tipo) q = q.eq('type', args.tipo === 'receita' ? 'INCOME' : 'EXPENSE')
+    // D1 da 21ª (princípio 3): o contra-lançamento do estorno (category 'Estorno')
+    // é EXPENSE no banco, e "as despesas" o somavam — a tela o tira do resultado
+    // (resultadoDaLista). Pedido o tipo, o estorno fica de fora.
+    if (args.tipo) q = q.eq('type', args.tipo === 'receita' ? 'INCOME' : 'EXPENSE').or('category.is.null,category.neq.Estorno')
     if (situacao === 'em_aberto') q = q.eq('is_paid', false)
     if (situacao === 'vencidos') q = q.eq('is_paid', false).lt('due_date', janelaDoDia(hoje, fuso).inicio.toISOString())
     if (situacao === 'pagos') q = q.eq('is_paid', true)
@@ -82,7 +85,7 @@ export const lancamentos: FerramentaDeLeitura<{
       dados: {
         situacao, procurouEm, quantidade: linhas.length,
         lancamentos: linhas.map(l => ({
-          id: l.id, tipo: l.type === 'INCOME' ? 'receita' : 'despesa',
+          id: l.id, tipo: l.category === 'Estorno' ? 'estorno' : l.type === 'INCOME' ? 'receita' : 'despesa',
           descricao: l.description ?? l.category, categoria: l.category, valor: dinheiro(l.amount),
           vencimento: diaDe(l.due_date), pagoEm: diaDe(l.paid_at, fusos.get(l.branch_id) ?? fuso),
           situacao: l.notes === 'Estornada' ? 'estornado'

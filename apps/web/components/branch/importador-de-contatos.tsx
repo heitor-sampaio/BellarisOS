@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { unicaOpcao } from '@/lib/uma-opcao'
-import { useRouter } from 'next/navigation'
-import { FileUp, Download, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { FileUp, Download, Loader2, AlertCircle, CheckCircle2, Search } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { StageOptions } from './stage-options'
 import { decodificar, lerCsv } from '@/lib/importacao/csv'
@@ -12,7 +13,9 @@ import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, p
 import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
-import { linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar, colunasQueNaoEntram } from '@/lib/importacao/o-que-entra'
+import { linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados } from '@/lib/importacao/o-que-entra'
+import { abrirABusca } from '@/lib/busca/abrir'
+import { ehPortalDaRede, rotaClientes, rotaOportunidades } from '@/lib/rotas'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 
@@ -101,6 +104,9 @@ export function ImportadorDeContatos(p: Props) {
   const [erroEnvio, setErroEnvio] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+  // A19 da 21ª: o fim da importação leva aonde os importados estão, no portal em que a pessoa está.
+  const pathname = usePathname()
+  const slugDoPortal = ehPortalDaRede(pathname) ? null : pathname.split('/')[1] || null
 
   async function lerArquivo(f: File | undefined) {
     setErroArquivo(null); setArquivo(null)
@@ -429,9 +435,14 @@ export function ImportadorDeContatos(p: Props) {
               const deFora = colunasQueNaoEntram(arquivo.cabecalho, mapa).map(c => `“${c}”`)
               if (!deFora.length) return null
               const lista = deFora.length === 1 ? deFora[0] : `${deFora.slice(0, -1).join(', ')} e ${deFora[deFora.length - 1]}`
+              // A20 da 21ª: a coluna que a oportunidade levaria diz como levá-la.
+              const levadas = !comOportunidade && p.podeOportunidade
+                ? colunasQueAOportunidadeLeva(arquivo.cabecalho, mapa, destino) : []
+              const comoLevar = avisoDasColunasDaOportunidade(levadas, deFora.length)
               return (
                 <p data-colunas-de-fora style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
                   {deFora.length === 1 ? `A coluna ${lista} não será importada.` : `As colunas ${lista} não serão importadas.`}
+                  {comoLevar && <span data-colunas-da-oportunidade> {comoLevar}</span>}
                 </p>
               )
             })()}
@@ -537,6 +548,28 @@ export function ImportadorDeContatos(p: Props) {
                 {/* A6 da 8ª: o resultado lista as recusadas e as importadas com aviso. */}
                 {a && <LinhasDoRelatorio rotulo={`${plural(a.com_erro, 'linha recusada', 'linhas recusadas')}:`} atributo="data-linhas-recusadas" linhas={a.erros} />}
                 {a && <LinhasDoRelatorio rotulo={`${plural(a.com_aviso, 'linha entrou', 'linhas entraram')} com aviso:`} atributo="data-importadas-com-aviso" linhas={a.avisos} />}
+                {/* A19 da 21ª: onde estão os que entraram (os contatos sem oportunidade só se acham na busca). */}
+                {a?.status === 'concluida' && a.novas + a.completadas + a.sem_mudanca > 0 && (() => {
+                  const onde = ondeEstaoOsImportados({ destino, comOportunidade, podeCriarOportunidade: p.podeOportunidade })
+                  const href = onde.link === 'clientes' ? rotaClientes(pathname, slugDoPortal)
+                    : onde.link === 'oportunidades'
+                      ? `${rotaOportunidades(pathname, slugDoPortal)}${funilDaEtapa ? `?funil=${encodeURIComponent(funilDaEtapa)}` : ''}`
+                      : null
+                  return (
+                    <div data-onde-estao-os-importados style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, flex: '1 1 320px' }}>{onde.texto}</p>
+                      {href && (
+                        <Link href={href} className="btn-ghost">{onde.link === 'clientes' ? 'Abrir Clientes' : 'Abrir Oportunidades'}</Link>
+                      )}
+                      {onde.link === 'busca' && (
+                        <button type="button" className="btn-ghost" onClick={() => abrirABusca()}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <Search size={14} /> Abrir a busca
+                        </button>
+                      )}
+                    </div>
+                  )
+                })()}
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                   {a && a.com_erro + a.com_aviso > 0 && importacaoId && (
                     <a href={`/api/importacoes/${importacaoId}/erros`} download className="btn-ghost"

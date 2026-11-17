@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, isOwnScope, can, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, isOwnScope, can, alcancaUnidade, podeReceber } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizarHorario, janelaDaGrade, type Horario, type BlocoOcupado } from '@/lib/agenda/horario'
@@ -194,7 +194,8 @@ export default async function AgendaPage({ params, searchParams }: {
       clientes: [...(rawAppointments ?? []), ...meusDeFora].map(a => a.client_id as string | null),
       membros:  (rawAppointments ?? []).map(a => a.professional_id as string | null),
     }),
-    pagosAntes(createAdminClient(), (rawAppointments ?? []).map(a => a.id as string)),
+    // D4 da 21ª: e o em aberto da venda (o valor só a quem recebe).
+    pagosAntes(createAdminClient(), (rawAppointments ?? []).map(a => a.id as string), { tenantId: ctx.tenantId!, mostraOValor: podeReceber(ctx) }),
     menoresDaAgenda(ctx.tenantId!, (rawAppointments ?? []).map(a => a.client_id as string | null)),
     bloqueiosDoPeriodo(ctx.tenantId!, {
       de: from, ate: to, profissionais: idsDaGrade,

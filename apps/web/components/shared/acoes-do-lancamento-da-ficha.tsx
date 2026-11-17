@@ -8,6 +8,7 @@ import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
+import type { ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 
 /**
  * As ações de um lançamento na aba Financeiro da ficha da cliente — a mesma
@@ -28,6 +29,8 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
     estornada?: boolean; estorno?: boolean; saida?: boolean
     metodo: string | null
     vendaDeProduto?: boolean; vendaDeCredito?: boolean; doAtendimento?: boolean
+    /** A3 da 21ª: a parcela recebida antes das anteriores da mesma venda (o aviso do PDV). */
+    adiantada?: string | null
   }
   slug: string
   podeEstornar: boolean
@@ -55,9 +58,9 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
       else router.refresh()
     })
   }
-  function receber(bandeira: string | null, vezes: number, forma: string | null, maquininha: string | null = null) {
+  function receber(bandeira: string | null, vezes: number, forma: string | null, maquininha: string | null = null, partes: ParteDaBaixa[] | null = null) {
     iniciar(async () => {
-      const r = await markTransactionPaid(l.id, slug, bandeira, vezes, forma, maquininha)
+      const r = await markTransactionPaid(l.id, slug, bandeira, vezes, forma, maquininha, partes)
       if (r?.error) { toast.error(r.error); return }
       setAReceber(false)
       toast.success('Recebido.')
@@ -80,7 +83,7 @@ export function AcoesDoLancamentoDaFicha({ lancamento, slug, podeEstornar, podeR
         <EstornarVendaDeCredito transacaoId={l.id} descricao={l.descricao} onFechar={() => { setCreditoAEstornar(false); if (aoEstornar) aoEstornar(); else router.refresh() }} />
       )}
       {aReceber && (
-        <ReceberNoCartao descricao={l.descricao} metodo={l.metodo} valor={l.valor} pending={pendente}
+        <ReceberNoCartao descricao={l.descricao} metodo={l.metodo} valor={l.valor} pending={pendente} adiantada={l.adiantada ?? null}
           aoConfirmar={receber} aoFechar={() => setAReceber(false)} />
       )}
       {mostraReceber && (

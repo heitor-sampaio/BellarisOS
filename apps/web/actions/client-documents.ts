@@ -7,6 +7,7 @@ import { notifyClient } from '@/lib/notifications/notify'
 import type { TenantContext } from '@estetica-os/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ehAnexoClinico } from '@/lib/clientes/anexos'
+import { linkDoDocumentoNoApp } from '@/lib/clientes/textos-do-app'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
 import { gravar, ler, tentar } from '@/lib/db'
@@ -225,7 +226,8 @@ export async function enviarDocumentoACliente(
         body:  ehFoto
           ? `${unidade.name || 'A equipe'} enviou uma foto do seu atendimento.`
           : `${unidade.name || 'A equipe'} enviou um documento para você.`,
-        data:  { link: `/${unidade.slug}/cliente/historico` },
+        // A13 da 21ª: abre a aba Documentos, onde a foto e o documento estão.
+        data:  { link: linkDoDocumentoNoApp(unidade.slug) },
       })
     }
     // A8 da 17ª: a foto do atendimento enviada (ou tirada do app) entra no

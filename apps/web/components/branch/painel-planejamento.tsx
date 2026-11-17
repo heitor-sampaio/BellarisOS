@@ -28,7 +28,7 @@ export function PainelPlanejamento({
   clientId, branchId, slug, appointmentId = null,
   procedures, availableProducts = [],
   podeEditar, podeMontarPlano, podeAnotarNoPlano = true, podeVerInjetaveis, podeVerPlanos = true, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
-  abaInicial = 'tratamento',
+  abaInicial = 'tratamento', onIrAoTratamento,
 }: {
   clientId:       string
   branchId:       string
@@ -65,6 +65,8 @@ export function PainelPlanejamento({
   planoNaTela?:   boolean
   /** A aba em que abre (A10 da 9ª: o "Mapa de injetáveis" da sessão abre direto nos injetáveis). */
   abaInicial?:    Aba
+  /** A14 da 21ª: o "Ir ao Tratamento" do plano na tela (fecha a janela e leva ao cartão). */
+  onIrAoTratamento?: () => void
 }) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -130,6 +132,7 @@ export function PainelPlanejamento({
           abertoId={aberto}
           onAbrir={abrir}
           planoNaTela={planoNaTela}
+          onIrAoTratamento={onIrAoTratamento}
         />
       ) : (
         <PlanejamentoInjetaveis

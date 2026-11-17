@@ -42,7 +42,12 @@ interface Product {
 }
 
 /** A16 da 17ª: o caminho que sai do formulário não perde o preenchimento. */
-const ABRE_EM_OUTRA_ABA = 'Abre em outra aba: o que você preencheu aqui continua, e a lista se atualiza quando você volta.'
+/** "Toxina 1 frasco (frasco) · TOX-001 — Ponta Verde": a opção do seletor do insumo e o title dele (A22 da 21ª). */
+function rotuloDoInsumo(p: Product): string {
+  return `${p.name} (${p.unit})${p.sku ? ` · ${p.sku}` : ''}${p.branch_name ? ` — ${p.branch_name}` : ''}`
+}
+
+const ABRE_EM_OUTRA_ABA ='Abre em outra aba: o que você preencheu aqui continua, e a lista se atualiza quando você volta.'
 
 /** A7 da 17ª: quanto o insumo é da embalagem ("1/100 do frasco"); nulo sem unidade de consumo. */
 function parteDaEmbalagem(prod: Product, quantidade: number | null): string | null {
@@ -718,11 +723,15 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
           {insumos.map((ins, i) => {
             const prod = products.find(p => p.id === ins.product_id)
             return (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              // A22 da 21ª: a linha quebra — o aviso da quantidade espremia o
+              // seletor até "Toxina 1 f". O nome guarda uma largura e, inteiro, o title.
+              <div key={i} data-linha-do-insumo style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                 {/* Produto */}
                 <select
                   className="field"
-                  style={{ flex: 1 }}
+                  style={{ flex: '1 1 260px' }}
+                  title={prod ? rotuloDoInsumo(prod) : undefined}
+                  aria-label="Insumo"
                   value={ins.product_id}
                   onChange={e => {
                     const newProd = products.find(p => p.id === e.target.value)
@@ -734,7 +743,7 @@ function ProcedureFormInner({ salas = [], profissionais = [], branches, products
                   }}
                 >
                   {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.unit}){p.sku ? ` · ${p.sku}` : ''}{p.branch_name ? ` — ${p.branch_name}` : ''}</option>
+                    <option key={p.id} value={p.id}>{rotuloDoInsumo(p)}</option>
                   ))}
                 </select>
 

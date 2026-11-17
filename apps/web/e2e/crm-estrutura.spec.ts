@@ -148,4 +148,20 @@ test.describe.serial('estrutura do CRM', () => {
     const cor = page.locator('dialog[open] input[name="color"]')
     await expect(cor).toHaveValue('#c34d6b')
   })
+
+  // A32 da 21ª: a etapa com oportunidades dizia "Excluir?" e só depois do sim
+  // recusava ("2 oportunidade(s)"). A lixeira já diz quantas e o que fazer.
+  test('excluir a etapa com oportunidade: a pergunta diz quantas, sem o "Excluir"', async ({ page }) => {
+    await db().from('leads').update({ crm_stage_id: f!.s2 }).eq('id', f!.lead)
+    await page.goto('/admin/oportunidades')
+    await page.getByTitle('Configurar funis').click()
+    const funil = page.locator('div').filter({ has: page.locator(`input[value="${PREFIXO} Funil estrutura ${marca}"]`) }).last()
+    await funil.getByText(/etapas?\b/).first().click()
+    const etapa = page.locator('div[draggable]').filter({ has: page.locator(`input[value="${PREFIXO} Em contato"]`) })
+    await etapa.getByTitle('Excluir etapa').click()
+    const aviso = page.locator('[data-sem-etapa-de-perda]')
+    await expect(aviso).toContainText(`A etapa “${PREFIXO} Em contato” tem 1 oportunidade. Mova-a para outra etapa no quadro antes de excluir.`)
+    await expect(aviso.getByRole('button', { name: /Excluir/ })).toHaveCount(0)
+    await expect(page.getByText('oportunidade(s)')).toHaveCount(0)
+  })
 })

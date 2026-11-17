@@ -9,6 +9,7 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { bandeiraDoPagamento, ehBandeira, temBandeira } from '@/lib/financeiro/bandeiras'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { TETO_DE_VEZES } from '@/lib/financeiro/vezes-do-cartao'
+import { recusaDasFormasDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 
 /**
  * LANÇAR (receita ou despesa, à vista ou com vencimento) e DAR BAIXA — os
@@ -175,6 +176,43 @@ export async function marcarPagoCore(
     ...(daMaquininha ? { maquininha_id: daMaquininha } : {}),
   }).eq('id', transactionId).eq('is_paid', false).or('notes.is.null,notes.neq.Estornada').select('id'), 'dar baixa no lançamento') as { id: string }[] | null
   if (!feitas?.length) return { error: 'Esse lançamento já está pago (ou foi estornado).' }
+  return { ok: true }
+}
+
+/**
+ * A baixa da RECEITA em mais de uma forma (A1 da 21ª simulação; a decisão de
+ * 16/11, "+ Outra forma" em todo Receber à vista): um lançamento pago por
+ * forma, numa transação (`lancamento_receber_em_formas`) — o em aberto fica
+ * com a primeira, e cada outra nasce como cópia dele, paga. Confere aqui o que
+ * a baixa de uma forma confere (a rede, a unidade ao alcance, a bandeira, as
+ * vezes da rede) para CADA forma, e a soma; o banco confere de novo.
+ */
+export async function marcarPagoEmFormasCore(
+  admin: Admin, ctx: TenantContext, transactionId: string, partes: ParteDaBaixa[],
+): Promise<{ ok: true } | { error: string }> {
+  const tx = await lancamentoAoAlcance(admin, ctx, transactionId)
+  if (!tx) return { error: 'Lançamento não encontrado.' }
+  if (tx.type !== 'INCOME') return { error: 'Só a receita se recebe em mais de uma forma.' }
+  if (tx.is_paid || tx.notes === 'Estornada') return { error: 'Esse lançamento já está pago (ou foi estornado).' }
+  if (!Array.isArray(partes) || partes.length < 2) return { error: 'Escolha a forma de cada parte.' }
+  const recusa = recusaDasFormasDaBaixa(partes, Number(tx.amount))
+  if (recusa) return { error: recusa }
+  for (const p of partes) {
+    if (p.bandeira && !ehBandeira(p.bandeira)) return { error: 'Bandeira do cartão desconhecida: use Visa, Mastercard, Elo, Amex, Hipercard ou Outras.' }
+    if (p.maquininha != null && !/^[0-9a-f-]{36}$/i.test(p.maquininha)) return { error: 'Maquininha inválida.' }
+    const r = await recusaDasVezesDaBaixa(ctx, 'INCOME', p.forma, p.vezes, p.maquininha)
+    if (r) return { error: r }
+  }
+  const formas = partes.map(p => ({
+    forma: p.forma, valor: Math.round(p.valor * 100) / 100,
+    ...(p.forma === 'CREDIT_CARD' && p.vezes && p.vezes >= 2 ? { vezes: Math.trunc(p.vezes) } : {}),
+    ...(temBandeira(p.forma) && bandeiraDoPagamento(p.forma, p.bandeira) ? { bandeira: bandeiraDoPagamento(p.forma, p.bandeira) } : {}),
+    ...(temBandeira(p.forma) && p.maquininha ? { maquininha: p.maquininha } : {}),
+  }))
+  const { error } = await admin.rpc('lancamento_receber_em_formas', {
+    p_tenant: ctx.tenantId!, p_id: transactionId, p_formas: formas, p_ator: ctx.internalUserId ?? null,
+  })
+  if (error) return { error: error.code === 'P0001' ? error.message : `Não consegui receber: ${error.message}` }
   return { ok: true }
 }
 

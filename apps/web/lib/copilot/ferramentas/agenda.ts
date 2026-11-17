@@ -5,7 +5,7 @@ import { computeAvailableSlots } from '@/lib/appointments/core'
 import { ler } from '@/lib/db'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
-  DATA, UUID, STATUS_DO_AGENDAMENTO, fusoDe, fusosPorUnidade, hojeNoFuso, horaAgoraNoFuso, idsDasUnidades, janelaDoDia, nomesPorId, ondeProcurou,
+  DATA, UUID, STATUS_DO_AGENDAMENTO, fusoDe, fusosPorUnidade, hojeNoFuso, horaAgoraNoFuso, idsDasUnidades, janelaDoDia, membroDesativado, membrosPorId, nomesPorId, ondeProcurou,
   quandoLegivel,
   resolverCliente, resolverProcedimento, resolverProfissional, resolverUnidade, rota,
 } from '@/lib/copilot/ferramentas/comum'
@@ -72,7 +72,14 @@ export const agendamentos: FerramentaDeLeitura<{
       if (!('erro' in p) && cliente) {
         return { dados: { erro: `"${args.profissional}" pode ser quem atende (${p.name}) ou a cliente ${cliente.name}. Qual?` } }
       }
-      if ('erro' in p) {
+      // A31 da 21ª (princípios 3 e 7): quem teve o acesso desativado sai de
+      // "quem atende", e os agendamentos que ficaram com essa pessoa não se
+      // achavam — o Copilot perguntava "quer que eu procure?". Para LER, vale.
+      const desativado = 'erro' in p && !cliente && p.erro.includes('não encontrado') ? await membroDesativado(c, args.profissional) : null
+      if (desativado) {
+        if (profissionalId && desativado.id !== profissionalId) return { dados: { erro: 'A sua permissão só vê a sua própria agenda.' } }
+        profissionalId = desativado.id
+      } else if ('erro' in p) {
         if (!cliente) return { dados: { erro: cl && 'erro' in cl && cl.erro.startsWith('Mais de um') ? cl.erro : p.erro } }
         clienteId = cliente.id
         entendido = `Ninguém que atende se chama "${args.profissional}": estes são os agendamentos da cliente ${cliente.name}.`
@@ -106,7 +113,7 @@ export const agendamentos: FerramentaDeLeitura<{
     const [clientes, procs, profs, nomesDasUnidades, fusos] = await Promise.all([
       nomesPorId(c, 'clients', linhas.map(l => l.client_id)),
       nomesPorId(c, 'procedures', linhas.map(l => l.procedure_id)),
-      nomesPorId(c, 'users', linhas.map(l => l.professional_id)),
+      membrosPorId(c, linhas.map(l => l.professional_id)),
       nomesPorId(c, 'branches', linhas.map(l => l.branch_id)),
       fusosPorUnidade(c, linhas.map(l => l.branch_id)),
     ])
@@ -118,13 +125,20 @@ export const agendamentos: FerramentaDeLeitura<{
       cliente: clientes.get(l.client_id) ?? '—',
       clienteId: l.client_id,
       procedimento: procs.get(l.procedure_id) ?? '—',
-      profissional: l.professional_id ? (profs.get(l.professional_id) ?? '—') : 'sem profissional',
+      profissional: l.professional_id ? nomeDeQuemAtende(profs.get(l.professional_id)) : 'sem profissional',
       unidade: nomesDasUnidades.get(l.branch_id) ?? '—',
       status: STATUS_DO_AGENDAMENTO[l.status] ?? l.status,
       href: rota(c, `/agenda/${l.id}`),
     }))
+    // A31 da 21ª: quem tem o acesso desativado e ainda tem agendamento, dito — com o caminho.
+    const desativados = [...new Set(linhas.map(l => l.professional_id).filter((id): id is string => !!id && profs.get(id)?.ativo === false))]
+      .map(id => profs.get(id)!.name)
+    const avisos = [
+      ...(desativados.length ? [`${desativados.join(', ')} ${desativados.length === 1 ? 'está' : 'estão'} com o acesso desativado: estes agendamentos seguem no nome ${desativados.length === 1 ? 'dessa pessoa' : 'delas'}. Para passá-los a quem atende, troque quem atende em cada um — na agenda, ou pedindo aqui.`] : []),
+      ...(linhas.length === 80 ? ['Mostrando os 80 primeiros.'] : []),
+    ]
     return {
-      dados: { periodo, ...(entendido ? { entendido } : {}), procurouEm, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
+      dados: { periodo, ...(entendido ? { entendido } : {}), procurouEm, total: lista.length, agendamentos: lista, ...(avisos.length ? { aviso: avisos.join(' ') } : {}) },
       cartao: lista.length ? {
         // A29 da 19ª: o período em dd/mm, como o dia (era "2026-11-16 a 2026-12-16").
         tipo: 'links', titulo: `Agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : periodoLegivel(de, ate)}`,
@@ -132,6 +146,12 @@ export const agendamentos: FerramentaDeLeitura<{
       } : undefined,
     }
   },
+}
+
+/** O nome de quem atende na lista; com o acesso desativado, dito (A31 da 21ª). */
+function nomeDeQuemAtende(m: { name: string; ativo: boolean } | undefined): string {
+  if (!m) return '—'
+  return m.ativo ? m.name : `${m.name} (acesso desativado)`
 }
 
 /** "AAAA-MM-DD" + n dias (a data do calendário, sem fuso). */

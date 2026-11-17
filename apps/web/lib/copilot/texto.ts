@@ -31,6 +31,17 @@ export function linkSeguro(href: string): string | null {
   return seguro
 }
 
+/**
+ * O caminho de tela SOLTO no texto, com um id (inteiro ou cortado com "…"):
+ * "(/lavanda-ponta-verde/agenda/<uuid>)", "/admin/agenda/b481…" (A27 da 21ª).
+ * Não diz nada a quem lê — o link vai com o nome, ou no cartão —, e sai.
+ */
+const ID_NO_CAMINHO = String.raw`\/[\w-]+(?:\/[\w-]+)*\/[0-9a-f]{8}(?:-[0-9a-f]{1,12}){0,4}(?:…|\.\.\.)?`
+const CAMINHO_CRU = new RegExp(String.raw`\s*\(\s*${ID_NO_CAMINHO}\s*\)|\s?(?<![\w\]])${ID_NO_CAMINHO}`, 'gi')
+export function semCaminhoCru(t: string): string {
+  return t.replace(CAMINHO_CRU, '')
+}
+
 export function trechosDaLinha(linha: string): Trecho[] {
   const trechos: Trecho[] = []
   // O link sem fechamento no fim (a resposta cortada, D3 da 19ª; ou ainda
@@ -38,7 +49,7 @@ export function trechosDaLinha(linha: string): Trecho[] {
   const padrao = /\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|\[([^\]]+)\]\([^)\s]*$/g
   let ultimo = 0
   let m: RegExpExecArray | null
-  const texto = (t: string) => { if (t) trechos.push({ tipo: 'texto', texto: t }) }
+  const texto = (bruto: string) => { const t = semCaminhoCru(bruto); if (t) trechos.push({ tipo: 'texto', texto: t }) }
   while ((m = padrao.exec(linha))) {
     texto(linha.slice(ultimo, m.index))
     if (m[1] !== undefined) trechos.push({ tipo: 'negrito', texto: m[1] })

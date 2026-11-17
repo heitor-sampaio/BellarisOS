@@ -85,12 +85,30 @@ export function ehAUltimaDePerda(etapas: readonly CRMStage[], etapaId: string): 
   return !etapas.some(e => e.id !== etapaId && e.funnel_id === etapa.funnel_id && e.outcome === 'LOST')
 }
 
+/** "1 oportunidade", "2 oportunidades" — sem o "(s)" (A32 da 21ª). */
+export function oportunidadesPorExtenso(n: number): string {
+  return `${n} ${n === 1 ? 'oportunidade' : 'oportunidades'}`
+}
+
+/** A etapa com oportunidades não se exclui: o que a tela e a action dizem (A32 da 21ª). */
+export function recusaDaEtapaComOportunidades(nome: string, oportunidades: number): string {
+  return `A etapa “${nome}” tem ${oportunidadesPorExtenso(oportunidades)}. Mova-${oportunidades === 1 ? 'a' : 'as'} para outra etapa no quadro antes de excluir.`
+}
+
+/** O funil com oportunidades não se exclui (A32 da 21ª: era "oportunidade(s)"). */
+export function recusaDoFunilComOportunidades(oportunidades: number): string {
+  return `Este funil tem ${oportunidadesPorExtenso(oportunidades)}. Mova-${oportunidades === 1 ? 'a' : 'as'} para outro funil ou arquive este.`
+}
+
 /**
  * A pergunta antes de excluir a etapa (A23 da 19ª simulação; princípio 7):
  * toda exclusão confirma — o A11 da 17ª perguntava só na última de perda, e
  * um clique na lixeira apagava a etapa. A última de perda diz o que o funil perde.
+ * A32 da 21ª (princípio 3): com oportunidades, a etapa não se exclui — a
+ * pergunta já diz quantas e o que fazer (era "Excluir?" e, depois do sim, a recusa).
  */
-export function perguntaAoExcluirEtapa(nome: string, ultimaDePerda: boolean): string {
+export function perguntaAoExcluirEtapa(nome: string, ultimaDePerda: boolean, oportunidades = 0): string {
+  if (oportunidades > 0) return recusaDaEtapaComOportunidades(nome, oportunidades)
   return ultimaDePerda
     ? 'Este funil fica sem etapa de perda: o “Marcar como perdido” e os motivos de perda não terão para onde levar a oportunidade.'
     : `Excluir a etapa “${nome}”? Não dá para desfazer.`

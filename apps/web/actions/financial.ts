@@ -8,7 +8,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
-import { lancarCore, marcarPagoCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
+import { lancarCore, marcarPagoCore, marcarPagoEmFormasCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
+import { lerPartesDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
 import { logHistory } from '@/lib/appointments/avisos'
 import { textoDosPontosDoEstorno } from '@/lib/fidelidade/pontos-do-estorno'
@@ -188,10 +189,24 @@ export async function markTransactionPaid(
   forma?: string | null,
   /** C75: a maquininha do cartão (sem ela, o banco põe a primeira). */
   maquininha?: string | null,
+  /** A1 da 21ª ("+ Outra forma"): a receita dividida — todas as formas, cada uma com o valor dela. */
+  partes?: ParteDaBaixa[] | null,
 ) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'cashier', 'MANAGE')
+    if (partes != null) {
+      const lidas = lerPartesDaBaixa(partes)
+      if ('error' in lidas) return { error: lidas.error }
+      if (typeof transactionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(transactionId)) return { error: 'Lançamento não encontrado.' }
+      if (lidas.length >= 2) {
+        const r = await marcarPagoEmFormasCore(createAdminClient(), ctx, transactionId, lidas)
+        if ('error' in r) return { error: r.error }
+        if (slug) revalidatePath(`/${slug}/financeiro`)
+        revalidatePath('/admin/financeiro')
+        return { success: true }
+      }
+    }
     if (maquininha != null && (typeof maquininha !== 'string' || !/^[0-9a-f-]{36}$/i.test(maquininha))) return { error: 'Maquininha inválida.' }
     // A15 da 9ª: a despesa também diz a forma na baixa — e pode ser Boleto (A14).
     if (forma != null && !(FORMAS_DE_PAGAMENTO as readonly string[]).includes(forma) && forma !== 'BOLETO') return { error: 'Forma de pagamento inválida.' }

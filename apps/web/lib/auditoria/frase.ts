@@ -1,6 +1,9 @@
 import { partsInTZ } from '@/lib/datetime'
 import { rotaAtendimento, rotaCliente, rotaNoPortal } from '@/lib/rotas'
 import { rotuloDaForma, rotuloDaFormaDoFechamento } from '@/lib/financeiro/formas'
+import { quantidadeComMedida } from '@/lib/estoque/medidas'
+import { REPORT_TAB_LABELS } from '@/lib/permissions'
+import type { ReportTab } from '@estetica-os/types'
 import type { LinhaDaAuditoria, NomesDaAuditoria, RegistroDaAuditoria } from './tipos'
 
 /**
@@ -215,6 +218,11 @@ function nomeDoRegistro(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string
     const m = texto(r.depois.module) ?? texto(r.antes.module)
     return m ? `de ${MODULO[m] ?? m}` : null
   }
+  // A7 da 21ª: qual aba ("Criou a aba de relatório do cargo" saía 13 vezes igual).
+  if (r.tabela === 'role_report_tabs') {
+    const aba = texto(r.depois.tab) ?? texto(r.antes.tab)
+    return aba ? REPORT_TAB_LABELS[aba as ReportTab] ?? aba : null
+  }
   return null
 }
 
@@ -238,12 +246,17 @@ function camposMudados(colunas: readonly string[]): string {
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const numero = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : null)
 
-/** "2 Protetor FPS 50": a quantidade do movimento e o produto, lido agora. */
+/**
+ * "2 frascos de Toxina 1 frasco": a quantidade do movimento, com a medida em
+ * que ele se grava, e o produto, lidos agora (A33 da 21ª: "2 Toxina 1 frasco"
+ * colava a quantidade num nome com número). Sem a medida lida, "2 Protetor".
+ */
 function doProduto(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string {
   const q = Math.abs(numero(r.depois.quantity ?? r.antes.quantity) ?? 0)
   const id = texto(r.depois.product_id) ?? texto(r.antes.product_id)
   const produto = (id && nomes.produtos?.[id]) || 'produto'
-  return `${q.toLocaleString('pt-BR')} ${produto}`
+  const medida = id ? texto(nomes.medidasDosProdutos?.[id]) : null
+  return medida ? `${quantidadeComMedida(q, medida)} de ${produto}` : `${q.toLocaleString('pt-BR')} ${produto}`
 }
 
 /** O movimento de estoque lido como o fato (A28 da 15ª: saía sem produto nem quantidade). */
@@ -474,8 +487,10 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
   let coisa = COISA_DA_AUDITORIA[r.tabela] ?? `um registro (${r.tabela})`
   let nome = r.tabela === 'clients' ? null : nomeDoRegistro(r, nomes)
   // A permissão diz o módulo e o cargo: "Criou a permissão de Agenda do cargo X".
-  const cargo = r.tabela === 'role_permissions' && r.registro_id ? nomes.cargos?.[r.registro_id] : null
-  if (cargo) { coisa = 'a permissão'; nome = `${nome ? `${nome} ` : ''}do cargo ${cargo}` }
+  const cargo = (r.tabela === 'role_permissions' || r.tabela === 'role_report_tabs') && r.registro_id ? nomes.cargos?.[r.registro_id] : null
+  if (cargo && r.tabela === 'role_permissions') { coisa = 'a permissão'; nome = `${nome ? `${nome} ` : ''}do cargo ${cargo}` }
+  else if (cargo) nome = `${nome ? `${nome} ` : ''}do cargo ${cargo}`
+  if (r.tabela === 'role_report_tabs') coisa = 'a aba de relatório'
   // A35 da 19ª: "Criou a ficha de X" (era "a ficha da cliente de X").
   if (r.tabela === 'clients' && cliente) coisa = 'a ficha'
   let frase = `${VERBO[r.operacao] ?? 'Mudou'} ${coisa}${nome ? ` ${nome}` : ''}`
@@ -688,7 +703,11 @@ function fraseDoEstorno(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   // A26 da 17ª: o lançamento estornado de um atendimento (lido agora) é "o atendimento".
   const doAtendimento = linhas.some(l => l.tabela === 'financial_transactions' && l.operacao === 'editou'
     && l.registro_id && nomes.lancamentos?.[l.registro_id]?.agendamento)
-  const alvo = ALVO.find(([t]) => linhas.some(l => l.tabela === t))?.[1] ?? (doAtendimento ? 'o atendimento' : 'um pagamento')
+  // A7 da 21ª: o estorno do fechamento de comissão ("Estornou um pagamento (R$ 630,00)" não dizia de quem).
+  const fechamento = linhas.find(l => l.tabela === 'commission_payouts' && l.operacao === 'editou' && l.colunas.includes('estornado_at'))
+  const deQuem = fechamento?.registro_id ? nomes.pagamentosDeComissao?.[fechamento.registro_id] : null
+  const alvo = fechamento ? `o fechamento da comissão${deQuem ? ` de ${deQuem}` : ''}`
+    : ALVO.find(([t]) => linhas.some(l => l.tabela === t))?.[1] ?? (doAtendimento ? 'o atendimento' : 'um pagamento')
   const voltas = linhas.filter(l => l.tabela === 'stock_movements' && texto(l.depois.type) === 'SALE_RETURN').map(l => doProduto(l, nomes))
   const volta = voltas.length ? `, e ${emLista(voltas)} ${voltas.length === 1 ? 'voltou' : 'voltaram'} ao estoque` : ''
   // A33 da 19ª: o voucher que o pagamento estornado usou volta a ativo, e a frase diz.
@@ -944,14 +963,21 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
     return base.endsWith(')') ? `${base.slice(0, -1)}; ${doPai})` : `${base} (${doPai})`
   }
 
+  // A7 da 21ª: o "Salvar acessos" grava as permissões e as abas de relatório, sem o cargo na gravação.
+  const doCargo = (l: RegistroDaAuditoria) => l.tabela === 'role_permissions' || l.tabela === 'role_report_tabs'
+  const cargosDaGravacao = [...new Set(linhas.map(l => (l.registro_id && nomes.cargos?.[l.registro_id]) || null))]
+  const umCargo = cargosDaGravacao.length === 1 ? cargosDaGravacao[0] ?? null : null
+  if (linhas.every(doCargo) && linhas.some(l => l.tabela === 'role_permissions') && linhas.some(l => l.tabela === 'role_report_tabs')) {
+    const conta = (t: string, um: string, varios: string) => { const n = linhas.filter(l => l.tabela === t).length; return `${n} ${n === 1 ? um : varios}` }
+    return `Mudou os acessos ${umCargo ? `do cargo ${umCargo}` : 'dos cargos'} (${conta('role_report_tabs', 'aba de relatório', 'abas de relatório')} e ${conta('role_permissions', 'permissão', 'permissões')})`
+  }
+
   // Muitas linhas da mesma tabela: "Criou 3 e apagou 3 insumos do procedimento".
   const tabela = linhas[0]!.tabela
   if (linhas.every(l => l.tabela === tabela && ORDEM_DAS_OPERACOES.includes(l.operacao))) {
     let coisas = PLURAL_DA_AUDITORIA[tabela] ?? `registros (${tabela})`
-    if (tabela === 'role_permissions') {
-      const cargos = [...new Set(linhas.map(l => (l.registro_id && nomes.cargos?.[l.registro_id]) || null))]
-      if (cargos.length === 1 && cargos[0]) coisas = `permissões do cargo ${cargos[0]}`
-    }
+    if (tabela === 'role_permissions' && umCargo) coisas = `permissões do cargo ${umCargo}`
+    if (tabela === 'role_report_tabs' && umCargo) coisas = `abas de relatório do cargo ${umCargo}`
     const clientes = [...new Set(linhas.map(l => l.client_id))]
     const cliente = clientes.length === 1 && clientes[0] ? nomes.clientes[clientes[0]] ?? null : null
     return `${contagemDasOperacoes(linhas)} ${coisas}${cliente ? ` — ${cliente}` : ''}`
@@ -966,7 +992,8 @@ export function gruposDaAuditoria(
   registros: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, pathname: string, slug: string | null, fuso?: string,
 ): GrupoDaAuditoria[] {
   return agruparAuditoria(registros).map(linhas => {
-    const detalhes = linhas.map(l => linhaDaAuditoria(l, nomes, pathname, slug, fuso))
+    // A34 da 21ª: no detalhe, o registro clínico sem unidade leva a da gravação (como o CSV, A37 da 20ª).
+    const detalhes = comAUnidadeDaGravacao(linhas, nomes).map(l => linhaDaAuditoria(l, nomes, pathname, slug, fuso))
     if (linhas.length === 1) return { ...detalhes[0]!, oQue: fraseDoGrupo(linhas, nomes), detalhes }
     // D6 da 16ª: a unidade e o link são os do FATO (o agendamento, a venda, o
     // recebimento), não os do primeiro registro com cliente (a sessão do pacote
@@ -1023,6 +1050,12 @@ export function linhasDoCsvDaAuditoria(
 ): (LinhaDaAuditoria & { gravacao: string })[] {
   return agruparAuditoria(registros).flatMap(linhas => {
     const gravacao = fraseDoGrupo(linhas, nomes)
-    return comAUnidadeDaGravacao(linhas, nomes).map(l => ({ ...linhaDaAuditoria(l, nomes, '/admin/auditoria', null, fuso), gravacao }))
+    // A7 da 21ª: a gravação de um registro só diz no "O quê" a frase da tela, e a
+    // "Gravação" fica vazia; na de vários, a linha que já é a frase dela não a repete.
+    if (linhas.length === 1) return [{ ...linhaDaAuditoria(linhas[0]!, nomes, '/admin/auditoria', null, fuso), oQue: gravacao, gravacao: '' }]
+    return comAUnidadeDaGravacao(linhas, nomes).map(l => {
+      const linha = linhaDaAuditoria(l, nomes, '/admin/auditoria', null, fuso)
+      return { ...linha, gravacao: linha.oQue === gravacao ? '' : gravacao }
+    })
   })
 }

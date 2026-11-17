@@ -12,7 +12,7 @@ import {
   type CRMFunnel, type CRMStage, type StageOutcome,
 } from '@/lib/crm'
 import {
-  createStage, renameStage, updateStageColor, updateStageOutcome, deleteStage, reorderStages,
+  createStage, renameStage, updateStageColor, updateStageOutcome, deleteStage, reorderStages, oportunidadesNaEtapa,
 } from '@/actions/crm-stages'
 import {
   createFunnel, renameFunnel, setDefaultFunnel, setFunnelArchived, deleteFunnel, reorderFunnels,
@@ -58,7 +58,9 @@ function StageRow({
   const [deleteErr, setDeleteErr] = useState<string | null>(null)
   // A11 da 17ª (princípio 2): apagar a última etapa de perda, ou tirá-la de
   // "Perdido", não é recusado — a linha diz o que acontece e pede o "sim".
-  const [confirmar, setConfirmar] = useState<{ acao: 'excluir' } | { acao: 'resultado'; para: StageOutcome } | null>(null)
+  // A32 da 21ª: a exclusão chega já com as oportunidades da etapa contadas.
+  const [confirmar, setConfirmar] = useState<{ acao: 'excluir'; oportunidades: number } | { acao: 'resultado'; para: StageOutcome } | null>(null)
+  const [contando, setContando] = useState(false)
   const [, start] = useTransition()
   const router = useRouter()
 
@@ -107,7 +109,16 @@ function StageRow({
 
   async function handleDelete(confirmado = false) {
     // A23 da 19ª (princípio 7): toda exclusão pergunta antes, não só a da última de perda.
-    if (!confirmado) { setDeleteErr(null); setConfirmar({ acao: 'excluir' }); return }
+    // A32 da 21ª (princípio 3): a pergunta já sabe quantas oportunidades a etapa tem —
+    // com alguma, diz quantas e o que fazer, sem o "Excluir" que só ia recusar.
+    if (!confirmado) {
+      setDeleteErr(null); setContando(true)
+      const r = await oportunidadesNaEtapa(stage.id)
+      setContando(false)
+      if ('error' in r) { setDeleteErr(r.error); return }
+      setConfirmar({ acao: 'excluir', oportunidades: r.oportunidades })
+      return
+    }
     setConfirmar(null)
     setDeleteErr(null)
     const res = await deleteStage(stage.id, slug)
@@ -200,6 +211,7 @@ function StageRow({
         <button
           type="button"
           onClick={() => handleDelete()}
+          disabled={contando}
           title="Excluir etapa"
           style={{
             width: 26, height: 26, borderRadius: 7, flexShrink: 0,
@@ -222,15 +234,18 @@ function StageRow({
         <div data-sem-etapa-de-perda role="alert" style={{ width: '100%', paddingLeft: 44, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 700, margin: 0 }}>
             {/* A11 da 17ª: "Este funil fica sem etapa de perda" na última de perda; A23 da 19ª: a pergunta nas outras. */}
-            {perguntaAoExcluirEtapa(stage.name, confirmar.acao === 'resultado' || ultimaDePerda)}
+            {/* A32 da 21ª: com oportunidades, quantas e o que fazer. */}
+            {perguntaAoExcluirEtapa(stage.name, confirmar.acao === 'resultado' || ultimaDePerda, confirmar.acao === 'excluir' ? confirmar.oportunidades : 0)}
           </p>
           <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
-              onClick={() => (confirmar.acao === 'excluir' ? handleDelete(true) : handleOutcomeChange(confirmar.para, true))}>
-              {confirmar.acao === 'excluir' ? (ultimaDePerda ? 'Excluir mesmo assim' : 'Excluir a etapa') : 'Mudar mesmo assim'}
-            </button>
+            {!(confirmar.acao === 'excluir' && confirmar.oportunidades > 0) && (
+              <button type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
+                onClick={() => (confirmar.acao === 'excluir' ? handleDelete(true) : handleOutcomeChange(confirmar.para, true))}>
+                {confirmar.acao === 'excluir' ? (ultimaDePerda ? 'Excluir mesmo assim' : 'Excluir a etapa') : 'Mudar mesmo assim'}
+              </button>
+            )}
             <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)' }} onClick={() => setConfirmar(null)}>
-              Cancelar
+              {confirmar.acao === 'excluir' && confirmar.oportunidades > 0 ? 'Entendi' : 'Cancelar'}
             </button>
           </span>
         </div>

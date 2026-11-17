@@ -1,4 +1,5 @@
-import { situacaoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { situacaoDoVencimento, textoDoVencimento } from '@/lib/financeiro/vencimentos'
+import { anterioresEmAbertoEmTexto, type ParcelaParaAdiantar } from '@/lib/pdv/situacoes'
 import type { TenantContext } from '@estetica-os/types'
 import { can, isOwnScope, podeReceber, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -44,8 +45,10 @@ type Linha = {
   id: string; type: string; description: string; amount: number | string; payment_method: string | null
   cartao_vezes: number | null; cartao_bandeira: string | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null
   notes: string | null; category: string | null; appointment_id: string | null; parcela_numero: number | null
+  parcela_total: number | null
   product_sale_id: string | null
   credito_vendido_id: string | null
+  client_package_id: string | null; procedure_sale_id: string | null; treatment_plan_id: string | null
   branch_id: string | null
   appointment: { scheduled_at: string; professional_id: string | null; procedures: { name: string } | null } | null
 }
@@ -62,7 +65,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   const [linhas, totaisRaw, aReceber, creditos] = await Promise.all([
     lerTodas<unknown>((de, ate) => {
       let q = admin.from('financial_transactions')
-        .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, product_sale_id, credito_vendido_id, branch_id,
+        .select(`id, type, description, amount, payment_method, cartao_vezes, cartao_bandeira, is_paid, paid_at, created_at, due_date, notes, category, appointment_id, parcela_numero, parcela_total, product_sale_id, credito_vendido_id, client_package_id, procedure_sale_id, treatment_plan_id, branch_id,
           branches!inner(tenant_id),
           appointment:appointments!financial_transactions_appointment_id_fkey${meu ? '!inner' : ''}(scheduled_at, professional_id, procedures(name))`)
         .eq('client_id', clientId).eq('branches.tenant_id', ctx.tenantId!)
@@ -85,6 +88,19 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
   // O "hoje" do vencimento é o da unidade do lançamento (F64, C4).
   const fusos = new Map<string, string>()
   for (const b of new Set((linhas as Linha[]).map(l => l.branch_id ?? ''))) fusos.set(b, await fusoDaUnidade(ctx.tenantId, b || null))
+  // A3 da 21ª (o A5 da 20ª no PDV): a parcela recebida antes das anteriores da
+  // mesma venda avisa também no "Receber" da ficha. As parcelas em aberto, como o PDV as lê.
+  const vendaDaLinha = (l: Linha) => l.client_package_id ?? l.procedure_sale_id ?? l.product_sale_id ?? l.credito_vendido_id ?? l.treatment_plan_id ?? l.appointment_id ?? null
+  const emAberto: ParcelaParaAdiantar[] = (linhas as Linha[])
+    .filter(l => l.type === 'INCOME' && !l.is_paid && l.notes !== 'Estornada' && l.parcela_numero != null)
+    .map(l => ({
+      id: l.id, numero: l.parcela_numero, total: l.parcela_total, venda: vendaDaLinha(l),
+      vencimento: textoDoVencimento(l.due_date, new Date(), fusos.get(l.branch_id ?? '')),
+    }))
+  const adiantadaDe = (l: Linha) => {
+    const p = emAberto.find(o => o.id === l.id)
+    return p ? anterioresEmAbertoEmTexto(p, emAberto) : null
+  }
   // D7 da 10ª: em ordem pela data que a linha mostra (ordenarTransacoesDaFicha).
   const transactions: ProfileTransaction[] = ordenarTransacoesDaFicha((linhas as Linha[]).map(l => ({
     id:            l.id,
@@ -113,6 +129,7 @@ export async function financeiroDaFicha(ctx: TenantContext, clientId: string): P
     vendaDeProduto: !!l.product_sale_id,
     vendaDeCredito: !!l.credito_vendido_id,
     doAtendimento:  !!l.appointment_id,
+    adiantada:      adiantadaDe(l),
   })))
 
   const primeira = aReceber.itens.find(a => alcancaUnidade(ctx, a.branchId)) ?? null

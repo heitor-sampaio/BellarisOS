@@ -366,6 +366,10 @@
     Caio Brandão atendendo em outra unidade" — "de", não "da/do", e a outra
     unidade só sai pelo nome a quem a alcança (`alcancaUnidade`); a quem não,
     "outra unidade".
+    **Na agenda, a base mora na dica** (A15 da 21ª; princípio 7: com os
+    descontos, a linha quebrava com parênteses aninhados): o topo diz "3% de
+    ocupação" e a dica "Como a ocupação é contada" traz a base e a definição.
+    O dashboard da unidade segue com a base à vista.
   - **composição do financeiro** (receita por forma de pagamento, receita e
     despesa por categoria) = `metrics_financeiro_composicao`
     (`getComposicaoFinanceira`, 2026-10-21), com a regra de `metrics_core`.

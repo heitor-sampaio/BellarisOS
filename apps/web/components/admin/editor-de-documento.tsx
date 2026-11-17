@@ -91,7 +91,7 @@ const TEXTO_INICIAL: Record<TipoDeModelo, string> = {
     '[[assinatura]]',
   ].join('\n'),
   CONTRATO_PACOTE: [
-    '# Contrato de prestação de serviços',
+    '# Contrato de pacote',
     '',
     '**Contratante:** {{cliente.nome}}, CPF {{cliente.cpf}}, residente em {{cliente.endereco}}, {{cliente.cidade}}/{{cliente.uf}}.',
     '**Contratada:** {{rede.nome}}, inscrita sob o nº {{rede.documento}}, unidade {{unidade.nome}}.',

@@ -4,6 +4,7 @@ import { getFechamentoDoDia } from '@/lib/metrics'
 import { diaDoFechamento, janelaDoDia } from '@/lib/financeiro/fechamento'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { comandasDoPdv, situacaoDoPdv } from '@/lib/pdv/comandas'
+import { contarComValorEmAberto } from '@/lib/pdv/situacoes'
 import { creditosDoCliente } from '@/lib/creditos/credito'
 import { pagamentoCombinadoDoAtendimento } from '@/lib/documentos/leitura'
 import { ler } from '@/lib/db'
@@ -21,6 +22,7 @@ import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { parcelasEmAbertoDaCliente, CHAVES_DA_VENDA, type VendaDaComanda } from '@/lib/pdv/parcelas-da-cliente'
 import { itensDaComanda } from '@/lib/pdv/itens-da-comanda'
+import { linhaDaComandaDoPdv } from '@/lib/pdv/linha-da-comanda-leitura'
 import { fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
 import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
@@ -60,10 +62,13 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
   const dia = diaDoFechamento(undefined, new Date(), fuso)
   const janela = janelaDoDia(dia, new Date(), fuso)!
   const situacao = situacaoDoPdv(ver)
-  const [lista, abertas, resumo] = await Promise.all([
+  const [lista, abertas, pagasHoje, resumo] = await Promise.all([
     comandasDoPdv({ tenantId: ctx.tenantId!, branchId: unidadeId, situacao, de: janela.from, ate: janela.to }),
     situacao === 'ABERTAS' ? null
       : comandasDoPdv({ tenantId: ctx.tenantId!, branchId: unidadeId, situacao: 'ABERTAS', de: janela.from, ate: janela.to }),
+    // A2 da 21ª: as pagas de hoje com valor a receber (o crediário), que o topo cita.
+    situacao === 'PAGAS' ? null
+      : comandasDoPdv({ tenantId: ctx.tenantId!, branchId: unidadeId, situacao: 'PAGAS', de: janela.from, ate: janela.to }),
     // "Hoje: R$ X recebidos" é o total de entradas do Fechamento do dia (lib/metrics).
     getFechamentoDoDia({ tenantId: ctx.tenantId!, branchId: unidadeId, from: janela.from, to: janela.to, dia }),
   ])
@@ -76,10 +81,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
   const procurada = ehUuid(recebidaId) ? recebidaId
     : comandaId && !comanda && situacao === 'ABERTAS' && ehUuid(comandaId) ? comandaId : null
   const recebida = procurada
-    ? (lista.find(c => c.id === procurada)
-        ?? (situacao === 'PAGAS' ? null
-          : (await comandasDoPdv({ tenantId: ctx.tenantId!, branchId: unidadeId, situacao: 'PAGAS', de: janela.from, ate: janela.to }))
-              .find(c => c.id === procurada)) ?? null)
+    ? (lista.find(c => c.id === procurada) ?? (pagasHoje ?? []).find(c => c.id === procurada) ?? null)
     : null
   let escolhida: ComandaEscolhida | null = null
   if (comanda) {
@@ -94,9 +96,11 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     // Fase 5b: os produtos acrescentados na comanda do atendimento, e os que
     // ainda se podem acrescentar (os de Venda direta, no estoque da unidade).
     const doAtendimento = comanda.origem === 'ATENDIMENTO'
-    const [itens, produtos] = await Promise.all([
+    const [itens, produtos, linha] = await Promise.all([
       doAtendimento ? itensDaComanda(ctx.tenantId!, comanda.id, admin) : [],
       doAtendimento && aReceber ? produtosAVenda(ctx.tenantId!, unidadeId) : [],
+      // D3 e A5 da 21ª: a quantidade vendida (e as sessões do plano), não o "1" fixo.
+      doAtendimento ? null : linhaDaComandaDoPdv(admin, ctx.tenantId!, comanda.id),
     ])
     const comProdutos = itens.some(i => !i.vendido)
     // Com produto na comanda, o atendimento não se abate do pacote: a comanda se recebe inteira.
@@ -108,6 +112,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
     escolhida = {
       comanda,
       valorDoAtendimento: agendamento ? Number(agendamento.price ?? 0) : null,
+      linha,
       itens,
       produtosParaAcrescentar: produtos.map(p => ({ id: p.id, name: p.name, price: p.price, unidade: p.unidade, disponivel: p.disponivel })),
       pacotesParaAbater: pacotes,
@@ -187,6 +192,7 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
           situacao={situacao}
           comandas={lista}
           abertas={(abertas ?? lista).length}
+          comValorEmAberto={contarComValorEmAberto(pagasHoje ?? lista)}
           recebidoHoje={resumo.total.entradas}
           escolhida={escolhida}
           slugDaUnidade={slugDaUnidade}

@@ -83,3 +83,33 @@ export function textoDoQuandoNoConfirmar(p: { agendadoEm: string; concluidoEm: s
     ? `Marcado para ${marcado.hora} · ${concluido}`
     : `Marcado para ${marcado.dia} às ${marcado.hora} · ${concluido}`
 }
+
+/** As abas do Histórico do app. */
+export type AbaDoHistoricoNoApp = 'procedimentos' | 'pagamentos' | 'documentos'
+
+/** A aba do endereço (`?aba=`); a padrão quando não é uma das três. */
+export function abaDoHistoricoNoApp(aba: unknown): AbaDoHistoricoNoApp {
+  return aba === 'pagamentos' || aba === 'documentos' ? aba : 'procedimentos'
+}
+
+/**
+ * O aviso "Foto nova" / "Documento novo" abre a aba Documentos do Histórico
+ * (A13 da 21ª simulação; princípio 7): abria na aba padrão, Procedimentos, e
+ * a foto não estava ali.
+ */
+export function linkDoDocumentoNoApp(slug: string): string {
+  return `/${slug}/cliente/historico?aba=documentos`
+}
+
+/**
+ * O plano aceito sem o contrato (A35 da 21ª; princípio 3): o contrato de plano
+ * nasce no PDV, com a forma de pagamento (PT1c) — a cliente lia "Nenhum
+ * documento neste plano" e não sabia que ainda ia assinar. Só quando a rede
+ * tem um contrato de plano ativo, o plano não se recebeu e o contrato não está.
+ */
+export function avisoDoContratoDoPlanoNoApp(p: {
+  status: string; tipos: readonly string[]; recebido: boolean; redeTemContrato: boolean
+}): string | null {
+  if (p.status !== 'ACCEPTED' || p.recebido || !p.redeTemContrato || p.tipos.includes('CONTRATO_PLANO')) return null
+  return 'O contrato do plano se assina no pagamento, na unidade.'
+}

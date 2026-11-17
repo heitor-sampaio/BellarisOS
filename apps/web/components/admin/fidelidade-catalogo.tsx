@@ -8,7 +8,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { rotaNoPortal } from '@/lib/rotas'
 import { catalogoDeRecompensas, salvarRecompensa } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
-import { explicacaoDoCatalogo, formatarPontos } from '@/lib/fidelidade/formato'
+import { avisoDaRecompensaAcimaDosPontos, explicacaoDoCatalogo, formatarPontos } from '@/lib/fidelidade/formato'
 import { ROTULO_DO_TIPO, TIPOS_DE_RECOMPENSA, descricaoDoVoucher, type TipoDeRecompensa } from '@/lib/fidelidade/voucher'
 import type { Recompensa } from '@/lib/fidelidade/leitura'
 import { Dica } from '@/components/shared/dica'
@@ -133,6 +133,9 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, valorDoPo
   const valorEmReais = valorDoPonto != null && valorDoPonto > 0 && pontosDoCusto > 0
     ? Math.round(pontosDoCusto * valorDoPonto * 100) / 100 : null
   const procEscolhido = tipo === 'PROCEDIMENTO' ? procedimentos.find(p => p.id === proc) ?? null : null
+  // A18 da 21ª (princípio 2): o desconto acima do que os pontos valem ganha aviso, sem recusar.
+  const descontoEmReais = tipo === 'DESCONTO_VALOR' ? Number(valor.replace(/\./g, '').replace(',', '.')) || 0 : 0
+  const acimaDosPontos = avisoDaRecompensaAcimaDosPontos(descontoEmReais, pontosDoCusto, valorDoPonto)
 
   function salvar() {
     setErro(null)
@@ -222,6 +225,11 @@ function FormularioDeRecompensa({ recompensa, procedimentos, produtos, valorDoPo
             <span data-valor-dos-pontos style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               {formatarPontos(pontosDoCusto)} valem {formatBRL(valorEmReais)} pelo valor do ponto ({formatBRL(valorDoPonto!)}, na configuração acima)
               {procEscolhido ? ` — o procedimento custa ${formatBRL(procEscolhido.price)} na tabela.` : '.'}
+            </span>
+          )}
+          {acimaDosPontos && (
+            <span data-recompensa-acima-dos-pontos style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
+              {acimaDosPontos}
             </span>
           )}
         </label>

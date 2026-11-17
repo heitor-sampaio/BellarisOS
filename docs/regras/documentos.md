@@ -67,7 +67,7 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   cada; o contrato do procedimento não (`private.modelos_do_pacote`). A action
   da venda os monta com o pagamento da venda (`prepararDocumentosDoPacote`):
   o contrato cita `pacote.*` e `pagamento.*`.
-  - **O pop-up do pacote mostra o que vai nascer** (Vendas → Pacotes,
+  - **O pop-up do pacote mostra o que vai nascer** (Comercial → Pacotes,
     `[role=group][aria-label="Documentos do pacote"]`): o contrato de pacote da
     rede (`[data-contrato-do-pacote]`) e os puxados (`[data-puxado]`), cada um
     com "Excluir" / "Incluir de novo". O pacote guarda o que a rede EXCLUIU
@@ -109,6 +109,12 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
     "Aceito, os documentos ficam prontos".
   - A cliente os assina quando quiser — no app (também na página do plano),
     pelo link único ou no aparelho da unidade.
+  - **No app, o plano aceito diz onde se assina o contrato** (A35 da 21ª;
+    princípio 3): sem o contrato emitido, com o plano ainda não recebido e a
+    rede com um contrato de plano ativo, o bloco Documentos diz "O contrato
+    do plano se assina no pagamento, na unidade." no lugar de "Nenhum
+    documento neste plano" (`avisoDoContratoDoPlanoNoApp`,
+    `[data-contrato-no-pagamento]`).
   - Prova: `e2e/plano-tratamento-leva-2.spec.ts`.
 - **O contrato de plano ativo se TROCA, não se desativa antes** (D-5, decisão
   do Heitor, 2026-10-29: "Fica o fluxo de trocar; sai o de criar outro e
@@ -485,6 +491,12 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `system_key = 'CONTRATO_PACOTE_PADRAO'`, semeado também nas redes que já
   tinham o de plano). Sem CPF de propósito: o contrato de antes não o exigia.
   Semear de novo não duplica. Prova: `e2e/documentos-tipos-e-nascimento.spec.ts` ("DC2").
+  O texto do contrato de plano semeado tem o título igual ao nome do modelo,
+  "Contrato de prestação de serviços" (A5 da 21ª, migration
+  `20261122200003`: dizia "…serviços estéticos"); o modelo das redes que já
+  existiam não muda.
+  O modelo NOVO no editor nasce com o título do tipo: "# Contrato de pacote"
+  no de pacote (A25 da 21ª: começava com "Contrato de prestação de serviços").
 - `consent_terms` é LEGADO: os assinados foram copiados para `issued_documents`
   (`moment = 'LEGADO'`, assinatura `identity_method = 'LEGADO'`) e o histórico da
   ficha e do portal lê `assinadosDoCliente`. Nada novo é gravado lá.

@@ -12,6 +12,7 @@ import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
 import { notasDaAvaliacao, type NotaNaTela } from '@/lib/avaliacao/notas'
 import { notasDosProcedimentos } from '@/lib/avaliacao/leitura'
 import { ordemDosPagamentosDoApp } from '@/lib/clientes/ordem-dos-pagamentos'
+import { abaDoHistoricoNoApp } from '@/lib/clientes/textos-do-app'
 
 // -- Types ----------------------------------------------------------
 export type ProcedimentoItem = {
@@ -100,8 +101,11 @@ type PagamentoLido = {
 type DocumentoLido = { id: string; name: string; category: string; file_path: string; created_at: string; momento: string | null }
 const CANAL_NO_PORTAL: Record<string, string> = { CLINICA: 'presencialmente', PAPEL: 'no papel', PORTAL: 'pelo portal', LINK: 'por link' }
 
-export default async function HistoricoPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params
+export default async function HistoricoPage({ params, searchParams }: {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ aba?: string }>
+}) {
+  const [{ slug }, { aba }] = await Promise.all([params, searchParams])
   const ctx = await getTenantContext()
   assertClient(ctx)
 
@@ -256,6 +260,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
         pagamentos={pagamentos}
         documentos={clientDocs}
         consentimentos={consentDocs}
+        abaInicial={abaDoHistoricoNoApp(aba)}
       />
     </div>
   )

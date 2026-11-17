@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { isStageOutcome, type StageOutcome } from '@/lib/crm'
+import { isStageOutcome, recusaDaEtapaComOportunidades, type StageOutcome } from '@/lib/crm'
 import { posicaoDaEtapaNova } from '@/lib/crm/posicao-da-etapa'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
@@ -203,7 +203,7 @@ export async function deleteStage(stageId: string, slug: string): Promise<Result
 
     const { data: etapa, error: erroLeitura } = await admin
       .from('crm_stages')
-      .select('funnel_id')
+      .select('funnel_id, name')
       .eq('id', stageId)
       .eq('tenant_id', ctx.tenantId!)
       .single()
@@ -229,7 +229,7 @@ export async function deleteStage(stageId: string, slug: string): Promise<Result
     if (erroLeads) return { error: `Erro ao excluir: ${erroLeads.message}` }
 
     if ((count ?? 0) > 0) {
-      return { error: `Esta etapa possui ${count} oportunidade(s). Mova-as antes de excluir.` }
+      return { error: recusaDaEtapaComOportunidades(etapa!.name as string, count ?? 0) }
     }
 
     const { error } = await admin
@@ -241,6 +241,34 @@ export async function deleteStage(stageId: string, slug: string): Promise<Result
 
     revalidarCRM(slug)
     return { success: true }
+  } catch (e) {
+    return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
+  }
+}
+
+// --- Quantas oportunidades a etapa tem ----------------------------
+/**
+ * A32 da 21ª (princípio 3): a lixeira da etapa pergunta já sabendo quantas
+ * oportunidades ela tem — era "Excluir?" e, depois do sim, a recusa. Conta
+ * todas as da rede na etapa (é o que o `deleteStage` confere), não só as que
+ * o quadro de quem pergunta mostra.
+ */
+export async function oportunidadesNaEtapa(stageId: string): Promise<{ oportunidades: number } | { error: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
+    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'crm', 'VIEW')
+    const daRede = recusaDaConfigDaRede(ctx)
+    if (daRede) return { error: daRede }
+
+    const { count, error } = await createAdminClient()
+      .from('leads')
+      .select('id', { count: 'exact', head: true })
+      .eq('crm_stage_id', stageId)
+      .eq('tenant_id', ctx.tenantId!)
+    if (error) return { error: `Erro ao contar as oportunidades: ${error.message}` }
+    return { oportunidades: count ?? 0 }
   } catch (e) {
     return { error: e instanceof Error ? mensagemDoErro(e) : 'Erro inesperado.' }
   }

@@ -75,7 +75,8 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
 
   // O que já foi pago antes (D12): pré-pago, pacote, plano — sem o "R$" a pagar.
   const [jaPagos, cobrados, nomesDasSessoes] = await Promise.all([
-    pagosAntes(admin, (data ?? []).map(a => a.id as string)),
+    // D4 da 21ª: a sessão do pacote no crediário diz o que ela ainda tem em aberto (é dela).
+    pagosAntes(admin, (data ?? []).map(a => a.id as string), ficha ? { tenantId: ficha.tenant_id, mostraOValor: true } : undefined),
     valoresCobrados(admin, (data ?? []).filter(a => a.status === 'COMPLETED').map(a => a.id as string)),
     // A sessão de plano com mais de um procedimento diz todos (A36).
     nomesDasSessoesDoPlano(admin, (data ?? []).map(a => a.id as string)),

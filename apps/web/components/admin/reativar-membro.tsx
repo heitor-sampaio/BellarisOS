@@ -37,11 +37,11 @@ export function ReativarMembro({ membroId, redirectPath }: { membroId: string; r
         onClick={reativar}
         disabled={pendente}
         className="btn-ghost"
-        style={{ padding: '5px 8px', color: 'var(--brand)' }}
-        title="Reativar membro"
+        style={{ padding: '5px 10px', color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         aria-label="Reativar membro"
       >
-        <UserCheck size={15} />
+        {/* A26 da 21ª: era só o ícone — ninguém sabia o que o botão fazia. */}
+        <UserCheck size={15} /> Reativar
       </button>
     </span>
   )

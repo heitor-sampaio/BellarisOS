@@ -289,7 +289,14 @@ export default async function AdminTeamPage({
                     </td>
 
                     <td data-label="Unidade" className="so-desktop" style={{ padding: '14px 20px' }}>
-                      <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
+                      {/* A26 da 21ª: a coluna espremida quebrava em 6 linhas. Uma
+                          largura mínima no span (o td a tabela ignora), até duas
+                          linhas, e a lista inteira no title (design.md, A36 da 12ª). */}
+                      <span data-unidades-do-membro title={branchName} style={{
+                        fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                        minWidth: 200, maxWidth: 320,
+                      }}>
                         {branchName}
                       </span>
                     </td>

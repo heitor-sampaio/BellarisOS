@@ -1,4 +1,4 @@
-import type { Destino } from '@/lib/importacao/campos'
+import { camposDoDestino, sugerirMapeamento, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
 
 /**
  * O que a importação faz com as linhas prontas, contado ANTES de importar
@@ -64,4 +64,65 @@ export function textoDoBotaoDeImportar(p: { destino: Destino; prontas: number; j
  */
 export function colunasQueNaoEntram(cabecalho: readonly string[], mapa: readonly (string | null)[]): string[] {
   return cabecalho.map((h, i) => (mapa[i] ? null : h.trim() || `Coluna ${i + 1}`)).filter((h): h is string => !!h)
+}
+
+/**
+ * As colunas em "Não importar" que a OPORTUNIDADE levaria (A20 da 21ª
+ * simulação; princípio 3): "A coluna “origem” não será importada" não dizia
+ * que, importando com oportunidade, ela vira a origem da oportunidade. É a
+ * sugestão de colunas com a oportunidade ligada, só nas colunas de fora.
+ */
+export function colunasQueAOportunidadeLeva(
+  cabecalho: readonly string[], mapa: readonly (string | null)[], destino: Destino,
+): { coluna: string; chave: ChaveDeCampo; rotulo: string }[] {
+  const campos = camposDoDestino(destino, { oportunidade: true })
+  const sugestao = sugerirMapeamento([...cabecalho], destino, { oportunidade: true })
+  return cabecalho.flatMap((h, i) => {
+    const chave = sugestao[i]
+    const campo = chave ? campos.find(c => c.chave === chave) : null
+    if (mapa[i] || !campo || campo.grupo !== 'oportunidade') return []
+    return [{ coluna: h.trim() || `Coluna ${i + 1}`, chave: campo.chave, rotulo: campo.rotulo }]
+  })
+}
+
+/**
+ * "Importando com oportunidade (passo 1), ela vira a origem da oportunidade."
+ * `deFora` é quantas colunas ficaram de fora: com mais de uma, o "ela" não
+ * diria qual — a frase cita a coluna.
+ */
+export function avisoDasColunasDaOportunidade(
+  levadas: readonly { coluna: string; chave: ChaveDeCampo; rotulo: string }[], deFora = levadas.length,
+): string | null {
+  if (!levadas.length) return null
+  const base = 'Importando com oportunidade (passo 1)'
+  const l = levadas[0]
+  if (l && levadas.length === 1) {
+    const quem = deFora > 1 ? `“${l.coluna}”` : 'ela'
+    return l.chave === 'op_origem'
+      ? `${base}, ${quem} vira a origem da oportunidade.`
+      : `${base}, ${quem} entra no card como ${l.rotulo}.`
+  }
+  const itens = levadas.map(l => `“${l.coluna}” como ${l.rotulo}`)
+  return `${base}, elas entram no card: ${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}.`
+}
+
+/**
+ * Onde estão os importados, no fim da importação (A19 da 21ª simulação; a
+ * sobra do A15 da 6ª): os contatos sem oportunidade não aparecem em Clientes,
+ * Oportunidades nem Inbox — só na busca, em "Contatos do CRM", e só para quem
+ * cria oportunidade (`busca.md`). Sem isso, quem importava achava que nada
+ * tinha entrado.
+ */
+export function ondeEstaoOsImportados(p: { destino: Destino; comOportunidade: boolean; podeCriarOportunidade: boolean }): {
+  texto: string; link: 'clientes' | 'oportunidades' | 'busca' | null
+} {
+  if (p.destino === 'clientes') return { texto: 'As fichas estão em Clientes.', link: 'clientes' }
+  if (p.comOportunidade) return { texto: 'Os contatos estão no quadro de Oportunidades, cada um com a sua.', link: 'oportunidades' }
+  if (!p.podeCriarOportunidade) {
+    return { texto: 'Os contatos sem oportunidade ficam no CRM e aparecem no Inbox quando a conversa começar.', link: null }
+  }
+  return {
+    texto: 'Os contatos sem oportunidade não aparecem em Clientes, Oportunidades nem Inbox: ache cada um na busca do topo (Ctrl K), em “Contatos do CRM” — abrir cria a oportunidade dele.',
+    link: 'busca',
+  }
 }

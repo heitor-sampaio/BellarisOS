@@ -15,6 +15,7 @@ import { buscarTudo } from '@/actions/busca'
 import { emitNavStart } from '@/components/shared/navigation-progress'
 import { paginasDaBusca, paginasQueCasam, termoEhDeUmaPagina } from '@/lib/busca/paginas'
 import { destinoDoResultado } from '@/lib/busca/destino'
+import { EVENTO_DE_ABRIR_A_BUSCA } from '@/lib/busca/abrir'
 import { acaoDeCadastrar, acoesDaArquivada, acoesDoCliente, acoesGerais, type AcaoDaBusca, type IdDaAcao } from '@/lib/busca/acoes'
 import {
   GRUPOS, TERMO_MAXIMO, TERMO_MINIMO,
@@ -232,8 +233,14 @@ export function BuscaUniversal({ slug, permissions, scopes, plano = null, agenda
       e.preventDefault()
       aoAtalho()
     }
+    // A19 da 21ª: outra tela pede a busca (o fim da importação de contatos).
+    function aoPedido() { if (!document.querySelector('dialog[open]')) aoAtalho() }
     window.addEventListener('keydown', aoTeclar)
-    return () => window.removeEventListener('keydown', aoTeclar)
+    window.addEventListener(EVENTO_DE_ABRIR_A_BUSCA, aoPedido)
+    return () => {
+      window.removeEventListener('keydown', aoTeclar)
+      window.removeEventListener(EVENTO_DE_ABRIR_A_BUSCA, aoPedido)
+    }
   }, [])
 
   // Clique fora fecha o painel do desktop.

@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Search, UserPlus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -34,6 +35,11 @@ interface Props {
   totalActive:       number
   newClientHref?:    string | null   // null = hide button; undefined = basePath + "/new"
   /**
+   * A21 da 21ª simulação: o atalho para Configurações → Importações, para quem
+   * importa clientes (Clientes em Gerenciar e “A rede inteira”). null = some.
+   */
+  importarHref?:     string | null
+  /**
    * A9 da 8ª simulação: as aniversariantes do mês de Brasília — o dia de cada
    * uma, decidido pelo banco (`aniversariantesDoMes`) — e o nome do mês.
    */
@@ -64,6 +70,7 @@ export function ClientsSidebar({
   basePath,
   totalActive,
   newClientHref,
+  importarHref = null,
   aniversariantes = null,
 }: Props) {
   const pathname = usePathname()
@@ -153,6 +160,15 @@ export function ClientsSidebar({
             <span data-contador-de-clientes style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
               {ativos(totalActive)}
             </span>
+            {importarHref && (
+              <>
+                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}> · </span>
+                <Link data-importar-clientes href={importarHref}
+                  style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)' }}>
+                  Importar planilha
+                </Link>
+              </>
+            )}
           </div>
           {addHref !== null && (
             // Com o texto à vista (A22 da 5ª simulação): só o ícone, ninguém

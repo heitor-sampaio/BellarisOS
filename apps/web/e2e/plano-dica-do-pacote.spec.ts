@@ -98,7 +98,11 @@ test('A29: na avaliação o plano se monta na tela — o Planejamento por cima n
     await expect(p.getByRole('button', { name: 'Nova sessão' })).toHaveCount(1)
     await p.getByRole('main').getByRole('button', { name: 'Planejamento' }).click()
     const janela = p.getByRole('dialog', { name: 'Planejamento de tratamento' })
-    await expect(janela.getByText('Monte o plano desta avaliação na própria tela')).toBeVisible()
+    // A14 da 21ª: o texto diz onde (o cartão "Tratamento"), e o botão leva até lá.
+    await expect(janela.getByText('O plano desta avaliação se monta no cartão “Tratamento”')).toBeVisible()
     await expect(janela.getByRole('button', { name: 'Novo plano' })).toHaveCount(0)
+    await janela.getByRole('button', { name: 'Ir ao Tratamento' }).click()
+    await expect(janela).toHaveCount(0)
+    await expect(p.locator('[data-editor-do-tratamento]')).toBeInViewport()
   })
 })

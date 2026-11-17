@@ -16,7 +16,7 @@ const GRUPOS_DE_QUEM_VENDEU: { rotulo: string; de: (m: MembroDaVenda) => boolean
   { rotulo: 'Quem atende', de: m => m.atende },
   { rotulo: 'Quem recebe', de: m => !m.atende && !!m.recebe },
   // A42 da 11ª: só quem tem Vendas no cargo — a estoquista não vende.
-  { rotulo: 'Quem tem Vendas no cargo', de: m => !m.atende && !m.recebe },
+  { rotulo: 'Quem tem o Comercial no cargo', de: m => !m.atende && !m.recebe },
 ]
 
 export function CampoQuemVendeu({ equipe, valor, aoMudar, comissao = null }: {

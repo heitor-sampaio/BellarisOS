@@ -22,3 +22,20 @@ export async function getEmAbertoDosPacotes(tenantId: string, pacotes: string[])
   }
   return saida
 }
+
+/**
+ * D4 da 21ª simulação: o em aberto de cada VENDA que cobre um agendamento — o
+ * pacote, o pré-pago ou o plano —, por id (`metrics_em_aberto_das_vendas`). A
+ * agenda e o app diziam "Já pago" com parcelas do crediário em aberto.
+ */
+export async function getEmAbertoDasVendas(tenantId: string, vendas: string[]): Promise<Record<string, EmAbertoDoPacote>> {
+  const ids = [...new Set(vendas.filter(Boolean))]
+  if (!ids.length) return {}
+  const { data, error } = await createAdminClient().rpc('metrics_em_aberto_das_vendas', { p_tenant: tenantId, p_vendas: ids })
+  if (error) throw new Error(`Não consegui ler o em aberto das vendas: ${error.message}`)
+  const saida: Record<string, EmAbertoDoPacote> = {}
+  for (const l of (data ?? []) as { venda_id: string; em_aberto: number | string; parcelas: number }[]) {
+    saida[l.venda_id] = { valor: Number(l.em_aberto), parcelas: Number(l.parcelas) }
+  }
+  return saida
+}

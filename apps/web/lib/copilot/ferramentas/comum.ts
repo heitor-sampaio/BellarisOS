@@ -160,6 +160,28 @@ export async function resolverProfissional(
 }
 
 /**
+ * A31 da 21ª: quem tem o ACESSO DESATIVADO, pelo nome (só para LER os
+ * agendamentos que seguem com essa pessoa — gravar continua só com quem atende).
+ * Um só, ou nada.
+ */
+export async function membroDesativado(c: ContextoDaFerramenta, pedido: string): Promise<{ id: string; name: string } | null> {
+  const todos = (await ler(c.admin.from('users').select('id, name')
+    .eq('tenant_id', c.ctx.tenantId!).eq('is_active', false).limit(300), 'ler quem foi desativado') as { id: string; name: string }[] | null) ?? []
+  const p = pedido.trim().toLowerCase()
+  const exatos = todos.filter(u => u.id === pedido || u.name.toLowerCase() === p)
+  const parecidos = exatos.length ? exatos : todos.filter(u => u.name.toLowerCase().includes(p))
+  return parecidos.length === 1 ? parecidos[0]! : null
+}
+
+/** Nome e situação de cada membro, num lote — o "(acesso desativado)" da lista (A31 da 21ª). */
+export async function membrosPorId(c: ContextoDaFerramenta, ids: (string | null | undefined)[]): Promise<Map<string, { name: string; ativo: boolean }>> {
+  const unicos = [...new Set(ids.filter((x): x is string => !!x))]
+  if (!unicos.length) return new Map()
+  const linhas = await ler(c.admin.from('users').select('id, name, is_active').in('id', unicos), 'ler os nomes (users)') as { id: string; name: string; is_active: boolean | null }[] | null
+  return new Map((linhas ?? []).map(l => [l.id, { name: l.name, ativo: l.is_active !== false }]))
+}
+
+/**
  * Acha um membro ATIVO da equipe da rede pelo id ou pelo nome — o responsável
  * da oportunidade (a lista do modal: qualquer membro ativo, atenda ou não).
  */

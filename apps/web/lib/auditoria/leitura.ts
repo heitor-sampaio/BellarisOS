@@ -6,6 +6,7 @@ import type { TenantContext } from '@estetica-os/types'
 import { resolvePeriod } from '@/lib/metrics'
 import { OPERACOES, type FiltrosDaAuditoria, type NomesDaAuditoria, type RegistroDaAuditoria } from './tipos'
 import { conferidoDoFechamento, gravacoesDaUnidade } from './frase'
+import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
 
 /**
  * A leitura da auditoria (CF3a) — pelo servidor, só para a Admin da rede
@@ -199,12 +200,14 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     ...registros.filter(r => r.tabela === 'appointments').map(r => doRegistro(r, 'professional_id')).filter((v): v is string => !!v),
   ])]
   const produtos = [...new Set(registros.filter(r => r.tabela === 'stock_movements').map(r => doRegistro(r, 'product_id')).filter((v): v is string => !!v))]
-  const permissoes = registros.filter(r => r.tabela === 'role_permissions' && r.registro_id && UUID.test(r.registro_id))
+  // A7 da 21ª: a aba de relatório também diz de qual cargo é (a auditoria não guarda o `role_id` dela).
   const cargosDaPermissao = new Map<string, string>()
-  for (const r of permissoes) { const cargo = doRegistro(r, 'role_id'); if (cargo) cargosDaPermissao.set(r.registro_id!, cargo) }
-  const semCargo = permissoes.filter(r => !cargosDaPermissao.has(r.registro_id!)).map(r => r.registro_id!)
-  if (semCargo.length) {
-    const lidas = await ler(admin.from('role_permissions').select('id, role_id').eq('tenant_id', ctx.tenantId!).in('id', [...new Set(semCargo)]),
+  for (const tabela of ['role_permissions', 'role_report_tabs'] as const) {
+    const linhas = registros.filter(r => r.tabela === tabela && r.registro_id && UUID.test(r.registro_id))
+    for (const r of linhas) { const cargo = doRegistro(r, 'role_id'); if (cargo) cargosDaPermissao.set(r.registro_id!, cargo) }
+    const semCargo = linhas.filter(r => !cargosDaPermissao.has(r.registro_id!)).map(r => r.registro_id!)
+    if (!semCargo.length) continue
+    const lidas = await ler(admin.from(tabela).select('id, role_id').eq('tenant_id', ctx.tenantId!).in('id', [...new Set(semCargo)]),
       'ler o cargo das permissões') ?? []
     for (const p of lidas) cargosDaPermissao.set(p.id as string, p.role_id as string)
   }
@@ -240,7 +243,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     // As unidades da rede são poucas (o caso comum é uma).
     ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!), 'ler as unidades'),
     produtos.length
-      ? ler(admin.from('products').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', produtos), 'ler os nomes dos produtos')
+      ? ler(admin.from('products').select('id, name, unit, consumption_unit, units_per_package').eq('tenant_id', ctx.tenantId!).in('id', produtos), 'ler os nomes dos produtos')
       : Promise.resolve([]),
     cargos.length
       ? ler(admin.from('tenant_roles').select('id, name:label').eq('tenant_id', ctx.tenantId!).in('id', cargos), 'ler os nomes dos cargos')
@@ -251,8 +254,12 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
   const nomeDoCargo = mapa(cg as { id: unknown; name: unknown }[] | null)
   const cargosPorPermissao = Object.fromEntries([...cargosDaPermissao.entries()]
     .filter(([, cargo]) => nomeDoCargo[cargo]).map(([permissao, cargo]) => [permissao, nomeDoCargo[cargo]!]))
+  // A33 da 21ª: a medida em que o movimento se grava (lib/estoque/unidade-de-consumo).
+  const medidasDosProdutos = Object.fromEntries(((p ?? []) as Partial<UnidadesDoProduto & { id: string }>[])
+    .map(x => [x.id as string, x.unit ? unidadeDoInsumo({ unit: x.unit, consumption_unit: x.consumption_unit ?? null, units_per_package: x.units_per_package ?? null }) : ''])
+    .filter(([, medida]) => medida))
   return {
-    clientes: mapa(c), membros: mapa(m), unidades: mapa(u), produtos: mapa(p), cargos: cargosPorPermissao,
+    clientes: mapa(c), membros: mapa(m), unidades: mapa(u), produtos: mapa(p), medidasDosProdutos, cargos: cargosPorPermissao,
     pacotes: mapa(pk as { id: unknown; name: unknown }[] | null), lancamentos: lancamentosLidos,
     ...extras,
     ...da20,

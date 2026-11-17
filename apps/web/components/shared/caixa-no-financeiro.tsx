@@ -96,7 +96,8 @@ export function CsvDoFechamentoDoDia({ unidades, unidadeInicial }: {
       </button>
       {aberta && (
         <JanelaModal rotulo="CSV do fechamento do dia" largura={420} travado={pendente} onFechar={() => setAberta(false)}>
-          <form onSubmit={baixar} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* A9 da 21ª: a margem interna (título, campos e botões colavam na borda da janela). */}
+          <form onSubmit={baixar} style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <span>CSV do fechamento do dia</span>

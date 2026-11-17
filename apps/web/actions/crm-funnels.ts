@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { NEW_FUNNEL_STAGES } from '@/lib/crm'
+import { NEW_FUNNEL_STAGES, recusaDoFunilComOportunidades } from '@/lib/crm'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
 /**
@@ -269,9 +269,7 @@ export async function deleteFunnel(funnelId: string, slug: string): Promise<Resu
         .in('crm_stage_id', ids)
       if (erroLeads) return { error: `Erro ao excluir: ${erroLeads.message}` }
       if ((count ?? 0) > 0) {
-        return {
-          error: `Este funil tem ${count} oportunidade(s). Mova-as para outro funil ou arquive este.`,
-        }
+        return { error: recusaDoFunilComOportunidades(count ?? 0) }
       }
     }
 

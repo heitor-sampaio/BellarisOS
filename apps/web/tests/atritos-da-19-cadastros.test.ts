@@ -75,7 +75,7 @@ describe('A24: a comissão de venda do pacote se acha e não parece zero', () =>
     const tela = ler('components/admin/settings-comissoes.tsx')
     expect(tela).toMatch(/Venda de pacote/)
     expect(tela).toMatch(/data-comissao-do-pacote/)
-    expect(tela).toMatch(/Vendas → Pacotes/)
+    expect(tela).toMatch(/Comercial → Pacotes/)
   })
   it('o campo do valor mostra um exemplo, não um 0', () => {
     const campo = ler('components/admin/comissao-do-membro.tsx')

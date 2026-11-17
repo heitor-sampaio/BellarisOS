@@ -1,4 +1,5 @@
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
+import type { LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
 
 /**
  * O DRE e o Fechamento do dia em CSV (A31 da 10ª simulação, 2026-11-10: a
@@ -73,6 +74,13 @@ export interface FechamentoParaCsv {
   taxasPorMaquininha?: { maquininha: string; bruto: number; taxa: number; liquido: number }[] | null
   /** A47 da 12ª: o último fechamento do dia, ou nulo — "Ainda não fechado". */
   fechado?: { quem: string | null; quando: string; diferenca: number } | null
+  /**
+   * D2 da 21ª: a conferência do último fechamento, pela MESMA régua da tela
+   * (`linhasDaConferencia`). Com ela, a forma que mudou depois do fechamento
+   * diz "a conferir", e a situação do dia também — nunca "Bateu" contra um
+   * número que mudou.
+   */
+  conferencia?: LinhaDaConferencia[] | null
   /** F62: as horas no relógio da unidade; sem ele, o de Brasília. */
   fuso?: string
 }
@@ -84,7 +92,22 @@ export function situacaoDoFechamento(f: { quem: string | null; quando: string } 
   return f ? `Fechado por ${f.quem ?? '—'} em ${dia(f.quando, fuso)} às ${hora(f.quando, fuso)}` : 'Ainda não fechado'
 }
 
-const diferencaEmTexto = (v: number) => v === 0 ? 'Bateu' : `${v < 0 ? 'Faltou' : 'Sobrou'} ${reais(Math.abs(v))}`
+const diferencaEmTexto = (v: number) => Math.round(v * 100) === 0 ? 'Bateu' : `${v < 0 ? 'Faltou' : 'Sobrou'} ${reais(Math.abs(v))}`
+const A_CONFERIR = 'a conferir · mudou depois do fechamento'
+
+/** A diferença de uma forma no CSV, como a tela: "a conferir", "não conferido", "Bateu", "Faltou R$ X". */
+function diferencaDaConferencia(l: LinhaDaConferencia): string {
+  if (l.mudouDepois) return A_CONFERIR
+  if (l.conferido == null || l.diferenca == null) return ''
+  return diferencaEmTexto(l.diferenca)
+}
+
+/** D2 da 21ª: a situação do dia — "a conferir" quando alguma forma conferível mudou depois do fechamento. */
+function diferencaDoDia(f: FechamentoParaCsv): string[] {
+  if (!f.fechado) return []
+  if (f.conferencia?.some(l => l.conferivel && l.mudouDepois)) return [A_CONFERIR]
+  return [diferencaEmTexto(f.fechado.diferenca)]
+}
 
 /** O Fechamento do dia: as formas, o total, o dinheiro esperado e os estornos do dia. */
 export function csvDoFechamento(f: FechamentoParaCsv): string {
@@ -94,7 +117,17 @@ export function csvDoFechamento(f: FechamentoParaCsv): string {
     ...f.formas.map(l => [rotuloDaFormaDoFechamento(l.forma), reais(l.entradas), reais(l.saidas), reais(l.saldo), String(l.lancamentos)]),
     ['Total do dia', reais(f.total.entradas), reais(f.total.saidas), reais(f.total.saldo), String(f.total.lancamentos)],
     ['Dinheiro em espécie esperado', reais(f.esperadoDinheiro)],
-    ...(f.fechado !== undefined ? [['Situação do dia', situacaoDoFechamento(f.fechado, f.fuso), ...(f.fechado ? [diferencaEmTexto(f.fechado.diferenca)] : [])]] : []),
+    ...(f.fechado !== undefined ? [['Situação do dia', situacaoDoFechamento(f.fechado, f.fuso), ...diferencaDoDia(f)]] : []),
+    // D2 da 21ª: a conferência do último fechamento, forma a forma (a tabela da tela).
+    ...(f.fechado && f.conferencia?.some(l => l.conferivel) ? [
+      [],
+      ['Conferência do último fechamento'],
+      ['Forma', 'Registrado', 'Conferido', 'Diferença'],
+      ...f.conferencia.filter(l => l.conferivel).map(l => [
+        rotuloDaFormaDoFechamento(l.forma), reais(l.registrado),
+        l.conferido == null ? 'não conferido' : reais(l.conferido), diferencaDaConferencia(l),
+      ]),
+    ] : []),
     ...(f.bandeiras?.length ? (() => {
       // C75: com mais de uma maquininha no dia, a linha diz qual (cada uma é uma operadora).
       const varias = new Set(f.bandeiras.map(b => b.maquininha).filter(Boolean)).size > 1

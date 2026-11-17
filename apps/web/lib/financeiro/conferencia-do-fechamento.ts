@@ -77,6 +77,26 @@ export interface LinhaDaConferencia {
 
 const centavos = (v: number) => Math.round(v * 100)
 
+/**
+ * A linha gravada em `fechamentos_do_dia` → o fechamento da conferência (D2 da
+ * 21ª simulação): a tela e o CSV do fechamento leem o último fechamento do
+ * mesmo jeito — o CSV dizia "Bateu" pela diferença gravada num dia que mudou.
+ */
+export function fechamentoGravadoDaLinha(l: {
+  contado_dinheiro?: unknown; diferenca?: unknown; esperado_dinheiro?: unknown; conferido?: unknown; resumo?: unknown
+}): FechamentoGravado {
+  return {
+    contado:   Number(l.contado_dinheiro),
+    diferenca: Number(l.diferenca),
+    // D2 da 17ª: o registrado do dinheiro NAQUELE fechamento.
+    esperado:  l.esperado_dinheiro == null ? undefined : Number(l.esperado_dinheiro),
+    conferido: (l.conferido as Record<string, number> | null | undefined) ?? null,
+    resumo:    Array.isArray(l.resumo)
+      ? (l.resumo as LinhaRegistrada[]).map(r => ({ ...r, entradas: Number(r.entradas), saidas: Number(r.saidas), saldo: Number(r.saldo) }))
+      : null,
+  }
+}
+
 export function linhasDaConferencia(args: {
   formas:           LinhaRegistrada[]
   esperadoDinheiro: number
@@ -250,7 +270,8 @@ export function conferidoValido(
  */
 export function avisoDaGavetaNegativa(registrado: number): string | null {
   if (!(Math.round(registrado * 100) < 0)) return null
-  return `Saiu ${brl(Math.abs(registrado))} a mais do que entrou em dinheiro: a gaveta não fica negativa. Confira a saída em dinheiro, ou informe o fundo de troco.`
+  // A4 da 21ª: o "a gaveta não fica negativa" ao lado do "−R$ 60,00 na gaveta" se lia como contradição.
+  return `Saiu ${brl(Math.abs(registrado))} a mais do que entrou em dinheiro: confira a saída em dinheiro, ou informe o fundo de troco.`
 }
 
 /**

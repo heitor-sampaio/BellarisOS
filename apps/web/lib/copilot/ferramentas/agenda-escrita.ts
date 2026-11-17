@@ -238,7 +238,7 @@ async function agendamentoParaResumo(c: ContextoDaFerramenta, id: string) {
   }
 }
 
-export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; hora: string; profissional?: string }, { appointmentId: string; scheduledAt: string; professionalId: string | null }> = {
+export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; hora: string; profissional?: string }, { appointmentId: string; scheduledAt: string; professionalId: string | null; soQuemAtende?: boolean }> = {
   nome: 'remarcar',
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
@@ -267,26 +267,42 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
     }
     const bloqueado = quem ? await recusaDoBloqueado(c, { professionalId: quem, nome: nomeDoProfissional, inicio, duracaoMin: ag.duration_min || 60, fuso }) : null
     if (bloqueado) return { erro: bloqueado }
+    // A28 da 21ª (princípio 3): a troca só de quem atende saía "Remarcar
+    // atendimento", com o De e o Para iguais, sem quem atendia nem a unidade. A
+    // palavra é a da Equipe e da Auditoria ("Repassou"): trocar quem atende.
+    const outraPessoa = professionalId !== null && professionalId !== ag.professional_id
+    const mesmoHorario = inicio.getTime() === new Date(ag.scheduled_at).getTime()
+    if (mesmoHorario && !outraPessoa) return { erro: `Nada muda: ${nomeDoProfissional} já atende neste horário.` }
+    const soQuemAtende = mesmoHorario && outraPessoa
+    const unidade = (await nomesPorId(c, 'branches', [ag.branch_id])).get(ag.branch_id) ?? '—'
+    const quemAtende = { rotulo: 'Quem atende', valor: outraPessoa ? `${ag.profissional} → ${nomeDoProfissional}` : nomeDoProfissional }
     return {
       resumo: {
-        titulo: 'Remarcar atendimento',
+        titulo: soQuemAtende ? 'Trocar quem atende' : 'Remarcar atendimento',
         linhas: [
           { rotulo: 'Cliente', valor: ag.cliente },
           { rotulo: 'Procedimento', valor: ag.procedimento },
-          { rotulo: 'De', valor: quandoLegivel(ag.scheduled_at, fuso) },
-          { rotulo: 'Para', valor: quandoLegivel(inicio, fuso) },
-          { rotulo: 'Profissional', valor: nomeDoProfissional },
+          ...(soQuemAtende
+            ? [{ rotulo: 'Quando', valor: quandoLegivel(inicio, fuso) }]
+            : [{ rotulo: 'De', valor: quandoLegivel(ag.scheduled_at, fuso) }, { rotulo: 'Para', valor: quandoLegivel(inicio, fuso) }]),
+          quemAtende,
+          { rotulo: 'Unidade', valor: unidade },
         ],
         aviso: await avisoDaClienteNoCartao(c, ag.clientId, 'remarcar'),
       },
-      payload: { appointmentId: ag.id, scheduledAt: inicio.toISOString(), professionalId },
+      payload: { appointmentId: ag.id, scheduledAt: inicio.toISOString(), professionalId, ...(soQuemAtende ? { soQuemAtende: true } : {}) },
     }
   },
   async efetivar(c, p) {
-    const r = await remarcarCore(c.admin, c.ctx, p)
+    const { soQuemAtende, ...doNucleo } = p
+    const r = await remarcarCore(c.admin, c.ctx, doNucleo)
     if ('error' in r) return { erro: r.error }
     revalidarAgendamento(c.ctx, p.appointmentId)
     notifyRescheduledAppointment(p.appointmentId, c.ctx.internalUserId)
+    if (soQuemAtende && p.professionalId) {
+      const nome = (await nomesPorId(c, 'users', [p.professionalId])).get(p.professionalId) ?? 'a pessoa escolhida'
+      return { mensagem: `Agora quem atende é ${nome}.`, href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
+    }
     const daUnidade = await ler(c.admin.from('appointments').select('branch_id').eq('id', p.appointmentId).maybeSingle(), 'ler a unidade do agendamento') as { branch_id: string | null } | null
     return { mensagem: `Remarcado para ${quandoLegivel(p.scheduledAt, await fusoDe(c, daUnidade?.branch_id))}.`, href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
   },

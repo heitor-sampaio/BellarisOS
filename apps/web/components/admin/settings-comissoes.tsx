@@ -337,7 +337,7 @@ function ComoAcontece({ inicial, podeEditar, produtos }: { inicial: ConfigDeComi
         texto: 'Sem regra no pacote, vale a comissão de venda de quem vendeu (Equipe → Comissão); sem nenhuma das duas, a venda do pacote não gera comissão.',
       }}>
         <p data-comissao-do-pacote style={texto}>
-          A comissão de venda do pacote fica no próprio pacote: Vendas → Pacotes → o pacote → Comissão.
+          A comissão de venda do pacote fica no próprio pacote: Comercial → Pacotes → o pacote → Comissão.
         </p>
       </Bloco>
 

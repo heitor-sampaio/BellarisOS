@@ -13,6 +13,8 @@ import { situacaoDaSessaoNoApp } from '@/lib/plano-de-tratamento/sessao-no-app'
 import { nomeDaSessao, nomeDoPlanoNoApp, descontoDoPlanoNoApp } from '@/lib/plano-de-tratamento/nome'
 import { propostaVencida, validoAteDaProposta } from '@/lib/plano-de-tratamento/validade'
 import { quemMarcaAsSessoes } from '@/lib/plano-de-tratamento/textos'
+import { redeTemContratoDePlano } from '@/lib/documentos/plano'
+import { avisoDoContratoDoPlanoNoApp } from '@/lib/clientes/textos-do-app'
 import { AceitarPlano } from '@/components/client-portal/aceitar-plano'
 
 type Sessao = {
@@ -66,14 +68,19 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
   const precoDa = (s: Sessao) => procsDa(s).reduce((t, p) => t + Math.round(Number(p.price ?? 0) * 100), 0) / 100
   const proposto = plano.status === 'PROPOSED'
 
-  const [validade, financeiro, documentos] = await Promise.all([
+  const [validade, financeiro, documentos, redeTemContrato] = await Promise.all([
     proposto
       ? ler(admin.from('tenants').select('plano_validade_dias').eq('id', cliente.tenant_id).maybeSingle(), 'ler a validade do plano proposto')
           .then(t => Number((t as { plano_validade_dias?: number | null } | null)?.plano_validade_dias ?? 30))
       : Promise.resolve(30),
     proposto ? Promise.resolve(null) : getFinanceiroDoPlano(cliente.tenant_id, plano.id),
     proposto ? Promise.resolve([]) : documentosDoPlanoNoPortal(cliente.tenant_id, ctx.clientId!, plano.id),
+    proposto ? Promise.resolve(false) : redeTemContratoDePlano(cliente.tenant_id),
   ])
+  // A35 da 21ª: o contrato de plano nasce no PDV, com o pagamento (PT1c) — a cliente fica sabendo.
+  const avisoDoContrato = avisoDoContratoDoPlanoNoApp({
+    status: plano.status, tipos: documentos.map(d => d.tipo), recebido: (financeiro?.lancamentos.length ?? 0) > 0, redeTemContrato,
+  })
   const valor = sessoes.reduce((t, s) => t + Math.round(precoDa(s) * 100), 0) / 100
   const vencido = proposto && propostaVencida(plano.created_at, validade)
   const diaDaValidade = validoAteDaProposta(plano.created_at, validade).toLocaleDateString('pt-BR', { timeZone: fuso })
@@ -214,11 +221,17 @@ export default async function PlanoDaClientePage({ params, searchParams }: {
       {!proposto && (
         <section aria-label="Documentos" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p className="overline">Documentos</p>
-          {documentos.length === 0 ? (
+          {avisoDoContrato && (
+            <div className="card" data-contrato-no-pagamento style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <FileSignature size={17} color="var(--brand)" aria-hidden="true" style={{ flexShrink: 0 }} />
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>{avisoDoContrato}</p>
+            </div>
+          )}
+          {documentos.length === 0 ? (avisoDoContrato ? null : (
             <div className="card" style={{ padding: '14px 18px' }}>
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum documento neste plano.</p>
             </div>
-          ) : documentos.map(d => (
+          )) : documentos.map(d => (
             <Link key={d.id} href={`/${slug}/cliente/documentos/${d.id}`} prefetch={false} data-documento-do-plano className="card"
               style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
               <FileSignature size={17} color="var(--brand)" aria-hidden="true" style={{ flexShrink: 0 }} />

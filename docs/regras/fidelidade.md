@@ -191,7 +191,12 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     R$ 20,00 pelo valor do ponto (R$ 0,01…) — o procedimento custa R$ 150,00
     na tabela" (`data-valor-dos-pontos`, o `redeem_points_value` da
     configuração). Nada é recusado: a rede decide o custo (princípio 2).
-    Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A5").
+    Prova: `e2e/configuracoes-atritos-da-7.spec.ts` ("A5"). **O desconto
+    acima do que os pontos valem ganha aviso** (A18 da 21ª): "O desconto
+    (R$ 30,00) vale 15 vezes o que os 200 pontos valem (R$ 2,00). Confira o
+    custo em pontos ou o valor do ponto." (`avisoDaRecompensaAcimaDosPontos`,
+    `[data-recompensa-acima-dos-pontos]`) — e salva igual. Prova:
+    `tests/fidelidade-atritos-da-21.test.ts`.
 - A conta do saldo depois de uma saída de estoque é UMA: `lib/estoque/baixa.ts`
   (conclusão do atendimento e entrega de produto).
 - **Validade** (fase 4): a rede escolhe "não vencem" ou N meses

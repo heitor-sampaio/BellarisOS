@@ -453,7 +453,11 @@
   agendado/confirmado/chegou, não só depois de iniciar — pela PERMISSÃO e com
   os nomes (A9 da 20ª, `textoDeQuemConclui`, `quemConcluiOAtendimento`):
   "Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui
-  (…)". A regra não muda: concluir pede o Prontuário em Gerenciar. E
+  (…)". **É um aviso que trava, à vista** (A12 da 21ª; princípio 3: o texto
+  cinza pequeno só era lido depois de iniciar): fundo de aviso, cadeado e
+  "Você não conclui este atendimento." antes da frase, ACIMA do "Marcar
+  chegada e iniciar" (na janela, no topo das ações; na tela, antes do botão).
+  A regra não muda: concluir pede o Prontuário em Gerenciar. E
   o concluído A RECEBER não diz "Este agendamento já foi encerrado." embaixo
   do "Receber no PDV" (A14; era o "Receber pagamento" — desde o PDV7 a
   janela leva à comanda do atendimento no PDV, `rotaDaComanda`). Prova:
@@ -1386,7 +1390,14 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
     do estoque não acontece neles…" (`[data-sem-insumo-ligado]`) e a linha tem
     o selo "Sem insumo ligado" (`[data-chip-sem-insumo]`). Só aviso: o que não
     usa insumo (a avaliação) fica como está. Prova:
-    `e2e/configuracoes-atritos-da-10.spec.ts` ("A6").
+    `e2e/configuracoes-atritos-da-10.spec.ts` ("A6"). **A faixa diz QUAIS**
+    (A23 da 21ª: contava a Avaliação e a Massagem sem nome): "3 procedimentos
+    ativos sem insumo ligado (Avaliação, Massagem e Peeling)", até quatro
+    nomes e "mais N" (`nomesDosSemInsumo`); o "pode ficar assim" vai na dica.
+    Não há marca de "não usa insumo" — seria funcionalidade nova. **O seletor
+    do insumo não corta o nome** (A22 da 21ª: "Toxina 1 f"): a linha do insumo
+    quebra, o seletor guarda 260 px e o nome inteiro vai no `title`. Prova:
+    `tests/telas-atritos-da-21.test.ts`.
 - **A calculadora do procedimento diz que o custo é o ÚLTIMO** (A13 da 11ª,
   2026-11-10; princípio 3: R$ 7,95/U era o último custo, e o lote que sai
   primeiro custava R$ 7,80): embaixo dos insumos, "O custo de cada insumo é o
@@ -1809,6 +1820,9 @@ const procedures = await ler(
   `enviarDocumentoACliente`, depois de gravar). O aviso diz "Foto nova" —
   "<unidade> enviou uma foto do seu atendimento." — e, no app, a foto do
   atendimento se diz "Uma foto do seu atendimento" (`tituloDoArquivoNoApp`).
+  O aviso (a foto e o documento) abre o Histórico na aba Documentos, onde
+  eles estão (`linkDoDocumentoNoApp`, `?aba=documentos`; A13 da 21ª).
+  Prova: `tests/app-da-cliente-atritos-da-21.test.ts`.
   **O cartão vazio diz onde a foto fica** (A26 da 9ª simulação, revisto no
   PR1a do bloco Prontuário, 2026-11-14): "Nenhuma foto neste atendimento. Ela
   fica no prontuário da cliente, no registro deste atendimento." (de
@@ -2128,7 +2142,13 @@ const procedures = await ler(
 - **A sessão de pacote se diz paga** (A7 da 18ª simulação; princípio 3): a
   tela do atendimento abre com "Sessão 2 de 6 do pacote X, já paga." ("…,
   trazido de fora: já paga antes do sistema." no de fora;
-  `textoDaSessaoDoPacote`). Ali o plano é opcional: "Propor um plano novo
+  `textoDaSessaoDoPacote`). **No crediário, "incluída", não "já paga"** (D4
+  da 21ª): o pacote com dinheiro em aberto diz "Sessão 2 de 6 do pacote X:
+  incluída no pacote, que tem R$ 600,00 em aberto." (o valor só a quem
+  recebe, `podeReceber`; aos outros, "que tem parcelas em aberto"); a janela
+  da agenda diz "Incluído" no lugar de "Já pago", e a agenda e o app da
+  cliente somam o em aberto da venda (`pagosAntes` →
+  `getEmAbertoDasVendas`). Ali o plano é opcional: "Propor um plano novo
   (opcional)", e o "Aceitar plano" é o secundário. A linha do insumo diz a
   quantidade com a embalagem do produto (`linhaDoInsumo`, A9).
 - **"Aceitar plano" usa o que está na tela** (A29 da 12ª simulação, 2026-11-11;
@@ -2148,7 +2168,9 @@ const procedures = await ler(
   plano da avaliação não foi gerado, a tela do atendimento já tem o editor
   dele ("Tratamento"), e o Planejamento aberto por cima (`planoNaTela`) lista
   os planos da cliente mas não oferece "Novo plano" — diz que o plano desta
-  avaliação se monta na própria tela. Eram dois "Nova sessão" no mesmo gesto,
+  avaliação se monta no cartão “Tratamento” da tela do atendimento, com o
+  "Ir ao Tratamento", que fecha a janela e leva ao cartão (A14 da 21ª: "em
+  Tratamento" não dizia onde). Eram dois "Nova sessão" no mesmo gesto,
   e o plano feito no Planejamento ficava fora do plano gerado na avaliação
   (então o "Enviar para a recepção"; hoje os dois botões do plano, "Aceitar
   plano" e "Gerar plano · a cliente vai pensar").
@@ -3001,9 +3023,10 @@ O resto do fluxo:
   `e2e/atendimento-finalizar-grava-tudo.spec.ts` ("recarregar"),
   `e2e/atendimento-alergia-sim-nao.spec.ts`. **E a tela DIZ isso** (A26 da
   8ª simulação, 2026-11-06; a regra fica): em andamento, para quem escreve no
-  prontuário, "A ficha de saúde, a evolução e a ficha digitadas ficam guardadas só
-  nesta aba até o “Finalizar atendimento”: recarregar mantém; fechar a aba
-  ou abrir em outro aparelho, não." (`[data-aviso-do-rascunho]`). Prova:
+  prontuário, "Fica só nesta aba: fechar a aba antes do “Finalizar
+  atendimento” perde o que foi digitado." (A14 da 21ª: dizer o que se perde),
+  e o detalhe na dica (recarregar mantém; outro aparelho, não)
+  (`[data-aviso-do-rascunho]`). Prova:
   `e2e/atendimento-atritos-da-8.spec.ts` ("A26").
 - **A desistência no meio registra a intercorrência e baixa o insumo já
   aplicado** (A27 da 8ª simulação, 2026-11-06): o "Cancelar" do atendimento

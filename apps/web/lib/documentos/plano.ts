@@ -72,6 +72,11 @@ export async function contratoSemDocumentoDaCliente(
   tenantId: string, cliente: { document: string | null; documento_numero: string | null } | null,
 ): Promise<boolean> {
   if (!cliente || cliente.document?.trim() || cliente.documento_numero?.trim()) return false
+  return redeTemContratoDePlano(tenantId)
+}
+
+/** A rede emite contrato de plano no PDV: tem os documentos no plano e um contrato de plano ativo. */
+export async function redeTemContratoDePlano(tenantId: string): Promise<boolean> {
   if (!(await redeTemRecurso(tenantId, 'documentos'))) return false
   const contrato = await ler(createAdminClient().from('document_templates').select('id')
     .eq('tenant_id', tenantId).eq('kind', 'CONTRATO_PLANO').eq('is_active', true).limit(1), 'conferir o contrato de plano da rede')

@@ -8,6 +8,9 @@ import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { Dica } from '@/components/shared/dica'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
+import { OutrasFormas } from '@/components/shared/outras-formas'
+import { recusaDasOutras, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
+import { partesDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 
 /** As formas de quem recebe agora (as do "Novo lançamento"). */
 const FORMAS_DE_PAGAMENTO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as const
@@ -30,16 +33,23 @@ const FORMAS_DE_PAGAMENTO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as cons
  * forma é pedida SEMPRE — o meio combinado no lançamento vem escolhido, e
  * quem recebe confirma ou troca (a cliente que ia pagar no Pix pagou em
  * dinheiro).
+ *
+ * A1 da 21ª (a decisão de 16/11, "+ Outra forma" em todo Receber à vista): a
+ * receita se recebe em mais de uma forma — um lançamento pago por forma. A3:
+ * a parcela recebida antes das anteriores avisa (como no PDV).
  */
-export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, pending, aoConfirmar, aoFechar }: {
+export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, adiantada = null, pending, aoConfirmar, aoFechar }: {
   descricao: string
   /** A2 da 16ª (princípio 3): de quem é o dinheiro — "Receber R$ 200,00 — Paula Neves". */
   cliente?: string | null
   /** O meio combinado no lançamento: vem escolhido; nulo, nada escolhido. */
   metodo: string | null
   valor: number
+  /** A3 da 21ª: "Adiantada: a 2/3 (vence 16/12) segue em aberto." — só avisa. */
+  adiantada?: string | null
   pending: boolean
-  aoConfirmar: (bandeira: string | null, vezes: number, forma: string | null, maquininha: string | null) => void
+  /** `partes`: com "+ Outra forma", todas as formas (a primeira inclusive), cada uma com o valor dela; senão, nulo. */
+  aoConfirmar: (bandeira: string | null, vezes: number, forma: string | null, maquininha: string | null, partes: ParteDaBaixa[] | null) => void
   aoFechar: () => void
 }) {
   const [bandeira, setBandeira] = useState('')
@@ -50,6 +60,9 @@ export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, pend
   const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   const faltaAMaquininha = useFaltaAMaquininha(forma, maquininha)
   const noCredito = forma === 'CREDIT_CARD'
+  const [outras, setOutras] = useState<EstadoDaParte[]>([])
+  const recusaDasFormas = recusaDasOutras(outras, valor)
+  const valorDaPrimeira = outras.length ? Math.max(0, valorDaPrincipal(valor, outras)) : valor
   const titulo = forma === 'CREDIT_CARD' || forma === 'DEBIT_CARD' ? 'Receber no cartão' : 'Receber'
   return (
     <JanelaModal onFechar={aoFechar} rotulo={titulo} largura={420} travado={pending}>
@@ -61,6 +74,9 @@ export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, pend
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           {descricao}{metodo ? <> · combinado: {rotuloDaForma(metodo)}</> : null}
         </p>
+        {adiantada && (
+          <p data-parcela-adiantada role="note" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{adiantada}</p>
+        )}
         <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <span className="field-label">Forma de pagamento *</span>
           <select className="field" aria-label="Forma de pagamento" value={forma} disabled={pending}
@@ -69,7 +85,7 @@ export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, pend
             {FORMAS_DE_PAGAMENTO.map(f => <option key={f} value={f}>{rotuloDaForma(f, null, { longo: true })}</option>)}
           </select>
         </label>
-        <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={valor}
+        <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={valorDaPrimeira}
           maquininha={maquininha} aoMudarMaquininha={v => { setMaquininha(v); setVezes(1) }} />
         {noCredito && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -88,14 +104,19 @@ export function ReceberNoCartao({ descricao, metodo, valor, cliente = null, pend
             <select id="baixa-vezes" className="field" value={String(vezes)} onChange={e => setVezes(Number(e.target.value))} disabled={pending}>
               {opcoesDeVezes.map(n => <option key={n} value={String(n)}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
             </select>
-            <DicaDasVezes total={valor} vezes={vezes} opcoes={opcoesDeVezes} />
+            <DicaDasVezes total={valorDaPrimeira} vezes={vezes} opcoes={opcoesDeVezes} />
             <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
           </div>
         )}
+        {forma && (
+          <OutrasFormas metodoPrincipal={forma} total={valor} outras={outras} aoMudar={setOutras} metodos={FORMAS_DE_PAGAMENTO} />
+        )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={aoFechar} disabled={pending}>Cancelar</button>
-          <button type="button" className="btn-primary" onClick={() => aoConfirmar(bandeira || null, noCredito ? vezes : 1, forma, maquininha || null)}
-            disabled={pending || !forma || !!faltaAMaquininha} title={faltaAMaquininha ?? undefined}>
+          <button type="button" className="btn-primary"
+            onClick={() => aoConfirmar(bandeira || null, noCredito ? vezes : 1, forma, maquininha || null,
+              outras.length ? partesDaBaixa({ forma, bandeira: bandeira || null, vezes: noCredito ? vezes : 1, maquininha: maquininha || null }, valor, outras) : null)}
+            disabled={pending || !forma || !!faltaAMaquininha || !!recusaDasFormas} title={faltaAMaquininha ?? undefined}>
             {pending ? 'Recebendo…' : 'Confirmar recebimento'}
           </button>
         </div>

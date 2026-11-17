@@ -39,6 +39,7 @@ import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { FusoProvider } from '@/components/shared/fuso'
 import { comPrecoDaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 import { podeEstornar } from '@/lib/financeiro/so-os-meus'
+import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -215,7 +216,7 @@ export async function SessaoDeAtendimento({
     // Sessão de pacote: já paga na venda do pacote, não se cobra de novo
     // (2026-09-27). O servidor recusa em `confirmPayment`; aqui é o botão.
     // O pacote trazido de fora (F35) não teve venda: a tela diz isso (A15 da 10ª).
-    ler(admin.from('package_sessions').select('id, session_number, client_packages(de_fora, total_sessions, service_packages(name))').eq('appointment_id', id).maybeSingle(),
+    ler(admin.from('package_sessions').select('id, session_number, client_package_id, client_packages(de_fora, total_sessions, service_packages(name))').eq('appointment_id', id).maybeSingle(),
       'conferir se é sessão de pacote'),
     // Procedimento pré-pago: também pago na venda.
     ler(admin.from('procedure_sale_units').select('id').eq('appointment_id', id).neq('status', 'CANCELADA').maybeSingle(),
@@ -662,9 +663,14 @@ export async function SessaoDeAtendimento({
         isPackageSession={!!sessaoDePacote}
         pacoteDeFora={!!(sessaoDePacote as { client_packages?: { de_fora?: boolean | null } | null } | null)?.client_packages?.de_fora}
         // A7 da 18ª: a faixa "Sessão 1 de 6 do pacote …, já paga".
-        sessaoDoPacote={sessaoDePacote ? (() => {
-          const sp = sessaoDePacote as unknown as { session_number: number; client_packages: { de_fora: boolean | null; total_sessions: number | null; service_packages: { name: string } | null } | null }
-          return { numero: sp.session_number, total: sp.client_packages?.total_sessions ?? null, nome: sp.client_packages?.service_packages?.name ?? null, deFora: !!sp.client_packages?.de_fora }
+        // D4 da 21ª: o pacote no crediário com parcelas em aberto não é "já paga" — o valor, só a quem recebe.
+        sessaoDoPacote={sessaoDePacote ? await (async () => {
+          const sp = sessaoDePacote as unknown as { session_number: number; client_package_id: string | null; client_packages: { de_fora: boolean | null; total_sessions: number | null; service_packages: { name: string } | null } | null }
+          const emAberto = sp.client_package_id ? (await getEmAbertoDosPacotes(ctx.tenantId!, [sp.client_package_id]))[sp.client_package_id]?.valor ?? 0 : 0
+          return {
+            numero: sp.session_number, total: sp.client_packages?.total_sessions ?? null, nome: sp.client_packages?.service_packages?.name ?? null,
+            deFora: !!sp.client_packages?.de_fora, emAberto, mostraOValor: podeReceber(ctx),
+          }
         })() : null}
         isPrePago={!!unidadePrePaga}
         podeReceber={podeReceber(ctx)}

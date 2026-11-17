@@ -694,7 +694,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
   }
 
   return (
-    <div className="card" style={{ overflow: 'hidden' }}>
+    <div data-editor-do-tratamento className="card" style={{ overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>

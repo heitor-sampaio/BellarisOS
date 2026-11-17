@@ -67,6 +67,8 @@ export default async function ClientsLayout({
           // Com só "Ver", o botão "+ novo cliente" aparecia e a rota
           // /clients/new recusava. `null` esconde; `undefined` usa o padrão.
           newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
+          // A21 da 21ª: a importação é de quem é da rede (H8) — o atalho também.
+          importarHref={can(ctx, 'clients', 'MANAGE') && ctx.branchId === null ? `/${slug}/settings?tab=importacoes` : null}
           clients={clients}
           basePath={`/${slug}/clients`}
           totalActive={totalActive}

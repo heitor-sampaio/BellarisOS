@@ -65,6 +65,8 @@ test('A9: a base da ocupação diz o que ela tem na outra unidade, na agenda e n
     await expect(p.locator('[data-base-da-ocupacao]').last(), 'no dashboard').toContainText(desconto)
     await expect(p.locator('[data-base-da-ocupacao]').last()).not.toContainText(OUTRA)
     await p.goto(`/${slug}/agenda?date=${hoje}`)
+    // A15 da 21ª: na agenda, a base mora na dica da ocupação.
+    await p.getByRole('button', { name: 'Como a ocupação é contada' }).first().hover()
     await expect(p.locator('[data-base-da-ocupacao]').first(), 'na agenda').toContainText(desconto)
   })
 })

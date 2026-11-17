@@ -36,6 +36,8 @@ interface Props {
   pagamentos:     PagamentoItem[]
   documentos:     ClientDoc[]
   consentimentos: ConsentDoc[]
+  /** A aba que abre (A13 da 21ª: o aviso "Foto nova" abre a de Documentos). */
+  abaInicial?:    Tab
 }
 
 // Estrelas somente-leitura para exibir uma nota já dada. A54 da 8ª: as
@@ -75,10 +77,10 @@ const DOC_CATEGORY: Record<string, string> = {
 }
 
 // -- Component ------------------------------------------------------
-export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, documentos, consentimentos }: Props) {
+export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, documentos, consentimentos, abaInicial }: Props) {
   const fuso = useFuso()
   const temDeAntes = !!deAntes && (deAntes.sessoes.length > 0 || !!deAntes.ultimaVisita)
-  const [tab, setTab] = useState<Tab>('procedimentos')
+  const [tab, setTab] = useState<Tab>(abaInicial ?? 'procedimentos')
 
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: 'procedimentos', label: 'Procedimentos', count: procedimentos.length },

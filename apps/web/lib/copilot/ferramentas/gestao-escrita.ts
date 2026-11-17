@@ -18,7 +18,7 @@ import { telefoneDaFichaImportada } from '@/lib/importacao/normalizar'
 import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 import { rotaOportunidade } from '@/lib/rotas'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, UUID, dinheiro, resolverMembro, resolverProcedimento, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { DATA, UUID, dinheiro, fusoDe, hojeNoFuso, resolverMembro, resolverProcedimento, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 import { BANDEIRAS, rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
 import { CATEGORIA_COMPRA_DE_ESTOQUE, CATEGORIA_MATERIAL_DE_CONSUMO, ehCompraDeEstoque } from '@/lib/financeiro/categorias'
 import { maquininhasDaRede } from '@/lib/financeiro/vezes-da-rede'
@@ -82,7 +82,7 @@ const revalidar = (tela: string) => { revalidatePath(`/admin/${tela}`); revalida
 const revalidarFinanceiro = () => revalidar('financeiro')
 
 interface ArgsLancar { tipo: 'receita' | 'despesa'; descricao: string; valor: number; categoria: string; vencimento?: string; pago?: boolean; forma?: string; bandeira?: string; vezes?: number; maquininha?: string; unidade?: string }
-interface PayloadLancar { branchId: string; tipo: 'INCOME' | 'EXPENSE'; categoria: string; descricao: string; valor: number; forma: string | null; bandeira?: string | null; vezes?: number | null; maquininha?: string | null; vencimento: string | null; pago: boolean }
+interface PayloadLancar { branchId: string; tipo: 'INCOME' | 'EXPENSE'; categoria: string; descricao: string; valor: number; forma: string | null; bandeira?: string | null; vezes?: number | null; maquininha?: string | null; vencimento: string | null; pago: boolean; pagoEm?: string | null }
 /** "· 3x" no resumo do cartão (F17-5): o crédito em N vezes. */
 const emVezes = (vezes: number | null | undefined) => vezes && vezes >= 2 ? ` · ${vezes}x` : ''
 
@@ -129,6 +129,9 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
     if (recusaDasVezes) return { erro: recusaDasVezes }
     const vezes = a.vezes && a.vezes > 1 ? a.vezes : null
     const valor = Math.round(a.valor * 100) / 100
+    // A29 da 21ª (princípio 3): o cartão do pago diz o DIA do pagamento — o de
+    // hoje na unidade —, e é esse dia que o núcleo grava (pagoNoDia).
+    const pagoEm = pago ? hojeNoFuso(await fusoDe(c, u.unidade!.id)) : null
     return {
       resumo: {
         titulo: a.tipo === 'receita' ? 'Lançar receita' : 'Lançar despesa',
@@ -137,6 +140,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
           { rotulo: 'Valor', valor: dinheiro(valor) },
           { rotulo: 'Categoria', valor: cat },
           { rotulo: 'Situação', valor: pago ? `pago${forma ? ` · ${FORMA_LEGIVEL[forma]}` : ''}${emVezes(vezes)}${bandeira ? ` · ${rotuloDaBandeira(bandeira)}` : ''}${maq ? ` · ${maq.nome}` : ''}` : `vence ${a.vencimento!.split('-').reverse().join('/')}` },
+          ...(pagoEm ? [{ rotulo: 'Pago em', valor: pagoEm.split('-').reverse().join('/') }] : []),
           { rotulo: 'Unidade', valor: u.unidade!.name },
         ],
         // D5 da 16ª (princípio 3): o cartão diz o que a categoria faz com o resultado.
@@ -146,6 +150,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
       payload: {
         branchId: u.unidade!.id, tipo: a.tipo === 'receita' ? 'INCOME' : 'EXPENSE', categoria: cat,
         descricao: a.descricao.trim(), valor, forma: forma as string | null, vencimento: a.vencimento ?? null, pago,
+        ...(pagoEm ? { pagoEm } : {}),
         ...(bandeira ? { bandeira } : {}),
         ...(vezes ? { vezes } : {}),
         ...(maq ? { maquininha: maq.id } : {}),
@@ -155,7 +160,7 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
   async efetivar(c, p) {
     const r = await lancarCore(c.admin, c.ctx, {
       branchId: p.branchId, tipo: p.tipo, categoria: p.categoria, descricao: p.descricao, valor: p.valor,
-      formaDePagamento: p.forma, vencimento: p.vencimento, pago: p.pago, bandeira: p.bandeira ?? null, vezes: p.vezes ?? null,
+      formaDePagamento: p.forma, vencimento: p.vencimento, pago: p.pago, pagoEm: p.pagoEm ?? null, bandeira: p.bandeira ?? null, vezes: p.vezes ?? null,
       maquininha: p.maquininha ?? null,
     })
     if ('error' in r) return { erro: r.error }

@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getFechamentoDoDia, getAvisosDoFechamento } from '@/lib/metrics'
 import { diaDoFechamento, janelaDoDia, diaAindaAberto } from '@/lib/financeiro/fechamento'
-import { linhasDaConferencia, movimentoDepoisDoFechamento, type LinhaRegistrada } from '@/lib/financeiro/conferencia-do-fechamento'
+import { linhasDaConferencia, movimentoDepoisDoFechamento, fechamentoGravadoDaLinha } from '@/lib/financeiro/conferencia-do-fechamento'
 import { normalizarHorario } from '@/lib/agenda/horario'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { comandasDoPdv } from '@/lib/pdv/comandas'
@@ -75,21 +75,14 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
   const avisos = await getAvisosDoFechamento({ ...args, desde: ultimo ? String(ultimo.fechado_em) : null })
 
   // CX4: uma linha por forma — o registrado, o conferido e a diferença do último fechamento.
-  const retrato = ultimo && Array.isArray(ultimo.resumo)
-    ? (ultimo.resumo as LinhaRegistrada[]).map(l => ({ ...l, entradas: Number(l.entradas), saidas: Number(l.saidas), saldo: Number(l.saldo) }))
-    : null
+  // D2 da 21ª: a mesma leitura do CSV do fechamento (`fechamentoGravadoDaLinha`).
+  const gravado = ultimo ? fechamentoGravadoDaLinha(ultimo) : null
+  const retrato = gravado?.resumo ?? null
   const linhas = linhasDaConferencia({
     formas: resumo.formas, esperadoDinheiro: resumo.esperadoDinheiro,
     // A4 da 18ª: a forma estornada no mesmo dia continua na tabela, com zero.
     estornadoHoje: estornos.mesmoDiaPorForma,
-    ultimo: ultimo ? {
-      contado:   Number(ultimo.contado_dinheiro),
-      diferenca: Number(ultimo.diferenca),
-      // D2 da 17ª: o registrado do dinheiro NAQUELE fechamento.
-      esperado:  ultimo.esperado_dinheiro == null ? undefined : Number(ultimo.esperado_dinheiro),
-      conferido: (ultimo.conferido as Record<string, number> | null) ?? null,
-      resumo:    retrato,
-    } : null,
+    ultimo: gravado,
   })
   // A3 da 17ª: o que entrou e o que saiu depois do último fechamento (o dia de agora × o retrato).
   const movimentoDepois = ultimo ? movimentoDepoisDoFechamento(resumo.formas, retrato) : null
@@ -102,6 +95,7 @@ export async function FechamentoDoDia({ ctx, unidades, unidadeId, diaPedido, bas
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <CabecalhoDoPdv basePath={basePath} unidadeId={unidadeId} naRede={unidades.length > 1} vista="fechar"
             recebidoHoje={(resumoDeHoje ?? resumo).total.entradas} abertas={abertas.length}
+            unidadeNome={unidades.find(u => u.id === unidadeId)?.name ?? null}
             podeReceber={recebe} />
           <FechamentoDoDiaTela
             basePath={basePath}

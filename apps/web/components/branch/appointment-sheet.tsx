@@ -2,7 +2,7 @@
 
 import { useState, useActionState, useCallback, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { X, CheckCircle2, Clock, AlertCircle, AlertTriangle, Ban, Play, CalendarClock, DoorOpen, HandCoins } from 'lucide-react'
+import { X, CheckCircle2, Clock, AlertCircle, AlertTriangle, Ban, Play, CalendarClock, DoorOpen, HandCoins, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { updateAppointmentStatus, rescheduleAppointment, chegarEIniciar, avisosDoRemarcar } from '@/actions/appointments'
 import { situacaoDaCobranca } from '@/actions/a-receber'
@@ -328,10 +328,11 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               </div>
               <div style={{ textAlign: 'right' }}>
                 {/* D12: o pré-pago, a sessão do pacote e a do plano já foram
-                    pagos — o valor ali parecia cobrança pendente. */}
+                    pagos — o valor ali parecia cobrança pendente. D4 da 21ª: "Incluído",
+                    não "Já pago" — a venda no crediário tem parcelas em aberto (o texto diz). */}
                 {appointment.pagoAntes ? (
                   <>
-                    <p className="overline">Já pago</p>
+                    <p className="overline">Incluído</p>
                     <p data-pago-antes style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--success)', marginTop: 3 }}>
                       {appointment.pagoAntes}
                     </p>
@@ -363,6 +364,19 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
         {/* Ações de status */}
         {isActive && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* A20 da 10ª: quem não conclui (sem o Prontuário em Gerenciar) lê ANTES de iniciar.
+                A9 da 20ª: a permissão e quem conclui, pelo nome. A12 da 21ª: trava o
+                fim do atendimento — aviso à vista, acima dos botões (era cinza, embaixo). */}
+            {(mostraIniciar || mostraChegarEIniciar) && !podeConcluir && (
+              <p data-quem-conclui role="note" style={{
+                display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)',
+                background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)',
+                fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+              }}>
+                <Lock size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+                <span><strong>Você não conclui este atendimento.</strong> <span>{textoDeQuemConclui(quemConclui)}</span></span>
+              </p>
+            )}
             {/* A profissional no agendamento que ainda não chegou: o mesmo
                 check-in e o mesmo início, num gesto (A21, 2026-10-27). Ela não
                 via "Iniciar" no "Agendado", e a janela não dizia por quê. É o
@@ -406,13 +420,6 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
               <button disabled={loading} onClick={() => changeStatus('IN_PROGRESS')} className={principal === 'iniciar' ? 'btn-primary' : 'btn-secondary'} style={{ width: '100%', justifyContent: 'center' }}>
                 <Play size={14} /> Iniciar atendimento
               </button>
-            )}
-            {/* A20 da 10ª: quem não conclui (sem o Prontuário em Gerenciar) lê ANTES de iniciar.
-                A9 da 20ª: a permissão e quem conclui, pelo nome. */}
-            {(mostraIniciar || mostraChegarEIniciar) && !podeConcluir && (
-              <p data-quem-conclui style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                {textoDeQuemConclui(quemConclui)}
-              </p>
             )}
             {appointment.status === 'IN_PROGRESS' && (
               <Link

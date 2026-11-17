@@ -40,7 +40,12 @@ export interface NomesDaAuditoria {
   unidades: Record<string, string>
   /** O produto do movimento de estoque (A28 da 15ª), lido agora. */
   produtos?: Record<string, string>
-  /** O cargo de cada permissão (o id da linha de `role_permissions` → o nome do cargo), lido agora. */
+  /**
+   * A33 da 21ª: a medida em que o movimento do produto se grava (a de consumo,
+   * quando há; senão a embalagem), lida agora — "2 frascos de Toxina 1 frasco".
+   */
+  medidasDosProdutos?: Record<string, string>
+  /** O cargo de cada permissão e de cada aba de relatório (o id da linha → o nome do cargo), lido agora. */
   cargos?:   Record<string, string>
   /** O nome do pacote vendido (`client_packages.package_id` → o pacote), lido agora (D7 da 16ª). */
   pacotes?:  Record<string, string>

@@ -34,7 +34,7 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
   },
   {
     key:     'vendas',
-    label:   'Vendas',
+    label:   'Comercial',
     hint:    'Negociação, fechamento e o que se vende (procedimentos e pacotes)',
     // Procedimentos e pacotes são o que se vende — ficam ao lado do funil, como
     // no menu (decisão do Heitor, 2026-09-30; antes era Gestão).
@@ -295,4 +295,15 @@ export function textoDoQueFaltaNoCargo(modulos: string[], faltaRelatorio: boolea
     faltaRelatorio ? 'ao menos um relatório em Relatórios (ou deixe Relatórios em "Sem acesso")' : null,
   ].filter(Boolean)
   return `Falta escolher ${partes.join(', e ')}.`
+}
+
+/**
+ * De onde vem a entrada Documentos do resumo do cargo (A24 da 21ª simulação;
+ * princípio 3): ver e colher os documentos da cliente é de quem tem Clientes em
+ * Ver (a regra de 16/11, `lib/documentos/acesso.ts`) — o resumo listava
+ * "Documentos" num cargo sem os Modelos de documento, sem dizer por quê.
+ */
+export function documentosNoResumo(niveis: Partial<Record<'clients' | 'documents', string>>): string | null {
+  if (!niveis.clients || niveis.clients === 'NONE') return null
+  return 'Documentos vem de Clientes em “Ver”: ver e colher os documentos da cliente. Criar e editar os modelos é de quem tem Modelos de documento.'
 }

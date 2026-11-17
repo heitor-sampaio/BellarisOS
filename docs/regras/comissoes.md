@@ -267,19 +267,19 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   Prova: `e2e/vendas-quem-vendeu.spec.ts`. **A lista vem em grupos** (A15 da
   8ª simulação, 2026-11-06: quem tinha o cargo Contadora, que só vê, aparecia no meio): "Quem
   atende" (nesta unidade), "Quem recebe" (o PDV ou o Financeiro em
-  Gerenciar, ou a Admin) e "Quem tem Vendas no cargo" (`equipeDaVenda`).
+  Gerenciar, ou a Admin) e "Quem tem o Comercial no cargo" (`equipeDaVenda`).
   **E só quem VENDE** (A42 da 11ª simulação, 2026-11-10 — a frente F56: "a
-  lista 'Quem vendeu' só com quem tem Vendas"; a lista trazia quem só tinha o Estoque, e
-  dava para pôr comissão de venda em quem nem entra em Vendas; até aqui era
+  lista 'Quem vendeu' só com quem tem Vendas" — o grupo hoje se chama Comercial; a lista trazia quem só tinha o Estoque, e
+  dava para pôr comissão de venda em quem nem entra no Comercial; até aqui era
   "ninguém sai"): fica quem atende NESTA unidade, quem recebe, ou quem tem o
-  grupo Vendas no cargo (`crm` ou `procedures` abertos — `cargosQueVendem`,
+  grupo Comercial no cargo (`crm` ou `procedures` abertos — `cargosQueVendem`,
   `lib/vendas/equipe-da-venda.ts`); a rede decide quem vende pelo cargo
   (princípio 1). O servidor confere o mesmo (`quemVendeu`: "Quem vendeu:
-  escolha quem vende — quem atende aqui, quem recebe ou quem tem Vendas no
+  escolha quem vende — quem atende aqui, quem recebe ou quem tem o Comercial no
   cargo."). Prova: `e2e/equipe-atritos-da-8.spec.ts` ("A15"),
   `e2e/comissoes-atritos-da-11.spec.ts` ("A42").
 - **A comissão do PACOTE é do cadastro de cada pacote** (decisão do Heitor,
-  2026-10-30; migration `20261029001501`): Vendas → Pacotes, seção "Comissão"
+  2026-10-30; migration `20261029001501`): Comercial → Pacotes, seção "Comissão"
   do formulário (só para quem tem `financial: MANAGE`, da rede e com
   comissões no plano — `podeMudarComissaoDoProcedimento`; `salvarPacote`
   recusa o campo `comissao` de quem não pode, antes de gravar). Duas, cada uma
@@ -476,7 +476,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   exemplo ("Ex.: 10", "Ex.: 50,00"), não um 0 que parecia já preenchido (A24).
 - **A comissão da venda do pacote se acha em Comissões e taxas** (A24 da 19ª,
   princípio 7): o bloco "Venda de pacote" diz que ela fica no próprio pacote
-  (Vendas → Pacotes → o pacote → Comissão), e sem ela vale a de quem vendeu
+  (Comercial → Pacotes → o pacote → Comissão), e sem ela vale a de quem vendeu
   (Equipe → Comissão) — `[data-comissao-do-pacote]`. Só o caminho: a regra é a
   de sempre (acima).
 - **O extrato liga o estorno à liberação** (A8 da 19ª, princípio 3: "+500,
@@ -630,6 +630,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     "Paga em 10/11/2026" ou "A pagar" na linha, e o CSV ganhou a coluna "Pago
     em" ao lado da "Situação" (o dia do fechamento dele, `pagoEm` em
     `extratoDasComissoes`). Prova: `e2e/comissoes-pagamento-parcial.spec.ts`.
+    **O CSV segue a ordem do tempo e diz a ligação** (A8 da 21ª; princípio
+    3): as linhas pela hora em que foram lançadas, com a coluna "Hora", e a
+    coluna "Ligação" com o mesmo texto da tela ("desfaz a liberação das
+    13:45", `vinculosDoExtrato`). Prova: `tests/atritos-da-21-caixa.test.ts`.
   - Fechamento não se reabre: estorno depois dele vira lançamento negativo
     no próximo. Saldo negativo não fecha.
   - **Estornar um fechamento** (`estornarFechamento` →
@@ -687,7 +691,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 ❌ Contar no lucro a despesa paga "Comissões" do fechamento (a comissão já desconta quando é lançada — 2026-11-04): ela fica só no caixa
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
 ❌ Criar comissão de venda sem a precedência item > pessoa > rede, ou sem gravar de onde veio (commission_lines.regra_de — A17 da 11ª)
-❌ Aceitar em "Quem vendeu" quem não vende (não atende na unidade, não recebe, sem Vendas no cargo) — A42 da 11ª
+❌ Aceitar em "Quem vendeu" quem não vende (não atende na unidade, não recebe, sem o Comercial no cargo) — A42 da 11ª
 ❌ Mandar ao navegador a comissão de venda de outra pessoa a quem vê só as próprias (equipeDaVenda sem veComissaoDeTodos — A18 da 12ª)
 ❌ Criar a comissão de venda do plano com outra conta que não a da linha PLANO sem atendimento (plano_comissao_de_venda + comissao_conta), ou deixá-la inteira no plano cancelado (ela vale o usado, na proporção — D4 da 9ª)
 ```

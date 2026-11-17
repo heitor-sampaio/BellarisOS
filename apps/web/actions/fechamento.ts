@@ -8,7 +8,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { getFechamentoDoDia } from '@/lib/metrics'
 import { janelaDoDia } from '@/lib/financeiro/fechamento'
 import { fusoValido } from '@/lib/unidades/fuso'
-import { conferidoValido } from '@/lib/financeiro/conferencia-do-fechamento'
+import { conferidoValido, linhasDaConferencia, fechamentoGravadoDaLinha } from '@/lib/financeiro/conferencia-do-fechamento'
 import { getEstornosDoDia, getFechamentoPorQuemRecebeu, getFechamentoPorBandeira, getTaxasPorMaquininha } from '@/lib/metrics/fechamento-extra'
 import { csvDoFechamento } from '@/lib/financeiro/csv-da-contadora'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
@@ -158,10 +158,12 @@ export async function csvDoFechamentoDoDia(
       getEstornosDoDia(args),
       getFechamentoPorQuemRecebeu(args),
       getFechamentoPorBandeira(args),
-      ler(admin.from('fechamentos_do_dia').select('fechado_por_nome, fechado_em, diferenca')
+      // D2 da 21ª: o retrato inteiro do último fechamento — a conferência é a da tela.
+      ler(admin.from('fechamentos_do_dia').select('fechado_por_nome, fechado_em, diferenca, contado_dinheiro, esperado_dinheiro, conferido, resumo')
         .eq('tenant_id', ctx.tenantId!).eq('branch_id', branchId).eq('dia', dia)
         .order('fechado_em', { ascending: false }).limit(1).maybeSingle(), 'ler o último fechamento') as
-        Promise<{ fechado_por_nome: string | null; fechado_em: string; diferenca: number | string } | null>,
+        Promise<{ fechado_por_nome: string | null; fechado_em: string; diferenca: number | string; contado_dinheiro: number | string
+          esperado_dinheiro: number | string | null; conferido: unknown; resumo: unknown } | null>,
       // A28 da 14ª (D7): a taxa e o líquido por maquininha só a quem vê o financeiro da rede.
       veComissaoDeTodos(ctx) ? getTaxasPorMaquininha(args) : Promise.resolve(null),
     ])
@@ -170,6 +172,11 @@ export async function csvDoFechamentoDoDia(
       formas: resumo.formas, total: resumo.total, esperadoDinheiro: resumo.esperadoDinheiro,
       estornos: estornos.itens, porQuemRecebeu, bandeiras, taxasPorMaquininha,
       fechado: ultimo ? { quem: ultimo.fechado_por_nome, quando: ultimo.fechado_em, diferenca: Number(ultimo.diferenca) } : null,
+      // D2 da 21ª: o CSV dizia "Bateu" pela diferença gravada num dia que mudou depois — a régua é a da tela.
+      conferencia: ultimo ? linhasDaConferencia({
+        formas: resumo.formas, esperadoDinheiro: resumo.esperadoDinheiro,
+        estornadoHoje: estornos.mesmoDiaPorForma, ultimo: fechamentoGravadoDaLinha(ultimo),
+      }) : null,
     })
     return { ok: true, csv, nome: `fechamento-${dia}.csv` }
   } catch (e) {

@@ -55,6 +55,13 @@ export interface LinhaDoCsv {
   vendedor?:     string | null
   /** A18 da 14ª: o NOME da maquininha do cartão (só com mais de uma na rede) — vai na Forma, como na tela. */
   maquininha?:   string | null
+  /**
+   * A6 da 21ª: o que foi pago com pontos ou voucher (`loyalty_discount`). Não
+   * é desconto (é forma de pagamento, fidelidade.md) — a coluna Desconto
+   * ficava vazia, e o lançamento de R$ 1.920 de uma venda de R$ 1.950 não
+   * dizia os R$ 30.
+   */
+  pontosOuVoucher?: number | null
 }
 
 const SITUACAO: Record<LinhaDoCsv['situacao'], string> = { PAGO: 'Pago', EM_ABERTO: 'Em aberto', ESTORNADO: 'Estornado' }
@@ -75,7 +82,7 @@ const dia = (iso: string | null | undefined, fuso = 'America/Sao_Paulo') => iso
 // é um DIA (âncora ao meio-dia de Brasília) e fica no padrão.
 export function csvDosLancamentos(linhas: LinhaDoCsv[], fuso?: string): string {
   const cabecalho = ['Data', 'Descrição', 'Cliente', 'Unidade', 'Profissional', 'Quem vendeu', 'Categoria', 'Tipo', 'Forma', 'Bandeira', 'Situação', 'Valor', 'Conta no caixa',
-    'Desconto', 'Taxa da maquininha', 'Líquido', 'Vencimento', 'Pago em', 'Fornecedor (se informado)', 'Nota fiscal (se informada)']
+    'Desconto', 'Pago com pontos/voucher', 'Taxa da maquininha', 'Líquido', 'Vencimento', 'Pago em', 'Fornecedor (se informado)', 'Nota fiscal (se informada)']
   const corpo = linhas.map(l => {
     const sinal = l.tipo === 'EXPENSE' ? -1 : 1
     const conta = l.noCaixa !== undefined ? l.noCaixa != null : l.situacao === 'PAGO' && !l.estorno
@@ -88,6 +95,7 @@ export function csvDosLancamentos(linhas: LinhaDoCsv[], fuso?: string): string {
       SITUACAO[l.situacao],
       (centavos / 100).toFixed(2).replace('.', ','), conta ? 'Sim' : 'Não',
       l.desconto && l.desconto > 0 ? reais(l.desconto) : '',
+      l.pontosOuVoucher && l.pontosOuVoucher > 0 ? reais(l.pontosOuVoucher) : '',
       reais(l.taxa), reais(l.liquido), dia(l.vencimento), l.situacao === 'EM_ABERTO' ? '' : dia(l.pagoEm, fuso),
       l.fornecedor ?? '', l.nota ?? '',
     ].map(v => campo(String(v)))
@@ -119,6 +127,8 @@ export function linhaDoLancamento(t: {
   taxa?: number | null; liquido?: number | null; no_caixa?: number | null
   desconto_valor?: number | null; profissional_nome?: string | null; vendedor_nome?: string | null; unidade_nome?: string | null
   maquininha_nome?: string | null
+  /** A6 da 21ª: o pago com pontos ou voucher. */
+  loyalty_discount?: number | string | null
 }, unidade?: string | null): LinhaDoCsv {
   return {
     data: t.data_de_referencia ?? t.created_at, descricao: t.description, cliente: t.cliente?.name ?? null,
@@ -127,6 +137,7 @@ export function linhaDoLancamento(t: {
     valor: Number(t.amount), estorno: t.category === 'Estorno', unidade: unidade ?? t.unidade_nome ?? null,
     bandeira: t.cartao_bandeira ?? null, desconto: t.desconto_valor ?? null, profissional: t.profissional_nome ?? null,
     vendedor: t.vendedor_nome ?? null, maquininha: t.maquininha_nome ?? null,
+    pontosOuVoucher: t.loyalty_discount == null ? null : Number(t.loyalty_discount),
     taxa: t.taxa ?? null, liquido: t.liquido ?? null, vencimento: t.due_date ?? null, pagoEm: t.paid_at ?? null,
     fornecedor: t.fornecedor ?? null, nota: t.nota_fiscal ?? null,
     ...(t.no_caixa !== undefined ? { noCaixa: t.no_caixa } : {}),

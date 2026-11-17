@@ -9,6 +9,7 @@ import { createRole, updateRole, deleteRole } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
 import { escopoInicial } from '@/lib/cargos/escopo-inicial'
 import { cargoEscolhido } from '@/lib/cargos/cargo-escolhido'
+import { acessosDoSalvo, resumoDoCargo } from '@/lib/cargos/acessos-salvos'
 import {
   ALL_MODULES, MODULOS_DO_CARGO, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
   SCOPE_LABELS, isScoped,
@@ -16,7 +17,7 @@ import {
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
-  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo,
+  NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -93,6 +94,18 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
 
   const selected = roles.find(r => r.id === selectedId) ?? null
 
+  // A17 da 21ª (princípio 3): o que a matriz acabou de salvar vale na lista e
+  // ao voltar ao cargo — o cartão dizia "Nenhum acesso ainda" até recarregar.
+  // Quando o servidor manda a lista de novo, ela é a que vale.
+  const [salvos, setSalvos] = useState<Record<string, { perms: Partial<Record<AppModule, RoleModulePermission>>; tabs: ReportTab[] }>>({})
+  const [doServidor, setDoServidor] = useState(permsByRole)
+  if (doServidor !== permsByRole) { setDoServidor(permsByRole); setSalvos({}) }
+  const permsDe = (id: string) => salvos[id]?.perms ?? permsByRole[id] ?? {}
+  const permsDaLista = useMemo(
+    () => ({ ...permsByRole, ...Object.fromEntries(Object.entries(salvos).map(([id, s]) => [id, s.perms])) }),
+    [permsByRole, salvos],
+  )
+
   // Trocar de cargo com alteração pendente descartava tudo em silêncio.
   function requestSelect(id: string) {
     if (id === selectedId) return
@@ -105,7 +118,7 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
       <RoleListPanel
         roles={roles}
         selectedId={selectedId}
-        permsByRole={permsByRole}
+        permsByRole={permsDaLista}
         canSeeTeam={canSeeTeam}
         dirtyId={dirty ? selectedId : null}
         onSelect={requestSelect}
@@ -132,9 +145,12 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDo
           <PermissionMatrix
             key={selected.id}
             role={selected}
-            perms={permsByRole[selected.id] ?? {}}
-            tabs={tabsByRole[selected.id] ?? []}
+            perms={permsDe(selected.id)}
+            tabs={salvos[selected.id]?.tabs ?? tabsByRole[selected.id] ?? []}
             onDirtyChange={setDirty}
+            onSalvo={(levels, scopes, tabs) => setSalvos(s => ({
+              ...s, [selected.id]: { perms: acessosDoSalvo(levels, scopes, permsDe(selected.id)), tabs },
+            }))}
             foraDoPlano={foraDoPlano}
           />
         )}
@@ -292,19 +308,6 @@ function RoleListPanel({
   )
 }
 
-/** Resumo de uma linha: quantas áreas o cargo abre e quantas ficam restritas. */
-function summarize(perms: Partial<Record<AppModule, RoleModulePermission>>): string {
-  const open = MODULOS_DO_CARGO.filter(m => (perms[m]?.level ?? 'NONE') !== 'NONE')
-  if (open.length === 0) return 'Nenhum acesso ainda'
-  // A8 da 7ª simulação: em Relatórios o escopo é "só a unidade", não "os
-  // próprios registros" (CLAUDE.md §11) — o resumo dizia "2 só os próprios".
-  const own = open.filter(m => m !== 'reports' && isScoped(m) && perms[m]?.scope === 'OWN').length
-  const relatoriosDaUnidade = open.includes('reports') && perms.reports?.scope === 'OWN'
-  const areas = `${open.length} ${open.length === 1 ? 'área' : 'áreas'}`
-  return [areas, own > 0 ? `${own} só os próprios` : null, relatoriosDaUnidade ? 'Relatórios uma unidade por vez' : null]
-    .filter(Boolean).join(' · ')
-}
-
 function RoleCard({
   role, perms, selected, unsaved, canSeeTeam, deleting, onSelect, onRename, onDelete,
 }: {
@@ -366,7 +369,7 @@ function RoleCard({
       </div>
 
       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-        {role.is_system ? <Fala>{resumoDoCargoDeSistema(role.key)}</Fala> : summarize(perms)}
+        {role.is_system ? <Fala>{resumoDoCargoDeSistema(role.key)}</Fala> : resumoDoCargo(perms)}
       </p>
 
       {/* A contagem explica por que a exclusão é recusada, então conta ativos e
@@ -459,13 +462,15 @@ function SystemRoleCard({ role }: { role: EditorRole }) {
 // ─── Matriz de um cargo ──────────────────────────────────────────────────────
 
 function PermissionMatrix({
-  role, perms, tabs, onDirtyChange, foraDoPlano,
+  role, perms, tabs, onDirtyChange, foraDoPlano, onSalvo,
 }: {
   role: EditorRole
   perms: Partial<Record<AppModule, RoleModulePermission>>
   tabs: ReportTab[]
   onDirtyChange: (dirty: boolean) => void
   foraDoPlano: AppModule[]
+  /** A17 da 21ª: o que acabou de ser salvo, para a lista dizer sem recarregar. */
+  onSalvo?: (levels: Levels, scopes: Scopes, tabs: ReportTab[]) => void
 }) {
   const [state, action, pending] = useActionState(saveRolePermissions, undefined)
   const [levels, setLevels] = useState<Levels>(() => buildLevels(perms))
@@ -507,7 +512,10 @@ function PermissionMatrix({
   }
   // A17 da 17ª (princípio 3): o "Acessos salvos." do rodapé passava
   // despercebido — o aviso de "deu certo" do sistema é o toast (design.md).
-  const avisarSalvo = useEffectEvent(() => { toast.success(`Cargo “${role.label}” salvo.`) })
+  const avisarSalvo = useEffectEvent(() => {
+    toast.success(`Cargo “${role.label}” salvo.`)
+    onSalvo?.(levels, scopes, levels.reports === 'NONE' ? [] : reportTabs)
+  })
   useEffect(() => { if (state?.success) avisarSalvo() }, [state])
 
   function setLevel(module: AppModule, v: PermissionLevel) {
@@ -540,6 +548,11 @@ function PermissionMatrix({
     return modulos.length || relatorio ? textoDoQueFaltaNoCargo(modulos, relatorio) : null
   }
 
+  // A16 da 21ª (princípio 3): o que falta escolher fica junto do "Salvar acessos"
+  // já antes do clique — o laranja pequeno da linha passava, e o botão ativo
+  // parecia salvar.
+  const faltaAgora = oQueFalta()
+  const avisoDoQueFalta = falta ?? faltaAgora
   const nothingGranted = ALL_MODULES.every(m => levels[m] === 'NONE')
   const showSuccess    = !!state?.success && !dismissed
 
@@ -659,13 +672,13 @@ function PermissionMatrix({
         display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 20, flexWrap: 'wrap',
       }}>
         {/* A27 da 18ª (princípio 3): o que falta escolher, junto do botão. */}
-        {falta && (
-          <span data-falta-escolher role="alert" style={{
+        {avisoDoQueFalta && (
+          <span data-falta-escolher role={falta ? 'alert' : undefined} style={{
             color: 'var(--warning)', background: 'var(--warning-soft)',
             borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
             fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', flex: '1 1 260px',
           }}>
-            <Fala>{falta}</Fala>
+            <Fala>{avisoDoQueFalta}</Fala>
           </span>
         )}
         {showSuccess && (
@@ -939,6 +952,7 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
   const escopos = Object.fromEntries(ALL_MODULES.map(m => [m, scopes[m] ?? 'ALL'])) as ResolvedScopes
   const network = menuLabelsFor(ADMIN_MENU, permissions, escopos).map(comAbas(ABAS_DA_REDE))
   const branch  = menuLabelsFor(BRANCH_MENU, permissions, escopos).map(comAbas(ABAS_DA_UNIDADE))
+  const sobreDocumentos = [...network, ...branch].includes('Documentos') ? documentosNoResumo(levels) : null
 
   return (
     <div style={{
@@ -946,7 +960,11 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
       background: 'var(--bg-app)', borderRadius: 'var(--radius-card-sm)',
       border: '1px solid var(--border)',
     }}>
-      <span className="overline">O que essa pessoa vai ver</span>
+      {/* A24 da 21ª: de onde vem Documentos, na dica ao lado do título. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span className="overline">O que essa pessoa vai ver</span>
+        {sobreDocumentos && <Dica rotulo="De onde vem Documentos">{sobreDocumentos}</Dica>}
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
         <PreviewLine title="Na unidade" items={branch} marca="data-resumo-na-unidade" />
         <PreviewLine title={<Fala>Na rede</Fala>} items={network} marca="data-resumo-na-rede" />

@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
+﻿import { getTenantContext, assertPermission, ownerFilter, can, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lerTodas } from '@/lib/db'
 import type { ComponentProps } from 'react'
@@ -137,7 +137,8 @@ export default async function AdminAgendaPage({
   const [selos, jaPagos, menores] = await Promise.all([
     selosDaFicha(ctx.tenantId!, brutos),
     // O que já foi pago antes (D12): a janela não o mostra como valor a cobrar.
-    pagosAntes(admin, brutos.map(a => a.id)),
+    // D4 da 21ª: e o em aberto da venda (o valor só a quem recebe).
+    pagosAntes(admin, brutos.map(a => a.id), { tenantId: ctx.tenantId!, mostraOValor: podeReceber(ctx) }),
     // A menor de idade (decisão 2 do Heitor, 2026-11-05).
     menoresDaAgenda(ctx.tenantId!, brutos.map(a => a.client_id)),
   ])

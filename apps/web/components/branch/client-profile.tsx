@@ -180,6 +180,8 @@ export interface ProfileTransaction {
   vendaDeProduto?: boolean
   vendaDeCredito?: boolean
   doAtendimento?:  boolean
+  /** A3 da 21ª: a parcela em aberto recebida antes das anteriores da mesma venda (o aviso do "Receber"). */
+  adiantada?:      string | null
 }
 
 export interface ProfileInternalCredit {
@@ -1425,7 +1427,8 @@ function FinanceiroTab({
                         {/* A32 e A35 da 12ª: estornar e receber sem sair da ficha (no celular, era a página de 20 mil px). */}
                         <AcoesDoLancamentoDaFicha slug={slug} podeEstornar={podeEstornar} podeReceber={podeReceberParcela}
                           lancamento={{ id: t.id, descricao: t.description, valor: t.amount, pago: t.isPaid, estornada: t.estornada, estorno: t.estorno, saida: t.saida,
-                            metodo: t.paymentMethod, vendaDeProduto: t.vendaDeProduto, vendaDeCredito: t.vendaDeCredito, doAtendimento: t.doAtendimento }} />
+                            metodo: t.paymentMethod, vendaDeProduto: t.vendaDeProduto, vendaDeCredito: t.vendaDeCredito, doAtendimento: t.doAtendimento,
+                            adiantada: t.adiantada ?? null }} />
                         {/* r2-ven-13: o recibo do pago (PDF), onde a recepção procura. Quem só vê
                             o dela não tira recibo (a rota pede quem recebe ou vê a unidade inteira). */}
                         {t.isPaid && !t.estornada && !t.estorno && !t.saida && !soOsProprios && (

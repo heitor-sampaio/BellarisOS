@@ -13,7 +13,7 @@ desse PDV, seja do que for." E: "Uma comanda para cada coisa" — uma venda, uma
 comanda (PDV-P1).
 
 - **A tela**: `/[slug]/pdv` e `/admin/pdv` (uma unidade por vez,
-  `?unidade=`), corpo em `app/_shared/pdv.tsx`. No menu, em Vendas, para quem
+  `?unidade=`), corpo em `app/_shared/pdv.tsx`. No menu, em Comercial, para quem
   RECEBE (`podeReceber`: o caixa ou o Financeiro em Gerenciar). À esquerda as
   comandas (Abertas / Pagas hoje / Todas, busca pela cliente); à direita a
   comanda escolhida, com o "Receber" em blocos de forma de pagamento
@@ -350,6 +350,21 @@ comanda (PDV-P1).
     conta (A7, `comissaoETaxaDoEstorno`, `textoDaComissaoETaxaDoEstorno`,
     `[data-comissao-e-taxa-do-estorno]`). Sem o valor da taxa: não se chuta.
   - Prova: `tests/atritos-da-20-vendas.test.ts`.
+- **O PDV e o caixa da 21ª simulação** (2026-11-17; princípios 3 e 4):
+  - A linha da comanda diz a quantidade e o preço de cada um (D3,
+    `linhaDaComanda`, `lib/pdv/linha-da-comanda.ts`): "2 × R$ 150,00" (e o
+    desconto); o plano diz as sessões ("3 sessões: 2 × Limpeza, 1 ×
+    Peeling", A5). Kit de vários itens e atendimento seguem "1".
+  - O topo do PDV diz "Hoje em <unidade>" e conta as comandas com valor a
+    receber — as abertas mais as pagas hoje com parcela em aberto (A2/A10,
+    `rotuloDoDiaNoPdv`, `contarComValorEmAberto`).
+  - A parcela adiantada avisa também no "Receber" da ficha e do financeiro
+    (A3, a mesma `anterioresEmAbertoEmTexto`).
+  - A gaveta negativa diz "Saiu R$ X a mais do que entrou em dinheiro:
+    confira a saída em dinheiro, ou informe o fundo de troco." (A4).
+  - O CSV das movimentações tem a coluna "Pago com pontos/voucher"
+    (`loyalty_discount`), depois do Desconto (A6): não é desconto.
+  - Prova: `tests/atritos-da-21-caixa.test.ts`.
 - **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
   valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`
   e `confirmPayment` somam `valorDosItensDoAtendimento`); na "Nova venda"
@@ -380,6 +395,13 @@ comanda (PDV-P1).
   podem passar do valor dela. O crediário e o a receber não se dividem
   (princípio 7: a entrada é uma forma só). O crédito interno vendido segue
   numa forma.
+  **Receber a parcela ou o a receber também** (A1 da 21ª): o "Receber" da
+  parcela no PDV, da ficha e do financeiro tem o "+ Outra forma". A linha em
+  aberto vira a primeira forma e as outras nascem como cópias pagas dela
+  (mesma venda, parcela e vencimento), numa transação só
+  (`marcarPagoEmFormasCore` → `lancamento_receber_em_formas`; a conferência
+  em `lib/financeiro/baixa-em-formas.ts`). Até 5 formas, fechando o valor ao
+  centavo; a linha com desconto ou pontos não se divide.
 - **O avulso tem as formas da venda** (o Heitor, 2026-11-16: "Mesma regra de
   pagamentos dos outros"): a comanda do atendimento oferece à vista (numa
   forma ou em várias), o Crediário com entrada e parcelas (até o limite da
@@ -477,7 +499,7 @@ plano").
   o agendar DELA (A21 da 14ª; "Gerenciar sessões" continua). Prova:
   `e2e/pacote-plano-da-rede-f73.spec.ts`.
 
-- **Catálogo da rede** em Vendas → Pacotes (`/admin/pacotes` e
+- **Catálogo da rede** em Comercial → Pacotes (`/admin/pacotes` e
   `/[slug]/pacotes`, corpo em `app/_shared/pacotes.tsx`, `PacotesCatalogo`):
   os procedimentos e quantas sessões de cada, preço, validade em dias (vazio =
   sem validade), à venda ou não. Ver pede `procedures: VIEW`; editar,
@@ -486,11 +508,14 @@ plano").
   nasce com a soma** (PC1): sessões × preço de tabela, e acompanha a soma até
   alguém mexer no campo; o pacote que já existe guarda o seu. Prova:
   `e2e/procedimentos-por-permissao.spec.ts` ("PC1", "PC6").
-- **O menu tem Vendas e Marketing separados** (decisão do Heitor, 2026-09-30):
-  Vendas = Inbox, Oportunidades, Procedimentos e Pacotes (o funil e o que se
+- **O menu tem Comercial e Marketing separados** (decisão do Heitor, 2026-09-30):
+  Comercial = Inbox, Oportunidades, Procedimentos e Pacotes (o funil e o que se
   vende); Marketing = Notificações, Marketing e Templates. A tela de cargos
-  agrupa os módulos igual (`MODULE_GROUPS`: `crm` e `procedures` em Vendas,
-  `marketing` em Marketing).
+  agrupa os módulos igual (`MODULE_GROUPS`: `crm` e `procedures` em Comercial,
+  `marketing` em Marketing). O grupo se chamava "Vendas" até 2026-11-17 (A11
+  da 21ª, o Heitor: "opcao 2"): o nome era o mesmo da aba Vendas dos
+  Relatórios. "Vendas" é só a aba; a chave interna do grupo segue `vendas`.
+  Prova: `tests/menu-comercial.test.ts`.
 - **Cada categoria do menu recolhe pelo título** (pedido do Heitor,
   2026-09-30; `SecaoDoMenu`, `components/shared/secao-do-menu.tsx`, nos dois
   menus). Nasce aberta; fechada, ainda mostra o item da página aberta; lembra
@@ -1337,6 +1362,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     (`linhasDaConferencia`: `mudouDepois`, `registradoNoFechamento`; o
     dinheiro compara o `esperado_dinheiro` do fechamento, as outras formas o
     saldo do retrato). Prova: `e2e/pdv-fechar-o-dia.spec.ts`.
+    **O CSV do fechamento diz o mesmo** (D2 da 21ª): a Situação do dia
+    fica "a conferir · mudou depois do fechamento", e a seção "Conferência
+    do último fechamento" traz Forma, Registrado, Conferido e Diferença pela
+    MESMA `linhasDaConferencia` (`fechamentoGravadoDaLinha`) — nunca "Bateu"
+    com o registrado de agora.
     18ª simulação (princípios 3 e 4; `tests/pdv-caixa-da-18.test.ts`):
     - o conferido de uma forma que não é dinheiro pode ser NEGATIVO (o Pix
       que saiu mais do que entrou: "−210,00" ou "-210,00",

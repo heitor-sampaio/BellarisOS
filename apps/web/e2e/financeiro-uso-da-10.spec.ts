@@ -138,8 +138,8 @@ test('A31: o CSV de lançamentos tem a taxa, o líquido, o vencimento, o pagamen
     // A44 da 12ª: o fornecedor e a nota dizem que são opcionais.
     expect(cabecalho).toContain('Fornecedor (se informado);Nota fiscal (se informada)')
     const limpeza = linhas.find(l => l.includes('Limpeza de pele'))!
-    // Valor; Conta no caixa; Desconto (vazio); Taxa; Líquido (A45 e A44 da 12ª).
-    expect(limpeza).toContain('1000,00;Sim;;20,00;980,00')
+    // Valor; Conta no caixa; Desconto (vazio); Pago com pontos/voucher (vazio, A6 da 21ª); Taxa; Líquido (A45 e A44 da 12ª).
+    expect(limpeza).toContain('1000,00;Sim;;;20,00;980,00')
     expect(linhas.find(l => l.includes('Folha de novembro'))).toContain('Imobiliária Centro;NF-77')
   })
 })

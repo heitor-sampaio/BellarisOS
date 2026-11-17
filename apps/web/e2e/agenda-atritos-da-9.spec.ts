@@ -146,6 +146,8 @@ test('sobra da F44: a grade da rede desenha o bloco com a duração marcada', as
 test('A53: a ocupação diz a base na agenda e no dashboard da unidade', async ({ browser }) => {
   await como(browser, recepcao, async p => {
     await p.goto(`/${slug}/agenda`)
+    // A15 da 21ª: na agenda, a base mora na dica da ocupação.
+    await p.getByRole('button', { name: 'Como a ocupação é contada' }).first().hover()
     await expect(p.locator('[data-base-da-ocupacao]').first()).toContainText(/min agendados de [\d.]+ min abertos \(o horário de 1 profissional que atende\)/)
     await p.goto(`/${slug}/dashboard`)
     await expect(p.locator('[data-base-da-ocupacao]')).toContainText(/min agendados de [\d.]+ min abertos \(o horário de 1 profissional que atende\)/)

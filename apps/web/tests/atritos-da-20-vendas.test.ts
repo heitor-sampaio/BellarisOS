@@ -84,7 +84,8 @@ describe('A3: os textos não supõem o gênero de quem vende ou atende', () => {
 describe('A4: a saída em dinheiro maior que a entrada é avisada', () => {
   it('o registrado negativo do dinheiro diz o quanto passou', () => {
     expect(sp(avisoDaGavetaNegativa(-80)))
-      .toBe('Saiu R$ 80,00 a mais do que entrou em dinheiro: a gaveta não fica negativa. Confira a saída em dinheiro, ou informe o fundo de troco.')
+      // A4 da 21ª: sem o "a gaveta não fica negativa" (lido como contradição ao lado do −R$ 80,00).
+      .toBe('Saiu R$ 80,00 a mais do que entrou em dinheiro: confira a saída em dinheiro, ou informe o fundo de troco.')
     expect(avisoDaGavetaNegativa(0)).toBeNull()
     expect(avisoDaGavetaNegativa(120)).toBeNull()
   })

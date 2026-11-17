@@ -341,3 +341,25 @@ export function pagoJuntoEmTexto(pagamentos: readonly PagamentoDaComandaNaTela[]
   const forma = pagamentos[0]!.metodo ? ` (${rotuloDaForma(pagamentos[0]!.metodo, pagamentos[0]!.vezes)})` : ''
   return `Pago junto: atendimento ${brl(atendimento)} + produtos ${brl(produtos)}${forma}`
 }
+
+/**
+ * A2 da 21ª simulação (princípio 3): a venda no crediário "nasce paga" (PDV8)
+ * e vai a "Pagas hoje" com o selo "A receber" — e o topo dizia "0 comandas
+ * abertas". O topo cita as comandas de hoje que ainda têm valor a receber.
+ */
+export function contarComValorEmAberto(comandas: readonly ComandaDoPdv[]): number {
+  return comandas.filter(c => c.paga && !c.estornada && !c.canceladaEm && c.emAberto > 0).length
+}
+
+/** "1 com valor a receber"; nenhuma, nulo. */
+export function textoDasComValorEmAberto(n: number): string | null {
+  return n > 0 ? `${n} com valor a receber` : null
+}
+
+/**
+ * A10 da 21ª (princípio 3): no PDV da rede, o "Hoje: R$ 160,00 recebidos" é o
+ * da unidade escolhida — e ficava ao lado do "O dia na rede". Diz qual.
+ */
+export function rotuloDoDiaNoPdv(unidade: string | null | undefined): string {
+  return unidade?.trim() ? `Hoje em ${unidade.trim()}` : 'Hoje'
+}

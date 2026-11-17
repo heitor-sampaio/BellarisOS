@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, podeReceber, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mensagemDoErro } from '@/lib/db'
-import { lancamentoAoAlcance, marcarPagoCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
+import { lancamentoAoAlcance, marcarPagoCore, marcarPagoEmFormasCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
+import { lerPartesDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 
 /**
  * A cliente da "Nova venda" do PDV (PDV2, a revisão do Heitor de 2026-11-13):
@@ -41,11 +42,32 @@ export async function buscarClientesParaVender(termo: string): Promise<{
  */
 export async function receberParcelaNoPdv(
   transactionId: string, slug: string,
-  pagamento: { forma: string; bandeira?: string | null; vezes?: number | null; maquininha?: string | null },
+  pagamento: {
+    forma: string; bandeira?: string | null; vezes?: number | null; maquininha?: string | null
+    /** A1 da 21ª ("+ Outra forma"): a parcela dividida — todas as formas, a primeira inclusive, cada uma com o valor dela. */
+    partes?: ParteDaBaixa[] | null
+  },
 ): Promise<{ ok: true } | { error: string }> {
   try {
     const ctx = await getTenantContext()
     if (!podeReceber(ctx)) return { error: 'Sem permissão para receber.' }
+    if (pagamento?.partes != null) {
+      const partes = lerPartesDaBaixa(pagamento.partes)
+      if ('error' in partes) return { error: partes.error }
+      if (partes.some(p => !(FORMAS_DE_PAGAMENTO as readonly string[]).includes(p.forma))) return { error: 'Forma de pagamento inválida para receber a parcela.' }
+      if (typeof transactionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(transactionId)) return { error: 'Lançamento não encontrado.' }
+      if (partes.length >= 2) {
+        const r = await marcarPagoEmFormasCore(createAdminClient(), ctx, transactionId, partes)
+        if ('error' in r) return { error: r.error }
+        if (typeof slug === 'string' && slug) {
+          revalidatePath(`/${slug}/pdv`)
+          revalidatePath(`/${slug}/financeiro`)
+        }
+        revalidatePath('/admin/pdv')
+        revalidatePath('/admin/financeiro')
+        return { ok: true }
+      }
+    }
     const forma = typeof pagamento?.forma === 'string' ? pagamento.forma : ''
     if (!forma) return { error: 'Escolha a forma de pagamento.' }
     if (!(FORMAS_DE_PAGAMENTO as readonly string[]).includes(forma)) return { error: 'Forma de pagamento inválida para receber a parcela.' }

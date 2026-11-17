@@ -13,6 +13,9 @@ import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
 import { anterioresEmAbertoEmTexto } from '@/lib/pdv/situacoes'
+import { OutrasFormas } from '@/components/shared/outras-formas'
+import { recusaDasOutras, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
+import { partesDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 
 /** "Parcela 2 de 3 do crediário: R$ 1.000,00" — ou "A receber: R$ 300,00". */
 function tituloDaParcela(p: ParcelaEmAberto): string {
@@ -100,16 +103,22 @@ function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaE
   const [vezes, setVezes] = useState(1)
   // C75: "Qual maquininha?" (só com mais de uma na rede).
   const [maquininha, setMaquininha] = useState('')
+  // A1 da 21ª ("+ Outra forma", a decisão de 16/11): a parcela recebida em mais de uma forma.
+  const [outras, setOutras] = useState<EstadoDaParte[]>([])
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
   const opcoesDeVezes = useOpcoesDeVezes(maquininha)
   const faltaAMaquininha = useFaltaAMaquininha(forma, maquininha)
   const noCredito = forma === 'CREDIT_CARD'
+  const recusaDasFormas = recusaDasOutras(outras, parcela.valor)
+  // A primeira forma fica com o que falta das outras: é o valor dela que a taxa e as vezes mostram.
+  const valorDaPrimeira = outras.length ? Math.max(0, valorDaPrincipal(parcela.valor, outras)) : parcela.valor
 
   const receber = () => iniciar(async () => {
     setErro(null)
     const r = await receberParcelaNoPdv(parcela.id, slug, {
       forma, bandeira: bandeira || null, vezes: noCredito ? vezes : 1, maquininha: maquininha || null,
+      partes: outras.length ? partesDaBaixa({ forma, bandeira: bandeira || null, vezes: noCredito ? vezes : 1, maquininha: maquininha || null }, parcela.valor, outras) : null,
     })
     if ('error' in r) { setErro(r.error); return }
     aoFechar()
@@ -132,7 +141,7 @@ function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaE
         )}
         <FormasDePagamento valor={forma} formas={FORMAS_DA_BAIXA} desligado={pendente}
           aoMudar={f => { setForma(f); setVezes(1); setBandeira(''); setMaquininha('') }} />
-        <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={parcela.valor}
+        <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={valorDaPrimeira}
           maquininha={maquininha} aoMudarMaquininha={v => { setMaquininha(v); setVezes(1) }} />
         {noCredito && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -140,14 +149,17 @@ function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaE
             <select id="parcela-vezes" className="field" value={String(vezes)} onChange={e => setVezes(Number(e.target.value))} disabled={pendente}>
               {opcoesDeVezes.map(n => <option key={n} value={String(n)}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
             </select>
-            <DicaDasVezes total={parcela.valor} vezes={vezes} opcoes={opcoesDeVezes} />
+            <DicaDasVezes total={valorDaPrimeira} vezes={vezes} opcoes={opcoesDeVezes} />
             <AvisoDaTaxa vezes={vezes} bandeira={bandeira} maquininha={maquininha} />
           </div>
+        )}
+        {forma && (
+          <OutrasFormas metodoPrincipal={forma} total={parcela.valor} outras={outras} aoMudar={setOutras} metodos={FORMAS_DA_BAIXA} />
         )}
         {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{erro}</p>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-secondary" onClick={aoFechar} disabled={pendente}>Cancelar</button>
-          <button type="button" className="btn-primary" onClick={receber} disabled={pendente || !forma || !!faltaAMaquininha}
+          <button type="button" className="btn-primary" onClick={receber} disabled={pendente || !forma || !!faltaAMaquininha || !!recusaDasFormas}
             title={faltaAMaquininha ?? undefined}>
             {pendente ? 'Recebendo…' : `Receber ${formatBRL(parcela.valor)}`}
           </button>

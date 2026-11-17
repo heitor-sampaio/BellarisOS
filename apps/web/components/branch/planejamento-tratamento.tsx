@@ -52,7 +52,7 @@ function fmtBRL(v: number) {
 export function PlanejamentoTratamento({
   clientId, branchId, slug, appointmentId = null, planIdInicial = null,
   procedures, availableProducts = [],
-  podeEditar, podeAnotar = true, podeReceber = false, abertoId, onAbrir, planoNaTela = false,
+  podeEditar, podeAnotar = true, podeReceber = false, abertoId, onAbrir, planoNaTela = false, onIrAoTratamento,
   unidadesParaAgendar = [],
 }: {
   /** Vazio quando o plano ainda não tem cliente — o caso da tela geral. */
@@ -85,6 +85,8 @@ export function PlanejamentoTratamento({
    * 2026-10-27). A lista e os planos que existem continuam.
    */
   planoNaTela?:  boolean
+  /** A14 da 21ª: com o plano na tela, fecha esta janela e leva ao cartão "Tratamento". */
+  onIrAoTratamento?: () => void
 }) {
   const fuso = useFuso()
   const router   = useRouter()
@@ -362,10 +364,19 @@ export function PlanejamentoTratamento({
         })
       )}
 
+      {/* A14 da 21ª: "em Tratamento" não dizia onde — o cartão fica atrás desta janela. */}
       {podeEditar && planoNaTela && (
-        <p data-plano-na-tela style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          Monte o plano desta avaliação na própria tela, em Tratamento.
-        </p>
+        <div data-plano-na-tela style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            O plano desta avaliação se monta no cartão “Tratamento” da tela do atendimento.
+          </p>
+          {onIrAoTratamento && (
+            <button type="button" onClick={onIrAoTratamento} className="btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
+              Ir ao Tratamento
+            </button>
+          )}
+        </div>
       )}
       {podeEditar && !planoNaTela && (
         <button type="button" onClick={novoPlano} disabled={carregando} className="btn-primary"

@@ -82,3 +82,21 @@ export function explicacaoDoCatalogo(trocaPeloPortal: boolean): string {
     ? base + ': a própria cliente troca pelo app, e a equipe também troca na ficha do cliente.'
     : base + ', feita pela equipe na ficha do cliente.'
 }
+
+const reais = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+/**
+ * O desconto da recompensa acima do que os pontos dela valem (A18 da 21ª
+ * simulação; princípio 2: avisa, não recusa): o voucher de R$ 30 por 200
+ * pontos, com o ponto a R$ 0,01, dizia só "200 pontos valem R$ 2,00". Nulo
+ * quando não passa, ou sem o valor do ponto.
+ */
+export function avisoDaRecompensaAcimaDosPontos(desconto: number, pontos: number, valorDoPonto: number | null): string | null {
+  if (valorDoPonto == null || !(desconto > 0)) return null
+  const valem = pontosEmReais(pontos, valorDoPonto)
+  if (!(valem > 0) || desconto <= valem) return null
+  const vezes = Math.round((desconto / valem) * 10) / 10
+  const quanto = vezes >= 2 ? `${vezes.toLocaleString('pt-BR')} vezes o que` : 'mais do que'
+  const osPontos = pontos === 1 ? `o ${formatarPontos(pontos)} vale` : `os ${formatarPontos(pontos)} valem`
+  return `O desconto (${reais(desconto)}) vale ${quanto} ${osPontos} (${reais(valem)}). Confira o custo em pontos ou o valor do ponto.`
+}

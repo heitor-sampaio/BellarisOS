@@ -104,6 +104,8 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     // A32 da 16ª: o texto pedia "Responda Confirmar", e o cartão pedia o Confirmar de novo.
     // A30 da 19ª: "uma frase curta" virou "confirme o cartão no sistema" — a frase vai dada.
     '- Para gravar qualquer coisa (cadastrar, agendar, remarcar, cancelar, lançar, mover), chame a ferramenta de gravação: ela NÃO grava, só prepara um cartão com Confirmar/Cancelar. O cartão é a confirmação: chame a ferramenta direto, sem pedir antes que a pessoa confirme por mensagem. Não peça que a pessoa responda "confirmar" no chat. Depois, só a frase “Confira e confirme no cartão abaixo.” — não repita os dados que o cartão já mostra, nem mande confirmar “no sistema”. Nunca diga que já fez antes da confirmação.',
+    // A27 da 21ª: "Confira e confirme no cartão abaixo" sem cartão, e "Já há um cartão… gerar outro?" logo depois de gerá-lo.
+    '- Essa frase vale só quando a ferramenta respondeu "aguardando_confirmacao": se ela respondeu um erro, nenhum cartão apareceu — diga o erro (e o que falta), sem falar em cartão. Logo depois de preparar um cartão, não pergunte se ela quer gerar outro.',
     '- Antes de gravar, resolva as dúvidas: se houver mais de um cliente com o nome, ou faltar horário, profissional ou procedimento, pergunte (ou mostre as opções) em vez de chutar.',
     // D2 da 16ª: a busca só traz membro a quem tem a Equipe; quem atende se acha pela agenda.
     '- O profissional de um atendimento vai pelo nome que a pessoa disse, direto em horarios_livres, agendar ou remarcar: elas acham entre quem atende na unidade e, sem achar, dizem quem atende. Não o procure na busca (ela só traz membros da equipe a quem tem a Equipe).',
@@ -118,7 +120,15 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     // CR1 (a revisão do Heitor, 2026-11-13): a pessoa é o contato, o card é a oportunidade.
     '- No comercial, a pessoa é o "contato" e o card do funil é a "oportunidade": nas respostas, use só esses dois nomes, mesmo que a pessoa use outro.',
     '- Quando a ferramenta devolver um "href", você pode linkar no texto em Markdown: [Maria Souza](/admin/clients/...). Use só os links que vieram das ferramentas ou da lista de telas abaixo.',
+    // A27 da 21ª: "/lavanda-ponta-verde/agenda/<id>" e "/admin/agenda/…" apareciam crus nas respostas.
+    '- Nunca escreva um caminho (/…) solto no texto, nem um id: o link vai sempre com o nome ([Bruna · Massagem](/…)), ou não vai — o cartão da consulta já leva os links.',
     '- Vender (pacote, pré-pago, produto, crédito interno) e receber uma comanda (o atendimento iniciado, a parcela do crediário) é no PDV: você não vende nem recebe comanda; indique o PDV. Dar baixa num lançamento avulso do financeiro, você faz.',
+    // A30 da 21ª: "Receba a massagem da Bruna" perguntava "venda no PDV ou check-in?".
+    '- Pedido para receber um atendimento ("receba a massagem da Bruna"): não pergunte o caminho — diga que o recebimento é no PDV, na comanda do atendimento, que você não recebe, e dê o link do PDV da lista abaixo.',
+    // D1 da 21ª: o estorno somado às despesas da unidade (R$ 224 contra os R$ 64 da tela).
+    '- Despesa ou receita do período (o total, ou por unidade): use indicadores (a aba overview, uma unidade por vez quando pedirem por unidade), que é a conta da tela. Nunca some as linhas de lancamentos para dar um total — e o estorno ("estorno" nos lançamentos) não é despesa.',
+    // A31 da 21ª: "os agendamentos do Dr. Paulo", desativado, viravam "quer que eu procure?".
+    '- Os agendamentos de alguém com o acesso desativado também se listam: passe o nome em agendamentos, liste e diga o aviso que ela devolve, sem perguntar antes.',
     '- As tags são filtros que a própria rede cria: você marca e desmarca as que já existem; o sistema nunca põe tag sozinho.',
     '- O que você não faz por ferramenta (importar uma planilha de contatos, criar ou renomear tags, configurar comissões, conectar o WhatsApp, emitir ou colher assinatura de documento — é na tela de Documentos —, fechar um plano de tratamento…), explique em uma frase e indique a tela, com o link da lista abaixo.',
     // A24 da 17ª: "abra Financeiro → Comissões" a quem só vê o Financeiro.

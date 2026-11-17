@@ -15,7 +15,7 @@ import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
 import {
   SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
   estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
-  estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto, vendaEstornadaEmTexto,
+  estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto, vendaEstornadaEmTexto, rotuloDoDiaNoPdv, textoDasComValorEmAberto,
   type ComandaDoPdv, type SituacaoDoPdv,
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
@@ -25,11 +25,14 @@ import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
 import { ParcelasEmAberto } from '@/components/shared/pdv/parcelas-em-aberto'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import type { LancamentoDaComanda } from '@/lib/pdv/lancamentos-da-comanda'
+import type { LinhaDaComanda } from '@/lib/pdv/linha-da-comanda'
 
 export interface ComandaEscolhida {
   comanda:            ComandaDoPdv
   /** Fase 5b: o preço do atendimento sozinho (a comanda vale ele e os produtos dela). */
   valorDoAtendimento: number | null
+  /** D3 e A5 da 21ª: a quantidade da linha e o detalhe ("2 × R$ 150,00", "3 sessões: …"); nulo, um. */
+  linha?:             LinhaDaComanda | null
   /** Fase 5b: os produtos acrescentados na comanda do atendimento. */
   itens:              ItemDaComanda[]
   /** Os produtos de Venda direta que ainda se podem acrescentar (só na comanda do atendimento a receber). */
@@ -74,13 +77,17 @@ function Selo({ c }: { c: ComandaDoPdv }) {
  * estão abertas. Nas comandas, o "Fechar o dia" abre o fechamento DENTRO do
  * PDV (`?fechar=1`); no fechamento, "Voltar às comandas" (a quem recebe).
  */
-export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoje, abertas, podeReceber = true, podeVerFechamento = true, children }: {
+export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoje, abertas, comValorEmAberto = 0, unidadeNome = null, podeReceber = true, podeVerFechamento = true, children }: {
   basePath:     string
   unidadeId:    string
   naRede:       boolean
   vista:        'comandas' | 'fechar'
   recebidoHoje: number
   abertas:      number
+  /** A2 da 21ª: as comandas de hoje pagas com valor ainda a receber (o crediário). */
+  comValorEmAberto?: number
+  /** A10 da 21ª: na rede, o nome da unidade — o "Hoje" é o dela. */
+  unidadeNome?: string | null
   podeReceber?: boolean
   podeVerFechamento?: boolean
   children?:    React.ReactNode
@@ -90,7 +97,8 @@ export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoj
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
       <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>PDV</h1>
       <span data-resumo-do-pdv style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>
-        Hoje: <b style={{ color: 'var(--text)' }}>{brl(recebidoHoje)}</b> recebidos · <b style={{ color: 'var(--text)' }}>{abertas}</b> {abertas === 1 ? 'comanda aberta' : 'comandas abertas'}
+        {rotuloDoDiaNoPdv(naRede ? unidadeNome : null)}: <b style={{ color: 'var(--text)' }}>{brl(recebidoHoje)}</b> recebidos · <b style={{ color: 'var(--text)' }}>{abertas}</b> {abertas === 1 ? 'comanda aberta' : 'comandas abertas'}
+        {textoDasComValorEmAberto(comValorEmAberto) && <span data-com-valor-em-aberto> · {textoDasComValorEmAberto(comValorEmAberto)}</span>}
       </span>
       <span style={{ flex: 1 }} />
       {children}
@@ -116,13 +124,15 @@ export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoj
  * e o "Receber". Não existe pagamento sem forma (PDV8): o "Receber" espera a
  * forma escolhida.
  */
-export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, recebidoHoje, escolhida, slugDaUnidade, novaVenda, podeVerFechamento = true, recebidaAgora = null }: {
+export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abertas, comValorEmAberto = 0, recebidoHoje, escolhida, slugDaUnidade, novaVenda, podeVerFechamento = true, recebidaAgora = null }: {
   basePath:      string
   unidades:      { id: string; name: string }[]
   unidadeId:     string
   situacao:      SituacaoDoPdv
   comandas:      ComandaDoPdv[]
   abertas:       number
+  /** A2 da 21ª: as de hoje pagas com valor a receber (o topo as cita). */
+  comValorEmAberto?: number
   recebidoHoje:  number
   escolhida:     ComandaEscolhida | null
   slugDaUnidade: string
@@ -167,7 +177,8 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <CabecalhoDoPdv basePath={basePath} unidadeId={unidadeId} naRede={naRede} vista="comandas"
-        recebidoHoje={recebidoHoje} abertas={abertas} podeVerFechamento={podeVerFechamento}>
+        recebidoHoje={recebidoHoje} abertas={abertas} comValorEmAberto={comValorEmAberto} podeVerFechamento={podeVerFechamento}
+        unidadeNome={unidades.find(u => u.id === unidadeId)?.name ?? null}>
         {naRede && (
           <SegSelect options={unidades.map(u => ({ key: u.id, label: u.name }))} value={unidadeId}
             onSelect={k => router.push(hrefNaUnidade(k))} ariaLabel="Unidade" />
@@ -314,8 +325,11 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
                   ? ['Plano de tratamento', c.profissional ? `de ${c.profissional}` : null].filter(Boolean).join(' · ')
                   : [c.agendadoPara ? `Atendimento das ${hora(c.agendadoPara)}` : 'Atendimento', c.profissional].filter(Boolean).join(' · ')}
               </p>
+              {e.linha?.detalhe && (
+                <p data-detalhe-da-linha style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>{e.linha.detalhe}</p>
+              )}
             </div>
-            <span style={{ color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>1</span>
+            <span data-quantidade-da-linha style={{ color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>{e.linha?.quantidade ?? 1}</span>
             <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl(e.valorDoAtendimento ?? c.valor)}</span>
           </div>
           {c.origem === 'ATENDIMENTO' && (

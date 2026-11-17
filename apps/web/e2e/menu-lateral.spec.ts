@@ -19,19 +19,19 @@ const item = (page: Page, nome: string) => menu(page).getByRole('link', { name: 
 
 test('fechar a categoria esconde os itens, sobrevive à recarga e deixa a página aberta à mostra', async ({ page }) => {
   await page.goto('/admin/dashboard')
-  await expect(titulo(page, 'Vendas')).toHaveAttribute('aria-expanded', 'true')
+  await expect(titulo(page, 'Comercial')).toHaveAttribute('aria-expanded', 'true')
   await expect(item(page, 'Inbox')).toBeVisible()
   await expect(item(page, 'Oportunidades')).toBeVisible()
 
-  await titulo(page, 'Vendas').click()
-  await expect(titulo(page, 'Vendas')).toHaveAttribute('aria-expanded', 'false')
+  await titulo(page, 'Comercial').click()
+  await expect(titulo(page, 'Comercial')).toHaveAttribute('aria-expanded', 'false')
   await expect(item(page, 'Inbox')).toHaveCount(0)
   await expect(item(page, 'Oportunidades')).toHaveCount(0)
   // As outras categorias não mudam.
   await expect(item(page, 'Agenda')).toBeVisible()
 
   await page.reload()
-  await expect(titulo(page, 'Vendas')).toHaveAttribute('aria-expanded', 'false')
+  await expect(titulo(page, 'Comercial')).toHaveAttribute('aria-expanded', 'false')
   await expect(item(page, 'Inbox')).toHaveCount(0)
 
   // Com a categoria fechada, a página aberta continua no menu — e só ela.
@@ -39,8 +39,8 @@ test('fechar a categoria esconde os itens, sobrevive à recarga e deixa a págin
   await expect(item(page, 'Oportunidades')).toBeVisible()
   await expect(item(page, 'Inbox')).toHaveCount(0)
 
-  await titulo(page, 'Vendas').click()
-  await expect(titulo(page, 'Vendas')).toHaveAttribute('aria-expanded', 'true')
+  await titulo(page, 'Comercial').click()
+  await expect(titulo(page, 'Comercial')).toHaveAttribute('aria-expanded', 'true')
   await expect(item(page, 'Inbox')).toBeVisible()
 })
 
@@ -60,11 +60,11 @@ test.describe('no celular', () => {
     await page.getByRole('button', { name: 'Abrir menu' }).click()
     await expect(page.locator('aside.main-sidebar.sidebar-open')).toBeVisible()
 
-    await titulo(page, 'Vendas').click()
-    await expect(titulo(page, 'Vendas')).toHaveAttribute('aria-expanded', 'false')
+    await titulo(page, 'Comercial').click()
+    await expect(titulo(page, 'Comercial')).toHaveAttribute('aria-expanded', 'false')
     await expect(page.locator('aside.main-sidebar.sidebar-open'), 'a barra continua aberta').toBeVisible()
 
-    await titulo(page, 'Vendas').click()
+    await titulo(page, 'Comercial').click()
     await expect(item(page, 'Inbox')).toBeVisible()
   })
 })

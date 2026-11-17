@@ -133,11 +133,15 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
 - **Texto do modelo** vira blocos React (`lib/copilot/texto.ts`), nunca HTML;
   link só para TELA interna (não `/api`, `/auth`…), sem prefetch. O link sem
   fechamento no fim (`[x](/y`, a resposta cortada ou ainda chegando) fica só
-  o texto, sem o pedaço `](/…` (D3 da 19ª).
+  o texto, sem o pedaço `](/…` (D3 da 19ª). O caminho SOLTO com um id
+  ("(/unidade/agenda/<uuid>)", inteiro ou cortado com "…") sai do texto
+  (`semCaminhoCru`, A27 da 21ª): o link vai com o nome, ou não vai.
 - **A resposta cortada diz que foi cortada** (D3 da 19ª; princípio 3): além
   do `response.incomplete`, o stream que acaba sem `response.completed` (o
   tempo, a conexão) acrescenta "(A resposta foi cortada. Peça a continuação,
   se precisar.)" (`perguntarAoModelo`). Prova: `tests/copilot-defeitos-da-19.test.ts`.
+  Vale também na volta que chamou ferramenta e já escreveu texto (D5 da 21ª:
+  o texto parava no meio, sem aviso); só a volta que é só chamada segue calada.
 - **Dados**: `copilot_conversas`, `copilot_mensagens`, `copilot_acoes`,
   `copilot_uso_mensal` — RLS sem política (só o servidor). Retenção
   (`/api/cron/copilot-retencao`): a conversa parada há 90 dias, e a mensagem
@@ -320,7 +324,29 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `month`, e a resposta diz o período que leu.
 - **"Repassar" um atendimento é trocar quem atende** (A27 da 20ª; a palavra
   da Equipe, "Repassou"): o prompt e a descrição de `remarcar` dizem —
-  mesma data e hora, o profissional novo.
+  mesma data e hora, o profissional novo. O cartão dessa troca é "Trocar
+  quem atende", com "Quem atende: Dr. Paulo → Tânia" e a unidade, sem De/Para;
+  o resultado diz "Agora quem atende é Tânia." (A28 da 21ª). O mesmo horário
+  com a mesma pessoa é recusado no preparo ("Nada muda").
+- **Agendamentos de quem teve o acesso desativado se listam** (A31 da 21ª;
+  princípio 3): `agendamentos` acha o nome também entre os membros
+  desativados (só para LER — agendar e remarcar seguem com quem atende), e a
+  lista diz "(acesso desativado)" no nome e avisa que é preciso trocar quem
+  atende em cada um. Sem perguntar antes.
+- **A despesa e a receita do período são de `indicadores`** (D1 da 21ª;
+  princípio 3: o Copilot somou o estorno como despesa e contradisse a tela).
+  `lancamentos` marca o contra-lançamento do estorno como `tipo: "estorno"`
+  e o tira do filtro `despesa`/`receita`; a descrição e o prompt mandam usar
+  `indicadores` para totais e nunca somar as linhas.
+- **O cartão da despesa paga diz "Pago em"** (A29 da 21ª): o dia (o de hoje,
+  no fuso da unidade) vai no cartão e no payload, e é o que se grava.
+- **"Receba a massagem da Bruna"** (A30 da 21ª): o Copilot não recebe; diz
+  que o recebimento é no PDV, na comanda do atendimento, com o link, sem
+  perguntar o caminho.
+- **"Confira e confirme no cartão abaixo" só com cartão** (A27 da 21ª): o
+  executor devolve ao modelo, no erro do preparo, que nenhum cartão
+  apareceu; e, com o cartão, que não pergunte se ela quer gerar outro.
+  Prova dos itens da 21ª: `tests/copilot-achados-da-21.test.ts`.
 - **Quem atende se acha pelo NOME, não pela busca** (D2 da 16ª simulação): a
   `buscar` traz o que a tela de cada tipo mostra, e o membro só a quem tem a
   Equipe — quem agenda sem a Equipe ouvia "nada encontrado" e desistia. O
@@ -415,5 +441,7 @@ dele, sem rolagem que os tirasse. Prova: `e2e/configuracoes-atritos-da-10.spec.t
 ❌ Gravação do Copilot fora do comViaDoCopilot (a Auditoria a daria à pessoa sem o "pelo Copilot") — ou o cabeçalho x-bellaris-via fora do Confirmar
 ❌ Ferramenta que troca a unidade pedida pela da página calada (resolverUnidade recusa a de fora com o motivo)
 ❌ Falar de cargo como se fosse fixo no prompt ou nas mensagens ("o seu cargo…"): é a permissão
+❌ Somar as linhas de lancamentos para dar despesa ou receita do período (é indicadores; o estorno não é despesa — D1 da 21ª)
+❌ Caminho de tela solto no texto, com id (o link vai com o nome — A27 da 21ª)
 ❌ Cortar a chave da escolha do cartão abaixo do tamanho dela ("mesma:<uuid>" tem 42; o corte em 40 fazia o "Sim, é X" nunca valer — CP1)
 ```

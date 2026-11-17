@@ -1774,6 +1774,61 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-17 — Os defeitos e atritos da 21ª simulação, corrigidos
+
+A 21ª rodou sobre `d8b9c63b` com o "[sim] Studio Violeta" (uma unidade) e a "[sim] Rede Lavanda" (duas unidades, com o Copilot). O dinheiro bateu centavo a centavo nas telas. Ela achou 5 defeitos e 35 atritos. Os 5 defeitos e 34 atritos foram corrigidos; o A11 o Heitor decidiu ("opcao 2").
+
+- **D1, o Copilot**: o estorno não é despesa. `lancamentos` marca o contra-lançamento como `estorno` e o tira dos filtros de receita e de despesa; os totais saem de `indicadores`, a mesma conta da tela.
+- **D2, o CSV do fechamento do dia**: passa pela mesma conferência da tela. O dia que mudou depois do fechamento diz "a conferir · mudou depois do fechamento", com a seção "Conferência do último fechamento".
+- **D3, a comanda**: a venda de produto e o pré-pago dizem "2 × R$ 150,00" (`lib/pdv/linha-da-comanda.ts`). A do plano diz as sessões (A5).
+- **D4, a sessão do pacote no crediário**: é "incluída no pacote, que tem R$ 600,00 em aberto", não "já paga". A agenda da unidade, a da rede e o app leem o em aberto (`metrics_em_aberto_das_vendas`).
+- **D5, o Copilot**: o texto cortado ganha o aviso também na volta que chamou ferramenta.
+- **PDV e caixa**:
+  - A1: "+ Outra forma" também no Receber da parcela e do a receber, no PDV e na ficha. A linha em aberto vira a primeira forma e as outras nascem pagas, numa transação (`lancamento_receber_em_formas`).
+  - A2: o topo conta as "com valor a receber".
+  - A3: a parcela adiantada avisa também na ficha.
+  - A4: o aviso da gaveta negativa sem "não fica negativa".
+  - A6: o CSV das movimentações tem a coluna "Pago com pontos/voucher".
+  - A8: o CSV de comissões sai em ordem, com Hora e Ligação ("desfaz a liberação das HH:MM").
+  - A9: a margem da janela do CSV do fechamento.
+  - A10: o PDV da rede diz "Hoje em <unidade>".
+- **A11, o menu**: o grupo do menu "Vendas" (o funil, os procedimentos e os pacotes) se chama **Comercial** (o Heitor, 17/11: "opcao 2"). "Vendas" fica só com a aba dos Relatórios. O crediário segue onde está.
+- **Atendimento e Copilot**:
+  - A12: quem não conclui vê, antes do "Marcar chegada e iniciar", um aviso que trava.
+  - A14: o rascunho diz o que se perde; o Planejamento leva ao Tratamento.
+  - A15: a base da ocupação foi para a dica.
+  - A27: o Copilot não escreve caminho nem id soltos, nem cita cartão que não apareceu.
+  - A28: "Trocar quem atende: Dr. Paulo → Tânia".
+  - A29: o cartão da despesa diz "Pago em".
+  - A30: "receba…" leva ao PDV.
+  - A31: o profissional desativado é listado e avisado.
+- **CRM**: a lixeira da etapa com oportunidades diz quantas e o que fazer, sem o "Excluir" e sem o "(s)" (A32).
+- **Configurações, cargos e importação**:
+  - A16: o aviso do escopo pendente fica junto do Salvar.
+  - A17: o cargo salvo mostra os acessos sem recarregar.
+  - A24: o resumo diz que Documentos vem de Clientes em Ver.
+  - A18: o voucher acima do valor dos pontos avisa.
+  - A19–A21: o fim da importação diz onde estão os importados (Clientes, o quadro ou a busca), a coluna origem diz que "com oportunidade" a leva, e Clientes tem "Importar planilha".
+  - A22: o seletor do insumo não corta o nome.
+  - A23: a faixa sem insumo diz quais.
+  - A25: o contrato de pacote começa "# Contrato de pacote".
+  - A26: "Reativar" com texto; a coluna Unidade em duas linhas.
+- **Auditoria**:
+  - A7: o estorno do fechamento de comissão com frase própria, o CSV sem repetir e as abas do relatório com o nome.
+  - A33: "2 frascos de".
+  - A34: a evolução diz a unidade da gravação.
+- **App da cliente**: a foto nova abre a aba Documentos (A13). O plano aceito sem documento diz que o contrato se assina no pagamento (A35).
+- **Migrations** (aplicadas na produção e no banco local): `20261122200001_lancamento_receber_em_formas`, `20261122200002_metrics_em_aberto_das_vendas` e `20261122200003_contrato_do_plano_com_o_nome_do_modelo` (o contrato de plano semeado com o título do modelo; as redes que existem não mudam).
+- **A completa contra o banco local**:
+  - isolados 1620 passando e 1 falha: o CSV do `financeiro-uso-da-10` sem a coluna nova do A6, spec atualizado;
+  - compartilhados 824 passando e 4 falhas: o `menu-lateral` rodou num build anterior ao "Comercial", e `agendamento-da-rede` e `automacoes-escolhas` oscilaram no estado dos funis da rede compartilhada.
+  - Num build novo, os 6 compartilhados e 30 vizinhos passaram, inclusive `crm-estrutura` seguido dos dois de funil. O `conferir` deu 4621 objetos iguais.
+- Vitest: 3155 testes. Testes novos: `copilot-achados-da-21`, `atendimento-crm-atritos-da-21`, `atritos-da-21-caixa`, `auditoria-atritos-da-21`, `app-da-cliente-atritos-da-21`, `cargos-atritos-da-21`, `fidelidade-atritos-da-21`, `importacao-atritos-da-21`, `telas-atritos-da-21` e `menu-comercial`.
+- **Limites**:
+  - a sessão de um plano ainda sem lançamento diz "Incluído" sem o valor;
+  - as formas a mais de uma parcela repetem o número dela;
+  - "procedimento que não usa insumo" não tem marca (seria funcionalidade), e a faixa só diz quais.
+
 ### 2026-11-17 — Os defeitos e atritos da 20ª simulação, corrigidos (o loop retomado)
 
 O Heitor: "Ta, agora vamos retomar o looping de simulações/correções". Os 4 defeitos e 35 dos 37 atritos da 20ª foram corrigidos (o A17 já estava decidido). A pergunta "Para o Heitor" foi respondida pela regra de 16/11: colher a assinatura não pede permissão.

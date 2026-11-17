@@ -804,6 +804,14 @@ um muro que não depende de cada trava do código.
   comissão — atende (Agenda, Prontuário) ou vende (CRM, PDV) — sem o
   Financeiro (`avisaSemMinhasComissoes`, `lib/permissions-copy.ts`): a
   Estoquista não o lia mais. Prova: `tests/resumo-do-cargo-da-11.test.ts`.
+  **A 21ª simulação** (A16, A17, A24; `tests/cargos-atritos-da-21.test.ts`):
+  o que falta escolher ("Falta escolher o que o cargo enxerga em …") fica
+  junto do "Salvar acessos" enquanto falta, não só depois do clique
+  (`[data-falta-escolher]`; com o clique, vira alerta e a tela rola ao
+  módulo); o cartão do cargo recém-salvo diz o que ele abre sem recarregar
+  (`acessosDoSalvo`, `resumoDoCargo`, `lib/cargos/acessos-salvos.ts`), e
+  voltar ao cargo mostra o salvo; e o resumo com Documentos diz, na dica,
+  que vem de Clientes em “Ver” (`documentosNoResumo`).
 - **O Gerente modelo nasce com Configurações em Gerenciar** (D15 da 6ª
   simulação, 2026-11-04; princípio 1, o padrão sensato é o que a H7
   descreve): sem o módulo, quem tinha o Gerente numa unidade só não chegava à aba
@@ -931,7 +939,10 @@ de uma unidade"):**
   "Principal: X — o login abre nela." (`principalDasMarcadas`, a mesma escolha
   de `unidadesQueGrava`: a de antes, se segue marcada). Prova: `tests/atritos-da-17-cadastros.test.ts`.
   A linha da Equipe também: "Derby (principal) e Casa Forte"
-  (`unidadesDaLinhaDaEquipe`, A28 da 18ª); com uma só, só o nome.
+  (`unidadesDaLinhaDaEquipe`, A28 da 18ª); com uma só, só o nome. Na tabela,
+  a coluna Unidade guarda 200 px e vai até duas linhas, com a lista inteira no
+  `title` (A26 da 21ª: quebrava em seis), e o membro inativo tem o botão
+  "Reativar" com o texto à vista (era só o ícone). Prova: `tests/telas-atritos-da-21.test.ts`.
 - **Os textos da Equipe dizem o que vale para ESTA pessoa** (A17, A18, A21 da
   17ª; princípio 3): salvar o cargo confirma ("Cargo “X” salvo."), e "O que
   essa pessoa vai ver" diz o Copilot pelo nível (`copilotNoResumo`); cadastrar
@@ -1144,7 +1155,8 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
   - A página segue por gravação (`?antes=<id>`): a gravação que começa numa
     página termina nela. O CSV segue uma linha por registro, e cada uma leva a
     frase da gravação dela na coluna "Gravação" (`linhasDoCsvDaAuditoria`,
-    A38 da 16ª: quem procura "Estornou" no arquivo acha); o CSV lê todas as
+    A38 da 16ª: quem procura "Estornou" no arquivo acha; vazia quando a linha
+    já diz a mesma frase, A7 da 21ª); o CSV lê todas as
     páginas antes de agrupar, para a gravação não se partir.
   - O filtro "Abriu o prontuário" está sempre na lista (`OPERACOES`). Saía
     da de quem tinha unidades (`operacoesDoFiltro`, e a leitura tirava
@@ -1205,6 +1217,21 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
       outros registros;
     - no CSV, o registro clínico sem unidade (a evolução, o termo, o mapa)
       leva a unidade da gravação; o resto sem unidade segue "Da rede".
+  - **A 21ª simulação** (A7, A33, A34, `tests/auditoria-atritos-da-21.test.ts`):
+    - o estorno do fechamento de comissão é "Estornou o fechamento da
+      comissão de Dra. Sara (R$ 630,00)", não "um pagamento";
+    - no CSV, a gravação de um registro só leva a frase da tela no "O quê" e
+      a "Gravação" vazia; na de vários, a linha que já é a frase da gravação
+      não a repete;
+    - a aba de relatório diz qual e de qual cargo ("Criou a aba de relatório
+      Financeiro do cargo X", o cargo lido agora); o "Salvar acessos" sem o
+      cargo na gravação é "Mudou os acessos do cargo X (2 abas de relatório e
+      1 permissão)";
+    - o movimento de estoque diz a medida em que se grava (a de consumo,
+      quando há; `unidadeDoInsumo`): "Transferiu 2 frascos de Toxina 1 frasco
+      de … para …" — o número colado no nome confundia;
+    - no detalhe da gravação, o registro clínico sem unidade também leva a
+      unidade dela (era "Da rede" no detalhe com a linha em "Pajuçara").
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

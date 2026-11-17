@@ -94,7 +94,8 @@ export async function executarChamada(
     }
 
     const preparo = await ferramenta.preparar(c, args.data)
-    if ('erro' in preparo) return { paraOModelo: { erro: preparo.erro } }
+    // A27 da 21ª: o modelo dizia "Confira e confirme no cartão abaixo" sem cartão nenhum.
+    if ('erro' in preparo) return { paraOModelo: { erro: preparo.erro, instrucao: 'Nenhum cartão apareceu: diga o erro à pessoa (e o que falta), sem falar em cartão.' } }
 
     const acao = await gravar(c.admin.from('copilot_acoes').insert({
       conversa_id: c.conversaId,
@@ -113,7 +114,8 @@ export async function executarChamada(
         acao: resumoParaOModelo(preparo.resumo),
         instrucao: preparo.resumo.escolhas?.length
           ? 'Nada foi gravado ainda. Um cartão com OPÇÕES apareceu para a pessoa (veja o aviso e as escolhas do resumo). Diga em uma frase o que o aviso diz e peça para ela escolher no cartão. Não diga que já fez.'
-          : 'Nada foi gravado ainda. Um cartão com Confirmar/Cancelar apareceu para a pessoa. Diga em uma frase o que vai ser feito e peça para ela confirmar no cartão. Não diga que já fez.',
+          // A27 da 21ª: o mesmo do prompt — a frase dada, e nada de oferecer outro cartão.
+          : 'Nada foi gravado ainda. Um cartão com Confirmar/Cancelar apareceu para a pessoa. Responda só “Confira e confirme no cartão abaixo.”, sem repetir os dados do cartão e sem perguntar se ela quer outro. Não diga que já fez.',
       },
       cartao: { tipo: 'acao', acaoId: acao.id, resumo: preparo.resumo, status: 'pendente' },
     }

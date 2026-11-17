@@ -764,7 +764,9 @@ contatos dela — e vê Configurações só com essa aba.
   desta linha só entra se X ainda não tiver um". A regra D-10/A14 não mudou.
   A prévia (passo 3) diz as colunas da planilha que ficaram em "Não
   importar": "A coluna “origem” não será importada." (A19 da 20ª,
-  `colunasQueNaoEntram`).
+  `colunasQueNaoEntram`). Sem oportunidade, e a quem pode criá-la, a coluna
+  que o card levaria diz como: "Importando com oportunidade (passo 1), ela
+  vira a origem da oportunidade." (A20 da 21ª, `colunasQueAOportunidadeLeva`).
   Prova: `e2e/crm-atritos-da-7.spec.ts` ("A16/A17"), `tests/importacao.test.ts`.
 - **O mesmo telefone com OUTRO nome na planilha** (A14 da 6ª simulação,
   2026-11-04; princípios 1 e 3: a Karina sumia na Bianca, calada): não é a
@@ -816,6 +818,16 @@ contatos dela — e vê Configurações só com essa aba.
   `lib/importacao/historico.ts`; `[data-importacao-anterior]`): as que a
   pessoa alcança (a régua de `importacaoAoAlcance`), com o placar ("4 novos ·
   2 com aviso · 1 recusada") e o relatório enquanto ele vale (7 dias).
+- **O fim diz onde estão os importados** (A19 da 21ª simulação: os contatos
+  sem oportunidade não aparecem em Clientes, Oportunidades nem Inbox, e
+  pareciam não ter entrado; `ondeEstaoOsImportados`): as fichas em Clientes,
+  os com oportunidade no quadro (o funil da importação), e os sem oportunidade
+  na busca, em "Contatos do CRM", com o botão "Abrir a busca"
+  (`lib/busca/abrir.ts`, o evento que a busca da topbar escuta) — a quem não
+  cria oportunidade (a busca não os mostra), "aparecem no Inbox quando a
+  conversa começar". **A lista de Clientes tem o atalho "Importar planilha"**
+  (A21 da 21ª), para quem importa clientes: Clientes em Gerenciar e “A rede
+  inteira”. Prova: `tests/importacao-atritos-da-21.test.ts`.
 - **A migração: as colunas "Cliente desde", "Última visita", "Pacote de antes"
   e o responsável legal** (decisão 1 (c) do Heitor sobre a 8ª simulação,
   2026-11-06: "concordo"; A5, A7, A8; migration `20261106003502`):
@@ -1246,6 +1258,14 @@ assim" (`ehAUltimaDePerda`, `lib/crm.ts`). Prova: `tests/atritos-da-17-cadastros
 E **toda exclusão de etapa pergunta antes** (A23 da 19ª; princípio 7): "Excluir
 a etapa “X”? Não dá para desfazer.", com "Excluir a etapa"/"Cancelar"
 (`perguntaAoExcluirEtapa`). Prova: `tests/crm-atritos-da-19.test.ts`.
+**A etapa com oportunidades diz isso na pergunta** (A32 da 21ª; princípio 3:
+era "Excluir?" e, depois do sim, a recusa): a lixeira conta as oportunidades
+da etapa (`oportunidadesNaEtapa`, todas as da rede) e, com alguma, a linha diz
+"A etapa “X” tem 2 oportunidades. Mova-as para outra etapa no quadro antes de
+excluir.", com "Entendi" e sem o "Excluir". A recusa da action e a do funil
+dizem o mesmo, no plural certo (`recusaDaEtapaComOportunidades`,
+`recusaDoFunilComOportunidades`; nada de "oportunidade(s)"). Prova:
+`tests/atendimento-crm-atritos-da-21.test.ts`, `e2e/crm-estrutura.spec.ts`.
 
 **O motivo da perda** (2026-10-21, decisão do Heitor). Levar a oportunidade
 a uma etapa de desfecho `LOST` pela TELA pergunta "Por que perdeu?": um

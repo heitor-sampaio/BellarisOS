@@ -25,7 +25,7 @@ export type MenuGroupKey = 'atendimento' | 'planejamento' | 'vendas' | 'marketin
 export const MENU_GROUPS: readonly { key: MenuGroupKey; label: string }[] = [
   { key: 'atendimento',  label: 'Atendimento' },
   { key: 'planejamento', label: 'Planejamento' },
-  { key: 'vendas',       label: 'Vendas' },
+  { key: 'vendas',       label: 'Comercial' },
   { key: 'marketing',    label: 'Marketing' },
   { key: 'dinheiro',     label: 'Dinheiro e estoque' },
   { key: 'gestao',       label: 'Gestão e configuração' },

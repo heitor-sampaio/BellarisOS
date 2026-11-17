@@ -11,6 +11,7 @@ import {
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { ReceberNoCartao } from '@/components/shared/receber-no-cartao'
+import type { ParteDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 import { ConfirmarEstorno } from '@/components/shared/confirmar-estorno'
 import { DevolverParteDaVenda } from '@/components/shared/devolver-parte-da-venda'
 import { EstornarVendaDeCredito } from '@/components/shared/estornar-venda-de-credito'
@@ -311,9 +312,9 @@ export function AdminFinancialView({
   const [noCartao, setNoCartao] = useState<{ id: string; slug: string; descricao: string; metodo: string | null; valor: number; cliente: string | null } | null>(null)
   // A15 da 9ª: a despesa sem forma pergunta a forma na baixa.
   const [despesaAPagar, setDespesaAPagar] = useState<{ id: string; slug: string; descricao: string; valor: number } | null>(null)
-  function marcarPago(id: string, slug: string, bandeira?: string | null, vezes?: number, forma?: string | null, maquininha?: string | null) {
+  function marcarPago(id: string, slug: string, bandeira?: string | null, vezes?: number, forma?: string | null, maquininha?: string | null, partes?: ParteDaBaixa[] | null) {
     startT(async () => {
-      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null, maquininha ?? null)
+      const r = await markTransactionPaid(id, slug, bandeira ?? null, vezes ?? null, forma ?? null, maquininha ?? null, partes ?? null)
       if (r?.error) toast.error(r.error)
       else { setNoCartao(null); setDespesaAPagar(null); router.refresh() }
     })
@@ -722,7 +723,7 @@ export function AdminFinancialView({
       {noCartao && (
         <ReceberNoCartao descricao={noCartao.descricao} metodo={noCartao.metodo} pending={estornando}
           valor={noCartao.valor} cliente={noCartao.cliente}
-          aoConfirmar={(b, v, f, m) => marcarPago(noCartao.id, noCartao.slug, b, v, f, m)} aoFechar={() => setNoCartao(null)} />
+          aoConfirmar={(b, v, f, m, partes) => marcarPago(noCartao.id, noCartao.slug, b, v, f, m, partes)} aoFechar={() => setNoCartao(null)} />
       )}
 
       {/* Header: título (esquerda) + período e o "Novo lançamento" (direita) — FI7: só ele no topo. */}

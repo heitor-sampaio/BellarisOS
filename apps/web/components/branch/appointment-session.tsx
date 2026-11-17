@@ -232,7 +232,8 @@ interface Props {
   /** O pacote é o trazido de fora (F35): não houve venda — já pago antes do sistema (A15 da 10ª). */
   pacoteDeFora?:         boolean
   /** A7 da 18ª: qual sessão de qual pacote — a faixa "Sessão 1 de 6 do pacote …, já paga". */
-  sessaoDoPacote?:       { numero: number; total: number | null; nome: string | null; deFora: boolean } | null
+  /** D4 da 21ª: e o em aberto do pacote (o valor só a quem recebe). */
+  sessaoDoPacote?:       { numero: number; total: number | null; nome: string | null; deFora: boolean; emAberto?: number | null; mostraOValor?: boolean } | null
   /** Procedimento pré-pago: pago na venda, a recepção não cobra de novo. */
   isPrePago?:            boolean
   /**
@@ -1640,6 +1641,11 @@ export function AppointmentSession({
               // (A30), então o "Novo plano" volta a ser o caminho.
               // A avaliação concluída voltou a montar o plano na tela (2026-10-29).
               planoNaTela={!isPartOfPlan && podeMontarPlano && (status === 'COMPLETED' || !isDone) && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')}
+              // A14 da 21ª: fecha a janela e leva ao cartão "Tratamento" da tela.
+              onIrAoTratamento={() => {
+                setPlanejamentoAberto(false)
+                requestAnimationFrame(() => document.querySelector('[data-editor-do-tratamento]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+              }}
             />
           </div>
         </JanelaModal>
@@ -1770,9 +1776,16 @@ export function AppointmentSession({
             {/* A20 da 10ª: dito ANTES de iniciar também — quem iniciava só
                 depois lia que não ia concluir. A9 da 20ª: a permissão e os nomes
                 (dizia que quem conclui é "o profissional", nome de cargo). */}
+            {/* A12 da 21ª: era um texto cinza pequeno, lido só depois de iniciar.
+                Trava o fim do atendimento — fica à vista, como aviso, antes do botão. */}
             {['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status) && canManage && !canEditRecords && (
-              <span data-quem-conclui style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                {textoDeQuemConclui(quemConclui)}
+              <span data-quem-conclui role="note" style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 'var(--radius-field-token)',
+                background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', color: 'var(--warning)',
+                fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+              }}>
+                <Lock size={14} aria-hidden="true" style={{ flexShrink: 0 }} />
+                <span><strong>Você não conclui este atendimento.</strong> <span>{textoDeQuemConclui(quemConclui)}</span></span>
               </span>
             )}
 
@@ -1874,7 +1887,8 @@ export function AppointmentSession({
           <p data-aviso-do-rascunho role="note" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
             {/* 2026-11-16 ("A explicação mora na dica"): o risco (perder o
                 digitado) fica à vista, curto; o detalhe, na dica. */}
-            <span>Guardado só nesta aba até o “Finalizar atendimento”.</span>
+            {/* A14 da 21ª: o aviso diz o que se perde, não só onde fica. */}
+            <span>Fica só nesta aba: fechar a aba antes do “Finalizar atendimento” perde o que foi digitado.</span>
             <Dica rotulo="Sobre o que se digita aqui">
               A ficha de saúde, a evolução e a ficha digitadas ficam guardadas só nesta aba até o “Finalizar atendimento”: recarregar mantém; fechar a aba ou abrir em outro aparelho, não.
             </Dica>

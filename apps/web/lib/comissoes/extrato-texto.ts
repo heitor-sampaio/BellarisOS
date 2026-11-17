@@ -80,18 +80,25 @@ const campo = (v: string) => /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` :
  * VAZIO; a regra diz de onde veio (A17).
  */
 export function csvDoExtrato(linhas: LancamentoDoExtrato[], nomes: Map<string, string>, unidades: Map<string, string>, fuso?: string): string {
+  // A8 da 21ª (princípio 3): a ligação do estorno com a liberação que ele desfaz
+  // (a da tela, `vinculosDoExtrato`) e as linhas na ordem do tempo, com a hora —
+  // "desfaz a liberação das 13:45" só se acha com a hora de cada linha.
+  const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso ?? 'America/Sao_Paulo' })
+  const vinculos = vinculosDoExtrato(linhas, hora)
+  const quando = (l: LancamentoDoExtrato) => new Date(l.releasedAt).getTime()
+  const emOrdem = linhas.map((l, i) => ({ l, i })).sort((a, b) => quando(a.l) - quando(b.l) || a.i - b.i).map(x => x.l)
   const tabela = [
-    ['Lançamento', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Valor', 'Previsto', 'Situação', 'Pago em'],
-    ...linhas.map(l => [
+    ['Lançamento', 'Hora', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Ligação', 'Valor', 'Previsto', 'Situação', 'Pago em'],
+    ...emOrdem.map(l => [
       // As datas no dia da unidade (F62b).
-      dia(l.releasedAt, fuso), nomes.get(l.professionalId) ?? '', unidades.get(l.branchId) ?? '', dia(l.scheduledAt, fuso),
+      dia(l.releasedAt, fuso), hora(l.releasedAt), nomes.get(l.professionalId) ?? '', unidades.get(l.branchId) ?? '', dia(l.scheduledAt, fuso),
       l.cliente ?? '', l.procedimento ?? '', origemDoLancamento(l),
       reais(l.preco), l.preco == null ? '' : reais(l.baseDesconto),
       l.preco == null || !l.descontaTaxa ? '' : reais(l.baseTaxa),
       l.preco == null || !l.descontaInsumos ? '' : reais(l.baseInsumos),
       l.preco == null || l.baseFator >= 1 ? '' : `${String(Math.round(l.baseFator * 10000) / 100).replace('.', ',')}%`,
       reais(l.base ?? l.preco), l.preco == null ? '' : rotuloDaBaseDoLancamento(l), regraDoLancamento(l, nomes.get(l.professionalId) ?? null),
-      TIPO[l.kind], l.motivo ?? '',
+      TIPO[l.kind], l.motivo ?? '', vinculos.get(l.id) ?? '',
       l.amount.toFixed(2).replace('.', ','), l.previsto == null ? '' : l.previsto.toFixed(2).replace('.', ','), SITUACAO[l.status],
       // A21 da 10ª: com o pagamento parcial, o dia em que CADA lançamento foi pago.
       l.pagoEm ? dia(l.pagoEm, fuso) : '',
