@@ -22,13 +22,16 @@ export default async function AssinarTodosPage({ params }: { params: Promise<{ s
 
   const cliente = await ler(createAdminClient().from('clients').select('tenant_id').eq('id', ctx.clientId!).maybeSingle(),
     'buscar a ficha da cliente') as { tenant_id: string } | null
+  if (!cliente) redirect(`/${slug}/cliente/documentos`)
   const pendentes = (await documentosNoPortal(ctx.clientId!)).filter(d => d.status === 'PENDENTE')
-  if (!cliente || pendentes.length === 0) redirect(`/${slug}/cliente/documentos`)
   if (pendentes.length === 1) redirect(`/${slug}/cliente/documentos/${pendentes[0]!.id}`)
 
-  const documentos = await abertosNaTela(cliente.tenant_id, pendentes.map(d => d.id))
-  if (documentos.length === 0) redirect(`/${slug}/cliente/documentos`)
-  const assinante = documentos[0]!.cliente.assinante ?? documentos[0]!.cliente.nome
+  // Sem pendentes NÃO redireciona: assinados todos, a action revalida esta página,
+  // e o redirect levava à lista, desmontando a confirmação "Documentos assinados"
+  // (o mesmo do 72209aee, no portal). O AssinarJuntos vazio guarda a confirmação
+  // e, a quem chega sem nada a assinar, diz isso.
+  const documentos = pendentes.length ? await abertosNaTela(cliente.tenant_id, pendentes.map(d => d.id)) : []
+  const assinante = documentos[0]?.cliente.assinante ?? documentos[0]?.cliente.nome ?? ''
 
   return (
     <AssinarJuntos

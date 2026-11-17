@@ -137,7 +137,7 @@ const CAMPO: Record<string, string> = {
   respondido_em: 'resposta', respostas: 'respostas', origem: 'origem', export_json_path: 'arquivo exportado', export_pdf_path: 'arquivo exportado',
   medical_reviewed_at: 'revisão do prontuário', medical_reviewed_by: 'quem revisou', medical_status: 'revisão do prontuário',
   processadas: 'andamento', sem_mudanca: 'andamento', novas: 'andamento', iniciada_em: 'início', concluida_em: 'conclusão',
-  execucao: 'andamento', erros_expiram_em: 'validade dos erros', token_cifrado: 'link', category: 'categoria', description: 'descrição',
+  execucao: 'andamento', erros_expiram_em: 'prazo da lista de erros', token_cifrado: 'link', category: 'categoria', description: 'descrição',
   // A35 da 16ª: as que ainda saíam em inglês ("used sessions", "failed attempts").
   used_sessions: 'sessões usadas', total_sessions: 'total de sessões', plan_name: 'plano', plan_status: 'situação do plano',
   trial_ends_at: 'fim do teste grátis', failed_attempts: 'tentativas erradas', used_transaction_id: 'lançamento usado',
@@ -166,6 +166,13 @@ const CAMPO: Record<string, string> = {
   desconto_motivo: 'motivo do desconto', cartao_bandeira: 'bandeira do cartão', credito_vendido_id: 'crédito vendido',
   vencimentos_anteriores: 'vencimentos anteriores', fornecedor: 'fornecedor', nota_fiscal: 'nota fiscal',
   valor_antes_do_estorno: 'valor antes do estorno', estorno_de: 'lançamento estornado', maquininha_id: 'maquininha',
+  // A34/A35 da 20ª: "closed at", "closed reason" saíam crus (o documento fechado, a entrada desfeita, o pacote cancelado).
+  closed_at: 'fechamento', closed_reason: 'motivo do fechamento', closed_by: 'quem fechou',
+  desfeita_em: 'desfeita', desfeita_por: 'quem desfez', desfeita_motivo: 'motivo de desfazer', desfeita_pelo: 'movimento que desfez',
+  cancelado_em: 'cancelamento', cancelado_por: 'quem cancelou', cancelamento_motivo: 'motivo do cancelamento',
+  valor_cancelado: 'valor do cancelamento', cancelamento: 'cancelamento', nome_arquivo: 'arquivo', destino: 'destino',
+  com_erro: 'andamento', completadas: 'andamento', com_aviso: 'andamento', oportunidades: 'andamento', erro: 'erro', erros: 'erros',
+  unit_cost: 'custo', reference: 'referência', balance_after: 'saldo',
 }
 
 /** O nome de cada campo na Auditoria (a trava de A30 da 18ª lê daqui). */
@@ -202,6 +209,8 @@ function nomeDoRegistro(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string
   if (r.tabela === 'leads' && r.registro_id) return nomes.oportunidades?.[r.registro_id] ?? null
   if (r.tabela === 'contacts' && r.registro_id) return nomes.contatos?.[r.registro_id] ?? null
   if (r.tabela === 'comanda_itens' && r.registro_id) return nomes.itensDaComanda?.[r.registro_id] ?? null
+  // A35 da 20ª: a importação pelo arquivo, lido agora.
+  if (r.tabela === 'importacoes' && r.registro_id) return nomes.importacoes?.[r.registro_id]?.arquivo || null
   if (r.tabela === 'role_permissions') {
     const m = texto(r.depois.module) ?? texto(r.antes.module)
     return m ? `de ${MODULO[m] ?? m}` : null
@@ -244,7 +253,12 @@ function fraseDoMovimento(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): stri
   const p = doProduto(r, nomes)
   const unidade = r.branch_id ? nomes.unidades[r.branch_id] ?? null : null
   switch (tipo) {
-    case 'PURCHASE':          return `Deu entrada em ${p}`
+    case 'PURCHASE': {
+      // A35 da 20ª: a entrada ao contrário (quantidade negativa) é o "Desfazer entrada"; a entrada diz o custo, lido agora.
+      if ((numero(r.depois.quantity) ?? 0) < 0) return `Desfez a entrada de ${p}`
+      const custo = r.registro_id ? numero(nomes.custosDasEntradas?.[r.registro_id]) : null
+      return `Deu entrada em ${p}${custo ? ` (${brl(custo)})` : ''}`
+    }
     case 'LOSS':              return `Registrou a perda de ${p}`
     case 'SALE':              return `Baixou ${p} na venda`
     case 'SALE_RETURN':       return `Devolveu ao estoque ${p}`
@@ -330,6 +344,60 @@ function fraseDoRegistroDa17(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
   return null
 }
 
+const FECHOU_O_DOCUMENTO: Record<string, string> = { CANCELADO: 'Cancelou', DISPENSADO: 'Dispensou', SUBSTITUIDO: 'Substituiu' }
+const FEZ_NA_SESSAO: Record<string, string> = { CANCELLED: 'Cancelou', USED: 'Usou', AVAILABLE: 'Devolveu' }
+
+/**
+ * A34–A36 da 20ª simulação: o documento fechado, a sessão do pacote, a
+ * importação, a entrada desfeita e o agendamento criado diziam a coluna, não
+ * o fato. O que a gravação não guarda (o motivo, a sessão, o arquivo, o
+ * procedimento) se lê agora (`nomes`).
+ */
+function fraseDoRegistroDa20(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cliente: string | null): string | null {
+  const daCliente = cliente ? ` — ${cliente}` : ''
+  if (r.tabela === 'issued_documents' && r.operacao === 'editou') {
+    const verbo = FECHOU_O_DOCUMENTO[texto(r.depois.status) ?? '']
+    if (verbo && texto(r.antes.status) !== texto(r.depois.status)) {
+      const nome = nomeDoRegistro(r, nomes)
+      const motivo = verbo !== 'Substituiu' && r.registro_id ? texto(nomes.motivosDoDocumento?.[r.registro_id]) : null
+      return `${verbo} o documento${nome ? ` ${nome}` : ''}${motivo ? ` (motivo: ${motivo})` : ''}${daCliente}`
+    }
+  }
+  if (r.tabela === 'package_sessions' && r.operacao === 'editou' && r.colunas.includes('status')) {
+    const verbo = FEZ_NA_SESSAO[texto(r.depois.status) ?? '']
+    if (verbo && texto(r.antes.status) !== texto(r.depois.status)) {
+      const qual = (r.registro_id && texto(nomes.sessoesDoPacote?.[r.registro_id])) || 'a sessão do pacote'
+      return `${verbo} ${qual}${daCliente}`
+    }
+  }
+  if (r.tabela === 'importacoes') {
+    const imp = r.registro_id ? nomes.importacoes?.[r.registro_id] : undefined
+    const arquivo = imp?.arquivo ? ` ${imp.arquivo}` : ''
+    if (r.operacao === 'criou' && imp) {
+      return `Criou a importação${arquivo} (${imp.total.toLocaleString('pt-BR')} ${imp.total === 1 ? 'linha' : 'linhas'}, para ${imp.destino})`
+    }
+    const status = r.colunas.includes('status') ? texto(r.depois.status) : null
+    if (r.operacao === 'editou' && status === 'concluida') {
+      const placar = imp ? [`${imp.novas} ${imp.novas === 1 ? 'nova' : 'novas'}`, `${imp.completadas} ${imp.completadas === 1 ? 'completada' : 'completadas'}`,
+        imp.comErro ? `${imp.comErro} com erro` : null].filter(Boolean).join(', ') : ''
+      return `Concluiu a importação${arquivo}${placar ? ` (${placar})` : ''}`
+    }
+    if (r.operacao === 'editou' && status === 'falhou') return `A importação${arquivo} falhou`
+    if (r.operacao === 'editou' && status === 'importando') return `Começou a importação${arquivo}`
+  }
+  if (r.tabela === 'stock_movements' && r.operacao === 'editou' && r.colunas.includes('desfeita_em')) return 'Marcou a entrada como desfeita'
+  if (r.tabela === 'appointments' && r.operacao === 'criou') {
+    const quando = texto(r.depois.scheduled_at)
+    const proc = texto(r.depois.procedure_id)
+    const prof = texto(r.depois.professional_id)
+    const procedimento = proc ? nomes.procedimentos?.[proc] ?? null : null
+    const quemAtende = prof ? nomes.membros[prof] ?? null : null
+    const oQue = [procedimento, quemAtende ? `com ${quemAtende}` : null].filter(Boolean).join(', ')
+    return `Agendou ${cliente ?? 'um atendimento'}${quando ? ` para ${quandoDaAuditoria(quando)}` : ''}${oQue ? ` — ${oQue}` : ''}`
+  }
+  return null
+}
+
 /** "O quê": a frase da linha, sem quem e sem quando. */
 export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string {
   const cliente = r.client_id ? nomes.clientes[r.client_id] ?? null : null
@@ -399,6 +467,9 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     if (r.ator_tipo === 'sistema' || r.ator_tipo === 'cliente') return 'Respondeu a ficha de saúde'
     return `Preencheu a ficha de saúde${cliente ? ` de ${cliente}` : ''}`
   }
+
+  const da20 = fraseDoRegistroDa20(r, nomes, cliente)
+  if (da20) return da20
 
   let coisa = COISA_DA_AUDITORIA[r.tabela] ?? `um registro (${r.tabela})`
   let nome = r.tabela === 'clients' ? null : nomeDoRegistro(r, nomes)
@@ -826,8 +897,20 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
     return `Montou a rede nova${nome ? ` ${nome}` : ''} (${linhas.length} registros: ${resumoDasTabelas(linhas.filter(l => l !== rede))})`
   }
 
+  // A34 da 20ª: o cancelamento do pacote fecha as sessões e o contrato junto; o fato é o pacote.
+  const pacoteCancelado = linhas.find(l => l.tabela === 'client_packages' && l.operacao === 'editou' && l.colunas.includes('cancelado_em')
+    && l.colunas.includes('cancelamento'))
+  if (pacoteCancelado) {
+    const nome = pacoteCancelado.registro_id ? nomes.pacotesDaCliente?.[pacoteCancelado.registro_id] : null
+    const estornado = linhas.filter(l => l.tabela === 'financial_transactions' && l.operacao === 'criou' && texto(l.depois.category) === 'Estorno')
+      .reduce((t, l) => t + (numero(l.depois.amount) ?? 0), 0)
+    return `Cancelou ${nome ? `o pacote ${nome}` : 'um pacote'}${estornado ? ` e estornou ${brl(estornado)}` : ''}${clienteDaGravacao(linhas, nomes, pacoteCancelado)}`
+  }
   const estorno = fraseDoEstorno(linhas, nomes)
   if (estorno) return estorno
+  // A35 da 20ª: a entrada e o desfazer gravam o lote e o custo do produto junto (o lote podia sair primeiro: "Editou o lote").
+  const entrada = linhas.find(l => l.tabela === 'stock_movements' && l.operacao === 'criou' && texto(l.depois.type) === 'PURCHASE')
+  if (entrada && linhas.every(l => ['stock_movements', 'product_batches', 'products'].includes(l.tabela))) return fraseDaAuditoria(entrada, nomes)
   // A36 da 16ª: a resposta da ficha grava o link e o prontuário junto; o fato é a resposta.
   const resposta = linhas.find(l => l.tabela === 'pre_atendimentos' && l.operacao === 'editou' && l.colunas.includes('respondido_em'))
   if (resposta) return fraseDaAuditoria(resposta, nomes)
@@ -839,6 +922,9 @@ export function fraseDoGrupo(linhas: readonly RegistroDaAuditoria[], nomes: Nome
   const doAgendamento = linhas.map(l => (l.tabela === 'appointments' && l.operacao === 'editou' ? fraseDaAuditoria(l, nomes) : null))
     .find(f => f && /^(Remarcou|Repassou|Cancelou) /.test(f))
   if (doAgendamento) return doAgendamento
+  // A36 da 20ª: o agendamento criado com outros registros (o link da ficha, a oportunidade) é o fato.
+  const agendou = [...linhas].reverse().find(l => l.tabela === 'appointments' && l.operacao === 'criou')
+  if (agendou) return fraseDaAuditoria(agendou, nomes)
 
   // A27 da 17ª: o contato e a oportunidade criados juntos (o "+ Oportunidade", a importação), pelo nome lido agora.
   const oportunidade = linhas.find(l => l.tabela === 'leads' && l.operacao === 'criou')
@@ -910,6 +996,23 @@ export function gravacoesDaUnidade(
   return agruparAuditoria(registros).filter(linhas => principalDaGravacao(linhas, nomes).branch_id === unidade).flat()
 }
 
+/** O registro clínico que não guarda unidade (o prontuário é da cliente, não da unidade). */
+const CLINICO_SEM_UNIDADE: ReadonlySet<string> = new Set([
+  'medical_records', 'medical_record_entries', 'consent_terms', 'prontuario_anotacoes', 'injectable_maps', 'injectable_applications',
+])
+
+/**
+ * A37 da 20ª simulação: a evolução gravada na conclusão saía "Da rede" no CSV,
+ * com a gravação na unidade do atendimento. O registro clínico sem unidade
+ * leva a da gravação; o resto sem unidade (a oportunidade) segue da rede.
+ */
+function comAUnidadeDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria): RegistroDaAuditoria[] {
+  if (linhas.length === 1 || !linhas.some(l => !l.branch_id && CLINICO_SEM_UNIDADE.has(l.tabela))) return [...linhas]
+  const unidade = principalDaGravacao(linhas, nomes).branch_id
+  if (!unidade) return [...linhas]
+  return linhas.map(l => (!l.branch_id && CLINICO_SEM_UNIDADE.has(l.tabela) ? { ...l, branch_id: unidade } : l))
+}
+
 /**
  * As linhas do CSV (A38 da 16ª): uma por registro, como a regra pede, e cada
  * uma com a frase da GRAVAÇÃO a que pertence — quem procura "Estornou" no
@@ -920,6 +1023,6 @@ export function linhasDoCsvDaAuditoria(
 ): (LinhaDaAuditoria & { gravacao: string })[] {
   return agruparAuditoria(registros).flatMap(linhas => {
     const gravacao = fraseDoGrupo(linhas, nomes)
-    return linhas.map(l => ({ ...linhaDaAuditoria(l, nomes, '/admin/auditoria', null, fuso), gravacao }))
+    return comAUnidadeDaGravacao(linhas, nomes).map(l => ({ ...linhaDaAuditoria(l, nomes, '/admin/auditoria', null, fuso), gravacao }))
   })
 }

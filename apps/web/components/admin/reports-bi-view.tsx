@@ -649,7 +649,8 @@ function TabVendas(p: ReportsBiProps) {
               <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(p.core.revenueCash)}</strong> (Financeiro). A diferença é a regra: o crédito
               interno vendido entra no caixa e não no Total vendido (ele aparece na lista, com a comanda; a venda é o que for pago com ele, quando a
               cliente usar); o pacote e o plano entram aqui
-              inteiros, no dia da venda, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo.
+              inteiros, no dia da venda, e no caixa só o que já foi recebido; a sessão de pacote, de plano e a unidade pré-paga não são venda de novo;
+              o voucher e os pontos da fidelidade pagam parte da venda (contam aqui) e não entram no caixa; o desconto da venda fica fora dos dois.
             </span>
           } />
         {TIPOS_DE_VENDA.map(t => (

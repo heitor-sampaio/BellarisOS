@@ -153,7 +153,15 @@ async function avisoNoCelular(ator: AtorDaAutomacao, contexto: ContextoDaExecuca
     return { resumo: { enviada: false, canal: 'push', motivo: 'Este fluxo não tem cliente — não há para quem mandar o aviso.' } }
   }
   const admin = createAdminClient()
-  const rede = await ler(admin.from('tenants').select('name').eq('id', ator.tenantId).maybeSingle(), 'buscar o nome da rede') as { name: string } | null
+  const [rede, ficha] = await Promise.all([
+    ler(admin.from('tenants').select('name').eq('id', ator.tenantId).maybeSingle(), 'buscar o nome da rede') as Promise<{ name: string } | null>,
+    ler(admin.from('clients').select('auth_id').eq('id', clienteId).eq('tenant_id', ator.tenantId).maybeSingle(), 'ver se a cliente tem acesso ao app') as Promise<{ auth_id: string | null } | null>,
+  ])
   await notifyClient(admin, clienteId, { type: 'automacao', title: rede?.name ?? 'Aviso', body: texto })
+  // A13 da 20ª (princípio 3): sem acesso ao app, o aviso fica num sino que
+  // ela não abre — o passo não diz "enviada".
+  if (!ficha?.auth_id) {
+    return { resumo: { enviada: false, guardada: true, canal: 'push', motivo: 'Guardado no sino do app: a cliente não tem acesso ao app.' } }
+  }
   return { resumo: { enviada: true, canal: 'push' } }
 }

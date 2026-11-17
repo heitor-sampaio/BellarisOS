@@ -36,7 +36,11 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   "Outros documentos: …"), e a action também (`idsDoFormularioDaRede`).
   Na tela, os Documentos vêm primeiro; o termo e o contrato no fim, com o
   tipo entre parênteses — "Nome (termo)", "(contrato, inativo)" (A22 da 18ª
-  simulação, `lib/documentos/outros-do-procedimento.ts`).
+  simulação, `lib/documentos/outros-do-procedimento.ts`). O termo e o
+  contrato só aparecem ali como o SEGUNDO: sem termo escolhido no campo
+  "Termo de consentimento", nenhum termo é oferecido em "Outros documentos"
+  (e o escolhido também não); o mesmo com o contrato. O já marcado continua
+  (A20 da 20ª, `outrosDocumentosOferecidos`).
   ⚠️ É uma COLUNA de array, não uma tabela de ligação: uma tabela com chave
   estrangeira para `procedures` e `document_templates` viraria junção para
   o PostgREST (o PGRST201 de 04/11 — `atendimento.md`). No plano, o cliente
@@ -354,6 +358,13 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   - Presencialmente, "Entregar ao cliente" leva os abertos do momento juntos
     (`[data-assinam-juntos]`, `assinarJuntosNaTela`); no portal,
     `assinarJuntosNoPortal` (só os da ficha DELA).
+  - **A confirmação não depende da lista** (2026-11-17): assinados todos, a
+    action revalida a página e o servidor manda a lista vazia. A página do
+    portal NÃO redireciona sem pendentes (o redirect levava à lista e
+    desmontava "Documentos assinados"): o `AssinarJuntos` vazio guarda a
+    confirmação, com os títulos de quando assinou, e a quem chega sem nada a
+    assinar diz "Nenhum documento esperando a sua assinatura." Prova: o CA4
+    de `documentos-link-unico-e-pacote`.
 - **A tela de assinar tem UM gesto** (J-62, 2026-10-30): marcar "li e
   concordo", desenhar no quadro e "Assinar documento". O "Confirmar
   assinatura" do quadro saiu (`SignaturePad` entrega o desenho a cada traço,
@@ -419,6 +430,13 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   sai sem esse documento. Para incluir, complete o cadastro antes de ir para a
   documentação." com "Completar o cadastro" (`[data-contrato-sem-documento]`,
   `contratoSemDocumentoDaCliente`). O checkout segue. Prova: o mesmo spec ("A35").
+- **"Completar o cadastro" é de quem edita os Clientes** (A10 da 20ª): colher
+  não pede permissão, mas completar o cadastro pede os Clientes em Gerenciar.
+  Na tela de assinatura e na visão geral da ficha, quem não edita lê "Quem tem
+  os Clientes em Gerenciar completa o cadastro (…)" (`quemCompletaOCadastro`).
+  Depois de vender o pacote, o aviso "Completado o cadastro…" vem com o botão
+  (A11, `[data-completar-depois-da-venda]`); a aba Documentos vazia diz
+  "Nenhum anexo". Prova: `tests/atritos-da-20-vendas.test.ts`.
 - **O contrato do PROCEDIMENTO também cita o pagamento** (decisão do Heitor,
   2026-09-30): `pagamento.*` vale em CONTRATO e CONTRATO_PLANO. No avulso o
   pagamento só é recebido depois do atendimento, então quem colhe a assinatura

@@ -17,7 +17,7 @@ import { ler } from '@/lib/db'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 import { falaDaTela } from '@/lib/unidades/uma-so'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { listaDeUnidades, unidadesDaLinhaDaEquipe } from '@/lib/equipe/atende'
+import { listaDeUnidades, unidadesDaLinhaDaEquipe, seloDoAtende } from '@/lib/equipe/atende'
 import { Dica } from '@/components/shared/dica'
 
 function Initials({ name }: { name: string }) {
@@ -138,6 +138,9 @@ export default async function AdminTeamPage({
   const variasUnidades = (branches ?? []).length > 1
   const ondeAtende = (m: { atende_em?: string[] | null }) =>
     (branches ?? []).filter(b => (m.atende_em ?? []).includes(b.id)).map(b => b.name)
+  // A24 da 20ª (princípio 3): o desativado não leva o selo "Atende em…".
+  const selo = (m: { is_active: boolean | null; provides_services: boolean | null; atende_em?: string[] | null }) =>
+    seloDoAtende({ ativo: !!m.is_active, atende: !!m.provides_services, onde: ondeAtende(m), variasUnidades })
 
   return (
     <div>
@@ -277,7 +280,7 @@ export default async function AdminTeamPage({
                             marginTop: 3, gap: 5, flexWrap: 'wrap',
                           }}>
                             {label}
-                            {m.provides_services ? (variasUnidades && ondeAtende(m).length ? ` · Atende em ${listaDeUnidades(ondeAtende(m))}` : ' · Atende') : ''}
+                            {selo(m) ? ` · ${selo(m)}` : ''}
                             {' · '}
                             {branchName}
                           </p>
@@ -293,9 +296,9 @@ export default async function AdminTeamPage({
 
                     <td data-label="Cargo" className="so-desktop" style={{ padding: '14px 20px' }}>
                       <span className="chip chip-brand">{label}</span>
-                      {m.provides_services && (
+                      {selo(m) && (
                         <span className="chip chip-success" style={{ marginLeft: 6 }} data-atende-em>
-                          {variasUnidades && ondeAtende(m).length ? `Atende em ${listaDeUnidades(ondeAtende(m))}` : 'Atende'}
+                          {selo(m)}
                         </span>
                       )}
                     </td>

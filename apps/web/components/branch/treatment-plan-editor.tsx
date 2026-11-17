@@ -7,6 +7,7 @@ import { pacoteEquivalente, type PacoteParaComparar } from '@/lib/checkout/pacot
 import type { PlanSessionInput } from '@/actions/treatment-plans'
 import { situacaoDoPlano } from '@/lib/plano-de-tratamento/situacao'
 import { Dica } from '@/components/shared/dica'
+import { textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import type { RetratoDoCancelamento } from '@/lib/plano-de-tratamento/retrato-do-cancelamento'
 
 export interface TreatmentPlanEditorRef {
@@ -132,6 +133,12 @@ interface Props {
    * avulsa via "Tratamento / Nova sessão" sem saber que podia só finalizar.
    */
   opcional?:            boolean
+  /**
+   * A9 da 20ª: quem está na tela não finaliza (sem o Prontuário em Gerenciar) —
+   * a dica do "é opcional" diz quem finaliza, em vez de "basta o Finalizar"
+   * (o botão que ela não tem). Nulo: finaliza.
+   */
+  quemFinaliza?:        string[] | null
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -442,7 +449,7 @@ function SessionCard({
 // -- Componente principal ------------------------------------------------------
 
 export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(function TreatmentPlanEditor({
-  appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano, branchId, opcional = false,
+  appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano, branchId, opcional = false, quemFinaliza = null,
   podeAnotar = true, onMudarProcedimentos,
 }, ref) {
   const [sessions,  setSessions]  = useState<EditorSession[]>(() => fromExisting(existingPlan))
@@ -699,7 +706,9 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
             <Dica rotulo="Sobre o plano do tratamento">
               {opcional && (
                 <span data-plano-opcional style={{ display: 'block', marginBottom: 6 }}>
-                  Opcional: monte só se for propor um plano à cliente. Sem plano, basta o “Finalizar atendimento”.
+                  {quemFinaliza
+                    ? `Opcional: monte só se for propor um plano à cliente. ${textoDeQuemConclui(quemFinaliza)}`
+                    : 'Opcional: monte só se for propor um plano à cliente. Sem plano, basta o “Finalizar atendimento”.'}
                 </span>
               )}
               <span data-desconto-no-checkout style={{ display: 'block' }}>

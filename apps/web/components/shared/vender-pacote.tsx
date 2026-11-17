@@ -62,6 +62,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
   const fuso = useFuso()
   const router = useRouter()
   const pathname = usePathname()
+  const rotaDosDados = `${rotaCliente(pathname, pathname.split('/')[1] ?? '', clienteId)}?aba=dados`
   // Depois da venda: a 1ª sessão, para o "Agendar a 1ª sessão agora" (A47).
   const [vendida, setVendida] = useState<{ id: string; procedimento: { id: string; nome: string; duracaoMin: number } } | null>(null)
   // PC2: os documentos que a venda deixou para assinar — a venda não espera.
@@ -108,8 +109,11 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
       const docs = r.documentos ?? []
       const naFicha = !!r.veOsDocumentos
       if (podeAgendar && r.primeiraSessao) { setDocsDaVenda(docs); setVeNaFicha(naFicha); setVendida(r.primeiraSessao); return }
+      // A11 da 20ª: o aviso diz "Completado o cadastro…" — quem edita os Clientes ganha o botão junto.
+      const completar = docs.some(d => d.status === 'INCOMPLETO') && contratoQuePedeCadastro?.podeCompletar
+        ? { label: 'Completar o cadastro', onClick: () => router.push(rotaDosDados) } : undefined
       toast.success(avisoDaVenda(pacote.name, fid.aPagar, estado.forma),
-        docs.length ? { description: avisoDosDocumentosDaVenda(docs, { veNaFicha: naFicha }) } : undefined)
+        docs.length ? { description: avisoDosDocumentosDaVenda(docs, { veNaFicha: naFicha }), action: completar } : undefined)
       onFim()
     })
   }
@@ -126,6 +130,13 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
             <Link href={rotaNoPortal(pathname, pathname.split('/')[1], `/documentos/${docsDaVenda.find(d => d.status === 'PENDENTE')!.id}/assinar`)}
               style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
               Colher a assinatura agora
+            </Link>
+          )}
+          {/* A11 da 20ª: depois da venda, o "Completado o cadastro" do aviso vem com o botão. */}
+          {docsDaVenda.some(d => d.status === 'INCOMPLETO') && contratoQuePedeCadastro?.podeCompletar && (
+            <Link data-completar-depois-da-venda href={rotaDosDados}
+              style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
+              Completar o cadastro
             </Link>
           )}
         </div>
@@ -169,7 +180,7 @@ export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim, equipe
             {avisoDoContratoAntesDeVender(contratoQuePedeCadastro)}
           </p>
           {contratoQuePedeCadastro.podeCompletar && (
-            <Link href={`${rotaCliente(pathname, pathname.split('/')[1] ?? '', clienteId)}?aba=dados`}
+            <Link href={rotaDosDados}
               style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
               Completar o cadastro
             </Link>

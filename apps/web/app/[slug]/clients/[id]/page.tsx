@@ -3,7 +3,7 @@ import { nomesDasSessoesDoPlano } from '@/lib/plano-de-tratamento/nome-da-sessao
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
-import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
+import { quemDesfazNoCaixa, quemCompletaOCadastro } from '@/lib/equipe/quem-desfaz'
 import { veOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
 import { getPagoComCreditoDoCliente } from '@/lib/metrics/fechamento-extra'
 import { idadeEm, formatBRL } from '@estetica-os/utils'
@@ -576,6 +576,8 @@ export default async function ClientProfilePage({
       prePagos={prePagos}
       podeAgendar={can(ctx, 'agenda', 'MANAGE')}
       podeEditarCadastro={can(ctx, 'clients', 'MANAGE')}
+      // A10 da 20ª: sem editar, o aviso do que falta diz quem completa o cadastro.
+      quemCompletaOCadastro={can(ctx, 'clients', 'MANAGE') ? null : await quemCompletaOCadastro(ctx.tenantId!, branch.id)}
       podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
       podeVerPlanos={can(ctx, 'agenda', 'VIEW')}
       podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}

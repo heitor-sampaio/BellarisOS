@@ -48,6 +48,8 @@ type Responsaveis = Awaited<ReturnType<typeof responsaveisParaOportunidade>>
 
 export interface CRMLeadModalHandle {
   open: () => void
+  /** A29 da 20ª: o "Agendar" do menu do card, sem passar pelo editor. */
+  agendar: () => void
 }
 
 export interface CRMBranch { id: string; name: string; slug: string }
@@ -284,7 +286,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       router.push(rotaInbox(pathname, slug, res.conversationId))
     }
 
-    useImperativeHandle(ref, () => ({ open }), [open])
+    useImperativeHandle(ref, () => ({ open, agendar: () => setAgendando(true) }), [open])
 
     // A15: a busca pediu outra pessoa com o quadro já aberto (a página não
     // remonta) — ajustado durante o render, como o `?lead=` do quadro.

@@ -35,6 +35,14 @@
   check-in e estoque no mínimo ou abaixo (pela régua da tela, uma vez por
   cruzamento — A48 da 11ª, `atendimento.md` §9.5)
 - Notificações para cliente: confirmação, lembrete 24h antes, promoções
+- **O plano proposto avisa a cliente** (A12 da 20ª simulação, 2026-11-17;
+  princípio 3, como a "Foto nova"): "Plano novo" — "<unidade> preparou um
+  plano de tratamento para você.", sem nada do procedimento (o aviso aparece
+  na tela de bloqueio), com o link para o plano no app. UMA vez por plano (o
+  da avaliação é refeito a cada salvar): `avisarDoPlanoProposto`
+  (`lib/plano-de-tratamento/aviso-do-proposto.ts`), no "mandar à cliente"
+  (`proposeTreatmentPlan`) e no gerar da avaliação. Prova:
+  `tests/plano-proposto-avisa-a-cliente.test.ts`.
 - **O aviso da cliente vai aos aparelhos de TODAS as fichas do login dela**
   (2026-10-19: a mesma pessoa pode ser cliente de várias redes com uma
   conta só). O aparelho fica registrado pela ficha da rede em que ela

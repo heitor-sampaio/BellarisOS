@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
+import { avisarDoPlanoProposto } from '@/lib/plano-de-tratamento/aviso-do-proposto'
 import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, alcancaOAgendamento, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
 import { recusaDasVezesDaRede, recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
@@ -1074,6 +1075,8 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
   if (error) return { error: error.message }
 
   await planoProposto(planId, ctx)
+  // A12 da 20ª: a cliente é avisada no sino e no celular (uma vez por plano).
+  await avisarDoPlanoProposto(ctx.tenantId!, planId)
 
   revalidatePath(`/${slug}/agenda`)
   if (plan.evaluation_appointment_id) {
@@ -1599,6 +1602,8 @@ async function generateEvaluationPlanInterno(
       clientId: appt.client_id, agendamentoId: appointmentId, referencia: 'form_data',
     })
   }
+  // A12 da 20ª: o plano gerado nasce proposto — a cliente é avisada (uma vez por plano).
+  await avisarDoPlanoProposto(ctx.tenantId!, planId)
 
   revalidatePath(`/${slug}/agenda`)
   revalidatePath(`/${slug}/agenda/${appointmentId}`)

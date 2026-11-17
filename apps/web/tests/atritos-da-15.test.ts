@@ -286,7 +286,8 @@ describe('os BAIXA da 15ª: o texto diz o que vale', () => {
     expect(ler('app/[slug]/cliente/planos/[id]/page.tsx')).toContain('a combinar na unidade')
   })
   it('A36: o termo e o contrato escolhidos saem de "Outros documentos"', () => {
-    expect(ler('components/admin/procedure-form.tsx')).toMatch(/o\.id !== termoEscolhido/)
+    // A20 da 20ª: a regra foi para outrosDocumentosOferecidos (e o termo fica fora até um ser escolhido).
+    expect(ler('components/admin/procedure-form.tsx')).toContain('outrosDocumentosOferecidos(modelos?.outros ?? [], { termo: termoEscolhido, contrato: contratoEscolhido')
   })
   it('A37: a variável fora do overline, o "aviso no celular ligado" e um rótulo só no "Fez"', async () => {
     const f = ler('components/admin/notification-campaign-form.tsx')

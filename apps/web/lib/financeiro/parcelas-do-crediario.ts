@@ -34,3 +34,13 @@ export const ROTULO_DO_CREDIARIO = 'Crediário'
 export function limiteDoCrediarioEmTexto(maximo: number): string {
   return `até ${maximo}x, o limite da rede`
 }
+
+/**
+ * A opção do seletor de parcelas (A1 da 20ª simulação; princípios 3 e 7): no
+ * crediário com entrada, "3x" eram a entrada mais 3 parcelas — 4 pagamentos —,
+ * e quem queria "3 vezes, a primeira hoje" escolhia errado. Com entrada, a
+ * opção diz quantos pagamentos dá.
+ */
+export function rotuloDaOpcaoDeParcelas(n: number, comEntrada: boolean): string {
+  return comEntrada ? `${n}x + entrada (${n + 1} pagamentos)` : `${n}x`
+}

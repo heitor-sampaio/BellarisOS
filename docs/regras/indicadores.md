@@ -725,6 +725,9 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   princípio 3; `FORA_DO_TOTAL`, `lib/metrics/vendas-comum.ts`). O crédito não
   tem quem vendeu: no "só os meus" ele não entra. Prova:
   `e2e/relatorio-vendas-comandas.spec.ts`, `tests/relatorio-vendas-comandas.test.ts`.
+  A dica do Total vendido (`[data-ponte-vendas-caixa]`) diz também que o
+  voucher e os pontos pagam parte da venda e não entram no caixa, e que o
+  desconto fica fora dos dois (A31 da 20ª; sem número: não há métrica dele).
 - **Atendimento avulso** (era "Procedimento"): atendimento concluído, com preço, que não consumiu
   nada já vendido. A sessão de pacote, a unidade pré-paga e a sessão de plano
   não são venda de novo. Data `aconteceu_em` (o dia em que aconteceu — D13; o eixo de `serviceRevenue`);
@@ -1058,6 +1061,11 @@ ranking e a ocupação por unidade, e o ranking de comissão (de todas). Com o
 **CRM** "só os meus", o funil do dashboard conta as oportunidades dela e as sem dono
 (`p_owner`, o recorte do quadro). Prova:
 `e2e/indicadores-dashboard-da-rede-so-os-meus.spec.ts`.
+
+**O funil do dashboard abre no funil que tem oportunidade** (A30 da 20ª;
+princípio 7): o `?funil=` vale sempre; sem ele, o padrão — e, com o padrão
+vazio no período, o primeiro funil ativo com oportunidade (`funilDoDashboard`,
+`lib/crm/funil-do-dashboard.ts`). Todos vazios, o padrão.
 
 **O financeiro "só os meus" é "Minhas comissões"** (A52 e A41 da 6ª
 simulação, 2026-11-04; princípio 3): com o financeiro em OWN, a tela de

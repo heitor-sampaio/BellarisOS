@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { idOu404 } from '@/lib/id-da-rota'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { montaPlano } from '@/lib/plano-de-tratamento/quem-monta'
-import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNoPdv } from '@/lib/equipe/quem-desfaz'
+import { quemDesfazNoCaixa, quemMarcaAChegada, quemRecebeNaUnidade, quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 import { colheOsDocumentos, dispensaDocumentos } from '@/lib/documentos/acesso'
 import { documentosDoAgendamento } from '@/lib/documentos/leitura'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
@@ -671,7 +671,11 @@ export async function SessaoDeAtendimento({
         // A35 da 12ª: quem recebe e não estorna lê, no pagamento confirmado, a quem pedir.
         quemEstorna={podeReceber(ctx) && !can(ctx, 'financial', 'MANAGE') ? await quemDesfazNoCaixa(ctx.tenantId!, branchId) : null}
         // A11 da 19ª: o avulso concluído aguardando o PDV diz quem recebe, a quem não recebe.
-        quemRecebe={!podeReceber(ctx) && apptRaw.status === 'COMPLETED' && !pago ? await quemRecebeNoPdv(ctx.tenantId!, branchId) : null}
+        // A8 da 20ª: também na janela do "Finalizar" (em atendimento), e se só a rede recebe.
+        quemRecebe={!podeReceber(ctx) && ['IN_PROGRESS', 'COMPLETED'].includes(apptRaw.status as string) && !pago ? await quemRecebeNaUnidade(ctx.tenantId!, branchId) : null}
+        // A9 da 20ª: quem não conclui (sem o Prontuário em Gerenciar) lê quem conclui, pelo nome.
+        quemConclui={canManage && !canEditRecords && ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(apptRaw.status as string)
+          ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null}
         // A10 da 19ª: sem o check-in no cargo, o agendado diz QUEM marca a chegada.
         quemMarcaAChegada={!canCheckin && apptRaw.status === 'SCHEDULED' ? await quemMarcaAChegada(ctx.tenantId!, branchId) : null}
         // A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos — a régua da ficha) estorna daqui, pela mesma janela.

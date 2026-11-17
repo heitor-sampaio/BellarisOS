@@ -36,6 +36,7 @@ import { getClientesParaReativarDoRecorte, getClientesAtivos } from '@/lib/metri
 import { differenceInDays } from 'date-fns'
 import { lotesVencendoDoRecorte } from '@/lib/estoque/lotes'
 import type { LoteNoDashboard } from '@/components/shared/lotes-vencendo'
+import { funilDoDashboard } from '@/lib/crm/funil-do-dashboard'
 import { situacaoDoEstoque, estoqueBaixo, contarSituacoes, saldoParaMostrar, minimoParaMostrar, formatarQuantidadeComUnidade, ROTULO_DA_SITUACAO, minimoEhDoCadastro, rotuloDoMinimo } from '@/lib/estoque/situacao'
 
 
@@ -568,19 +569,18 @@ export default async function AdminDashboardPage({
   // sucedem — "Novo" de vendas somado com "Novo" de recuperação.
   const funnels = canCrm ? await seedDefaultFunnel(ctx.tenantId!) : []
   const funisAtivos = funnels.filter(f => f.archived_at === null)
-  const funilAtivo  = funisAtivos.find(f => f.id === rawFunil)
-    ?? funisAtivos.find(f => f.is_default)
-    ?? funisAtivos[0]
-
-  const funnelStages = canCrm
-    ? await getLeadFunnel({
-        tenantId: ctx.tenantId!, branchIds: null,
-        from: startDate, to: endDate,
-        funnelId: funilAtivo?.id ?? null,
-        // CRM "só os meus": os leads dela e os sem dono, o recorte do quadro.
-        ownerId: recorte.crm,
-      })
-    : []
+  // A30 da 20ª: sem `?funil=`, o padrão vazio cede ao primeiro com oportunidade.
+  const lerFunil = (funnelId: string) => getLeadFunnel({
+    tenantId: ctx.tenantId!, branchIds: null,
+    from: startDate, to: endDate,
+    funnelId,
+    // CRM "só os meus": os leads dela e os sem dono, o recorte do quadro.
+    ownerId: recorte.crm,
+  })
+  const { funil: funilAtivo, etapas } = canCrm
+    ? await funilDoDashboard({ funis: funisAtivos, pedido: rawFunil, lerFunil, total: e => resumoDoFunil(e).total })
+    : { funil: undefined, etapas: null }
+  const funnelStages = etapas ?? []
 
   const leadFunnel     = funnelStages.map(s => ({ name: s.name, count: s.leads }))
   // A conta da conversão é UMA (lib/metrics), a mesma do quadro de Oportunidades (D10).

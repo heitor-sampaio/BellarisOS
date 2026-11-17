@@ -391,6 +391,8 @@ test('FD2a na ficha: o voucher de desconto diz que se usa no PDV; FD2c: a Fideli
 
       await p.goto('/admin/settings?tab=fidelidade')
       const corpo = p.locator('main')
+      // A explicação do desconto em pontos mora na dica do bloco (2026-11-17).
+      await corpo.getByRole('button', { name: 'Como o desconto em pontos funciona' }).hover()
       await expect(corpo).toContainText('No PDV, ao receber')
       await expect(corpo).not.toContainText(/recepção/i)
     })

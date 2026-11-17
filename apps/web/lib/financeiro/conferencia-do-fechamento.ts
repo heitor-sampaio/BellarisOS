@@ -240,3 +240,24 @@ export function conferidoValido(
   }
   return { ok: true, conferido: Object.keys(conferido).length ? conferido : null }
 }
+
+/**
+ * O dinheiro que SAIU mais do que entrou (A4 da 20ª simulação; princípio 2): a
+ * despesa em dinheiro com a gaveta vazia fechava em "−R$ 80,00 na gaveta" e,
+ * contado 0, "Sobrou R$ 80,00" — a conta está certa, mas ninguém a entendia.
+ * Não recusa (a saída é a que a rede lançou): avisa, e diz o que conferir.
+ * Zero ou positivo: nulo.
+ */
+export function avisoDaGavetaNegativa(registrado: number): string | null {
+  if (!(Math.round(registrado * 100) < 0)) return null
+  return `Saiu ${brl(Math.abs(registrado))} a mais do que entrou em dinheiro: a gaveta não fica negativa. Confira a saída em dinheiro, ou informe o fundo de troco.`
+}
+
+/**
+ * O botão que grava a conferência (A6 da 20ª; princípio 3): no "Fechar de
+ * novo" ele dizia "Fechar o dia", e a Auditoria registrava "Fechou de novo".
+ */
+export function rotuloDoBotaoDeFechar({ reabrindo, pendente }: { reabrindo: boolean; pendente: boolean }): string {
+  if (pendente) return 'Fechando…'
+  return reabrindo ? 'Fechar de novo' : 'Fechar o dia'
+}

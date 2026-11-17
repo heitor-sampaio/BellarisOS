@@ -449,8 +449,11 @@
   linha diz o que cada um faz ("Confirmar: a cliente confirmou que vem.
   Chegou: ela está na espera. …", `[data-o-que-cada-um-faz]`). **Quem não
   conclui lê ANTES de iniciar** (A20): sem o Prontuário em Gerenciar, a janela
-  (`podeConcluir`) e a tela do atendimento dizem "Quem conclui é o
-  profissional" já no agendado/confirmado/chegou, não só depois de iniciar. E
+  (`podeConcluir`) e a tela do atendimento dizem quem conclui já no
+  agendado/confirmado/chegou, não só depois de iniciar — pela PERMISSÃO e com
+  os nomes (A9 da 20ª, `textoDeQuemConclui`, `quemConcluiOAtendimento`):
+  "Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui
+  (…)". A regra não muda: concluir pede o Prontuário em Gerenciar. E
   o concluído A RECEBER não diz "Este agendamento já foi encerrado." embaixo
   do "Receber no PDV" (A14; era o "Receber pagamento" — desde o PDV7 a
   janela leva à comanda do atendimento no PDV, `rotaDaComanda`). Prova:
@@ -3237,8 +3240,14 @@ O resto do fluxo:
   avaliação CONCLUÍDA, só o plano nasce: monta quem atende na unidade (PT2,
   "Montar plano desta avaliação"). Com ele só em Ver, o
   cartão some inteiro, com a dica do J-35 — que mandava a um "Finalizar
-  atendimento" que não existe para ela (o alto da tela já diz "Quem conclui é
-  o profissional"). Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
+  atendimento" que não existe para ela (o alto da tela já diz quem conclui).
+  Prova: `e2e/permissoes-quem-so-ve.spec.ts`.
+- **Quem recebe, na unidade** (A8 da 20ª, princípio 3): o avulso concluído a
+  receber e a janela de finalizar dizem quem recebe NESTA unidade
+  (`quemRecebeNaUnidade`); sem ninguém dela, "Ninguém desta unidade tem o PDV
+  ou o Financeiro em Gerenciar; quem recebe, pela rede: …". O concluído a
+  receber deixa o "Aceitar plano" como secundário (A16): o passo da vez é
+  receber.
 - **A avaliação concluída gera o plano** (revisão do Heitor, 2026-10-29: "é
   preciso avaliar primeiro pra depois decidir o que fazer"). O A30 tinha tirado
   o "Fechar agora" e o "Enviar para a recepção" porque gerar o plano regravava

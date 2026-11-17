@@ -11,6 +11,7 @@ import {
   type ExecucaoNaLista, type PassoDaExecucao,
 } from '@/actions/automacoes'
 import { ROTULOS } from '@/lib/automacoes/validar'
+import { fraseDaEspera, esperaDoPasso } from '@/lib/automacoes/frase-da-espera'
 import type { TipoDeNo } from '@estetica-os/types'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
@@ -188,6 +189,12 @@ export function PainelDeExecucoes({
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 3 }}>
                     {quando(ex.criadaEm, fuso)}{ex.sobre ? ` · ${ex.sobre}` : ''}
                   </p>
+                  {/* A14 da 20ª: quando segue — e, se o agendamento caiu, que só vai reconferir. */}
+                  {fraseDaEspera(ex, fuso) && (
+                    <p data-frase-da-espera style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)', marginTop: 3, lineHeight: 1.45 }}>
+                      {fraseDaEspera(ex, fuso)}
+                    </p>
+                  )}
                   {ex.erro && (
                     <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', marginTop: 3, lineHeight: 1.45 }}>
                       {ex.erro}
@@ -196,7 +203,7 @@ export function PainelDeExecucoes({
                 </div>
               </button>
 
-              {expandida && <Passos passos={passos} />}
+              {expandida && <Passos passos={passos} fuso={fuso} />}
             </div>
           )
         })}
@@ -212,7 +219,7 @@ export function PainelDeExecucoes({
  * quem foi o aviso, por que a mensagem não saiu. É a diferença entre um log e
  * uma explicação.
  */
-function Passos({ passos }: { passos: PassoDaExecucao[] }) {
+function Passos({ passos, fuso }: { passos: PassoDaExecucao[]; fuso: string }) {
   if (!passos.length) {
     return (
       <p style={{ padding: '0 16px 12px 38px', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
@@ -236,7 +243,7 @@ function Passos({ passos }: { passos: PassoDaExecucao[] }) {
                 fontSize: 'var(--text-overline)', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 1,
                 wordBreak: 'break-word',
               }}>
-                {descrever(p.resumo)}
+                {esperaDoPasso(p.resumo, fuso) ?? descrever(p.resumo)}
                 {p.ms != null && p.ms > 400 ? ` · ${p.ms}ms` : ''}
               </p>
             </div>

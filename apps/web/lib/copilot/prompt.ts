@@ -110,6 +110,10 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     // D4 da 17ª: a grade de horarios_livres é sugestão; quem diz se o horário está ocupado é o agendar.
     '- Quando a pessoa pede um horário (dia e hora), chame agendar ou remarcar com o horário pedido: elas conferem o conflito com a agenda e dizem se não dá. A grade de horarios_livres é só sugestão, de 30 em 30 min: um horário fora da grade não está ocupado por isso — nunca diga que está ocupado ou indisponível só porque não aparece nela.',
     `- Datas e horários são no ${nomeDoFuso(extras.fuso)} (o da unidade; numa unidade de outro fuso, as ferramentas já dizem e recebem a hora de lá). "Amanhã", "sexta", "semana que vem" são relativos à data de hoje acima. Ao chamar ferramentas, use datas ISO (AAAA-MM-DD) e horas HH:MM.`,
+    // A26 da 20ª (princípio 7): "Resumo da semana" perguntava "Confirmo: a semana atual?". D2: e a resposta diz o período.
+    '- Consulta sem período dito ("a semana", "o mês", "o resumo"): use o atual — a semana de agora, o mês de agora — e chame a ferramenta direto, sem perguntar qual. Toda resposta de consulta diz o período que leu ("hoje, 16/11", "de 16/11 a 22/11").',
+    // A27 da 20ª: "Repasse a Toxina da Neusa para a Bianca" foi lido como repasse entre clientes.
+    '- "Repassar" um atendimento a alguém ("repasse a Toxina da Neusa para a Bianca") é trocar quem atende: chame remarcar com o mesmo dia e hora e o profissional novo.',
     '- Valores em reais no formato R$ 1.240,00.',
     // CR1 (a revisão do Heitor, 2026-11-13): a pessoa é o contato, o card é a oportunidade.
     '- No comercial, a pessoa é o "contato" e o card do funil é a "oportunidade": nas respostas, use só esses dois nomes, mesmo que a pessoa use outro.',

@@ -14,7 +14,32 @@ export function textoDeQuemMarcaAChegada(quem: string[] | null | undefined): str
   return `Quem tem a Agenda em Gerenciar marca a chegada${entreParenteses(quem)}; depois você inicia.`
 }
 
-/** A11: o avulso concluído "Aguardando o pagamento no PDV", a quem não recebe. */
-export function textoDeQuemRecebe(quem: string[] | null | undefined): string {
+/**
+ * A11: o avulso concluído "Aguardando o pagamento no PDV", a quem não recebe.
+ * A8 da 20ª (princípio 3): quando só quem é da REDE recebe (ninguém da unidade
+ * tem o PDV nem o Financeiro em Gerenciar), a frase diz — a comanda ficava
+ * parada esperando alguém da unidade.
+ */
+export function textoDeQuemRecebe(quem: string[] | null | undefined, opcoes: { soDaRede?: boolean } = {}): string {
+  if (opcoes.soDaRede && quem?.length) {
+    return `Ninguém desta unidade tem o PDV ou o Financeiro em Gerenciar; quem recebe, pela rede: ${emLista(quem)}.`
+  }
   return `Quem recebe é quem tem o PDV ou o Financeiro em Gerenciar${quem?.length ? `: ${emLista(quem)}` : ''}.`
+}
+
+/**
+ * A9 da 20ª (princípios 1 e 3): concluir grava o prontuário e pede o
+ * Prontuário em Gerenciar — a tela dizia "Quem conclui é o profissional" a
+ * quem ERA quem atende, sem o Prontuário no cargo. Diz a permissão e os nomes.
+ */
+export function textoDeQuemConclui(quem: string[] | null | undefined): string {
+  return `Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui${entreParenteses(quem)}.`
+}
+
+/**
+ * A10 da 20ª (princípio 3): "Completar o cadastro" é de quem edita os
+ * Clientes; quem colhe a assinatura sem editar lê quem completa.
+ */
+export function textoDeQuemCompletaOCadastro(quem: string[] | null | undefined): string {
+  return `Quem tem os Clientes em Gerenciar completa o cadastro${entreParenteses(quem)}.`
 }

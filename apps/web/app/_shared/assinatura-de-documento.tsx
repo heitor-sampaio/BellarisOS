@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade, can } from '@/lib/auth'
+import { quemCompletaOCadastro } from '@/lib/equipe/quem-desfaz'
 import { assertColheOsDocumentos } from '@/lib/documentos/acesso'
 import { documentoParaExibir } from '@/lib/documentos/leitura'
 import { TelaDeAssinatura } from '@/components/shared/tela-de-assinatura'
@@ -62,6 +63,9 @@ export async function AssinaturaDeDocumento({ id, base, voltar }: {
       podeColher
       voltar={destino}
       rotaDoCliente={rotaDoCliente}
+      // A10 da 20ª: completar o cadastro é de quem edita os Clientes; os outros leem quem completa.
+      podeCompletar={can(ctx, 'clients', 'MANAGE')}
+      quemCompleta={!can(ctx, 'clients', 'MANAGE') && doc.resumo.status === 'INCOMPLETO' ? await quemCompletaOCadastro(ctx.tenantId!, doc.branchId) : null}
       juntos={juntos}
       doc={{
         id:         doc.resumo.id,

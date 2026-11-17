@@ -55,3 +55,13 @@ export function textoDoBotaoDeImportar(p: { destino: Destino; prontas: number; j
   ]
   return `${base}: ${partes.filter(Boolean).join(', ')}`
 }
+
+/**
+ * As colunas da planilha que ficam de fora — as em "Não importar" (A19 da 20ª
+ * simulação; princípio 3): a coluna "origem" de uma importação sem
+ * oportunidade sumia calada (a origem não vira tag — T3). A prévia diz quais,
+ * pelo cabeçalho; sem cabeçalho, "Coluna N", como o passo das colunas.
+ */
+export function colunasQueNaoEntram(cabecalho: readonly string[], mapa: readonly (string | null)[]): string[] {
+  return cabecalho.map((h, i) => (mapa[i] ? null : h.trim() || `Coluna ${i + 1}`)).filter((h): h is string => !!h)
+}

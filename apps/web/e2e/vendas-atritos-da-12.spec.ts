@@ -172,7 +172,7 @@ test('A22: a sessão do pacote diz que os horários aparecem depois da profissio
     await p.getByRole('button', { name: /Gerenciar/ }).first().click()
     await p.getByRole('button', { name: 'Agendar', exact: true }).first().click()
     const agendar = p.locator('[data-agendar-sessao]')
-    await expect(agendar.locator('[data-dica-dos-horarios]')).toContainText('Escolha a profissional e a data')
+    await expect(agendar.locator('[data-dica-dos-horarios]')).toContainText('Escolha quem atende e a data')
     await agendar.getByLabel('Profissional').selectOption({ index: 1 })
     await expect(agendar.locator('[data-dica-dos-horarios]')).toContainText('data')
   })

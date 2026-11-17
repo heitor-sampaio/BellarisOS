@@ -73,6 +73,27 @@ export interface NomesDaAuditoria {
   comissoes?: Record<string, string>
   /** A33 da 19ª: o conferido do fechamento (o id → "Dinheiro R$ 300,00 e Pix R$ 1.200,00"), lido agora. */
   conferidosDoFechamento?: Record<string, string>
+  /** A34 da 20ª: o motivo do fechamento do documento (o id → `closed_reason`), lido agora. */
+  motivosDoDocumento?: Record<string, string>
+  /** A34 da 20ª: qual sessão de qual pacote (o id → "a sessão 2 do pacote 5 peelings"), lido agora. */
+  sessoesDoPacote?: Record<string, string>
+  /** A34 da 20ª: o pacote vendido (o id de `client_packages` → o nome do pacote), lido agora. */
+  pacotesDaCliente?: Record<string, string>
+  /** A34/A35 da 20ª: o arquivo e o placar da importação, lidos agora. */
+  importacoes?: Record<string, ImportacaoDaAuditoria>
+  /** A35 da 20ª: o custo da entrada de estoque (o id do movimento → quantidade × custo), lido agora. */
+  custosDasEntradas?: Record<string, number>
+  /** A36 da 20ª: o nome do procedimento (o id → o nome), lido agora. */
+  procedimentos?: Record<string, string>
+}
+
+export interface ImportacaoDaAuditoria {
+  arquivo:     string
+  destino:     string
+  total:       number
+  novas:       number
+  completadas: number
+  comErro:     number
 }
 
 export interface LancamentoDaAuditoria {

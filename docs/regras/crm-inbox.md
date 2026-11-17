@@ -762,6 +762,9 @@ contatos dela — e vê Configurações só com essa aba.
   linha". **E o e-mail que se perde** (A17): "— o e-mail desta linha (joana@…)
   não entra: fica o da linha 2 (marta@…)"; com quem já existe, "o e-mail
   desta linha só entra se X ainda não tiver um". A regra D-10/A14 não mudou.
+  A prévia (passo 3) diz as colunas da planilha que ficaram em "Não
+  importar": "A coluna “origem” não será importada." (A19 da 20ª,
+  `colunasQueNaoEntram`).
   Prova: `e2e/crm-atritos-da-7.spec.ts` ("A16/A17"), `tests/importacao.test.ts`.
 - **O mesmo telefone com OUTRO nome na planilha** (A14 da 6ª simulação,
   2026-11-04; princípios 1 e 3: a Karina sumia na Bianca, calada): não é a
@@ -1180,6 +1183,11 @@ compara o DIA da criação no fuso do negócio (`dayKeyTZ`).
 "Mover para outro funil" do menu "···" do card. O menu abre num portal
 (`posicaoDoPainel`), inteiro na tela, também no card da primeira coluna e no
 celular (A15). Prova: `e2e/crm-atritos-da-16.spec.ts`.
+**A etapa aberta nova entra antes das de fechamento** (A28 da 20ª; princípio
+7): "+ Etapa" grava a aberta antes do bloco final de Ganho/Perdido do funil,
+e as de fechamento andam uma posição (`posicaoDaEtapaNova`,
+`lib/crm/posicao-da-etapa.ts`); a de fechamento nova vai para o fim. O
+arrastar continua mudando a ordem.
 
 **O funil da rede NOVA** (`DEFAULT_STAGES`, `lib/crm.ts`, criado no primeiro
 acesso por `seedDefaultFunnel`): Novo, Em contato, Avaliação, Em negociação,
@@ -1402,7 +1410,9 @@ o contato junto.
 - **O menu "…" do card move de etapa** (A3: só tinha ganho e perdido; no celular
   arrastar pesa): "Mover para a etapa" lista as outras etapas ABERTAS do funil
   (`[data-mover-para-etapa]`), pelo `updateLeadStage` de sempre — e a recusa
-  (antes descartada) volta o card e diz por quê.
+  (antes descartada) volta o card e diz por quê. Tem também "Agendar"
+  (`[data-agendar-do-card]`, A29 da 20ª), a mesma janela do editor, sem
+  abri-lo; aparece quando o card tem o Agendar (`podeAgendar`).
 - **O card da cliente que comprou diz o VENDIDO** (A4: depois do plano de
   R$ 8.400, o card da Beatriz seguia com R$ 2.600, o preço do procedimento de
   interesse). Com a compra que o card já sugere marcar como ganho (A18 da 7ª),

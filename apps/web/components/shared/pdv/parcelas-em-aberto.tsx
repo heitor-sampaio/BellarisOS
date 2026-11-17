@@ -12,6 +12,7 @@ import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
+import { anterioresEmAbertoEmTexto } from '@/lib/pdv/situacoes'
 
 /** "Parcela 2 de 3 do crediário: R$ 1.000,00" — ou "A receber: R$ 300,00". */
 function tituloDaParcela(p: ParcelaEmAberto): string {
@@ -61,7 +62,7 @@ export function ParcelasEmAberto({ parcelas, slug, titulo = 'Em aberto com a cli
           </li>
         ))}
       </ul>
-      {aberta && <ReceberAParcela parcela={aberta} slug={slug} aoFechar={() => setAberta(null)} />}
+      {aberta && <ReceberAParcela parcela={aberta} todas={parcelas} slug={slug} aoFechar={() => setAberta(null)} />}
     </div>
   )
   return (
@@ -85,12 +86,14 @@ export function ParcelasEmAberto({ parcelas, slug, titulo = 'Em aberto com a cli
           </button>
         </div>
       ))}
-      {aberta && <ReceberAParcela parcela={aberta} slug={slug} aoFechar={() => setAberta(null)} />}
+      {aberta && <ReceberAParcela parcela={aberta} todas={parcelas} slug={slug} aoFechar={() => setAberta(null)} />}
     </div>
   )
 }
 
-function ReceberAParcela({ parcela, slug, aoFechar }: { parcela: ParcelaEmAberto; slug: string; aoFechar: () => void }) {
+function ReceberAParcela({ parcela, todas, slug, aoFechar }: { parcela: ParcelaEmAberto; todas: ParcelaEmAberto[]; slug: string; aoFechar: () => void }) {
+  // A5 da 20ª: a parcela adiantada diz as de antes que seguem em aberto (só avisa).
+  const adiantada = anterioresEmAbertoEmTexto(parcela, todas)
   const router = useRouter()
   const [forma, setForma] = useState('')
   const [bandeira, setBandeira] = useState('')
@@ -124,6 +127,9 @@ function ReceberAParcela({ parcela, slug, aoFechar }: { parcela: ParcelaEmAberto
           <b style={{ display: 'block', color: 'var(--text)' }}>{tituloDaParcela(parcela)}</b>
           {[parcela.vencimento, parcela.descricao].filter(Boolean).join(' · ')}
         </p>
+        {adiantada && (
+          <p data-parcela-adiantada role="note" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{adiantada}</p>
+        )}
         <FormasDePagamento valor={forma} formas={FORMAS_DA_BAIXA} desligado={pendente}
           aoMudar={f => { setForma(f); setVezes(1); setBandeira(''); setMaquininha('') }} />
         <CampoDaBandeira metodo={forma} valor={bandeira} aoMudar={setBandeira} total={parcela.valor}

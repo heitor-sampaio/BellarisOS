@@ -3,10 +3,12 @@
 import React, { useActionState, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react'
 import { Plus, Lock, Trash2, Pencil, Check, X, CheckCircle2, AlertTriangle, Users } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { createRole, updateRole, deleteRole } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
 import { escopoInicial } from '@/lib/cargos/escopo-inicial'
+import { cargoEscolhido } from '@/lib/cargos/cargo-escolhido'
 import {
   ALL_MODULES, MODULOS_DO_CARGO, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
   SCOPE_LABELS, isScoped,
@@ -69,8 +71,18 @@ function buildScopes(perms: Partial<Record<AppModule, RoleModulePermission>>): S
 }
 
 export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDoPlano = [] }: RolesEditorProps) {
-  const editable = roles.filter(r => !r.is_system)
-  const [selectedId, setSelectedId] = useState<string | null>(editable[0]?.id ?? roles[0]?.id ?? null)
+  // A18 da 20ª (princípio 3): o escolhido mora no endereço (`?cargo=`) —
+  // recarregada a tela, a matriz voltava ao primeiro cargo, e o recém-criado
+  // ficava só na lista.
+  const pedido = useSearchParams().get('cargo')
+  const [selectedId, setSelectedIdNoEstado] = useState<string | null>(() => cargoEscolhido(roles, pedido))
+  function setSelectedId(id: string | null) {
+    setSelectedIdNoEstado(id)
+    const url = new URL(window.location.href)
+    if (id) url.searchParams.set('cargo', id)
+    else url.searchParams.delete('cargo')
+    window.history.replaceState(null, '', url)
+  }
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   // A1 da 13ª (F70): enquanto se dá nome ao cargo novo, o painel dizia "O que

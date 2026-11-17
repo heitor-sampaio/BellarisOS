@@ -5,6 +5,7 @@ import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isStageOutcome, type StageOutcome } from '@/lib/crm'
+import { posicaoDaEtapaNova } from '@/lib/crm/posicao-da-etapa'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
 // Os tipos e o seed dos funis vivem em `lib/crm.ts` e `actions/crm-funnels.ts`:
@@ -60,21 +61,27 @@ export async function createStage(
 
     // Posição é por funil: contar no tenant inteiro jogaria a etapa nova para o
     // fim de uma numeração que não é a deste quadro.
-    const ultima = await ler(admin
+    const resultado: StageOutcome = isStageOutcome(outcome) ? outcome : 'OPEN'
+    const etapas = (await ler(admin
       .from('crm_stages')
-      .select('position')
+      .select('id, position, outcome')
       .eq('tenant_id', ctx.tenantId!)
-      .eq('funnel_id', funnelId)
-      .order('position', { ascending: false })
-      .limit(1)
-      .maybeSingle(), 'buscar a etapa')
+      .eq('funnel_id', funnelId), 'buscar as etapas do funil') ?? []) as { id: string; position: number; outcome: StageOutcome }[]
+    // A28 da 20ª (princípio 7): a etapa aberta entra antes de Ganho e Perdido
+    // (ia para o fim, depois de "Perdido"). Primeiro as de fechamento andam uma
+    // casa; se a etapa nova falhar depois, fica só um buraco na numeração — a
+    // ordem continua a mesma (a posição só ordena).
+    const { posicao, renumerar } = posicaoDaEtapaNova(etapas, resultado)
+    await Promise.all(renumerar.map(e => gravar(admin
+      .from('crm_stages').update({ position: e.position })
+      .eq('id', e.id).eq('tenant_id', ctx.tenantId!), 'abrir lugar para a etapa nova')))
 
     const { error } = await admin.from('crm_stages').insert({
       tenant_id: ctx.tenantId!,
       funnel_id: funnelId,
       name, color,
-      position:  ultima ? (ultima.position as number) + 1 : 0,
-      outcome:   isStageOutcome(outcome) ? outcome : 'OPEN',
+      position:  posicao,
+      outcome:   resultado,
     })
 
     if (error) return { error: `Erro ao criar etapa: ${error.message}` }

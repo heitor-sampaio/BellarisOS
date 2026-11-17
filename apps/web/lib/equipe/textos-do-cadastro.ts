@@ -11,8 +11,12 @@ import { formatBRL, parseDinheiro } from '@estetica-os/utils'
  * o erro só aparecia na linha da Equipe depois. O resumo diz o que vai valer,
  * nos dois campos, como a pessoa digitou.
  */
-export function resumoDaComissaoDoMembro(c: { tipo: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'NENHUMA'; valor: string; venda: string }): string {
+export function resumoDaComissaoDoMembro(c: { tipo: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'NENHUMA'; valor: string; venda: string; atende?: boolean }): string {
   const pct = (t: string) => `${t.trim().replace('.', ',')}%`
+  const temVenda = c.venda.trim() && Number.isFinite(parseDinheiro(c.venda)) && parseDinheiro(c.venda) > 0
+  // A22 da 20ª (princípio 7): quem não atende e não tem a de atendimento — o
+  // resumo falava em "nenhuma por atendimento" a quem só vende.
+  if (c.atende === false && c.tipo === 'NENHUMA') return temVenda ? `Comissão: ${pct(c.venda)} de cada venda.` : 'Comissão: nenhuma.'
   let atendimento: string
   if (c.tipo === 'NENHUMA') atendimento = 'nenhuma por atendimento'
   else if (!c.valor.trim() || !Number.isFinite(parseDinheiro(c.valor))) {
@@ -30,4 +34,13 @@ export function resumoDaComissaoDoMembro(c: { tipo: 'PERCENTAGE' | 'FIXED_AMOUNT
 export function confirmacaoDoCadastro(nome: string): string {
   const quem = nome.trim()
   return `${quem ? `${quem} entrou na equipe.` : 'Membro criado.'} A senha é a temporária que você definiu; ela troca no primeiro acesso.`
+}
+
+/**
+ * Quem entrou na equipe sem a comissão (A3 da 8ª simulação): o aviso dizia "os
+ * atendimentos dela" também do Dr. Marcos (A3 da 20ª; princípio 3) — fala
+ * pelo nome, sem supor o gênero.
+ */
+export function avisoDeQuemEntrouSemComissao(nome: string): string {
+  return `${nome} entrou sem comissão: os atendimentos de ${nome} não geram comissão até alguém definir, no chip “Sem comissão” da linha.`
 }

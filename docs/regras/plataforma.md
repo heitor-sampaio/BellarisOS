@@ -940,6 +940,15 @@ de uma unidade"):**
   comissões no plano); desativar quem não atende não diz "e sai da agenda".
   Na aba Unidades, a unidade sem cidade diz "Sem cidade: complete o endereço."
   (A19). Prova: `tests/atritos-da-17-cadastros.test.ts`.
+- **A 20ª simulação** (`tests/atritos-da-20-configuracoes.test.ts`): o cargo
+  escolhido fica no endereço (`?cargo=`), e o recém-criado continua escolhido
+  ao recarregar (`cargoEscolhido`, A18); o resumo da comissão aparece uma vez,
+  só com a janela aberta, e a quem não atende diz "Comissão: nenhuma." ou só
+  a de venda (A22); o selo "Atende em …" sai da linha de quem está
+  desativado (`seloDoAtende`, A24); a unidade com cidade e sem UF avisa
+  "Falta a UF: os documentos da unidade saem sem ela." no cadastro, na
+  edição e no `/setup` — avisa, não recusa (`avisoDaUfQueFalta`, A21;
+  princípio 2).
 
 **O "Atende" é por unidade — e não é abrangência (§11 do CLAUDE.md; decisão 2
 do Heitor sobre a 8ª simulação, 2026-11-06: "Inves de atende também em, o
@@ -1177,6 +1186,25 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
       do pacote: `comAGeracaoNaVenda`); a ficha é "Criou a ficha de X";
     - a linha sem unidade diz "Da rede" na coluna Unidade (a entrada no
       sistema, não).
+  - **A 20ª simulação** (A34–A37, `tests/auditoria-atritos-da-20.test.ts`):
+    - o documento fechado é o fato: "Cancelou o documento X (motivo: Pacote
+      cancelado)", "Dispensou …", "Substituiu …" — o motivo se lê agora;
+      "fechamento", "motivo do fechamento", "desfeita"… no `CAMPO`;
+    - a sessão do pacote diz qual: "Cancelou a sessão 2 do pacote 5
+      peelings" (Usou, Devolveu); a gravação do cancelamento do pacote é
+      "Cancelou o pacote X" (", e estornou R$ …" com o estorno junto);
+    - a importação: "Criou a importação clientes.csv (40 linhas, para
+      clientes)", "Concluiu a importação … (30 novas, 8 completadas, 2 com
+      erro)", "A importação … falhou"; o resto pelo arquivo ("prazo da lista
+      de erros", não "validade dos erros");
+    - a entrada diz o custo, lido agora ("Deu entrada em 2 X (R$ 240,00)":
+      a quantidade × o custo do movimento); a entrada ao contrário é "Desfez
+      a entrada de 2 X", também com o lote gravado primeiro;
+    - o agendamento criado: "Agendou Sofia para 18/11/2026 10:00 — Peeling,
+      com Dra. Paula" (o procedimento lido agora), também numa gravação com
+      outros registros;
+    - no CSV, o registro clínico sem unidade (a evolução, o termo, o mapa)
+      leva a unidade da gravação; o resto sem unidade segue "Da rede".
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

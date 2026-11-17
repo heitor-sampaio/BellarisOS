@@ -243,7 +243,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
   tipo: 'escrita',
   modulo: 'agenda', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'agenda'),
-  descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (no horário da unidade dele) e, opcionalmente, outro profissional (pelo nome que a pessoa disse: a ferramenta acha entre quem atende, sem precisar buscar antes). O cartão diz se a cliente recebe o aviso no app.',
+  descricao: 'Remarca um agendamento (id, da ferramenta agendamentos) para outra data/hora (no horário da unidade dele) e, opcionalmente, outro profissional (pelo nome que a pessoa disse: a ferramenta acha entre quem atende, sem precisar buscar antes). Também REPASSA o atendimento a outra pessoa que atende ("repasse a Toxina da Neusa para a Bianca", "troque a profissional"): a mesma data e hora, com o profissional novo. O cartão diz se a cliente recebe o aviso no app.',
   parametros: z.object({ agendamento: UUID, data: DATA, hora: HORA, profissional: z.string().max(80).optional() }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)

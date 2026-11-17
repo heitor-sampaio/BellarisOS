@@ -20,6 +20,7 @@ import { buscarClientes } from '@/lib/automacoes/tempo'
 import { contarPublico, contarPublicoComConversa, contarPublicoComAparelho } from '@/lib/clientes/publico'
 import type { CanalParaACliente, ContaAntesDeLigar } from '@/lib/automacoes/antes-de-ligar'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { unidadesParaCriar } from '@/lib/unidades/da-tela'
 
 /**
  * As automações, pela tela.
@@ -672,6 +673,10 @@ export interface ExecucaoNaLista {
   fimEm:      string | null
   /** Do que o fluxo estava falando: o cliente, quando há um. */
   sobre:      string | null
+  /** A que espera: quando volta a andar (A14 da 20ª). */
+  retomaEm:   string | null
+  /** A que espera um agendamento: a situação dele AGORA (o cancelado vai só reconferir). */
+  situacaoDoAgendamento: string | null
 }
 
 export interface PassoDaExecucao {
@@ -693,7 +698,7 @@ export async function listarExecucoes(
 
   let q = admin
     .from('automation_runs')
-    .select('id, status, simulacao, erro, created_at, fim_em, contexto')
+    .select('id, status, simulacao, erro, created_at, fim_em, rodar_apos, contexto')
     .eq('automation_id', automationId)
     .eq('tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
@@ -706,9 +711,24 @@ export async function listarExecucoes(
   const { data, error } = await q
   if (error) return { execucoes: [], error: error.message }
 
+  type Contexto = { cliente?: { nome?: string }; lead?: { nome?: string }; evento?: { entidade?: string; entidadeId?: string } } | null
+  // A14 da 20ª: a que espera um agendamento diz se ele ainda está de pé.
+  const doAgendamento = (r: { status: unknown; contexto: unknown }) => {
+    const e = (r.contexto as Contexto)?.evento
+    return r.status === 'esperando' && e?.entidade === 'agendamento' && e.entidadeId ? e.entidadeId : null
+  }
+  const ids = [...new Set((data ?? []).map(doAgendamento).filter((id): id is string => !!id))]
+  const situacoes = new Map<string, string>()
+  if (ids.length) {
+    const ags = await ler(admin.from('appointments').select('id, status, branches!inner(tenant_id)')
+      .eq('branches.tenant_id', ctx.tenantId!).in('id', ids), 'ler a situação dos agendamentos das execuções') as { id: string; status: string }[] | null
+    for (const a of ags ?? []) situacoes.set(a.id, a.status)
+  }
+
   return {
     execucoes: (data ?? []).map(r => {
-      const contexto = r.contexto as { cliente?: { nome?: string }; lead?: { nome?: string } } | null
+      const contexto = r.contexto as Contexto
+      const agendamento = doAgendamento(r)
       return {
         id:        r.id as string,
         status:    r.status as StatusDaExecucao,
@@ -717,6 +737,8 @@ export async function listarExecucoes(
         criadaEm:  r.created_at as string,
         fimEm:     (r.fim_em as string | null) ?? null,
         sobre:     contexto?.cliente?.nome ?? contexto?.lead?.nome ?? null,
+        retomaEm:  r.status === 'esperando' ? ((r.rodar_apos as string | null) ?? null) : null,
+        situacaoDoAgendamento: agendamento ? (situacoes.get(agendamento) ?? null) : null,
       }
     }),
   }
@@ -912,9 +934,11 @@ export async function contarAntesDeLigar(cfgDaBusca: unknown | null, canais: Can
     ])
     return { comConversa, comAparelho }
   }
+  // A15 da 20ª: o horário das unidades, para a janela dizer quem atende no silêncio.
+  const unidades = (await unidadesParaCriar<{ horario: unknown }>(tenant, 'horario')).map(u => ({ nome: u.name, horario: u.horario }))
   if (cfgDaBusca == null) {
     const [quantas, conta] = await Promise.all([contarPublico(tenant, {}), porCanal({})])
-    return { porBusca: false, quantas, truncado: false, ...conta }
+    return { porBusca: false, quantas, truncado: false, ...conta, unidades }
   }
   const busca = await buscaDoPasso(tenant, cfgDaBusca)
   if ('error' in busca) return busca
@@ -922,5 +946,5 @@ export async function contarAntesDeLigar(cfgDaBusca: unknown | null, canais: Can
   const ids = achadas.clientes.map(c => c.id)
   // Contadas entre AS QUE A BUSCA ACHOU (com o teto do passo), não no público
   // inteiro: é a essas que a mensagem iria.
-  return { porBusca: true, quantas: ids.length, truncado: achadas.truncado, ...(await porCanal({ client_ids: ids })) }
+  return { porBusca: true, quantas: ids.length, truncado: achadas.truncado, ...(await porCanal({ client_ids: ids })), unidades }
 }

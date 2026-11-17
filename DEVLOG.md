@@ -1774,6 +1774,49 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-17 — Os defeitos e atritos da 20ª simulação, corrigidos (o loop retomado)
+
+O Heitor: "Ta, agora vamos retomar o looping de simulações/correções". Os 4 defeitos e 35 dos 37 atritos da 20ª foram corrigidos (o A17 já estava decidido). A pergunta "Para o Heitor" foi respondida pela regra de 16/11: colher a assinatura não pede permissão.
+
+- **D1, o lembrete do remarcado**: toda remarcação emite `agendamento.remarcado` (agenda, troca de unidade, app, Copilot). Agora `reprogramarEsperasDoAgendamento` (`lib/automacoes/remarcacao.ts`) põe o horário novo no contexto das execuções que esperam e refaz o "Esperar até": um dia antes do horário que vale agora, ou já, se faltar menos de um dia (C57b). A espera por duração não muda.
+- **D2, o Copilot**: com a cliente e sem datas, ele lê de hoje até 30 dias à frente; sem a cliente, só hoje. A resposta diz o período lido ("de 16/11 a 16/12/2026").
+  - A26: "a semana" e "o mês" são os atuais, sem perguntar.
+  - A27: "repassar" é trocar quem atende.
+  - A25: o painel vazio abre na conversa que tem cartão a confirmar.
+- **D3, o extrato da comissão**: sem a liberação daquele pagamento, o estorno se liga à liberação sem pagamento do mesmo atendimento e valor, que é a da conclusão.
+- **D4**: a comanda do plano diz "Plano aceito, a pagar", e a da Nova venda, "A receber".
+- **Atendimento e PDV**:
+  - A9: a regra não mudou. A tela diz "Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui (nomes)", no atendimento, na janela da agenda e no editor de plano.
+  - A8: sem ninguém da unidade que receba, a tela diz quem recebe pela rede.
+  - A1: o crediário com entrada diz "3x + entrada (4 pagamentos)".
+  - A7: o estorno diz a comissão que volta (o valor só para quem vê a de todos) e que a taxa sai da conta.
+  - A5: a parcela adiantada avisa a anterior em aberto.
+  - A4: a gaveta negativa avisa.
+  - A6: "Fechar de novo" tem o botão certo.
+  - A2: a venda estornada aponta a Nova venda.
+  - A16: "Aceitar plano" fica secundário depois da conclusão.
+- **Documentos e clientes**: "Completar o cadastro" só para quem tem Clientes em Gerenciar (A10). A aba vazia diz "Nenhum anexo" (A11).
+- **Avisos à cliente**: o plano proposto avisa a cliente no sino (A12). O aviso no celular de quem não tem o app fica "guardado no sino", não "enviado" (A13). A execução que espera diz quando segue, e a do agendamento cancelado diz que vai reconferir (A14). A janela de ligar a automação diz o horário da unidade contra o silêncio (A15).
+- **Equipe e configurações**:
+  - o cargo novo segue escolhido, pelo `?cargo=` (A18);
+  - a importação diz as colunas que não entram (A19);
+  - o termo e o contrato aparecem em "Outros documentos" só como o segundo (A20);
+  - a unidade sem UF avisa (A21);
+  - o resumo da comissão aparece uma vez, e para quem não atende (A22);
+  - o desativado perde o selo "Atende em" (A24).
+- **CRM e indicadores**: a etapa aberta nova entra antes de Ganho/Perdido (A28). "Agendar" está no menu do card (A29). O funil do Dashboard abre no que tem oportunidade (A30). A ponte de Vendas e caixa cita o voucher, os pontos e o desconto (A31). O produto que não pontua diz isso na comanda (A32).
+- **Auditoria** (A34–A37): os campos ganharam nome (closed_*, cancelado_*, importação, custo); o documento fechado diz o motivo; a entrada diz o custo e o "Desfez a entrada"; a importação diz quantas linhas entraram; o agendamento diz o procedimento e quem atende; o registro clínico leva a unidade da gravação, e não "Da rede".
+- **Vocabulário (A3)**: "sem quem vendeu", "Escolha quem atende e a data", "cada atendimento da pessoa".
+- **Ficaram de fora**:
+  - A23 ("Ninguém atende" que fica): não se reproduziu no código, porque a faixa é recalculada a cada render.
+  - A33 (as transferências no relatório de Estoque): é feature, com função SQL e métrica nova.
+- **A completa contra o banco local** deu 1609 + 826 passando e 6 falhas:
+  - **um defeito do produto**: no portal, o "Assinar todos" perdia a confirmação "Documentos assinados". A página redirecionava à lista quando a revalidação chegava sem pendentes. É o mesmo caso do 72209aee, agora no portal. A página não redireciona mais, e o `AssinarJuntos` vazio guarda a confirmação (`docs/regras/documentos.md`). O CA4 de `documentos-link-unico-e-pacote` falhava duas vezes seguidas e agora passa;
+  - três specs com texto velho: o "quem conclui" do A9, e o texto da Fidelidade que está na dica;
+  - duas oscilações (`atendimento-ficha-planejador-injetaveis`, `inbox-nome-da-pessoa`), que passaram de novo.
+  - O `conferir` deu 4619 objetos iguais.
+- Sem migration. Vitest: 3051 testes. Testes novos: `automacoes-atritos-da-20`, `copilot-atritos-da-20`, `comissoes-atritos-da-20`, `plano-proposto-avisa-a-cliente`, `atritos-da-20-vendas`, `atritos-da-20-configuracoes` e `auditoria-atritos-da-20`.
+
 ### 2026-11-17 — A explicação vai para a dica, no sistema inteiro
 
 O Heitor, sobre o Resumo do Financeiro: "pode tirar esse monte de aviso e explicação, se quiser manter bota em um tooltipzinho que só aparece se passar o mouse em cima. Aproveita e faz esse ajuste pra todo sistema. Não dá pra ficar poluindo tela com um monte de explicaçãozinha."

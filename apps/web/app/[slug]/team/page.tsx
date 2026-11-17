@@ -17,7 +17,7 @@ import { BuscaNaUrl } from '@/components/shared/busca-na-url'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 import { falaDaTela } from '@/lib/unidades/uma-so'
 import { getCachedNetworkBranches } from '@/lib/cached-queries'
-import { listaDeUnidades } from '@/lib/equipe/atende'
+import { listaDeUnidades, seloDoAtende } from '@/lib/equipe/atende'
 import { Dica } from '@/components/shared/dica'
 
 function Initials({ name }: { name: string }) {
@@ -227,7 +227,8 @@ export default async function TeamPage({
                     <span className="chip chip-brand">
                       {(m.role_id ? roleLabel[m.role_id] : null) ?? '—'}
                     </span>
-                    {m.provides_services && (
+                    {/* A24 da 20ª: o desativado não leva o selo. */}
+                    {seloDoAtende({ ativo: !!m.is_active, atende: !!m.provides_services, onde: [], variasUnidades: false }) && (
                       <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
                     )}
                   </td>

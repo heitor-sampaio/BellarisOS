@@ -26,7 +26,7 @@ import { novoIdDeNo, novoIdDeLigacao, configPadrao } from '@/lib/automacoes/ids'
 import { encaixarPasso } from '@/lib/automacoes/encaixe'
 import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
 import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor, excluirAutomacao, contarAntesDeLigar } from '@/actions/automacoes'
-import { canaisParaACliente, explicacaoAntesDeLigar, textoAntesDeLigar, limitesAntesDeLigar } from '@/lib/automacoes/antes-de-ligar'
+import { canaisParaACliente, explicacaoAntesDeLigar, textoAntesDeLigar, limitesAntesDeLigar, silencioNoHorarioDasUnidades } from '@/lib/automacoes/antes-de-ligar'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 import type { AutomacaoCompleta } from '@/actions/automacoes'
 
@@ -197,7 +197,7 @@ export function EditorDeAutomacao({
   // incluído —, a tela diz quantas a busca acharia e quantas a mensagem
   // alcança. A regra mora em lib/automacoes/antes-de-ligar.ts.
   const canaisDaCliente = canaisParaACliente(grafo)
-  const [antesDeLigar, setAntesDeLigar] = useState<null | { texto: string | null; erro?: string }>(null)
+  const [antesDeLigar, setAntesDeLigar] = useState<null | { texto: string | null; erro?: string; unidades?: { nome: string; horario: unknown }[] }>(null)
 
   function pedirParaLigar() {
     if (status === 'ATIVA' || canaisDaCliente.length === 0) { alternarStatus(); return }
@@ -206,7 +206,7 @@ export function EditorDeAutomacao({
     contarAntesDeLigar(busca ? busca.config : null, canaisDaCliente)
       .then(r => {
         if ('error' in r) { setAntesDeLigar({ texto: null, erro: r.error }); return }
-        setAntesDeLigar({ texto: textoAntesDeLigar(r) })
+        setAntesDeLigar({ texto: textoAntesDeLigar(r), unidades: r.unidades })
       })
       .catch(() => setAntesDeLigar({ texto: null, erro: 'Não consegui contar agora — dá para ligar assim mesmo.' }))
   }
@@ -399,6 +399,10 @@ export function EditorDeAutomacao({
               <ShieldCheck size={15} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 {limitesAntesDeLigar(limites)}{' '}
+                {/* A15 da 20ª: a unidade que atende dentro do silêncio, com o horário dela. */}
+                {antesDeLigar.unidades && silencioNoHorarioDasUnidades(limites, antesDeLigar.unidades) && (
+                  <><span data-silencio-no-horario>{silencioNoHorarioDasUnidades(limites, antesDeLigar.unidades)}</span>{' '}</>
+                )}
                 <button
                   type="button" disabled={salvando}
                   style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontWeight: 'var(--weight-bold)', color: 'var(--brand)', textDecoration: 'underline' }}

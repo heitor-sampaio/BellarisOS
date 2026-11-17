@@ -106,7 +106,8 @@ export function csvDoExtrato(linhas: LancamentoDoExtrato[], nomes: Map<string, s
  * 2026-11-16; princípio 3). O pagamento estornado e recebido de novo deixa
  * três linhas — "+500, −500, +500" —, e nada dizia que a do meio desfaz a
  * primeira. O estorno se liga à liberação do MESMO pagamento (`transacaoId`;
- * sem ele, a do mesmo atendimento e valor), e a liberação seguinte do mesmo
+ * sem ela — o estorno sem lançamento, ou a liberação da conclusão, D3 da 20ª
+ * —, a do mesmo atendimento e valor), e a liberação seguinte do mesmo
  * atendimento é "de novo". `hora` escreve a hora no fuso da unidade.
  */
 export function vinculosDoExtrato(linhas: readonly LancamentoDoExtrato[], hora: (iso: string) => string): Map<string, string> {
@@ -117,10 +118,16 @@ export function vinculosDoExtrato(linhas: readonly LancamentoDoExtrato[], hora: 
   const liberacoes = linhas.filter(l => l.kind === 'LIBERACAO')
   const desfeitas = new Set<string>()
   for (const e of estornos) {
-    const alvo = liberacoes
-      .filter(l => quando(l) <= quando(e) && !desfeitas.has(l.id) && (e.transacaoId
-        ? l.transacaoId === e.transacaoId
-        : !!e.appointmentId && l.appointmentId === e.appointmentId && Math.abs(l.amount + e.amount) < 0.005))
+    const antes = liberacoes.filter(l => quando(l) <= quando(e) && !desfeitas.has(l.id))
+    const mesmoAtendimentoEValor = (l: LancamentoDoExtrato) =>
+      !!e.appointmentId && l.appointmentId === e.appointmentId && Math.abs(l.amount + e.amount) < 0.005
+    // D3 da 20ª: pago ANTES da conclusão, a comissão foi liberada pela
+    // conclusão, sem o lançamento. Sem a liberação daquele pagamento, o
+    // estorno desfaz a liberação SEM pagamento do mesmo atendimento e valor.
+    const doPagamento = e.transacaoId ? antes.filter(l => l.transacaoId === e.transacaoId) : []
+    const alvo = (doPagamento.length
+      ? doPagamento
+      : antes.filter(l => (!e.transacaoId || !l.transacaoId) && mesmoAtendimentoEValor(l)))
       .sort((a, b) => quando(b) - quando(a))[0]
     if (!alvo) continue
     desfeitas.add(alvo.id)

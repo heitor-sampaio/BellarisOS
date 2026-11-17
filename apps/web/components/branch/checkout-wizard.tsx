@@ -45,6 +45,7 @@ import { documentoNaTela } from '@/lib/clients/documento-na-tela'
 import { useFidelidadeNaVenda } from '@/components/shared/pontos-na-venda'
 import type { FidelidadeDaVenda } from '@/lib/fidelidade/conta-na-venda'
 import { Dica } from '@/components/shared/dica'
+import { rotuloDaOpcaoDeParcelas } from '@/lib/financeiro/parcelas-do-crediario'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -857,8 +858,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               <div>
                 <label htmlFor="checkout-parcelas-do-saldo" style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Parcelas do saldo</label>
                 <select id="checkout-parcelas-do-saldo" value={parcelas} onChange={e => setParcelas(Number(e.target.value))} className="field" style={{ marginTop: 5 }}>
+                  {/* A1 da 20ª: com entrada, a opção diz quantos pagamentos dá. */}
                   {opcoesDeParcelas.map(n => (
-                    <option key={n} value={n}>{n}x</option>
+                    <option key={n} value={n}>{rotuloDaOpcaoDeParcelas(n, entradaNum > 0)}</option>
                   ))}
                 </select>
               </div>

@@ -22,11 +22,13 @@ const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
  * reaberta pelo estorno só do atendimento, D1 da 16ª) diz "já pago"; o
  * estornado diz "estornado · voltou ao estoque" e o valor sai riscado (D2 da 18ª).
  */
-export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber = false }: {
+export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber = false, naoPontua = false }: {
   comandaId: string
   slug:      string
   itens:     ItemDaComanda[]
   aReceber?: boolean
+  /** A32 da 20ª: a venda de produto não pontua nesta rede (com a fidelidade ligada). */
+  naoPontua?: boolean
   produtos:  { id: string; name: string; price: number; unidade: string; disponivel: number }[] | null
 }) {
   const router = useRouter()
@@ -67,7 +69,7 @@ export function ProdutosDaComanda({ comandaId, slug, itens, produtos, aReceber =
           <div style={{ minWidth: 0 }}>
             <p style={{ fontWeight: 700, color: 'var(--text)' }}>{i.nome}</p>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 2 }}>
-              {situacaoDoItemDaComanda(i, aReceber)}
+              {situacaoDoItemDaComanda(i, aReceber, naoPontua)}
             </p>
             {produtos && !i.vendido && (
               <button type="button" className="btn-ghost" aria-label={`Tirar ${i.nome}`}

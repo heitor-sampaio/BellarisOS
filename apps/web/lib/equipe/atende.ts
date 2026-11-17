@@ -47,3 +47,14 @@ export function atendeQueGrava(args: {
   const fora = args.antes.filter(u => !minhas.has(u))
   return [...new Set([...fora, ...pedido.filter(u => minhas.has(u))])].sort()
 }
+
+/**
+ * O selo "Atende" da linha da Equipe (A24 da 20ª simulação; princípio 3): o
+ * membro desativado seguia com "Atende em Tulipa Nazaré e Tulipa Umarizal". O
+ * "Atende" fica guardado (reativar devolve), mas quem está desativado não
+ * atende: sem selo.
+ */
+export function seloDoAtende(m: { ativo: boolean; atende: boolean; onde: readonly string[]; variasUnidades: boolean }): string | null {
+  if (!m.ativo || !m.atende) return null
+  return m.variasUnidades && m.onde.length ? `Atende em ${listaDeUnidades([...m.onde])}` : 'Atende'
+}

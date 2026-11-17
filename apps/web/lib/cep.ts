@@ -33,3 +33,13 @@ export function avisoDoBairroDoCep(bairro: string | null | undefined): string | 
   const b = bairro?.trim()
   return b ? `O bairro “${b}” veio da busca do CEP: confira.` : null
 }
+
+/**
+ * A UF que falta no endereço da unidade (A21 da 20ª simulação; princípio 2:
+ * avisar, não recusar): o CEP geral não preenche o endereço, a cidade foi
+ * escrita à mão e a unidade salvou sem a UF — a lista mostrava "Belém", sem
+ * "· PA", e os documentos usam a UF.
+ */
+export function avisoDaUfQueFalta(endereco: { cidade: string | null | undefined; uf: string | null | undefined }): string | null {
+  return endereco.cidade?.trim() && !endereco.uf?.trim() ? 'Falta a UF: os documentos da unidade saem sem ela.' : null
+}

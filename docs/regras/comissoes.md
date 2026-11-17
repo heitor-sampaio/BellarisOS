@@ -485,7 +485,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `extratoDasComissoes` só quando há estorno no extrato) — e a liberação
   seguinte do mesmo atendimento, "de novo, depois do estorno das 06:45"
   (`vinculosDoExtrato`, `[data-vinculo-do-estorno]`). Prova:
-  `tests/atritos-da-19-caixa.test.ts`.
+  `tests/atritos-da-19-caixa.test.ts`. **Também a liberação da CONCLUSÃO**
+  (D3 da 20ª: pago antes de concluir, a comissão é liberada pela conclusão,
+  sem o lançamento): sem a liberação daquele pagamento, o estorno desfaz a
+  liberação sem pagamento do mesmo atendimento e valor. Prova:
+  `tests/comissoes-atritos-da-20.test.ts`.
 - **A sessão não lê comissão nenhuma; a tela escuta um SINAL** (F63, C1 do
   levantamento das regras). `commissions` ia pelo Realtime, legível por toda
   a unidade: quem o cargo deixa ver "só as minhas" recebia no websocket cada

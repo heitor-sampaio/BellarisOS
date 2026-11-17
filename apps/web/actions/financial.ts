@@ -12,7 +12,9 @@ import { lancarCore, marcarPagoCore, FORMAS_DE_PAGAMENTO } from '@/lib/financeir
 import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
 import { logHistory } from '@/lib/appointments/avisos'
 import { textoDosPontosDoEstorno } from '@/lib/fidelidade/pontos-do-estorno'
-import { textoDaReaberturaDoPacote } from '@/lib/financeiro/reabertura-do-estorno'
+import { textoDaReaberturaDoPacote, textoDaComissaoETaxaDoEstorno } from '@/lib/financeiro/reabertura-do-estorno'
+import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
+import { ehUuid } from '@/lib/id-da-rota'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -371,6 +373,57 @@ export async function reaberturaDoEstorno(transactionId: string): Promise<{ text
       return { texto: `O dinheiro volta à cliente, e o pré-pago volta a ter ${valor} a receber. Para desfazer a venda, cancele a unidade pré-paga na ficha.` }
     }
     return { texto: null }
+  } catch {
+    return { texto: null }
+  }
+}
+
+/**
+ * A7 da 20ª simulação (princípio 3): o que o estorno deste pagamento faz com a
+ * comissão e com a taxa, dito na janela antes de estornar — a comissão que ele
+ * deixou liberada (por pessoa, a quem vê quanto cada um ganha) volta a
+ * aguardar, ou sai junto na venda de produto; a taxa do cartão sai da conta.
+ * Lê as linhas de comissão da venda do lançamento e o extrato delas
+ * (`commissions`, a soma é o liberado agora). Nulo quando nada muda.
+ */
+export async function comissaoETaxaDoEstorno(transactionId: string): Promise<{ texto: string | null }> {
+  try {
+    const ctx = await getTenantContext()
+    if (!can(ctx, 'financial', 'MANAGE') || !ehUuid(transactionId)) return { texto: null }
+    const admin = createAdminClient()
+    const tx = await ler(admin.from('financial_transactions')
+      .select('branch_id, type, is_paid, payment_method, appointment_id, product_sale_id, client_package_id, treatment_plan_id, procedure_sale_id, branches!inner(tenant_id)')
+      .eq('id', transactionId).maybeSingle(), 'buscar o lançamento') as Record<string, unknown> | null
+    const txTenant = (tx?.branches as { tenant_id: string } | null | undefined)?.tenant_id
+    if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string)) return { texto: null }
+    if (tx.type !== 'INCOME' || !tx.is_paid) return { texto: null }
+    const cartao = tx.payment_method === 'CREDIT_CARD' || tx.payment_method === 'DEBIT_CARD'
+    const chave = (['product_sale_id', 'appointment_id', 'client_package_id', 'treatment_plan_id', 'procedure_sale_id'] as const)
+      .find(k => typeof tx[k] === 'string')
+    const liberadas: { pessoa: string; centavos: number }[] = []
+    if (chave) {
+      const linhas = await ler(admin.from('commission_lines').select('id, professional_id')
+        .eq('tenant_id', ctx.tenantId!).eq(chave, tx[chave] as string), 'ler as comissões da venda') as { id: string; professional_id: string }[] | null
+      const ids = (linhas ?? []).map(l => l.id)
+      if (ids.length) {
+        const extrato = await ler(admin.from('commissions').select('line_id, amount').in('line_id', ids),
+          'ler o extrato das comissões') as { line_id: string; amount: number | string }[] | null
+        const porPessoa = new Map<string, number>()
+        for (const e of extrato ?? []) {
+          const pessoa = (linhas ?? []).find(l => l.id === e.line_id)?.professional_id
+          if (pessoa) porPessoa.set(pessoa, (porPessoa.get(pessoa) ?? 0) + Math.round(Number(e.amount) * 100))
+        }
+        for (const [pessoa, centavos] of porPessoa) if (centavos > 0) liberadas.push({ pessoa, centavos })
+      }
+    }
+    let comissoes: { nome: string; valor: number }[] | 'OCULTA' = []
+    if (liberadas.length && !veComissaoDeTodos(ctx)) comissoes = 'OCULTA'
+    else if (liberadas.length) {
+      const nomes = await ler(admin.from('users').select('id, name').eq('tenant_id', ctx.tenantId!)
+        .in('id', liberadas.map(l => l.pessoa)), 'ler quem recebe a comissão') as { id: string; name: string | null }[] | null
+      comissoes = liberadas.map(l => ({ nome: nomes?.find(n => n.id === l.pessoa)?.name ?? 'Sem nome', valor: l.centavos / 100 }))
+    }
+    return { texto: textoDaComissaoETaxaDoEstorno({ cartao, comissoes, produto: chave === 'product_sale_id' }) }
   } catch {
     return { texto: null }
   }

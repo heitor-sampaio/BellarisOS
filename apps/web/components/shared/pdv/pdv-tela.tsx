@@ -15,7 +15,7 @@ import { ReceberOPlano } from '@/components/shared/pdv/receber-o-plano'
 import {
   SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
   estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
-  estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto,
+  estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto, vendaEstornadaEmTexto,
   type ComandaDoPdv, type SituacaoDoPdv,
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
@@ -44,6 +44,8 @@ export interface ComandaEscolhida {
   pagamentos?:        LancamentoDaComanda[] | null
   /** A1 da 18ª: o "Estornar" de cada pagamento (`podeEstornar`). */
   podeEstornar?:      boolean
+  /** A32 da 20ª: a rede tem a fidelidade e a venda de produto não pontua (a linha do produto diz). */
+  produtoNaoPontua?:  boolean
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -317,7 +319,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
             <span style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text)' }}>{brl(e.valorDoAtendimento ?? c.valor)}</span>
           </div>
           {c.origem === 'ATENDIMENTO' && (
-            <ProdutosDaComanda comandaId={c.id} slug={slugDaUnidade} itens={e.itens} aReceber={aReceber}
+            <ProdutosDaComanda comandaId={c.id} slug={slugDaUnidade} itens={e.itens} aReceber={aReceber} naoPontua={!!e.produtoNaoPontua}
               produtos={aReceber && c.agendamentoId ? e.produtosParaAcrescentar : null} />
           )}
           {/* D1 da 16ª (princípio 3): reaberta pelo estorno só do atendimento, o
@@ -344,7 +346,8 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
           <p className="overline">Receber</p>
           {c.estornada ? (
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-              Venda estornada: o dinheiro dela voltou. Não há o que receber.
+              {/* A2 da 20ª: cobrar de novo é uma Nova venda. */}
+              {vendaEstornadaEmTexto(c)}
             </p>
           ) : c.canceladaEm ? (
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>

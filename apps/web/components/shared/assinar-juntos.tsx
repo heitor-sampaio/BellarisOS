@@ -99,6 +99,9 @@ export function AssinarJuntos({ documentos, assinante, cabecalho, assinar, final
   const [assinatura, setAssinatura] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [feitos, setFeitos] = useState<CodigoAssinado[] | null>(null)
+  // Os títulos de quando se assinou: depois, a página revalida e pode mandar a
+  // lista vazia (não há mais nada a assinar) — a confirmação não depende dela.
+  const [titulosAssinados, setTitulosAssinados] = useState<Map<string, string>>(() => new Map())
   const [enviando, iniciar] = useTransition()
 
   const aoCalcular = useCallback((id: string, hash: string | null) => {
@@ -128,12 +131,13 @@ export function AssinarJuntos({ documentos, assinante, cabecalho, assinar, final
     iniciar(async () => {
       const r = await assinar({ assinatura, itens: documentos.map(d => ({ id: d.id, hashExibido: hashes[d.id]! })) })
       if (r.error) { setErro(r.error); return }
+      setTitulosAssinados(new Map(documentos.map(d => [d.id, d.titulo])))
       setFeitos(r.documentos ?? [])
     })
   }
 
   if (feitos) {
-    const titulo = new Map(documentos.map(d => [d.id, d.titulo]))
+    const titulo = titulosAssinados
     return (
       <div className="card" style={{ padding: '32px 22px', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', textAlign: 'center' }}>
         <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -152,6 +156,16 @@ export function AssinarJuntos({ documentos, assinante, cabecalho, assinar, final
           ))}
         </ul>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{final}</p>
+        {rodape}
+      </div>
+    )
+  }
+
+  // Nada a assinar (a página do portal chegou sem pendentes): diz isso, sem a lista vazia.
+  if (documentos.length === 0) {
+    return (
+      <div className="card" style={{ padding: '32px 22px', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', textAlign: 'center' }}>
+        <p data-nada-para-assinar style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum documento esperando a sua assinatura.</p>
         {rodape}
       </div>
     )

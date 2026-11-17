@@ -15,6 +15,7 @@ import { AssinarJuntos } from '@/components/shared/assinar-juntos'
 import { assinarNoPortal } from '@/actions/documentos-portal'
 import { nomeParaSaudar } from '@/lib/saudacao'
 import { useFuso } from '@/components/shared/fuso'
+import { textoDeQuemCompletaOCadastro } from '@/lib/equipe/textos-de-quem-pode'
 
 /**
  * Colher a assinatura na clínica.
@@ -67,7 +68,7 @@ export interface JuntosNaAssinatura {
   fora:       { id: string; titulo: string; faltando: string[] }[]
 }
 
-export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTerminar, canal = 'CLINICA', assinarPorFora, juntos }: {
+export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, podeCompletar = false, quemCompleta = null, aoTerminar, canal = 'CLINICA', assinarPorFora, juntos }: {
   doc:            DocumentoNaTela
   /** Na clínica: os outros abertos do momento, assinados junto (DC3). */
   juntos?:        JuntosNaAssinatura
@@ -75,6 +76,10 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
   /** Página inteira: para onde "Voltar" leva, e o link do cliente. */
   voltar?:        string
   rotaDoCliente?: string
+  /** A10 da 20ª: "Completar o cadastro" é de quem edita os Clientes (Clientes em Gerenciar). */
+  podeCompletar?: boolean
+  /** A10 da 20ª: sem editar, quem completa o cadastro (quemCompletaOCadastro). */
+  quemCompleta?:  string[] | null
   /**
    * Embutida em outra tela (o checkout do plano): "Voltar" e "Continuar"
    * devolvem o controle a ela, sem navegar — o wizard perderia o que foi
@@ -344,7 +349,13 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
               )}
               {podeColher && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {rotaDoCliente && <Link href={`${rotaDoCliente}?aba=dados`} className="btn-secondary">Completar o cadastro</Link>}
+                  {rotaDoCliente && podeCompletar && <Link href={`${rotaDoCliente}?aba=dados`} className="btn-secondary">Completar o cadastro</Link>}
+                  {/* A10 da 20ª: quem colhe sem editar os Clientes lê quem completa. */}
+                  {!podeCompletar && quemCompleta && (
+                    <span data-quem-completa style={{ alignSelf: 'center', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                      {textoDeQuemCompletaOCadastro(quemCompleta)}
+                    </span>
+                  )}
                   <button type="button" className="btn-ghost" onClick={gerarDeNovo} disabled={enviando}>Gerar de novo</button>
                 </div>
               )}

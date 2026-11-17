@@ -28,7 +28,10 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   no lugar da mais recente: "Continuar a conversa com um cartão a confirmar:
   <título>" (A28 da 19ª: recarregada a página, o "Continuar" levava à mais
   nova e o pedido era feito de novo; `listarConversas` marca
-  `cartaoPendente`, `lib/copilot/continuar.ts`).
+  `cartaoPendente`, `lib/copilot/continuar.ts`). **O painel vazio ABRE
+  sozinho na conversa com o cartão a confirmar** (A25 da 20ª: sem ver a
+  linha, um pedido novo deixou o cartão para trás) — uma vez por conversa, e
+  não depois de "Nova conversa" (`conversaParaAbrirSozinha`).
 - **Nada clínico vai à OpenAI**: nenhuma ferramenta lê prontuário, evolução,
   anamnese, foto clínica ou anotação clínica de plano. O prompt manda dizer que
   isso fica na tela, e o painel avisa para não mandar.
@@ -306,6 +309,18 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   entendeu (`entendido`); dos dois, a ferramenta pergunta qual. O filtro
   `cliente` aceita nome, telefone ou id. O cartão diz o período em dd/mm
   ("Agenda · 16/11 a 16/12/2026", `periodoLegivel` — A29 da 19ª).
+  **Com a cliente e sem datas, de hoje em diante** (D2 da 20ª; princípio 3:
+  "Encontrei 1 agendamento da Neusa" era só o de hoje): `agendamentos` lê de
+  hoje a 30 dias à frente; sem a cliente, só hoje. O `periodo` volta legível
+  ("hoje, 16/11", "de 16/11 a 16/12/2026"), e a descrição e o prompt mandam
+  dizê-lo na resposta. Prova: `tests/copilot-atritos-da-20.test.ts`.
+- **O período sem data é o atual, sem perguntar** (A26 da 20ª; princípio 7:
+  "Resumo da semana" pedia "Confirmo: a semana atual?"): o prompt e a
+  descrição de `indicadores` dizem que "a semana" é `week` e "o mês" é
+  `month`, e a resposta diz o período que leu.
+- **"Repassar" um atendimento é trocar quem atende** (A27 da 20ª; a palavra
+  da Equipe, "Repassou"): o prompt e a descrição de `remarcar` dizem —
+  mesma data e hora, o profissional novo.
 - **Quem atende se acha pelo NOME, não pela busca** (D2 da 16ª simulação): a
   `buscar` traz o que a tela de cada tipo mostra, e o membro só a quem tem a
   Equipe — quem agenda sem a Equipe ouvia "nada encontrado" e desistia. O

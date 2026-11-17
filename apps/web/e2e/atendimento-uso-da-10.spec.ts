@@ -196,18 +196,19 @@ test('A19: o insumo do atendimento concluído sai com vírgula', async ({ browse
   })
 })
 
-test('A20: quem abre o atendimento de outra pessoa lê "quem conclui é o profissional" ANTES de iniciar', async ({ browser }) => {
+// A9 da 20ª: o texto diz a PERMISSÃO e quem a tem ("Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui (…)").
+test('A20: quem abre o atendimento de outra pessoa lê quem conclui ANTES de iniciar', async ({ browser }) => {
   const { id } = await agendamento('Gerente', { status: 'CONFIRMED', profissional: rede!.professionalId })
   await como(browser, gerente!, async p => {
     // Na tela do atendimento, ao lado do "Iniciar".
     await p.goto(`/${slug}/agenda/${id}`)
     await expect(p.getByRole('button', { name: 'Iniciar atendimento' }).first()).toBeVisible()
-    await expect(p.getByText(/Quem conclui é o profissional/).first()).toBeVisible()
+    await expect(p.getByText(/Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui/).first()).toBeVisible()
     // E na janela da agenda.
     await p.goto(`/${slug}/agenda?date=${hoje}`)
     await (await cartaoNaGradeDoDia(p, id)).click()
     const janela = p.getByRole('dialog', { name: 'Agendamento' })
     await expect(janela.getByRole('button', { name: 'Iniciar atendimento' })).toBeVisible()
-    await expect(janela.getByText(/Quem conclui é o profissional/)).toBeVisible()
+    await expect(janela.getByText(/Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui/)).toBeVisible()
   })
 })

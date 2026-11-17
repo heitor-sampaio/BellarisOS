@@ -52,7 +52,10 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
-  const abrir = useCallback(() => { setAbertura(n => n + 1); dialogRef.current?.showModal() }, [])
+  // A22 da 20ª (princípio 7): o formulário só existe com a janela aberta — fechado,
+  // o resumo de cada linha ("Comissão: nenhuma por atendimento") se empilhava na Equipe.
+  const [aberta, setAberta] = useState(false)
+  const abrir = useCallback(() => { setAbertura(n => n + 1); setAberta(true); dialogRef.current?.showModal() }, [])
   const fechar = useCallback(() => dialogRef.current?.close(), [])
 
   const padrao = regras.find(r => r.procedure_id === null) ?? null
@@ -69,6 +72,7 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
       </button>
 
       <dialog ref={dialogRef} className="modal modal-flex" style={{ maxWidth: 560, textAlign: 'left' }}
+        onClose={() => setAberta(false)}
         onClick={e => { if (e.target === dialogRef.current) fechar() }} aria-label={`Comissão de ${membro.nome}`}>
         <div className="modal-container">
           <div style={{
@@ -90,8 +94,8 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
                 {membro.nome} não vê as próprias comissões: o cargo não tem Financeiro “só os próprios”. Para ver, ajuste o cargo em Configurações → Cargos.
               </p>
             )}
-            <Formulario key={abertura} membroId={membro.id} regras={regras} procedimentos={procedimentos} comGeral={comGeral} onFim={fechar}
-              vendaPct={vendaPct} />
+            {aberta && <Formulario key={abertura} membroId={membro.id} regras={regras} procedimentos={procedimentos} comGeral={comGeral} onFim={fechar}
+              vendaPct={vendaPct} atende={atende} />}
           </div>
         </div>
       </dialog>
@@ -99,8 +103,10 @@ export function ComissaoDoMembro({ membro, regras, procedimentos, comGeral = [],
   )
 }
 
-function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct }: {
+function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct, atende }: {
   vendaPct:      number | null
+  /** Atende clientes: sem isso, o resumo não fala em atendimento (A22 da 20ª). */
+  atende:        boolean
   membroId:      string
   regras:        RegraDeComissao[]
   procedimentos: { id: string; name: string }[]
@@ -278,7 +284,7 @@ function Formulario({ membroId, regras, procedimentos, comGeral, onFim, vendaPct
         fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)',
         background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px',
       }}>
-        {resumoDaComissaoDoMembro({ tipo, valor, venda })}
+        {resumoDaComissaoDoMembro({ tipo, valor, venda, atende })}
         {linhas.length > 0 && ` ${linhas.length === 1 ? '1 exceção' : `${linhas.length} exceções`} por procedimento.`}
       </p>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}

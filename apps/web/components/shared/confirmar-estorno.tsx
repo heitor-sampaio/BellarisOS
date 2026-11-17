@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { pontosDoEstorno, reaberturaDoEstorno } from '@/actions/financial'
+import { pontosDoEstorno, reaberturaDoEstorno, comissaoETaxaDoEstorno } from '@/actions/financial'
 
 /**
  * A confirmação do estorno de um lançamento, nos dois financeiros (rede e
@@ -40,11 +40,14 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
   const [pontos, setPontos] = useState<string | null>(null)
   // C39 (H2 = a): o pagamento de um pacote, plano ou pré-pago volta a ser a receber.
   const [reabre, setReabre] = useState<string | null>(null)
+  // A7 da 20ª: a comissão que o pagamento liberou e a taxa do cartão, ditas antes.
+  const [comissaoETaxa, setComissaoETaxa] = useState<string | null>(null)
   useEffect(() => {
     if (!alvo.id) return
     let vivo = true
     pontosDoEstorno(alvo.id).then(r => { if (vivo) setPontos(r.texto) }).catch(() => {})
     reaberturaDoEstorno(alvo.id).then(r => { if (vivo) setReabre(r.texto) }).catch(() => {})
+    comissaoETaxaDoEstorno(alvo.id).then(r => { if (vivo) setComissaoETaxa(r.texto) }).catch(() => {})
     return () => { vivo = false }
   }, [alvo.id])
   const produto = !!alvo.vendaDeProduto
@@ -76,6 +79,9 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
         )}
         {reabre && !produto && (
           <p data-venda-reabre style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>{reabre}</p>
+        )}
+        {comissaoETaxa && (
+          <p data-comissao-e-taxa-do-estorno style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>{comissaoETaxa}</p>
         )}
         {pontos && (
           <p data-pontos-do-estorno style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '10px 12px', lineHeight: 1.45 }}>

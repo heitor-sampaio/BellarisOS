@@ -174,7 +174,7 @@ function NovoMembro({ branches, roles, isNetworkAdmin, podeComissao = false, car
                     <span style={rotuloComDica}>
                       <label className="overline" htmlFor="tm-comissao">Comissão padrão (%)</label>
                       <Dica rotulo="Sobre a comissão padrão">
-                        Percentual sobre cada atendimento dela. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
+                        Percentual sobre cada atendimento da pessoa. Deixe em branco para definir depois — e as exceções por procedimento ficam no chip de comissão da lista.
                       </Dica>
                     </span>
                     <input id="tm-comissao" name="comissao_padrao" type="text" inputMode="decimal" className="field" placeholder="Ex: 30" />

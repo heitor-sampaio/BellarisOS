@@ -5,7 +5,7 @@ import { useState, useTransition, useRef, useEffect, useMemo, useCallback, useSy
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   Plus, ArrowRight, ArrowRightLeft, UserCheck, Phone, Mail, X,
-  MoreHorizontal, Trophy, XCircle, CalendarClock, BellRing,
+  MoreHorizontal, Trophy, XCircle, CalendarClock, BellRing, CalendarPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { idadeDoLead } from '@/lib/crm/idade-do-lead'
@@ -465,17 +465,20 @@ function softBorder(hex: string) { return hex + '50' }
 
 /** Item do menu do card. `danger` marca a ação destrutiva. */
 function MenuItem({
-  icon, children, onClick, danger,
+  icon, children, onClick, danger, marca,
 }: {
   icon:     React.ReactNode
   children: React.ReactNode
   onClick:  () => void
   danger?:  boolean
+  /** Atributo data-* que o teste procura. */
+  marca?:   string
 }) {
   return (
     <button
       type="button"
       role="menuitem"
+      {...(marca ? { [marca]: '' } : {})}
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 8, width: '100%',
@@ -797,7 +800,7 @@ function LeadCard({
             ocupando o topo do card. Excluir lead deixou de existir (2026-09-28):
             sem outro funil, não há menu.
           */}
-          {(outrosFunis.length > 0 || (desfechos && onMoverPara) || outrasEtapas.length > 0) && (
+          {(outrosFunis.length > 0 || (desfechos && onMoverPara) || outrasEtapas.length > 0 || !!unidadesParaAgendar?.length) && (
           <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               type="button"
@@ -854,6 +857,12 @@ function LeadCard({
                 {desfechos?.perdido && onMoverPara && lead.crm_stage_id !== desfechos.perdido.id && (
                   <MenuItem icon={<XCircle size={13} />} onClick={() => { setMenuAberto(false); onMoverPara(lead.id, desfechos.perdido!.id) }}>
                     Marcar como perdido ({desfechos.perdido.name})
+                  </MenuItem>
+                )}
+                {/* A29 da 20ª: agendar sem abrir o editor (o mesmo agendar dele). */}
+                {!!unidadesParaAgendar?.length && (
+                  <MenuItem marca="data-agendar-do-card" icon={<CalendarPlus size={13} />} onClick={() => { setMenuAberto(false); editRef.current?.agendar() }}>
+                    Agendar
                   </MenuItem>
                 )}
                 {outrosFunis.length > 0 && (

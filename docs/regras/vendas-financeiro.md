@@ -328,6 +328,28 @@ comanda (PDV-P1).
     estornar diz "1 das 5 sessões já foi feita, e o pacote segue com as 4 que
     restam." (`textoDaReaberturaDoPacote`, `lib/financeiro/reabertura-do-estorno.ts`).
   - Prova: `e2e/pdv-atritos-da-19.spec.ts`, `tests/atritos-da-19-caixa.test.ts`.
+- **O PDV e o caixa da 20ª simulação** (2026-11-17; princípios 3 e 4):
+  - O selo da comanda diz a origem (D4): a do plano é "Plano aceito, a
+    pagar"; a da Nova venda, "A receber"; "Atendida, a pagar" é só a do
+    atendimento (`seloDaComanda`).
+  - O crediário diz quantos pagamentos dá (A1): com entrada, "3x + entrada
+    (4 pagamentos)" — PDV, checkout do plano e tela do atendimento
+    (`rotuloDaOpcaoDeParcelas`).
+  - A venda estornada diz "Para cobrar de novo, faça uma Nova venda."
+    (A2, `vendaEstornadaEmTexto`).
+  - Receber uma parcela com outra ANTERIOR da mesma venda em aberto avisa
+    "Adiantada: a 1/2 (vence …) segue em aberto." — só avisa, recebe
+    (A5, `anterioresEmAbertoEmTexto`, `[data-parcela-adiantada]`).
+  - No fechamento, o dinheiro registrado negativo avisa que a gaveta não fica
+    negativa e pede conferir a saída ou o fundo de troco (A4,
+    `avisoDaGavetaNegativa`, `[data-gaveta-negativa]`); o botão diz "Fechar
+    de novo" quando reabre (A6, `rotuloDoBotaoDeFechar`).
+  - O estorno de um recebimento diz, antes de confirmar, a comissão que
+    volta a aguardar (com nome e valor a quem vê a comissão de todos; sem
+    valor aos outros) e que a taxa da maquininha daquele pagamento sai da
+    conta (A7, `comissaoETaxaDoEstorno`, `textoDaComissaoETaxaDoEstorno`,
+    `[data-comissao-e-taxa-do-estorno]`). Sem o valor da taxa: não se chuta.
+  - Prova: `tests/atritos-da-20-vendas.test.ts`.
 - **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
   valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`
   e `confirmPayment` somam `valorDosItensDoAtendimento`); na "Nova venda"

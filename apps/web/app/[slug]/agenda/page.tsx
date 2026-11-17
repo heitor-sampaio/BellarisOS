@@ -20,6 +20,7 @@ import {
   getCachedBranchProfessionals, getCachedRoomsByBranch, filtroDeQuemAtendeNaUnidade, getCachedNetworkBranches,
 } from '@/lib/cached-queries'
 import { MeusAtendimentosEmOutrasUnidades } from '@/components/branch/meus-de-outras-unidades'
+import { quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 
 export default async function AgendaPage({ params, searchParams }: {
   params: Promise<{ slug: string }>
@@ -317,6 +318,8 @@ export default async function AgendaPage({ params, searchParams }: {
         escopoProprio={isOwnScope(ctx, 'agenda')}
         meuId={ctx.internalUserId ?? null}
         podeConcluir={can(ctx, 'medical_records', 'MANAGE')}
+        // A9 da 20ª: sem concluir, a janela diz quem conclui.
+        quemConclui={can(ctx, 'medical_records', 'MANAGE') ? null : await quemConcluiOAtendimento(ctx.tenantId!, branchId)}
         dataInicial={dataInicial}
         comCancelados={comCancelados}
         bloqueios={bloqueios}

@@ -7,7 +7,7 @@ import { normalizarHorario, domingoFechadoNoHorario, type Horario } from '@/lib/
 import { Check, Loader2, AlertTriangle } from 'lucide-react'
 import { updateTenantProfile, completeOnboarding } from '@/actions/setup'
 import { createBranch } from '@/actions/branches'
-import { fetchCep, avisoDoBairroDoCep } from '@/lib/cep'
+import { fetchCep, avisoDoBairroDoCep, avisoDaUfQueFalta } from '@/lib/cep'
 import { CampoDoFuso } from '@/components/shared/campo-do-fuso'
 import { maskCNPJDigitando, maskCPFouCNPJDigitando, maskCEPDigitando, maskPhoneDigitando } from '@estetica-os/utils'
 import { EditorDeHorario } from '@/components/shared/editor-de-horario'
@@ -559,6 +559,12 @@ function StepBranch({ onNext, onBack, documentoDaRede }: {
         </div>
       </div>
 
+      {/* A21 da 20ª (princípio 2): sem a UF a unidade salva, e a tela avisa. */}
+      {avisoDaUfQueFalta({ cidade: city, uf }) && (
+        <p data-uf-que-falta role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)', margin: 0 }}>
+          {avisoDaUfQueFalta({ cidade: city, uf })}
+        </p>
+      )}
       {/* F62: o fuso da unidade acompanha o estado do CEP até a pessoa escolher. */}
       <CampoDoFuso id="br-fuso" modo="segue" uf={uf} cidade={city} />
 

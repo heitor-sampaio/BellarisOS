@@ -46,6 +46,7 @@ import { ComandasAbertasDaFicha } from '@/components/shared/comandas-abertas-da-
 import type { ListaAReceber } from '@/lib/metrics/a-receber'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { Dica } from '@/components/shared/dica'
+import { textoDeQuemCompletaOCadastro } from '@/lib/equipe/textos-de-quem-pode'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
 import { textoDasRestantes } from '@/lib/pre-pago/contagem'
 import { TrazerPacoteDeFora } from '@/components/shared/trazer-pacote-de-fora'
@@ -320,6 +321,8 @@ interface Props {
    * pode ver só pode ver").
    */
   podeEditarCadastro?:   boolean
+  /** A10 da 20ª: quem não edita lê quem completa o cadastro (quemCompletaOCadastro); nulo: edita. */
+  quemCompletaOCadastro?: string[] | null
   /** Incluir o prontuário no pacote LGPD da ficha (A21): `medical_records: MANAGE`. */
   podeExportarProntuario?: boolean
   /** Os planos de tratamento (Agenda em Ver, a de `getPlanosDoCliente`); sem eles, o Planejamento é só injetáveis (D6). */
@@ -415,7 +418,7 @@ const formatarDiaDaFalta = (iso: string, fuso = 'America/Sao_Paulo') =>
  * responsável (decisão 2), o documento que o cadastro trava (A24) e as faltas
  * (A25 da 7ª: a falta só aparecia no Histórico). Nada aparece sem o que dizer.
  */
-function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHistorico, pedidoLgpd = null }: {
+function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHistorico, pedidoLgpd = null, quemCompleta = null }: {
   /** A49 da 9ª: o pedido de dados do app em aberto — e onde se responde. */
   pedidoLgpd?: { pedidoEm: string; prazo: string; aberto: boolean; caminho: string | null } | null
   menor: string | null
@@ -423,6 +426,8 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
   faltas: ProfileAppointment[]
   linkDosDados: string
   linkDoHistorico: string
+  /** A10 da 20ª: quem não edita os Clientes não ganha o "Completar o cadastro" — lê quem completa. Nulo: edita. */
+  quemCompleta?: string[] | null
 }) {
   const fuso = useFuso()
   if (!menor && !faltando.length && !faltas.length && !pedidoLgpd) return null
@@ -456,7 +461,9 @@ function AvisosDaVisaoGeral({ menor, faltando, faltas, linkDosDados, linkDoHisto
         <p key={f.titulo} data-falta-no-cadastro role="note" style={{ ...linha, background: 'var(--warning-soft)', color: 'var(--warning)', border: '1px solid var(--warning-border)', fontWeight: 'var(--weight-semibold)' }}>
           <FileText size={15} style={{ flexShrink: 0, marginTop: 2 }} />
           <span style={{ flex: 1, minWidth: 200 }}>“{f.titulo}” não pode ser assinado: falta no cadastro {f.faltando.join(', ')}.</span>
-          <Link href={linkDosDados} scroll={false} style={link}>Completar o cadastro</Link>
+          {quemCompleta
+            ? <Dica rotulo="Quem completa o cadastro"><span data-quem-completa>{textoDeQuemCompletaOCadastro(quemCompleta)}</span></Dica>
+            : <Link href={linkDosDados} scroll={false} style={link}>Completar o cadastro</Link>}
         </p>
       ))}
       {ultima && (
@@ -1512,7 +1519,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemUnidade = false, perguntaAUnidade = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
-  prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, podeExportarProntuario = false, podeVerPlanos = false,
+  prePagos = [], podeAgendar = false, podeCancelarPacote = false, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, podeReceberAtendimento = false,
   totaisFinanceiros = { pago: 0, aReceber: 0, credito: null }, financeiroSoOsProprios = false,
 }: Props) {
@@ -1931,6 +1938,7 @@ export function ClientProfile({
           linkDosDados={linkDaAba('dados')}
           linkDoHistorico={linkDaAba('historico')}
           pedidoLgpd={pedidoLgpd}
+          quemCompleta={podeEditarCadastro ? null : quemCompleta ?? []}
         />
         <NotasDoCliente client={client} slug={slug} podeEditar={podeEditarCadastro} />
         {client.indicacao && (

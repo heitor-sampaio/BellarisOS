@@ -1,6 +1,6 @@
 'use client'
 
-import { textoDeQuemMarcaAChegada, textoDeQuemRecebe } from '@/lib/equipe/textos-de-quem-pode'
+import { textoDeQuemMarcaAChegada, textoDeQuemRecebe, textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { AcoesDoLancamentoDaFicha } from '@/components/shared/acoes-do-lancamento-da-ficha'
 import { textoDasNotas, type NotaNaTela } from '@/lib/avaliacao/notas'
@@ -50,6 +50,7 @@ import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { CampoDaBandeira, CampoDaMaquininha, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 import { useOpcoesDeVezes, useOpcoesDeParcelas } from '@/components/shared/use-maximo-de-vezes'
+import { rotuloDaOpcaoDeParcelas } from '@/lib/financeiro/parcelas-do-crediario'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { Dica } from '@/components/shared/dica'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
@@ -241,8 +242,14 @@ interface Props {
   podeReceber?:          boolean
   /** A35 da 12ª: quem recebe e não estorna — a quem pedir o estorno (os nomes de quemDesfazNoCaixa). */
   quemEstorna?:          string[] | null
-  /** A11 da 19ª: quem não recebe lê, no avulso aguardando o PDV, quem recebe (quemRecebeNoPdv). Nulo: não se aplica. */
-  quemRecebe?:           string[] | null
+  /**
+   * A11 da 19ª: quem não recebe lê, no avulso aguardando o PDV, quem recebe
+   * (quemRecebeNaUnidade). A8 da 20ª: e se só quem é da rede recebe; também na
+   * janela do "Finalizar". Nulo: não se aplica.
+   */
+  quemRecebe?:           { nomes: string[]; soDaRede: boolean } | null
+  /** A9 da 20ª: quem não conclui (sem o Prontuário em Gerenciar) lê quem conclui (quemConcluiOAtendimento). Nulo: não se aplica. */
+  quemConclui?:          string[] | null
   /** A10 da 19ª: quem não marca a chegada lê quem marca (quemMarcaAChegada). Nulo: não se aplica. */
   quemMarcaAChegada?:    string[] | null
   /** A19 da 14ª: quem estorna (o Financeiro em Gerenciar, de todos) vê o "Estornar" ao lado do Recibo — a janela do Financeiro. */
@@ -732,7 +739,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <label className="field-label" htmlFor="plano-parcelas-do-saldo">Parcelas</label>
                       <select id="plano-parcelas-do-saldo" className="field" value={parcelas} onChange={e => setParcelas(Number(e.target.value))}>
-                        {opcoesDeParcelas.map(n => <option key={n} value={n}>{n}x</option>)}
+                        {opcoesDeParcelas.map(n => <option key={n} value={n}>{rotuloDaOpcaoDeParcelas(n, entrada > 0)}</option>)}
                       </select>
                     </div>
                   </div>
@@ -1045,7 +1052,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, ehDaProfissional = false, canEditRecords, canViewRecords = true, fotosDoAtendimento = null, anotacoes = null, versoesDoRegistro = [], podeAnotar = false, portalNoPlano = false, canReassign, canPayment, isProfessional, paymentTransaction, pagamentoEstornado = null, comandaId = null,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true,
+  isPartOfPlan = false, isPackageSession = false, pacoteDeFora = false, sessaoDoPacote = null, isPrePago = false, podeReceber = false, quemEstorna = null, quemRecebe = null, quemConclui = null, quemMarcaAChegada = null, podeEstornar = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, montaPlanoNaUnidade = false, podeInjetaveis = true,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1066,6 +1073,10 @@ export function AppointmentSession({
     && !isPartOfPlan && !isPackageSession && !isPrePago && appointment.price > 0
   // Atendimento de R$ 0 (a avaliação) não tem o que receber (D9, 2026-10-27).
   const semCobranca = !(appointment.price > 0) && !isPartOfPlan && !isPackageSession && !isPrePago
+  // A16 da 20ª (princípio 7): o avulso concluído esperando o pagamento — a ação dele é
+  // receber no PDV; o "Aceitar plano" (opcional) não vem como a ação grande.
+  const aguardaOPagamento = appointment.status === 'COMPLETED' && !paymentTransaction && !isPartOfPlan && !isPackageSession && !isPrePago && !semCobranca
+  const planoSecundario = isPackageSession || aguardaOPagamento
   const [starting,      setStarting]      = useState(false)
   const [erroAoIniciar, setErroAoIniciar] = useState<string | null>(null)
   const [checkingIn,    setCheckingIn]    = useState(false)
@@ -1670,7 +1681,9 @@ export function AppointmentSession({
           queixas={usaFormularioDaAvaliacao && canViewRecords ? evalComplaints : undefined}
           anamnese={anamneseDigitada}
           ficha={fichaDigitada}
-          pagamento={textoDoPagamentoAoFinalizar({ plano: isPartOfPlan, pacote: isPackageSession, pacoteDeFora, prePago: isPrePago, semCobranca })}
+          // A8 da 20ª: a quem não recebe, a janela diz também quem recebe (e se é só a rede).
+          pagamento={textoDoPagamentoAoFinalizar({ plano: isPartOfPlan, pacote: isPackageSession, pacoteDeFora, prePago: isPrePago, semCobranca })
+            + (quemRecebe && !isPartOfPlan && !isPackageSession && !isPrePago && !semCobranca ? ` ${textoDeQuemRecebe(quemRecebe.nomes, { soDaRede: quemRecebe.soDaRede })}` : '')}
           onClose={() => setShowFinish(false)}
           // A36: a dose do mapa de injetáveis (o da ficha, na tela ou salvo) × a baixa.
           planejamentos={ficha ? planejamentosDaFicha(ficha.rows, (fichaDigitada ?? respostasDaFicha) as Record<string, unknown>) : []}
@@ -1754,11 +1767,12 @@ export function AppointmentSession({
               </span>
             )}
             {/* Concluir grava a evolução no prontuário: sem o módulo, a tela diz quem conclui. */}
-            {/* A20 da 10ª: dito ANTES de iniciar também — a gerente iniciava e só
-                depois lia que não ia concluir. */}
+            {/* A20 da 10ª: dito ANTES de iniciar também — quem iniciava só
+                depois lia que não ia concluir. A9 da 20ª: a permissão e os nomes
+                (dizia que quem conclui é "o profissional", nome de cargo). */}
             {['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'].includes(status) && canManage && !canEditRecords && (
-              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Quem conclui é o profissional (concluir grava o prontuário).
+              <span data-quem-conclui style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                {textoDeQuemConclui(quemConclui)}
               </span>
             )}
 
@@ -2180,7 +2194,7 @@ export function AppointmentSession({
                     {/* A11 da 19ª: quem não recebe lê quem recebe. */}
                     {quemRecebe && (
                       <p data-quem-recebe style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                        {textoDeQuemRecebe(quemRecebe)}
+                        {textoDeQuemRecebe(quemRecebe.nomes, { soDaRede: quemRecebe.soDaRede })}
                       </p>
                     )}
                   </>
@@ -2375,6 +2389,8 @@ export function AppointmentSession({
                     availableProducts={availableProducts}
                     hideActions={true}
                     opcional={!isDone}
+                    // A9 da 20ª: sem o "Finalizar" (sem o Prontuário em Gerenciar), a dica diz quem finaliza.
+                    quemFinaliza={canEditRecords ? null : quemConclui ?? []}
                     // A anotação clínica do plano é do Prontuário (PT2).
                     podeAnotar={canEditRecords}
                     onPlanChange={(_items, notes) => setEvalPlanNotes(notes)}
@@ -2487,8 +2503,8 @@ export function AppointmentSession({
                             type="button"
                             disabled={generating}
                             onClick={() => gerarPlano(true)}
-                            className={isPackageSession ? 'btn-secondary' : undefined}
-                            style={isPackageSession ? { width: '100%', justifyContent: 'center', gap: 8 } : {
+                            className={planoSecundario ? 'btn-secondary' : undefined}
+                            style={planoSecundario ? { width: '100%', justifyContent: 'center', gap: 8 } : {
                               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                               padding: '14px 20px', borderRadius: 'var(--radius-field-token)', fontSize: 'var(--text-base-sz)', fontWeight: 800,
                               background: generating ? 'var(--bg-app)' : 'var(--brand)',

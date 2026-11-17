@@ -157,7 +157,7 @@ test('D5, D6, A23: na ficha, quem só vê não edita os Dados, não agenda, não
     await expect(p.getByLabel('Número do documento')).toBeDisabled()
 
     await p.goto(`/admin/clients/${cliente}?aba=documentos`)
-    await expect(p.getByText('Nenhum documento anexado')).toBeVisible()
+    await expect(p.getByText('Nenhum anexo', { exact: true })).toBeVisible()
     await expect(p.getByRole('button', { name: 'Adicionar primeiro documento' }), 'A23: sem poder anexar').toHaveCount(0)
 
     // A action recusa com { error }, não com 500.
@@ -226,7 +226,7 @@ test('D9, A39: com o prontuário só em Ver, nada de "Aceitar plano" (era o "Fec
   })
   await como(browser, gerente!, async p => {
     await p.goto(`/${slug}/agenda/${emCurso}`)
-    await expect(p.getByText('Quem conclui é o profissional (concluir grava o prontuário).')).toBeVisible()
+    await expect(p.getByText(/^Concluir grava o prontuário: quem tem o Prontuário em Gerenciar conclui/)).toBeVisible()
     await expect(p.locator('[data-aceitar-plano]')).toHaveCount(0)
     await expect(p.getByRole('button', { name: 'Gerar plano · a cliente vai pensar' })).toHaveCount(0)
     await expect(p.locator('[data-dica-do-avulso]')).toHaveCount(0)

@@ -12,7 +12,7 @@ import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, p
 import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
-import { linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar } from '@/lib/importacao/o-que-entra'
+import { linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar, colunasQueNaoEntram } from '@/lib/importacao/o-que-entra'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 
@@ -424,6 +424,17 @@ export function ImportadorDeContatos(p: Props) {
                 tempo — passam a contar com quem entrou.
               </Dica>
             </Aviso>
+            {/* A19 da 20ª (princípio 3): a coluna em "Não importar" sumia calada. */}
+            {(() => {
+              const deFora = colunasQueNaoEntram(arquivo.cabecalho, mapa).map(c => `“${c}”`)
+              if (!deFora.length) return null
+              const lista = deFora.length === 1 ? deFora[0] : `${deFora.slice(0, -1).join(', ')} e ${deFora[deFora.length - 1]}`
+              return (
+                <p data-colunas-de-fora style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
+                  {deFora.length === 1 ? `A coluna ${lista} não será importada.` : `As colunas ${lista} não serão importadas.`}
+                </p>
+              )
+            })()}
             {/* A7 da 10ª: uma amostra do que entra — era só "20 linhas prontas". */}
             {prontas > 0 && (
               <div data-amostra-da-importacao style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

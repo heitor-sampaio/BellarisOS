@@ -1,6 +1,7 @@
 'use server'
 
 import { cargosAcimaDoMeu, recusaDoCargoAcima } from '@/lib/equipe/cargo-acima'
+import { avisoDeQuemEntrouSemComissao } from '@/lib/equipe/textos-do-cadastro'
 import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
 import { erroDoAuth } from '@/lib/erro-do-auth'
 import { normalizarHorario, type Horario } from '@/lib/agenda/horario'
@@ -270,7 +271,7 @@ export async function createTeamMember(
   // A3 da 8ª simulação: sem a comissão, o chip "Sem comissão" ficava escondido
   // na linha — quem cadastra fica sabendo na hora, e onde se define.
   if (providesServices && comissaoPadrao === null && can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')) {
-    return { success: true, aviso: `${name} entrou sem comissão: os atendimentos dela não geram comissão até alguém definir, no chip “Sem comissão” da linha dela.` }
+    return { success: true, aviso: avisoDeQuemEntrouSemComissao(name) }
   }
   return { success: true }
 }

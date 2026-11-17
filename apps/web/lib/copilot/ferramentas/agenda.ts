@@ -24,10 +24,10 @@ export const agendamentos: FerramentaDeLeitura<{
   nome: 'agendamentos',
   tipo: 'leitura',
   modulo: 'agenda', nivel: 'VIEW',
-  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (nome, telefone ou id). "Os agendamentos da Fulana" pode ser de uma cliente ou quem atende: passe o nome em um dos dois — a ferramenta procura nos dois e, se o nome for dos dois, pergunta qual. Sem datas, é hoje. Sem unidade, procura em todas as unidades da pessoa; "procurouEm" diz quais — ao não encontrar, diga onde procurou.',
+  descricao: 'Lista os agendamentos de um dia ou período (até 31 dias), com cliente, procedimento, profissional e status. Filtros opcionais: profissional (nome ou id), unidade, status, cliente (nome, telefone ou id). "Os agendamentos da Fulana" pode ser de uma cliente ou quem atende: passe o nome em um dos dois — a ferramenta procura nos dois e, se o nome for dos dois, pergunta qual. Sem datas: com a cliente, de hoje em diante (30 dias); sem a cliente, só hoje. Na resposta, diga o período lido ("periodo") — "Encontrei 1" sem o período parece o total. Sem unidade, procura em todas as unidades da pessoa; "procurouEm" diz quais — ao não encontrar, diga onde procurou.',
   parametros: z.object({
     de: DATA.optional().describe('Primeiro dia (AAAA-MM-DD). Padrão: hoje.'),
-    ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de".'),
+    ate: DATA.optional().describe('Último dia (AAAA-MM-DD). Padrão: o mesmo de "de"; com a cliente e sem datas, 30 dias depois de hoje.'),
     profissional: z.string().max(80).optional(),
     unidade: z.string().max(80).optional(),
     status: z.array(z.enum(STATUS)).max(7).optional().describe('SCHEDULED, CONFIRMED, ARRIVED (chegou), IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW. Padrão: todos menos cancelados.'),
@@ -43,8 +43,9 @@ export const agendamentos: FerramentaDeLeitura<{
     // O dia é o da unidade (F62b): o de Manaus vai de 04:00 a 03:59 UTC.
     const fuso = await fusoDe(c, u.unidade?.id ?? (unidades.length === 1 ? unidades[0] : null))
 
-    const de = args.de ?? hojeNoFuso(fuso)
-    const ate = args.ate ?? de
+    const hoje = hojeNoFuso(fuso)
+    const de = args.de ?? hoje
+    let ate = args.ate ?? de
     if (ate < de) return { dados: { erro: '"ate" antes de "de".' } }
     const dias = (janelaDoDia(ate, fuso).fim.getTime() - janelaDoDia(de, fuso).inicio.getTime()) / 86_400_000
     if (dias > 31.5) return { dados: { erro: 'Período de no máximo 31 dias.' } }
@@ -80,6 +81,12 @@ export const agendamentos: FerramentaDeLeitura<{
         profissionalId = p.id
       }
     }
+
+    // D2 da 20ª (princípio 3): "os agendamentos da Neusa", sem datas, leu só
+    // hoje e deixou de fora a Toxina de amanhã. Com a cliente, sem datas, é de
+    // hoje em diante (30 dias); e a resposta diz o período lido.
+    if (clienteId && !args.de && !args.ate) ate = maisDias(de, 30)
+    const periodo = de === ate ? `${de === hoje ? 'hoje, ' : ''}${diaLegivel(de)}` : `de ${periodoLegivel(de, ate)}`
 
     let q = c.admin.from('appointments')
       .select('id, scheduled_at, duration_min, status, branch_id, client_id, procedure_id, professional_id')
@@ -117,7 +124,7 @@ export const agendamentos: FerramentaDeLeitura<{
       href: rota(c, `/agenda/${l.id}`),
     }))
     return {
-      dados: { periodo: de === ate ? de : `${de} a ${ate}`, ...(entendido ? { entendido } : {}), procurouEm, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
+      dados: { periodo, ...(entendido ? { entendido } : {}), procurouEm, total: lista.length, agendamentos: lista, ...(linhas.length === 80 ? { aviso: 'Mostrando os 80 primeiros.' } : {}) },
       cartao: lista.length ? {
         // A29 da 19ª: o período em dd/mm, como o dia (era "2026-11-16 a 2026-12-16").
         tipo: 'links', titulo: `Agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : periodoLegivel(de, ate)}`,
@@ -126,6 +133,16 @@ export const agendamentos: FerramentaDeLeitura<{
     }
   },
 }
+
+/** "AAAA-MM-DD" + n dias (a data do calendário, sem fuso). */
+function maisDias(iso: string, n: number): string {
+  const d = new Date(`${iso}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/** "16/11" de "2026-11-16". */
+const diaLegivel = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 
 export const horariosLivres: FerramentaDeLeitura<{ data: string; profissional: string; procedimento?: string; unidade?: string }> = {
   nome: 'horarios_livres',

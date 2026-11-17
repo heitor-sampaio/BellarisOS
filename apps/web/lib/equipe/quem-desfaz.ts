@@ -27,6 +27,34 @@ export async function quemRecebeNoPdv(tenantId: string, branchId: string | null)
 }
 
 /**
+ * A8 da 20ª simulação (princípio 3): quem recebe NA unidade — e se são só os
+ * da rede (ninguém da unidade tem o PDV nem o Financeiro em Gerenciar). A
+ * comanda do Umarizal esperava alguém de lá, e só a rede recebia.
+ */
+export async function quemRecebeNaUnidade(tenantId: string, branchId: string | null): Promise<{ nomes: string[]; soDaRede: boolean }> {
+  if (!branchId) return { nomes: await quemRecebeNoPdv(tenantId, null), soDaRede: false }
+  const [daUnidade, daRede] = await Promise.all([quemRecebeNoPdv(tenantId, branchId), quemRecebeNoPdv(tenantId, null)])
+  return { nomes: daUnidade, soDaRede: daUnidade.length > 0 && daUnidade.every(n => daRede.includes(n)) }
+}
+
+/**
+ * A9 da 20ª simulação (princípios 1 e 3): quem CONCLUI o atendimento — o
+ * Prontuário em Gerenciar, de todos (com "só os meus", conclui só os dela).
+ * A Admin da rede entra sempre.
+ */
+export async function quemConcluiOAtendimento(tenantId: string, branchId: string | null): Promise<string[]> {
+  return quemTemNoNivel(tenantId, branchId, 'medical_records', ['MANAGE'], { soDeTodos: true })
+}
+
+/**
+ * A10 da 20ª simulação (princípio 3): quem COMPLETA o cadastro da cliente — os
+ * Clientes em Gerenciar. A Admin da rede entra sempre.
+ */
+export async function quemCompletaOCadastro(tenantId: string, branchId: string | null): Promise<string[]> {
+  return quemTemEmGerenciar(tenantId, branchId, 'clients')
+}
+
+/**
  * Quem TROCA pontos por recompensa e ajusta pontos (A38 da 9ª simulação; a regra
  * de cargo fica: é a Fidelidade em Gerenciar) — a recepção com a Fidelidade em
  * Ver não tinha o botão nem lia a quem pedir, e o app dizia só "A troca é feita

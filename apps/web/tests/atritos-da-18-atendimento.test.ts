@@ -194,7 +194,9 @@ describe('A22: os termos e contratos em "Outros documentos" ficam no fim, com o 
   })
   it('o cadastro do procedimento usa os dois', () => {
     const f = ler('components/admin/procedure-form.tsx')
-    expect(f).toContain('outrosDocumentosEmOrdem(')
+    // A20 da 20ª: a ordem vem de outrosDocumentosOferecidos, que filtra e chama outrosDocumentosEmOrdem.
+    expect(f).toContain('outrosDocumentosOferecidos(')
+    expect(ler('lib/documentos/outros-do-procedimento.ts')).toContain('return outrosDocumentosEmOrdem(')
     expect(f).toContain('rotuloDoOutroDocumento(')
   })
 })

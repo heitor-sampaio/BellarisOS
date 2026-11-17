@@ -27,6 +27,11 @@ export interface ParcelaEmAberto {
   /** "Vencida em 10/11", "Vence hoje", "Vence 10/12/2026" — ou nulo, sem data. */
   vencimento: string | null
   vencida:    boolean
+  /**
+   * A5 da 20ª: a venda da parcela (o pacote, o plano, o atendimento…) — a
+   * janela de receber diz as de antes DA MESMA venda que seguem em aberto.
+   */
+  venda:      string | null
 }
 
 /** As chaves da venda que ligam a comanda aos lançamentos dela (A1 da 16ª). */
@@ -58,7 +63,7 @@ export async function parcelasEmAbertoDaCliente({ branchId, clienteId, fuso, daV
     filtroDaVenda = partes.join(',')
   }
   let consulta = createAdminClient().from('financial_transactions')
-    .select('id, amount, parcela_numero, parcela_total, description, due_date')
+    .select(['id, amount, parcela_numero, parcela_total, description, due_date, appointment_id', ...CHAVES_DA_VENDA].join(', '))
     .eq('branch_id', branchId).eq('client_id', clienteId).eq('type', 'INCOME').eq('is_paid', false)
     .is('estorno_de', null).gt('amount', 0)
     .or('notes.is.null,notes.neq.Estornada')
@@ -67,14 +72,16 @@ export async function parcelasEmAbertoDaCliente({ branchId, clienteId, fuso, daV
   if (filtroDaVenda) consulta = consulta.or(filtroDaVenda)
   const linhas = await ler(consulta
     .order('due_date', { ascending: true, nullsFirst: false }).order('parcela_numero', { ascending: true, nullsFirst: false }),
-    'ler o que a cliente tem em aberto') as {
+    'ler o que a cliente tem em aberto') as ({
       id: string; amount: number | string; parcela_numero: number | null; parcela_total: number | null; description: string | null; due_date: string | null
-    }[] | null
+      appointment_id: string | null
+    } & VendaDaComanda)[] | null
   return (linhas ?? []).map(l => {
     const vencimento = textoDoVencimento(l.due_date, new Date(), fuso)
     return {
       id: l.id, valor: Number(l.amount), numero: l.parcela_numero, total: l.parcela_total, descricao: l.description,
       vencimento, vencida: !!vencimento?.startsWith('Vencida'),
+      venda: CHAVES_DA_VENDA.map(k => l[k]).find(v => !!v) ?? l.appointment_id ?? null,
     }
   })
 }

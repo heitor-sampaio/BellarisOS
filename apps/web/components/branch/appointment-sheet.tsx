@@ -18,6 +18,7 @@ import { MudarDeUnidade, TrocarProfissional, UsarOQueJaFoiPago } from './janela-
 import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
+import { textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
 import { naParede, daParede } from '@/lib/datetime'
 
 interface AppointmentEvent {
@@ -74,6 +75,8 @@ interface AppointmentSheetProps {
    * prontuário). Sem ele, a janela diz quem conclui ANTES do Iniciar (A20 da 10ª).
    */
   podeConcluir?: boolean
+  /** A9 da 20ª: sem concluir, quem conclui — o Prontuário em Gerenciar, pelo nome (quemConcluiOAtendimento). */
+  quemConclui?: string[] | null
   onClose:     () => void
 }
 
@@ -96,7 +99,7 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, podeConcluir = true, onClose }: AppointmentSheetProps) {
+export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, podeGerenciar = false, meuId = null, podeConcluir = true, quemConclui = null, onClose }: AppointmentSheetProps) {
   const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
   // A dona (ou a gerente) que atende, no agendamento DELA: o gesto da
   // profissional, em vez de "Chegou" → "Iniciar" (A25 da 6ª simulação: eram
@@ -404,10 +407,11 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                 <Play size={14} /> Iniciar atendimento
               </button>
             )}
-            {/* A20 da 10ª: quem não conclui (sem o Prontuário em Gerenciar) lê ANTES de iniciar. */}
+            {/* A20 da 10ª: quem não conclui (sem o Prontuário em Gerenciar) lê ANTES de iniciar.
+                A9 da 20ª: a permissão e quem conclui, pelo nome. */}
             {(mostraIniciar || mostraChegarEIniciar) && !podeConcluir && (
               <p data-quem-conclui style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Quem conclui é o profissional (concluir grava o prontuário).
+                {textoDeQuemConclui(quemConclui)}
               </p>
             )}
             {appointment.status === 'IN_PROGRESS' && (

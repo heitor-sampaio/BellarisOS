@@ -521,7 +521,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
             </div>
             {/* PR1b: o exame, o laudo, a receita e a foto moram no Prontuário — e isso mora na dica (2026-11-16). */}
             <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span>Nenhum documento anexado</span>
+              <span>Nenhum anexo</span>
               <Dica rotulo="Onde ficam os anexos clínicos">
                 Exames, laudos, receitas, fotos e termos anexados ficam na aba Prontuário, em Anexos clínicos.
               </Dica>

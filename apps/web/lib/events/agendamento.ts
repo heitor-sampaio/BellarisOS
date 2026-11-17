@@ -83,6 +83,14 @@ export async function emitirEventoDeAgendamento(
       // vezes, e cada uma é um fato novo.
       chave: nome === 'agendamento.remarcado' ? undefined : `${nome}:${appointmentId}`,
     })
+
+    // D1 da 20ª: o que espera este agendamento ("1 dia antes") passa a
+    // esperar o horário NOVO. Toda remarcação (a agenda, o app da cliente, o
+    // Copilot) emite este evento. Import dinâmico, como o despacho (emitir.ts).
+    if (nome === 'agendamento.remarcado') {
+      const { reprogramarEsperasDoAgendamento } = await import('@/lib/automacoes/remarcacao')
+      await reprogramarEsperasDoAgendamento(ctx.tenantId, appointmentId)
+    }
   } catch (e) {
     console.error('[eventoDeAgendamento]', nome, (e as Error).message)
   }

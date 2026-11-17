@@ -36,7 +36,7 @@ test.afterAll(async () => {
 test.describe('Clientes e documentos: a explicação fica na dica', () => {
   test('a ficha: o vazio dos documentos, o menu e a exportação da LGPD sem parágrafo; a dica abre ao passar o mouse', async ({ page }) => {
     await page.goto(`/admin/clients/${cliente}?aba=documentos`)
-    await expect(page.getByText('Nenhum documento anexado', { exact: true })).toBeVisible()
+    await expect(page.getByText('Nenhum anexo', { exact: true })).toBeVisible()
 
     // O vazio diz só o estado; onde moram os anexos clínicos está na dica.
     const ondeFicam = page.getByText(/ficam na aba Prontuário, em Anexos clínicos/)
@@ -104,7 +104,7 @@ test.describe('Clientes e documentos: a explicação fica na dica', () => {
     test('a dica do vazio dos documentos abre no toque', async ({ page }) => {
       await page.goto(`/admin/clients/${cliente}?aba=documentos`)
       const ondeFicam = page.getByText(/ficam na aba Prontuário, em Anexos clínicos/)
-      await expect(page.getByText('Nenhum documento anexado', { exact: true })).toBeVisible()
+      await expect(page.getByText('Nenhum anexo', { exact: true })).toBeVisible()
       await expect(ondeFicam).toBeHidden()
       await page.getByRole('button', { name: 'Onde ficam os anexos clínicos' }).tap()
       await expect(ondeFicam).toBeVisible()

@@ -276,6 +276,25 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   princípio 3): lembrar também o não confirmado é o comportamento útil, e o
   texto da tela (`quandoDispara` e o card do gatilho no assistente) diz
   "agendado ou confirmado" (F69).
+- **A remarcação reprograma a espera do agendamento** (D1 da 20ª simulação,
+  2026-11-17; princípios 3 e 6: remarcado de 23/11 para 24/11, o lembrete
+  seguia esperando até 22/11). Toda remarcação emite `agendamento.remarcado`
+  (`emitirEventoDeAgendamento`), e ele chama `reprogramarEsperasDoAgendamento`
+  (`lib/automacoes/remarcacao.ts`): a execução que espera e fala daquele
+  agendamento passa a ter no contexto o horário de AGORA
+  (`evento.dados.agendadoPara` — o texto e a reconferência do silêncio leem
+  dele), e a parada num "Esperar até" tem a espera refeita — "1 dia antes"
+  do horário novo; remarcado para menos de um dia, sai na próxima passagem
+  do cron (C57b). A espera de duração ("30 dias depois") não muda. O passo a
+  passo diz a espera nova. Prova: `tests/automacoes-atritos-da-20.test.ts`.
+- **A execução que espera diz quando segue** (A14 da 20ª; princípio 3): na
+  lista, "Segue em 22/11 às 09:00" — e, se o agendamento dela caiu, "Vai
+  reconferir em 18/11 às 09:00: o agendamento foi cancelado."
+  (`fraseDaEspera`, `lib/automacoes/frase-da-espera.ts`; a situação vem de
+  `listarExecucoes`). O passo "Esperar" diz "Esperando até 22/11 às 09:00".
+- **O aviso no celular de quem não tem acesso ao app não é "enviada"** (A13
+  da 20ª; princípio 3): fica no sino, e o passo diz "Guardado no sino do app:
+  a cliente não tem acesso ao app." (`enviada: false`, `guardada: true`).
 - **Os limites da automação: o silêncio noturno e o teto** (D16 do
   levantamento das regras, o Heitor, 2026-11-11, opção a; princípio 1). Valem
   só no "Mandar mensagem" (mensagem e aviso no celular à cliente; avisar a
@@ -309,7 +328,11 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
     noturno). No máximo 3 por cliente por dia.", com "Ajustar os limites"
     (abre a gaveta). A rede aberta 24 horas que não quer o silêncio o esvazia;
     o padrão continua (`limitesAntesDeLigar`, `[data-limites-antes-de-ligar]`;
-    `tests/automacoes-limites-antes-de-ligar.test.ts`).
+    `tests/automacoes-limites-antes-de-ligar.test.ts`). E diz a unidade que
+    ATENDE dentro do silêncio (A15 da 20ª; princípios 1 e 3): "Ateliê Dália
+    atende das 07:00 às 22:00: parte desse horário está no silêncio."
+    (`silencioNoHorarioDasUnidades`, pelo horário das unidades ativas;
+    `[data-silencio-no-horario]`). O silêncio continua o da rede.
 - **O suporte não liga automação nem muda os limites** (D18 do levantamento
   das regras, o Heitor, 2026-11-11, opção a; CLAUDE.md §14: a ação que manda
   algo à paciente passa por `bloqueioDoSuporte`). Na sessão de suporte,
@@ -514,4 +537,5 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 ❌ Gravar o limite vazio da automação como undefined (some no JSON e o padrão volta) — é null (C54)
 ❌ Ação de automação que TIRA tag, ou caminho que põe tag sem ser a "Adicionar tag" que a rede montou (o sistema não põe tag sozinho — tests/tags-so-quem-marca.test.ts trava)
 ❌ Filtro de unidade no público da campanha ou no "Buscar clientes" (a cliente é da rede — MK2/T1 do Bloco Tags)
+❌ Remarcar um agendamento sem emitir agendamento.remarcado (é ele que reprograma o lembrete que espera o horário antigo — D1 da 20ª)
 ```

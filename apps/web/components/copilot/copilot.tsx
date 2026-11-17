@@ -7,7 +7,7 @@ import {
   Sparkles, X, History, Plus, Paperclip, Mic, Square, SendHorizontal, Trash2, Loader2, FileText, Image as ImageIcon, AudioLines,
 } from 'lucide-react'
 import { abrirConversaDoCopilot, apagarConversaDoCopilot, listarConversasDoCopilot } from '@/actions/copilot'
-import { conversaParaContinuar, rotuloDoContinuar } from '@/lib/copilot/continuar'
+import { conversaParaAbrirSozinha, conversaParaContinuar, rotuloDoContinuar } from '@/lib/copilot/continuar'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { TextoDoCopilot } from '@/components/copilot/texto-do-copilot'
 import { CartaoDoCopilot } from '@/components/copilot/cartao-do-copilot'
@@ -182,6 +182,9 @@ export function Copilot() {
    * cartão a confirmar vem antes (A28 da 19ª).
    */
   const [anterior, setAnterior] = useState<ConversaNaLista | null>(null)
+  /** A pessoa pediu "Nova conversa": o painel vazio não volta sozinho ao cartão pendente (A25 da 20ª). */
+  const novaDeProposito = useRef(false)
+  const abertaSozinha = useRef<string | null>(null)
   const [texto, setTexto] = useState('')
   const [anexos, setAnexos] = useState<File[]>([])
   const [enviando, setEnviando] = useState(false)
@@ -234,10 +237,22 @@ export function Copilot() {
     if (!vazio) return
     let vale = true
     listarConversasDoCopilot()
-      .then(lista => { if (vale) setAnterior(conversaParaContinuar(lista)) })
+      .then(lista => {
+        if (!vale) return
+        // A25 da 20ª: com um cartão a confirmar, abre direto nele (só pela
+        // linha "Continuar…", um pedido novo o deixava para trás).
+        const pendente = conversaParaAbrirSozinha(lista, { novaDeProposito: novaDeProposito.current })
+        // Uma vez por conversa: se ela não abrir, fica a linha "Continuar…".
+        if (pendente && abertaSozinha.current !== pendente.id) {
+          abertaSozinha.current = pendente.id
+          void carregarConversa(pendente.id)
+          return
+        }
+        setAnterior(conversaParaContinuar(lista))
+      })
       .catch(() => { if (vale) setAnterior(null) })
     return () => { vale = false }
-  }, [vazio])
+  }, [vazio, carregarConversa])
 
   // Atalho: Ctrl/Cmd + J abre e fecha; Esc fecha.
   useEffect(() => {
@@ -265,6 +280,7 @@ export function Copilot() {
   }
 
   function novaConversa() {
+    novaDeProposito.current = true
     setConversaId(null)
     setTitulo(null)
     setMensagens([])

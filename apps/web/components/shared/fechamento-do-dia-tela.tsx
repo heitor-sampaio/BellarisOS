@@ -10,7 +10,7 @@ import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import type { FechamentoDoDia, AvisosDoFechamento } from '@/lib/metrics'
 import type { EstornoDoDia, MovimentoDaUnidade, RecebidoPorPessoa, CartaoPorBandeira } from '@/lib/metrics/fechamento-extra'
-import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaAoDigitar, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
+import { textoDoMovimentoDepois, lerConferidoDoCampo, valoresParaFecharDeNovo, diferencaAoDigitar, avisoDaGavetaNegativa, rotuloDoBotaoDeFechar, type LinhaDaConferencia } from '@/lib/financeiro/conferencia-do-fechamento'
 import { rotuloDaForma, rotuloDaFormaDoFechamento, nomeDaBandeira } from '@/lib/financeiro/formas'
 import { parseDinheiro } from '@estetica-os/utils'
 
@@ -239,6 +239,10 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
                           {brl(resumo.fundoDeTroco)} de fundo de troco {resumo.saldoDinheiro < 0 ? '−' : '+'} {brl(Math.abs(resumo.saldoDinheiro))} do dia em espécie
                         </span>
                       )}
+                      {/* A4 da 20ª (princípio 2): saiu mais dinheiro do que entrou — avisa, não recusa. */}
+                      {dinheiro && avisoDaGavetaNegativa(l.registrado) && (
+                        <span data-gaveta-negativa role="note" style={{ ...DETALHE, color: 'var(--warning)', fontWeight: 600 }}>{avisoDaGavetaNegativa(l.registrado)}</span>
+                      )}
                       {dinheiro && <FundoDeTroco unidadeId={unidadeId} dia={dia} valor={resumo.fundoDeTroco} informado={fundoInformado} podeInformar={podeFechar} />}
                     </td>
                     <td data-label="Registrado" data-par style={{ padding: '11px 16px', textAlign: 'right', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>
@@ -337,7 +341,7 @@ export function FechamentoDoDiaTela({ basePath, dia, unidades, unidadeId, resumo
               {reabrindo && (
                 <button type="button" className="btn-ghost" disabled={pendente} onClick={() => { setReabrindo(false); setErro(null) }}>Cancelar</button>
               )}
-              <button type="submit" className="btn-primary" disabled={pendente}>{pendente ? 'Fechando…' : 'Fechar o dia'}</button>
+              <button type="submit" className="btn-primary" disabled={pendente}>{rotuloDoBotaoDeFechar({ reabrindo, pendente })}</button>
             </div>
           )}
           {conferindo && (

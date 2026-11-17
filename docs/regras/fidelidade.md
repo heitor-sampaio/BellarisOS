@@ -248,6 +248,8 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     `lib/fidelidade/leitura.ts`; `data-sem-pontos`), como a janela "Vender"
     — a Paula e a Sofia acharam que os pontos do kit tinham sumido. Com a
     fidelidade desligada, nada. Prova: `e2e/fidelidade-produto-nao-pontua.spec.ts`.
+    O produto na comanda do atendimento diz "· não pontua" (A32 da 20ª,
+    `situacaoDoItemDaComanda`).
   - **Troca pelo portal** (`client_redeem`): o cliente troca pontos por
     recompensa em `/[slug]/cliente/fidelidade` (`actions/fidelidade-portal.ts`),
     com o saldo da rede (a unidade do portal é só onde a troca fica

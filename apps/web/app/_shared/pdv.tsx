@@ -22,6 +22,7 @@ import { getAtendimentosAReceber } from '@/lib/metrics/a-receber'
 import { parcelasEmAbertoDaCliente, CHAVES_DA_VENDA, type VendaDaComanda } from '@/lib/pdv/parcelas-da-cliente'
 import { itensDaComanda } from '@/lib/pdv/itens-da-comanda'
 import { fidelidadeParaAVenda } from '@/lib/fidelidade/na-venda'
+import { vendaDeProdutoNaoPontua } from '@/lib/fidelidade/leitura'
 import { quemDesfazNoCaixa } from '@/lib/equipe/quem-desfaz'
 import { podeEstornar } from '@/lib/financeiro/so-os-meus'
 import { lancamentosDaComanda } from '@/lib/pdv/lancamentos-da-comanda'
@@ -121,6 +122,8 @@ export async function Pdv({ ctx, unidades, unidadeId, slugDaUnidade, basePath, v
       pagamentos: comanda.paga && !comanda.estornada
         ? await lancamentosDaComanda(admin, ctx.tenantId!, unidadeId, comanda.id) : null,
       podeEstornar: podeEstornar(ctx),
+      // A32 da 20ª: a linha do produto diz que ele não pontua (a regra da rede).
+      produtoNaoPontua: itens.length > 0 ? await vendaDeProdutoNaoPontua(ctx.tenantId!, admin) : false,
       // A1 da 16ª (princípio 7): a comanda do crediário recebe as parcelas dela ali mesmo.
       parcelasDaComanda: comanda.paga && !comanda.estornada && comanda.emAberto > 0 && podeReceber(ctx)
         ? await parcelasEmAbertoDaCliente({

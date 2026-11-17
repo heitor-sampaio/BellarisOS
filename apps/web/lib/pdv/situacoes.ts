@@ -105,7 +105,45 @@ export function seloDaComanda(c: ComandaDoPdv): { texto: string; tom: Tom } {
   if (c.paga && c.emAberto > 0) return { texto: 'A receber', tom: 'warn' }
   if (c.paga) return { texto: 'Paga', tom: 'ok' }
   if (c.atendimento === 'IN_PROGRESS') return { texto: 'Em atendimento', tom: 'info' }
+  // D4 da 20ª simulação (princípio 3): a comanda do plano aceito não tem
+  // atendimento — "Atendida" mentia; a venda reaberta a receber também não.
+  if (c.origem === 'PLANO') return { texto: 'Plano aceito, a pagar', tom: 'warn' }
+  if (c.origem === 'VENDA') return { texto: 'A receber', tom: 'warn' }
   return { texto: 'Atendida, a pagar', tom: 'warn' }
+}
+
+/**
+ * A comanda da venda estornada (A2 da 20ª simulação; princípio 3): dizia "Não
+ * há o que receber", e o balcão não sabia como cobrar de novo — é uma Nova
+ * venda (a estornada não se reabre).
+ */
+export function vendaEstornadaEmTexto(c: ComandaDoPdv): string {
+  return `Venda estornada: o dinheiro dela voltou. Não há o que receber.${c.origem === 'VENDA' ? ' Para cobrar de novo, faça uma Nova venda.' : ''}`
+}
+
+/** Uma parcela em aberto, como a janela de receber a lê (A5 da 20ª). */
+export interface ParcelaParaAdiantar {
+  id: string; numero: number | null; total: number | null
+  /** "Vence 16/12/2026", "Vencida em 10/11" — ou nulo. */
+  vencimento: string | null
+  /** A venda da parcela (o pacote, o plano, o atendimento…): só as da mesma venda se comparam. */
+  venda: string | null
+}
+
+/**
+ * A parcela recebida ADIANTADA (A5 da 20ª simulação; princípio 3): a 2/2 se
+ * recebia com a 1/2 aberta, e a janela dizia só "Parcela 2 de 2". Diz as de
+ * antes da mesma venda que seguem em aberto. Só avisa (princípio 2).
+ */
+export function anterioresEmAbertoEmTexto(p: ParcelaParaAdiantar, todas: readonly ParcelaParaAdiantar[]): string | null {
+  if (!p.venda || p.numero == null) return null
+  const antes = todas
+    .filter(o => o.id !== p.id && o.venda === p.venda && o.numero != null && o.numero < p.numero!)
+    .sort((a, b) => a.numero! - b.numero!)
+  if (!antes.length) return null
+  const uma = (o: ParcelaParaAdiantar) => `a ${o.numero}/${o.total ?? p.total}${o.vencimento ? ` (${o.vencimento.charAt(0).toLocaleLowerCase('pt-BR')}${o.vencimento.slice(1)})` : ''}`
+  const lista = antes.length === 1 ? uma(antes[0]!) : `${antes.slice(0, -1).map(uma).join(', ')} e ${uma(antes[antes.length - 1]!)}`
+  return `Adiantada: ${lista} ${antes.length === 1 ? 'segue' : 'seguem'} em aberto.`
 }
 
 /**
@@ -237,10 +275,12 @@ export interface ProdutoNaComanda {
  * dizia "saiu do estoque da unidade" e, na comanda reaberta, "já pago" — o
  * dinheiro e o produto já tinham voltado. Agora diz o estorno e se voltou.
  */
-export function situacaoDoItemDaComanda(i: ProdutoNaComanda, aReceber: boolean): string {
+export function situacaoDoItemDaComanda(i: ProdutoNaComanda, aReceber: boolean, naoPontua = false): string {
   if (i.estornadoEm) return `Produto · estornado · ${i.voltouAoEstoque ? 'voltou ao estoque' : 'não voltou ao estoque'}`
-  if (i.vendido) return aReceber ? 'Produto · já pago, fora do que falta receber' : 'Produto · saiu do estoque da unidade'
-  return 'Produto · sai do estoque da unidade ao receber'
+  // A32 da 20ª (princípio 3): com a regra da rede, o produto da comanda não pontua — e a linha diz.
+  const pontos = naoPontua ? ' · não pontua' : ''
+  if (i.vendido) return (aReceber ? 'Produto · já pago, fora do que falta receber' : 'Produto · saiu do estoque da unidade') + pontos
+  return 'Produto · sai do estoque da unidade ao receber' + pontos
 }
 
 /**

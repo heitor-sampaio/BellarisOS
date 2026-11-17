@@ -15,6 +15,7 @@ import { getCachedBranchProfessionals, getCachedRoomsByBranch } from '@/lib/cach
 import { ler } from '@/lib/db'
 import { unidadesParaLer, nomeNaTela } from '@/lib/unidades/da-tela'
 import { fusoComum, fusoValido } from '@/lib/unidades/fuso'
+import { quemConcluiOAtendimento } from '@/lib/equipe/quem-desfaz'
 
 type AgendaView = 'day' | 'week'
 
@@ -187,6 +188,8 @@ export default async function AdminAgendaPage({
         escopoProprio={agendaOwner !== null}
         meuId={ctx.internalUserId ?? null}
         podeConcluir={can(ctx, 'medical_records', 'MANAGE')}
+        // A9 da 20ª: sem concluir, a janela diz quem conclui (os da unidade escolhida, ou os da rede).
+        quemConclui={can(ctx, 'medical_records', 'MANAGE') ? null : await quemConcluiOAtendimento(ctx.tenantId!, unidadeId || null)}
         bloqueios={bloqueios}
         paraBloquear={paraBloquear}
       />

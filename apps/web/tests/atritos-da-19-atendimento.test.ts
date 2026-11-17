@@ -101,7 +101,8 @@ describe('A11: "Aguardando o pagamento no PDV" diz quem recebe, a quem não rece
     expect(textoDeQuemRecebe([])).toBe('Quem recebe é quem tem o PDV ou o Financeiro em Gerenciar.')
   })
   it('a página lê quem recebe e a tela mostra', () => {
-    expect(ler('app/_shared/sessao-de-atendimento.tsx')).toMatch(/quemRecebe=\{[^}]*quemRecebeNoPdv\(/)
+    // A8 da 20ª: lê quem recebe NA UNIDADE (quemRecebeNaUnidade, que parte de quemRecebeNoPdv) e diz quando só a rede recebe.
+    expect(ler('app/_shared/sessao-de-atendimento.tsx')).toMatch(/quemRecebe=\{[^}]*quemRecebeNaUnidade\(/)
     const tela = ler('components/branch/appointment-session.tsx')
     expect(tela).toContain('data-quem-recebe')
     expect(tela).toContain('textoDeQuemRecebe(')

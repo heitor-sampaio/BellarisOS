@@ -229,7 +229,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     tipo: l.type, valor: l.amount === null ? null : Number(l.amount), forma: l.payment_method,
     parcela: l.parcela_numero, de: l.parcela_total, agendamento: !!l.appointment_id,
   }]))
-  const extras = await nomesDa17(ctx, registros)
+  const [extras, da20] = await Promise.all([nomesDa17(ctx, registros), nomesDa20(ctx, registros)])
   const [c, m, u, p, cg] = await Promise.all([
     clientes.length
       ? ler(admin.from('clients').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', clientes), 'ler os nomes das clientes')
@@ -255,6 +255,65 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     clientes: mapa(c), membros: mapa(m), unidades: mapa(u), produtos: mapa(p), cargos: cargosPorPermissao,
     pacotes: mapa(pk as { id: unknown; name: unknown }[] | null), lancamentos: lancamentosLidos,
     ...extras,
+    ...da20,
+  }
+}
+
+/**
+ * A34–A36 da 20ª simulação: o que as frases novas dizem e a gravação não
+ * guarda, lido agora pela rede da sessão — o motivo do documento fechado,
+ * qual sessão de qual pacote, o pacote cancelado, o arquivo e o placar da
+ * importação, o custo da entrada de estoque e o procedimento agendado.
+ */
+async function nomesDa20(ctx: TenantContext, registros: readonly RegistroDaAuditoria[]): Promise<Partial<NomesDaAuditoria>> {
+  const admin = createAdminClient()
+  const tenant = ctx.tenantId!
+  const ids = (filtro: (r: RegistroDaAuditoria) => boolean) =>
+    [...new Set(registros.filter(r => filtro(r) && r.registro_id && UUID.test(r.registro_id)).map(r => r.registro_id!))]
+  const documentos = ids(r => r.tabela === 'issued_documents' && r.operacao === 'editou' && r.colunas.includes('status'))
+  const sessoes = ids(r => r.tabela === 'package_sessions' && r.operacao === 'editou' && r.colunas.includes('status'))
+  const pacotes = ids(r => r.tabela === 'client_packages' && r.operacao === 'editou' && r.colunas.includes('cancelado_em'))
+  const importacoes = ids(r => r.tabela === 'importacoes')
+  const entradas = ids(r => r.tabela === 'stock_movements' && r.operacao === 'criou' && r.depois?.type === 'PURCHASE')
+  const procedimentos = [...new Set(registros.filter(r => r.tabela === 'appointments' && r.operacao === 'criou')
+    .map(r => r.depois?.procedure_id).filter((v): v is string => typeof v === 'string' && UUID.test(v)))]
+  const nada = Promise.resolve([] as Record<string, unknown>[])
+
+  const [dc, ss, pk, im, en, pr] = await Promise.all([
+    documentos.length ? ler(admin.from('issued_documents').select('id, closed_reason').eq('tenant_id', tenant).in('id', documentos), 'ler os motivos dos documentos') : nada,
+    sessoes.length ? ler(admin.from('package_sessions').select('id, session_number, client_packages!inner(branches!inner(tenant_id), service_packages(name))')
+      .eq('client_packages.branches.tenant_id', tenant).in('id', sessoes), 'ler as sessões dos pacotes') : nada,
+    pacotes.length ? ler(admin.from('client_packages').select('id, service_packages(name), branches!inner(tenant_id)')
+      .eq('branches.tenant_id', tenant).in('id', pacotes), 'ler os pacotes cancelados') : nada,
+    importacoes.length ? ler(admin.from('importacoes').select('id, nome_arquivo, destino, total, novas, completadas, com_erro')
+      .eq('tenant_id', tenant).in('id', importacoes), 'ler as importações da auditoria') : nada,
+    entradas.length ? ler(admin.from('stock_movements').select('id, quantity, unit_cost, branches!inner(tenant_id)')
+      .eq('branches.tenant_id', tenant).in('id', entradas), 'ler o custo das entradas') : nada,
+    procedimentos.length ? ler(admin.from('procedures').select('id, name').eq('tenant_id', tenant).in('id', procedimentos), 'ler os procedimentos agendados') : nada,
+  ]) as Record<string, unknown>[][]
+  const str = (v: unknown) => (typeof v === 'string' ? v : null)
+  const num = (v: unknown) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
+  const nomeDe = (x: unknown) => str((x as { name?: unknown } | null)?.name)
+
+  return {
+    // O motivo pode ser texto livre (o "Dispensar"): curto na frase.
+    motivosDoDocumento: Object.fromEntries((dc ?? []).map(d => [d.id as string, (str(d.closed_reason)?.trim() ?? '').slice(0, 120)]).filter(([, m]) => m)),
+    sessoesDoPacote: Object.fromEntries((ss ?? []).map(x => {
+      const pacote = nomeDe((x.client_packages as { service_packages?: unknown } | null)?.service_packages)
+      const n = num(x.session_number)
+      return [x.id as string, `a sessão${n !== null ? ` ${n}` : ''} do pacote${pacote ? ` ${pacote}` : ''}`]
+    })),
+    pacotesDaCliente: Object.fromEntries((pk ?? []).map(x => [x.id as string, nomeDe(x.service_packages) ?? '']).filter(([, n]) => n)),
+    importacoes: Object.fromEntries((im ?? []).map(i => [i.id as string, {
+      arquivo: str(i.nome_arquivo) ?? '', destino: str(i.destino) ?? '', total: num(i.total) ?? 0,
+      novas: num(i.novas) ?? 0, completadas: num(i.completadas) ?? 0, comErro: num(i.com_erro) ?? 0,
+    }])),
+    // A entrada inteira: a quantidade (na unidade de consumo) vezes o custo de cada uma.
+    custosDasEntradas: Object.fromEntries((en ?? []).flatMap(m => {
+      const q = num(m.quantity); const c = num(m.unit_cost)
+      return q !== null && c !== null && c > 0 ? [[m.id as string, Math.round(Math.abs(q) * c * 100) / 100]] : []
+    })),
+    procedimentos: Object.fromEntries((pr ?? []).map(x => [x.id as string, str(x.name) ?? '']).filter(([, n]) => n)),
   }
 }
 

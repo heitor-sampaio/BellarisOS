@@ -13,7 +13,7 @@ import { FormasDePagamento, FORMAS_DO_BALCAO } from '@/components/shared/formas-
 import { temBandeira } from '@/lib/financeiro/bandeiras'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { SaldoDoCredito } from '@/components/shared/saldo-do-credito'
-import { limiteDoCrediarioEmTexto } from '@/lib/financeiro/parcelas-do-crediario'
+import { limiteDoCrediarioEmTexto, rotuloDaOpcaoDeParcelas } from '@/lib/financeiro/parcelas-do-crediario'
 import { OutrasFormas } from '@/components/shared/outras-formas'
 import { recusaDasOutras, valorDaParte, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 
@@ -324,7 +324,8 @@ export function CamposDoPagamento({ estado, aoMudar, formas, total, doQue = 'da 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={rotulo}>Parcelas</span>
             <select className="field" value={estado.parcelas} onChange={e => mudar({ parcelas: Number(e.target.value) })} aria-label="Parcelas">
-              {opcoesDeParcelas.map(n => <option key={n} value={n}>{n}x</option>)}
+              {/* A1 da 20ª: com entrada, a opção diz quantos pagamentos dá. */}
+              {opcoesDeParcelas.map(n => <option key={n} value={n}>{rotuloDaOpcaoDeParcelas(n, comEntrada)}</option>)}
             </select>
             {/* A23 da 14ª: a lista para no limite — e diz que é o da clínica. */}
             <span data-limite-do-crediario style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
