@@ -1814,6 +1814,8 @@ A 25ª rodou com quatro times sobre `a14295d6`: o "[sim] Studio Amarílis" (uma 
 - Vitest: 3840 testes.
 - `automacoes-mobile` e `inbox-nome-da-pessoa`, que falharam na completa anterior só sob carga, passaram.
 - O `conferir` deu 16 diferenças, todas das 7 migrations desta entrega.
+- **Pego antes da produção**: a 20261124900003 (A17) recriava `comissao_conta_detalhe` e `comissao_base_do_pagamento` de um corpo copiado ANTES da 20261124600002 e trazia de volta a leitura das vezes do cartão pelo crediário (`parcela_total`) — desfazia a VF2-01. O arquivo voltou a ler `coalesce(cartao_vezes, 1)`, e `tests/vezes-do-cartao-sem-retrocesso.test.ts` trava toda migration depois da 600002. O `conferir` não pegaria: a assinatura mudou, e a função aparecia como "só no local".
+- **Na produção (18/11, noite)**: as 7 migrations aplicadas com o texto do arquivo; `conferir` IGUAL (4668 objetos). As 6 funções recriadas inteiras tinham ficado com `\r` no banco local (o arquivo no disco é CRLF pelo autocrlf; a produção recebe LF) — normalizadas no local, sem mudar nada além do CR.
 
 ### 2026-11-18 — A cliente da rede até o fim e a varredura de conformidade (cada regra contra o código)
 
