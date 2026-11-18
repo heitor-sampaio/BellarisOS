@@ -7,6 +7,8 @@ import { resolvePeriod } from '@/lib/metrics'
 import { OPERACOES, type FiltrosDaAuditoria, type NomesDaAuditoria, type RegistroDaAuditoria } from './tipos'
 import { conferidoDoFechamento, gravacoesDaUnidade } from './frase'
 import { unidadeDoInsumo, type UnidadesDoProduto } from '@/lib/estoque/unidade-de-consumo'
+import { fusoDoRecorte } from '@/lib/unidades/fuso-da-unidade'
+import { fusoValido } from '@/lib/unidades/fuso'
 
 /**
  * A leitura da auditoria (CF3a) — pelo servidor, só para a Admin da rede
@@ -38,6 +40,11 @@ export interface PaginaDaAuditoria {
   /** A unidade pedida, só se estiver ao alcance (senão, nula: a URL não vence a abrangência). */
   unidade:   string | null
   periodo:   { key: string; label: string; from?: string; to?: string }
+  /**
+   * D2 da 23ª (F62b): o relógio da leitura — o da unidade filtrada, senão o
+   * comum das unidades de quem lê. O período e a coluna "Quando" vão nele.
+   */
+  fuso:      string
   /** Na leitura por gravação: o cursor da próxima página (as linhas antes deste id). */
   proximo?:  string | null
   /** Na leitura por gravação: o cursor desta página (nulo na primeira). */
@@ -63,12 +70,13 @@ export async function lerAuditoria(
   const admin = createAdminClient()
   const porPagina = opcoes.porPagina ?? POR_PAGINA
   const pagina = Math.max(1, Math.floor(Number(filtros.pagina) || 1))
-  const periodo = resolvePeriod(filtros.period ?? 'month', filtros.from, filtros.to)
   const minhas = unidadesDoContexto(ctx)
   const unidade = filtros.unidade && UUID.test(filtros.unidade) && (minhas === null || minhas.includes(filtros.unidade))
     ? filtros.unidade : null
+  const fuso = await fusoDoRecorte(ctx.tenantId, unidade ? [unidade] : minhas)
+  const periodo = resolvePeriod(filtros.period ?? 'month', filtros.from, filtros.to, new Date(), fuso)
   const vazia: PaginaDaAuditoria = {
-    registros: [], nomes: { clientes: {}, membros: {}, unidades: {} }, temMais: false, pagina, unidade,
+    registros: [], nomes: { clientes: {}, membros: {}, unidades: {} }, temMais: false, pagina, unidade, fuso,
     periodo: { key: periodo.key, label: periodo.label, from: filtros.from, to: filtros.to },
   }
   if (minhas !== null && minhas.length === 0) return vazia
@@ -250,7 +258,7 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
       ? ler(admin.from('users').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', membros), 'ler os nomes da equipe')
       : Promise.resolve([]),
     // As unidades da rede são poucas (o caso comum é uma).
-    ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!), 'ler as unidades'),
+    ler(admin.from('branches').select('id, name, fuso').eq('tenant_id', ctx.tenantId!), 'ler as unidades'),
     produtos.length
       ? ler(admin.from('products').select('id, name, unit, consumption_unit, units_per_package').eq('tenant_id', ctx.tenantId!).in('id', produtos), 'ler os nomes dos produtos')
       : Promise.resolve([]),
@@ -268,7 +276,10 @@ async function nomesDaAuditoria(ctx: TenantContext, registros: readonly Registro
     .map(x => [x.id as string, x.unit ? unidadeDoInsumo({ unit: x.unit, consumption_unit: x.consumption_unit ?? null, units_per_package: x.units_per_package ?? null }) : ''])
     .filter(([, medida]) => medida))
   return {
-    clientes: mapa(c), membros: mapa(m), unidades: mapa(u), produtos: mapa(p), medidasDosProdutos, cargos: cargosPorPermissao,
+    clientes: mapa(c), membros: mapa(m), unidades: mapa(u),
+    // D2 da 23ª: o fuso de cada unidade, para a hora do agendamento citado.
+    fusos: Object.fromEntries(((u ?? []) as { id: string; fuso: string | null }[]).map(b => [b.id, fusoValido(b.fuso)])),
+    produtos: mapa(p), medidasDosProdutos, cargos: cargosPorPermissao,
     pacotes: mapa(pk as { id: unknown; name: unknown }[] | null), lancamentos: lancamentosLidos,
     ...extras,
     ...da20,

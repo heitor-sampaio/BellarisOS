@@ -98,6 +98,7 @@ export async function ComissoesDaEquipe({ ctx, unidades, unidadeAtual, basePath,
         fechamentos={fechamentos}
         podeFechar={can(ctx, 'financial', 'MANAGE') && !soAsProprias}
         soAsProprias={!!soAsProprias}
+        fusoDaRede={fuso}
       />
     </>
   )

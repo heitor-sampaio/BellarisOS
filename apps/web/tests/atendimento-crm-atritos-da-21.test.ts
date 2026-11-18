@@ -47,7 +47,9 @@ describe('A14: o rascunho diz o que se perde, e o Planejamento leva ao Tratament
   it('o Planejamento tem o "Ir ao Tratamento", que fecha a janela e leva ao cartão', () => {
     const plano = fonte('components/branch/planejamento-tratamento.tsx')
     expect(plano).not.toContain('Monte o plano desta avaliação na própria tela, em Tratamento.')
-    expect(plano).toContain('O plano desta avaliação se monta no cartão “Tratamento” da tela do atendimento.')
+    // A21 da 23ª: o texto mora em textoDoPlanoNaTela, sem "desta avaliação" (A21 da 22ª).
+    expect(plano).toContain('textoDoPlanoNaTela({ faltamAsDores })')
+    expect(fonte('lib/plano-de-tratamento/textos.ts')).toContain('O plano se monta no cartão “Tratamento” da tela do atendimento')
     expect(plano).toContain('Ir ao Tratamento')
     expect(plano).toContain('onIrAoTratamento')
     expect(fonte('components/branch/painel-planejamento.tsx')).toContain('onIrAoTratamento={onIrAoTratamento}')

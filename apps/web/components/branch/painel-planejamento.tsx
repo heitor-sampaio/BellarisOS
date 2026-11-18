@@ -28,7 +28,7 @@ export function PainelPlanejamento({
   clientId, branchId, slug, appointmentId = null,
   procedures, availableProducts = [],
   podeEditar, podeMontarPlano, podeAnotarNoPlano = true, podeVerInjetaveis, podeVerPlanos = true, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
-  abaInicial = 'tratamento', onIrAoTratamento,
+  abaInicial = 'tratamento', onIrAoTratamento, faltamAsDores = false,
 }: {
   clientId:       string
   branchId:       string
@@ -67,6 +67,8 @@ export function PainelPlanejamento({
   abaInicial?:    Aba
   /** A14 da 21ª: o "Ir ao Tratamento" do plano na tela (fecha a janela e leva ao cartão). */
   onIrAoTratamento?: () => void
+  /** A21 da 23ª: as "Queixas e dores" em branco (a janela diz o passo delas). */
+  faltamAsDores?: boolean
 }) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -133,6 +135,7 @@ export function PainelPlanejamento({
           onAbrir={abrir}
           planoNaTela={planoNaTela}
           onIrAoTratamento={onIrAoTratamento}
+          faltamAsDores={faltamAsDores}
         />
       ) : (
         <PlanejamentoInjetaveis

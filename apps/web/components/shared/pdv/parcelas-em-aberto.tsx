@@ -12,14 +12,15 @@ import { AvisoDaTaxa } from '@/components/shared/aviso-da-taxa'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import type { ParcelaEmAberto } from '@/lib/pdv/parcelas-da-cliente'
-import { anterioresEmAbertoEmTexto } from '@/lib/pdv/situacoes'
+import { anterioresEmAbertoEmTexto, valorDaParcelaEmTexto } from '@/lib/pdv/situacoes'
 import { OutrasFormas } from '@/components/shared/outras-formas'
 import { recusaDasOutras, valorDaPrincipal, type EstadoDaParte } from '@/lib/checkout/varias-formas'
 import { partesDaBaixa } from '@/lib/financeiro/baixa-em-formas'
 
 /** "Parcela 2 de 3 do crediário: R$ 1.000,00" — ou "A receber: R$ 300,00". */
 function tituloDaParcela(p: ParcelaEmAberto): string {
-  const valor = formatBRL(p.valor)
+  // A14 da 23ª: com parte paga, o que falta, do total.
+  const valor = p.pago > 0 ? `falta ${formatBRL(p.valor)} de ${formatBRL(Math.round((p.valor + p.pago) * 100) / 100)}` : formatBRL(p.valor)
   return p.numero && p.total ? `Parcela ${p.numero} de ${p.total} do crediário: ${valor}` : `A receber: ${valor}`
 }
 
@@ -54,7 +55,7 @@ export function ParcelasEmAberto({ parcelas, slug, titulo = 'Em aberto com a cli
               flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)',
             }}>
               <b style={{ color: 'var(--text)', fontWeight: 'var(--weight-bold)' }}>
-                {p.numero && p.total ? `${p.numero}/${p.total}` : 'A receber'} · {formatBRL(p.valor)}
+                {valorDaParcelaEmTexto(p)}
               </b>
               {p.vencimento && <span style={{ color: p.vencida ? 'var(--warning)' : undefined }}> · {p.vencimento}</span>}
             </span>

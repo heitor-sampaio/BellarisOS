@@ -110,6 +110,8 @@ Princípios inegociáveis:
   do "Fechar e pagar"): com o botão na tela, o `main` ganha embaixo a altura
   dele e a folga (`body:has(.copilot-botao…) main` em `globals.css`), fora do
   inbox, onde ele sobe. Prova: `e2e/financeiro-atritos-da-12.spec.ts` ("A38").
+  E o que ganha o foco atrás dele, no meio da página, sobe acima dele (A16 da
+  23ª: o "Confirmar estorno" da comissão; `useFocoAcimaDoBotao`, `copilot.md`).
 - **A grade de cartões não deixa um sozinho na linha nem estica os vizinhos**
   (A37 da 12ª: no Financeiro da rede, o "A pagar" caía sozinho numa segunda
   linha, e o "Resultado líquido", com a conta embaixo, esticava os outros): os

@@ -198,6 +198,12 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   bandeira — `vendas-financeiro.md` §9.6. Antes era `payment_fees` +
   `tenants.cartao_por_bandeira` (a "regra geral"), que um gatilho de espelho
   ainda copia para a primeira maquininha até a limpeza depois do deploy.
+  **A "Maquininha" de fábrica se preenche** (A4 da 23ª, princípio 7): na rede
+  que só tem a vazia com que nasceu (nome "Maquininha", sem taxa, sem limite
+  de vezes, sem bandeira), o "+ Adicionar maquininha" abre ESSA, com o nome
+  vazio, em vez de criar uma segunda (`vaziaDeFabrica`,
+  `lib/financeiro/maquininha-de-fabrica.ts`). No CSV do extrato, a coluna é
+  "Desconto que saiu da base" (A20 da 23ª).
 - **A comissão da VENDA DE PRODUTO** (D4, decisão do Heitor, 2026-10-29: "é
   configurável pela clínica"; migration `20261029001306`): Configurações →
   Comissões → "Venda de produto", `commission_configs.produto_pct` (vazio = sem
@@ -607,6 +613,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     o próximo fechamento."; e cada fechamento diz "lançamentos de 10/11/2026
     até 10/11/2026 às 02:30" (o primeiro lançamento e o fim, que é a hora do
     pagamento). A regra não mudou. Prova: `e2e/comissoes-uso-da-10.spec.ts` ("A32").
+    As três datas (o início, o fim com a hora e o pago) vão no fuso da rede
+    (`textoDoFechamento`, `lib/comissoes/extrato-texto.ts`; D3 da 23ª: a tela
+    dizia a hora de Brasília e o CSV a da rede).
   - **Pagar só parte: marcar e desmarcar os lançamentos** (A21 da 10ª
     simulação; decisão do Heitor, 2026-11-10: "concordo com marcar e
     desmarcar" — a Admin da rede queria pagar parte da comissão da Camila agora e o

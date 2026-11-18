@@ -685,7 +685,12 @@ function PlanoFechado({ plano, financeiro, slug, fuso }: { plano: ActivePlan; fi
             {agendadas > 0 ? ` · ${agendadas} ${agendadas === 1 ? 'agendada' : 'agendadas'}` : ''}
           </p>
         </div>
-        <ChevronRight size={16} color="var(--text-faint)" aria-hidden="true" className="seta-do-cartao" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+        {/* A37 da 23ª (princípio 7): o "Ver o plano" à vista, sem abrir o cartão — morava no fim do detalhe. */}
+        <Link data-ver-o-plano href={`/${slug}/cliente/planos/${plano.id}`} prefetch={false}
+          style={{ marginLeft: 'auto', flexShrink: 0, fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 700 }}>
+          Ver o plano
+        </Link>
+        <ChevronRight size={16} color="var(--text-faint)" aria-hidden="true" className="seta-do-cartao" style={{ flexShrink: 0 }} />
       </summary>
       <div data-plano-detalhe style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--hairline)' }}>
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -715,10 +720,6 @@ function PlanoFechado({ plano, financeiro, slug, fuso }: { plano: ActivePlan; fi
             {proximo ? ` · próxima em ${formatDia(proximo)}` : ''}
           </span>
         </div>
-        <Link href={`/${slug}/cliente/planos/${plano.id}`} prefetch={false}
-          style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 700 }}>
-          Ver o plano
-        </Link>
       </div>
     </details>
   )

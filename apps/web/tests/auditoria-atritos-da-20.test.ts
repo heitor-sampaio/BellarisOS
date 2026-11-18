@@ -177,6 +177,8 @@ function construtor(tabela: string) {
   return p
 }
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: construtor, rpc: () => construtor('rpc') }) }))
+// D2 da 23ª: a leitura pede o fuso do recorte (cacheado: fora do Next, sem o cache).
+vi.mock('@/lib/unidades/fuso-da-unidade', () => ({ fusoDoRecorte: async () => 'America/Sao_Paulo' }))
 
 const U = (n: number) => `${String(n).repeat(8)}-1111-4111-8111-111111111111`
 const daRede = { isNetworkAdmin: true, permissions: { audit: 'MANAGE' }, tenantId: 't1', branchId: null, unidades: null, internalUserId: 'u9' } as unknown as TenantContext

@@ -9,7 +9,7 @@ import { formatBRL } from '@estetica-os/utils'
 import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 import { textoDaBase } from '@/lib/comissoes/base-efetiva'
-import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda, vinculosDoExtrato, situacaoDoLancamento } from '@/lib/comissoes/extrato-texto'
+import { origemDoLancamento as origemDe, tituloDoLancamento, regraDoLancamento, rotuloDaBaseDoLancamento as base, csvDoExtrato, ehDeVenda, vinculosDoExtrato, situacaoDoLancamento, textoDoFechamento } from '@/lib/comissoes/extrato-texto'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 
@@ -34,10 +34,9 @@ const METODOS = [
   { key: 'DEBIT_CARD', label: 'Débito' }, { key: 'CREDIT_CARD', label: 'Crédito' },
 ]
 
-// O dia e a hora do lançamento no relógio da unidade (F62b). O período do
-// fechamento (inicio/fim) é o da comissão, da rede: fica em Brasília de propósito.
+// O dia e a hora do lançamento no relógio da unidade (F62b). O fechamento
+// (início, fim e o pago) é da comissão, no fuso da REDE (D12; D3 da 23ª).
 const data = (iso: string | null, fuso = 'America/Sao_Paulo') => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso }) : '—'
-const hora = (iso: string, fuso = 'America/Sao_Paulo') => new Date(iso).toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' })
 
 export interface PropsDaTela {
   titulo:        string
@@ -62,6 +61,8 @@ export interface PropsDaTela {
    * de cima, o título vira subtítulo e o "← Financeiro" some (as abas levam).
    */
   dentroDasAbas?: boolean
+  /** D3 da 23ª: o fuso da rede, o dos fechamentos (D12). Sem ele, o do portal. */
+  fusoDaRede?:   string
 }
 
 export function FinanceiroComissoes(p: PropsDaTela) {
@@ -207,7 +208,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
       {p.fechamentos.length > 0 && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Fechamentos">
           <p className="overline">Últimos fechamentos</p>
-          {p.fechamentos.map(f => <LinhaDeFechamento key={f.id} f={f} podeEstornar={p.podeFechar} />)}
+          {p.fechamentos.map(f => <LinhaDeFechamento key={f.id} f={f} podeEstornar={p.podeFechar} fusoDaRede={p.fusoDaRede} />)}
         </div>
       )}
     </div>
@@ -385,8 +386,9 @@ function Extrato({ linhas, nome }: { linhas: LancamentoDoExtrato[]; nome: string
 }
 
 /** Um fechamento da lista; quem fecha também estorna (com motivo). */
-function LinhaDeFechamento({ f, podeEstornar }: { f: Fechamento; podeEstornar: boolean }) {
-  const fuso = useFuso()
+function LinhaDeFechamento({ f, podeEstornar, fusoDaRede: daRede }: { f: Fechamento; podeEstornar: boolean; fusoDaRede?: string }) {
+  const doPortal = useFuso()
+  const fusoDaRede = daRede ?? doPortal
   const router = useRouter()
   const [aberto, setAberto] = useState(false)
   const [motivo, setMotivo] = useState('')
@@ -408,7 +410,7 @@ function LinhaDeFechamento({ f, podeEstornar }: { f: Fechamento; podeEstornar: b
       <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)' }}>
         <span style={{ color: 'var(--text)' }}>{f.professionalName} · {f.branchName}</span>
         {/* A32 da 10ª: "de 10/11 a 10/11" não dizia que era até a hora do pagamento. */}
-        <span style={{ color: 'var(--text-muted)' }}>lançamentos de {data(f.inicio)} até {data(f.fim)}{f.fim ? ` às ${hora(f.fim)}` : ''}, pago em {data(f.paidAt, fuso)}</span>
+        <span style={{ color: 'var(--text-muted)' }}>{textoDoFechamento(f, fusoDaRede)}</span>
         <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {f.estornadoAt && <span className="chip chip-muted">Estornado</span>}
           <strong style={{ color: 'var(--text)', textDecoration: f.estornadoAt ? 'line-through' : undefined }}>{formatBRL(f.total)}</strong>
@@ -419,7 +421,7 @@ function LinhaDeFechamento({ f, podeEstornar }: { f: Fechamento; podeEstornar: b
       </div>
       {f.estornadoAt && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          Estornado em {data(f.estornadoAt, fuso)}{f.estornoMotivo ? ` — ${f.estornoMotivo}` : ''}. Os lançamentos voltaram para “a pagar”.
+          Estornado em {data(f.estornadoAt, fusoDaRede)}{f.estornoMotivo ? ` — ${f.estornoMotivo}` : ''}. Os lançamentos voltaram para “a pagar”.
         </p>
       )}
       {aberto && (

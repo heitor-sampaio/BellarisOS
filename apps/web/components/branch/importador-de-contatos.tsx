@@ -13,7 +13,7 @@ import { validarLinha, marcarRepetidas, nomeDiferente, avisoDaMenorNaPlanilha, p
 import { maskPhone } from '@estetica-os/utils'
 import { importarContatos, andamentoDaImportacao, cruzamentoDaImportacao, type AndamentoDaImportacao, type CruzamentoDaLinha } from '@/actions/importacao'
 import type { ImportacaoAnterior } from '@/lib/importacao/historico'
-import { linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados } from '@/lib/importacao/o-que-entra'
+import { linhasQueJuntamNaPlanilha, textoDoBotaoDeImportar, colunasQueNaoEntram, colunasQueAOportunidadeLeva, avisoDasColunasDaOportunidade, ondeEstaoOsImportados, placarDaImportacao, rotuloDaEtapaDaImportacao } from '@/lib/importacao/o-que-entra'
 import { abrirABusca } from '@/lib/busca/abrir'
 import { ehPortalDaRede, rotaClientes, rotaOportunidades } from '@/lib/rotas'
 import { useFuso } from '@/components/shared/fuso'
@@ -29,15 +29,6 @@ const MAX_BYTES = 5 * 1024 * 1024
 const MAX_LINHAS = 10_000
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
-/** O placar de uma importação, numa linha (o resultado e o histórico dizem igual). */
-const placar = (a: { novas: number; completadas: number; semMudanca: number; comAviso: number; recusadas: number; oportunidades: number }) => [
-  plural(a.novas, 'novo', 'novos'), plural(a.completadas, 'completado', 'completados'),
-  a.semMudanca ? plural(a.semMudanca, 'sem mudança', 'sem mudança') : null,
-  a.comAviso ? plural(a.comAviso, 'com aviso', 'com aviso') : null,
-  plural(a.recusadas, 'recusada', 'recusadas'),
-  a.oportunidades ? plural(a.oportunidades, 'oportunidade', 'oportunidades') : null,
-].filter(Boolean).join(' · ')
-
 const DESTINOS: Record<Destino, { rotulo: string; explica: string }> = {
   clientes: {
     rotulo: 'Como clientes',
@@ -341,7 +332,7 @@ export function ImportadorDeContatos(p: Props) {
               {comOportunidade && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <label htmlFor="importar-etapa" style={rotuloCampo}>Etapa</label>
+                    <label htmlFor="importar-etapa" style={rotuloCampo}>{rotuloDaEtapaDaImportacao(p.funis.length)}</label>
                     <select id="importar-etapa" className="field" value={etapaId} onChange={e => setEtapaId(e.target.value)}>
                       <StageOptions funnels={p.funis} stages={p.etapas} />
                     </select>
@@ -541,7 +532,7 @@ export function ImportadorDeContatos(p: Props) {
                 )}
                 {a && (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0 }}>
-                    {placar({ novas: a.novas, completadas: a.completadas, semMudanca: a.sem_mudanca, comAviso: a.com_aviso, recusadas: a.com_erro, oportunidades: a.oportunidades })}
+                    {placarDaImportacao({ novas: a.novas, completadas: a.completadas, semMudanca: a.sem_mudanca, comAviso: a.com_aviso, recusadas: a.com_erro, oportunidades: a.oportunidades })}
                   </p>
                 )}
                 {a?.erro && <Aviso tom="erro">{a.erro}</Aviso>}
@@ -632,7 +623,7 @@ function ImportacoesAnteriores({ itens }: { itens: ImportacaoAnterior[] }) {
             <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>{SITUACAO[i.status] ?? i.status} · {quando(i.concluidaEm ?? i.criadaEm, fuso)}</span>
           </div>
           <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
-            {placar({ novas: i.novas, completadas: i.completadas, semMudanca: i.semMudanca, comAviso: i.comAviso, recusadas: i.recusadas, oportunidades: i.oportunidades })}
+            {placarDaImportacao({ novas: i.novas, completadas: i.completadas, semMudanca: i.semMudanca, comAviso: i.comAviso, recusadas: i.recusadas, oportunidades: i.oportunidades })}
           </span>
           {i.temRelatorio && (
             <a href={`/api/importacoes/${i.id}/erros`} download style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start' }}>

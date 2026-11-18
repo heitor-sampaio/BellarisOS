@@ -147,12 +147,21 @@ export const agendamentos: FerramentaDeLeitura<{
       ...(desativados.length ? [`${desativados.join(', ')} ${desativados.length === 1 ? 'está' : 'estão'} com o acesso desativado: estes agendamentos seguem no nome ${desativados.length === 1 ? 'dessa pessoa' : 'delas'}. Para passá-los a quem atende, troque quem atende em cada um — na agenda, ou pedindo aqui.`] : []),
       ...(linhas.length === 80 ? ['Mostrando os 80 primeiros.'] : []),
     ]
+    // A32 da 23ª (princípio 3): o item dizia só "10:00 · Bianca Lopes" numa
+    // lista de 17 a 19/11 nas duas unidades. O dia vai quando o período tem
+    // mais de um; a unidade, quando a pessoa alcança mais de uma.
+    const variosDias = de !== ate
+    const variasUnidades = (await idsDasUnidades(c, null)).length > 1
     return {
       dados: { periodo, ...(entendido ? { entendido } : {}), procurouEm, total: lista.length, agendamentos: lista, ...(avisos.length ? { aviso: avisos.join(' ') } : {}) },
       cartao: lista.length ? {
         // A29 da 19ª: o período em dd/mm, como o dia (era "2026-11-16 a 2026-12-16").
         tipo: 'links', titulo: `Agenda · ${de === ate ? quandoLegivel(janelaDoDia(de, fuso).inicio, fuso).split(' às')[0] : periodoLegivel(de, ate)}`,
-        itens: lista.slice(0, 12).map(a => ({ texto: `${a.quando.split(' às ')[1] ?? a.quando} · ${a.cliente}`, detalhe: `${a.procedimento} · ${a.profissional} · ${a.status}`, href: a.href })),
+        itens: lista.slice(0, 12).map(a => ({
+          texto: `${variosDias ? a.quando : (a.quando.split(' às ')[1] ?? a.quando)} · ${a.cliente}`,
+          detalhe: [a.procedimento, a.profissional, ...(variasUnidades ? [a.unidade] : []), a.status].join(' · '),
+          href: a.href,
+        })),
       } : undefined,
     }
   },

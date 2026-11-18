@@ -14,6 +14,19 @@ export function textoDoPlanoDoConcluido(): string {
 }
 
 /**
+ * A janela Planejamento, com o plano montado na tela do atendimento (A14 da
+ * 21ª). A21 da 23ª (princípio 7): ela mandava "Comece em Nova sessão", e o que
+ * barra o plano antes é "Queixas e dores" (`FALTAM_AS_DORES`). Com as dores
+ * em branco, a janela diz o passo delas primeiro (e o "Ir" leva a elas). O
+ * texto não diz "desta avaliação" (A21 da 22ª: pode ser uma drenagem).
+ */
+export function textoDoPlanoNaTela({ faltamAsDores }: { faltamAsDores: boolean }): string {
+  return faltamAsDores
+    ? 'O plano se monta na tela do atendimento: registre as “Queixas e dores” e, no cartão “Tratamento”, use “Nova sessão” para escolher o procedimento.'
+    : 'O plano se monta no cartão “Tratamento” da tela do atendimento: use “Nova sessão” para escolher o procedimento.'
+}
+
+/**
  * O rodapé do plano FECHADO (J-42): o que está em aberto se recebe onde. A28 da
  * 9ª: quem não abre a tela de receber lia "se recebe no financeiro" — diz com
  * quem fica. Desde o PDV (PDV1/CX1, a revisão do Heitor de 2026-11-13: "o

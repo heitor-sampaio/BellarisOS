@@ -99,8 +99,17 @@ test('A29: na avaliação o plano se monta na tela — o Planejamento por cima n
     await p.getByRole('main').getByRole('button', { name: 'Planejamento' }).click()
     const janela = p.getByRole('dialog', { name: 'Planejamento de tratamento' })
     // A14 da 21ª: o texto diz onde (o cartão "Tratamento"), e o botão leva até lá.
-    await expect(janela.getByText('O plano desta avaliação se monta no cartão “Tratamento”')).toBeVisible()
+    // A21 da 23ª: com as "Queixas e dores" em branco (o que barra o plano), elas vêm antes.
+    await expect(janela.getByText('registre as “Queixas e dores” e, no cartão “Tratamento”')).toBeVisible()
     await expect(janela.getByRole('button', { name: 'Novo plano' })).toHaveCount(0)
+    await janela.getByRole('button', { name: 'Ir às Queixas e dores' }).click()
+    await expect(janela).toHaveCount(0)
+    await expect(p.locator('[data-campo="dores"]')).toBeInViewport()
+    await expect(p.locator('#campo-dores')).toBeFocused()
+    // Com as dores escritas, a janela leva direto ao cartão "Tratamento".
+    await p.locator('#campo-dores').fill('Manchas na testa')
+    await p.getByRole('main').getByRole('button', { name: 'Planejamento' }).click()
+    await expect(janela.getByText('O plano se monta no cartão “Tratamento” da tela do atendimento')).toBeVisible()
     await janela.getByRole('button', { name: 'Ir ao Tratamento' }).click()
     await expect(janela).toHaveCount(0)
     await expect(p.locator('[data-editor-do-tratamento]')).toBeInViewport()

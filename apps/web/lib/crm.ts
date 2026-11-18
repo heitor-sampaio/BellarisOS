@@ -61,6 +61,13 @@ export const NEW_FUNNEL_STAGES: { name: string; color: string; outcome: StageOut
   { name: 'Perdido',      color: '#9e9e9e', outcome: 'LOST' },
 ]
 
+/**
+ * O que a janela diz no funil recém-criado (A6 da 23ª simulação; princípio 3):
+ * ele nasce com as etapas acima, e a tela não dizia que eram as iniciais.
+ */
+export const AVISO_DO_FUNIL_NOVO =
+  `Funil criado com as etapas iniciais (${NEW_FUNNEL_STAGES.map(e => e.name).join(', ').replace(/, ([^,]*)$/, ' e $1')}): renomeie, remova ou acrescente as suas.`
+
 export const OUTCOME_COPY: Record<StageOutcome, { label: string; hint: string }> = {
   OPEN: { label: 'Em aberto', hint: 'A oportunidade continua em negociação.' },
   WON:  { label: 'Ganho',     hint: 'Fecha a oportunidade como ganha: é ela que conta na conversão do funil.' },

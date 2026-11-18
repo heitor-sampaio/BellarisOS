@@ -31,7 +31,9 @@ export async function fetchCep(rawCep: string): Promise<CepResult | null> {
  */
 export function avisoDoBairroDoCep(bairro: string | null | undefined): string | null {
   const b = bairro?.trim()
-  return b ? `O bairro “${b}” veio da busca do CEP: confira.` : null
+  // A9 da 23ª (princípio 3): o aviso pedia para conferir um campo de bairro
+  // que não existe — o bairro entra no logradouro (`address`, acima).
+  return b ? `O bairro “${b}” veio da busca do CEP e entrou no logradouro: confira.` : null
 }
 
 /**

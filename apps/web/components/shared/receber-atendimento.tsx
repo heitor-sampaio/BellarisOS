@@ -9,6 +9,7 @@ import { formatarPontos } from '@/lib/fidelidade/formato'
 import { CampoDoDesconto, LembreteDoMotivo, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import { FORMAS_DO_BALCAO } from '@/components/shared/formas-de-pagamento'
 import { Dica } from '@/components/shared/dica'
+import { oQueSaiNoReceber, type SaiDaComanda } from '@/lib/pdv/situacoes'
 import {
   CamposDoPagamento, MotivoDoBotao, estadoDoPagamento, montarPagamento, recusaForaDoCampo, useRecusaDoPagamento,
   type EstadoDoPagamento,
@@ -97,8 +98,10 @@ export interface ReceberAtendimentoProps {
  * "Receber R$ X" (o PDV).
  */
 export function FormularioDeReceberAtendimento({
-  appointmentId, slug, price, pagamentoCombinado, pacotesParaAbater = [], clienteId, onFeito, onVoltar, onPendente,
+  appointmentId, slug, price, pagamentoCombinado, pacotesParaAbater = [], clienteId, onFeito, onVoltar, onPendente, aoMudarOQueSai,
 }: ReceberAtendimentoProps & {
+  /** A10 da 23ª: o que sai do valor (o voucher, o desconto, os pontos) e o total, para a comanda os mostrar. */
+  aoMudarOQueSai?: (linhas: SaiDaComanda[], total: number) => void
   onFeito:   () => void
   onVoltar?: () => void
   /** Enquanto grava: quem chama não fecha no meio. */
@@ -151,6 +154,14 @@ export function FormularioDeReceberAtendimento({
     setEstado(e)
   }
   const recusa = totalZero ? null : recusaDoPagamento(estado, total, 'da comanda')
+  // A10 da 23ª (princípio 3): o total da comanda segue o que sai aqui — não só o botão.
+  const oQueSai = oQueSaiNoReceber({
+    voucher: voucher ? { nome: voucher.name, desconto: voucher.desconto } : null,
+    desconto: doDesconto.recusa ? 0 : doDesconto.reais,
+    pontos: resgate.motivo ? { pontos: 0, desconto: 0 } : { pontos: resgate.pontos, desconto: resgate.desconto },
+  })
+  const chaveDoQueSai = JSON.stringify([oQueSai, total])
+  useEffect(() => { aoMudarOQueSai?.(oQueSai, total) }, [chaveDoQueSai]) // eslint-disable-line react-hooks/exhaustive-deps
   if (feito) return null
 
   return (

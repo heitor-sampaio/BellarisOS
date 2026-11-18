@@ -18,7 +18,7 @@ import {
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
   NETWORK_ONLY, notaDeAbrangencia, SO_NA_REDE_NOTE, avisaSemMinhasComissoes, quemVendeNoResumo, copilotNoResumo, textoDoQueFaltaNoCargo, documentosNoResumo,
-  pdvAbertoPeloFinanceiro, tratamentosNoResumo,
+  pdvAbertoPeloFinanceiro, tratamentosNoResumo, nivelDoPdvPeloFinanceiro, conclusaoNoResumo,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import { rotuloDasAbasAlcancadas, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
@@ -644,6 +644,8 @@ function PermissionMatrix({
                   aviso={destaque === module ? falta : null}
                   // A1 da 22ª: o PDV em "Sem acesso" que o Financeiro em Gerenciar abre.
                   nota={module === 'cashier' ? pdvAbertoPeloFinanceiro(levels) : null}
+                  // A1 da 23ª: e o seletor mostra o nível que vale, travado.
+                  travadoEm={module === 'cashier' ? nivelDoPdvPeloFinanceiro(levels) : null}
                   reportTabs={reportTabs}
                   caixas={caixas}
                   onLevel={v => setLevel(module, v)}
@@ -719,7 +721,7 @@ function PermissionMatrix({
 }
 
 function ModuleRow({
-  module, level, scope, last, destacado, aviso, nota, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
+  module, level, scope, last, destacado, aviso, nota, travadoEm = null, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
 }: {
   module: AppModule
   level: PermissionLevel
@@ -730,6 +732,8 @@ function ModuleRow({
   aviso?: string | null
   /** A1 da 22ª: o que o nível escolhido não diz (o PDV aberto pelo Financeiro). */
   nota?: string | null
+  /** A1 da 23ª: o nível que vale por outro módulo (o PDV pelo Financeiro) — o seletor o mostra, travado. */
+  travadoEm?: PermissionLevel | null
   reportTabs: ReportTab[]
   caixas: CaixasDoCargo
   onLevel: (v: PermissionLevel) => void
@@ -811,7 +815,9 @@ function ModuleRow({
 
         <SegmentedLevel
           options={MODULE_LEVELS[module]}
-          value={level}
+          value={travadoEm ?? level}
+          travado={!!travadoEm}
+          motivo={nota ?? undefined}
           onChange={onLevel}
         />
       </div>
@@ -1021,6 +1027,12 @@ function MenuPreview({ levels, scopes, reportTabs }: { levels: Levels; scopes: S
           {copilotNoResumo(levels.copilot)}
         </p>
       )}
+      {/* A2 da 23ª: "só os meus" na Agenda ou no Prontuário conclui só os próprios. */}
+      {conclusaoNoResumo(levels, escopos) && (
+        <p data-resumo-conclui style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
+          {conclusaoNoResumo(levels, escopos)}
+        </p>
+      )}
       {quemVendeNoResumo(levels) && (
         <p data-quem-vende style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
           {quemVendeNoResumo(levels)}
@@ -1052,13 +1064,17 @@ function PreviewLine({ title, items, marca }: { title: React.ReactNode; items: s
 
 // ─── Controles ───────────────────────────────────────────────────────────────
 
-function SegmentedLevel({ options, value, onChange }: {
+function SegmentedLevel({ options, value, travado = false, motivo, onChange }: {
   options: readonly PermissionLevel[]
   value: PermissionLevel
+  /** A1 da 23ª: o nível vale por outro módulo — mostrado, sem trocar aqui. */
+  travado?: boolean
+  motivo?: string
   onChange: (v: PermissionLevel) => void
 }) {
   return (
-    <div style={{ ...segFrame, flexShrink: 0 }}>
+    <div {...(travado ? { 'data-nivel-travado': value } : {})} title={travado ? motivo : undefined}
+      style={{ ...segFrame, flexShrink: 0, ...(travado ? { opacity: 0.75 } : null) }}>
       {(['NONE', 'VIEW', 'MANAGE'] as const).map(lvl => {
         const available = options.includes(lvl)
         const active    = value === lvl
@@ -1066,16 +1082,17 @@ function SegmentedLevel({ options, value, onChange }: {
           <button
             key={lvl}
             type="button"
-            disabled={!available}
+            disabled={!available || travado}
+            aria-pressed={active}
             onClick={() => onChange(lvl)}
-            title={available ? undefined : `${LEVEL_LABELS[lvl]} não se aplica a esta área`}
+            title={!available ? `${LEVEL_LABELS[lvl]} não se aplica a esta área` : travado ? motivo : undefined}
             style={{
               ...segItem(active),
               // Largura fixa mesmo quando o nível não existe para o módulo: sem
               // isto a coluna direita serrilha entre áreas de 2 e 3 níveis.
               width: 86,
               visibility: available ? 'visible' : 'hidden',
-              cursor: available ? 'pointer' : 'default',
+              cursor: travado ? 'not-allowed' : available ? 'pointer' : 'default',
             }}
           >
             {LEVEL_LABELS[lvl]}

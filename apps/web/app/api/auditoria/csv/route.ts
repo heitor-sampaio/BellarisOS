@@ -54,8 +54,11 @@ export async function GET(req: NextRequest) {
   // duas páginas vem inteira nas duas — o id não se repete no arquivo.
   const lidos = new Set<number>()
   let cortou = false
+  // D2 da 23ª: o relógio da leitura (o mesmo em toda página), o da coluna "Quando".
+  let fuso: string | undefined
   for (let pagina = 1; ; pagina++) {
     const r = await lerAuditoria(ctx, { ...filtros, pagina: String(pagina) }, { porPagina: POR_PAGINA })
+    fuso ??= r.fuso
     for (const reg of r.registros) if (!lidos.has(reg.id)) { lidos.add(reg.id); registros.push(reg) }
     // Todos os nomes de cada página, os que vierem a existir também.
     for (const [chave, valores] of Object.entries(r.nomes) as [keyof NomesDaAuditoria, Record<string, unknown> | undefined][]) {
@@ -65,7 +68,7 @@ export async function GET(req: NextRequest) {
     if (pagina >= PAGINAS_NO_MAXIMO) { cortou = true; break }
   }
   registros.sort((a, b) => b.id - a.id)
-  for (const l of linhasDoCsvDaAuditoria(registros, nomes)) {
+  for (const l of linhasDoCsvDaAuditoria(registros, nomes, fuso)) {
     linhas.push([l.quando, l.quem, l.oQue, l.gravacao, l.unidade ?? ''].map(celula).join(';'))
   }
   if (cortou) linhas.push(celula(`Parou em ${POR_PAGINA * PAGINAS_NO_MAXIMO} linhas: escolha um período menor para ver o resto.`))

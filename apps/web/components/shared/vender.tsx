@@ -11,7 +11,8 @@ import { formatBRL, parseDinheiro, DINHEIRO_INVALIDO } from '@estetica-os/utils'
 import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
 import { venderCredito, acessoDaClienteAoApp } from '@/actions/credito-interno'
 import { textoDoBonus } from '@/lib/creditos/bonus'
-import { rotaCliente, rotaDaComanda } from '@/lib/rotas'
+import { rotaCliente, rotaDaComanda, rotaNoPortal } from '@/lib/rotas'
+import { faltaDeEstoqueNaVenda } from '@/lib/vendas/falta-de-estoque'
 import { venderProduto } from '@/actions/produtos'
 import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -144,6 +145,9 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
   const tabela = Math.round(linhas.reduce((s, l) => s + Math.round(l.subtotal * 100), 0)) / 100
   const conta = contaDoDesconto(tabela, desconto)
   const quantidadesValidas = linhas.every(l => l.qtd >= 1 && l.qtd <= 100)
+  // A15 da 23ª: sem estoque, o botão desliga com o motivo e a tela aponta a Entrada.
+  const falta = faltaDeEstoqueNaVenda(linhas.map(l => ({ nome: l.prod.name, quantidade: l.qtd, disponivel: l.prod.disponivel, unidade: l.prod.unidade })))
+  const pathname = usePathname()
   // FD2a: o voucher e os pontos, à vista; o pagamento é o que sobra.
   const fid = useFidelidadeNaVenda(fidelidade, conta.liquido, estado.forma)
   const livres = produtos.filter(p => !itens.some(i => i.prodId === p.id))
@@ -235,13 +239,22 @@ function FormularioDoProduto({ clienteId, branchId, produtos, onFim, equipe, fid
         )}
       </div>
       {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      {falta && (
+        <p data-falta-de-estoque role="status" style={{
+          color: 'var(--warning)', background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-field-token)',
+          padding: '8px 12px', fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-semibold)',
+        }}>
+          {falta}{' '}
+          <Link href={rotaNoPortal(pathname, pathname.split('/')[1], '/estoque')} style={{ color: 'inherit', fontWeight: 'var(--weight-bold)' }}>Dar entrada no Estoque</Link>
+        </p>
+      )}
       {pergunta ? (
         <PerguntaDaVenda texto={pergunta} pendente={pendente} aoConfirmar={() => vender(true)} aoVoltar={() => setPergunta(null)} />
       ) : (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <MotivoDoBotao motivo={pendente || erro ? null : recusaForaDoCampo(estado, fid.aPagar, recusaDoPagamento(estado, fid.aPagar))} />
           <button type="button" className="btn-secondary" onClick={onFim} disabled={pendente}>Cancelar</button>
-          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar) || !quantidadesValidas}>
+          <button type="button" className="btn-primary" onClick={() => vender()} disabled={pendente || !!falta || !!conta.recusa || !!fid.recusa || !!recusaDoPagamento(estado, fid.aPagar) || !quantidadesValidas}>
             {pendente ? 'Vendendo…' : `Vender por ${formatBRL(fid.aPagar)}`}
           </button>
         </div>

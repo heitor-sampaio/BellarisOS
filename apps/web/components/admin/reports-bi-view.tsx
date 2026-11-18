@@ -1272,9 +1272,12 @@ function TabEstoque(p: ReportsBiProps) {
           <HBarChart data={topConsumed} color="var(--warning)" />
         </SCard>
         {!p.soOsMeus && <>
+          {/* A30 da 23ª (princípio 7): com uma categoria só, a pizza era 100% numa fatia — não diz nada. */}
+          {byCategory.length > 1 && (
           <SCard title="Valor em Estoque por Categoria">
             <DonutChart data={byCategory} />
           </SCard>
+          )}
           {!p.umaUnidade && (
           <SCard title="Saúde do Estoque por Unidade" style={{ gridColumn: '1 / -1' }}>
             <SimpleTable columns={branchHealthCols} rows={branchHealthRows} />

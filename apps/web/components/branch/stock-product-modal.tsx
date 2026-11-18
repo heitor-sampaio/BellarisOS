@@ -117,7 +117,8 @@ function ProductFields({
   const selectedCat = useMemo(() => categories.find(c => c.id === categoryId), [categories, categoryId])
   const skuPreview  = useMemo(
     // O cadastro novo sem categoria também gera (A6 da 7ª: o que se vende ganha REV).
-    () => isCreate || selectedCat ? `${prefixoDoSku(selectedCat?.nome, uso)}-NNN` : null,
+    // A8 da 23ª (princípio 3): o SKU ainda não existe — o prefixo com "NNN" no campo parecia um valor.
+    () => isCreate || selectedCat ? `Gerado ao salvar (${prefixoDoSku(selectedCat?.nome, uso)}-…)` : null,
     [selectedCat, isCreate, uso],
   )
 
@@ -155,10 +156,9 @@ function ProductFields({
           ) : (
             <div className="field" style={{
               background: 'var(--bg-app)', cursor: 'default',
-              fontFamily: 'monospace', fontSize: 'var(--text-base-sz)', fontWeight: 700,
-              color: skuPreview ? 'var(--brand)' : 'var(--text-faint)',
-              letterSpacing: '0.05em',
-            }}>
+              fontSize: 'var(--text-sm-sz)',
+              color: skuPreview ? 'var(--text-muted)' : 'var(--text-faint)',
+            }} data-sku-gerado-ao-salvar>
               {skuPreview ?? '—'}
             </div>
           )}

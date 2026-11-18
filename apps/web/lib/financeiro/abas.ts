@@ -74,5 +74,8 @@ export function linkDaAba(base: string, aba: AbaDoFinanceiro, manter: Record<str
  * O rótulo do cartão "A receber da cliente" (A9 da 22ª simulação; princípio
  * 3): o número grande é o que VENCE no período, e "R$ 0,00" ao lado de "Em
  * aberto: R$ 296,66" parecia contradição. O rótulo diz qual é o número.
+ * A17 da 23ª: "vence no período R$ 0,00" com R$ 700 em aberto seguia confuso —
+ * o número grande é o EM ABERTO (todos os vencimentos), e o do período vai na
+ * nota ("Vence no período: R$ …").
  */
-export const ROTULO_DO_A_RECEBER_DA_CLIENTE = 'A receber da cliente · vence no período'
+export const ROTULO_DO_A_RECEBER_DA_CLIENTE = 'A receber da cliente · em aberto'

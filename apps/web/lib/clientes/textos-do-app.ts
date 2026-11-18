@@ -102,6 +102,14 @@ export function linkDoDocumentoNoApp(slug: string): string {
 }
 
 /**
+ * A aba do Histórico com as fotos e os arquivos que a equipe enviou (A35 da 23ª
+ * simulação; princípio 3): chamava "Documentos", como a tela Documentos (os
+ * termos e contratos a assinar), e a cliente procurava a foto na outra. A chave
+ * do endereço segue `documentos` (o aviso "Foto nova" leva a ela).
+ */
+export const ROTULO_DOS_ARQUIVOS_NO_APP = 'Fotos e arquivos'
+
+/**
  * O plano aceito sem o contrato (A35 da 21ª; princípio 3): o contrato de plano
  * nasce no PDV, com a forma de pagamento (PT1c) — a cliente lia "Nenhum
  * documento neste plano" e não sabia que ainda ia assinar. Só quando a rede
@@ -135,10 +143,10 @@ export function miniaturaNoApp(d: { category: string; file_url: string }): strin
 }
 
 /**
- * O botão do "Confirmar e avaliar" (A41 da 22ª; princípio 3): com nota ou
- * comentário, ele diz que envia a avaliação — era sempre "Confirmar que
- * realizei o atendimento", e a avaliação preenchida parecia ficar para trás.
+ * O botão do "Confirmar e avaliar". A41 da 22ª: com nota ou comentário, ele
+ * passou a dizer "Confirmar e enviar a avaliação". A36 da 23ª (princípio 3): o
+ * rótulo que muda ao marcar as estrelas parecia instável — é um só, e o cartão
+ * da avaliação diz que ela vai junto ("Avalie (opcional) · vai junto ao
+ * confirmar").
  */
-export function textoDoBotaoDeConfirmar(p: { avaliou: boolean }): string {
-  return p.avaliou ? 'Confirmar e enviar a avaliação' : 'Confirmar que realizei o atendimento'
-}
+export const BOTAO_DE_CONFIRMAR_NO_APP = 'Confirmar que realizei o atendimento'

@@ -72,7 +72,9 @@ describe('A18: as dores dizem, no campo, que são obrigatórias para gerar o pla
 
 describe('A19: o Planejamento e o Tratamento dizem o primeiro passo', () => {
   it('a janela diz por onde começar', () => {
-    expect(ler('components/branch/planejamento-tratamento.tsx')).toContain('Comece em “Nova sessão” e escolha o procedimento.')
+    // A21 da 23ª: o texto mora em textoDoPlanoNaTela (e diz as dores antes, quando faltam).
+    expect(ler('components/branch/planejamento-tratamento.tsx')).toContain('textoDoPlanoNaTela({ faltamAsDores })')
+    expect(ler('lib/plano-de-tratamento/textos.ts')).toContain('use “Nova sessão” para escolher o procedimento.')
   })
   it('o Tratamento vazio diz o primeiro passo, e o "Ir ao Tratamento" põe o foco nele', () => {
     const editor = ler('components/branch/treatment-plan-editor.tsx')

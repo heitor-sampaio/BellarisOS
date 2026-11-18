@@ -36,11 +36,12 @@ describe('A1: a linha do PDV diz que o Financeiro em Gerenciar o abre', () => {
 })
 
 describe('A2: o resumo diz de onde vem Tratamentos', () => {
-  it('o texto, com o Prontuário ou com quem recebe', async () => {
+  // D1 da 23ª: a regra mudou — Tratamentos vem da Agenda (a régua da página).
+  it('o texto, com a Agenda', async () => {
     const { tratamentosNoResumo } = await import('@/lib/permissions-copy')
-    expect(tratamentosNoResumo({ medical_records: 'VIEW' })).toMatch(/^Tratamentos vem do Prontuário ou de quem recebe/)
-    expect(tratamentosNoResumo({ financial: 'MANAGE' })).toMatch(/^Tratamentos vem do Prontuário ou de quem recebe/)
-    expect(tratamentosNoResumo({ medical_records: 'NONE', cashier: 'NONE', financial: 'VIEW' })).toBeNull()
+    expect(tratamentosNoResumo({ agenda: 'VIEW' })).toMatch(/^Tratamentos vem da Agenda/)
+    expect(tratamentosNoResumo({ medical_records: 'VIEW' })).toBeNull()
+    expect(tratamentosNoResumo({ financial: 'MANAGE' })).toBeNull()
   })
   it('o resumo usa o texto numa dica', () => {
     const f = editor()

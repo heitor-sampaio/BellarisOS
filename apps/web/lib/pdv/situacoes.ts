@@ -191,6 +191,40 @@ export function descontosDaComanda(c: ComandaDoPdv): { chave: 'desconto' | 'vouc
 }
 
 /**
+ * A14 da 23ª simulação (princípio 3): recebida em duas formas e estornada uma,
+ * a parcela 1/3 de R$ 150 passava a dizer "R$ 100,00" — o que falta —, sem o
+ * total nem o pago. Com parte paga: "1/3 · R$ 150,00 · pago R$ 50,00, falta
+ * R$ 100,00"; sem, como era.
+ */
+export function valorDaParcelaEmTexto(p: { valor: number; pago?: number; numero: number | null; total: number | null }): string {
+  const qual = p.numero && p.total ? `${p.numero}/${p.total}` : 'A receber'
+  const pago = p.pago ?? 0
+  if (!(pago > 0)) return `${qual} · ${brl(p.valor)}`
+  return `${qual} · ${brl(Math.round((p.valor + pago) * 100) / 100)} · pago ${brl(pago)}, falta ${brl(p.valor)}`
+}
+
+/** Uma linha do que sai do valor da comanda (o desconto, o voucher, os pontos). */
+export interface SaiDaComanda { chave: 'desconto' | 'voucher' | 'pontos'; rotulo: string; valor: number }
+
+/**
+ * A10 da 23ª (princípio 3): o voucher escolhido no Receber mudava só o botão
+ * ("Receber R$ 1.320,00"), e o total da comanda seguia R$ 1.350,00. O que sai
+ * no Receber, na ordem da conta (o voucher, o desconto, os pontos), com os
+ * rótulos da comanda paga (`descontosDaComanda`).
+ */
+export function oQueSaiNoReceber({ voucher, desconto, pontos }: {
+  voucher: { nome: string; desconto: number } | null
+  desconto: number
+  pontos: { pontos: number; desconto: number }
+}): SaiDaComanda[] {
+  const linhas: SaiDaComanda[] = []
+  if (voucher && voucher.desconto > 0) linhas.push({ chave: 'voucher', rotulo: `Voucher “${voucher.nome}”`, valor: voucher.desconto })
+  if (desconto > 0) linhas.push({ chave: 'desconto', rotulo: 'Desconto', valor: desconto })
+  if (pontos.desconto > 0) linhas.push({ chave: 'pontos', rotulo: 'Pontos', valor: pontos.desconto })
+  return linhas
+}
+
+/**
  * O valor da comanda na lista (A1 da 17ª): a do atendimento paga mostra o que
  * foi PAGO (o Peeling de R$ 280 com R$ 30 de desconto aparecia "R$ 280,00" em
  * "Fechadas hoje"); a aberta, o que falta; a venda e o plano, o valor deles (o
@@ -353,9 +387,13 @@ export function contarComValorEmAberto(comandas: readonly ComandaDoPdv[]): numbe
   return comandas.filter(c => c.paga && !c.estornada && !c.canceladaEm && c.emAberto > 0).length
 }
 
-/** "1 com valor a receber"; nenhuma, nulo. */
+/**
+ * "1 venda com parcelas a receber"; nenhuma, nulo. A12 da 23ª (princípio 3):
+ * "0 comandas abertas · 2 com valor a receber" se contradizia — é a venda
+ * fechada no crediário, e o topo leva a ela (em "Fechadas hoje").
+ */
 export function textoDasComValorEmAberto(n: number): string | null {
-  return n > 0 ? `${n} com valor a receber` : null
+  return n > 0 ? `${n} ${n === 1 ? 'venda' : 'vendas'} com parcelas a receber` : null
 }
 
 /**
@@ -375,6 +413,16 @@ export interface AbertasNaOutraUnidade { id: string; nome: string; abertas: numb
  * em cada outra unidade ("1 comanda aberta em Alecrim Renascença"); a tela
  * leva a ela. Sem nenhuma, a lista fica vazia.
  */
+/**
+ * A11 da 23ª (princípio 3): o aviso da outra unidade era uma linha pequena
+ * acima de "Nenhuma comanda aberta…". Com comanda aberta numa outra unidade,
+ * o vazio diz que é DESTA ("… em Afonso Pena."), e as outras vão nele.
+ */
+export function vazioDasAbertas(unidade: string | null | undefined, outras: readonly AbertasNaOutraUnidade[]): string {
+  if (outras.some(o => o.abertas > 0)) return unidade?.trim() ? `Nenhuma comanda aberta em ${unidade.trim()}.` : 'Nenhuma comanda aberta nesta unidade.'
+  return 'Nenhuma comanda aberta. Ela nasce quando um atendimento é iniciado e tem o que cobrar.'
+}
+
 export function abertasNasOutrasEmTexto(outras: readonly AbertasNaOutraUnidade[]): { id: string; texto: string }[] {
   return outras.filter(o => o.abertas > 0).map(o => ({
     id: o.id,

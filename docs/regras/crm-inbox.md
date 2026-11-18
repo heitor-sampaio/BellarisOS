@@ -693,7 +693,9 @@ contatos dela — e vê Configurações só com essa aba.
   (nome ou e-mail da equipe ativa), UTM source/medium/campaign e tags da
   oportunidade. Etapa e responsável da linha vencem os da tela; vazio, valem os
   da tela. ⚠️ A COLUNA de responsável distribui oportunidades: a action a recusa para
-  quem não tem `podeTrocarResponsavel` (a tela nem a oferece).
+  quem não tem `podeTrocarResponsavel` (a tela nem a oferece). Com mais de um
+  funil, o campo da tela se chama "Funil e etapa" (as etapas vêm agrupadas por
+  funil; A40 da 23ª, `rotuloDaEtapaDaImportacao`).
 - **O que a linha cita por nome** (unidade, etapa, responsável, procedimento) é
   resolvido sem acento nem caixa; não achado — ou ambíguo, como dois membros
   com o mesmo nome — recusa a linha com o motivo. A prévia usa as listas que a
@@ -816,8 +818,12 @@ contatos dela — e vê Configurações só com essa aba.
   Situação; Motivo" — as recusadas e as importadas com aviso. A aba mostra
   "Importações anteriores" (`importacoesAnteriores`,
   `lib/importacao/historico.ts`; `[data-importacao-anterior]`): as que a
-  pessoa alcança (a régua de `importacaoAoAlcance`), com o placar ("4 novos ·
-  2 com aviso · 1 recusada") e o relatório enquanto ele vale (7 dias).
+  pessoa alcança (a régua de `importacaoAoAlcance`), com o placar e o
+  relatório enquanto ele vale (7 dias). **O placar soma as linhas** (A5 da
+  23ª; princípio 3: "8 novos · 0 completados · 1 sem mudança · 1 com aviso ·
+  1 recusada" eram 11 de 10): "com aviso" é das que entraram — "8 novos · 0
+  completados · 1 sem mudança · 1 recusada · das 9 que entraram, 1 com aviso"
+  (`placarDaImportacao`, `lib/importacao/o-que-entra.ts`).
 - **O fim diz onde estão os importados** (A19 da 21ª simulação: os contatos
   sem oportunidade não aparecem em Clientes, Oportunidades nem Inbox, e
   pareciam não ter entrado; `ondeEstaoOsImportados`): as fichas em Clientes,
@@ -1257,6 +1263,15 @@ Configurações em Gerenciar (`recusaDaConfigDaRede`; o botão some do quadro
 da unidade). Prova: `e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts`.
 O funil criado na janela abre selecionado, com as etapas dele (A19 da 16ª:
 `createFunnel` devolve o id). Prova: `e2e/crm-atritos-da-16.spec.ts` ("A19").
+E diz que elas são as iniciais (A6 da 23ª): "Funil criado com as etapas
+iniciais (Novo, Em andamento, Ganho e Perdido): renomeie, remova ou acrescente
+as suas." (`AVISO_DO_FUNIL_NOVO`, `lib/crm.ts`; `[data-funil-novo]`).
+**O quadro abre no funil que tem oportunidade, ou no último escolhido** (A28
+e A34 da 23ª): sem `?funil=`, o último escolhido no seletor (o cookie
+`bellaris-funil`, `lib/crm/funil-lembrado.ts`) e, sem ele, o padrão — que,
+vazio, cede ao primeiro funil com oportunidade no recorte do quadro
+(`funilDoDashboard`, a regra do Dashboard; `indicadores.md`). Prova:
+`e2e/crm-atritos-da-23.spec.ts`.
 Clicar no nome do funil, na janela, também o seleciona (A12 da 17ª). E
 **tirar a ÚLTIMA etapa de perda do funil avisa, não recusa** (A11 da 17ª;
 princípio 2): excluir a etapa ou mudar o desfecho dela abre "Este funil fica

@@ -1774,6 +1774,45 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-17 — Os defeitos e atritos da 23ª simulação, corrigidos
+
+A 23ª rodou sobre `17e38ac4` com o "[sim] Studio Acácia" (uma unidade, quatro pessoas, um caixa sem a Agenda) e a "[sim] Rede Bromélia" (duas unidades em Campo Grande, UTC−4, com o Copilot). O dinheiro bateu centavo a centavo nos dois times, e os 2 defeitos e 21 dos atritos consertados na 22ª apareceram funcionando. Ela achou 3 defeitos (2 médios, 1 baixo) e 40 atritos; nada foi ao Heitor.
+
+- **D1, o menu Tratamentos** (a pendência da 22ª): o menu e o resumo do cargo mostram Tratamentos a quem a página abre — a Agenda em Ver. A razão antiga ("quem recebe cobra o plano ali") caiu com o PDV4/PT1c: o plano se cobra na comanda do PDV. `menu.test.ts` mudou junto (princípio 3).
+- **D2, a Auditoria no fuso**: a coluna "Quando" (tela e CSV) no fuso do recorte (`fusoDoRecorte`); "Agendou/Remarcou … para" no fuso da unidade do agendamento. Era Brasília numa rede de Campo Grande.
+- **D3, os "Últimos fechamentos" das comissões** no fuso da rede (`textoDoFechamento`).
+- **Cargos e equipe**: a linha do PDV aparece travada em Gerenciar quando o Financeiro em Gerenciar a abre (A1); o resumo diz quem conclui com a Agenda ou o Prontuário em "só os meus" (A2); "Desativar e repassar N de M" (A3).
+- **PDV, caixa e financeiro**:
+  - A4: a "Maquininha" de fábrica vazia é a que o "+ Adicionar" preenche, não uma segunda.
+  - A8: o SKU diz "Gerado ao salvar".
+  - A10: o total da comanda acompanha o voucher, o desconto e os pontos.
+  - A11/A12: as Abertas dizem "Nenhuma comanda aberta em <unidade>" com o link da outra, e "N vendas com parcelas a receber" com o link.
+  - A13: o estorno de uma forma da venda de produto mostra a venda inteira (`vendaDoEstorno`).
+  - A14: a parcela recebida em parte diz "R$ 150,00 · pago R$ 50,00, falta R$ 100,00".
+  - A15: sem estoque, o Vender desliga com o motivo e o link da Entrada.
+  - A17: "A receber da cliente · em aberto", com o do período na nota.
+  - A20: "Desconto que saiu da base" no CSV do extrato.
+  - A30: o gráfico de estoque por categoria só com duas ou mais.
+  - A31: a Auditoria diz a parcela e o valor de cada forma, e o "−/+" da comanda diz o produto e a quantidade.
+  - A18 era engano (a despesa já pede "Selecione…"); A19 já estava resolvido.
+- **Atendimento, agenda e plano**: o Planejamento diz que faltam as Queixas e dores e leva a elas (A21, em parte); aviso — sem recusar — do mesmo procedimento para a mesma cliente no mesmo dia (A22, `avisoDoMesmoProcedimentoNoDia`); "Confirme que o procedimento foi feito." (A23); o plano segue "(opcional)" durante o atendimento (A25); o atendimento de outra pessoa diz quem conclui (A26); a Semana da Minha agenda é uma lista por dia (A27).
+- **Copilot, CRM e montar a rede**:
+  - A32: o cartão de agenda diz o dia (período de mais de um) e a unidade (quem alcança mais de uma); A33: o "Encontrado" diz o recorte da unidade.
+  - A16: o que ganha o foco atrás do botão do Copilot sobe acima dele (`useFocoAcimaDoBotao`).
+  - A5/A40: o placar da importação soma as linhas; "Funil e etapa".
+  - A6: o funil novo diz que nasceu com as etapas iniciais. A9: o bairro do CEP "entrou no logradouro".
+  - A28/A34: o quadro de Oportunidades e a aba Comercial abrem no `?funil=`, senão no último escolhido (cookie `bellaris-funil`), senão no padrão com oportunidade.
+  - A29: o comparecimento só conta o que já devia ter acontecido; sem nenhum, "—".
+- **App da cliente**: a aba "Fotos e arquivos", com o cartão em Documentos (A35); o botão fixo "Confirmar que realizei o atendimento", a nota "(opcional)" (A36); "Ver o plano" no cabeçalho do plano aceito (A37).
+- **De fora**: A24 (o desenho do cartão de outra unidade na Minha agenda segue a duração, não a unidade); o rascunho do Planejamento ao sair e o botão do cabeçalho (resto do A21); A7, A38 e A39 já anotados (a marca "não usa insumo", o "Incluído" do plano no Agendar, o endereço no cadastro rápido).
+- **Migration** (aplicada na produção e no banco local): `20261123000001_comparecimento_so_o_que_ja_passou` (`metrics_comercial`).
+- **A completa contra o banco local**:
+  - isolados 1618 passando e 1 falha: o `suporte-credenciais` (a navegação interrompida pela queda da sessão de suporte; passou sozinho, 10/10);
+  - compartilhados 828 passando e 4 falhas: os dois specs novos (o aviso do A22 dizia só o primeiro nome — agora diz o nome inteiro, como a ficha; o A28 achava o cartão escondido da versão de celular) e o `agendamento-da-rede` e o `automacoes-escolhas`, que oscilam no estado dos funis da rede compartilhada.
+  - De novo, com o build refeito: os cinco arquivos passaram. O `conferir` deu 4622 objetos iguais.
+- Vitest: 3305 testes. Testes novos: `atritos-da-23-cargos-atendimento-app`, `atritos-da-23-financeiro`, `fuso-da-auditoria-e-comissoes`, `copilot-atritos-da-23` e `atritos-da-23-importacao-crm`. E2E novos: `agenda-mesmo-procedimento-no-dia` e `crm-atritos-da-23`.
+- **Vale uma completa quando o Heitor pedir**: mudaram o menu (`lib/menu.ts`) e componentes de pagamento usados em vários lugares (`receber-atendimento`, `pdv-tela`, `vender`, as telas do Financeiro).
+
 ### 2026-11-17 — Os defeitos e atritos da 22ª simulação, corrigidos
 
 A 22ª rodou sobre `ee8452cb` com o "[sim] Espaço Girassol" (uma unidade, três pessoas) e a "[sim] Rede Alecrim" (duas unidades, com o Copilot). O dinheiro bateu centavo a centavo nos dois times, e os 5 defeitos e 22 atritos consertados na 21ª apareceram funcionando. Ela achou 2 defeitos (médios, novos) e 42 atritos; nada foi ao Heitor. Corrigidos os 2 defeitos e 36 atritos; 5 ficaram de fora como recurso novo e 1 não acontece no código atual.
@@ -1807,7 +1846,7 @@ A 22ª rodou sobre `ee8452cb` com o "[sim] Espaço Girassol" (uma unidade, três
   - compartilhados 823 passando e 3 falhas: o `pdv-atritos-da-17` (o valor do pagamento ao lado, A14 — spec atualizado), e `agendamento-da-rede` e `automacoes-escolhas`, que oscilam no estado dos funis da rede compartilhada.
   - De novo, no mesmo build: os 21 testes dos cinco arquivos passaram. O `conferir` deu 4622 objetos iguais.
 - Vitest: 3226 testes. Testes novos: `atendimento-atritos-da-22`, `cargos-equipe-atritos-da-22`, `atritos-da-22-caixa`, `copilot-achados-da-22` e `atritos-da-22-montar-crm-app`.
-- **Pendente**: o menu mostra Tratamentos a quem tem o Prontuário ou recebe (decisão da `menu.test.ts`), mas `/planejamentos` pede a Agenda em Ver — o cargo que só recebe, sem a Agenda, vê a entrada e esbarra no sem acesso. A 23ª põe um caixa sem a Agenda para ver.
+- **Pendente**: o menu mostra Tratamentos a quem tem o Prontuário ou recebe (decisão da `menu.test.ts`), mas `/planejamentos` pede a Agenda em Ver — o cargo que só recebe, sem a Agenda, vê a entrada e esbarra no sem acesso. A 23ª põe um caixa sem a Agenda para ver. (Resolvido na 23ª: D1.)
 
 ### 2026-11-17 — Os defeitos e atritos da 21ª simulação, corrigidos
 

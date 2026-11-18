@@ -37,6 +37,16 @@ export function textoDeQuemConclui(quem: string[] | null | undefined): string {
 }
 
 /**
+ * A26 da 23ª (princípio 3): o atendimento de OUTRA pessoa aberto por quem tem
+ * a Agenda "só os meus" dizia só "Este atendimento é de outra pessoa que
+ * atende". A quem tem o Prontuário, diz quem conclui: a Agenda de todos e o
+ * Prontuário em Gerenciar (`quemConcluiOAtendimento`, D1 da 22ª).
+ */
+export function textoDeQuemConcluiODeOutra(quem: string[] | null | undefined): string {
+  return `Quem conclui é quem tem a Agenda de todos e o Prontuário em Gerenciar${entreParenteses(quem)}.`
+}
+
+/**
  * A10 da 20ª (princípio 3): "Completar o cadastro" é de quem edita os
  * Clientes; quem colhe a assinatura sem editar lê quem completa.
  */

@@ -44,7 +44,12 @@
     o aviso e a recusa repetidos). O horário no passado diz "Escolha a partir
     de 01/11/2026 às 10:40." (`limiteLegivel`, `ValidacaoEmPortugues`; era o
     ISO "2026-11-01T10:40"). Prova: `e2e/agenda-encaixe-avisa.spec.ts`,
-    `tests/validacao-limite-legivel.test.ts`. **O horário fora da grade de 30
+    `tests/validacao-limite-legivel.test.ts`. **A mesma cliente com o mesmo procedimento
+    no dia também avisa** (A22 da 23ª; princípio 3, como o aviso do plano ×
+    avulso): "Helena já tem Avaliação neste dia, às 10:00." — só os que a
+    pessoa alcança, fora os cancelados e as faltas, no relógio da unidade
+    (`avisoDoMesmoProcedimentoNoDia`, `textoDoMesmoProcedimentoNoDia`,
+    `[data-aviso-mesmo-no-dia]`). Só aviso: o agendamento segue (princípio 2). **O horário fora da grade de 30
     em 30 min também se diz encaixe** (A17 da 10ª, 2026-11-10; como o "Outro
     horário (encaixe)" do plano): no expediente, o Agendar com 04:15 diz "04:15
     fica fora da grade de 30 em 30 minutos: é um encaixe (permitido)."
@@ -285,7 +290,10 @@
     A "Minha agenda" dela traz os dela de fora como cartões ("Na unidade
     Batel", `[data-outra-unidade]`) — e aí os cartões do topo dizem de onde é
     cada número: "Hoje · suas unidades", "Esta semana · suas unidades" e
-    "Ocupação hoje · <a unidade>" (A22 da 22ª, `rotulosDaMinhaAgenda`) —, e a agenda inteira da unidade, a lista
+    "Ocupação hoje · <a unidade>" (A22 da 22ª, `rotulosDaMinhaAgenda`) —, e a
+    "Semana" dela lista, embaixo da faixa dos dias, os atendimentos de cada dia
+    (fora os cancelados), cada um abrindo o atendimento (A27 da 23ª,
+    `semanaEmLista`, `[data-semana-em-lista]`: eram só barrinhas) —, e a agenda inteira da unidade, a lista
     "Seus atendimentos em outras unidades" (`[data-meus-de-outras-unidades]`);
     os dois abrem a tela do atendimento pelo portal dela
     (`/[slug]/agenda/[id]` resolve a unidade do agendamento). **Quem é da
@@ -476,7 +484,10 @@
   (`app/_shared/sessao-de-atendimento.tsx`, os dois portais) de um
   agendamento de OUTRO profissional diz "Este atendimento é de outra
   pessoa que atende" (A23 da 22ª: era "de outra profissional", no feminino
-  fixo), com o nome e "Voltar à agenda", e nada do atendimento
+  fixo), com o nome e "Voltar à agenda", e nada do atendimento (a quem tem
+  o Prontuário, também quem conclui: "Quem conclui é quem tem a Agenda de
+  todos e o Prontuário em Gerenciar (nomes)." — A26 da 23ª,
+  `textoDeQuemConcluiODeOutra`)
   (`AtendimentoDeOutraProfissional`; r2-atd-04, revisão do Heitor de
   2026-11-03: o 404 "Página não encontrada" da A38 parecia defeito — e antes
   dele era `semAcesso()`, "Seu cargo não libera esta tela", e o cargo libera;
@@ -735,9 +746,10 @@
   atendimento e avaliação por procedimento também"). A cliente avalia no app,
   ao confirmar o atendimento concluído ("Confirmar e avaliar", no Histórico →
   `/[slug]/cliente/atendimentos/[id]/confirmar`), com estrelas opcionais e o
-  comentário. Com nota ou comentário, o botão diz "Confirmar e enviar a
-  avaliação"; sem, "Confirmar que realizei o atendimento"
-  (`textoDoBotaoDeConfirmar`, A41 da 22ª). **O que ela avalia é da rede** (Configurações → Geral, "O que
+  comentário. O botão tem um rótulo só, "Confirmar que realizei o
+  atendimento" (`BOTAO_DE_CONFIRMAR_NO_APP`; A36 da 23ª: o da A41 da 22ª
+  mudava ao marcar as estrelas), e o cartão diz "Avalie (opcional) · vai
+  junto ao confirmar". **O que ela avalia é da rede** (Configurações → Geral, "O que
   a cliente avalia", `tenants.avaliacao_o_que`): "O atendimento e cada
   procedimento" (`OS_DOIS`, o padrão), "Só o atendimento" ou "Só cada
   procedimento"; quem não tem “A rede inteira” não muda (`recusaDaConfigDaRede`).
@@ -1834,11 +1846,14 @@ const procedures = await ler(
   `enviarDocumentoACliente`, depois de gravar). O aviso diz "Foto nova" —
   "<unidade> enviou uma foto do seu atendimento." — e, no app, a foto do
   atendimento se diz "Uma foto do seu atendimento" (`tituloDoArquivoNoApp`).
-  O aviso (a foto e o documento) abre o Histórico na aba Documentos, onde
-  eles estão (`linkDoDocumentoNoApp`, `?aba=documentos`; A13 da 21ª). Lá, a
+  O aviso (a foto e o documento) abre o Histórico na aba "Fotos e arquivos",
+  onde eles estão (`linkDoDocumentoNoApp`, `?aba=documentos`; A13 da 21ª; A35
+  da 23ª: a aba se chamava "Documentos", como a tela dos termos e contratos, e
+  a cliente procurava a foto na outra — `ROTULO_DOS_ARQUIVOS_NO_APP`; a tela
+  Documentos leva a ela, `[data-fotos-e-arquivos]`). Lá, a
   foto aparece pela miniatura, não pelo ícone de documento (`miniaturaNoApp`,
   `[data-miniatura-da-foto]`; A40 da 22ª).
-  Prova: `tests/app-da-cliente-atritos-da-21.test.ts`.
+  Prova: `tests/app-da-cliente-atritos-da-21.test.ts`, `tests/atritos-da-23-cargos-atendimento-app.test.ts`.
   **O cartão vazio diz onde a foto fica** (A26 da 9ª simulação, revisto no
   PR1a do bloco Prontuário, 2026-11-14): "Nenhuma foto neste atendimento. Ela
   fica no prontuário da cliente, no registro deste atendimento." (de
@@ -2081,6 +2096,13 @@ const procedures = await ler(
     avaliação" também numa drenagem). **Antes de iniciar, o plano é opcional**
     (A21): no agendado, confirmado ou chegou, o cartão diz "Propor um plano
     (opcional)" e o "Aceitar plano" não é a ação grande (`planoAntesDeIniciar`).
+    **E durante o atendimento avulso também** (A25 da 23ª, princípio 7: ao
+    iniciar, o "Aceitar plano" virava o botão grande acima do "basta
+    Finalizar"; `planoDuranteOAtendimento`). A janela Planejamento, com o plano
+    na tela, diz as "Queixas e dores" antes da "Nova sessão" quando elas estão
+    em branco (são o que barra o plano), e o botão dela leva às dores
+    ("Ir às Queixas e dores") ou ao cartão "Tratamento" (A21 da 23ª,
+    `textoDoPlanoNaTela`).
     **As dores dizem no campo** "obrigatório para gerar o plano" (A18). Na avaliação ABERTA,
     gerar o plano grava também o registro do atendimento (as dores, a ficha, a
     ficha de saúde, a evolução) — ali segue o Prontuário em Gerenciar, como o
@@ -2513,6 +2535,8 @@ const procedures = await ler(
   (revenda e "os dois") ganha "REV" (`prefixoDoSku`, `lib/estoque/sku.ts`, no
   servidor e na prévia do cadastro). O SKU que já existe não muda. Prova:
   `e2e/configuracoes-atritos-da-7.spec.ts` ("A6"), `tests/sku-do-produto.test.ts`.
+  A prévia diz "Gerado ao salvar (REV-…)", esmaecida — o número só existe
+  quando o produto grava (A8 da 23ª: "REV-NNN" parecia um valor).
 - **A saída por PERDA** (D-7, decisão do Heitor, 2026-10-29; migrations
   `20261029001303`/`304`): Gerenciar estoque → Movimentações → "Perda", com o
   LOTE (ou "sem lote — sai o que vence primeiro"), a quantidade em

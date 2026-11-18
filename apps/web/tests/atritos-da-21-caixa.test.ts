@@ -188,8 +188,8 @@ describe('A2: o topo cita as comandas de hoje com valor a receber', () => {
     expect(contarComValorEmAberto([comanda(), comanda({ id: 'c2', emAberto: 0 }), comanda({ id: 'c3', estornada: true }), comanda({ id: 'c4', paga: false })])).toBe(1)
   })
   it('o texto', () => {
-    expect(textoDasComValorEmAberto(1)).toBe('1 com valor a receber')
-    expect(textoDasComValorEmAberto(3)).toBe('3 com valor a receber')
+    expect(textoDasComValorEmAberto(1)).toBe('1 venda com parcelas a receber') // A12 da 23ª: o texto mudou
+    expect(textoDasComValorEmAberto(3)).toBe('3 vendas com parcelas a receber')
     expect(textoDasComValorEmAberto(0)).toBeNull()
   })
   it('o topo do PDV mostra', () => {

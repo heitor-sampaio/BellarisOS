@@ -105,7 +105,9 @@ export async function SessaoDeAtendimento({
   // atendimento). Continua barrando: só o nome de quem atende vai à tela.
   if (deOutroProfissional(ctx, apptRaw.professional_id as string | null)) {
     const daOutra = apptRaw.professional as unknown as { name: string | null } | null
-    return <AtendimentoDeOutraProfissional slug={slug} profissional={daOutra?.name ?? null} />
+    // A26 da 23ª: a quem tem o Prontuário, quem conclui o de outra pessoa (os nomes).
+    return <AtendimentoDeOutraProfissional slug={slug} profissional={daOutra?.name ?? null}
+      quemConclui={can(ctx, 'medical_records', 'VIEW') ? await quemConcluiOAtendimento(ctx.tenantId!, branchId) : null} />
   }
 
   type RawProc   = { id: string; name: string; category: string; duration_min: number }

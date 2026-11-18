@@ -1,4 +1,27 @@
 import { formatBRL } from '@estetica-os/utils'
+import { rotuloDaForma } from '@/lib/financeiro/formas'
+
+/** Um lançamento em aberto ou pago da venda de produto (o estorno é da venda inteira). */
+export interface LancamentoDaVendaDoEstorno { valor: number; pago: boolean; metodo: string | null; vezes: number | null }
+
+/**
+ * A13 da 23ª simulação (princípio 3): a janela dizia "2× Sérum facial · R$
+ * 100,00" — o valor da linha clicada — e "Estorna a venda inteira", que era de
+ * R$ 300. O valor é o da VENDA, com as formas do pago e o que estava a receber.
+ */
+export function vendaDoEstornoEmTexto(linhas: readonly LancamentoDaVendaDoEstorno[]): { total: number; texto: string } {
+  const centavos = (v: number) => Math.round(v * 100)
+  const total = linhas.reduce((s, l) => s + centavos(l.valor), 0) / 100
+  const porForma = new Map<string, number>()
+  for (const l of linhas.filter(x => x.pago)) {
+    const forma = rotuloDaForma(l.metodo, l.vezes)
+    porForma.set(forma, (porForma.get(forma) ?? 0) + centavos(l.valor))
+  }
+  const aReceber = linhas.filter(l => !l.pago).reduce((s, l) => s + centavos(l.valor), 0) / 100
+  const pagas = [...porForma.entries()].map(([f, c]) => `${f} ${formatBRL(c / 100)}`)
+  const partes = [pagas.length ? emLista(pagas) : null, aReceber > 0 ? `${formatBRL(aReceber)} a receber` : null].filter(Boolean)
+  return { total, texto: `A venda inteira: ${formatBRL(total)}${partes.length ? ` (${partes.join('; ')})` : ''}.` }
+}
 
 /**
  * O que o estorno do pagamento do pacote reabre, dito antes de estornar (C39;

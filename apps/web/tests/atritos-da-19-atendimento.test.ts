@@ -155,7 +155,8 @@ describe('A15: o campo do nome da foto diz que é o nome no prontuário', () => 
 describe('A18: o /setup diz que o bairro veio da busca do CEP', () => {
   it('o texto', async () => {
     const { avisoDoBairroDoCep } = await import('@/lib/cep')
-    expect(avisoDoBairroDoCep('Centro')).toBe('O bairro “Centro” veio da busca do CEP: confira.')
+    // A9 da 23ª: o texto aponta o logradouro, onde o bairro entrou.
+    expect(avisoDoBairroDoCep('Centro')).toBe('O bairro “Centro” veio da busca do CEP e entrou no logradouro: confira.')
     expect(avisoDoBairroDoCep('')).toBeNull()
     expect(avisoDoBairroDoCep(null)).toBeNull()
   })

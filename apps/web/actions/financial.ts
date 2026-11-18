@@ -13,7 +13,7 @@ import { lerPartesDaBaixa, type ParteDaBaixa } from '@/lib/financeiro/baixa-em-f
 import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
 import { logHistory } from '@/lib/appointments/avisos'
 import { textoDosPontosDoEstorno } from '@/lib/fidelidade/pontos-do-estorno'
-import { textoDaReaberturaDoPacote, textoDaComissaoETaxaDoEstorno } from '@/lib/financeiro/reabertura-do-estorno'
+import { textoDaReaberturaDoPacote, textoDaComissaoETaxaDoEstorno, vendaDoEstornoEmTexto } from '@/lib/financeiro/reabertura-do-estorno'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { ehUuid } from '@/lib/id-da-rota'
 
@@ -325,6 +325,34 @@ export async function reverseTransaction(transactionId: string, slug: string, mo
  * de estornar. A conta é do banco (`fidelidade_pontos_do_estorno`); a
  * permissão e o alcance são os do estorno. Sem nada a dizer, nulo.
  */
+/**
+ * A13 da 23ª simulação (princípio 3): o estorno de um lançamento da venda de
+ * produto estorna a VENDA inteira — a janela diz o valor dela e as formas, não
+ * o da linha clicada. Os lançamentos são os que `produto_estornar_venda` desfaz.
+ */
+export async function vendaDoEstorno(transactionId: string): Promise<{ total: number; texto: string } | null> {
+  try {
+    const ctx = await getTenantContext()
+    if (!can(ctx, 'financial', 'MANAGE') || !ehUuid(transactionId)) return null
+    const admin = createAdminClient()
+    const tx = await ler(admin.from('financial_transactions').select('branch_id, product_sale_id, branches!inner(tenant_id)')
+      .eq('id', transactionId).maybeSingle(), 'buscar o lançamento')
+    const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string) || !tx.product_sale_id) return null
+    const linhas = await ler(admin.from('financial_transactions')
+      .select('amount, is_paid, payment_method, cartao_vezes, notes, category')
+      .eq('product_sale_id', tx.product_sale_id as string).eq('branch_id', tx.branch_id as string).eq('type', 'INCOME'),
+      'ler os lançamentos da venda') as { amount: number; is_paid: boolean; payment_method: string | null; cartao_vezes: number | null; notes: string | null; category: string | null }[] | null
+    const daVenda = (linhas ?? []).filter(l => (l.notes ?? '') !== 'Estornada' && (l.category ?? '') !== 'Estorno')
+    if (!daVenda.length) return null
+    return vendaDoEstornoEmTexto(daVenda.map(l => ({
+      valor: Number(l.amount), pago: !!l.is_paid, metodo: l.payment_method, vezes: l.cartao_vezes,
+    })))
+  } catch {
+    return null
+  }
+}
+
 export async function pontosDoEstorno(transactionId: string): Promise<{ texto: string | null }> {
   try {
     const ctx = await getTenantContext()

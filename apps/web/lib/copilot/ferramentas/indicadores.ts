@@ -164,7 +164,7 @@ export const indicadores: FerramentaDeLeitura<{
           ...cabecalho,
           funil: { nome: p.funis.find(f => f.id === p.funilAtivo)?.name ?? null, etapas: p.etapas.map(e => ({ etapa: e.name, oportunidades: e.count })) },
           oportunidades: p.totalLeads, ganhas: p.ganhos, conversao: pct(p.conversao),
-          primeirosAtendimentos: { agendados: p.comerciaisAgendados, realizados: p.comerciaisRealizados, comparecimento: `${Math.round(p.comparecimento)}%` },
+          primeirosAtendimentos: { agendados: p.comerciaisAgendados, realizados: p.comerciaisRealizados, comparecimento: p.comparecimento === null ? 'nenhum que já devia ter acontecido' : `${Math.round(p.comparecimento)}%` },
           motivosDePerda: p.motivosDePerda,
           conversaoPorOrigem: p.conversaoPorOrigem.map(o => ({ ...o, conversaoPct: pct(o.conversaoPct) })),
           porResponsavel: p.ranking.slice(0, 15).map(r => ({ nome: r.name, oportunidades: r.leads, ganhas: r.ganhos, conversao: pct(r.conversaoPct), agendamentos: r.agendamentos })),

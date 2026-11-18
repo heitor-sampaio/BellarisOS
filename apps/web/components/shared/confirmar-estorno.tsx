@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { formatBRL } from '@estetica-os/utils'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { pontosDoEstorno, reaberturaDoEstorno, comissaoETaxaDoEstorno } from '@/actions/financial'
+import { pontosDoEstorno, reaberturaDoEstorno, comissaoETaxaDoEstorno, vendaDoEstorno } from '@/actions/financial'
 
 /**
  * A confirmação do estorno de um lançamento, nos dois financeiros (rede e
@@ -42,14 +42,17 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
   const [reabre, setReabre] = useState<string | null>(null)
   // A7 da 20ª: a comissão que o pagamento liberou e a taxa do cartão, ditas antes.
   const [comissaoETaxa, setComissaoETaxa] = useState<string | null>(null)
+  // A13 da 23ª: a venda de produto se estorna inteira — o valor e as formas são os dela.
+  const [venda, setVenda] = useState<{ total: number; texto: string } | null>(null)
   useEffect(() => {
     if (!alvo.id) return
     let vivo = true
+    if (alvo.vendaDeProduto) vendaDoEstorno(alvo.id).then(r => { if (vivo) setVenda(r) }).catch(() => {})
     pontosDoEstorno(alvo.id).then(r => { if (vivo) setPontos(r.texto) }).catch(() => {})
     reaberturaDoEstorno(alvo.id).then(r => { if (vivo) setReabre(r.texto) }).catch(() => {})
     comissaoETaxaDoEstorno(alvo.id).then(r => { if (vivo) setComissaoETaxa(r.texto) }).catch(() => {})
     return () => { vivo = false }
-  }, [alvo.id])
+  }, [alvo.id, alvo.vendaDeProduto])
   const produto = !!alvo.vendaDeProduto
   const cancelar = produto && !!alvo.cancelarVenda
   const pronto = motivo.trim().length > 0 && (!produto || voltou !== null)
@@ -60,8 +63,11 @@ export function ConfirmarEstorno({ alvo, estornando, onConfirmar, onVoltar, onDe
       <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{titulo}</h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-          <strong style={{ color: 'var(--text)' }}>{alvo.descricao}</strong> · {formatBRL(alvo.valor)}
+          <strong style={{ color: 'var(--text)' }}>{alvo.descricao}</strong>{produto ? (venda ? ` · ${formatBRL(venda.total)}` : '') : ` · ${formatBRL(alvo.valor)}`}
         </p>
+        {produto && venda && (
+          <p data-venda-do-estorno style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>{venda.texto}</p>
+        )}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           {cancelar
             ? 'Cancela a venda inteira: o que estava a receber deixa de existir (e o que já tiver sido pago volta à cliente na mesma forma), e a venda sai das Vendas e do custo. Não se desfaz.'

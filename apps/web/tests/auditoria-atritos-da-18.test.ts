@@ -33,6 +33,8 @@ function construtor(tabela: string) {
   return p
 }
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: construtor, rpc: () => construtor('rpc') }) }))
+// D2 da 23ª: a leitura pede o fuso do recorte (cacheado: fora do Next, sem o cache).
+vi.mock('@/lib/unidades/fuso-da-unidade', () => ({ fusoDoRecorte: async () => 'America/Sao_Paulo' }))
 
 const sp = (s: string) => s.replace(/ /g, ' ')
 let id = 5000

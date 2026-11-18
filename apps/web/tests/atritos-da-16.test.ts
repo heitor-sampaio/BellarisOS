@@ -76,7 +76,9 @@ describe('A5: o aviso da taxa diz quem cadastra, a quem não cadastra', () => {
 
 describe('A6/A7: o PDV vazio e a aba do pré-pago dizem o que valem', () => {
   it('A6: a comanda nasce quando o atendimento tem o que cobrar', () => {
-    expect(ler('components/shared/pdv/pdv-tela.tsx')).toContain('Ela nasce quando um atendimento é iniciado e tem o que cobrar.')
+    // A11 da 23ª: o texto do vazio foi para `vazioDasAbertas` (com a comanda aberta na outra unidade, ele diz a unidade).
+    expect(ler('lib/pdv/situacoes.ts')).toContain('Ela nasce quando um atendimento é iniciado e tem o que cobrar.')
+    expect(ler('components/shared/pdv/pdv-tela.tsx')).toMatch(/vazioDasAbertas\(/)
   })
   it('A7: a aba é "Procedimento pré-pago"', () => {
     expect(ler('components/shared/vender.tsx')).toContain("'Procedimento pré-pago'")

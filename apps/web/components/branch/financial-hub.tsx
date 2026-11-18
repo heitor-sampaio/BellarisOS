@@ -563,9 +563,6 @@ export function FinancialHub({
   const pendingIncome  = emAberto.aReceber
   const prevIncome     = totaisAnteriores.revenueCash
   const prevExpense    = totaisAnteriores.expensesCash
-  // O anterior INTEIRO, pelo vencimento, como o atual (C46 da F68): comparava o
-  // período inteiro com o pedaço decorrido do anterior.
-  const prevPendingIncome = emAbertoAnterior.aReceber
 
   // Ticket médio, na definição do §13.1: a média de quanto cada CLIENTE gasta
   // — o pago pelas clientes ÷ as que pagaram (2026-10-29), contado no banco e
@@ -608,15 +605,16 @@ export function FinancialHub({
   const cartaoAReceber = (naAba: boolean) => (
     <KpiCardFull
       chave="a-receber"
-      nota={<NotaDoVencimento valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
+      // A17 da 23ª: o número grande é o em aberto; o que vence no período vai na nota (sem comparação: é um saldo).
+      nota={<NotaDoVencimento noTopoOEmAberto valor={pendingIncome} proximo={emAberto.proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
         vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
       dica={<DicaDoVencimento valor={pendingIncome} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} />}
       label={ROTULO_DO_A_RECEBER_DA_CLIENTE}
-      curr={pendingIncome} prev={prevPendingIncome}
+      curr={aReceberEmAberto} prev={0}
       icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
       iconBg="var(--success-bg)"
-      valueColor={pendingIncome > 0 ? 'var(--success)' : 'var(--text)'}
+      valueColor={aReceberEmAberto > 0 ? 'var(--success)' : 'var(--text)'}
     />
   )
   // F2c: o que a OPERADORA ainda deposita do cartão em N vezes — a cliente já

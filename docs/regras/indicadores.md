@@ -53,6 +53,9 @@
     início adiantado, as automações (silêncio, gatilho de horário,
     aniversário) e a rotina da fidelidade (a rede). O que é da REDE sem
     unidade (fidelidade, LGPD, aniversariantes, a campanha) usa `fusoDaRede`.
+    A Auditoria também (D2 da 23ª): a coluna "Quando" no fuso do recorte, a
+    hora do agendamento citado no da unidade dele (`plataforma.md`); e os
+    "Últimos fechamentos" das comissões no fuso da rede (D3 da 23ª).
   - **O dia sem hora no banco** (migration `20261111006203`): o "cliente
     desde", a última visita de antes, a faixa etária (`metrics_faixa_etaria`
     com `p_fuso`), o público da campanha, `metrics_by_branch`, os
@@ -425,6 +428,8 @@
     as fatias somam o valor em estoque da aba. Até 2026-10-28 esse produto
     sumia, e a tela dizia "Sem dados no período" com R$ 5.562 em estoque (D17,
     migration `20261028000502`). Prova: `e2e/indicadores-uma-conta-so.spec.ts`.
+    Com uma categoria só, o gráfico não aparece (A30 da 23ª: era uma pizza de
+    100% "Sem categoria", que não diz nada).
   - **perdas do estoque** (D-7, 2026-10-30) = os movimentos `LOSS` NEGATIVOS
     e não desfeitos do período (C69, F66: a perda desfeita — "Desfazer perda",
     `desfeita_em` — sai, e o movimento positivo que a desfaz não conta), ao
@@ -1075,7 +1080,18 @@ ranking e a ocupação por unidade, e o ranking de comissão (de todas). Com o
 **O funil do dashboard abre no funil que tem oportunidade** (A30 da 20ª;
 princípio 7): o `?funil=` vale sempre; sem ele, o padrão — e, com o padrão
 vazio no período, o primeiro funil ativo com oportunidade (`funilDoDashboard`,
-`lib/crm/funil-do-dashboard.ts`). Todos vazios, o padrão.
+`lib/crm/funil-do-dashboard.ts`). Todos vazios, o padrão. **A aba Comercial
+dos Relatórios e o quadro de Oportunidades seguem a mesma regra** (A28 da
+23ª: abriam no "Funil de vendas" vazio, com as 8 no Corporal), e lá o último
+funil escolhido no seletor vem logo depois do `?funil=` (A34; o cookie de
+`lib/crm/funil-lembrado.ts`, que o `FunnelSelect` anota). Prova:
+`tests/atritos-da-23-importacao-crm.test.ts`, `e2e/crm-atritos-da-23.spec.ts`.
+
+**O comparecimento conta só o que já devia ter acontecido** (A29 da 23ª;
+princípio 4): "Comparecimento 0,0%" era o agendamento comercial de amanhã. Em
+`metrics_comercial` (migration `20261123000001`), `considerados` é o não
+cancelado com `aconteceu_em <= now()`; sem nenhum, "—" (o `comparecimento`
+de `painelComercial` é nulo, e o Copilot diz que não há nenhum).
 
 **O financeiro "só os meus" é "Minhas comissões"** (A52 e A41 da 6ª
 simulação, 2026-11-04; princípio 3): com o financeiro em OWN, a tela de

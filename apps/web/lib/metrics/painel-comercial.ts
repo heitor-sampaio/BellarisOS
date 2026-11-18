@@ -2,8 +2,10 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { seedDefaultFunnel } from '@/lib/crm/funis'
+import { funilDoDashboard } from '@/lib/crm/funil-do-dashboard'
 import { getLeadFunnel, getMotivosDePerda, getConversaoPorOrigem, getPainelComercial } from './queries'
 import { percent } from './period'
+import { resumoDoFunil } from './resultado'
 
 /** Painel comercial, calculado no servidor — a aba Comercial dos Relatórios e o Copilot (C5, F68). */
 export interface DadosComerciais {
@@ -19,7 +21,8 @@ export interface DadosComerciais {
   comerciaisAgendados:    number
   comerciaisConsiderados: number
   comerciaisRealizados:   number
-  comparecimento:         number
+  /** Realizados ÷ os que já deviam ter acontecido; nulo sem nenhum ("—", A29 da 23ª). */
+  comparecimento:         number | null
   ranking: { id: string; name: string; leads: number; ganhos: number; conversaoPct: number | null; agendamentos: number }[]
   /** Por que as oportunidades do período foram perdidas (2026-10-21). */
   motivosDePerda: { motivo: string; total: number }[]
@@ -36,7 +39,7 @@ export interface DadosComerciais {
  * de unidade escolhido no topo da tela.
  */
 export async function painelComercial({
-  tenantId, branchIds, from, to, rawFunil, ownerId,
+  tenantId, branchIds, from, to, rawFunil, funilLembrado, ownerId,
 }: {
   tenantId:  string
   branchIds: string[]
@@ -44,6 +47,8 @@ export async function painelComercial({
   /** Fim natural do período, não "agora": avaliação marcada para amanhã conta. */
   to:        Date
   rawFunil?: string
+  /** O último funil escolhido no seletor (A34 da 23ª), quando não há `rawFunil`. */
+  funilLembrado?: string | null
   /** CRM "só os meus": os leads dela e os sem dono (o recorte do quadro). */
   ownerId?:  string | null
 }): Promise<DadosComerciais> {
@@ -53,17 +58,16 @@ export async function painelComercial({
   // etapas que não se sucedem.
   const funis       = await seedDefaultFunnel(tenantId)
   const funisAtivos = funis.filter(f => f.archived_at === null)
-  const funilAtivo  = funisAtivos.find(f => f.id === rawFunil)
-    ?? funisAtivos.find(f => f.is_default)
-    ?? funisAtivos[0]
+  // A28 da 23ª: sem `?funil=`, o último escolhido e, sem ele, o padrão — que,
+  // vazio no período, cede ao primeiro funil com oportunidade (a regra do
+  // Dashboard, A30 da 20ª).
+  const lerFunil = (funnelId: string | null) => getLeadFunnel({ tenantId, branchIds: null, from, to, funnelId, ownerId })
 
   // Os números vêm agregados do banco (getPainelComercial, 2026-10-22): a tela
   // contava sobre as listas de leads e de atendimentos, e o PostgREST cortava
   // cada uma em 1000.
-  const [etapasRaw, painel, usersRaw, motivosDePerda] = await Promise.all([
-    getLeadFunnel({
-      tenantId, branchIds: null, from, to, funnelId: funilAtivo?.id ?? null, ownerId,
-    }),
+  const [{ funil: funilAtivo, etapas }, painel, usersRaw, motivosDePerda] = await Promise.all([
+    funilDoDashboard({ funis: funisAtivos, pedido: rawFunil, lembrado: funilLembrado, lerFunil, total: e => resumoDoFunil(e).total }),
 
     getPainelComercial({ tenantId, branchIds, from, to, ownerId }),
 
@@ -101,7 +105,7 @@ export async function painelComercial({
   return {
     funis:      funisAtivos.map(f => ({ id: f.id, name: f.name })),
     funilAtivo: funilAtivo?.id ?? '',
-    etapas:     etapasRaw.map(s => ({ name: s.name, count: s.leads })),
+    etapas:     (etapas ?? await lerFunil(null)).map(s => ({ name: s.name, count: s.leads })),
     // A conversão é da OPORTUNIDADE, somando os funis (2026-10-29): ganhas ÷ todas.
     totalLeads: painel.totalLeads,
     ganhos:     painel.ganhos,
@@ -110,7 +114,8 @@ export async function painelComercial({
     comerciaisAgendados: painel.agendados,
     comerciaisConsiderados,
     comerciaisRealizados,
-    comparecimento: percent(comerciaisRealizados, comerciaisConsiderados) ?? 0,
+    // A29 da 23ª (princípio 4): sem nenhum que já devia ter acontecido, "—" — era 0%.
+    comparecimento: percent(comerciaisRealizados, comerciaisConsiderados),
     ranking: ranking.sort((a, b) => (b.leads + b.agendamentos) - (a.leads + a.agendamentos)),
     motivosDePerda,
     conversaoPorOrigem,

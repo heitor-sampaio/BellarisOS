@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaNoPortal } from '@/lib/rotas'
@@ -8,6 +8,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigDeComissao, salvarMaximoDeParcelas } from '@/actions/comissoes'
 import { salvarMaquininha, arquivarMaquininha, salvarTaxaDoPix } from '@/actions/maquininhas'
 import type { Maquininha, EntradaDaMaquininha } from '@/lib/financeiro/maquininhas'
+import { vaziaDeFabrica } from '@/lib/financeiro/maquininha-de-fabrica'
 import { CREDIARIO_PADRAO, opcoesDeParcelas, TETO_DO_CREDIARIO } from '@/lib/financeiro/parcelas-do-crediario'
 import { BANDEIRAS, chaveDaTaxa, creditoPelaTaxaPorParcela, taxasDaTabelaColada, faixaDaOperadora, avisoDaTaxaQueBaixa, type Bandeira, type CartaoPorBandeira } from '@/lib/financeiro/bandeiras'
 import { taxaQueVale } from '@/lib/financeiro/formas'
@@ -682,7 +683,18 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
 
   // A chave da maquininha nova (ainda sem id): um contador da tela.
   const [novas, setNovas] = useState(0)
+  const nomeRef = useRef<HTMLInputElement>(null)
   function adicionarMaquininha() {
+    // A4 da 23ª (princípio 7): a rede só com a "Maquininha" vazia de fábrica
+    // preenche essa — ela perde o nome de fábrica e pede o nome e as taxas.
+    const vazia = vaziaDeFabrica(lista)
+    if (vazia) {
+      setLista(l => l.map(m => m.chave === vazia.chave ? { ...m, nome: '' } : m))
+      abrir(vazia.chave)
+      setSalvo(false)
+      requestAnimationFrame(() => nomeRef.current?.focus())
+      return
+    }
     const c = `nova-${novas + 1}`
     setNovas(n => n + 1)
     setLista(l => [...l, { chave: c, id: null, nome: '', valores: {}, maxVezes: '', prazo: String(PRAZO_PADRAO_DA_OPERADORA), cobraPorBandeira: false, porBandeira: {}, arquivada: false }])
@@ -807,7 +819,7 @@ function TabelaDeTaxas({ maquininhas, pixGravado, podeEditar }: {
             : <RotuloComDica texto="Nome da maquininha" sobre="Sobre mais de uma maquininha" estilo={rotuloPequeno}>
                 A rede que passa o cartão em mais de uma maquininha cadastra cada uma: aí a venda no cartão pergunta “Qual maquininha?”.
               </RotuloComDica>}
-          <input className="field" aria-label="Nome da maquininha" disabled={!podeEditar} maxLength={60}
+          <input ref={nomeRef} className="field" aria-label="Nome da maquininha" disabled={!podeEditar} maxLength={60}
             placeholder="Ex.: Stone" value={atual.nome} autoFocus={!atual.id}
             onChange={e => { const v = e.target.value; mudarAtual(() => ({ nome: v })) }} />
         </div>

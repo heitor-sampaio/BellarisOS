@@ -388,6 +388,28 @@ comanda (PDV-P1).
     `ROTULO_DO_A_RECEBER_DA_CLIENTE`): o número é o que vence no período.
   - Prova: `tests/atritos-da-22-caixa.test.ts`; migration
     `20261122600001_pdv_atritos_da_22`.
+- **O PDV e o caixa da 23ª simulação** (2026-11-17; princípios 3 e 7;
+  prova: `tests/atritos-da-23-financeiro.test.ts`):
+  - O topo das Abertas diz "N vendas com parcelas a receber", com o link para
+    elas (A12, `textoDasComValorEmAberto`).
+  - Nenhuma comanda aberta aqui e alguma na outra unidade: o vazio diz
+    "Nenhuma comanda aberta em <unidade>." e põe o link da outra dentro dele
+    (A11, `vazioDasAbertas`).
+  - A coluna da comanda acompanha o que sai no "Receber" — o voucher, o
+    desconto, os pontos — e o total é o que se vai receber (A10,
+    `oQueSaiNoReceber`).
+  - O estorno de uma forma da venda de produto mostra a venda inteira: "A
+    venda inteira: R$ 300,00 (Pix R$ 200,00 e Dinheiro R$ 100,00)." (A13,
+    `vendaDoEstorno`, `vendaDoEstornoEmTexto`).
+  - A parcela recebida em parte diz o pago e o que falta: "1/3 · R$ 150,00 ·
+    pago R$ 50,00, falta R$ 100,00" (A14, `valorDaParcelaEmTexto`; o pago vem
+    das partes da mesma parcela, `pagoDasParcelas`).
+  - Sem estoque suficiente, a venda de produto diz "Só há N un de X nesta
+    unidade." com o "Dar entrada no Estoque", e o "Vender" desliga (A15,
+    `faltaDeEstoqueNaVenda`).
+  - O cartão do Financeiro volta a "A receber da cliente · em aberto" (A17):
+    o número grande é o em aberto, e a nota diz "Vence no período: R$ …"
+    (`noTopoOEmAberto`). Era o A9 da 22ª.
 - **Os pontos e o voucher no PDV** (FD2a, fase 5b): na comanda do atendimento
   valem sobre o TOTAL da comanda (atendimento + produtos: `previaDoPagamento`
   e `confirmPayment` somam `valorDosItensDoAtendimento`); na "Nova venda"

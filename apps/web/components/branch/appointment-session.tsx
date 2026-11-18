@@ -521,9 +521,10 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
           {ficha && <input type="hidden" name="ficha" value={JSON.stringify(ficha)} />}
           <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
             <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>O procedimento foi realizado com sucesso?</span>
+              {/* A23 da 23ª: era a pergunta "…foi realizado com sucesso?", sem resposta. */}
+              <span>Confirme que o procedimento foi feito.</span>
               {/* O subtítulo mora na dica (2026-11-16, "A explicação mora na dica"). */}
-              <Dica rotulo="Sobre a conclusão">Confirme para liberar o cliente. Adicione observações se necessário.</Dica>
+              <Dica rotulo="Sobre a conclusão">Concluir grava o atendimento no prontuário e libera a cliente. Se algo saiu do esperado, anote nas intercorrências.</Dica>
             </p>
           </div>
           {/* A29 da 8ª simulação: o que já foi escrito NA TELA não se repete aqui
@@ -1086,7 +1087,10 @@ export function AppointmentSession({
   // A21 da 22ª (princípio 3): antes de iniciar, o plano é opcional — o "Aceitar
   // plano" grande, numa Drenagem avulsa agendada, parecia o passo seguinte.
   const planoAntesDeIniciar = !isPackageSession && ['SCHEDULED', 'CONFIRMED', 'ARRIVED'].includes(appointment.status)
-  const planoSecundario = isPackageSession || aguardaOPagamento || planoAntesDeIniciar
+  // A25 da 23ª (princípio 7): durante o atendimento avulso o plano segue opcional —
+  // ao iniciar, o "Aceitar plano" grande virava o passo seguinte, acima do "basta Finalizar".
+  const planoDuranteOAtendimento = !isPackageSession && appointment.status === 'IN_PROGRESS'
+  const planoSecundario = isPackageSession || aguardaOPagamento || planoAntesDeIniciar || planoDuranteOAtendimento
   const [starting,      setStarting]      = useState(false)
   const [erroAoIniciar, setErroAoIniciar] = useState<string | null>(null)
   const [checkingIn,    setCheckingIn]    = useState(false)
@@ -1356,6 +1360,8 @@ export function AppointmentSession({
   // Qual formulário de evolução está à vista (o mesmo critério do corpo da página).
   const usaFormularioDaAvaliacao = !isPartOfPlan && podeMontarPlano
     && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')
+  // A21 da 23ª: as dores em branco barram o plano (a mesma conta do `gerarPlano`).
+  const faltamAsDores = usaFormularioDaAvaliacao && status !== 'COMPLETED' && canViewRecords && !evalComplaints.trim()
 
   const confirmedInsumos = useMemo(
     () => insumos.filter(i => checkedIds.has(i.productId)),
@@ -1650,10 +1656,18 @@ export function AppointmentSession({
               // (A30), então o "Novo plano" volta a ser o caminho.
               // A avaliação concluída voltou a montar o plano na tela (2026-10-29).
               planoNaTela={!isPartOfPlan && podeMontarPlano && (status === 'COMPLETED' || !isDone) && !['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')}
+              // A21 da 23ª: com as dores em branco, a janela diz o passo delas primeiro.
+              faltamAsDores={faltamAsDores}
               // A14 da 21ª: fecha a janela e leva ao cartão "Tratamento" da tela.
+              // A21 da 23ª: com as dores em branco, leva a elas (é o que barra o plano).
               onIrAoTratamento={() => {
                 setPlanejamentoAberto(false)
                 requestAnimationFrame(() => {
+                  if (faltamAsDores) {
+                    document.querySelector('[data-campo="dores"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    document.querySelector<HTMLElement>('#campo-dores')?.focus({ preventScroll: true })
+                    return
+                  }
                   document.querySelector('[data-editor-do-tratamento]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                   // A19 da 22ª: o primeiro passo ("Nova sessão") já com o foco.
                   document.querySelector<HTMLElement>('[data-editor-do-tratamento] [data-nova-sessao]')?.focus({ preventScroll: true })
@@ -2522,6 +2536,16 @@ export function AppointmentSession({
                             <span>Propor um plano (opcional)</span>
                             <Dica rotulo="Sobre o plano antes de iniciar">
                               Monte um plano só se a cliente quiser um tratamento. Para atender, inicie o atendimento; o plano também pode ser montado durante ou depois dele.
+                            </Dica>
+                          </h3>
+                        </div>
+                      )}
+                      {planoDuranteOAtendimento && (
+                        <div data-plano-durante-o-atendimento style={{ marginBottom: 12 }}>
+                          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>Propor um plano (opcional)</span>
+                            <Dica rotulo="Sobre o plano durante o atendimento">
+                              Monte um plano só se a cliente quiser um tratamento. Ele também pode ser montado depois de concluir.
                             </Dica>
                           </h3>
                         </div>

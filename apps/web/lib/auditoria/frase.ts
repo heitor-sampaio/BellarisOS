@@ -334,6 +334,21 @@ function fraseDoRegistroDa17(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
     const q = numero(r.depois.quantidade) ?? 1
     return `Pôs ${q.toLocaleString('pt-BR')} ${nomeDoRegistro(r, nomes) ?? 'produto'} na comanda`
   }
+  // A31 da 23ª: o "−/+" do produto na comanda diz o produto e a quantidade ("Editou o item da comanda" não dizia).
+  if (r.tabela === 'comanda_itens' && r.operacao === 'editou' && r.colunas.includes('quantidade')) {
+    const antes = numero(r.antes.quantidade)
+    const depois = numero(r.depois.quantidade)
+    if (antes !== null && depois !== null && antes !== depois) {
+      const produto = nomeDoRegistro(r, nomes) ?? 'produto'
+      const n = Math.abs(depois - antes).toLocaleString('pt-BR')
+      const agora = `(agora ${depois.toLocaleString('pt-BR')})`
+      const frase = depois > antes ? `Pôs mais ${n} ${produto} na comanda ${agora}` : `Tirou ${n} ${produto} da comanda ${agora}`
+      return `${frase}${cliente ? ` — ${cliente}` : ''}`
+    }
+  }
+  if (r.tabela === 'comanda_itens' && r.operacao === 'apagou') {
+    return `Tirou ${nomeDoRegistro(r, nomes) ?? 'o produto'} da comanda${cliente ? ` — ${cliente}` : ''}`
+  }
   if (r.tabela === 'fechamentos_do_dia' && r.operacao === 'criou') {
     const dia = texto(r.depois.dia)
     const diferenca = numero(r.depois.diferenca)
@@ -406,7 +421,7 @@ function fraseDoRegistroDa20(r: RegistroDaAuditoria, nomes: NomesDaAuditoria, cl
     const procedimento = proc ? nomes.procedimentos?.[proc] ?? null : null
     const quemAtende = prof ? nomes.membros[prof] ?? null : null
     const oQue = [procedimento, quemAtende ? `com ${quemAtende}` : null].filter(Boolean).join(', ')
-    return `Agendou ${cliente ?? 'um atendimento'}${quando ? ` para ${quandoDaAuditoria(quando)}` : ''}${oQue ? ` — ${oQue}` : ''}`
+    return `Agendou ${cliente ?? 'um atendimento'}${quando ? ` para ${quandoDaAuditoria(quando, fusoDoRegistro(r, nomes))}` : ''}${oQue ? ` — ${oQue}` : ''}`
   }
   return null
 }
@@ -452,7 +467,7 @@ export function fraseDaAuditoria(r: RegistroDaAuditoria, nomes: NomesDaAuditoria
     const prof = r.colunas.includes('professional_id') ? texto(r.depois.professional_id) : null
     const quemAtende = prof ? nomes.membros[prof] ?? null : null
     const de = cliente ? ` de ${cliente}` : ''
-    if (novo) return `Remarcou o agendamento${de} para ${quandoDaAuditoria(novo)}${quemAtende ? `, com ${quemAtende}` : ''}`
+    if (novo) return `Remarcou o agendamento${de} para ${quandoDaAuditoria(novo, fusoDoRegistro(r, nomes))}${quemAtende ? `, com ${quemAtende}` : ''}`
     if (prof) {
       const resto = camposMudados(r.colunas.filter(c => c !== 'professional_id'))
       return `Repassou o agendamento${de} a ${quemAtende ?? 'outra pessoa da equipe'}${resto ? ` (e editou: ${resto})` : ''}`
@@ -519,7 +534,15 @@ export function linkDaAuditoria(r: RegistroDaAuditoria, pathname: string, slug: 
   return sufixo ? rotaNoPortal(pathname, slug, sufixo) : null
 }
 
-/** "dd/mm/aaaa hh:mm", no fuso da rede. */
+/**
+ * D2 da 23ª: a hora que a frase cita (o agendamento, o remarcar) é a do
+ * relógio da unidade do registro; sem ela, o de Brasília.
+ */
+function fusoDoRegistro(r: RegistroDaAuditoria, nomes: NomesDaAuditoria): string | undefined {
+  return r.branch_id ? nomes.fusos?.[r.branch_id] : undefined
+}
+
+/** "dd/mm/aaaa hh:mm", no fuso dado (a coluna "Quando": o do portal, D2 da 23ª). */
 export function quandoDaAuditoria(iso: string, fuso?: string): string {
   const p = partsInTZ(new Date(iso), fuso)
   const d = (n: number) => String(n).padStart(2, '0')
@@ -784,6 +807,22 @@ function recebimentosDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: N
 const formasDe = (rs: readonly Recebimento[]) => emLista([...new Set(rs.filter(x => !!x.forma).map(x => rotuloDaForma(x.forma, x.vezes)))])
 
 /**
+ * A31 da 23ª (princípio 3): com duas formas ou mais, quanto foi em cada uma —
+ * "Dinheiro R$ 50,00 e Pix R$ 100,00"; "(Dinheiro e Pix)" não dizia. Com uma
+ * só, o nome dela (o total já está na frase).
+ */
+function formasComValor(rs: readonly Recebimento[]): string {
+  const porForma = new Map<string, number>()
+  for (const x of rs) {
+    if (!x.forma) continue
+    const rotulo = rotuloDaForma(x.forma, x.vezes)
+    porForma.set(rotulo, Math.round(((porForma.get(rotulo) ?? 0) + x.valor) * 100) / 100)
+  }
+  if (porForma.size < 2) return formasDe(rs)
+  return emLista([...porForma].map(([forma, valor]) => `${forma} ${brl(valor)}`))
+}
+
+/**
  * Como a venda foi paga, na gravação dela (A38 da 22ª simulação; princípio
  * 3): "Vendeu o pacote X (R$ 650,00)" não dizia o crediário, a entrada nem as
  * parcelas. Os lançamentos CRIADOS na gravação: os pagos (a entrada, o à
@@ -840,7 +879,8 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   const entradas = recebidos.filter(x => x.tipo === 'INCOME')
   const totalRecebido = entradas.reduce((t, x) => t + x.valor, 0)
   const voucher = voucherDaGravacao(linhas)
-  const eRecebeu = entradas.length ? ` e recebeu ${brl(totalRecebido)}${formasDe(entradas) ? ` (${formasDe(entradas)})` : ''}${voucher ? `, com ${voucher}` : ''}` : ''
+  const formasDaEntrada = formasComValor(entradas)
+  const eRecebeu = entradas.length ? ` e recebeu ${brl(totalRecebido)}${formasDaEntrada ? ` (${formasDaEntrada})` : ''}${voucher ? `, com ${voucher}` : ''}` : ''
 
   // A venda: o pacote, o pré-pago, o crédito.
   const pacote = criada('client_packages')
@@ -898,14 +938,20 @@ function fatoDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: NomesDaAu
   if (entradas.length) {
     const principal = entradas[0]!.linha
     const lido = principal.registro_id ? nomes.lancamentos?.[principal.registro_id] : null
-    if (entradas.length === 1 && lido?.parcela) {
-      const forma = formasDe(entradas)
+    // A31 da 23ª: a parcela recebida em duas formas vira um lançamento por forma, com a mesma parcela.
+    const mesmaParcela = !!lido?.parcela && entradas.every(x => {
+      const dele = x.linha.registro_id ? nomes.lancamentos?.[x.linha.registro_id] : null
+      return dele?.parcela === lido.parcela && (dele?.de ?? null) === (lido.de ?? null)
+    })
+    if (lido?.parcela && mesmaParcela) {
+      const forma = formasComValor(entradas)
+      const separador = entradas.length > 1 && forma.includes(' e ') ? ': ' : ', '
       return {
         principal,
-        frase: `Recebeu a parcela ${lido.parcela}${lido.de ? `/${lido.de}` : ''} (${brl(totalRecebido)}${forma ? `, ${forma}` : ''})${clienteDaGravacao(linhas, nomes, principal)}`,
+        frase: `Recebeu a parcela ${lido.parcela}${lido.de ? `/${lido.de}` : ''} (${brl(totalRecebido)}${forma ? `${separador}${forma}` : ''})${clienteDaGravacao(linhas, nomes, principal)}`,
       }
     }
-    const forma = formasDe(entradas)
+    const forma = formasComValor(entradas)
     return {
       principal,
       frase: `Recebeu ${brl(totalRecebido)}${forma ? ` (${forma})` : ''}${produtos ? `, com ${produtos}` : ''}${voucher ? `${produtos ? ' e' : ','} com ${voucher}` : ''}${clienteDaGravacao(linhas, nomes, principal)}`,

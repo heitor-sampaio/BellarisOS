@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import { ChevronRight, FileCheck, FileSignature, FileText, ScrollText } from 'lucide-react'
+import { ChevronRight, FileCheck, FileSignature, FileText, Images, ScrollText } from 'lucide-react'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { documentosNoPortal } from '@/lib/documentos/leitura'
 import { formatDate } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { fusoValido } from '@/lib/unidades/fuso'
+import { linkDoDocumentoNoApp, ROTULO_DOS_ARQUIVOS_NO_APP } from '@/lib/clientes/textos-do-app'
 
 /**
  * Portal do cliente → Documentos: os termos e contratos que pedem a assinatura
@@ -69,6 +70,20 @@ export default async function DocumentosDoClientePage({
           {assinados.map(d => <Cartao key={d.id} slug={slug} doc={d} fuso={fuso} />)}
         </section>
       )}
+
+      {/* A35 da 23ª (princípio 3): a foto que a equipe enviou mora no Histórico
+          ("Fotos e arquivos"); a cliente a procurava aqui, nos documentos. */}
+      <Link href={linkDoDocumentoNoApp(slug)} data-fotos-e-arquivos className="card"
+        style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+        <div style={{ width: 38, height: 38, borderRadius: 'var(--radius-field-token)', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Images size={17} color="var(--brand)" />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontWeight: 'var(--weight-bold)', color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>{ROTULO_DOS_ARQUIVOS_NO_APP}</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>As fotos e os arquivos que a equipe enviou, no Histórico</p>
+        </div>
+        <ChevronRight size={16} color="var(--text-faint)" />
+      </Link>
     </div>
   )
 }

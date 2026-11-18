@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { minutosDesenhados, ladoALado, liberouOHorario } from '@/lib/agenda/desenho'
-import { rotulosDaMinhaAgenda } from '@/lib/agenda/minha-agenda'
+import { rotulosDaMinhaAgenda, semanaEmLista } from '@/lib/agenda/minha-agenda'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -237,6 +237,8 @@ export function ProfessionalAgendaView({
   // -- Semana (nav) --------------------------------------------------
   const navWeekStart = startOfWeek(weekBase, { weekStartsOn: 1 })
   const weekDays     = Array.from({ length: 7 }, (_, i) => addDays(navWeekStart, i))
+  // A27 da 23ª: a semana em lista, por dia (a chave do dia no relógio da grade).
+  const semanaDaLista = semanaEmLista(events, weekDays.map(d => format(d, 'yyyy-MM-dd')), st => format(parseISO(st), 'yyyy-MM-dd')) // parede
 
   // -- Mês (grid) ----------------------------------------------------
   const mStart    = startOfMonth(monthBase)
@@ -718,6 +720,44 @@ export function ProfessionalAgendaView({
                 </button>
               )
             })}
+          </div>
+
+          {/* A27 da 23ª (princípio 7): os atendimentos da semana, por dia — a
+              faixa só tinha barrinhas, e clicar num dia voltava ao Dia. */}
+          <div data-semana-em-lista style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 18 }}>
+            {semanaDaLista.length === 0 && (
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum atendimento nesta semana.</p>
+            )}
+            {semanaDaLista.map(({ dia, eventos: doDia }) => (
+              <div key={dia} data-dia-da-semana={dia} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <p className="overline">
+                  {format(parseISO(`${dia}T12:00:00`), "EEEE, d 'de' MMM", { locale: ptBR }) /* parede */}
+                </p>
+                {doDia.map(ev => {
+                  const st = STATUS_COLORS[ev.status] ?? STATUS_COLORS['SCHEDULED']!
+                  return (
+                    <Link key={ev.id} href={`/${slug}/agenda/${ev.id}`} data-atendimento-da-semana={ev.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', textDecoration: 'none',
+                      padding: '9px 12px', borderRadius: 'var(--radius-field-token)',
+                      border: '1px solid var(--border)', borderLeft: `3.5px solid ${st.dot}`, background: 'var(--surface)',
+                    }}>
+                      <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>
+                        {format(parseISO(ev.start), 'HH:mm') /* parede */}
+                      </span>
+                      <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflowWrap: 'anywhere' }}>{ev.clientName}</span>
+                      <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{ev.procedureName}</span>
+                      {ev.unidade && <SeloDaOutraUnidade unidade={ev.unidade} />}
+                      <span style={{
+                        marginLeft: 'auto', fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 9px',
+                        borderRadius: 'var(--radius-chip-token)', background: st.pill.bg, color: st.pill.color,
+                      }}>
+                        {st.label}
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
+            ))}
           </div>
         </div>
       )}

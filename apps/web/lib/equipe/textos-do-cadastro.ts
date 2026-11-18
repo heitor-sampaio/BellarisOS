@@ -54,3 +54,14 @@ export function avisoDeQuemEntrouSemComissao(nome: string): string {
 export function textoDoReativado(nome: string, atende: boolean): string {
   return `${nome} voltou: entra no sistema ${atende ? 'e atende ' : ''}como antes. O que foi repassado ao desativar continua com quem recebeu.`
 }
+
+/**
+ * O botão do Desativar com o "Repassar todos … para" (A3 da 23ª simulação;
+ * princípio 3): repassar a quem atende numa unidade só preenche só as linhas
+ * dela (H6), e o botão dizia "Desativar" com 4 de 5 ficando com a pessoa
+ * desativada. Com o "todos para" numa pessoa que não pegou todos, o botão diz
+ * quantos vão.
+ */
+export function rotuloDoDesativar(p: { todosParaAlguem: boolean; repassados: number; total: number }): string {
+  return p.todosParaAlguem && p.repassados < p.total ? `Desativar e repassar ${p.repassados} de ${p.total}` : 'Desativar'
+}

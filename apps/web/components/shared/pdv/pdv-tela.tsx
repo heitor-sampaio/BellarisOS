@@ -16,7 +16,7 @@ import {
   SITUACOES_DO_PDV, seloDaComanda, emAbertoDaComanda, detalheDaComanda, formasDaComandaEmTexto, descontosDaComanda,
   estornoAnteriorEmTexto, valorNaLista, produtosEstornadosEmTexto, pagoJuntoEmTexto, rotuloDoPagamentoDaComanda,
   estornoDaVendaEmTexto, recebidaAgoraEmTexto, voucherDoProdutoEstornadoEmTexto, vendaEstornadaEmTexto, rotuloDoDiaNoPdv, textoDasComValorEmAberto,
-  abertasNasOutrasEmTexto, type AbertasNaOutraUnidade, type ComandaDoPdv, type SituacaoDoPdv,
+  abertasNasOutrasEmTexto, vazioDasAbertas, type AbertasNaOutraUnidade, type SaiDaComanda, type ComandaDoPdv, type SituacaoDoPdv,
 } from '@/lib/pdv/situacoes'
 import { NovaVenda, type VendaDoPdv } from '@/components/shared/pdv/nova-venda'
 import { ProdutosDaComanda } from '@/components/shared/pdv/produtos-da-comanda'
@@ -98,7 +98,9 @@ export function CabecalhoDoPdv({ basePath, unidadeId, naRede, vista, recebidoHoj
       <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>PDV</h1>
       <span data-resumo-do-pdv style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>
         {rotuloDoDiaNoPdv(naRede ? unidadeNome : null)}: <b style={{ color: 'var(--text)' }}>{brl(recebidoHoje)}</b> recebidos · <b style={{ color: 'var(--text)' }}>{abertas}</b> {abertas === 1 ? 'comanda aberta' : 'comandas abertas'}
-        {textoDasComValorEmAberto(comValorEmAberto) && <span data-com-valor-em-aberto> · {textoDasComValorEmAberto(comValorEmAberto)}</span>}
+        {/* A12 da 23ª: a venda fechada com parcelas a receber está em "Fechadas hoje" — o topo leva a ela. */}
+        {textoDasComValorEmAberto(comValorEmAberto) && <> · <Link data-com-valor-em-aberto href={`${basePath}?ver=PAGAS${daUnidade ? `&${daUnidade}` : ''}`}
+          style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>{textoDasComValorEmAberto(comValorEmAberto)}</Link></>}
       </span>
       <span style={{ flex: 1 }} />
       {children}
@@ -202,7 +204,7 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
             </label>
           </div>
           {/* A15 da 22ª: a comanda aberta numa outra unidade não some atrás do "Nenhuma comanda aberta". */}
-          {situacao === 'ABERTAS' && abertasNasOutrasEmTexto(abertasNasOutras).length > 0 && (
+          {situacao === 'ABERTAS' && abertasNasOutrasEmTexto(abertasNasOutras).length > 0 && visiveis.length > 0 && (
             <p data-abertas-nas-outras style={{ padding: '0 14px 10px', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px' }}>
               {abertasNasOutrasEmTexto(abertasNasOutras).map(o => (
                 <Link key={o.id} href={hrefNaUnidade(o.id)} style={{ color: 'var(--brand)', fontWeight: 700 }}>{o.texto}</Link>
@@ -210,11 +212,21 @@ export function PdvTela({ basePath, unidades, unidadeId, situacao, comandas, abe
             </p>
           )}
           {visiveis.length === 0 ? (
-            <p style={{ padding: '24px 16px 28px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>
-              {busca.trim() ? `Nenhuma comanda de “${busca.trim()}”.`
-                : situacao === 'ABERTAS' ? 'Nenhuma comanda aberta. Ela nasce quando um atendimento é iniciado e tem o que cobrar.'
-                : situacao === 'PAGAS' ? 'Nenhuma comanda fechada hoje.' : 'Nenhuma comanda hoje.'}
-            </p>
+            <div style={{ padding: '24px 16px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>
+                {busca.trim() ? `Nenhuma comanda de “${busca.trim()}”.`
+                  : situacao === 'ABERTAS' ? vazioDasAbertas(naRede ? unidades.find(u => u.id === unidadeId)?.name : null, abertasNasOutras)
+                  : situacao === 'PAGAS' ? 'Nenhuma comanda fechada hoje.' : 'Nenhuma comanda hoje.'}
+              </p>
+              {/* A11 da 23ª: a comanda aberta na outra unidade é o caminho, dentro do vazio. */}
+              {!busca.trim() && situacao === 'ABERTAS' && abertasNasOutrasEmTexto(abertasNasOutras).length > 0 && (
+                <div data-abertas-nas-outras data-abertas-nas-outras-no-vazio style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                  {abertasNasOutrasEmTexto(abertasNasOutras).map(o => (
+                    <Link key={o.id} href={hrefNaUnidade(o.id)} className="btn-secondary">{o.texto}</Link>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
             <div style={{ paddingBottom: 8 }}>
               {visiveis.map(c => (
@@ -286,6 +298,9 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
 }) {
   const c = e.comanda
   const aReceber = !c.paga && !c.canceladaEm
+  // A10 da 23ª (princípio 3): o voucher, o desconto e os pontos escolhidos no Receber entram no total.
+  const [noReceber, setNoReceber] = useState<{ comanda: string; linhas: SaiDaComanda[]; total: number } | null>(null)
+  const saiNoReceber = aReceber && c.agendamentoId && !c.planoId && noReceber?.comanda === c.id && noReceber.linhas.length ? noReceber : null
   const emAberto = emAbertoDaComanda(c, useFuso())
   // A1 da 17ª (princípio 3): a comanda paga diz o desconto e o voucher, e o total é o que foi pago.
   const descontos = c.origem === 'ATENDIMENTO' ? descontosDaComanda(c) : []
@@ -361,9 +376,15 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
               <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>−{brl(d.valor)}</span>
             </div>
           ))}
+          {saiNoReceber?.linhas.map(d => (
+            <div key={d.chave} data-sai-no-receber={d.chave} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+              <span>{d.rotulo}</span>
+              <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>−{brl(d.valor)}</span>
+            </div>
+          ))}
           <div data-total-da-comanda style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12, marginTop: 8 }}>
             <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{aReceber && c.jaPago > 0 ? 'Falta receber' : totalPago && descontos.length ? 'Total pago' : 'Total'}</span>
-            <b style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{brl(totalPago ? c.recebido! : c.valor)}</b>
+            <b style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{brl(totalPago ? c.recebido! : saiNoReceber ? saiNoReceber.total : c.valor)}</b>
           </div>
         </div>
         <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -479,7 +500,7 @@ function ComandaNaTela({ e, hora, slugDaUnidade, fichaHref, aoReceber, aoEstorna
           ) : aReceber && c.agendamentoId ? (
             <FormularioDeReceberAtendimento key={`${c.id}:${c.valor}`} appointmentId={c.agendamentoId} slug={slugDaUnidade} price={c.valor}
               clienteId={c.clienteId} pagamentoCombinado={e.pagamentoCombinado} pacotesParaAbater={e.pacotesParaAbater}
-              onFeito={aoReceber} />
+              onFeito={aoReceber} aoMudarOQueSai={(linhas, total) => setNoReceber({ comanda: c.id, linhas, total })} />
           ) : null}
         </div>
       </div>

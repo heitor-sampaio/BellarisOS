@@ -15,7 +15,7 @@ import { endOfDayTZ } from '@/lib/datetime'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, ExistingPlan, AvailableProduct, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 import { situacaoDoPlano, TEXTO_QUEM_MONTA } from '@/lib/plano-de-tratamento/situacao'
-import { rodapeDoPlanoFechado } from '@/lib/plano-de-tratamento/textos'
+import { rodapeDoPlanoFechado, textoDoPlanoNaTela } from '@/lib/plano-de-tratamento/textos'
 import { CancelarPlano } from '@/components/shared/cancelar-pacote'
 import { useFuso } from '@/components/shared/fuso'
 import { PassosDoPlano } from '@/components/branch/passos-do-plano'
@@ -52,7 +52,7 @@ function fmtBRL(v: number) {
 export function PlanejamentoTratamento({
   clientId, branchId, slug, appointmentId = null, planIdInicial = null,
   procedures, availableProducts = [],
-  podeEditar, podeAnotar = true, podeReceber = false, abertoId, onAbrir, planoNaTela = false, onIrAoTratamento,
+  podeEditar, podeAnotar = true, podeReceber = false, abertoId, onAbrir, planoNaTela = false, onIrAoTratamento, faltamAsDores = false,
   unidadesParaAgendar = [],
 }: {
   /** Vazio quando o plano ainda não tem cliente — o caso da tela geral. */
@@ -87,6 +87,8 @@ export function PlanejamentoTratamento({
   planoNaTela?:  boolean
   /** A14 da 21ª: com o plano na tela, fecha esta janela e leva ao cartão "Tratamento". */
   onIrAoTratamento?: () => void
+  /** A21 da 23ª: as "Queixas e dores" em branco — o plano não se gera sem elas. */
+  faltamAsDores?: boolean
 }) {
   const fuso = useFuso()
   const router   = useRouter()
@@ -368,12 +370,13 @@ export function PlanejamentoTratamento({
       {podeEditar && planoNaTela && (
         <div data-plano-na-tela style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-            O plano desta avaliação se monta no cartão “Tratamento” da tela do atendimento. Comece em “Nova sessão” e escolha o procedimento.
+            {textoDoPlanoNaTela({ faltamAsDores })}
           </p>
           {onIrAoTratamento && (
             <button type="button" onClick={onIrAoTratamento} className="btn-secondary"
               style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
-              Ir ao Tratamento
+              {/* A21 da 23ª: o botão diz aonde leva — às dores, quando faltam. */}
+              {faltamAsDores ? 'Ir às Queixas e dores' : 'Ir ao Tratamento'}
             </button>
           )}
         </div>

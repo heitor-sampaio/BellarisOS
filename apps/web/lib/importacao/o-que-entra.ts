@@ -149,3 +149,31 @@ export function ondeEstaoOsImportados(p: { destino: Destino; comOportunidade: bo
     link: 'busca',
   }
 }
+
+/**
+ * O placar de uma importação, numa linha (o resultado e o histórico dizem
+ * igual). A5 da 23ª simulação (princípio 3): "8 novos · 0 completados · 1 sem
+ * mudança · 1 com aviso · 1 recusada" somava 11 de 10 linhas — "com aviso" é
+ * das que ENTRARAM (nova, completada ou sem mudança), não uma situação a mais.
+ */
+export function placarDaImportacao(a: {
+  novas: number; completadas: number; semMudanca: number; comAviso: number; recusadas: number; oportunidades: number
+}): string {
+  const entraram = a.novas + a.completadas + a.semMudanca
+  return [
+    plural(a.novas, 'novo', 'novos'), plural(a.completadas, 'completado', 'completados'),
+    a.semMudanca ? `${a.semMudanca} sem mudança` : null,
+    plural(a.recusadas, 'recusada', 'recusadas'),
+    a.oportunidades ? plural(a.oportunidades, 'oportunidade', 'oportunidades') : null,
+    a.comAviso ? (entraram === 1 ? 'a que entrou, com aviso' : `das ${entraram} que entraram, ${a.comAviso} com aviso`) : null,
+  ].filter(Boolean).join(' · ')
+}
+
+/**
+ * O rótulo do campo da etapa da importação (A40 da 23ª; princípio 3): com mais
+ * de um funil, as etapas vêm agrupadas por funil, e "Etapa" não dizia que a
+ * escolha é também a do funil.
+ */
+export function rotuloDaEtapaDaImportacao(funis: number): string {
+  return funis > 1 ? 'Funil e etapa' : 'Etapa'
+}

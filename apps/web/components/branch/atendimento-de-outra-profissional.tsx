@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { ArrowLeft, CalendarX } from 'lucide-react'
 import { rotaAgenda } from '@/lib/rotas'
 import { Dica } from '@/components/shared/dica'
+import { textoDeQuemConcluiODeOutra } from '@/lib/equipe/textos-de-quem-pode'
 
 /**
  * O atendimento de OUTRA profissional aberto pela URL, com a agenda "só os
@@ -13,9 +14,11 @@ import { Dica } from '@/components/shared/dica'
  * continua barrando: nada do atendimento (cliente, procedimento, ficha) chega
  * aqui, só o nome de quem atende, que a agenda já mostra nos seletores.
  */
-export function AtendimentoDeOutraProfissional({ slug, profissional }: {
+export function AtendimentoDeOutraProfissional({ slug, profissional, quemConclui = null }: {
   slug:         string
   profissional: string | null
+  /** A26 da 23ª: a quem tem o Prontuário, quem conclui (nulo: não se aplica). */
+  quemConclui?: string[] | null
 }) {
   const pathname = usePathname()
   return (
@@ -30,7 +33,7 @@ export function AtendimentoDeOutraProfissional({ slug, profissional }: {
         </div>
         <h1 style={{
           fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)',
-          color: 'var(--text)', marginBottom: profissional ? 6 : 20,
+          color: 'var(--text)', marginBottom: profissional || quemConclui ? 6 : 20,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}>
           {/* A23 da 22ª: sem o feminino fixo (quem atende pode ser o Dr. Otávio). */}
@@ -43,9 +46,17 @@ export function AtendimentoDeOutraProfissional({ slug, profissional }: {
         {profissional && (
           <p style={{
             fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
-            lineHeight: 'var(--leading-snug)', marginBottom: 20,
+            lineHeight: 'var(--leading-snug)', marginBottom: quemConclui ? 8 : 20,
           }}>
             Ele está na agenda de <strong style={{ color: 'var(--text)' }}>{profissional}</strong>.
+          </p>
+        )}
+        {quemConclui && (
+          <p data-quem-conclui-o-de-outra style={{
+            fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
+            lineHeight: 'var(--leading-snug)', marginBottom: 20,
+          }}>
+            {textoDeQuemConcluiODeOutra(quemConclui)}
           </p>
         )}
         <Link href={rotaAgenda(pathname, slug)} className="btn-primary" style={{ display: 'inline-flex' }}>

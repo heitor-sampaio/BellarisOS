@@ -80,7 +80,8 @@ async function avaliar(estado: string, browser: Browser, ap: string, notasDadas:
       await p.getByRole('group', { name: grupo, exact: true }).getByRole('button', { name: `${grupo}: ${nota} de 5 estrelas` }).click()
     }
     // A41 da 22ª: com nota, o botão diz que a avaliação vai junto.
-    await p.getByRole('button', { name: Object.keys(notasDadas).length ? 'Confirmar e enviar a avaliação' : 'Confirmar que realizei o atendimento' }).click()
+    // A36 da 23ª: um rótulo só, com nota ou sem.
+    await p.getByRole('button', { name: 'Confirmar que realizei o atendimento' }).click()
     await expect(p).toHaveURL(/\/cliente\/historico/)
   })
 }

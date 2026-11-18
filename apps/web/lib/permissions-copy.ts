@@ -321,13 +321,40 @@ export function pdvAbertoPeloFinanceiro(niveis: Partial<Record<'cashier' | 'fina
 }
 
 /**
- * De onde vem a entrada Tratamentos do resumo do cargo (A2 da 22ª; princípio
- * 3, como Documentos na A24 da 21ª): o menu a mostra a quem tem o Prontuário
- * ou recebe (o PDV ou o Financeiro em Gerenciar — `lib/menu.ts`).
+ * A1 da 23ª simulação (princípio 3): com o PDV em "Sem acesso" e o Financeiro
+ * em Gerenciar, o seletor da linha ficava em "Sem acesso" — o botão marcado
+ * contradizia o que vale. A linha mostra o nível que VALE ("Gerenciar"),
+ * travado, com o porquê (`pdvAbertoPeloFinanceiro`). O que se grava não muda:
+ * o PDV segue em "Sem acesso" no cargo, e volta a valer se o Financeiro descer.
  */
-export function tratamentosNoResumo(niveis: Partial<Record<'medical_records' | 'cashier' | 'financial', string>>): string | null {
-  const prontuario = (niveis.medical_records ?? 'NONE') !== 'NONE'
-  const recebe = niveis.cashier === 'MANAGE' || niveis.financial === 'MANAGE'
-  if (!prontuario && !recebe) return null
-  return 'Tratamentos vem do Prontuário ou de quem recebe (o PDV ou o Financeiro em Gerenciar): os planos de tratamento das clientes, para acompanhar e receber.'
+export function nivelDoPdvPeloFinanceiro(niveis: Partial<Record<'cashier' | 'financial', string>>): 'MANAGE' | null {
+  return pdvAbertoPeloFinanceiro(niveis) ? 'MANAGE' : null
+}
+
+/**
+ * De onde vem a entrada Tratamentos do resumo do cargo (A2 da 22ª; princípio
+ * 3, como Documentos na A24 da 21ª). D1 da 23ª: o menu a mostra a quem tem a
+ * Agenda (a régua da página, `lib/menu.ts`) — vinha do Prontuário e de quem
+ * recebe, e a página barrava.
+ */
+export function tratamentosNoResumo(niveis: Partial<Record<'agenda' | 'medical_records' | 'cashier' | 'financial', string>>): string | null {
+  if ((niveis.agenda ?? 'NONE') === 'NONE') return null
+  return 'Tratamentos vem da Agenda em “Ver”: os planos de tratamento das clientes, para acompanhar.'
+}
+
+/**
+ * A2 da 23ª simulação (princípio 3): concluir pede o Prontuário em Gerenciar e
+ * alcançar o atendimento (D1 da 22ª, `quemConcluiOAtendimento`) — com "só os
+ * meus" na Agenda ou no Prontuário, a pessoa conclui só os próprios. Nada
+ * dizia isso ao montar o cargo, e toda limpeza de outra pessoa dependia da
+ * Admin. Nulo quando não se aplica (sem a Agenda, sem o Prontuário em
+ * Gerenciar, ou com os dois de todos).
+ */
+export function conclusaoNoResumo(
+  niveis: Partial<Record<'agenda' | 'medical_records', string>>,
+  escopos: Partial<Record<'agenda' | 'medical_records', string>>,
+): string | null {
+  if ((niveis.agenda ?? 'NONE') === 'NONE' || niveis.medical_records !== 'MANAGE') return null
+  if (escopos.agenda !== 'OWN' && escopos.medical_records !== 'OWN') return null
+  return 'Conclui só os próprios atendimentos: o de outra pessoa que atende conclui quem tem a Agenda de todos e o Prontuário em Gerenciar de todos.'
 }

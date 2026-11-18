@@ -1,6 +1,7 @@
 'use client'
 
 import { subidaDoBotaoDoCopilot } from '@/lib/copilot/subida-do-botao'
+import { useFocoAcimaDoBotao } from '@/lib/copilot/abaixo-do-botao'
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -19,6 +20,8 @@ export function CopilotForaDoPlano({ emTeste, assinaturaHref }: { emTeste: boole
   const pathname = usePathname()
   // O botão sobe onde o Copilot sobe (o "Enviar" do inbox, a barra do atendimento no celular).
   const subir = subidaDoBotaoDoCopilot(pathname)
+  // A16 da 23ª: o que ganha o foco atrás do botão sobe acima dele.
+  useFocoAcimaDoBotao()
 
   if (!aberto) {
     return (

@@ -38,6 +38,8 @@ export interface NomesDaAuditoria {
   clientes: Record<string, string>
   membros:  Record<string, string>
   unidades: Record<string, string>
+  /** D2 da 23ª: o fuso de cada unidade (o id → o fuso), para a hora do agendamento citado. */
+  fusos?:   Record<string, string>
   /** O produto do movimento de estoque (A28 da 15ª), lido agora. */
   produtos?: Record<string, string>
   /**

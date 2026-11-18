@@ -8,6 +8,7 @@ import { deactivateTeamMember, pendenciasParaDesativar } from '@/actions/team'
 import type { PendenciasDoMembro, AgendamentoParaRepassar } from '@/lib/equipe/repasse'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
+import { rotuloDoDesativar } from '@/lib/equipe/textos-do-cadastro'
 
 /**
  * "Desativar membro?" com o REPASSE (H6, decisão do Heitor, 2026-11-01):
@@ -252,7 +253,12 @@ export function DesativarMembro({ membroId, nome, redirectPath, atende = true }:
               )}
               <button type="button" className="btn-secondary" disabled={fazendo} onClick={() => setAberta(false)}>Voltar</button>
               <button type="button" className="btn-primary" disabled={fazendo || (!dados && !erroCarga)} onClick={confirmar}>
-                {fazendo ? 'Um momento…' : 'Desativar'}
+                {/* A3 da 23ª: com o "todos para", quantos vão. */}
+                {fazendo ? 'Um momento…' : rotuloDoDesativar({
+                  todosParaAlguem: !!todosAg && todosAg !== CANCELAR,
+                  repassados: Object.values(paraAg).filter(p => p && p !== CANCELAR).length,
+                  total: dados?.agendamentos.length ?? 0,
+                })}
               </button>
             </div>
           </div>

@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { unidadesAtivas } from '@/lib/branches'
 import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { getFunilDoQuadro } from '@/lib/metrics/queries'
+import { funilDoDashboard } from '@/lib/crm/funil-do-dashboard'
+import { funilLembrado } from '@/lib/crm/funil-lembrado-no-servidor'
 import { resumoDoFunil } from '@/lib/metrics/resultado'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
@@ -63,10 +65,16 @@ export default async function AdminOportunidadesPage({
   const motivosTodos  = await motivosDaRede(createAdminClient(), ctx.tenantId!, true)
   const motivosDePerda = motivosTodos.filter(m => m.ativo)
   const ativos      = funnels.filter(f => f.archived_at === null)
-  const selecionado = ativos.find(f => f.id === rawFunil)
-    ?? ativos.find(f => f.is_default)
-    ?? ativos[0]
-    ?? funnels[0]
+  // A28 da 23ª: sem `?funil=`, o último escolhido (A34) e, sem ele, o padrão
+  // — que, vazio, cede ao primeiro funil com oportunidade (a regra do
+  // Dashboard, A30 da 20ª). O recorte é o do quadro ("só os meus").
+  const leadOwner = ownerFilter(ctx, 'crm')
+  const { funil: escolhido, etapas: doQuadro } = await funilDoDashboard({
+    funis: ativos, pedido: rawFunil, lembrado: await funilLembrado(),
+    lerFunil: funnelId => getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId, ownerId: leadOwner }),
+    total: e => resumoDoFunil(e).total,
+  })
+  const selecionado = escolhido ?? funnels[0]
 
   const allStages = await listAllStages(ctx.tenantId!)
   const stages    = allStages.filter(s => s.funnel_id === selecionado?.id)
@@ -79,7 +87,6 @@ export default async function AdminOportunidadesPage({
   // O lead é da REDE (`branch_id` nulo). Filtra pelas etapas do funil aberto —
   // funil sem etapa não tem o que buscar, e `.in()` com lista vazia vira
   // condição inválida no PostgREST.
-  const leadOwner = ownerFilter(ctx, 'crm')
   let leadsRaw: LeadLido[] = []
   if (stageIds.length > 0) {
     // Todas, em páginas (2026-10-22): o PostgREST corta em 1000, e os cards
@@ -135,7 +142,7 @@ export default async function AdminOportunidadesPage({
   // Relatórios (D10, 2026-10-28) —, no recorte do quadro: o funil de agora e,
   // com "só os meus", os da pessoa e os sem dono. Contados no banco, não na lista.
   const stats = resumoDoFunil(selecionado && stageIds.length > 0
-    ? await getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId: selecionado.id, ownerId: leadOwner })
+    ? doQuadro ?? await getFunilDoQuadro({ tenantId: ctx.tenantId!, funnelId: selecionado.id, ownerId: leadOwner })
     : [])
 
   return (

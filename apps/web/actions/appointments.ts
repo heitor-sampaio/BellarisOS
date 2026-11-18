@@ -37,7 +37,8 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import type { FichaQueJaExiste } from '@/lib/clients/ja-existe'
-import { periodRef, dayKeyTZ, partsInTZ, instanteNoFuso } from '@/lib/datetime'
+import { periodRef, dayKeyTZ, partsInTZ, instanteNoFuso, startOfDayTZ, endOfDayTZ, horaNoFuso } from '@/lib/datetime'
+import { textoDoMesmoProcedimentoNoDia } from '@/lib/appointments/mesmo-no-dia'
 import { fusoValido } from '@/lib/unidades/fuso'
 import { fusoDaUnidade, fusoDaRede, lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
@@ -2328,6 +2329,49 @@ export async function avisoDoPlanoAoAgendar(clientId: string, procedureId: strin
     return { texto: textoDoPlano(nomeParaSaudar(cli.name), plano), planId: plano.id }
   } catch (e) {
     console.error('[agenda] aviso do plano:', mensagemDoErro(e))
+    return null
+  }
+}
+
+/**
+ * A22 da 23ª simulação (princípio 3): a mesma cliente já tem ESTE procedimento
+ * no dia escolhido (a segunda Avaliação da Helena nascia sem aviso). Só aviso:
+ * o agendamento segue (princípio 2). Conta os da rede que a pessoa alcança —
+ * com a agenda "só os meus", só os dela —, fora os cancelados e as faltas; o dia
+ * e a hora no relógio da unidade escolhida.
+ */
+export async function avisoDoMesmoProcedimentoNoDia(
+  clientId: string, procedureId: string, branchId: string, scheduledAt: string,
+): Promise<{ texto: string } | null> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'agenda', 'MANAGE')
+    const uuid = /^[0-9a-f-]{36}$/i
+    if ([clientId, procedureId, branchId].some(x => typeof x !== 'string' || !uuid.test(x))) return null
+    const quando = new Date(typeof scheduledAt === 'string' ? scheduledAt : '')
+    if (Number.isNaN(quando.getTime()) || !alcancaUnidade(ctx, branchId)) return null
+    const fuso = await fusoDaUnidade(ctx.tenantId, branchId)
+    const admin = createAdminClient()
+    const [ags, cli, proc] = await Promise.all([
+      ler(admin.from('appointments')
+        .select('scheduled_at, branch_id, professional_id, branches!inner(tenant_id)')
+        .eq('client_id', clientId).eq('procedure_id', procedureId)
+        .eq('branches.tenant_id', ctx.tenantId!)
+        .not('status', 'in', '("CANCELLED","NO_SHOW")')
+        .gte('scheduled_at', startOfDayTZ(quando, fuso).toISOString())
+        .lte('scheduled_at', endOfDayTZ(quando, fuso).toISOString())
+        .order('scheduled_at'), 'buscar os agendamentos do dia') as Promise<{ scheduled_at: string; branch_id: string; professional_id: string | null }[] | null>,
+      ler(admin.from('clients').select('name').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a cliente') as Promise<{ name: string } | null>,
+      ler(admin.from('procedures').select('name').eq('id', procedureId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o procedimento') as Promise<{ name: string } | null>,
+    ])
+    if (!cli || !proc) return null
+    const horas = (ags ?? [])
+      .filter(a => alcancaOAgendamento(ctx, a.branch_id, a.professional_id) && !deOutroProfissional(ctx, a.professional_id))
+      .map(a => horaNoFuso(a.scheduled_at, fuso))
+    const texto = textoDoMesmoProcedimentoNoDia(cli.name, proc.name, horas)
+    return texto ? { texto } : null
+  } catch (e) {
+    console.error('[agenda] aviso do mesmo procedimento no dia:', mensagemDoErro(e))
     return null
   }
 }

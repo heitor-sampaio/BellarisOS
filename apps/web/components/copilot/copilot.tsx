@@ -1,6 +1,7 @@
 'use client'
 
 import { subidaDoBotaoDoCopilot } from '@/lib/copilot/subida-do-botao'
+import { useFocoAcimaDoBotao } from '@/lib/copilot/abaixo-do-botao'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -165,6 +166,8 @@ function useGravador(aoTerminar: (arquivo: File) => void) {
 
 export function Copilot() {
   const fuso = useFuso()
+  // A16 da 23ª: o que ganha o foco atrás do botão flutuante sobe acima dele.
+  useFocoAcimaDoBotao()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const pagina = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ''}`

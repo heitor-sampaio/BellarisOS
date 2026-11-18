@@ -72,8 +72,8 @@ test('o financeiro da unidade e o da rede: o mês (R$ 100) e "Em aberto: R$ 450,
     for (const tela of [`/${slug}/financeiro?period=month`, '/admin/financeiro?period=month']) {
       await p.goto(tela)
       const cartao = p.locator('[data-kpi="a-receber"]')
-      await expect(cartao, tela).toContainText(/R\$\s*100,00/)
-      await expect(cartao, tela).toContainText(/Em aberto:\s*R\$\s*450,00/)
+      await expect(cartao, tela).toContainText(/Vence no período:\s*R\$\s*100,00/)
+      await expect(cartao, tela).toContainText(/em aberto[\s\S]*?R\$\s*450,00/i)
     }
   })
 })
@@ -93,8 +93,8 @@ test('"Reforça", item 4: o Financeiro mostra o atendimento concluído sem pagam
       await p.goto(tela)
       const cartao = p.locator('[data-kpi="a-receber"]')
       // Separado e nomeado: não entra no número do cartão nem no em aberto dos lançamentos.
-      await expect(cartao, tela).toContainText(/R\$\s*100,00/)
-      await expect(cartao, tela).toContainText(/Em aberto:\s*R\$\s*450,00/)
+      await expect(cartao, tela).toContainText(/Vence no período:\s*R\$\s*100,00/)
+      await expect(cartao, tela).toContainText(/em aberto[\s\S]*?R\$\s*450,00/i)
       await expect(cartao.locator('[data-concluidos-sem-pagamento]'), tela)
         .toContainText(/Concluídos sem pagamento:\s*R\$\s*650,00/)
     }
@@ -120,6 +120,6 @@ test('ind-11: a unidade DESATIVADA com conta a receber entra no em aberto da red
 
   await como(browser, dona!, async p => {
     await p.goto('/admin/financeiro?period=month')
-    await expect(p.locator('[data-kpi="a-receber"]')).toContainText(/Em aberto:\s*R\$\s*650,00/)
+    await expect(p.locator('[data-kpi="a-receber"]')).toContainText(/em aberto[\s\S]*?R\$\s*650,00/i)
   })
 })

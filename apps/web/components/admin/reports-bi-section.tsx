@@ -19,6 +19,7 @@ import {
   getSeries, getTicketMedio, getResultadoDoEstoque, getSeriesDoResultado,
 } from '@/lib/metrics'
 import { painelComercial } from '@/lib/metrics/painel-comercial'
+import { funilLembrado } from '@/lib/crm/funil-lembrado-no-servidor'
 import type { LinhaLote, LinhaParcela } from '@/components/admin/reports-linhas'
 import {
   getVendas, getResumoDeVendas, ehTipoDeVenda, POR_PAGINA, type Venda, type ResumoDeVendas, type TipoDeVenda,
@@ -253,7 +254,7 @@ export async function ReportsBiSection({
   // Vive aqui desde que deixou de ser tela própria (/admin/comercial): o funil
   // e a conversão são relatório, e estavam numa entrada de menu só deles.
   const comercial = tab === 'comercial'
-    ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil, ownerId: donoNoCrm })
+    ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil, funilLembrado: await funilLembrado(), ownerId: donoNoCrm })
     : undefined
 
   // -- Aba Vendas ----------------------------------------------------

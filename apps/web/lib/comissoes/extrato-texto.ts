@@ -81,6 +81,15 @@ export function situacaoDoLancamento(l: Pick<LancamentoDoExtrato, 'kind' | 'stat
 }
 const dia = (iso: string | null, fuso = 'America/Sao_Paulo') => iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: fuso }) : '—'
 const reais = (v: number | null) => v == null ? '' : v.toFixed(2).replace('.', ',')
+
+/**
+ * A linha do fechamento em "Últimos fechamentos" (A32 da 10ª: até a hora do
+ * pagamento). D3 da 23ª: as três datas no fuso da REDE (D12), como o CSV.
+ */
+export function textoDoFechamento(f: Pick<Fechamento, 'inicio' | 'fim' | 'paidAt'>, fuso?: string): string {
+  const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fuso ?? 'America/Sao_Paulo' })
+  return `lançamentos de ${dia(f.inicio, fuso)} até ${dia(f.fim, fuso)}${f.fim ? ` às ${hora(f.fim)}` : ''}, pago em ${dia(f.paidAt, fuso)}`
+}
 const campo = (v: string) => /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
 
 /**
@@ -101,8 +110,10 @@ export function csvDoExtrato(
   const vinculos = vinculosDoExtrato(linhas, hora)
   const quando = (l: LancamentoDoExtrato) => new Date(l.releasedAt).getTime()
   const emOrdem = linhas.map((l, i) => ({ l, i })).sort((a, b) => quando(a.l) - quando(b.l) || a.i - b.i).map(x => x.l)
+  // A20 da 23ª (princípio 3): "Desconto 0,00" com o voucher de R$ 30 parecia erro — a coluna é o
+  // desconto que saiu da BASE (com a base cheia, o voucher e os pontos não saem; "O que saiu da base" diz).
   const tabela = [
-    ['Lançamento', 'Hora', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Ligação', 'Valor', 'Previsto', 'Situação', 'Pago em'],
+    ['Lançamento', 'Hora', 'Profissional', 'Unidade', 'Atendimento', 'Cliente', 'Procedimento', 'Origem', 'Preço', 'Desconto que saiu da base', 'Taxa da maquininha', 'Insumos', 'Proporção que ficou', 'Base', 'O que saiu da base', 'Regra', 'Tipo', 'Motivo', 'Ligação', 'Valor', 'Previsto', 'Situação', 'Pago em'],
     ...emOrdem.map(l => [
       // As datas no dia da unidade (F62b).
       dia(l.releasedAt, fuso), hora(l.releasedAt), nomes.get(l.professionalId) ?? '', unidades.get(l.branchId) ?? '', dia(l.scheduledAt, fuso),

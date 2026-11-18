@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { FileText, Download, CheckCircle2, Clock3, Star, ChevronRight } from 'lucide-react'
 import type { ProcedimentoItem, PagamentoItem, DeAntesDoSistema } from '@/app/[slug]/cliente/historico/page'
 import { useFuso } from '@/components/shared/fuso'
-import { tituloDoArquivoNoApp, miniaturaNoApp } from '@/lib/clientes/textos-do-app'
+import { tituloDoArquivoNoApp, miniaturaNoApp, ROTULO_DOS_ARQUIVOS_NO_APP } from '@/lib/clientes/textos-do-app'
 
 // -- Types ----------------------------------------------------------
 type ClientDoc = {
@@ -85,7 +85,8 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: 'procedimentos', label: 'Procedimentos', count: procedimentos.length },
     { key: 'pagamentos',    label: 'Pagamentos',    count: pagamentos.length },
-    { key: 'documentos',    label: 'Documentos',    count: documentos.length + consentimentos.length },
+    // A35 da 23ª: "Fotos e arquivos" — "Documentos" é a tela dos termos e contratos.
+    { key: 'documentos',    label: ROTULO_DOS_ARQUIVOS_NO_APP, count: documentos.length + consentimentos.length },
   ]
 
   return (
@@ -273,7 +274,7 @@ export function HistoricoTabs({ slug, procedimentos, deAntes, pagamentos, docume
       {tab === 'documentos' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {documentos.length === 0 && consentimentos.length === 0 && (
-            <EmptyState message="Nenhum documento disponível." />
+            <EmptyState message="Nenhuma foto ou arquivo por aqui." />
           )}
 
           {/* Termos de consentimento */}

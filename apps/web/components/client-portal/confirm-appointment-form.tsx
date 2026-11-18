@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Star, CheckCircle2, CalendarDays, User } from 'lucide-react'
 import { confirmAndRateAppointment } from '@/actions/appointments'
 import { useFuso } from '@/components/shared/fuso'
-import { textoDoQuandoNoConfirmar, textoDoBotaoDeConfirmar } from '@/lib/clientes/textos-do-app'
+import { textoDoQuandoNoConfirmar, BOTAO_DE_CONFIRMAR_NO_APP } from '@/lib/clientes/textos-do-app'
 
 interface Props {
   appointmentId:    string
@@ -118,7 +118,8 @@ export function ConfirmAppointmentForm({
       {/* Avaliações (opcionais) */}
       <div className="card" style={{ padding: '18px 18px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          Avalie (opcional)
+          {/* A36 da 23ª: o botão tem um rótulo só; aqui diz que a avaliação vai junto. */}
+          Avalie (opcional) · vai junto ao confirmar
         </p>
         {avaliaOAtendimento && (
           <StarRating label="Atendimento" dica={`Como foi o atendimento, com ${professionalName}.`}
@@ -156,10 +157,8 @@ export function ConfirmAppointmentForm({
         style={{ justifyContent: 'center', padding: '13px 16px', fontSize: 'var(--text-base-sz)', opacity: submitting ? 0.6 : 1 }}
       >
         <CheckCircle2 size={17} />
-        {/* A41 da 22ª: com nota ou comentário, o botão diz que a avaliação vai junto. */}
-        {submitting ? 'Confirmando…' : textoDoBotaoDeConfirmar({
-          avaliou: notaDoAtendimento > 0 || Object.values(notas).some(n => n > 0) || !!feedback.trim(),
-        })}
+        {/* A36 da 23ª: um rótulo só (o da A41 da 22ª mudava ao marcar as estrelas). */}
+        {submitting ? 'Confirmando…' : BOTAO_DE_CONFIRMAR_NO_APP}
       </button>
     </div>
   )

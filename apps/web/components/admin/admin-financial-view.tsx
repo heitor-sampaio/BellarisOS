@@ -572,8 +572,9 @@ export function AdminFinancialView({
     <KpiCard
       chave="a-receber"
       label={ROTULO_DO_A_RECEBER_DA_CLIENTE}
-      value={fmtBRL(aReceber)}
-      nota={<NotaDoVencimento valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
+      // A17 da 23ª: o número grande é o em aberto; o que vence no período vai na nota.
+      value={fmtBRL(aReceberEmAberto)}
+      nota={<NotaDoVencimento noTopoOEmAberto valor={aReceber} proximo={proximoAReceber} emAbertoTotal={aReceberEmAberto} concluidosSemPagamento={concluidosSemPagamento}
         hrefDaBaixa={naAba ? undefined : daAba('a-receber')} podeDarBaixa={canPay}
         vencidas={vencidas} hrefDasVencidas={naAba && soAsVencidas ? undefined : daAba('a-receber', { aberto: 'vencidas' })} />}
       dica={<DicaDoVencimento valor={aReceber} emAbertoTotal={aReceberEmAberto} concluidos={(concluidosSemPagamento?.n ?? 0) > 0} />}

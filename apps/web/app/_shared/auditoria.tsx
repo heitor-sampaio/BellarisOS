@@ -8,6 +8,7 @@ import { gruposDaAuditoria } from '@/lib/auditoria/frase'
 import { OPERACOES, type FiltrosDaAuditoria } from '@/lib/auditoria/tipos'
 import { PeriodSelector, type Period } from '@/components/admin/period-selector'
 import { Dica } from '@/components/shared/dica'
+import { NotaDoFuso } from '@/components/shared/fuso'
 
 /**
  * A tela da Auditoria (CF3a, docs/revisao.md — o Heitor, 2026-11-13: "queria
@@ -36,7 +37,9 @@ export async function TelaDaAuditoria({
   ])
   const unidades = todasAsUnidades.filter(u => minhas === null || minhas.includes(u.id))
   // Uma linha por GRAVAÇÃO (A27 da 15ª): o que a pessoa fez; os registros dela ficam guardados na linha.
-  const linhas = gruposDaAuditoria(pagina.registros, pagina.nomes, basePath, slug)
+  // D2 da 23ª: a coluna "Quando" no relógio da leitura (o da unidade filtrada, ou o comum).
+  const fuso = pagina.fuso
+  const linhas = gruposDaAuditoria(pagina.registros, pagina.nomes, basePath, slug, fuso)
 
   // Os filtros que ficam (o período mora no seletor; a página volta à primeira).
   const params = (extra: Record<string, string | null>) => {
@@ -65,6 +68,8 @@ export async function TelaDaAuditoria({
             O texto clínico nunca aparece aqui.
             {minhas !== null && ' Você vê o que aconteceu nas suas unidades.'}
           </Dica>
+          {/* D2 da 23ª: o relógio das horas, fora do de Brasília (princípio 3). */}
+          <NotaDoFuso fuso={fuso} />
         </div>
         <a href={`/api/auditoria/csv${params({})}`} className="btn-ghost" data-auditoria-csv
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 'var(--altura-controle)' }}>

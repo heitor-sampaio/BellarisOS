@@ -1,7 +1,7 @@
 'use client'
 
 import { startTransition, useActionState, useCallback, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
-import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, getSchedulingDaySlots } from '@/actions/appointments'
+import { addAppointment, dadosParaAgendar, proximoHorarioLivre, buscarClientesParaAgendar, clienteParaAgendar, salasParaAgendar, avisosDoHorario, avisoDoPlanoAoAgendar, avisoDoMesmoProcedimentoNoDia, getSchedulingDaySlots } from '@/actions/appointments'
 import { faltaNoCadastroAoAgendar, type FaltaNoCadastroDoTermo } from '@/actions/documentos-da-janela'
 import { GradeDeHorarios } from '@/components/shared/grade-de-horarios'
 import { gradeDoCheckout } from '@/lib/checkout/grade-de-horarios'
@@ -386,6 +386,21 @@ export function AppointmentModal({
   }, [chaveDoPlano, selectedClient?.id, procedimentoDoAgendamento])
   const avisoDoPlanoAgora = avisoDoPlano && avisoDoPlano.chave === chaveDoPlano ? avisoDoPlano : null
 
+  // -- A mesma cliente, o mesmo procedimento, no mesmo dia (A22 da 23ª) ------
+  // A segunda Avaliação da Helena no dia nascia sem aviso. Só aviso (princípio 2).
+  const chaveDoMesmoDia = selectedClient?.id && procedimentoDoAgendamento && unidadeId && scheduledAtUTC
+    ? `${selectedClient.id}|${procedimentoDoAgendamento}|${unidadeId}|${scheduledAtUTC}` : ''
+  const [avisoDoMesmoDia, setAvisoDoMesmoDia] = useState<{ chave: string; texto: string } | null>(null)
+  useEffect(() => {
+    if (!chaveDoMesmoDia || !selectedClient?.id || !scheduledAtUTC) return
+    let vivo = true
+    avisoDoMesmoProcedimentoNoDia(selectedClient.id, procedimentoDoAgendamento, unidadeId, scheduledAtUTC)
+      .then(r => { if (vivo) setAvisoDoMesmoDia(r ? { chave: chaveDoMesmoDia, ...r } : null) })
+      .catch(() => { /* sem aviso */ })
+    return () => { vivo = false }
+  }, [chaveDoMesmoDia, selectedClient?.id, procedimentoDoAgendamento, unidadeId, scheduledAtUTC])
+  const avisoDoMesmoDiaAgora = avisoDoMesmoDia && avisoDoMesmoDia.chave === chaveDoMesmoDia ? avisoDoMesmoDia.texto : null
+
   // -- O que falta no cadastro para os termos do procedimento (A17 da 12ª) ---
   // O termo do Peeling só dizia "Faltam dados: Data de nascimento" depois de
   // agendado. Só aviso: o agendamento segue (princípio 2). A sessão de plano
@@ -717,6 +732,12 @@ export function AppointmentModal({
                     Abrir o plano
                   </Link>
                 </span>
+              </p>
+            )}
+            {avisoDoMesmoDiaAgora && (
+              <p data-aviso-mesmo-no-dia role="status" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4 }}>
+                <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden />
+                <span>{avisoDoMesmoDiaAgora}</span>
               </p>
             )}
             {/* A9 da 16ª (princípio 3): antes de agendar, os documentos sem os quais o atendimento não se inicia. */}

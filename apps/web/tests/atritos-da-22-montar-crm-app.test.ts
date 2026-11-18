@@ -134,13 +134,10 @@ describe('A40: a foto enviada tem miniatura em Documentos', () => {
   })
 })
 
-describe('A41: o botão diz que envia a avaliação, quando há avaliação', () => {
-  it('com nota ou comentário: "Confirmar e enviar a avaliação"', async () => {
-    const { textoDoBotaoDeConfirmar } = await import('@/lib/clientes/textos-do-app')
-    expect(textoDoBotaoDeConfirmar({ avaliou: true })).toBe('Confirmar e enviar a avaliação')
-    expect(textoDoBotaoDeConfirmar({ avaliou: false })).toBe('Confirmar que realizei o atendimento')
-  })
-  it('o formulário usa', () => {
-    expect(fonte('components/client-portal/confirm-appointment-form.tsx')).toContain('textoDoBotaoDeConfirmar(')
+// A36 da 23ª: a regra mudou — o rótulo que mudava ao marcar as estrelas parecia
+// instável; é um só, e o cartão da avaliação diz que ela vai junto.
+describe('A41: a avaliação diz que vai junto com a confirmação', () => {
+  it('o formulário diz, no cartão da avaliação', () => {
+    expect(fonte('components/client-portal/confirm-appointment-form.tsx')).toContain('vai junto ao confirmar')
   })
 })

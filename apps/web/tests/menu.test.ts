@@ -39,18 +39,19 @@ describe('quem só recebe não entra no financeiro', () => {
     expect(comFin!.label).toBe('Financeiro')
   })
 
-  it('mas quem só recebe continua vendo os planejamentos, onde ele cobra', () => {
+  // D1 da 23ª: a regra mudou — Tratamentos segue a página (a Agenda em Ver).
+  // "Onde ele cobra" caiu com o PDV4/PT1c/PDV7: o plano se cobra no PDV.
+  it('e quem só recebe não vê Tratamentos: a página pede a Agenda', () => {
     const keys = menuEntriesFor(BRANCH_MENU, com({ cashier: 'MANAGE' })).map(e => e.key)
-    expect(keys).toContain('planejamentos')
+    expect(keys).not.toContain('planejamentos')
   })
 })
 
 describe('entradas com mais de uma porta', () => {
-  it('planejamentos abre por prontuário ou por quem recebe dinheiro', () => {
-    const porProntuario = menuEntriesFor(BRANCH_MENU, com({ medical_records: 'VIEW' }))
-    const porCaixa      = menuEntriesFor(BRANCH_MENU, com({ cashier: 'MANAGE' }))
-    expect(porProntuario.map(e => e.key)).toContain('planejamentos')
-    expect(porCaixa.map(e => e.key)).toContain('planejamentos')
+  it('Tratamentos abre pela Agenda — nem pelo prontuário nem por quem recebe (D1 da 23ª)', () => {
+    expect(menuEntriesFor(BRANCH_MENU, com({ agenda: 'VIEW' })).map(e => e.key)).toContain('planejamentos')
+    expect(menuEntriesFor(BRANCH_MENU, com({ medical_records: 'VIEW' })).map(e => e.key)).not.toContain('planejamentos')
+    expect(menuEntriesFor(BRANCH_MENU, com({ cashier: 'MANAGE' })).map(e => e.key)).not.toContain('planejamentos')
   })
 
   it('Configurações abre por settings, roles OU forms — nos dois portais', () => {
@@ -118,14 +119,14 @@ describe('menuSectionsFor', () => {
   })
 
   it('Planejamento junta Tratamentos e Injetáveis', () => {
-    const secoes = menuSectionsFor(ADMIN_MENU, com({ medical_records: 'VIEW' }))
+    const secoes = menuSectionsFor(ADMIN_MENU, com({ agenda: 'VIEW', medical_records: 'VIEW' }))
     const planejamento = secoes.find(s => s.key === 'planejamento')
     expect(planejamento!.entries.map(e => e.label)).toEqual(['Tratamentos', 'Injetáveis'])
   })
 
-  it('quem só recebe vê Tratamentos (ele cobra o plano) mas não Injetáveis, que é clínico', () => {
+  it('quem só recebe não vê Tratamentos (D1 da 23ª) nem Injetáveis, que é clínico', () => {
     const entries = menuEntriesFor(BRANCH_MENU, com({ cashier: 'MANAGE' })).map(e => e.key)
-    expect(entries).toContain('planejamentos')
+    expect(entries).not.toContain('planejamentos')
     expect(entries).not.toContain('injetaveis')
   })
 
@@ -139,7 +140,8 @@ describe('menuSectionsFor', () => {
 
 describe('menuLabelsFor', () => {
   it('devolve só os rótulos, na ordem do menu', () => {
-    expect(menuLabelsFor(BRANCH_MENU, com({ agenda: 'VIEW' }))).toEqual(['Dashboard', 'Agenda'])
+    // D1 da 23ª: a Agenda em Ver abre também Tratamentos (a régua da página).
+    expect(menuLabelsFor(BRANCH_MENU, com({ agenda: 'VIEW' }))).toEqual(['Dashboard', 'Agenda', 'Tratamentos'])
   })
 })
 

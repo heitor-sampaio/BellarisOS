@@ -189,7 +189,9 @@ um muro que não depende de cada trava do código.
   `net-phone`, e o setup tem um campo só. Prova: `e2e/setup-atritos-da-9.spec.ts`,
   `tests/endereco-com-numero.test.ts`. **O bairro que veio do CEP se confere**
   (A18 da 19ª: o CEP geral pôs "Centro" na unidade da Aldeota): "O bairro
-  “Centro” veio da busca do CEP: confira." embaixo do logradouro
+  “Centro” veio da busca do CEP e entrou no logradouro: confira." embaixo do
+  logradouro (A9 da 23ª: a unidade não tem campo de bairro, e o aviso pedia
+  para conferir um)
   (`avisoDoBairroDoCep`, `lib/cep.ts`; `[data-confira-o-bairro]`), até a
   pessoa mexer no campo. Só avisa. **O CEP que não traz a cidade a pede ali**
   (A28 da 22ª: o "CEP não encontrado" deixava seguir sem cidade nem UF, e o
@@ -959,6 +961,17 @@ de uma unidade"):**
   `pdvAbertoPeloFinanceiro`); o resumo tem a dica "De onde vem Tratamentos"
   (A2, `tratamentosNoResumo`); e o aviso do que falta escolher, junto do
   Salvar, tem o "Ir até lá", que rola até a primeira linha pendente (A3).
+  **E a 23ª** (`tests/atritos-da-23-cargos-atendimento-app.test.ts`): o PDV
+  aberto pelo Financeiro em Gerenciar mostra no seletor o nível que vale,
+  "Gerenciar", travado, com o porquê ao lado (A1, `nivelDoPdvPeloFinanceiro`;
+  o que se grava segue "Sem acesso"); o menu e o resumo mostram Tratamentos a
+  quem tem a Agenda — a régua da página —, não mais a quem tem o Prontuário ou
+  recebe (D1; "quem recebe cobra o plano ali" caiu com o PDV4/PT1c/PDV7), e a
+  dica diz "Tratamentos vem da Agenda em “Ver”"; o resumo diz "Conclui só os
+  próprios atendimentos…" quando o cargo tem o Prontuário em Gerenciar e "só
+  os meus" na Agenda ou no Prontuário (A2, `conclusaoNoResumo`); e o
+  Desativar com o "Repassar todos … para" quem não pegou todos diz "Desativar
+  e repassar 1 de 5" (A3, `rotuloDoDesativar`).
 - **Os textos da Equipe dizem o que vale para ESTA pessoa** (A17, A18, A21 da
   17ª; princípio 3): salvar o cargo confirma ("Cargo “X” salvo."), e "O que
   essa pessoa vai ver" diz o Copilot pelo nível (`copilotNoResumo`); cadastrar
@@ -1253,6 +1266,19 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     de R$ 150,00 (Pix) e 3 parcelas (R$ 500,00)") e o recebimento as vezes
     ("Crédito 8x"); a parcela e as vezes vêm do lançamento lido agora
     (`nomes.lancamentos`, também do criado). Venda paga à vista: sem acréscimo.
+  - **A 23ª simulação** (D2, A31; `tests/fuso-da-auditoria-e-comissoes.test.ts`,
+    `tests/atritos-da-23-financeiro.test.ts`):
+    - **a hora é a do fuso** (D2, F62b): a coluna "Quando" da tela e do CSV vai
+      no fuso do recorte da leitura (`fusoDoRecorte`, `pagina.fuso`, com a
+      `NotaDoFuso`), e a hora que a frase cita ("Agendou … para", "Remarcou …
+      para") no fuso da unidade do registro (`nomes.fusos`). Ninguém chama
+      `quandoDaAuditoria` sem o fuso (o teste trava);
+    - o recebimento em duas formas diz quanto foi em cada ("Recebeu a parcela
+      1/3 (R$ 150,00: Dinheiro R$ 50,00 e Pix R$ 100,00)"); a parcela vale
+      quando todos os lançamentos da gravação são da mesma parcela;
+    - o "−/+" do produto na comanda é "Pôs mais 1 Sérum na comanda (agora 2)"
+      / "Tirou 1 Sérum da comanda (agora 2)"; tirar a linha, "Tirou Sérum da
+      comanda".
   - Prova: `tests/atritos-da-15.test.ts`, `e2e/auditoria-atritos-da-15.spec.ts`.
 - **A falha do registro não derruba a gravação.** O gatilho segura o erro,
   grava uma linha `incompleto` (quando acha a rede) e deixa um WARNING no log:

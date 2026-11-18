@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { SegSelect } from '@/components/shared/seg-select'
 import { mesclarParams } from '@/lib/query-params'
 import type { CRMFunnel } from '@/lib/crm'
+import { COOKIE_DO_FUNIL } from '@/lib/crm/funil-lembrado'
 
 /**
  * Seletor de funil — o mesmo no quadro do CRM, no dashboard e no comercial.
@@ -14,6 +15,9 @@ import type { CRMFunnel } from '@/lib/crm'
  * `to`) — montar do zero apagaria todos.
  *
  * Com um funil só o seletor não aparece: não há escolha a oferecer.
+ *
+ * A escolha também fica anotada (A34 da 23ª, `lib/crm/funil-lembrado.ts`):
+ * sem `?funil=`, a tela abre no último escolhido.
  */
 export function FunnelSelect({
   funnels, activeId,
@@ -30,7 +34,10 @@ export function FunnelSelect({
     <SegSelect
       options={funnels.map(f => ({ key: f.id, label: f.name }))}
       value={activeId}
-      onSelect={id => router.push(mesclarParams(params, { funil: id }))}
+      onSelect={id => {
+        document.cookie = `${COOKIE_DO_FUNIL}=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`
+        router.push(mesclarParams(params, { funil: id }))
+      }}
       ariaLabel="Selecionar funil"
     />
   )

@@ -182,7 +182,9 @@ test.describe.serial('a venda de produto', () => {
     expect(await pontos()).toEqual([])
   })
 
-  test('sem estoque suficiente, recusa — e nada é gravado', async ({ browser }) => {
+  // A15 da 23ª (princípios 3 e 7): a tela diz a falta e desliga o Vender antes do clique
+  // (a recusa do servidor segue provada pela action em vendas-produto-varios.spec.ts).
+  test('sem estoque suficiente, o Vender desliga com o motivo — e nada é gravado', async ({ browser }) => {
     const antes = (await vendas()).length
     await como(browser, async p => {
       const dlg = await abrirVendaDeProduto(p)
@@ -190,8 +192,9 @@ test.describe.serial('a venda de produto', () => {
       await dlg.getByLabel('Quantidade').fill('5')
       await pagoNoPix(dlg)
       await euVendi(dlg)
-      await dlg.getByRole('button', { name: /^Vender por/ }).click()
-      await expect(dlg.getByRole('alert')).toContainText(/estoque insuficiente/i)
+      await expect(dlg.locator('[data-falta-de-estoque]')).toContainText(/Só há 2 .* nesta unidade/)
+      await expect(dlg.locator('[data-falta-de-estoque]').getByRole('link', { name: 'Dar entrada no Estoque' })).toBeVisible()
+      await expect(dlg.getByRole('button', { name: /^Vender por/ })).toBeDisabled()
     })
     expect((await vendas()).length).toBe(antes)
     expect(await lotes()).toEqual({ A: 0, B: 2 })

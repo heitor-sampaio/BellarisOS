@@ -30,7 +30,8 @@ const NOME_DA_FOTO = `[e2e] Foto antes ${marca}`
 
 async function abrirDocumentosDoPortal(p: Page) {
   await p.goto(`/${slug}/cliente/historico`)
-  await p.getByRole('button', { name: /^Documentos/ }).click()
+  // A35 da 23ª: a aba do Histórico é "Fotos e arquivos" ("Documentos" é a tela dos termos).
+  await p.getByRole('button', { name: /^Fotos e arquivos/ }).click()
 }
 
 test.beforeAll(async () => {
@@ -60,7 +61,7 @@ test.describe.serial('o documento chega ao app só quando a rede envia', () => {
   test('a foto clínica anexada não aparece no app da cliente', async ({ browser }) => {
     await como(browser, cliente!.estado, async p => {
       await abrirDocumentosDoPortal(p)
-      await expect(p.getByText('Nenhum documento disponível.')).toBeVisible()
+      await expect(p.getByText('Nenhuma foto ou arquivo por aqui.')).toBeVisible()
       await expect(p.getByText(NOME_DA_FOTO)).toHaveCount(0)
     })
   })

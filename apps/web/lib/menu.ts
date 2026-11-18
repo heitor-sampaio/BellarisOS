@@ -106,7 +106,10 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // tarefa sem dono, esperando uma decisão do cliente. O dinheiro passou a ser
   // recebido no check-in do atendimento, e o que sobrava da fila virou o filtro
   // "Aguardando aceite" desta tela.
-  { key: 'planejamentos', recurso: 'planos_de_tratamento',group: 'planejamento', label: 'Tratamentos',   href: '/admin/planejamentos',  visible: p => has(p, 'medical_records') || recebe(p) },
+  // D1 da 23ª (princípio 3): segue a página, que pede a Agenda em Ver. Abria
+  // também pelo Prontuário e por quem recebe ("ele cobra o plano ali"), e a
+  // página barrava; desde o PDV4/PT1c/PDV7 o plano se cobra na comanda do PDV.
+  { key: 'planejamentos', recurso: 'planos_de_tratamento',group: 'planejamento', label: 'Tratamentos',   href: '/admin/planejamentos',  visible: p => has(p, 'agenda') },
   // O mapa de injetáveis era alcançável só por dentro da ficha de um cliente.
   // É clínico (vira registro de prontuário), daí o módulo ser outro.
   { key: 'injetaveis', recurso: 'injetaveis',   group: 'planejamento', label: 'Injetáveis',    href: '/admin/injetaveis',     visible: p => has(p, 'medical_records') },
@@ -159,7 +162,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   { key: 'agenda',        group: 'atendimento', label: 'Agenda',        href: '/agenda',        visible: p => has(p, 'agenda') },
   { key: 'clients',       group: 'atendimento', label: 'Clientes',      href: '/clients',       visible: p => has(p, 'clients') },
   { key: 'documentos', recurso: 'documentos', group: 'atendimento', label: 'Documentos', href: '/documentos', visible: p => has(p, 'clients') },
-  { key: 'planejamentos', recurso: 'planos_de_tratamento', group: 'planejamento', label: 'Tratamentos', href: '/planejamentos', visible: p => has(p, 'medical_records') || recebe(p) },
+  { key: 'planejamentos', recurso: 'planos_de_tratamento', group: 'planejamento', label: 'Tratamentos', href: '/planejamentos', visible: p => has(p, 'agenda') },
   { key: 'injetaveis', recurso: 'injetaveis',    group: 'planejamento', label: 'Injetáveis',  href: '/injetaveis',    visible: p => has(p, 'medical_records') },
 
   { key: 'pdv',           group: 'vendas',      label: 'PDV',           href: '/pdv',           visible: recebe },

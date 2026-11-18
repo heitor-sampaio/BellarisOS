@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  OUTCOME_COPY, OUTCOME_VALUES, COR_DA_ETAPA_NOVA, ehAUltimaDePerda, perguntaAoExcluirEtapa,
+  OUTCOME_COPY, OUTCOME_VALUES, COR_DA_ETAPA_NOVA, ehAUltimaDePerda, perguntaAoExcluirEtapa, AVISO_DO_FUNIL_NOVO,
   type CRMFunnel, type CRMStage, type StageOutcome,
 } from '@/lib/crm'
 import {
@@ -710,6 +710,12 @@ export function CRMStageSettings({
             <p className="overline" style={{ marginBottom: 2 }}>
               ETAPAS DE {(selecionado?.name ?? '').toUpperCase()}
             </p>
+            {/* A6 da 23ª: o funil recém-criado diz que as etapas são as iniciais. */}
+            {funnelState?.id && funnelState.id === selecionado?.id && (
+              <p data-funil-novo style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+                <CheckCircle2 size={13} style={{ flexShrink: 0, marginTop: 3 }} /> {AVISO_DO_FUNIL_NOVO}
+              </p>
+            )}
 
             {etapasDoFunil.map((stage, idx) => (
               <div

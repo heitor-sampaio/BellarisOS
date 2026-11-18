@@ -168,6 +168,8 @@ function construtor(tabela: string) {
   return p
 }
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: construtor, rpc: () => construtor('rpc') }) }))
+// D2 da 23ª: a leitura pede o fuso do recorte (cacheado: fora do Next, sem o cache).
+vi.mock('@/lib/unidades/fuso-da-unidade', () => ({ fusoDoRecorte: async () => 'America/Sao_Paulo' }))
 
 const UUID_C = '11111111-1111-4111-8111-111111111111'
 const UUID_F = '22222222-2222-4222-8222-222222222222'

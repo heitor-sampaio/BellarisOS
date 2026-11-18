@@ -203,7 +203,8 @@ test.describe.serial('portal do cliente', () => {
       await estrelas('Atendimento', 4).click()
       await page.getByPlaceholder('Conte como foi seu atendimento (opcional)').fill(`${PREFIXO} ótimo`)
       // A41 da 22ª: com nota e comentário, o botão diz que a avaliação vai junto.
-      await page.getByRole('button', { name: 'Confirmar e enviar a avaliação' }).click()
+      // A36 da 23ª: um rótulo só, com nota ou sem.
+      await page.getByRole('button', { name: 'Confirmar que realizei o atendimento' }).click()
       await expect(page).toHaveURL(new RegExp('/cliente/historico'))
 
       const { data } = await db().from('appointments')

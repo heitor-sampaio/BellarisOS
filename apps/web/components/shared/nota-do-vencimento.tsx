@@ -15,8 +15,13 @@ const diaCurto = (dia: string) => `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
  * Os números vêm de `getEmAberto` e `getAReceberEmAberto` (lib/metrics); aqui
  * só se escreve.
  */
-export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas, podeDarBaixa = true, despesa = false }: {
+export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemPagamento, hrefDaBaixa, vencidas, hrefDasVencidas, podeDarBaixa = true, despesa = false, noTopoOEmAberto = false }: {
   valor: number
+  /**
+   * A17 da 23ª: o número grande do cartão é o em aberto — a nota diz o que
+   * vence no período ("Vence no período: R$ …"), com o link da lista.
+   */
+  noTopoOEmAberto?: boolean
   proximo: ProximoVencimento | null
   /** Todo o em aberto, de qualquer vencimento (só no "A receber"). */
   emAbertoTotal?: number
@@ -60,7 +65,9 @@ export function NotaDoVencimento({ valor, proximo, emAbertoTotal, concluidosSemP
       {valor === 0 && proximo && <span style={{ display: 'block' }}>Próximo: <strong>{formatBRL(proximo.valor)} em {diaCurto(proximo.dia)}</strong></span>}
       {emAbertoTotal !== undefined && (
         <span data-em-aberto style={{ display: 'block', marginTop: 2 }}>
-          Em aberto: <strong>{formatBRL(emAbertoTotal)}</strong>
+          {noTopoOEmAberto
+            ? <span data-vence-no-periodo>Vence no período: <strong>{formatBRL(valor)}</strong></span>
+            : <>Em aberto: <strong>{formatBRL(emAbertoTotal)}</strong></>}
           {hrefDaBaixa && emAbertoTotal > 0 && (
             <> · <a href={hrefDaBaixa} style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>{podeDarBaixa ? (despesa ? 'Ver e pagar' : 'Ver e dar baixa') : 'Ver a lista'}</a></>
           )}

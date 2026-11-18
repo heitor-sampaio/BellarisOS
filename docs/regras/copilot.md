@@ -330,6 +330,15 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   é `emAberto: true` — agendado, confirmado, chegou e em atendimento, sem o
   concluído, o cancelado e a falta (o padrão segue "todos menos cancelados").
   Prova: `tests/copilot-achados-da-22.test.ts`.
+  **O item do cartão diz o dia e a unidade quando precisa** (A32 da 23ª;
+  princípio 3: "10:00 · Bianca Lopes" numa lista de 17 a 19/11 nas duas
+  unidades): o dia vai quando o período tem mais de um ("qua., 18/11 às
+  10:00 · Bianca Lopes"); a unidade, no detalhe, quando a pessoa alcança mais
+  de uma. Prova: `tests/copilot-atritos-da-23.test.ts`.
+- **O "Encontrado para…" diz o recorte dos agendamentos** (A33 da 23ª): a
+  busca recorta pela unidade da tela (`busca.md`), e a quem alcança mais de
+  uma o título diz "· agendamentos só de Centro" e o modelo recebe o
+  `recorte` (para os das outras, `agendamentos`). Prova: idem.
 - **O período sem data é o atual, sem perguntar** (A26 da 20ª; princípio 7:
   "Resumo da semana" pedia "Confirmo: a semana atual?"): o prompt e a
   descrição de `indicadores` dizem que "a semana" é `week` e "o mês" é
@@ -425,6 +434,13 @@ completo e o dono. Os specs `copilot-*` são COMPARTILHADOS (porta fixa).
 já sobe), o `main` ganha embaixo a altura dele e a folga (`body:has(.copilot-botao…)
 main`, `globals.css` do núcleo) — o último texto e o último botão saíam por baixo
 dele, sem rolagem que os tirasse. Prova: `e2e/configuracoes-atritos-da-10.spec.ts` ("A4").
+**O que ganha o foco atrás do botão sobe acima dele** (A16 da 23ª: a
+1440×900 ele cobria o "Confirmar estorno" da comissão, aberto no meio da
+página — o espaço no fim do `main` só resolve o fim): `useFocoAcimaDoBotao`
+(`lib/copilot/abaixo-do-botao.ts`, no Copilot e no botão de fora do plano)
+rola, no `focusin`, o que falta para o grupo do foco (`[role="group"]`,
+`form`, ou o campo) ficar acima do botão, sem levar o topo dele para trás da
+topbar; o modal (camada de cima) fica de fora. Prova: `tests/copilot-atritos-da-23.test.ts`.
 
 ## O que nunca fazer aqui
 
