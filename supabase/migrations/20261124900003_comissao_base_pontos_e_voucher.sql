@@ -71,7 +71,7 @@ begin
            coalesce(sum(f.sale_discount) filter (where f.is_paid), 0),
            case when coalesce(sum(f.amount) filter (where f.is_paid and f.amount > 0), 0) > 0 then
              sum(f.amount * private.comissao_taxa_pct(v_l.tenant_id, f.payment_method::text,
-                   coalesce(f.cartao_vezes, f.parcela_total, 1), f.cartao_bandeira, f.maquininha_id)) filter (where f.is_paid and f.amount > 0)
+                   coalesce(f.cartao_vezes, 1), f.cartao_bandeira, f.maquininha_id)) filter (where f.is_paid and f.amount > 0)
              / sum(f.amount) filter (where f.is_paid and f.amount > 0)
            else 0 end
       into v_vivos, v_abertos, v_quitado, v_desconto, v_dvenda, v_taxa
@@ -122,7 +122,7 @@ begin
            coalesce(sum(f.amount + coalesce(f.loyalty_discount, 0)), 0),
            case when coalesce(sum(f.amount), 0) > 0 then
              sum(f.amount * private.comissao_taxa_pct(v_l.tenant_id, f.payment_method::text,
-                   coalesce(f.cartao_vezes, f.parcela_total, (select max(i.total) from public.installments i where i.transaction_id = f.id), 1), f.cartao_bandeira, f.maquininha_id))
+                   coalesce(f.cartao_vezes, 1), f.cartao_bandeira, f.maquininha_id))
              / sum(f.amount)
            else 0 end,
            coalesce(sum(f.loyalty_discount), 0)
@@ -268,10 +268,10 @@ begin
   select coalesce(sum(f.loyalty_discount), 0), coalesce(sum(f.sale_discount), 0),
          case when coalesce(sum(f.amount) filter (where f.amount > 0), 0) > 0 then
            sum(f.amount * private.comissao_taxa_pct(v_l.tenant_id, f.payment_method::text,
-                 coalesce(f.cartao_vezes, f.parcela_total, 1), f.cartao_bandeira, f.maquininha_id)) filter (where f.amount > 0)
+                 coalesce(f.cartao_vezes, 1), f.cartao_bandeira, f.maquininha_id)) filter (where f.amount > 0)
            / sum(f.amount) filter (where f.amount > 0)
          else private.comissao_taxa_pct(v_l.tenant_id, v_f.payment_method::text,
-                coalesce(v_f.cartao_vezes, v_f.parcela_total, 1), v_f.cartao_bandeira, v_f.maquininha_id) end
+                coalesce(v_f.cartao_vezes, 1), v_f.cartao_bandeira, v_f.maquininha_id) end
     into v_fid, v_dvenda, v_taxa
     from public.financial_transactions f
    where f.appointment_id = v_l.appointment_id and f.type = 'INCOME' and f.estorno_de is null
