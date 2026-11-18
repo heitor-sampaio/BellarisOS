@@ -479,7 +479,8 @@ comanda (PDV-P1).
   `venda_com_fidelidade` (uma transação: a venda de sempre, depois
   `private.fidelidade_na_venda` reduz o lançamento, grava o
   `loyalty_discount`, marca o voucher USADO e lança o RESGATE). A comanda do
-  PLANO ainda não usa pontos (fica para o bloco do Plano de tratamento).
+  PLANO também usa (FD2a/FD2b, "Os pontos e o voucher na comanda do plano",
+  acima — RC-1 da varredura de 18/11: o texto dizia que ainda não usava).
 - **A comanda recebe em mais de uma forma** (D1 da 18ª; o Heitor,
   2026-11-16: "Ok"): no à vista, o "+ Outra forma" (`OutrasFormas`,
   `CamposDoPagamento variasFormas`) acrescenta formas, cada uma com o valor
@@ -534,8 +535,6 @@ comanda (PDV-P1).
   com o que ficou), e `atendimentos_a_receber.price` passa a ser o que FALTA.
   No crediário e no a receber o botão diz "Fechar a comanda" (nada, ou só a
   entrada, entra agora).
-- Ainda por vir (o plano de adaptação, `docs/revisao.md`): os pontos na
-  comanda do plano.
 - Prova: `e2e/pdv-comanda-do-atendimento.spec.ts`, `e2e/pdv-nova-venda.spec.ts`,
   `e2e/pdv-comanda-do-plano.spec.ts`, `e2e/pdv-fechar-o-dia.spec.ts`,
   `e2e/pdv-crediario-e-parcela.spec.ts`,
@@ -1428,9 +1427,22 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     chegada (duas abas, "tentar de novo") ouve "Este plano já foi fechado.
     Recarregue a tela.". "Quem vendeu" fica no plano (`vendido_por`, A13) e a
     tela o retoma. Prova: `e2e/plano-checkout-uma-transacao.spec.ts`.
-  - **A baixa é do PDV (o caixa) em todo caminho** (C33): o
-    Financeiro em Gerenciar sem o caixa não tem "Pagar"/"Receber", e o
-    check-in do plano usa o caixa, como o avulso.
+  - **O que passa pelo balcão é do PDV** (C33): o check-in do plano recebe
+    com `podeReceber` (o PDV OU o Financeiro em Gerenciar), como o avulso e o
+    checkout (VF-04 da varredura de 18/11, decisão do Claude: pedia só o
+    PDV). **A baixa NO FINANCEIRO** ("Receber"/"Pagar" da
+    lista, `markTransactionPaid`) é do PDV OU do Financeiro em Gerenciar de
+    todos (`podeDarBaixa`, `lib/financeiro/so-os-meus.ts`) — CX2 do plano de
+    adaptação, aprovado pelo Heitor em 13/11 ("Blz pode ser assim"): "O
+    Financeiro tem a lista de tudo que falta receber, de todas as clientes, e
+    dá baixa só no que entra sem passar pelo balcão (a transferência que caiu
+    na conta)". Até a leva seguinte à auditoria de 18/11 a baixa era só do
+    PDV (o texto do C33 dizia "em todo caminho"), contra o CX2. O "só os meus"
+    do Financeiro não dá baixa (C35, decisão do Claude pela regra que já
+    existia: o financeiro dessa pessoa é "Minhas comissões"). A quem não dá
+    baixa, a lista diz "Receber é de quem tem o PDV ou o Financeiro em
+    Gerenciar." Prova: `tests/financeiro-baixa-cx2.test.ts`,
+    `e2e/financeiro-f67.spec.ts` ("CX2").
   - **A baixa do lançamento sem meio exige a forma** (C34), no
     `marcarPagoCore` e no `marcar_pago` do Copilot: "Escolha a forma de
     pagamento." (ficava "Não informado").
@@ -1748,7 +1760,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   item "PDV" do menu, `recebe` em `lib/menu.ts`) e o "Fechamento do dia"
   (`/pdv?fechar=1`, `veFechamento`). O financeiro da unidade e o da rede
   continuam pedindo `financial`. `podeReceber` (`cashier` OU `financial` em
-  Gerenciar) é o gate de quem vende e recebe — também da página do PDV.
+  Gerenciar) é o gate de quem vende e recebe — também da página do PDV. A
+  baixa no Financeiro (CX2) é `podeDarBaixa`: a mesma régua, sem o "só os
+  meus" do Financeiro.
 - `FinancialTransaction` criada automaticamente ao concluir `Appointment`
 - **Cada parcela é um LANÇAMENTO** (pedido do Heitor, 2026-09-30): o
   parcelado grava a entrada ("— entrada") e uma linha de
@@ -1775,8 +1789,10 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `clients!financial_transactions_client_id_fkey` na rede); sem ele, "—". Prova:
   `e2e/financeiro-rede-a-receber.spec.ts`. **Na unidade, o nome vem de
   `nomesDosRegistros`, não do embed da sessão** (D2 da simulação de
-  2026-11-01): a RLS mostra a ficha só à unidade de CADASTRO, e a venda da
-  cliente de outra unidade saía com "—" (regra em `atendimento.md` §9.1).
+  2026-11-01): a RLS mostrava a ficha só à unidade de CADASTRO, e a venda da
+  cliente de outra unidade saía com "—" (regra em `atendimento.md` §9.1). Desde
+  2026-11-18 a RLS de `clients` confere a REDE (migration `20261124200001`);
+  o contorno pelo servidor ficou.
   Prova: `e2e/agenda-nomes-de-outra-unidade.spec.ts`.
   - **"A receber" e "A pagar" valem pelo VENCIMENTO e dizem isso** (A34,
     2026-10-27): os dois cartões (unidade e rede, e cada unidade no recorte da
@@ -2157,12 +2173,22 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
         "CREDIT_CARD:N", `max_vezes`, `prazo_dias`, `cobra_por_bandeira`,
         `por_bandeira`, `arquivada_em`; a sessão NÃO lê nem grava — sem
         política; grava `actions/maquininhas.ts` pelo cliente de serviço,
-        com `financial: MANAGE`, o recurso comissões e abrangência de rede).
+        com `financial: MANAGE`, o recurso comissões e o cargo de Admin da
+        rede — `recusaDaConfigDaRede`; o Heitor, 18/11: a configuração da
+        rede toda é "só pela conta admin"; até ali bastava “A rede inteira”).
         O Pix em `tenants.pix_taxa_pct` (padrão 0). A venda guarda a sua em
         `financial_transactions.maquininha_id`.
       - **A migração**: a configuração de cada rede virou a 1ª maquininha,
         "Maquininha". O lançamento já gravado fica com a taxa que tem (o
-        recebível é retratado). `payment_fees` e `tenants.cartao_*` seguem
+        recebível é retratado; o Pix, o débito e o crédito 1x, que não têm
+        recebível, guardam a taxa em `financial_transactions.taxa_pct_retrato`
+        quando entram pagos — gatilho `trg_taxa_do_lancamento`, refeita só se o
+        meio, as vezes, a bandeira ou a maquininha mudam. Toda leitura da taxa
+        de um lançamento — o caixa, o aviso e as taxas do Fechamento, os
+        custos da venda — parte de `private.taxa_gravada_do_cartao`: VF2-02 da
+        varredura de 18/11, decisão do Claude; trocar a taxa mudava o
+        passado). As vezes do cartão são `cartao_vezes` (nulo = 1x), nunca a
+        `parcela_total` do crediário (VF2-01). `payment_fees` e `tenants.cartao_*` seguem
         só com um ESPELHO para a 1ª maquininha (gatilhos
         `trg_maquininha_espelha_*`), até a limpeza com o Heitor.
       - **Quem decide a maquininha da venda**: a escolhida; sem escolha, o
@@ -2174,8 +2200,11 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
         (`recusaDasVezesDaRede`: "Escolha a maquininha do cartão."): a
         primeira não vale calada (princípio 3). Todos os caminhos: avulso,
         check-in do plano, checkout, pacote, pré-pago, produto, crédito
-        interno, Novo lançamento, "Receber no cartão" e o Copilot (`lancar`
-        e `marcar_pago` pedem o nome; com mais de uma, sem ele, perguntam).
+        interno, Novo lançamento, "Receber no cartão", o Copilot (`lancar`
+        e `marcar_pago` pedem o nome; com mais de uma, sem ele, perguntam) e
+        o pagamento NOVO do usado — o estorno inteiro de pacote, plano,
+        unidade pré-paga, venda de produto ou de crédito, que entra de novo
+        no cartão (`p_novo ->> 'maquininha'`; VF-01 da varredura de 18/11).
         O pagamento combinado do CONTRATO não pergunta (é só texto: a
         maquininha se escolhe quando o dinheiro entra).
       - **Quem lê**: `private.taxa_da_maquininha(rede, método, vezes,
@@ -2431,7 +2460,8 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
       (`recebiveis_do_cartao`) e a estimativa do Fechamento do dia —, e o
       prazo no nascimento das parcelas da operadora. O estorno herda a
       bandeira. **Informada ou trocada DEPOIS de pago** (o recebimento do plano
-      no check-in grava logo depois de `plano_receber`), o gatilho refaz o
+      no check-in grava a bandeira e a maquininha DENTRO de `plano_receber`
+      desde a VF2-04 da varredura de 18/11 — antes, num update logo depois), o gatilho refaz o
       prazo e a taxa das parcelas enquanto a operadora não pagou nenhuma, e a
       comissão se acerta pelo gatilho dela. Prova:
       `e2e/financeiro-cartao-por-bandeira.spec.ts`, `tests/cartao-por-bandeira.test.ts`.
@@ -2624,9 +2654,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
     a venda sai sem desconto da operadora (0%), também na comissão
     (`taxaQueVale`, o espelho de `private.comissao_taxa_pct` — F16-2: nunca
     a de outras vezes). As taxas vão de à vista a 12x em Configurações →
-    Comissões. A quem não cadastra a taxa (sem o Financeiro em Gerenciar, ou
-    sem "A rede inteira"), o aviso diz QUEM cadastra, pelo nome
-    (`textoDeQuemCadastraATaxa`, `quemMudaNaRede(…, ['financial'])` em
+    Comissões. A quem não cadastra a taxa (quem não é a Admin da rede, desde
+    18/11), o aviso diz QUEM cadastra, pelo nome das Admins da rede ativas
+    (`textoDeQuemCadastraATaxa`, `adminsAtivasDaRede` em
     `maquininhasParaAVenda`), em vez de mandar a Configurações (A5 da 16ª).
   - **A linha do tempo também diz a forma pelo nome** (D18 da simulação de
     2026-10-29; migration `20261029000301`): "Pagamento confirmado via
@@ -2733,8 +2763,9 @@ caixa): os R$ 300 não entraram no caixa, no fechamento nem no faturamento.
   `quemVendeu`, antes do dinheiro). Fica em `treatment_plans.vendido_por` e
   leva a comissão de VENDA do plano (`comissoes.md`). O chamador que não manda
   `equipe` (os de antes) fecha sem comissão de venda. A coluna "Profissional"
-  das Vendas do plano é quem vendeu (D14 da 8ª; sem ele, a profissional do plano —
-  `indicadores.md`). Prova:
+  das Vendas do plano é quem vendeu (D14 da 8ª); sem ele, a venda não é de
+  ninguém (com-06, o Heitor: "Campo vazio não gera comissão para ninguém";
+  até 18/11 ia à profissional do plano — `indicadores.md`). Prova:
   `e2e/comissoes-venda-do-plano.spec.ts`.
 - **O CPF e o telefone com máscara no checkout e no atendimento** (A45 da 11ª;
   princípio 3: "CPF 00515996270 · 31997000013"): "CPF 005.159.962-70 · (31)

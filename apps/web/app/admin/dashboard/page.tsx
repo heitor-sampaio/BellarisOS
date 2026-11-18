@@ -200,6 +200,16 @@ export default async function AdminDashboardPage({
   const seriesDoResultadoP = needsCore && !recorteProprio
     ? getSeriesDoResultado({ ...janela, granularity: period === 'today' ? 'hour' : 'day' })
     : Promise.resolve([])
+  // IND-02 (varredura de 18/11): a lista vem com 20, mas o NÚMERO de planos
+  // aguardando é o total — com 31, o alerta dizia 20.
+  const totalDePlanosP = needsCore ? (() => {
+    let q = admin.from('treatment_plans')
+      .select('id', { count: 'exact', head: true })
+      .in('branch_id', branchIds)
+      .eq('status', 'PROPOSED')
+    if (agendaDela) q = q.eq('professional_id', agendaDela)
+    return contar(q, 'contar os planos aguardando checkout')
+  })() : Promise.resolve(0)
   const demografiaDaAgenda        = needsCore ? getDemografia({ tenantId: ctx.tenantId!, branchIds: idsDosNumeros, to: endDate, professionalId: agendaDela }) : Promise.resolve({ total: 0, idades: [], cidades: [], ceps: [] } as Demografia)
 
   const [
@@ -378,6 +388,7 @@ export default async function AdminDashboardPage({
     branchSlug: p.branches?.slug ?? '',
     createdAt:  p.created_at,
   }))
+  const pendingPlansTotal = await totalDePlanosP
 
   const allBps = (bpsRaw.saldos ?? []) as unknown as SaldoLido[]
 
@@ -739,6 +750,7 @@ export default async function AdminDashboardPage({
         todayTotal={todayAppts.length}
         todayByBranch={todayByBranch}
         pendingPlans={pendingPlans}
+        pendingPlansTotal={pendingPlansTotal}
         lowStockItems={lowStockItems}
         lotesVencendo={lotesVencendo}
         agora={new Date().toISOString()}

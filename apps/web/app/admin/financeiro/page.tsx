@@ -2,7 +2,8 @@ import { nomesDasMaquininhas } from '@/lib/financeiro/vezes-da-rede'
 import { maquininhaDoRotulo } from '@/lib/financeiro/formas'
 import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } from '@/lib/financeiro/notas-do-lancamento'
 import { redirect } from 'next/navigation'
-import { getTenantContext, assertPermission, can, isOwnScope, temRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, isOwnScope, temRecurso } from '@/lib/auth'
+import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 import { abaDoFinanceiro } from '@/lib/financeiro/abas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
@@ -61,7 +62,6 @@ export default async function AdminFinanceiroPage({
   // checkout do plano —, não ler o consolidado da rede.
   assertPermission(ctx, 'financial', 'VIEW')
 
-  const operaCaixa = can(ctx, 'cashier', 'MANAGE')
 
   // Alcance "só as próprias comissões" não tem como virar um consolidado da
   // rede meio filtrado — sairiam números com cara de total que não são total.
@@ -297,9 +297,9 @@ export default async function AdminFinanceiroPage({
         branches={branches}
         unidadeInicial={branches.find(b => b.id === sp.unidade || b.slug === sp.unidade)?.id ?? ""}
         canWrite={ctx.permissions.financial === 'MANAGE'}
-        // C33 (F67): a baixa é de Recebimentos (o caixa) em todo caminho — a action
-        // (`markTransactionPaid`) recusava quem só tinha o Financeiro em Gerenciar.
-        canPay={operaCaixa}
+        // CX2 (o Heitor, 13/11): a baixa no Financeiro é do PDV ou do Financeiro
+        // em Gerenciar de todos — a mesma régua da action (`markTransactionPaid`).
+        canPay={podeDarBaixa(ctx)}
         canReverse={ctx.permissions.financial === 'MANAGE'}
         aba={aba}
         comComissoes={temRecurso(ctx, 'comissoes')}

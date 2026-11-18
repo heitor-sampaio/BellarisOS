@@ -69,7 +69,7 @@ test.beforeAll(async () => {
 })
 test.afterAll(async () => { await colega?.limpar(); await soAgenda?.limpar(); await rede?.limpar() })
 
-test('C14: com o Atendimento "todos", a colega inicia e finaliza o atendimento de outra profissional; sem "Cancelar" na Agenda em Ver', async ({ browser }) => {
+test('C14: com o Atendimento "todos", a colega inicia e finaliza o atendimento de outra profissional; sem "Cancelar" do agendado na Agenda em Ver, e desiste do Em atendimento', async ({ browser }) => {
   const confirmado = await agendado('CONFIRMED')
   const emCurso    = await agendado('IN_PROGRESS')
   await como(browser, colega!, async p => {
@@ -78,7 +78,9 @@ test('C14: com o Atendimento "todos", a colega inicia e finaliza o atendimento d
     await expect(p.getByRole('button', { name: 'Cancelar', exact: true }), 'a Agenda em Ver não cancela').toHaveCount(0)
     await p.goto(`/${slug}/agenda/${emCurso}`)
     await expect(p.getByRole('button', { name: 'Finalizar atendimento' }), 'finaliza o de outra').toBeVisible()
-    await expect(p.getByRole('button', { name: 'Cancelar', exact: true })).toHaveCount(0)
+    // Cancelar o Em atendimento é DESISTIR: do Atendimento em Gerenciar, não da
+    // Agenda (CLAUDE.md §11, o Heitor, 18/11; ATD-A01 — antes ficava escondido).
+    await expect(p.getByRole('button', { name: 'Cancelar', exact: true }), 'o Atendimento em Gerenciar desiste').toBeVisible()
   })
 })
 
@@ -91,6 +93,8 @@ test('a Agenda em Gerenciar sem o Atendimento em Gerenciar não inicia nem concl
     await expect(p.getByText('Você não inicia nem conclui este atendimento.')).toBeVisible()
     await p.goto(`/${slug}/agenda/${emCurso}`)
     await expect(p.getByRole('button', { name: 'Finalizar atendimento' }), 'sem o Finalizar').toHaveCount(0)
+    // …nem desiste dele: cancelar o Em atendimento é do Atendimento (ATD-A01).
+    await expect(p.getByRole('button', { name: 'Cancelar', exact: true }), 'sem o Cancelar do Em atendimento').toHaveCount(0)
 
     // Pelo id: o status e a conclusão recusam.
     await chamarAcao(p, 'actions/appointments.ts', 'updateAppointmentStatus', `/${slug}/agenda`,

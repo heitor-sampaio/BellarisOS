@@ -314,11 +314,15 @@ colocar um tag pra ajudar a filtrar"). A cliente é da REDE (H5). Tag é só da
 rede: quem cria, dá nome e usa como filtro é ela. O sistema NÃO cria tag
 e não dá significado a nenhuma pelo nome. Isto desfaz:
 - o gatilho `trg_appointment_unit_tag` (julho de 2026), que punha
-  "Unidade: X" na ficha a cada agendamento — sai (nada se move sozinho,
-  princípio 6). As "Unidade: …" já gravadas ficam como tags comuns da
-  rede (nada se apaga; ela renomeia, arquiva ou tira se quiser) e entram
-  no vocabulário como qualquer outra (o `trg_registrar_tags` deixa de
-  pular `Unidade: %`);
+  "Unidade: X" na ficha a cada agendamento — sai (CLAUDE.md §1, Tags: "O
+  sistema não coloca tag nenhuma automaticamente em ninguém por nenhum
+  motivo"). As "Unidade: …" que ele gravou NÃO viram tags da rede: o
+  sistema não põe tag, e o banco é zerado antes do lançamento — não sobra
+  nenhuma (auditoria das regras, 2026-11-18; era "ficam como tags comuns da
+  rede e entram no vocabulário", leitura do Claude que promovia a tag do
+  sistema a tag da rede). Uma tag que a REDE crie com esse nome é uma tag
+  como outra qualquer ("com nome que quiser", H16): nenhum nome é pulado
+  nem tem significado (`registrar_tags` não olha o nome);
 - toda leitura que tomava "Unidade: X" como "a unidade da cliente" (C6/C45
   da F68, `tags_das_unidades`): o público das campanhas e o "Buscar
   clientes" das automações filtrados por unidade, as novas clientes por
@@ -368,10 +372,12 @@ AG2, MK2; migration `20261114800001_tags_sem_unidade`):**
 - **MK2** — ver `automacoes.md` (o público da campanha sem "Unidades").
 
 **As tags da rede** (2026-10-13, pedido do Heitor; **Configurações → Tags**,
-nos dois portais, para quem tem `clients` OU `crm` em Gerenciar — e é da rede:
-quem não tem “A rede inteira” lê "Esta configuração é da rede toda", e
-`criarTag`/`renomearTag`/`arquivarTag` recusam, H7 de 2026-11-01,
-`plataforma.md`). Até aqui a
+nos dois portais). Criar, renomear e arquivar é só da **Admin da rede** (o
+Heitor, 2026-11-18: "Configuração da rede toda só pela conta admin" — CLAUDE.md
+§11; era a H7 de 2026-11-01, quem tinha “A rede inteira” com `clients` OU
+`crm` em Gerenciar): para os outros a aba diz "Esta configuração é só da Admin
+da rede.", e `criarTag`/`renomearTag`/`arquivarTag` recusam
+(`recusaDaConfigDaRede`, `plataforma.md`). Até aqui a
 ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 (importação, automação, o card) ficava gravada e INVISÍVEL na ficha.
 - **Um vocabulário só para a ficha e o CRM** (decisão: a tag descreve a
@@ -382,13 +388,17 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
 - **Nenhuma tela marca tag que não existe** (D7 da 18ª: o card da
   oportunidade tinha uma entrada livre, e o gatilho punha a tag nova no
   vocabulário — quem não tem “A rede inteira” criava tag da rede). O card
-  escolhe pelo `TagPicker`, como o inbox; e `createLead`, `updateLead` e
-  `atualizarContato` guardam só o que está no vocabulário (com o nome dele)
-  e o que o registro já tinha (`tagsDoVocabulario`, `lib/tags/escolha.ts`).
-  Criar tag é em Configurações → Tags. Prova: `tests/crm-atritos-da-18.test.ts`.
+  escolhe pelo `TagPicker`, como o inbox; e `createLead`, `updateLead`,
+  `atualizarContato`, o cadastro (`addClient`, também no "Unificar com a
+  ficha") e a ficha (`updateClientContactData`) guardam só o que está no
+  vocabulário (com o nome dele) e o que o registro já tinha
+  (`tagsDoVocabulario`, `lib/tags/escolha.ts`; o cadastro e a ficha entraram
+  na varredura de 18/11, CRM-01). Criar tag é em Configurações → Tags. Prova:
+  `tests/crm-atritos-da-18.test.ts`, `tests/tags-so-quem-marca.test.ts`.
 - ⚠️ **O vocabulário cresce por GATILHO** (`trg_registrar_tags` em clients,
-  contacts e leads): toda tag gravada entra, também as `Unidade: …` (desde o
-  Bloco Tags, 2026-11-14 — antes eram puladas). Gravar tag
+  contacts e leads): toda tag gravada por quem pode marcar entra, qualquer
+  que seja o nome (até o Bloco Tags, 2026-11-14, as `Unidade: …` — que eram
+  do sistema — eram puladas; o sistema não põe mais tag nenhuma). Gravar tag
   por um caminho novo não precisa registrar nada — e não deve.
 - **Um nome por rede, sem caixa** (índice em `lower(nome)`): "VIP" e "vip" são
   a mesma. Marcar usa o nome do vocabulário; desmarcar tira qualquer grafia
@@ -417,14 +427,25 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   "Aniversário dia 05/11" na linha (`[data-aniversario]`). Nos dois portais.
   Prova: `e2e/clientes-aniversariantes.spec.ts`.
 - **Arquivar a cliente** (menu "Mais ações" da ficha, `clients: MANAGE`; era "Desativar") a tira das
-  listas e da conta de CLIENTE NOVA do dashboard (`is_active` nas três contas: `metrics_core`,
-  `metrics_by_branch`, `metrics_new_clients_series`, A24). Prova: `e2e/clientes-arquivar.spec.ts`.
+  LISTAS (clientes, aniversariantes, reativar, a base ativa dos relatórios) — e **não muda quantas
+  clientes novas houve** (auditoria das regras, 2026-11-18; decisão do Claude pelos princípios 3 e 5:
+  "Novos clientes" é o fato do período, e arquivar hoje não desfaz que ela virou cliente naquele
+  mês). Até 18/11 as três contas (`metrics_core`, `metrics_by_branch`, `metrics_new_clients_series`)
+  filtravam `is_active` (A24), e o número do mês passado mudava ao arquivar; o filtro saiu (migration
+  `20261124200005`). Prova: `e2e/clientes-arquivar.spec.ts`, `tests/novos-clientes-arquivar-nao-muda.test.ts`.
 - **O "só os meus" não recorta a ficha da cliente** (o Heitor, 2026-11-07, 9ª simulação: "ve tudo,
   só os meus não se aplica para visualização de clientes pq os clientes são da clinica, isso já foi
   decidido antes"): quem tem a Agenda ou o Prontuário em "só os meus" abre a ficha de
   qualquer cliente e vê a Visão geral e o Histórico inteiros — os atendimentos de outras
   profissionais, os valores, o plano e o contrato. O escopo continua valendo onde é do módulo: a
-  aba Prontuário (o dado clínico de quem ela não atendeu) e a aba Financeiro (o OWN do Financeiro).
+  aba Prontuário (o dado clínico de quem ela não atendeu), a aba Financeiro (o OWN do Financeiro) e
+  a aba **Oportunidades**, que é dado do CRM, não da ficha (varredura de 18/11, CRM-03; leitura do
+  Claude: a regra acima é sobre a FICHA, e o Heitor, 2026-10-28: "quem tem 'só os meus' vê 'só os
+  meus', em qualquer lugar"; CLAUDE.md §11, `ownerFilter`): com o CRM em "só os meus", só as
+  oportunidades dela ou sem dono, como no quadro e na linha do tempo comercial (`getClientEvents`);
+  sem o CRM (ou sem as oportunidades no plano) a aba some; e a leitura que falha diz "Não consegui
+  ler as oportunidades desta cliente." em vez de "Nenhuma oportunidade" (`oportunidadesDoCliente`,
+  `lib/crm/oportunidades-do-cliente.ts`). Prova: `tests/crm-varredura-de-18-11.test.ts`.
 - **A ficha monta só a aba aberta** (C77, F65): as duas fichas (`app/[slug]/clients/[id]` e
   `app/admin/clients/[id]`) leem o `?aba=` (`abaDaFicha`, `lib/clientes/aba-da-ficha.ts` — as chaves da
   tela; o resto é a Visão geral) e montam sempre o que a Visão geral e o topo usam; a linha do tempo só
@@ -438,9 +459,18 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   rede, mesmo cadastrada em outra unidade — quem tem só a Zona Sul (com Clientes em Gerenciar) cuida da Marlene da
   Moinhos. Toda gravação da ficha vai pelo SERVIDOR (cliente de serviço) com a rede na consulta:
   `atualizarClienteCore` e `toggleClientStatus` (até 2026-11-02 o arquivar ia pela sessão, e a RLS
-  de `clients`, que recorta pela unidade de cadastro, o recusava com "Esta cliente é de outra
-  unidade."). A RLS não foi alargada. Prova: `e2e/ficha-de-outra-unidade.spec.ts`,
-  `e2e/abrangencia-unidade.spec.ts`.
+  de `clients`, que recortava pela unidade de cadastro, o recusava com "Esta cliente é de outra
+  unidade."). Prova: `e2e/ficha-de-outra-unidade.spec.ts`, `e2e/abrangencia-unidade.spec.ts`.
+  **E a RLS também é da rede** (auditoria das regras, 2026-11-18; o Heitor: "o cliente não é da
+  unidade, o cliente é da rede", H16, e "Como o cliente pertence à clínica, a unidade, o portal da
+  unidade vê todos os clientes", CL-P1): `clients_select`/`clients_update` e as políticas do mapa
+  e das aplicações de injetáveis conferem a REDE (`tenant_id` da sessão; `cliente_da_minha_rede`),
+  não `can_access_branch(clients.branch_id)` — era "a RLS não foi alargada", uma decisão do Claude
+  contra a H5. O lado CLIENT segue em `clientes_do_login()`, a leitura `to authenticated`, as
+  RESTRICTIVE do suporte ficam, e a trava do módulo (Clientes em Gerenciar) é da action. O
+  `clients_insert` aceita a ficha na rede da sessão, com a unidade "onde nasceu" (se vier) entre
+  as da pessoa. Migration `20261124200001`. Prova (com o token de um membro de UMA unidade):
+  `e2e/rls-cliente-da-rede.spec.ts`.
   **E a lista da unidade é a da rede** (CL3 do Bloco Tags, 2026-11-14): o
   portal de qualquer unidade lista TODAS as clientes da rede — quem tem
   só o Batel acha a Helena da Água Verde na própria lista. A busca "Não
@@ -680,8 +710,9 @@ nos dois portais — pedido do Heitor, saiu de Clientes e de Oportunidades;
 prévia → importação em segundo plano. ⚠️ A aba abre com `clients` OU `crm` em
 Gerenciar (`alternativas` em `lib/configuracoes/abas.ts`, lidas por
 `abaLiberada` na tela, na busca e no menu; a página de Configurações aceita
-`MODULOS_DAS_ABAS`): quem só tem o CRM em Gerenciar também importa a lista de
-contatos dela — e vê Configurações só com essa aba.
+`MODULOS_DAS_ABAS`), mas importar é só da Admin da rede (abaixo): para os
+outros, a aba diz "Esta configuração é só da Admin da rede.". O destino que se
+oferece segue o módulo (clientes com `clients`, contatos com `crm`).
 - **O arquivo escolhido antes de a tela hidratar vale** (A54 da 7ª simulação,
   2026-11-05: o "Continuar" ficava desligado — o `onChange` do React ainda não
   existia, e o arquivo ficava no campo sem chegar ao estado): ao montar, o
@@ -694,11 +725,18 @@ contatos dela — e vê Configurações só com essa aba.
   uma unidade"): desde 18/11, só a Admin da rede importa (a configuração da
   rede toda é "só pela conta admin"; `recusaDaConfigDaRede`; a aba diz "Esta
   configuração é só da Admin da rede.", e o "Importar planilha" da lista de
-  Clientes só aparece para ela), e a importação escolhe a unidade a que os
-  registros pertencem. A C73 entrou na F70: quem não tinha “A rede inteira”
-  importava para a unidade dela. `plataforma.md`, "A configuração da rede toda".
-- **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
-  escolhida; `clients: MANAGE`) ou *contatos do CRM* (só a
+  Clientes só aparece para ela). A C73 entrou na F70: quem não tinha “A rede
+  inteira” importava para a unidade dela. `plataforma.md`, "A configuração da
+  rede toda". **A unidade só se escolhe para os PACOTES de antes** (decisão do
+  Claude, 2026-11-18, pelas H5/H16 — "A cliente é da clínica", a ficha é da
+  REDE — e pelo princípio 7): a ficha não pertence a unidade nenhuma, e a
+  unidade sobra só para o pacote trazido de fora, que precisa de uma. Sem a
+  coluna do pacote, a importação não pergunta unidade nenhuma, e a ficha nova
+  nasce sem (`clients.branch_id` nulo, como no cadastro pela rede). A fala
+  da H8 ("poder escolher se aquilo pertence a uma unidade") é anterior à
+  H16.
+- **O destino é escolhido a cada importação**: *clientes* (a ficha, da rede;
+  `clients: MANAGE`) ou *contatos do CRM* (só a
   pessoa: nome, telefone, e-mail, rede social, tags; `crm: MANAGE`). Oportunidade no funil é
   opcional (`crm: MANAGE` + recurso `oportunidades`; responsável que não é
   quem importa só com `podeTrocarResponsavel`) e não duplica: quem já tem uma
@@ -723,9 +761,13 @@ contatos dela — e vê Configurações só com essa aba.
   página manda; o servidor monta as suas (`referenciasDaRede`,
   `lib/importacao/referencias.ts`).
 - **No cliente**: a situação (ativo/inativo) vale só para quem NASCE (quem já
-  existe fica como a rede tem); a unidade POR LINHA (a coluna "unidade"), e a
-  escolhida na tela vale para as linhas sem. Quem importa é a Admin da rede, que
-  alcança todas as unidades (desde a C73 ninguém de unidade importa).
+  existe fica como a rede tem). A unidade é a dos **pacotes de antes**: com a
+  coluna "Pacote de antes" escolhida, o passo das colunas pergunta "Unidade dos
+  pacotes de antes" (com UMA unidade, só a diz — A2 da 10ª), oferece a coluna
+  "Unidade (dos pacotes de antes)" por linha, e a escolhida vale para as linhas
+  sem; sem o pacote, nada se pergunta (`camposDoDestino`, `importarContatos`).
+  Quem importa é a Admin da rede, que alcança todas as unidades (desde a C73
+  ninguém de unidade importa). Prova: `e2e/importacao-contatos.spec.ts`.
   A rede social não é da ficha: no destino clientes ela só vai para o card.
 - **O arquivo é lido no navegador** (`csv.ts`: UTF-8 ou Windows-1252, `;` `,`
   ou tabulação, aspas RFC 4180; `campos.ts` sugere a coluna pelo cabeçalho);
@@ -822,8 +864,8 @@ contatos dela — e vê Configurações só com essa aba.
   inteira, com nome, telefone e nascimento bons. Agora a linha entra SEM o
   campo ruim e diz por quê: "CPF inválido ("123.456.789-00"): importada sem o
   CPF." — o CPF, o e-mail, o nascimento, o gênero, o CEP, a UF, a situação
-  ("importada como ativa"), a unidade ("importada na unidade escolhida na
-  tela"), as datas e o responsável legal; no card, o valor, a etapa, o
+  ("importada como ativa"), a unidade ("o pacote de antes vai para a unidade
+  escolhida na tela"), as datas e o responsável legal; no card, o valor, a etapa, o
   responsável e o procedimento ("a oportunidade entra sem ele"/"na etapa
   escolhida na tela"); no contato, o telefone ruim com um e-mail bom ("importada
   só com o e-mail"). Recusa só: sem nome (na ficha), a ficha sem telefone que
@@ -892,7 +934,8 @@ contatos dela — e vê Configurações só com essa aba.
   - **"Pacote de antes (procedimento; total; usadas)"** — e, opcionais, o valor
     de referência e a validade ("Limpeza de pele; 10; 7; 1500; 31/12/2027";
     mais de um com "|"; `lerPacotesDaPlanilha`): cria o pacote trazido de
-    fora (`vendas-financeiro.md` §9.3.1) na unidade da linha, pela mesma porta
+    fora (`vendas-financeiro.md` §9.3.1) na unidade da linha (ou na escolhida
+    no passo das colunas — a unidade dos pacotes, acima), pela mesma porta
     da ficha (`trazerPacoteCore`). Só se oferece a quem traz pacote de fora (o
     Financeiro em Gerenciar; a action recusa a coluna aos outros). Importar de
     novo não o traz duas vezes (o mesmo procedimento, total e usadas). O que
@@ -921,7 +964,7 @@ contatos dela — e vê Configurações só com essa aba.
   `[data-amostra-da-importacao]`) e avisa "N pacotes de antes sem valor de
   referência: … não geram comissão de execução (R$ 0) nem entram na receita"
   (`[data-pacotes-sem-valor]`, `pacotesDaLinha`). **Com UMA unidade, a
-  importação não pergunta qual** (A2 da 10ª, `design.md`). Prova:
+  unidade dos pacotes não se pergunta** (A2 da 10ª, `design.md`). Prova:
   `e2e/configuracoes-atritos-da-10.spec.ts` ("A7").
 - Roda em `after()` (`lib/importacao/processar.ts`), no padrão do histórico do
   WhatsApp: `importacoes` reivindicada com uma `execucao` nova, e TODO sinal de
@@ -935,8 +978,13 @@ contatos dela — e vê Configurações só com essa aba.
   `tests/importacao-andamento.test.ts`. Interrompida, "Tentar de novo" continua de
   onde parou; upload que falha no meio apaga a importação inteira (retomar uma
   truncada importaria meio arquivo em silêncio).
-- **Ler, retomar e baixar os erros** conferem o módulo do DESTINO e, nos
-  clientes, a unidade (`importacaoAoAlcance`). O relatório guarda o valor
+- **Ler, retomar e baixar os erros** conferem o módulo do DESTINO
+  (`importacaoAoAlcance`), sem recorte por unidade — nem nos clientes: a
+  ficha é da REDE (o Heitor: "o cliente não é da unidade, o cliente é da
+  rede" — H16), e importar é configuração da rede toda, só da Admin da rede
+  (o Heitor, 2026-11-18). Até 18/11 a importação de clientes sumia para quem
+  não tinha a unidade escolhida no envio (auditoria das regras). Prova:
+  `tests/importacao-sem-alcance-de-unidade.test.ts`. O relatório guarda o valor
   errado (dado pessoal): expira em 7 dias, também na falha, conferido na leitura
   e varrido pelo cron `importacoes` (hora em hora). O "Linha N" é o da
   planilha (`lerCsv` devolve `numeros`: linha em branco e célula de várias
@@ -961,7 +1009,10 @@ O nome no código e no banco FICA (`leads`, `lead_events`, `leadId`,
   cargo é "Só as próprias oportunidades" / "Todas as oportunidades".
 - **"Cadastrar cliente" em todo lugar** (CR2): o card do quadro diz
   "Cadastrar cliente" e abre "Cadastrar como cliente", como o painel do inbox
-  (era "Converter" / "Converter em cliente").
+  (era "Converter" / "Converter em cliente") — no quadro da unidade E no da
+  rede, para quem tem Clientes em Gerenciar (varredura de 18/11, CRM-04: o da
+  rede escondia o botão para "escolher a unidade de cadastro", que saiu com a
+  H5; a ficha nasce da rede).
 - A pergunta do cadastro pelo telefone diz "É a mesma pessoa do contato X?"
   nos dois casos (com oportunidade ou só com a conversa).
 Prova na tela: `e2e/crm-contato-e-oportunidade.spec.ts`.
@@ -1155,7 +1206,12 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
     `conversaAoAlcance` / `mensagemAoAlcance` (dono + caixas do cargo) e, fora
     do alcance, responde como se a conversa não existisse. Até 2026-09-27
     `/admin/inbox?c=<id>` entregava as mensagens de qualquer conversa da rede.
-    Action nova de conversa sem esse portão é o furo de volta.
+    Action nova de conversa sem esse portão é o furo de volta. O "Abrir a
+    conversa" do card (`openLeadConversation`) também: abre a mais recente
+    das que o cargo VÊ (`passaNoAlcanceDoDono` + `passaNasCaixas`, como o
+    painel), e, se a pessoa só tem conversas fora disso, diz que a conversa é
+    de um número ou de uma pessoa fora do que o cargo vê — não abre nem cria
+    outra (varredura de 18/11, CRM-10).
   - O mesmo vale para a **oportunidade**: `leadAoAlcance` (`lib/crm/alcance.ts`)
     aplica a regra do funil (sua ou sem dono) a toda action que recebe o id de
     uma — inclusive fora do inbox (`createCrmAppointment`, `addClient` com
@@ -1285,9 +1341,14 @@ etapas, a cor e o desfecho da etapa e os motivos de perda pedem
 cards, criar e editar oportunidades continua com quem opera o quadro
 (`crm: MANAGE`). Antes bastava o CRM em Gerenciar, e quem tinha só o CRM mexia no funil da
 rede inteira. Prova: `e2e/crm-funis-pede-configuracoes.spec.ts`. E é da
-REDE (H7, 2026-11-01): quem não tem “A rede inteira” não configura o funil nem com
-Configurações em Gerenciar (`recusaDaConfigDaRede`; o botão some do quadro
-da unidade). Prova: `e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts`.
+**Admin da rede** (o Heitor, 2026-11-18: "Configuração da rede toda só pela
+conta admin" — CLAUDE.md §11; era a H7 de 2026-11-01, quem tinha “A rede
+inteira”): mais ninguém configura o funil, nem com Configurações em Gerenciar
+(`recusaDaConfigDaRede`; o botão some do quadro). A busca universal oferece
+"Configurar funis" pela mesma régua (`adminDaRede`, `paginasDaBusca`; CRM-05
+da varredura de 18/11 — oferecia a quem tinha o CRM em Gerenciar). Prova:
+`e2e/permissoes-config-de-quem-tem-uma-unidade.spec.ts`,
+`tests/busca-configuracoes.test.ts`.
 O funil criado na janela abre selecionado, com as etapas dele (A19 da 16ª:
 `createFunnel` devolve o id). Prova: `e2e/crm-atritos-da-16.spec.ts` ("A19").
 E diz que elas são as iniciais (A6 da 23ª): "Funil criado com as etapas
@@ -1321,7 +1382,8 @@ dizem o mesmo, no plural certo (`recusaDaEtapaComOportunidades`,
 **E ali mesmo: "Mover as N para [etapa]"** (A35 da 22ª, 2026-11-17): abaixo
 da pergunta, as outras etapas do funil (sem a perdida — nela o quadro pede o
 motivo de cada uma) e o "Mover" (`moverOportunidadesDaEtapa`,
-`actions/leads.ts`: Configurações e CRM em Gerenciar, a rede toda — H7 —,
+`actions/leads.ts`: Configurações e CRM em Gerenciar, e a Admin da rede —
+CLAUDE.md §11, 18/11 —,
 mesmo funil; uma a uma pelo `moverEtapaCore`, com o "só os meus" do CRM — a
 que é de outra pessoa fica, e a linha diz quantas). **Decisão do Heitor
 (17/11): se mover à mão dispararia automações, PERGUNTAR se dispara ou não**
@@ -1387,10 +1449,10 @@ escolher a etapa) e no modal da oportunidade.
 - **O card perdido diz o motivo** (A17 da 18ª): na etapa de desfecho
   perdido, "Perdida: Preço" (a observação no title; sem motivo, "sem motivo
   informado") — `perdaNoCard`, `lib/crm/perda-no-card.ts`.
-- **O quadro de quem não tem “A rede inteira” diz de quem são os funis** (A18
-  da 18ª): sem o "Configurar funis", a frase "Funis e etapas são da rede
-  toda: quem muda é quem tem “A rede inteira”" (e "Configurações em
-  Gerenciar", sem ela) — `avisoDosFunis`, `lib/configuracao-da-rede.ts`.
+- **O quadro de quem não é a Admin da rede diz de quem são os funis** (A18
+  da 18ª; desde 18/11 a configuração da rede toda é só da Admin): sem o
+  "Configurar funis", a frase "Funis e etapas são da rede toda: quem muda é a
+  Admin da rede." — `avisoDosFunis`, `lib/configuracao-da-rede.ts`.
   Prova: `tests/crm-atritos-da-18.test.ts`.
 - No modal da oportunidade, o lembrete "Escolha o motivo da perda para salvar." é neutro até o salvar
   barrar (o `invalid` do campo), e só então vermelho (A31 da 19ª).
@@ -1412,7 +1474,7 @@ Gardênia não tinha onde pôr "Feira de noivas". `crm_origens` (migration
 `20261105003101`; RLS sem política permissiva, com as restritivas do suporte),
 editada em Configurar funis → "Origens das oportunidades" como os motivos de perda
 (`OrigensDoLeadConfig`, `actions/crm-origens.ts`: Configurações em Gerenciar,
-da rede — H7). A rede nasce com as de sempre (Meta Ads, Google Ads, Orgânico,
+e só a Admin da rede — CLAUDE.md §11, 18/11; era a H7). A rede nasce com as de sempre (Meta Ads, Google Ads, Orgânico,
 Instagram, Indicação, WhatsApp, Telefone, Site, Evento, Outro — gatilho
 `trg_origens_na_rede_nova`; as redes que já existiam ganharam as mesmas).
 Desativar tira da escolha sem apagar. `leads.source` segue o NOME (texto): nada
@@ -1431,12 +1493,15 @@ o mesmo spec ("A11").
 **O card diz o que a cliente ligada fez** (A18 da 7ª simulação, 2026-11-05):
 "Agendado 06/11 10:30" (o próximo agendamento marcado dela,
 `data-agendado-em`) e, quando ela COMPROU depois de a oportunidade nascer
-(pacote, pré-pago ou plano aceito) e o card segue aberto, "Comprou Pacote X. A
-oportunidade segue aberta." com "Mover para Fechado" (`data-sugere-ganho`). É
+e o card segue aberto, "Comprou Pacote X. A oportunidade segue aberta." com
+"Mover para Fechado" (`data-sugere-ganho`). **Compra** é: o pacote vendido —
+não o trazido de fora, que "não é venda" (`vendas-financeiro.md`; CRM-02 da
+varredura de 18/11) —, o pré-pago e o **plano no PRIMEIRO recebimento**, não
+no aceite (o Heitor, 18/11: "Uma coisa só foi vendida se foi paga."; o
+aceite é a cliente dizer sim, sem dinheiro). Migration `20261124700001`. É
 SUGESTÃO: nada se move sozinho (crm-05, princípio 6) — quem move é a pessoa,
 no botão, pelo `updateLeadStage` de sempre. Uma ida ao banco para o quadro
-inteiro (`crm_sinais_dos_clientes`, migration `20261105003102`, só
-`service_role`; `lib/crm/sinais-do-card.ts`). **Os lembretes do CRM são avisos para a pessoa, nunca o card andando** (A42 da
+inteiro (`crm_sinais_do_quadro`, só `service_role`; `lib/crm/sinais-do-card.ts`). **Os lembretes do CRM são avisos para a pessoa, nunca o card andando** (A42 da
 9ª simulação, 2026-11-07; princípio 6). Migration `20261107004302`.
 - **O lembrete de retorno** (A42: quem cuidava do card só tinha as Observações para "ligar de
   novo na quinta"): o card tem "Lembrete de retorno" — "Retornar em" (o DIA,
@@ -1446,7 +1511,9 @@ inteiro (`crm_sinais_dos_clientes`, migration `20261105003102`, só
   (`[data-retornar-em]`, `textoDoRetorno`). No dia, o cron `crm-lembretes` (de
   hora em hora) avisa o RESPONSÁVEL no sino: "Retorno de hoje: X" a partir das
   7h de Brasília (o de madrugada tocaria o celular), ou "Retorno atrasado: X
-  (10/11)"; uma vez por dia marcado (`retorno_avisado_em`, reivindicado antes
+  (10/11)" — e o texto do atrasado sem observação diz "O dia combinado para
+  retomar o contato com X era 10/11." (era "Hoje é o dia combinado…";
+  `avisoDoRetorno`, CRM-07 da varredura de 18/11); uma vez por dia marcado (`retorno_avisado_em`, reivindicado antes
   de sair; trocar a data o zera). Card ganho ou perdido não avisa; sem
   responsável, não há a quem avisar (o card mostra). **De quem é a decisão**:
   do Claude, na 9ª simulação, pelos princípios — é o lembrete do dia que a
@@ -1460,8 +1527,9 @@ inteiro (`crm_sinais_dos_clientes`, migration `20261105003102`, só
   (auditoria das regras, 2026-11-18; r2-cfg-04: "toda e qualquer automação deve
   ser feita através dos módulos de automações"; princípio 6). Até ali o cron
   `crm-lembretes` mandava "Marque o ganho" a todas as redes, sem desligar. Agora:
-  o fato `lead.cliente_comprou` (gatilho no banco, migration `20261124100001`:
-  a cliente ligada compra — pacote, pré-pago ou plano aceito — com a
+  o fato `lead.cliente_comprou` (gatilho no banco, migrations `20261124100001`
+  e `20261124700001`: a cliente ligada compra — o pacote vendido, não o
+  trazido de fora; o pré-pago; o plano no primeiro recebimento — com a
   oportunidade aberta e criada antes, a régua da sugestão do card, A18 da 7ª;
   uma vez por oportunidade e por compra) e o modelo "Marque o ganho"
   (`lib/automacoes/modelos.ts`), que nasce rascunho: "Avisar a equipe" a
@@ -1554,8 +1622,9 @@ o contato junto.
   (`[data-valor-vendido]`): o pacote menos o cancelado, o pré-pago, o plano
   (a soma dos procedimentos vendidos menos o cancelado). `crm_sinais_do_quadro`
   (migration `20261110005501`, só `service_role`) é a conta de
-  `crm_sinais_dos_clientes` com o valor ao lado; a de antes ficou para o cron
-  dos lembretes. Nada se move sozinho (princípio 6).
+  `crm_sinais_dos_clientes` com o valor ao lado (a de antes ficou sem quem a
+  chame desde 18/11, com a mesma régua de compra — `20261124700001`). Nada se
+  move sozinho (princípio 6).
 - Prova: `e2e/crm-atritos-da-11.spec.ts`, `tests/crm-sugestao-do-agendar.test.ts`.
 
 ---
@@ -1602,7 +1671,7 @@ o contato junto.
 ❌ Mover o card porque a cliente comprou — o card SUGERE ("Mover para Fechado"), quem move é a pessoa (A18 da 7ª, crm-05)
 ❌ Renomear a ficha sem levar o nome às pessoas ligadas a ela (atualizarClienteCore → propagarDadosDaPessoa — A21 da 7ª)
 ❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)
-❌ Gravar a ficha da cliente (dados, anotações, arquivar) pela SESSÃO — a RLS recorta pela unidade de cadastro e a cliente é da rede: é pelo servidor, com a rede na consulta
+❌ Política de `clients` (ou de tabela que segue a ficha: injetáveis…) que confere `clients.branch_id` / `can_access_branch` da ficha — a ficha é da REDE: a equipe confere a rede (`tenant_id` da sessão, `cliente_da_minha_rede`), a cliente `clientes_do_login()` (auditoria das regras, 18/11; prova `e2e/rls-cliente-da-rede.spec.ts`)
 ❌ Lançar a trava de módulo (assertPermission) num layout.tsx de seção: sai antes do streaming e a resposta é 500 — o layout sem o módulo só deixa passar a página, e a trava é dela (D11 da 7ª)
 ❌ Recusar o acesso ao app de quem tem passaporte ou RNE, ou escolher a senha inicial fora de documentoDoAcesso (o CPF, senão o documento da ficha — decisão 1 da 7ª)
 ❌ Ligar a ficha à conta de outra rede sem o MESMO documento (login_de_cliente_para_ligar_doc: o CPF, ou o tipo e o número do passaporte/RNE)

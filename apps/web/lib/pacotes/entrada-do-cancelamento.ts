@@ -24,5 +24,7 @@ export const EntradaDoCancelamento = z.object({
     vezes:  z.number().int().min(1).max(12),
     /** r3-f13-01: a bandeira do cartão do pagamento novo, opcional. */
     bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).nullable().optional(),
+    /** C75 (VF-01 da varredura de 18/11): a maquininha do cartão do usado. */
+    maquininha: z.string().uuid().nullable().optional(),
   }).nullable().optional(),
 })

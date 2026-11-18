@@ -52,7 +52,7 @@ import { anotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { nomeDosProcedimentos } from '@/lib/plano-de-tratamento/nome'
 import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
 import { abaDaFicha } from '@/lib/clientes/aba-da-ficha'
-import { podeEstornar } from '@/lib/financeiro/so-os-meus'
+import { podeEstornar, podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
 
@@ -247,10 +247,9 @@ export default async function ClientProfilePage({
   const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
   // Prontuário é dado sensível de saúde: sem o módulo, nem carrega. E com
   // alcance "só os próprios pacientes", só de quem este profissional atendeu.
-  const canViewRecords = can(ctx, 'medical_records', 'VIEW') && (
-    !isOwnScope(ctx, 'medical_records') ||
-    (appts ?? []).some((a: { professional_id?: string | null }) => a.professional_id === ctx.internalUserId)
-  )
+  // Com "só os meus", a regra única (eq-02: o cancelado não conta, a falta
+  // conta; sem o corte das 60 linhas da ficha) — ATD-P03.
+  const canViewRecords = can(ctx, 'medical_records', 'VIEW') && await clienteNoEscopo(admin, ctx, 'medical_records', id)
   // Quem viu o prontuário fica registrado (lib/prontuario/acessos.ts) — só
   // quando ele vai à tela; o admin da rede vê o registro na própria ficha.
   // A30 da 15ª (minimização da LGPD, sem mudar quem vê): o prontuário só vai à
@@ -509,7 +508,7 @@ export default async function ClientProfilePage({
 
   // Negociacoes desta pessoa: ser cliente nao encerra o funil -- reativacao e
   // abrir oportunidade nova para quem ja comprou.
-  const oportunidades = aba === 'oportunidades' ? await oportunidadesDoCliente(ctx.tenantId!, client.id) : []
+  const oportunidades = aba === 'oportunidades' ? await oportunidadesDoCliente(ctx, client.id) : []
 
   // O resto do que a ficha mostra, de uma vez (C77): eram leituras uma atrás
   // da outra no meio da montagem da tela.
@@ -586,17 +585,19 @@ export default async function ClientProfilePage({
       quemCompletaOCadastro={can(ctx, 'clients', 'MANAGE') ? null : await quemCompletaOCadastro(ctx.tenantId!, branch.id)}
       podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
       podeVerPlanos={can(ctx, 'atendimento', 'VIEW')}
-      podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
+      podeCancelarPacote={podeEstornar(ctx)}
       pacoteVencido={pacoteVencido}
       podeRemarcar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
-      // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela (Recebimentos) na ficha.
+      // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela na ficha — quem dá baixa (CX2: o PDV ou o Financeiro em Gerenciar, `podeDarBaixa`, a mesma régua de markTransactionPaid).
       podeEstornar={podeEstornar(ctx)}
-      podeReceberParcela={ctx.permissions.cashier === 'MANAGE'}
+      podeReceberParcela={podeDarBaixa(ctx)}
       quemDesfaz={quemDesfaz}
       pagoComCredito={pagoComCredito}
       isNetworkWide={ctx.branchId === null}
       clientHistory={clientHistory}
       opportunities={oportunidades}
+      // CRM-03 (18/11): as oportunidades são dado do CRM — sem ele (ou fora do plano), a aba some.
+      veOportunidades={can(ctx, 'crm', 'VIEW') && temRecurso(ctx, 'oportunidades')}
     />
     </>
   )

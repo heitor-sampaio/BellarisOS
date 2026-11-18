@@ -40,6 +40,24 @@ describe('quem mexe na configuração da rede toda', () => {
     expect(corpo).not.toMatch(/branchId === null/)
   })
 
+  // A fidelidade (o programa e o catálogo), as taxas da maquininha e do Pix e o
+  // adicional da assinatura são configuração da rede toda: conferiam a
+  // abrangência ("A rede inteira") em vez do cargo de Admin da rede.
+  it('a fidelidade, as maquininhas e a assinatura são da Admin da rede, não de quem tem "A rede inteira"', () => {
+    for (const [arquivo, travas] of [
+      ['actions/fidelidade.ts', 2],
+      ['actions/maquininhas.ts', 1],
+      ['actions/assinatura.ts', 1],
+    ] as const) {
+      const corpo = fonte(arquivo)
+      expect(corpo.match(/recusaDaConfigDaRede\(ctx\)/g)?.length ?? 0, `${arquivo}: as gravações da configuração passam pela trava da Admin`).toBe(travas)
+      expect(corpo, `${arquivo}: a abrangência não decide a configuração da rede toda`).not.toMatch(/ctx\.branchId [!=]== null/)
+    }
+    // O aviso da venda no cartão diz quem cadastra a taxa: as Admins da rede.
+    expect(fonte('actions/maquininhas.ts')).toMatch(/mexeNaConfigDaRede\(ctx\)/)
+    expect(fonte('actions/maquininhas.ts')).toMatch(/adminsAtivasDaRede\(/)
+  })
+
   it('a comissão do procedimento (e as regras de comissão e o crediário) é da Admin da rede', () => {
     const corpo = fonte('actions/comissoes.ts')
     expect(corpo.match(/!mexeNaConfigDaRede\(ctx\)/g)?.length).toBe(3)

@@ -1,7 +1,8 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { REPORT_TABS, type ReportTab } from '@estetica-os/types'
-import { can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
+import { alcancaUnidade, can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
+import { unidadesParaLer } from '@/lib/unidades/da-tela'
 import { resolvePeriod } from '@/lib/metrics/period'
 import { getTicketMedio, getResultadoDoEstoque, getEmAberto, getByBranch, getComposicaoFinanceira } from '@/lib/metrics/queries'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
@@ -66,7 +67,7 @@ export const indicadores: FerramentaDeLeitura<{
   nome: 'indicadores',
   tipo: 'leitura',
   modulo: 'reports', nivel: 'VIEW',
-  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos e o aproveitamento, novos clientes, comissões), financeiro (a receita paga por unidade, por forma de pagamento e por categoria — receitaPorUnidade, receitaPorFormaDePagamento, receitaPorCategoria — e a despesa paga por unidade e por categoria — despesaPorUnidade, despesaPorCategoria —, com os totais), vendas (cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (por status, dia da semana, origem, a taxa de conclusão e o aproveitamento, cada um com o que conta; o comparecimento é o dos primeiros atendimentos, na aba comercial), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (a aba Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
+  descricao: 'Os números da rede num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos e o aproveitamento, novos clientes — só na rede inteira, nula numa unidade —, comissões), financeiro (a receita paga por unidade, por forma de pagamento e por categoria — receitaPorUnidade, receitaPorFormaDePagamento, receitaPorCategoria — e a despesa paga por unidade e por categoria — despesaPorUnidade, despesaPorCategoria —, com os totais), vendas (cada venda, com o número da comanda do PDV: atendimento avulso, pacote, pré-pago, plano, produto e crédito interno — o crédito interno fica fora do total —, com o total por tipo), agenda (por status, dia da semana, origem, a taxa de conclusão e o aproveitamento, cada um com o que conta; o comparecimento é o dos primeiros atendimentos, na aba comercial), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (a aba Oportunidades: o funil, a conversão, os motivos de perda e a conversão por origem). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate. "A semana" sem outra data é week (a semana atual) e "o mês" é month: não pergunte qual; a resposta diz o período ("periodo").',
   parametros: z.object({
     aba: z.enum(REPORT_TABS).optional(),
     periodo: z.enum(PERIODOS).optional(),
@@ -85,12 +86,17 @@ export const indicadores: FerramentaDeLeitura<{
       const exigida = await resolverUnidade(c, null, { exigir: true })
       return { dados: { erro: 'erro' in exigida ? exigida.erro : 'Escolha uma unidade.' } }
     }
-    const branchIds = await idsDasUnidades(c, u.unidade)
     // O período no fuso do recorte (F62b), como o dashboard e os Relatórios.
-    const fuso = await fusoDoRecorte(c.ctx.tenantId, branchIds)
+    const fuso = await fusoDoRecorte(c.ctx.tenantId, await idsDasUnidades(c, u.unidade))
     const periodo = args.periodo === 'custom' || (args.de && args.ate)
       ? resolvePeriod('custom', args.de, args.ate, new Date(), fuso)
       : resolvePeriod(args.periodo ?? 'month', undefined, undefined, new Date(), fuso)
+    // As unidades da LEITURA (C45/F72; IND-01 da varredura de 18/11): sem uma
+    // escolhida, as que as telas somam — a desativada que teve movimento no
+    // período conta —, e só as que ela alcança. Eram só as ativas.
+    const daLeitura = u.unidade ? [] : (await unidadesParaLer(c.ctx.tenantId!, { periodo: { de: periodo.from, ate: periodo.fullTo } }))
+      .filter(x => alcancaUnidade(c.ctx, x.id)).map(x => x.id)
+    const branchIds = daLeitura.length ? daLeitura : await idsDasUnidades(c, u.unidade)
     // Como o dashboard e os Relatórios: até AGORA, contra o anterior equivalente.
     // Cada número no escopo do SEU módulo (2026-10-29, lib/metrics/escopo): a
     // agenda e as clientes pela agenda, o dinheiro pelo financeiro, o funil
@@ -152,6 +158,8 @@ export const indicadores: FerramentaDeLeitura<{
           ticketMedio: ticket.total.valor === null ? null : dinheiro(ticket.total.valor),
           clientesQuePagaram: ticket.total.clientesQuePagaram,
           novosClientes: atual.newClients, novosClientesAnterior: anterior.newClients,
+          // IND-09 (varredura de 18/11): o nulo vai com o porquê, como a tela diz.
+          ...(atual.newClients === null ? { notaDosNovosClientes: '"Novos clientes" só existe na rede inteira: a cliente é da rede, e nenhuma unidade tem clientes novas só dela.' } : {}),
           ...(comissoes ? { comissoesEmAberto: dinheiro(atual.commissionsOpen), comissoesPagas: dinheiro(atual.commissionsPaid) } : {}),
           nota: 'O período anterior é o equivalente (mesmo tamanho), não o mês inteiro.',
         },

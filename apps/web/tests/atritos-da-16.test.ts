@@ -65,7 +65,9 @@ describe('A5: o aviso da taxa diz quem cadastra, a quem não cadastra', () => {
     expect(textoDeQuemCadastraATaxa(null)).toBe('Cadastre em Configurações → Comissões e taxas.')
     expect(textoDeQuemCadastraATaxa(['Otávio Jasmim'])).toBe('Quem cadastra: Otávio Jasmim.')
     expect(textoDeQuemCadastraATaxa(['Ana', 'Bia'])).toBe('Quem cadastra: Ana ou Bia.')
-    expect(textoDeQuemCadastraATaxa([])).toBe('Quem cadastra é quem tem o Financeiro em Gerenciar e “A rede inteira”.')
+    // A taxa é configuração da rede toda: só a Admin da rede (o Heitor, 18/11:
+    // "só pela conta admin"). Era "o Financeiro em Gerenciar e “A rede inteira”".
+    expect(textoDeQuemCadastraATaxa([])).toBe('Quem cadastra é a Admin da rede.')
   })
   it('o aviso usa o texto', () => {
     const f = ler('components/shared/aviso-da-taxa.tsx')

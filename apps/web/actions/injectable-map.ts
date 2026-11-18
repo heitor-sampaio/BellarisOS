@@ -1,7 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, alcancaOAgendamento, assertRecurso, isOwnScope } from '@/lib/auth'
+import { registrarAcessoAoProntuario } from '@/lib/prontuario/acessos'
 import { mapaAoAlcance, mapaDaProfissional, clienteDaProfissional, mapaDoTenant } from '@/lib/injetaveis/alcance'
 import { agendamentoAoAlcance, deOutroProfissional } from '@/lib/appointments/alteracoes'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -78,7 +79,7 @@ async function clienteDoTenant(
 ) {
   const data = await ler(admin
     .from('clients')
-    .select('id, tenant_id, branch_id')
+    .select('id, tenant_id')
     .eq('id', clientId)
     .maybeSingle(), 'buscar o cliente')
   return data && data.tenant_id === tenantId ? data : null
@@ -111,13 +112,14 @@ export async function criarPlanejamentoInjetavel({
     if (!daRede || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
   }
 
-  let unidadeId = branchId ?? (ctx.branchId || null)
+  // A unidade do planejamento é a de onde ele está sendo feito; feito na rede
+  // (sem unidade no endereço), é da rede — nunca a de cadastro da cliente: a
+  // ficha é da REDE (H16; auditoria das regras, 18/11). A aplicação leva a
+  // unidade do ATENDIMENTO em que acontece.
+  const unidadeId = branchId || ctx.branchId || null
   if (clientId) {
     const cliente = await clienteDoTenant(admin, clientId, ctx.tenantId!)
     if (!cliente) return { error: 'Cliente não encontrado.' }
-    // A unidade do planejamento é a de onde ele está sendo feito; sem ela, a de
-    // cadastro do cliente. Cliente é da rede, então isso pode ser nulo.
-    unidadeId = unidadeId || (cliente.branch_id as string | null)
 
     // A35 da 7ª simulação: cada clique em "Novo planejamento" criava um vazio
     // (4 na ficha da Ana, com 15 s de intervalo). A cliente que já tem um
@@ -180,6 +182,8 @@ export async function getPlanejamentoInjetavel(mapId: string): Promise<{
   }
 
   const clientId = (data.client_id as string | null) ?? null
+  // O mapa é clínico: quem o abriu fica registrado (CLAUDE.md §14; ATD-P09).
+  if (clientId) await registrarAcessoAoProntuario(ctx, clientId, 'injetaveis', data.id as string)
 
   // As aplicações são do CLIENTE, não do planejamento: quem abre um mapa novo
   // precisa ver o que já foi aplicado antes, senão planeja em cima do escuro.
@@ -306,8 +310,8 @@ export async function vincularClienteAoPlanejamento(
     .from('injectable_maps')
     .update({
       client_id:  clientId,
-      // Sem unidade própria, herda a do cliente — é ela que a lista mostra.
-      branch_id:  (plano.branch_id as string | null) ?? (cliente.branch_id as string | null),
+      // A unidade do planejamento fica a dele: a ficha é da REDE e não tem
+      // unidade a herdar (auditoria das regras, 18/11).
       updated_at: new Date().toISOString(),
     })
     .eq('id', mapId)
@@ -345,18 +349,20 @@ export async function registrarAplicacao(
   if (!clientId) {
     return { error: 'Ligue o planejamento a um cliente antes de registrar a aplicação.' }
   }
+  // A aplicação se REGISTRA só no atendimento (D14, decisão do Heitor de
+  // 2026-10-28; ATD-P07): sem ele, nada nasce — o banco também recusa.
+  if (!appointmentId) return { error: 'A aplicação se registra no atendimento: abra o atendimento da cliente e registre por ele.' }
   // O atendimento é DESTE cliente e está ao alcance: até 2026-09-28 qualquer
-  // id servia, e a aplicação apontava para o atendimento de outra pessoa.
-  let atendimentoAberto = true
-  if (appointmentId) {
-    const appt = await ler(admin.from('appointments').select('id, branch_id, status, branches!inner(tenant_id)')
-      .eq('id', appointmentId).eq('client_id', clientId).maybeSingle(), 'buscar o atendimento')
-    const rede = (appt?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-    if (!appt || rede !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) {
-      return { error: 'Atendimento não encontrado para este cliente.' }
-    }
-    atendimentoAberto = !['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)
+  // id servia, e a aplicação apontava para o atendimento de outra pessoa. O
+  // DELA numa unidade em que atende também (decisão 2 da 8ª; ATD-P06).
+  const appt = await ler(admin.from('appointments').select('id, branch_id, status, professional_id, branches!inner(tenant_id)')
+    .eq('id', appointmentId).eq('client_id', clientId).maybeSingle(), 'buscar o atendimento')
+  const rede = (appt?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+  if (!appt || rede !== ctx.tenantId || !alcancaOAgendamento(ctx, appt.branch_id as string, appt.professional_id as string | null)) {
+    return { error: 'Atendimento não encontrado para este cliente.' }
   }
+  const atendimentoAberto = !['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)
+  const unidadeDoAtendimento: string | null = appt.branch_id as string
   if ((mapa.points ?? []).length === 0) {
     return { error: 'Marque ao menos um ponto antes de registrar a aplicação.' }
   }
@@ -404,7 +410,9 @@ export async function registrarAplicacao(
     clientId,
     agendamentoId: appointmentId,
     referencia:    (plano.name as string) ?? null,
-    branchId:      (plano.branch_id as string) ?? null,
+    // A unidade da aplicação é a do ATENDIMENTO em que ela aconteceu
+    // (auditoria das regras, 18/11); sem atendimento, a do planejamento.
+    branchId:      unidadeDoAtendimento ?? (plano.branch_id as string | null) ?? null,
     chave:         `injetavel.aplicado:${data.id}`,
   })
 
@@ -443,11 +451,16 @@ export async function listarPlanejamentosDoCliente(clientId: string, appointment
 
   const { data, error } = await admin
     .from('injectable_maps')
-    .select('id, name, client_id, points, updated_at, clients(name, phone), branches(name)')
+    .select('id, name, client_id, branch_id, points, updated_at, clients(name, phone), branches(name)')
     .eq('client_id', clientId)
     .order('updated_at', { ascending: false })
 
   if (error) return { mapas: [], error: `Não foi possível carregar: ${error.message}` }
+  // Só o que abre (ATD-P10): o planejamento de uma unidade fora do alcance não
+  // se abre (`mapaAoAlcance`), e a lista não o oferece.
+  const queAbrem = ((data ?? []) as unknown as (MapaLido & { branch_id: string | null })[]).filter(l => mapaAoAlcance(ctx, l.branch_id))
+  // Os mapas da cliente são clínicos: quem os viu fica registrado (ATD-P09).
+  if (queAbrem.length) await registrarAcessoAoProntuario(ctx, clientId, 'injetaveis')
 
   const aplicacoes = await contarAplicacoes(admin, ctx.tenantId!, [clientId])
   // D6 da 7ª: no atendimento, qual planejamento tem a aplicação DELE — o campo
@@ -457,7 +470,7 @@ export async function listarPlanejamentosDoCliente(clientId: string, appointment
         .eq('appointment_id', appointmentId).eq('client_id', clientId), 'buscar as aplicações do atendimento') as { map_id: string | null }[] | null) ?? [])
         .map(a => a.map_id).filter(Boolean) as string[])
     : new Set<string>()
-  return { mapas: ((data ?? []) as unknown as MapaLido[]).map(l => ({ ...linhaDaLista(l, aplicacoes), aplicadoNesteAtendimento: aplicadosAqui.has(l.id) })) }
+  return { mapas: queAbrem.map(l => ({ ...linhaDaLista(l, aplicacoes), aplicadoNesteAtendimento: aplicadosAqui.has(l.id) })) }
 }
 
 /**
@@ -503,7 +516,8 @@ export async function listarMapasDeInjetaveis({ branchId }: { branchId: string |
         .eq('tenant_id', ctx.tenantId!)
       if (recorte) q = q.or(`branch_id.eq.${recorte},branch_id.is.null`)
       if (deCliente === true) {
-        q = q.eq('clients.appointments.professional_id', dela!)
+        // A cliente DELA (eq-02): o agendamento cancelado não conta; a falta conta.
+        q = q.eq('clients.appointments.professional_id', dela!).neq('clients.appointments.status', 'CANCELLED')
           .limit(1, { referencedTable: 'clients.appointments' })
       }
       if (deCliente === false) q = q.is('client_id', null).eq('updated_by', dela!)
@@ -522,6 +536,10 @@ export async function listarMapasDeInjetaveis({ branchId }: { branchId: string |
   }
   const ids = linhas.map(l => l.client_id).filter(Boolean) as string[]
   const aplicacoes = await contarAplicacoes(admin, ctx.tenantId!, ids)
+  // A lista diz, por cliente, os produtos e as aplicações — é clínica: quem a
+  // viu fica registrado em cada cliente dela (CLAUDE.md §14; ATD-P09). A função
+  // do banco junta a releitura em 30 min.
+  await Promise.all([...new Set(ids)].map(id => registrarAcessoAoProntuario(ctx, id, 'injetaveis')))
 
   return { mapas: linhas.map(l => linhaDaLista(l, aplicacoes)) }
 }

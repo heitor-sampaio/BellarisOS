@@ -9,8 +9,11 @@
 
 **O programa é da REDE, nasce DESLIGADO e cada rede configura** (decisão do
 Heitor, 2026-09-28). A config mora em `loyalty_configs` (uma linha por rede) e é
-editada em Configurações → Fidelidade — pede `settings: MANAGE` e abrangência de
-rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal.
+editada em Configurações → Fidelidade — pede `settings: MANAGE` e ser a Admin
+da rede (o cargo de sistema; o Heitor, 18/11: a configuração da rede toda é
+"só pela conta admin" — até ali bastava “A rede inteira”). O catálogo de
+recompensas, igual (`salvarConfigFidelidade` e `salvarRecompensa` passam por
+`recusaDaConfigDaRede`). Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal.
 
 - **O ponto nasce no PAGAMENTO**, não na conclusão: gatilho
   `trg_fidelidade_ganho` em `financial_transactions` (receita paga, com cliente,
@@ -247,8 +250,11 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   `pontos_expirando(p_cliente, p_ate)`, `fidelidade_a_expirar(p_conta,
   p_ate)`). O `branch_id` de cada lançamento e de cada voucher FICA: é o fato
   de onde ele aconteceu (o extrato diz "· Unidade X"), nunca um recorte do
-  saldo. Prova: `e2e/fidelidade-saldo-da-rede.spec.ts`; a trava,
-  `tests/fidelidade-saldo-da-rede.test.ts`.
+  saldo — nem de quem mexe no voucher: cancelar e entregar o voucher trocado
+  em outra unidade passa só pela rede (`voucherAoAlcance`; a entrega do
+  produto confere a unidade do ESTOQUE de onde ele sai — FID-01 da varredura
+  de 18/11). Prova: `e2e/fidelidade-saldo-da-rede.spec.ts`; a trava,
+  `tests/fidelidade-saldo-da-rede.test.ts`, `tests/crm-varredura-de-18-11.test.ts`.
 - **Opcionais da rede** (decisão do Heitor, 2026-09-29) — todos nascem
   DESLIGADOS e se ligam na aba Fidelidade:
   - **Bônus de aniversário** (`birthday_bonus`) e **de primeiro acesso**
@@ -302,7 +308,12 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   - **Aviso de vencimento por push** (`expiry_notice_days`, só com validade):
     `avisos_de_vencimento` REIVINDICA o aviso antes de o push sair (a conta
     guarda até onde já avisou) — um aviso por lote novo na janela, nunca um
-    por dia nem dois por passagem concorrente.
+    por dia nem dois por passagem concorrente. O link do push vai ao portal
+    da unidade dos PONTOS que vencem (o lançamento mais recente na janela);
+    sem ela ativa, a última unidade que a cliente usou no portal; senão a
+    primeira ativa da rede — nunca a unidade de cadastro (auditoria das
+    regras, 2026-11-18; migration `20261124200004`,
+    `tests/aviso-de-vencimento-sem-unidade-de-cadastro.test.ts`).
   - O dia do aniversário e o "vence em" do aviso são os da rede (F62b:
     `fusoDaRede`; Brasília de padrão). Prova: `tests/fuso-da-unidade.test.ts`.
   - A rotina é o cron `fidelidade`: expirar → aniversário → avisos, nessa

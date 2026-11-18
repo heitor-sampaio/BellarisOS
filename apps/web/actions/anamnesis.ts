@@ -1,7 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaOAgendamento } from '@/lib/auth'
+import { deOutroProfissional, deOutroNoAtendimento, DE_OUTRO_PROFISSIONAL } from '@/lib/appointments/alteracoes'
+import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
@@ -27,6 +29,8 @@ export async function uploadAnamnesisPhoto(
 ): Promise<{ error?: string; path?: string; url?: string }> {
   try {
     const ctx = await getTenantContext()
+    // A foto é da ficha do atendimento: as travas da ficha (ATD-A03/P04).
+    assertPermission(ctx, 'atendimento', 'MANAGE')
     assertPermission(ctx, 'medical_records', 'MANAGE')
 
     const file          = formData.get('file') as File | null
@@ -43,13 +47,15 @@ export async function uploadAnamnesisPhoto(
     // do mesmo jeito. Agendamento que não é desta rede não recebe foto.
     const appt = await ler(admin
       .from('appointments')
-      .select('client_id, branch_id, branches!inner(tenant_id)')
+      .select('client_id, branch_id, professional_id, branches!inner(tenant_id)')
       .eq('id', appointmentId)
       .maybeSingle(), 'buscar o agendamento')
     if ((appt?.branches as unknown as { tenant_id?: string } | null)?.tenant_id !== ctx.tenantId
-      || !alcancaUnidade(ctx, appt?.branch_id as string)) {
+      || !alcancaOAgendamento(ctx, appt?.branch_id as string, appt?.professional_id as string | null)) {
       return { error: 'Agendamento não encontrado.' }
     }
+    if (deOutroProfissional(ctx, appt!.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
+    if (deOutroNoAtendimento(ctx, appt!.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
 
     await ensurePrivateBucket(ANAMNESIS_BUCKET)
 
@@ -83,9 +89,21 @@ export async function uploadAnamnesisPhoto(
 export async function signAnamnesisPhotos(paths: string[]): Promise<Record<string, string>> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'medical_records', 'MANAGE')
+    // Quem VÊ o prontuário vê a foto da ficha (ATD-P08; a ficha lida na aba
+    // Prontuário) — com o "só os meus", só a da cliente dela (eq-02).
+    assertPermission(ctx, 'medical_records', 'VIEW')
     const own = (paths ?? []).filter(p => typeof p === 'string' && p.startsWith(`${ctx.tenantId}/`))
-    return await getSignedUrls(ANAMNESIS_BUCKET, own)
+    // O caminho é `<rede>/<atendimento>/<arquivo>`: o atendimento diz a cliente.
+    const atendimentos = [...new Set(own.map(p => p.split('/')[1]).filter(id => /^[0-9a-f-]{36}$/i.test(id ?? '')))] as string[]
+    if (!atendimentos.length) return {}
+    const admin = createAdminClient()
+    const lidos = await ler(admin.from('appointments').select('id, client_id, branches!inner(tenant_id)')
+      .in('id', atendimentos).eq('branches.tenant_id', ctx.tenantId!), 'conferir as fotos da ficha') as { id: string; client_id: string }[] | null
+    const clienteDe = new Map((lidos ?? []).map(a => [a.id, a.client_id]))
+    const noEscopo = new Map<string, boolean>()
+    for (const cliente of new Set(clienteDe.values())) noEscopo.set(cliente, await clienteNoEscopo(admin, ctx, 'medical_records', cliente))
+    const vale = own.filter(p => { const c = clienteDe.get(p.split('/')[1] ?? ''); return !!c && noEscopo.get(c) === true })
+    return await getSignedUrls(ANAMNESIS_BUCKET, vale)
   } catch {
     return {}
   }
@@ -110,6 +128,10 @@ export async function salvarFichaDoProcedimento(params: {
 }): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
+    // A ficha do procedimento é do atendimento e é clínica, como a evolução
+    // (`saveDraftNotes`): o Atendimento e o Prontuário em Gerenciar — também
+    // para corrigir o concluído ("Editar registro", `canEditRecords`; ATD-A03).
+    assertPermission(ctx, 'atendimento', 'MANAGE')
     assertPermission(ctx, 'medical_records', 'MANAGE')
 
     const admin = createAdminClient()
@@ -120,9 +142,13 @@ export async function salvarFichaDoProcedimento(params: {
       .maybeSingle(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
-    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) {
+    // O DELA numa unidade em que atende também (decisão 2 da 8ª).
+    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, appt.branch_id as string, appt.professional_id as string | null)) {
       return { error: 'Agendamento não encontrado.' }
     }
+    // O "só os meus" da Agenda (o de VER) e o do Atendimento (o de escrever).
+    if (deOutroProfissional(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
+    if (deOutroNoAtendimento(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
 
     // O cancelado e a falta não tiveram atendimento: não há ficha a escrever.
     if (appt.status === 'CANCELLED' || appt.status === 'NO_SHOW') {

@@ -43,6 +43,7 @@ import { fusoValido } from '@/lib/unidades/fuso'
 import { fusoDaUnidade, fusoDaRede, lerFusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
 import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
 import { semAcesso } from '@/lib/sem-acesso'
+import { podeCancelarAlgum, recusaDoCancelar } from '@/lib/appointments/quem-cancela'
 import { recusaDoProcedimentoNaUnidade } from '@/lib/procedimentos/disponivel-na-unidade'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
@@ -209,7 +210,11 @@ async function updateAppointmentStatusInterno(
   // e marca a falta só do DELA (agenda-06, revisão do Heitor de 2026-11-02);
   // confirmar e chegar seguem com quem tem "todos".
   const doAtendimento = status === 'IN_PROGRESS' || status === 'COMPLETED'
-  assertPermission(ctx, doAtendimento ? 'atendimento' : 'agenda', 'MANAGE')
+  // Cancelar o Em atendimento é desistir dele (o Atendimento em Gerenciar): a
+  // porta deixa as duas permissões passarem, e o núcleo decide pela situação
+  // lida (`recusaDoCancelar`, ATD-A01).
+  if (status === 'CANCELLED') { if (!podeCancelarAlgum(ctx)) throw semAcesso() }
+  else assertPermission(ctx, doAtendimento ? 'atendimento' : 'agenda', 'MANAGE')
   if (isOwnScope(ctx, 'agenda') && (status === 'CONFIRMED' || status === 'ARRIVED')) throw semAcesso()
 
   if (status === 'CANCELLED' && !cancellationReason?.trim()) {
@@ -690,7 +695,8 @@ async function reassignProfessionalInterno(
       .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
+    // O DELA numa unidade em que atende também (decisão 2 da 8ª; ATD-A05).
+    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaOAgendamento(ctx, apptBranch.id, appt.professional_id as string | null)) return { error: 'Agendamento não encontrado.' }
     // "Só os meus" não puxa para si o agendamento de outra (D4, 2026-10-28).
     if (deOutroProfissional(ctx, appt.professional_id as string | null)) return { error: DE_OUTRO_PROFISSIONAL }
     if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)) {
@@ -780,7 +786,9 @@ async function cancelAppointmentSessionInterno(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'agenda', 'MANAGE')
+    // A porta: a Agenda (cancelar) ou o Atendimento (desistir no meio) em
+    // Gerenciar. Qual das duas vale é da situação lida (`recusaDoCancelar`, ATD-A01).
+    if (!podeCancelarAlgum(ctx)) throw semAcesso()
 
     const appointmentId      = (formData.get('appointment_id') as string)?.trim()
     const cancellationReason = (formData.get('cancellation_reason') as string)?.trim()
@@ -796,13 +804,15 @@ async function cancelAppointmentSessionInterno(
     const intercorrencia = ((formData.get('intercorrencia') as string | null) ?? '').trim()
     const porProduto = insumosPorProduto(formData.get('products_used') as string | null)
     if (formData.get('desistencia') === '1' && (intercorrencia || porProduto.size)) {
-      if (porProduto.size) assertPermission(ctx, 'atendimento', 'MANAGE')
       if (intercorrencia) assertPermission(ctx, 'medical_records', 'MANAGE')
       const admin = createAdminClient()
       const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
       if (!existente) return { error: 'Agendamento não encontrado.' }
-      if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
       if (existente.status !== 'IN_PROGRESS') return { error: 'A intercorrência e o insumo se registram só no atendimento em andamento.' }
+      // Desistir é do Atendimento em Gerenciar, com o escopo dele (o "só os
+      // meus" do Atendimento e o da Agenda): o insumo entra junto.
+      const recusa = recusaDoCancelar(ctx, existente)
+      if (recusa) return { error: recusa }
       const userName = ctx.userName || await getUserName(admin, ctx.userId)
       const resposta = await comNovaTentativa(async () => {
         const m = await montarInsumosDaBaixa(admin, ctx.tenantId!, existente.branch_id, porProduto)

@@ -50,7 +50,7 @@ export default async function NewClientPage({ params, searchParams }: {
       </div>
 
       <div className="card">
-        <ClientForm branchId={branch.id} slug={slug} branchName={branch.name} prefill={prefill} variasUnidades={variasUnidades} />
+        <ClientForm branchId={branch.id} slug={slug} prefill={prefill} variasUnidades={variasUnidades} />
       </div>
     </div>
   )

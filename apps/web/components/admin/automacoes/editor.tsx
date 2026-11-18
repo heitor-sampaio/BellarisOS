@@ -304,9 +304,8 @@ export function EditorDeAutomacao({
           {status === 'ATIVA' ? 'Ligada' : status === 'PAUSADA' ? 'Desligada' : 'Rascunho'}
         </span>
 
+        {/* No celular a paleta não cabe como coluna: vira esta gaveta. */}
         {podeEditar && (
-          <>
-            {/* No celular a paleta não cabe como coluna: vira esta gaveta. */}
             <button
               type="button" className="btn-secondary show-mobile"
               onClick={() => { setPaleta(true); setSel(null); setGaveta(null) }}
@@ -314,6 +313,7 @@ export function EditorDeAutomacao({
             >
               <Plus size={14} /> Passo
             </button>
+        )}
             {/* Consultar e agir eram seis botões do mesmo tamanho em fila:
                 Execuções, Versões e Limites ABREM uma gaveta; Salvar e Ligar
                 MUDAM a automação. Os três primeiros viram um segmento só —
@@ -346,6 +346,12 @@ export function EditorDeAutomacao({
                 <ShieldCheck size={14} /> <span className="auto-rotulo">Limites</span>
               </button>
             </div>
+            {/* AUT-03 da varredura de 18/11: Execuções, Versões e Limites são
+                LEITURA — quem só vê (Automações em Ver, o suporte que só
+                desliga) abre as três; as gavetas ficam só leitura
+                (`somenteLeitura`/`podeEditar`). Salvar, excluir e ligar, não. */}
+        {podeEditar && (
+          <>
 
             {/* A12 da 7ª simulação: o "Salvar" fica SEMPRE no lugar (só
                 aparecia depois de mexer, e quem procurava não achava), e o

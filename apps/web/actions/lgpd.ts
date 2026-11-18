@@ -206,6 +206,10 @@ export async function reviewMedicalData(
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'medical_records', 'MANAGE')
+    // A resposta vai ao app da cliente (o pacote com o prontuário): a sessão de
+    // suporte não a dá (CRM-08, 18/11; CLAUDE.md §14, plataforma.md).
+    const travado = bloqueioDoSuporte(ctx, 'responder o pedido do prontuário')
+    if (travado) return { error: travado }
 
     const requestId = (formData.get('request_id') as string)?.trim()
     const decision  = (formData.get('decision') as string)?.trim()

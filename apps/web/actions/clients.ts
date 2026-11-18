@@ -25,6 +25,7 @@ import { conferirIndicadaPor } from '@/lib/clients/indicada-por'
 import { enderecoDoFormulario, soOPreenchido } from '@/lib/clients/endereco-do-cadastro'
 import { marcacoesDaTag, MAXIMO_DE_FICHAS_POR_MARCACAO } from '@/lib/tags/marcar-em-varias'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { tagsDoVocabulario } from '@/lib/tags/escolha'
 import { umaVez, chaveDoEnvio, chaveDoConteudo } from '@/lib/envio-unico'
 import { fichasQueJaExistem, respostaDoJaExiste, proximaSemResposta, atualizarFichaComOPreenchido, type FichaQueJaExiste, type PreenchidoAgora } from '@/lib/clients/ja-existe'
 import type { TenantContext } from '@estetica-os/types'
@@ -138,8 +139,12 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
     if (conversationId && !(await conversaAoAlcance(admin, ctx, conversationId))) return { error: 'Conversa não encontrada.' }
   }
 
-  const branch   = await resolveBranch(ctx, branchId)
-  if (!branch) return { error: 'Unidade inválida.' }
+  // A ficha é da REDE (auditoria das regras, 18/11; H16): ninguém escolhe a
+  // "unidade de cadastro". `clients.branch_id` só guarda onde ela nasceu — a
+  // unidade do endereço (a do contexto vence) —, e pela rede nasce sem unidade.
+  const pedida = ctx.branchId ?? branchId
+  const branch = pedida ? await resolveBranch(ctx, pedida) : null
+  if (pedida && !branch) return { error: 'Unidade inválida.' }
 
   // "Reativar a ficha de X" (A20): a ficha arquivada do telefone volta como
   // está — o que se digitou aqui não é gravado —, ligada ao card ou à conversa
@@ -164,7 +169,11 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   // balcão entra com nome e telefone, sem e-mail nem CPF.
   const comAcesso = formData.get('_acesso') === 'on'
   const tagsRaw   = formData.get('tags') as string
-  const tags: string[] = tagsRaw ? JSON.parse(tagsRaw) : []
+  // D7 da 18ª: só as tags do vocabulário da rede (a que não existe não se
+  // grava — o gatilho a poria no catálogo, e criar tag é da Admin da rede).
+  const pedidas: unknown = tagsRaw ? JSON.parse(tagsRaw) : []
+  const tagsPedidas = Array.isArray(pedidas) ? pedidas.filter((t): t is string => typeof t === 'string') : []
+  const tags: string[] = tagsPedidas.length ? tagsDoVocabulario(tagsPedidas, await tagsAtivasDaRede(ctx.tenantId!), []) : []
 
   // Regra de negócio de CRIAR CLIENTE — idêntica no cadastro manual e na conversão de lead.
   if (!name || !phone)                     return { error: 'Nome e telefone são obrigatórios.' }
@@ -185,6 +194,12 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
   }, birthDate)
   if ('error' in resp) return { error: resp.error }
   if (comAcesso && (!email || !docDoAcesso)) return { error: 'O acesso ao app precisa do e-mail e de um documento (CPF, passaporte ou RNE).' }
+  // O acesso ao app manda o login à cliente: a sessão de suporte não o cria,
+  // nem no cadastro nem no "Unificar" (CRM-09, 18/11; como `darAcessoAoApp`).
+  if (comAcesso) {
+    const travado = bloqueioDoSuporte(ctx, 'dar acesso ao app')
+    if (travado) return { error: travado }
+  }
 
   const admin = createAdminClient()
 
@@ -238,7 +253,7 @@ async function addClientInterno(ctx: TenantContext, formData: FormData): Promise
 
   // 2) Cliente: a ficha nova. A que já existia só muda pelo "Unificar com a ficha" (acima).
   const dadosDoCliente = {
-    tenant_id: ctx.tenantId!, branch_id: branch.id as string,
+    tenant_id: ctx.tenantId!, branch_id: (branch?.id as string | undefined) ?? null,
     name, phone: fone.gravar, email, ...doc.colunas, ...resp.colunas,
     birth_date: birthDate, gender, notes, tags, ...endereco,
     is_active: true, auth_id: authId,
@@ -623,6 +638,18 @@ export async function updateClientContactData(
     indicacao = indicada.id ? { indicada_por: indicada.id, referred_by: null } : { indicada_por: null }
   }
 
+  // D7 da 18ª: só as tags do vocabulário da rede, mais as que a ficha já tinha
+  // (a arquivada, a de antes do vocabulário) — a que não existe não se grava.
+  let tags: string[] | undefined
+  if (data.tags !== undefined) {
+    const [vocabulario, atual] = await Promise.all([
+      tagsAtivasDaRede(ctx.tenantId!),
+      ler(admin.from('clients').select('tags').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler as tags da ficha'),
+    ])
+    tags = tagsDoVocabulario(Array.isArray(data.tags) ? data.tags.filter(t => typeof t === 'string') : [],
+      vocabulario, ((atual as { tags: string[] | null } | null)?.tags) ?? [])
+  }
+
   // O núcleo que a ficha e o Copilot dividem (lib/clients/atualizar.ts).
   return atualizarClienteCore(admin, ctx, clientId, {
     ...doc.colunas,
@@ -640,7 +667,7 @@ export async function updateClientContactData(
     state:               data.state || null,
     ...(data.name   !== undefined ? { name: data.name.trim() } : {}),
     ...(data.gender !== undefined ? { gender: data.gender || null } : {}),
-    ...(data.tags   !== undefined ? { tags: data.tags } : {}),
+    ...(tags        !== undefined ? { tags } : {}),
     // Só quando o campo veio: a tela de dados não edita notas, e mandar
     // `undefined` aqui apagaria o que a recepção escreveu em outra tela.
     ...(data.notes !== undefined ? { notes: data.notes?.trim() || null } : {}),

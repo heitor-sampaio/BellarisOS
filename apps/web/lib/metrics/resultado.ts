@@ -142,7 +142,10 @@ export function variacaoDaMargemPp(atual: ResultadoDoPeriodo, anterior: Resultad
  */
 export function variacaoPercentual(atual: number, anterior: number): { pct: number; up: boolean } | null {
   if (anterior === 0) return null
-  const pct = ((atual - anterior) / anterior) * 100
+  // Sobre o MÓDULO da base (IND-04 da varredura de 18/11): com o anterior
+  // negativo (prejuízo), dividir pelo próprio anterior invertia o sentido —
+  // sair de −R$ 1.000 para +R$ 500 aparecia como queda.
+  const pct = ((atual - anterior) / Math.abs(anterior)) * 100
   return { pct: Math.abs(pct), up: pct >= 0 }
 }
 

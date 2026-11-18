@@ -5,9 +5,11 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
  * D-18 (decisão do Heitor, 2026-10-30): o plano PROPOSTO aparece no app com
- * os procedimentos, o valor e a validade, e o botão "Falar com a clínica". O
- * aceite continua na clínica — o app não aceita. A anotação do profissional
- * no plano é dado clínico e não vai à cliente.
+ * os procedimentos, o valor e a validade, e o botão de falar com a equipe.
+ * O aceite pelo app veio depois, com o PT1b (o Heitor, 2026-11-14: "A
+ * cliente recebe o plano no app, analisa e aceita."): o cartão leva à página
+ * do plano, onde fica o "Aceitar" — não há aceite no cartão. A anotação do
+ * profissional no plano é dado clínico e não vai à cliente.
  */
 
 const marca = Date.now().toString(36)

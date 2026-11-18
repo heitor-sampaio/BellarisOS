@@ -110,6 +110,16 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   saldo também na unidade de consumo, D3 da 7ª), `criarOportunidadeCore`/
   `moverEtapaCore` (`lib/crm/oportunidade.ts`), `checkinCore`, o acesso ao app
   (`lib/clients/acesso.ts`), `lib/metrics`.
+  **E pedem a MESMA permissão da action da tela** (ATD-A02/COP-01 da
+  varredura de 18/11; a matriz trava em `tests/varredura-atendimento.test.ts`):
+  `confirmar_agendamento` pede a Agenda em Gerenciar (estava em Ver);
+  `cancelar_agendamento` segue `recusaDoCancelar` — o agendado é da Agenda em
+  Gerenciar, o Em atendimento é DESISTIR, do Atendimento em Gerenciar, cada um
+  com o seu "só os meus", e o cartão diz "Desistir do atendimento" e que a
+  sessão paga conta como usada; `marcar_pago` segue `podeDarBaixa` (o Caixa em
+  Gerenciar, ou o Financeiro em Gerenciar sem o "só os meus" — CX2). O escopo
+  pode ser mais estreito no Copilot (agendar, remarcar e confirmar seguem fora
+  do "só os meus" da Agenda), nunca mais largo.
 - **A unidade de que a ferramenta fala** (`resolverUnidade`, `comum.ts`):
   quem é da rede escolhe qualquer uma; quem tem unidades (EQ1a, uma ou
   várias) escolhe entre AS DELA, e sem escolha fica na unidade em que está (a
@@ -127,8 +137,10 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
 - **O PDV** (CP1): vender (pacote, pré-pago, produto, crédito interno) e
   receber a comanda são do PDV — o Copilot não vende nem recebe comanda, e o
   prompt manda indicar o PDV. O `marcar_pago` é a baixa do Financeiro
-  (`markTransactionPaid`, Caixa em Gerenciar), com o boleto na despesa, como
-  a tela. As vendas dos indicadores levam o número da comanda.
+  (`markTransactionPaid`, `podeDarBaixa` — CX2), com o boleto na despesa, como
+  a tela; a parcela do crediário em aberto também se baixa por ele (VF2-05 da
+  varredura de 18/11, decisão do Claude: o prompt mandava ao PDV o que a
+  ferramenta faz). As vendas dos indicadores levam o número da comanda.
   **As leituras de venda** (as pendências das simulações 15ª–23ª,
   2026-11-17), SÓ LEITURA (`lib/copilot/ferramentas/vendas.ts`):
   `comandas_abertas` (as abertas do PDV, `comandasDoPdv`, nas unidades da

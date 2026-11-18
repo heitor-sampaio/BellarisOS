@@ -222,7 +222,9 @@ export async function dinheiroNaGavetaDeHoje(
 ): Promise<{ naGaveta: number } | null> {
   try {
     const ctx = await getTenantContext()
-    if (!(can(ctx, 'financial', 'VIEW') || podeVerFechamento(ctx))) return null
+    // D6 (VF-03 da varredura de 18/11): o dinheiro da unidade inteira é de quem
+    // recebe ou do Financeiro de TODOS — o "só os meus" é "Minhas comissões".
+    if (!podeVerFechamento(ctx)) return null
     if (typeof branchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(branchId)) return null
     const admin = createAdminClient()
     const unidade = await ler(admin.from('branches').select('id, fuso')

@@ -19,7 +19,6 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let rede: OutraRede
 let admin: MembroDeTeste
-let unidadeNome = ''
 const fim = String(Date.now()).slice(-4)
 const FONE_MARLENE = `(48) 9${fim}-1111`
 const FONE_LUANA = `5551997${fim}22`
@@ -33,7 +32,6 @@ let marleneId = ''
 test.beforeAll(async () => {
   test.setTimeout(180_000)
   rede = await criarOutraRede(`ic${marca}`)
-  unidadeNome = (await db().from('branches').select('name').eq('id', rede.branchId).single()).data!.name as string
   // As Importações são da rede toda: só a Admin da rede (o Heitor, 18/11:
   // "Configuração da rede toda só pela conta admin").
   admin = await criarMembro(`ic${marca}`, { tenant: rede.tenantId, rotulo: 'Recepção', donoDaRede: true, permissoes: [] })
@@ -72,7 +70,8 @@ async function ateAPrevia(p: Page, nome: string, conteudo: string, destino: 'Com
     await expect(p.getByRole('button', { name: 'Continuar', exact: true })).toBeEnabled({ timeout: 1500 })
   }).toPass()
   await p.getByRole('button', { name: destino, exact: true }).click()
-  if (destino === 'Como clientes') await expect(p.getByText(`Unidade: ${unidadeNome}`)).toBeVisible() // A2 da 10ª: uma unidade só, a pergunta some
+  // A unidade é só a dos PACOTES de antes (pedido de 18/11): sem a coluna do pacote, não se pergunta.
+  await expect(p.locator('#importar-unidade')).toHaveCount(0)
   await p.getByRole('button', { name: 'Continuar', exact: true }).click()
   await p.getByRole('button', { name: 'Continuar', exact: true }).click()
   return p.locator('[data-previa]')

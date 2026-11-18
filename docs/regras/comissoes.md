@@ -599,9 +599,12 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     (C75): a maquininha vem do lançamento (`maquininha_id`, que o gatilho
     `private.maquininha_do_lancamento` preenche com a primeira ativa quando a
     tela não pergunta). As vezes do recebimento: `cartao_vezes` (crédito em N
-    vezes, pago na hora — 2026-10-20), senão `parcela_total`, senão 1 — em
-    TODO ramo: até a F67 (C41) o AVULSO de `comissao_conta_detalhe` lia só
-    `cartao_vezes`, e o lançamento parcelado pagava a taxa do 1x.
+    vezes, pago na hora — 2026-10-20; nulo = 1x) — em TODO ramo. NUNCA
+    `parcela_total`: ela é do crediário (a parcela 2 de 3 paga no crédito à
+    vista é crédito 1x, e cobrava a taxa do 3x — VF2-01 da varredura de 18/11,
+    decisão do Claude pela regra das vezes, `vendas-financeiro.md` §9.6; a
+    migration `20261124600002` tirou o `parcela_total` das contas da taxa, da
+    comissão e do caixa).
 - **Quem acerta**: a conclusão, e o gatilho `trg_comissoes_do_pagamento` em
   `financial_transactions` (pagamento, recebimento do plano, estorno — marcar
   `notes = 'Estornada'` é o estorno). `confirmar_pagamento_do_atendimento` não
@@ -702,10 +705,16 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   (banco, em `comissao_acertar_linha`, quando um pagamento libera) e
   `comissao.paga` (banco, em `comissao_fechar`).
 - **Quem vê quanto cada um ganha é o financeiro com escopo de TODOS.** Com
-  OWN, a pessoa vê só a própria linha ("Minhas comissões"; o financeiro da rede
-  a manda para lá) e não fecha. O ranking do dashboard e a comissão na aba
-  Profissionais dos relatórios exigem `financial` sem OWN — o dado nem sai do
-  servidor. Antes ficavam sob `team` e `reports`, e mostravam a de todos.
+  OWN, a pessoa vê só a PRÓPRIA comissão — "Minhas comissões" (o financeiro
+  da rede a manda para lá), o destaque do dashboard da unidade, a linha dela
+  na aba Profissionais dos relatórios e no Copilot — e não fecha. O ranking
+  do dashboard (a de cada um) exige `financial` sem OWN; a comissão das
+  outras nunca sai do servidor. Antes ficavam sob `team` e `reports`, e
+  mostravam a de todos. (COM-01 da varredura de 18/11, decisão do Claude: o
+  texto dizia que a aba Profissionais exigia o Financeiro de todos, e o
+  código mostra a linha dela — vale a C35, `vendas-financeiro.md`: o "só os
+  meus" do Financeiro existe para "Minhas comissões", e `indicadores.md`, a
+  comissão no escopo do Financeiro.)
   **A tela de Cargos diz isso** (A48 da 7ª simulação, 2026-11-05: o cargo
   Consultor vende e não via as próprias comissões; decidido pelos princípios
   3 — nada de regra escondida — e 1 — a rede decide no cargo): com o

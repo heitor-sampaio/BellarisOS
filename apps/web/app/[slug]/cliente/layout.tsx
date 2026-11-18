@@ -36,8 +36,6 @@ export default async function ClientPortalLayout({
       .eq('client_id', ctx.clientId!)
       .eq('is_received', false),
     getCachedFichasDoLogin(ctx.userId),
-    // A "última clínica usada" do próximo login (lib/clientes/entrada.ts).
-    registrarEntradaNoPortal(ctx.clientId!),
   ])
   // Cliente de mais de uma clínica: o nome da unidade no topo leva ao seletor.
   const variasRedes = fichas.filter(f => f.slug).length > 1
@@ -46,8 +44,12 @@ export default async function ClientPortalLayout({
   // decide (uma vez por ficha); o bônus é acessório e nunca lança.
   if (cliente && !cliente.app_account_created_at) await bonusDePrimeiroAcesso(ctx.clientId!)
   const branch = cliente
-    ? await ler(admin.from('branches').select('name').eq('slug', slug).eq('tenant_id', cliente.tenant_id as string).maybeSingle(), 'buscar a unidade')
+    ? await ler(admin.from('branches').select('id, name').eq('slug', slug).eq('tenant_id', cliente.tenant_id as string).maybeSingle(), 'buscar a unidade')
     : null
+  // A "última clínica usada" do próximo login (lib/clientes/entrada.ts), e a
+  // unidade do ENDEREÇO, por onde ele entra (auditoria das regras, 18/11: nunca
+  // a unidade de cadastro).
+  await registrarEntradaNoPortal(ctx.clientId!, { unidadeId: (branch as { id: string } | null)?.id ?? null })
 
   const branchName = (branch as { name: string } | null)?.name ?? 'BellarisOS'
   // O contador do sino é acessório: a falha fica no log e ele começa em zero.

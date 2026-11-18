@@ -4,7 +4,7 @@ import { formatBRL } from '@estetica-os/utils'
 import type { ComoEstornar, DestinoDaDevolucao, PagamentoEmParte } from '@/lib/pacotes/cancelamento'
 import { rotuloDaForma } from '@/lib/financeiro/formas'
 import { DicaDasVezes } from '@/components/shared/resumo-das-vezes'
-import { CampoDaBandeira } from '@/components/shared/campo-da-bandeira'
+import { CampoDaBandeira, useFaltaAMaquininha } from '@/components/shared/campo-da-bandeira'
 
 /** As formas do pagamento novo do usado (r2-ven-05). */
 export const FORMAS_DO_USADO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as const
@@ -16,10 +16,12 @@ export interface EscolhaDaDevolucaoEstado {
   novoMetodo:   string
   novoVezes:    number
   novaBandeira: string
+  /** C75 (VF-01 da varredura de 18/11): a maquininha do cartão do usado ('' = nenhuma ainda). */
+  novaMaquininha: string
 }
 
 export const ESCOLHA_INICIAL: EscolhaDaDevolucaoEstado = {
-  destino: null, comoEstornar: null, novoMetodo: '', novoVezes: 1, novaBandeira: '',
+  destino: null, comoEstornar: null, novoMetodo: '', novoVezes: 1, novaBandeira: '', novaMaquininha: '',
 }
 
 /**
@@ -54,9 +56,21 @@ export function escolhaParaAAcao(devolver: number, parcial: PagamentoEmParte | n
     destino: devolver > 0 ? e.destino : null,
     estorno: emParte ? e.comoEstornar : null,
     novo: emParte && e.comoEstornar === 'INTEIRO'
-      ? { metodo: e.novoMetodo, vezes: e.novoMetodo === 'CREDIT_CARD' ? e.novoVezes : 1, bandeira: e.novaBandeira || null }
+      ? {
+          metodo: e.novoMetodo, vezes: e.novoMetodo === 'CREDIT_CARD' ? e.novoVezes : 1, bandeira: e.novaBandeira || null,
+          maquininha: e.novoMetodo === 'CREDIT_CARD' || e.novoMetodo === 'DEBIT_CARD' ? e.novaMaquininha || null : null,
+        }
       : null,
   }
+}
+
+/**
+ * Falta a maquininha do pagamento novo do usado (C75: com mais de uma ativa, o
+ * cartão não segue sem ela). Quem abre a janela soma ao "pronto".
+ */
+export function useFaltaAMaquininhaDoUsado(e: EscolhaDaDevolucaoEstado): string | null {
+  const falta = useFaltaAMaquininha(e.novoMetodo, e.novaMaquininha)
+  return e.destino === 'ESTORNO' && e.comoEstornar === 'INTEIRO' ? falta : null
 }
 
 /**
@@ -144,7 +158,7 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span className="field-label">Forma do pagamento do usado *</span>
                 <select className="field" aria-label="Forma do pagamento do usado" value={estado.novoMetodo} disabled={desligado}
-                  onChange={e => muda({ novoMetodo: e.target.value, novoVezes: 1 })}>
+                  onChange={e => muda({ novoMetodo: e.target.value, novoVezes: 1, novaMaquininha: '' })}>
                   <option value="">Selecione…</option>
                   {FORMAS_DO_USADO.map(f => <option key={f} value={f}>{rotuloDaForma(f, null, { longo: true })}</option>)}
                 </select>
@@ -159,7 +173,8 @@ export function EscolhaDaDevolucao({ prefixo, devolver, parcial, fidelidade, est
                   <DicaDasVezes total={emParte.fica} vezes={estado.novoVezes} opcoes={opcoesDeVezes} />
                 </label>
               )}
-              <CampoDaBandeira metodo={estado.novoMetodo} valor={estado.novaBandeira} aoMudar={b => muda({ novaBandeira: b })} />
+              <CampoDaBandeira metodo={estado.novoMetodo} valor={estado.novaBandeira} aoMudar={b => muda({ novaBandeira: b })}
+                total={emParte.fica} maquininha={estado.novaMaquininha} aoMudarMaquininha={m => muda({ novaMaquininha: m })} />
             </div>
           )}
         </div>

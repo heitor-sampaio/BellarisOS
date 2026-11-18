@@ -70,12 +70,15 @@ test('a planilha da migração: o CPF ruim não derruba a ficha, as datas de ant
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=importacoes')
     await p.getByLabel('Arquivo CSV').setInputFiles({ name: ARQUIVO, mimeType: 'text/csv', buffer: Buffer.from(csv, 'utf-8') })
-    await expect(p.getByText(`Unidade: ${unidadeNome}`)).toBeVisible() // A2 da 10ª: uma unidade só, a pergunta some
+    // A unidade é a dos PACOTES de antes (pedido de 18/11; a ficha é da rede):
+    // não se pergunta no arquivo, e com uma unidade só não se pergunta (A2 da 10ª).
+    await expect(p.locator('#importar-unidade')).toHaveCount(0)
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
     // As colunas da migração são sugeridas pelo cabeçalho.
     await expect(p.getByLabel('Campo da coluna Cliente desde')).toHaveValue('cliente_desde')
     await expect(p.getByLabel('Campo da coluna Última visita')).toHaveValue('ultima_visita')
     await expect(p.getByLabel('Campo da coluna Pacote')).toHaveValue('pacote')
+    await expect(p.getByText(`Unidade dos pacotes de antes: ${unidadeNome}`)).toBeVisible()
     await expect(p.getByLabel('Campo da coluna Responsável legal')).toHaveValue('responsavel_nome')
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
 
@@ -138,8 +141,9 @@ test('importar de novo não traz o pacote duas vezes', async ({ browser }) => {
   await como(browser, dona, async p => {
     await p.goto('/admin/settings?tab=importacoes')
     await p.getByLabel('Arquivo CSV').setInputFiles({ name: `de-novo-${marca}.csv`, mimeType: 'text/csv', buffer: Buffer.from(csv, 'utf-8') })
-    await expect(p.getByText(`Unidade: ${unidadeNome}`)).toBeVisible() // A2 da 10ª: uma unidade só, a pergunta some
+    await expect(p.locator('#importar-unidade')).toHaveCount(0) // a unidade é a dos pacotes (18/11), no passo das colunas
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await expect(p.getByText(`Unidade dos pacotes de antes: ${unidadeNome}`)).toBeVisible() // A2 da 10ª: uma unidade só, a pergunta some
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
     await p.getByRole('button', { name: /Importar 1 linha/ }).click()
     await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })

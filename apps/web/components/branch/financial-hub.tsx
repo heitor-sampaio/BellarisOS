@@ -657,8 +657,8 @@ export function FinancialHub({
   )
   // A42 da 12ª: quem só vê o financeiro não tem o "Pagar" na linha.
   // A2 da 16ª: a frase cita o botão que a linha mostra — "Receber" na conta a receber, "Pagar" na conta a pagar.
-  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem o PDV no cargo.'
-  const fraseDoReceber = canPay ? 'Para receber, use “Receber” na linha.' : 'Receber é de quem tem o PDV no cargo.'
+  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem o PDV ou o Financeiro em Gerenciar.'
+  const fraseDoReceber = canPay ? 'Para receber, use “Receber” na linha.' : 'Receber é de quem tem o PDV ou o Financeiro em Gerenciar.'
   const tabela = (ordemInicial: 'asc' | 'desc') => (
     <FinancialTable
       nomeDoCsv={nomeDoCsv}

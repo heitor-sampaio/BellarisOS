@@ -17,7 +17,7 @@ import { comLoginNovo } from '@/lib/login-novo'
 import { EntradaDoRepasse, aplicarRepasse, pendenciasDoMembro, type PendenciasDoMembro } from '@/lib/equipe/repasse'
 import { falaDaRede } from '@/lib/unidades/uma-so'
 import { atendeDoFormulario, atendeQueGrava, listaDeUnidades } from '@/lib/equipe/atende'
-import { unidadesDoFormulario, unidadesDoMembro, unidadesQueGrava } from '@/lib/unidades/do-membro'
+import { unidadesDoFormulario, unidadesDoMembro, unidadesQueGrava, FORA_DO_ALCANCE_PARA_DESATIVAR, CARGO_DE_QUEM_TEM_OUTRA_UNIDADE } from '@/lib/unidades/do-membro'
 
 /** As unidades ATIVAS da rede (o checklist do "Atende" só marca estas). */
 async function unidadesAtivas(admin: ReturnType<typeof createAdminClient>, tenantId: string): Promise<string[]> {
@@ -360,7 +360,7 @@ export async function updateTeamMember(
     // O cargo vale em TODAS as unidades do membro: quem não alcança todas não o
     // troca (H7: "gerente de uma unidade só mexe no que é da unidade").
     if (roleId !== member.role_id && !alcancaOMembro(ctx, member as { branch_id: string | null; outras_unidades: string[] | null }, true)) {
-      return { error: 'Essa pessoa também está numa unidade fora do seu alcance: o cargo dela só muda quem alcança todas as unidades dela.' }
+      return { error: CARGO_DE_QUEM_TEM_OUTRA_UNIDADE }
     }
     // Dar o cargo de Admin da rede só quem o tem (`assertRoleInTenant`).
     const roleCheck = await assertRoleInTenant(admin, ctx, roleId, { jaETeuCargo: roleId === member.role_id })
@@ -495,8 +495,11 @@ async function membroDaRede(
   // gente da B e admins da rede.
   // Nulo, e quem chama devolve `{ error }`: lançado, a mensagem chegava
   // trocada à tela em produção (C9).
-  // Com várias unidades (EQ1a): de TODAS as dele — o login é um só.
-  if (!membro || !alcancaOMembro(ctx, membro as { branch_id: string | null; outras_unidades: string[] | null }, true)) return null
+  // Com várias unidades (EQ1a): de TODAS as dele — o login é um só. Quem
+  // alcança só ALGUMA ouve o motivo (era "Membro não encontrado.", e a pessoa
+  // estava na lista da Equipe dela — PLAT-03 da varredura de 18/11).
+  if (!membro || !alcancaOMembro(ctx, membro as { branch_id: string | null; outras_unidades: string[] | null })) return null
+  if (!alcancaOMembro(ctx, membro as { branch_id: string | null; outras_unidades: string[] | null }, true)) return FORA_DO_ALCANCE_PARA_DESATIVAR
   return membro as { id: string; name: string; auth_id: string | null; is_active: boolean; role_id: string | null }
 }
 
@@ -530,6 +533,7 @@ export async function pendenciasParaDesativar(userId: string): Promise<Pendencia
     const admin = createAdminClient()
     const membro = await membroDaRede(admin, ctx, userId)
     if (!membro) return { error: MEMBRO_NAO_ENCONTRADO }
+    if (typeof membro === 'string') return { error: membro }
     return await pendenciasDoMembro(admin, ctx, { id: membro.id, nome: membro.name })
   } catch (e) {
     return { error: mensagemDoErro(e) }
@@ -553,6 +557,7 @@ export async function deactivateTeamMember(
   const admin = createAdminClient()
   const membro = await membroDaRede(admin, ctx, userId)
   if (!membro) return { error: MEMBRO_NAO_ENCONTRADO }
+  if (typeof membro === 'string') return { error: membro }
   if (await ehAUltimaAdminAtiva(admin, ctx.tenantId!, membro)) {
     return { error: await falaDaRede(ctx.tenantId, 'Essa é a única Admin da rede ativa: a rede ficaria sem ninguém com acesso total.') }
   }
@@ -617,6 +622,7 @@ export async function reactivateTeamMember(userId: string, redirectPath: string 
   const admin = createAdminClient()
   const membro = await membroDaRede(admin, ctx, userId)
   if (!membro) return { error: MEMBRO_NAO_ENCONTRADO }
+  if (typeof membro === 'string') return { error: membro }
   // Só outra Admin da rede reativa uma Admin (revisão do Heitor, 2026-10-29).
   const recusa = await recusaDeMexerNaAdmin(admin, ctx, membro)
   if (recusa) return { error: recusa }

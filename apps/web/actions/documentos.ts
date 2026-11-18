@@ -53,6 +53,7 @@ import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import type { TenantContext } from '@estetica-os/types'
 import { mensagemDoLink } from '@/lib/saudacao'
 import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
+import { unidadeDoPortal } from '@/lib/clientes/unidade-do-portal'
 
 type Resultado = { error?: string; codigo?: string | null }
 
@@ -411,16 +412,21 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
     if (montado?.status !== 'PENDENTE') return { error: 'Este documento não está esperando assinatura.' }
 
     const admin = createAdminClient()
-    const cliente = await ler(admin.from('clients').select('auth_id, branch_id').eq('id', doc.client_id).single(), 'buscar o cliente')
+    const cliente = await ler(admin.from('clients').select('auth_id, portal_ultima_unidade').eq('id', doc.client_id).single(), 'buscar o cliente')
     if (!cliente?.auth_id) {
       return { error: 'Este cliente ainda não tem acesso ao portal. Colha a assinatura na tela.' }
     }
-    // O portal é o da unidade do cliente (ou a do documento, se ele não tiver).
-    const unidadeId = (cliente.branch_id as string | null) ?? doc.branch_id
-    const [unidade, rede] = await Promise.all([
-      unidadeId ? ler(admin.from('branches').select('slug, name').eq('id', unidadeId).maybeSingle(), 'buscar a unidade') : Promise.resolve(null),
+    // O portal do link: a unidade do DOCUMENTO, senão a do endereço de quem
+    // pede, senão a do portal dela (a última usada, ou a primeira ativa).
+    // Nunca a unidade em que a ficha nasceu: a cliente é da REDE (auditoria
+    // das regras, 18/11; H16), e o portal de qualquer unidade abre a ficha.
+    const [ativas, rede] = await Promise.all([
+      ler(admin.from('branches').select('id, slug, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true)
+        .order('name').order('id'), 'buscar as unidades da rede') as Promise<{ id: string; slug: string; name: string }[] | null>,
       ler(admin.from('tenants').select('name').eq('id', ctx.tenantId!).single(), 'buscar a rede'),
     ])
+    const pedida = [doc.branch_id, ctx.branchId].find(id => id && (ativas ?? []).some(u => u.id === id)) ?? null
+    const unidade = unidadeDoPortal(pedida ?? ((cliente.portal_ultima_unidade as string | null) ?? null), ativas ?? [])
     if (!unidade?.slug) return { error: 'Não encontrei a unidade do portal deste cliente.' }
 
     await notifyClient(admin, doc.client_id, {

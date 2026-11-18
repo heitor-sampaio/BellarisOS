@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, alcancaUnidade, alcancaOAgendamento, can, isOwnScope, temRecurso } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade, alcancaOAgendamento, can, temRecurso } from '@/lib/auth'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { notifyClient } from '@/lib/notifications/notify'
 import type { TenantContext } from '@estetica-os/types'
@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
 import { gravar, ler, tentar } from '@/lib/db'
 import { logHistory } from '@/lib/appointments/avisos'
+import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 
 const BUCKET        = CLIENT_DOCS_BUCKET
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -29,11 +30,21 @@ const SEM_ACESSO_CLINICO = 'Anexo clínico (exame, laudo, foto clínica, receita
 async function recusaDoAnexo(ctx: TenantContext, admin: SupabaseClient, categoria: string | null, clientId: string): Promise<string | null> {
   if (!ehAnexoClinico(categoria)) return can(ctx, 'clients', 'MANAGE') ? null : SEM_ACESSO_COMUM
   if (!can(ctx, 'medical_records', 'MANAGE')) return SEM_ACESSO_CLINICO
-  if (!isOwnScope(ctx, 'medical_records')) return null
-  if (!ctx.internalUserId) return SEM_ACESSO_CLINICO
-  const meu = await ler(admin.from('appointments').select('id')
-    .eq('client_id', clientId).eq('professional_id', ctx.internalUserId).limit(1), 'conferir se o cliente é atendido por você')
-  return (meu ?? []).length ? null : SEM_ACESSO_CLINICO
+  // A regra única do "só os meus" (eq-02: o cancelado não conta, a falta conta).
+  return (await clienteNoEscopo(admin, ctx, 'medical_records', clientId)) ? null : SEM_ACESSO_CLINICO
+}
+
+/**
+ * O anexo de UNIDADE ao alcance de quem age (§11): o do atendimento chega pelo
+ * alcance do agendamento — a profissional que atende também na outra unidade
+ * (decisão 2 da 8ª), como no anexar (ATD-P06); o da ficha, pela unidade.
+ */
+async function alcanceDoAnexo(ctx: TenantContext, admin: SupabaseClient, doc: { branch_id: string; appointment_id: string | null }): Promise<boolean> {
+  if (alcancaUnidade(ctx, doc.branch_id)) return true
+  if (!doc.appointment_id) return false
+  const ag = await ler(admin.from('appointments').select('branch_id, professional_id')
+    .eq('id', doc.appointment_id).maybeSingle(), 'conferir o atendimento do anexo') as { branch_id: string; professional_id: string | null } | null
+  return !!ag && ag.branch_id === doc.branch_id && alcancaOAgendamento(ctx, ag.branch_id, ag.professional_id)
 }
 
 export async function uploadClientDocument(
@@ -202,7 +213,7 @@ export async function enviarDocumentoACliente(
     .maybeSingle(), 'buscar o documento')
   if (!doc) return { error: 'Documento não encontrado.' }
   const unidade = doc.branches as unknown as { tenant_id: string; slug: string; name: string }
-  if (unidade.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, doc.branch_id as string)) return { error: 'Documento não encontrado.' }
+  if (unidade.tenant_id !== ctx.tenantId || !(await alcanceDoAnexo(ctx, admin, doc as { branch_id: string; appointment_id: string | null }))) return { error: 'Documento não encontrado.' }
   const recusa = await recusaDoAnexo(ctx, admin, doc.category as string, doc.client_id as string)
   if (recusa) return { error: recusa }
 
@@ -269,7 +280,7 @@ export async function deleteClientDocument(
 
   const tenantId = (doc.branches as unknown as { tenant_id: string }).tenant_id
   // E a unidade onde o documento foi posto, ao alcance de quem apaga (§11).
-  if (tenantId !== ctx.tenantId || !alcancaUnidade(ctx, doc.branch_id as string)) return { error: 'Acesso negado.' }
+  if (tenantId !== ctx.tenantId || !(await alcanceDoAnexo(ctx, admin, doc as { branch_id: string; appointment_id: string | null }))) return { error: 'Acesso negado.' }
   if (await recusaDoAnexo(ctx, admin, doc.category as string, doc.client_id as string)) return { error: 'Acesso negado.' }
 
   // Anexo CLÍNICO é prontuário, e prontuário não se deleta (§14): sai das

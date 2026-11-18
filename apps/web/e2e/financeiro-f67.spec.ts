@@ -11,7 +11,10 @@ import { chamarAcao, chamarAcaoComFormulario } from './apoio/acao-direta'
  * - C34: a baixa do lançamento sem meio exige a forma.
  * - C35: o Financeiro em "só os meus" não estorna, não lança, não cancela.
  * - C36: cancelar a unidade pré-paga é do Financeiro em Gerenciar (não de quem só recebe).
- * - C33: a baixa é de Recebimentos em todo caminho — o check-in do plano também.
+ * - C33: o check-in do plano (o balcão) é do PDV. A baixa NO FINANCEIRO, desde
+ *   o CX2 (aprovado pelo Heitor em 13/11, "Blz pode ser assim": o Financeiro
+ *   "dá baixa só no que entra sem passar pelo balcão"), é também do Financeiro
+ *   em Gerenciar — até ali o teste travava "só o PDV".
  * - C70: a despesa recorrente grava a forma escolhida.
  *
  * Numa rede [e2e] própria.
@@ -123,23 +126,59 @@ test('C36: quem só recebe não cancela a unidade pré-paga', async ({ browser }
   expect(r.texto).toContain('Você não tem acesso a esta ação.')
 })
 
-test('C33: o check-in do plano é do PDV — quem tem o Financeiro em Gerenciar sem o PDV não recebe', async ({ browser }) => {
+// VF-04 da varredura de 18/11 (era o C33, que travava no PDV): o check-in do
+// plano recebe por `podeReceber` — o PDV OU o Financeiro em Gerenciar, como
+// todo recebimento (vendas-financeiro.md, "Quem recebe é `podeReceber`"). A
+// faixa do plano em aberto já aparecia a quem tem o Financeiro, e a action recusava.
+test('VF-04: o check-in do plano é de quem recebe — o Financeiro em Gerenciar recebe; sem o PDV nem o Financeiro, não', async ({ browser }) => {
   const { cliente, plano, appt } = await planoPago('Checkin')
-  await ins('financial_transactions', {
+  const aberto = await ins('financial_transactions', {
     branch_id: rede!.branchId, client_id: cliente, treatment_plan_id: plano, type: 'INCOME', category: 'Serviços',
     description: 'Plano de tratamento', amount: 200, is_paid: false, created_by: 'e2e',
   })
   const rota = `/admin/agenda/${appt}`
+  const semReceber = await criarMembro(`f67s${marca}`, {
+    tenant: rede!.tenantId, rotulo: 'Agenda',
+    permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'VIEW' }],
+  })
+  try {
+    const recusa = await como(browser, semReceber, p => chamarAcao(p, 'actions/treatment-plans.ts', 'receberDoPlano', rota,
+      [plano, { forma: 'AVISTA', metodo: 'PIX' }, appt, '']))
+    expect(recusa.texto).toContain('Você não tem acesso a esta ação.')
+    expect((await db().from('financial_transactions').select('is_paid').eq('id', aberto).single<{ is_paid: boolean }>()).data!.is_paid).toBe(false)
+  } finally { await semReceber.limpar() }
   const r = await como(browser, financeiro!, p => chamarAcao(p, 'actions/treatment-plans.ts', 'receberDoPlano', rota,
     [plano, { forma: 'AVISTA', metodo: 'PIX' }, appt, '']))
-  expect(r.texto).toContain('Você não tem acesso a esta ação.')
-  // E a lista do Financeiro da rede não mostra a baixa a quem não tem Recebimentos.
+  expect(r.texto).not.toContain('Você não tem acesso a esta ação.')
+  const { data: pago } = await db().from('financial_transactions').select('is_paid, payment_method').eq('id', aberto).single<{ is_paid: boolean; payment_method: string }>()
+  expect(pago).toEqual({ is_paid: true, payment_method: 'PIX' })
+})
+
+test('CX2: o Financeiro em Gerenciar dá baixa no Financeiro (o que entrou sem passar pelo balcão); o "só os meus" não', async ({ browser }) => {
+  const { cliente, plano } = await planoPago('Transferencia')
+  const desc = `${PREFIXO} Transferência ${marca}`
+  const aberto = await ins('financial_transactions', {
+    branch_id: rede!.branchId, client_id: cliente, treatment_plan_id: plano, type: 'INCOME', category: 'Serviços',
+    description: desc, amount: 120, is_paid: false, due_date: new Date().toISOString(), created_by: 'e2e',
+  })
+  // A lista do Financeiro mostra o "Receber" a quem tem o Financeiro em Gerenciar, sem o PDV.
   await como(browser, financeiro!, async p => {
     await p.goto('/admin/financeiro?aba=a-receber#movimentacoes')
     await p.getByRole('button', { name: 'Sobre as contas a receber' }).hover()
-    await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Receber é de quem tem o PDV no cargo.')
-    await expect(p.getByRole('button', { name: /Pagar|Receber/ }).filter({ hasText: /^(Pagar|Receber)$/ })).toHaveCount(0)
+    await expect(p.locator('[data-so-o-em-aberto]')).toContainText('Para receber, use “Receber” na linha.')
+    await expect(p.locator(`[data-lancamento="${aberto}"]`).getByRole('button', { name: 'Receber', exact: true })).toBeVisible()
   })
+  // O "só os meus" do Financeiro não dá baixa (C35), nem pela action.
+  const negado = await como(browser, soOsMeus!, p => chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', '/admin/financeiro/comissoes',
+    [aberto, '', null, null, 'PIX']))
+  expect(negado.texto).not.toContain('"success":true')
+  expect((await db().from('financial_transactions').select('is_paid').eq('id', aberto).single()).data?.is_paid).toBe(false)
+  // E a baixa do Financeiro em Gerenciar grava, com a forma (PDV8).
+  const r = await como(browser, financeiro!, p => chamarAcao(p, 'actions/financial.ts', 'markTransactionPaid', '/admin/financeiro',
+    [aberto, '', null, null, 'PIX']))
+  expect(r.texto).toContain('"success":true')
+  expect((await db().from('financial_transactions').select('is_paid, payment_method, recebido_por').eq('id', aberto).single()).data)
+    .toEqual({ is_paid: true, payment_method: 'PIX', recebido_por: financeiro!.userId })
 })
 
 test('D8 da 13ª: com a unidade filtrada, o "Débito no período" é o da unidade', async ({ browser }) => {

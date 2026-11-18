@@ -11,7 +11,9 @@ import { dayKeyTZ, addDaysTZ } from '../lib/datetime'
  * - A45 (desde 2026-11-18, auditoria das regras): o ganho a marcar NÃO é mais
  *   do cron — é o modelo "Marque o ganho" das Automações (rascunho). A compra
  *   da cliente ligada grava o fato `lead.cliente_comprou` (gatilho no banco),
- *   e o cron do CRM não avisa nada dela.
+ *   e o cron do CRM não avisa nada dela. O plano é compra no PRIMEIRO
+ *   recebimento, não no aceite (C-1, varredura de 18/11), e o pacote trazido
+ *   de fora não é compra (CRM-02).
  * Uma vez: rodar o cron de novo não repete. Compartilhado: chama o cron
  * (que passa por todas as redes); os dados são de uma rede [e2e] própria.
  */
@@ -56,10 +58,40 @@ test('A42: o cron avisa quem tem o lead do retorno do dia, uma vez, sem mover o 
   await lead('Retorno amanhã', { retornar_em: amanha })
   const renata = await rede.criarCliente('Renata')
   const comprou = await lead('Renata comprou', { client_id: renata })
-  expect((await db().from('treatment_plans').insert({
+  const { data: plano, error: ePlano } = await db().from('treatment_plans').insert({
     branch_id: rede.branchId, client_id: renata, professional_id: rede.professionalId, status: 'ACCEPTED',
     name: 'Plano Harmonização', aceito_em: new Date(Date.now() + 1000).toISOString(),
+  }).select('id').single<{ id: string }>()
+  expect(ePlano).toBeNull()
+  const fatosDe = async (leadId: string) => ((await db().from('domain_events').select('nome, dados, origem')
+    .eq('tenant_id', rede.tenantId).eq('nome', 'lead.cliente_comprou').eq('entidade_id', leadId)).data ?? []) as
+    { nome: string; dados: unknown; origem: string }[]
+  // C-1 da varredura de 18/11 (o Heitor: "Uma coisa só foi vendida se foi
+  // paga."): o plano ACEITO, sem dinheiro, ainda não é compra.
+  expect(await fatosDe(comprou), 'o aceite não é a venda').toHaveLength(0)
+  // O primeiro recebimento do plano é a venda (uma parcela a receber, não).
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede.branchId, client_id: renata, treatment_plan_id: plano!.id, type: 'INCOME', category: 'Serviços',
+    description: 'Plano Harmonização — parcela 2', amount: 500, is_paid: false, payment_method: 'PIX', created_by: 'e2e',
   })).error).toBeNull()
+  expect(await fatosDe(comprou), 'a parcela a receber não é a venda').toHaveLength(0)
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede.branchId, client_id: renata, treatment_plan_id: plano!.id, type: 'INCOME', category: 'Serviços',
+    description: 'Plano Harmonização — entrada', amount: 500, is_paid: true, paid_at: new Date(Date.now() + 2000).toISOString(),
+    payment_method: 'PIX', created_by: 'e2e',
+  })).error).toBeNull()
+  // CRM-02: o pacote trazido de fora não é venda — nem o fato, nem o "Comprou" do card.
+  const paula = await rede.criarCliente('Paula')
+  const trouxe = await lead('Paula trouxe pacote', { client_id: paula })
+  expect((await db().rpc('pacote_trazer', {
+    p_tenant: rede.tenantId, p_cliente: paula, p_unidade: rede.branchId, p_procedimento: rede.procedureId,
+    p_total: 10, p_usadas: 3, p_validade: null, p_valor: 1000, p_ator: null,
+  })).error).toBeNull()
+  expect(await fatosDe(trouxe), 'o pacote de fora não é compra').toHaveLength(0)
+  const { data: sinais } = await db().rpc('crm_sinais_do_quadro', { p_tenant: rede.tenantId, p_clientes: [paula, renata] })
+  const sinal = (id: string) => ((sinais ?? []) as { client_id: string; compra: string | null }[]).find(x => x.client_id === id)
+  expect(sinal(paula)?.compra ?? null, 'o card não diz "Comprou" o pacote de fora').toBeNull()
+  expect(sinal(renata)?.compra).toBe('Plano Harmonização')
 
   const rodar = async () => {
     const r = await request.get('/api/cron/crm-lembretes', { headers: { authorization: `Bearer ${segredo}` } })
@@ -78,8 +110,7 @@ test('A42: o cron avisa quem tem o lead do retorno do dia, uma vez, sem mover o 
   expect(retorno.data.caminho).toBe(`/admin/oportunidades?lead=${deHoje}`)
   expect(lista.find(a => a.data.leadId === comprou)).toBeUndefined()
   // A compra virou o fato do motor, uma linha para a oportunidade aberta.
-  const { data: fatos } = await db().from('domain_events').select('nome, dados, origem')
-    .eq('tenant_id', rede.tenantId).eq('nome', 'lead.cliente_comprou').eq('entidade_id', comprou)
+  const fatos = await fatosDe(comprou)
   expect(fatos).toHaveLength(1)
   expect(fatos![0]!.origem).toBe('banco')
   expect((fatos![0]!.dados as { compra?: string; responsavelId?: string })).toMatchObject({ compra: 'Plano Harmonização', responsavelId: dono })

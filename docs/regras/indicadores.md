@@ -641,6 +641,10 @@ e o mês contou 32 clientes novas): `coalesce(clients.cliente_desde,
 created_at)` em `metrics_core`, `metrics_by_branch`,
 `metrics_new_clients_series` e no "cadastrada nos 90 dias" do Reativar
 (migration `20261106003502`). A ficha sem "cliente desde" segue pela criação.
+**E a arquivada continua contando** (auditoria das regras, 2026-11-18;
+decisão do Claude pelos princípios 3 e 5): arquivar não desfaz o fato do
+período — as três contas não filtram mais `is_active` (migration
+`20261124200005`; regra em `crm-inbox.md`, "Arquivar a cliente").
 E o **"Reativar clientes" lê a última visita do sistema de ANTES**
 (`clients.ultima_visita_antes`, a coluna da importação): ela conta como visita
 (quem veio há 20 dias no sistema antigo não sumiu; quem veio há 120, sim, com
@@ -825,11 +829,16 @@ geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
   `20261107004103`): a soma menos `treatment_plans.valor_cancelado`; o que caiu
   inteiro sai. O cancelado antes desta regra (sem `cancelado_em`) segue fora. **É de quem
   VENDEU** (D14 da 8ª simulação, 2026-11-06): a coluna "Profissional" é o
-  "Quem vendeu" do checkout (`treatment_plans.vendido_por`); a responsável pelo plano
-  só quando ninguém foi marcado (os planos de antes). Era sempre a responsável — a
-  "Dra. Paula" no plano que a Marta vendeu. O "só os meus" segue a mesma
-  pessoa (migration `20261106003404`). Prova:
-  `e2e/relatorio-vendas-plano-de-quem-vendeu.spec.ts`.
+  "Quem vendeu" do checkout (`treatment_plans.vendido_por`). Era sempre a
+  responsável — a "Dra. Paula" no plano que a Marta vendeu. O "só os meus" segue
+  a mesma pessoa (migration `20261106003404`). **Sem "Quem vendeu", a venda não
+  é de ninguém** (com-06, o Heitor: "Campo vazio não gera comissão para
+  ninguém"; o campo nasce sempre vazio, r2-ven-12): fica no total, sem nome na
+  coluna e fora do "só os meus" de todos — como o pacote, o pré-pago e o
+  produto sem `sold_by`. Até a auditoria de 18/11 ia para a responsável pelo
+  plano, que ninguém escolheu (migration `20261124250001`). Prova:
+  `e2e/relatorio-vendas-plano-de-quem-vendeu.spec.ts`,
+  `tests/vendas-plano-sem-vendedor.test.ts`.
 - A lista e o total fecham no `fullTo`. A exportação (`/api/relatorios/vendas`,
   CSV: `Data;Comanda;Tipo;Descrição;Cliente;Profissional;Unidade;Valor`,
   `colunasDoCsvDeVendas`) leva o mesmo recorte sem página e se defende sozinha: sessão, a aba no
@@ -1171,8 +1180,8 @@ dela), `metrics_gasto_por_cliente`, `metrics_receita_por_categoria_de_procedimen
 consumo dela; a comissão dela; o saldo do estoque segue o da unidade — quem
 mostra o esconde) e `metrics_vendas` (+ `_pagina`, `_resumo`). **Venda dela**
 é a pessoa da coluna "Profissional" da venda: quem atendeu o avulso, quem
-vendeu o pacote, o pré-pago, o produto e o plano (no plano sem "Quem vendeu",
-a responsável por ele — D14 da 8ª, abaixo).
+vendeu o pacote, o pré-pago, o produto e o plano (sem "Quem vendeu", de
+ninguém — com-06; D14 da 8ª, abaixo).
 
 **Os Relatórios com "só os meus"** (`reports-bi-section`, os dois portais):
 cada número da aba no recorte do seu módulo (acima) — o da agenda a

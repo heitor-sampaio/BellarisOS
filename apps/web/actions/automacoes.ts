@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -33,6 +34,16 @@ import { unidadesParaCriar } from '@/lib/unidades/da-tela'
  */
 
 const GRAFO_VAZIO: GrafoDeAutomacao = { nos: [], ligacoes: [] }
+
+/**
+ * Automações e o "O que já aconteceu" são da REDE, só no portal da rede (D-2,
+ * o Heitor, 2026-10-29: "a automação é da clínica, mesmo que o alvo seja a
+ * unidade"): quem não tem "A rede inteira" não as alcança, tenha o módulo que
+ * tiver — nem pela action chamada direto (AUT-02 da varredura de 18/11).
+ */
+function assertDaRede(ctx: { branchId: string | null }): void {
+  if (ctx.branchId !== null) throw semAcesso()
+}
 
 export interface AutomacaoNaLista {
   id:          string
@@ -70,6 +81,7 @@ export async function listarAutomacoes(): Promise<{
 }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
   const admin = createAdminClient()
 
   const { data, error } = await admin
@@ -169,6 +181,7 @@ export async function getAutomacao(id: string): Promise<{
 }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
 
   const { data, error } = await createAdminClient()
     .from('automations')
@@ -405,6 +418,7 @@ export interface VersaoNaLista {
 export async function versoesDaAutomacao(automacaoId: string): Promise<VersaoNaLista[]> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
   const admin = createAdminClient()
 
   const auto = await ler(admin
@@ -574,6 +588,7 @@ export interface OpcoesDoEditor {
 export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
   const admin = createAdminClient()
   const tenant = ctx.tenantId!
 
@@ -645,6 +660,7 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
 export async function amostraDoEvento(nome: string): Promise<CampoVisto[]> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
   if (!nome) return []
 
   const { data, error } = await createAdminClient()
@@ -698,6 +714,7 @@ export async function listarExecucoes(
 ): Promise<{ execucoes: ExecucaoNaLista[]; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
   const admin = createAdminClient()
 
   let q = admin
@@ -754,6 +771,7 @@ export async function passosDaExecucao(runId: string): Promise<{
 }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
   const admin = createAdminClient()
 
   // A execução tem de ser da rede de quem pergunta. O passo a passo carrega
@@ -832,7 +850,7 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
     .maybeSingle(), 'buscar o evento')
 
   if (!evento) {
-    return { error: `"${nome}" ainda não aconteceu nesta rede — não há fato para ensaiar. Veja em Configurações → Eventos.` }
+    return { error: `"${nome}" ainda não aconteceu nesta rede — não há fato para ensaiar. Veja em Automações → O que já aconteceu.` }
   }
 
   const { data: run, error } = await admin
@@ -886,6 +904,7 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
 export async function contarBuscaDeClientes(cfg: unknown): Promise<{ quantas: number; truncado: boolean } | { error: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
   const busca = await buscaDoPasso(ctx.tenantId!, cfg)
   if ('error' in busca) return busca
   const { clientes, truncado } = await buscarClientes(ctx.tenantId!, busca.cfg, busca.fuso)
@@ -929,6 +948,7 @@ export async function contarAntesDeLigar(cfgDaBusca: unknown | null, canais: Can
 > {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
   const tenant = ctx.tenantId!
   const porCanal = async (filtros: { client_ids?: string[] }) => {
     const vazio = filtros.client_ids !== undefined && filtros.client_ids.length === 0

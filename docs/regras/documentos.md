@@ -602,8 +602,10 @@ DEVLOG ("Termos e contratos", o nome da seção de lá).
   `e2e/documentos-anexo-sem-portal-f73.spec.ts`.
   **"Faltam dados" diz onde completar** (A22 da 14ª, F73; princípio 7): em
   Documentos, ao lado do "Falta: …", "Completar a ficha" leva à aba Dados da
-  cliente (`[data-completar-cadastro]`, o mesmo da janela do agendamento).
-  Prova: `e2e/documentos-completar-a-ficha-f73.spec.ts`.
+  cliente (`[data-completar-cadastro]`, o mesmo da janela do agendamento) —
+  só para quem tem Clientes em Gerenciar, como na janela (`podeCompletar`;
+  quem só vê lê o "Falta: …" sem o link — DOC-01 da varredura de 18/11, pelo
+  §14 do CLAUDE.md). Prova: `e2e/documentos-completar-a-ficha-f73.spec.ts`.
   Quem agenda pelo portal e tem documento a assinar vai direto para ele.
   O detalhe do agendamento no portal tem "Documentos deste atendimento"
   (J-63, `documentosDoAgendamento`): o título e a situação — "Falta a sua

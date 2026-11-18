@@ -1,4 +1,4 @@
-import { getTenantContext, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertRecurso, can } from '@/lib/auth'
 import { assertVeOsDocumentos } from '@/lib/documentos/acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unidadesParaLer, periodoDaTela, nomeNaTela } from '@/lib/unidades/da-tela'
@@ -90,6 +90,7 @@ export async function DocumentosEmitidos({
 
   const slugDe = new Map(unidades.map(u => [u.id, u.slug]))
   const nomeDe = new Map(unidades.map(u => [u.id, u.name]))
+  const completaAFicha = can(ctx, 'clients', 'MANAGE')
 
   return (
     <PainelDeDocumentos
@@ -107,6 +108,9 @@ export async function DocumentosEmitidos({
         faltando: l.faltando.map(rotuloDoQueFalta),
         unidade: l.branchId ? nomeDe.get(l.branchId) ?? null : null,
         slug:    l.branchId ? slugDe.get(l.branchId) ?? unidade?.slug ?? null : unidade?.slug ?? null,
+        // "Completar a ficha" é editar a cliente: só com Clientes em Gerenciar
+        // (como a janela do agendamento, actions/documentos-da-janela.ts).
+        podeCompletar: completaAFicha,
       }))}
       comUnidade={!unidade && !ctx.branchId && !escolhida && unidades.length > 1}
     />

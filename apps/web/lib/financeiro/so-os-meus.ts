@@ -24,3 +24,16 @@ export function recusaDoSoOsMeus(ctx: TenantContext): string | null {
 export function podeEstornar(ctx: TenantContext): boolean {
   return can(ctx, 'financial', 'MANAGE') && !recusaDoSoOsMeus(ctx)
 }
+
+/**
+ * Quem dá BAIXA no Financeiro — o "Receber"/"Pagar" da lista e da ficha
+ * (`markTransactionPaid`). CX2 (aprovado pelo Heitor em 13/11: "Blz pode ser
+ * assim"): "O Financeiro … dá baixa só no que entra sem passar pelo balcão (a
+ * transferência que caiu na conta)". É o PDV em Gerenciar ou o Financeiro em
+ * Gerenciar de todos — a régua do `podeReceber`, sem o "só os meus" (C35: o
+ * financeiro dessa pessoa é "Minhas comissões"). Era só o PDV (C33, F67). O
+ * que passa pelo balcão (a comanda, o check-in do plano) segue no PDV.
+ */
+export function podeDarBaixa(ctx: TenantContext): boolean {
+  return can(ctx, 'cashier', 'MANAGE') || (can(ctx, 'financial', 'MANAGE') && !recusaDoSoOsMeus(ctx))
+}

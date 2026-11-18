@@ -92,6 +92,11 @@ test.describe.serial('a cliente agenda em outra unidade da rede pelo app', () =>
       await expect(p).toHaveURL(new RegExp(`/${slugB}/cliente/home$`))
       await expect(p.locator('header')).toContainText(nomeB)
     })
+    // Auditoria das regras (18/11): o próximo login leva à ÚLTIMA unidade
+    // usada no portal — a Zona Sul —, não à de cadastro (a Moinhos).
+    await expect.poll(async () => (await db().from('clients').select('portal_ultima_unidade')
+      .eq('id', cliente!.clientId).single<{ portal_ultima_unidade: string | null }>()).data?.portal_ultima_unidade,
+    { message: 'a entrada na Zona Sul fica anotada como a última unidade do portal' }).toBe(unidadeB)
   })
 
   test('escolhe a Zona Sul no agendar e marca com quem atende lá', async ({ browser }) => {

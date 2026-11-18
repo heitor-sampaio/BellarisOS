@@ -129,9 +129,23 @@
   alfabética. Com várias, "Selecione a unidade…" (obrigatório); com uma, ela;
   com o filtro de unidade da agenda ou o clique numa coluna, a dela. A
   primeira escolha mantém o procedimento e a profissional pedidos (o
-  "Reagendar"); o que a unidade não tem cai. O "Novo cliente" da rede, igual
-  (a unidade de cadastro sem pré-escolha). Prova:
+  "Reagendar"); o que a unidade não tem cai. Prova:
   `e2e/vendas-unidade-da-venda.spec.ts` ("A14").
+- **O "Novo cliente" não pergunta nem mostra unidade** (auditoria das regras,
+  2026-11-18; o Heitor: "o cliente não é da unidade, o cliente é da rede" —
+  H16; "Nada se prende a clients.branch_id" — CLAUDE.md §5). Era "Unidade de
+  cadastro *" (sem pré-escolha) pela rede, e "Unidade de cadastro: X" com uma
+  só. A ficha nasce na unidade do ENDEREÇO (o portal da unidade, a conversa
+  aberta nela); pela rede, sem unidade. `clients.branch_id` fica no banco só
+  como "onde a ficha nasceu": nada o lê para decidir — nem o portal, nem o
+  plano, nem o mapa de injetáveis, nem as automações, nem a LGPD
+  (`tests/cliente-da-rede-sem-unidade-de-cadastro.test.ts` trava toda
+  consulta a `clients` que peça a coluna). Com várias unidades, o cadastro diz
+  "A cliente é da rede: aparece na lista de Clientes de todas as unidades, e
+  qualquer uma a atende." (`avisoDaFichaDaRede`). Prova:
+  `e2e/vendas-unidade-da-venda.spec.ts` ("A14"),
+  `e2e/agenda-rede-de-uma-opcao.spec.ts` ("A2"),
+  `tests/cadastro-sem-unidade-de-cadastro.test.ts`.
 - **O BLOQUEIO pontual da agenda** (decisão 3 do Heitor, 7ª simulação,
   2026-11-05: "concordo" — a Lia e a Rita procuraram em Agenda, Equipe e
   Configurações onde bloquear o almoço, a folga e as férias). "Bloquear
@@ -352,12 +366,14 @@
   a "Minha agenda") e o Financeiro da unidade leem o agendamento e o
   lançamento pela sessão, mas o nome da cliente e do profissional sai de
   `nomesDosRegistros` (`lib/nomes-dos-registros.ts`, cliente de serviço, com
-  a rede, só os ids dos registros já lidos). Pela sessão, `clients_select`
-  mostra a ficha só à unidade de CADASTRO e a política de `users` mostra a
-  quem não tem “A rede inteira” só os membros das unidades dele: a cliente cadastrada
-  em outra unidade e o profissional da rede viravam "—". A RLS de `clients` e
-  `users` não foi alargada (decisão de produto). Prova:
-  `e2e/agenda-nomes-de-outra-unidade.spec.ts`.
+  a rede, só os ids dos registros já lidos). Pela sessão, a política de
+  `users` mostra a quem não tem “A rede inteira” só os membros das unidades
+  dele: o profissional da rede virava "—". A de `clients` recortava pela
+  unidade de CADASTRO até 2026-11-18 — era "decisão de produto", do Claude,
+  contra a fala do Heitor ("o cliente não é da unidade, o cliente é da rede",
+  H16; CL-P1): agora confere a REDE (migration `20261124200001`,
+  `crm-inbox.md`; prova `e2e/rls-cliente-da-rede.spec.ts`). O contorno pelo
+  servidor fica, sem dano. Prova: `e2e/agenda-nomes-de-outra-unidade.spec.ts`.
 - **Desativar oferece REPASSAR** (H6, decisão do Heitor, 2026-11-01: "os
   agendamentos e oportunidades de quem é desativado, no momento da
   desativação, [dar] a opção de repassar para outra pessoa, caso a caso ou
@@ -512,9 +528,11 @@
   agendamento de OUTRO profissional diz "Este atendimento é de outra
   pessoa que atende" (A23 da 22ª: era "de outra profissional", no feminino
   fixo), com o nome e "Voltar à agenda", e nada do atendimento (a quem tem
-  o Prontuário, também quem conclui: "Quem conclui é quem tem a Agenda de
-  todos e o Prontuário em Gerenciar (nomes)." — A26 da 23ª,
-  `textoDeQuemConcluiODeOutra`)
+  o Prontuário, também quem conclui: "Quem conclui é quem tem o Atendimento
+  em Gerenciar e a Agenda de todos (nomes)." — A26 da 23ª,
+  `textoDeQuemConcluiODeOutra`; até 2026-11-18 dizia "a Agenda de todos e o
+  Prontuário em Gerenciar" — texto corrigido pelo Claude na varredura de
+  18/11, ATD-A06)
   (`AtendimentoDeOutraProfissional`; r2-atd-04, revisão do Heitor de
   2026-11-03: o 404 "Página não encontrada" da A38 parecia defeito — e antes
   dele era `semAcesso()`, "Seu cargo não libera esta tela", e o cargo libera;
@@ -785,7 +803,9 @@
   avaliação enviada." (A45 da 24ª, `textoDoConfirmadoNoApp`). **O que ela avalia é da rede** (Configurações → Geral, "O que
   a cliente avalia", `tenants.avaliacao_o_que`): "O atendimento e cada
   procedimento" (`OS_DOIS`, o padrão), "Só o atendimento" ou "Só cada
-  procedimento"; quem não tem “A rede inteira” não muda (`recusaDaConfigDaRede`).
+  procedimento"; só a Admin da rede muda (`recusaDaConfigDaRede`; o Heitor,
+  2026-11-18: "Configuração da rede toda só pela conta admin" — era quem tinha
+  “A rede inteira”).
   - A nota do **ATENDIMENTO** ("Atendimento — como foi, com a Dra. X") é
     `appointments.client_rating` e vale para o atendimento e a profissional.
     Era o "Profissional" de antes.
@@ -961,8 +981,18 @@
   unidade da clínica"; A62/A65 da 5ª simulação). A ficha é da REDE: o portal
   de qualquer unidade ATIVA da rede da ficha abre a mesma ficha
   (`slugsDaRede` em `fichaDaRequisicao`, e o layout de `[slug]` confere a
-  rede, não a unidade de cadastro — que abre mesmo desativada, por ser o
-  destino do login). Com mais de uma unidade, o agendar começa por "Em qual
+  rede e que a unidade está ATIVA — a de cadastro não tem exceção). **O
+  destino do login é a ÚLTIMA unidade usada no portal** (auditoria das
+  regras, 2026-11-18; era a de cadastro): cada entrada anota a unidade do
+  endereço em `clients.portal_ultima_unidade` (`registrarEntradaNoPortal`), e
+  o login, o seletor de rede e o "entrar" vão a ela; sem nenhuma (ou
+  desativada), a primeira unidade ativa da rede por nome (`unidadeDoPortal`,
+  `lib/clientes/unidade-do-portal.ts` — decisão do Claude pelo princípio de
+  que qualquer unidade abre a mesma ficha, 18/11). O pedido de assinatura
+  pelo app vai ao portal da unidade do DOCUMENTO (ou da de quem pede), e o
+  aviso de pontos a vencer ao da unidade dos PONTOS que vencem
+  (`avisos_de_vencimento`, migration `20261124200004`), cada um com a última
+  usada como reserva. Com mais de uma unidade, o agendar começa por "Em qual
   unidade?": cada uma é o agendar do endereço DELA, e os procedimentos, as
   profissionais e os horários vêm de lá; o resumo diz a unidade. Os cartões da
   Agenda do app dizem a unidade de cada agendamento quando a rede tem mais
@@ -970,7 +1000,8 @@
   dava 404 fora da unidade de cadastro. A lista de unidades da cliente é cache
   de 5 min (`getCachedFichasDoLogin`): a unidade nova aparece no app em até
   5 min. Prova: `e2e/portal-cliente-outra-unidade.spec.ts`,
-  `tests/ficha-da-requisicao.test.ts`.
+  `tests/ficha-da-requisicao.test.ts`, `tests/portal-sem-unidade-de-cadastro.test.ts`,
+  `tests/aviso-de-vencimento-sem-unidade-de-cadastro.test.ts`.
   **O aviso "Horário marcado" diz a unidade** quando a rede tem mais de
   uma ativa (A28 da 6ª simulação, 2026-11-04): "Botox em 05/11 às 10:00, na
   unidade Boa Viagem." (`textoDoHorarioMarcado`, `unidadeParaOAviso`, nos dois
@@ -1353,7 +1384,8 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   Gerenciar deixou de iniciar — e de abrir a comanda do atendimento pelo
   início (PDV3); a rede que quiser dá o Atendimento em Gerenciar a ele. A tabela está na `SCOPE_NOTE` de
   `lib/permissions-copy.ts`. `updateAppointmentStatusInterno` pede Gerenciar
-  para Confirmado, Chegou, Cancelado e Falta (C10); o Cancelado passa pelo
+  para Confirmado, Chegou, Cancelado e Falta (C10) — o Cancelado do Em
+  atendimento é a desistência, do Atendimento em Gerenciar (ATD-A01); o Cancelado passa pelo
   `cancelarCore` (motivo, aviso, histórico — C12), a Falta só sai de
   Agendado/Confirmado/Chegou e nunca vira Cancelado, e o "Em atendimento"
   passa pelo início de verdade (`startAppointment`). A janela só mostra o
@@ -1443,8 +1475,8 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   portal da unidade, a consulta com o preço daquela unidade e "quem cria e
   muda é quem tem Procedimentos em Gerenciar" (`[data-catalogo-da-rede]`); na
   rede, "Seu cargo só consulta o catálogo" (`[data-catalogo-so-consulta]`).
-  Ficou com a rede só a comissão do procedimento (é configuração do
-  financeiro). O formulário só existe com a janela ABERTA (A4 da 8ª: eram N+1
+  Ficou com a Admin da rede só a comissão do procedimento (é configuração da
+  rede: `recusaDaConfigDaRede`, o Heitor, 2026-11-18 — era "com a rede"). O formulário só existe com a janela ABERTA (A4 da 8ª: eram N+1
   formulários no DOM). Prova: `e2e/procedimentos-por-permissao.spec.ts`,
   `e2e/procedimentos-atritos-da-8.spec.ts` (A35 e A20, revistos).
 - **Os nomes do formulário** (PR2/PR3): "Permitir auto agendamento" (era
@@ -1466,8 +1498,11 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   servidor gravava. `procedimentosParaPlano` sempre com a unidade: a do plano
   aberto (`getPlanoParaEditar` traz o `catalogo` dele; a tela do plano lê
   `getCabecalhoDoPlano().unidadeId`), a do atendimento (a sessão de
-  atendimento) e, no plano NOVO, a unidade em que ele nasce (a unidade da
-  ficha). O que já estava no plano e a unidade não faz continua à vista
+  atendimento) e, no plano NOVO, a unidade em que ele nasce — a do endereço;
+  na ficha da REDE com duas ou mais unidades, a escolhida em "Unidade do
+  plano *" (`?unidadeDoPlano=`; o "Novo plano" espera a escolha), nunca a de
+  cadastro da cliente (auditoria das regras, 2026-11-18; `criarPlanoDoCliente`
+  sem unidade recusa "Selecione a unidade do plano."). O que já estava no plano e a unidade não faz continua à vista
   ("X (não é feito nesta unidade)"). E o servidor recusa:
   `recusaDosProcedimentosDoPlano`, em `gravarSessoes` (antes de apagar as
   sessões antigas) e antes do `gerar_plano_da_avaliacao`. Prova:
@@ -1497,8 +1532,9 @@ de decisões) — **implementadas na F65 (2026-11-12)**:
   sozinha. A lista de procedimentos da rede diz embaixo do preço "R$ 590,00
   na Menino Deus" (`[data-preco-da-unidade]`). Sem unidade (a oportunidade, a
   recompensa da fidelidade), vale o da rede. O editor do plano tem sempre a
-  unidade (D4 da 14ª, F73): o plano novo da ficha da rede nasce na unidade da
-  ficha, e o catálogo e o preço são os dela. Prova: `e2e/procedimento-preco-da-unidade.spec.ts`,
+  unidade (D4 da 14ª, F73): o plano novo da ficha da rede nasce na unidade
+  escolhida em "Unidade do plano" (com uma só, ela), e o catálogo e o preço
+  são os dela. Prova: `e2e/procedimento-preco-da-unidade.spec.ts`,
   `tests/preco-na-unidade.test.ts`.
 - `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um
   procedimento. **É o histórico do preço DA REDE** (C15, F65; princípio 7): o
@@ -1619,8 +1655,10 @@ const procedures = await ler(
   - **Uma ficha por rede**: `forms.tipo = 'PRE_ATENDIMENTO'`
     (`forms_um_pre_atendimento_por_rede`), que nasce com a rede (gatilho em
     `tenants`) com as perguntas da ficha de saúde de campos fixos de antes, e os
-    MESMOS ids (`allergies`, `medications`, `skinType`…). Edita só quem tem
-    `forms: MANAGE` e é da rede, em Configurações → Fichas; sem foto nem
+    MESMOS ids (`allergies`, `medications`, `skinType`…). Edita só a Admin da
+    rede (`recusaDaConfigDaRede`: as fichas estão na lista do CLAUDE.md §11; o
+    Heitor, 2026-11-18: "Configuração da rede toda só pela conta admin" — era
+    `forms: MANAGE` e ser da rede; texto corrigido pelo Claude), em Configurações → Fichas; sem foto nem
     planejador de injetáveis (`TIPOS_FORA_DO_PRE_ATENDIMENTO`: a cliente
     responde pelo celular). As actions e listas das fichas de PROCEDIMENTO
     filtram `tipo = 'PROCEDIMENTO'` — sem isso, editavam e apagavam esta.
@@ -1819,8 +1857,10 @@ const procedures = await ler(
   `agenda`), os anexos clínicos do cliente (`lib/clientes/anexos.ts`: exame,
   laudo, foto clínica, receita, termo — só `clients`), a anotação do
   profissional no plano e a ficha de saúde no arquivo do tratamento (só `agenda`).
-  Concluir o atendimento e salvar a evolução pedem `medical_records: MANAGE`
-  (gravam prontuário). Prova: `e2e/clinico-so-com-prontuario.spec.ts`.
+  Concluir o atendimento pede o Atendimento em Gerenciar (o clínico dele, o
+  Prontuário em Gerenciar); salvar a evolução, a ficha do procedimento e a
+  foto dela pede os dois (gravam prontuário; o Heitor, 2026-11-18 — era só o
+  Prontuário; ATD-A03). Prova: `e2e/clinico-so-com-prontuario.spec.ts`.
 - **A aba Prontuário lista TODO atendimento com registro clínico** (D4 da
   simulação de 2026-10-27): a evolução (`medical_record_entries.notes`), a
   intercorrência ou a ficha de atendimento — basta um dos três
@@ -1871,8 +1911,11 @@ const procedures = await ler(
   `lib/prontuario/acessos.ts`, tabela `prontuario_acessos`). Toda leitura
   clínica: a ficha da cliente (com os anexos clínicos), a sessão de
   atendimento, o plano com a anotação ou a ficha de saúde (`getPlanosDoCliente`,
-  `getPlanoParaEditar`, `getCheckoutPlan`, `getTreatmentPlanDetails`) e a
-  liberação do prontuário no pacote LGPD.
+  `getPlanoParaEditar`, `getCheckoutPlan`, `getTreatmentPlanDetails`), a
+  liberação do prontuário no pacote LGPD e os mapas de injetáveis — abrir o
+  planejamento, a lista da cliente e a lista da tela de Injetáveis (cada
+  cliente dela), no ponto "Planejamento de injetáveis" (ATD-P09, 18/11;
+  migration `20261124500002`; decisão do Claude pela regra do CLAUDE.md §14).
   - Registra-se DEPOIS de decidir que o dado vai à tela (o mesmo
     `canViewRecords`/`podeVerClinico`), nunca só por abrir a página: quem não
     tem o módulo abre a ficha e não entra no registro. Tela nova que mostra
@@ -2011,7 +2054,10 @@ const procedures = await ler(
   corpo do atendimento depende de CONFIGURAÇÃO: só aparece quando o
   procedimento tem uma ficha com o campo "planejador de injetáveis"; sem ela
   (a Toxina da simulação não tinha ficha), o mapa do atendimento é o do
-  Planejamento. Prova: `e2e/injetaveis-confirmar-so-no-atendimento.spec.ts`.
+  Planejamento. Sem o atendimento, a action (`registrarAplicacao`) e a função
+  do registro recusam (ATD-P07, 18/11; migration `20261124500001` — a função
+  inseria a aplicação sem atendimento). Prova:
+  `e2e/injetaveis-confirmar-so-no-atendimento.spec.ts`.
   **UMA aplicação por mapa por atendimento** (D14 da 9ª simulação,
   2026-11-07): cada clique em "Registrar aplicação" gravava outra — a Marina
   ficou com duas iguais de 56 UI, e o "Finalizar" somava as duas na conta com
@@ -2279,10 +2325,11 @@ const procedures = await ler(
   recebido vence o documento aberto). O REJECTED antigo é "Cancelado". Sete
   situações: um seletor (`.filtro-select`), não um segmentado. O plano
   proposto se chama "Proposto" em toda tela (era "Aguardando checkout").
-- **Os planos de tratamento seguem a agenda "só os meus"** (o Heitor,
+- **Os planos de tratamento seguem o Atendimento "só os meus"** (era a
+  Agenda até 2026-11-18, quando os planos passaram ao módulo Atendimento; o Heitor,
   2026-10-28: "quem tem 'só os meus' vê 'só os meus', em qualquer lugar" —
   a fala é sobre o que se VÊ; valer também para as actions pelo id é decisão
-  do Claude, pela regra do CLAUDE.md §11). Com `agenda` OWN, a tela Planejamentos (`listarPlanejamentos`),
+  do Claude, pela regra do CLAUDE.md §11). Com `atendimento` OWN, a tela Planejamentos (`listarPlanejamentos`),
   os planos da cliente (`getPlanosDoCliente`, o Planejamento da ficha e do
   atendimento) e TODA action pelo id do plano que passa por `planoDoTenant`
   (cabeçalho, editar, salvar, renomear, ligar cliente, enviar ao PDV,
@@ -2404,7 +2451,8 @@ const procedures = await ler(
     a anterior" (`[data-registro-editado]`, `[data-versao-anterior]`), no
     atendimento e no registro da aba Prontuário. A avaliação concluída
     destravada ganhou o "Salvar" (não tinha: destravar não gravava nada).
-    Corrigir pede a Agenda e o Prontuário em Gerenciar; a ficha cancelada ou
+    Corrigir pede o Atendimento e o Prontuário em Gerenciar (era a Agenda até
+    2026-11-18), também a ficha do procedimento e a foto dela; a ficha cancelada ou
     de falta não se preenche mais.
   - **As duas tabelas são só do servidor**: RLS ligada sem política
     permissiva (a sessão não lê nem grava — prova com o token de um membro no
@@ -3116,7 +3164,9 @@ indicada é a do consolidado do levantamento):
 - **Editar o produto não mexe no custo** (C17): o custo vem das entradas;
   `updateProduct` não grava `cost_price`, e o formulário abre com o mínimo
   do CADASTRO. A categoria tem de ser da rede e o mínimo não é negativo
-  (C24). Prova: `e2e/estoque-cadastro-f66.spec.ts`.
+  (C24) — no cadastro, na edição e no mínimo da unidade (o cadastro e a
+  edição gravavam o negativo até a varredura de 18/11, ATD-E02). Prova:
+  `e2e/estoque-cadastro-f66.spec.ts`, `tests/varredura-atendimento.test.ts`.
 - **A transferência confere o RENDIMENTO** (C18): 2 frascos de 1,5 (150 UI)
   são recusados — "Disponível: 1,5 frasco (o frasco aberto conta pelo que
   sobra nele)" —, e a janela diz o disponível pela prateleira. Era a conta
@@ -3269,9 +3319,29 @@ O resto do fluxo:
   `pre_pago_libera`, migration `20261123900004`. Até ali devolvia, como em
   todo cancelamento; o cancelado ANTES de iniciar continua devolvendo. A
   janela diz isso (`TEXTO_DA_SESSAO_NA_DESISTENCIA`, `[data-sessao-paga-conta]`).
-  Baixar o insumo pede o Atendimento em Gerenciar; a intercorrência, o
-  Prontuário em Gerenciar; o "só os meus" vale pelo id. Sem nada marcado, é o
-  cancelar de sempre. Prova:
+  A sessão do pacote gasta na desistência emite o MESMO fato da conclusão,
+  "Sessão de pacote usada" (`pacote.sessao_usada`, com as restantes), pelo
+  próprio gatilho, com a chave da conclusão (`pacote.sessao_usada:<agendamento>`
+  — um atendimento, um consumo) e origem `banco` (migration
+  `20261124250002`; decisão do Claude pelos princípios: a automação de "acabou,
+  renove" não via a última sessão gasta assim). Prova:
+  `e2e/atendimento-desistencia-evento-do-pacote.spec.ts`,
+  `tests/desistencia-emite-sessao-usada.test.ts`. **Desistir — cancelar o Em
+  atendimento, com ou sem insumo — pede o Atendimento em Gerenciar**, com o
+  "só os meus" dele (e o da Agenda, o de ver), não a Agenda (CLAUDE.md §11, o
+  Heitor, 2026-11-18: o módulo Atendimento "desiste no meio"; ATD-A01 da
+  varredura de 18/11): a regra é UMA, `recusaDoCancelar`
+  (`lib/appointments/quem-cancela.ts`), lida no `cancelarCore` e na
+  desistência com insumo pela situação do agendamento — o agendado segue com
+  a Agenda em Gerenciar —, e a gravação vale só na situação lida. A janela da
+  agenda mostra o "Cancelar" do Em atendimento a quem atende
+  (`podeAtenderEste`), com o aviso da sessão paga, e sem o "Não compareceu"
+  (o servidor recusa: "não é falta"); a tela do atendimento, a quem tem o
+  Atendimento (`canManage`); o Copilot (`cancelar_agendamento`), pela mesma
+  regra, com o aviso no cartão. A intercorrência pede o Prontuário em
+  Gerenciar. Sem nada marcado, é o cancelar de sempre. Prova:
+  `e2e/atendimento-desistir-pelo-modulo.spec.ts`,
+  `tests/varredura-atendimento.test.ts`. Prova:
   `e2e/atendimento-atritos-da-8.spec.ts` ("A27"). **E a tela do cancelado
   mostra a intercorrência** (A25 da 9ª, 2026-11-07): ia ao prontuário e não
   aparecia no atendimento cancelado — agora "Intercorrência: …" abaixo do
@@ -3664,6 +3734,7 @@ O resto do fluxo:
 ❌ Criar agendamento sem procedure_id (a avaliação era a exceção e não existe mais)
 ❌ Gravar o agendamento do app da cliente fora de createAppointmentCore (por-05: uma regra só, a da agenda da equipe)
 ❌ Prender o portal da cliente à unidade de CADASTRO (clients.branch_id) — a ficha é da rede: a unidade é a do endereço, entre as da rede
+❌ Ler clients.branch_id para decidir qualquer coisa (o destino do portal, a unidade do plano novo, do mapa de injetáveis, do aviso de pontos, o fuso das automações, a LGPD, o cadastro) — é só "onde a ficha nasceu" (auditoria das regras, 18/11; tests/cliente-da-rede-sem-unidade-de-cadastro trava)
 ❌ Confundir a ficha de ATENDIMENTO (forms/form_data) com a ficha de SAÚDE do cliente
 ❌ Action ou lista de ficha de atendimento sem .eq('tipo', 'PROCEDIMENTO') (edita e apaga a ficha de saúde)
 ❌ Gravar a ficha de saúde fora de gravarAnamneseGeral (o pendente fica aberto e a cliente responde de novo)
@@ -3730,6 +3801,7 @@ O resto do fluxo:
 ❌ Pôr anexo clínico (exame, laudo, receita, foto, termo) na aba Documentos da ficha — ele mora no Prontuário (PR1b)
 ❌ Trocar a evolução, a intercorrência ou a ficha do atendimento CONCLUÍDO fora de prontuario_corrigir_registro (a versão de antes se perderia — PR2b)
 ❌ Abrir prontuario_anotacoes ou prontuario_versoes à sessão, ou dar UPDATE/DELETE nelas (o gatilho recusa; só o servidor lê e grava)
+❌ Política para a sessão (leitura ou escrita) em medical_records, medical_record_entries, injectable_maps ou injectable_applications — o Prontuário é escopável e a RLS não aplica o "só os meus": lê e grava só o servidor —, ou assinar medical_record_entries no Realtime (é prontuario_sinais); e escrita pela sessão em procedures, procedure_products e products (ATD-P01/P02/E01, 18/11; e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts)
 ❌ Escrever "pré-atendimento" ou "anamnese" em texto que se lê — é "ficha de saúde" (tests/ficha-de-saude-no-texto trava)
 ❌ Mostrar no portal da cliente um client_documents sem enviado_em (a rede decide o que vai ao app)
 ❌ Recriar um "Retorno em N dias" (regra, lista ou cron) — é um agendamento novo (aut-04)

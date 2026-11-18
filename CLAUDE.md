@@ -222,7 +222,11 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   serviço, depois da trava; as comissões nem se leem pela sessão (a tela
   assina o sinal `comissoes_sinais`), e os lançamentos também não (F75:
   `financeiro_so_pelo_servidor`; prova `e2e/rls-f75-financeiro-pela-sessao.spec.ts`). Regra em `docs/regras/convencoes.md`;
-  prova: `e2e/rls-sessao-so-le.spec.ts`.
+  prova: `e2e/rls-sessao-so-le.spec.ts`. **Módulo com escopo não se lê pela sessão** (a RLS não aplica o
+  "só os meus"; varredura de 18/11): o prontuário e os injetáveis não têm política nenhuma, e a tela do
+  atendimento assina `prontuario_sinais`; procedimentos e produtos a sessão só lê; automações e eventos só com
+  as Automações e "A rede inteira" (`private.sessao_ve_o_modulo`, que lê o cargo gravado e o plano), e as telas
+  assinam `automacoes_sinais`. Prova: `e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts`.
 - **Realtime de tela que mostra dado com escopo assina um SINAL, não a tabela.**
   O quadro de oportunidades assina `crm_quadro_sinais` (uma linha por rede,
   marcada por gatilho em leads, etapas e funis) e recarrega pelo servidor, que
@@ -335,7 +339,10 @@ conta é dela; as fichas são de cada rede, e cada rede só vê a sua.
   rede); o agendar do app usa a unidade do ENDEREÇO, pergunta "Em qual
   unidade?" quando há mais de uma e grava pelo `createAppointmentCore`. Na
   equipe, quem tem Clientes em Gerenciar edita, arquiva e reativa a cliente de
-  qualquer unidade. Nada se prende a `clients.branch_id`. Prova:
+  qualquer unidade. Nada se prende a `clients.branch_id` — é só "onde a ficha nasceu", e o cadastro
+  não pergunta unidade (18/11): a RLS de `clients` e dos injetáveis confere a REDE (`20261124200001`), e o
+  portal abre na última unidade usada (`clients.portal_ultima_unidade`; sem ela, a primeira ativa —
+  `lib/clientes/unidade-do-portal.ts`). Prova:
   `e2e/portal-cliente-outra-unidade.spec.ts`, `e2e/ficha-de-outra-unidade.spec.ts`.
 - **O endereço (slug) da unidade é único no sistema inteiro**
   (`branches_slug_unico`, 2026-10-19) — é o que deixa o endereço decidir a
@@ -418,7 +425,8 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   não estiver na lista — a página pode não pedir sessão e mesmo assim nunca ser
   vista. Hoje são: `/`, `/privacidade`, `/verificar*` (conferir documento
   assinado), `/assinar/*` (o link de assinatura), `/pre-atendimento/*` (o
-  link da ficha de saúde), `/schedule*` e
+  link da ficha de saúde), `/schedule` e `/schedule/…` (o caminho exato, não o
+  prefixo: a unidade `schedule-studio` não é pública) e
   `/api/*`, mais as telas de autenticação.
   - Quem precisa disso: o que é lido por quem **ainda não entrou** ou **nunca
     vai entrar**. A política de privacidade é o caso típico — e loja de
@@ -715,7 +723,7 @@ Regras:
   "Configuração da rede toda só pela conta admin"; era a H7 de 01/11, quem
   tinha "A rede inteira"). Tags, funis, cargos, fichas, modelos de documento,
   integrações, automações, campanhas, templates, as Importações, a comissão do
-  procedimento e os dados da rede: `mexeNaConfigDaRede`/`recusaDaConfigDaRede`
+  procedimento, a fidelidade, as maquininhas e o Pix, os adicionais do plano e os dados da rede: `mexeNaConfigDaRede`/`recusaDaConfigDaRede`
   (`lib/configuracao-da-rede.ts`) leem `ctx.isNetworkAdmin` (o cargo de sistema
   gravado, nunca a claim), e a aba diz "Esta configuração é só da Admin da
   rede." e quem a muda. Autorizar o suporte a entrar na conta também é só da
@@ -819,6 +827,8 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)
 ❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
+❌ Política de leitura pela sessão em tabela de módulo com escopo (prontuário, comissões, lançamentos): a RLS não aplica o "só os meus" — o servidor lê, a tela assina um sinal
+❌ Decidir qualquer coisa por clients.branch_id (é só onde a ficha nasceu; a cliente é da rede)
 ❌ Política de ESCRITA em tabela de configuração que confere só eh_da_rede() (sem o módulo, qualquer membro da rede grava) — a sessão lê, o servidor grava
 ❌ Policy de leitura numa tabela do Realtime sem `to authenticated` (o inscrito anônimo a estoura e o lote some para todos)
 ❌ Escolher a ficha da cliente pela claim client_id ou por auth_id … limit 1 (ela tem uma ficha por rede: é ctx.clientId no app, clientes_do_login() no banco)

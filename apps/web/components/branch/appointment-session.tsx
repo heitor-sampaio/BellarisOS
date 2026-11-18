@@ -1912,8 +1912,9 @@ export function AppointmentSession({
               </div>
             )}
 
-            {/* Cancelar (qualquer ativo): a agenda em Gerenciar (D20, F65) — em Ver, a action recusava. */}
-            {isActive && canCheckin && (
+            {/* Cancelar: a Agenda em Gerenciar (F65); o Em atendimento é DESISTIR, do
+                Atendimento em Gerenciar com o escopo dele (canManage — recusaDoCancelar). */}
+            {isActive && (status === 'IN_PROGRESS' ? canManage : canCheckin) && (
               <button type="button" onClick={() => setShowCancel(true)}
                 className="btn-ghost" style={{ padding: '9px 14px', fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', gap: 5 }}>
                 <XCircle size={14} /> Cancelar

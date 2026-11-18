@@ -89,6 +89,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
   const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
   if (!branch) notFound()
+  // A unidade tem de ser uma das da pessoa (CLAUDE.md §6: layout e página
+  // renderizam em paralelo — o redirect do layout decide a resposta, mas as
+  // consultas desta página rodavam mesmo assim, com o cliente de serviço).
+  if (!alcancaUnidade(ctx, branch.id)) redirect('/')
 
   const branchId = branch.id
   const now = new Date()

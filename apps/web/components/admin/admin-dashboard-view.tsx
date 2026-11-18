@@ -124,6 +124,8 @@ export interface AdminDashboardProps {
   todayTotal:       number
   todayByBranch:    TodayBranchStat[]
   pendingPlans:       AlertPendingPlan[]
+  /** Quantos planos aguardam (a lista traz só os primeiros — IND-02). */
+  pendingPlansTotal?: number
   lowStockItems:      AlertLowStock[]
   /** Os lotes que vencem em 30 dias (A41 da 7ª), a quem tem o Estoque. */
   lotesVencendo?:     LoteNoDashboard[]
@@ -467,7 +469,7 @@ export function AdminDashboardView({
   totalClientsEver, branchCount, umaUnidade = false, unidadeRecortada = null, recorteDesativado = false, hrefDaRede = '/admin/dashboard',
   prevRevenue, prevAppointments, prevNewClients,
   branchStats, todayTotal, todayByBranch,
-  pendingPlans, lowStockItems, lotesVencendo = [], agora = new Date().toISOString(), stockStatus, zeroStockCount, lowStockCount, stockTurnover,
+  pendingPlans, pendingPlansTotal, lowStockItems, lotesVencendo = [], agora = new Date().toISOString(), stockStatus, zeroStockCount, lowStockCount, stockTurnover,
   evolutionData,
   branchOccupancy,
   avisoDosAbertos,
@@ -491,6 +493,8 @@ export function AdminDashboardView({
   const sortedStats = [...branchStats].sort((a, b) => b.revenue - a.revenue)
 
   const hasAlerts = pendingPlans.length > 0 || lowStockItems.length > 0
+  // IND-02 (varredura de 18/11): o número é o total do banco, não o tamanho da lista.
+  const totalDePlanos = Math.max(pendingPlansTotal ?? 0, pendingPlans.length)
 
   const can = (m: AppModule) => permissions[m] !== 'NONE'
   const hasAnyWidget = ALL_MODULES.some(m => can(m))
@@ -859,7 +863,7 @@ export function AdminDashboardView({
                   background: 'var(--warning)', color: 'var(--surface)',
                   padding: '2px 8px', borderRadius: 10,
                 }}>
-                  {pendingPlans.length}
+                  {totalDePlanos}
                 </span>
               </div>
               <div>
@@ -888,9 +892,9 @@ export function AdminDashboardView({
                     </a>
                   </div>
                 ))}
-                {pendingPlans.length > 5 && (
+                {totalDePlanos > 5 && (
                   <div style={{ padding: '10px 18px', borderTop: '1px solid var(--hairline)', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    +{pendingPlans.length - 5} mais
+                    +{totalDePlanos - Math.min(pendingPlans.length, 5)} mais
                   </div>
                 )}
               </div>
@@ -1370,7 +1374,9 @@ export function AdminDashboardView({
         {/* Ranking — Valor gasto (com "só os meus", o que as clientes dela pagaram pelos atendimentos dela) */}
         {veDinheiro && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Valor gasto</span>
+            {/* Recortado a uma unidade, o ranking é o que as clientes fizeram NELA
+                (o pago e os atendimentos da unidade); na rede, o todo — e o título diz. */}
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Valor gasto{unidadeRecortada ? ' nesta unidade' : ''}</span>
           </div>
           {topClients.length === 0 ? (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '24px 20px' }}>Sem dados de clientes no período.</p>
@@ -1422,7 +1428,7 @@ export function AdminDashboardView({
         {/* Ranking — Recorrência */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Recorrência</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Recorrência{unidadeRecortada ? ' nesta unidade' : ''}</span>
           </div>
           {topClientsByRecurrence.length === 0 ? (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados no período.</p>

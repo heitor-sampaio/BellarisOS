@@ -14,7 +14,7 @@ import type { EscolhaDosAgendamentos, PreviaDoCancelamento } from '@/lib/pacotes
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { Dica } from '@/components/shared/dica'
 import {
-  EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, type EscolhaDaDevolucaoEstado,
+  EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, useFaltaAMaquininhaDoUsado, type EscolhaDaDevolucaoEstado,
 } from '@/components/shared/escolha-da-devolucao'
 
 /**
@@ -64,6 +64,8 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
   // Como devolver, e como estornar o pagamento pego em parte (com a forma, as
   // vezes e a bandeira do pagamento novo do usado): EscolhaDaDevolucao.
   const [escolha, setEscolha] = useState<EscolhaDaDevolucaoEstado>(ESCOLHA_INICIAL)
+  // C75 (VF-01 da varredura de 18/11): o cartão do usado pede a maquininha com mais de uma ativa.
+  const faltaMaquininha = useFaltaAMaquininhaDoUsado(escolha)
   const [agendamentos, setAgendamentos] = useState<EscolhaDosAgendamentos | null>(null)
   const [motivo, setMotivo] = useState('')
   const opcoesDeVezes = useOpcoesDeVezes()
@@ -86,7 +88,7 @@ function CancelarConjunto({ tipo, id, onFechar, onCancelado }: { tipo: 'PACOTE' 
 
   const temAgendadas = (previa?.agendamentos.length ?? 0) > 0
   const pronto = !!previa && motivo.trim().length > 0
-    && escolhaCompleta(previa.devolver, previa.parcial, escolha)
+    && escolhaCompleta(previa.devolver, previa.parcial, escolha) && !faltaMaquininha
     && (!temAgendadas || agendamentos !== null)
 
   function confirmar() {

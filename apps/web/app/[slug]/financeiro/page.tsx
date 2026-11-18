@@ -4,6 +4,7 @@ import { notaDoEstornoParcial, notaDoUsoDeCredito, type LancamentoParaNota } fro
 import { notFound, redirect } from 'next/navigation'
 import { comAviso } from '@/lib/aviso-da-url'
 import { getTenantContext, assertPermission, assertUnidade, ownerFilter, temRecurso } from '@/lib/auth'
+import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 import { abaDoFinanceiro } from '@/lib/financeiro/abas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
@@ -215,11 +216,12 @@ export default async function FinancialPage({
     createdAt:        c.referenceAt,
   }))
 
-  // Lançar e estornar são do financeiro; receber é do caixa. Antes as três
-  // coisas saíam do mesmo nível, e quem operava o caixa também estornava.
+  // Lançar e estornar são do financeiro. Dar baixa é do PDV ou do Financeiro em
+  // Gerenciar de todos (CX2, o Heitor, 13/11: o Financeiro "dá baixa só no que
+  // entra sem passar pelo balcão"; era só o PDV, C33).
   const canWrite   = ctx.permissions.financial === 'MANAGE' && !ownFinancial
   const canReverse = canWrite
-  const canPay     = ctx.permissions.cashier === 'MANAGE'
+  const canPay     = podeDarBaixa(ctx)
 
   type Props = ComponentProps<typeof FinancialHub>
 

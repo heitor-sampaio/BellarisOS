@@ -276,6 +276,8 @@ export const ISOLADOS = [
   'portal-cliente-pacote-cancelado.spec.ts',
   'quadro-tempo-real.spec.ts',
   'rls-realtime-sem-sessao.spec.ts',
+  // A sessão só lê o prontuário, os procedimentos, os produtos e as automações (18/11).
+  'rls-sessao-so-le-prontuario-e-automacoes.spec.ts',
   'sessao-httponly.spec.ts',
   'suporte-entrada.spec.ts',
   'suporte-impersonar.spec.ts',
@@ -492,6 +494,8 @@ export const ISOLADOS = [
   'relatorio-vendas-comandas.spec.ts',
   // A explicação na dica do portal da cliente (2026-11-16): a cliente da própria rede.
   'dicas-portal-da-cliente.spec.ts',
+  // A varredura de 18/11 (vendas e financeiro): as taxas, o abater com produto, o plano_receber e o usado.
+  'financeiro-varredura-18-taxas.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

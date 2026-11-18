@@ -3,6 +3,7 @@ import { COLUNAS_DA_OFERTA, ofereceNaUnidade } from '@/lib/procedimentos/disponi
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, lerTodas } from '@/lib/db'
 import type { FichaDoLogin } from '@/lib/clientes/ficha-da-requisicao'
+import { unidadeDoPortal } from '@/lib/clientes/unidade-do-portal'
 import { quemRealizaOsProcedimentos } from '@/lib/procedimentos/quem-realiza'
 import { precosDaUnidade, precoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
@@ -94,22 +95,33 @@ export function getCachedFichasDoLogin(authId: string) {
       const admin = createAdminClient()
       const data = await ler(admin
         .from('clients')
-        .select('id, tenant_id, branches(slug, name, tenants(name))')
+        // Sem embed de `tenants`: `clients.tenant_id` não tem chave estrangeira
+        // (PGRST200 — o portal inteiro da cliente caía; o nome da rede vem
+        // da consulta das redes, abaixo).
+        .select('id, tenant_id, portal_ultima_unidade')
         .eq('auth_id', authId)
         .order('created_at'), 'buscar as fichas do login')
       // As unidades ATIVAS da clínica de cada ficha: o portal de qualquer uma
-      // abre esta ficha (H5, 2026-11-02).
+      // abre esta ficha (H5, 2026-11-02). O endereço de entrada é a última que
+      // ela usou, senão a primeira ativa — nunca a unidade de cadastro
+      // (auditoria das regras, 18/11; `unidadeDoPortal`).
       const redes = [...new Set((data ?? []).map(c => c.tenant_id as string))]
       const unidades = redes.length
-        ? ((await ler(admin.from('branches').select('slug, tenant_id')
-            .in('tenant_id', redes).eq('is_active', true), 'buscar as unidades das redes da cliente')) ?? []) as { slug: string; tenant_id: string }[]
+        ? ((await ler(admin.from('branches').select('id, slug, name, tenant_id')
+            .in('tenant_id', redes).eq('is_active', true).order('name').order('id'), 'buscar as unidades das redes da cliente')) ?? []) as { id: string; slug: string; name: string; tenant_id: string }[]
         : []
+      const nomesDasRedes = new Map(redes.length
+        ? (((await ler(admin.from('tenants').select('id, name').in('id', redes), 'buscar as redes da cliente')) ?? []) as { id: string; name: string }[])
+            .map(t => [t.id, t.name] as const)
+        : [])
       return (data ?? []).map(c => {
-        const unidade = c.branches as unknown as { slug: string; name: string; tenants: { name: string } | null } | null
+        const daRede = unidades.filter(u => u.tenant_id === c.tenant_id)
+        const entrada = unidadeDoPortal((c.portal_ultima_unidade as string | null) ?? null, daRede)
         return {
           clientId: c.id as string, tenantId: c.tenant_id as string,
-          slugsDaRede: unidades.filter(u => u.tenant_id === c.tenant_id).map(u => u.slug),
-          slug: unidade?.slug ?? null, unidade: unidade?.name ?? '', rede: unidade?.tenants?.name ?? '',
+          slugsDaRede: daRede.map(u => u.slug),
+          slug: entrada?.slug ?? null, unidade: entrada?.name ?? '',
+          rede: nomesDasRedes.get(c.tenant_id as string) ?? '',
         }
       })
     },

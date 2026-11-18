@@ -40,7 +40,7 @@ export interface Venda {
   quantidade:   number
   clienteId:    string | null
   cliente:      string | null
-  /** Quem atendeu (avulso), o profissional do plano, ou quem vendeu (pacote e pré-pago). */
+  /** Quem atendeu (avulso) ou quem vendeu (pacote, pré-pago, produto, plano); nulo = ninguém foi marcado (com-06). */
   profissional: string | null
   branchId:     string
   valor:        number

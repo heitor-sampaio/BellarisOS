@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, mensagemDoErro } from '@/lib/db'
-import { semAcesso } from '@/lib/sem-acesso'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { ADICIONAIS } from '@estetica-os/nucleo/lib/planos/recursos'
 import { getCachedRede, tagDaRede } from '@estetica-os/nucleo/lib/redes/cache'
@@ -15,8 +15,10 @@ import { pedirAoSistemaLevarValor } from '@/lib/assinatura/levar-valor'
  * A CLÍNICA contrata, muda ou tira um adicional do plano (2026-10-07, decisão
  * do Heitor: a clínica e o sistema contratam). Configurações → Assinatura.
  *
- * - Contrata quem é da REDE (sem unidade fixa) com configurações MANAGE: é a
- *   mensalidade da rede inteira. A sessão de suporte não contrata.
+ * - Contrata só a Admin da rede (o cargo de sistema; o Heitor, 18/11: "só
+ *   pela conta admin" — antes, quem tinha "A rede inteira" com Configurações
+ *   em Gerenciar): é a mensalidade da rede inteira. A sessão de suporte não
+ *   contrata.
  * - O preço é sempre o do plano (ou o já contratado): a clínica não dá preço.
  * - A regra inteira (cabe no plano, a quantidade, tirar com números em uso)
  *   mora em `assinatura_adicional_definir`, a mesma do sistema.
@@ -26,7 +28,9 @@ import { pedirAoSistemaLevarValor } from '@/lib/assinatura/levar-valor'
 export async function contratarAdicional(chave: string, quantidade: number): Promise<{ ok: true; aviso?: string } | { error: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
-  if (ctx.branchId !== null) throw semAcesso()
+  // A mensalidade é da rede toda: só a Admin da rede (o Heitor, 18/11: "só pela conta admin").
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
   const bloqueio = bloqueioDoSuporte(ctx, 'mudar a assinatura')
   if (bloqueio) return { error: bloqueio }
   if (!ADICIONAIS.some(a => a.chave === chave) || !Number.isInteger(quantidade)) return { error: 'Pedido inválido.' }

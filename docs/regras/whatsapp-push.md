@@ -17,7 +17,11 @@
     agendamento recebe porque a agenda é dele, com permissão ou sem.
   - **Responsável** — quem tem `MANAGE` no módulo que governa o fato e
     alcança a unidade onde ele aconteceu (a própria, ou a rede com
-    `branch_id` nulo). É a abrangência do §11, não uma regra nova.
+    `branch_id` nulo). É a abrangência do §11, não uma regra nova. A Admin
+    da rede é Responsável por TODO módulo do plano: o cargo de sistema tem
+    tudo em Gerenciar pela chave e não grava linha em `role_permissions` — a
+    leitura antiga não a achava, e ela nunca recebia (WPP-01 da varredura de
+    18/11; prova: `e2e/notificacoes-interessados.spec.ts`).
   - `VIEW` **não entra**: ver o módulo é poder consultar, não responder
     pelo que acontece nele. Quem só olha não precisa ser interrompido.
   - **O escopo também conta** (D7 da simulação de 2026-10-28): quem tem o

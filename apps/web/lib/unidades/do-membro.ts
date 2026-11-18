@@ -36,6 +36,29 @@ export function membroAlcancaAUnidade(
 }
 
 /**
+ * Quem edita (as unidades dela; null = a rede inteira) alcança TODAS as
+ * unidades do membro? O cargo e o desativar valem em todas elas (o login é um
+ * só): só quem alcança todas mexe (EQ1, plataforma.md). O membro da rede
+ * inteira, só quem também a tem. A tela e a action dividem esta regra.
+ */
+export function alcancaTodasAsDoMembro(
+  minhas: string[] | null, membro: { branchId: string | null; outrasUnidades?: string[] | null },
+): boolean {
+  if (minhas === null) return true
+  const dele = unidadesDoMembro(membro)
+  if (dele === null) return false
+  return dele.every(u => minhas.includes(u))
+}
+
+/** A recusa de desativar/reativar quem tem uma unidade fora do alcance (era "Membro não encontrado.", e a pessoa estava na lista). */
+export const FORA_DO_ALCANCE_PARA_DESATIVAR =
+  'Essa pessoa também está numa unidade fora do seu alcance: desativar e reativar é de quem alcança todas as unidades dela.'
+
+/** O porquê do cargo travado na Equipe (o mesmo motivo da recusa de `updateTeamMember`). */
+export const CARGO_DE_QUEM_TEM_OUTRA_UNIDADE =
+  'Essa pessoa também está numa unidade fora do seu alcance: o cargo dela só muda quem alcança todas as unidades dela.'
+
+/**
  * O filtro do PostgREST (`.or(…)` sobre `users`) de quem alcança a unidade: a
  * rede inteira (`branch_id` nulo), a principal e as outras (D1 da 17ª). Quem
  * lê "os da unidade" na equipe usa este, nunca `branch_id.eq` sozinho.

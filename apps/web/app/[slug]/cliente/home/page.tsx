@@ -490,7 +490,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                     </span>
                     {pkg.expires_at && (
                       <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-                        válido até {new Date(pkg.expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                        válido até {new Date(pkg.expires_at).toLocaleDateString('pt-BR', { timeZone: fuso })}
                       </span>
                     )}
                   </div>
@@ -530,7 +530,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
             ))}
 
             {activePlans.filter(p => p.status === 'PROPOSED').map(plan => (
-              <PlanoProposto key={plan.id} plano={plan} slug={slug} validadeDias={validadeDias} whatsapp={aUnidade?.whatsapp ?? null} telefone={aUnidade?.telefone ?? null}
+              <PlanoProposto key={plan.id} plano={plan} slug={slug} validadeDias={validadeDias} fuso={fuso} whatsapp={aUnidade?.whatsapp ?? null} telefone={aUnidade?.telefone ?? null}
                 avulsos={avulsosPorPlano.get(plan.id) ?? []} />
             ))}
 
@@ -600,8 +600,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
  * procedimentos, o valor e a validade, e "Falar com a clínica". O app não
  * aceita: o aceite (e o pagamento) é na clínica.
  */
-function PlanoProposto({ plano, slug, validadeDias, whatsapp, telefone, avulsos = [] }: {
+function PlanoProposto({ plano, slug, validadeDias, fuso, whatsapp, telefone, avulsos = [] }: {
   plano: ActivePlan; slug: string; validadeDias: number; whatsapp: string | null; telefone: string | null
+  /** O fuso da unidade (F64; IND-03 da varredura de 18/11): a validade no relógio dela. */
+  fuso: string
   /** O agendado à parte de um procedimento do plano (A68), em texto. */
   avulsos?: string[]
 }) {
@@ -612,7 +614,7 @@ function PlanoProposto({ plano, slug, validadeDias, whatsapp, telefone, avulsos 
   const combinado = totalComOCombinado(valor, combinadoDoPlano(plano))
   const validoAte = validoAteDaProposta(plano.created_at, validadeDias)
   const vencido = jaPassou(validoAte)
-  const dia = validoAte.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const dia = validoAte.toLocaleDateString('pt-BR', { timeZone: fuso })
   return (
     <div data-plano-proposto className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

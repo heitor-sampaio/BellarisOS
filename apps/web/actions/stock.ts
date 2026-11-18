@@ -179,8 +179,10 @@ async function createProductInterno(
       }
     }
 
-    const sku = await nextSku(ctx.tenantId!, categoryName, usoEPreco.uso)
+    // C24: o mínimo não é negativo (ATD-E02) — antes do código, que gasta a sequência.
     const minStock = num(formData, 'min_stock') ?? 0
+    if (minStock < 0) return { error: 'O mínimo não pode ser negativo.' }
+    const sku = await nextSku(ctx.tenantId!, categoryName, usoEPreco.uso)
     const initialCost = num(formData, 'initial_cost')
 
     // UMA transação (E11; o padrão do projeto: o app calcula, uma função
@@ -260,6 +262,10 @@ export async function updateProduct(
     if (cat === undefined) return { error: 'Categoria não encontrada.' }
     const categoryName = cat?.nome ?? null
 
+    // C24: o mínimo não é negativo (ATD-E02).
+    const minStock = num(formData, 'min_stock') ?? 0
+    if (minStock < 0) return { error: 'O mínimo não pode ser negativo.' }
+
     // Preserva SKU existente; gera novo somente se ainda não tem e uma categoria foi definida
     const current = await ler(admin.from('products').select('sku').eq('id', productId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto')
     if (!current) return { error: 'Produto não encontrado.' }
@@ -281,7 +287,7 @@ export async function updateProduct(
         // tem o campo, e gravar `num(…)` zerava o custo a cada edição.
         sale_price:        usoEPreco.preco,
         uso:               usoEPreco.uso,
-        min_stock:         num(formData, 'min_stock') ?? 0,
+        min_stock:         minStock,
         consumption_unit:  str(formData, 'consumption_unit'),
         units_per_package: num(formData, 'units_per_package'),
         ...(comissao.patch ?? {}),

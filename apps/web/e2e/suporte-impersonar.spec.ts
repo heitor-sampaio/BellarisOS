@@ -14,7 +14,8 @@ import { entrarComo, irComASessaoCaindo } from './apoio/suporte'
  *  - sem autorização vigente da clínica (ou com ela vencida), não entra;
  *  - com ela, entra numa sessão REAL do membro, com o aviso fixo na topbar;
  *  - o que faz fica registrado "via suporte" (histórico, eventos, acessos);
- *  - prontuário fora (pela tela E pelo PostgREST com o token), salvo autorização;
+ *  - prontuário fora (pela tela E pelo PostgREST com o token), salvo autorização
+ *    (desde 18/11 o token não lê o prontuário de ninguém — ATD-P01);
  *  - nada sai para o paciente; senha e fatores da conta não mudam;
  *  - sair, revogar e vencer encerram de verdade: o token capturado deixa de
  *    alcançar a rede e o refresh deixa de valer;
@@ -239,8 +240,9 @@ test.describe.serial('suporte: entrar como', () => {
     expect(await rest(token, `medical_records?select=id&client_id=eq.${f!.clienteId}`)).toHaveLength(0)
     // O resto da rede ele alcança (a sessão é a do membro):
     expect(await rest(token, `clients?select=id&id=eq.${f!.clienteId}`)).toHaveLength(1)
-    // Controle: o próprio membro, com o token dele, vê o prontuário.
-    expect(await rest(f!.alvo.accessToken, `medical_records?select=id&client_id=eq.${f!.clienteId}`)).toHaveLength(1)
+    // Controle: o próprio membro vê o prontuário na TELA (o servidor lê). Pelo
+    // token, nem ele: o prontuário não se lê pela sessão (ATD-P01, 18/11).
+    expect(await rest(f!.alvo.accessToken, `medical_records?select=id&client_id=eq.${f!.clienteId}`)).toHaveLength(0)
     const ctx = await browser.newContext({ storageState: f!.alvo.estado })
     try {
       const p = await ctx.newPage()

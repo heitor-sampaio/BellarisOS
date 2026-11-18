@@ -20,6 +20,7 @@ import type { MenorDoAgendamento } from '@/components/shared/selo-do-menor'
 import { useFuso } from '@/components/shared/fuso'
 import { Dica } from '@/components/shared/dica'
 import { textoDeQuemConclui } from '@/lib/equipe/textos-de-quem-pode'
+import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { naParede, daParede } from '@/lib/datetime'
 
 interface AppointmentEvent {
@@ -113,8 +114,12 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
   // quem tem "só os meus", no dela (agenda-06). Iniciar e concluir são do
   // Atendimento em Gerenciar (o Heitor, 2026-11-18; saiu o D20, "a agenda em
   // Ver inicia e conclui"), com o "só os meus" dele.
-  const podeCancelar = podeGerenciar
   const podeAtenderEste = podeConcluir && (!atendimentoProprio || (!!meuId && appointment.professionalId === meuId))
+  // Cancelar o Em atendimento é DESISTIR dele: do Atendimento em Gerenciar, com
+  // o escopo dele (CLAUDE.md §11, o Heitor, 2026-11-18) — a mesma regra do
+  // servidor (`recusaDoCancelar`). O "Não compareceu" não vale ali.
+  const emAtendimento = appointment.status === 'IN_PROGRESS'
+  const podeCancelar = emAtendimento ? podeAtenderEste : podeGerenciar
   const router   = useRouter()
   // Para onde ir ao iniciar o atendimento: quem decide o portal é o caminho
   // atual, não o slug do registro. Sem isto, iniciar pela agenda da rede jogava
@@ -523,7 +528,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                 janela mostra só o que a action deixa fazer. */}
             {podeCancelar && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {jaComecou && (
+              {jaComecou && !emAtendimento && (
                 <button disabled={loading} onClick={() => { setConfirmandoFalta(true); setShowCancelReason(false) }} className="btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
                   <AlertCircle size={14} /> Não compareceu
                 </button>
@@ -535,7 +540,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                   NA HORA —, e a janela diz quando ela aparece: na dica, ao lado do
                   "Cancelar" (2026-11-16). O rótulo não diz "Não compareceu": seria
                   o nome de um botão que ainda não existe. */}
-              {!jaComecou && (
+              {!jaComecou && !emAtendimento && (
                 <Dica rotulo="Sobre a falta">
                   <span data-falta-depois-do-horario>
                     “Não compareceu” aparece a partir do horário marcado ({dateStr}, {timeStr}): antes dele, a cliente ainda pode vir. Para desmarcar agora, é “Cancelar”, com o motivo.
@@ -545,7 +550,7 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
             </div>
             )}
 
-            {confirmandoFalta && podeCancelar && jaComecou && (
+            {confirmandoFalta && podeCancelar && jaComecou && !emAtendimento && (
               <div data-confirmar-falta role="alert" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--warning-border)' }}>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 'var(--weight-bold)', lineHeight: 1.5 }}>
                   Marcar que {appointment.clientName} não compareceu às {timeStr}? Os termos em aberto deste horário são cancelados, e o que estava pago (pacote, plano, pré-pago) volta para ela.
@@ -571,6 +576,11 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, p
                   placeholder="Descreva o motivo…"
                   style={{ background: 'var(--surface)' }}
                 />
+                {emAtendimento && (
+                  <p data-sessao-paga-conta style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', lineHeight: 1.5 }}>
+                    {TEXTO_DA_SESSAO_NA_DESISTENCIA}
+                  </p>
+                )}
                 <button
                   disabled={!cancelReason.trim() || loading}
                   onClick={() => changeStatus('CANCELLED')}

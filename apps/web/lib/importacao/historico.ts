@@ -1,6 +1,6 @@
 import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
-import { can, alcancaUnidade } from '@/lib/auth'
+import { can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 
@@ -8,8 +8,8 @@ import { ler } from '@/lib/db'
  * As importações anteriores, na própria aba Importações (A6 da 8ª simulação,
  * 2026-11-06: a aba voltava ao passo 1 sem histórico, e a dona só descobriu a
  * Isabela recusada pela ausência dela). As que esta pessoa alcança — o módulo
- * do destino em Gerenciar e, nos clientes, a unidade (a régua de
- * `importacaoAoAlcance`) —, com as contagens e o relatório (as recusadas e as
+ * do destino em Gerenciar, sem recorte por unidade (a régua de
+ * `importacaoAoAlcance`; a ficha é da REDE — auditoria das regras, 18/11) —, com as contagens e o relatório (as recusadas e as
  * importadas com aviso) enquanto ele vale (7 dias: guarda o valor errado).
  */
 export interface ImportacaoAnterior {
@@ -35,7 +35,6 @@ export async function importacoesAnteriores(ctx: TenantContext, limite = 10): Pr
     }[] | null
   const agora = new Date().toISOString()
   return (linhas ?? [])
-    .filter(i => i.destino !== 'clientes' || alcancaUnidade(ctx, i.branch_id))
     .slice(0, limite)
     .map(i => {
       const algo = i.com_erro + (i.com_aviso ?? 0) > 0

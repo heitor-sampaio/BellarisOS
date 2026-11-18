@@ -5,6 +5,7 @@ import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { avisarDoPlanoProposto } from '@/lib/plano-de-tratamento/aviso-do-proposto'
 import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, alcancaOAgendamento, podeVerClinico, assertRecurso, isOwnScope, ownerFilter, temRecurso } from '@/lib/auth'
+import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { recusaDasVezesDaRede, recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
 import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
@@ -471,18 +472,19 @@ export async function criarPlanoDoCliente(
   if (!montaPlano(ctx)) return { error: RECUSA_QUEM_MONTA }
   const admin = createAdminClient()
 
-  let unidadePedida = branchId
+  // A unidade do plano é a de onde ele está sendo feito (a do endereço, ou a
+  // escolhida na ficha da rede) — nunca a de cadastro da cliente: a ficha é da
+  // REDE (H16; atendimento.md, "O plano nasce na unidade em que se cria").
+  // É o que o aceite usa depois para o caixa e os agendamentos.
+  const unidadePedida = branchId || ctx.branchId || ''
 
   if (clientId) {
     const cliente = await ler(admin
       .from('clients')
-      .select('id, tenant_id, branch_id')
+      .select('id, tenant_id')
       .eq('id', clientId)
       .maybeSingle(), 'buscar o cliente')
     if (!cliente || cliente.tenant_id !== ctx.tenantId) return { error: 'Cliente não encontrado.' }
-    // A unidade do plano é a de onde ele está sendo feito; sem ela, a de cadastro
-    // do cliente. É o que o aceite usa depois para o caixa e os agendamentos.
-    unidadePedida = unidadePedida || (cliente.branch_id as string | null) || ''
   }
 
   if (!unidadePedida) return { error: 'Selecione a unidade do plano.' }
@@ -1473,17 +1475,15 @@ export async function cancelarPlano(planId: string, entrada: unknown): Promise<{
     const plano = await planoFechadoAoAlcance(admin, ctx, planId)
     if (!plano) return { error: 'Plano não encontrado.' }
     const novo = lido.data.estorno === 'INTEIRO' ? lido.data.novo ?? null : null
-    if (novo && novo.metodo === 'CREDIT_CARD') {
-      const recusa = await recusaDasVezesDaRede(ctx.tenantId!, novo.vezes)
-      if (recusa) return { error: recusa }
-    }
+    // C75 (VF-01 da varredura de 18/11): no cartão do usado, as vezes e a maquininha da rede.
+    { const recusa = await recusaDoPagamentoDoUsado(ctx.tenantId!, novo); if (recusa) return { error: recusa } }
     const userName = ctx.userName || ctx.roleLabel || 'Equipe'
     const j = await gravar(admin.rpc('plano_cancelar_devolvendo', {
       p_tenant: ctx.tenantId!, p_plano: plano.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: userName,
       p_motivo: lido.data.motivo, p_destino: lido.data.destino, p_agendamentos: lido.data.agendamentos,
       p_esperado: lido.data.esperado, p_simular: false,
       p_estorno: lido.data.estorno ?? null,
-      p_novo: novo ? { metodo: novo.metodo, vezes: novo.metodo === 'CREDIT_CARD' ? novo.vezes : 1, bandeira: bandeiraDoPagamento(novo.metodo, novo.bandeira) } : null,
+      p_novo: pagamentoDoUsadoParaOBanco(novo),
     }), 'cancelar o plano') as Record<string, unknown>
 
     // Os agendamentos cancelados com o plano avisam como qualquer cancelamento
@@ -2177,9 +2177,10 @@ async function receberDoPlanoInterno(
   slug:          string,
 ): Promise<{ error?: string; recebido?: number }> {
   const ctx = await getTenantContext()
-  // C33 (F67): receber no check-in é de Recebimentos — a mesma régua do
-  // atendimento avulso (`confirmPayment`): a baixa é do caixa em todo caminho.
-  assertPermission(ctx, 'cashier', 'MANAGE')
+  // Quem recebe é `podeReceber` em todo caminho do recebimento (o PDV, ou o
+  // Financeiro em Gerenciar) — a régua de `confirmPayment` e do banner do plano
+  // na tela do atendimento (VF-04 da varredura de 18/11: era só o PDV).
+  if (!podeReceber(ctx)) throw semAcesso()
 
   const admin = createAdminClient()
 
@@ -2262,7 +2263,6 @@ async function receberDoPlanoInterno(
     }
   }
 
-  const inicioDoRecebimento = new Date(Date.now() - 1000).toISOString()
   const { error: erroDoRecebimento } = await admin.rpc('plano_receber', {
     p_tenant:      ctx.tenantId!,
     p_plano:       planId,
@@ -2274,27 +2274,15 @@ async function receberDoPlanoInterno(
     p_vezes:       vezesNoCartao(recebimento),
     p_lancamentos: lancamentos,
     p_ator:        ctx.internalUserId ?? 'sistema',
+    // r3-f13-01 e C75: a bandeira e a maquininha do que é pago agora, na MESMA
+    // transação (VF2-04 da varredura de 18/11: iam num UPDATE depois).
+    p_bandeira:    bandeiraDoPagamento(recebimento.metodo, recebimento.bandeira),
+    p_maquininha:  maquininhaDoPagamento(recebimento),
   })
   if (erroDoRecebimento) {
     // A recusa do banco (o saldo já recebido, o crédito sem saldo) é para a tela.
     if (erroDoRecebimento.code === 'P0001') return { error: erroDoRecebimento.message }
     throw new Error(`Não consegui registrar o recebimento: ${erroDoRecebimento.message}`)
-  }
-
-  // r3-f13-01: a bandeira do cartão do que foi pago agora — e a maquininha
-  // (C75). `plano_receber` não as recebe (a assinatura fica); gravadas logo
-  // depois, o gatilho das parcelas da operadora refaz o prazo e a taxa pela
-  // bandeira e pela maquininha, e a comissão se acerta.
-  const bandeira = bandeiraDoPagamento(recebimento.metodo, recebimento.bandeira)
-  const maquininha = maquininhaDoPagamento(recebimento)
-  if (bandeira || maquininha) {
-    const base = admin.from('financial_transactions').update({ ...(bandeira ? { cartao_bandeira: bandeira } : {}), ...(maquininha ? { maquininha_id: maquininha } : {}) })
-      .eq('treatment_plan_id', planId).eq('is_paid', true)
-      .eq('payment_method', recebimento.metodo as 'CREDIT_CARD' | 'DEBIT_CARD')
-    await gravar((recebimento.forma === 'AVISTA'
-      ? base.in('id', saldo.pendentes)
-      : base.eq('description', `${descricao} — entrada`).gte('paid_at', inicioDoRecebimento)).select('id'),
-    'gravar a bandeira do recebimento do plano')
   }
 
   if (appointmentId) {

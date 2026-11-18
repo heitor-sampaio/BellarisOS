@@ -69,7 +69,17 @@ test.describe.serial('fidelidade pela tela', () => {
       await p.goto('/admin/settings?tab=fidelidade')
       await expect(p.locator('[data-config-da-rede]')).toContainText('Esta configuração é só da Admin da rede.')
       await expect(p.getByRole('button', { name: 'Programa desligado' })).toHaveCount(0)
+      // E a action recusa — até 18/11 quem tinha "A rede inteira" com as
+      // Configurações em Gerenciar ligava o programa e mexia no catálogo ("só
+      // pela conta admin", o Heitor).
+      const cfg = await chamarAcao(p, 'actions/fidelidade.ts', 'salvarConfigFidelidade', '/admin/settings', [{ enabled: true }])
+      expect(cfg.texto).toContain('Esta configuração é só da Admin da rede.')
+      const rec = await chamarAcao(p, 'actions/fidelidade.ts', 'salvarRecompensa', '/admin/settings', [{ name: 'Do gestor', type: 'DESCONTO', points_cost: 10 }])
+      expect(rec.texto).toContain('Esta configuração é só da Admin da rede.')
     })
+    expect((await db().from('loyalty_configs').select('enabled').eq('tenant_id', rede!.tenantId).maybeSingle()).data?.enabled ?? false,
+      'o gestor não ligou o programa').toBe(false)
+    expect((await db().from('loyalty_rewards').select('id').eq('tenant_id', rede!.tenantId).eq('name', 'Do gestor')).data ?? []).toEqual([])
     await como(browser, dona!, async p => {
       await p.goto('/admin/settings?tab=fidelidade')
       await p.getByRole('button', { name: 'Programa desligado' }).click()

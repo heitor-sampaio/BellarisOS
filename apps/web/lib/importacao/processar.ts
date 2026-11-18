@@ -382,7 +382,8 @@ async function gravarCliente(
 
   let clientId: string
   let resultado: Resultado
-  // A unidade da LINHA (só a rede importa assim) ou a escolhida na tela.
+  // A unidade dos pacotes de antes: a da LINHA ou a escolhida na tela (só com a
+  // coluna do pacote — sem ela, nula: a ficha é da REDE, H5/H16).
   const branchId = (dados.unidade as string | undefined) ?? p.branch_id
   if (existente) {
     clientId = existente.id as string

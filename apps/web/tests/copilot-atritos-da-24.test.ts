@@ -42,6 +42,10 @@ vi.mock('@/lib/unidades/fuso-da-unidade', () => ({
   fusoDoRecorte: async () => 'America/Rio_Branco',
 }))
 vi.mock('@/lib/financeiro/vezes-da-rede', () => ({ maquininhasDaRede: async () => [] }))
+// IND-01 (varredura de 18/11): os indicadores leem as unidades de LEITURA.
+vi.mock('@/lib/unidades/da-tela', () => ({
+  unidadesParaLer: async () => [{ ...BOSQUE, ativa: true }, { ...CENTRO, ativa: true }],
+}))
 vi.mock('@/lib/copilot/ferramentas/comum', async orig => ({
   ...(await orig<typeof import('@/lib/copilot/ferramentas/comum')>()),
   resolverUnidade: async (_c: unknown, pedido?: string | null) =>

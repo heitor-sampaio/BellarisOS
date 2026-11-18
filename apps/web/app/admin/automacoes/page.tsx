@@ -26,8 +26,10 @@ export default async function AutomacoesPage() {
   return (
     <>
       {/* A contagem de execuções muda sozinha enquanto a tela está aberta —
-          é o sinal de que a automação está de fato rodando. */}
-      <RealtimeRefresher tables={['automation_runs']} debounceMs={2000} />
+          é o sinal de que a automação está de fato rodando. Assina o SINAL
+          da rede, não `automation_runs` (a linha ia inteira pelo websocket):
+          a tela recarrega pelo servidor (AUT-01, 18/11). */}
+      <RealtimeRefresher tables={['automacoes_sinais']} filter={`tenant_id=eq.${ctx.tenantId}`} debounceMs={2000} />
       <ListaDeAutomacoes
         automacoes={automacoes}
         // Só a Admin da rede (18/11), e nunca na sessão de suporte (ela só pausa, no editor).

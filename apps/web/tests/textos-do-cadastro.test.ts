@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro } from '@/lib/clients/textos-do-cadastro'
+import { avisoDoAcessoCriado, avisoDaFichaDaRede } from '@/lib/clients/textos-do-cadastro'
 
 /**
  * Os textos do cadastro da cliente (2026-10-30).
@@ -46,15 +46,15 @@ describe('avisoDoAcessoCriado', () => {
   })
 })
 
-describe('avisoDaUnidadeDeCadastro', () => {
+describe('avisoDaFichaDaRede', () => {
   // CL3 do Bloco Tags (2026-11-14): a lista de toda unidade mostra a cliente.
   it('com outras unidades: diz que a cliente é da rede e aparece em todas', () => {
-    const t = avisoDaUnidadeDeCadastro(true)!
+    const t = avisoDaFichaDaRede(true)!
     expect(t).toMatch(/é da rede/)
     expect(t).toMatch(/todas as unidades/)
     expect(t).not.toMatch(/desta unidade|busca do Agendar/)
   })
   it('numa rede de uma unidade só, não há o que dizer (D-19)', () => {
-    expect(avisoDaUnidadeDeCadastro(false)).toBeNull()
+    expect(avisoDaFichaDaRede(false)).toBeNull()
   })
 })

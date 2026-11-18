@@ -24,7 +24,8 @@ import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento,
 import { fidelidadeDaVenda } from '@/lib/fidelidade/na-venda'
 import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
-import { recusaDasVezesDaRede, recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
+import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
+import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
 import { itensParaRateio } from '@/lib/pacotes/leitura'
 import { trazerPacoteCore } from '@/lib/pacotes/trazer'
@@ -36,7 +37,6 @@ import { EntradaDoCancelamento } from '@/lib/pacotes/entrada-do-cancelamento'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { notifyCancelledAppointment, getUserName } from '@/lib/appointments/avisos'
 import { EVENTOS } from '@estetica-os/types'
-import { bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
 import { pontosDoConjunto } from '@/lib/pacotes/pontos-do-cancelamento'
 import { prepararDocumentosDoPacote, contratoDaVendaDoPacote, type ContratoParaAssinar } from '@/lib/documentos/pacote'
 import { rotuloDoQueFalta } from '@/lib/documentos/leitura'
@@ -430,17 +430,15 @@ export async function cancelarPacote(clientPackageId: string, entrada: unknown):
     const cp = await pacoteDaClienteAoAlcance(admin, ctx, clientPackageId)
     if (!cp) return { error: 'Pacote não encontrado.' }
     const novo = lido.data.estorno === 'INTEIRO' ? lido.data.novo ?? null : null
-    if (novo && novo.metodo === 'CREDIT_CARD') {
-      const recusa = await recusaDasVezesDaRede(ctx.tenantId!, novo.vezes)
-      if (recusa) return { error: recusa }
-    }
+    // C75 (VF-01 da varredura de 18/11): no cartão do usado, as vezes e a maquininha da rede.
+    { const recusa = await recusaDoPagamentoDoUsado(ctx.tenantId!, novo); if (recusa) return { error: recusa } }
     const userName = ctx.userName || await getUserName(admin, ctx.userId)
     const j = await gravar(admin.rpc('pacote_cancelar_devolvendo', {
       p_tenant: ctx.tenantId!, p_pacote: cp.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: userName,
       p_motivo: lido.data.motivo, p_destino: lido.data.destino, p_agendamentos: lido.data.agendamentos,
       p_esperado: lido.data.esperado, p_simular: false,
       p_estorno: lido.data.estorno ?? null,
-      p_novo: novo ? { metodo: novo.metodo, vezes: novo.metodo === 'CREDIT_CARD' ? novo.vezes : 1, bandeira: bandeiraDoPagamento(novo.metodo, novo.bandeira) } : null,
+      p_novo: pagamentoDoUsadoParaOBanco(novo),
     }), 'cancelar o pacote') as Record<string, unknown>
 
     // Os agendamentos cancelados com o pacote avisam como qualquer

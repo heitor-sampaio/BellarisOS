@@ -72,7 +72,7 @@ function gravamTags(): string[] {
 
 /** Quem grava `tags`, e por que é a PESSOA (ou a ação que a rede montou). */
 const QUEM_PODE: Record<string, string> = {
-  'apps/web/actions/clients.ts': 'o cadastro e a ficha: as tags que a pessoa marcou',
+  'apps/web/actions/clients.ts': 'o cadastro e a ficha: as tags que a pessoa marcou, do vocabulário da rede (tagsDoVocabulario)',
   'apps/web/actions/leads.ts': 'o card da oportunidade: as tags que a pessoa marcou',
   'apps/web/actions/inbox.ts': 'o painel do inbox: as tags da pessoa, marcadas por quem atende',
   'apps/web/lib/clients/atualizar.ts': 'a ficha (atualizarClienteCore): as tags que a pessoa marcou',
@@ -87,6 +87,21 @@ describe('Tags: só a pessoa (ou a ação "Adicionar tag") grava (T1–T4)', () 
   it('nenhum caminho grava tags fora da lista de quem pode', () => {
     const fora = gravamTags().filter(a => !(a in QUEM_PODE))
     expect(fora, 'grava tag sem ser a pessoa — ou entra na lista com o porquê').toEqual([])
+  })
+
+  // D7 da 18ª (crm-inbox.md, "Tags"): a pessoa MARCA as tags que a Admin da
+  // rede criou; o nome fora do vocabulário não entra (o gatilho
+  // `trg_registrar_tags` o poria no catálogo). O card e o painel do inbox já
+  // passavam por `tagsDoVocabulario`; o cadastro, o "Unificar" e a ficha
+  // gravavam o que o formulário mandasse (CRM-01 da varredura de 18/11).
+  it('o cadastro, o "Unificar", a ficha, o card e o inbox gravam só tags do vocabulário (D7)', () => {
+    const texto = (a: string) => codigo.find(c => c.arquivo === a)!.texto
+    for (const a of ['apps/web/actions/leads.ts', 'apps/web/actions/inbox.ts']) expect(texto(a), a).toMatch(/tagsDoVocabulario\(/)
+    const clientes = texto('apps/web/actions/clients.ts')
+    // addClient (o cadastro e o "Unificar" usam o mesmo `tags`) e updateClientContactData.
+    expect((clientes.match(/tagsDoVocabulario\(/g) ?? []).length, 'o cadastro e a ficha').toBeGreaterThanOrEqual(2)
+    expect(clientes, 'a ficha grava o que o formulário mandou').not.toMatch(/tags:\s*data\.tags/)
+    expect(clientes, 'o cadastro grava o que o formulário mandou').not.toMatch(/const tags: string\[\] = tagsRaw \? JSON\.parse\(tagsRaw\)/)
   })
 
   it('não existe "tag de unidade": ninguém monta nem lê a "Unidade: X" (H16, T1)', () => {

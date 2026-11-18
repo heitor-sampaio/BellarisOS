@@ -21,6 +21,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { mensagemDoLink } from '@/lib/saudacao'
 import { cifrarSegredos, decifrarSegredos, chaveDoAmbiente } from '@/lib/integracoes/cofre'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { clienteNoEscopo } from '@/lib/clientes/atendida-por'
 
 /**
  * O pré-atendimento pela equipe (2026-10-20, decisões do Heitor): a ficha
@@ -92,6 +93,11 @@ export async function salvarAnamneseGeral(input: unknown): Promise<Resultado> {
   const cliente = await ler(admin.from('clients').select('id')
     .eq('id', dados.data.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'conferir a cliente da ficha de saúde')
   if (!cliente) return { error: 'Cliente não encontrada.' }
+  // A ficha de saúde é prontuário: com o "só os meus", só a da cliente que ela
+  // atende (eq-02 — a regra única de `clienteAtendidaPor`; ATD-P05).
+  if (!(await clienteNoEscopo(admin, ctx, 'medical_records', dados.data.clientId))) {
+    return { error: 'A ficha de saúde é prontuário: com o Prontuário em "só os meus", só da cliente que você atende.' }
+  }
 
   await gravarAnamneseGeral(admin, {
     tenantId: ctx.tenantId!, clientId: dados.data.clientId, respostas: dados.data.respostas,

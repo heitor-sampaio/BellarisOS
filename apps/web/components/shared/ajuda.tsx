@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react'
 import { LifeBuoy, X, ArrowLeft, Plus, Paperclip } from 'lucide-react'
 import { toast } from 'sonner'
 import { JanelaModal } from '@/components/shared/janela-modal'
-import { abrirChamado, responderChamado, meusChamados, verChamado } from '@/actions/chamados'
+import { abrirChamado, responderChamado, meusChamados, verChamado, type MinhaAutorizacao } from '@/actions/chamados'
 import { autorizarSuporte, revogarAutorizacaoDeSuporte } from '@/actions/suporte-autorizacao'
 import { ROTULO_DA_SITUACAO } from '@/lib/suporte/chamados-regras'
 import type { ChamadoResumo, ChamadoCompleto } from '@/lib/suporte/chamados'
@@ -97,8 +97,20 @@ function Lista({ onAbrir, onNovo, onFechar, onPodeClinico, onPodeAutorizar }: {
   onPodeAutorizar: (v: boolean) => void
 }) {
   const fuso = useFuso()
-  const [dados, setDados] = useState<{ chamados: ChamadoResumo[]; daRede: boolean } | null>(null)
+  const [dados, setDados] = useState<{ chamados: ChamadoResumo[]; daRede: boolean; minhaAutorizacao: MinhaAutorizacao | null } | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [revogando, iniciar] = useTransition()
+  // A autorização da PRÓPRIA conta, venha do chamado ou de Configurações →
+  // Suporte: a pessoa a vê e revoga aqui (plataforma.md, "Revogar: a própria
+  // pessoa"; PLAT-05 da varredura de 18/11).
+  function revogar(grantId: string) {
+    iniciar(async () => {
+      const r = await revogarAutorizacaoDeSuporte(grantId)
+      if (!r.ok) { toast.error(r.error); return }
+      toast.success('Acesso do suporte revogado.')
+      setDados(d => (d ? { ...d, minhaAutorizacao: null } : d))
+    })
+  }
   useEffect(() => {
     meusChamados()
       .then(r => { if (r.ok) { setDados(r); onPodeClinico(r.podeClinico); onPodeAutorizar(r.podeAutorizar) } else setErro(r.error) })
@@ -111,6 +123,12 @@ function Lista({ onAbrir, onNovo, onFechar, onPodeClinico, onPodeAutorizar }: {
         <p className="overline">{dados?.daRede ? 'Chamados da rede' : 'Seus chamados'}</p>
         <button type="button" className="btn-primary" onClick={onNovo}><Plus size={14} /> Novo chamado</button>
       </div>
+      {dados?.minhaAutorizacao && (
+        <div className="ajuda-aviso" data-tom="ok" data-minha-autorizacao style={{ marginBottom: 12 }}>
+          <span>O suporte está autorizado a entrar na sua conta até {quando(dados.minhaAutorizacao.expiraEm, fuso)}{dados.minhaAutorizacao.clinico ? ', com dados clínicos' : ''}.</span>
+          <button type="button" className="btn-secondary" disabled={revogando} onClick={() => revogar(dados.minhaAutorizacao!.id)}>Revogar</button>
+        </div>
+      )}
       {erro && <p className="ajuda-erro">{erro}</p>}
       {!dados && !erro && <p className="ajuda-nota">Carregando…</p>}
       {dados && !dados.chamados.length && <p className="ajuda-nota">Nenhum chamado ainda. Se algo não está funcionando, conte para a gente.</p>}

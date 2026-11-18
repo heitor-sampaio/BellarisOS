@@ -15,6 +15,8 @@ import { DesativarUnidade } from '@/components/admin/desativar-unidade'
 import { oQueFicaNaUnidade, resumoDoQueFica, temOQueFicou } from '@/lib/unidades/desativar'
 import { CaminhosDoQueFicou } from '@/components/admin/o-que-ficou'
 import { origemDoApp, enderecoDoAppDaCliente } from '@/lib/unidades/app-da-cliente'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { semAcesso } from '@/lib/sem-acesso'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -100,8 +102,10 @@ export default async function BranchDetailPage({ params }: Props) {
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          {/* Desativar pede confirmação e diz o que fica para trás (C61/C67, F70); reativar é um clique. */}
-          {branch.is_active ? (
+          {/* Desativar pede confirmação e diz o que fica para trás (C61/C67, F70); reativar é um clique.
+              Os dois são da Admin da rede (o Heitor, 18/11: "Configuração da rede toda só pela conta
+              admin"): a tela não os mostra a mais ninguém (§14), e a action recusa. */}
+          {!mexeNaConfigDaRede(ctx) ? null : branch.is_active ? (
             <DesativarUnidade
               branchId={id} nome={branch.name} oQueFica={oQueFica} outras={outrasAtivas}
               className="btn-secondary" style={{ gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}
@@ -111,7 +115,8 @@ export default async function BranchDetailPage({ params }: Props) {
           ) : (
             <form action={async () => {
               'use server'
-              await toggleBranchStatus(id, true)
+              const r = await toggleBranchStatus(id, true)
+              if (r.error) throw semAcesso()
             }}>
               <button type="submit" className="btn-secondary" style={{ gap: 6, fontSize: 'var(--text-xs-sz)', color: 'var(--success)' }}>
                 <Power size={13} /> Reativar

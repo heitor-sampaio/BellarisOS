@@ -198,3 +198,45 @@ test('o cadastro: "Unidades" com as marcadas e o "Atende" de uma caixa, que vale
   expect(new Set(u!.atende_em), 'o "Atende" fechado vale nas unidades dela').toEqual(new Set([un.A.id, un.B.id]))
   expect(u!.provides_services).toBe(true)
 })
+
+test('PLAT-02/03: na Equipe da unidade, o cargo acima do dela vem desligado; quem tem outra unidade fora do alcance não se desativa, e o cargo fica travado', async ({ browser }) => {
+  // PLAT-02 (plataforma.md, H7 opção b; CLAUDE.md §11: "Ninguém dá um cargo
+  // com mais acesso que o próprio"): a Equipe da rede já desligava; a da
+  // unidade oferecia o cargo e a action recusava no fim.
+  // PLAT-03 (EQ1): o cargo e o desativar valem em TODAS as unidades da pessoa;
+  // a de A e C, vista por quem tem A e B, aparece na lista de A — sem o
+  // desativar, com o cargo travado, e a action diz o motivo (era "Membro não
+  // encontrado.").
+  const acima = await criarMembro(`eqvua${marca}`, {
+    tenant: rede!.tenantId, branchId: un.A.id, rotulo: 'Com o Financeiro',
+    permissoes: [{ modulo: 'financial', nivel: 'MANAGE', escopo: 'ALL' }],
+  })
+  const deAeC = await criarMembro(`eqvuc${marca}`, {
+    tenant: rede!.tenantId, branchId: un.A.id, outrasUnidades: [un.C.id], rotulo: 'A e C', permissoes: PERMISSOES,
+  })
+  const nomeDeAeC = (await db().from('users').select('name').eq('id', deAeC.userId).single<{ name: string }>()).data!.name
+  try {
+    await como(browser, pessoa!, async p => {
+      const rota = `/${un.A.slug}/team`
+      await p.goto(rota)
+      await p.getByRole('button', { name: 'Adicionar membro' }).click()
+      await expect(p.locator(`#tm-role option[value="${acima.roleId}"]`), 'o cargo com o Financeiro vem desligado').toBeDisabled()
+      await expect(p.locator(`#tm-role option[value="${pessoa!.roleId}"]`), 'o cargo dela se dá').toBeEnabled()
+      await p.goto(rota)
+
+      const linha = p.locator('tr').filter({ has: p.getByLabel(`Editar ${nomeDeAeC}`) })
+      await expect(linha).toBeVisible()
+      await expect(linha.getByRole('button', { name: /Desativar/ }), 'sem o desativar').toHaveCount(0)
+      await linha.getByLabel(`Editar ${nomeDeAeC}`).click()
+      await expect(p.locator(`#tme-role-${deAeC.userId}`), 'o cargo fica travado').toBeDisabled()
+
+      const r = await chamarAcao(p, 'actions/team.ts', 'deactivateTeamMember', rota, [deAeC.userId, rota])
+      expect(r.texto, 'a recusa diz o motivo').toContain('desativar e reativar é de quem alcança todas as unidades dela')
+      expect(r.texto).not.toContain('Membro não encontrado.')
+    })
+    const { data } = await db().from('users').select('is_active').eq('id', deAeC.userId).single<{ is_active: boolean }>()
+    expect(data!.is_active, 'segue ativa').toBe(true)
+  } finally {
+    await acima.limpar(); await deAeC.limpar()
+  }
+})

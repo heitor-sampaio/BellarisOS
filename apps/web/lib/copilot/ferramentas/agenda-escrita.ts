@@ -10,6 +10,8 @@ import { quemRealizaOProcedimento, realiza } from '@/lib/procedimentos/quem-real
 import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { notifyCancelledAppointment, notifyCheckin, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { avisoDasVencidasNaChegada } from '@/lib/appointments/vencidas-na-chegada'
+import { podeCancelarAlgum, recusaDoCancelar } from '@/lib/appointments/quem-cancela'
+import { TEXTO_DA_SESSAO_NA_DESISTENCIA } from '@/lib/atendimento/desistencia'
 import { garantirClienteRapido, comPermissaoDeUnificar } from '@/lib/clients/cliente-rapido'
 import { bloqueiosQueBatem } from '@/lib/agenda/bloqueios'
 import { trechoDoBloqueio } from '@/lib/agenda/bloqueio'
@@ -311,24 +313,31 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
 export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string }, { appointmentId: string; motivo: string }> = {
   nome: 'cancelar_agendamento',
   tipo: 'escrita',
-  modulo: 'agenda', nivel: 'MANAGE',
-  pode: ctx => !isOwnScope(ctx, 'agenda'),
+  // A regra da tela (ATD-A01): cancelar é da Agenda em Gerenciar; o Em
+  // atendimento é DESISTIR, do Atendimento em Gerenciar — cada uma com o seu
+  // "só os meus", conferido no preparo e no núcleo (`recusaDoCancelar`).
+  pode: podeCancelarAlgum,
   descricao: 'Cancela um agendamento (id) com o motivo (obrigatório — pergunte se não foi dito). O cartão diz se a cliente recebe o aviso no app.',
   parametros: z.object({ agendamento: UUID, motivo: z.string().min(3).max(300) }),
   async preparar(c, a) {
     const ag = await agendamentoParaResumo(c, a.agendamento)
     if (!ag) return { erro: 'Agendamento não encontrado.' }
     if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(ag.status)) return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
+    const recusa = recusaDoCancelar(c.ctx, ag)
+    if (recusa) return { erro: recusa }
+    const daCliente = await avisoDaClienteNoCartao(c, ag.clientId, 'cancelar')
+    // A desistência no meio: a sessão já paga conta como usada (o aviso da tela).
+    const aviso = ag.status === 'IN_PROGRESS' ? [TEXTO_DA_SESSAO_NA_DESISTENCIA, daCliente].filter(Boolean).join(' ') : daCliente
     return {
       resumo: {
-        titulo: 'Cancelar agendamento',
+        titulo: ag.status === 'IN_PROGRESS' ? 'Desistir do atendimento' : 'Cancelar agendamento',
         linhas: [
           { rotulo: 'Cliente', valor: ag.cliente },
           { rotulo: 'Procedimento', valor: ag.procedimento },
           { rotulo: 'Quando', valor: quandoLegivel(ag.scheduled_at, await fusoDe(c, ag.branch_id)) },
           { rotulo: 'Motivo', valor: a.motivo },
         ],
-        aviso: await avisoDaClienteNoCartao(c, ag.clientId, 'cancelar'),
+        aviso,
       },
       payload: { appointmentId: ag.id, motivo: a.motivo.trim() },
     }
@@ -345,7 +354,8 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
 export const confirmarAgendamento: FerramentaDeEscrita<{ agendamento: string }, { appointmentId: string }> = {
   nome: 'confirmar_agendamento',
   tipo: 'escrita',
-  modulo: 'agenda', nivel: 'VIEW',
+  // Confirmar é da Agenda em Gerenciar, com "todos" (updateAppointmentStatus, C10).
+  modulo: 'agenda', nivel: 'MANAGE',
   pode: ctx => !isOwnScope(ctx, 'agenda'),
   descricao: 'Marca um agendamento (id) como CONFIRMADO pelo cliente (o "confirmou presença").',
   parametros: z.object({ agendamento: UUID }),

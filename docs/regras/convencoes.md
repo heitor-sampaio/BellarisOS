@@ -77,12 +77,30 @@ action monta (status, caminho de arquivo, matriz de cargos):
   porta aberta: a migration `20261112006302` tirou as dos cargos, campanhas,
   categorias do estoque, disponibilidade e preço por unidade, o
   `lgpd_requests_insert`, o `clients_delete` e o ALL de `stock_movements`.
+- **Dado de um módulo se lê só com o módulo** (varredura de 18/11, do
+  Claude, pela regra acima; migrations `20261124400001`/`002`): as
+  automações (`domain_events`, `automation_runs`, `automation_run_steps`,
+  `automations`, `automation_versions`) têm só a política de LEITURA, com
+  `(select private.sessao_ve_o_modulo(módulo, recurso do plano, só "A rede
+  inteira"?))` — o `can(ctx, módulo, 'VIEW')` do `buildContext` no banco: o
+  cargo GRAVADO (a Admin da rede pelo cargo de sistema), o membro ativo e o
+  plano. Módulo ESCOPÁVEL ("só os meus") não se lê pela sessão de jeito
+  nenhum, porque a RLS não aplica o escopo ("Toda leitura de módulo
+  escopável passa ownerFilter", CLAUDE.md §11): o prontuário
+  (`medical_records`, `medical_record_entries`, `injectable_maps`,
+  `injectable_applications`) não tem política nenhuma, como as comissões, e
+  a tela do atendimento escuta `prontuario_sinais`. Os procedimentos
+  (`procedures`, `procedure_products`) e os produtos (`products`) perderam a
+  escrita: a sessão lê, o servidor grava.
 - Prova com o token de um membro (nunca `service_role`):
-  `e2e/rls-sessao-so-le.spec.ts`, cada caso com a leitura como controle.
+  `e2e/rls-sessao-so-le.spec.ts` e
+  `e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts`, cada caso com a
+  leitura como controle.
 
-As tabelas OPERACIONAIS (agendamentos, lançamentos, produtos…) ainda aceitam
-escrita pela sessão dentro da rede e do alcance — o §11 do CLAUDE.md aceita
-isso ("a trava da action é a única"). Fechá-las é uma frente à parte.
+As tabelas OPERACIONAIS (agendamentos…) ainda aceitam escrita pela sessão
+dentro da rede e do alcance — o §11 do CLAUDE.md aceita isso ("a trava da
+action é a única"). Os lançamentos (F75) e os produtos (18/11) já fecharam;
+fechar as outras é uma frente à parte.
 
 ### Queries — filtro obrigatório
 

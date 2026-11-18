@@ -103,7 +103,9 @@ export async function lerAuditoria(
       // unidade (a oportunidade e o contato são da rede).
       q = q.or(filtroDoAlcanceDaAuditoria(minhas, ctx.internalUserId ?? null))
     }
-    if (unidade && !semUnidade) q = q.eq('branch_id', unidade)
+    // A ficha é da REDE (auditoria das regras, 18/11): a linha dela não tem
+    // unidade, e o filtro de unidade não a esconde.
+    if (unidade && !semUnidade) q = q.or(`branch_id.eq.${unidade},and(branch_id.is.null,tabela.eq.clients)`)
     if (filtros.pessoa && UUID.test(filtros.pessoa)) q = q.eq('ator_user_id', filtros.pessoa)
     // A37 da 16ª: "Só o que foi pelo Copilot" — a marca que a gravação do Copilot deixa (`via`).
     else if (filtros.pessoa === 'copilot') q = q.eq('via', 'copilot')

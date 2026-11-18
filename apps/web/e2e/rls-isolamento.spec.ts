@@ -18,8 +18,10 @@ import { membroComEscopoProprio, type MembroDeTeste } from './apoio/sessao'
  * ficha, foto, termo e conta de fidelidade. Um membro da rede REAL tenta ler,
  * alterar e apagar tudo isso com o próprio token.
  *
- * O controle é o mesmo membro lendo um prontuário `[e2e]` da PRÓPRIA rede: sem
- * ele, "não enxergou a outra" poderia ser só uma sessão que não enxerga nada.
+ * O controle é o mesmo membro lendo a cliente e a fidelidade `[e2e]` da PRÓPRIA
+ * rede: sem ele, "não enxergou a outra" poderia ser só uma sessão que não
+ * enxerga nada. (O prontuário, desde 18/11, não se lê pela sessão nem na
+ * própria rede.)
  */
 
 const marca = Date.now().toString(36)
@@ -168,12 +170,23 @@ test.describe.serial('RLS: uma rede não enxerga a outra', () => {
     if (membro) await membro.limpar()
   })
 
-  test('o controle: o membro lê o prontuário da PRÓPRIA rede', async () => {
+  // O controle. Desde a varredura de 18/11 (migrations 20261124400002/3), o
+  // PRONTUÁRIO não se lê pela sessão nem na própria rede — é módulo com escopo
+  // (CLAUDE.md §4; a prova é rls-sessao-so-le-prontuario-e-automacoes). O
+  // controle de "a sessão alcança algo" fica na cliente e na fidelidade da
+  // PRÓPRIA rede, que a sessão lê; e o clínico da própria rede, nada.
+  test('o controle: o membro lê a cliente e a fidelidade da PRÓPRIA rede — e o prontuário nem da própria', async () => {
     const api = comoMembro(membro!)
-    for (const [tabela, id] of alvos(proprio!)) {
+    const doProntuario = new Set(['medical_records', 'medical_record_entries', 'record_photos', 'anamnesis_data', 'consent_terms'])
+    const lidas: [string, string][] = [['clients', proprio!.clientId], ...alvos(proprio!).map(([t, id]) => [t, id] as [string, string])]
+    for (const [tabela, id] of lidas) {
       const { data, error } = await api.from(tabela).select('id').eq('id', id)
       expect(error, `ler ${tabela} da própria rede`).toBeNull()
-      expect(data?.length, `${tabela}: a própria rede tem de aparecer — senão a sessão não prova nada`).toBe(1)
+      if (doProntuario.has(tabela)) {
+        expect(data ?? [], `${tabela}: o prontuário não se lê pela sessão, nem o da própria rede`).toHaveLength(0)
+      } else {
+        expect(data?.length, `${tabela}: a própria rede tem de aparecer — senão a sessão não prova nada`).toBe(1)
+      }
     }
   })
 

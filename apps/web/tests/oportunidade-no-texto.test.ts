@@ -40,9 +40,11 @@ const PASTAS = [
 
 /**
  * O nome velho, na frase: "lead" e "leads", em qualquer caixa — não `leadId`,
- * `lead_id`, `/leads/`, `lead.created`, `?lead=`, `lead:${id}`.
+ * `lead_id`, `/leads/`, `lead.created`, `?lead=`, `lead:${id}`. O ponto só
+ * livra quando vem letra depois (`lead.created`): o "deste lead." do fim da
+ * frase escapava (varredura de 18/11, CRM-06).
  */
-const NOME_VELHO = /(?<![/\w.?&=-])leads?(?![\w.=-]|:\S)/i
+const NOME_VELHO = /(?<![/\w.?&=-])leads?(?![\w=-]|\.\w|:\S)/i
 
 /** A string é frase (texto que alguém lê) — e não chave, caminho ou id? */
 function ehFrase(s: string): boolean {
@@ -136,9 +138,10 @@ describe('CR1: "Contato" e "Oportunidade" em todo texto que se lê', { timeout: 
       "const j = await ler(consulta, 'carregar os leads') // vira \"Não consegui carregar os leads.\"",
       "const k = n === 1 ? 'lead' : 'leads'",
       "const l = alvo === 'lead' ? 1 : 2",
+      "const m = 'Não foi possível abrir a conversa deste lead.'",
     ].join('\n')
     const r = achados('exemplo.tsx', exemplo)
-    expect(r.map(l => l.split(':')[0])).toEqual(['1', '2', '3', '12', '13', '13'])
+    expect(r.map(l => l.split(':')[0])).toEqual(['1', '2', '3', '12', '13', '13', '15'])
   })
 
   it('o Copilot é instruído a falar "contato" e "oportunidade"', () => {

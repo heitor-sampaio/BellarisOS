@@ -400,8 +400,10 @@ um muro que não depende de cada trava do código.
     aumenta a quantidade dele — senão uma conexão de cortesia virava dez de
     graça. Com a cobrança ligada, nenhum adicional deixa a mensalidade em
     R$ 0 (o Asaas não cobra zero; encerrar é com o BellarisOS).
-  - **No app da rede contrata quem é da rede** (com “A rede inteira”) com
-    configurações MANAGE; a sessão de suporte não contrata
+  - **No app da rede contrata a Admin da rede** (o cargo de sistema; o
+    Heitor, 18/11: a configuração da rede toda é "só pela conta admin" —
+    até ali, quem tinha “A rede inteira” com configurações MANAGE; a recusa
+    é `recusaDaConfigDaRede`); a sessão de suporte não contrata
     (`bloqueioDoSuporte`). Rede cancelada não contrata. Cada mudança vai à
     auditoria da plataforma (`assinatura.adicional`, com a origem).
   - **O que a rede usa é o EFETIVO** (`recursosEfetivos`): o limite de
@@ -529,8 +531,15 @@ um muro que não depende de cada trava do código.
   respondeu "só pela conta admin"). Até ali o próprio membro se autorizava, e
   quem era da rede com `settings: MANAGE` autorizava os outros. **Revogar**: a
   própria pessoa (a conta é dela) e a Admin da rede (`podeAutorizar`,
-  `podeRevogar`, `lib/suporte/regras.ts`). "Incluir dados clínicos" pede
-  prontuário MANAGE de quem autoriza. Prova: `tests/suporte-regras.test.ts`.
+  `podeRevogar`, `lib/suporte/regras.ts`). A própria pessoa vê e revoga a
+  autorização da CONTA DELA na Ajuda da topbar, no topo da lista dos chamados
+  ("O suporte está autorizado a entrar na sua conta até …" + "Revogar";
+  `meusChamados` devolve `minhaAutorizacao`, só a dela) — também a dada em
+  Configurações → Suporte, que não tem chamado e cuja aba é só da Admin da
+  rede (decisão do Claude na varredura de 18/11, PLAT-05: sem isto a pessoa
+  não a via nem revogava em lugar nenhum). "Incluir dados clínicos" pede
+  prontuário MANAGE de quem autoriza. Prova: `tests/suporte-regras.test.ts`,
+  `e2e/suporte-revogar-a-propria-autorizacao.spec.ts`.
 - **É uma sessão REAL do Auth do membro**: parte do app e todo o Realtime
   falam com o banco pelo token, então trocar só o contexto do servidor não
   funcionaria. Prazo: 60 min, nunca além da autorização.
@@ -726,11 +735,16 @@ auditoria das regras, pergunta 8: "só pela conta admin"; antes, H7 de
   campanhas e os templates, a configuração de comissões, o máximo de parcelas
   do crediário e a comissão do procedimento (`actions/comissoes.ts`,
   `podeMudarComissaoDoProcedimento`), e criar/desativar unidade
-  (`createBranch`, `toggleBranchStatus`).
-  **Ainda pela abrangência (“A rede inteira”), a alinhar:** a fidelidade
-  (`actions/fidelidade.ts`), as taxas da maquininha (`actions/maquininhas.ts`)
-  e a assinatura (`actions/assinatura.ts`) — a aba já as mostra só para ler a
-  quem não é a Admin.
+  (`createBranch`, `toggleBranchStatus` — o detalhe da unidade só mostra
+  Desativar/Reativar à Admin da rede, e a action devolve a recusa como
+  `{ error }`, PLAT-04 da varredura de 18/11), a fidelidade (o programa e o
+  catálogo, `actions/fidelidade.ts`), as maquininhas e a taxa do Pix
+  (`actions/maquininhas.ts`; o aviso da venda no cartão diz o nome das Admins,
+  `adminsAtivasDaRede`) e o adicional da assinatura (`contratarAdicional`,
+  `actions/assinatura.ts`) — os três conferiam a abrangência (“A rede
+  inteira”) até a leva seguinte à auditoria de 18/11. Prova:
+  `tests/config-da-rede-so-da-admin.test.ts`, `e2e/fidelidade-ajuste.spec.ts`,
+  `e2e/comissoes-configuracao.spec.ts`, `e2e/planos-adicionais.spec.ts`.
 - **O catálogo de procedimentos, as categorias e os pacotes são de quem tem
   Procedimentos em Gerenciar, e só isso** (PR1/PR6 e PC6 do plano de
   adaptação, 2026-11-13): saíram da lista do que é da rede. Ver
@@ -884,7 +898,8 @@ abaixo entraram na F70, 2026-11-12):
   cargo; o que passa aparece desabilitado na lista, "Financeiro (tem módulos
   que você não tem)", com a nota "Só quem tem esses módulos pode dar este
   cargo." A Admin da rede continua dando qualquer cargo. A action recusa
-  também. "Acima" é, em algum módulo: um nível acima, o "todos" onde quem dá
+  também. Vale nas DUAS Equipes, a da rede e a da unidade (`/[slug]/team`
+  ganhou a trava na varredura de 18/11, PLAT-02). "Acima" é, em algum módulo: um nível acima, o "todos" onde quem dá
   tem "só os meus", ou uma aba de Relatórios que ela não vê; manter o cargo
   que o membro já tem não é dar. Mora em `lib/equipe/cargo-acima.ts`
   (`cargosAcimaDoMeu`, `assertRoleInTenant`). Prova:
@@ -977,7 +992,12 @@ de uma unidade"):**
   marca só as DELA, e a unidade que o membro já tinha fora do alcance dela fica
   como estava (`unidadesQueGrava`, `lib/unidades/do-membro.ts`). Editar exige
   alcançar ALGUMA unidade do membro; trocar o cargo, desativar e reativar, TODAS
-  (o login e o cargo são um só). A Admin da rede é sempre da rede.
+  (o login e o cargo são um só). Na Equipe da unidade, a pessoa com outra
+  unidade fora do alcance aparece sem o Desativar/Reativar e com o cargo
+  travado (a dica diz por quê), e a action diz o motivo — "Essa pessoa também
+  está numa unidade fora do seu alcance: …" (era "Membro não encontrado.";
+  `alcancaTodasAsDoMembro`, `lib/unidades/do-membro.ts`; PLAT-03 da varredura
+  de 18/11). A Admin da rede é sempre da rede.
 - **O portal (PO1)**: a pessoa de várias unidades entra no portal da unidade —
   a ÚLTIMA usada (o cookie `bellaris-unidade`, que o seletor grava; o servidor
   confere que ainda é dela e está ativa, `lib/unidades/de-entrada.ts`), senão a
@@ -1263,6 +1283,15 @@ português, o link e a unidade; filtros de período (`resolvePeriod`, até o
     conclusão da Pampulha, não aparece na Savassi. A página pode trazer menos
     gravações; o cursor segue o da leitura pela unidade, e o CSV não repete
     o id de uma gravação que caiu em duas páginas.
+  - **A ficha da cliente é da REDE** (auditoria das regras, 2026-11-18; o
+    Heitor: "o cliente não é da unidade, o cliente é da rede", H16; "Nada se
+    prende a clients.branch_id", CLAUDE.md §5): a linha de `clients` não leva
+    unidade (era a de `clients.branch_id`, onde a ficha nasceu) — diz "Da
+    rede" —, e o filtro de unidade não a esconde (a leitura traz
+    `branch_id` nulo de `clients`; `gravacoesDaUnidade` guarda a gravação
+    cuja principal é a ficha). Migration `20261124200002` (o trecho da
+    unidade do `private.auditar`, com o plano genérico). Prova:
+    `tests/auditoria-cliente-da-rede.test.ts`, `e2e/auditoria-atritos-da-18.spec.ts`.
   - O filtro "Quem" tem "Só o que foi pelo Copilot" (`pessoa=copilot` →
     `via = 'copilot'`, A37 da 16ª).
   - **O lançamento editado diz de quanto para quanto, e o estorno diz qual

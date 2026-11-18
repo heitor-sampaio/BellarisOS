@@ -16,8 +16,9 @@ import { chamarAcao } from './apoio/acao-direta'
  *  - Oportunidade no funil, opcional — e importar de novo não a duplica.
  *  - O relatório de erros se baixa.
  *  - Os campos da oportunidade (origem, valor, etapa, responsável, procedimento,
- *    UTM…) e, no cliente, a unidade e a situação por linha (2026-10-13, "quanto
- *    mais completa, melhor").
+ *    UTM…) e, no cliente, a situação por linha (2026-10-13, "quanto mais
+ *    completa, melhor"). A unidade só se pergunta para o PACOTE de antes (a
+ *    ficha é da rede — H5/H16; pedido de 18/11): sem a coluna do pacote, não.
  *
  * Numa rede `[e2e]` própria. As Importações são da rede toda: desde 18/11 só
  * a Admin da rede importa (o Heitor: "Configuração da rede toda só pela conta
@@ -136,12 +137,15 @@ test('importar como clientes: completa o vazio de quem existe, cria o novo e rel
   await como(browser, admin, async p => {
     await abrirArquivo(p, nome, arquivo)
     await p.getByRole('button', { name: 'Como clientes', exact: true }).click()
-    await p.getByLabel('Unidade', { exact: true }).selectOption({ label: unidadeNome })
+    // A ficha é da REDE (H5/H16): sem pacote de antes, a unidade não se pergunta
+    // (a rede tem duas — a Norte —, e mesmo assim).
+    await expect(p.locator('#importar-unidade')).toHaveCount(0)
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
 
     // As colunas sugeridas pelo cabeçalho.
     await expect(p.getByLabel('Campo da coluna Celular')).toHaveValue('phone')
     await expect(p.getByLabel('Campo da coluna Data de nascimento')).toHaveValue('birth_date')
+    await expect(p.locator('#importar-unidade'), 'sem a coluna do pacote, nenhuma unidade').toHaveCount(0)
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
 
     // A prévia: o que entra, o que entra com aviso e o que é recusado, com o
@@ -181,12 +185,13 @@ test('importar como clientes: completa o vazio de quem existe, cria o novo e rel
   expect(String(ana!.birth_date)).toContain('1990-03-15')
   expect([...(ana!.tags as string[])].sort()).toEqual(['antiga', 'vip'])
 
-  // A nova: com a unidade, a acentuação certa, a conta de fidelidade — e sem
-  // acesso ao portal. As tags são só as da planilha: o sistema não põe a
-  // "Unidade: X" (T1 do Bloco Tags, 2026-11-14).
+  // A nova: da REDE (sem unidade — como no cadastro pela rede; H16), a
+  // acentuação certa, a conta de fidelidade — e sem acesso ao portal. As tags
+  // são só as da planilha: o sistema não põe a "Unidade: X" (T1 do Bloco
+  // Tags, 2026-11-14).
   const { data: nova } = await db().from('clients').select('id, name, phone, branch_id, tags, auth_id')
     .eq('tenant_id', outra.tenantId).eq('document', '16899535009').single()
-  expect(nova).toMatchObject({ name: `${PREFIXO} Conceição ${marca}`, branch_id: outra.branchId, auth_id: null })
+  expect(nova).toMatchObject({ name: `${PREFIXO} Conceição ${marca}`, branch_id: null, auth_id: null })
   expect([...(nova!.tags as string[])].sort()).toEqual(['botox', 'retorno'])
   const { count: contas } = await db().from('loyalty_accounts').select('client_id', { count: 'exact', head: true }).eq('client_id', nova!.id)
   expect(contas).toBe(1)
@@ -439,43 +444,56 @@ test('contatos com os campos da oportunidade: e-mail e rede social na pessoa; or
   expect(procs).toEqual([{ procedure_id: outra.procedureId }])
 })
 
-test('clientes com a unidade e a situação de cada linha', async ({ browser }) => {
+// A unidade é a dos PACOTES de antes (pedido de 18/11: a ficha é da rede —
+// H5/H16 —, e a pergunta só aparece com a coluna do pacote, rotulada assim).
+test('clientes com o pacote de antes na unidade de cada linha, e a situação', async ({ browser }) => {
   const nome = `unidades-${marca}.csv`
   const s4 = sufixo.slice(-4)
+  const proc = (await db().from('procedures').select('name').eq('id', outra.procedureId).single()).data!.name as string
   const arquivo = csv1252([
-    'Nome;Celular;Unidade;Situação',
-    `${PREFIXO} Nortista ${marca};(51) 99999-${s4};${NORTE.toLowerCase()};Inativo`,
-    `${PREFIXO} Padrão ${marca};(51) 98888-${s4};;Ativo`,
-    `${PREFIXO} Marciano ${marca};(51) 97777-${s4};Marte;`,
+    'Nome;Celular;Pacote;Unidade;Situação',
+    `${PREFIXO} Nortista ${marca};(51) 99999-${s4};"${proc}; 4; 1";${NORTE.toLowerCase()};Inativo`,
+    `${PREFIXO} Padrão ${marca};(51) 98888-${s4};"${proc}; 4; 1";;Ativo`,
+    `${PREFIXO} Marciano ${marca};(51) 97777-${s4};"${proc}; 4; 1";Marte;`,
   ].join('\r\n'))
 
   await como(browser, admin, async p => {
     await abrirArquivo(p, nome, arquivo)
     await p.getByRole('button', { name: 'Como clientes', exact: true }).click()
-    await p.getByLabel('Unidade', { exact: true }).selectOption({ label: unidadeNome })
+    await expect(p.locator('#importar-unidade'), 'no passo do arquivo, a unidade não se pergunta').toHaveCount(0)
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await expect(p.getByLabel('Campo da coluna Pacote')).toHaveValue('pacote')
     await expect(p.getByLabel('Campo da coluna Unidade')).toHaveValue('unidade')
     await expect(p.getByLabel('Campo da coluna Situação')).toHaveValue('ativo')
-    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
-    // D2: a unidade que não se acha não recusa a linha — ela vai para a da tela.
+    // Com a coluna do pacote, a pergunta aparece — e é a dos pacotes.
+    const continuar = p.getByRole('button', { name: 'Continuar', exact: true })
+    await expect(continuar, 'sem a unidade dos pacotes, não segue').toBeDisabled()
+    await p.getByLabel('Unidade dos pacotes de antes', { exact: true }).selectOption({ label: unidadeNome })
+    await continuar.click()
+    // D2: a unidade que não se acha não recusa a linha — o pacote vai para a da tela.
     const previa = p.locator('[data-previa]')
     await expect(previa).toContainText('3 linhas prontas')
-    await expect(previa).toContainText('Unidade não encontrada ("Marte"): importada na unidade escolhida na tela.')
+    await expect(previa).toContainText('Unidade não encontrada ("Marte"): o pacote de antes vai para a unidade escolhida na tela.')
     await p.getByRole('button', { name: /Importar 3 linhas/ }).click()
     await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
   })
-  const { data: marciano } = await db().from('clients').select('branch_id')
-    .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Marciano ${marca}`).single()
-  expect(marciano).toMatchObject({ branch_id: outra.branchId })
+  const fichaEPacote = async (rotulo: string) => {
+    const { data: ficha } = await db().from('clients').select('id, is_active, tags')
+      .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} ${rotulo} ${marca}`).single()
+    const { data: pacotes } = await db().from('client_packages').select('branch_id, de_fora').eq('client_id', ficha!.id)
+    return { ficha: ficha!, pacotes: pacotes ?? [] }
+  }
+  const marciano = await fichaEPacote('Marciano')
+  expect(marciano.pacotes).toEqual([{ branch_id: outra.branchId, de_fora: true }])
 
-  const { data: nortista } = await db().from('clients').select('branch_id, is_active, tags')
-    .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Nortista ${marca}`).single()
-  expect(nortista).toMatchObject({ branch_id: unidadeNorte, is_active: false })
-  expect(nortista!.tags ?? [], 'sem tag de unidade (T1)').toEqual([])
-  const { data: padrao } = await db().from('clients').select('branch_id, is_active, tags')
-    .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Padrão ${marca}`).single()
-  expect(padrao).toMatchObject({ branch_id: outra.branchId, is_active: true })
-  expect(padrao!.tags ?? [], 'sem tag de unidade (T1)').toEqual([])
+  const nortista = await fichaEPacote('Nortista')
+  expect(nortista.pacotes).toEqual([{ branch_id: unidadeNorte, de_fora: true }])
+  expect(nortista.ficha).toMatchObject({ is_active: false })
+  expect(nortista.ficha.tags ?? [], 'sem tag de unidade (T1)').toEqual([])
+  const padrao = await fichaEPacote('Padrão')
+  expect(padrao.pacotes).toEqual([{ branch_id: outra.branchId, de_fora: true }])
+  expect(padrao.ficha).toMatchObject({ is_active: true })
+  expect(padrao.ficha.tags ?? [], 'sem tag de unidade (T1)').toEqual([])
 })
 
 test('o CRM com "só os meus" não importa nem distribui leads pela planilha', async ({ browser }) => {

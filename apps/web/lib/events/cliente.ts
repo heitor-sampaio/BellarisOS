@@ -36,7 +36,7 @@ export async function emitirEventoDeCliente(
 
     const { data, error } = await admin
       .from('clients')
-      .select('id, branch_id, name, phone, email, is_active')
+      .select('id, name, phone, email, is_active')
       .eq('id', clientId)
       .eq('tenant_id', ctx.tenantId)
       .maybeSingle()
@@ -54,7 +54,9 @@ export async function emitirEventoDeCliente(
 
     await emitirEvento(nome, {
       tenantId:   ctx.tenantId,
-      branchId:   (data?.branch_id as string) ?? null,
+      // A cliente é da REDE (auditoria das regras, 18/11; H16): o fato dela
+      // não tem unidade — nunca a em que a ficha nasceu.
+      branchId:   null,
       entidadeId: clientId,
       dados,
       ator:       extras?.ator ?? (ctx.internalUserId ? atorDoContexto(ctx) : ATOR_SISTEMA),

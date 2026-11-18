@@ -35,7 +35,7 @@ export interface CampoDoSistema {
 export interface OpcoesDosCampos {
   /** "Criar oportunidade no funil" ligado: os campos do card. */
   oportunidade?:    boolean
-  /** Clientes importados pela REDE: a unidade de cada linha. */
+  /** Clientes importados pela REDE: a unidade do pacote de antes de cada linha (só com `pacote`). */
   unidadePorLinha?: boolean
   /**
    * Quem traz pacote de fora (o Financeiro em Gerenciar, como o crédito
@@ -98,7 +98,8 @@ const DA_PESSOA: Record<Destino, CampoDoSistema[]> = {
 /** O pacote trazido de fora (decisão 1 do Heitor): "procedimento; total; usadas" e, opcionais, o valor de referência e a validade. */
 const PACOTE = p('pacote', 'Pacote de antes (procedimento; total; usadas)', ['pacote', 'pacotes', 'pacote de antes', 'saldo de pacote', 'saldo do pacote', 'pacote em aberto', 'sessoes do pacote'])
 
-const UNIDADE = p('unidade', 'Unidade', ['unidade', 'filial', 'loja', 'clinica', 'unidade de atendimento'])
+/** A unidade dos pacotes de antes: a ficha é da REDE (H5, H16) — a unidade só diz onde fica o pacote. */
+const UNIDADE = p('unidade', 'Unidade (dos pacotes de antes)', ['unidade', 'filial', 'loja', 'clinica', 'unidade de atendimento'])
 
 const DA_OPORTUNIDADE: CampoDoSistema[] = [
   o('op_origem', 'Origem', ['origem', 'fonte', 'canal', 'como conheceu', 'como nos conheceu', 'midia', 'origem do lead']),
@@ -114,8 +115,8 @@ const DA_OPORTUNIDADE: CampoDoSistema[] = [
 ]
 
 /**
- * Os campos que esta importação oferece, na ordem da tela: os da pessoa, a
- * unidade (se por linha) e os do card (se há oportunidade). No cliente a rede
+ * Os campos que esta importação oferece, na ordem da tela: os da pessoa, o
+ * pacote de antes e a unidade dele (se por linha) e os do card (se há oportunidade). No cliente a rede
  * social não é da ficha — vai só para o card. A origem é só do card: sem a
  * oportunidade ela não tem onde morar (T3 do Bloco Tags, 2026-11-14 — a origem
  * não vira tag da pessoa; até ali entrava como "Origem (vira tag da pessoa)").
@@ -123,7 +124,7 @@ const DA_OPORTUNIDADE: CampoDoSistema[] = [
 export function camposDoDestino(destino: Destino, opcoes: OpcoesDosCampos = {}): CampoDoSistema[] {
   const lista = [...DA_PESSOA[destino]]
   if (destino === 'clientes' && opcoes.pacote) lista.push(PACOTE)
-  if (destino === 'clientes' && opcoes.unidadePorLinha) lista.push(UNIDADE)
+  if (destino === 'clientes' && opcoes.unidadePorLinha && opcoes.pacote) lista.push(UNIDADE)
   if (opcoes.oportunidade) {
     if (destino === 'clientes') lista.push({ ...p('social_media', 'Rede social', SOCIAL_SINONIMOS), grupo: 'oportunidade' })
     lista.push(...DA_OPORTUNIDADE)

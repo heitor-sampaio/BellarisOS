@@ -60,7 +60,7 @@ describe('D2: o campo opcional ilegível vira aviso, não recusa', () => {
     expect(r.dados.unidade).toBeUndefined()
     expect(r.avisos).toEqual([
       'Situação não reconhecida ("talvez", use Ativo ou Inativo): importada como ativa.',
-      'Unidade não encontrada ("Norte"): importada na unidade escolhida na tela.',
+      'Unidade não encontrada ("Norte"): o pacote de antes vai para a unidade escolhida na tela.',
     ])
   })
   it('o campo do card que não se acha deixa a oportunidade sem ele', () => {

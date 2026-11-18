@@ -13,7 +13,7 @@ import { textoDoJaUsado } from '@/lib/creditos/bonus'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { Dica } from '@/components/shared/dica'
 import {
-  EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, type EscolhaDaDevolucaoEstado,
+  EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, useFaltaAMaquininhaDoUsado, type EscolhaDaDevolucaoEstado,
 } from '@/components/shared/escolha-da-devolucao'
 
 /**
@@ -34,6 +34,8 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
   const [motivo, setMotivo] = useState('')
   // Só o estorno: devolver o crédito como crédito não faz sentido.
   const [escolha, setEscolha] = useState<EscolhaDaDevolucaoEstado>({ ...ESCOLHA_INICIAL, destino: 'ESTORNO' })
+  // C75 (VF-01 da varredura de 18/11): o cartão do usado pede a maquininha com mais de uma ativa.
+  const faltaMaquininha = useFaltaAMaquininhaDoUsado(escolha)
   const opcoesDeVezes = useOpcoesDeVezes()
   const [estornando, iniciar] = useTransition()
   // A20 da 11ª (decisão do Heitor: "No estorno sai o bonus junto, a clinica
@@ -55,7 +57,7 @@ export function EstornarVendaDeCredito({ transacaoId, descricao, onFechar }: {
   const temBonus = !!previa && previa.bonus > 0
   // A conta da janela é a da escolha: com bônus, só depois de escolher como ele sai.
   const contaPronta = !!previa && (!temBonus || !!bonusComo)
-  const pronto = !!previa && contaPronta && previa.volta > 0 && motivo.trim().length > 0 && escolhaCompleta(previa.volta, previa.parcial, escolha)
+  const pronto = !!previa && contaPronta && previa.volta > 0 && motivo.trim().length > 0 && escolhaCompleta(previa.volta, previa.parcial, escolha) && !faltaMaquininha
 
   function confirmar() {
     if (!previa) return

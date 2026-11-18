@@ -78,6 +78,8 @@ export async function salvarNumeroWhatsApp(
         .select('id, is_active, label, config, waba_id')
         .eq('id', numeroId)
         .eq('tenant_id', ctx.tenantId!)
+        // O removido não volta por aqui (whatsapp-push.md): conecta-se de novo, numa linha nova.
+        .is('removido_em', null)
         .maybeSingle(), 'buscar a caixa de WhatsApp')
     : null
 
@@ -328,6 +330,8 @@ export async function definirNumeroPadrao(
   const alvo = await ler(admin
     .from('whatsapp_numbers').select('id')
     .eq('id', numeroId).eq('tenant_id', ctx.tenantId!)
+    // O removido não vira padrão (whatsapp-push.md).
+    .is('removido_em', null)
     .maybeSingle(), 'buscar a caixa de WhatsApp')
   if (!alvo) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
 
@@ -712,6 +716,15 @@ export async function atualizarVinculosDoNumero(
   const rotulo = dados.rotulo.trim()
   if (!rotulo) return { ok: false, error: 'O nome da conexão não pode ficar vazio.' }
   const userIds = [...new Set(dados.userIds)]
+
+  // O removido não ganha nome nem pessoas (whatsapp-push.md); a função do
+  // banco também recusa (WPP-03 da varredura de 18/11).
+  const numero = await ler(admin
+    .from('whatsapp_numbers').select('id')
+    .eq('id', numeroId).eq('tenant_id', ctx.tenantId!)
+    .is('removido_em', null)
+    .maybeSingle(), 'buscar a caixa de WhatsApp')
+  if (!numero) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
 
   // Quem já fala por OUTRO número, dito pelo nome. O índice único recusaria de
   // qualquer jeito (e continua sendo a trava), mas com "duplicate key" a

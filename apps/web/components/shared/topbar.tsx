@@ -36,6 +36,8 @@ interface TopbarProps {
   agendaPropria?: boolean
   /** Quem está é da REDE (`ctx.branchId === null`): a busca, no portal da unidade, acha também o que é só da rede (A18 da 8ª). */
   daRede?:        boolean
+  /** A Admin da rede (`mexeNaConfigDaRede`): a busca acha a configuração que só ela abre (CRM-05, 18/11). */
+  adminDaRede?:   boolean
   /**
    * A pessoa de VÁRIAS unidades (PO1, 2026-11-14): a unidade em que está e as
    * dela, para o "Unidade: X ▾". Nulo para quem tem uma só ou a rede inteira.
@@ -76,7 +78,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false, unidade = null, saudacaoInicial }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, scopes, plano = null, suporte = null, assinatura = null, agendaPropria = false, daRede = false, adminDaRede = false, unidade = null, saudacaoInicial }: TopbarProps) {
   // "Dra. Lívia", não "Dra."; e a saudação pela hora (era "Bom dia" sempre).
   const firstName  = primeiroNome(userName)
   const fuso       = useFuso()
@@ -143,7 +145,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       </p>}
 
       {/* Busca universal — no celular vira a lupa do bloco da direita */}
-      <BuscaUniversal slug={slug} permissions={permissions} scopes={scopes} plano={plano} agendaPropria={agendaPropria} daRede={daRede} />
+      <BuscaUniversal slug={slug} permissions={permissions} scopes={scopes} plano={plano} agendaPropria={agendaPropria} daRede={daRede} adminDaRede={adminDaRede} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {/* Ajuda: chamado com o suporte. No modo suporte quem está aqui é o atendente */}

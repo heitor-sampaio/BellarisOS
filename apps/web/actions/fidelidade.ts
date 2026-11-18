@@ -14,7 +14,7 @@ import { EntradaDaRecompensa } from '@/lib/fidelidade/recompensa'
 import { saidaDoVoucher } from '@/lib/estoque/baixa'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { voucherEmitido } from '@/lib/events/fidelidade'
-import { falaDaRede } from '@/lib/unidades/uma-so'
+import { recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { trocaNaComanda } from '@/lib/fidelidade/troca-na-comanda-leitura'
 import type { TrocaNaComanda } from '@/lib/fidelidade/troca-na-comanda'
 
@@ -28,8 +28,8 @@ import type { TrocaNaComanda } from '@/lib/fidelidade/troca-na-comanda'
  */
 
 // ─── Configuração do programa ───────────────────────────────────────────────
-// É decisão de REDE: pede Configurações e abrangência de rede — quem é de uma
-// unidade não liga nem desliga o programa das outras.
+// É configuração da rede toda: só a Admin da rede grava (o Heitor, 18/11, na
+// auditoria das regras: "só pela conta admin"; antes bastava "A rede inteira").
 
 export async function lerConfigFidelidade(): Promise<ConfigFidelidade> {
   const ctx = await getTenantContext()
@@ -41,7 +41,9 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'settings', 'MANAGE')
-  if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'Só quem é da rede configura a fidelidade.') }
+  // A fidelidade vale para a rede toda: só a Admin da rede (o Heitor, 18/11: "só pela conta admin").
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
 
   const lido = EntradaDaConfig.safeParse(entrada)
   if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
@@ -192,7 +194,8 @@ export async function salvarRecompensa(entrada: unknown): Promise<{ error?: stri
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'settings', 'MANAGE')
-  if (ctx.branchId !== null) return { error: await falaDaRede(ctx.tenantId, 'Só quem é da rede mexe no catálogo.') }
+  const daRede = recusaDaConfigDaRede(ctx)
+  if (daRede) return { error: daRede }
 
   const lido = EntradaDaRecompensa.safeParse(entrada)
   if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
@@ -233,7 +236,11 @@ export async function salvarRecompensa(entrada: unknown): Promise<{ error?: stri
 
 // ─── Vouchers ───────────────────────────────────────────────────────────────
 
-/** A unidade de um voucher, conferida na rede e na abrangência do membro. */
+/**
+ * O voucher, conferido na REDE. A unidade dele é registro (onde foi trocado),
+ * nunca recorte (FD3; FID-01 da varredura de 18/11): quem é de outra unidade
+ * também cancela e entrega. A entrega do produto confere a unidade do ESTOQUE.
+ */
 async function voucherAoAlcance(voucherId: string): Promise<
   { ctx: Awaited<ReturnType<typeof getTenantContext>>; voucher: { client_id: string; branch_id: string; product_id: string | null; type: string } } | null
 > {
@@ -242,7 +249,7 @@ async function voucherAoAlcance(voucherId: string): Promise<
   const v = await ler(createAdminClient().from('loyalty_vouchers')
     .select('client_id, branch_id, product_id, type')
     .eq('id', voucherId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o voucher')
-  if (!v || !alcancaUnidade(ctx, (v as { branch_id: string }).branch_id)) return null
+  if (!v) return null
   return { ctx, voucher: v as { client_id: string; branch_id: string; product_id: string | null; type: string } }
 }
 

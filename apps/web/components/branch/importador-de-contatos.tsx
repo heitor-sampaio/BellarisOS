@@ -32,11 +32,11 @@ const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um :
 const DESTINOS: Record<Destino, { rotulo: string; explica: string }> = {
   clientes: {
     rotulo: 'Como clientes',
-    explica: 'Cada linha vira a FICHA de cliente na unidade escolhida — com CPF, endereço e conta de fidelidade. Para migrar a base de outro sistema. Não cria acesso ao portal (isso se faz na ficha).',
+    explica: 'Cada linha vira a FICHA de cliente da rede — com CPF, endereço e conta de fidelidade. Para migrar a base de outro sistema. Não cria acesso ao portal (isso se faz na ficha).',
   },
   contatos: {
     rotulo: 'Como contatos do CRM',
-    explica: 'Cada linha vira só a PESSOA no CRM (nome, telefone, e-mail, rede social, tags), sem ficha clínica — para uma lista de leads. Ela vira cliente depois, quando for atendida.',
+    explica: 'Cada linha vira só a PESSOA no CRM (nome, telefone, e-mail, rede social, tags), sem ficha clínica — para uma lista de contatos. Ela vira cliente depois, quando for atendida.',
   },
 }
 
@@ -148,6 +148,9 @@ export function ImportadorDeContatos(p: Props) {
   }
 
   const faltando = colunasQueFaltam(destino, campos, mapa)
+  // A unidade só se pergunta para os PACOTES de antes (pedido de 18/11): a
+  // ficha é da REDE (H5, H16) — sem a coluna do pacote, não há o que perguntar.
+  const comPacote = destino === 'clientes' && mapa.includes('pacote')
 
   const validadas = useMemo<LinhaValidada[]>(() => {
     if (passo < 3 || !arquivo) return []
@@ -200,7 +203,7 @@ export function ImportadorDeContatos(p: Props) {
     setErroEnvio(null)
     startTransition(async () => {
       const r = await importarContatos({
-        destino, branchId: destino === 'clientes' ? branchId : null, nomeArquivo: arquivo.nome,
+        destino, branchId: destino === 'clientes' && comPacote ? branchId : null, nomeArquivo: arquivo.nome,
         mapeamento: mapa, linhas: arquivo.linhas, numeros: arquivo.numeros,
         oportunidade: comOportunidade && etapaId ? { etapaId, responsavelId: responsavelId || null } : null,
         naoCompletar: destino === 'clientes' ? [...naoCompletar] : [],
@@ -289,30 +292,6 @@ export function ImportadorDeContatos(p: Props) {
             )}
           </div>
 
-          {destino === 'clientes' && (
-            // A2 da 10ª: com UMA unidade, a pergunta some (como a de quem tem unidade fixa).
-            p.unidadeFixa || p.unidades.length === 1 ? (
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
-                Unidade: <strong style={{ color: 'var(--text)' }}>{p.unidades[0]?.nome}</strong>
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 360 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <label htmlFor="importar-unidade" style={rotuloCampo}>Unidade</label>
-                  {p.unidades.length > 1 && (
-                    <Dica rotulo="Sobre a unidade da importação">
-                      Se a planilha tiver uma coluna de unidade, cada linha vai para a dela; esta vale para as linhas sem.
-                    </Dica>
-                  )}
-                </span>
-                <select id="importar-unidade" className="field" value={branchId} onChange={e => setBranchId(e.target.value)}>
-                  <option value="" disabled>Escolha a unidade</option>
-                  {p.unidades.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-                </select>
-              </div>
-            )
-          )}
-
           {/* A oportunidade se decide ANTES das colunas: com ela, a planilha
               pode trazer os campos do card (origem, valor, etapa…). */}
           {p.podeOportunidade && (
@@ -353,7 +332,7 @@ export function ImportadorDeContatos(p: Props) {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button type="button" className="btn-primary" onClick={irParaColunas}
-              disabled={!arquivo || (destino === 'clientes' && !branchId) || (comOportunidade && !etapaId)}>
+              disabled={!arquivo || (comOportunidade && !etapaId)}>
               Continuar
             </button>
           </div>
@@ -395,12 +374,33 @@ export function ImportadorDeContatos(p: Props) {
               valor de referência, as sessões trazidas não entram na receita dos atendimentos, e a comissão de execução em percentual é R$ 0 (a de R$ fixo por sessão é paga).
             </p>
           )}
+          {/* A unidade dos pacotes de antes (a ficha é da rede): só com a coluna do pacote. Com uma unidade, ela não se pergunta (A2 da 10ª). */}
+          {comPacote && (
+            p.unidades.length === 1 ? (
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
+                Unidade dos pacotes de antes: <strong style={{ color: 'var(--text)' }}>{p.unidades[0]?.nome}</strong>
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 360 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <label htmlFor="importar-unidade" style={rotuloCampo}>Unidade dos pacotes de antes</label>
+                  <Dica rotulo="Sobre a unidade dos pacotes de antes">
+                    Onde ficam os pacotes trazidos. Se a planilha tiver a coluna de unidade, o pacote de cada linha vai para a dela; esta vale para as linhas sem.
+                  </Dica>
+                </span>
+                <select id="importar-unidade" className="field" value={branchId} onChange={e => setBranchId(e.target.value)}>
+                  <option value="" disabled>Escolha a unidade</option>
+                  {p.unidades.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                </select>
+              </div>
+            )
+          )}
           {faltando.length > 0 && (
             <Aviso tom="espera">Escolha a coluna de: {faltando.join(', ')}.</Aviso>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <button type="button" className="btn-ghost" onClick={() => setPasso(1)}>Voltar</button>
-            <button type="button" className="btn-primary" onClick={() => setPasso(3)} disabled={faltando.length > 0}>Continuar</button>
+            <button type="button" className="btn-primary" onClick={() => setPasso(3)} disabled={faltando.length > 0 || (comPacote && !branchId)}>Continuar</button>
           </div>
         </div>
       )}

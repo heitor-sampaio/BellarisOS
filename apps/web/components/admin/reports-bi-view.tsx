@@ -39,6 +39,7 @@ import {
   type EstoqueNoResultado,
 } from '@/lib/metrics/resultado'
 import { useFuso } from '@/components/shared/fuso'
+import { diasAteOVencimento } from '@/lib/financeiro/vencimentos'
 
 // -- Types ---------------------------------------------------------------------
 type Tab = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
@@ -455,6 +456,7 @@ function TabOverview(p: ReportsBiProps) {
 // -----------------------------------------------------------------------------
 function TabFinanceiro(p: ReportsBiProps) {
   const { relatorio: r, core, corePrev, branches, installments } = p
+  const fuso = useFuso()
   const nomeDaUnidade = nomesDasUnidades(branches)
 
   const revenue     = core.revenueCash
@@ -495,8 +497,10 @@ function TabFinanceiro(p: ReportsBiProps) {
     { key: 'branch',    label: 'Unidade'     },
     {
       key: 'daysLeft', label: 'Dias', align: 'center',
+      // IND-08: a vencida diz há quantos dias (era "0d" para sempre).
       render: (v) => (
-        <Badge label={`${v}d`} color={Number(v) <= 3 ? 'red' : Number(v) <= 7 ? 'amber' : 'gray'} />
+        <Badge label={Number(v) < 0 ? `vencida há ${-Number(v)}d` : Number(v) === 0 ? 'hoje' : `${v}d`}
+          color={Number(v) <= 3 ? 'red' : Number(v) <= 7 ? 'amber' : 'gray'} />
       ),
     },
   ]
@@ -507,7 +511,8 @@ function TabFinanceiro(p: ReportsBiProps) {
     value:    Number(i.amount),
     due:      new Date(i.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     branch:   branches.find(b => b.id === i.branch_id)?.name ?? '—',
-    daysLeft: Math.max(0, Math.ceil((new Date(i.due_date).getTime() - today.getTime()) / 86_400_000)),
+    // Dia a dia, no dia da unidade (lib/financeiro/vencimentos; IND-08 da varredura de 18/11).
+    daysLeft: diasAteOVencimento(i.due_date, today, fuso),
   }))
 
   return (

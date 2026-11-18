@@ -28,7 +28,7 @@ export function PainelPlanejamento({
   clientId, branchId, slug, appointmentId = null,
   procedures, availableProducts = [],
   podeEditar, podeMontarPlano, podeAnotarNoPlano = true, podeVerInjetaveis, podeVerPlanos = true, podeReceber = false, navegarPorUrl = false, planoNaTela = false,
-  abaInicial = 'tratamento', onIrAoTratamento, faltamAsDores = false,
+  abaInicial = 'tratamento', onIrAoTratamento, faltamAsDores = false, unidadesDoPlano = [],
 }: {
   clientId:       string
   branchId:       string
@@ -69,6 +69,8 @@ export function PainelPlanejamento({
   onIrAoTratamento?: () => void
   /** A21 da 23ª: as "Queixas e dores" em branco (a janela diz o passo delas). */
   faltamAsDores?: boolean
+  /** A ficha da rede com duas ou mais unidades: o plano novo pergunta a unidade (`PlanejamentoTratamento`). */
+  unidadesDoPlano?: { id: string; name: string }[]
 }) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -136,6 +138,7 @@ export function PainelPlanejamento({
           planoNaTela={planoNaTela}
           onIrAoTratamento={onIrAoTratamento}
           faltamAsDores={faltamAsDores}
+          unidadesDoPlano={unidadesDoPlano}
         />
       ) : (
         <PlanejamentoInjetaveis

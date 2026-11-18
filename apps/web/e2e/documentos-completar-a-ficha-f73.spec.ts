@@ -16,6 +16,7 @@ const marca = `dc${Date.now().toString(36)}`
 const db = () => banco()
 let rede: OutraRede
 let recepcao: MembroDeTeste
+let soVe: MembroDeTeste
 let cliente = ''
 let doc = ''
 
@@ -30,6 +31,12 @@ test.beforeAll(async () => {
   recepcao = await criarMembro(`r${marca}`, {
     tenant: rede.tenantId, rotulo: 'Recepção da rede',
     permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }],
+  })
+  // DOC-01 da varredura de 18/11: quem só VÊ a cliente vê os documentos, mas
+  // não edita a ficha — o link não aparece (§14: botão que não se pode usar).
+  soVe = await criarMembro(`v${marca}`, {
+    tenant: rede.tenantId, rotulo: 'Só vê clientes',
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }],
   })
   const { data: m, error } = await db().rpc('documento_modelo_salvar', {
     p_tenant: rede.tenantId, p_modelo: null, p_nome: `${PREFIXO} Modelo ${marca}`, p_tipo: 'TERMO', p_origem: 'EDITOR',
@@ -53,6 +60,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   if (doc) await apagarDocumentosEmitidos([doc])
   await recepcao?.limpar()
+  await soVe?.limpar()
   await rede?.limpar()
 })
 
@@ -66,5 +74,15 @@ test('A22: "Faltam dados" em Documentos leva à aba Dados da cliente', async ({ 
     await expect(completar).toHaveAttribute('href', new RegExp(`/clients/${cliente}\\?aba=dados$`))
     await completar.click()
     await expect(p).toHaveURL(new RegExp(`/clients/${cliente}\\?aba=dados`))
+  })
+})
+
+test('DOC-01: quem só vê a cliente não recebe o "Completar a ficha"', async ({ browser }) => {
+  await como(browser, soVe, async p => {
+    await p.goto('/admin/documentos')
+    const linha = p.locator(`[data-documento="${doc}"]`)
+    await expect(linha).toHaveAttribute('data-situacao', 'FALTAM_DADOS')
+    await expect(linha).toContainText('Falta:')
+    await expect(linha.locator('[data-completar-cadastro]')).toHaveCount(0)
   })
 })

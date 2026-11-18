@@ -47,7 +47,7 @@ test.beforeAll(async () => {
     .select('id').single<{ id: string }>()
   expect(b.error).toBeNull()
   batel = b.data!.id
-  // A cliente é da Água Verde (a unidade de cadastro).
+  // A ficha nasceu na Água Verde (só "onde nasceu": nada decide por ela).
   cliente = await rede.criarCliente('Patricia')
   // O hidratante só tem estoque no Batel.
   const p = await db().from('products').insert({ tenant_id: rede.tenantId, name: PRODUTO, unit: 'un', uso: 'REVENDA', sale_price: 90 })
@@ -83,7 +83,7 @@ test('D1: no PDV da rede, a venda sai da unidade do PDV (?unidade=) — estoque,
     await expect(naAguaVerde.getByLabel('Quem vendeu').locator('option', { hasText: '(você)' }), 'a lista da Água Verde está lá').toHaveCount(1)
     await expect(naAguaVerde.getByLabel('Quem vendeu').locator('option', { hasText: 'Debora' })).toHaveCount(0)
 
-    // No PDV do Batel (a cliente é da Água Verde, de cadastro: não importa).
+    // No PDV do Batel (a ficha nasceu na Água Verde: não importa).
     const dlg = await abrirVendaNoPdv(p, '/admin', cliente, batel)
     await dlg.getByRole('button', { name: 'Produto', exact: true }).click()
     await expect(dlg.getByLabel('Produto').locator('option', { hasText: PRODUTO })).toContainText('4 un em estoque')
@@ -104,7 +104,7 @@ test('D1: no PDV da rede, a venda sai da unidade do PDV (?unidade=) — estoque,
   expect(Number(saldo!.current_stock), 'o estoque baixa no Batel').toBe(3)
 })
 
-test('A14: o "+ Agendar" da ficha da rede e o "Novo cliente" nascem sem unidade escolhida', async ({ browser }) => {
+test('A14: o "+ Agendar" da ficha da rede nasce sem unidade escolhida, e o "Novo cliente" não pergunta unidade', async ({ browser }) => {
   await como(browser, async p => {
     await p.goto(`/admin/clients/${cliente}`)
     await p.getByRole('button', { name: '+ Agendar' }).click()
@@ -112,9 +112,38 @@ test('A14: o "+ Agendar" da ficha da rede e o "Novo cliente" nascem sem unidade 
     await expect(modal.locator('#ag-unidade')).toHaveValue('')
     await expect(modal.locator('#ag-unidade option', { hasText: NOME_B })).toHaveCount(1)
 
+    // Auditoria das regras (18/11): a ficha é da REDE (H16) — o cadastro pela
+    // rede não pergunta a "Unidade de cadastro" (era obrigatória, sem
+    // pré-escolha), e diz que a cliente é da rede.
     await p.goto('/admin/clients/new')
-    await expect(p.getByLabel('Unidade de cadastro *')).toHaveValue('')
+    await expect(p.getByText('Unidade de cadastro', { exact: false })).toHaveCount(0)
+    await expect(p.getByText(/A cliente é da rede/)).toBeVisible()
   })
+})
+
+test('o plano novo da ficha da rede pergunta a unidade — nunca a de cadastro da cliente', async ({ browser }) => {
+  // Monta o plano quem ATENDE na unidade dele (PT2): uma profissional da rede
+  // que atende nas duas.
+  const prof = await criarMembro(`vup${marca}`, {
+    tenant: rede!.tenantId, rotulo: 'Profissional da rede',
+    permissoes: [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'atendimento', nivel: 'MANAGE' }],
+  })
+  try {
+    expect((await db().from('users').update({ atende_em: [rede!.branchId, batel] }).eq('id', prof.userId)).error).toBeNull()
+    const ctx = await browser.newContext({ storageState: prof.estado })
+    const p = await ctx.newPage()
+    await p.goto(`/admin/clients/${cliente}?aba=planejamento`)
+    const unidade = p.getByLabel('Unidade do plano *')
+    // A cliente nasceu na Água Verde: nada vem escolhido, e o "Novo plano" espera.
+    await expect(unidade).toHaveValue('')
+    await expect(p.getByRole('button', { name: 'Novo plano' })).toBeDisabled()
+    await unidade.selectOption({ label: NOME_B })
+    await expect(p).toHaveURL(new RegExp(`unidadeDoPlano=${batel}`))
+    await expect(p.getByRole('button', { name: 'Novo plano' })).toBeEnabled()
+    await ctx.close()
+  } finally {
+    await prof.limpar()
+  }
 })
 
 test('D1: o crédito interno da ficha da rede pergunta a unidade — mesmo da cliente com unidade de cadastro', async ({ browser }) => {

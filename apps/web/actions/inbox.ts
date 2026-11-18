@@ -688,7 +688,6 @@ export interface ClienteDoContato {
   name:  string
   phone: string | null
   email: string | null
-  branch_id: string | null
 }
 
 /** Oportunidade: o lead, agora só com o que é do negócio. */
@@ -949,7 +948,7 @@ async function buscarCliente(
 ): Promise<ClienteDoContato | null> {
   const { data, error } = await admin
     .from('clients')
-    .select('id, name, phone, email, branch_id')
+    .select('id, name, phone, email')
     .eq('id', clientId)
     .eq('tenant_id', tenantId)
     .maybeSingle()
@@ -1356,7 +1355,7 @@ export async function openLeadConversation(
     .maybeSingle()
   if (erroLead) {
     console.error('[openLeadConversation] lead:', erroLead.message)
-    return { conversationId: null, error: 'Não foi possível abrir a conversa deste lead.' }
+    return { conversationId: null, error: 'Não foi possível abrir a conversa desta oportunidade.' }
   }
   if (!leadRow) return { conversationId: null, error: 'Oportunidade não encontrada.' }
 
@@ -1366,18 +1365,36 @@ export async function openLeadConversation(
   // tem `lead_id` apontando para este card. No handoff o card nasce na thread
   // do marketing e o atendimento continua em outra; abrir a de origem levaria
   // quem clica para a conversa que já parou.
+  // Só a que o cargo VÊ no Inbox (CRM-10, 18/11): o refino do "só os meus"
+  // (pela pessoa ou pela conversa) e os números do cargo — como o painel da
+  // conversa (`getConversationCard`) e a abertura por id (`conversaAoAlcance`).
   const { data: existing, error: erroExisting } = await admin
     .from('conversations')
-    .select('id')
+    .select('id, lead_id, contato_id, whatsapp_number_id')
     .eq('tenant_id', ctx.tenantId!)
     .or(`contato_id.eq.${l.contato_id},lead_id.eq.${leadId}`)
     .order('last_message_at', { ascending: false, nullsFirst: false })
-    .limit(1)
+    .limit(50)
   if (erroExisting) {
     console.error('[openLeadConversation] conversa existente:', erroExisting.message)
-    return { conversationId: null, error: 'Não foi possível abrir a conversa deste lead.' }
+    return { conversationId: null, error: 'Não foi possível abrir a conversa desta oportunidade.' }
   }
-  if (existing && existing.length > 0) return { conversationId: existing[0]!.id }
+  if (existing && existing.length > 0) {
+    let alcance: AlcanceDoDono | null
+    let minhasCaixas: string[] | null
+    try {
+      [alcance, minhasCaixas] = await Promise.all([alcanceDoDono(admin, ctx), caixasDoAlcance(admin, ctx)])
+    } catch (e) {
+      console.error('[openLeadConversation] alcance:', mensagemDoErro(e))
+      return { conversationId: null, error: 'Não foi possível abrir a conversa desta oportunidade.' }
+    }
+    const vista = (existing as { id: string; lead_id: string | null; contato_id: string | null; whatsapp_number_id: string | null }[])
+      .find(c => passaNoAlcanceDoDono({ lead_id: c.lead_id, contato_id: c.contato_id }, alcance)
+        && passaNasCaixas(c.whatsapp_number_id, minhasCaixas))
+    if (vista) return { conversationId: vista.id }
+    // Há conversa, e nenhuma é das que o cargo vê: não se abre (nem se cria outra).
+    return { conversationId: null, error: `A conversa com ${l.name} é de um número de WhatsApp ou de uma pessoa fora do que o seu cargo vê no Inbox.` }
+  }
 
   // Cria uma conversa a partir do lead (whatsapp se tem telefone; senão manual)
   const contactPhone = l.phone ? l.phone.replace(/\D/g, '') : null
@@ -1443,11 +1460,15 @@ export async function openLeadConversation(
       .eq('channel', channel)
       .eq('contact_phone', contactPhone)
       .maybeSingle(), 'buscar a conversa')
-    if (doTelefone) return { conversationId: (doTelefone as { id: string }).id }
+    if (doTelefone) {
+      const id = (doTelefone as { id: string }).id
+      if (await conversaAoAlcance(admin, ctx, id)) return { conversationId: id }
+      return { conversationId: null, error: `A conversa com ${l.name} é de um número de WhatsApp ou de uma pessoa fora do que o seu cargo vê no Inbox.` }
+    }
   }
 
   console.error('[openLeadConversation] criar conversa:', erroInsert?.message)
-  return { conversationId: null, error: 'Não foi possível abrir a conversa deste lead.' }
+  return { conversationId: null, error: 'Não foi possível abrir a conversa desta oportunidade.' }
 }
 
 export async function sendMessage(

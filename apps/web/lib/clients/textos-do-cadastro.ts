@@ -80,13 +80,13 @@ export function oQueFaltaResponder(p: {
 }
 
 /**
- * A explicação ao lado da unidade de cadastro (J-24). A cliente é da REDE
- * (H5; H16 e CL3 do Bloco Tags, 2026-11-14): a lista de Clientes de toda
- * unidade a mostra, e qualquer unidade a atende — a unidade de cadastro é só
- * onde a ficha nasceu. Numa rede de uma unidade só não há outra (D-19): nada
- * a dizer.
+ * O aviso no topo do cadastro (J-24). A cliente é da REDE (H5; H16 e CL3 do
+ * Bloco Tags, 2026-11-14): a lista de Clientes de toda unidade a mostra, e
+ * qualquer unidade a atende. O cadastro não pergunta nem mostra unidade
+ * nenhuma (auditoria das regras, 18/11). Numa rede de uma unidade só não há
+ * outra (D-19): nada a dizer.
  */
-export function avisoDaUnidadeDeCadastro(variasUnidades: boolean): string | null {
+export function avisoDaFichaDaRede(variasUnidades: boolean): string | null {
   return variasUnidades
     ? 'A cliente é da rede: aparece na lista de Clientes de todas as unidades, e qualquer uma a atende.'
     : null

@@ -18,17 +18,19 @@ export interface FichaDoLogin {
   clientId: string
   tenantId: string
   /**
-   * O slug da unidade da ficha (`clients.branch_id`) — é o endereço do portal
-   * dela, e é ÚNICO no sistema inteiro (`branches_slug_unico`): o endereço
-   * nunca aponta para duas fichas dela.
+   * O slug do portal dela nesta rede: a ÚLTIMA unidade que ela usou
+   * (`clients.portal_ultima_unidade`), senão a primeira ativa — nunca a de
+   * cadastro (`unidadeDoPortal`, auditoria das regras, 18/11). É ÚNICO no
+   * sistema inteiro (`branches_slug_unico`): o endereço nunca aponta para
+   * duas fichas dela.
    */
   slug: string | null
   /**
    * Os slugs de TODAS as unidades ativas da clínica (rede) da ficha (H5,
    * 2026-11-02: "A cliente é da clínica, pode agendar em qualquer unidade da
    * clínica"). O portal de qualquer uma delas abre esta ficha — a Marlene da
-   * Moinhos em `/zona-sul/cliente` é a mesma ficha. Até aqui só o `slug` da
-   * unidade de cadastro valia, e a Zona Sul voltava à Moinhos sem aviso.
+   * Moinhos em `/zona-sul/cliente` é a mesma ficha. Até 2026-11-02 só o `slug`
+   * da unidade de cadastro valia, e a Zona Sul voltava à Moinhos sem aviso.
    */
   slugsDaRede?: string[]
 }

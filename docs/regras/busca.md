@@ -44,9 +44,12 @@ embaixo da topbar. Desde a fase 2 (2026-10-08) também tem AÇÕES (abaixo).
   emitidos, e "Cargos" e "Taxas" não achavam nada no portal da unidade):
   - "funil", "etapas", "motivos de perda", "origens" acham "Oportunidades →
     Configurar funis" (`?configurar=funis`, a porta por URL da janela
-    `CRMStageSettings`, que tira o parâmetro ao abrir), para quem tem o CRM em
-    Gerenciar e as oportunidades no plano — no portal da unidade, só quem é da
-    rede (H7: quem não tem “A rede inteira” não configura funis);
+    `CRMStageSettings`, que tira o parâmetro ao abrir), com as oportunidades
+    no plano, para quem a PÁGINA abre a janela: a Admin da rede com
+    Configurações em Gerenciar (`adminDaRede`, `mexeNaConfigDaRede`; o Heitor,
+    2026-11-18: "Configuração da rede toda só pela conta admin" — CLAUDE.md
+    §11). Até a varredura de 18/11 (CRM-05) a busca a oferecia a quem tinha o
+    CRM em Gerenciar, e a página não abria;
   - duas telas achadas pelo mesmo apelido dizem qual é qual
     (`SUBTITULO_PELO_APELIDO`): "Os documentos emitidos e assinados" ×
     "Os modelos de termo e contrato (a configuração)";

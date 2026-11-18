@@ -19,13 +19,15 @@ import { ler, contar, tentar } from '@/lib/db'
  * `podeVerClinico`/`canViewRecords` da tela —, nunca só por abrir a página.
  * Falha no registro vai ao log e não tranca o atendimento.
  */
-export type PontoDoProntuario = 'ficha' | 'sessao' | 'plano' | 'lgpd'
+export type PontoDoProntuario = 'ficha' | 'sessao' | 'plano' | 'lgpd' | 'injetaveis'
 
 export const ROTULO_DO_PONTO: Record<PontoDoProntuario, string> = {
   ficha:  'Ficha da cliente',
   sessao: 'Sessão de atendimento',
   plano:  'Plano de tratamento',
   lgpd:   'Liberou no pacote LGPD',
+  // O mapa de injetáveis é clínico (ATD-P09, 18/11; migration 20261124500002).
+  injetaveis: 'Planejamento de injetáveis',
 }
 
 export async function registrarAcessoAoProntuario(

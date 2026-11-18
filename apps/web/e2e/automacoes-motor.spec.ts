@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, nomeDeTeste, tenantId, unidadesAtivas } from './apoio/banco'
+import { banco, nomeDeTeste, tenantId } from './apoio/banco'
 
 /**
  * A Fase 1 do motor, de ponta a ponta e sem tela: cadastrar um cliente pelo
@@ -97,8 +97,6 @@ test.afterAll(async () => {
 
 test('cliente novo dispara a automação: execução, passos e aviso à equipe', async ({ page }) => {
   const db = banco()
-  const unidade = (await unidadesAtivas())[0]!
-
   await page.goto('/admin/clients/new')
   await page.locator('input[name="name"]').fill(nome)
   await page.locator('input[name="phone"]').fill('47988771234')
@@ -106,9 +104,8 @@ test('cliente novo dispara a automação: execução, passos e aviso à equipe',
   // ao app (login = e-mail, senha = CPF).
   await page.locator('input[name="email"]').fill(`${Date.now().toString(36)}@e2e.local`)
   await page.locator('input[name="document"]').fill(cpfDeTeste())
-  // Pela rede não há unidade corrente: a de cadastro é escolhida no formulário.
-  const seletorDaUnidade = page.locator('select').first()
-  if (await seletorDaUnidade.count()) await seletorDaUnidade.selectOption(unidade.id)
+  // Pela rede a ficha nasce sem unidade: o cadastro não pergunta nenhuma
+  // (auditoria das regras, 18/11 — a ficha é da REDE, H16).
   await page.getByRole('button', { name: 'Cadastrar cliente' }).click()
 
   await expect.poll(async () => {

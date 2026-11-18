@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, can } from '@/lib/auth'
-import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
+import { recusaDoSoOsMeus, podeDarBaixa } from '@/lib/financeiro/so-os-meus'
+import { semAcesso } from '@/lib/sem-acesso'
 import { formatBRL } from '@estetica-os/utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -194,7 +195,10 @@ export async function markTransactionPaid(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'cashier', 'MANAGE')
+    // CX2 (o Heitor, 13/11: "Blz pode ser assim"): a baixa no Financeiro é do
+    // PDV OU do Financeiro em Gerenciar de todos — o que entra sem passar pelo
+    // balcão. Era só o PDV (C33).
+    if (!podeDarBaixa(ctx)) throw semAcesso()
     if (partes != null) {
       const lidas = lerPartesDaBaixa(partes)
       if ('error' in lidas) return { error: lidas.error }

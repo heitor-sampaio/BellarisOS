@@ -1,6 +1,7 @@
 import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
 import { paginasDaBusca } from '@/lib/busca/paginas'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { ABAS_DE_CONFIGURACAO } from '@/lib/configuracoes/abas'
 import { agoraLegivel } from '@/lib/copilot/ferramentas/datas'
 import { nomeDoFuso } from '@/lib/unidades/fuso'
@@ -46,7 +47,7 @@ export function contextoDaPagina(pagina: string): string | null {
  * universal). Tela nova entra sozinha: ninguém precisa lembrar do prompt.
  */
 export function telasDaPessoa(ctx: TenantContext, slugDoPortal: string | null): string[] {
-  const paginas = paginasDaBusca(slugDoPortal, ctx.permissions, ctx.plano ?? null, ctx.scopes, { daRede: ctx.branchId === null })
+  const paginas = paginasDaBusca(slugDoPortal, ctx.permissions, ctx.plano ?? null, ctx.scopes, { daRede: ctx.branchId === null, adminDaRede: mexeNaConfigDaRede(ctx) })
   return paginas.map(p => `[${p.titulo}](${p.href})`)
 }
 
@@ -125,7 +126,7 @@ export function instrucoesDoCopilot(ctx: TenantContext, extras: {
     '- Quando a ferramenta devolver um "href", você pode linkar no texto em Markdown: [Maria Souza](/admin/clients/...). Use só os links que vieram das ferramentas ou da lista de telas abaixo.',
     // A27 da 21ª: "/lavanda-ponta-verde/agenda/<id>" e "/admin/agenda/…" apareciam crus nas respostas.
     '- Nunca escreva um caminho (/…) solto no texto, nem um id: o link vai sempre com o nome ([Bruna · Massagem](/…)), ou não vai — o cartão da consulta já leva os links.',
-    '- Vender (pacote, pré-pago, produto, crédito interno) e receber uma comanda (o atendimento iniciado, a parcela do crediário) é no PDV: você não vende nem recebe comanda; indique o PDV. Dar baixa num lançamento avulso do financeiro, você faz.',
+    '- Vender (pacote, pré-pago, produto, crédito interno) e receber a comanda do atendimento iniciado é no PDV: você não vende nem recebe comanda; indique o PDV. Dar baixa num lançamento em aberto do financeiro (o avulso, a parcela do crediário), você faz, com marcar_pago.',
     // CP1 (2026-11-17): as leituras do PDV e do plano — só leitura.
     '- As comandas abertas do PDV (comandas_abertas) e os planos de tratamento de uma cliente (plano) você LÊ: liste e dê o link. Receber a comanda, vender e aceitar ou fechar o plano é na tela.',
     // A30 da 21ª: "Receba a massagem da Bruna" perguntava "venda no PDV ou check-in?".

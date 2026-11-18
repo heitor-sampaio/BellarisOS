@@ -24,6 +24,7 @@ import { DATA, UUID, dinheiro, fusoDe, hojeNoFuso, resolverMembro, resolverProce
 import { BANDEIRAS, rotuloDaBandeira } from '@/lib/financeiro/bandeiras'
 import { CATEGORIA_COMPRA_DE_ESTOQUE, CATEGORIA_MATERIAL_DE_CONSUMO, ehCompraDeEstoque } from '@/lib/financeiro/categorias'
 import { maquininhasDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 
 /**
  * As GRAVAÇÕES de financeiro, estoque e oportunidades. O mesmo molde da
@@ -196,10 +197,11 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
 export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: string; bandeira?: string; vezes?: number; maquininha?: string }, { transactionId: string; forma: string | null; bandeira?: string | null; vezes?: number | null; maquininha?: string | null }> = {
   nome: 'marcar_pago',
   tipo: 'escrita',
-  // Dar baixa é do CAIXA, como na tela (markTransactionPaid). Com o
+  // Dar baixa é a régua da tela (markTransactionPaid, CX2): o Caixa em
+  // Gerenciar, ou o Financeiro em Gerenciar sem o "só os meus". Com o
   // podeReceber, quem só tem o financeiro — até o "só as próprias comissões" —
   // dava baixa em qualquer lançamento da unidade.
-  modulo: 'cashier', nivel: 'MANAGE',
+  pode: podeDarBaixa,
   recurso: 'financeiro',
   descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento (dinheiro, Pix, débito, crédito; na despesa, também boleto; obrigatória em toda receita — pergunte como foi pago — e na despesa sem forma) e, no cartão, a bandeira se a pessoa disser (Visa, Mastercard, Elo, Amex, Hipercard, Outras). Na receita recebida no crédito, as vezes se a pessoa disser ("recebeu no crédito em 3x" → vezes=3). No cartão, a maquininha pelo nome (ex.: Stone) quando a rede tem mais de uma — sem ela, a ferramenta pergunta.',
   parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional(), bandeira: z.string().max(30).optional(), vezes: z.number().int().min(1).max(12).optional(), maquininha: z.string().max(60).optional() }),

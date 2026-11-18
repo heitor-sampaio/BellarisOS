@@ -292,7 +292,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       const res = await openLeadConversation(existing.id)
       setAbrindoConversa(false)
       if (!res.conversationId) {
-        setErroConversa(res.error ?? 'Não foi possível abrir a conversa deste lead.')
+        setErroConversa(res.error ?? 'Não foi possível abrir a conversa desta oportunidade.')
         return
       }
       close()

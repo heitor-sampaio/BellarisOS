@@ -20,3 +20,24 @@ export function textoDoRetorno(dia: string, hoje: string): { texto: string; atra
   if (dia < hoje) return { texto: `Retorno atrasado (${d}/${m})`, atrasado: true, hoje: false }
   return { texto: `Retornar ${d}/${m}`, atrasado: false, hoje: false }
 }
+
+/**
+ * O aviso do sino no dia do retorno (cron `crm-lembretes`). O atrasado sem
+ * observação dizia "Hoje é o dia combinado…" (CRM-07, varredura de 18/11 —
+ * princípio 3: a tela diz o que vale): agora diz o dia que era.
+ */
+export function avisoDoRetorno(
+  l: { nome: string; dia: string; obs: string | null },
+  hoje: string,
+): { title: string; body: string } {
+  const r = textoDoRetorno(l.dia, hoje)
+  const [, m, d] = l.dia.split('-')
+  const title = r.atrasado ? `Retorno atrasado: ${l.nome} (${d}/${m})` : `Retorno de hoje: ${l.nome}`
+  if (l.obs) return { title, body: `Combinado: ${l.obs}` }
+  return {
+    title,
+    body: r.atrasado
+      ? `O dia combinado para retomar o contato com ${l.nome} era ${d}/${m}.`
+      : `Hoje é o dia combinado para retomar o contato com ${l.nome}.`,
+  }
+}

@@ -100,10 +100,12 @@ test.beforeAll(async () => {
     sold_by: outra.professionalId, sold_at: '2021-03-15T15:00:00Z',
   })).error).toBeNull()
 
-  // 4. Plano fechado: o valor é o dos procedimentos dele (500 + 300).
+  // 4. Plano fechado: o valor é o dos procedimentos dele (500 + 300). "Quem
+  // vendeu" marcado: sem ele a venda não é de ninguém (com-06) e a coluna
+  // "Profissional" fica vazia.
   const plano = await db().from('treatment_plans').insert({
     branch_id: outra.branchId, professional_id: outra.professionalId, client_id: duda,
-    status: 'ACCEPTED', name: nome('Plano Duda'), aceito_em: '2021-03-20T15:00:00Z',
+    status: 'ACCEPTED', name: nome('Plano Duda'), aceito_em: '2021-03-20T15:00:00Z', vendido_por: outra.professionalId,
   }).select('id').single<{ id: string }>()
   expect(plano.error, 'o plano fechado').toBeNull()
   const s1 = await db().from('treatment_plan_sessions').insert({ plan_id: plano.data!.id, sort_order: 0 }).select('id').single<{ id: string }>()

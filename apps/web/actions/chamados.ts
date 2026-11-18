@@ -117,7 +117,10 @@ export async function responderChamado(form: FormData): Promise<Resultado> {
   }
 }
 
-export async function meusChamados(): Promise<Resultado<{ chamados: ChamadoResumo[]; daRede: boolean; podeClinico: boolean; podeAutorizar: boolean }>> {
+/** A autorização vigente do suporte na conta de quem pergunta — a dela, dada no chamado ou em Configurações → Suporte. */
+export interface MinhaAutorizacao { id: string; expiraEm: string; clinico: boolean }
+
+export async function meusChamados(): Promise<Resultado<{ chamados: ChamadoResumo[]; daRede: boolean; podeClinico: boolean; podeAutorizar: boolean; minhaAutorizacao: MinhaAutorizacao | null }>> {
   const ctx = await getTenantContext()
   if (ctx.suporte || !ctx.tenantId || ctx.isClient) return { ok: false, error: 'Sem acesso.' }
   try {
@@ -125,7 +128,19 @@ export async function meusChamados(): Promise<Resultado<{ chamados: ChamadoResum
     // Sem o id interno não há "os meus" — e nunca cai em "todos".
     const chamados = daRede ? await chamadosDaRede(ctx.tenantId, {})
       : ctx.internalUserId ? await chamadosDaRede(ctx.tenantId, { userId: ctx.internalUserId }) : []
-    return { ok: true, chamados, daRede, podeClinico: podeIncluirClinico(ctx), podeAutorizar: podeAutorizar(ctx) }
+    // "Revogar: a própria pessoa (a conta é dela)" (plataforma.md). A
+    // autorização dada em Configurações → Suporte não tem chamado, e a aba é
+    // só da Admin da rede: sem isto a pessoa não a via nem revogava (PLAT-05
+    // da varredura de 18/11). Só a da PRÓPRIA conta — nunca a dos outros.
+    const grant = ctx.internalUserId
+      ? await ler(createAdminClient().from('support_grants').select('id, expires_at, includes_clinical')
+          .eq('tenant_id', ctx.tenantId).eq('target_user_id', ctx.internalUserId)
+          .is('revoked_at', null).gt('expires_at', new Date().toISOString())
+          .order('expires_at', { ascending: false }).limit(1).maybeSingle(), 'buscar a autorização da sua conta') as
+          { id: string; expires_at: string; includes_clinical: boolean } | null
+      : null
+    const minhaAutorizacao = grant ? { id: grant.id, expiraEm: grant.expires_at, clinico: !!grant.includes_clinical } : null
+    return { ok: true, chamados, daRede, podeClinico: podeIncluirClinico(ctx), podeAutorizar: podeAutorizar(ctx), minhaAutorizacao }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }
   }

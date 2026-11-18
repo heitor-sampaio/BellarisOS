@@ -41,10 +41,12 @@ export default async function ContaSuspensaPage() {
   if (!rede || (!motivo && !portalForaDoPlano)) redirect('/auth/redirect')
 
   // Quem administra a rede: o cargo de admin, ou rede + configurações MANAGE.
+  // O cargo de admin é o de SISTEMA gravado no membro, nunca a claim `role`
+  // (CLAUDE.md §11, C58/F70: a Admin rebaixada seguia com tudo até o token renovar).
   let administra = false
   if (!ehCliente) {
     const membro = await getCachedMember(claims.sub)
-    if (meta.role === 'NETWORK_ADMIN') administra = true
+    if (membro?.ehAdminDaRede) administra = true
     else if (membro && membro.branchId === null && membro.roleId && tenantId) {
       const perms = resolvePermissions(await getCachedRolePermissions(tenantId, membro.roleId))
       administra = perms.settings === 'MANAGE'

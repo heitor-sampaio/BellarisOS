@@ -11,7 +11,7 @@ import type { PreviaDoCancelamentoDaUnidade } from '@/lib/pre-pago/cancelamento'
 import { useOpcoesDeVezes } from '@/components/shared/use-maximo-de-vezes'
 import { Dica } from '@/components/shared/dica'
 import {
-  EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, type EscolhaDaDevolucaoEstado,
+  EscolhaDaDevolucao, ESCOLHA_INICIAL, escolhaCompleta, escolhaParaAAcao, comOPagamentoInteiro, useFaltaAMaquininhaDoUsado, type EscolhaDaDevolucaoEstado,
 } from '@/components/shared/escolha-da-devolucao'
 
 /**
@@ -33,6 +33,8 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
   const [previa, setPrevia] = useState<PreviaDoCancelamentoDaUnidade | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [escolha, setEscolha] = useState<EscolhaDaDevolucaoEstado>(ESCOLHA_INICIAL)
+  // C75 (VF-01 da varredura de 18/11): o cartão do usado pede a maquininha com mais de uma ativa.
+  const faltaMaquininha = useFaltaAMaquininhaDoUsado(escolha)
   const [motivo, setMotivo] = useState('')
   const opcoesDeVezes = useOpcoesDeVezes()
   const [cancelando, iniciar] = useTransition()
@@ -51,7 +53,7 @@ export function CancelarUnidadePrePaga({ unidadeId, onFechar, onCancelada }: {
     return () => { vivo = false }
   }, [unidadeId])
 
-  const pronto = !!previa && motivo.trim().length > 0 && escolhaCompleta(previa.devolver, previa.parcial, escolha)
+  const pronto = !!previa && motivo.trim().length > 0 && escolhaCompleta(previa.devolver, previa.parcial, escolha) && !faltaMaquininha
 
   function confirmar() {
     if (!previa) return

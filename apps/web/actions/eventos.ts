@@ -1,6 +1,7 @@
 'use server'
 
 import { getTenantContext, assertPermission } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { EVENTOS } from '@estetica-os/types'
 import type { NomeDeEvento, OrigemDeEvento, TipoDeAtor } from '@estetica-os/types'
@@ -38,12 +39,23 @@ export interface FiltrosDeEventos {
 
 const LIMITE_PADRAO = 50
 
+/**
+ * Automações e o "O que já aconteceu" são da REDE, só no portal da rede (D-2,
+ * o Heitor, 2026-10-29: "a automação é da clínica, mesmo que o alvo seja a
+ * unidade"): quem não tem "A rede inteira" não as alcança, tenha o módulo que
+ * tiver — nem pela action chamada direto (AUT-02 da varredura de 18/11).
+ */
+function assertDaRede(ctx: { branchId: string | null }): void {
+  if (ctx.branchId !== null) throw semAcesso()
+}
+
 export async function listarEventosDeDominio(
   filtros: FiltrosDeEventos = {},
 ): Promise<{ eventos: EventoNaLista[]; fim: boolean; error?: string }> {
   const ctx = await getTenantContext()
   // CF2 (2026-11-14): o que já aconteceu mora nas Automações, com o módulo delas.
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
 
   const limite = Math.min(filtros.limite ?? LIMITE_PADRAO, 200)
 
@@ -115,6 +127,7 @@ export async function resumoDoCatalogo(): Promise<{
   const ctx = await getTenantContext()
   // CF2 (2026-11-14): o que já aconteceu mora nas Automações, com o módulo delas.
   assertPermission(ctx, 'automations', 'VIEW')
+  assertDaRede(ctx)
 
   // Agregação no banco, nunca em JS: contar no cliente significaria trazer no
   // máximo 1000 linhas (teto do PostgREST) e subcontar em silêncio quando a

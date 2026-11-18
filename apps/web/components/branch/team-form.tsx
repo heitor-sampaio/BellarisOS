@@ -16,6 +16,8 @@ interface Role {
   id: string; label: string
   /** A18 da 17ª: o cargo não mostra as próprias comissões (sem o Financeiro), com as comissões no plano. */
   naoVeAsComissoes?: boolean
+  /** C62 (F70): o cargo tem mais acesso que o de quem cadastra — aparece desligado (PLAT-02 da varredura de 18/11). */
+  acimaDoMeu?: boolean
 }
 
 interface TeamFormProps {
@@ -123,11 +125,18 @@ function NovoMembroDaUnidade({ branchId, slug, roles, unidade = null, unidadesDo
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <label className="overline" htmlFor="tm-role">Cargo</label>
+                <span style={rotuloComDica}>
+                  <label className="overline" htmlFor="tm-role">Cargo</label>
+                  {roles.some(r => r.acimaDoMeu) && (
+                    <Dica rotulo="Sobre a escolha do acesso">Só quem tem esses módulos pode dar este cargo.</Dica>
+                  )}
+                </span>
                 <select id="tm-role" name="roleId" required className="field" value={roleId} onChange={e => setRoleId(e.target.value)}>
                   <option value="" disabled>Selecione…</option>
                   {roles.map(r => (
-                    <option key={r.id} value={r.id}>{r.label}</option>
+                    <option key={r.id} value={r.id} disabled={r.acimaDoMeu}>
+                      {r.acimaDoMeu ? `${r.label} (tem módulos que você não tem)` : r.label}
+                    </option>
                   ))}
                 </select>
                 {roles.length === 0 && (

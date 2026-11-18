@@ -5,6 +5,7 @@ import { CaminhosDoQueFicou } from '@/components/admin/o-que-ficou'
 import { getTenantContext } from '@/lib/auth'
 import { BranchForm } from '@/components/admin/branch-form'
 import { toggleBranchStatus } from '@/actions/branches'
+import { semAcesso } from '@/lib/sem-acesso'
 import { origemDoApp, enderecoDoAppDaCliente } from '@/lib/unidades/app-da-cliente'
 import { MapPin, Mail, Phone, Power, PowerOff, ChevronRight } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -210,7 +211,9 @@ export async function SettingsBranches() {
                   ) : (
                     <form action={async () => {
                       'use server'
-                      await toggleBranchStatus(branch.id, true)
+                      // A tela só chega aqui com a aba aberta (só a Admin da rede); a recusa não se ignora (§14).
+                      const r = await toggleBranchStatus(branch.id, true)
+                      if (r.error) throw semAcesso()
                     }}>
                       <button
                         type="submit"

@@ -264,3 +264,31 @@ test('o remover recusa o número de outra rede (o id é conferido no banco)', as
     await outra.limpar()
   }
 })
+
+test('WPP-03: o número removido não se salva, não vira padrão nem ganha nome ou pessoas — pela action e pela função do banco', async ({ browser }) => {
+  // whatsapp-push.md: "quem acha um número por id (`numeroDaRede`, o salvar,
+  // o padrão) recusa o removido". O salvar, o padrão e os vínculos achavam.
+  const rotulo = `${PREFIXO} Removido ${marca}`
+  const numero = await ins('whatsapp_numbers', {
+    tenant_id: rede!.tenantId, provider: 'official', label: rotulo,
+    is_active: false, is_default: false, config: {}, removido_em: new Date().toISOString(),
+  })
+  const NAO_ACHA = 'Conexão não encontrada nesta rede.'
+  await como(browser, async p => {
+    const salvar = await chamarAcao(p, 'actions/integrations.ts', 'salvarNumeroWhatsApp', '/admin/settings',
+      [numero.id, 'official', {}, false, { rotulo: `${rotulo} de volta` }])
+    expect(salvar.texto, 'salvar').toContain(NAO_ACHA)
+    const padrao = await chamarAcao(p, 'actions/integrations.ts', 'definirNumeroPadrao', '/admin/settings', [numero.id])
+    expect(padrao.texto, 'padrão').toContain(NAO_ACHA)
+    const vinculos = await chamarAcao(p, 'actions/integrations.ts', 'atualizarVinculosDoNumero', '/admin/settings',
+      [numero.id, { rotulo: `${rotulo} renomeado`, branchId: null, userIds: [] }])
+    expect(vinculos.texto, 'vínculos').toContain(NAO_ACHA)
+  })
+  // E a função do banco, a segunda parede (migration 20261124800001).
+  const { error } = await db().rpc('definir_vinculos_do_numero', {
+    p_numero: numero.id, p_tenant: rede!.tenantId, p_label: `${rotulo} pela função`, p_branch: null, p_usuarios: [],
+  })
+  expect(error?.code, 'a função recusa o removido').toBe('P0002')
+  const { data: caixa } = await db().from('whatsapp_numbers').select('label, is_default, is_active').eq('id', numero.id).single()
+  expect(caixa, 'nada mudou no removido').toEqual({ label: rotulo, is_default: false, is_active: false })
+})

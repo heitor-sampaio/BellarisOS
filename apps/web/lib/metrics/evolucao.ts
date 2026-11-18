@@ -89,3 +89,15 @@ export function variacaoDoSemestre(serie: { label: string; value: number }[]): {
     de: primeiro.label, ate: ultimoFechado.label,
   }
 }
+
+/**
+ * Os totais da legenda do gráfico de evolução (IND-05 da varredura de 18/11 —
+ * a tela somava a série com `reduce`): a receita e o custo somados em
+ * centavos, e o lucro, a diferença. Mesma conta do resultado do período.
+ */
+export function totaisDaEvolucao(pontos: { revenue: number; cost: number }[]): { revenue: number; cost: number; profit: number } {
+  const centavos = (v: number) => Math.round(v * 100)
+  const receita = pontos.reduce((s, p) => s + centavos(p.revenue), 0)
+  const custo   = pontos.reduce((s, p) => s + centavos(p.cost), 0)
+  return { revenue: receita / 100, cost: custo / 100, profit: (receita - custo) / 100 }
+}

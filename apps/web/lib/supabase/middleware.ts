@@ -92,7 +92,9 @@ export async function updateSession(request: NextRequest) {
     const PUBLICAS = ['/privacidade']
     const isPublicRoute = pathname === '/'
       || PUBLICAS.includes(pathname)
-      || pathname.startsWith('/schedule')
+      // O caminho exato, nunca o prefixo: `/schedule-studio/…` é o endereço de
+      // uma unidade (o slug), e abria as telas dela sem sessão (PLAT-08).
+      || pathname === '/schedule' || pathname.startsWith('/schedule/')
       // A conferência de um documento assinado: quem recebe o papel ou o PDF
       // (o cliente, um advogado, um juiz) não tem conta no sistema.
       || pathname === '/verificar' || pathname.startsWith('/verificar/')

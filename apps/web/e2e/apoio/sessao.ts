@@ -320,6 +320,11 @@ export async function clienteComSessao(
       .insert({
         tenant_id: tenant, branch_id: unidade.id, name: `${PREFIXO} Cliente portal ${marca}`,
         phone: '5548' + String(Date.now()).slice(-9), email, auth_id: authId, is_active: true,
+        // O login leva ao portal da ÚLTIMA unidade usada, não à de cadastro
+        // (auditoria das regras, 18/11 — `lib/clientes/unidade-do-portal.ts`):
+        // a cliente de teste "já usou" a unidade pedida, e o destino é ela.
+        // Sem isto, numa rede com várias, valeria a primeira ativa por nome.
+        portal_ultima_unidade: unidade.id,
       })
       .select('id').single<{ id: string }>()
     if (erroCliente) throw new Error(`criar o cliente: ${erroCliente.message}`)

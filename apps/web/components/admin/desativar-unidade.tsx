@@ -52,7 +52,8 @@ export function DesativarUnidade({
     setAviso(null)
     iniciar(async () => {
       try {
-        await toggleBranchStatus(branchId, false)
+        const r = await toggleBranchStatus(branchId, false)
+        if (r?.error) { setAviso({ ok: false, texto: r.error }); return }
         setAberta(false)
         router.refresh()
       } catch {

@@ -1,7 +1,6 @@
 'use client'
 
 import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from 'react'
-import { unicaOpcao } from '@/lib/uma-opcao'
 import { useRouter, usePathname } from 'next/navigation'
 import { addClient, conferirTelefoneDoCadastro, type ResultadoDoCadastro } from '@/actions/clients'
 import { rotaCliente } from '@/lib/rotas'
@@ -13,7 +12,7 @@ import { CampoIndicadaPor } from '@/components/shared/campo-indicada-por'
 import { CamposDeEndereco, ENDERECO_VAZIO, type EnderecoNaTela } from '@/components/shared/campos-de-endereco'
 import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import { Dica } from '@/components/shared/dica'
-import { avisoDoAcessoCriado, avisoDaUnidadeDeCadastro, oQueFaltaResponder, POR_QUE_JA_EXISTE, perguntaJuntoDoDocumento, textoDoSimDaPessoa } from '@/lib/clients/textos-do-cadastro'
+import { avisoDoAcessoCriado, avisoDaFichaDaRede, oQueFaltaResponder, POR_QUE_JA_EXISTE, perguntaJuntoDoDocumento, textoDoSimDaPessoa } from '@/lib/clients/textos-do-cadastro'
 import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { useEnvioUnico } from '@/lib/use-envio-unico'
 
@@ -27,8 +26,7 @@ const GENDERS = [
 interface ClientFormProps {
   branchId:   string
   slug:       string
-  branchName?: string
-  /** quando fornecido, mostra seletor de unidade (uso na conversão de lead pelo CRM) */
+  /** As unidades da rede: só dizem se há mais de uma (o aviso de que a cliente é da rede). */
   branches?:  { id: string; name: string }[]
   /** pré-preenchimento na criação (ex.: conversão de lead) */
   prefill?:   { name?: string; phone?: string; email?: string }
@@ -77,8 +75,8 @@ function Field({ label, children, grupo }: { label: string; children: React.Reac
   )
 }
 
-export function ClientForm({ branchId, slug, branchName, branches, prefill, leadId, conversationId, onSuccess, showCancelButton, onCancel, variasUnidades }: ClientFormProps) {
-  const textoDaUnidade = avisoDaUnidadeDeCadastro(variasUnidades ?? (branches?.length ?? 0) > 1)
+export function ClientForm({ branchId, slug, branches, prefill, leadId, conversationId, onSuccess, showCancelButton, onCancel, variasUnidades }: ClientFormProps) {
+  const textoDaRede = avisoDaFichaDaRede(variasUnidades ?? (branches?.length ?? 0) > 1)
   // Só cadastro. A edição mora na aba Dados da ficha: manter duas telas para a
   // mesma coisa deixava esta aqui sem nenhuma página que a montasse.
   const [state, formAction, pending] = useActionState(addClient, undefined)
@@ -102,12 +100,6 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   // Decisão 2 do Heitor (2026-11-05): a menor de idade pede o responsável legal.
   const [nascimento, setNascimento] = useState('')
   const [responsavel, setResponsavel] = useState<CamposDoResponsavel>(RESPONSAVEL_VAZIO)
-  // A14 da 8ª simulação: com várias unidades, nenhuma vem escolhida (era a
-  // primeira em ordem alfabética); com uma só, ela.
-  const [unitId, setUnitId] = useState(branchId || unicaOpcao(branches))
-  // A2 da 10ª: com UMA unidade, a pergunta some — a unidade é dita, não escolhida.
-  const unidadeUnica = !branchId && branches?.length === 1 ? branches[0]! : null
-  const nomeDaUnidade = unidadeUnica?.name ?? branchName
 
   const router   = useRouter()
   const pathname = usePathname()
@@ -239,34 +231,24 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
 
   return (
     <form ref={formRef} onSubmit={enviar} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <input type="hidden" name="_branchId" value={branches && branches.length > 0 ? unitId : branchId} />
+      {/* A ficha é da REDE (H16): o cadastro não pergunta nem mostra unidade
+          (auditoria das regras, 18/11). Ela nasce na unidade do endereço — no
+          portal da rede, sem unidade —, e isso fica só como "onde nasceu". */}
+      <input type="hidden" name="_branchId" value={branchId} />
       <input type="hidden" name="_slug" value={slug} />
       {leadId && <input type="hidden" name="_leadId" value={leadId} />}
       {conversationId && <input type="hidden" name="_conversationId" value={conversationId} />}
       <input type="hidden" name="tags" value={JSON.stringify(selectedTags)} />
 
-      {branches && branches.length > 1 ? (
-        <Field label="Unidade de cadastro *">
-          <select className="field" value={unitId} onChange={e => setUnitId(e.target.value)} required>
-            {!unitId && <option value="">Selecione a unidade…</option>}
-            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-          {textoDaUnidade && (
-            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 4, display: 'block' }}>
-              {textoDaUnidade}
-            </span>
-          )}
-        </Field>
-      ) : nomeDaUnidade ? (
+      {textoDaRede && (
         <div style={{
           fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
           background: 'var(--bg-app)', border: '1px solid var(--hairline)',
-          borderRadius: 10, padding: '8px 12px', display: 'flex', gap: 6, alignItems: 'center',
+          borderRadius: 10, padding: '8px 12px',
         }}>
-          <span style={{ fontWeight: 700, color: 'var(--text)' }}>Unidade de cadastro:</span> {nomeDaUnidade}
-          {textoDaUnidade && <span style={{ color: 'var(--text-faint)' }}>— {textoDaUnidade}</span>}
+          {textoDaRede}
         </div>
-      ) : null}
+      )}
 
       {/* Seção 1: Dados essenciais */}
       <div className="form-2col">

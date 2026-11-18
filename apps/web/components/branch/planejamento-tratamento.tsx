@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { rotaComParams } from '@/lib/query-params'
 import Link from 'next/link'
 import { rotaNoPortal, rotaDaClienteNoPdv } from '@/lib/rotas'
 import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
@@ -55,7 +56,7 @@ export function PlanejamentoTratamento({
   clientId, branchId, slug, appointmentId = null, planIdInicial = null,
   procedures, availableProducts = [],
   podeEditar, podeAnotar = true, podeReceber = false, abertoId, onAbrir, planoNaTela = false, onIrAoTratamento, faltamAsDores = false,
-  unidadesParaAgendar = [],
+  unidadesParaAgendar = [], unidadesDoPlano = [],
 }: {
   /** Vazio quando o plano ainda não tem cliente — o caso da tela geral. */
   clientId:      string
@@ -74,6 +75,13 @@ export function PlanejamentoTratamento({
   podeReceber?:  boolean
   /** Na página do plano: as unidades em que as sessões se agendam (PT1d). */
   unidadesParaAgendar?: { id: string; name: string }[]
+  /**
+   * A ficha da REDE com duas ou mais unidades: o plano novo nasce na unidade
+   * em que se cria, e a ficha PERGUNTA qual (auditoria das regras, 18/11 —
+   * nunca a de cadastro da cliente). A escolha vai à URL (`?unidadeDoPlano=`):
+   * o servidor troca o catálogo e o preço do editor pelos dela (D4 da 14ª).
+   */
+  unidadesDoPlano?: { id: string; name: string }[]
   /**
    * Qual plano está aberto, decidido de fora. Com `onAbrir` presente, quem
    * manda é o pai — é assim que a ficha do cliente guarda o plano na URL e
@@ -94,6 +102,12 @@ export function PlanejamentoTratamento({
 }) {
   const fuso = useFuso()
   const router   = useRouter()
+  const pathnameDaTela = usePathname()
+  const paramsDaTela   = useSearchParams()
+  const perguntaAUnidadeDoPlano = unidadesDoPlano.length > 0
+  function escolherUnidadeDoPlano(id: string) {
+    router.push(rotaComParams(pathnameDaTela, paramsDaTela, { unidadeDoPlano: id || null }), { scroll: false })
+  }
 
   /**
    * Controlado quando o pai passa `onAbrir`; senão o estado é daqui.
@@ -407,11 +421,23 @@ export function PlanejamentoTratamento({
         </div>
       )}
       {podeEditar && !planoNaTela && (
-        <button type="button" onClick={novoPlano} disabled={carregando} className="btn-primary"
-          style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
-          {carregando ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-          {temNaoSalvo ? 'Continuar o plano não salvo' : 'Novo plano'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+          {perguntaAUnidadeDoPlano && (
+            <div>
+              <label className="field-label" htmlFor="unidade-do-plano">Unidade do plano *</label>
+              <select id="unidade-do-plano" className="field" style={{ marginTop: 4 }}
+                value={branchId} onChange={e => escolherUnidadeDoPlano(e.target.value)}>
+                <option value="">Selecione a unidade…</option>
+                {unidadesDoPlano.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+          )}
+          <button type="button" onClick={novoPlano} disabled={carregando || (perguntaAUnidadeDoPlano && !branchId)} className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
+            {carregando ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            {temNaoSalvo ? 'Continuar o plano não salvo' : 'Novo plano'}
+          </button>
+        </div>
       )}
     </div>
   )

@@ -4,11 +4,12 @@ import { ler } from '@/lib/db'
 
 /**
  * O que o card diz da cliente ligada (A18 da 7ª simulação, 2026-11-05): o
- * próximo agendamento ("Agendado 06/11 10:30") e a última compra (pacote,
- * pré-pago ou plano aceito), para o card SUGERIR levar a oportunidade a Ganho.
- * Nenhum card anda sozinho (crm-05, princípio 6): quem move é a pessoa.
- * Uma ida ao banco para a lista toda (`crm_sinais_dos_clientes`, a lista no
- * corpo da rpc).
+ * próximo agendamento ("Agendado 06/11 10:30") e a última compra (o pacote
+ * vendido — não o trazido de fora —, o pré-pago, ou o plano no primeiro
+ * recebimento: "Uma coisa só foi vendida se foi paga.", o Heitor, 18/11), para
+ * o card SUGERIR levar a oportunidade a Ganho. Nenhum card anda sozinho
+ * (crm-05, princípio 6): quem move é a pessoa. Uma ida ao banco para a lista
+ * toda (`crm_sinais_do_quadro`, a lista no corpo da rpc).
  */
 export interface SinaisDaCliente {
   proximoAgendamento: string | null; compraEm: string | null; compra: string | null

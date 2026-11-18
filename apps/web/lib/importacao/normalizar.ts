@@ -480,7 +480,7 @@ export function validarLinha(
       case 'unidade': {
         const id = acharPeloNome(refs.unidades, v)
         if (id && id !== 'ambiguo') dados.unidade = id
-        else avisos.push(`Unidade não encontrada ("${v}"): importada na unidade escolhida na tela.`)
+        else avisos.push(`Unidade não encontrada ("${v}"): o pacote de antes vai para a unidade escolhida na tela.`)
         break
       }
       default:

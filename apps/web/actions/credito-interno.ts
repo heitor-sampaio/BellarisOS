@@ -27,6 +27,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
 import { recusaDasVezesDaRede } from '@/lib/financeiro/vezes-da-rede'
+import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { BANDEIRAS } from '@/lib/financeiro/bandeiras'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { lerPreviaDoEstornoDoCredito, type PreviaDoEstornoDoCredito } from '@/lib/creditos/venda-de-credito'
@@ -167,7 +168,7 @@ export async function previaDoEstornoDoCredito(
 const EntradaDoEstorno = z.object({
   motivo:   z.string().trim().min(1, 'Diga o motivo do estorno.').max(500),
   estorno:  z.enum(['PARCIAL', 'INTEIRO']).nullable().optional(),
-  novo:     z.object({ metodo: z.enum(FORMAS), vezes: z.number().int().min(1).max(12).optional(), bandeira: z.string().nullable().optional() }).nullable().optional(),
+  novo:     z.object({ metodo: z.enum(FORMAS), vezes: z.number().int().min(1).max(12).optional(), bandeira: z.string().nullable().optional(), maquininha: z.string().uuid().nullable().optional() }).nullable().optional(),
   esperado: z.number().min(0),
   /** A20 da 11ª: na venda com bônus, como o bônus sai — a clínica escolhe. */
   bonus:    z.enum(['INTEIRO', 'PROPORCIONAL']).nullable().optional(),
@@ -182,14 +183,12 @@ export async function estornarVendaDeCredito(transacaoId: string, entrada: unkno
     if (!venda) return { error: 'Venda de crédito não encontrada.' }
     const lido = EntradaDoEstorno.safeParse(entrada)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
-    if (lido.data.novo?.metodo === 'CREDIT_CARD') {
-      const recusa = await recusaDasVezesDaRede(ctx.tenantId!, lido.data.novo.vezes ?? 1)
-      if (recusa) return { error: recusa }
-    }
+    // C75 (VF-01 da varredura de 18/11): no cartão do usado, as vezes e a maquininha da rede.
+    { const recusa = await recusaDoPagamentoDoUsado(ctx.tenantId!, lido.data.novo); if (recusa) return { error: recusa } }
     const { data, error } = await createAdminClient().rpc('credito_estornar_venda', {
       p_tenant: ctx.tenantId!, p_venda: venda.id, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName || null,
       p_motivo: lido.data.motivo, p_esperado: lido.data.esperado, p_simular: false,
-      p_estorno: lido.data.estorno ?? null, p_novo: lido.data.novo ?? null,
+      p_estorno: lido.data.estorno ?? null, p_novo: pagamentoDoUsadoParaOBanco(lido.data.novo),
       p_bonus: lido.data.bonus ?? null,
     })
     if (error) return { error: error.code === 'P0001' ? error.message : mensagemDoErro(error) }

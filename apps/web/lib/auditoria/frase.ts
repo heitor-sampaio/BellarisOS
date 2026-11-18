@@ -1168,7 +1168,17 @@ function principalDaGravacao(linhas: readonly RegistroDaAuditoria[], nomes: Nome
 export function gravacoesDaUnidade(
   registros: readonly RegistroDaAuditoria[], nomes: NomesDaAuditoria, unidade: string,
 ): RegistroDaAuditoria[] {
-  return agruparAuditoria(registros).filter(linhas => principalDaGravacao(linhas, nomes).branch_id === unidade).flat()
+  return agruparAuditoria(registros).filter(linhas => {
+    const principal = principalDaGravacao(linhas, nomes)
+    // A ficha é da REDE (auditoria das regras, 18/11; H16): a gravação dela não
+    // tem unidade, e o filtro de unidade não a esconde.
+    return principal.branch_id === unidade || ehDaFicha(principal)
+  }).flat()
+}
+
+/** A linha da ficha da cliente: da rede, sem unidade (o gatilho não lê `clients.branch_id`). */
+function ehDaFicha(l: RegistroDaAuditoria): boolean {
+  return l.tabela === 'clients' && !l.branch_id
 }
 
 /** O registro clínico que não guarda unidade (o prontuário é da cliente, não da unidade). */

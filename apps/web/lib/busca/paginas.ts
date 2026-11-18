@@ -123,8 +123,11 @@ export function paginasDaBusca(
   plano?: { funcionalidades: readonly string[] } | null,
   /** O escopo de cada módulo: o Fechamento do dia pede o financeiro de todos (D6). */
   scopes?: Partial<ResolvedScopes>,
-  /** Quem busca é da REDE (`ctx.branchId === null`): no portal da unidade, acha também o que é só da rede. */
-  opcoes: { daRede?: boolean } = {},
+  /**
+   * Quem busca é da REDE (`ctx.branchId === null`): no portal da unidade, acha também o que é só da rede.
+   * `adminDaRede` (`mexeNaConfigDaRede(ctx)`): a configuração da rede toda que a página só abre à Admin da rede.
+   */
+  opcoes: { daRede?: boolean; adminDaRede?: boolean } = {},
 ): PaginaDaBusca[] {
   const naRede = slug === null
   const prefixo = naRede ? '' : `/${slug}`
@@ -194,11 +197,12 @@ export function paginasDaBusca(
   }
 
   // A configuração dos FUNIS (A18 da 8ª: "Funil" abria o quadro, e a
-  // configuração é a janela "Configurar funis" dele): quem gerencia o CRM, com
-  // as oportunidades no plano. No portal da unidade, só quem é da rede (H7: o
-  // "Configurar funis" some do quadro da unidade fixa).
+  // configuração é a janela "Configurar funis" dele), com as oportunidades no
+  // plano. A mesma régua da página (app/*/oportunidades): a Admin da rede com
+  // Configurações em Gerenciar (CLAUDE.md §11, o Heitor, 18/11: "Configuração
+  // da rede toda só pela conta admin"). Era o CRM em Gerenciar (CRM-05, 18/11).
   const quadro = paginas.find(p => p.key === 'oportunidades')
-  if (quadro && permissions.crm === 'MANAGE' && (naRede || opcoes.daRede)) {
+  if (quadro && permissions.settings === 'MANAGE' && opcoes.adminDaRede) {
     paginas.push({
       key:      'oportunidades:funis',
       titulo:   'Oportunidades → Configurar funis',

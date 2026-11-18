@@ -88,6 +88,14 @@ async function responsaveisPeloModulo(
   const roleIds = (cargos ?? [])
     .filter(c => !(isScoped(modulo) && c.scope === 'OWN'))
     .map(c => c.role_id as string)
+  // A Admin da rede tem TODO módulo em Gerenciar (o cargo de sistema, pela
+  // chave — `buildContext`), e esse cargo não grava linha em role_permissions:
+  // ela nunca era "Responsável" (whatsapp-push.md, o Heitor, 25/09; WPP-01 da
+  // varredura de 18/11). O plano já cortou acima, como corta o dela.
+  const cargoDaAdmin = await ler(admin
+    .from('tenant_roles').select('id')
+    .eq('tenant_id', tenantId).eq('key', 'NETWORK_ADMIN').eq('is_system', true), 'buscar o cargo da Admin da rede')
+  for (const c of cargoDaAdmin ?? []) if (!roleIds.includes(c.id as string)) roleIds.push(c.id as string)
   if (roleIds.length === 0) return []
 
   // `branch_id` nulo é quem alcança a rede inteira (§11) — e o PostgREST não

@@ -8,8 +8,9 @@ import { apagarAgendamentos } from './apoio/limpeza'
 
 /**
  * Arquivar a cliente (A24, simulação de 2026-10-27): a recepção não achou como
- * ("Desativar cliente" escondido no "..."), e a cliente arquivada seguia
- * contando como cliente NOVA no dashboard.
+ * ("Desativar cliente" escondido no "..."). A arquivada saía da conta de
+ * clientes NOVAS — até a auditoria das regras (18/11): arquivar não muda o
+ * fato do período, e ela continua contando no mês em que virou cliente.
  *
  * J-23 (2026-10-30): arquivar não pedia confirmação, a ficha arquivada não
  * tinha marca, "Vender" e "+ Agendar" continuavam ativos (e o servidor
@@ -61,17 +62,20 @@ const novosNoDashboard = async () => {
 const janela = () => ({ p_from: new Date(Date.now() - 3_600_000).toISOString(), p_to: new Date(Date.now() + 3_600_000).toISOString() })
 
 test.describe.serial('arquivar a cliente', () => {
-  test('a cliente arquivada não conta como nova — no cartão, por unidade e na série', async () => {
+  // Auditoria das regras (18/11; princípios 3 e 5): "Novos clientes" é o fato
+  // do período — arquivar hoje não desfaz que ela passou a ser cliente. Era o
+  // contrário (A24: a arquivada saía da conta, e o número do mês mudava).
+  test('arquivar NÃO muda quantas clientes novas houve — no cartão, por unidade e na série', async () => {
     const id = await rede!.criarCliente('Teste Cancelamento')
     expect(await novosNoDashboard()).toBe(1)
     expect((await db().from('clients').update({ is_active: false }).eq('id', id)).error).toBeNull()
-    expect(await novosNoDashboard(), 'o cartão').toBe(0)
+    expect(await novosNoDashboard(), 'o cartão').toBe(1)
     const porUnidade = await db().rpc('metrics_by_branch', { p_tenant: rede!.tenantId, ...janela() })
-    expect((porUnidade.data as { new_clients: number }[])[0]!.new_clients, 'por unidade').toBe(0)
+    expect(Number((porUnidade.data as { new_clients: number }[])[0]!.new_clients), 'por unidade (a rede de uma unidade só)').toBe(1)
     const serie = await db().rpc('metrics_new_clients_series', { p_tenant: rede!.tenantId, p_branch_ids: null, ...janela(), p_granularity: 'day' })
-    expect(serie.data, 'a série').toEqual([])
+    expect((serie.data as { count: number }[]).reduce((s, b) => s + Number(b.count), 0), 'a série').toBe(1)
     expect((await db().from('clients').update({ is_active: true }).eq('id', id)).error).toBeNull()
-    expect(await novosNoDashboard(), 'reativada, volta').toBe(1)
+    expect(await novosNoDashboard(), 'reativada, igual').toBe(1)
   })
 
   test('quem tem Clientes em Gerenciar arquiva e reativa pela ficha, no menu "Mais ações"', async ({ browser }) => {

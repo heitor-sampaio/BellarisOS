@@ -302,10 +302,13 @@ interface Props {
   financeiroSoOsProprios?: boolean
   isNetworkWide:         boolean
   /**
-   * Cliente da REDE: `clients.branch_id` nulo. Os gestos que gravam por unidade
-   * (credito interno) passam a perguntar a unidade em vez de herdarem uma.
+   * A unidade em que o plano NOVO nasce, na ficha da rede (auditoria das
+   * regras, 18/11: nunca a de cadastro). Com duas ou mais unidades, a
+   * escolhida em "Unidade do plano" (`unidadesDoPlano`); vazia até escolher.
    */
-  clienteSemUnidade?:     boolean
+  unidadeDoPlano?:       string
+  /** As unidades a escolher para o plano novo — preenchida só quando a ficha pergunta. */
+  unidadesDoPlano?:      { id: string; name: string }[]
   /**
    * A ficha da REDE com duas ou mais unidades (D1 e A14 da 8ª simulação; H5:
    * "nada se prende a clients.branch_id"): o que grava por unidade — a venda,
@@ -339,7 +342,7 @@ interface Props {
   podeExportarProntuario?: boolean
   /** Os planos de tratamento (Agenda em Ver, a de `getPlanosDoCliente`); sem eles, o Planejamento é só injetáveis (D6). */
   podeVerPlanos?:        boolean
-  /** Cancelar o pacote (F2b, 2026-11-01): `financial: MANAGE`. */
+  /** Cancelar o pacote, o plano e a unidade pré-paga (F2b, C36): `podeEstornar` — o Financeiro em Gerenciar, sem "só os meus". */
   podeCancelarPacote?:   boolean
   /** Item 9 da auditoria: o pacote vencido que a rede deixa cancelar (só com a regra ligada). */
   pacoteVencido?:        PacoteVencidoDaFicha | null
@@ -357,8 +360,10 @@ interface Props {
   podeReceberParcela?:   boolean
   /** A43 da 8ª: o que ela pagou com crédito na clínica (não é receita: o LTV não conta). */
   pagoComCredito?:       number
-  /** Oportunidades ligadas a este cliente — abertas e concluídas. */
-  opportunities?:        ClientOpportunity[]
+  /** Oportunidades ligadas a este cliente — abertas e concluídas. Nulo: a leitura falhou (CRM-03). */
+  opportunities?:        ClientOpportunity[] | null
+  /** A aba Oportunidades é do CRM (CRM-03, 18/11): sem ele, ou fora do plano, ela some. */
+  veOportunidades?:      boolean
   /** Termos e contratos. Nulo = sem os Documentos no plano da rede: a seção não aparece. */
   termos?:               { itens: ItemDeTermo[]; podeDispensar: boolean; pelaConversa?: boolean; recortado?: boolean; portalNoPlano?: boolean } | null
   /** A33 da 11ª: o lote que cada atendimento usou (a baixa), por id do atendimento. */
@@ -1482,7 +1487,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments = [],
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, clienteSemUnidade = false, perguntaAUnidade = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], lotesDosAtendimentos = {}, podeAbrirLote = false, anexosClinicosFora = 0, anexosClinicos = [], temModuloProntuario = false, anotacoesEVersoes = { anotacoes: {}, versoes: {} }, podeAnotar = false, pedidoLgpd = null, podeVerProntuario = false, planejamentosQueAbrem = [], acessosAoProntuario = null, generalAnamnesis = null, alergias = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, podeAnexarComum = false, portalNoPlano = false, veFinanceiro = false, isNetworkWide, unidadeDoPlano, unidadesDoPlano = [], perguntaAUnidade = false, clientHistory, opportunities = [], veOportunidades = true,
   planProcedures = [], planProducts = [], podeReceber = false, podeMontarPlano = false, termos = null,
   prePagos = [], podeAgendar = false, podeCancelarPacote = false, pacoteVencido = null, quemDesfaz = null, pagoComCredito = 0, podeRemarcar = false, podeEstornar = false, podeReceberParcela = false, podeEditarCadastro = false, quemCompletaOCadastro: quemCompleta = null, podeExportarProntuario = false, podeVerPlanos = false,
   aReceber = { itens: [], total: { n: 0, valor: 0 } }, comandaParaReceber = null, podeReceberAtendimento = false,
@@ -1550,7 +1555,7 @@ export function ClientProfile({
   // PR1b: com o Prontuário em Ver e anexos clínicos fora do "só os meus", a
   // aba existe para dizer o recorte (o aviso saiu da aba Documentos).
   const visibleTabs = TABS.filter(t => (t.key !== 'fichas' || podeVerProntuario || recordForms.length > 0 || (temModuloProntuario && anexosClinicosFora > 0)) && (t.key !== 'financeiro' || veFinanceiro)
-    && (t.key !== 'planejamento' || podeVerPlanos || podeVerProntuario))
+    && (t.key !== 'planejamento' || podeVerPlanos || podeVerProntuario) && (t.key !== 'oportunidades' || veOportunidades))
 
   // PR1a: a foto de um atendimento do prontuário aparece no registro dele; a
   // que não tem registro aqui (o atendimento ainda aberto) fica nos anexos.
@@ -1914,7 +1919,7 @@ export function ClientProfile({
         {client.indicacao && (
           <IndicacaoNaVisaoGeral indicacao={client.indicacao} linkDaFicha={id => rotaCliente(pathname, slug, id)} linkDosDados={linkDaAba('dados')} />
         )}
-        <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} podeAgendar={podeAgendar && !arquivada}
+        <ProcedimentosPagos vendas={prePagos} podeCancelar={podeCancelarPacote} podeAgendar={podeAgendar && !arquivada}
           branches={branches} currentBranchId={currentBranchId ?? ''} />
         {/* Item 9 da auditoria: o pacote vencido, quando a rede o cancela (Configurações → Geral). */}
         {pacoteVencido && podeCancelarPacote && (
@@ -2149,7 +2154,8 @@ export function ClientProfile({
         <div className="card" style={{ padding: '18px 20px' }}>
           <PainelPlanejamento
             clientId={client.id}
-            branchId={currentBranchId || branchId}
+            branchId={unidadeDoPlano ?? (currentBranchId || branchId)}
+            unidadesDoPlano={unidadesDoPlano}
             slug={slug}
             procedures={planProcedures}
             availableProducts={planProducts}
@@ -2166,7 +2172,13 @@ export function ClientProfile({
         </div>
       )}
 
-      {tab === 'oportunidades' && (
+      {tab === 'oportunidades' && opportunities === null && (
+        <div className="card" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600 }}>
+          Não consegui ler as oportunidades desta cliente. Recarregue a página.
+        </div>
+      )}
+
+      {tab === 'oportunidades' && opportunities !== null && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2337,7 +2349,7 @@ export function ClientProfile({
           clientId={client.id}
           branchId={branchId}
           slug={slug}
-          unidadesParaCredito={clienteSemUnidade || perguntaAUnidade ? branches : []}
+          unidadesParaCredito={perguntaAUnidade ? branches : []}
           totais={totaisFinanceiros}
           soOsProprios={financeiroSoOsProprios}
           quemDesfaz={quemDesfaz}

@@ -353,13 +353,13 @@ function guardarSaida(
  * o motor ignora em silêncio.
  */
 /**
- * O fuso das datas de uma mensagem (F62): o da unidade do agendamento, do
- * evento ou da cliente; sem unidade, o comum da rede.
+ * O fuso das datas de uma mensagem (F62): o da unidade do agendamento ou do
+ * evento; sem unidade, o comum da rede. A cliente é da REDE: a unidade em que
+ * a ficha nasceu não decide o fuso (auditoria das regras, 18/11).
  */
 async function fusoDaMensagem(tenantId: string, contexto: ContextoDaExecucao, evento: EventoDoGatilho): Promise<string> {
   const unidade = (contexto.agendamento as { unidadeId?: string | null } | null | undefined)?.unidadeId
     ?? evento.branchId
-    ?? (contexto.cliente as { unidadeId?: string | null } | null | undefined)?.unidadeId
     ?? null
   return unidade ? fusoDaUnidade(tenantId, unidade) : fusoDaRede(tenantId)
 }

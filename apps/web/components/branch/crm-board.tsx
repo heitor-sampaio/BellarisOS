@@ -504,7 +504,7 @@ function MenuItem({
 
 // --- Cartão do lead ----------------------------------------------
 function LeadCard({
-  lead, slug, branchId, allStages, funnels, funnelId, procedures, branches, networkMode, nowMs, podeCadastrarCliente = false,
+  lead, slug, branchId, allStages, funnels, funnelId, procedures, branches, nowMs, podeCadastrarCliente = false,
   unidadesParaAgendar, isDragging, onDragStart, onDragEnd, onLeadDeleted, abrirAoMontar, onAbertoAoMontar,
   desfechos, onMoverPara, perguntar,
 }: {
@@ -1085,9 +1085,10 @@ function LeadCard({
           </span>
           {lead.client_id ? (
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--success)', fontWeight: 700 }}>✓ Cliente</span>
-          ) : networkMode || !podeCadastrarCliente ? (
-            // Lead de rede converte no painel do inbox (escolhe a unidade de cadastro);
-            // e converter é cadastrar: sem Clientes em Gerenciar, nada (D4).
+          ) : !podeCadastrarCliente ? (
+            // Converter é cadastrar: sem Clientes em Gerenciar, nada (D4). No
+            // quadro da rede também (CRM-04, 18/11): a ficha é da REDE (H5), e
+            // não há mais "unidade de cadastro" a escolher.
             null
           ) : (
             <button

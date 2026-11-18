@@ -61,6 +61,13 @@ interface Props {
    */
   cargoFixo?:     Role
   /**
+   * O cargo do membro fica como está, e a dica diz por quê (PLAT-03 da
+   * varredura de 18/11): ele tem uma unidade fora do alcance de quem edita, e
+   * o cargo vale em todas (EQ1). A action recusaria a troca; as unidades e o
+   * "atende" seguem editáveis.
+   */
+  cargoTravado?:  string
+  /**
    * O id do cargo de sistema Admin da rede, quando ele está entre as opções
    * (só a Admin da rede o dá — revisão do Heitor, 2026-10-29). Escolhido, a
    * abrangência some: a Admin é sempre da rede.
@@ -106,7 +113,7 @@ export function TeamMemberEdit(props: Props) {
  * o resultado da última tentativa nascem dos valores do membro a cada abertura,
  * e não do que se mexeu antes de cancelar.
  */
-function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQuemEdita = null, redirectPath, cargoFixo, cargoDeAdminId, unidadesDoAtende, editaveisDoAtende = null, onFechar }: Props & { onFechar: () => void }) {
+function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQuemEdita = null, redirectPath, cargoFixo, cargoTravado, cargoDeAdminId, unidadesDoAtende, editaveisDoAtende = null, onFechar }: Props & { onFechar: () => void }) {
   // As unidades (EQ1a): a rede inteira, ou as dela (a principal primeiro).
   const [unidadesEscolhidas, setUnidades] = useState<ValorDasUnidades>(
     member.branchId ? [member.branchId, ...(member.outrasUnidades ?? []).filter(u => u !== member.branchId)] : 'rede')
@@ -189,6 +196,8 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                     <Dica rotulo="Sobre a escolha do acesso">
                       {cargoFixo ? (
                         <span style={{ display: 'block' }}>Você não muda o próprio cargo de {cargoFixo.label}: {fala('outra Admin da rede muda.')}</span>
+                      ) : cargoTravado ? (
+                        <span data-cargo-travado style={{ display: 'block' }}>{cargoTravado}</span>
                       ) : (
                         <>
                           {roles.some(r => r.acimaDoMeu && r.id !== member.roleId) && (
@@ -208,6 +217,14 @@ function EdicaoDoMembro({ member, branches, roles, canChooseScope, unidadesDeQue
                       <input type="hidden" name="roleId" value={cargoFixo.id} />
                       <select id={`tme-role-${member.id}`} className="field" value={cargoFixo.id} disabled>
                         <option value={cargoFixo.id}>{cargoFixo.label}</option>
+                      </select>
+                    </>
+                  ) : cargoTravado ? (
+                    <>
+                      {/* O select desabilitado não vai no formulário: o cargo segue no oculto. */}
+                      <input type="hidden" name="roleId" value={member.roleId ?? ''} />
+                      <select id={`tme-role-${member.id}`} className="field" value={member.roleId ?? ''} disabled>
+                        <option value={member.roleId ?? ''}>{roles.find(r => r.id === member.roleId)?.label ?? '—'}</option>
                       </select>
                     </>
                   ) : (

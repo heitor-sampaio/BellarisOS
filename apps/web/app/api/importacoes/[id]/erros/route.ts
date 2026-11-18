@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTenantContext, can, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import type { LinhaDoRelatorio } from '@/lib/importacao/processar'
@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     { destino: string; branch_id: string | null; nome_arquivo: string; erros: LinhaDoRelatorio[]; avisos: LinhaDoRelatorio[] | null; erros_expiram_em: string | null } | null
   if (!imp) return NextResponse.json({ error: 'Importação não encontrada.' }, { status: 404 })
   if (!can(ctx, imp.destino === 'clientes' ? 'clients' : 'crm', 'MANAGE')) return NextResponse.json({ error: 'Sem acesso.' }, { status: 403 })
-  if (imp.destino === 'clientes' && !alcancaUnidade(ctx, imp.branch_id)) return NextResponse.json({ error: 'Importação não encontrada.' }, { status: 404 })
+  // Sem recorte por unidade, nem nos clientes: a ficha é da REDE (auditoria das regras, 18/11).
   // Vencido (7 dias), o relatório não sai mais — mesmo antes de a manutenção limpá-lo.
   const vencido = !!imp.erros_expiram_em && imp.erros_expiram_em < new Date().toISOString()
   const linhas = vencido ? [] : [

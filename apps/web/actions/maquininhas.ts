@@ -5,19 +5,20 @@
  * (Configurações → Comissões → Taxas), a taxa do Pix e a leitura de quem
  * recebe no cartão ("Qual maquininha?", o aviso da taxa, "Vezes no cartão").
  *
- * Gravar pede `financial: MANAGE` e abrangência de rede — as taxas valem para
- * a rede inteira (H7, a mesma régua das outras taxas). O servidor grava pelo cliente de serviço: a
+ * Gravar pede `financial: MANAGE` e o cargo de Admin da rede — as taxas são
+ * configuração da rede toda (o Heitor, 18/11: "só pela conta admin"; antes
+ * bastava "A rede inteira", H7). O servidor grava pelo cliente de serviço: a
  * sessão não lê nem grava `maquininhas` (sem política).
  *
  * Todo export é endpoint público: cada um confere a permissão e a rede.
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, assertRecurso, can, podeReceber } from '@/lib/auth'
-import { quemMudaNaRede } from '@/lib/equipe/quem-desfaz'
+import { getTenantContext, assertPermission, assertRecurso, podeReceber } from '@/lib/auth'
+import { adminsAtivasDaRede } from '@/lib/equipe/quem-desfaz'
+import { mexeNaConfigDaRede, recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, mensagemDoErro } from '@/lib/db'
-import { falaDaRede } from '@/lib/unidades/uma-so'
 import { veComissaoDeTodos } from '@/lib/comissoes/quem-ve'
 import { maquininhasDaRede } from '@/lib/financeiro/vezes-da-rede'
 import { EntradaDaMaquininha, ID_DA_MAQUININHA, linhaDaMaquininha, maximoDaMaquininha } from '@/lib/financeiro/maquininhas'
@@ -35,10 +36,7 @@ async function travaDaConfig() {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'comissoes')
   assertPermission(ctx, 'financial', 'MANAGE')
-  if (ctx.branchId !== null) {
-    return { ctx, recusa: await falaDaRede(ctx.tenantId, 'As taxas valem para a rede inteira: quem muda é quem administra a rede.') }
-  }
-  return { ctx, recusa: null as string | null }
+  return { ctx, recusa: recusaDaConfigDaRede(ctx) }
 }
 
 /** Cria (sem id) ou salva uma maquininha da rede. */
@@ -147,8 +145,9 @@ export async function maquininhasParaAVenda(): Promise<{ lista: MaquininhaNaVend
       ? Object.fromEntries(Object.entries(m.porBandeira).map(([b, r]) => [b, { taxas: presenca(r?.taxas ?? {}) }])) as CartaoPorBandeira
       : {},
   }))
-  // A5 da 16ª: a quem não cadastra a taxa, o aviso diz quem cadastra (nulo: ela cadastra).
-  const cadastra = can(ctx, 'financial', 'MANAGE') && ctx.branchId === null
-  const quemCadastra = cadastra || !recebe ? null : await quemMudaNaRede(ctx.tenantId, ['financial'])
+  // A5 da 16ª: a quem não cadastra a taxa, o aviso diz quem cadastra (nulo: ela
+  // cadastra). Desde 18/11 é só a Admin da rede ("só pela conta admin").
+  const cadastra = mexeNaConfigDaRede(ctx)
+  const quemCadastra = cadastra || !recebe ? null : await adminsAtivasDaRede(ctx.tenantId)
   return { lista, mostra, quemCadastra }
 }

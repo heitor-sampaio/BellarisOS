@@ -52,7 +52,7 @@ import { anotacoesEVersoes } from '@/lib/prontuario/anotacoes-e-versoes'
 import { nomeDosProcedimentos } from '@/lib/plano-de-tratamento/nome'
 import { getEmAbertoDosPacotes } from '@/lib/metrics/pacote-em-aberto'
 import { abaDaFicha } from '@/lib/clientes/aba-da-ficha'
-import { podeEstornar } from '@/lib/financeiro/so-os-meus'
+import { podeEstornar, podeDarBaixa } from '@/lib/financeiro/so-os-meus'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS']
 
@@ -60,7 +60,7 @@ export default async function AdminClientProfilePage({
   params, searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ aba?: string | string[] }>
+  searchParams: Promise<{ aba?: string | string[]; unidadeDoPlano?: string | string[] }>
 }) {
   const { id } = await params
   // O id vai a uma coluna uuid: o que não é uuid é 404, não 22P02 (D15).
@@ -71,7 +71,8 @@ export default async function AdminClientProfilePage({
   // (o topo da ficha) sempre; a linha do tempo, os links assinados dos
   // documentos, as negociações e o que é só do prontuário, na aba deles. Era
   // tudo a cada abertura, e o anexar esperava a ficha inteira se refazer.
-  const aba = abaDaFicha((await searchParams).aba)
+  const sp  = await searchParams
+  const aba = abaDaFicha(sp.aba)
 
   const admin = createAdminClient()
 
@@ -81,15 +82,12 @@ export default async function AdminClientProfilePage({
   // recusa do PostgREST virava um 404 e a ficha sumia sem explicação.
   const { data: raw, error: clientErr } = await admin
     .from('clients')
-    .select('*, branches!branch_id(id, name, slug)')
+    .select('*')
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
   if (clientErr) throw new Error('Não foi possível carregar o cliente: ' + clientErr.message)
   if (!raw) notFound()
-
-  // Cliente pertence à REDE — pode não ter unidade vinculada (branch_id nullable).
-  const branchRow = raw.branches as { id: string; name: string; slug: string } | null
 
   const client: ProfileClient = {
     id:                raw.id,
@@ -178,21 +176,25 @@ export default async function AdminClientProfilePage({
       .order('created_at', { ascending: false }), 'carregar o histórico de planos'),
   ])
 
-  // Unidade "efetiva": a vinculada ao cliente ou, na ausência, a primeira ativa
-  // da rede. Serve de CONTEXTO para links e leituras — nunca para gravar por
-  // unidade: cliente de rede não tem unidade (`clients.branch_id` é nulo desde a
-  // migração de clientes de rede), e herdar a primeira em ordem alfabética
-  // mandava o crédito interno para o caixa de outra unidade. Quem grava pergunta.
-  const effBranch = branchRow ?? ((branchesRaw?.[0] ?? null) as { id: string; name: string; slug: string } | null)
-  const branchId  = effBranch?.id ?? ''
-  const slug      = effBranch?.slug ?? ''
-  // Com duas ou mais unidades, quem grava por unidade PERGUNTA (D1 e A14 da 8ª
-  // simulação; H5: "nada se prende a clients.branch_id"): a venda, o crédito,
-  // os pontos, o voucher e a sessão nascem sem unidade escolhida. A venda saía
-  // da unidade de cadastro da Patrícia (Água Verde, "Hidratante — sem
-  // estoque"), e só deu entrando pelo portal do Batel.
+  // A ficha é da REDE (H16; "Nada se prende a clients.branch_id", CLAUDE.md
+  // §5): a unidade de cadastro não decide nada aqui (auditoria das regras,
+  // 18/11). Com duas ou mais unidades, quem grava por unidade PERGUNTA (D1 e
+  // A14 da 8ª simulação): a venda, o crédito, os pontos, o voucher, a sessão —
+  // e o plano NOVO, que nasce na unidade em que se cria (atendimento.md, "O
+  // plano nasce na unidade em que se cria"): a escolhida em "Unidade do plano"
+  // (`?unidadeDoPlano=`, que também troca o catálogo do editor). Com uma só,
+  // é ela.
   const unidadesAtivas = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
   const perguntaAUnidade = unidadesAtivas.length > 1
+  const pedidaDoPlano = typeof sp.unidadeDoPlano === 'string' ? sp.unidadeDoPlano : null
+  const unidadeDoPlano = perguntaAUnidade
+    ? (unidadesAtivas.find(u => u.id === pedidaDoPlano) ?? null)
+    : (unidadesAtivas[0] ?? null)
+  // O CONTEXTO de links e leituras (o `slug` das actions, o catálogo): a do
+  // plano, senão a primeira ativa — nunca para gravar por unidade.
+  const effBranch = unidadeDoPlano ?? unidadesAtivas[0] ?? null
+  const branchId  = effBranch?.id ?? ''
+  const slug      = effBranch?.slug ?? ''
 
   // KPIs
   // O dinheiro do cliente vem do banco, pela regra do sistema (§13.1): LTV é
@@ -310,10 +312,9 @@ export default async function AdminClientProfilePage({
   const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
   // Prontuário é dado sensível de saúde: sem o módulo, nem carrega. E com
   // alcance "só os próprios pacientes", só de quem este profissional atendeu.
-  const canViewRecords = can(ctx, 'medical_records', 'VIEW') && (
-    !isOwnScope(ctx, 'medical_records') ||
-    (appts ?? []).some((a: { professional_id?: string | null }) => a.professional_id === ctx.internalUserId)
-  )
+  // Com "só os meus", a regra única (eq-02: o cancelado não conta, a falta
+  // conta; sem o corte das 60 linhas da ficha) — ATD-P03.
+  const canViewRecords = can(ctx, 'medical_records', 'VIEW') && await clienteNoEscopo(admin, ctx, 'medical_records', id)
   // Quem viu o prontuário fica registrado (lib/prontuario/acessos.ts) — só
   // quando ele vai à tela; o admin da rede vê o registro na própria ficha.
   // A30 da 15ª (minimização da LGPD, sem mudar quem vê): o prontuário só vai à
@@ -476,15 +477,15 @@ export default async function AdminClientProfilePage({
 
   // Procedimentos e insumos do editor de plano — a aba Planejamento monta o
   // plano do cliente sem depender de nenhum atendimento. O catálogo e o preço
-  // são os da unidade em que o plano NOVO nasce (a unidade efetiva, a mesma que
+  // são os da unidade em que o plano NOVO nasce (a "Unidade do plano", a mesma que
   // a aba passa a `salvarPlanoNovo`): D4 da 14ª (F73), princípio 3 — com o
   // catálogo da rede inteira, o editor oferecia o que o servidor recusa. O
   // plano que já existe abre com o catálogo da unidade dele (`getPlanoParaEditar`).
-  const planoProcs = await procedimentosParaPlano(ctx.tenantId!, branchId || null)
+  const planoProcs = await procedimentosParaPlano(ctx.tenantId!, unidadeDoPlano?.id ?? null)
 
   // Negociacoes desta pessoa: ser cliente nao encerra o funil -- reativacao e
   // abrir oportunidade nova para quem ja comprou.
-  const oportunidades = aba === 'oportunidades' ? await oportunidadesDoCliente(ctx.tenantId!, client.id) : []
+  const oportunidades = aba === 'oportunidades' ? await oportunidadesDoCliente(ctx, client.id) : []
 
   // O resto do que a ficha mostra, de uma vez (C77): eram leituras uma atrás
   // da outra no meio da montagem da tela.
@@ -550,7 +551,10 @@ export default async function AdminClientProfilePage({
         podeReceber={podeReceber(ctx)}
         // PT2: monta o plano quem ATENDE na unidade (o "Atende" — não é permissão);
         // sem a unidade escolhida, atender em alguma basta, e a gravação confere.
-        podeMontarPlano={montaPlano(ctx, perguntaAUnidade ? null : branchId)}
+        podeMontarPlano={montaPlano(ctx, unidadeDoPlano?.id ?? null)}
+        // O plano novo nasce na unidade escolhida (com duas ou mais, a ficha pergunta).
+        unidadeDoPlano={unidadeDoPlano?.id ?? ''}
+        unidadesDoPlano={perguntaAUnidade ? unidadesAtivas.map(u => ({ id: u.id, name: u.name })) : []}
         aReceber={aReceber}
         comandaParaReceber={comandaParaReceber}
         podeReceberAtendimento={podeReceber(ctx)}
@@ -562,18 +566,19 @@ export default async function AdminClientProfilePage({
         quemCompletaOCadastro={can(ctx, 'clients', 'MANAGE') ? null : await quemCompletaOCadastro(ctx.tenantId!, null)}
         podeExportarProntuario={can(ctx, 'medical_records', 'MANAGE')}
         podeVerPlanos={can(ctx, 'atendimento', 'VIEW')}
-      podeCancelarPacote={can(ctx, 'financial', 'MANAGE')}
+      podeCancelarPacote={podeEstornar(ctx)}
       pacoteVencido={pacoteVencido}
         podeRemarcar={can(ctx, 'financial', 'MANAGE') && !isOwnScope(ctx, 'financial')}
-        // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela (Recebimentos) na ficha.
+        // A32 e A35 da 12ª: estornar (o Financeiro em Gerenciar) e receber a parcela na ficha — quem dá baixa (CX2: o PDV ou o Financeiro em Gerenciar, `podeDarBaixa`, a mesma régua de markTransactionPaid).
         podeEstornar={podeEstornar(ctx)}
-        podeReceberParcela={ctx.permissions.cashier === 'MANAGE'}
+        podeReceberParcela={podeDarBaixa(ctx)}
         quemDesfaz={quemDesfaz}
         pagoComCredito={pagoComCredito}
         isNetworkWide={ctx.branchId === null}
-        clienteSemUnidade={!branchRow}
         clientHistory={clientHistory}
         opportunities={oportunidades}
+        // CRM-03 (18/11): as oportunidades são dado do CRM — sem ele (ou fora do plano), a aba some.
+        veOportunidades={can(ctx, 'crm', 'VIEW') && temRecurso(ctx, 'oportunidades')}
       />
     </>
   )

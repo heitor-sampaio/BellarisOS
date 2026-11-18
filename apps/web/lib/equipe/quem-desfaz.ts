@@ -70,17 +70,6 @@ export async function quemTrocaPontos(tenantId: string, branchId: string | null)
 }
 
 /**
- * Quem MUDA a configuração da clínica toda (A5 da 14ª simulação; princípios 3
- * e 7, como a A33 da 8ª): a gerente de unidade fixa lia "Esta configuração é da
- * clínica toda" sem saber a quem pedir. São os da REDE (sem unidade fixa —
- * `recusaDaConfigDaRede`), ativos, com algum dos módulos da aba em
- * Gerenciar; a Admin da rede entra sempre.
- */
-export async function quemMudaNaRede(tenantId: string, modulos: readonly AppModule[]): Promise<string[]> {
-  return quemTemEmGerenciar(tenantId, null, modulos)
-}
-
-/**
  * Quem muda a configuração da REDE TODA desde 18/11: só a Admin da rede (o
  * Heitor: "só pela conta admin"; `mexeNaConfigDaRede`). As ativas, pelo cargo
  * de sistema gravado — a aba das Configurações diz os nomes (A5 da 14ª).

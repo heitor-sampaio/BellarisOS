@@ -22,10 +22,29 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   2026-11-16): a corrente e o catálogo (quantas vezes cada fato ocorreu, os
   que nunca ocorreram) em `/admin/automacoes/eventos`, ao lado da lista das
   automações (`VistasDasAutomacoes`), com o módulo DELAS (`automations` em
-  Ver — `listarEventosDeDominio` e `resumoDoCatalogo` conferem isso). Era a
+  Ver — `listarEventosDeDominio` e `resumoDoCatalogo` conferem isso — e "A
+  rede inteira": essas duas e todas as leituras de `actions/automacoes.ts`
+  passam por `assertDaRede`, pela D-2 abaixo; AUT-02 da varredura de 18/11,
+  prova `e2e/automacoes-so-da-rede.spec.ts`). Quem só vê abre, no editor,
+  Execuções, Versões e Limites (só leitura; o ensaio, o voltar versão,
+  salvar e ligar são de Gerenciar — AUT-03 da varredura de 18/11). Era a
   aba Eventos de Configurações (`settings` em Gerenciar); `?tab=eventos` nos
   dois portais leva para lá (`redirect`), e a busca acha "Automações → O que
   já aconteceu". Prova: `e2e/configuracoes-grupos-e-eventos.spec.ts`.
+- **A corrente e as execuções não se leem sem as Automações** (varredura de
+  18/11, do Claude, pelo F63 e pelo "Realtime … assina um SINAL" do
+  CLAUDE.md §4): pela sessão, `domain_events`, `automation_runs`,
+  `automation_run_steps`, `automations` e `automation_versions` só se leem
+  com as Automações em Ver e "A rede inteira" (`private.sessao_ve_o_modulo`,
+  migration `20261124400002`) — antes qualquer membro da rede lia a corrente
+  inteira, com o texto da mensagem recebida (`conversa.mensagem_recebida`)
+  que o "só os meus" do CRM esconde. As telas (`/admin/automacoes` e
+  `/admin/automacoes/eventos`) escutam `automacoes_sinais` (uma linha por
+  rede, sem conteúdo, marcada por gatilho no fato novo, na execução e na
+  automação — `20261124400001`) e recarregam pelo servidor; `domain_events` e
+  `automation_runs` saíram da publicação do Realtime. Prova:
+  `e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts`,
+  `tests/sessao-so-le-prontuario-e-automacoes.test.ts`.
 - **Retenção de 30 dias.** A corrente é uma janela, não arquivo: automação que
   precise olhar mais para trás consulta o dado de negócio.
 - **Eventos clínicos não carregam conteúdo clínico**, e o contexto da automação
@@ -34,9 +53,23 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - `pagamento.*`, `estoque.*`, `comissao.liberada`, `comissao.paga` e `lead.cliente_comprou` saem de GATILHO ou função no banco (`origem: 'banco'`, sem
   ator), porque esses fatos nascem em cinco ou seis lugares do código e
   instrumentar um a um é garantir esquecer o próximo.
+- **`pacote.sessao_usada` sai dos DOIS lados**: da conclusão (app,
+  `emitirSessaoDePacoteUsada`) e da desistência no meio (gatilho
+  `pre_pago_libera`, `origem: 'banco'`, migration `20261124250002`), com os
+  mesmos campos e a mesma chave (`pacote.sessao_usada:<agendamento>`): um
+  atendimento não gera dois consumos. Decisão do Claude pelos princípios — a
+  desistência gasta a sessão (o Heitor, 18/11), e a automação de "acabou,
+  renove" precisa ver isso. Prova:
+  `e2e/atendimento-desistencia-evento-do-pacote.spec.ts`.
 - **`lead.cliente_comprou`**: a cliente ligada a uma oportunidade ABERTA (e
-  criada antes da compra) comprou — pacote, pré-pago ou plano aceito (migration
-  `20261124100001`; uma linha por oportunidade e por compra). Traz o nome, a
+  criada antes da compra) comprou — o pacote vendido (o trazido de fora não é
+  venda), o pré-pago, ou o plano no PRIMEIRO recebimento (migrations
+  `20261124100001` e `20261124700001`; uma linha por oportunidade e por
+  compra). O plano nascia no aceite (`aceito_em`, regra do Claude), e o aceite
+  não tem dinheiro; o Heitor, 18/11: "Uma coisa só foi vendida se foi paga."
+  — o gatilho é o do lançamento de receita PAGO do plano
+  (`trg_lead_cliente_comprou_plano_pago`, o primeiro que vale: sem o estorno
+  nem o estornado; a parcela a receber não conta). Traz o nome, a
   etapa, o funil, quem cuida (`responsavelId`), o que comprou e quando. É o
   gatilho do modelo "Marque o ganho", que saiu do cron do CRM (auditoria das
   regras, 2026-11-18; r2-cfg-04: "toda e qualquer automação deve ser feita
@@ -286,11 +319,16 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   "Depois" segue em aberto.) O "padrão da rede" de
   `whatsapp-push.md` §9.8.0 ("é por ele que sai tudo que o SISTEMA inicia")
   não abre conversa pela automação enquanto essa opção estiver desligada.
-- **O gatilho "N horas antes de cada agendamento" lembra o agendado E o
-  confirmado** (D15 do levantamento das regras, o Heitor, 2026-11-11;
-  princípio 3): lembrar também o não confirmado é o comportamento útil, e o
-  texto da tela (`quandoDispara` e o card do gatilho no assistente) diz
-  "agendado ou confirmado" (F69).
+- **O lembrete antes do agendamento lembra o agendado E o confirmado** (D15
+  do levantamento das regras, 2026-11-11; princípio 3): lembrar também o não
+  confirmado é o comportamento útil. Desde o MK1 (14/11) o lembrete não é
+  mais o gatilho "N horas antes" da campanha: é o modelo "Lembrete antes do
+  agendamento" das Automações (`lembrete-antes-do-agendamento`,
+  `lib/automacoes/modelos.ts`), cujo "Se ainda está de pé" só para no
+  cancelado, na falta e no concluído — e a descrição dele diz "se ele não
+  tiver sido cancelado". (Texto corrigido pelo Claude na varredura de 18/11:
+  citava `quandoDispara` e o card do gatilho no assistente, que saíram com o
+  MK1 — `quandoDispara` hoje é só da campanha de todo ano.)
 - **A remarcação reprograma a espera do agendamento** (D1 da 20ª simulação,
   2026-11-17; princípios 3 e 6: remarcado de 23/11 para 24/11, o lembrete
   seguia esperando até 22/11). Toda remarcação emite `agendamento.remarcado`
@@ -399,7 +437,13 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **"Buscar clientes" é da rede, sem unidade** (T1 do Bloco Tags, 2026-11-14:
   a cliente é da REDE — não existe tag de unidade, e `clients.branch_id` não
   decide nada). O campo "Unidade" do passo saiu, e o dia do aniversário é o
-  do fuso da rede. Um `unidadeId` gravado antes é ignorado.
+  do fuso da rede. Um `unidadeId` gravado antes é ignorado. **E o fuso de
+  "sem retorno desde" e de "cliente desde antes de" também é o da rede**
+  (auditoria das regras, 2026-11-18: `clientes_do_publico` lia
+  `fuso_da_unidade(c.branch_id)`, a unidade em que a ficha nasceu; migration
+  `20261124200006`, `tests/publico-sem-unidade-de-cadastro.test.ts`). O
+  contexto da cliente nas automações não tem mais unidade (`unidadeId` saiu
+  de `contexto.cliente`), e o fuso da mensagem sem agendamento é o da rede.
 - **"Adicionar tag" e "Remover tag"** (a regra das Tags do CLAUDE.md §1: "o
   sistema não coloca tag nenhuma automaticamente em ninguém" — o fluxo é da
   rede, que o montou). "Adicionar tag" põe na cliente uma das tags CADASTRADAS
@@ -594,5 +638,6 @@ o fato se grava e não vai ao motor (`emitirEvento` com `semDespachar`).
 ❌ Na sessão de suporte, deixar criar, editar, excluir ou ligar automação — o suporte só pausa (tests/automacoes-suporte-so-pausa.test.ts)
 ❌ Ligar o "mandar na véspera às 20:00" por padrão, ou deixá-lo atravessar o silêncio que a rede escolheu (D17)
 ❌ Filtro de unidade no público da campanha ou no "Buscar clientes" (a cliente é da rede — MK2/T1 do Bloco Tags)
+❌ Assinar domain_events ou automation_runs no Realtime, ou abrir a leitura delas pela sessão sem o módulo (é automacoes_sinais e sessao_ve_o_modulo — AUT-01, 18/11)
 ❌ Remarcar um agendamento sem emitir agendamento.remarcado (é ele que reprograma o lembrete que espera o horário antigo — D1 da 20ª)
 ```

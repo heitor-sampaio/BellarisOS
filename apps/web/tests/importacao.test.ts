@@ -69,16 +69,22 @@ describe('sugerirMapeamento', () => {
       'contatos', { oportunidade: true },
     )).toEqual(['name', 'phone', 'op_origem', 'op_valor', 'op_etapa', 'op_responsavel', 'op_procedimentos', 'op_utm_campaign', 'op_observacoes'])
   })
-  it('no cliente: situação sempre; unidade por linha só quando pedida; rede social só na oportunidade', () => {
+  // A ficha é da REDE (H5, H16): a unidade só diz onde fica o PACOTE de antes
+  // (importação de 18/11). Sem a coluna do pacote, a coluna de unidade não é oferecida.
+  it('no cliente: situação sempre; a unidade por linha só com o pacote de antes; rede social só na oportunidade', () => {
     expect(camposDoDestino('clientes').map(c => c.chave)).toContain('ativo')
     expect(camposDoDestino('clientes').map(c => c.chave)).not.toContain('unidade')
     expect(camposDoDestino('clientes').map(c => c.chave)).not.toContain('social_media')
-    expect(camposDoDestino('clientes', { unidadePorLinha: true }).map(c => c.chave)).toContain('unidade')
+    expect(camposDoDestino('clientes', { unidadePorLinha: true }).map(c => c.chave)).not.toContain('unidade')
+    const comPacote = camposDoDestino('clientes', { unidadePorLinha: true, pacote: true })
+    expect(comPacote.find(c => c.chave === 'unidade')?.rotulo).toBe('Unidade (dos pacotes de antes)')
     const op = camposDoDestino('clientes', { oportunidade: true })
     expect(op.find(c => c.chave === 'social_media')?.grupo).toBe('oportunidade')
     // As observações vão para a ficha; as da oportunidade, só se outra coluna.
-    expect(sugerirMapeamento(['Nome', 'Celular', 'Observações', 'Unidade', 'Status'], 'clientes', { oportunidade: true, unidadePorLinha: true }))
+    expect(sugerirMapeamento(['Nome', 'Celular', 'Observações', 'Unidade', 'Status'], 'clientes', { oportunidade: true, unidadePorLinha: true, pacote: true }))
       .toEqual(['name', 'phone', 'notes', 'unidade', 'ativo'])
+    expect(sugerirMapeamento(['Nome', 'Celular', 'Unidade'], 'clientes', { unidadePorLinha: true }))
+      .toEqual(['name', 'phone', null])
   })
 })
 
@@ -178,7 +184,7 @@ describe('os campos novos', () => {
       'Mais de uma pessoa da equipe se chama "Ana Lima" (use o e-mail): a oportunidade entra com o responsável escolhido na tela.',
     ])
     expect(validarLinha('clientes', ['name', 'phone', 'unidade'], ['Ana', '48999990000', 'Norte'], refs).avisos)
-      .toEqual(['Unidade não encontrada ("Norte"): importada na unidade escolhida na tela.'])
+      .toEqual(['Unidade não encontrada ("Norte"): o pacote de antes vai para a unidade escolhida na tela.'])
     expect(validarLinha('contatos', ['phone', 'op_responsavel'], ['48999990000', 'zé'], refs).avisos)
       .toEqual(['Responsável não encontrado na equipe ("zé"): a oportunidade entra com o responsável escolhido na tela.'])
   })

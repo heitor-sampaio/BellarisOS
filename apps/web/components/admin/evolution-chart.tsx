@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { numericAxisWidth, rotuloDoEixo, CURVA_DA_EVOLUCAO } from '@/lib/chart-utils'
 import { DEFINICOES } from '@/lib/metrics/definicoes'
+import { totaisDaEvolucao } from '@/lib/metrics/evolucao'
 
 export interface ChartPoint {
   day:     number
@@ -89,9 +90,8 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day', soReceit
     )
   }
 
-  const totalRevenue = data.reduce((s, d) => s + d.revenue, 0)
-  const totalCost    = data.reduce((s, d) => s + d.cost,    0)
-  const totals = { revenue: totalRevenue, cost: totalCost, profit: totalRevenue - totalCost }
+  // Os totais da legenda vêm de lib/metrics (§13.1, IND-05): a tela não soma.
+  const totals = totaisDaEvolucao(data)
   const yAxisW = numericAxisWidth(data.flatMap(d => series.map(k => d[k])), fmtAxis)
   // A52 da 9ª: o ponto de cada dia (ou hora) à vista — a reta entre dois pontos
   // não parece mais um valor que não houve. Com muitos pontos, só a linha.

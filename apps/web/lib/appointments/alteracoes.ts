@@ -13,6 +13,7 @@ import { fusoValido } from '@/lib/unidades/fuso'
 import { recusaDeQuemNaoAtende, textoDaTroca } from '@/lib/appointments/troca-de-profissional'
 import { pagosAntes } from '@/lib/appointments/pago-antes'
 import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
+import { recusaDoCancelar } from '@/lib/appointments/quem-cancela'
 
 /**
  * REMARCAR e CANCELAR um agendamento — os núcleos que a agenda (actions/
@@ -239,13 +240,20 @@ export async function cancelarCore(admin: Admin, ctx: TenantContext, input: {
   if (!motivo) return { error: 'Informe o motivo do cancelamento.' }
   const existente = await agendamentoAoAlcance(admin, ctx, input.appointmentId)
   if (!existente) return { error: 'Agendamento não encontrado.' }
-  if (deOutroProfissional(ctx, existente.professional_id)) return { error: DE_OUTRO_PROFISSIONAL }
   if (FINALIZADOS.includes(existente.status)) return { error: 'Agendamento já finalizado.' }
+  // Cancelar o Em atendimento é DESISTIR dele: o Atendimento em Gerenciar, com
+  // o escopo dele (CLAUDE.md §11, o Heitor, 18/11); o resto, a Agenda em
+  // Gerenciar com o "só os meus" dela. Quem chama confere só a porta
+  // (`podeCancelarAlgum`): a regra depende da situação, lida aqui.
+  const recusa = recusaDoCancelar(ctx, existente)
+  if (recusa) return { error: recusa }
 
+  // A gravação vale só na situação lida: o agendado que virou Em atendimento
+  // no meio não é cancelado por quem só tem a Agenda.
   const canceladas = await gravar(admin.from('appointments').update({
     status: 'CANCELLED', cancelled_at: new Date().toISOString(), cancellation_reason: motivo,
-  }).eq('id', existente.id).not('status', 'in', ABERTOS_NAO).select('id'), 'cancelar a sessão') as { id: string }[] | null
-  if (!canceladas?.length) return { error: 'Agendamento já finalizado.' }
+  }).eq('id', existente.id).eq('status', existente.status).not('status', 'in', ABERTOS_NAO).select('id'), 'cancelar a sessão') as { id: string }[] | null
+  if (!canceladas?.length) return { error: 'O agendamento mudou de situação. Confira na agenda.' }
 
   const userName = ctx.userName || await getUserName(admin, ctx.userId)
   await logHistory(admin, existente.id, ctx.internalUserId, userName, 'CANCELLED', `Cancelado: ${motivo}`)

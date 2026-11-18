@@ -314,10 +314,14 @@ test.describe.serial('o sistema: a oferta no plano e os adicionais da rede', () 
 
 test.describe.serial('a rede: ver e contratar o adicional pela aba Assinatura', () => {
   const SIS = () => urlDaPlataforma('sistema')
-  const RECUSADA = /BELLARIS_SEM_ACESSO|Forbidden|Você não tem acesso a esta ação/
+  const RECUSADA = /BELLARIS_SEM_ACESSO|Forbidden|Você não tem acesso a esta ação|Esta configuração é só da Admin da rede/
   let dono: MembroDeTeste | null = null
   let gestorDaUnidade: MembroDeTeste | null = null
   let semConfig: MembroDeTeste | null = null
+  // "A rede inteira" com Configurações em Gerenciar, sem ser a Admin da rede: a
+  // mensalidade é configuração da rede toda — "só pela conta admin" (o Heitor,
+  // 18/11). Até ali, contratava.
+  let daRedeSemSerAdmin: MembroDeTeste | null = null
 
   test.beforeAll(async () => {
     test.setTimeout(180_000)
@@ -327,9 +331,12 @@ test.describe.serial('a rede: ver e contratar o adicional pela aba Assinatura', 
       tenant: outra.tenantId, branchId: outra.branchId, rotulo: 'Gestor da unidade', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
     })
     semConfig = await criarMembro(`adsem${marca}`, { tenant: outra.tenantId, rotulo: 'Sem configurações', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+    daRedeSemSerAdmin = await criarMembro(`adrede${marca}`, {
+      tenant: outra.tenantId, rotulo: 'Sócia sem o cargo de Admin', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+    })
   })
   test.afterAll(async () => {
-    for (const m of [dono, gestorDaUnidade, semConfig]) if (m) await m.limpar()
+    for (const m of [dono, gestorDaUnidade, semConfig, daRedeSemSerAdmin]) if (m) await m.limpar()
   })
 
   /** Plano de R$ 100 com WhatsApp 1 e as duas ofertas; nada contratado; o cache da clínica expirado. */
@@ -387,7 +394,7 @@ test.describe.serial('a rede: ver e contratar o adicional pela aba Assinatura', 
     await db().from('whatsapp_numbers').delete().eq('tenant_id', outra.tenantId)
   })
 
-  test('o que a rede não pode: unidade, sem configurações, sem oferta', async ({ browser }) => {
+  test('o que a rede não pode: unidade, "A rede inteira" sem ser a Admin, sem configurações, sem oferta', async ({ browser }) => {
     const contratar = async (estado: string, chave = 'whatsapp', quantidade = 2) => {
       let texto = ''
       await comSessao(browser, estado, async p => {
@@ -396,6 +403,8 @@ test.describe.serial('a rede: ver e contratar o adicional pela aba Assinatura', 
       return texto
     }
     expect(await contratar(gestorDaUnidade!.estado), 'quem tem unidade fixa não contrata pela rede').toMatch(RECUSADA)
+    expect(await contratar(daRedeSemSerAdmin!.estado), '"A rede inteira" sem o cargo de Admin da rede não contrata')
+      .toContain('Esta configuração é só da Admin da rede.')
     expect(await contratar(semConfig!.estado)).toMatch(RECUSADA)
     // Sem a oferta do Copilot no plano: a clínica não dá preço, então não contrata.
     await redeCom({ oferta: { whatsapp: { valor_centavos: 4900 } } })

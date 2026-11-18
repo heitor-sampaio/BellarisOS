@@ -70,9 +70,21 @@ test.describe.serial('comissões — configuração e regras', () => {
       const r = await chamarAcao(p, 'actions/comissoes.ts', 'salvarConfigDeComissao', '/admin/settings',
         [{ desconta_insumos: true, desconta_taxa: true, base_com_pontos: 'PRECO', periodo: 'QUINZENAL' }])
       expect(r.texto).toContain('quem muda é a Admin')
+      // As taxas da maquininha e do Pix também são da rede toda: o Financeiro
+      // em Gerenciar com "A rede inteira" gravava até 18/11 ("só pela conta
+      // admin", o Heitor).
+      const maq = await chamarAcao(p, 'actions/maquininhas.ts', 'salvarMaquininha', '/admin/settings',
+        [{ nome: 'Do gestor', taxas: {}, maxVezes: null, prazoDias: 30, cobraPorBandeira: false, porBandeira: {} }])
+      expect(maq.texto).toContain('Esta configuração é só da Admin da rede.')
+      const pix = await chamarAcao(p, 'actions/maquininhas.ts', 'salvarTaxaDoPix', '/admin/settings', [7])
+      expect(pix.texto).toContain('Esta configuração é só da Admin da rede.')
     })
     expect((await db().from('commission_configs').select('periodo').eq('tenant_id', rede!.tenantId).maybeSingle()).data?.periodo,
       'nada gravado pelo gestor').not.toBe('QUINZENAL')
+    expect((await db().from('maquininhas').select('id').eq('tenant_id', rede!.tenantId).eq('nome', 'Do gestor')).data ?? [],
+      'nenhuma maquininha do gestor').toEqual([])
+    expect((await db().from('tenants').select('pix_taxa_pct').eq('id', rede!.tenantId).single()).data?.pix_taxa_pct,
+      'a taxa do Pix do gestor não foi gravada').not.toBe(7)
 
     await comSessao(browser, dona!, async p => {
       await p.goto('/admin/settings?tab=comissoes')

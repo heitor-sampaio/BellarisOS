@@ -94,3 +94,19 @@ test('A32: quem é da rede acha a abertura do prontuário no filtro pela unidade
     await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Abriu o prontuário' })).toHaveCount(1, { timeout: 30_000 })
   })
 })
+
+/**
+ * A ficha é da REDE na Auditoria (auditoria das regras, 18/11; H16: "o
+ * cliente não é da unidade, o cliente é da rede"): a linha de `clients` não
+ * leva a unidade em que a ficha nasceu, e o filtro de unidade não a esconde.
+ */
+test('a linha da ficha é "da rede" e aparece no filtro de qualquer unidade', async ({ browser }) => {
+  const { data } = await db().from('auditoria').select('branch_id')
+    .eq('tenant_id', rede!.tenantId).eq('tabela', 'clients').eq('registro_id', clienteId)
+  expect((data ?? []).length, 'a ficha criada entrou na auditoria').toBeGreaterThan(0)
+  expect((data ?? []).map(l => l.branch_id), 'sem a unidade de cadastro').toEqual((data ?? []).map(() => null))
+  await como(browser, daRede!.estado, async p => {
+    await p.goto(`/admin/auditoria?unidade=${rede!.branchId}`)
+    await expect(p.locator('[data-linha-da-auditoria]').filter({ hasText: 'Criou a ficha' })).toHaveCount(1, { timeout: 30_000 })
+  })
+})

@@ -80,11 +80,17 @@ test('A2: o Novo cliente e a importação não perguntam a unidade', async ({ br
   try {
     const p = await ctx.newPage()
     await p.goto('/admin/clients/new')
-    await expect(p.getByText('Unidade de cadastro:')).toBeVisible()
+    // Auditoria das regras (18/11): a ficha é da REDE (H16) — o cadastro não
+    // pergunta nem mostra a unidade (era "Unidade de cadastro: <a única>").
+    await expect(p.getByText('Unidade de cadastro', { exact: false })).toHaveCount(0)
     await expect(p.locator('select').filter({ has: p.locator(`option:text-is("${nomeDaUnidade}")`) })).toHaveCount(0)
 
     await p.goto('/admin/importar-contatos')
+    await expect(p.getByLabel('Arquivo CSV')).toBeVisible()
+    // A importação não pergunta nem mostra a unidade (pedido de 18/11: ela é
+    // só a dos pacotes de antes, no passo das colunas — e com uma unidade só,
+    // dita sem pergunta).
     await expect(p.locator('#importar-unidade')).toHaveCount(0)
-    await expect(p.getByText(`Unidade: ${nomeDaUnidade}`)).toBeVisible()
+    await expect(p.getByText(`Unidade: ${nomeDaUnidade}`)).toHaveCount(0)
   } finally { await ctx.close() }
 })

@@ -134,11 +134,14 @@ export async function planosDaCliente(c: ContextoDaFerramenta, clientId: string,
   // A desistência no meio conta como feita (o Heitor, 2026-11-18; como o
   // `metrics_financeiro_do_plano`): a sessão não volta à cliente.
   const usadaNaDesistencia = new Set((status ?? []).filter(a => a.status === 'CANCELLED' && a.started_at).map(a => a.id))
+  // A sessão FEITA: a concluída e a da desistência — a mesma regra na conta e
+  // na lista (COP-02: a lista dizia "agendada" para a desistência).
+  const feitaNa = (id: string) => statusDe.get(id) === 'COMPLETED' || usadaNaDesistencia.has(id)
 
   return lidos.map(p => {
     const sessoes = [...p.treatment_plan_sessions].sort((a, b) => a.sort_order - b.sort_order)
     const total = sessoes.reduce((s, x) => s + x.treatment_plan_session_procedures.reduce((t, y) => t + Number(y.price ?? 0), 0), 0)
-    const feitas = sessoes.filter(s => s.appointment_id && (statusDe.get(s.appointment_id) === 'COMPLETED' || usadaNaDesistencia.has(s.appointment_id))).length
+    const feitas = sessoes.filter(s => s.appointment_id && feitaNa(s.appointment_id)).length
     const agendadas = sessoes.filter(s => s.appointment_id && !['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(statusDe.get(s.appointment_id) ?? '')).length
     const aberto = emAberto[p.id]
     return {
@@ -151,7 +154,11 @@ export async function planosDaCliente(c: ContextoDaFerramenta, clientId: string,
         listaDeSessoes: sessoes.map((s, i) => ({
           numero: i + 1,
           procedimentos: [...s.treatment_plan_session_procedures].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map(x => x.procedures?.name ?? 'Procedimento'),
-          situacao: !s.appointment_id ? 'a agendar' : statusDe.get(s.appointment_id) === 'COMPLETED' ? 'feita' : 'agendada',
+          // O cancelado antes de começar e a falta soltam a sessão (`pre_pago_libera`):
+          // ligada a um deles, ela está a agendar, como na conta das agendadas.
+          situacao: !s.appointment_id ? 'a agendar'
+            : feitaNa(s.appointment_id) ? 'feita'
+            : ['CANCELLED', 'NO_SHOW'].includes(statusDe.get(s.appointment_id) ?? '') ? 'a agendar' : 'agendada',
         })),
       } : {}),
       href: rota(c, `/planejamentos/${p.id}`),

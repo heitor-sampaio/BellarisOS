@@ -15,7 +15,7 @@ import { z } from 'zod'
 import { CLIENTE_ARQUIVADA } from '@/lib/clients/arquivada'
 import { alcancaOTratamento, alcancaOCaixaDoTratamento } from '@/lib/tratamento/alcance'
 import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assertRecurso } from '@/lib/auth'
-import { recusaDoSoOsMeus } from '@/lib/financeiro/so-os-meus'
+import { recusaDoSoOsMeus, podeEstornar } from '@/lib/financeiro/so-os-meus'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -25,11 +25,12 @@ import { EntradaDoPagamento, lancamentosDoPagamento, recusaDaEntradaDoPagamento,
 import { fidelidadeDaVenda } from '@/lib/fidelidade/na-venda'
 import type { EscolhaDaFidelidade } from '@/lib/fidelidade/conta-na-venda'
 import { recusaDasParcelasDaRede } from '@/lib/financeiro/crediario-da-rede'
-import { recusaDasVezesDaRede, recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
+import { recusaDasVezesDoPagamento } from '@/lib/financeiro/vezes-da-rede'
+import { recusaDoPagamentoDoUsado, pagamentoDoUsadoParaOBanco } from '@/lib/financeiro/pagamento-do-usado'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, ratear, motivoDoDesconto } from '@/lib/vendas/desconto'
 import { createAppointmentCore, notifyAppointmentCreated } from '@/lib/appointments/core'
 import { FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
-import { BANDEIRAS, bandeiraDoPagamento } from '@/lib/financeiro/bandeiras'
+import { BANDEIRAS } from '@/lib/financeiro/bandeiras'
 import { lerPreviaDaUnidade, type PreviaDoCancelamentoDaUnidade } from '@/lib/pre-pago/cancelamento'
 import { precoDoProcedimentoNaUnidade } from '@/lib/procedimentos/preco-na-unidade'
 
@@ -183,7 +184,9 @@ export async function previaDoCancelamentoDaUnidade(
 ): Promise<{ error?: string; previa?: PreviaDoCancelamentoDaUnidade }> {
   try {
     const ctx = await getTenantContext()
-    if (!podeReceber(ctx)) throw semAcesso()
+    // C36 (VF-02 da varredura de 18/11): a prévia é de quem cancela — o
+    // Financeiro em Gerenciar, sem "só os meus" (a action confere o mesmo).
+    if (!podeEstornar(ctx)) throw semAcesso()
     const admin = createAdminClient()
     if (!await unidadeAoAlcance(admin, ctx, unidadeId)) return { error: 'Unidade não encontrada.' }
     const j = await ler(admin.rpc('procedimento_cancelar_unidade_devolvendo', {
@@ -207,6 +210,8 @@ const EntradaDoCancelamentoDaUnidade = z.object({
     metodo:   z.enum(FORMAS_DE_PAGAMENTO),
     vezes:    z.number().int().min(1).max(12),
     bandeira: z.enum(BANDEIRAS.map(b => b.value) as [string, ...string[]]).nullable().optional(),
+    /** C75: a maquininha do cartão do usado. */
+    maquininha: z.string().uuid().nullable().optional(),
   }).nullable().optional(),
 })
 
@@ -235,15 +240,13 @@ export async function cancelarUnidadePrePaga(
     const unidade = await unidadeAoAlcance(admin, ctx, unidadeId)
     if (!unidade) return { error: 'Unidade não encontrada.' }
     const novo = lido.data.estorno === 'INTEIRO' ? lido.data.novo ?? null : null
-    if (novo && novo.metodo === 'CREDIT_CARD') {
-      const recusa = await recusaDasVezesDaRede(ctx.tenantId!, novo.vezes)
-      if (recusa) return { error: recusa }
-    }
+    // C75 (VF-01 da varredura de 18/11): no cartão do usado, as vezes e a maquininha da rede.
+    { const recusa = await recusaDoPagamentoDoUsado(ctx.tenantId!, novo); if (recusa) return { error: recusa } }
     const r = await gravar(admin.rpc('procedimento_cancelar_unidade_devolvendo', {
       p_tenant: ctx.tenantId!, p_unidade: unidadeId, p_ator: ctx.internalUserId ?? null, p_ator_nome: ctx.userName ?? null,
       p_motivo: lido.data.motivo, p_destino: lido.data.destino, p_esperado: lido.data.esperado, p_simular: false,
       p_estorno: lido.data.estorno ?? null,
-      p_novo: novo ? { metodo: novo.metodo, vezes: novo.metodo === 'CREDIT_CARD' ? novo.vezes : 1, bandeira: bandeiraDoPagamento(novo.metodo, novo.bandeira) } : null,
+      p_novo: pagamentoDoUsadoParaOBanco(novo),
     }), 'cancelar a unidade') as Record<string, unknown>
 
     revalidarFicha()

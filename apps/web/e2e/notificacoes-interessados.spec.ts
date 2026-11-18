@@ -24,6 +24,9 @@ import { banco, unidadesAtivas, nomeDeTeste, tenantId } from './apoio/banco'
  *  - quem só tem VIEW não recebe — ver não é responder pelo que acontece;
  *  - quem alcança a rede inteira (`branch_id` nulo) recebe;
  *  - quem é de outra unidade não recebe;
+ *  - a Admin da rede recebe: tem todo módulo em Gerenciar pelo cargo de
+ *    sistema, que não grava linha em role_permissions (WPP-01 da varredura de
+ *    18/11 — ela nunca era "Responsável");
  *  - rodar o job duas vezes não avisa duas vezes.
  */
 
@@ -121,6 +124,14 @@ test('o aviso vai para quem responde pelo módulo na unidade, e só para ele', a
   expect(avisados, 'quem gerencia o estoque da unidade tem de receber').toContain(gerenteDaUnidade)
   expect(avisados, 'quem alcança a rede inteira também responde pela unidade').toContain(gerenteDaRede)
   expect(avisados, 'quem só consulta o estoque não é interrompido').not.toContain(olheiro)
+  const { data: cargoDaAdmin } = await db.from('tenant_roles').select('id')
+    .eq('tenant_id', tenant).eq('key', 'NETWORK_ADMIN').eq('is_system', true)
+  const { data: admins } = await db.from('users').select('id')
+    .eq('tenant_id', tenant).eq('is_active', true).in('role_id', (cargoDaAdmin ?? []).map(c => c.id as string))
+  expect((admins ?? []).length, 'a rede de teste tem uma Admin da rede ativa').toBeGreaterThan(0)
+  for (const a of admins ?? []) {
+    expect(avisados, 'a Admin da rede responde por todo módulo').toContain(a.id as string)
+  }
   if (deOutraUnidade) {
     expect(avisados, 'o estoque de outra unidade não é assunto dele').not.toContain(deOutraUnidade)
   }

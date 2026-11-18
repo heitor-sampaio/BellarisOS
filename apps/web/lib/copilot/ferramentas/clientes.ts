@@ -4,7 +4,7 @@ import { can, ownerFilter, podeReceber, temRecurso, unidadesDoContexto } from '@
 import { ler } from '@/lib/db'
 import { creditosDoCliente } from '@/lib/creditos/credito'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
-import { getClientesParaReativarDoRecorte } from '@/lib/metrics/unidade'
+import { getClientesParaReativarDoRecorte, getCreditoInternoDoCliente } from '@/lib/metrics/unidade'
 import { recorteDosModulos } from '@/lib/metrics/escopo'
 import { addDaysTZ } from '@/lib/datetime'
 import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
@@ -78,8 +78,10 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
         return ler(q, 'ler os últimos atendimentos')
       })() : Promise.resolve([]),
       creditosDoCliente(c.admin, c.ctx.tenantId!, ficha.id),
+      // O saldo do crédito interno da ficha, do banco (IND-07; indicadores.md:
+      // nada se soma na tela) — o crédito é da REDE.
       podeReceber(c.ctx) || can(c.ctx, 'financial', 'VIEW')
-        ? ler(c.admin.from('internal_credits').select('amount, branch_id').eq('client_id', ficha.id), 'ler o crédito interno')
+        ? getCreditoInternoDoCliente(c.ctx.tenantId!, ficha.id)
         : Promise.resolve(null),
       // Os pontos da rede: o saldo é um só, em qualquer unidade (FD3).
       can(c.ctx, 'loyalty', 'VIEW') && temRecurso(c.ctx, 'fidelidade')
@@ -130,9 +132,7 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
       status: STATUS_DO_AGENDAMENTO[a.status] ?? a.status, href: rota(c, `/agenda/${a.id}`),
     })
     const href = rota(c, `/clients/${ficha.id}`)
-    // O crédito interno é da REDE (o gatilho do uso soma por cliente, e a ficha não recorta).
-    const creditoInterno = internos === null ? undefined
-      : ((internos ?? []) as { amount: number }[]).reduce((s, i) => s + Number(i.amount), 0)
+    const creditoInterno = internos === null ? undefined : internos
 
     return {
       dados: {
@@ -177,8 +177,8 @@ export const clientes: FerramentaDeLeitura<{
     let lista: Lin[] = []
     let total: number | null = null
 
-    // A unidade (a da pessoa, se fixa): o "sem_visita" é de quem foi atendida
-    // nela; as outras listas são da rede — a cliente é da rede (H16, Bloco Tags).
+    // A unidade pedida só decide o fuso do "hoje": TODAS as listas são da rede
+    // — a cliente é da rede (24ª simulação; o "sem_visita" também, COP-03).
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
     // O "hoje" das listas (o mês do aniversário, os N dias): o da unidade, senão o do portal (F62b).
@@ -186,10 +186,9 @@ export const clientes: FerramentaDeLeitura<{
 
     if (args.filtro === 'sem_visita') {
       // A MESMA regra do "Reativar clientes" do dashboard (r3-f13-10, o Heitor:
-      // "os dois têm de dar a mesma resposta"): na clínica de uma unidade, todas
-      // as clientes ativas; com várias, as atendidas na unidade pedida ou a
-      // rede inteira — sem visita em nenhuma unidade. E, como lá,
-      // com a agenda "só os meus", as dela.
+      // "os dois têm de dar a mesma resposta"): sempre a rede inteira — sem
+      // visita em NENHUMA unidade —, também com a unidade pedida (copilot.md).
+      // E, como lá, com a agenda "só os meus", as dela.
       const desde = addDaysTZ(new Date(), -(args.dias ?? 90), fuso)
       const r = await getClientesParaReativarDoRecorte({
         tenantId: tenant, unidade: u.unidade ? { id: u.unidade.id, name: u.unidade.name } : null,
@@ -228,7 +227,9 @@ export const clientes: FerramentaDeLeitura<{
 
     const itens = lista.map(x => ({ id: x.id, nome: x.name, telefone: x.phone, detalhe: x.detalhe ?? null, href: rota(c, `/clients/${x.id}`) }))
     return {
-      dados: { filtro: args.filtro, ...(args.filtro === 'sem_visita' ? { unidade: u.unidade?.name ?? 'todas as unidades' } : {}), ...(total !== null ? { total } : {}), clientes: itens },
+      // O recorte se diz (COP-03): o "sem visita" é da rede, mesmo com a
+      // unidade pedida — o modelo não responde como se fosse dela.
+      dados: { filtro: args.filtro, ...(args.filtro === 'sem_visita' ? { recorte: 'a rede inteira: sem visita em nenhuma unidade (a cliente é da rede)' } : {}), ...(total !== null ? { total } : {}), clientes: itens },
       cartao: itens.length ? { tipo: 'links', itens: itens.slice(0, 12).map(i => ({ texto: i.nome, detalhe: [i.detalhe, i.telefone].filter(Boolean).join(' · ') || undefined, href: i.href })) } : undefined,
     }
   },

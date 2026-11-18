@@ -20,6 +20,7 @@ import { AvisoDaUrl } from '@/components/shared/aviso-da-url'
 import { saudacao } from '@/lib/saudacao'
 import { FusoProvider } from '@/components/shared/fuso'
 import { fusoDaUnidade } from '@/lib/unidades/fuso-da-unidade'
+import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
 
 export default async function BranchLayout({
   children,
@@ -44,7 +45,7 @@ export default async function BranchLayout({
     const adminClient = createAdminClient()
     const clientData = await ler(adminClient
       .from('clients')
-      .select('tenant_id, branch_id')
+      .select('tenant_id')
       .eq('id', ctx.clientId!)
       .maybeSingle(), 'buscar o cliente')
     const unidade = clientData
@@ -52,9 +53,12 @@ export default async function BranchLayout({
           .eq('slug', slug).eq('tenant_id', clientData.tenant_id as string)
           .maybeSingle(), 'buscar a unidade')
       : null
-    // A unidade de CADASTRO abre mesmo desativada (é o destino do login dela;
-    // recusá-la seria um laço login → portal → login).
-    if (!unidade || (!unidade.is_active && unidade.id !== clientData!.branch_id)) redirect('/login')
+    // Só unidade ATIVA da rede da ficha. Era "a de cadastro abre mesmo
+    // desativada", por ser o destino do login; o destino agora é sempre uma
+    // ativa (a última usada, senão a primeira — `unidadeDoPortal`), e nada lê
+    // a unidade de cadastro (auditoria das regras, 18/11: "o cliente não é da
+    // unidade, o cliente é da rede").
+    if (!unidade || !unidade.is_active) redirect('/login')
     // Tela da equipe aberta pela cliente (um link, o histórico): o portal dela,
     // não a tela de "sem acesso" — que fala de cargo e de rede (2026-10-21).
     const caminho = (await caminhoDaRequisicao()).split(' ')[1]?.split('?')[0] ?? ''
@@ -140,7 +144,7 @@ export default async function BranchLayout({
         allBranches={allBranches}
         umaUnidade={umaUnidade}
       />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} daRede={ctx.branchId === null}
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} scopes={ctx.scopes} plano={ctx.plano ?? null} agendaPropria={isOwnScope(ctx, 'agenda')} daRede={ctx.branchId === null} adminDaRede={mexeNaConfigDaRede(ctx)}
         unidade={unidadesDoSeletor.length > 1 ? { atual: { slug: branch.slug, name: branch.name }, unidades: unidadesDoSeletor } : null}
         suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} saudacaoInicial={saudacao(new Date(), fuso)} />
       <main style={{

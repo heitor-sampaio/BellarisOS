@@ -37,8 +37,10 @@ export default async function EventosDasAutomacoesPage() {
         </Dica>
       </div>
       {/* A corrente cresce enquanto a tela está aberta — quem veio conferir se
-          um gatilho dispara quer ver o fato chegando, não recarregar. */}
-      <RealtimeRefresher tables={['domain_events']} debounceMs={1500} />
+          um gatilho dispara quer ver o fato chegando, não recarregar. Assina o
+          SINAL da rede, não `domain_events` (o websocket entregava a linha
+          inteira, com o texto da mensagem recebida — AUT-01, 18/11). */}
+      <RealtimeRefresher tables={['automacoes_sinais']} filter={`tenant_id=eq.${ctx.tenantId}`} debounceMs={1500} />
       <SettingsEventos
         linhasIniciais={resumo.linhas}
         eventosIniciais={primeiraPagina.eventos}

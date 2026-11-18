@@ -9,8 +9,11 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
  * diz que no pacote vale quem vendeu, e o plano tem "Quem vendeu" desde a
  * decisão 4 da 7ª (`treatment_plans.vendido_por`), que só a comissão lia.
  *
- * Agora a coluna "Profissional" do plano é quem vendeu; a dona do plano só
- * quando ninguém foi marcado. O "só os meus" segue a mesma pessoa.
+ * Agora a coluna "Profissional" do plano é quem vendeu. Sem "Quem vendeu", a
+ * venda não é de ninguém (com-06, o Heitor: "Campo vazio não gera comissão
+ * para ninguém"; o "Quem vendeu" nasce sempre vazio, r2-ven-12) — até a leva
+ * seguinte à auditoria de 18/11 ia para a dona do plano, que ninguém
+ * escolheu. O "só os meus" segue a mesma pessoa.
  *
  * Numa rede [e2e] própria.
  */
@@ -62,16 +65,18 @@ test.afterAll(async () => {
   await marta?.limpar(); await rede?.limpar()
 })
 
-test('D14: o plano nas Vendas é de quem vendeu; sem vendedora, da dona do plano — e o "só os meus" segue a coluna', async () => {
+test('D14: o plano nas Vendas é de quem vendeu; sem vendedora, de ninguém — e o "só os meus" segue a coluna', async () => {
   const de = new Date(Date.now() - 86_400_000).toISOString(), ate = new Date(Date.now() + 86_400_000).toISOString()
   const vendas = async (profissional: string | null) => {
     const { data, error } = await db().rpc('metrics_vendas', { p_tenant: rede!.tenantId, p_branch_ids: null, p_from: de, p_to: ate, p_professional_id: profissional })
     expect(error).toBeNull()
-    return (data as { tipo: string; descricao: string; profissional: string }[]).filter(v => v.tipo === 'PLANO')
-      .map(v => `${v.descricao.replace(` ${marca}`, '').replace(`${PREFIXO} `, '')} · ${v.profissional}`).sort()
+    return (data as { tipo: string; descricao: string; profissional: string | null }[]).filter(v => v.tipo === 'PLANO')
+      .map(v => `${v.descricao.replace(` ${marca}`, '').replace(`${PREFIXO} `, '')} · ${v.profissional ?? 'ninguém'}`).sort()
   }
   const nomeDaMarta = (await db().from('users').select('name').eq('id', marta!.userId).single<{ name: string }>()).data!.name
-  expect(await vendas(null)).toEqual([`Sem vendedora · ${nomeDaDona}`, `Vendido pela Marta · ${nomeDaMarta}`].sort())
+  expect(await vendas(null)).toEqual(['Sem vendedora · ninguém', `Vendido pela Marta · ${nomeDaMarta}`].sort())
   expect(await vendas(marta!.userId)).toEqual([`Vendido pela Marta · ${nomeDaMarta}`])
-  expect(await vendas(rede!.professionalId)).toEqual([`Sem vendedora · ${nomeDaDona}`])
+  // A dona do plano não ganha a venda que ninguém lhe deu.
+  expect(nomeDaDona, 'a dona do plano existe (o controle)').not.toBe('')
+  expect(await vendas(rede!.professionalId)).toEqual([])
 })

@@ -17,7 +17,11 @@ import {
   ROTULO_DO_ENVIO, ROTULO_DO_CANAL, type SituacaoDoDocumento,
 } from '@/lib/documentos/situacao'
 
-export type LinhaDoPainel = DocumentoNoPainel & { unidade: string | null; slug: string | null }
+export type LinhaDoPainel = DocumentoNoPainel & {
+  unidade: string | null; slug: string | null
+  /** Quem vê pode completar a ficha da cliente (Clientes em Gerenciar) — senão o link não aparece (DOC-01, §14). */
+  podeCompletar?: boolean
+}
 
 /** As datas no relógio da tela (F62: a unidade, o dela; a rede, o comum) — o `useFuso` de quem chama. */
 function datasNo(fuso: string) {
@@ -47,7 +51,7 @@ function Situacao({ l }: { l: LinhaDoPainel }) {
       {/* A22 da 14ª (F73): onde completar — a aba Dados da cliente, como a
           janela do agendamento já levava (A9 da 11ª). A linha abre a janela
           do documento: o link não a abre junto. */}
-      {l.situacao === 'FALTAM_DADOS' && l.clienteId && (
+      {l.situacao === 'FALTAM_DADOS' && l.podeCompletar && l.clienteId && (
         <Link data-completar-cadastro href={`${rotaCliente(pathname, l.slug, l.clienteId)}?aba=dados`}
           onClick={e => e.stopPropagation()}
           style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}>

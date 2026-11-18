@@ -227,6 +227,7 @@ export default async function AdminOportunidadesPage({
             leadAberto={leadAberto}
             podeAgendar={can(ctx, 'crm', 'MANAGE') && can(ctx, 'agenda', 'MANAGE') && temRecurso(ctx, 'agenda')}
             podeMover={can(ctx, 'crm', 'MANAGE')}
+            podeCadastrarCliente={can(ctx, 'clients', 'MANAGE')}
           />
         </>
       )}

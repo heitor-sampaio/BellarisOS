@@ -55,6 +55,17 @@ export function situacaoDoVencimento(vencimento: string | null | undefined, agor
   return dia < hoje ? 'VENCIDA' : dia === hoje ? 'HOJE' : 'A_VENCER'
 }
 
+/**
+ * Quantos dias faltam para o vencimento, de dia a dia (o do vencimento pela
+ * régua que o gravou; o de hoje, o da unidade): negativo é vencida há tantos
+ * dias, zero vence hoje (IND-08 da varredura de 18/11 — a parcela vencida há 30
+ * dias dizia "0d", e a conta era em horas UTC).
+ */
+export function diasAteOVencimento(vencimento: Date | string, agora: Date = new Date(), fuso: string = BUSINESS_TZ): number {
+  const emDias = (dia: string) => Date.UTC(+dia.slice(0, 4), +dia.slice(5, 7) - 1, +dia.slice(8, 10)) / 86_400_000
+  return Math.round(emDias(diaDe(vencimento)) - emDias(dayKeyTZ(agora, fuso)))
+}
+
 /** "Vencida em 05/11", "Vence hoje" ou "Vence 05/12/2026" — a mesma frase em toda tela. */
 export function textoDoVencimento(vencimento: string | null | undefined, agora: Date = new Date(), fuso: string = BUSINESS_TZ): string | null {
   const s = situacaoDoVencimento(vencimento, agora, fuso)

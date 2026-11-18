@@ -29,7 +29,7 @@ import { ParcelasDaOperadora, LinkDasParcelas } from '@/components/shared/parcel
 import type { AReceberDaOperadora, ParcelaDaOperadora } from '@/lib/metrics/operadora'
 import { FluxoDeCaixa } from '@/components/shared/fluxo-de-caixa'
 import type { MesDoFluxo } from '@/lib/metrics/fluxo-de-caixa'
-import type { ResultadoDoPeriodo } from '@/lib/metrics/resultado'
+import { variacaoPercentual, type ResultadoDoPeriodo } from '@/lib/metrics/resultado'
 import { ContaDoResultado } from '@/components/shared/conta-do-resultado'
 import { csvDosLancamentos, linhaDoLancamento, baixarCsv } from '@/lib/financeiro/csv-dos-lancamentos'
 import { useFuso } from '@/components/shared/fuso'
@@ -213,13 +213,9 @@ const PERIOD_OPTIONS = [
   { value: 'custom',     label: 'Personalizado' },
 ]
 
-function pctDelta(curr: number, prev: number) {
-  // Sem base de comparação não existe variação: antes o primeiro mês de uso
-  // exibia "▲ 100%" de crescimento inventado a partir do zero.
-  if (prev === 0) return null
-  const pct = ((curr - prev) / prev) * 100
-  return { pct: Math.abs(pct), up: pct >= 0 }
-}
+// A variação é a de lib/metrics (§13.1, IND-06 da varredura de 18/11): sem
+// base, nula; com a base negativa, sobre o módulo dela.
+const pctDelta = variacaoPercentual
 
 // --- KPI Card ----------------------------------------------------------------
 
@@ -564,8 +560,8 @@ export function AdminFinancialView({
   const daAba = (a: AbaDoFinanceiro, extra: Record<string, string> = {}) => linkDaAba(base, a, manter, extra)
   // A42 da 12ª: quem só vê o Financeiro lia "use Pagar na linha" sem botão nenhum.
   // A2 da 16ª: a frase cita o botão que a linha mostra — "Receber" na conta a receber, "Pagar" na conta a pagar.
-  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem o PDV no cargo.'
-  const fraseDoReceber = canPay ? 'Para receber, use “Receber” na linha.' : 'Receber é de quem tem o PDV no cargo.'
+  const fraseDaBaixa = canPay ? 'Para dar baixa, use “Pagar” na linha.' : 'Dar baixa é de quem tem o PDV ou o Financeiro em Gerenciar.'
+  const fraseDoReceber = canPay ? 'Para receber, use “Receber” na linha.' : 'Receber é de quem tem o PDV ou o Financeiro em Gerenciar.'
 
   // A receber e a pagar (2026-10-21): a unidade mostrava, a rede não.
   const cartaoAReceber = (naAba: boolean) => (

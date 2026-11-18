@@ -4,7 +4,7 @@ import { notifyUser } from '@/lib/notifications/notify'
 import { ler, lerTodas } from '@/lib/db'
 import { dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
-import { textoDoRetorno } from '@/lib/crm/retorno'
+import { avisoDoRetorno } from '@/lib/crm/retorno'
 import { FUSOS } from '@/lib/unidades/fuso'
 import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 
@@ -97,11 +97,9 @@ export async function GET(req: NextRequest) {
       const meu = await ler(admin.from('leads').update({ retorno_avisado_em: agora.toISOString() })
         .eq('id', l.id).is('retorno_avisado_em', null).eq('retornar_em', l.retornar_em).select('id'), 'reivindicar o retorno')
       if (!meu?.length) continue
-      const r = textoDoRetorno(l.retornar_em, hoje)
       await notifyUser(admin, dono.id, {
         type: 'crm.lembrete',
-        title: r.atrasado ? `Retorno atrasado: ${l.name} (${l.retornar_em.slice(8, 10)}/${l.retornar_em.slice(5, 7)})` : `Retorno de hoje: ${l.name}`,
-        body: l.retornar_obs ? `Combinado: ${l.retornar_obs}` : `Hoje é o dia combinado para retomar o contato com ${l.name}.`,
+        ...avisoDoRetorno({ nome: l.name, dia: l.retornar_em, obs: l.retornar_obs }, hoje),
         data: { leadId: l.id, caminho: caminhoDoLead(dono, l.id) },
       })
       retornos++

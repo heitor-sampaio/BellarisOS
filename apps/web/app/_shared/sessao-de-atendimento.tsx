@@ -629,7 +629,10 @@ export async function SessaoDeAtendimento({
 
   return (
     <>
-      <RealtimeRefresher tables={['appointments', 'medical_record_entries', 'financeiro_sinais']} />
+      {/* O prontuário pelo SINAL da rede, não `medical_record_entries`: a
+          evolução ia inteira pelo websocket a quem o Prontuário "só os meus"
+          esconde (ATD-P01, 18/11). A tela recarrega pelo servidor. */}
+      <RealtimeRefresher tables={['appointments', 'prontuario_sinais', 'financeiro_sinais']} />
       {/* F64 (D6): as horas da tela no relógio da unidade DO ATENDIMENTO — no
           /admin o provedor do layout é o da rede. */}
       <FusoProvider fuso={await fusoDaUnidade(ctx.tenantId, branchId)}>

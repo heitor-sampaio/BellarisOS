@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dayKeyTZ } from '@/lib/datetime'
-import { fusoDaUnidade, fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
+import { fusoDaRede } from '@/lib/unidades/fuso-da-unidade'
 import { ler } from '@/lib/db'
 
 /**
@@ -176,7 +176,7 @@ export async function hidratar(
     if (alvo === 'cliente') {
       const data = exigir(await ler(admin
         .from('clients')
-        .select('id, name, phone, email, birth_date, gender, tags, is_active, branch_id')
+        .select('id, name, phone, email, birth_date, gender, tags, is_active')
         .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o cliente'))
       contexto.cliente = {
         id:        data.id,
@@ -187,11 +187,11 @@ export async function hidratar(
         genero:    data.gender,
         tags:      data.tags ?? [],
         ativo:     data.is_active,
-        unidadeId: data.branch_id,
         // Pré-calculado porque "é aniversário hoje?" é a condição mais pedida
-        // e ninguém deveria precisar escrever data em regra de automação.
-        aniversarioHoje: ehAniversarioHoje(data.birth_date as string | null, new Date(),
-          data.branch_id ? await fusoDaUnidade(tenantId, data.branch_id as string) : await fusoDaRede(tenantId)),
+        // e ninguém deveria precisar escrever data em regra de automação. A
+        // cliente é da REDE: o dia é o do relógio da rede, nunca o da unidade
+        // em que a ficha nasceu (auditoria das regras, 18/11; H16).
+        aniversarioHoje: ehAniversarioHoje(data.birth_date as string | null, new Date(), await fusoDaRede(tenantId)),
       }
       return contexto
     }

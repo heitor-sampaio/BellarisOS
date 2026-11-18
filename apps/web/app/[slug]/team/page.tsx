@@ -18,6 +18,8 @@ import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 import { falaDaTela } from '@/lib/unidades/uma-so'
 import { getCachedNetworkBranches } from '@/lib/cached-queries'
 import { listaDeUnidades, seloDoAtende } from '@/lib/equipe/atende'
+import { cargosAcimaDoMeu } from '@/lib/equipe/cargo-acima'
+import { alcancaTodasAsDoMembro, CARGO_DE_QUEM_TEM_OUTRA_UNIDADE } from '@/lib/unidades/do-membro'
 import { Dica } from '@/components/shared/dica'
 
 function Initials({ name }: { name: string }) {
@@ -121,7 +123,16 @@ export default async function TeamPage({
   const veemComissoes = temRecurso(ctx, 'comissoes')
     ? (podeComissao ? veemAsComissoes : await cargosQueVeemAsComissoes(ctx.tenantId!))
     : null
-  const cargosDoCadastro = assignableRoles.map(r => ({ ...r, naoVeAsComissoes: !!veemComissoes && !veemComissoes.has(r.id) }))
+  // C62 (F70; H7 = b), como na Equipe da rede: o cargo com mais acesso que o
+  // de quem age aparece desligado, dizendo por quê — a action também recusa.
+  const acimaDoMeu = canManage
+    ? await cargosAcimaDoMeu(createAdminClient(), ctx, assignableRoles.map(r => r.id), ctx.isNetworkAdmin)
+    : new Set<string>()
+  const comTrava = assignableRoles.map(r => (acimaDoMeu.has(r.id) ? { ...r, acimaDoMeu: true } : r))
+  const cargosDoCadastro = comTrava.map(r => ({ ...r, naoVeAsComissoes: !!veemComissoes && !veemComissoes.has(r.id) }))
+  /** EQ1: o cargo e o desativar valem em TODAS as unidades do membro — só quem alcança todas mexe. */
+  const alcancaTodas = (m: { branch_id?: string | null; outras_unidades?: string[] | null }) =>
+    alcancaTodasAsDoMembro(minhas, { branchId: m.branch_id ?? null, outrasUnidades: m.outras_unidades ?? [] })
 
   return (
     <div>
@@ -266,15 +277,17 @@ export default async function TeamPage({
                         branches={[{ id: branchId, name: branch?.name ?? 'Esta unidade', horario: branch?.horario }]}
                         unidadesDoAtende={unidadesDoAtende}
                         editaveisDoAtende={editaveisDoAtende}
-                        roles={assignableRoles}
+                        roles={comTrava}
+                        cargoTravado={alcancaTodas(m as { branch_id?: string | null; outras_unidades?: string[] | null }) ? undefined : CARGO_DE_QUEM_TEM_OUTRA_UNIDADE}
                         canChooseScope={false}
                         unidadesDeQuemEdita={minhas}
                         redirectPath={`/${slug}/team`}
                       />
                     )}
                     {/* Não se oferece desativar a si mesmo: trancaria a pessoa do lado de fora
-                          (a action também recusa). */}
-                      {canManage && m.id !== ctx.internalUserId && (m.is_active ? (
+                          (a action também recusa). Nem quem tem outra unidade fora do alcance
+                          (EQ1): o login é um só, e a action recusaria. */}
+                      {canManage && m.id !== ctx.internalUserId && alcancaTodas(m as { branch_id?: string | null; outras_unidades?: string[] | null }) && (m.is_active ? (
                       <DesativarMembro membroId={m.id} nome={m.name} redirectPath={`/${slug}/team`} atende={!!m.provides_services} />
                     ) : (
                       <ReativarMembro membroId={m.id} nome={m.name} atende={!!m.provides_services} redirectPath={`/${slug}/team`} />

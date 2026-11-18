@@ -1774,6 +1774,114 @@ pela LGPD.
 
 Detalhe em "5. Em aberto → Da simulação de 2026-11-05/06 (8ª)".
 
+### 2026-11-18 — A cliente da rede até o fim e a varredura de conformidade (cada regra contra o código)
+
+O Heitor (18/11): "A gente precisa intensificar esses testes, o lançamento é em uns 20 dias. Precisamos zerar defeitos
+e atritos e não de forma artificial." Além da simulação, nove agentes leram cada arquivo de `docs/regras/` inteiro
+contra o código (a action, a função SQL viva, a tela, o indicador) — achado só com a regra citada e o código citado.
+Saíram ~70; cinco agentes corrigiram por área, com o teste antes (a falha vista anotada no commit).
+
+**A cliente da rede até o fim** (a lista "Em aberto" da entrada de baixo):
+- a RLS de `clients` (e dos injetáveis) confere a REDE, não `can_access_branch(clients.branch_id)` (`20261124200001`);
+- a Auditoria grava a linha da ficha (e dos filhos) sem unidade e a mostra em qualquer unidade (`20261124200002`);
+- nada mais decide por `clients.branch_id` (é só "onde a ficha nasceu"): o portal vai à última unidade usada
+  (`clients.portal_ultima_unidade`, `20261124200003`; sem ela, a primeira ativa por nome — `lib/clientes/unidade-do-portal.ts`),
+  o pedido de assinatura pelo app à unidade do documento, o aviso de vencimento à unidade dos pontos
+  (`20261124200004`), o plano novo da ficha da rede pergunta "Unidade do plano", o mapa sem reserva, a LGPD sem a
+  linha, o "Novo cliente" sem unidade (o aviso "A cliente é da rede…"), a cliente criada pela conversa, as
+  automações (fuso da rede, `20261124200006`), a importação sem `alcancaUnidade` nos clientes;
+- arquivar não tira a cliente dos "Novos clientes" (`20261124200005`, princípios 3 e 5 — decisão do Claude);
+- `metrics_vendas`: plano sem "Quem vendeu" não é venda de ninguém (`20261124250001`);
+- a baixa CX2 é `podeDarBaixa` (PDV ou Financeiro em Gerenciar sem "só os meus"), também no "Receber" da parcela;
+- fidelidade, maquininhas, Pix e adicionais só pela Admin da rede (`recusaDaConfigDaRede`);
+- a desistência emite "sessão do pacote usada" (`20261124250002`).
+
+**A varredura — o banco aberto à sessão** (CLAUDE.md §4, F63): pela chave pública, dentro da rede, qualquer membro lia,
+alterava e apagava o prontuário e os injetáveis sem o Prontuário, mudava o preço do procedimento e os insumos sem
+Procedimentos, o produto sem o Estoque, e lia as automações e os eventos (com o texto das mensagens recebidas) sem
+Automações. Agora: o prontuário (`medical_records`, `medical_record_entries`, `injectable_maps`,
+`injectable_applications`) NÃO TEM política nenhuma — nem leitura, como as comissões: é módulo com escopo, e a RLS não
+aplica o "só os meus"; a tela do atendimento assina `prontuario_sinais` (uma linha por rede, sem conteúdo).
+Procedimentos e produtos: a sessão só lê. Automações e eventos: leitura só com as Automações e "A rede inteira"
+(`private.sessao_ve_o_modulo`), e as telas assinam `automacoes_sinais`. Ordem: `20261124400001` (aditiva) antes do
+deploy, `20261124400002` (restritiva; tira `medical_record_entries`, `domain_events` e `automation_runs` do Realtime)
+depois. Prova: `e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts`, com o token de cada membro.
+
+**Agenda, atendimento, prontuário, estoque:**
+- desistir no meio (cancelar o Em atendimento) é do Atendimento em Gerenciar, com o escopo dele — na action, na
+  janela da agenda (com o aviso da sessão paga), na tela e no Copilot (`lib/appointments/quem-cancela.ts`); o
+  "Não compareceu" sai do Em atendimento;
+- o Copilot: as 16 ferramentas de gravação conferidas contra a trava da tela — `confirmar_agendamento` em Gerenciar,
+  `marcar_pago` por `podeDarBaixa`; a matriz travada em `tests/varredura-atendimento.test.ts`;
+- a ficha do procedimento e a foto dela com as travas da evolução (escopo, `deOutroProfissional`, Atendimento e
+  Prontuário em Gerenciar para corrigir o concluído); a ficha de saúde com o "só os meus"; o prontuário "só os meus"
+  não abre por agendamento CANCELADO (`clienteNoEscopo`); `alcancaOAgendamento` (o "Atende" por unidade) na ficha,
+  na foto, na aplicação, nos anexos e em passar o agendamento; a foto da ficha para quem tem o Prontuário em Ver;
+- a aplicação de injetáveis só dentro de um atendimento, também no banco (`20261124500001`); abrir um mapa registra
+  o acesso ao prontuário, ponto "Planejamento de injetáveis" (`20261124500002`); a lista não mostra mapa de outra
+  unidade que não abre;
+- o mínimo do produto não é negativo também no cadastrar/editar.
+
+**Vendas, financeiro, indicadores:**
+- o pagamento novo do usado (cancelar pacote/plano/pré-pago, devolver produto, estornar crédito) pergunta a
+  maquininha (`20261124600001`); o "Cancelar" do pré-pago segue `podeEstornar`; a gaveta de hoje, `podeVerFechamento`;
+  o recebimento do plano no check-in, `podeReceber` (era só o PDV);
+- uma regra só para as vezes do cartão: `cartao_vezes`, nulo = 1x, nunca `parcela_total` (a parcela 2/3 do crediário
+  paga no crédito à vista dava 1x no recebível e 3x na comissão e no DRE); a taxa do lançamento gravado é RETRATADA
+  (`financial_transactions.taxa_pct_retrato`, também débito e Pix) e todas as leituras usam o retrato
+  (`20261124600002`; os já pagos com a taxa de hoje);
+- com produto na comanda, não se abate do pacote — também no banco; `plano_receber` grava maquininha e bandeira na
+  mesma transação;
+- o Copilot soma a unidade desativada que ainda recebeu (`unidadesParaLer`); "Planos propostos" da rede conta no
+  banco (era a lista de 20); a validade do pacote no app no fuso da unidade; a variação com base negativa (era
+  "▼ 150%" para um lucro que subiu); a legenda da evolução e a variação da rede saem de `lib/metrics`; "vencida há Nd";
+  o Copilot diz que "Novos clientes" é só da rede.
+
+**CRM, inbox, busca, importação, fidelidade:**
+- tags fora do vocabulário recusadas no cadastro, no "Unificar" e na ficha;
+- o pacote trazido de fora não é compra (nem o "Comprou" do card nem `lead.cliente_comprou`); o plano é venda no
+  PRIMEIRO pagamento, não no aceite (o Heitor, 18/11: "Uma coisa só foi vendida se foi paga.") — `20261124700001`;
+- a aba Oportunidades da ficha segue o "só os meus" do CRM, e o erro não vira "Nenhuma oportunidade";
+- a trava do suporte em liberar o pacote LGPD e no cadastro com acesso ao app; "Ir para a conversa" respeita o
+  alcance do inbox; "Cadastrar cliente" no quadro da rede; "Configurar funis" na busca só para a Admin; "lead" saiu
+  da tela; o retorno atrasado não diz "hoje";
+- o voucher é da rede: cancela e entrega em qualquer unidade (FD3);
+- a importação só pergunta a unidade quando o arquivo traz "Pacote de antes" ("Unidade dos pacotes de antes" —
+  decisão do Claude, H5 e princípio 7).
+
+**Plataforma, documentos, WhatsApp, automações:**
+- a Admin da rede é "Responsável" em todo módulo nos avisos (o estoque mínimo não chegava a ninguém na rede de uma
+  unidade);
+- template com `{{1}}` recusado ao salvar; número removido não se religa, nem vira padrão, nem recebe pessoas
+  (`20261124800001`);
+- a Equipe da unidade mostra o cargo acima desligado e não oferece desativar/trocar o cargo de quem tem outra
+  unidade fora do alcance (com o motivo, não "Membro não encontrado."); Desativar unidade só para a Admin, com
+  `{ error }`; o dashboard da unidade confere a unidade; `/conta-suspensa` pelo cargo gravado; `/schedule` exato no
+  proxy;
+- a própria pessoa vê e revoga a autorização do suporte na Ajuda da topbar (decisão do Claude: a regra dava o
+  direito sem o lugar);
+- "Completar a ficha" só com Clientes em Gerenciar;
+- as leituras das automações e eventos só para quem é da rede; quem só vê abre Execuções, Versões e Limites.
+
+**O que a prova da entrega pegou (specs novos contra o build):**
+- as fotos, a ficha do atendimento e os termos (`record_photos`, `anamnesis_data`, `consent_terms`) ficaram com a
+  política "operacional" que só conferia a rede — qualquer membro, sem o Prontuário, lia, trocava, apagava e plantava
+  pela chave pública. Fechadas em `20261124400003` (nenhum código as usava pela sessão), com a prova em
+  `rls-sessao-so-le-prontuario-e-automacoes`; o controle de `rls-isolamento` passou à cliente e à fidelidade (o
+  prontuário não se lê pela sessão nem na própria rede);
+- o portal da cliente caía inteiro ("Algo deu errado"): `getCachedFichasDoLogin` embutia `tenants(name)` em
+  `clients`, que não tem chave estrangeira para a rede (PGRST200). O nome da rede vem de uma consulta à parte.
+
+**Perguntas ao Heitor (18/11), paradas até a resposta:** o Financeiro "só os meus" recebe no PDV? o "só os meus" da
+Agenda marca a chegada do próprio? os modelos de documento são configuração da rede toda (16/11 × 18/11)? quem vê a
+Assinatura e paga a fatura? ponto/voucher usado gera ponto no modo por procedimento? o aviso de estoque mínimo em
+cron × "nada se move sozinho"; no escopo?: o Copilot com "só os meus" igual à tela; o suporte nas integrações; o
+anexo da ficha da rede sem atendimento (pergunta a unidade ou vira da rede, com mudança de tabela); "Meu
+faturamento" e a venda de plano.
+
+**Para a próxima leva:** `metrics_vendas` data o plano pela primeira receita CRIADA (inclui a parcela não paga) —
+alinhar ao primeiro pagamento pago, como o CRM; specs com ação direta para FID-01 e CRM-03/04/08/09/10.
+
 ### 2026-11-18 — A auditoria das regras: o que o Claude decidiu com a base errada, corrigido pela fala do Heitor
 
 O Heitor achou em `indicadores.md` a regra "a nova cliente da unidade é a atendida nela; a atendida em duas conta nas duas", anotada como "decisão por H16". A H16 diz o contrário: "o cliente não é da unidade, o cliente é da rede". A regra foi inventada pelo Claude. Ele perguntou "que outras regras tu que criou?" e esclareceu: "O problema não é tu tomar as decisoes. O problema é tu tomar as decisões partindo da premissa errada e ainda citar uma regra que diz exatamente o contrário do que tu fez."
@@ -1866,7 +1974,8 @@ Atendimento em Gerenciar. Os defeitos de verdade que ela achou, corrigidos no c�
 - o inbox sem canal dizia "peça a quem tem as Configurações em Gerenciar" (agora "à Admin da rede").
 Rodadas só as falhas e os vizinhos (99 arquivos): 481 passam em 12 min.
 
-**Em aberto, para a próxima leva (a cliente da rede até o fim):**
+**Em aberto, para a próxima leva (a cliente da rede até o fim)** — FEITO na entrada seguinte ("A cliente da rede
+até o fim e a varredura de conformidade"):
 - a RLS de `clients`, que ainda recorta pela unidade de cadastro;
 - a linha da cliente na Auditoria como da rede;
 - os padrões que ainda saem de `clients.branch_id`: documentos do app, `destinoDaCliente`, avisos de vencimento, plano, mapa de injetáveis, exportação da LGPD e a "Unidade de cadastro" nas telas;

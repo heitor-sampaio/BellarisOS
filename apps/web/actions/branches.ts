@@ -9,7 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import { semAcesso } from '@/lib/sem-acesso'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
-import { mexeNaConfigDaRede } from '@/lib/configuracao-da-rede'
+import { mexeNaConfigDaRede, recusaDaConfigDaRede } from '@/lib/configuracao-da-rede'
 import { slugDoTexto, candidatosDeEndereco, escolherEndereco } from '@/lib/unidades/endereco'
 import { maskCPF, maskCNPJ } from '@estetica-os/utils'
 import { umaVez, chaveDoEnvio } from '@/lib/envio-unico'
@@ -207,13 +207,15 @@ export async function updateBranch(
   return { success: true }
 }
 
-export async function toggleBranchStatus(branchId: string, isActive: boolean) {
+export async function toggleBranchStatus(branchId: string, isActive: boolean): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // Desativar uma unidade tira a agenda dela do ar: configuração da rede toda,
   // só da Admin da rede (18/11, "só pela conta admin"). A gerente da A
-  // desativava a B.
-  if (!mexeNaConfigDaRede(ctx)) throw semAcesso()
+  // desativava a B. A tela esconde os botões; a recusa volta como { error }
+  // (§14: lançada, chegava à tela como "algo deu errado").
+  const recusa = recusaDaConfigDaRede(ctx)
+  if (recusa) return { error: recusa }
 
   const supabase = createAdminClient()
   // Reativar conta para o LIMITE de unidades do plano (lib/planos/limites.ts).
@@ -234,6 +236,7 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean) {
   revalidatePath(`/admin/branches/${branchId}`)
   revalidateTag(`branches:${ctx.tenantId!}`, { expire: 0 })
   if (isActive) await expirarQuemAtendeNaRedeInteira(ctx.tenantId!)
+  return {}
 }
 
 /**

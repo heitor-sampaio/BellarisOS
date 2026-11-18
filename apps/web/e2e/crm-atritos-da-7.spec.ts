@@ -184,9 +184,17 @@ test('A18: o card diz "Agendado dd/mm hh:mm" e, depois da venda, sugere levar a 
   const leadComprou = await lead('Lead comprou A18', {
     client_id: compradora, crm_stage_id: etapa.avaliacao, created_at: new Date(Date.now() - 60_000).toISOString(),
   })
-  expect((await db().from('treatment_plans').insert({
+  const { data: planoA18, error: ePlano } = await db().from('treatment_plans').insert({
     branch_id: rede.branchId, client_id: compradora, professional_id: rede.professionalId, status: 'ACCEPTED',
     name: 'Plano A18', aceito_em: new Date().toISOString(),
+  }).select('id').single<{ id: string }>()
+  expect(ePlano).toBeNull()
+  // O plano é venda no RECEBIMENTO (C-1 da varredura de 18/11; o Heitor: "Uma
+  // coisa só foi vendida se foi paga."): a entrada paga é o que o card lê.
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede.branchId, client_id: compradora, treatment_plan_id: planoA18!.id, type: 'INCOME', category: 'Serviços',
+    description: 'Plano A18 — entrada', amount: 300, is_paid: true, paid_at: new Date().toISOString(),
+    payment_method: 'PIX', created_by: 'e2e',
   })).error).toBeNull()
 
   await como(browser, dona, async p => {

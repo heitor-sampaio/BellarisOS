@@ -149,6 +149,13 @@ export function validarTemplate(t: TemplateRascunho): string[] {
     }
   }
 
+  // O formato posicional da Meta (`{{1}}`) o sistema não preenche: sairia com
+  // as chaves no texto da cliente. Só variável com nome (whatsapp-push.md; a
+  // importação já recusava — WPP-02 da varredura de 18/11).
+  if ([t.header_text, t.body_text, t.footer_text].some(x => /\{\{\s*\d+\s*\}\}/.test(x ?? ''))) {
+    erros.push('Use variável com nome, como {{nome}}: o formato numerado ({{1}}) sairia com as chaves no texto da cliente.')
+  }
+
   const botoes = t.buttons ?? []
   if (botoes.length > LIMITES.botoes) {
     erros.push(`No máximo ${LIMITES.botoes} botões.`)

@@ -11,14 +11,18 @@ import {
 /**
  * Dado clínico no modo suporte (decisão do Heitor: bloqueado por padrão).
  *
- * A trava é da RLS (`private.suporte_sem_clinico`, política RESTRITIVA nas
- * tabelas clínicas), porque o atendente tem o token do membro na mão — o
- * cookie é httpOnly desde 2026-10-06, mas a página pede o access token a
- * `/api/auth/token` para o Realtime. Por isso a prova é pelo PostgREST:
- *  - sem dado clínico na autorização: não LÊ e não GRAVA prontuário, nem na
- *    tela nem com o token;
- *  - com a autorização que o inclui (dada por quem gerencia prontuário): lê.
- * O controle de cada recusa é o próprio membro, com o token dele.
+ * O atendente tem o token do membro na mão — o cookie é httpOnly desde
+ * 2026-10-06, mas a página pede o access token a `/api/auth/token` para o
+ * Realtime. Desde 18/11 (ATD-P01) o prontuário não se lê nem se grava pela
+ * sessão de NINGUÉM (módulo escopável: só o servidor, que aplica o escopo); a
+ * RESTRITIVA `private.suporte_sem_clinico` segue como segunda parede. A trava
+ * do suporte é a da TELA (o servidor não manda o clínico à sessão de
+ * suporte sem a autorização que o inclui). A prova:
+ *  - sem dado clínico na autorização: a tela não mostra, e o token não lê
+ *    nem grava;
+ *  - com a autorização que o inclui (dada pela Admin da rede): a tela mostra
+ *    (e o token continua sem ler — a leitura é do servidor).
+ * O controle da recusa é o próprio membro, na tela dele.
  */
 
 test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
@@ -98,16 +102,25 @@ test.describe.serial('suporte: dado clínico', () => {
     expect(nova ?? []).toHaveLength(0)
     expect(await sessoesAtivasDaRede(outra!.tenantId)).toHaveLength(0)
 
-    // Controle: o próprio membro, com o token dele, lê.
-    expect(await rest(alvo.accessToken, `medical_records?select=id&client_id=eq.${clienteComFicha}`)).toHaveLength(1)
+    // Controle: o próprio membro, na TELA dele, vê a ficha de saúde (o
+    // servidor lê). Pelo token, nem ele: o prontuário não se lê pela sessão.
+    expect(await rest(alvo.accessToken, `medical_records?select=id&client_id=eq.${clienteComFicha}`)).toHaveLength(0)
+    const ctx = await browser.newContext({ storageState: alvo.estado })
+    try {
+      const p = await ctx.newPage()
+      await p.goto(`/admin/clients/${clienteComFicha}`)
+      await expect(p.getByText('Paciente Clinico').first()).toBeVisible()
+      expect(await p.content()).toContain(ANAMNESE)
+    } finally { await ctx.close() }
   })
 
-  test('com a autorização que inclui dado clínico, o suporte lê o prontuário', async ({ browser }) => {
+  test('com a autorização que inclui dado clínico, o suporte vê o prontuário na tela', async ({ browser }) => {
     await autorizarPor(browser, gestor.estado, alvo.userId, { clinico: true })
     const sup = await entrarComo(browser, atendente!.estado, outra!.tenantId, `Alvo scalvo${marca}`)
     try {
+      // Pelo token, não: o prontuário só se lê pelo servidor (ATD-P01, 18/11).
       const token = (await sessaoDoNavegador(sup.ctx)).access_token
-      expect(await rest(token, `medical_records?select=id&client_id=eq.${clienteComFicha}`)).toHaveLength(1)
+      expect(await rest(token, `medical_records?select=id&client_id=eq.${clienteComFicha}`)).toHaveLength(0)
       await sup.page.goto(`/admin/clients/${clienteComFicha}`)
       await expect(sup.page.getByText('Paciente Clinico').first()).toBeVisible()
       expect(await sup.page.content()).toContain(ANAMNESE)

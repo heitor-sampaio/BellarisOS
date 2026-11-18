@@ -21,7 +21,15 @@ function arquivos(dir: string): string[] {
 
 describe('o Realtime das telas', () => {
   it('nenhum RealtimeRefresher assina a tabela do dinheiro nem uma fora da publicação', () => {
-    const proibidas = ['financial_transactions', 'commissions', 'procedure_sales']
+    // `domain_events` e `automation_runs` (AUT-01, 18/11): a corrente levava o
+    // texto da mensagem recebida a todo membro; as Automações escutam
+    // `automacoes_sinais`. `medical_record_entries` (ATD-P01): a evolução ia
+    // a quem o Prontuário "só os meus" esconde; a tela do atendimento escuta
+    // `prontuario_sinais`. As três saíram da publicação (20261124400002).
+    const proibidas = [
+      'financial_transactions', 'commissions', 'procedure_sales',
+      'domain_events', 'automation_runs', 'medical_record_entries',
+    ]
     const achados: string[] = []
     for (const f of [...arquivos(join(RAIZ, 'app')), ...arquivos(join(RAIZ, 'components'))]) {
       const texto = readFileSync(f, 'utf-8')

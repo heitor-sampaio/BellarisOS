@@ -719,11 +719,9 @@ export function InboxLeadPanel({
             </p>
           )}
           <ClientForm
-            /* Com `branchId` vazio o seletor abria na primeira unidade em
-               ordem alfabética: quem cadastrava pelo portal de uma unidade
-               gravava o cliente em outra sem perceber. No portal da
-               unidade a atual é o padrão; no portal da rede não
-               há unidade corrente e o seletor segue como está. */
+            /* A ficha é da REDE (H16): nasce na unidade do endereço — no
+               portal da rede, sem unidade —, sem pergunta (auditoria das
+               regras, 18/11). */
             branchId={branches.find(b => b.slug === slug)?.id ?? ''}
             slug={slug}
             branches={branches}

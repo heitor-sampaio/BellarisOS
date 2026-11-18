@@ -29,7 +29,7 @@ type Ctx = Awaited<ReturnType<typeof getTenantContext>>
 
 export interface PedidoDeImportacao {
   destino:      Destino
-  /** A unidade dos clientes (no portal da unidade, vale a da sessão). */
+  /** A unidade dos pacotes de antes (só com a coluna do pacote; no portal da unidade, vale a da sessão). */
   branchId?:    string | null
   nomeArquivo:  string
   mapeamento:   (ChaveDeCampo | null)[]
@@ -86,11 +86,14 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
     && nums.every((n, i) => Number.isInteger(n) && n > 1 && (i === 0 || n > nums[i - 1]!))
   const numeroDa = (i: number) => (numerosValem ? nums[i]! : i + 2)
 
-  // A unidade dos clientes: a da sessão vence a do pedido, e tem de ser da rede.
+  // A unidade dos PACOTES de antes (pedido de 18/11): a ficha é da REDE (H5,
+  // H16), e a unidade só diz onde fica o pacote trazido — sem a coluna do
+  // pacote, nenhuma unidade (a ficha nasce sem, como no cadastro pela rede).
+  // A da sessão vence a do pedido, e tem de ser da rede.
   let branchId: string | null = null
-  if (destino === 'clientes') {
+  if (destino === 'clientes' && mapeamento.includes('pacote')) {
     branchId = ctx.branchId ?? pedido.branchId ?? null
-    if (!branchId) return { ok: false, error: 'Escolha a unidade dos clientes.' }
+    if (!branchId) return { ok: false, error: 'Escolha a unidade dos pacotes de antes.' }
     const unidade = await ler(createAdminClient().from('branches').select('id')
       .eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
     if (!unidade || !alcancaUnidade(ctx, branchId)) return { ok: false, error: 'Unidade não encontrada.' }
@@ -201,8 +204,10 @@ type ImportacaoLida = AndamentoDaImportacao & {
 
 /**
  * A importação desta rede que ESTA pessoa alcança: o módulo do destino em
- * Gerenciar e, nos clientes, a unidade. O relatório de erros já vencido não
- * volta (é dado pessoal, 7 dias).
+ * Gerenciar. Sem recorte por unidade, nem nos clientes: a ficha é da REDE
+ * (H16), e importar é configuração da rede toda, só da Admin da rede (o
+ * Heitor, 18/11) — auditoria das regras, 18/11. O relatório de erros já
+ * vencido não volta (é dado pessoal, 7 dias).
  */
 async function importacaoAoAlcance(ctx: Ctx, id: string): Promise<ImportacaoLida | null> {
   const imp = await ler(createAdminClient().from('importacoes')
@@ -210,7 +215,6 @@ async function importacaoAoAlcance(ctx: Ctx, id: string): Promise<ImportacaoLida
     .eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'ler a importação') as ImportacaoLida | null
   if (!imp) return null
   if (!can(ctx, imp.destino === 'clientes' ? 'clients' : 'crm', 'MANAGE')) return null
-  if (imp.destino === 'clientes' && !alcancaUnidade(ctx, imp.branch_id)) return null
   if (imp.erros_expiram_em && imp.erros_expiram_em < new Date().toISOString()) { imp.erros = []; imp.avisos = [] }
   return imp
 }

@@ -336,7 +336,9 @@ export async function buildClientExport(
         complemento: client.address_complement, bairro: client.neighborhood,
         cidade: client.city, estado: client.state, cep: client.zip_code,
       },
-      unidadeDeCadastro: unit(client.branch_id),
+      // Sem "unidade de cadastro": a ficha é da REDE (H16), e o pacote é o da
+      // rede inteira — cada atendimento, lançamento e plano diz a SUA unidade
+      // (auditoria das regras, 18/11).
       tags: client.tags,
       clienteDesde: client.created_at,
       contaNoApp: {
@@ -447,7 +449,6 @@ export async function buildClientExport(
         ['Data de nascimento', formatDia(client.birth_date) ?? '—'],
         ['Gênero', String(client.gender ?? '—')],
         ['Endereço', [client.address, client.address_number, client.address_complement, client.neighborhood, client.city, client.state, client.zip_code].filter(Boolean).join(', ') || '—'],
-        ['Unidade de cadastro', unit(client.branch_id)],
         // D6 da 10ª: o da planilha importada (cliente_desde), senão o cadastro; com os dois, o cadastro também.
         ['Cliente desde', dataDeClienteDesde({ clienteDesde: client.cliente_desde, createdAt: client.created_at }, fuso) ?? '—'],
         ...(client.cliente_desde ? [['Cadastro no sistema', fmtDate(client.created_at)] as [string, string]] : []),

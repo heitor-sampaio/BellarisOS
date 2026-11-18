@@ -9,9 +9,9 @@ import { prefillDaBusca } from '@/lib/busca/acoes'
  * Cadastro de cliente pelo portal da rede.
  *
  * Só existia por unidade, e a lista da rede escondia o botão — quem opera a
- * rede tinha de entrar no portal de uma unidade para cadastrar alguém. Aqui não
- * há unidade corrente, então a unidade de cadastro é escolhida no formulário:
- * é ela que vira a tag `Unidade: X`, por onde a lista de cada unidade filtra.
+ * rede tinha de entrar no portal de uma unidade para cadastrar alguém. A ficha
+ * é da REDE (H16): pela rede ela nasce sem unidade, e o formulário não
+ * pergunta nenhuma (auditoria das regras, 18/11).
  */
 export default async function AdminNewClientPage({ searchParams }: { searchParams: Promise<{ nome?: string; telefone?: string }> }) {
   // A busca universal manda o termo que não achou ninguém (`?nome=` ou `?telefone=`).
@@ -19,7 +19,7 @@ export default async function AdminNewClientPage({ searchParams }: { searchParam
   const ctx = await getTenantContext()
   assertPermission(ctx, 'clients', 'MANAGE')
 
-  // A ficha nova nasce numa unidade ATIVA (lib/unidades/da-tela).
+  // As unidades ATIVAS (lib/unidades/da-tela): só dizem se há mais de uma.
   const branches = (await unidadesParaCriar(ctx.tenantId!)).map(({ id, name }) => ({ id, name }))
 
   return (
@@ -37,8 +37,8 @@ export default async function AdminNewClientPage({ searchParams }: { searchParam
           Novo cliente
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          {/* A clínica de uma unidade não fala "rede" nem pede a unidade (F8). */}
-          {branches.length === 1 ? branches[0]!.name : 'Rede · escolha a unidade de cadastro'}
+          {/* A rede de uma unidade não fala "rede" (F8). */}
+          {branches.length === 1 ? branches[0]!.name : 'Rede'}
         </p>
       </div>
 
