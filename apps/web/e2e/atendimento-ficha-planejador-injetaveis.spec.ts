@@ -196,7 +196,12 @@ test('cria pelo campo um planejamento novo, ligado à cliente; salvar a ficha e 
     // Mais um ponto depois de salvar a ficha: o "Finalizar" retrata de novo.
     await ilustracao.click({ position: { x: 160, y: 90 } })
     await campo.getByRole('button', { name: 'Salvar planejamento' }).click()
-    await expect(campo.getByText('Planejamento salvo.')).toBeVisible()
+    // A mensagem do primeiro "Salvar planejamento" ainda está na tela: quem
+    // diz que o segundo gravou é o banco (completa de 18/11 — finalizava antes).
+    await expect.poll(async () => {
+      const { data } = await db().from('injectable_maps').select('points').eq('id', criados![0]!.id).single<{ points: unknown[] }>()
+      return data?.points?.length ?? 0
+    }, { message: 'o segundo ponto foi salvo no planejamento' }).toBe(2)
     await finalizar(p, id)
   })
 

@@ -98,9 +98,12 @@ test('A3: o menu "…" do card move para outra etapa aberta, no celular, sem arr
     const grupo = p.getByRole('group', { name: 'Mover para a etapa' })
     await expect(grupo.getByRole('menuitem')).toHaveText(['Avaliação'])
     await grupo.getByRole('menuitem', { name: 'Avaliação' }).click()
+    // Com a página ABERTA: mover pergunta antes ao servidor pelas automações
+    // (A35 da 22ª) e só depois grava — fechar logo após o clique cortava a
+    // gravação (completa de 18/11).
+    await expect.poll(async () => (await db().from('leads').select('crm_stage_id').eq('id', id).single<{ crm_stage_id: string }>()).data?.crm_stage_id)
+      .toBe(etapa.avaliacao)
   }, { width: 412, height: 900 })
-  await expect.poll(async () => (await db().from('leads').select('crm_stage_id').eq('id', id).single<{ crm_stage_id: string }>()).data?.crm_stage_id)
-    .toBe(etapa.avaliacao)
 })
 
 test('A4: a cliente comprou um plano depois do lead — o card diz o VENDIDO, não o preço do interesse', async ({ browser }) => {
@@ -117,6 +120,18 @@ test('A4: a cliente comprou um plano depois do lead — o card diz o VENDIDO, n�
     const { data: s } = await db().from('treatment_plan_sessions').insert({ plan_id: plano!.id, sort_order: 0 }).select('id').single<{ id: string }>()
     expect((await db().from('treatment_plan_session_procedures').insert({ session_id: s!.id, procedure_id: bio, price: preco })).error).toBeNull()
   }
+  // O plano é compra no PRIMEIRO pagamento, não no aceite (o Heitor, 18/11:
+  // "Uma coisa só foi vendida se foi paga."; migration 20261124700001).
+  await como(browser, tatiane, async p => {
+    await p.goto('/admin/oportunidades')
+    await expect(p.locator(`[data-lead-id="${id}"]`)).toBeVisible()
+    await expect(p.locator('[data-sugere-ganho]').filter({ hasText: 'Plano' }), 'aceito sem dinheiro ainda não é compra').toHaveCount(0)
+  })
+  expect((await db().from('financial_transactions').insert({
+    branch_id: rede.branchId, client_id: cliente, treatment_plan_id: plano!.id, type: 'INCOME', category: 'Serviços',
+    description: 'Plano Bio — entrada', amount: 1000, is_paid: true, paid_at: new Date().toISOString(),
+    payment_method: 'PIX', created_by: 'e2e',
+  })).error).toBeNull()
   await como(browser, tatiane, async p => {
     await p.goto('/admin/oportunidades')
     const sugestao = p.locator('[data-sugere-ganho]').filter({ hasText: 'Plano' })

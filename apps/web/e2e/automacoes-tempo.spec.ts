@@ -51,8 +51,6 @@ test('a espera guarda o fluxo e o cron o retoma de onde parou', async ({ page, r
 
   const { data: usuario } = await db
     .from('users').select('id').eq('tenant_id', tenant).eq('is_active', true).limit(1).single()
-  const { data: unidadeDoBanco } = await db
-    .from('branches').select('id').eq('tenant_id', tenant).eq('is_active', true).limit(1).single()
 
   // Gatilho → esperar 1 minuto → avisar a equipe.
   const { data: auto } = await db.from('automations').insert({
@@ -84,8 +82,7 @@ test('a espera guarda o fluxo e o cron o retoma de onde parou', async ({ page, r
   await page.locator('input[name="phone"]').fill('47999991111')
   await page.locator('input[name="email"]').fill(`${Date.now().toString(36)}@e2e.local`)
   await page.locator('input[name="document"]').fill(cpfDeTeste())
-  const seletorDeUnidade = page.locator('select').first()
-  if (await seletorDeUnidade.count()) await seletorDeUnidade.selectOption(unidadeDoBanco!.id as string)
+  // O cadastro não pergunta a unidade: a cliente é da rede (18/11).
   await page.getByRole('button', { name: 'Cadastrar cliente' }).click()
 
   await expect.poll(async () => {

@@ -1871,6 +1871,13 @@ depois. Prova: `e2e/rls-sessao-so-le-prontuario-e-automacoes.spec.ts`, com o tok
   prontuário não se lê pela sessão nem na própria rede);
 - o portal da cliente caía inteiro ("Algo deu errado"): `getCachedFichasDoLogin` embutia `tenants(name)` em
   `clients`, que não tem chave estrangeira para a rede (PGRST200). O nome da rede vem de uma consulta à parte.
+- a completa (18/11, contra o build): isolados 1629 ok / 2 falhas, compartilhados 865 ok / 3 falhas. Três specs
+  travavam a regra velha ou tinham corrida: `crm-atritos-da-11` A4 (o plano aceito era "compra" — agora só com o
+  pagamento pago, e o spec prova os dois lados) e A3 (fechava a página antes de a gravação terminar: mover pergunta
+  antes ao servidor pelas automações), `automacoes-tempo` (escolhia a "unidade" no cadastro, que não a pergunta mais)
+  e `atendimento-ficha-planejador-injetaveis` (a mensagem do primeiro "Salvar planejamento" seguia na tela; agora
+  espera o banco). `automacoes-mobile` e `inbox-nome-da-pessoa` falharam só sob a carga da metade compartilhada e
+  passam isolados e repetidos — a próxima completa confere.
 
 **Perguntas ao Heitor (18/11), paradas até a resposta:** o Financeiro "só os meus" recebe no PDV? o "só os meus" da
 Agenda marca a chegada do próprio? os modelos de documento são configuração da rede toda (16/11 × 18/11)? quem vê a
